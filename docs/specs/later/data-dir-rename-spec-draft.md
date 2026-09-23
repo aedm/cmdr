@@ -5,7 +5,7 @@ Status: **not started**, still a draft. Nothing has moved: `com.veszelovszki.cmd
 `logging/startup.rs`, `secrets/mod.rs`, and `settings/loader.rs`.
 
 **Provenance, read this first.** This draft was written by an AI agent at the end of a design session mostly about a
-different feature (the in-app agent, `docs/specs/later/ai/agent-spec.md`), without a fresh look at the code. A
+different feature (the in-app agent, now `docs/specs/later/ai/agent-follow-ups.md`), without a fresh look at the code. A
 2026-08-27 audit checked every claim in it against the tree: §3's four mechanisms all hold, and three of the open
 questions are answered below from the code rather than guessed. **The two go/no-go questions (§6.1 and §6.2) are still
 open**, and they are the whole risk. Treat this as an agenda, not a plan.
@@ -21,7 +21,7 @@ Each maps a current path to its target:
 - **`~/Library/Application Support/com.veszelovszki.cmdr-dev-<slug>/` (per-worktree)**: `.../cmdr-dev-<slug>/`
 - **`~/Library/Logs/com.veszelovszki.cmdr/`**: `~/Library/Logs/cmdr/`
 - **`~/Library/Caches/com.veszelovszki.cmdr/`**: `~/Library/Caches/cmdr/`. ⚠️ This path doesn't exist yet. The move of
-  the drive index into it is owned by `docs/specs/later/ai/agent-spec.md` § 4.1 (which also renames the files to
+  the drive index into it is owned by `docs/specs/later/ai/agent-follow-ups.md` § 6 (which also renames the files to
   `drive-index-{volume_id}.db`), and that item is not started either. **This doc owns the directory NAME, that one owns
   what goes in it**; neither should restate the other.
 
@@ -55,9 +55,9 @@ question: `docs/notes/self-move-to-applications-2026-08-25.md`.)
    resolves a bare store name against it; window state no longer does (it's ours, and honors `CMDR_DATA_DIR`). Partial
    evidence the store can follow: for isolated instances the frontend already loads each store by absolute path from
    `get_isolated_store_path` (`apps/desktop/src-tauri/src/commands/settings.rs`), so the plugin accepts a path outside
-   `app_data_dir()`. Still unverified: the Rust-side `app.store("license.json")` calls in `licensing/` use bare names and
-   would need the same treatment. If some writer can't be redirected cleanly, the choice is between a split-brain layout
-   (some files in the old dir, ugly, defeats the point) and abandoning the rename. This is the second half of the
+   `app_data_dir()`. Still unverified: the Rust-side `app.store("license.json")` calls in `licensing/` use bare names
+   and would need the same treatment. If some writer can't be redirected cleanly, the choice is between a split-brain
+   layout (some files in the old dir, ugly, defeats the point) and abandoning the rename. This is the second half of the
    go/no-go investigation.
 3. **Migration for existing installs.** Rename-on-startup (same volume, near-atomic), with partial-failure handling, and
    possibly a transitional symlink old → new kept for a release or two for external readers. Edge cases to design for: a
@@ -110,14 +110,15 @@ Still open, in the order that matters:
 1. Can a prod Tauri build's `app_data_dir()` be repointed without changing the identifier, and how? **Core go/no-go**,
    and the one to timebox first.
 2. Can `tauri-plugin-store` be redirected? **Core go/no-go**, but half-answered (§3.2): the frontend stores already take
-   an absolute path in isolated instances. Registered in `tauri_builder.rs` (`tauri_plugin_store::Builder`). Window state is no longer part of this question:
-   it's ours (`apps/desktop/src-tauri/src/window_state/`) and resolves through `config::resolved_app_data_dir`.
+   an absolute path in isolated instances. Registered in `tauri_builder.rs` (`tauri_plugin_store::Builder`). Window
+   state is no longer part of this question: it's ours (`apps/desktop/src-tauri/src/window_state/`) and resolves through
+   `config::resolved_app_data_dir`.
 3. Does the rename apply on Linux at all? (What Linux uses today is answered in §3.6.)
 4. Symlink compatibility window: needed at all, and for how long?
 5. Does anything outside the repo (user scripts, third-party tools, support docs) reference the old path in ways worth a
    release-note warning?
-6. Sequencing with the index relocation (`agent-spec.md` § 4.1): one combined migration or two separate ones? Both are
-   unstarted, so either order is still available.
+6. Sequencing with the index relocation (`agent-follow-ups.md` § 6): one combined migration or two separate ones? Both
+   are unstarted, so either order is still available.
 
 Answered by the 2026-08-27 audit, kept so nobody re-asks: single-instance enforcement exists (§3.3), Linux derives from
 the identifier via XDG (§3.6), the external-reader inventory is in §3.4, and window state is already redirected.

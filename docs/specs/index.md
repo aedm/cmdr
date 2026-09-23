@@ -8,412 +8,186 @@ plus deferred work under `later/`.
 Each spec below states the problem it solves and what finishing it costs. ❌ None of them narrates what already shipped:
 that lives beside the code, and git holds the history.
 
-## Shipped, kept for review
+Open work is moving to GitHub issues (the "Cmdr backlog" project), which is where priorities get set. Every numbered
+item in a `*-follow-ups.md` file is shaped to become one issue; once an item is filed, its section here shrinks to the
+issue link, and a file whose items are all filed goes away.
 
-Each of these shipped and its durable intent already lives beside the code; the file survives only so David can judge
-the work against the plan it came from. Wipe per `DETAILS.md` § "Wiping a shipped spec" once the entry's own condition
-below is met.
+## Active
 
-- [x] 2026-09-16 `select-same-kind.md` - **Shipped, all nine milestones.** Cmdr could select everything, nothing, the
-      inverse, or a typed glob, but not "the rest of these, the same kind as this one." `⌥⇧=` (plus the numpad `⌥+`)
-      adds every entry of the cursor row's kind — same extension case-insensitively, every extension-less file, or every
-      folder — and the Select menu's row says which of those it would do right now, rendered in Rust from a typed
-      payload the focused pane pushes 200 ms-debounced. Three gaps rode along and all three closed: a combo the menu bar
-      can't register, either for want of a modifier (`⇧8`, `+`, `-`) or because muda can't name its key (`⌘+`, `⌥⇧=`),
-      now shows as a dimmed display-only glyph instead of registering nothing at all in silence; the context menu's 15
-      hardcoded accelerator labels read the live registry, so a rebind stops leaving lies behind; and `⌃⏎` opens the
-      context menu on the cursor row, the first keyboard path to a native popup, with "Toggle selection" grown into a
-      `Selection >` submenu. Durable intent lives beside the code: `apps/desktop/src/lib/file-explorer/pane/DETAILS.md`
-      (§ "Select all of the same kind", § "Keyboard context menu"), `apps/desktop/src-tauri/src/menu/DETAILS.md` (§
-      "Display-only accelerators", § "The one item whose LABEL changes", § "Where a CONTEXT menu's accelerator comes
-      from", § "The `Selection >` submenu"), `apps/desktop/src/lib/commands/DETAILS.md` § "Two labels", and
-      `apps/desktop/src/lib/shortcuts/DETAILS.md` § "Centralized dispatch". **Wipe per `DETAILS.md` § "Wiping a shipped
-      spec"** once David has judged the nine milestones against the plan they came from. That wipe is a one-way door, so
-      it waits for him.
-- [x] 2026-09-05 `viewer-selection-plan.md` - the three reported F3-viewer selection gaps (a double-click drag stuck on
-      one word, Shift+Arrow dead, Option+Shift+Arrow dead), plus keyboard extension, horizontal scroll on the bare
-      arrows, and the optional `viewer.showTextCursor`. Durable intent lives in
-      `apps/desktop/src/routes/viewer/DETAILS.md` (§ "Selection granularity", § "Keyboard motion model", § "Text
-      cursor") and `apps/desktop/src/lib/settings/DETAILS.md` § "Restricted-window mode".
-- [x] 2026-09-03 `agent-search-tool.md` - **Shipped, all six milestones.** Ask Cmdr can find a file by name: the one
-      authored `search` entry now serves both views and answers with typed JSON, so a walk still running reads as a
-      lower bound instead of the four confident "nothing matched" replies that prompted the spec. `coverage.complete` is
-      derived once beside the seven flags that each say a different sentence, `matchCountHuman` wears its `≥` so the
-      caveat can't be shed, `entries` goes through `fit_to_result_budget` on top of a `limit` clamped to 200, and
-      `list_volumes` hands over the `mountPath` that makes "search my NAS" expressible. `ai_search` stayed out by
-      decision. The schema trim paid for part of the new declaration, and the rest moved three pins plus the local
-      window floor, which rose to 32,768 because the 19th declaration broke the old one. Design and rules now live
-      beside the code (`mcp/executor/DETAILS.md` § The search result, `agent/tools/DETAILS.md` § The tool catalog and §
-      The size contract, `agent/chat/DETAILS.md` § What the budgets buy). **Wipe per `DETAILS.md` § "Wiping a shipped
-      spec"** once the watch item finds a home: whether the model offers to turn image indexing on when the content half
-      is the half that was asked for. That wipe is a one-way door, so it waits for David.
-- [x] 2026-09-03 `open-terminal-here.md` - **A keyboard-first file manager with no way to hand a folder to a shell.** A
-      user asked for "Open terminal here"; macOS has no default-terminal setting, so Cmdr keeps its own known-terminals
-      table (bundle id + launch recipe, queried live via `NSWorkspace`, no scan, no Refresh button), defaults to
-      Terminal, asks once on first use when another terminal is installed, and exposes one dropdown row in Navigation &
-      file ops plus a "Choose an app…" escape hatch. Deliberately no window-vs-tab control in v1: no universal mechanism
-      exists, so each terminal's own preference decides. Four milestones, about one agent-day.
-- [x] 2026-08-31 `smb-foreground-lease-plan.md` - **Shipped, all three milestones.** A background SMB upload now stands
-      aside for the folder you're actually waiting on: a listing holds an RAII lease so "busy" is a fact rather than a
-      decaying estimate, the parked upload wakes on that lease dropping, and a single-shot write is exempt from the
-      per-file 4 MiB floor that kept every photo and document from yielding once. The design and its bounds now live
-      beside the code (`apps/desktop/src-tauri/src/priority/DETAILS.md`, `write_operations/transfer/DETAILS.md`, and
-      `crates/cmdr-smb/DETAILS.md`), the deferred pre-file yield gate for the 1 MiB–4 MiB band included. **Wipe per
-      `DETAILS.md` § "Wiping a shipped spec"** once one refusal recorded nowhere else finds a home there: no foreground
-      stamping in `path_exists` / `get_file_range` / `refresh_listing`, since background callers would pin a share
-      permanently busy. That wipe is a one-way door, so it waits for David.
-
-## In progress
-
-- [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
-      shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
-      current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
-      one "See 12 favorites ⌃D" row that teaches the key. No store or IPC change: the data and interaction layers exist.
-      ⌃D is what TC and DC bind and the only free one of the three candidates, so Duplicate keeps ⌘D and the error
-      screen's Technical details is untouched. The four hand-rolled menus converge on one house `Menu`
-      (`lib/ui/Menu.svelte` grown to everything the volume switcher does plus per-section drag reorder; its stale docs
-      rewritten). Order: M1 the primitive → M2 the switcher ported onto it and `VolumeBreadcrumb.svelte` split, both a
-      pure refactor David QAs before anything else → M3 the favorites menu itself (ship point) → M4 the last two menus
-      (separable); about five agent-days.
-- [ ] 2026-09-15 `elevated-file-operations.md` - **A user couldn't move root-owned files out of a folder their macOS
-      user can't change, and had to finish the job with `sudo` (ERR-4TEMD).** Draft, not started. Cmdr asks in an
-      out-of-process native alert (`[Cancel] [Skip] [Allow]`), unlocks a Cmdr-specific admin right for 24 hours (revoked
-      on lock, sleep, and quit), and routes only the refused steps through a tiny on-demand `SMAppService` root helper,
-      so progress, cancel, and rollback stay in the engine. macOS 13+. Reads never escalate, and MCP can see the wait
-      but never answer it. The groundwork that needed no helper already shipped (an empty entitlements plist, and a
-      refusal that carries its errno and names the folder that refused); M1 is a spike that answers seven open
-      questions, TCC for a root daemon first.
-- [ ] 2026-09-15 `error-report-triage-plan.md` - **Auto-sent error reports arrive one by one, and nothing says whether
-      one is fixed, known, or new.** Plan only, awaiting David's review. Every error gets a stable signature (a hash of
-      its log target and code template), a D1 registry tracks each one as new, regressed, open, fixed, or ignored, and
-      `Fixes-error:` commit trailers mark signatures fixed when a release ships them. Intake caps floods per install and
-      pings Discord only for new or regressed signatures. An agent on the M1 box diagnoses only those, reading the
-      laptop's local `main` mirrored to the box, and the Worker mails one digest at 06:00 Stockholm time every day.
-      Decided: M1 box, Discord for new and regressed only, diagnosis only, 06:00 daily. Six milestones: app signatures →
-      registry and intake → triage API and fix marking → daily email → the `/error-triage` command → infra (the mirror
-      hook, the generic agent-job runner, secrets); about 2,700–3,650 lines across the Cmdr and infra repos.
-- [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
-      vanishes, and names what holds one it can't eject.** M0–M4 landed: moves keep their sources until every
-      destination directory is fsynced, real APFS and HFS+ disk images run in the `disk-images` lane, and a removable
-      stop waits on every worker still reading the drive (keyed on its mounted filesystem, never a stuck share of a
-      drive that already left). Next is M5, the gated stop, start, and resume; every product decision is made. A
-      DiskArbitration unmount approver on its own session stops every volume of the disk inside the ask (7 s budget,
-      dissent as the non-force fallback) and resumes on DA's idle callback when the unmount doesn't happen, replacing
-      the racy `WillUnmount` handler. Every index worker carries a labelled share of `VolumeHold`, so "released" means
-      nothing reads the drive. A pulled drive or raw `umount` stops workers without deleting rows or stamping an index
-      complete, invalidates a suspect index with a notice, gives a transfer its progress facts, and sweeps leftover
-      temps when the drive returns. Cmdr's own eject goes per physical disk with the round-3 should-fixes, then a holder
-      scan and classification and the approved copy. Two adversarial review rounds are folded in: every app-side index
-      start holds a per-volume ticket and waits out an unmount in progress, so no start can land on a drive that's
-      leaving; asks queued behind each other share one time-based deadline; and no sweep, at launch or on arrival, can
-      remove a user's original. Order: M0 move durability → M1 harness → M2 lane → M3 hold leaf → M4 worker shares → M5
-      gated stop, start, and resume → M6 approver → M7 delete gates → M8 completion gates and rebuild marker → M9 vanish
-      causes → M10 transfers → M11 temps and asides → M12 disk flights → M13 holder scan → M14 facts → M15 copy →
-      checkpoint; about 8,700–10,600 lines. The DA teardown swap, per-disk DA sessions, and "not powered down" are
-      deferred with revisit triggers.
-- [ ] 2026-09-11 `text-editor-choice.md` - **F4 always opens files in TextEdit, and a user wants Sublime Text.** M1 (the
-      Rust surface) landed: Cmdr lists what LaunchServices reports as plain-text EDITORS (the role-filtered C query; the
-      spike confirmed Sublime Text and VS Code both show up there), launches a file in a stored bundle id or `.app` path
-      with a report, falls back to the system default when that app is gone, and names apps the way Finder does. F4
-      still passes `system`, so it runs `open -t` exactly as before. Next, M2: F4 honors the stored choice. Then M3: a
-      "Text editor" row in Navigation & file ops and a one-time toast that fires only when another editor exists. Each
-      frontend milestone translates its own copy into ten languages (English left in a locale and an unreferenced key
-      both fail the build).
-- [ ] 2026-09-09 `dock-integration.md` - **Cmdr has no presence in the Dock beyond its running tile.** An implementation
-      map for four pieces, three of which have now landed on `worktree-dock-integration`: the `usage.json` launch-day
-      ledger, the one-time "add Cmdr to your Dock" nudge that writes `com.apple.dock`'s `persistent-apps` through
-      CFPreferences, and its three PostHog events. Only the Dock-tile context menu is left, and §§ A and B are still its
-      map: tao's `TaoAppDelegateParent` never implements `applicationDockMenu:` so the selector can simply be added, but
-      `CommandScope::FileScoped` silently drops a Dock click because the main window isn't focused, and Tauri exposes no
-      `NSMenu*` from a `Submenu`, so the menu has to be hand-built with objc2. Two open questions for David remain, both
-      about that menu: what "New window" means when there is only one window, and what "Recent locations" draws from.
-      The file now leads with the corrections the build turned up (the toast raise/answer import cycle, the `onDismiss`
-      seam that tells a dismissal from a refusal, `i18n-coverage` as the real cost of new copy, and the per-file
-      coverage floor on new IPC wrappers); where it and a colocated `CLAUDE.md` disagree, the colocated doc wins.
-- [ ] 2026-09-09 `i18n-glossaries-as-data.md` - **Turn the translator glossaries into data and generate the markdown
-      from it.** Proposed, not started, and it needs David's go-ahead before any migration work. The 28,263 lines of
-      per-locale guides carry typed facts as prose, so nothing can check them, and three classes of rot have already
-      landed: 91 dead citations (now caught by `desktop-i18n-doc-citations`), 20 locations of value drift no check can
-      catch, and self-contradicting entries the append-only format allows (`docs/i18n/hu/glossary.md:366` retires
-      `Átviteli sor` and then prescribes it four lines later). The decisive change is that shipped values get read from
-      the catalogs at render time instead of transcribed, which makes drift unrepresentable rather than merely
-      detectable, and shrinks the citation check to a set lookup. Expensive: a per-locale migration whose payoff is
-      tooling quality, not product. The spec names two cheaper alternatives and a go/no-go gate after the first locale.
-- [ ] 2026-09-07 `servers-hub-review-follow-ups.md` - **What the servers branch's pre-merge review left open once its
-      fixes landed.** Twenty-four entries in problem / impact / solution / size form, verified against the code as it
-      stands. Four are decisions rather than fixes and wait for David: the SMB sheet seeding "Remember in Keychain" ON
-      against the sign-in rule, `root_anchored` joining a bare server-absolute path onto the app root instead of
-      refusing it, launch dialing a phone with no way to call it off, and `VolumeBreadcrumb.svelte` sitting 206 lines
-      over its allowlist entry. Two majors: an SMB host on a non-445 port listed twice in the hub, and the
-      disconnect-tells-the-panes guarantee having no test. The rest is five minors and thirteen nits, mostly copy.
-      Roughly three days for everything but the two big product calls.
-- [ ] 2026-09-06 `data-safety-hunt-follow-ups.md` - **What the transfer-engine hunt left open after its 15 findings were
-      fixed.** Nine ranked entries in problem / impact / solution / size form: two high (a cross-FS move loses the bytes
-      written to a file after its copy finished; a top-level folder symlink on a volume still merges through the link,
-      which needs a symlink-aware answer on the `Volume` trait), three medium (the SMB single-shot write has no
-      "expected free" guard; the volume engine's folder-over-file Overwrite still deletes the file first; the local
-      folder-over-file prompt describes the clash as file-vs-file), four low. The nine subsystems the hunt never reached
-      are a second hunt, not an entry. Roughly a week in total; the two high ones are about two days.
-- [ ] 2026-09-03 `mtp-crate-extraction.md` - **MTP is the last backend that still reaches sideways into the app.** Its
-      session layer holds a `tauri::AppHandle`, emits seven frontend events itself, writes the listing cache and the
-      index directly, and gates real behavior on nine inline `cfg(test)`s, so the backend on the flakiest hardware is
-      the one with no scoped verification loop. Ten decisions taken; the load-bearing one is that a backend has two
-      faces: the `Volume` trait already is the file-ops face and moves untouched, so the whole job is retrofitting the
-      lifecycle face onto the host seams IN PLACE (M1, M2) before a near-mechanical move (M3), then a test split by what
-      each cell asserts (M4). The manager becomes a value the app parks; device events become a crate-local typed trait;
-      two `ListingHost` and two `IndexNotifier` additions; `UsbSpeed` moves to `cmdr-fs`. Gates: `bindings.ts` zero-diff
-      after every in-place milestone, `cargo check -p cmdr-mtp --all-targets` with no app, the E2E MTP shard, a real
-      phone. Two to three days.
-- [ ] 2026-09-04 `git-portal-volume.md` - **The virtual `.git` portal is ten `if` sites inside `LocalPosixVolume`, plus
-      English the translations never see.** Three route hooks and seven mutation guards, two more hand-enforced rules on
-      top (skip watching virtual paths, refresh on toggle), and a delete walker that lists through the hooked
-      `list_directory` and may meet six virtual folders it can't remove (verify at M0). Same mechanism archives already
-      use: a read-only `GitPortalVolume` in `crates/cmdr-git`, routed lexically by `resolve` only for `.git/<category>/`
-      paths, so `.git/` and every real file under it stay writable with no guard anywhere; the `.git/` root listing is a
-      pane-only overlay seam that scans and walkers never see. Three rules become types. `display_size` becomes a typed
-      `GitEntryMeta` the frontend words per locale; the watcher moves with a typed sink. Sequenced after
-      `mtp-crate-extraction.md`; can go first if that stalls. About three days.
-- [ ] 2026-09-07 `webdav-backend-follow-ups.md` - **The WebDAV backend trusts only what the system roots vouch for.**
-      `crates/cmdr-webdav`, its IPC surface, and the Docker fixtures are done and documented in
-      `crates/cmdr-webdav/DETAILS.md`, and the frontend it shares with SFTP shipped (§ 1 is now a pointer at
-      `apps/desktop/src/lib/servers/DETAILS.md`). Open: trust-on-first-use for the self-signed certificates most NAS
-      boxes present (the day-one wall for that audience, and the one the sign-in sheet currently has to word around),
-      Digest auth or a typed refusal, Nextcloud chunked uploads, RFC 4331 quota, and a pass against a Synology and a
-      Nextcloud behind nginx + php-fpm, neither of which the Docker fixtures can imitate.
-- [ ] 2026-08-31 `rollback-recheck-plan.md` - **Cancelling an operation deletes files it no longer wrote, and the move
-      case overwrites silently.** The history dialog's Roll back verifies every item against a recorded snapshot and
-      refuses to touch anything that changed; the in-flight rollbacks (the transfer dialog's button) verify nothing and
-      act on a bare list of paths, so a copy that ran for hours deletes a destination something else has since touched,
-      and a move-back renames over whatever now sits at the source. Four milestones: the in-memory ledgers grow an
-      identity, all six reversal entry points verify first through the same helper the history path uses (plus the
-      non-destructive-restore guard the move path lacks), the reversal gains a way to report what it left and why, and a
-      rollback started from the history dialog gets the Pause and Cancel buttons its engine already supported. ❌
-      Explicitly NOT the unification that was considered and rejected. David reviewed and confirmed the snapshot
-      decision the plan rests on: a local snapshot is size plus inode, a volume snapshot is size only, and mtime is
-      recorded nowhere, because a 2-second-granularity destination (FAT32, a network mount) would otherwise drift every
-      file and strand a whole copy on the stick.
-
-- [x] 2026-08-28 `rename-review-grouping.md` - **One review for one job, not one dialog per batch.** SHIPPED 2026-09-06.
-      A 500-file bulk rename opened five review dialogs at a 60,000-token budget and 22 at the default, because the
-      model can emit only ~101 plan rows per reply and each reply was staged and reviewed on its own, cancelling the
-      plan the user was reading. `proposalReady` now stages a plan, the turn's end opens one review over all of them,
-      and Apply starts one operation per batch in staging order. Presentational only: preflight, revise, apply, and
-      cancel stay keyed by proposal id, so every guardrail stays per row, and no backend change was needed. ❌ Not the
-      per-rule approval question in `open-decisions.md`, which was answered no. Follow-up still open: option (c),
-      opening the review immediately and growing it as batches land.
-- [ ] 2026-08-21 `open-decisions.md` - **Questions that gate work but aren't work.** One call left, in PISS form:
-      whether a file that exhausts its retries ends the whole operation or the batch carries on and reports what it
-      missed. Six others were answered on 2026-09-05 (four drafts of user-facing copy ratified as shipped, per-rule
-      approval declined, the `invariant-density` ratchet dropped with the check itself). A question with no answer looks
-      exactly like a task nobody picked up, which is how a 600-line spec stays alive for a year.
+- [ ] `open-decisions.md` - **One product call gates a transfer change: should one unrecoverable file end the whole
+      operation?** Today file 200 of 700 failing past retries abandons the other 500; carrying on needs a "finished with
+      N missing" terminal report, a list of what was skipped, and partial-success journal semantics.
+- [ ] `eject-and-drive-safety-follow-ups.md` - **Eject and drive safety shipped (v0.46.0); five things are left.**
+      Manual QA on real sticks, SD cards, and pulled cables (every automated test uses synthetic images by rule); the
+      copy for a refusal whose holders are all unclassified (needs David); and three deferred designs with revisit
+      triggers: per-disk DA sessions, ejecting through DiskArbitration directly, and stopping the index on a Linux
+      external unmount.
+- [ ] `data-safety-hunt-follow-ups.md` - **What the transfer-engine data-safety hunt left open after its 15 findings
+      were fixed.** Nine re-verified gaps: two high (a cross-FS move loses bytes written after a file's copy; a
+      top-level folder symlink on a volume merges through the link), three medium (SMB single-shot upload replaces a
+      name taken mid-upload; the volume folder-over-file Overwrite deletes the file first; the local folder-over-file
+      prompt reads as file-vs-file), four low. Plus a second hunt over the subsystems the first never reached.
+- [ ] `rollback-follow-ups.md` - **Three small history-dialog gaps left after the rollback recheck shipped.** A finished
+      rollback stays badged "Rolling back" until the dialog is reopened, a reversal row isn't marked as an undo of the
+      operation it reversed (`rolls_back_op_id` is stored but unread), and an operation and its reversal report item
+      counts that differ by one (reproduce first).
+- [ ] `elevated-file-operations.md` - **A user couldn't move root-owned files out of a folder their macOS user can't
+      change, and had to finish with `sudo` (ERR-4TEMD).** Draft, not started: an out-of-process native alert
+      (`[Cancel] [Skip] [Allow]`), a Cmdr-specific admin right for 24 hours (revoked on lock, sleep, and quit), and a
+      tiny on-demand `SMAppService` root helper doing only the refused steps, so progress, cancel, and rollback stay in
+      the engine. macOS 13+. M1 is a spike answering seven open questions.
+- [ ] `error-report-triage-plan.md` - **Auto-sent error reports arrive one by one, and nothing says whether one is
+      fixed, known, or new.** Plan, not started, decisions taken: stable per-error signatures, a D1 registry (new,
+      regressed, open, fixed, ignored), `Fixes-error:` commit trailers marked fixed by release CI, flood caps, Discord
+      only for new or regressed, an M1-box agent that diagnoses only those, and one digest email at 06:00 Stockholm
+      time. Six milestones across Cmdr and infra, three open questions for David.
+- [ ] `servers-hub-review-follow-ups.md` - **What the servers hub's review left open.** One decision for David (a bare
+      server-absolute path typed into the transfer box is joined onto the root instead of refused), a doubled SMB host
+      on a non-445 port, a missing test for disconnect telling the panes, a host-key-changed pane with no button to see
+      the key, an unreachable server named by hostname, and small code and copy nits. 13 self-contained items.
+- [ ] `webdav-backend-follow-ups.md` - **A self-signed NAS certificate is a dead end.** Most home NAS boxes present one,
+      and the connect stops at `certificate_untrusted` with no way to trust it. Also open: Nextcloud chunked upload for
+      big files, a by-hand pass on a Synology and a php-fpm Nextcloud, two small correctness edges (a proxy rewriting
+      hrefs, a file where an ancestor folder should be), and full Digest auth on demand.
+- [ ] `cross-cutting-follow-ups.md` - **Side findings from the ADB effort, none of them ADB's.** The copy dialog's
+      Confirm stays pressable under a "no writes here" notice, the index registry lock is held while `fseventsd` starts
+      a watcher, the index phase tests cause half the retried Rust runs, an approved agent suggestion that refuses to
+      start vanishes silently, a direct SMB share can't warn it's read-only, and the app's self-dev-dependency links two
+      copies into the test binary. 11 self-contained items.
+- [ ] `mtp-follow-ups.md` - **The `cmdr-mtp` extraction has never met a real phone.** Every suite ran against the
+      virtual device; the one ordering the refactor could change (storages register before the event loop starts) isn't
+      settleable statically. One item: David's seven-step phone checklist, about half an hour.
+- [ ] `git-portal-follow-ups.md` - **The routed `.git` portal hasn't been walked by hand.** Copy-out bytes are
+      automated, but editing and deleting real files under `.git/`, deleting a repo on an external disk, and the toggle
+      haven't been tried in a running app. One six-step QA item, about half an hour of David's time.
+- [ ] `favorites-menu-follow-ups.md` - **The viewer's right-click menu is the last hand-rolled menu, and the house
+      `Menu` has never been heard through VoiceOver** (GitHub #91 shipped the rest). Port `ViewerContextMenu.svelte`
+      onto `Menu`, and run a VoiceOver pass that confirms or replaces the portaled `aria-activedescendant` focus model
+      every in-app menu relies on.
+- [ ] `dock-integration-follow-ups.md` - **The Dock tile menu names one command two ways, and can't reach connected
+      devices.** It says "Go to folder…" where the menu bar says "Go to path…" for the same `nav.goToPath`, and it lists
+      bookmarks and tabs but no phones, drives, or servers (the volume list is async, and the Dock asks synchronously).
+      Both wait on a David call.
+- [ ] `viewer-row-wrap-follow-ups.md` - **The viewer's IPC still calls a row a line, and three small loose ends.** Rows
+      shipped, so the wire's `SeekTarget::Line` / `RangeEnd::Line` / `SearchMatch.line` now mean "row", a trap for the
+      next reader. Also: a timed-out fetch keeps reading unwatched, the catch-all "Failed to read file" breaks the copy
+      rules, and two selection-announcement strings await David's review.
+- [ ] `rename-review-follow-ups.md` - **A big Ask Cmdr rename shows nothing until the turn ends.** A 500-file job
+      streams five to 22 batches before its one review opens. Opening the review on the first batch and growing it gives
+      feedback and a chance to stop early, at the price of preflighting under a user who's already reading.
+- [ ] `i18n-glossaries-as-data.md` - **The translator glossaries are 54,449 lines of prose across 143 locales, so
+      nothing can check the facts in them.** Proposed, not started, needs David's go-ahead: store one typed row per term
+      per locale and generate the markdown, reading shipped values from the catalogs at render time so value drift
+      becomes unrepresentable. Expensive (a per-locale migration); a cheaper middle option (a fixed citation format) is
+      written up beside it.
 
 ## Later
 
-Deferred future work. Unchecked by default; the folder name is the status. Each entry notes what shipped and what's
-left, so the durable intent survives the wipe.
+Deferred future work. Unchecked by default; the folder name is the status.
 
-- [ ] 2026-09-20 `later/search-arena-snapshot.md` - **Make the search dialog's wait disappear rather than shrink**
-      (GitHub #114). `ERR-S76V3` measured 34.7 s between `search.open` and a 50 ms search on a 5.39 M-entry volume. The
-      cheap half SHIPPED (parallel range-scan loader, `dir_stats` row estimate instead of a second b-tree traversal,
-      weights loaded concurrently, `id_to_index` retired for a binary search, volume-scoped preload, 30 s idle window),
-      which leaves a ~1 s rebuild on every reopen past the window and a few seconds on the first open of a session.
-      Parked here: replacing the heap arena with a columnar, memory-mapped `index-{volume}.arena` (~271 MB, about a
-      third on top of the database) that the engine scans in place, kept fresh by an append-only mutation journal the
-      index writer appends to and search replays at dialog open. ❗ The memory argument does NOT justify it: the arena
-      was always dialog-scoped, so the idle-footprint requirement is already met. What's left to buy is the wait itself,
-      plus the footprint while the dialog is up, against ~3,000-4,500 lines and permanent ownership of a file format
-      with a crash-recovery path. Six remaining workstreams, contracts fixed up front so they merge.
+### AI
 
-- [ ] 2026-09-13 `later/warn-triage-follow-ups.md` - **The low-severity half of the frontend warn triage.** Frontend
-      warns reach prod logs now, and the triage's high- and medium-severity findings were fixed. Parked here: eight
-      small decisions (notification permission, hotkey restore, a dead MTP flow, bulk rename's 5 s budget, the
-      onboarding download toast, Approve before rows load, the Linux settings link, MCP consent direction), three fix
-      batches (bulk rename review failures, viewer and notifications, dead catches), and a list of S-sized leaks,
-      promotions, and hardening. Each item carries a severity, a size, and the file to start from.
-- [ ] 2026-09-02 `later/inspect-file-follow-ups.md` - **What Ask Cmdr's `inspect_file` still owes.** The tool shipped
-      whole: up to 200 paths a call on the viewer's own backends, `find` across text and PDFs, PDF text by page with
-      title and author, archive listings and files inside them, EXIF with GPS, every cut visible, and the consent copy
-      (`CONSENT_COPY_VERSION` 4, 10 languages), system prompt, and `docs/security.md` all saying so. Eight things are
-      open, each with its cost and trigger: `find` over archive entry names, files on direct SMB / MTP / SFTP volumes
-      (waits on a viewer `Volume` seam), password-protected PDFs and archives, OCR for scans, the viewer's search
-      splitting on raw `\n` before decoding (a UTF-16 file over 1 MB searches misaligned in both surfaces; a real bug),
-      an unsupported codec at extract time still reading `corrupt`, a GPS gate, and the `cfg(test)` secrets store
-      writing to the REAL `secrets.json`.
-- [ ] 2026-08-27 `later/idle-cost-follow-ups.md` - **What the idle-cost effort deliberately left.** Two structural fixes
-      shipped (each CLIP tower loads on demand, and an anchor storm costs one visible sweep a day instead of a subtree
-      walk each), both documented beside the code. What's open starts with a measurement rather than a fix: every number
-      this effort was ranked against came from one v0.37.0 reading on a machine running six cargo builds, and five
-      things have changed since, so **a fresh idle baseline on David's laptop comes before ranking anything else**.
-      Then: three CLIP calls that memory alone can't settle (the idle unload, now with its 677 ms cold-query price
-      measured; the ~400 MB compute-unit trade, blocked on unmeasured enrichment throughput; an fp16 spike), the rescan
-      threshold's week of churn data, one question for David about `SYSTEM_DIR_EXCLUDES` that gates nothing, and two
-      smaller calls.
+- [ ] `later/ai/agent-follow-ups.md` - **What the in-app agent still owes.** Designed and unbuilt: an activity log (the
+      least-paid principle), the knowledge layer (folder summaries, the walk, the preflight; the largest block), scoped
+      rules, a proactivity dial, the bulk slot, moving the drive index to Caches, prompts as assets, a planner job,
+      auto-apply, a navigation-intent log, evals, multi-volume identity, an `inspect_file` denylist, and two someday
+      items. The decision log it cites lives in `apps/desktop/src-tauri/src/agent/DETAILS.md`.
+- [ ] `later/ai/wake-loop-follow-ups.md` - **What the shipped proactive agent still owes.** Five guessed constants
+      (interest thresholds, backoff, idle poll, outcome-ring size) that wait on a week of real wakes, and the rail,
+      which doesn't show an approve or reject in an open thread until it reloads.
+- [ ] `later/ai/bulk-rename-follow-ups.md` - **Two gaps the reviewed bulk rename left, both waiting on a real report.**
+      One invented filename on a remote volume refuses the whole plan (proposal construction must never touch a live
+      mount), and nothing checks a reply's coverage claim against a truncated listing; only the prompt rule does.
+- [ ] `later/inspect-file-follow-ups.md` - **What Ask Cmdr's `inspect_file` still owes.** Six open items, each with its
+      trigger: `find` over archive entry names, files on direct SMB / MTP / SFTP volumes (waits on a viewer `Volume`
+      seam), password-protected files, OCR for scans, an unsupported codec reading as `corrupt`, and a gate for GPS.
 
-- [ ] 2026-09-07 `later/adb-merged-phone-row.md` - **One switcher row per phone, not one per protocol.** A phone with
-      platform-tools installed is visible to Cmdr twice, over MTP and over ADB, and shipping two rows for one object on
-      the desk makes the user pick a protocol before they have a question. The decision is taken: one row per physical
-      device, matched by serial, with MTP as the default face and ADB a mode the row switches into from its menu and a
-      pane-header control ("Show the full filesystem"). It costs a cross-provider identity fold in `device_volumes.rs`
-      and a per-row active protocol the pane remembers, and it retires the "(ADB)" name suffix and its ten translations.
-      The last item of the shipped ADB work, deferred because it is the largest and nothing waits on it.
+### Indexing and search
 
-- [ ] 2026-09-07 `later/adb-backend-follow-ups.md` - **The ADB backend is done and has never met a phone.**
-      `crates/cmdr-adb` lists, streams, and writes as a device-anchored `Volume` beside MTP, over the seam MTP never had
-      (`device_volumes.rs`, with `host:track-devices` as the first push-channel hotplug), and the frontend that reaches
-      it shipped; it's all documented beside the code. Three items left, in PISS form: the real-device pass that gates
-      everything (authorize prompt, `unauthorized` -> `device` mid-session, a 2 GB transfer, a `/data` listing on a
-      non-rooted phone), `sendrecv_v2` compression off until measured, and wireless pairing left to the `adb` server.
-      Indexing an ADB volume is a settled non-goal, not a gap.
+- [ ] `later/search-arena-snapshot.md` - **Opening search still waits ~1 s on every reopen past the 30 s idle window,
+      and seconds on a session's first open** (GitHub #114). The fix maps a columnar `index-{volume}.arena` in place,
+      kept fresh by a journal; it costs ~271 MB disk per volume and a file format to own. Gated on David deciding the
+      wait is worth it.
+- [ ] `later/indexing/swap-scan-plan.md` - **A rescan of a completed local index takes ~15 minutes; a fresh parallel
+      scan of the same volume takes two.** Build a fresh index into `index-{vid}.building.db` and promote it atomically
+      (8.4× measured), keeping the in-place reconcile as the fallback when disk is tight or the flag is off. A durable
+      `.swap` marker plus open-time recovery guarantees exactly one complete index across any crash. Not started; M0
+      spikes first.
+- [ ] `later/indexing/sealed-subtrees-follow-ups.md` - **A directory with a million files still costs rows, RAM, and
+      resync time, even with verification guarded.** Measure whether the shipped guard already fixed enough (the gate),
+      then "seal" such subtrees (keep the aggregate, drop the per-file tail) with three David decisions, then the
+      frontend's approximate/unsearchable state. Items 2–3 may never be needed.
+- [ ] `later/indexing/media-index-follow-ups.md` - **The image index still can't find people, caption scenes, or read
+      phones.** Faces (detect/embed/cluster, then naming with a durable identity store and conservative re-attach) are
+      parked until David wants to be in the loop; LLM captions are optional; MTP on-demand enrichment and an "also
+      delete the index" offer on disable are small gaps. The decision log is `media_index/DETAILS.md` § "Key decisions".
+- [ ] `later/indexing/drive-index-overall-eta.md` - **The indexing status shows the active step's ETA but no honest
+      overall "~Xm left".** Only the scan phase has a persisted per-volume duration prior; save, compute, and replay
+      have none that survive a restart. Persist those per volume, then sum the active step's ETA with the pending steps'
+      seeds. Not started.
+- [ ] `later/db-first-listings-plan.md` - **Serve directory listings from the SQLite index instead of `readdir` +
+      `stat`**, so first paint is a query. Blocked first on a measurement: the only latency number predates
+      release-build measurement, so it may have no user-visible win. Second blocker: `created` is a sort column the
+      index doesn't store.
+- [ ] `later/importance-follow-ups.md` - **Folder importance ranks with untuned weights.** The tuning loop is built but
+      needs David's home directory; the Spotlight last-used sampler's 500-folder cap has never been measured; and a
+      recompute ignores the memory watchdog and shutdown (seconds today, so low priority).
+- [ ] `later/idle-cost-follow-ups.md` - **Nobody knows what Cmdr costs at idle today.** Every number dates from one
+      noisy 2026-08-03 run, so a fresh quiet-machine baseline comes first. Then three CLIP memory calls (idle unload at
+      677 ms cold, `MLComputeUnits` worth ~400 MB, an fp16 text tower), a rescan threshold waiting on a week of data, a
+      rescan-denylist question for David, and two small API/check cleanups.
 
-- [ ] 2026-09-07 `later/smb-pinned-shares.md` - **An SMB share can't be pinned, so it leaves the switcher the moment it
-      unmounts.** An SFTP or WebDAV place keeps a greyed `saved` row that dials on activation; a share reaches the
-      switcher only while mounted, so the NAS someone uses daily is invisible until they walk the hub down to it again.
-      Three facts block it, each verified: the known-shares store has no share rows (its one writer passes an empty
-      share name), it has no port, and a mounted share's id comes from `statfs`, which normalizes an mDNS name to an IP
-      the store never held. The fix is a share-level writer at MOUNT time spelling the server the way `statfs` does,
-      plus the port, plus a `pinned` field copying the two SFTP and WebDAV stores; the design work left is which arm a
-      `saved` SMB row dials, since SMB's connect is a share mount rather than a session.
+### Backends and transfers
 
-- [ ] 2026-09-07 `later/sftp-follow-ups.md` - **What is left once the SFTP backend AND its frontend both ship.** The
-      crate, its IPC surface, and the fixtures are documented in `crates/cmdr-sftp/DETAILS.md`; the frontend is
-      `apps/desktop/src/lib/servers/DETAILS.md`, and § 1 is now a pointer at it rather than an open item. Three things
-      are open. Free space and non-UTF-8 filenames wait on the same vendoring of `openssh-sftp-protocol` + `ssh_format`,
-      so they're one job. Two backends still put their protocol's wording where `VolumeError::NotFound` promises a path.
-      And someone who reaches a box as `ssh naspi` still has to retype the endpoint, because nothing reads
-      `~/.ssh/config` for host aliases to offer as completions in the address field.
+- [ ] `later/adb-follow-ups.md` - **A phone shows up twice, and half the ADB backend is still only proven against a
+      mock.** One switcher row per phone (decided: MTP face by default, ADB as a mode, matched by serial) replaces the
+      "(ADB)" label. The rest of the real-device pass (authorize prompt, 2 GB transfers, `/data`, a real index walk)
+      gates measuring `sendrecv_v2` compression.
+- [ ] `later/sftp-follow-ups.md` - **Two SFTP gaps wait on a real user.** Free space and non-UTF-8 filenames share one
+      fix (vendoring two protocol crates, a permanent maintenance cost), and `~/.ssh/config` aliases could fill the add
+      form. Neither is worth doing on a hypothetical.
+- [ ] `later/smb-pinned-shares.md` - **An SMB share can't be pinned, so it leaves the switcher the moment it unmounts.**
+      An SFTP or WebDAV place keeps a greyed `saved` row that dials on activation; a share reaches the switcher only
+      while mounted. The fix is a share-level writer at mount time spelling the server the way `statfs` does, plus the
+      port, plus a `pinned` field; the design work left is which arm a `saved` SMB row dials.
+- [ ] `later/transfer-queue-follow-ups.md` - **Five independent transfer-queue extensions**: more than one operation per
+      lane (`LANE_BUDGET` is a const 1), reopening a stale handle after a long pause on SMB or SFTP, bounding paused
+      operations' blocking threads, queue reordering, and queue persistence across restarts.
+- [ ] `later/archive-follow-ups.md` - **Three independent archive gaps**: adding a file to a big zip rewrites the whole
+      archive (design settled in `docs/notes/m-append-spike.md`, and the SMB server-side half is no longer blocked on
+      `smb2`), a file inside an archive can't open in an external app, and editing a zip on an MTP device round-trips
+      the whole archive (stretch).
 
-- [ ] 2026-08-23 `later/ai/wake-loop-follow-ups.md` - What the shipped proactive agent deliberately left. Two interest
-      tuning knobs and three cadence constants that want a week of real wakes before anyone moves them (the per-outcome
-      log line and analytics event exist for exactly that), reading file contents, the rail not refetching on a
-      decision, and one chore needing a machine with a foreground: the consent screenshots.
-- [ ] 2026-08-27 `later/i18n-screenshot-gaps.md` - **Which catalog families a translator still gets no picture of, and
-      why each resists capture.** Structural only: the doc now carries NO absolute numbers, because the ones it used to
-      carry went stale twice while the analysis around them stayed true. Every count, percentage, and per-area ranking
-      comes from the generated `apps/desktop/src/lib/intl/messages/screenshots/coverage-report.md`. Biggest gaps:
-      `settings.mediaIndex` (the whole panel body behind the image-indexing master toggle), `askCmdr` (the rail's fake
-      LLM says one thing and calls no tool, so no tool row ever renders), `fileExplorer.navigation` (per-drive index
-      status, SMB connection, favorites failures, disk-space retries), and four cheap settings surfaces the capture
-      never visits.
-- [ ] 2026-08-27 `later/indexing/swap-scan-plan.md` - **A rescan of a completed local index takes ~15 minutes; a fresh
-      parallel scan of the same volume takes two.** Build-and-swap closes that gap: run the guarded walker into a
-      separate `index-{vid}.building.db`, then promote it atomically (8.4× measured, 107 s vs 897 s), keeping the
-      in-place reconcile as the fallback when disk is tight or the flag is off. A durable `.swap` marker plus idempotent
-      open-time recovery is what guarantees exactly one complete index across any crash. **NOT STARTED**, re-derived
-      from the tree 2026-08-27: no `.building.db`, no marker, no route. Its custody window was rebuilt underneath it
-      since it was written (`IndexPhase::Detached` now CLAIMS a teardown rather than refusing it), so § 2.3 step 5 is
-      corrected and `docs/notes/manager-custody-spike-2026-08-18.md` § 5 is required reading. Foundation:
-      `docs/notes/swap-scan-feasibility.md`, `docs/notes/indexing-benchmarks-2026-07-21.md`.
-- [ ] 2026-08-27 `later/indexing/sealed-subtrees-plan.md` - **Bound the cost of pathological high-churn directories
-      without lying about folder sizes**, motivated by one 1.14M-file directory causing a 7-minute, 1 GB cold-start
-      stall. **M1 (the two-teeth verify guard) SHIPPED**, and its account now lives beside the code, so the milestone
-      here is a decision record rather than work. **M2–M5 NOT STARTED and possibly never needed** (seal a subtree to its
-      `dir_stats` aggregate plus a bounded head of large files, a churn-rolled seal root, periodic re-anchoring, a
-      distinct "approximate" size state): they stay gated behind measured residual pain, and gate 1 is answerable TODAY
-      from a SQL census plus two shipped counters, without building an instrument first. All three spikes have run;
-      Spike B's result CHANGES Phase B's seal-root rule rather than confirming it (churn share alone selects
-      `~/Library/Containers`, which would seal every app's container).
-- [ ] 2026-08-27 `later/ai/bulk-rename-follow-ups.md` - **What the reviewed bulk rename deliberately left.** The whole
-      hardening wave shipped, provenance included: the operation log records `agent_edited` when the user retyped a name
-      in review, and the durable proposal spine binds an approval to the exact ops it covered. Two items are open, both
-      waiting on a real report rather than on effort. One invented remote filename still refuses a whole plan (a local
-      one reaches review as a blocked row), because proposal construction is synchronous and must never touch a live
-      mount. And nothing compares a reply's coverage claim against what the tool actually returned; the prompt contract
-      and its test are all there is.
-- [ ] 2026-08-27 `later/importance-follow-ups.md` - **What the shipped folder-importance subsystem still owes.** It grew
-      well past its plan: five documented area pairs under `crates/cmdr-index/src/importance/`, a scoped incremental
-      rescore costing O(touched), a kind-aware multi-volume scheduler, an anonymized real-index eval corpus, and three
-      dev bins. Three things are open. The weights are still untuned defaults even though the whole tuning loop is
-      built, because real corpus dumps are gitignored and the run needs David's own home directory. The Spotlight
-      sampler's cap has never been measured (and is NOT the same work as the shipped first-run recency signal in
-      `apps/desktop/src-tauri/src/priority/DETAILS.md`, which seeds a first run before any index exists). And a
-      recompute runs under no cancellation token, so `stop_all_indexing` doesn't reach it, which is survivable only
-      while a full pass stays seconds.
-- [ ] 2026-08-27 `later/indexing/media-ml-index-plan.md` - **Mostly shipped; kept for its decision log and two parked
-      milestones.** Searchable image index (OCR, tags, faces, text→image) as an ML enrichment layer on the drive index:
-      macOS-native Vision + Core ML, vectors in SQLite, on-device by default. SHIPPED and in users' hands: M1/M1.5/M2
-      (backend, OCR, tags, SMB enrichment), M3 (CLIP semantic search, live since v0.36.0 on 2026-07-24 — an earlier
-      entry here said it was gated dark pending a model upload, which was false), M6 (photo-search agent/MCP tool).
-      PARKED on purpose: M4a/M4b faces (David wants to be closer in the loop) and M5 LLM captions. **The doc survives a
-      wipe because ~40 `media_index` code sites cite its § "Key decisions" by bare number.** ⚠️ A bare `plan M<n>` in
-      that same code means the WIPED `resource-use-plan.md`, not this plan's milestones.
-- [ ] 2026-03-10 `later/db-first-listings-plan.md` - Serve directory listings from the SQLite index instead of
-      `readdir` + `stat`. Status re-derived 2026-08-27: the per-navigation verifier SHIPPED (it grew into all of
-      `indexing/reconcile/`), as did the logical/physical size split; the DB-first read path is NOT built. The 2026-03
-      design was rewritten against the current index, which is id-keyed and per-volume rather than path-keyed, and two
-      blockers are now named: the motivating latency number predates release-build measurement, and `created` became a
-      sort column the index can't answer.
-- [ ] 2026-08-27 `later/dropbox-sync-status-linux.md` - **Cloud badges on Linux, which today are simply absent**: the
-      IPC command has a non-macOS arm returning an empty map, and the whole `file_system::sync_status` module is
-      macOS-gated. NOT STARTED. The doc holds the research that took the work (Dropbox's `~/.dropbox/command_socket`
-      protocol, the four status strings, the `dropbox filestatus` fallback, and why only `Synced` / `Uploading` /
-      `Unknown` are reachable without Smart Sync), plus what the module's current six-file shape demands of a Linux arm:
-      reuse the cache and the one-batch service, skip the macOS-only thread pool, and build a cheap ancestor gate,
-      because Linux has no equivalent of the xattr tier that lets macOS skip nearly every file for 13.9 µs. **A Linux
-      arm is a Dropbox arm**; no other provider has a common layer there.
-- [ ] 2026-08-27 `later/linux-builds-plan.md` - **A Linux release build and a website that offers it.** NOT STARTED:
-      `release.yml` still builds three macOS targets only, and `release.ts` exports only `dmgUrls` / `dmgSizes`. The
-      plan covers the CI matrix (x86_64 plus aarch64, native on GitHub's ARM runner), the `latest.json` platform keys
-      and `appImageSizes`, and the website's OS detection and platform-aware download card. One item already landed on
-      its own: the `bundle.linux` `.desktop` template. ⚠️ **Building for Linux is not supporting Linux**, so the three
-      known gaps are now Milestone 0: a file watcher that never starts (the blocker; one unreadable directory aborts the
-      whole recursive inotify watch), Super-bound menu accelerators, and 504 macOS-specific strings needing a
-      re-translation pass (`docs/notes/linux-gaps-2026-08-10.md`). ❗ Milestone 0 gates the website's download button,
-      not the CI build: publishing artifacts a self-builder can find is what the roadmap already promises. The roadmap
-      puts real Linux support at "(winter?)".
-- [ ] 2026-08-27 `later/indexing/out-of-process-indexing.md` - **The escalation we chose not to take, written down so
-      the decision can be re-opened on evidence rather than re-derived.** Moving drive and media indexing into their own
-      OS process is the only design that makes "a runaway indexer can never starve the UI" structural instead of
-      defended. Not needed now: thread QoS and bounded logging closed the actual levers, and the resilience fix stopped
-      the source incident. Captures the seams (the crate extraction turned most of the control-plane work from "design
-      it" into "route it"), the clean per-volume-WAL data-safety split, the `ai/process.rs` sidecar prior art, the
-      multi-week effort and its new failure modes, and three named revisit triggers.
-- [ ] 2026-06-04 `later/ai/agent-spec.md` - Persistent in-app agent proposing file operations. PARTIALLY SHIPPED; status
-      re-derived from the tree 2026-08-27 in the spec's §0, which is the first thing to read and wins over any later
-      section. Shipped: Ask Cmdr's chat rail, plus the proactive agent in v0.40.0 (the wake pipeline with its coalescer,
-      interest scorer, and inbox; the three-level durable proposal spine; agent memory; two `Propose` tools;
-      acceptance-rate instrumentation), plus the importance scorer as its own subsystem. **Still designed and unbuilt**:
-      the knowledge layer (folder summaries, the importance-gated walk, the preflight) as the largest block, the
-      activity log, scoped rules, notification etiquette with the proactivity dial, the bulk model slot, the index
-      relocation, prompts-as-assets, the evals harness, and auto-apply. §17 carries that order. The spec's §19 decision
-      log is cited by bare number from about 25 code and doc sites, so it stays whether or not the rest does. The wake
-      loop's own leftovers are `later/ai/wake-loop-follow-ups.md`, not this file.
-- [ ] 2026-08-27 `later/data-dir-rename-spec-draft.md` - **Plain data-directory names instead of bundle-id ones**
-      (`~/Library/Application Support/cmdr/`, not `.../com.veszelovszki.cmdr/`). NOT STARTED; still a draft, and the
-      value is admittedly small and cosmetic. **The bundle identifier itself must never change** (TCC and the updater's
-      designated requirement both key on it), so this is a "stop deriving paths from the identifier" change. Two
-      go/no-go questions carry all the risk and want a timebox before any building: can a prod Tauri build's
-      `app_data_dir()` be repointed, and can `tauri-plugin-store` follow it. If they fight back, drop the rename. The
-      2026-08-27 audit closed three other holes from the code (single-instance enforcement exists, Linux derives via
-      XDG, the external-reader inventory is written out). ❗ The index relocation into `~/Library/Caches/` belongs to
-      `later/ai/agent-spec.md` § 4.1, not here: this doc owns the directory name, that one owns what goes in it.
-- [ ] 2026-08-27 `later/indexing/index-vacuum-reader-pinning.md` - **A long-lived reader pins the index DB's freelist,
-      so the incremental vacuum returns almost nothing to the OS during a session** (40 KB shed over five minutes
-      against a 1.6 GB freelist: ~135 days at that rate). Deferred, because the shipped reclaim work removed both
-      SOURCES of a large freelist, so the acute multi-GB bloat no longer forms; what's left is slow live-event churn.
-      Carries the diagnosis, the two candidate fix shapes (release the pinning reader, or a quiesce barrier at an idle
-      trigger), why a startup `VACUUM` is the wrong tool, and the diagnosis to run FIRST. **Revisit only with data**
-      from a long session that actually bloats.
-- [ ] 2026-08-27 `later/indexing/drive-index-overall-eta.md` - **A true overall "~Xm left" across all remaining indexing
-      steps, deliberately not built, because an honest one needs per-phase priors that mostly don't exist yet.** Today
-      the step checklist shows where you are plus the ACTIVE step's own ETA. Half the calibration has since landed: scan
-      duration is persisted per volume and per walk kind and already seeds that ETA. Save, compute, and replay still
-      have no priors at all (their timings live only in an app-wide 20-entry debug ring that a restart empties), so the
-      remaining work is extending a pattern that exists rather than inventing one.
-- [ ] 2026-07-14 `later/default-file-manager-spec.md` - Reveal-in-Cmdr (`NSFileViewer` redirect) + `public.folder`
-      default handler: two opt-in toggles (default OFF, onboarding step 4 + Settings), `RunEvent::Opened` plumbing with
-      cold-start buffering, sanctioned `NSWorkspace` registration, and a spike checklist to run before building.
-      Confirmed 2026-08-27 that NONE of it is built and every codebase anchor it names still holds, except that there is
-      no frontend-ready handshake to reuse for the cold-start replay.
-- [ ] 2026-08-27 `later/archive-follow-ups.md` - The three things archive browsing still owes, re-derived from the tree:
-      a fast tail-add zip edit (design settled in `docs/notes/m-append-spike.md`; the remote half waits on an `smb2`
-      copychunk client API, the same one `Volume::copy_within` waits on), open-with-external-app for a file inside an
-      archive (shape spiked, one LaunchServices seam unverified), and in-place MTP archive editing (stretch).
-- [ ] 2026-08-27 `later/tags-follow-ups.md` - The two Finder-tag gaps still open, re-derived from the tree: the seven
-      context-menu color circles show on backends that can't hold a tag, and a tag assigned from search results doesn't
-      light up until the next navigation. Both are judgment calls, neither blocks anything, and every design decision
-      behind the feature lives in the colocated `DETAILS.md` files.
-- [ ] 2026-08-27 `later/transfer-queue-follow-ups.md` - The five transfer-queue extensions still open, re-derived from
-      the tree: per-lane budgets above 1 (`LANE_BUDGET` is still a const 1, and the motivating case moved from parked
-      FTP to SFTP/SMB), reconnect or keep-alive across a long pause (SMB and SFTP only now), bounding paused-and-parked
-      blocking threads, queue reordering, and queue persistence across restarts.
-- [ ] `adb-follow-ups.md` - 7 things suggested by the agent that shipped the work
+### App and platform
+
+- [ ] `later/warn-triage-follow-ups.md` - **33 small, self-contained defects the frontend warn triage and later sweeps
+      parked.** Mostly low severity: unexplained failures, dead catches, and false error logs, plus eight product
+      decisions. Two deserve earlier attention: `safe_overwrite_dir`'s failure arm still judges a free name by a lossy
+      `exists()` (§ 31, data safety), and a favorites gate that fails its own tests on macOS (§ 33, invisible to CI).
+- [ ] `later/default-file-manager-follow-ups.md` - **What "default file manager" still owes now that reveal-in-Cmdr
+      ships**: folder opens (`open .`, Spotlight) landing in Cmdr through the `public.folder` handler, an onboarding
+      offer for reveal, and a per-app check of which apps' "Show in Finder" actually redirects. Two need a David
+      decision first.
+- [ ] `later/tags-follow-ups.md` - **Two small Finder-tag gaps**: the seven tag circles show in the context menu on
+      volumes that can't hold a tag (MTP, direct SMB), and a tag assigned from search results doesn't show until the
+      next navigation.
+- [ ] `later/i18n-screenshot-follow-ups.md` - **Catalog families translators still get no screenshot of, and why each
+      resists capture**: the image-indexing panel body, the sidebar's status and error states, Ask Cmdr's tool rows (the
+      fake LLM never calls a tool), a few never-visited settings pages, the long tail of trouble states, and an unread
+      batch of generated screenshot notes. Live numbers come from the generated `coverage-report.md`, never this doc.
+- [ ] `later/data-dir-rename-spec-draft.md` - **Plain data-directory names** (`~/Library/Application Support/cmdr/`, not
+      `.../com.veszelovszki.cmdr/`). Not started, cosmetic, low value. The bundle identifier must never change (TCC and
+      the updater key on it). Timebox the go/no-go first: can a prod build's `app_data_dir()` be repointed, and can
+      every `tauri-plugin-store` writer follow; if not, drop it. The index move into `~/Library/Caches/` is
+      `later/ai/agent-follow-ups.md` § 6.
+
+### Linux
+
+- [ ] `later/linux-builds-plan.md` - **A Linux release build (AppImage + .deb, x86_64 + aarch64) and a website that
+      offers it.** Not started: CI builds macOS only and the site only knows DMGs. ⚠️ Building isn't supporting: three
+      known Linux gaps (a file watcher that never starts, Super-bound menu accelerators, macOS-specific copy) gate the
+      website button, not the artifacts.
+- [ ] `later/dropbox-sync-status-linux.md` - **Cloud badges on Linux, which today are simply absent**: the IPC command
+      has a non-macOS arm returning an empty map, and the whole `file_system::sync_status` module is macOS-gated. Not
+      started. Holds the research (Dropbox's `~/.dropbox/command_socket` protocol, the reachable statuses without Smart
+      Sync) and what a Linux arm needs: reuse the cache and the one-batch service, plus a cheap ancestor gate.
