@@ -37,8 +37,8 @@ that bakes in the noun: `'files/s'` was a literal once and shipped English to al
   form — a tenth below ten, whole units above ("1.7 GB", "24 GB") — for the transfer bars only, where the number changes
   several times a second. ❌ Not whole units at every scale: that printed "2 GB / 2 GB (70%)". A size someone compares
   or copies keeps its two decimals.
-- **A drive's free or total space is `formatDriveSize(bytes, driveBytes)`**: one step is about 1/1000 of the drive.
-  ❗ `space_poller/readout.rs` mirrors it; `drive-figure-cases.json` tests both.
+- **A drive's free or total space is `formatDriveSize(bytes, driveBytes)`**: one step is about 1/1000 of the drive. ❗
+  `space_poller/readout.rs` mirrors it; `drive-figure-cases.json` tests both.
 - **`formatDuration` requires a branded `seconds(n)`**, and rates are branded `bytesPerSecond(n)`. IPC hands you bare
   numbers, so brand at the edge — for `write-progress` that's `transferReadout(event)` in
   `apps/desktop/src/lib/file-operations/progress-readout.ts`. `formatByteSize` takes a plain `number` on purpose: ~40
