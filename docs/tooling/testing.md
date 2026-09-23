@@ -40,13 +40,13 @@ examples: `../testing.md` § "Waiting for background work (Rust)".
 
 ### `cmdr_fs::testing::tcp_proxy::TcpProxy` (a real connection drop)
 
-In `crates/cmdr-fs/src/testing/tcp_proxy.rs`, behind the `testing` feature. A loopback proxy a test starts in front of
-a Docker fixture and points its client at (`TcpProxy::start(fixture_addr)`, then `proxy.port()`). `refuse()` is the
-server gone (live connections close, new dials get `ECONNREFUSED`), `black_hole()` is the path gone silent (nothing
-closes, nothing answers), `restore()` brings it back on the same port, and `connections_accepted()` counts dials, which
-is how a cell proves nothing redialed. ❌ Never pause or stop a shared fixture container to simulate an outage: other
-lease holders are using it. Pair `black_hole()` with `tokio::time::pause()` (and inject `Handle::current()` as the
-volume host's runtime) so a production deadline elapses in virtual time. Worked examples: the two backends'
+In `crates/cmdr-fs/src/testing/tcp_proxy.rs`, behind the `testing` feature. A loopback proxy a test starts in front of a
+Docker fixture and points its client at (`TcpProxy::start(fixture_addr)`, then `proxy.port()`). `refuse()` is the server
+gone (live connections close, new dials get `ECONNREFUSED`), `black_hole()` is the path gone silent (nothing closes,
+nothing answers), `restore()` brings it back on the same port, and `connections_accepted()` counts dials, which is how a
+cell proves nothing redialed. ❌ Never pause or stop a shared fixture container to simulate an outage: other lease
+holders are using it. Pair `black_hole()` with `tokio::time::pause()` (and inject `Handle::current()` as the volume
+host's runtime) so a production deadline elapses in virtual time. Worked examples: the two backends'
 `volume/connection_drop_test.rs` (`crates/cmdr-sftp`, `crates/cmdr-webdav`).
 
 ### `indexing::test_support::count_allocations` / `heap_bytes_held` (memory shape)

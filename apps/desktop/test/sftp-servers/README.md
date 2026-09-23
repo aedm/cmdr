@@ -14,8 +14,8 @@ Eleven real OpenSSH servers in Docker, one per thing that breaks an SFTP client,
 for iterating by hand.
 
 ❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
-sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and
-the fixture and cut that (`crates/cmdr-sftp/src/volume/connection_drop_test.rs`).
+sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and the
+fixture and cut that (`crates/cmdr-sftp/src/volume/connection_drop_test.rs`).
 
 ## What differs from the SMB stack next door
 

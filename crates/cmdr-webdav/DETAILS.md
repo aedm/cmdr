@@ -230,11 +230,10 @@ This crate: the parser, the path translation, the status table, the state machin
 against the fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, the "reconnect automatically"
 cells in `volume/reconnect_test.rs`, and the real-drop cells in `volume/connection_drop_test.rs`, all `#[ignore]`d
 without it). The drop cells cut the TCP connection in a `cmdr_fs::testing::tcp_proxy::TcpProxy` they own, refused and
-silent; ❌ never pause or stop a container for that, since the stack is shared by lease. The
-conformance cells answer with Apache's own verbs, which is the point: `MOVE` overwrites by default, `DELETE` on a
-collection is recursive, and a `PROPFIND` of a collection nobody has created yet is a 404 that the conflict scan owes an
-empty list for. The app: anything whose other half is the transfer pipeline, the registry, or the listing cache, built
-on `volume::testing`.
+silent; ❌ never pause or stop a container for that, since the stack is shared by lease. The conformance cells answer
+with Apache's own verbs, which is the point: `MOVE` overwrites by default, `DELETE` on a collection is recursive, and a
+`PROPFIND` of a collection nobody has created yet is a 404 that the conflict scan owes an empty list for. The app:
+anything whose other half is the transfer pipeline, the registry, or the listing cache, built on `volume::testing`.
 
 The two size-mismatch cells sit here rather than in the app's transfer suite for a reason worth keeping: reaching that
 guard through the real pipeline needs a local source that disagrees with its own stat, which only happens by racing a

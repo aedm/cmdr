@@ -15,8 +15,8 @@ these.
 `desktop-rust-webdav-nextcloud` declares `nextcloud`), so a manual `start.sh` is for iterating by hand.
 
 ❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
-sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and
-the fixture and cut that (`crates/cmdr-webdav/src/volume/connection_drop_test.rs`).
+sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and the
+fixture and cut that (`crates/cmdr-webdav/src/volume/connection_drop_test.rs`).
 
 ## What differs from the SFTP stack next door
 

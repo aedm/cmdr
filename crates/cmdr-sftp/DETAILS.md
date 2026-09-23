@@ -310,18 +310,18 @@ added without `noting` leaves a volume showing as connected until somebody else'
 
 **A server that goes SILENT is given up on after 30 s**, and only because the session sends keepalives
 (`transport::KEEPALIVE_INTERVAL` 10 s, torn down after `KEEPALIVE_MAX_UNANSWERED` 2 go unanswered). A NAS asleep, Wi-Fi
-gone, or a VPN dropped closes nothing: SFTP has no request deadline and the OS keeps an idle TCP connection for hours, so
-without them every operation on such a volume waited forever. The teardown ends the engine, every waiting operation
+gone, or a VPN dropped closes nothing: SFTP has no request deadline and the OS keeps an idle TCP connection for hours,
+so without them every operation on such a volume waited forever. The teardown ends the engine, every waiting operation
 answers `DeviceDisconnected`, and the first one starts the backoff. Any byte from the server resets the clock (a busy
 transfer never sends one), and `sshd` answers a keepalive outside the `sftp-server` process, so a server busy with one
 long request still does. 30 s matches the silence `cmdr-smb` allows.
 
 ❗ **An installed session counts as live only while the state says `Connected`.** `note_lost_session` drops the dead
 session on a spawned task, and the frontend's reconnect fires on the very event that notice sent, so it can land first.
-`rebuild` treats a session still installed under a `Disconnected` state as the dead one (drops it and dials) rather
-than answering "fine" for a server that is still gone. The other half: a fresh session is installed and marked
-`Connected` under ONE write guard, and `drop_dead_session` takes only under a non-`Connected` state, so the late task
-can never take the fresh one.
+`rebuild` treats a session still installed under a `Disconnected` state as the dead one (drops it and dials) rather than
+answering "fine" for a server that is still gone. The other half: a fresh session is installed and marked `Connected`
+under ONE write guard, and `drop_dead_session` takes only under a non-`Connected` state, so the late task can never take
+the fresh one.
 
 **The state is three-valued** (`state.rs`), where SMB's is two: `NeedsCredentials` is a state this backend RESTS in,
 because a rung that redials out of the secret store stops after one refusal and a keyboard-interactive one never dials
