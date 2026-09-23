@@ -18,9 +18,9 @@ syscall (`psynch_cvwait`, `kevent`, `mach_msg2_trap`, `semaphore_timedwait`, and
 
 ⚠️ **That blocking-frame list is a list of SCHEDULER waits. It does not include `stat`, `pread`, `pwrite`, `open`, or
 `read`.** So a sample parked in a file-IO syscall scores as busy CPU, and the bias is not uniform: it lands hardest on
-exactly the threads whose stacks can't tell the two apart. `reanchor-cost-spike.md` had already recorded this error
-class for this repo ("the cost is IO wait, not syscalls; CPU time is 16-23% of wall on the big directories"), and it was
-applied to the reconcile drain and to nothing else.
+exactly the threads whose stacks can't tell the two apart. `docs/notes/reanchor-cost-spike.md` had already recorded this
+error class for this repo ("the cost is IO wait, not syscalls; CPU time is 16-23% of wall on the big directories"), and
+it was applied to the reconcile drain and to nothing else.
 
 ⚠️ **And 20 seconds cannot attribute 9.1 hours.** It can't tell "45% sustained" from "one burst that happened to be
 running", which is why the media live tick read 586/3,425 samples in one window and zero in another.
@@ -34,8 +34,8 @@ no thread names, so take it alongside a `sample`).
 
 **1. "The reconcile drain is the one that moves the CPU number."** Inferred from LOG VOLUME (32,479 `rescan` lines,
 19,705 `reconciler`) rather than from CPU. Refuted by the 20 s attribution, where the drain does not appear at all. Real
-but secondary: ~466 s of reported walking over eight hours, largely IO wait, at the 16-23% CPU `reanchor-cost-spike.md`
-measured for this class of walk.
+but secondary: ~466 s of reported walking over eight hours, largely IO wait, at the 16-23% CPU
+`docs/notes/reanchor-cost-spike.md` measured for this class of walk.
 
 **2. "`index-writer` is 45% of busy CPU and `cmdr-sync-status` 41.7%."** The 20 s window's headline: 87% of busy CPU in
 two threads nobody was looking at. Refuted by the 180 s window on the same idle process, where `index-writer` is **not

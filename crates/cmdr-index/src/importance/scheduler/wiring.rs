@@ -231,7 +231,7 @@ pub(super) fn wire_volume(scheduler: Arc<ImportanceScheduler>, volume_id: String
 /// `phys_footprint` by ~166 MB while it runs. Shortening this interval multiplies
 /// that spike, not the CPU. ❌ Don't take it anywhere near
 /// [`INCREMENTAL_THROTTLE_WINDOW`]: a full pass per minute is exactly the treadmill
-/// `docs/notes/importance-treadmill-2026-08-04.md` exists to document, which cost
+/// `docs/notes/performance/importance-treadmill-2026-08-04.md` exists to document, which cost
 /// 17.6% of a 10.5-hour session's wall clock.
 const FULL_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
@@ -441,7 +441,7 @@ mod periodic_refresh_tests {
     /// The full refresh has to stay FAR slower than the incremental throttle.
     ///
     /// Pre-fix, a full walk ran roughly once a minute and burned 17.6% of a 10.5-hour
-    /// session's wall clock (`docs/notes/importance-treadmill-2026-08-04.md`). Nothing
+    /// session's wall clock (`docs/notes/performance/importance-treadmill-2026-08-04.md`). Nothing
     /// in the types stops someone "making importance fresher" by dropping this to the
     /// incremental cadence and rebuilding that treadmill, so the ordering is pinned
     /// here rather than left to a comment.

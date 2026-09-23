@@ -39,7 +39,8 @@ message (`batch/throughput_probe.rs`, debug, 20 K messages, 2026-08-04) — the 
 
 ⚠️ **Both probes are DEBUG builds, so quote the RATIO (4.4x a row, 2.5x a message) rather than the microseconds**: the
 absolute figures don't survive a move to release or to another machine, and the ratio does. The wider record of how this
-effort's numbers were arrived at, including three that were wrong, is `docs/notes/idle-cpu-attribution-2026-08-03.md`.
+effort's numbers were arrived at, including three that were wrong, is
+`docs/notes/performance/idle-cpu-attribution-2026-08-03.md`.
 
 **The shape: coalesce only what is ALREADY QUEUED.** The first mutation opens `BEGIN IMMEDIATE`, everything behind it
 joins, and the batch closes the moment the queue runs dry. An empty queue therefore commits exactly as eagerly as

@@ -3,7 +3,7 @@
 
 `ps -M` can't answer this: its thread rows aren't ordered, so there is no way to
 point at the main thread, and process-wide CPU is swamped by index-writer churn
-on other threads (`docs/notes/idle-cpu-attribution-2026-08-03.md`).
+on other threads (`docs/notes/performance/idle-cpu-attribution-2026-08-03.md`).
 
 `sample` can. It names the main thread, and a Tauri IPC command enters it through
 one of wry's two transports, so the share of main-thread samples under that entry

@@ -133,7 +133,7 @@ Known fingerprints so far:
 - **`96.5M`** (101,187,584 bytes) — the CLIP text tower's `49,408 × 512` fp32 token embedding. If it's there, the CLIP
   towers are loaded and cost 307–412 MB of `Malloc Large` plus 120–176 MB of `Malloc Small` for the process's whole
   life. Expect `4096K`, `3072K`, and `2304K` in the dozens beside it.
-  `docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`.
+  `docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md`.
 - **`128.0M` under `IOAccelerator`** — a mimalloc arena. Seven of them in a 25 h prod session (2026-09-22). The count is
   how many arenas the heap has grown to, and it only ever goes up: arenas stay mapped after mimalloc decommits the pages
   inside them, so a flat region count alongside collapsing dirty bytes is normal, not a leak.
@@ -165,28 +165,30 @@ and `malloc_history` can name the call sites. Revert afterwards.
 
 Useful as a sanity baseline when re-testing: with the NAS index resumed, the app peaked at ~646 MB; suppressing the
 media-coverage walk alone made the same build flat at ~155 MB. Details and the full investigation:
-`docs/notes/memory-runaway-rust-heap-2026-07-25.md`.
+`docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`.
 
 ## Past investigations
 
 Read these before re-deriving anything; between them they cover every cause found so far.
 
-- `docs/notes/idle-memory-profile-2026-07-28.md` — the STEADY-STATE costs (2.5 GB idle): SQLite page cache across many
-  thread-local connections, and the importance rescore treadmill. Start here for "it's high but not climbing".
-- `docs/notes/memory-runaway-rust-heap-2026-07-25.md` — the RUNAWAY (up to 50 GB): a walk that materialized every image
-  path. Also the origin of the `IOAccelerator` trap above.
-- `docs/notes/idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for the 643 MB `MALLOC_LARGE` in that
-  idle profile: Core ML holding the two CLIP towers, at a measured 307–412 MB, which nothing had been able to name
-  because Core ML allocates through the SYSTEM allocator and so falls between both of Cmdr's allocator APIs. Also the
-  origin of the region-histogram method above.
-- `docs/notes/high-memory-gpu-compositor-investigation-2026-07.md` — superseded; its conclusion is wrong (it read the
-  mislabel as GPU memory). Kept for the measurement methodology only.
+- `docs/notes/performance/idle-memory-profile-2026-07-28.md` — the STEADY-STATE costs (2.5 GB idle): SQLite page cache
+  across many thread-local connections, and the importance rescore treadmill. Start here for "it's high but not
+  climbing".
+- `docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md` — the RUNAWAY (up to 50 GB): a walk that materialized
+  every image path. Also the origin of the `IOAccelerator` trap above.
+- `docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for the 643 MB
+  `MALLOC_LARGE` in that idle profile: Core ML holding the two CLIP towers, at a measured 307–412 MB, which nothing had
+  been able to name because Core ML allocates through the SYSTEM allocator and so falls between both of Cmdr's allocator
+  APIs. Also the origin of the region-histogram method above.
+- `docs/notes/performance/high-memory-gpu-compositor-investigation-2026-07.md` — superseded; its conclusion is wrong (it
+  read the mislabel as GPU memory). Kept for the measurement methodology only.
 
 ## Before proposing an allocator setting
 
-`docs/notes/mimalloc-purge-experiment-2026-09-22.md` is the source-read on what's tunable. The build is mimalloc **v3**
-(`libmimalloc-sys` builds v3 unless the `v2` feature is set, and nothing sets it), so v2 option names from training data
-are wrong. Env-var tuning works, and `launchctl setenv` is the way to get options into a Finder-launched app without
-changing FDA or the data dir. `MIMALLOC_SHOW_STATS=1` on a release build prints no live-bytes section: `MI_DEBUG=0`
-makes `MI_STAT` 0. And v3 on macOS already decommits with `MADV_FREE_REUSABLE` after 1 s at page granularity, so
-"mimalloc is hoarding pages" is a weak starting hypothesis. The note carries the A/B protocol and the conditions.
+`docs/notes/performance/mimalloc-purge-experiment-2026-09-22.md` is the source-read on what's tunable. The build is
+mimalloc **v3** (`libmimalloc-sys` builds v3 unless the `v2` feature is set, and nothing sets it), so v2 option names
+from training data are wrong. Env-var tuning works, and `launchctl setenv` is the way to get options into a
+Finder-launched app without changing FDA or the data dir. `MIMALLOC_SHOW_STATS=1` on a release build prints no
+live-bytes section: `MI_DEBUG=0` makes `MI_STAT` 0. And v3 on macOS already decommits with `MADV_FREE_REUSABLE` after 1
+s at page granularity, so "mimalloc is hoarding pages" is a weak starting hypothesis. The note carries the A/B protocol
+and the conditions.

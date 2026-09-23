@@ -470,7 +470,7 @@ mod residency_test {
     /// Holding both CLIP towers costs a few hundred MB of `MALLOC_LARGE`, in
     /// regions shaped like the model's weight matrices.
     ///
-    /// This is the measurement behind `docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`:
+    /// This is the measurement behind `docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md`:
     /// Core ML allocates through the SYSTEM allocator, not through our mimalloc
     /// global, so tower weights are invisible to `query_mimalloc_heap` and land
     /// in the block that three memory investigations could not name.

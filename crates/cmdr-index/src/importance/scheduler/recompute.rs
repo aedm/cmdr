@@ -478,7 +478,7 @@ pub(super) fn incremental_rescore(
     // it really wrote: the rescored rows are the CANDIDATES, and the writer skips
     // every one whose signals already match the store. On an idle volume that is all
     // of them, which is what stops a `$HOME`-origin batch from rewriting ~51 k rows a
-    // minute (`docs/notes/importance-treadmill-2026-08-04.md`).
+    // minute (`docs/notes/performance/importance-treadmill-2026-08-04.md`).
     let considered = rows.len();
     let write = writer
         .write_weights_incremental(generation, rows, changed_paths.to_vec())
@@ -592,7 +592,7 @@ pub(super) fn rescore_rows(
 /// **Allocation-free, deliberately.** This runs once per walked folder per changed
 /// path inside [`incremental_rescore`]'s loop over the WHOLE volume, every 60 s —
 /// ~161 k folders per pass on a dev machine. Building the `{changed}/` needle with
-/// `format!` here was a top allocation site (`docs/notes/memory-runaway-rust-heap-2026-07-25.md`);
+/// `format!` here was a top allocation site (`docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`);
 /// ❌ don't reintroduce one. The `rest` must be empty or start with `/`: a bare
 /// `starts_with(changed)` wrongly matches `/a/bc` against changed `/a/b`.
 pub(super) fn is_in_changed_subtree(path: &str, changed_paths: &[String]) -> bool {

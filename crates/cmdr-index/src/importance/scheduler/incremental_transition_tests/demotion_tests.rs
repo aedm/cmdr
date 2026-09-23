@@ -9,7 +9,7 @@ use super::*;
 /// An origin whose subtree covers most of the volume is rescored ALONE: its own row
 /// moves and every row beneath it is left exactly as it was.
 ///
-/// This is the treadmill's remaining half (`docs/notes/importance-treadmill-2026-08-04.md`):
+/// This is the treadmill's remaining half (`docs/notes/performance/importance-treadmill-2026-08-04.md`):
 /// a dotfile write in `~` makes `$HOME` an origin, and `$HOME` covers 83% of the real
 /// root volume. The change to the origin's own listing genuinely cannot move any
 /// DESCENDANT's signals, so reading 574,007 directories to discover that is waste.

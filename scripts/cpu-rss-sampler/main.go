@@ -27,7 +27,7 @@
 // app's own `phys_footprint` because it includes reclaimable SQLite pages and GPU
 // mappings; `phys_footprint` (logged with CMDR_LOG_RAM_USE=1) is the honest
 // memory number. See docs/notes/indexing-benchmarks-2026-07-21.md § "CPU and
-// memory" and docs/notes/high-memory-gpu-compositor-investigation-2026-07.md.
+// memory" and docs/notes/performance/high-memory-gpu-compositor-investigation-2026-07.md.
 package main
 
 import (

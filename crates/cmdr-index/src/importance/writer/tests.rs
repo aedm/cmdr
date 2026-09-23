@@ -133,7 +133,7 @@ fn a_row_rescored_to_zero_is_reported_as_a_removal() {
 /// The equality key that stops the 60-second treadmill. A score is a function of
 /// the signals AND `now_secs`, so it drifts every pass on its own; only the
 /// signals say whether the folder itself moved. ❌ Don't relax this to a score
-/// comparison — `docs/notes/importance-treadmill-2026-08-04.md` measured it at
+/// comparison — `docs/notes/performance/importance-treadmill-2026-08-04.md` measured it at
 /// 99.88% of rows skippable against 0.03%.
 #[test]
 fn a_row_whose_signals_are_unchanged_is_not_rewritten() {

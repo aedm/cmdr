@@ -148,22 +148,22 @@ shutdown **within one process**.
 > them apart is how a mount ends up keyed as one share and addressed as another. (`smb_upgrade.rs:26-29`)
 
 ⚠️ **That canonicalization makes the two call sites agree with each other. It does not collapse three addresses onto one
-share.** Mounting `naspi` over Tailscale, over the LAN, and via its mDNS service name yields three `info.server` values,
-hence three volume ids, hence three of everything.
+share.** Mounting one NAS share over a VPN, over the LAN, and via its mDNS service name yields three `info.server`
+values, hence three volume ids, hence three of everything.
 
 On disk right now (`~/Library/Application Support/com.veszelovszki.cmdr/`):
 
-- `importance-smb-100-127-48-122-445-naspi-cca75cc9c09a6fb5.db` — 34 MB, Tailscale address
-- `importance-smb-192-168-1-111-445-naspi-bbe2c537964d80d0.db` — 20 MB, LAN address
-- `importance-smb-naspolya-smb-tcp-local-4-a2122502eb7376f9.db` — 20 KB, mDNS service name
+- `importance-smb-<vpn-ip>-445-<share>-<hash>.db`: 34 MB, the VPN address
+- `importance-smb-<lan-ip>-445-<share>-<hash>.db`: 20 MB, the LAN address
+- `importance-smb-<nas-name>-smb-tcp-local-4-<hash>.db`: 20 KB, the mDNS service name
 
 Three databases, one NAS share. **Two of them ran concurrently in a single process**, which is the part that settles it
 — from `cmdr.log.1`, all on 2026-09-19 with no relaunch marker and no shutdown between them:
 
 ```
 09:38:38.811  start_indexing: done, 'root' IndexManager is Running
-09:57:01.471  start_indexing: done, 'smb-naspolya-smb-tcp-local-4-a2122502eb7376f9' IndexManager is Running
-09:57:46.626  start_indexing: done, 'smb-100-127-48-122-445-naspi-cca75cc9c09a6fb5' IndexManager is Running
+09:57:01.471  start_indexing: done, 'smb-<nas-name>-smb-tcp-local-4-<hash>' IndexManager is Running
+09:57:46.626  start_indexing: done, 'smb-<vpn-ip>-445-<share>-<hash>' IndexManager is Running
 ```
 
 Three volumes live at once, 45 seconds apart, two of them the same physical share. **That is what produced the
@@ -200,7 +200,7 @@ DB is not removing its importance sibling.
 
 - 79 × `index-root.db`
 - 22 × `importance-root.db`
-- 8 × `importance-smb-100-127-48-122-…db`, 6 × `importance-smb-192-168-1-111-…db`
+- 8 × `importance-smb-<vpn-ip>-…db`, 6 × `importance-smb-<lan-ip>-…db`
 - 2 × `operation-log.db`, 2 × `main.db`
 - **119 total** (was 132 on 2026-08-03, 156 on 2026-07-28)
 

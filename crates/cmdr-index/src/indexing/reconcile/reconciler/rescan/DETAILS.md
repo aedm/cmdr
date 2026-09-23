@@ -272,7 +272,7 @@ fights neither `hold.rs` nor `local_reconcile/cost_budget.rs` — a routed ancho
 so it takes no hourglass hold and there is nothing for the ~1 s sweep to re-derive. **What it buys**: predictability and
 a bounded worst case (one whole-volume sweep a day), paid for with up to 24 hours of whole-volume staleness. ⚠️ It is
 NOT a CPU win: "the reconcile drain is the one that moves the CPU number" was wrong answer one in
-`docs/notes/idle-cpu-attribution-2026-08-03.md`, refuted by measurement.
+`docs/notes/performance/idle-cpu-attribution-2026-08-03.md`, refuted by measurement.
 
 **The threshold is a GUESS and it is waiting on data.** No distribution of per-window anchor cardinality has been
 collected. The churn line above is what will collect it (an ordinary week on a quiet machine, then a `docs/notes/`

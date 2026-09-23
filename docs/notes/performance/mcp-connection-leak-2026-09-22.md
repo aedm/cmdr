@@ -82,12 +82,12 @@ worth spending on now.
 ## Unrelated finding: two SMB sockets stuck in CLOSE_WAIT
 
 While inventorying the app's 26 sockets, two have sat in `CLOSE_WAIT` on port 445 for at least 12 minutes, unchanged: fd
-90 to `192.168.1.111:445` and fd 193 to `100.127.48.122:445` (a Tailscale peer).
+90 to the NAS over its LAN address and fd 193 to the same NAS over a VPN address.
 
 `CLOSE_WAIT` means the peer sent a FIN and Cmdr never called `close()`. Unlike the MCP sockets, these do **not** self-
 reap, so each one is a descriptor held forever. Two is harmless, but the count only moves one way across an app's
-lifetime, and both peers are ones that go away (a sleeping NAS, a roaming Tailscale host), so this is worth a look in
-the SMB layer's teardown path. Not investigated here; flagging only.
+lifetime, and both peers are ones that go away (a sleeping NAS, a roaming VPN peer), so this is worth a look in the SMB
+layer's teardown path. Not investigated here; flagging only.
 
 **Resolved in `smb2` 0.24.1 (2026-09-23).** Two `smb2` defects, not Cmdr's: a server hang-up left the socket in
 `CLOSE_WAIT` until the `Connection` dropped (these two), and a dropped `Connection` never closed its socket at all until

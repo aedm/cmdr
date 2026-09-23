@@ -125,7 +125,7 @@ fn wire_volume_probes_for_a_full_pass_for_a_volume_that_registers_after_start() 
 /// The gate is the whole reason importance doesn't copy media's cheap
 /// kick-everything-on-launch: a full pass costs ~5.8 s CPU and a ~166 MB transient
 /// allocation on the boot volume, so rescoring every volume on every launch is the
-/// treadmill `docs/notes/importance-treadmill-2026-08-04.md` exists to document. Now
+/// treadmill `docs/notes/performance/importance-treadmill-2026-08-04.md` exists to document. Now
 /// that the probe runs from `wire_volume` (so it fires on every registration, not
 /// only the sweep), that cost sits behind this one check.
 #[test]

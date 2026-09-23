@@ -222,7 +222,7 @@ fn real_analyze_of_a_photo_is_self_similar() {
 /// towers they are a steady-state cost an idle Cmdr keeps paying, and one
 /// `query_mimalloc_heap` is structurally blind to. Companion measurement to
 /// `clip::macos::residency_test`; both feed
-/// `docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`.
+/// `docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md`.
 ///
 /// `#[ignore]`d because it measures rather than asserts a contract, and because a
 /// first Vision call on a cold machine is slow.

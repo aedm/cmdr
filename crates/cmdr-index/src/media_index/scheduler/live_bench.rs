@@ -3,7 +3,7 @@
 //! `#[ignore]`d: it prints wall-clock numbers over synthetic stores rather than
 //! asserting. ⚠️ Everything here is WALL time against a warm page cache on a temp
 //! dir, ❌ never CPU: both arms bottom out in SQLite reads, and
-//! `docs/notes/idle-cpu-attribution-2026-08-03.md` records what happens when a
+//! `docs/notes/performance/idle-cpu-attribution-2026-08-03.md` records what happens when a
 //! syscall leaf gets reported as CPU.
 //!
 //! Two arms, matching the two halves of `run_live_tick_blocking`:
@@ -19,7 +19,7 @@
 //! cargo test -p cmdr-index --release --lib -- --ignored --nocapture live_tick_cost
 //! ```
 //!
-//! Results and the call they back: `docs/notes/live-tick-cost-2026-08-21.md`.
+//! Results and the call they back: `docs/notes/performance/live-tick-cost-2026-08-21.md`.
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -37,7 +37,7 @@ use crate::indexing::store::{IndexStore, ROOT_ID};
 const WALK_WIDTHS: &[usize] = &[100, 500, 2_000, 10_000];
 
 /// Scored-folder counts to measure the coverage gate at. The top of the ladder is the
-/// 90,308 folders `docs/notes/live-tick-cost-2026-08-21.md` measures on David's root volume.
+/// 90,308 folders `docs/notes/performance/live-tick-cost-2026-08-21.md` measures on David's root volume.
 const SCORE_WIDTHS: &[usize] = &[1_000, 10_000, 90_308];
 
 /// Files per synthetic touched dir, none of them images: build output is the churn

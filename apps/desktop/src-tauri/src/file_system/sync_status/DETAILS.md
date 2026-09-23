@@ -92,7 +92,7 @@ new kind of answer cannot silently inherit somebody else's lifetime.
 **What it was worth:** an idle app ran about 43 sync-status batches a minute learning "still not a cloud file", purely
 because the negative expired every 60 s while `notify_directory_changed` was already invalidating on every real change.
 ⚠️ Sized honestly that is an IO-and-provider-load win; the probe's claim on CPU was refuted by measurement
-(`docs/notes/idle-cpu-attribution-2026-08-03.md`, wrong answer 3: 3.4% of busy CPU but 0.2% of USERSPACE CPU, with
+(`docs/notes/performance/idle-cpu-attribution-2026-08-03.md`, wrong answer 3: 3.4% of busy CPU but 0.2% of USERSPACE CPU, with
 1,964 of 2,037 samples per thread inside the `stat` itself). Don't quote a CPU number for this anywhere.
 
 ## Decision: skip the provider entirely outside a File Provider domain

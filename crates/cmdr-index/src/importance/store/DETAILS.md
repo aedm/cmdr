@@ -58,9 +58,9 @@ unaffected: the score is pure Rust (never touches SQL collation), the search ran
 `normalize_for_comparison` is identity, so `path_folded == path`.
 
 Measurements (the index-served range, plus why the full walk stays deferred rather than targeted):
-`docs/notes/idle-cpu-indexing-streamlining-2026-07.md`. What the range costs now that a pass READS it instead of
-DELETE-ing it (10 ms against 550–620 ms over a real 51,081-row subtree):
-`docs/notes/importance-treadmill-2026-08-04.md`.
+`docs/notes/performance/idle-cpu-indexing-streamlining-2026-07.md`. What the range costs now that a pass READS it
+instead of DELETE-ing it (10 ms against 550–620 ms over a real 51,081-row subtree):
+`docs/notes/performance/importance-treadmill-2026-08-04.md`.
 
 ## Storage model: no floored rows, trimmed JSON (compaction)
 

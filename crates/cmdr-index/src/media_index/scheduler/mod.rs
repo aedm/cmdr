@@ -414,7 +414,7 @@ impl MediaScheduler {
     /// SQLite and rebuilds the map: a measured 45.8 ms at 90,308 folders against 1.4 µs
     /// warm from the cache, and the LIVE TICK asks once a minute per volume forever
     /// (release build, M1 Max, `scheduler/live_bench.rs`, 2026-08-21 —
-    /// `docs/notes/live-tick-cost-2026-08-21.md`). The `Arc` is the cache's own map, so
+    /// `docs/notes/performance/live-tick-cost-2026-08-21.md`). The `Arc` is the cache's own map, so
     /// a caller holds a handle rather than tens of MB of its own.
     pub(crate) fn folder_scores(&self, volume_id: &str, threshold: f64) -> Option<FolderScores> {
         super::coverage::importance_scores(&self.data_dir, volume_id, Some(threshold))

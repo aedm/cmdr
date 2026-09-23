@@ -18,9 +18,9 @@ enrichment, and a release build is roughly two orders of magnitude faster than e
 on release builds of both sides at six directory sizes, and a release build is **about 96× faster at the bottom of a
 20,000-row listing and about 280× faster at row 10**. So the wedge this note describes is a debug-build phenomenon; the
 release build at the same size answers a keystroke in 52 ms. Take the mechanism from here and the severity from there.
-⚠️ Read `idle-cpu-attribution-2026-08-03.md` first. Its rules were applied here: userspace and file-IO are split
-explicitly below, no ordering rests on one `sample` window, and the mechanism was confirmed by reading the code before
-any percentage was trusted.
+⚠️ Read `performance/idle-cpu-attribution-2026-08-03.md` first. Its rules were applied here: userspace and file-IO are
+split explicitly below, no ordering rests on one `sample` window, and the mechanism was confirmed by reading the code
+before any percentage was trusted.
 
 ## The mechanism
 
@@ -63,10 +63,10 @@ genuinely idle index makes both numbers collapse (see the burstiness note below)
 - While at the bottom, `webview_execute_js` and keyboard IPC **time out at 7 s**. That is the "wedge": the webview is
   alive, the main thread is just never free long enough to answer.
 
-**Userspace against file-IO**, the split `idle-cpu-attribution-2026-08-03.md` demands: main thread cumulative **146.03 s
-user against 10.55 s system** (93% userspace) over a 39-minute process; in-window **12.73 s user against 0.20 s system**
-(98.4%). The leaf frame is `cmdr_fs::staging::is_staging_temp_name`, a pure string test. ❗ There is no syscall in this
-hot path, so none of the usual "it is really IO wait" correction applies.
+**Userspace against file-IO**, the split `performance/idle-cpu-attribution-2026-08-03.md` demands: main thread
+cumulative **146.03 s user against 10.55 s system** (93% userspace) over a 39-minute process; in-window **12.73 s user
+against 0.20 s system** (98.4%). The leaf frame is `cmdr_fs::staging::is_staging_temp_name`, a pure string test. ❗
+There is no syscall in this hot path, so none of the usual "it is really IO wait" correction applies.
 
 **The 60 s sample at the bottom**, main thread, 27,379 samples:
 

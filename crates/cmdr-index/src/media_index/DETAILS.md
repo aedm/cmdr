@@ -321,7 +321,7 @@ the per-file badge asks per visible range, per pane, on every listing swap and e
 queries piled up on the tokio blocking pool until it hit its 512-thread cap, at which point every other `spawn_blocking`
 in the app starved — directory listings never completed and the volume list timed out into an empty picker. Ruinous on a
 timer too: it was 45.8 ms of every 60-second media live tick at 90,308 folders (release build, M1 Max,
-`scheduler/live_bench.rs`, 2026-08-21 — `docs/notes/live-tick-cost-2026-08-21.md`).
+`scheduler/live_bench.rs`, 2026-08-21 — `docs/notes/performance/live-tick-cost-2026-08-21.md`).
 
 `coverage::importance_scores(data_dir, volume_id, at_least)` therefore serves a `FolderScores`: a cheap handle onto a
 per-volume cached table. `at_least: None` is every scored folder, so a slider drag gets one read serving every position;
@@ -373,8 +373,8 @@ shape (`scheduler/DETAILS.md` § The walk); `coverage::count_qualifying_images` 
 `per_folder`/`total`, so a cold build holds `O(folders)`. Deriving counts by collecting first was the launch-time memory
 runaway: on an 11.3M-entry NAS index it turned a handful of integers into gigabytes of transient heap (646 MB peak in
 dev, 6.7 GB and once 50 GB in prod, against a flat 155 MB with the build suppressed; measured on a fresh launch over the
-11.3M-entry NAS index, 2026-07-25 — `docs/notes/memory-runaway-rust-heap-2026-07-25.md`, which isolates it to this exact
-call with a single-lever A/B and a `malloc_history` stack).
+11.3M-entry NAS index, 2026-07-25 — `docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`, which isolates it
+to this exact call with a single-lever A/B and a `malloc_history` stack).
 
 **Who may pay the cold walk.** `coverage::get_or_build` builds; `coverage::cached` reads the cache or returns `None`,
 never building. Polls and startup paths MUST use `cached`: `media_index_volume_state` (which fires at launch, before any

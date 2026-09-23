@@ -467,7 +467,7 @@ the Nth call to a named operation. ❌ Don't grow this list with fault shapes th
 
 `query_mimalloc_heap` sees only our Rust heap. `query_system_malloc_zones` sees only the registered macOS zones, which
 mimalloc never joins. Neither can say what SHAPE the bytes are in, and that gap is what left a 643 MB block unnamed
-across three memory investigations (`../../docs/notes/idle-memory-profile-2026-07-28.md`).
+across three memory investigations (`../../docs/notes/performance/idle-memory-profile-2026-07-28.md`).
 
 `query_vm_regions` closes it. It walks the task's own VM map with `mach_vm_region_recurse` and folds the entries by
 `user_tag`, so it produces the same rows `vmmap -summary` prints — in-process, with no `vmmap` to spawn and no

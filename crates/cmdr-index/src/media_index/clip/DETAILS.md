@@ -136,7 +136,7 @@ anything encodes again and whether or not the user turns semantic search off aft
 what a session controls is which towers it loads at all. Both towers together cost 307-412 MB of `MALLOC_LARGE` plus
 ~120-176 MB of `MALLOC_SMALL` (measured on an M1 Max, macOS 26.5, debug build, `MLComputeUnits::All`, 2026-08-21, by
 `clip::macos::residency_test`). This is the steady-state idle cost named in
-`../../../../../docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`.
+`../../../../../docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md`.
 
 **What a real session pays** (re-measured on an M1 Max, macOS 26.6, debug build, `MLComputeUnits::All`, 2026-08-27,
 `.mlmodelc` cache warm):

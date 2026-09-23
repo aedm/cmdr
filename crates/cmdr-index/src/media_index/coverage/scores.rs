@@ -10,7 +10,7 @@
 //! the app (directory listings, the volume list) starved behind them. Ruinous on a
 //! timer too: it was 45.8 ms of every 60-second media live tick at 90,308 folders
 //! (release build, M1 Max, `scheduler/live_bench.rs`, 2026-08-21 —
-//! `docs/notes/live-tick-cost-2026-08-21.md`). Every consumer reads through here now,
+//! `docs/notes/performance/live-tick-cost-2026-08-21.md`). Every consumer reads through here now,
 //! passes included.
 //!
 //! **Why a subscription and not a generation stamp.** An INCREMENTAL rescore writes

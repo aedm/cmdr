@@ -32,7 +32,7 @@ minutes over 10 hours.
 ## Cause 1 — SQLite page cache across many connections (~1.15 GB)
 
 `lsof` showed **156 open SQLite connections**: 57 × `importance-root.db`, 53 × `index-root.db`, 30 ×
-`index-smb-…naspi.db`, 10 × `importance-smb-…naspi.db`, 6 × `media-root.db`. Every one ran the writer's
+`index-smb-…<share>.db`, 10 × `importance-smb-…<share>.db`, 6 × `media-root.db`. Every one ran the writer's
 `PRAGMA cache_size = -16384` (16 MiB), a 2.5 GB ceiling.
 
 They accumulate because read connections are **thread-local and live as long as their thread**
@@ -78,8 +78,8 @@ while the old map was still live. The footprint oscillated 2.6 → 3.0 GB on exa
 changed" (small) and "these dirs' recursive sizes need refreshing" (the former plus every ancestor up to `/`, because a
 file's size propagates all the way up). `process_fs_event` returned the second and published it, but both bus consumers
 expand each entry DOWNWARD — importance into the whole subtree (floor transitions), media into the dir's image children.
-So one cargo build deep under `~/projects-git/…` put `/Users` into the batch, and the rescore matched every folder under
-the home directory.
+So one cargo build deep under a project folder under `~` put `/Users` into the batch, and the rescore matched every
+folder under the home directory.
 
 **Correction (2026-08-04): the four steps below fixed the cause described above, but not the treadmill.** Prod v0.37.0
 still ran a full-walk pass rewriting ~51 k rows, in bursts, for hours. The cause named here (an ancestor riding in via

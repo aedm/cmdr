@@ -13,10 +13,10 @@ pass bodies (`run_pass_blocking`, `run_network_pass_blocking`, `folder_scores`, 
 `kick_network_pass`, `wire_volume`, `spawn_pass`, `local_should_enrich`, `local_dir_may_be_covered`, `pass_coverage`,
 `pass_gates`, `PassKind`); `enrich.rs` holds the walk + the shared enrich/GC core; `pool.rs` the parallel workers;
 `live.rs` the live-follow tick (with `live_tests.rs` and `live_bench.rs`, the `#[ignore]`d cost harness behind
-`docs/notes/live-tick-cost-2026-08-21.md`); `reclaim.rs` the user-explicit prune. `kick_tests.rs` owns the shared test
-fixtures (`build_index`, the importance/media seeders, `reset_gate`) that `live_tests` and `reclaim_tests` reach for.
-The starting and kicking entry points are `MediaScheduler::{start, kick_all_ready_passes, kick_network_pass}` in
-`mod.rs`, one-liners over `lifecycle.rs`'s private halves, so a host holding the scheduler calls methods on it rather
+`docs/notes/performance/live-tick-cost-2026-08-21.md`); `reclaim.rs` the user-explicit prune. `kick_tests.rs` owns the
+shared test fixtures (`build_index`, the importance/media seeders, `reset_gate`) that `live_tests` and `reclaim_tests`
+reach for. The starting and kicking entry points are `MediaScheduler::{start, kick_all_ready_passes, kick_network_pass}`
+in `mod.rs`, one-liners over `lifecycle.rs`'s private halves, so a host holding the scheduler calls methods on it rather
 than passing it back into a module.
 
 ## The lifecycle bus
@@ -187,13 +187,13 @@ staleness key.
 **The coverage filter, and why it is one set.** A walk costs ~20 µs per touched dir (a `resolve_path` per path component
 plus a `list_children_on`) against 0.03 µs for the filter, and on a machine whose churn is build output nearly every dir
 is ineligible; when NOTHING survives the filter the tick returns before opening the index, loading `media_status`, or
-spawning a writer (release build, M1 Max, `live_bench.rs`, 2026-08-21 — `docs/notes/live-tick-cost-2026-08-21.md`). ❗
-The filtered set then goes to ALL THREE consumers or none: the walk, `GcScope::TouchedDirs`, and
-`coverage::patch_touched_dirs`. Filtering the walk alone would make every stored row under a dropped dir "in scope,
-absent from the walk, therefore deleted"; handing the patch the unfiltered dirs would replace every dropped dir's cached
-count with zero. The walk returns a `WalkedDirs` token (private field, minted only there) that the other two are the
-only consumers of, so the divergence doesn't compile. The two tests in `live_tests.rs` cover what it would have cost
-(`a_live_tick_keeps_every_row_in_a_dir_its_coverage_filter_dropped`,
+spawning a writer (release build, M1 Max, `live_bench.rs`, 2026-08-21 —
+`docs/notes/performance/live-tick-cost-2026-08-21.md`). ❗ The filtered set then goes to ALL THREE consumers or none:
+the walk, `GcScope::TouchedDirs`, and `coverage::patch_touched_dirs`. Filtering the walk alone would make every stored
+row under a dropped dir "in scope, absent from the walk, therefore deleted"; handing the patch the unfiltered dirs would
+replace every dropped dir's cached count with zero. The walk returns a `WalkedDirs` token (private field, minted only
+there) that the other two are the only consumers of, so the divergence doesn't compile. The two tests in `live_tests.rs`
+cover what it would have cost (`a_live_tick_keeps_every_row_in_a_dir_its_coverage_filter_dropped`,
 `a_live_tick_leaves_the_cached_counts_of_a_dir_it_filtered_out_alone`); both were watched failing under exactly those
 mutations while the sets were still two plain `HashSet`s.
 

@@ -2,8 +2,8 @@
 
 **Measured 2026-08-04** against prod v0.37.0's log (`~/Library/Logs/com.veszelovszki.cmdr/cmdr.log`, 13:13–23:43 on
 2026-08-03) and a read-only copy of the real `index-root.db` (7,086,485 rows, 694,963 directories) and
-`importance-root.db` (160,719 weight rows). `docs/notes/idle-memory-profile-2026-07-28.md` § "Cause 2" had reported this
-fixed; it was not, and this note is what makes the remaining half decidable.
+`importance-root.db` (160,719 weight rows). `docs/notes/performance/idle-memory-profile-2026-07-28.md` § "Cause 2" had
+reported this fixed; it was not, and this note is what makes the remaining half decidable.
 
 Everything here has landed, including the batch-width fix at the end.
 
@@ -53,9 +53,9 @@ throughout:
 
 | origin                       | dirs descended | scoped walk | rows it would write |
 | ---------------------------- | -------------- | ----------- | ------------------- |
-| `~/projects-git/vdavid/cmdr` | 127,427        | 1.98 s      | 2,044               |
-| `~/projects-git/vdavid`      | 235,193        | 2.93 s      | 7,826               |
-| `~/projects-git`             | 245,977        | 3.00 s      | 9,969               |
+| `~/<code>/<owner>/<repo>`    | 127,427        | 1.98 s      | 2,044               |
+| `~/<code>/<owner>`           | 235,193        | 2.93 s      | 7,826               |
+| `~/<code>`                   | 245,977        | 3.00 s      | 9,969               |
 | **`$HOME`**                  | **574,007**    | **6.02 s**  | **51,081**          |
 | the full walk (the fallback) | 694,963        | ~4.9 s      | —                   |
 

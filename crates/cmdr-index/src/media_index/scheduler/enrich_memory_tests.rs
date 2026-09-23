@@ -2,7 +2,7 @@
 //!
 //! The walk runs over multi-million-row NAS indexes, where "one small allocation per row"
 //! is the difference between a flat process and a gigabyte one; two production runaways
-//! were made of exactly that (`docs/notes/memory-runaway-rust-heap-2026-07-25.md`). These
+//! were made of exactly that (`docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`). These
 //! tests pin the SHAPE (allocations amortised over the whole walk, never proportional to
 //! folder count) with bounds generous enough to survive allocator and buffer-growth
 //! changes, and tight enough that a per-row regression blows straight through them.

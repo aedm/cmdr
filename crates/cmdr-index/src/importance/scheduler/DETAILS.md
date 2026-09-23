@@ -205,9 +205,9 @@ Both predicates run once per WALKED folder (the filter sees the whole volume, no
 inherit the walk's no-per-folder-allocation discipline above: `is_in_changed_subtree` does `strip_prefix` plus a
 separator check rather than building a `{changed}/` needle, and the touched set is a `HashSet<String>` probed by `&str`.
 ❌ Don't reintroduce a `format!` in either — at ~161 k folders every 60 s it was a top allocation site
-(`docs/notes/memory-runaway-rust-heap-2026-07-25.md`). The separator check is load-bearing for correctness too, not only
-cost: a bare prefix test matches `/a/bc` against changed `/a/b` and drags a sibling's whole subtree into every rescore
-(`changed_subtree_matches_on_separator_boundaries`).
+(`docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`). The separator check is load-bearing for correctness
+too, not only cost: a bare prefix test matches `/a/bc` against changed `/a/b` and drags a sibling's whole subtree into
+every rescore (`changed_subtree_matches_on_separator_boundaries`).
 
 ### Transition semantics
 
@@ -235,7 +235,7 @@ the folder changed. Measured 2026-08-04 on the real 160,719-row root store, comp
 fresh recompute over the same index snapshot: of the 51,081 rows a `$HOME`-origin pass rewrote, **99.88% carried a
 byte-identical signals blob and 0.03% an identical score**. A score diff would have skipped 17 rows in 51,081 and left
 the treadmill running. `FolderSignals` carries no clock (raw `mtime_secs`, counts, flags), which is what makes it a
-sound identity. Full evidence: `docs/notes/importance-treadmill-2026-08-04.md`.
+sound identity. Full evidence: `docs/notes/performance/importance-treadmill-2026-08-04.md`.
 
 **Decision/Why keeping a row keeps its old score.** A `Keep` row stays at the `now_secs` it was last written at. That is
 the SAME bounded staleness `RescoreScope::ChangedSubtreesOnly` already accepts for an origin's ancestors (above), and it

@@ -526,7 +526,7 @@ enum StoredRowFate {
 /// score moves a little every pass even when nothing about the folder changed:
 /// measured on the real 160,719-row root store, a pass 60 s later left **99.88% of
 /// rows with a byte-identical signals blob but only 0.03% with an identical score**
-/// (`docs/notes/importance-treadmill-2026-08-04.md`). ❌ Don't "simplify" this to a
+/// (`docs/notes/performance/importance-treadmill-2026-08-04.md`). ❌ Don't "simplify" this to a
 /// score comparison — it would skip 17 rows in 51,081 and the treadmill comes back.
 /// [`FolderSignals`](super::FolderSignals) carries no clock (raw `mtime_secs`,
 /// counts, and flags), which is exactly what makes it a sound identity here.

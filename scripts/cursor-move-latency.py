@@ -14,7 +14,7 @@ is the only honest way to say the app stopped responding.
 
 Runs both depths in one process, in alternating blocks, so a background index
 storm hits both arms rather than whichever one it happened to overlap
-(`docs/notes/idle-cpu-attribution-2026-08-03.md`: never order work off one
+(`docs/notes/performance/idle-cpu-attribution-2026-08-03.md`: never order work off one
 window here).
 
 Usage: cursor-move-latency.py <shallow-row> <deep-row> [rounds]

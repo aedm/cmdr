@@ -128,7 +128,7 @@ impl QualifyingImage<'_> {
 /// `O(images)` for the collecting [`walk_image_entries`]. Reach for the counting sink
 /// whenever only counts are needed; a multi-million-entry NAS index turns the collecting
 /// one into gigabytes (11.3M entries, measured 2026-07-25 —
-/// `docs/notes/memory-runaway-rust-heap-2026-07-25.md`).
+/// `docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`).
 pub(crate) fn for_each_qualifying_image(
     conn: &rusqlite::Connection,
     sink: &mut dyn FnMut(&QualifyingImage<'_>),

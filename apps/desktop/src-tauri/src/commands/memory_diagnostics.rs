@@ -2,8 +2,8 @@
 //!
 //! Three memory investigations reached for `vmmap`, `footprint`, and a
 //! `MallocStackLogging=1` relaunch, and two of them still attributed a large block to
-//! the wrong subsystem (`docs/notes/idle-memory-profile-2026-07-28.md`,
-//! `docs/notes/idle-cpu-attribution-2026-08-03.md`). This command exists so the next one
+//! the wrong subsystem (`docs/notes/performance/idle-memory-profile-2026-07-28.md`,
+//! `docs/notes/performance/idle-cpu-attribution-2026-08-03.md`). This command exists so the next one
 //! starts from a reading instead of a hypothesis: it works against a RUNNING app,
 //! including a shipped release build under a real workload, which is the only condition
 //! the interesting numbers appear under.

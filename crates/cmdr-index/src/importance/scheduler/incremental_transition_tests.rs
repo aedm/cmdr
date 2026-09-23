@@ -642,7 +642,7 @@ fn an_origin_spelled_in_another_case_behaves_the_same_under_both_walks() {
 /// otherwise — the clear list and the insert set stay one slice.
 /// A pass that finds nothing changed writes NOTHING — the idle case, end to end.
 ///
-/// This is the treadmill `docs/notes/importance-treadmill-2026-08-04.md` measured:
+/// This is the treadmill `docs/notes/performance/importance-treadmill-2026-08-04.md` measured:
 /// on a real home, 99.88% of the rows a `$HOME`-origin pass rewrote every 60 s
 /// carried a byte-identical signals blob. Both halves matter — the second pass
 /// reports zero folders, AND the store it leaves behind is identical to the one the
