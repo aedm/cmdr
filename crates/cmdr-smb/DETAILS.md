@@ -579,15 +579,15 @@ knows the size: an 8 MB request against a 4 MB file is both the over-charge and 
 
 **Known gap, unfixed on purpose: a window too small to carry even ONE compound read.** The fast paths' conditions ask
 about sizes, not credits. The foreground read tops out at a 512 KiB file (a 10-credit chain) on a cold connection, but
-up to `max_read` once a download has measured a fast link, and the scan pool's prefetch always goes up to `max_read`. So a
-server granting a small window (embedded NAS firmware, a router's USB share, Samba built with a low `smb2 max credits`)
-can leave a 4 MB photo's 66-credit chain unservable: smb2 refuses with `Error::CreditStarvation` rather than hanging,
-neither path has an arm for it, and the photo is skipped as unreadable (or, on a warm foreground copy, fails to copy)
-instead of falling through to a streaming read that would have worked at ~10 credits a chunk. Nothing has been observed hitting
-this — both reference servers were measured granting 513 credits — which is exactly why no recovery branch was written:
-an untested error path is worse than a documented gap. The profile that
-would show it is specific: a LARGE `max_read` paired with a SMALL grant. A server with a small `max_read` is
-automatically safe, because `read_file_compound_sized` clamps `requested` to it and the charge falls with it.
+up to `max_read` once a download has measured a fast link, and the scan pool's prefetch always goes up to `max_read`. So
+a server granting a small window (embedded NAS firmware, a router's USB share, Samba built with a low
+`smb2 max credits`) can leave a 4 MB photo's 66-credit chain unservable: smb2 refuses with `Error::CreditStarvation`
+rather than hanging, neither path has an arm for it, and the photo is skipped as unreadable (or, on a warm foreground
+copy, fails to copy) instead of falling through to a streaming read that would have worked at ~10 credits a chunk.
+Nothing has been observed hitting this — both reference servers were measured granting 513 credits — which is exactly
+why no recovery branch was written: an untested error path is worse than a documented gap. The profile that would show
+it is specific: a LARGE `max_read` paired with a SMALL grant. A server with a small `max_read` is automatically safe,
+because `read_file_compound_sized` clamps `requested` to it and the charge falls with it.
 
 The fix, if it ever does show up, is to REACT rather than predict: `reserve_credits` refuses before anything reaches the
 wire, so an unfundable compound read costs zero round trips and the fast path can fall through to streaming on the spot.
@@ -806,26 +806,25 @@ leftover paths go through the pipelined stat. Decision is per-parent: one batch 
 paths, and if every path resolves via the oracle the stat pipeline is skipped entirely.
 
 **Decision**: `SmbVolume` has a compound fast-path in `open_read_stream_with_hint` for files up to the connection's
-`quick_read_limit()` (`streams::fits_one_compound_read`) and in
-`write_from_stream` for files ≤ `max_write_size` **Why**: The streaming open+read+close sequence costs 3 RTTs per file. For small
-files (typical 10 KB copies on a NAS) that dominates wall-clock at high-latency links (~60 ms RTT → ~180 ms/file just
-for protocol overhead, not data). `smb2` already exposes `Tree::read_file_compound` (CREATE+READ+CLOSE in a single
-compound frame = 1 RTT) and `Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT). The copy pipeline feeds
-per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take the compound path.
-The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of
-two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s
-and a reconnect clears it), because a bigger compound READ carries the whole file with no progress, queued ahead of
-every listing on the connection (cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download` streams it
-through an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The arithmetic stays
-in smb2 so the window and the cut-off share one headroom constant. The numbers sit on `fits_one_compound_read`. The
-scan pool's prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the reads bullet). Falls back
-cleanly to the streaming reader/writer when the hint is missing or the file is too big. Small compound
-reads return a `Vec<u8>` wrapped as a single-chunk `InlineReadStream` so the consumer API stays shaped the same. See
-`docs/notes/phase4-rtt-investigation.md` for the measurement. The WRITE side's condition is also a DATA-SAFETY contract:
-`write_is_single_shot` answers with the same `fits_one_compound_write` the fast path branches on, and the transfer layer
-skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend owes in return (short sources stay on
-the compound path, a post-CREATE failure cleans up after itself): `write_operations/transfer/DETAILS.md` § "The
-single-shot exemption".
+`quick_read_limit()` (`streams::fits_one_compound_read`) and in `write_from_stream` for files ≤ `max_write_size`
+**Why**: The streaming open+read+close sequence costs 3 RTTs per file. For small files (typical 10 KB copies on a NAS)
+that dominates wall-clock at high-latency links (~60 ms RTT → ~180 ms/file just for protocol overhead, not data). `smb2`
+already exposes `Tree::read_file_compound` (CREATE+READ+CLOSE in a single compound frame = 1 RTT) and
+`Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT). The copy pipeline feeds per-file size hints from the
+pre-copy scan; when the size is known and fits the threshold, we take the compound path. The read side stops at what the
+link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of two or more chunks has measured
+the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s and a reconnect clears it),
+because a bigger compound READ carries the whole file with no progress, queued ahead of every listing on the connection
+(cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download` streams it through an adaptive read-ahead. Under
+the limit, the compound saves the stream's CREATE round trip. The arithmetic stays in smb2 so the window and the cut-off
+share one headroom constant. The numbers sit on `fits_one_compound_read`. The scan pool's prefetch keeps `max_read_size`
+on purpose (§ "SMB scan-connection pool", the reads bullet). Falls back cleanly to the streaming reader/writer when the
+hint is missing or the file is too big. Small compound reads return a `Vec<u8>` wrapped as a single-chunk
+`InlineReadStream` so the consumer API stays shaped the same. See `docs/notes/phase4-rtt-investigation.md` for the
+measurement. The WRITE side's condition is also a DATA-SAFETY contract: `write_is_single_shot` answers with the same
+`fits_one_compound_write` the fast path branches on, and the transfer layer skips its `.cmdr-tmp-*` staging on the
+strength of that answer. What the backend owes in return (short sources stay on the compound path, a post-CREATE failure
+cleans up after itself): `write_operations/transfer/DETAILS.md` § "The single-shot exemption".
 
 **Decision**: a streamed read (`open_smb_download_stream`) ends the consumer's stream at its last byte, before the
 CLOSE's answer **Why**: smb2's `FileDownload::next_chunk` puts the CLOSE on the wire before it hands out the last chunk,
@@ -836,9 +835,8 @@ state. A file that shrank mid-download still ends on `None`, which smb2 sends it
 move deletes the source after the copy's stream ends. That's safe without the answer: `send_and_count` returns only once
 the per-socket FIFO writer task has written the CLOSE, so any delete issued afterwards on any clone of the connection
 sits behind it on the wire, and `Tree::open_file` opens with `FILE_SHARE_DELETE`, so even a delete overtaking it would
-only mark the file delete-pending until the CLOSE lands (verified against smb2 0.24.2's `stream.rs` and
-`connection.rs`, 2026-09-23). Pinned by `smb_integration_a_streamed_read_ends_before_the_close_is_answered` on the
-`slow` fixture.
+only mark the file delete-pending until the CLOSE lands (verified against smb2 0.24.2's `stream.rs` and `connection.rs`,
+2026-09-23). Pinned by `smb_integration_a_streamed_read_ends_before_the_close_is_answered` on the `slow` fixture.
 
 **Decision**: streaming-write progress reports the SERVER-CONFIRMED byte count (`FileWriter::bytes_written()`), never
 the count handed to the pipeline **Why**: `write_chunk` returns as soon as a chunk is accepted into smb2's
@@ -944,9 +942,9 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
     compound frame and the `quick_read_limit` boundary where it gives way to streaming (on a cold connection `(1, 3)` at
     512 KiB, `(0, 4)` one byte over, in two chunks; after a measuring download, `(1, 3)` for 2 MiB), the streamed read
     ending at its last byte rather than at the CLOSE's answer (timed on the `slow` fixture, where that answer is 200 ms
-    away), the single-shot write promise the transfer layer skips `.cmdr-tmp-*` staging on (the wire proof and
-    the `write_is_single_shot` predicate behind it, kept together), and the copy-slot clamp. It owns `request_counts`,
-    the diagnostics-metric reader those frame assertions run on. **Every cell here asserts on the PAIR
+    away), the single-shot write promise the transfer layer skips `.cmdr-tmp-*` staging on (the wire proof and the
+    `write_is_single_shot` predicate behind it, kept together), and the copy-slot clamp. It owns `request_counts`, the
+    diagnostics-metric reader those frame assertions run on. **Every cell here asserts on the PAIR
     `(compound_requests_sent, requests_sent)`, because `requests_sent` alone reads like a frame count and is not one**:
     smb2 ticks it once per sub-op of a chain (`allocate_msg_id` is the funnel every send path goes through), while
     `compound_requests_sent` counts the chain, and `execute_compound` hands the whole chain to one `send_and_count`. So
