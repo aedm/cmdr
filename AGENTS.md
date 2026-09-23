@@ -114,7 +114,7 @@ Writing them:
   `docs/architecture.md`.
 - `brand/`: brand and press-kit assets.
 - `docs/`: `docs/architecture.md` (the map), `docs/guides/` (how-tos), `tooling/` (service and workflow references),
-  `docs/business/README.md` (pricing, licensing, product facts), `docs/specs/index.md` (big design docs; open work is
+  `docs/business/README.md` (pricing, licensing, product facts), `docs/specs/DETAILS.md` (big design docs; open work is
   GitHub issues, ❌ not specs), `docs/notes/README.md`, `style-guide.md`, `design-principles.md`, `security.md`,
   `maintenance.md`.
 - `tools/`: dev tooling outside every workspace and check: `tools/intellij-plugin/`, `tools/privatesize-poc/README.md`.

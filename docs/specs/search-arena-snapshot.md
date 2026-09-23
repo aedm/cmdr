@@ -465,4 +465,4 @@ Per `.claude/rules/check-scope-matches-change.md`, scope per milestone, not a bl
 - `crates/cmdr-index/src/indexing/handle/DETAILS.md`: the `index-crate-isolation` ceiling rationale.
 - `docs/architecture.md`: a pointer for the new module (map only, never how).
 - `docs/notes/`: the `ERR-S76V3` measurement and the arena sizing land here as the evidence anchor.
-- `docs/specs/index.md`: this spec's entry.
+- `docs/specs/DETAILS.md` § "The specs": this spec's entry.

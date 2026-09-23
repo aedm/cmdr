@@ -543,7 +543,7 @@ How reachability is decided (`BuildDocGraph`):
   Claude Code auto-injects a `CLAUDE.md` from its directory regardless). Such edges are tagged `ViaDir`; the renderer
   shows "(dir reference)".
 - **Everything under `docs/` is enforced, including `docs/specs` and `docs/notes`.** Those dirs are periodically-wiped
-  scratch, but they must still be discoverable while they exist: specs hang off `docs/specs/index.md`, and a note is
+  scratch, but they must still be discoverable while they exist: specs hang off `docs/specs/DETAILS.md`, and a note is
   expected to be linked from the colocated `CLAUDE.md` / `DETAILS.md` whose work it informs.
 - **Candidates come from git, not a raw walk.** `findMarkdownDocs` lists
   `git ls-files --cached --others --exclude-standard` (tracked plus untracked-but-not-ignored), so a `.gitignore`d
