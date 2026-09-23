@@ -146,7 +146,7 @@ describe('AskCmdrSection on/off', () => {
     const target = await mountSection()
     const labelFors = Array.from(target.querySelectorAll('label.setting-label')).map((el) => el.getAttribute('for'))
     expect(labelFors).toContain('askCmdr.enabled')
-    expect(target.textContent).toContain('Turn on Ask Cmdr')
+    expect(target.querySelector('label.setting-label[for="askCmdr.enabled"]')?.textContent?.trim()).toBe('Ask Cmdr')
     target.remove()
   })
 
@@ -155,7 +155,7 @@ describe('AskCmdrSection on/off', () => {
     const target = await mountSection()
 
     expect(target.querySelector('.cloud-off-hint')?.textContent).toContain(
-      'Ask Cmdr uses your cloud AI service, and cloud AI is off.',
+      'Ask Cmdr uses your cloud AI service. Allow cloud AI in AI settings to start chatting.',
     )
     target.querySelector<HTMLButtonElement>('.cloud-off-hint button')?.click()
     expect(openCloudConsentSettings).toHaveBeenCalledWith('ask-cmdr-settings-hint')

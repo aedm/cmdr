@@ -1175,7 +1175,7 @@
       }
     }
   },
-  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "settings.ai.cloudConsent.lockedHint": "Turn on \"Allow cloud AI\" above to set up a service.",
   "@settings.ai.cloudConsent.lockedHint": {
     "description": "Hint above the dimmed, locked service setup in Settings > AI > Provider while the Allow cloud AI switch is off. \"Allow cloud AI\" is the switch label (ai.cloudConsent.label); translate it the same way."
   },
@@ -2120,7 +2120,7 @@
     "description": "Intro paragraph at the top of the Ask Cmdr settings section. Three facts: it reads names, paths, and sizes; it looks inside a file only when the user asks about that file; it never changes a file without the user's approval (it proposes renames and moves and writes its own notes, so do not say it changes nothing or is read-only).",
     "screenshot": "settings-ai-ask-cmdr.png"
   },
-  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "settings.askCmdr.enabled.label": "Ask Cmdr",
   "@settings.askCmdr.enabled.label": {
     "description": "Label of the on/off switch for the Ask Cmdr assistant in Settings > AI > Ask Cmdr. Starts with a verb. \"Ask Cmdr\" is a product name and stays as it is. Sentence case.",
     "screenshot": "settings-ai-ask-cmdr.png",
@@ -2132,7 +2132,7 @@
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
-  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service. Allow cloud AI in AI settings to start chatting.",
   "@settings.askCmdr.cloudOffHint": {
     "description": "Shown under the Ask Cmdr switch in Settings > AI > Ask Cmdr when it's on, the AI mode is Cloud, and the Allow cloud AI switch is off. A button to open the AI settings follows it.",
     "screenshot": "settings-ai-ask-cmdr.png",

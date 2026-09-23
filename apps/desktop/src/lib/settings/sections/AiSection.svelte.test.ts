@@ -135,7 +135,7 @@ describe('Allow cloud AI in Settings > AI > Provider', () => {
     const target = await mountSection()
 
     expect(cloudSetup(target)?.hasAttribute('inert')).toBe(true)
-    expect(target.textContent).toContain('Turn on Allow cloud AI above to set up a service.')
+    expect(target.textContent).toContain('Turn on "Allow cloud AI" above to set up a service.')
     // The locked setup never probes the service: that alone would reach it.
     expect(checkAiConnection).not.toHaveBeenCalled()
   })
@@ -145,7 +145,7 @@ describe('Allow cloud AI in Settings > AI > Provider', () => {
     const target = await mountSection()
 
     expect(cloudSetup(target)?.hasAttribute('inert')).toBe(false)
-    expect(target.textContent).not.toContain('Turn on Allow cloud AI above')
+    expect(target.textContent).not.toContain('above to set up a service')
   })
 
   it('records consent on the switch, and unlocks without leaving the page', async () => {

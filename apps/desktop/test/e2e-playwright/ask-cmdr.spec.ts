@@ -111,7 +111,7 @@ async function ensureChatReady(page: TauriPage): Promise<void> {
 }
 
 /** The Ask Cmdr switch in Settings > AI > Ask Cmdr: its hidden input carries the label. */
-const ASK_CMDR_SWITCH = '[aria-label="Turn on Ask Cmdr"]'
+const ASK_CMDR_SWITCH = 'input[aria-label="Ask Cmdr"]'
 
 /** The switch's state as Ark draws it (`checked` / `unchecked`), or `missing`. */
 function askCmdrSwitchStateJs(): string {

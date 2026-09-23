@@ -108,13 +108,13 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below:",
   "@ai.cloudConsent.intro": {
     "description": "Opening line of the list of what each AI feature sends, inside the Allow cloud AI fold. Ends with a colon introducing the list. \"below\" is the service setup under the switch.",
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr''s own servers never see any of it.",
   "@ai.cloudConsent.whereItGoes": {
     "description": "Paragraph right after the intro of the Allow cloud AI fold. Keeps three facts: the destination and its handling depend on the chosen service and the user's terms with it; Ollama, LM Studio, and custom endpoints count too; Cmdr itself receives nothing. Ollama and LM Studio are product names; keep them.",
     "screenshot": "settings-ai-provider.png",

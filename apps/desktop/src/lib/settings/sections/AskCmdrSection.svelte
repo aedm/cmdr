@@ -357,7 +357,7 @@
         gap: var(--spacing-sm);
         margin: var(--spacing-xs) 0 var(--spacing-sm);
         font-size: var(--font-size-sm);
-        color: var(--color-warning-text);
+        color: var(--color-text-secondary);
     }
 
     .cloud-off-hint p {
