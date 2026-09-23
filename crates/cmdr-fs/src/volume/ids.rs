@@ -178,10 +178,10 @@ pub fn path_volume_id(mount_path: &str) -> String {
 /// its `lastUsedPaths`, and every tab's `volumeId` down whichever path happened
 /// to register it first.
 pub fn smb_volume_id(server: &str, port: u16, share: &str) -> String {
-    use unicode_normalization::UnicodeNormalization;
+    use crate::name_fold::fold_name;
 
-    let server: String = server.nfc().flat_map(char::to_lowercase).collect();
-    let share: String = share.nfc().flat_map(char::to_lowercase).collect();
+    let server = fold_name(server);
+    let share = fold_name(share);
     let port = port.to_string();
     derived_id("smb", &format!("{server}-{port}-{share}"), &[&server, &port, &share])
 }

@@ -19,23 +19,14 @@ use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::volume::VolumeError;
 use log::debug;
 use smb2::types::status::NtStatus;
-use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use unicode_normalization::UnicodeNormalization;
 
-/// The key two names share when they differ only in Unicode form or case.
-///
-/// NFC, then lowercase: the same key `smb_volume_id` folds share names with. A
-/// comparison key only, ❌ never sent to the server.
-pub(super) fn fold(name: &str) -> Cow<'_, str> {
-    if name.bytes().all(|b| b.is_ascii() && !b.is_ascii_uppercase()) {
-        return Cow::Borrowed(name);
-    }
-    Cow::Owned(name.nfc().flat_map(char::to_lowercase).collect())
-}
+/// The one comparison key for "the same name, spelled another way", shared with
+/// the rest of Cmdr. ❌ Never sent to the server.
+pub(super) use cmdr_fs::name_fold::fold_name as fold;
 
 /// How one wanted component stands against its parent's entries.
 #[derive(Debug, PartialEq, Eq)]

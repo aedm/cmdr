@@ -184,9 +184,15 @@ pub fn get_total_count(listing_id: &str, include_hidden: bool) -> Result<usize, 
     with_listing(listing_id, |listing| listing.rows(include_hidden).len())
 }
 
-/// Finds the index of a file by name in a cached listing.
+/// Finds the index of a file by name in a cached listing, where the cursor lands.
+///
+/// The name may come from outside this listing (a restored cursor, MCP, a reveal
+/// from Finder) and spell an accented name another way than the volume stores it,
+/// so a unique look-alike answers when the exact name doesn't (`row_of_any_spelling`).
 pub fn find_file_index(listing_id: &str, name: &str, include_hidden: bool) -> Result<Option<usize>, String> {
-    with_listing(listing_id, |listing| listing.rows(include_hidden).row_of(name))
+    with_listing(listing_id, |listing| {
+        listing.rows(include_hidden).row_of_any_spelling(name)
+    })
 }
 
 /// Which side of a named row to read: the one before it or the one after it.

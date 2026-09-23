@@ -27,6 +27,7 @@ pub mod git_meta;
 pub mod icons;
 pub mod ignore_poison;
 pub mod log_rollup;
+pub mod name_fold;
 pub mod path_locations;
 pub mod pluralize;
 pub mod process_memory;

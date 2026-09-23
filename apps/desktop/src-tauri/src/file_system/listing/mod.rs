@@ -77,6 +77,8 @@ mod diff_emitter_test;
 #[cfg(test)]
 mod diff_test;
 #[cfg(test)]
+mod find_file_index_test;
+#[cfg(test)]
 mod hidden_files_test;
 #[cfg(all(test, feature = "virtual-mtp"))]
 mod mtp_listing_path_test;

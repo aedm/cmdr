@@ -119,15 +119,3 @@ fn an_empty_destination_still_answers_absent() {
     let index = listing(&[]);
     assert!(matches!(lookup(&index, "notes.txt"), DestLookup::Absent));
 }
-
-#[test]
-fn folding_ascii_and_folding_through_the_normalizer_agree() {
-    // The ASCII fast path is an optimization, not a second rule.
-    for name in ["Notes.TXT", "a-b_c 1.txt", "UPPER", ""] {
-        assert_eq!(
-            fold(name),
-            name.nfc().flat_map(char::to_lowercase).collect::<String>(),
-            "the ASCII shortcut must answer what the general path answers"
-        );
-    }
-}

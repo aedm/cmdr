@@ -18,7 +18,7 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
 
-use unicode_normalization::UnicodeNormalization;
+use cmdr_fs::name_fold::fold_name;
 
 use crate::file_system::listing::FileEntry;
 
@@ -49,27 +49,17 @@ pub(super) struct DestNameIndex {
 }
 
 /// The key two names share when a case- or normalization-insensitive backend
-/// would treat them as one.
-///
-/// NFC, then lowercase. It's a comparison key only: nothing folded here reaches a
-/// volume, because an SMB server matches a name's exact bytes and one directory
-/// can hold both forms (`crates/cmdr-smb/DETAILS.md` § "SMB names are opaque
-/// bytes"). The ASCII fast path is the same answer for ASCII input (NFC is
-/// identity there, and `char::to_lowercase` is ASCII lowercase) without
-/// allocating through the normalizer for the overwhelmingly common case.
+/// would treat them as one: `cmdr_fs::name_fold::fold_name`, owned so it can key
+/// the buckets. A comparison key only; nothing folded here reaches a volume.
 ///
 /// `pub(super)` because the volume conflict resolver asks it about the final
 /// component of two paths, to tell a duplicate from a clash
 /// (`volume/item_identity.rs::is_the_same_volume_path`, which owns the rule about
 /// what may and may not be folded). This answers for names inside ONE listing,
 /// and no listing says whether two differently-cased parent directories are one
-/// directory. One folding rule for the whole transfer layer, one question it
-/// answers.
+/// directory.
 pub(super) fn fold(name: &str) -> String {
-    if name.is_ascii() {
-        return name.to_ascii_lowercase();
-    }
-    name.nfc().flat_map(char::to_lowercase).collect()
+    fold_name(name).into_owned()
 }
 
 impl DestNameIndex {

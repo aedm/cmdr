@@ -495,6 +495,10 @@ folder the share stores composed answers the kernel's decomposed spelling with `
   on a direct share holds the server's bytes; its fingerprint binding refuses a path that no longer opens, and its
   per-op reporting is keyed on the proposal's own paths, so a respell there would unhook it.
 - The `AmbiguousName` refusal (two look-alikes, neither exact) reaches the pane as its own listing error.
+- **The cursor lands on a look-alike name.** `find_file_index` (a restored cursor, MCP `move_cursor`, a reveal from
+  Finder, `selectName` after a foreign landing) asks `VisibleRows::row_of_any_spelling`: the exact name first, else the
+  ONE row whose name folds the same (`cmdr_fs::name_fold`), else nothing. Placement only; every row a command ACTS on
+  still comes by exact name.
 
 Pinned by `foreign_path_test.rs`, `streaming_test.rs::a_foreign_spelling_lands_the_listing_on_the_stored_path`, the
 Docker cell `network/smb_upgrade_respell_test.rs`, and on the frontend the drop and paste suites

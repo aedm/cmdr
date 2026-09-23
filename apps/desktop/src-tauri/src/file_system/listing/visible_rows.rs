@@ -222,6 +222,28 @@ impl<'a> VisibleRows<'a> {
     pub(crate) fn row_of(&self, name: &str) -> Option<usize> {
         self.iter().position(|entry| entry.name == name)
     }
+
+    /// [`row_of`](Self::row_of) for a name that may be spelled another way than
+    /// this listing holds it (another Unicode form, another case): a cursor name
+    /// carried from the macOS kernel mount, an MCP call, or a reveal from Finder.
+    ///
+    /// The exact spelling wins. Otherwise the ONE row whose name folds to the same
+    /// key (`cmdr_fs::name_fold`) answers; two or more look-alikes answer `None`,
+    /// so a cursor never lands on a guessed twin. Placement only: ❌ never use it to
+    /// pick a row to act on.
+    pub(crate) fn row_of_any_spelling(&self, name: &str) -> Option<usize> {
+        if let Some(row) = self.row_of(name) {
+            return Some(row);
+        }
+        let key = cmdr_fs::name_fold::fold_name(name);
+        let mut look_alikes = self
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| cmdr_fs::name_fold::fold_name(&entry.name) == key)
+            .map(|(row, _)| row);
+        let row = look_alikes.next()?;
+        look_alikes.next().is_none().then_some(row)
+    }
 }
 
 /// Counts entries examined by the visibility predicate on THIS thread, so a test
