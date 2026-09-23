@@ -1211,8 +1211,10 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
     destination, a 6 MiB odd-length round trip, and 40 files at full concurrency. Every merge asserts through
     `transfer::volume::assert_operation_was_safe`. Also the shared seeding and driving helpers (`seed`, `transfer`).
   - `network_safety_test_support.rs`: a failed merge copy or move onto the user's folder, a delete bound to a
-    local-shaped preview, a recursive delete that takes exactly the selection, an unanswerable source-type probe, and
-    a download cancelled mid-file. Faults go on the LOCAL side (`FaultyVolume`); the server is what users run.
+    local-shaped preview, a recursive delete that takes exactly the selection, an unanswerable source-type probe, a
+    download cancelled mid-file, and a name another writer takes mid-upload (never replaced, never deleted by the
+    failed copy's cleanup; SMB's single-shot size is a known red gap, `transfer/volume/DETAILS.md` § "The single-shot
+    exemption"). Faults go on the LOCAL side (`FaultyVolume`); the server is what users run.
     `Registered` puts a volume in the registry for the ops that look it up, and cleans BEFORE unregistering, because
     unregistering retires the volume and a retired network volume drops its session.
   - `network_look_alike_test_support.rs`: an NFD name onto its NFC twin (Skip, Overwrite, folder merge, same-server
@@ -1228,6 +1230,13 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   small windows have to be cut out of locally. The dialog-addressed destination cells are SFTP's and SMB's own: the
   WebDAV fixture's remote root is `/`, where a volume-relative and a server-absolute path are spelled alike, so a
   doubled root can't be told from a right one there (`cmdr-webdav`'s `paths_test.rs` pins the refusal instead).
+- **A server that says no mid-operation: `webdav_refusal_test.rs`.** 507 on an upload (answered after the body, and
+  before it with the body unread, the way a quota'd Nextcloud answers), 403 on the upload and on the DELETE a
+  safe-replace needs, and refusals of the server's own `COPY` and `MOVE`. Each arrives typed (`DestinationFull`,
+  `PermissionDenied`), loses nothing, and ❗ leaves the volume connected, since a refusal is an answer. The refusal
+  comes from `webdav_refusing_proxy_test_support.rs`, an HTTP proxy in front of the real Apache that answers one
+  request itself; ❌ never reconfigure the shared container for a cell. A refused `COPY` falls back to streaming by
+  design (`transfer/volume/strategy.rs::try_server_side_copy`).
 - **`adb_transfer_test.rs` runs the same scenarios against a phone on `cmdr-adb`'s in-process fake server**, so it
   needs no Docker, runs in the unit lane, and has no name prefix to keep. Its own cells start a copy from two registered
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own
