@@ -84,8 +84,8 @@ the rule in `ViewerRow.svelte`, and `ViewerRow.test.ts` fails if someone swaps i
 character between two rows of the same line. `rowMetrics` is the one place that decides a row's delimiter (0 when the
 row `continues`, 0 on the file's last row, 1 otherwise), and `describeSelectionForAt` sums row lengths with nothing
 between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the 10 MiB
-confirm tier and the 100 MiB refusal, which is invariant I3
-(`src-tauri/src/file_viewer/DETAILS.md` § "The row invariants").
+confirm tier and the 100 MiB refusal, which is invariant I3 (`src-tauri/src/file_viewer/DETAILS.md` § "The row
+invariants").
 
 Decision/Why: **WebKit's own soft wraps stay unmarked** (David's call). With word wrap on, only the segment break Cmdr
 made carries the marker. Marking soft breaks too would mean Cmdr doing its own wrapping instead of CSS, against the

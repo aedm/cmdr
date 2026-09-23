@@ -26,12 +26,12 @@ open items are `later/adb-follow-ups.md`. Each item below stands alone.
   `lifecycle/manager/start.rs`). Starting the watcher waits on `fseventsd`, and the same critical section reads the
   database twice, which the module's own docs forbid.
 - **Impact**: everything that asks about any index waits meanwhile: status, badges, MCP, and the check run after each
-  navigation. Always on background threads, never the UI thread. In practice it happens about once per drive per
-  session and took 24–63 ms in a week of David's logs (2026-09-11); it only reaches seconds on a machine busy with
-  builds, which is how the tests exposed it. Enough waiters could in theory stall every backend call.
-- **Solution**: decide under the lock, start the watcher outside it, then re-lock and install it only if nothing
-  changed meanwhile. The hard part is the races: two walks both starting a watcher, or a teardown landing in between.
-  Testing it needs a fake drive watcher, which is also what item 3 needs, so do them together.
+  navigation. Always on background threads, never the UI thread. In practice it happens about once per drive per session
+  and took 24–63 ms in a week of David's logs (2026-09-11); it only reaches seconds on a machine busy with builds, which
+  is how the tests exposed it. Enough waiters could in theory stall every backend call.
+- **Solution**: decide under the lock, start the watcher outside it, then re-lock and install it only if nothing changed
+  meanwhile. The hard part is the races: two walks both starting a watcher, or a teardown landing in between. Testing it
+  needs a fake drive watcher, which is also what item 3 needs, so do them together.
 - **Size**: M, about 150–250 lines, medium risk. Not urgent.
 
 ## 3. The index phase tests are the biggest source of retried Rust test runs
@@ -121,13 +121,12 @@ open items are `later/adb-follow-ups.md`. Each item below stands alone.
   shows no "doesn't accept files" notice in the transfer dialog. `smb2` decodes the share's access rights at connect and
   then discards them, and it doesn't support the per-folder access query at all.
 - **Impact**: low to moderate: read-only media shares and guest logins are common. The copy starts and fails on the
-  first write with "You don't have permission to copy files here", which is honest but late, with no data risk. The
-  same share may show the notice on the macOS mount and lose it after the upgrade to direct (unverified;
+  first write with "You don't have permission to copy files here", which is honest but late, with no data risk. The same
+  share may show the notice on the macOS mount and lose it after the upgrade to direct (unverified;
   `test -w /Volumes/<share>` on a read-only share would settle it).
-- **Solution**: (a) short term, keep the share-level rights `smb2` already decodes as a free early answer; (b) the
-  real fix, add the per-folder access query to `smb2` and have `cmdr-smb` ask it for the nearest existing folder.
-- **Size**: (a) S, about 40 lines; (b) M, 170–230 lines across both repos plus an `smb2` release. Tradeoff, leaning
-  win.
+- **Solution**: (a) short term, keep the share-level rights `smb2` already decodes as a free early answer; (b) the real
+  fix, add the per-folder access query to `smb2` and have `cmdr-smb` ask it for the nearest existing folder.
+- **Size**: (a) S, about 40 lines; (b) M, 170–230 lines across both repos plus an `smb2` release. Tradeoff, leaning win.
 
 ## 11. The app depends on itself for tests, which links two copies into the test binary
 

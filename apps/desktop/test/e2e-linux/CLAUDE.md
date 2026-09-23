@@ -31,11 +31,12 @@ pnpm test:e2e:linux:vnc                # VNC mode with hot reload (pnpm dev)
   remove it and every test fails at setup with `Executable doesn't exist`.
 - **Two Playwright-on-26.04 workarounds must stay in sync on every Playwright bump** (26.04 is newer than Playwright's
   platform registry knows): the `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE` arch tag in `entrypoint.sh`, and the chromium
-  runtime libs apt-installed in `Dockerfile.base` (❌ never `--with-deps`: DETAILS). A local arm64 run masks amd64-only breaks: reproduce override changes under `--platform linux/amd64`.
-- **Fixture readiness is always actively probed** (`probe_smb_ports`, `probe_server_stack`): Docker's `running`
-  doesn't mean the port is bound. ❌ Never a `sleep`. DETAILS § "SMB E2E networking".
-- **The E2E container sits on every fixture stack's network** (one `--network` each) and dials servers by service
-  name. ❌ Never `compose down` a stack here: each is leased. DETAILS § "Server E2E networking".
+  runtime libs apt-installed in `Dockerfile.base` (❌ never `--with-deps`: DETAILS). A local arm64 run masks amd64-only
+  breaks: reproduce override changes under `--platform linux/amd64`.
+- **Fixture readiness is always actively probed** (`probe_smb_ports`, `probe_server_stack`): Docker's `running` doesn't
+  mean the port is bound. ❌ Never a `sleep`. DETAILS § "SMB E2E networking".
+- **The E2E container sits on every fixture stack's network** (one `--network` each) and dials servers by service name.
+  ❌ Never `compose down` a stack here: each is leased. DETAILS § "Server E2E networking".
 - **Volume name gotcha**: root is "Root" on Linux, "Macintosh HD" on macOS. Tests that emit `mcp-volume-select` to
   switch to a local volume use `LOCAL_VOLUME_NAME` constants (`smb.spec.ts`, `mtp.spec.ts`).
 - **`mcp-volume-select` listener exists only on the file explorer route (`/`), not `/settings`.** A `beforeEach` must

@@ -182,7 +182,10 @@ describe('previewSchemeInput: what the box says under it', () => {
 describe('actOnSchemeInput: what the jump does', () => {
   it('reports a place as a directory, so the caller navigates the way it always has', async () => {
     expect(
-      await actOnSchemeInput({ kind: 'place', path: APP_ROOT, label: 'Naspolya' }, { onSmbHandOff: () => {}, onConnected: () => {} }),
+      await actOnSchemeInput(
+        { kind: 'place', path: APP_ROOT, label: 'Naspolya' },
+        { onSmbHandOff: () => {}, onConnected: () => {} },
+      ),
     ).toEqual({
       kind: 'directory',
       path: APP_ROOT,
@@ -191,7 +194,10 @@ describe('actOnSchemeInput: what the jump does', () => {
   })
 
   it('opens the sheet on the address, and answers that it handed over', async () => {
-    const acting = actOnSchemeInput({ kind: 'add', address: 'https://cloud.example.com' }, { onSmbHandOff: () => {}, onConnected: () => {} })
+    const acting = actOnSchemeInput(
+      { kind: 'add', address: 'https://cloud.example.com' },
+      { onSmbHandOff: () => {}, onConnected: () => {} },
+    )
     for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
       await new Promise((resolve) => setTimeout(resolve, 0))
     }

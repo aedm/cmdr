@@ -22,9 +22,9 @@ verification cost (the two teeth)". The measurement spikes are in `docs/notes/re
 - **Impact**: Decides whether item 2 is ever built. "The guard alone was the whole fix" is a live answer.
 - **Solution**: Run the SQL census from the reconcile `DETAILS.md` section above on a real machine (2026-07-21: 29
   directories at ≥ 10,000 children, all lower bounds), read the guard's own counters (`verifyDeclinedDirs`,
-  `verifyTruncatedDirs` on `cmdr://indexing?volume=<id>`), and observe cold-start time, first-scan time, and search-index
-  RAM attributable to those directories. ❌ Don't build the `huge_dirs_seen` walker counter the original plan asked
-  for: it reads zero on an established machine, and the census answers the same question with no code.
+  `verifyTruncatedDirs` on `cmdr://indexing?volume=<id>`), and observe cold-start time, first-scan time, and
+  search-index RAM attributable to those directories. ❌ Don't build the `huge_dirs_seen` walker counter the original
+  plan asked for: it reads zero on an established machine, and the census answers the same question with no code.
 - **Size**: S. Not blocked. Ends in a David decision: build item 2 or close it.
 
 ## 2. Seal pathological high-churn subtrees: keep the aggregate, drop the per-file tail
@@ -79,14 +79,14 @@ unresolvable seal row must be loud and fail-safe, ❌ never "recompute this dir 
 `compute_partial_aggregates_sql`'s silent-skip idiom; here a skip is destructive). The path fallback is resolved with
 `resolve_path_under(conn, ROOT_ID, path)` in the volume's `IndexPathSpace`.
 
-**The size cut** (measured over 6,681,172 files, 2,373 GB): ≥ 64 KB keeps 99% of bytes in 7% of rows; ≥ 1 MB would
-drop 130 GB of visible truth. On pathological subtrees the 10,000 CAP binds, not the threshold, so most of a sealed
-subtree's bytes can sit in collapsed files and drift applies to the bulk of the aggregate. Sealing indexed rows is one
+**The size cut** (measured over 6,681,172 files, 2,373 GB): ≥ 64 KB keeps 99% of bytes in 7% of rows; ≥ 1 MB would drop
+130 GB of visible truth. On pathological subtrees the 10,000 CAP binds, not the threshold, so most of a sealed subtree's
+bytes can sit in collapsed files and drift applies to the bulk of the aggregate. Sealing indexed rows is one
 `DELETE … NOT IN (top 10,000)`; scanning an already-sealed subtree needs a bounded min-heap that buffers writes to the
 end of the walk (and a shared heap across the parallel walk means hot-path contention).
 
-**Where to seal**: the highest node whose subtree is uniformly churny (for `something/cache/{hex}/{hex}/{hex}.tmp`,
-seal `cache`, never `something`). ⚠️ Churn share ALONE over-climbs on real data: it picked `~/Library/Containers` for
+**Where to seal**: the highest node whose subtree is uniformly churny (for `something/cache/{hex}/{hex}/{hex}.tmp`, seal
+`cache`, never `something`). ⚠️ Churn share ALONE over-climbs on real data: it picked `~/Library/Containers` for
 `fetch_temp` and `~/Library/Caches` for the WebKit cache, because the siblings happened to be quiet. Combine churn share
 with a content ratio (entries and/or bytes below the candidate vs. below its parent). Hard stops, belt-and-braces only:
 `~`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/Pictures`, `~/Library/Containers`, `~/Library/Caches`, any volume
@@ -95,13 +95,13 @@ root, plus a Linux counterpart or an explicit macOS-only note. `pick_seal_root`:
 **First scan, no seed list (settled)**: provisionally seal on SIZE at scan time; only churn confirms. A quiet 60k-file
 photo library gets provisionally sealed, goes quiet, and unseals (~1.5× one subtree scan). No hardcoded path list: it
 would hide classifier failures on the two cases we understand, and it contradicts the "the OS churn signal
-self-identifies busy subtrees" principle. Classification is fast: `fetch_temp` separated within 10 s, `target` within
-31 s.
+self-identifies busy subtrees" principle. Classification is fast: `fetch_temp` separated within 10 s, `target` within 31
+s.
 
 **Drift and re-anchor**: deletes of collapsed files resolve to nothing, so the aggregate inflates monotonically on
 exactly the churny dirs (DriveFS renames are delete+create pairs). The re-anchor is the primary correctness mechanism,
-and it's a streaming `readdir` + sum with zero DB reads or writer messages. Measured (`reanchor-cost-spike.md`): 96–181 s
-wall for 1.44M entries, flat 128 KiB, about a quarter of the verification pass it replaces. Conditions: cadence per
+and it's a streaming `readdir` + sum with zero DB reads or writer messages. Measured (`reanchor-cost-spike.md`): 96–181
+s wall for 1.44M entries, flat 128 KiB, about a quarter of the verification pass it replaces. Conditions: cadence per
 directory from its own walk cost (1.9 µs/entry at 100k, 80 µs at 1.43M); split into a cheap count pass (~17× cheaper,
 hourly) and a byte pass (every 6–12 h); cap the walk and degrade to the approximate state when over budget.
 `file_count_delta` drifts too, which matters for `expected_totals`. Unseal with hysteresis (seal fast, unseal slow,
@@ -120,8 +120,8 @@ photo library unseals; hard stops never selected); clock-injected seal/unseal st
 credit, deletes drift and the re-anchor corrects them; sealing leaves every ancestor byte-identical, is idempotent,
 survives a writer restart, passes `check_db_consistency`; a full rescan or `local_reconcile` doesn't resurrect rows.
 
-**Also update**: the `indexing` MCP surface, `docs/tooling/logging.md` and `index-query` (row count no longer matches the
-aggregate, which reads as corruption), `docs/architecture.md`, and `enrichment.rs`'s integer-keyed batch path.
+**Also update**: the `indexing` MCP surface, `docs/tooling/logging.md` and `index-query` (row count no longer matches
+the aggregate, which reads as corruption), `docs/architecture.md`, and `enrichment.rs`'s integer-keyed batch path.
 
 **Out of scope**: SMB/MTP (verification is root-only), a settings UI (Decision 5), replacing the existing throttles.
 
@@ -145,10 +145,11 @@ aggregate, which reads as corruption), `docs/architecture.md`, and `enrichment.r
   found by search, and nothing in the UI says so.
 - **Impact**: Without it, sealing silently lies in two places the user trusts: folder sizes and search results.
 - **Solution**: A distinct third size state threaded through `DirStats`, `FileEntry`, the specta bindings,
-  `full-list-utils.ts`, and `sorting.rs::known_dir_size`. ❌ Don't reuse the `recursive_size_pending` hourglass: it means
-  "writes in flight right now", and a sealed folder would show a forever-spinning hourglass. Search disclosure needs a
-  new field or a redesign: `uncovered_scopes` is populated per scope path and only when the whole volume is unindexed,
-  so an unscoped root search yields nothing for a sealed subtree inside root. New strings need `@key` descriptions and a
-  `bindings.ts` regeneration. Tests: component tier plus an IPC-contract test on the new `DirStats` field; no E2E (the
-  Playwright lane can't produce a sealed folder without a dev-only seal hook).
-- **Size**: M. **Blocked** on item 2 (the backend's approximate state, including `per_source_contribution`, lands there).
+  `full-list-utils.ts`, and `sorting.rs::known_dir_size`. ❌ Don't reuse the `recursive_size_pending` hourglass: it
+  means "writes in flight right now", and a sealed folder would show a forever-spinning hourglass. Search disclosure
+  needs a new field or a redesign: `uncovered_scopes` is populated per scope path and only when the whole volume is
+  unindexed, so an unscoped root search yields nothing for a sealed subtree inside root. New strings need `@key`
+  descriptions and a `bindings.ts` regeneration. Tests: component tier plus an IPC-contract test on the new `DirStats`
+  field; no E2E (the Playwright lane can't produce a sealed folder without a dev-only seal hook).
+- **Size**: M. **Blocked** on item 2 (the backend's approximate state, including `per_source_contribution`, lands
+  there).

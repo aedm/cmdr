@@ -3,7 +3,6 @@ import { createIndexEventHandler } from './index-events'
 import type { ListingIndexSizesChanged } from '$lib/tauri-commands'
 import type { FilePaneAPI } from './types'
 
- 
 describe('createIndexEventHandler', () => {
   function panes() {
     const left = { getListingId: () => 'listing-left', applyIndexSizes: vi.fn() }

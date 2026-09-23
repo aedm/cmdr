@@ -15,9 +15,9 @@ frontend side (gutter, continuation marker, fetch walk, copy sizing) in `apps/de
   places (`toRangeEnds` and `viewerSearchPoll`), and doc comments on both Rust types flag the mismatch.
 - **Impact**: no user-visible bug today. It's a trap for the next change that reads `line` off the wire and feeds it to
   something that wants a physical line number (the gutter, the status bar's "N lines").
-- **Solution**: rename to `SeekTarget::Row`, `RangeEnd::Row { row, offset }`, and `SearchMatch.row`; keep `RangeEnd::Eof`
-  as is. Regenerate `bindings.ts`, then drop the two frontend conversions so `row` travels straight through. Mechanical
-  but wide (about 18 Rust files plus the viewer route), so one commit of its own.
+- **Solution**: rename to `SeekTarget::Row`, `RangeEnd::Row { row, offset }`, and `SearchMatch.row`; keep
+  `RangeEnd::Eof` as is. Regenerate `bindings.ts`, then drop the two frontend conversions so `row` travels straight
+  through. Mechanical but wide (about 18 Rust files plus the viewer route), so one commit of its own.
 - **Size**: S–M. Not blocked.
 
 ## 2. A viewer fetch that times out keeps reading in the background
@@ -29,15 +29,16 @@ frontend side (gutter, continuation marker, fetch walk, copy sizing) in `apps/de
 - **Impact**: small since rows landed. Every read is bounded by `CHUNK_BUDGET_BYTES` (2 MiB) and two segments per row,
   so the orphaned work is sub-second on a healthy disk; before rows it was the 49 s read in `ERR-RQ8BY`. It still
   matters on a slow or wedged network mount, where each orphan holds a blocking-pool thread.
-- **Solution**: thread a per-fetch cancel flag into `get_lines`, checked in the per-row loop the way `read_range` already
-  checks its own, and flip it when the deadline fires.
+- **Solution**: thread a per-fetch cancel flag into `get_lines`, checked in the per-row loop the way `read_range`
+  already checks its own, and flip it when the deadline fires.
 - **Size**: S. Low priority, `someday` unless a report shows orphaned reads piling up on a slow mount.
 
 ## 3. The viewer's generic read error breaks the copy rules
 
-- **Problem**: `viewer.error.readFailed` reads "Failed to read file" (`apps/desktop/src/lib/intl/messages/en/viewer.json`,
-  shown by `routes/viewer/viewer-open-failure.ts` for any open failure without a more specific message). The style
-  guide says error copy never uses "failed" and stays conversational and actionable.
+- **Problem**: `viewer.error.readFailed` reads "Failed to read file"
+  (`apps/desktop/src/lib/intl/messages/en/viewer.json`, shown by `routes/viewer/viewer-open-failure.ts` for any open
+  failure without a more specific message). The style guide says error copy never uses "failed" and stays conversational
+  and actionable.
 - **Impact**: the one catch-all message a user sees when the viewer can't open a file is the least helpful one it has.
 - **Solution**: rewrite it in the house voice (for example "Couldn't read this file. Try opening it again?"), then a
   translator pass over the 10 locales per `docs/guides/i18n-translation.md`.

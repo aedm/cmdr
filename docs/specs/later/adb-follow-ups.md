@@ -9,16 +9,16 @@ in § "Known gaps and follow-ups": `crates/cmdr-adb/DETAILS.md`), the app side
 
 - **Problem**: the backend was built against the in-repo fake ADB server. Part of it has since met a real phone
   (listing, `df`, and `stat` on a Pixel 9 Pro XL with Android 17, 2026-09-10, anchored in `crates/cmdr-adb/DETAILS.md`),
-  but several cases have never been observed on hardware: the authorize prompt, an `unauthorized` → `device`
-  transition mid-session, a 2 GB `RECV` and `SEND`, a `/data` listing on a non-rooted phone (expected:
-  `PermissionDenied` carrying the path), `test -w /` exiting 1, and a drive-index walk of a real `/sdcard` (how long it
-  takes, whether browsing stays responsive under the eight-listing ceiling, and an unplug mid-walk).
+  but several cases have never been observed on hardware: the authorize prompt, an `unauthorized` → `device` transition
+  mid-session, a 2 GB `RECV` and `SEND`, a `/data` listing on a non-rooted phone (expected: `PermissionDenied` carrying
+  the path), `test -w /` exiting 1, and a drive-index walk of a real `/sdcard` (how long it takes, whether browsing
+  stays responsive under the eight-listing ceiling, and an unplug mid-walk).
 - **Impact**: a fake server agrees with whatever the crate believes about framing and state transitions, so the first
-  real device is where a wrong belief surfaces. Until this runs, those paths are "works against our own mock". Item 2
-  is blocked on it.
-- **Solution**: an Android phone with USB debugging on, plugged into the Mac, and the cases above walked by hand.
-  Record what comes back in `crates/cmdr-adb/DETAILS.md` with the usual evidence anchor (device, Android version,
-  date), and drop the "Real-device pass pending" bullet there once it's all observed. The E2E spec
+  real device is where a wrong belief surfaces. Until this runs, those paths are "works against our own mock". Item 2 is
+  blocked on it.
+- **Solution**: an Android phone with USB debugging on, plugged into the Mac, and the cases above walked by hand. Record
+  what comes back in `crates/cmdr-adb/DETAILS.md` with the usual evidence anchor (device, Android version, date), and
+  drop the "Real-device pass pending" bullet there once it's all observed. The E2E spec
   (`apps/desktop/test/e2e-playwright/adb.spec.ts`) cites this item for the by-hand part.
 - **Size**: S, an afternoon with a phone on the desk. Blocked on David and hardware.
 
@@ -43,12 +43,12 @@ in § "Known gaps and follow-ups": `crates/cmdr-adb/DETAILS.md`), the app side
   future device backend would copy.
 - **Solution** (decided): the switcher shows **one row per physical device**, matched by serial, which both sides
   already have (`cmdr_fs::volume::mtp_ids::device_id_for` prefers it; `cmdr_fs::volume::adb_volume_id` is minted from
-  it). MTP is the default face, since it needs no developer mode and covers what most people want; ADB is a mode the
-  row switches into, from its context menu and from a pane-header control, "Show the full filesystem". A phone seen by
-  only one protocol is simply that row, unlabelled. It costs:
-  - A cross-provider identity pass in `apps/desktop/src-tauri/src/device_volumes.rs` that folds entries by serial
-    before handing the listing out. The provider registry is the right seam; what it lacks is two providers answering
-    for one device.
+  it). MTP is the default face, since it needs no developer mode and covers what most people want; ADB is a mode the row
+  switches into, from its context menu and from a pane-header control, "Show the full filesystem". A phone seen by only
+  one protocol is simply that row, unlabelled. It costs:
+  - A cross-provider identity pass in `apps/desktop/src-tauri/src/device_volumes.rs` that folds entries by serial before
+    handing the listing out. The provider registry is the right seam; what it lacks is two providers answering for one
+    device.
   - A per-row active protocol the pane remembers, plus the header control that switches it.
   - Deleting `adb-volume-label.ts`, the `deviceVolumeLabel(volume, volumes)` call in
     `apps/desktop/src/lib/file-explorer/navigation/VolumeChooserMenu.svelte`, and the `adb.volumeLabelWithSuffix` key
@@ -59,4 +59,5 @@ in § "Known gaps and follow-ups": `crates/cmdr-adb/DETAILS.md`), the app side
   `apps/desktop/src/lib/adb/DETAILS.md` § "What each readiness makes of a row" is the rule it inherits), and **the
   pane's connect seam** (`device-connect.svelte.ts` keys on the volume's own id and path, so a merged row still hands
   the pane one of the two ids).
+
 - **Size**: L, the largest single frontend item left from the ADB work. Nothing else waits on it.

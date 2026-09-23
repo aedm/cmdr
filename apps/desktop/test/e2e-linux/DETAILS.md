@@ -144,11 +144,11 @@ stack with holder `$$` (the fixture's `start.sh e2e` is the fallback when the Go
 port on the host, and checks the stack's network exists. `cleanup()` releases both leases; a stack downs only at its
 last holder.
 
-The container joins `sftp-fixture_default` and `webdav-fixture_default` next to SMB's network, with one `--network`
-flag per network on the same `docker run` (Docker 25+, API 1.44). Inside, compose's service name is the host:
-`SFTP_E2E_HOST=sftp-fixture-openssh`, `SFTP_E2E_PORT=22`, `WEBDAV_E2E_HOST=webdav-fixture-apache`,
-`WEBDAV_E2E_PORT=80`, read by `../e2e-shared/server-fixtures.ts` for both what the sheet is told and the side door.
-The side door needs `ssh` and `curl` in the image, and `Dockerfile.base` names both (`openssh-client`, `curl`).
+The container joins `sftp-fixture_default` and `webdav-fixture_default` next to SMB's network, with one `--network` flag
+per network on the same `docker run` (Docker 25+, API 1.44). Inside, compose's service name is the host:
+`SFTP_E2E_HOST=sftp-fixture-openssh`, `SFTP_E2E_PORT=22`, `WEBDAV_E2E_HOST=webdav-fixture-apache`, `WEBDAV_E2E_PORT=80`,
+read by `../e2e-shared/server-fixtures.ts` for both what the sheet is told and the side door. The side door needs `ssh`
+and `curl` in the image, and `Dockerfile.base` names both (`openssh-client`, `curl`).
 
 ## webkit2gtk caret bug (why the base is `ubuntu:26.04`)
 

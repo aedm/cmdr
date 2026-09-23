@@ -29,8 +29,8 @@ analytics event). Two items are open; both are judgment calls, and neither block
   (`menu/menu_handlers.rs`, the `tag-color:` arm) writes the tags to disk and then calls `apply_tags_to_listing` with an
   empty `MenuState.context.tags_listing_id`, which finds nothing to refresh. The dots appear only on the next navigation
   into the containing directory. A normal pane passes its listing id and refreshes in place.
-- **Impact**: low to medium. Someone tagging from search results sees nothing happen and may tag again, which toggles the
-  tag back off.
+- **Impact**: low to medium. Someone tagging from search results sees nothing happen and may tag again, which toggles
+  the tag back off.
 - **Solution**: two shapes. (a) Give the search-results snapshot its own cache identity so `apply_tags_to_listing` can
   patch it, which would also serve sort-by-tag or filter-by-tag if those ever land. (b) Add a second refresh path that
   patches the results view directly from the toggle's returned per-path tag sets. (b) is smaller.

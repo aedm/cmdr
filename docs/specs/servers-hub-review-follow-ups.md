@@ -66,8 +66,8 @@ alone.
 - **Problem**: `servers.paneState.hostKeyChangedHint` tells the user to "Disconnect, then open it again to check the
   fingerprint", which is two manual steps.
 - **Impact**: the one moment the app most wants the user to look at a fingerprint is the one it makes hardest.
-- **Solution**: a "Look at the key" button on that pane state that opens the host-key sheet directly. It must do what
-  it says (the servers module's "no inert affordance" rule), so it opens the sheet, never "trusts" anything.
+- **Solution**: a "Look at the key" button on that pane state that opens the host-key sheet directly. It must do what it
+  says (the servers module's "no inert affordance" rule), so it opens the sheet, never "trusts" anything.
 - **Size**: M, about half a day: sheet plumbing plus copy (English here; translations by the translator agent).
 
 ## 7. An unreachable server is named by its hostname, not the name the user gave it
@@ -91,8 +91,8 @@ alone.
 - **Problem**: `crates/cmdr-webdav/src/volume/paths.rs::normalize` duplicates the one in
   `crates/cmdr-fs/src/volume/remote_paths.rs`, kept because `root_remote_path` needs it before a volume exists.
 - **Impact**: two copies that can drift on `..` handling.
-- **Solution**: call the exported `cmdr_fs::volume::remote_paths::normalize_remote_path` (or export the private one)
-  and delete the copy.
+- **Solution**: call the exported `cmdr_fs::volume::remote_paths::normalize_remote_path` (or export the private one) and
+  delete the copy.
 - **Size**: S, under an hour. Clear win.
 
 ## 10. The connection-tooltips test claims a compile-time guarantee it doesn't have
@@ -110,8 +110,8 @@ alone.
   under one name as the MTP and ADB halves of one phone.
 - **Impact**: two Pixel 7s on MTP alone suppress the "turn on USB debugging" hint for both, though neither has USB
   debugging on.
-- **Solution**: pair by serial through the volume path. Related: `later/adb-follow-ups.md` § 3 (one row per phone)
-  would fold the twins by serial anyway, and may make this hint's twin check moot.
+- **Solution**: pair by serial through the volume path. Related: `later/adb-follow-ups.md` § 3 (one row per phone) would
+  fold the twins by serial anyway, and may make this hint's twin check moot.
 - **Size**: S, under an hour. Clear win.
 
 ## 12. A tautological test on `SecretOffer`
@@ -137,8 +137,8 @@ alone.
   - `settings.json` `settings.summary.servers`: "you have trusted" should be "you've trusted".
   - `settings.json` `settings.behavior.serversPinHintSeen.label`: "Long Network group hint shown" is unparseable; it
     never renders in the UI but does surface in settings search.
-  - `fileExplorer.json` `fileExplorer.navigation.pinRefusedToast`: "where {name} shows" should be "where {name}
-    appears" (Hungarian already says it that way).
+  - `fileExplorer.json` `fileExplorer.navigation.pinRefusedToast`: "where {name} shows" should be "where {name} appears"
+    (Hungarian already says it that way).
   - `fileExplorer.navigation.disconnectBusyTooltip`, `adb.disconnectBusyTooltip`, and the older
     `fileExplorer.navigation.ejectBusyTooltip`: "Can't disconnect while operations are in progress on this
     server/device" reads as backend register and lacks the terminal period every other new tooltip has.

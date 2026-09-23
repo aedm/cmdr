@@ -106,8 +106,8 @@ Edges that behave as they did before the setting existed, on purpose:
   Rust reports `opened`. The user picked it.
 - **TextEdit picked through "Choose an app…"** (a product call, left as is): it canonicalizes to `com.apple.TextEdit`,
   which isn't `system`, so the row shows "System default (TextEdit)" and a second "TextEdit" row. Pinning survives a
-  later change of the system default; folding a pick that equals the default back into `system` would drop the
-  lookalike row.
+  later change of the system default; folding a pick that equals the default back into `system` would drop the lookalike
+  row.
 
 ## Testing
 

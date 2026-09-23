@@ -13,10 +13,10 @@ left is one by-hand pass in the real app.
 - **Impact**: the risky paths are the ones touching real data: editing and deleting real files under `.git/`, and
   deleting a whole repo on a non-boot volume, which before the routing left `.git/` behind half-deleted.
 - **Solution**: David, in a running app: (1) browse each of the six categories (`branches/`, `tags/`, `commits/`,
-  `stash/`, `worktrees/`, `submodules/`) in a repo's `.git/`; (2) copy a file out of a branch tree to another volume
-  (a real cross-device copy) and check the executable bit survives; (3) edit `.git/config` in place, then rename and
-  delete a real file under `.git/`; (4) delete a whole repo folder, on the boot disk and on an external one; (5) toggle
-  the portal off and on with a `.git/` pane open, and with a pane standing inside `.git/branches/`; (6) open a linked
+  `stash/`, `worktrees/`, `submodules/`) in a repo's `.git/`; (2) copy a file out of a branch tree to another volume (a
+  real cross-device copy) and check the executable bit survives; (3) edit `.git/config` in place, then rename and delete
+  a real file under `.git/`; (4) delete a whole repo folder, on the boot disk and on an external one; (5) toggle the
+  portal off and on with a `.git/` pane open, and with a pane standing inside `.git/branches/`; (6) open a linked
   worktree's `.git`: the categories below it answer, and the landing listing doesn't (by design,
   `crates/cmdr-git/DETAILS.md` § "Linked worktrees"). File a bug per failure.
 - **Size**: S, about half an hour of David's time. Blocked on David.

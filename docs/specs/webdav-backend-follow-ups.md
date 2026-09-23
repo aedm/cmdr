@@ -30,12 +30,12 @@ What's open is below; each item stands alone.
 - **Problem**: RFC 4918 PUT is single-shot, and Nextcloud's reverse-proxy defaults cut a request at a few hundred MB.
 - **Impact**: copying a large file (a video, a disk image) to a typical Nextcloud fails partway, after the user waited
   for most of it.
-- **Solution**: detect Nextcloud once per connect (the `OC-` response headers or a `/status.php` probe) and route
-  writes above a threshold through Nextcloud's chunking API (`remote.php/dav/uploads/<user>/<id>`: MKCOL a staging
-  collection, PUT numbered chunks, MOVE the collection's `.file` to the destination) instead of the staged PUT+MOVE.
-  The staged write already ends in a MOVE, so the assembly step is the same last line.
-- **Size**: M, about two days. The container it needs exists: `webdav-fixture-nextcloud`, in its own stack mode
-  outside the default lane (`apps/desktop/test/webdav-servers/README.md` § "The Nextcloud server").
+- **Solution**: detect Nextcloud once per connect (the `OC-` response headers or a `/status.php` probe) and route writes
+  above a threshold through Nextcloud's chunking API (`remote.php/dav/uploads/<user>/<id>`: MKCOL a staging collection,
+  PUT numbered chunks, MOVE the collection's `.file` to the destination) instead of the staged PUT+MOVE. The staged
+  write already ends in a MOVE, so the assembly step is the same last line.
+- **Size**: M, about two days. The container it needs exists: `webdav-fixture-nextcloud`, in its own stack mode outside
+  the default lane (`apps/desktop/test/webdav-servers/README.md` § "The Nextcloud server").
 
 ## 3. A by-hand pass against a Synology and a Nextcloud behind nginx + php-fpm
 
@@ -53,8 +53,8 @@ What's open is below; each item stands alone.
 
 ## 4. The collection's self entry behind a proxy that rewrites hrefs
 
-- **Problem**: `query.rs` leaves the collection's own row out of a PROPFIND listing by comparing its href with the
-  base path. A reverse proxy that rewrites hrefs would make that comparison miss.
+- **Problem**: `query.rs` leaves the collection's own row out of a PROPFIND listing by comparing its href with the base
+  path. A reverse proxy that rewrites hrefs would make that comparison miss.
 - **Impact**: low, but visible: a phantom child folder named after the directory itself, which opens into itself.
 - **Solution**: test against a proxied Nextcloud (an nginx in front of `webdav-fixture-nextcloud` with a path prefix)
   and, if it shows, match the self entry on something the rewrite preserves.
@@ -64,10 +64,10 @@ What's open is below; each item stands alone.
 
 - **Problem**: the shared `cmdr_fs::volume::mkdir_all::create_directory_all` (used by both `cmdr-webdav` and
   `cmdr-sftp`) treats `AlreadyExists` on an ancestor as "it's there, carry on". On WebDAV, MKCOL answers 405 for ANY
-  occupied name, so a FILE sitting where an ancestor folder should be passes as a folder, and the failure surfaces
-  later as the leaf's `NotFound`.
-- **Impact**: low. The user gets a confusing "not found" for a folder they asked to create instead of a clear "a file
-  is in the way". No data risk.
+  occupied name, so a FILE sitting where an ancestor folder should be passes as a folder, and the failure surfaces later
+  as the leaf's `NotFound`.
+- **Impact**: low. The user gets a confusing "not found" for a folder they asked to create instead of a clear "a file is
+  in the way". No data risk.
 - **Solution**: on `AlreadyExists` for an ancestor (and for the leaf, which answers `AlreadyExisted` the same way), stat
   the name and refuse with a typed error when it isn't a directory. Check whether SFTP has the same blind spot while
   there.

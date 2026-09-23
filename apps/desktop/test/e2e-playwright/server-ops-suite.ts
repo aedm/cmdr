@@ -158,9 +158,7 @@ export function defineServerOpsSuite(protocol: ServerProtocol): void {
       await dismissAllToasts(tauriPage)
     }
 
-    test('a wrong password is refused in the sheet, which stays open, and nothing is saved', async ({
-      tauriPage,
-    }) => {
+    test('a wrong password is refused in the sheet, which stays open, and nothing is saved', async ({ tauriPage }) => {
       await forgetServer(tauriPage, fixture)
 
       const round = await addServerThroughSheet(tauriPage, fixture, dir, 'not-the-password')
@@ -183,9 +181,7 @@ export function defineServerOpsSuite(protocol: ServerProtocol): void {
       await expect
         .poll(async () => (await paneLocation('left')).volumeId, { timeout: waitBudget(15000) })
         .toBe(volumeId)
-      await expect
-        .poll(async () => paneLists(tauriPage, 'left', LANDMARK), { timeout: waitBudget(15000) })
-        .toBeTruthy()
+      await expect.poll(async () => paneLists(tauriPage, 'left', LANDMARK), { timeout: waitBudget(15000) }).toBeTruthy()
     })
 
     test('copies a file to the server and back, byte for byte', async ({ tauriPage }) => {
@@ -399,7 +395,9 @@ export function defineServerOpsSuite(protocol: ServerProtocol): void {
           .poll(async () => (await paneLocation('right')).volumeId, { timeout: waitBudget(15000) })
           .not.toBe(volumeId)
         expect((await paneLocation('right')).path.startsWith(`${protocol}://`)).toBe(false)
-        await expect.poll(async () => registeredVolumeFor(tauriPage, fixture), { timeout: waitBudget(10000) }).toBeNull()
+        await expect
+          .poll(async () => registeredVolumeFor(tauriPage, fixture), { timeout: waitBudget(10000) })
+          .toBeNull()
         expect(await savedServerFor(tauriPage, fixture), 'Disconnect drops the session, not the server').not.toBeNull()
       } finally {
         // The app's half of this suite's teardown (see the `afterAll`).

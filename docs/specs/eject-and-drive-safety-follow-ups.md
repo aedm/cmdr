@@ -39,21 +39,22 @@ What's left is one manual QA pass, one copy decision, and three deferred designs
   terminal names the terminal APP (responsibility is inherited). "Something is still using this drive" means either
   nothing was nameable or every holder came back `Unclassified`; the `eject` log line tells them apart. ❗ A `warn`
   saying Cmdr itself held the drive is a bug, not a copy issue.
+
 - **Size**: S (about an hour of David's time, plus fixes for whatever it finds).
 - **Blocked on**: nothing. Needs David and real hardware; an agent can't run it.
 
 ## 2. Words for a refused eject whose holders are all unclassified
 
-- **Problem**: when every holder the scan named is `HolderKind::Unclassified` (the holder budget ran out, or a
-  signature wouldn't read), the toast falls through to the generic `errors.eject.unmountRefused` ("Something is still
-  using this drive"), exactly like a scan that named nobody. The names and pids ARE on the wire in `HolderScan`.
+- **Problem**: when every holder the scan named is `HolderKind::Unclassified` (the holder budget ran out, or a signature
+  wouldn't read), the toast falls through to the generic `errors.eject.unmountRefused` ("Something is still using this
+  drive"), exactly like a scan that named nobody. The names and pids ARE on the wire in `HolderScan`.
 - **Impact**: a person gets no hint where a hint exists. Rare in practice (the budget is 1.5 s and most holders
   classify), but it's the least helpful sentence in the set.
 - **Solution**: a product decision first. Options: (a) keep today's fallback; (b) a new key along the lines of "Cmdr
   couldn't tell which app, but {count} processes are using this drive"; (c) name the executables anyway ("{names} are
-  still using this drive"), accepting that an executable name can be cryptic (`mds_stores`). Whatever is picked lands
-  in `wordUnmountRefusal` (`apps/desktop/src/lib/file-explorer/navigation/eject-error-messages.ts`) as a new arm before
-  the fallback, with an `@key` description, a translator pass for the ten locales, and a test case in
+  still using this drive"), accepting that an executable name can be cryptic (`mds_stores`). Whatever is picked lands in
+  `wordUnmountRefusal` (`apps/desktop/src/lib/file-explorer/navigation/eject-error-messages.ts`) as a new arm before the
+  fallback, with an `@key` description, a translator pass for the ten locales, and a test case in
   `eject-error-messages.test.ts`. ❌ Never word `Unclassified` as an app or a tool, and ❌ never say the drive is free
   unless the scan is `Complete` with nobody named.
 - **Size**: S.
@@ -62,17 +63,16 @@ What's left is one manual QA pass, one copy decision, and three deferred designs
 ## 3. Per-disk DiskArbitration sessions for the unmount approver
 
 - **Problem**: the approver runs one DA session on one serial queue, and DA times each approval ask from when it QUEUED
-  it (10 s), so asks queued behind each other share one time-based chain with a 7 s stop budget
-  (`volumes/DETAILS.md` § "The unmount approver"). When several indexed drives are ejected together and that budget
-  runs out, the later asks dissent with their stops detached. On a non-force request that's an honest refusal; under
-  force (`diskutil unmount force`, `hdiutil detach -force`) DA ignores the dissent and unmounts under a live FSEvents
-  watcher.
+  it (10 s), so asks queued behind each other share one time-based chain with a 7 s stop budget (`volumes/DETAILS.md` §
+  "The unmount approver"). When several indexed drives are ejected together and that budget runs out, the later asks
+  dissent with their stops detached. On a non-force request that's an honest refusal; under force
+  (`diskutil unmount force`, `hdiutil detach -force`) DA ignores the dissent and unmounts under a live FSEvents watcher.
 - **Impact**: the FSKit wedge exposure (kernel panic on macOS 26, observed 2026-07-15) remains for a multi-drive FORCE
   eject. The delete gates and the rebuild marker protect the index rows; nothing protects the kernel.
-- **Solution**: one DA session per physical disk, each with a match dictionary for its own disk (created on
-  `Appeared`, released on `Disappeared`), so one disk's slow stop never spends another disk's DA window. Keep the
-  shared-deadline logic per session. Check first whether AppKit's own DA session filters by disk (unverified; it
-  decides whether a slow `WillUnmount` observer anywhere delays other disks too): evidence and method in
+- **Solution**: one DA session per physical disk, each with a match dictionary for its own disk (created on `Appeared`,
+  released on `Disappeared`), so one disk's slow stop never spends another disk's DA window. Keep the shared-deadline
+  logic per session. Check first whether AppKit's own DA session filters by disk (unverified; it decides whether a slow
+  `WillUnmount` observer anywhere delays other disks too): evidence and method in
   `docs/notes/diskarbitration-unmount-evidence-2026-09.md` § "`NSWorkspaceWillUnmountNotification`".
 - **Size**: L.
 - **Blocked on**: a trigger. Revisit when a log shows an ask answered past its chain deadline under force, or a wedge
@@ -81,23 +81,23 @@ What's left is one manual QA pass, one copy decision, and three deferred designs
 ## 4. Eject through DiskArbitration directly (the DA teardown swap)
 
 - **Problem**: Cmdr's own eject tears a disk down with `diskutil eject`, which reports a refusal as stderr text and a
-  nonzero exit. The holder scan (`proc_listpidspath`) sees same-uid processes only, so a root-owned holder (`backupd`,
-  a system daemon) leaves a refusal that names nobody. And "unmounted but not powered down" can't be told apart from a
+  nonzero exit. The holder scan (`proc_listpidspath`) sees same-uid processes only, so a root-owned holder (`backupd`, a
+  system daemon) leaves a refusal that names nobody. And "unmounted but not powered down" can't be told apart from a
   clean eject, so it's a silent `Ok` (`file_system/volume/DETAILS.md` § "Eject").
 - **Impact**: some refusals say "Something is still using this drive" when DA itself knows the dissenter's pid, and a
   drive left powered on reads as ejected.
 - **Solution**: replace `diskutil eject` in the per-disk flight with DA calls on the flight's own session and serial
-  queue: `DADiskUnmount(container, Whole)` for each synthesized APFS container, then `DADiskUnmount(physical_whole,
-  Whole)` (a dissent stops the attempt), then a fresh mount-table gate (anything still listed → still mounted, never
-  eject), then `DADiskEject(physical_whole)`. Map statuses typed, never by string: `0x0000C010` (EBUSY) and
-  `0xF8DA0002` → busy, `0xF8DA0007` not mounted, `0xF8DA0006` not found, `0xF8DA0008` not permitted, `0xF8DA0009` not
-  privileged; a dissent carries `DADissenterGetProcessID` (through `dlsym`), which sees root holders too. A failed
-  `DADiskEject` after every volume left the table becomes a typed `UnmountedNotPoweredDown` (its wire mapping is a
-  David decision). Bridge each request with a boxed `oneshot::Sender` reclaimed exactly once by the callback, awaited
-  under a deadline, with `catch_unwind` in the callback; a daemon restart drops a request with no callback, which leaks
-  one box and answers `TimedOut`. The retry loop (`settle_with_retries`) becomes generic over the outcome. The full
-  earlier design, with the status table and the settle rules per stage, is in git: `docs/specs/eject-diskarbitration-plan.md`
-  at `959670562`, § "The DA teardown (M5)" and § "Statuses".
+  queue: `DADiskUnmount(container, Whole)` for each synthesized APFS container, then
+  `DADiskUnmount(physical_whole, Whole)` (a dissent stops the attempt), then a fresh mount-table gate (anything still
+  listed → still mounted, never eject), then `DADiskEject(physical_whole)`. Map statuses typed, never by string:
+  `0x0000C010` (EBUSY) and `0xF8DA0002` → busy, `0xF8DA0007` not mounted, `0xF8DA0006` not found, `0xF8DA0008` not
+  permitted, `0xF8DA0009` not privileged; a dissent carries `DADissenterGetProcessID` (through `dlsym`), which sees root
+  holders too. A failed `DADiskEject` after every volume left the table becomes a typed `UnmountedNotPoweredDown` (its
+  wire mapping is a David decision). Bridge each request with a boxed `oneshot::Sender` reclaimed exactly once by the
+  callback, awaited under a deadline, with `catch_unwind` in the callback; a daemon restart drops a request with no
+  callback, which leaks one box and answers `TimedOut`. The retry loop (`settle_with_retries`) becomes generic over the
+  outcome. The full earlier design, with the status table and the settle rules per stage, is in git:
+  `docs/specs/eject-diskarbitration-plan.md` at `959670562`, § "The DA teardown (M5)" and § "Statuses".
 - **Size**: L.
 - **Blocked on**: a trigger. Revisit when the eject `warn` lines show refusals with no nameable holder often enough to
   matter, or a report shows `diskutil` answering a partial unmount the fail-closed check can't classify, or someone
@@ -113,9 +113,8 @@ What's left is one manual QA pass, one copy decision, and three deferred designs
   quits. Correctness is covered: the delete gates refuse deletes from a gone drive and the persisted rebuild marker
   routes the next start to a rebuild. The cost is resources and log noise, not data.
 - **Solution**: on the Linux watcher's unmount path, stop a `LocalExternal` volume's index through the `drive_release`
-  gate, never resumed, the way macOS's `DidUnmount` cleanup does
-  (`apps/desktop/src-tauri/src/volumes/watcher.rs`, `handle_volume_unmounted` → `stop_local_external_index_off_main`).
-  Optionally
-  a udisks2 D-Bus hook for a pre-unmount stop, which would be Linux's closest analogue to the approver.
+  gate, never resumed, the way macOS's `DidUnmount` cleanup does (`apps/desktop/src-tauri/src/volumes/watcher.rs`,
+  `handle_volume_unmounted` → `stop_local_external_index_off_main`). Optionally a udisks2 D-Bus hook for a pre-unmount
+  stop, which would be Linux's closest analogue to the approver.
 - **Size**: M.
 - **Blocked on**: Linux builds shipping (`docs/specs/later/linux-builds-plan.md`).

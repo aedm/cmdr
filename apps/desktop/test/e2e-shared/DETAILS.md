@@ -51,8 +51,8 @@ spec's `left/`.
 
 ## Who writes the port files
 
-The Rust side writes `mcp.port` after `bind()` via tempfile + fsync + rename; the wrapper writes `tauri-mcp.port`
-BEFORE Tauri launches (the plugin has no public bound-port accessor).
+The Rust side writes `mcp.port` after `bind()` via tempfile + fsync + rename; the wrapper writes `tauri-mcp.port` BEFORE
+Tauri launches (the plugin has no public bound-port accessor).
 
 ## Decisions
 

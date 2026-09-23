@@ -211,9 +211,9 @@ sources: DiskArbitration-535.0.10.
 - **`hdiutil detach -force` is not a simulation**: it asks (§ "Approval coverage").
 - **Raw `umount` is the unmount-without-request shape**: `DidUnmount` with no `WillUnmount` and no ask, and the media
   stays.
-- **Unverified by measurement: a MOUNTED volume vanishing** (a real pulled cable). The source reading in § "DiskArbitration:
-  statuses, timing, and the unmount flow" says the daemon's own force unmount skips approval and no eject approval is sent. Not run: killing
-  the helper under a mounted filesystem is a new kernel-level risk.
+- **Unverified by measurement: a MOUNTED volume vanishing** (a real pulled cable). The source reading in §
+  "DiskArbitration: statuses, timing, and the unmount flow" says the daemon's own force unmount skips approval and no
+  eject approval is sent. Not run: killing the helper under a mounted filesystem is a new kernel-level risk.
 
 ### Refused-unmount settle signal
 

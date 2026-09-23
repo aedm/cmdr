@@ -643,11 +643,11 @@ depends on: (1) a test must NEVER `INDEX_REGISTRY.clear()` (it wipes every concu
 ## Maintenance: vacuum and WAL checkpoint (`maintenance.rs`)
 
 Free pages are reclaimed both inline after `TruncateData` and on a 30 s background timer that sends `IncrementalVacuum`
-plus `WalCheckpoint`. The vacuum handler uses a tiered cap (`pick_vacuum_cap`): skip when freelist < 1,000, a
-2,000-page cap up to 20,000, a 20,000-page cap above — tiny steady-state lock holds while draining real backlog in tens
-of minutes. The WAL checkpoint handler runs `PRAGMA wal_checkpoint(TRUNCATE)`; the scanner fires an explicit
-`WalCheckpoint` after `ComputeAllAggregates` so the GB-scale post-scan WAL spike trims immediately. The schema/pragma
-side (WAL mode, page cache, `wal_autocheckpoint`, `journal_size_limit`) lives in `../store/DETAILS.md`.
+plus `WalCheckpoint`. The vacuum handler uses a tiered cap (`pick_vacuum_cap`): skip when freelist < 1,000, a 2,000-page
+cap up to 20,000, a 20,000-page cap above — tiny steady-state lock holds while draining real backlog in tens of minutes.
+The WAL checkpoint handler runs `PRAGMA wal_checkpoint(TRUNCATE)`; the scanner fires an explicit `WalCheckpoint` after
+`ComputeAllAggregates` so the GB-scale post-scan WAL spike trims immediately. The schema/pragma side (WAL mode, page
+cache, `wal_autocheckpoint`, `journal_size_limit`) lives in `../store/DETAILS.md`.
 
 **Gotcha — row-yielding pragmas need per-row stepping, not `execute_batch`.** `PRAGMA incremental_vacuum(N)` compiles to
 a loop that frees ONE page per `sqlite3_step()`, yielding a row after each; `execute_batch` steps a statement exactly
@@ -666,8 +666,8 @@ machinery. **Revisit only with data**: a long session whose file stays bloated w
 Diagnose first (log the writer's `BEGIN IMMEDIATE` / `COMMIT` to see whether it idles inside a transaction, and probe an
 external `wal_checkpoint(TRUNCATE)` for blocked frames), then pick (1) make the pinning connection release its snapshot
 between operations, if one connection holds it, or (2) a brief idle-time barrier that drains in-flight
-`ReadPool::with_conn` calls, checkpoints, and vacuums, if it's many overlapping short reads. ❌ A startup `VACUUM` is the
-wrong tool: it adds seconds to launch, and the same readers would block it mid-session.
+`ReadPool::with_conn` calls, checkpoints, and vacuums, if it's many overlapping short reads. ❌ A startup `VACUUM` is
+the wrong tool: it adds seconds to launch, and the same readers would block it mid-session.
 
 **Gotcha — a checkpoint can't run inside a transaction, so the tick defers it.** `PRAGMA wal_checkpoint(TRUNCATE)` fails
 with `SQLITE_LOCKED` whenever a transaction is open. A journal replay wraps its entire run in one `BeginTransaction`, so

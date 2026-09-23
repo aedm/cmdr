@@ -2,8 +2,8 @@
 
 **Status: not started**, re-derived from the tree on 2026-09-23. `.github/workflows/release.yml` still builds three
 macOS targets and nothing else, and `apps/website/src/lib/release.ts` still exports only `dmgUrls` / `dmgSizes`. One
-Milestone 1 item DID land separately and is marked below. The public roadmap (`apps/website/src/lib/roadmap.ts`) puts "Add
-Windows and true Linux support" at "(next year)", so nothing here is scheduled.
+Milestone 1 item DID land separately and is marked below. The public roadmap (`apps/website/src/lib/roadmap.ts`) puts
+"Add Windows and true Linux support" at "(next year)", so nothing here is scheduled.
 
 ## Context
 
@@ -18,9 +18,9 @@ Building for Linux and supporting Linux are different jobs, and this plan only c
 advertises a build with known functional gaps, recorded in `docs/notes/linux-gaps-2026-08-10.md`: **the live file
 watcher never starts** (one unreadable directory anywhere under the root aborts the whole recursive inotify watch, which
 is the common case, not an edge case), the `Cmd+` menu accelerators print as Super chords, and the English catalog
-carries hundreds of macOS-specific strings ("your Mac", `⌘`, "Finder"). Closing those is a prerequisite for advertising Linux,
-and they are Milestone 0 below. ❗ Milestone 0 gates Milestone 2 (the website's download button), not Milestone 1:
-publishing artifacts a self-builder can find is fine while the gaps are open, since that is what the roadmap already
+carries hundreds of macOS-specific strings ("your Mac", `⌘`, "Finder"). Closing those is a prerequisite for advertising
+Linux, and they are Milestone 0 below. ❗ Milestone 0 gates Milestone 2 (the website's download button), not Milestone
+1: publishing artifacts a self-builder can find is fine while the gaps are open, since that is what the roadmap already
 promises with "Linux in alpha (self-build for now)".
 
 **Goal:** When a Linux user visits getcmdr.com, they see a Linux download button (AppImage by default, .deb as
@@ -347,8 +347,8 @@ three has been scoped.
 - [ ] Rebind the menu accelerators. `Cmd+` bindings print as Super chords, which is not what a Linux user's muscle
       memory or their window manager expects.
 - [ ] Sweep the macOS-specific strings in the English catalog ("your Mac", `⌘`, "Finder"; about 600 lines match
-      `⌘|Finder|macOS|your Mac` under `messages/en/`, 2026-09-23). ⚠️ This is user-facing copy in 12 more locales, so it needs David's review and a re-translation pass, which makes it the long-lead item of
-      the three.
+      `⌘|Finder|macOS|your Mac` under `messages/en/`, 2026-09-23). ⚠️ This is user-facing copy in 12 more locales, so it
+      needs David's review and a re-translation pass, which makes it the long-lead item of the three.
 
 Evidence and the per-item detail: `docs/notes/linux-gaps-2026-08-10.md`.
 
