@@ -146,5 +146,21 @@
   "main.oldWebkit.quit": "Thoát",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
+  },
+  "main.escapeFullScreenHint.message": "Phím Escape vừa đưa Cmdr ra khỏi chế độ toàn màn hình.",
+  "@main.escapeFullScreenHint.message": {
+    "sourceHash": "f7b4c55"
+  },
+  "main.escapeFullScreenHint.switchLabel": "Thoát toàn màn hình bằng phím Escape",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "sourceHash": "f98be5e"
+  },
+  "main.escapeFullScreenHint.settingsLine": "Bạn cũng có thể thay đổi mục này trong <settingsLink>Cài đặt > Nâng cao</settingsLink>.",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "sourceHash": "a7fc48a"
+  },
+  "main.escapeFullScreenHint.onceNote": "Bạn sẽ chỉ thấy thông báo này một lần.",
+  "@main.escapeFullScreenHint.onceNote": {
+    "sourceHash": "c76cb6c"
   }
 }

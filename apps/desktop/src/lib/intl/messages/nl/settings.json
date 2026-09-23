@@ -1279,6 +1279,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Schermvullende weergave uitschakelen met Escape",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "Als het hoofdvenster in schermvullende weergave staat, haalt Escape het daaruit. In een dialoogvenster of menu sluit Escape alleen dat.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Melding over Escape en schermvullende weergave getoond",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Intern: houdt bij of de eenmalige melding over Escape die de schermvullende weergave verlaat al is getoond. Verborgen in de interface.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Resetvertraging voor typ-om-te-springen",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

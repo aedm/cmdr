@@ -3823,3 +3823,20 @@ woordenlijst staan en op de catalogus.
 - **Ask Cmdr chats → `Ask Cmdr-chats`** · zoals `Ask Cmdr-instellingen` in `ai.cloudConsent.askCmdr.memory` · `high`.
 - `settings.askCmdr.enabled.label` is nu alleen ‘Ask Cmdr’ (de productnaam op de schakelaar) en heeft een
   `sameAsSourceJustification`.
+
+## Escape en de schermvullende weergave (`main.escapeFullScreenHint.*`, `settings.advanced.exitFullScreenOnEscape*`, 2026-09-23)
+
+Een eenmalige informatiemelding nadat Escape het hoofdvenster uit macOS' schermvullende weergave haalde, plus de
+schakelaar bij Instellingen > Geavanceerd. Gemijnd in `_ignored/i18n/nl/macOS/`, 2026-09-23.
+
+- **full screen → `schermvullende weergave`** (zelfstandig naamwoord), bijvoeglijk `schermvullend` · macOS AppKit
+  (`Enter Full Screen`→`Schakel schermvullende weergave in`, `Exit Full Screen`→`Schakel schermvullende weergave uit`,
+  `Full Screen`→`Schermvullend`, `Make Window Full Screen`→`Maak venster schermvullend`) · `high`.
+- **Exit full screen on Escape (schakelaar) → `Schermvullende weergave uitschakelen met Escape`** · Apples werkwoord
+  `uitschakelen` voor exit, in de infinitiefvorm die de andere Geavanceerd-schakelaars dragen
+  (`Tijdelijke bestanden van andere apps tonen`). De melding hergebruikt het label byte-identiek · `high`.
+- **Escape (de toets) → `Escape`** · macOS (`Escape`→`Escape`, en in een zin `de Escape-toets`); de korte vorm volgt het
+  Engels, dat de toets kaal noemt · `high`.
+- **took Cmdr out of full screen → `heeft Cmdr uit de schermvullende weergave gehaald`**; in de hulptekst
+  `haalt Escape het daaruit` · gemunt, geen precedent in de stapel · `tentative`.
+- **You'll only see this once → `Je ziet dit maar één keer.`** · `tentative`.

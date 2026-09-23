@@ -3533,3 +3533,19 @@ términos ya documentados en este glosario y en el catálogo.
   (`queryUi.mode.ai.label`) · `tentative`.
 - `settings.askCmdr.enabled.label` ahora es solo “Ask Cmdr” (el nombre del producto en el interruptor) y lleva
   `sameAsSourceJustification`.
+
+### Esc y pantalla completa (`main.escapeFullScreenHint.*` + `settings.advanced.exitFullScreenOnEscape*`; macOS AppKit/Finder, 2026-09-23)
+
+- **full screen → `pantalla completa`**, sin artículo tras `salir de` · macOS `es` (“Salir de pantalla completa”, “Usar
+  pantalla completa”, “Mostrar ventana a pantalla completa”; grep sobre Finder + AppKit + SystemSettings) · `high`.
+  Estar en ese modo es `estar a pantalla completa`, como la ventana de macOS.
+- **Escape (la tecla) → `Esc` / `la tecla Esc`** · macOS AppKit (“la tecla Esc para cerrarlo”) · `high`. `la tecla Esc`
+  cuando abre la frase y hace de sujeto; `Esc` a secas en etiquetas y cuando ya quedó claro. El `ESC` en mayúsculas de
+  `shortcuts.section.pressEscToClear` es el único caso distinto del catálogo.
+- **Exit full screen on Escape (interruptor) → `Salir de pantalla completa con Esc`** · el ítem de menú de macOS (“Salir
+  de pantalla completa”) + `con Esc`; misma cadena en el aviso (`switchLabel`) y en Ajustes (`label`) · `high`.
+- **hint (aviso único, etiqueta interna) → `aviso`** · reafirma `hint → aviso` y el patrón de
+  `settings.advanced.oldMacosNoticeShown.*` (“Aviso de … mostrado”, “Interno: registra si ya se ha mostrado el aviso
+  único …”) · `high`.
+- **“You'll only see this once.” → `Solo verás este aviso una vez.`** · nombra el aviso en lugar de un `esto` ambiguo;
+  sin adjetivos que marquen género · `high`.

@@ -146,5 +146,21 @@
   "main.oldWebkit.quit": "結束",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
+  },
+  "main.escapeFullScreenHint.message": "按 Esc 鍵讓 Cmdr 離開了全螢幕。",
+  "@main.escapeFullScreenHint.message": {
+    "sourceHash": "f7b4c55"
+  },
+  "main.escapeFullScreenHint.switchLabel": "按 Esc 鍵時離開全螢幕",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "sourceHash": "f98be5e"
+  },
+  "main.escapeFullScreenHint.settingsLine": "你也可以到<settingsLink>設定 > 進階</settingsLink>更改這項設定。",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "sourceHash": "a7fc48a"
+  },
+  "main.escapeFullScreenHint.onceNote": "這則提示只會出現這一次。",
+  "@main.escapeFullScreenHint.onceNote": {
+    "sourceHash": "c76cb6c"
   }
 }

@@ -146,5 +146,21 @@
   "main.oldWebkit.quit": "Beenden",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
+  },
+  "main.escapeFullScreenHint.message": "Die esc-Taste hat Cmdr aus dem Vollbildmodus geholt.",
+  "@main.escapeFullScreenHint.message": {
+    "sourceHash": "f7b4c55"
+  },
+  "main.escapeFullScreenHint.switchLabel": "Vollbildmodus mit esc-Taste beenden",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "sourceHash": "f98be5e"
+  },
+  "main.escapeFullScreenHint.settingsLine": "Du kannst das auch unter <settingsLink>Einstellungen > Erweitert</settingsLink> ändern.",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "sourceHash": "a7fc48a"
+  },
+  "main.escapeFullScreenHint.onceNote": "Du siehst diesen Hinweis nur einmal.",
+  "@main.escapeFullScreenHint.onceNote": {
+    "sourceHash": "c76cb6c"
   }
 }

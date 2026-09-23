@@ -146,5 +146,21 @@
   "main.oldWebkit.quit": "Salir",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
+  },
+  "main.escapeFullScreenHint.message": "La tecla Esc sacó a Cmdr de la pantalla completa.",
+  "@main.escapeFullScreenHint.message": {
+    "sourceHash": "f7b4c55"
+  },
+  "main.escapeFullScreenHint.switchLabel": "Salir de pantalla completa con Esc",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "sourceHash": "f98be5e"
+  },
+  "main.escapeFullScreenHint.settingsLine": "También puedes cambiarlo en <settingsLink>Ajustes > Avanzado</settingsLink>.",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "sourceHash": "a7fc48a"
+  },
+  "main.escapeFullScreenHint.onceNote": "Solo verás este aviso una vez.",
+  "@main.escapeFullScreenHint.onceNote": {
+    "sourceHash": "c76cb6c"
   }
 }

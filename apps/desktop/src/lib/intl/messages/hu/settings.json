@@ -1276,6 +1276,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Kilépés a teljes képernyős módból az Escape billentyűvel",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "Ha a főablak teljes képernyős módban van, az Escape billentyű kilépteti belőle. Párbeszédablakban vagy menüben az Escape csak azt zárja be.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Teljes képernyős Escape-értesítés megjelent",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Belső: követi, hogy megjelent-e már az egyszeri értesítés arról, hogy az Escape billentyű kiléptette az ablakot a teljes képernyős módból. Rejtve a felülettől.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Gépeléses ugrás visszaállítási késleltetése",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

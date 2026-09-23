@@ -1277,6 +1277,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Sair da tela cheia com Esc",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "Quando a janela principal está em tela cheia, Esc tira a janela da tela cheia. Em um diálogo ou menu, Esc só fecha esse diálogo ou menu.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Aviso de Esc na tela cheia exibido",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Interno: acompanha se o aviso único sobre o Esc tirar a janela da tela cheia já apareceu. Oculto da interface.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Atraso de reinício do digitar-para-pular",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

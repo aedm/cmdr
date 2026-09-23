@@ -1281,6 +1281,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Quitter le mode plein écran avec Échap",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "Quand la fenêtre principale est en plein écran, Échap l''en fait sortir. Si une boîte de dialogue ou un menu est ouvert, Échap se contente de le fermer.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Astuce « Échap et plein écran » affichée",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Interne : indique si la notification unique signalant qu''Échap a fait quitter le plein écran a déjà été affichée. Masqué dans l''interface.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Délai de réinitialisation du saut par frappe",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

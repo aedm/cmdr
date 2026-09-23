@@ -3452,3 +3452,19 @@ theo `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   `high`
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`, giống hệt tiếng Anh, có `sameAsSourceJustification` (tên sản phẩm, như
   `settings.section.askCmdr`).
+
+## Thoát toàn màn hình bằng phím Escape (`main.escapeFullScreenHint.*`, `settings.advanced.exitFullScreenOnEscape*`)
+
+- **full screen (chế độ cửa sổ của macOS): `toàn màn hình`, thường kèm `chế độ`** · macOS AppKit vi `MenuCommands`
+  (`Exit Full Screen` → `Thoát Toàn màn hình`, `Make Window Full Screen` → `Chuyển cửa sổ sang chế độ toàn màn hình`) và
+  `AccessibilityImageDescriptions` (`thoát toàn màn hình`, chữ thường giữa câu); Microsoft terminology cũng là
+  `toàn màn hình` / `chế độ toàn màn hình`. Viết thường theo sentence case, ❌ không viết hoa `Toàn` như tiêu đề menu
+  của Apple. `high`.
+- **Escape (phím): `Escape`, trong nhãn là `phím Escape`** · macOS AppKit vi `FunctionKeyNames` giữ `Escape` → `Escape`;
+  khuôn `bằng phím <Phím>` theo `settings.fileExplorer.suppressQuickLookHint.label` (`… bằng phím Space`). `high`.
+- **Exit full screen on Escape (nhãn công tắc): `Thoát toàn màn hình bằng phím Escape`** · nhãn trong toast
+  (`main.escapeFullScreenHint.switchLabel`) và trong Cài đặt khớp từng chữ. `high`.
+- **Settings > Advanced (liên kết trong toast): `Cài đặt > Nâng cao`** · giữ `>` như tiếng Anh và như
+  `fileExplorer.quickLookHint.configurable` (`Cài đặt > Phím tắt`); `Nâng cao` = `settings.section.advanced`. `high`.
+- **"You'll only see this once": `Bạn sẽ chỉ thấy thông báo này một lần.`** · `thông báo` cho toast, như thuật ngữ toast
+  → `thông báo nhỏ` đã chốt. `high`.

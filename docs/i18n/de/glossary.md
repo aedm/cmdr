@@ -3339,3 +3339,26 @@ diesem Glossar belegte Begriffe und auf den Katalog.
   `ai.cloudConsent.askCmdr.memory` · `high`.
 - `settings.askCmdr.enabled.label` ist nur noch „Ask Cmdr“ (der Produktname auf dem Schalter) und trägt eine
   `sameAsSourceJustification`.
+
+## Vollbildmodus und esc-Taste (`main.escapeFullScreenHint.*`, `settings.advanced.exitFullScreenOnEscape*`, 2026-09-23)
+
+Der einmalige Hinweis, nachdem die esc-Taste das Hauptfenster aus dem Vollbildmodus geholt hat, plus der passende
+Schalter unter Einstellungen > Erweitert > Eingabe.
+
+- **full screen → `Vollbildmodus`** · macOS AppKit `MenuCommands` („Enter Full Screen“ → „Vollbildmodus“, „Exit Full
+  Screen“ → „Vollbildmodus aus“, „Make Window Full Screen“ → „Vollbildmodus für Fenster“), Finder `MenuBar` `300944`,
+  `LocalizableMerged` `FV20`/`FV21` (Referenz-Stapel `de/macOS/`) · `high`. Das kurze „Vollbild“ nimmt Apple nur für die
+  Fenster-Kachel; im Satz steht der Modus.
+- **Escape (die Taste) → `esc-Taste`**, klein wie Apples Tastenkappe · macOS AppKit `FunctionKeyNames` („Escape“ →
+  „esc-Taste“) · `high`. Abgrenzung: `shortcuts.section.pressEscToClear` schreibt „ESC“ (älterer Wert, nicht angefasst).
+- **Exit full screen on Escape (Schalter) → `Vollbildmodus mit esc-Taste beenden`** · Label ohne Artikel wie „Mit Server
+  verbinden“; `beenden` folgt Apples „Vollbildmodus aus“ als Aktion · `high`. Toast-Schalter und Settings-Schalter
+  tragen denselben `sourceHash`, also denselben Wert.
+- **„X took Cmdr out of full screen“ → `… hat Cmdr aus dem Vollbildmodus geholt`** · umgangssprachlich und ohne Schuld,
+  wie das Englische; die Settings-Beschreibung nimmt dasselbe Verb („holt das Hauptfenster aus dem Vollbildmodus“) ·
+  `high`.
+- **„in a dialog or menu … only closes that“ → `schließt sie weiterhin nur den Dialog oder das Menü`** · `Dialog` (m)
+  und `Menü` (n) vertragen kein gemeinsames Pronomen (style.md § Zwei Nomen mit verschiedenem Genus), also das Nomen
+  wiederholen · `high`.
+- **„You'll only see this once.“ → `Du siehst diesen Hinweis nur einmal.`** · `Hinweis` ist Cmdrs Toast (Zeile „toast“
+  oben) · `high`.

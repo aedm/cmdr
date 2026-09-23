@@ -529,6 +529,12 @@ macOS Finder zh-CN + the two-pane/explorer file-manager family (Total/Double Com
   word in this pile, and AppKit keeps key names Latin in `zh-CN` (`FunctionKeyNames.json`: `Escape` → `Escape`, `Tab` →
   `Tab`, verified on macOS 26.6.2, 2026-08-30), so `Enter` stays verbatim and `回车键` is wrong. Every call site now
   says `按 Enter 键` + verb (`按 Enter 键搜索` ×2, `按 Enter 键筛选`, `按 Enter 键时的行为` ×4). · `confirmed`
+- **the Escape key** · `Esc 键`, phrased `按 Esc 键` + verb · same shape as `按 Enter 键`; the Mac keycap reads `esc`
+  and `Esc 键` is the everyday Chinese name, while AppKit's spelled-out `Escape` reads as a foreign word mid-sentence.
+  Settled for the Escape full-screen switch (`按 Esc 键退出全屏幕`). `shortcuts.section.pressEscToClear` still writes
+  `ESC` (all caps), a candidate to align. · `high`
+- **full screen (macOS window mode)** · `全屏幕` · macOS zh-CN (`Enter Full Screen` → 进入全屏幕, `Exit Full Screen`
+  →退出全屏幕, `Full Screen Tile` → 全屏幕平铺; AppKit, reference pile) · `confirmed`
 - **read-only archive** · `只读压缩文件` · settled `只读` (glossary) + `压缩文件`; mirrors `只读宗卷` / `只读设备`
   pattern. · `high`
 - **archive_edit (queue arm, "Editing archive" = changing a zip's entries)** · `正在编辑压缩文件` · `正在[动词]` sibling

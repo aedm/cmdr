@@ -1275,6 +1275,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "按 Esc 键退出全屏幕",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "主窗口处于全屏幕时，按 Esc 键会让它退出全屏幕。在对话框或菜单中按 Esc 键只会关闭它们。",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "已显示 Esc 键全屏幕提示",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "内部：记录那条关于按 Esc 键退出全屏幕的一次性提示是否已显示。对界面隐藏。",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "输入跳转重置延迟",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

@@ -146,5 +146,21 @@
   "main.oldWebkit.quit": "Kilépés",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
+  },
+  "main.escapeFullScreenHint.message": "Az Escape billentyű kiléptette a Cmdrt a teljes képernyős módból.",
+  "@main.escapeFullScreenHint.message": {
+    "sourceHash": "f7b4c55"
+  },
+  "main.escapeFullScreenHint.switchLabel": "Kilépés a teljes képernyős módból az Escape billentyűvel",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "sourceHash": "f98be5e"
+  },
+  "main.escapeFullScreenHint.settingsLine": "Ezt itt is módosíthatod: <settingsLink>Beállítások > Speciális</settingsLink>.",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "sourceHash": "a7fc48a"
+  },
+  "main.escapeFullScreenHint.onceNote": "Ezt csak egyszer látod.",
+  "@main.escapeFullScreenHint.onceNote": {
+    "sourceHash": "c76cb6c"
   }
 }

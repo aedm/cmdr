@@ -3394,3 +3394,16 @@ de `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   (o termo de `queryUi.bar.aria.ai`), `Seleção por descrição` · `high`
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`, idêntico ao inglês com `sameAsSourceJustification` (nome do produto,
   como `settings.section.askCmdr`).
+
+### Esc e tela cheia (`main.escapeFullScreenHint.*` + `settings.advanced.exitFullScreenOnEscape*`, 2026-09-23)
+
+- Escape (a tecla) · **Esc** · macOS pt-BR, AppKit `FunctionKeyNames.loctable` (`Escape` → `Esc`, lido no macOS 27.0
+  build 26A428, 2026-09-23); o catálogo já tinha `ESC` em `shortcuts.section.pressEscToClear`, mas o nome da Apple em
+  caixa normal é `Esc`. Na frase de resultado, `A tecla Esc` dá sujeito à oração · confirmed
+- full screen · **tela cheia** · macOS pt-BR Finder (`FV20` `Sair da Tela Cheia`, `FV21` `Entrar em Tela Cheia`), em
+  sentence case; a Microsoft oscila entre `tela cheia` e `tela inteira`, e o Finder decide · confirmed
+- Exit full screen on Escape · **Sair da tela cheia com Esc** · o verbo e o objeto vêm do item de menu da Apple
+  (`Sair da Tela Cheia`); o rótulo do aviso (`switchLabel`) e o de Ajustes são byte a byte iguais · high
+- Settings > Advanced · **Ajustes > Avançado** · nomes já fixados acima (§ seções de Ajustes) · high
+- You''ll only see this once · **Este aviso só aparece uma vez** · o aviso vira o sujeito, o que dispensa o `você` e o
+  futuro; `aviso` é a palavra que o catálogo já usa para notificações curtas · high

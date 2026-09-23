@@ -3851,3 +3851,25 @@ chaque choix s'appuie sur des termes déjà documentés dans ce glossaire et sur
   `high`.
 - `settings.askCmdr.enabled.label` n'est plus que « Ask Cmdr » (le nom du produit sur l'interrupteur) et porte une
   `sameAsSourceJustification`.
+
+## Échap et le plein écran (`main.escapeFullScreenHint.*`, `settings.advanced.exitFullScreenOnEscape*`, 2026-09-23)
+
+La notification unique qui suit la sortie du plein écran par Échap, et l'interrupteur correspondant dans Réglages >
+Avancé > Saisie.
+
+- **full screen (le mode fenêtre de macOS) → `mode plein écran`, ou `plein écran` quand la phrase le permet** · macOS
+  Finder (`FV20` « Quitter le mode plein écran », `FV21` / MenuBar `300944.title` « Activer le mode plein écran »,
+  `fr/macOS/Finder/`, tas de références relevé le 2026-09-23) · `high`.
+- **Exit full screen on Escape (interrupteur) → `Quitter le mode plein écran avec Échap`** · reprend mot pour mot la
+  commande Finder « Quitter le mode plein écran » ; le libellé de la notification (`switchLabel`) et celui des réglages
+  sont identiques · `high`.
+- **Escape (la touche) → `Échap`, `la touche Échap` en première mention** · terminologie Microsoft FRA (`ESC key` → «
+  touche Échap », id 51841/51844) ; Total Commander écrit `<Échap>` · `high`. Le raccourci
+  `shortcuts.section.pressEscToClear` écrit la capsule « ÉCHAP » en capitales ; en prose on garde `Échap`.
+- **You'll only see this once → `Vous ne verrez ce message qu'une seule fois.`** · `tentative` (pas de source, formule
+  idiomatique).
+- **dialog or menu (reprise par un pronom) →
+  `Si une boîte de dialogue ou un menu est ouvert, Échap se contente de le fermer.`** · accord au masculin (règle du «
+  ou » avec un nom masculin), ce qui évite « celui-ci/celle-ci » · `high`.
+- Le drapeau interne suit le moule `oldMacosNoticeShown` et l'astuce `doubleClickOnPaneNotificationSeen` : « Astuce «
+  Échap et plein écran » affichée » (hint → astuce, féminin).

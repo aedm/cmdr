@@ -3364,3 +3364,15 @@ aldrig lova mer än Cmdr gör. Belägg från det installerade macOS (referenssam
 - Settings > AI · **Inställningar > AI**, med `>` som syskonen i `ai.translateError.*`.
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`, identiskt med engelskan och med `sameAsSourceJustification`
   (produktnamn, som `settings.section.askCmdr`).
+
+## Escape lämnar helskärmsläge (2026-09-23; `main.escapeFullScreenHint.*` + `settings.advanced.exitFullScreenOnEscape*`)
+
+- **full screen: `helskärmsläge`**, "exit full screen" → **`lämna helskärmsläge`** · macOS sv AppKit `MenuCommands`
+  (`Exit Full Screen` = "Lämna helskärmsläge", `Enter Full Screen` = "Helskärmsläge") och Finder `FV20`/`FV21`, samma
+  par. Bestämd form när det är tillståndet man lämnar: "tog Cmdr ur helskärmsläget". `high`.
+- **Escape (tangenten): `Escape`**, naket, som katalogens `Retur` · macOS sv AppKit `FunctionKeyNames` behåller
+  "Escape"; AppKits löptext säger "escape-tangenten". `shortcuts.section.pressEscToClear` skriver `ESC` (tangentkappan);
+  i hela meningar använder vi Apples `Escape`. `high`.
+- Etiketten `Lämna helskärmsläge med Escape` delas ordagrant av `main.escapeFullScreenHint.switchLabel` och
+  `settings.advanced.exitFullScreenOnEscape.label`: skriv om båda eller ingen.
+- Settings > Advanced · **Inställningar > Avancerat**, med `>` som `fileExplorer.quickLookHint.configurable`.

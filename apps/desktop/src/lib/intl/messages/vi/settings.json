@@ -1273,6 +1273,22 @@
   "@settings.advanced.dragThreshold.description": {
     "sourceHash": "7704bfa"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Thoát toàn màn hình bằng phím Escape",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "sourceHash": "f98be5e"
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "Khi cửa sổ chính đang ở chế độ toàn màn hình, nhấn Escape sẽ thoát khỏi chế độ đó. Nhấn Escape trong hộp thoại hoặc menu thì chỉ đóng hộp thoại hoặc menu đó.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "sourceHash": "a862b71"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Đã hiển thị gợi ý thoát toàn màn hình bằng Escape",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "sourceHash": "583b08f"
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Nội bộ: theo dõi việc thông báo nhỏ một lần về phím Escape đưa cửa sổ ra khỏi chế độ toàn màn hình đã hiển thị hay chưa. Ẩn khỏi giao diện.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "sourceHash": "76ba76c"
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Trễ đặt lại của gõ-để-nhảy",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "sourceHash": "16ac047"

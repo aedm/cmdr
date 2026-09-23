@@ -346,6 +346,11 @@ key-match, 2026-08-29).
 - **page** · `頁面`, `第 {n} 頁` · AP Preview (TW = HK) · `high`. ❗ Never `分頁` for a document page: MS's second
   `page` hit renders it that way, and `分頁` is this catalog's word for a TAB.
 - **full screen** · `全螢幕` · AP AppKit (TW = HK), MS · `high`
+- **exit full screen** · `離開全螢幕` · AP AppKit `Exit Full Screen` / `NSExitFullScreenTemplate` (TW = HK) · `high`.
+  The Escape switch (`settings.advanced.exitFullScreenOnEscape.label` = `main.escapeFullScreenHint.switchLabel`) is
+  `按 Esc 鍵時離開全螢幕`; the two keys must stay identical.
+- **Escape (the key)** · `Esc 鍵` in prose (`按 Esc 鍵…`) · AP keyboard names `Escape` → `Esc` in the zh-TW pile; the
+  catalog already says `按 Esc 鍵清除` (`shortcuts.section.pressEscToClear`) · `high`
 - **encoding** · `編碼` · AP TextEdit (`純文字編碼：`, TW = HK), TC, DC · `high`
 - **Western (the encoding group)** · `西歐` · **unattested**: Apple doesn't localize the encoding-family headings in any
   bundle on the system, and MS's `Western` entry is `復古色調`, a photo filter · `tentative`

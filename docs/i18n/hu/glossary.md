@@ -3794,3 +3794,26 @@ kifejezésekre és a katalógusra épül.
 - **Ask Cmdr chats → `Ask Cmdr-csevegések`** · többszavas tulajdonnév + köznév, kötőjellel · `high`.
 - A `settings.askCmdr.enabled.label` most már csak „Ask Cmdr” (a terméknév a kapcsolón),
   `sameAsSourceJustification`-nel.
+
+## Kilépés a teljes képernyőből az Escape billentyűvel (`main.escapeFullScreenHint.*`, `settings.advanced.exitFullScreenOnEscape*`, 2026-09-23)
+
+Nyolc kulcs: az egyszeri értesítés, amely azután jelenik meg, hogy az Escape kiléptette a főablakot a macOS teljes
+képernyős módjából, és a hozzá tartozó kapcsoló a Speciális beállításokban.
+
+- **full screen (a macOS ablakmódja) → `teljes képernyős mód`**, a kilépés `Kilépés a teljes képernyős módból` · mac
+  (AppKit `MenuCommands` „Exit Full Screen” = „Kilépés a teljes képernyős módból”, `NSExitFullScreenTemplate`; Finder
+  `FV20`), ms (`teljes képernyős mód`) · high. ❌ NEM puszta `teljes képernyő`: a macOS azt az „Entire Screen” és a menü
+  „Full Screen” főnevére használja, az ablak ÁLLAPOTÁRA a `-s mód` alakot.
+- **Escape (a billentyű) → `Escape billentyű`, alaptaggal** · mac (AppKit `Accessibility`: „az Escape billentyűvel pedig
+  bezárhatja a választót”), a katalógus alaptagos billentyűmintája (`fileExplorer.quickLookHint.enterOpens`: „Az
+  <enter></enter> billentyűvel”) · high. Az alaptag azért kell, mert az `Escape` végi `e` néma, a ragja kötőjeles lenne
+  (`Escape-pel`); egy második említés a mondatban állhat puszta `az Escape` alakban. A
+  `shortcuts.section.pressEscToClear` `ESC-et` alakja az angol „ESC” rövidítést követi, nem ütközik.
+- **„Exit full screen on Escape” (kapcsoló, a buborékban és a beállításokban azonos) →
+  `Kilépés a teljes képernyős módból az Escape billentyűvel`** · a macOS menüparancsa szó szerint + az alaptagos
+  billentyű · high. Hosszú (57 karakter az angol 26-tal szemben); ha kilógna a buborékból, ez a rövidítendő.
+- **„Settings > Advanced” (link) → `Beállítások > Speciális`**, a `fileExplorer.quickLookHint.configurable` `itt:`
+  keretében, hogy a link ne kapjon ragot · high.
+- **„You'll only see this once.” → `Ezt csak egyszer látod.`** · tegező, rövid · high.
+- **`…HintShown` belső kulcsok** a `settings.advanced.oldMacosNoticeShown.*` mintáját követik (`… megjelent`,
+  `Belső: követi, hogy …`, `Rejtve a felülettől.`) · high.
