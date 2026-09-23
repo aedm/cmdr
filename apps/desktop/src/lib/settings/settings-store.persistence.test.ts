@@ -155,6 +155,8 @@ describe('sparse settings persistence', () => {
 
     store.resetSetting('developer.mcpEnabled')
     expect(store.isExplicitlySet('developer.mcpEnabled')).toBe(false)
+    // Settle the debounced save now: left pending, it fires into a LATER test's disk.
+    await store.forceSave()
   })
 
   it('(d) reset deletes the key so it resolves back to default', async () => {
