@@ -18,7 +18,7 @@ Another app's "Show in Finder" lands in a Cmdr pane instead. One OS switch turns
 
 - **`mod.rs` is NOT `#[cfg(target_os = "macos")]`; all three submodules are.** `RevealDelivered` has to resolve on
   every platform for `ipc.rs`'s `collect_events!`, which can't cfg-gate inline (same reason `SmbFellBackToOsMount` sits
-  in `network/mod.rs`). ❌ Don't move anything else up into `mod.rs`: on Linux it would have no callers, and `-D unused`
+  in `network/events.rs`). ❌ Don't move anything else up into `mod.rs`: on Linux it would have no callers, and `-D unused`
   turns that into a broken build rather than a warning. ❌ `mod.rs`'s docs name the three submodules in plain backticks,
   never as `[`delivery`]` intra-doc links: those resolve on macOS and break the Linux `rustdoc` job, which is a red CI
   your local `pnpm check rustdoc` can't see.

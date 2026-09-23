@@ -43,7 +43,7 @@ In the app, because the answer is no:
   reading app settings.
 - **The upgrade passes** (`network/smb_upgrade.rs`) — they decide when to replace a kernel mount with a direct session,
   which needs the volume registry, the index, and analytics.
-- **Every event and every word** (`network/mod.rs`'s `VolumeConnectionChanged`, `SmbFellBackToOsMount`,
+- **Every event and every word** (`network/events.rs`'s `VolumeConnectionChanged`, `SmbFellBackToOsMount`,
   `os_mount_notice.rs`) — `tauri_specta` payloads and the once-per-server ledger behind them.
 
 The full app-side story stays in `apps/desktop/src-tauri/src/network/DETAILS.md`; this document doesn't restate it.

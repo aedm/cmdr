@@ -130,7 +130,7 @@ and the diff proves it.
 - **A platform-gated or generic emit site needs its struct in an always-compiled, concrete module.** `collect_events!`
   can't `#[cfg]`-gate inline and needs a concrete struct with a static `NAME`. So `#[cfg(target_os = "…")]` emit sites
   (MTP, SMB, text-size, accent-color, drag) keep their payload structs in always-compiled modules (`connection/mod.rs`,
-  `network/mod.rs`, `system_events.rs`, `volume_broadcast.rs`); the gated site just builds and `.emit()`s. Same for a
+  `network/events.rs`, `system_events.rs`, `volume_broadcast.rs`); the gated site just builds and `.emit()`s. Same for a
   generic payload: monomorphize it to its single instantiation (`VolumesChangedPayload<V>` → concrete `VolumesChanged`).
   One `Event` derive = one wire name, so two events sharing a payload shape need two distinct structs (`VolumeMounted` /
   `VolumeUnmounted`, the two `NetworkHost` wrappers via `#[serde(flatten)]`).

@@ -20,7 +20,7 @@ here:
   work spawns onto. The seam set and what each one replaces: `crates/cmdr-fs/src/volume/host/DETAILS.md`.
 - **The `smb-fell-back-to-os-mount` notice is app-side, both halves.** `network/os_mount_notice.rs` decides whether to
   speak (once per server per run, and only for a caller whose `FallbackNotice` says someone is watching) and emits the event, holding the only `AppHandle` this corner of the app needs. The
-  typed `tauri_specta::Event` structs and the wire `VolumeConnection` enum stay in the always-compiled `network/mod.rs`,
+  typed `tauri_specta::Event` structs and the wire `VolumeConnection` enum stay in the always-compiled `network/events.rs`,
   so `collect_events!` in `ipc.rs` can reference them on EVERY platform; the `smb` module is `#[cfg]`-gated to macOS
   and Linux (as is `mtp/`), and moving a struct in there breaks the Windows build of the event collector.
 - **`volume-connection-changed` is backend-neutral, and SMB is only its first emitter.** Any backend that holds a

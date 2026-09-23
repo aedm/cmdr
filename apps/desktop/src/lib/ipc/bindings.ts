@@ -13323,8 +13323,6 @@ export type SmbDiagnosticsDto = {
  *
  *  Emitted at most once per server per app run (`network::os_mount_notice`), so a
  *  NAS whose password went stale speaks once rather than once per mounted share.
- *  Lives here beside `VolumeConnectionChanged` for the same reason: `collect_events!`
- *  in `ipc.rs` can't cfg-gate inline, so the type has to resolve on every platform.
  */
 export type SmbFellBackToOsMount = {
   /**
@@ -13383,8 +13381,7 @@ export type SmbIndexGateReason =
  *  Emitted when the share's "Use Cmdr's fast direct connection" switch goes off
  *  (`smb_direct_switch`): the notice's button would do exactly what the user just
  *  opted out of. The other two ways a notice goes moot (the share goes direct, or
- *  leaves the list) already ride `volumes-changed`. Lives here for the same
- *  `collect_events!` reason as the two types above it.
+ *  leaves the list) already ride `volumes-changed`.
  */
 export type SmbOsMountNoticeWithdrawn = {
   // The volume the withdrawn notice named, matching its `SmbFellBackToOsMount::volume_id`.
@@ -14654,10 +14651,7 @@ export type VolumeConnection =
  *
  *  Backend-neutral on purpose: SMB is the only emitter today, and the next connecting
  *  backend (FTP, S3, SFTP) reuses this channel instead of adding a parallel one.
- *
- *  Defined here (in the always-compiled `network` module rather than the
- *  macOS/Linux-only SMB backend) so `collect_events!` in `ipc.rs`, which can't cfg-gate
- *  inline, references it on every platform. The backend emit site builds and emits it.
+ *  The backend emit site builds and emits it.
  */
 export type VolumeConnectionChanged = {
   volumeId: string

@@ -40,6 +40,7 @@ of the app build.
 - **Server identity**: `server_identity.rs`: `same_server` equivalence over the names a server goes by (mDNS service name, `.local` hostname, IP), enriched from the discovery state. Used by the mount-path disambiguation and the already-mounted short-circuit so string-shape differences can't split one server into two.
 - **Auth** (platform-agnostic):
   - `keychain.rs`: SMB credential management. Delegates storage to `crate::secrets::store()` (see `secrets/CLAUDE.md` for backend details)
+- **Events**: `events.rs`: every `tauri_specta::Event` payload the module emits (discovery, the host context menu, `volume-connection-changed`, the OS-mount fallback notice) plus the wire enums only they carry, re-exported from `mod.rs`. Always compiled, because `ipc.rs`'s `collect_events!` can't cfg-gate inline and names each one on every platform.
 - **State**: `known_shares.rs`: Connection history in `known-shares.json` (usernames, last auth mode, timestamps), plus the shares switched off Cmdr's direct connection (`direct_connection_opt_outs`).
 
 ## Platform strategy
