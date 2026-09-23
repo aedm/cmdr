@@ -31,16 +31,3 @@ when its work ships (`DETAILS.md` § "Wiping a shipped spec"); what's still open
   [#284](https://github.com/vdavid/cmdr/issues/284)–[#287](https://github.com/vdavid/cmdr/issues/287).
 - `later/dropbox-sync-status-linux.md`: **Cloud badges on Linux, which today are simply absent.** Holds the Dropbox
   socket protocol research and what a Linux arm needs. Issue: [#288](https://github.com/vdavid/cmdr/issues/288).
-
-## Follow-ups not yet fully filed
-
-These still hold items with no GitHub issue yet. Each goes away once its remaining items are filed.
-
-- `cross-cutting-follow-ups.md`
-- `data-safety-hunt-follow-ups.md`
-- `rollback-follow-ups.md`
-- `servers-hub-review-follow-ups.md`
-- `viewer-row-wrap-follow-ups.md`
-- `later/inspect-file-follow-ups.md`
-- `later/indexing/sealed-subtrees-follow-ups.md`
-- `later/warn-triage-follow-ups.md`
