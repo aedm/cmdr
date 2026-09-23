@@ -815,23 +815,22 @@ compound frame = 1 RTT) and `Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOS
 `write_file_compound_exclusive` (`FileCreate`) for `WriteMode::CreateNew`, the same pair as `create_file_writer` /
 `create_file_writer_exclusive` on the streaming path, so every branch of `write_from_stream` (the frame, a staging
 temp's streamed fallback, a too-big write) honors the mode (why the mode matters:
-`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "The single-shot exemption").
-The copy pipeline feeds
-per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take the compound path.
-The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of
-two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s
-and a reconnect clears it), because a bigger compound READ carries the whole file with no progress, queued ahead of
-every listing on the connection (cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download` streams it through
-an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The arithmetic stays in smb2
-so the window and the cut-off share one headroom constant. The numbers sit on `fits_one_compound_read`. The scan pool's
-prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the reads bullet). Falls back cleanly to the
-streaming reader/writer when the hint is missing or the file is too big. Small compound reads return a `Vec<u8>` wrapped
-as a single-chunk `InlineReadStream` so the consumer API stays shaped the same. See
-`docs/notes/phase4-rtt-investigation.md` for the measurement. The WRITE side's condition is also a DATA-SAFETY contract:
-`write_is_single_shot` answers with `fits_one_compound_write` on smb2's `compound_write_limit()`, the fast path takes
-the frame for every size such a promise could cover (`one_frame_write_limit`, § "Copy concurrency and the credit
-window"), and the transfer layer skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend owes
-in return (short sources stay on the compound path, a post-CREATE failure cleans up after itself):
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "The single-shot exemption"). The
+copy pipeline feeds per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take
+the compound path. The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk
+until a download of two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate
+expires after 30 s and a reconnect clears it), because a bigger compound READ carries the whole file with no progress,
+queued ahead of every listing on the connection (cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download`
+streams it through an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The
+arithmetic stays in smb2 so the window and the cut-off share one headroom constant. The numbers sit on
+`fits_one_compound_read`. The scan pool's prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the
+reads bullet). Falls back cleanly to the streaming reader/writer when the hint is missing or the file is too big. Small
+compound reads return a `Vec<u8>` wrapped as a single-chunk `InlineReadStream` so the consumer API stays shaped the
+same. See `docs/notes/phase4-rtt-investigation.md` for the measurement. The WRITE side's condition is also a DATA-SAFETY
+contract: `write_is_single_shot` answers with `fits_one_compound_write` on smb2's `compound_write_limit()`, the fast
+path takes the frame for every size such a promise could cover (`one_frame_write_limit`, § "Copy concurrency and the
+credit window"), and the transfer layer skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend
+owes in return (short sources stay on the compound path, a post-CREATE failure cleans up after itself):
 `write_operations/transfer/DETAILS.md` § "The single-shot exemption".
 
 **Decision**: a streamed read (`open_smb_download_stream`) ends the consumer's stream at its last byte, before the
