@@ -155,6 +155,59 @@ async fn a_look_alike_prompts_about_the_stored_entry() {
     assert_eq!(file_conflict_count(&events.inner), 1, "one prompt, like any clash");
     let conflicts = events.inner.conflicts.lock_ignore_poison();
     assert_eq!(conflicts[0].destination_path, format!("/album/{CAFE_NFC}"));
+    assert!(
+        conflicts[0].destination_is_look_alike,
+        "the prompt says the two names only look the same"
+    );
+}
+
+/// The top-level prompt (the serial driver's pre-check) says so too.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_top_level_look_alike_prompt_says_it_is_one() {
+    let source = volume("Source");
+    put(&source, &format!("/{CAFE_NFD}"), b"SOURCE").await;
+    let dest = volume("Dest");
+    mkdir(&dest, "/dest").await;
+    put(&dest, &format!("/dest/{CAFE_NFC}"), b"THE USER'S FILE").await;
+
+    let (outcome, events, _state) = copy(
+        &source,
+        &[&format!("/{CAFE_NFD}")],
+        &dest,
+        "/dest",
+        ConflictResolution::Stop,
+    )
+    .await;
+
+    assert!(outcome.is_ok(), "{outcome:?}");
+    let conflicts = events.inner.conflicts.lock_ignore_poison();
+    assert_eq!(conflicts.len(), 1);
+    assert_eq!(conflicts[0].destination_path, format!("/dest/{CAFE_NFC}"));
+    assert!(conflicts[0].destination_is_look_alike);
+}
+
+/// A name spelled the same way on both sides is an ordinary clash.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_exact_clash_is_not_called_a_look_alike() {
+    let source = volume("Source");
+    put(&source, &format!("/{CAFE_NFC}"), b"SOURCE").await;
+    let dest = volume("Dest");
+    mkdir(&dest, "/dest").await;
+    put(&dest, &format!("/dest/{CAFE_NFC}"), b"THE USER'S FILE").await;
+
+    let (outcome, events, _state) = copy(
+        &source,
+        &[&format!("/{CAFE_NFC}")],
+        &dest,
+        "/dest",
+        ConflictResolution::Stop,
+    )
+    .await;
+
+    assert!(outcome.is_ok(), "{outcome:?}");
+    let conflicts = events.inner.conflicts.lock_ignore_poison();
+    assert_eq!(conflicts.len(), 1);
+    assert!(!conflicts[0].destination_is_look_alike);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

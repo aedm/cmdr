@@ -631,6 +631,12 @@ identically.
 - **`null` rather than a guess** for a path that can't yield a parent (relative, `~`-rooted). Backend paths are absolute
   or virtual-volume URLs, so that is a bug elsewhere, and the prompt shows the name alone rather than inventing a
   folder.
+- **A look-alike clash says so** (`destinationIsLookAlike`: the destination holds the name in another Unicode
+  spelling, `café` composed vs decomposed). A quiet line under the folder (`lookAlikeHint`) explains that the names
+  look the same but the server spells them differently and that Overwrite replaces the one that's there. The headline
+  is already the stored entry's own spelling, which is the one Overwrite replaces and keeps, so nothing else changes;
+  the incoming spelling prints identically and isn't shown. Backend side:
+  `src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Look-alike names and new-name spelling".
 
 ### Index conversion for ".." entry
 

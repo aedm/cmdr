@@ -135,6 +135,12 @@
                 use:useShortenMiddle={{ text: destinationFolder, preferBreakAt: '/', startRatio: 0.3 }}
             ></p>
         {/if}
+        {#if conflictEvent.destinationIsLookAlike}
+            <!-- The name above is the destination entry's own spelling, the
+                 one Overwrite replaces and keeps. The incoming name prints
+                 identically, so this line is the only sign the two differ. -->
+            <p class="conflict-look-alike">{tString('fileOperations.transferProgress.lookAlikeHint')}</p>
+        {/if}
     </div>
 
     <!-- File comparison: same shape across all variants. Type tags
@@ -328,6 +334,17 @@
         margin: var(--spacing-xxs) 0 0;
         font-size: var(--font-size-sm);
         color: var(--color-text-tertiary);
+        text-align: center;
+    }
+
+    /* Explains a look-alike clash. Secondary, not a warning: nothing extra is
+       at stake, the prompt only needs to say why a matching name is asked
+       about. Narrowed so two short sentences wrap into a readable block. */
+    .conflict-look-alike {
+        margin: var(--spacing-sm) auto 0;
+        max-width: 36em;
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
         text-align: center;
     }
 

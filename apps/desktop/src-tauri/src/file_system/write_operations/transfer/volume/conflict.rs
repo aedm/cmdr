@@ -24,6 +24,7 @@ use super::super::super::conflict::{
     resolution_for_clash,
 };
 use super::super::super::event_sinks::OperationEventSink;
+use super::super::super::look_alike::is_look_alike_clash;
 use super::super::super::state::WriteOperationState;
 use super::super::super::types::{
     ConflictResolution, VolumeCopyConfig, WriteConflictEvent, WriteConflictResolvedEvent, WriteOperationError,
@@ -300,6 +301,7 @@ pub(super) async fn resolve_volume_conflict(
                 size_difference,
                 source_is_directory,
                 destination_is_directory,
+                destination_is_look_alike: is_look_alike_clash(source_path, dest_path),
             });
 
             // Say that the operation has parked on a person, before the prompt

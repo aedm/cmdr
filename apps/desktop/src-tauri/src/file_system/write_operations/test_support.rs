@@ -37,6 +37,7 @@ pub(crate) fn placeholder_conflict(conflict_id: ConflictId) -> WriteConflictEven
         size_difference: Some(1),
         source_is_directory: false,
         destination_is_directory: false,
+        destination_is_look_alike: false,
     }
 }
 

@@ -15402,6 +15402,15 @@ export type WriteConflictEvent = {
    *  `source_is_directory`.
    */
   destinationIsDirectory?: boolean
+  /**
+   *  `true` when the destination entry holds the source's name in another
+   *  Unicode spelling (`café` composed vs decomposed): it looks like the same
+   *  name, but a byte-exact volume stores it as a different one.
+   *  `destination_path` is that entry's own path, so an Overwrite replaces it
+   *  and it keeps its stored spelling. The dialog says so, since nothing on
+   *  screen can show the difference. `look_alike.rs::is_look_alike_clash`.
+   */
+  destinationIsLookAlike?: boolean
 }
 
 /**

@@ -209,6 +209,12 @@ fn pending_conflict_yaml(conflict: &WriteConflictEvent) -> String {
         "      destinationIsNewer: {}\n",
         conflict.destination_is_newer
     ));
+    // The two paths can print identically: the destination holds the name in
+    // another Unicode spelling, and an overwrite replaces THAT entry.
+    yaml.push_str(&format!(
+        "      destinationIsLookAlike: {}\n",
+        conflict.destination_is_look_alike
+    ));
     yaml.push_str(
         "      answerWith: resolve_conflict (operationId + conflictId + resolution skip|overwrite|rename|overwrite_smaller|overwrite_older, optional applyToAll)\n",
     );

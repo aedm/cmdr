@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use super::durability::lookup_indexed_size;
 use super::event_sinks::OperationEventSink;
+use super::look_alike::is_look_alike_clash;
 use super::overwrite::ResolvedDestination;
 use super::state::WriteOperationState;
 use super::types::{
@@ -638,6 +639,7 @@ fn build_conflict_event(
         size_difference,
         source_is_directory,
         destination_is_directory,
+        destination_is_look_alike: is_look_alike_clash(source, dest_path),
     }
 }
 

@@ -1721,6 +1721,7 @@ export type MessageKey =
   | 'fileOperations.transferProgress.existingLabel'
   | 'fileOperations.transferProgress.fileProgressAria'
   | 'fileOperations.transferProgress.foregroundBusyToast'
+  | 'fileOperations.transferProgress.lookAlikeHint'
   | 'fileOperations.transferProgress.newFileLabel'
   | 'fileOperations.transferProgress.newFolderLabel'
   | 'fileOperations.transferProgress.newLabel'

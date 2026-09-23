@@ -15,6 +15,7 @@ use super::super::conflict::{
     ApplyToAll, ClashKind, IncomingItem, answered_resolution_for_clash, apply_to_all_effective, apply_to_all_record,
     resolution_for_clash,
 };
+use super::super::look_alike::is_look_alike_clash;
 use super::super::state::{ConflictResolutionResponse, WriteOperationState};
 use super::super::types::{ConflictResolution, WriteConflictEvent, WriteConflictResolvedEvent};
 use super::engine::PlanError;
@@ -137,6 +138,7 @@ fn prompt_archive_conflict(
         size_difference,
         source_is_directory: false,
         destination_is_directory: is_file_to_folder,
+        destination_is_look_alike: is_look_alike_clash(src_path, &archive_path.join(inner)),
     });
 
     let conflict_id = event.conflict_id;

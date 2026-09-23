@@ -517,6 +517,14 @@ pub struct WriteConflictEvent {
     /// `source_is_directory`.
     #[serde(default)]
     pub destination_is_directory: bool,
+    /// `true` when the destination entry holds the source's name in another
+    /// Unicode spelling (`café` composed vs decomposed): it looks like the same
+    /// name, but a byte-exact volume stores it as a different one.
+    /// `destination_path` is that entry's own path, so an Overwrite replaces it
+    /// and it keeps its stored spelling. The dialog says so, since nothing on
+    /// screen can show the difference. `look_alike.rs::is_look_alike_clash`.
+    #[serde(default)]
+    pub destination_is_look_alike: bool,
 }
 
 /// A Stop-mode clash is over: the operation took an answer for it and carried
@@ -723,6 +731,7 @@ mod write_conflict_event_serde_tests {
             size_difference: source_size.map(|s| 4_096_i64 - s as i64),
             source_is_directory: true,
             destination_is_directory: true,
+            destination_is_look_alike: false,
         }
     }
 

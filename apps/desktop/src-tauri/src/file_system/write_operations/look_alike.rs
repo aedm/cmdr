@@ -55,6 +55,25 @@ pub(crate) fn among<'a>(entries: impl IntoIterator<Item = &'a FileEntry>, name: 
     }
 }
 
+/// Whether a clash between `source` and `destination` is a look-alike: the
+/// destination entry spells the source's name another way.
+///
+/// Read off the two leaves, which IS the landing's own answer: every engine
+/// names a destination after its source, and a look-alike landing hands the
+/// resolver the stored entry's path (`transfer/volume/landing.rs`), so the
+/// leaves differ in form exactly when the landing found a look-alike. Asking
+/// here keeps it one rule for every engine rather than a flag threaded through
+/// each of them.
+pub(crate) fn is_look_alike_clash(source: &Path, destination: &Path) -> bool {
+    match (
+        source.file_name().and_then(|n| n.to_str()),
+        destination.file_name().and_then(|n| n.to_str()),
+    ) {
+        (Some(source), Some(destination)) => differ_only_in_form(source, destination),
+        _ => false,
+    }
+}
+
 /// `name`'s look-alike in `dir` on `volume`, for a caller whose exact lookup of
 /// `dir/name` just answered `NotFound`.
 ///

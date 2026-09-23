@@ -78,3 +78,28 @@ describe('the file the prompt is about', () => {
     expect(target.querySelector('.conflict-folder')).toBeNull()
   })
 })
+
+describe('a clash with a name the destination spells differently', () => {
+  // `café` composed and `café` decomposed print identically, so without a word
+  // the prompt reads as an ordinary clash and nothing says an Overwrite lands
+  // on an entry spelled another way.
+  const HINT =
+    "These names look the same, but the server spells them differently. Overwrite replaces the one that's there."
+
+  it('says the names only look the same, and names the entry that is there', async () => {
+    const target = await mountDialog({
+      ...conflict('/Volumes/share/café.txt'),
+      sourcePath: '/Users/test/café.txt',
+      destinationIsLookAlike: true,
+    })
+    expect(target.querySelector('.conflict-look-alike')?.textContent.trim()).toBe(HINT)
+    // The name on screen is the stored entry's own spelling: the one Overwrite
+    // replaces, and the one that stays.
+    expect(target.querySelector('.conflict-filename')?.textContent.trim()).toBe('café.txt')
+  })
+
+  it('says nothing extra for an ordinary clash', async () => {
+    const target = await mountDialog(conflict('/Volumes/Backup/2026/set-0417/f001'))
+    expect(target.querySelector('.conflict-look-alike')).toBeNull()
+  })
+})

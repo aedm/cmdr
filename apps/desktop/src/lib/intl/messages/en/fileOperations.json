@@ -900,6 +900,11 @@
     "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
   },
 
+  "fileOperations.transferProgress.lookAlikeHint": "These names look the same, but the server spells them differently. Overwrite replaces the one that''s there.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "description": "Quiet note in the conflict step of the copy/move progress dialog, under the name and folder of the item that's in the way. Shows only when the destination (usually a network share) holds an item whose name looks identical to the incoming one but is stored as different characters: for example 'café' written with a single 'é' character versus 'e' followed by a separate accent mark. On screen the two names are indistinguishable, so the note explains why the dialog asks about a name that seems to match. 'these names' means the incoming item's name and the existing item's name. 'the server' is the computer or network drive being copied to. 'spells them differently' means stores them as different character sequences; say it in plain words, not technical terms like Unicode or normalization. 'Overwrite' refers to the dialog's Overwrite button: use the same word as that button's translation (key fileOperations.transferProgress.conflictOverwrite). 'the one that's there' is the existing item, which Overwrite replaces while keeping its current name. Two short sentences. It explains; it isn't a warning (destructive clashes have a separate red warning)."
+  },
+
   "fileOperations.transferProgress.existingFolderLabel": "Existing (folder):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "description": "Row label in the conflict comparison for the item already at the destination, when it is a folder. Keep the trailing colon.",

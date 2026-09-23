@@ -30,11 +30,8 @@ only what David still has to decide; everything durable lives beside the code.
 2. **Review the ambiguity copy** (two stored names match a typed path and neither exactly):
    `errors.listing.ambiguousName.*` (the listing error panel) and `errors.volume.ambiguousName` (the inline line), plus
    their 10 agent translations. The Hungarian inline one reads `a(z) „{path}”`, which is clunky.
-3. **Whether the conflict dialog should say when a clash is a look-alike.** Today it's an ordinary conflict whose
-   destination is the stored entry. Draft if yes: "These names look the same, but the server spells them differently.
-   Overwrite replaces the one that's there." (needs a `lookAlike` flag on `WriteConflictEvent`).
-4. **Case-only twins stay unguarded, on purpose.** `Report.docx` beside `report.docx` on a case-sensitive share still
+3. **Case-only twins stay unguarded, on purpose.** `Report.docx` beside `report.docx` on a case-sensitive share still
    lands as a second entry, as it always has: case is a difference a person can see. Say if that should change.
-5. **Favorites keep the user's spelling.** A restored tab or history entry adopts the stored spelling after its first
+4. **Favorites keep the user's spelling.** A restored tab or history entry adopts the stored spelling after its first
    listing; a favorite doesn't, so a favorite in another form pays one resolve per click (remembered per share until the
    folder changes).

@@ -21,6 +21,7 @@ fn clash(conflict_id: u64, destination_size: Option<u64>) -> WriteConflictEvent 
         size_difference: None,
         source_is_directory: false,
         destination_is_directory: false,
+        destination_is_look_alike: false,
     }
 }
 
@@ -190,6 +191,24 @@ fn an_operation_parked_on_a_clash_says_which_clash_and_how_to_answer_it() {
     assert!(yaml.contains("destination: \"/dst/photos/dsc-1.raw\""), "yaml: {yaml}");
     assert!(yaml.contains("destinationIsNewer: true"), "yaml: {yaml}");
     assert!(yaml.contains("answerWith: resolve_conflict"), "yaml: {yaml}");
+    assert!(yaml.contains("destinationIsLookAlike: false"), "yaml: {yaml}");
+}
+
+#[test]
+fn a_look_alike_clash_says_the_names_only_look_the_same() {
+    // The two paths print identically, so without the flag an agent can't tell
+    // that an overwrite lands on an entry spelled another way.
+    let mut conflict = clash(4, Some(4_096));
+    conflict.source_path = "/src/cafe\u{301}.txt".to_string();
+    conflict.destination_path = "/dst/caf\u{e9}.txt".to_string();
+    conflict.destination_is_look_alike = true;
+    let rows = vec![OperationRow {
+        snapshot: snapshot("op-1", LifecycleStatus::Running),
+        progress: None,
+        pending_conflict: Some(conflict),
+    }];
+    let yaml = build_operations_yaml(&rows, 12_000);
+    assert!(yaml.contains("destinationIsLookAlike: true"), "yaml: {yaml}");
 }
 
 #[test]
