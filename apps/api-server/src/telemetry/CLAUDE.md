@@ -1,8 +1,8 @@
 # Telemetry
 
-Everything the app sends home: `telemetry.ts` (`/crash-report`, `/heartbeat`, `/download`, `/update-check`), the
-`error-report*` quartet (`error-report.ts` routes, `-amend.ts` the `report:{id}` index and amendments, `-intake.ts`
-admission control, `-eviction.ts` capacity), and `feedback.ts`.
+Everything the app sends home: `telemetry.ts` (`/crash-report`, `/download`, `/update-check`), `heartbeat.ts`
+(`/heartbeat` and its event relay), the `error-report*` quartet (`error-report.ts` routes, `-amend.ts` the `report:{id}`
+index and amendments, `-intake.ts` admission control, `-eviction.ts` capacity), and `feedback.ts`.
 
 ## Must-knows
 

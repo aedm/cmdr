@@ -4,6 +4,7 @@ import { licensing } from './licensing/licensing'
 import { admin } from './admin/admin'
 import { funnel } from './admin/funnel'
 import { telemetry } from './telemetry/telemetry'
+import { heartbeat } from './telemetry/heartbeat'
 import { errorReport } from './telemetry/error-report'
 import { errorReportAmend } from './telemetry/error-report-amend'
 import { feedback } from './telemetry/feedback'
@@ -38,6 +39,7 @@ app.route('/', licensing)
 app.route('/', admin)
 app.route('/', funnel)
 app.route('/', telemetry)
+app.route('/', heartbeat)
 app.route('/', likes)
 app.route('/', errorReport)
 app.route('/', errorReportAmend)

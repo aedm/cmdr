@@ -7,8 +7,9 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 ## Files
 
-- **`telemetry.ts`**: routes `/crash-report`, `/heartbeat`, `/update-check/:version`, `/download/:version/:arch`, plus
-  `extractTopFunction`, `validateOptionalEnum` / `validateOptionalPattern`, and the sanitizers.
+- **`telemetry.ts`**: routes `/crash-report`, `/update-check/:version`, `/download/:version/:arch`, plus
+  `extractTopFunction`, `validateOptionalEnum` / `validateOptionalPattern`, `versionPattern`, and the sanitizers.
+- **`heartbeat.ts`**: `POST /heartbeat`.
 - **`error-report.ts`**: `POST /error-report` (multipart upload to R2, the KV index write, presigned Discord
   notification, and an email for hand-written reports).
 - **`error-report-amend.ts`**: `POST /error-report/:id/amend`, plus the `report:{id}` KV index and the amend credential
