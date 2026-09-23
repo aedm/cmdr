@@ -51,10 +51,14 @@ question: `docs/notes/self-move-to-applications-2026-08-25.md`.)
    `docs/tooling/instance-isolation.md`). Whether this mechanism (or another) can cleanly repoint a PROD build's data
    dir without touching the identifier is **the core go/no-go investigation**. HOLE: the author does not know Tauri's
    current capabilities here.
-2. **Plugins write to `app_data_dir()` on their own.** `tauri-plugin-store` (settings) still does; window state no
-   longer does (it's ours, and honors `CMDR_DATA_DIR`). If the remaining ones can't be redirected cleanly (config, API,
-   or acceptable fork), the choice is between a split-brain layout (some files in the old dir, ugly, defeats the point)
-   and abandoning the rename. This is the second half of the go/no-go investigation. HOLE: not verified.
+2. **Plugins write to `app_data_dir()` on their own.** `tauri-plugin-store` (settings, shortcuts, `license.json`)
+   resolves a bare store name against it; window state no longer does (it's ours, and honors `CMDR_DATA_DIR`). Partial
+   evidence the store can follow: for isolated instances the frontend already loads each store by absolute path from
+   `get_isolated_store_path` (`apps/desktop/src-tauri/src/commands/settings.rs`), so the plugin accepts a path outside
+   `app_data_dir()`. Still unverified: the Rust-side `app.store("license.json")` calls in `licensing/` use bare names and
+   would need the same treatment. If some writer can't be redirected cleanly, the choice is between a split-brain layout
+   (some files in the old dir, ugly, defeats the point) and abandoning the rename. This is the second half of the
+   go/no-go investigation.
 3. **Migration for existing installs.** Rename-on-startup (same volume, near-atomic), with partial-failure handling, and
    possibly a transitional symlink old → new kept for a release or two for external readers. Edge cases to design for: a
    crash mid-migration, and Time Machine restores of the old path. **A concurrent second instance is not one of them**:
@@ -105,8 +109,8 @@ Still open, in the order that matters:
 
 1. Can a prod Tauri build's `app_data_dir()` be repointed without changing the identifier, and how? **Core go/no-go**,
    and the one to timebox first.
-2. Can `tauri-plugin-store` be redirected? **Core go/no-go.** Still registered in `lib.rs`
-   (`tauri_plugin_store::Builder`), and settings persist through it. Window state is no longer part of this question:
+2. Can `tauri-plugin-store` be redirected? **Core go/no-go**, but half-answered (§3.2): the frontend stores already take
+   an absolute path in isolated instances. Registered in `tauri_builder.rs` (`tauri_plugin_store::Builder`). Window state is no longer part of this question:
    it's ours (`apps/desktop/src-tauri/src/window_state/`) and resolves through `config::resolved_app_data_dir`.
 3. Does the rename apply on Linux at all? (What Linux uses today is answered in §3.6.)
 4. Symlink compatibility window: needed at all, and for how long?
