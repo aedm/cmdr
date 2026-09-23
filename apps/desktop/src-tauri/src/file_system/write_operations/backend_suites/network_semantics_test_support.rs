@@ -23,15 +23,15 @@ use std::time::Duration;
 use cmdr_fs::volume::Volume;
 
 use super::super::event_sinks::CollectorEventSink;
-use super::network_transfer_test_support::{
-    assert_no_staging_litter, clean_deep, read_all, self_describing_bytes, sha256, tree_fingerprint,
-};
 use super::super::state::WriteOperationState;
 use super::super::transfer::volume::{
     SafetySpec, assert_operation_was_safe, copy_volumes_with_progress, move_volumes_with_progress,
     move_within_same_volume_with_progress,
 };
 use super::super::types::{ConflictResolution, VolumeCopyConfig};
+use super::network_transfer_test_support::{
+    assert_no_staging_litter, clean_deep, read_all, self_describing_bytes, sha256, tree_fingerprint,
+};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::TestDir;

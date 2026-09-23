@@ -24,14 +24,14 @@ use cmdr_fs::volume::{DirectoryChange, UnwritableReason, Volume, VolumeError};
 use super::super::MutationError;
 use super::super::VolumeScanError;
 use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
+use super::super::state::WriteOperationState;
+use super::super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
     a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
     an_overwrite_answer_replaces_the_destination_bytes, assert_no_staging_litter, awkward_names_survive_a_round_trip,
     read_all, self_describing_bytes, sha256, start_copy_by_id,
 };
-use super::super::state::WriteOperationState;
-use super::super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
 use crate::adb::device_provider::apply_device_list;
 use crate::adb::test_support::{a_listed_phone, dial, dials_seen, phone, retire_phone};
 use crate::commands::file_system::scan_volume_for_copy;
@@ -689,10 +689,13 @@ async fn a_delete_on_a_phone_nobody_dialed_is_refused_as_not_connected() {
 async fn mkdir_on_a_phone_nobody_dialed_is_refused_as_not_connected() {
     let phone = undialed_phone("R58M-Undialed-Mkdir", FakeTree::new()).await;
 
-    let refused =
-        super::super::create::create_directory_core(Some(phone.volume_id.clone()), &phone.sdcard.to_string_lossy(), "album")
-            .await
-            .expect_err("mkdir on a phone nobody dialed is refused");
+    let refused = super::super::create::create_directory_core(
+        Some(phone.volume_id.clone()),
+        &phone.sdcard.to_string_lossy(),
+        "album",
+    )
+    .await
+    .expect_err("mkdir on a phone nobody dialed is refused");
 
     assert!(
         matches!(

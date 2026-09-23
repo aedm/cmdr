@@ -25,13 +25,13 @@ use cmdr_fs::volume::Volume;
 use cmdr_fs::volume::host::VolumeHost;
 
 use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
+use super::super::state::WriteOperationState;
+use super::super::types::ConflictResolution;
+use super::super::{EditError, OperationIntent, compress_start, pull_apply_upload_swap, route_archive_copy_into};
 use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD, RESUME_NFC, RESUME_NFD, new_name_on};
 use super::network_safety_test_support::Registered;
 use super::network_semantics_test_support::{Transfer, local_volume, names_in, seed, transfer, try_read};
 use super::network_transfer_test_support::{assert_no_staging_litter, clean_deep, read_all};
-use super::super::state::WriteOperationState;
-use super::super::types::ConflictResolution;
-use super::super::{EditError, OperationIntent, compress_start, pull_apply_upload_swap, route_archive_copy_into};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::Initiator;

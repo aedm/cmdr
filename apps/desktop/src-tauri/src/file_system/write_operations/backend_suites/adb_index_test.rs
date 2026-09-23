@@ -19,11 +19,11 @@ use cmdr_fs::volume::{DirectoryChange, adb_app_root};
 use cmdr_index::testing::host::test_lock;
 use cmdr_index::{Freshness, Index, StartOutcome};
 
-use super::adb_transfer_test::{dialed_phone_with, registered_local};
 use super::super::event_sinks::CollectorEventSink;
-use super::network_transfer_test_support::start_copy_by_id;
 use super::super::state::WriteOperationState;
 use super::super::types::{VolumeCopyConfig, WriteOperationConfig};
+use super::adb_transfer_test::{dialed_phone_with, registered_local};
+use super::network_transfer_test_support::start_copy_by_id;
 use crate::adb::device_provider::apply_device_list;
 use crate::file_system::index_provider::AppVolumeProvider;
 use crate::test_support::wait_until_async;

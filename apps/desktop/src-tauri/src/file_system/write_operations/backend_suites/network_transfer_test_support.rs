@@ -26,9 +26,9 @@ use cmdr_fs::volume::Volume;
 use sha2::{Digest, Sha256};
 
 use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
-use super::network_gated_source_test_support::{CANCEL_PAYLOAD_BYTES, gated_upload};
 use super::super::state::{cancel_write_operation, resolve_write_conflict};
 use super::super::types::{ConflictResolution, ConflictResolutionOutcome, VolumeCopyConfig};
+use super::network_gated_source_test_support::{CANCEL_PAYLOAD_BYTES, gated_upload};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::Initiator;

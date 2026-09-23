@@ -23,11 +23,11 @@ use std::time::Duration;
 use cmdr_fs::volume::Volume;
 
 use super::super::event_sinks::CollectorEventSink;
+use super::super::types::ConflictResolution;
+use super::super::{BulkRenameRow, MutationError, SourceFingerprint, rename_managed, start_bulk_rename};
 use super::network_safety_test_support::Registered;
 use super::network_semantics_test_support::{Transfer, local_volume, names_in, seed, transfer, try_read};
 use super::network_transfer_test_support::clean_deep;
-use super::super::types::ConflictResolution;
-use super::super::{BulkRenameRow, MutationError, SourceFingerprint, rename_managed, start_bulk_rename};
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::Initiator;
 

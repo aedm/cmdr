@@ -771,9 +771,9 @@ pub async fn trash_files_start(
 
 // Every backend's cells through this pipeline, and the scenarios they share.
 #[cfg(test)]
-pub(crate) mod backend_suites;
-#[cfg(test)]
 mod approved_op_parity_tests;
+#[cfg(test)]
+pub(crate) mod backend_suites;
 #[cfg(test)]
 mod journal_capture_tests;
 #[cfg(test)]
