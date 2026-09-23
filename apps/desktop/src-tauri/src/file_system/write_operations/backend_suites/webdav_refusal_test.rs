@@ -240,19 +240,10 @@ async fn webdav_integration_a_refused_replace_keeps_the_users_file() {
         Some(b"DEST-old-report".as_slice()),
         "❗ the user's file the server wouldn't let us remove must be exactly as it was"
     );
-    // What's left beside it is the finalize's temp, holding the COMPLETE new
-    // bytes (the source still has them too): `finalize_safe_replace` leaves it
-    // for its caller to clean, and no caller does yet, so the next transfer into
-    // this folder reaps it an hour on. What must never be there is a partial.
-    for name in names_in(remote.as_ref(), &dir).await {
-        if cmdr_fs::staging::is_staging_temp_name(&name) {
-            assert_eq!(
-                try_read(remote.as_ref(), &dir.join(&name)).await.as_deref(),
-                Some(b"SRC-new-report, longer".as_slice()),
-                "anything a refused replace leaves in temp space is the complete new file, never a partial"
-            );
-        }
-    }
+    // The swap couldn't happen, so the finalize takes its complete-but-unplaced
+    // temp away at once (the source still holds those bytes): nothing of ours
+    // waits in the user's folder for the hourly stale-temp reap.
+    assert_no_staging_litter(remote.as_ref(), &dir, "a refused replace").await;
     clean_up_past_the_proxy(&dir).await;
 }
 

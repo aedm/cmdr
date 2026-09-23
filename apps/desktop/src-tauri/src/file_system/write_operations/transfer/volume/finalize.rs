@@ -15,7 +15,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::super::recovered_name::{FinalizeFailure, rescue_out_of_temp_space};
+use super::super::recovered_name::{
+    AfterARefusedDelete, FinalizeFailure, discard_unplaced_temp, rescue_out_of_temp_space, what_a_refused_delete_left,
+};
 use crate::file_system::volume::{Volume, VolumeError};
 
 /// Builds a temp sibling path next to `dest_path` for a staged write.
@@ -57,17 +59,23 @@ pub(super) fn temp_sibling_path(dest_path: &Path) -> PathBuf {
 /// resolves to a file on disk — but the complete new data lives in `temp`
 /// throughout, so a crash in that window leaves a recoverable `.cmdr-tmp-*`
 /// sibling rather than data loss. We tolerate `NotFound` on the delete (the
-/// original may have vanished out from under us). If the delete fails for any
-/// other reason we return the error WITHOUT deleting the temp — the new data
-/// must survive so the user (or a retry) can recover it.
+/// original may have vanished out from under us).
 ///
-/// CALLER CONTRACT: when this returns `Err` the new data is somewhere the caller
-/// must NOT clean up, and [`FinalizeFailure::new_data_at`] says where. If the
-/// DELETE failed, nothing moved: the destination still holds the user's file and
-/// the temp is an ordinary partial. If the delete SUCCEEDED and the rename
-/// failed, the temp holds the only complete copy of the new data and the
-/// original is gone, so this rescues it out of temp space (see
-/// [`rescue_out_of_temp_space`]) and reports where it went. The write sites
+/// A delete that answers any OTHER error is checked with one stat, because the
+/// answer isn't the act (`what_a_refused_delete_left`): the original still there
+/// means the swap can't happen, so this takes its own temp away at once (the
+/// source still holds those bytes) and reports the refusal; the original gone
+/// after all means the way is clear, and the swap goes on; a stat that can't
+/// answer leaves the temp alone.
+///
+/// CALLER CONTRACT: when this returns `Err` the caller must NOT clean up the
+/// temp, and [`FinalizeFailure::new_data_at`] says where the new data is when it
+/// matters. If the DELETE was refused, nothing moved: the destination still
+/// holds the user's file and this already removed the temp (or left it, logged,
+/// for the stale-temp sweep when even that delete failed). If the delete
+/// SUCCEEDED and the rename failed, the temp holds the only complete copy at the
+/// destination and the original is gone, so this rescues it out of temp space
+/// (see [`rescue_out_of_temp_space`]) and reports where it went. The write sites
 /// enforce the no-cleanup half by stopping their partial-cleanup tracking from
 /// designating the temp the moment the streaming write succeeded, before this
 /// function runs. See `transfer/CLAUDE.md` § "The post-write temp is committed
@@ -82,18 +90,39 @@ pub(super) async fn finalize_safe_replace(
         Err(VolumeError::NotFound(_)) => {
             // Already gone; the rename below will land the new data anyway.
         }
-        Err(e) => {
-            log::warn!(
-                "finalize_safe_replace: couldn't delete the original {} before the rename, so the destination still holds it and the temp {} is an ordinary partial: {}",
-                orig.display(),
-                temp.display(),
-                e
-            );
-            return Err(FinalizeFailure {
-                error: e,
-                new_data_at: None,
-            });
-        }
+        Err(e) => match what_a_refused_delete_left(dest_volume, orig).await {
+            // The delete went through despite its answer: the way is clear, so
+            // the swap goes on. Stopping here would leave neither file.
+            AfterARefusedDelete::Gone => {}
+            AfterARefusedDelete::StillThere => {
+                // The server kept the original, so the swap can't happen. The
+                // temp is a complete copy of bytes the source still holds, and
+                // it's ours: take it away now rather than leave it in the
+                // user's folder until the hourly reap.
+                let discarded = discard_unplaced_temp(dest_volume, temp).await;
+                log::warn!(
+                    "finalize_safe_replace: couldn't delete the original {}, so the destination still holds it (temp {} {}): {}",
+                    orig.display(),
+                    temp.display(),
+                    if discarded {
+                        "removed"
+                    } else {
+                        "left for the stale-temp sweep"
+                    },
+                    e
+                );
+                return Err(FinalizeFailure {
+                    error: e,
+                    new_data_at: None,
+                });
+            }
+            AfterARefusedDelete::Unknown => {
+                return Err(FinalizeFailure {
+                    error: e,
+                    new_data_at: None,
+                });
+            }
+        },
     }
     match dest_volume.rename(temp, orig, false).await {
         Ok(()) => Ok(()),

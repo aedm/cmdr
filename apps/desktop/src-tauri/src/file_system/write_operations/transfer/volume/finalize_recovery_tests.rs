@@ -12,6 +12,9 @@ use super::faulty_volume::forward_volume_methods;
 use super::finalize::finalize_safe_replace;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{InMemoryVolume, Volume, VolumeError};
+use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+use crate::file_system::write_operations::state::WriteOperationState;
+use crate::file_system::write_operations::types::{ConflictResolution, VolumeCopyConfig, WriteOperationError};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -189,9 +192,200 @@ async fn a_rescue_that_cannot_rename_reports_the_temp_it_left() {
     assert_eq!(contents(&inner, &temp).await.as_deref(), Some(&b"NEW"[..]));
 }
 
+/// A destination whose `delete` of `refuses` answers `PermissionDenied`, and
+/// forwards everything else. With `goes_through`, the delete HAPPENS and the
+/// answer still says it didn't: a transport that dropped the response after
+/// the server acted.
+struct DeleteRefusesOne {
+    inner: Arc<InMemoryVolume>,
+    refuses: PathBuf,
+    goes_through: bool,
+}
+
+impl Volume for DeleteRefusesOne {
+    forward_volume_methods!(inner =>
+        name, root, lane_key, list_directory, get_metadata, exists, is_directory, create_file,
+        create_directory, create_directory_all, rename, get_space_info, local_path, supports_streaming,
+        supports_export, supports_local_fs_access, operations_are_local, max_concurrent_ops,
+        create_directory_errors_on_existing_dir, scan_for_copy, scan_for_copy_batch, scan_for_conflicts,
+        open_read_stream, write_from_stream, write_is_single_shot,
+    );
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            if path != self.refuses {
+                return self.inner.delete(path).await;
+            }
+            if self.goes_through {
+                self.inner.delete(path).await?;
+            }
+            Err(VolumeError::PermissionDenied(path.display().to_string()))
+        })
+    }
+}
+
+/// `/notes.txt` holds the user's old file and a completed temp beside it holds
+/// the new bytes; the destination refuses to delete `/notes.txt`.
+async fn dest_refusing_the_delete(goes_through: bool) -> (Arc<InMemoryVolume>, Arc<dyn Volume>, PathBuf) {
+    let inner = Arc::new(InMemoryVolume::new("Dest").with_space_info(10_000_000, 10_000_000));
+    inner.create_file(Path::new("/notes.txt"), b"OLD").await.unwrap();
+    let temp = PathBuf::from("/notes.txt.cmdr-tmp-44444444");
+    inner.create_file(&temp, b"NEW").await.unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(DeleteRefusesOne {
+        inner: Arc::clone(&inner),
+        refuses: PathBuf::from("/notes.txt"),
+        goes_through,
+    });
+    (inner, dest, temp)
+}
+
+/// The server wouldn't let the original go, so the swap can't happen: the
+/// original stays exactly as it was, the refusal reaches the caller typed, and
+/// the complete-but-unplaced temp goes at once rather than sitting in the
+/// user's folder until an hourly reap. The source still holds those bytes, so
+/// removing them loses nothing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_delete_keeps_the_original_and_takes_its_own_temp_away() {
+    let (inner, dest, temp) = dest_refusing_the_delete(false).await;
+
+    let failure = finalize_safe_replace(&dest, &temp, Path::new("/notes.txt"))
+        .await
+        .expect_err("the delete is rigged to be refused");
+
+    assert!(
+        matches!(failure.error, VolumeError::PermissionDenied(_)),
+        "the refusal must arrive typed, got {:?}",
+        failure.error
+    );
+    assert!(
+        failure.new_data_at.is_none(),
+        "nothing was cleared, so nothing was rescued"
+    );
+    assert_eq!(
+        contents(&inner, Path::new("/notes.txt")).await.as_deref(),
+        Some(&b"OLD"[..]),
+        "❗ the user's file must be exactly as it was"
+    );
+    assert_eq!(
+        names_in_root(&inner).await,
+        vec!["notes.txt".to_string()],
+        "no `.cmdr-tmp-*` may be left beside it"
+    );
+}
+
+/// A delete that ANSWERED with a refusal but went through anyway (the response
+/// lost on the way back) leaves the name empty. Discarding the temp then would
+/// leave neither file at the destination; landing it is what the user asked for.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_delete_that_went_through_despite_its_answer_still_lands_the_new_bytes() {
+    let (inner, dest, temp) = dest_refusing_the_delete(true).await;
+
+    finalize_safe_replace(&dest, &temp, Path::new("/notes.txt"))
+        .await
+        .expect("the original is gone, so the swap completes");
+
+    assert_eq!(
+        contents(&inner, Path::new("/notes.txt")).await.as_deref(),
+        Some(&b"NEW"[..])
+    );
+    assert_eq!(names_in_root(&inner).await, vec!["notes.txt".to_string()]);
+}
+
+/// When the destination can't even say whether the original survived, the temp
+/// stays: if the original IS gone, the temp is the only copy at the destination,
+/// and this is not the moment to guess.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_delete_nobody_can_confirm_keeps_the_temp() {
+    let (inner, dest, temp) = dest_refusing_the_delete(false).await;
+    inner.set_stat_failing(Path::new("/notes.txt"));
+
+    let failure = finalize_safe_replace(&dest, &temp, Path::new("/notes.txt"))
+        .await
+        .expect_err("the delete is rigged to be refused");
+
+    assert!(matches!(failure.error, VolumeError::PermissionDenied(_)));
+    assert_eq!(contents(&inner, &temp).await.as_deref(), Some(&b"NEW"[..]));
+}
+
+/// A refused replace through the whole copy pipeline, on both drivers: the
+/// user's file stays, the copy fails typed, and no staging is left behind.
+async fn copy_over_a_file_the_server_wont_let_go(names: &[&str]) {
+    let source = Arc::new(InMemoryVolume::new("Source").with_space_info(10_000_000, 10_000_000));
+    for name in names {
+        source
+            .create_file(&Path::new("/").join(name), format!("SRC-{name}").as_bytes())
+            .await
+            .unwrap();
+    }
+    let inner = Arc::new(InMemoryVolume::new("Dest").with_space_info(10_000_000, 10_000_000));
+    inner.create_directory(Path::new("/dest")).await.unwrap();
+    inner
+        .create_file(Path::new("/dest/notes.txt"), b"THE USER'S FILE")
+        .await
+        .unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(DeleteRefusesOne {
+        inner: Arc::clone(&inner),
+        refuses: PathBuf::from("/dest/notes.txt"),
+        goes_through: false,
+    });
+
+    let sources: Vec<PathBuf> = names.iter().map(|n| Path::new("/").join(n)).collect();
+    let result = super::copy::copy_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "test-op-refused-replace",
+        &Arc::new(WriteOperationState::new(std::time::Duration::from_millis(50))),
+        source as Arc<dyn Volume>,
+        &sources,
+        dest,
+        Path::new("/dest"),
+        &VolumeCopyConfig {
+            conflict_resolution: ConflictResolution::Overwrite,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await;
+    let Err(failure) = result else {
+        panic!("a replace the destination refused must not report success");
+    };
+    assert!(
+        matches!(failure.error, WriteOperationError::PermissionDenied { .. }),
+        "got {:?}",
+        failure.error
+    );
+    assert_eq!(
+        contents(&inner, Path::new("/dest/notes.txt")).await.as_deref(),
+        Some(&b"THE USER'S FILE"[..]),
+        "❗ the user's file must be exactly as it was"
+    );
+    let leftovers: Vec<String> = inner
+        .list_directory(Path::new("/dest"), None)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|e| e.name)
+        .filter(|n| n.contains(".cmdr-tmp-"))
+        .collect();
+    assert!(leftovers.is_empty(), "no staging may be left behind: {leftovers:?}");
+}
+
+/// One source, so the SERIAL driver runs it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn serial_a_refused_replace_leaves_no_staging() {
+    copy_over_a_file_the_server_wont_let_go(&["notes.txt"]).await;
+}
+
+/// Three sources, so the CONCURRENT driver runs them.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn concurrent_a_refused_replace_leaves_no_staging() {
+    copy_over_a_file_the_server_wont_let_go(&["a.txt", "notes.txt", "z.txt"]).await;
+}
+
 /// A finalize that fails on the DELETE rescued nothing and lost nothing: the
-/// destination still holds the user's file, and the temp is an ordinary partial
-/// the caller may clean.
+/// destination still holds the user's file. Here the destination refuses EVERY
+/// delete, so the temp can't be taken away either; it stays for the stale-temp
+/// reap, which is safe because the source still holds its bytes.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_finalize_that_never_deleted_the_original_reports_no_rescue() {
     let inner = Arc::new(
@@ -215,6 +409,11 @@ async fn a_finalize_that_never_deleted_the_original_reports_no_rescue() {
     assert_eq!(
         contents(&inner, Path::new("/notes.txt")).await.as_deref(),
         Some(&b"OLD"[..])
+    );
+    assert_eq!(
+        contents(&inner, &temp).await.as_deref(),
+        Some(&b"NEW"[..]),
+        "a temp the destination won't delete stays, whole, for the stale-temp reap"
     );
 }
 

@@ -382,14 +382,14 @@ usually isn't, and a speculative delete would burn one extra round trip per file
 `Rename` resolution's `O_EXCL` placeholder, a cross-type Overwrite whose dest delete failed, a file that arrived after
 the caller last looked), which the second attempt covers.
 
-❗ **A cleared way plus a refused second rename strands committed data**, and the landing gets it out of temp space on the spot. The bytes are complete by then (`commit` deregistered the temp before landing, so no sweep protects it and none should delete it), the destination name is now EMPTY, and the temp wears a `.cmdr-tmp-*` name that `cleanup.rs::reap_stale_transfer_temps` matches on age at the start of the next transfer into that folder — so the user's only copy of the new file would be deleted an hour later. `recovered_name.rs::rescue_out_of_temp_space` renames it to `<name> (recovered)<.ext>` and the failure carries that path as `FinalizeFailure::new_data_at`, exactly as `finalize::finalize_safe_replace` does; `stream_pipe_file` and `sequential_extract` label it with the DESTINATION (`at_source_or_rescued_dest`), since a rescued file is one the user can't find on their own. `recovered_name.rs` sits at `transfer/` level because both landings reach it. A failure whose `delete` didn't succeed rescues nothing and reports nothing: the destination still holds whatever was in the way. Pinned by `staged_write.rs::a_landing_that_cleared_the_way_and_then_could_not_rename_rescues_the_new_bytes`.
+❗ **A cleared way plus a refused second rename strands committed data**, and the landing gets it out of temp space on the spot. The bytes are complete by then (the landing deregistered the temp just before clearing the way, so no sweep protects it and none should delete it), the destination name is now EMPTY, and the temp wears a `.cmdr-tmp-*` name that `cleanup.rs::reap_stale_transfer_temps` matches on age at the start of the next transfer into that folder — so the user's only copy of the new file would be deleted an hour later. `recovered_name.rs::rescue_out_of_temp_space` renames it to `<name> (recovered)<.ext>` and the failure carries that path as `FinalizeFailure::new_data_at`, exactly as `finalize::finalize_safe_replace` does; `stream_pipe_file` and `sequential_extract` label it with the DESTINATION (`at_source_or_rescued_dest`), since a rescued file is one the user can't find on their own. `recovered_name.rs` sits at `transfer/` level because both landings reach it. A failure whose `delete` didn't succeed rescues nothing and reports nothing: the destination still holds whatever was in the way (§ "A landing that fails with nothing cleared takes its temp away" below). Pinned by `staged_write.rs::a_landing_that_cleared_the_way_and_then_could_not_rename_rescues_the_new_bytes`.
 
 ❗ **And only for a name the CALLER claimed** (`LandingName`). `AlreadyExists` says something is in the way; only the
 caller knows whose it is, because only the caller knows whether a conflict resolution put this write at this name. A
 `Rename` pick reserved its name with a placeholder and a cross-type Overwrite already cleared its destination, so both
 answer `ClaimedByTheCaller` and the delete-then-rename stands. A write nothing resolved answers `ExpectedFree`, and its
 landing REPORTS the clash instead: the file in the way is the user's, under a policy (Skip, an unanswered Stop) that
-never touched it, and the complete new bytes stay recoverable under the `.cmdr-tmp-*` name. Where each caller's answer
+never touched it, and our temp is taken away (below). Where each caller's answer
 comes from: the deep merge from whether `resolve_merge_child` decided the child, the two top-level drivers from
 `TransferContext::dest_name_claimed` and `CopyTask::dest_name_claimed`, the one-shot cross-volume file move from "the
 destination is assumed CLEAR" (`move_file.rs`). Pinned by
@@ -414,10 +414,26 @@ by `staged_write.rs::{a_rename_that_failed_for_another_reason_leaves_the_destina
 a_backend_without_rename_does_not_delete_what_it_cannot_replace}`, which inject a failing rename through
 `InMemoryVolume::with_rename_failing`.
 
-**Finding the litter.** A staged temp is listed in `state.in_flight_temps` for exactly as long as it is a PARTIAL:
-`commit` removes it before landing, so a temp that holds committed data after a failed landing is never in the set and
-can never be swept BY THE LEDGER (the contract `finalize_safe_replace`'s caller comment describes, now enforced by
-construction rather than by a `cleanup_temp` flag). The NAME-based sweep is a separate danger and a separate answer:
+❗ **A landing that fails with nothing cleared takes its temp away at once.** The name still holds what it held, the
+source still holds the new bytes, and the temp is a complete copy of ours nobody needs; left alone it would sit in the
+user's folder as a visible `.cmdr-tmp-*` until the hourly reap. `recovered_name.rs::discard_unplaced_temp` deletes it
+(best effort: a delete that fails too is logged and left to the sweeps) in every such exit, one rule for both landings:
+`staged_write::land`'s rename refused for any reason but `AlreadyExists`, its clash on an `ExpectedFree` name, and its
+claimed-name delete that was refused; and `finalize_safe_replace`'s refused delete of the original. ❗ A refused delete
+is checked with one stat before anything else (`what_a_refused_delete_left`), because over a network the server can act
+and the answer still be lost: the name still taken means discard, the name empty after all means the way IS clear and
+the landing goes on (discarding there would leave neither file), and a stat that can't answer leaves the temp alone. ❌
+Never discard once the way was cleared: from then on the temp may be the only copy at the destination, and it is
+rescued instead. Short of the empty-after-all case, the copy fails with the typed refusal. Pinned by
+`volume/finalize_recovery_tests.rs` (the three delete answers, and both drivers end to end), `staged_write.rs::tests`,
+`volume/copy_landing_race_tests.rs` (no temp left on either driver), and on a live server by
+`backend_suites/webdav_refusal_test.rs::webdav_integration_a_refused_replace_keeps_the_users_file`.
+
+**Finding the litter.** A staged temp is listed in `state.in_flight_temps` for exactly as long as it is a removable copy
+of ours: while it is written, and through the landing until `land` releases it (it landed, it was discarded, or the way
+is about to be cleared). So a landing that never finishes (a cancel, the concurrent driver dropping its window, a crash)
+leaves the temp to the abandoned-write and startup sweeps, which is safe because the name was never cleared; and a temp
+that may hold the only complete copy at the destination is never in the set and can never be swept BY THE LEDGER. The NAME-based sweep is a separate danger and a separate answer:
 `finalize_safe_replace` renames such a temp to a ` (recovered)` name on the spot, because
 `volume/cleanup.rs::reap_stale_transfer_temps` matches `.cmdr-tmp-` plus an age and knows nothing about any ledger
 (`volume/DETAILS.md` § "The post-write temp is committed data"). Whatever is still listed when the driver's loop ends belongs to a task that was

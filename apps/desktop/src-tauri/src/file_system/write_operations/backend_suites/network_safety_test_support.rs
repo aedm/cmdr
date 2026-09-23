@@ -520,6 +520,10 @@ pub(super) async fn a_name_taken_mid_upload_is_never_replaced(
         target: "test",
         "name taken mid-upload under {policy:?}: ours kept at {ours_kept_at:?}, errors {errors:?}, server holds {names:?}"
     );
+    // A landing refused with nothing cleared takes its complete temp away at
+    // once (the source still holds those bytes), so nothing of ours waits in
+    // the folder for the hourly stale-temp reap.
+    assert_no_staging_litter(remote.as_ref(), &dir, "a copy whose name was taken mid-upload").await;
 
     clean_deep(remote.as_ref(), &dir).await;
 }

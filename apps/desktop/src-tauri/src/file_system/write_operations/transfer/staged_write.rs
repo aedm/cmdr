@@ -44,7 +44,9 @@ use std::sync::Arc;
 
 use super::super::in_flight_temps::TempHome;
 use super::super::state::WriteOperationState;
-use super::recovered_name::{FinalizeFailure, rescue_out_of_temp_space};
+use super::recovered_name::{
+    AfterARefusedDelete, FinalizeFailure, discard_unplaced_temp, rescue_out_of_temp_space, what_a_refused_delete_left,
+};
 use super::transfer_probe::{TaskPhase, set_task_phase};
 use crate::file_system::staging::StagingTemp;
 use crate::file_system::volume::{Volume, VolumeError, WriteMode};
@@ -105,8 +107,9 @@ pub(super) struct StagedWrite {
     /// The guard also keeps the temp out of the pane while it's being written
     /// (`file_system::staging`). Dropping it un-hides the file, which is why
     /// `commit` and `abandon` hold it until the rename or delete is done — and
-    /// why a landing that FAILS is right to let it go: the temp that survives is
-    /// the file's only complete copy, and the user needs to see it.
+    /// why a landing that FAILS is right to let it go: a temp that survives one
+    /// (a rescue or a discard that couldn't happen) is something the user may
+    /// need to see.
     temp: Option<StagingTemp>,
     /// Keeps a CALLER-minted temp out of the pane for the length of the write
     /// ([`WriteStaging::AlreadyStaged`]).
@@ -203,39 +206,37 @@ impl StagedWrite {
 
     /// The write SUCCEEDED: give the bytes their final name.
     ///
-    /// Deregisters the temp first. From this point the temp holds committed data,
-    /// not a partial: if the landing then fails (a disconnect between the delete
-    /// and the rename), the temp is the only complete copy of the new bytes and
-    /// MUST survive on disk. Nothing may sweep it, which is exactly what dropping
-    /// it from the in-flight set guarantees.
+    /// The temp stays in the in-flight set until [`land`] says it stopped being
+    /// a removable copy of ours: it landed, it was taken away, or the landing is
+    /// about to clear the name, from which point it may be the only complete
+    /// copy at the destination and ❗ nothing may sweep it. Until then a landing
+    /// that never finishes (a cancel, the concurrent driver dropping its window,
+    /// a crash) leaves it findable by the abandoned-write sweep and the startup
+    /// sweep, which is safe: the name was never cleared, and the source still
+    /// holds the bytes.
     ///
     /// `Err(VolumeError::NotSupported)` means this destination can't rename (or
     /// delete), so it can't stage at all; the caller may fall back to writing at
-    /// the final name. No production backend takes that branch.
+    /// the final name, and `land` has already taken the temp away. No production
+    /// backend takes that branch.
     pub(super) async fn commit(mut self, dest_volume: &Arc<dyn Volume>) -> Result<(), FinalizeFailure> {
         let Some(temp) = self.temp.take() else {
             // Nothing of ours to land: the caller stages and lands its own temp,
             // and a single-shot write already sits at its final name.
             return Ok(());
         };
-        self.deregister(temp.path());
         // Landing is a device round trip of its own; a dump has to be able to
         // name it rather than showing a task still "streaming" at EOF.
         set_task_phase(TaskPhase::Finalizing);
-        match land(dest_volume, temp.path(), &self.final_path, self.landing).await {
-            Err(FinalizeFailure {
-                error: VolumeError::NotSupported,
-                ..
-            }) => {
-                // This backend can't land a staged write at all, so the caller
-                // will rewrite the file at its final name. Drop the temp here:
-                // it isn't the only copy of anything, and leaving it would litter
-                // the destination on every single file.
-                let _ = dest_volume.delete(temp.path()).await;
-                Err(VolumeError::NotSupported.into())
+        // Once, however many of `land`'s exits call it: each deregistration
+        // appends to the persisted log.
+        let released = std::sync::atomic::AtomicBool::new(false);
+        let release = || {
+            if !released.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                self.deregister(temp.path());
             }
-            other => other,
-        }
+        };
+        land(dest_volume, temp.path(), &self.final_path, self.landing, &release).await
     }
 
     /// The write FAILED: the staged bytes are a partial, so remove them.
@@ -346,50 +347,83 @@ fn dest_home(state: &WriteOperationState) -> Option<TempHome<'_>> {
 /// onto a stored `report.docx` — and clearing the way there replaced files under
 /// a Skip.
 ///
-/// The bytes are never deleted on failure: past this point `temp` holds the
-/// file's only complete copy. When the way was CLEARED and the rename then
-/// failed anyway, they don't stay under the temp name either — see
-/// [`FinalizeFailure::new_data_at`].
+/// ❗ **A landing that fails with nothing cleared takes its temp away at once.**
+/// The name still holds what it held, the source still holds the new bytes, and
+/// a complete `.cmdr-tmp-*` of ours in the user's folder would otherwise wait
+/// an hour for the stale-temp reap (`recovered_name::discard_unplaced_temp`).
+/// That covers a rename refused for any reason but `AlreadyExists`, a clash on
+/// a name the caller believed free, and a claimed name whose delete was refused
+/// with the name still taken. When the way was CLEARED and the rename then
+/// failed anyway, the temp is the only complete copy at the destination, so it
+/// is never deleted: it leaves temp space instead ([`FinalizeFailure::new_data_at`]).
+///
+/// `release` is called the moment the temp stops being a removable copy of ours:
+/// it landed, it was taken away, or the way is about to be cleared. Until then
+/// it stays in the operation's in-flight set, so a landing that never finishes
+/// is still swept (see [`StagedWrite::commit`]).
 async fn land(
     dest_volume: &Arc<dyn Volume>,
     temp: &Path,
     final_path: &Path,
     landing: LandingName,
+    release: &(dyn Fn() + Sync),
 ) -> Result<(), FinalizeFailure> {
+    let discard = || async {
+        if discard_unplaced_temp(dest_volume, temp).await {
+            release();
+        }
+    };
     let Err(first) = dest_volume.rename(temp, final_path, false).await else {
+        release();
         return Ok(());
     };
     if !matches!(first, VolumeError::AlreadyExists(_)) {
+        discard().await;
         return Err(first.into());
     }
     if landing == LandingName::ExpectedFree {
         log::warn!(
             target: "copy",
             "staged write: {} is taken by something nobody resolved a conflict for; \
-             leaving it alone. The new bytes stay at {}.",
+             leaving it alone and taking our temp {} away.",
             final_path.display(),
             temp.display(),
         );
+        discard().await;
         return Err(first.into());
     }
-    match dest_volume.delete(final_path).await {
-        Ok(()) | Err(VolumeError::NotFound(_)) => match dest_volume.rename(temp, final_path, false).await {
-            Ok(()) => Ok(()),
-            // ❗ The way is cleared and the bytes couldn't take the name, so the
-            // temp is now the only complete copy of a file with nothing at its
-            // destination — and it wears a `.cmdr-tmp-*` name
-            // `cleanup.rs::reap_stale_transfer_temps` matches an hour later. Get
-            // it out of temp space and report where it went. Same act, same
-            // reason, as `finalize::finalize_safe_replace`'s.
-            Err(error) => Err(FinalizeFailure {
-                new_data_at: Some(rescue_out_of_temp_space(dest_volume, temp, final_path).await),
-                error,
-            }),
+    // From here the way may be cleared, and then the temp is the only complete
+    // copy at the destination: no sweep may touch it.
+    release();
+    let way_is_clear = match dest_volume.delete(final_path).await {
+        Ok(()) | Err(VolumeError::NotFound(_)) => true,
+        Err(_) => match what_a_refused_delete_left(dest_volume, final_path).await {
+            AfterARefusedDelete::Gone => true,
+            // Couldn't clear the way, so nothing was lost: the destination still
+            // holds whatever was in the way, the temp is a spare copy, and the
+            // rename error is the one to report.
+            AfterARefusedDelete::StillThere => {
+                discard_unplaced_temp(dest_volume, temp).await;
+                false
+            }
+            AfterARefusedDelete::Unknown => false,
         },
-        // Couldn't clear the way either, so nothing was lost: the destination
-        // still holds whatever was in the way, and the rename error is the one to
-        // report.
-        Err(_) => Err(first.into()),
+    };
+    if !way_is_clear {
+        return Err(first.into());
+    }
+    match dest_volume.rename(temp, final_path, false).await {
+        Ok(()) => Ok(()),
+        // ❗ The way is cleared and the bytes couldn't take the name, so the
+        // temp is now the only complete copy of a file with nothing at its
+        // destination — and it wears a `.cmdr-tmp-*` name
+        // `cleanup.rs::reap_stale_transfer_temps` matches an hour later. Get
+        // it out of temp space and report where it went. Same act, same
+        // reason, as `finalize::finalize_safe_replace`'s.
+        Err(error) => Err(FinalizeFailure {
+            new_data_at: Some(rescue_out_of_temp_space(dest_volume, temp, final_path).await),
+            error,
+        }),
     }
 }
 
@@ -478,6 +512,7 @@ pub(super) fn resolve_staging(requested: WriteStaging, write_is_single_shot: boo
 mod tests {
     use super::*;
     use crate::file_system::volume::InMemoryVolume;
+    use crate::file_system::write_operations::transfer::volume::forward_volume_methods;
     use crate::ignore_poison::IgnorePoison;
     use std::time::Duration;
 
@@ -611,6 +646,7 @@ mod tests {
             Path::new("/temp"),
             Path::new("/notes.txt"),
             LandingName::ClaimedByTheCaller,
+            &|| {},
         )
         .await
         .unwrap();
@@ -641,6 +677,7 @@ mod tests {
             Path::new("/temp"),
             Path::new("/notes.txt"),
             LandingName::ExpectedFree,
+            &|| {},
         )
         .await;
 
@@ -660,8 +697,8 @@ mod tests {
             "a name nobody resolved a conflict for must still hold the user's bytes"
         );
         assert!(
-            inner.exists(Path::new("/temp")).await,
-            "and the new bytes stay recoverable under the temp name"
+            !inner.exists(Path::new("/temp")).await,
+            "and our complete-but-unplaced temp goes at once: the source still holds those bytes"
         );
     }
 
@@ -694,8 +731,8 @@ mod tests {
             "a rename that never said the destination was in the way must not have cost the user their file"
         );
         assert!(
-            inner.exists(Path::new("/temp")).await,
-            "and the only complete copy of the new bytes must still be under the temp name"
+            !inner.exists(Path::new("/temp")).await,
+            "and the temp the bytes couldn't leave goes at once: nothing was cleared, so the source still holds them"
         );
     }
 
@@ -737,6 +774,7 @@ mod tests {
             Path::new("/temp"),
             Path::new("/notes.txt"),
             LandingName::ClaimedByTheCaller,
+            &|| {},
         )
         .await;
         (inner, outcome)
@@ -765,6 +803,7 @@ mod tests {
             Path::new("/notes.txt.cmdr-tmp-abc"),
             Path::new("/notes.txt"),
             LandingName::ClaimedByTheCaller,
+            &|| {},
         )
         .await
         .expect_err("a landing that can't rename has to fail");
@@ -800,5 +839,89 @@ mod tests {
 
         assert!(!inner.exists(&temp).await);
         assert!(state.in_flight_temps.lock_ignore_poison().is_empty());
+    }
+
+    /// A landing refused over a name nobody resolved takes its temp away AND
+    /// stops tracking it, so nothing is left in the user's folder and nothing
+    /// is left for a sweep to chase.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_refused_landing_takes_its_temp_away_and_stops_tracking_it() {
+        let state = state();
+        let inner = Arc::new(InMemoryVolume::new("dest"));
+        let dest: Arc<dyn Volume> = Arc::clone(&inner) as Arc<dyn Volume>;
+        inner
+            .create_file(Path::new("/notes.txt"), b"THE USER'S FILE")
+            .await
+            .unwrap();
+
+        let staged = StagedWrite::begin(&state, Path::new("/notes.txt"), WriteStaging::Stage);
+        let temp = staged.target().to_path_buf();
+        inner.create_file(&temp, b"NEW").await.unwrap();
+
+        let outcome = staged.commit(&dest).await;
+
+        assert!(
+            matches!(
+                outcome,
+                Err(FinalizeFailure {
+                    error: VolumeError::AlreadyExists(_),
+                    new_data_at: None,
+                })
+            ),
+            "got {outcome:?}"
+        );
+        assert_eq!(size_of(&inner, "/notes.txt").await, Some(15), "the user's file stays");
+        assert!(!inner.exists(&temp).await, "our temp goes");
+        assert!(state.in_flight_temps.lock_ignore_poison().is_empty());
+    }
+
+    /// A destination whose `rename` never answers: the landing a cancel (or the
+    /// concurrent driver dropping its window) abandons midway.
+    struct RenameNeverAnswers {
+        inner: Arc<InMemoryVolume>,
+    }
+
+    impl Volume for RenameNeverAnswers {
+        forward_volume_methods!(inner =>
+            name, root, list_directory, get_metadata, exists, is_directory, create_file, delete,
+        );
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+        fn rename<'a>(
+            &'a self,
+            _from: &'a Path,
+            _to: &'a Path,
+            _force: bool,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+            Box::pin(std::future::pending())
+        }
+    }
+
+    /// ❗ A landing dropped midway keeps its temp REGISTERED: the rename may not
+    /// have happened, so the temp can still be sitting beside the free name, and
+    /// the post-loop sweep of abandoned writes (and the startup sweep after a
+    /// crash) is the only thing that will ever find it. The source still holds
+    /// its bytes, so the sweep deleting it loses nothing.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_landing_dropped_midway_leaves_its_temp_to_the_abandoned_write_sweep() {
+        let state = state();
+        let inner = Arc::new(InMemoryVolume::new("dest"));
+        let dest: Arc<dyn Volume> = Arc::new(RenameNeverAnswers {
+            inner: Arc::clone(&inner),
+        });
+
+        let staged = StagedWrite::begin(&state, Path::new("/notes.txt"), WriteStaging::Stage);
+        let temp = staged.target().to_path_buf();
+        inner.create_file(&temp, b"NEW").await.unwrap();
+
+        let landed = tokio::time::timeout(Duration::from_millis(50), staged.commit(&dest)).await;
+
+        assert!(landed.is_err(), "the rename is rigged never to answer");
+        assert_eq!(
+            *state.in_flight_temps.lock_ignore_poison(),
+            vec![temp],
+            "the abandoned landing's temp must stay findable"
+        );
     }
 }

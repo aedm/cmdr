@@ -144,6 +144,19 @@ async fn assert_theirs_survives(dest: &TakenAtLanding, error: &WriteOperationErr
         Some(THEIRS.len() as u64),
         "and it must be exactly what they wrote"
     );
+    // The refused landing takes our complete-but-unplaced temp away at once:
+    // the source still holds those bytes, and a `.cmdr-tmp-*` in the user's
+    // folder would otherwise wait an hour for the stale-temp reap.
+    let leftovers: Vec<String> = dest
+        .inner
+        .list_directory(Path::new("/dest"), None)
+        .await
+        .expect("listing the destination")
+        .into_iter()
+        .map(|e| e.name)
+        .filter(|n| n.contains(".cmdr-tmp-"))
+        .collect();
+    assert!(leftovers.is_empty(), "no staging may be left behind: {leftovers:?}");
 }
 
 /// One source, so the SERIAL driver runs it.
