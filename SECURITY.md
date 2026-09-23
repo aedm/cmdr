@@ -24,10 +24,8 @@ A good report has:
 - Steps to reproduce, or a proof of concept.
 - Whether you've told anyone else, and whether you plan to publish.
 
-Write in English, Swedish, or Hungarian. There's no PGP key yet. If your finding is very sensitive, send a short first
-email without the details, and we'll agree on a channel.
-
-<!-- ⚠️ David: no PGP key exists. Either publish one (and add `Encryption:` to security.txt) or keep the line above. -->
+Write in English, Swedish, or Hungarian. We don't publish a PGP key, by choice. If you'd rather not send the details by
+email, use GitHub's private reporting above: only you and the maintainer can see the report.
 
 ## What to expect
 

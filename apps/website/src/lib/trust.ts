@@ -260,7 +260,7 @@ export const notInPlaceYet: string[] = [
   "<strong>No offline license file.</strong> A commercial license that can't reach <code>api.getcmdr.com</code> for 30 days falls back to the free personal tier.",
   "<strong>Local data isn't encrypted by Cmdr</strong>, so it relies on FileVault. There's no option to exclude Cmdr's index from backups.",
   '<strong>Not tested behind a TLS-inspecting proxy</strong>, and PAC files are untested.',
-  '<strong>No PGP key</strong> for vulnerability reports, and no history of published advisories.',
+  "<strong>No published security advisories yet</strong>, so there's no track record of how Cmdr handles a reported issue.",
 ]
 
 /** Response times for vulnerability reports. Keep in sync with the repo-root `SECURITY.md`. */
