@@ -179,7 +179,7 @@ export const dataLocations: DataLocation[] = [
   {
     name: 'Resend',
     what: 'Sends license emails (with the license key) and internal notification emails about reports and feedback.',
-    where: 'US company. Its sending region appears to be Ireland (eu-west-1).',
+    where: 'US company. It sends Cmdr's email from its Ireland region (eu-west-1).',
     inEu: 'partly',
   },
   {
