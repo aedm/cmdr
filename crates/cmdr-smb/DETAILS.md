@@ -905,14 +905,11 @@ that string is the technical-details text, not something the frontend reads a fi
 paths like `papers\new-file.txt`. The watcher normalizes these to `papers/new-file.txt` before extracting parent
 directories and constructing display paths.
 
-**Gotcha**: the guest identity logs in with an EMPTY username, never `Guest` **Why**: smb2 (0.25+) refuses a guest or
-anonymous session to a login that names an account, since a server answering a named login that way is what an on-path
-downgrade looks like (it turns signing off), and a Samba set to `map to guest = bad user` answers exactly that way to
-the `Guest` name `SmbConnectionParams::new` stores for "no credentials". So every `smb2::ClientConfig` this crate builds
-takes `SmbConnectionParams::wire_username()`, which is empty for `Guest` with no password (`is_guest`), and the guest
-share listing sends an empty name outright. The params keep `Guest` as the identity (the sign-in prompt's guest button
-reads it). ❌ Never hand `params.username` to smb2: every guest connection fails with `Error::Auth` (verified against
-the `smb-consumer-guest` fixture, smb2 0.25.0, 2026-09-23).
+**Gotcha**: a guest session is asked for with the username `Guest`, ❌ never an empty (anonymous) one **Why**: some
+servers accept the named `Guest` login but refuse an anonymous one (Windows with anonymous access restricted, some NAS
+configurations), so switching would break guest access for real users, and nothing here can verify it against real
+hardware. smb2 0.25.0 refused a guest session to any named login, `Guest` included, which failed every guest volume;
+0.25.1 treats `Guest` (any ASCII case) as a guest login on purpose, like an empty name. ❌ So don't pin smb2 to 0.25.0.
 
 **Gotcha**: a share name reaches the wire NFC, so `SmbConnectionParams` must be built with `new` **Why**: `new` runs the
 NFC normalization; a struct literal filled from a raw `statfs` mount name carries macOS's NFD spelling straight to the

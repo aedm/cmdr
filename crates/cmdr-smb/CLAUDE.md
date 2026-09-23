@@ -30,8 +30,6 @@ the keychain, mounts, and every human-facing word stay in the app's `network/`.
 - **One-frame fast paths stop at smb2's quick limits**: a hinted read at `quick_read_limit()` (sized via
   `read_file_compound_sized`), the write promise at `quick_write_limit()`. ❌ A refused one-frame write to a non-scratch
   name never streams (`one_frame_write_limit`).
-- **Guest logs in with an EMPTY username** (`SmbConnectionParams::wire_username`): smb2 refuses a guest session to any
-  named login, `Guest` included. ❌ Never hand `params.username` to smb2.
 - **A streamed read ends at its last byte** (the CLOSE is already out): ❌ don't wait for `None` to drop `chunk_tx`.
 - **`scan_recursive` asks its `ScanBoundary` per entry, `dir()` BEFORE the listing** (`DETAILS.md` § "Scanning").
 - **Bulk work draws on the refcounted pool of extra sessions** (`scan_pool.rs`); a dead member retries on a sibling, ❌

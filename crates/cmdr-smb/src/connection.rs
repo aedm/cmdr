@@ -39,9 +39,7 @@ pub async fn try_list_shares_as_guest(
     let config = ClientConfig {
         addr,
         timeout,
-        // Empty, not `Guest`: smb2 grants a guest session only to a login that
-        // names no account (see `SmbConnectionParams::wire_username`).
-        username: String::new(),
+        username: "Guest".to_string(),
         password: String::new(),
         domain: String::new(),
         auto_reconnect: false,
@@ -104,7 +102,7 @@ pub async fn try_open_share(params: &SmbConnectionParams, timeout: Duration) -> 
     let config = ClientConfig {
         addr: build_smb_addr(&params.server, params.port),
         timeout,
-        username: params.wire_username().to_string(),
+        username: params.username.clone(),
         password: params.password.clone(),
         domain: String::new(),
         auto_reconnect: false,

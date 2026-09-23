@@ -1031,7 +1031,7 @@
     },
     {
       "name": "faster-hex",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "license": "MIT",
       "url": "https://github.com/NervosFoundation/faster-hex"
     },
@@ -3377,7 +3377,7 @@
     },
     {
       "name": "smb2",
-      "version": "0.25.0",
+      "version": "0.25.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/vdavid/smb2"
     },

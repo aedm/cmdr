@@ -580,21 +580,6 @@ impl SmbConnectionParams {
             password: password.unwrap_or("").to_string(),
         }
     }
-
-    /// Whether these params ask for a guest session: `Guest` (any case) with no
-    /// password, which is what [`new`](Self::new) builds from no credentials.
-    pub(crate) fn is_guest(&self) -> bool {
-        self.username.eq_ignore_ascii_case("Guest") && self.password.is_empty()
-    }
-
-    /// The username to hand smb2's `ClientConfig`. Empty for a guest session:
-    /// smb2 refuses a guest session to a login that names an account, `Guest`
-    /// included, since that's what an on-path downgrade looks like, and logs in
-    /// as guest only when asked with no name. ❌ Never pass `username` to smb2
-    /// directly.
-    pub(crate) fn wire_username(&self) -> &str {
-        if self.is_guest() { "" } else { &self.username }
-    }
 }
 
 #[cfg(test)]
@@ -628,36 +613,6 @@ mod params_normalization_test {
         assert_eq!(params.share_name, "R\u{e9}gi NAS");
         assert_eq!(params.server, "naspolya");
         assert_eq!(params.username, "david");
-    }
-
-    /// smb2 logs in as guest only when asked with an EMPTY username: a login
-    /// that names any account, `Guest` included, and gets a guest session back
-    /// is refused as a downgrade (smb2 0.25). So the guest identity these params
-    /// carry (`Guest`, no password) goes out as the empty name, and every other
-    /// identity goes out as typed.
-    #[test]
-    fn the_guest_identity_logs_in_with_an_empty_username() {
-        let guest = SmbConnectionParams::new("nas", "public", 445, None, None);
-        assert!(guest.is_guest());
-        assert_eq!(guest.wire_username(), "");
-
-        let typed = SmbConnectionParams::new("nas", "public", 445, Some("guest"), Some(""));
-        assert!(
-            typed.is_guest(),
-            "a typed `guest` with no password asks for the same session"
-        );
-        assert_eq!(typed.wire_username(), "");
-
-        let account = SmbConnectionParams::new("nas", "public", 445, Some("david"), Some("pw"));
-        assert!(!account.is_guest());
-        assert_eq!(account.wire_username(), "david");
-
-        let guest_with_a_password = SmbConnectionParams::new("nas", "public", 445, Some("Guest"), Some("pw"));
-        assert!(
-            !guest_with_a_password.is_guest(),
-            "a password means a real account named Guest"
-        );
-        assert_eq!(guest_with_a_password.wire_username(), "Guest");
     }
 }
 

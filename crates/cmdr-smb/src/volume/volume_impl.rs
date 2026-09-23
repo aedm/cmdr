@@ -590,7 +590,11 @@ impl Volume for SmbVolume {
         // async IPC thread calls, and the only writer is a reconnect that holds
         // the lock for a moment. Losing the race costs the guest button for one
         // render, which is the harmless way to be wrong.
-        let guest_allowed = self.inner.params.try_read().is_ok_and(|params| params.is_guest());
+        let guest_allowed = self
+            .inner
+            .params
+            .try_read()
+            .is_ok_and(|params| params.username.eq_ignore_ascii_case("Guest") && params.password.is_empty());
         cmdr_fs::volume::SignInShape::UsernamePassword { guest_allowed }
     }
 
