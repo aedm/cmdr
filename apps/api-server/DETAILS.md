@@ -227,7 +227,7 @@ We don't run our own queue infra for an internal channel.
 
 ### R2 presigned URLs (for error-report download links)
 
-The error-report route mints 7-day presigned GET URLs for the zip bundles in R2 and embeds them in Discord
+The error-report route mints 24-hour presigned GET URLs for the zip bundles in R2 and embeds them in Discord
 notifications. R2 bindings can't presign on their own, so the Worker uses the S3-compatible API via `aws4fetch` and
 three secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 

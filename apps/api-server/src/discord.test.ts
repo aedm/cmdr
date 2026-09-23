@@ -23,6 +23,7 @@ const baseNotification: ErrorReportNotification = {
   sizeBytes: 1_234_567,
   uploadedUnixSeconds: 1_745_000_000,
   downloadUrl: 'https://example.com/bundle.zip?sig=abc',
+  linkTtlHours: 24,
 }
 
 describe('buildErrorReportPayload', () => {
@@ -65,7 +66,7 @@ describe('buildErrorReportPayload', () => {
               },
               {
                 "name": "Download",
-                "value": "[Download bundle](https://example.com/bundle.zip?sig=abc) (link valid 7 days)",
+                "value": "[Download bundle](https://example.com/bundle.zip?sig=abc) (link valid 24 hours)",
               },
             ],
             "title": "[PROD] Error report ERR-A2345",

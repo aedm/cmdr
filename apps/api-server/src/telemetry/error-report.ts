@@ -51,10 +51,13 @@ const MAX_BUNDLE_BYTES = 10 * 1024 * 1024 // 10 MB hard cap on the bundle part
  */
 const MAX_BODY_BYTES = MAX_BUNDLE_BYTES + 1024 * 1024
 
-const PRESIGN_TTL_SECONDS = 7 * 24 * 60 * 60 // R2 max for presigned URLs
-
-/** The same window in the unit the notification copy states, so the two can't drift apart. */
-const PRESIGN_TTL_DAYS = PRESIGN_TTL_SECONDS / (24 * 60 * 60)
+/**
+ * How long a bundle's download link works. Short on purpose: the link grants the whole bundle to
+ * whoever holds it, and it sits in Discord, an email, and a GitHub issue. After it expires, fetch the
+ * bundle through the Cloudflare API (`docs/tooling/feedback-and-error-digest.md`).
+ */
+const PRESIGN_TTL_HOURS = 24
+const PRESIGN_TTL_SECONDS = PRESIGN_TTL_HOURS * 60 * 60
 const DEFAULT_BUCKET_NAME = 'cmdr-error-reports'
 
 /**
@@ -136,7 +139,7 @@ function buildR2Key(env: 'prod' | 'dev', datePrefix: string, id: string, uuid: s
 }
 
 /**
- * Build a 7-day presigned GET URL using the R2 S3-compatible API.
+ * Build a presigned GET URL, valid for {@link PRESIGN_TTL_HOURS} hours, using the R2 S3-compatible API.
  * Returns null if R2 credentials aren't configured.
  */
 async function buildPresignedUrl(env: Bindings, key: string): Promise<string | null> {
@@ -212,6 +215,7 @@ async function notifyDiscord(
       sizeBytes: args.sizeBytes,
       uploadedUnixSeconds: args.uploadedUnixSeconds,
       downloadUrl: (await presignedUrl()) ?? '(presign unavailable; fetch via admin)',
+      linkTtlHours: PRESIGN_TTL_HOURS,
       userNote: args.meta.userNote,
     })
   }
@@ -267,7 +271,7 @@ async function mailUserErrorReport(
       userNote: args.meta.userNote,
       email: args.meta.email,
       downloadUrl: await presignedUrl(),
-      linkTtlDays: PRESIGN_TTL_DAYS,
+      linkTtlHours: PRESIGN_TTL_HOURS,
     },
     to,
     resendApiKey: env.RESEND_API_KEY,
@@ -337,7 +341,7 @@ async function postUploadWork(env: Bindings, args: UploadedReport): Promise<void
         userNote: args.meta.userNote,
         email: args.meta.email,
         downloadUrl: await presignedUrl(),
-        linkTtlDays: PRESIGN_TTL_DAYS,
+        linkTtlHours: PRESIGN_TTL_HOURS,
       })
     } catch (e) {
       console.error('Error report: filing the GitHub issue failed', e)

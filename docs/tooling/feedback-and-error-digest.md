@@ -3,7 +3,7 @@
 How an agent reads the **in-app "Send feedback" messages** and the **error-report bundles** straight from the app's own
 stores. This is the data behind the `#feedback` and `#error-reports` Discord channels, but read from the source, not
 Discord: those channels are private and denied to the community bot (see `discord.md`), and the presigned bundle links
-Discord posts expire after 7 days while the bundles themselves live 90 days in R2.
+Discord posts expire after 24 hours while the bundles themselves live 90 days in R2.
 
 ## The triage board comes first
 

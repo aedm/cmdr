@@ -127,9 +127,11 @@ retention layers, in order of aggressiveness:
 ### Discord deep links
 
 Each upload triggers a one-line Discord notification to the private `#error-reports` channel with a presigned R2 GET URL
-embedded. **TTL: 7 days** (R2's max for presigned URLs). Rationale: only the maintainer has access to the Cmdr Discord
-server, and the channel is not shared, so the convenience of a click-to-download link outweighs the theoretical risk of
-URL leakage. If access widens later, flip to short-TTL + admin re-mint endpoint (~50 LOC).
+embedded; the notification email and the triage issue carry the same link. **TTL: 24 hours** (`PRESIGN_TTL_HOURS` in
+`apps/api-server/src/telemetry/error-report.ts`). The link grants the whole bundle to whoever holds it, and it sits in
+three places, so it lives only long enough for a same-day click. Older bundles come through the Cloudflare API
+(`docs/tooling/feedback-and-error-digest.md`). If a click-later link is ever needed, add an admin re-mint endpoint rather
+than lengthening the TTL.
 
 ## Folder-importance visit signal
 

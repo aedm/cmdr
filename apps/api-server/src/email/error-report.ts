@@ -40,8 +40,8 @@ export interface ErrorReportEmailRow {
   email?: string
   /** Presigned R2 GET URL, or `null` when the credentials to mint one aren't configured. */
   downloadUrl: string | null
-  /** How long {@link downloadUrl} keeps working, so a stale click a week later isn't a mystery. */
-  linkTtlDays: number
+  /** How long {@link downloadUrl} keeps working, so a stale click isn't a mystery. */
+  linkTtlHours: number
 }
 
 /**
@@ -64,9 +64,9 @@ function noteBlock(note: string | null | undefined, emptyLine: string): string {
 
 /** The card body: the note, the machine facts, and where the bundle is. */
 function renderErrorReportCard(report: ErrorReportEmailRow): string {
-  const days = report.linkTtlDays.toString()
+  const hours = report.linkTtlHours.toString()
   const downloadLine = report.downloadUrl
-    ? `<a href="${escapeHtml(report.downloadUrl)}" style="color: #2563eb;">Download the bundle</a> &middot; the link works for ${days} days`
+    ? `<a href="${escapeHtml(report.downloadUrl)}" style="color: #2563eb;">Download the bundle</a> &middot; the link works for ${hours} hours`
     : 'No download link this time. Fetch the bundle through the admin API.'
 
   return `

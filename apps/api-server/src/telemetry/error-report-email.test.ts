@@ -188,8 +188,10 @@ describe('error-report notification email', () => {
     const { html } = lastEmailCall()
     expect(html).toContain('test-account.r2.cloudflarestorage.com')
     expect(html).toContain('X-Amz-Signature')
-    // A stale click a week later should not be a mystery.
-    expect(html).toContain('7 days')
+    // A short-lived link limits what a forwarded or leaked notification exposes, and the email
+    // says how long it works, so a stale click isn't a mystery.
+    expect(html).toContain('X-Amz-Expires=86400')
+    expect(html).toContain('24 hours')
   })
 
   it('still mails when the presigned link cannot be minted', async () => {

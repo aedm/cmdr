@@ -125,7 +125,7 @@ export interface PersonalCommentInput {
   userNote?: string | null
   email?: string | null
   downloadUrl?: string | null
-  linkTtlDays?: number
+  linkTtlHours?: number
   retentionDays?: number
   /**
    * An absolute `YYYY-MM-DD` deletion date, overriding `retentionDays`. An amendment uses this to
@@ -160,8 +160,8 @@ export function buildPersonalComment(input: PersonalCommentInput): string | null
     sections.push('**Reply to**', fencedBlock(email))
   }
   if (input.downloadUrl) {
-    const ttl = input.linkTtlDays
-    const suffix = ttl ? ` (link expires in ${String(ttl)} days)` : ''
+    const ttl = input.linkTtlHours
+    const suffix = ttl ? ` (link expires in ${String(ttl)} hours)` : ''
     sections.push('**Bundle**', `[Download the bundle](${input.downloadUrl})${suffix}`)
   }
 
@@ -415,7 +415,7 @@ function todayUtc(): string {
  */
 export async function fileErrorReportIssue(
   env: Bindings,
-  input: ErrorReportIssueInput & { downloadUrl?: string | null; linkTtlDays?: number },
+  input: ErrorReportIssueInput & { downloadUrl?: string | null; linkTtlHours?: number },
 ): Promise<number | null> {
   const target = resolveIssueTarget(env)
   if (!target) return null
@@ -433,7 +433,7 @@ export async function fileErrorReportIssue(
       userNote: input.userNote,
       email: input.email,
       downloadUrl: input.downloadUrl,
-      linkTtlDays: input.linkTtlDays,
+      linkTtlHours: input.linkTtlHours,
       retentionDays: ERROR_REPORT_RETENTION_DAYS,
     }),
   })

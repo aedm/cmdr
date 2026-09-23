@@ -24,6 +24,8 @@ export interface ErrorReportNotification {
   sizeBytes: number
   uploadedUnixSeconds: number
   downloadUrl: string
+  /** How long {@link downloadUrl} works, stated next to it. */
+  linkTtlHours: number
   userNote?: string
 }
 
@@ -120,7 +122,7 @@ export function buildErrorReportPayload(n: ErrorReportNotification): unknown {
     { name: 'Arch', value: n.arch, inline: true },
     { name: 'Size', value: formatBytes(n.sizeBytes), inline: true },
     { name: 'Uploaded', value: `<t:${n.uploadedUnixSeconds.toString()}:R>`, inline: true },
-    { name: 'Download', value: `[Download bundle](${n.downloadUrl}) (link valid 7 days)` },
+    { name: 'Download', value: `[Download bundle](${n.downloadUrl}) (link valid ${n.linkTtlHours.toString()} hours)` },
   ]
   if (truncatedNote) {
     fields.push({ name: 'User note', value: truncatedNote })

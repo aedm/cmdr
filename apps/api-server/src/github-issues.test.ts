@@ -708,11 +708,11 @@ describe('buildPersonalComment', () => {
     const comment = buildPersonalComment({
       email: 'jane@example.com',
       downloadUrl: 'https://r2.example/bundle.zip?sig=x',
-      linkTtlDays: 7,
+      linkTtlHours: 24,
     })
     expect(comment).toContain('jane@example.com')
     expect(comment).toContain('https://r2.example/bundle.zip?sig=x')
-    expect(comment).toContain('7 days')
+    expect(comment).toContain('24 hours')
   })
 
   it('truncates a note that would overflow what an issue comment accepts', () => {
