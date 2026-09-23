@@ -271,21 +271,19 @@ async fn merge_album_onto_the_server(
 /// FOLDER MERGE under Skip: the folder merges (it isn't skipped wholesale), the
 /// clashing FILE is skipped, and the user's own files survive at every depth.
 pub(super) async fn a_deep_clash_merge_under_skip_keeps_every_dest_only_file(remote: Arc<dyn Volume>, dir: PathBuf) {
-    let (_local_dir, _local, finished) = merge_album_onto_the_server(
-        "merge-skip",
-        Transfer::Copy,
-        &remote,
-        &dir,
-        ConflictResolution::Skip,
-    )
-    .await;
+    let (_local_dir, _local, finished) =
+        merge_album_onto_the_server("merge-skip", Transfer::Copy, &remote, &dir, ConflictResolution::Skip).await;
 
     assert_eq!(
         try_read(remote.as_ref(), &dir.join("album/clash.txt")).await.as_deref(),
         Some(&b"DEST-clash"[..]),
         "a skipped clash keeps the user's bytes"
     );
-    assert_eq!(finished.state.skipped_totals().0, 1, "the one clash is reported skipped");
+    assert_eq!(
+        finished.state.skipped_totals().0,
+        1,
+        "the one clash is reported skipped"
+    );
 
     clean_deep(remote.as_ref(), &dir).await;
 }
@@ -421,10 +419,7 @@ pub(super) async fn a_move_merge_onto_the_server_spares_what_it_skipped(remote: 
         !local.exists(Path::new("album/fresh.txt")).await,
         "a delivered source file is swept"
     );
-    assert!(
-        !local.exists(Path::new("album/sub/fresh2.txt")).await,
-        "at every depth"
-    );
+    assert!(!local.exists(Path::new("album/sub/fresh2.txt")).await, "at every depth");
     assert_eq!(
         try_read(remote.as_ref(), &dir.join("album/clash.txt")).await.as_deref(),
         Some(&b"DEST-clash"[..]),
@@ -589,10 +584,7 @@ pub(super) async fn a_same_server_move_without_a_clash_moves_the_folder_whole(re
         expected,
         "the folder arrives whole"
     );
-    assert!(
-        !remote.exists(&src_album).await,
-        "a fully moved source folder is gone"
-    );
+    assert!(!remote.exists(&src_album).await, "a fully moved source folder is gone");
 
     clean_deep(remote.as_ref(), &dir).await;
 }
@@ -644,7 +636,12 @@ pub(super) async fn a_same_server_copy_duplicates_a_tree(remote: Arc<dyn Volume>
 pub(super) async fn a_copy_into_a_missing_nested_destination_makes_every_level(remote: Arc<dyn Volume>, dir: PathBuf) {
     let dest = dir.join("incoming/2026/trip");
     let (_local_dir, local) = local_volume("missing-nested-dest");
-    seed(local.as_ref(), Path::new(""), &[("a.txt", b"alpha"), ("b.txt", b"bravo")]).await;
+    seed(
+        local.as_ref(),
+        Path::new(""),
+        &[("a.txt", b"alpha"), ("b.txt", b"bravo")],
+    )
+    .await;
 
     transfer(
         "missing-nested-dest",

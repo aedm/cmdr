@@ -25,14 +25,10 @@ use cmdr_fs::volume::{Volume, VolumeError};
 use super::event_sinks::CollectorEventSink;
 use super::network_gated_source_test_support::gated_reads;
 use super::network_semantics_test_support::{local_volume, names_in, seed, try_read};
-use super::network_transfer_test_support::{
-    assert_no_staging_litter, clean_deep, self_describing_bytes, start_copy,
-};
+use super::network_transfer_test_support::{assert_no_staging_litter, clean_deep, self_describing_bytes, start_copy};
 use super::seed_incoherent_scan_result_for_test;
 use super::state::{WriteOperationState, cancel_write_operation};
-use super::transfer::volume::{
-    FaultyOp, FaultyVolume, copy_volumes_with_progress, move_volumes_with_progress,
-};
+use super::transfer::volume::{FaultyOp, FaultyVolume, copy_volumes_with_progress, move_volumes_with_progress};
 use super::types::{ConflictResolution, VolumeCopyConfig, WriteOperationConfig};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::file_system::volume::manager::get_volume_manager;
@@ -215,7 +211,12 @@ pub(super) async fn a_delete_with_a_local_shaped_preview_removes_only_the_reques
     seed(
         remote.as_ref(),
         &requested,
-        &[("r0.bin", b"R"), ("r1.bin", b"R"), ("deep/r2.bin", b"R"), ("deep/r3.bin", b"R")],
+        &[
+            ("r0.bin", b"R"),
+            ("r1.bin", b"R"),
+            ("deep/r2.bin", b"R"),
+            ("deep/r3.bin", b"R"),
+        ],
     )
     .await;
     seed(remote.as_ref(), &other, &[("untouched.txt", b"OTHER-untouched")]).await;
@@ -233,7 +234,10 @@ pub(super) async fn a_delete_with_a_local_shaped_preview_removes_only_the_reques
     .await;
     assert!(result.is_ok(), "the delete should succeed: {result:?}");
 
-    assert!(!remote.exists(&requested).await, "the requested tree survived the delete");
+    assert!(
+        !remote.exists(&requested).await,
+        "the requested tree survived the delete"
+    );
     assert_eq!(
         try_read(remote.as_ref(), &other.join("untouched.txt")).await.as_deref(),
         Some(&b"OTHER-untouched"[..]),

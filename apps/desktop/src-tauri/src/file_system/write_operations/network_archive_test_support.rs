@@ -53,8 +53,10 @@ fn two_entry_zip() -> Vec<u8> {
     let deflated = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     w.start_file("keep.txt", stored).expect("start the stored entry");
     w.write_all(b"keep me").expect("write the stored entry");
-    w.start_file("dir/drop.txt", deflated).expect("start the deflated entry");
-    w.write_all(b"delete me from the server").expect("write the deflated entry");
+    w.start_file("dir/drop.txt", deflated)
+        .expect("start the deflated entry");
+    w.write_all(b"delete me from the server")
+        .expect("write the deflated entry");
     w.finish().expect("finish the fixture zip").into_inner()
 }
 
@@ -219,9 +221,7 @@ pub(super) async fn a_cancel_before_the_swap_keeps_the_original_zip(remote: Arc<
         mutator::apply(working, &changeset, &NoHooks).expect("local mutator apply");
         // `store` is the test's own lever: the orchestrator's pre-upload check
         // is what this cell is about, and no stop request path reaches it here.
-        cancel
-            .intent
-            .store(OperationIntent::Stopped as u8, Ordering::Relaxed);
+        cancel.intent.store(OperationIntent::Stopped as u8, Ordering::Relaxed);
         Ok::<(), EditError>(())
     })
     .await;
@@ -315,7 +315,12 @@ async fn compress_onto(source: &Arc<dyn Volume>, sources: &[&str], dest_zip: Pat
 pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(remote: Arc<dyn Volume>, dir: PathBuf) {
     let registered = Registered::new(&remote, "compress");
     let (_local_dir, local) = local_volume("compress");
-    seed(local.as_ref(), Path::new(""), &[("one.txt", b"first"), ("two.txt", b"second")]).await;
+    seed(
+        local.as_ref(),
+        Path::new(""),
+        &[("one.txt", b"first"), ("two.txt", b"second")],
+    )
+    .await;
 
     compress_onto(&local, &["one.txt", "two.txt"], dir.join("bundle.zip"), &registered.id).await;
 
@@ -345,7 +350,10 @@ pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Ar
     let there = destination_exists(Some(registered.id.clone()), asked.clone()).await;
     assert!(there.data && !there.timed_out, "the dialog must warn: {there:?}");
     let exact = path_exists(Some(registered.id.clone()), asked).await;
-    assert!(!exact.data && !exact.timed_out, "path_exists stays byte-exact: {exact:?}");
+    assert!(
+        !exact.data && !exact.timed_out,
+        "path_exists stays byte-exact: {exact:?}"
+    );
 
     let (_local_dir, local) = local_volume("compress-look-alike");
     seed(local.as_ref(), Path::new(""), &[("one.txt", b"first")]).await;
@@ -365,7 +373,10 @@ pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Ar
 
     let resume_nfd = RESUME_NFD.replace(".txt", ".zip");
     let new_there = destination_exists(Some(registered.id.clone()), dir.join(&resume_nfd).display().to_string()).await;
-    assert!(!new_there.data && !new_there.timed_out, "a free name reads free: {new_there:?}");
+    assert!(
+        !new_there.data && !new_there.timed_out,
+        "a free name reads free: {new_there:?}"
+    );
     compress_onto(&local, &["one.txt"], dir.join(&resume_nfd), &registered.id).await;
     let mut expected = vec![
         zip_nfc.clone(),

@@ -27,7 +27,8 @@ use cmdr_fs::volume::Volume;
 use cmdr_sftp::volume::testing::FIXTURE_ROOT;
 
 use super::network_semantics_test_support::{
-    a_copy_into_a_missing_nested_destination_makes_every_level, a_deep_clash_merge_under_overwrite_replaces_only_the_clash,
+    a_copy_into_a_missing_nested_destination_makes_every_level,
+    a_deep_clash_merge_under_overwrite_replaces_only_the_clash,
     a_deep_clash_merge_under_skip_keeps_every_dest_only_file, a_folder_moved_off_the_server_leaves_no_source,
     a_folder_moved_onto_the_server_leaves_no_source, a_move_merge_onto_the_server_spares_what_it_skipped,
     a_multi_megabyte_file_round_trips_byte_exact, a_rename_policy_lands_the_clash_beside_the_users_file,

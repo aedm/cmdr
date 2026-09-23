@@ -76,7 +76,11 @@ pub(super) async fn a_decomposed_file_onto_its_composed_twin_is_skipped(remote: 
         try_read(remote.as_ref(), &dir.join(CAFE_NFC)).await.as_deref(),
         Some(&b"DEST"[..])
     );
-    assert_eq!(finished.state.skipped_totals().0, 1, "the look-alike is reported skipped");
+    assert_eq!(
+        finished.state.skipped_totals().0,
+        1,
+        "the look-alike is reported skipped"
+    );
 
     clean_deep(remote.as_ref(), &dir).await;
 }
@@ -181,7 +185,9 @@ pub(super) async fn a_new_name_lands_spelled_the_way_the_server_asks(remote: Arc
         "and the names inside a folder the copy created"
     );
     assert_eq!(
-        try_read(remote.as_ref(), &dir.join(&fotok).join(&cafe)).await.as_deref(),
+        try_read(remote.as_ref(), &dir.join(&fotok).join(&cafe))
+            .await
+            .as_deref(),
         Some(&b"SOURCE"[..])
     );
 
@@ -232,15 +238,21 @@ pub(super) async fn a_same_server_move_skips_a_look_alike(remote: Arc<dyn Volume
         "❗ nor beside the deep one"
     );
     assert_eq!(
-        try_read(remote.as_ref(), &dir.join("dst").join(&deep_dest)).await.as_deref(),
+        try_read(remote.as_ref(), &dir.join("dst").join(&deep_dest))
+            .await
+            .as_deref(),
         Some(&b"DEEP-DEST"[..])
     );
     assert_eq!(
-        try_read(remote.as_ref(), &dir.join("src").join(&deep_source)).await.as_deref(),
+        try_read(remote.as_ref(), &dir.join("src").join(&deep_source))
+            .await
+            .as_deref(),
         Some(&b"DEEP-SOURCE"[..])
     );
     assert_eq!(
-        try_read(remote.as_ref(), &dir.join("src").join(CAFE_NFD)).await.as_deref(),
+        try_read(remote.as_ref(), &dir.join("src").join(CAFE_NFD))
+            .await
+            .as_deref(),
         Some(&b"TOP-SOURCE"[..])
     );
 
@@ -286,7 +298,10 @@ pub(super) async fn a_rename_never_lands_on_a_taken_name(remote: Arc<dyn Volume>
         before,
         "a refused rename leaves the folder exactly as it was"
     );
-    assert_eq!(try_read(remote.as_ref(), &dir.join("b.txt")).await.as_deref(), Some(&b"B"[..]));
+    assert_eq!(
+        try_read(remote.as_ref(), &dir.join("b.txt")).await.as_deref(),
+        Some(&b"B"[..])
+    );
     assert_eq!(
         try_read(remote.as_ref(), &dir.join(CAFE_NFC)).await.as_deref(),
         Some(&b"THEIRS"[..])
