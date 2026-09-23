@@ -12,7 +12,7 @@ Three reasons, in priority order. When a decision here is ambiguous, resolve it 
 2. **Build-time separation.** Backend work that doesn't touch the index no longer rebuilds the index, and vice versa.
 3. **The index could one day be a product of its own.** "Cmdr, plus a smart file+image index any agent can tap into"
    needs a documented, stable, self-contained API. This is that API. It is NOT a daemon; there's no separate process
-   here, and the deferred escalation lives in `docs/specs/later/indexing/out-of-process-indexing.md`.
+   here, and why is § "Considered and deferred: out-of-process indexing".
 
 ## The contract this crate is held to
 
@@ -149,9 +149,45 @@ symmetric stamp-and-compare test while silently skipping the work the stamp exis
 - **`operation_log/`** and the agent's store, which share `cmdr-fs`'s one process-wide SQLite page-cache slab with the
   index's three databases. That's why the connection factories live in `cmdr-fs` rather than either end.
 
+## Considered and deferred: out-of-process indexing
+
+Moving drive and media indexing into its own OS process is the only design that makes "a runaway indexer can never
+starve the UI" structural rather than defended: the kernel would arbitrate CPU, memory, and I/O between two processes,
+and the OS would account for the indexer's resources separately. It was weighed after an incident where a dead index DB
+spun a failing-retry loop at ~190% CPU and froze the webview through CPU plus synchronous log-write contention, and
+deferred, because three cheaper in-process fixes closed the actual levers:
+
+- **Thread QoS**: the heavy indexing threads (writer, scanner, walker workers and watchdog, local reconcile) run at
+  `QOS_CLASS_UTILITY` (`crates/cmdr-fs/src/thread_qos.rs`), so macOS lets the UI's threads preempt them.
+- **Bounded logging**: the file-log writer coalesces identical-line floods
+  (`apps/desktop/src-tauri/src/logging/coalesce.rs`), so a runaway loop can't peg a core on `write` or stall other
+  threads on the log mutex.
+- **The source is stopped**: a fatal storage error fails the index instead of retrying forever
+  (`src/indexing/writer/DETAILS.md` § "Fatal storage failure — the writer is the detector").
+
+What a split would cost, so the decision can be re-opened on evidence rather than re-derived:
+
+- **The data plane is easy.** One WAL DB per volume with one writer and read-only readers is exactly what WAL supports
+  across processes. The writer moves into the indexer; search can keep reading the same files from the app.
+- **The control plane is the cost.** `INDEX_REGISTRY` and the other process-wide statics are reached from dozens of call
+  sites, and every app-side read or mutation becomes an RPC or a cache. The shared `Arc`s (`ReadPool`, `PendingSizes`,
+  per-volume `Freshness`) each need one owner. This crate already did the enumerating: the five host seams are the RPC
+  surface, a pipe-backed `EventSink` is a second implementation of an existing trait, and the `Index` handle is the
+  bounded list of status reads to convert (`src/indexing/handle/DETAILS.md`).
+- **New failure modes**: a sidecar can crash or hang on its own, so the app needs supervision (detect, restart, back
+  off), and the UI needs an "indexer unavailable" state distinct from "indexing off". Hot synchronous status reads
+  (volume switching, `cmdr://state`) would need caching to stay sub-millisecond.
+- **Prior art**: the AI feature already spawns and supervises `llama-server` as a child process
+  (`apps/desktop/src-tauri/src/ai/process.rs`). An indexer sidecar is harder (stateful and bidirectional), but the
+  process-management scaffolding exists.
+
+Magnitude: multi-week, with regression surface across the whole indexing lifecycle. **Revisit only if** (1) a new
+starvation incident traces to a path QoS and log coalescing can't contain (memory pressure, a syscall storm QoS doesn't
+throttle), (2) indexing grows a component that wants its own address space (a heavy native library, a crash-prone
+codec), or (3) OS-visible resource accounting and throttling for indexing becomes a product feature.
+
 ## Related
 
 - `crates/cmdr-fs/DETAILS.md` — the layer below: the vocabulary this crate indexes, and why each piece is down there.
 - `src/indexing/handle/DETAILS.md` — the public-surface audit, item by item.
 - `src/indexing/host/DETAILS.md` — the seams and their rationale.
-- `docs/specs/later/indexing/out-of-process-indexing.md` — the deferred daemon escalation this boundary makes cheaper.
