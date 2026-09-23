@@ -43,8 +43,17 @@ services:
   # The stock server: everything an OpenSSH server normally has, including
   # `posix-rename@openssh.com`. The default target for anything not testing a
   # quirk.
+  #
+  # ❗ Two CPUs, where every other server gets half of one. The cap is a ceiling,
+  # so idle it still costs nothing, but this server takes most of the app's
+  # transfer cells AND the crate's, one SSH session per cell (nextest runs each
+  # test in its own process). At 0.5 it pinned at 50% with two lanes running at
+  # once and every cell, old ones included, blew the 8 s nextest cap; at 2 four
+  # concurrent lanes finish in under 7 s (measured 2026-09-23, `docker stats`
+  # plus four parallel `sftp_integration_` runs).
   sftp-fixture-openssh:
     <<: *fixture
+    cpus: 2
     ports: ['${SFTP_BIND_ADDR:-127.0.0.1}:${SFTP_FIXTURE_OPENSSH_PORT:-12480}:22']
 
   # Key-only: `PasswordAuthentication no`, so the ladder has to reach its second

@@ -52,6 +52,10 @@ nothing drops nothing, silently, and the fixture then quietly HAS the extension 
 `crates/cmdr-sftp/src/volume/integration_test.rs`'s `a_server_with_the_extensions_dropped_advertises_neither` is what
 caught it and what keeps it caught.
 
+**The stock server gets two CPUs; every other server gets half of one.** It carries most of the app's cells and the
+crate's, one SSH session each, and at half a CPU two concurrent lanes pinned it and pushed old and new cells alike past
+the 8 s nextest cap. The measurement is in the compose file's comment on the service.
+
 Every server runs as `ada` / `openthedoor` and exports `/srv/data`. Every export carries the same landmarks
 (`hello.txt`, `photos/`, `ten-bytes.txt`, `five-bytes.txt`, `empty-dir/`, `full-dir/child.txt`, `large.bin`), so a cell
 can assert on them whichever server it's pointed at.
