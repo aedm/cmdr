@@ -471,6 +471,8 @@ macro_rules! ipc_command_manifest {
                     crate::commands::clipboard::paste_clipboard_as_file,
                     crate::commands::clipboard::clear_clipboard_cut_state,
                     crate::commands::usage::get_launch_day_count,
+                    crate::space_poller::set_disk_space_size_format,
+                    crate::main_window_visibility::set_main_window_visible,
                 ]
                 dispatch_only: [
                     // Generic over `R: tauri::Runtime`, which `collect_functions!` can't take.
@@ -1022,7 +1024,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             ScanPreviewCompleteEvent,
             ScanPreviewErrorEvent,
             ScanPreviewCancelledEvent,
-            // Volumes + disk space (volumes/, volumes_linux/, space_poller.rs,
+            // Volumes + disk space (volumes/, volumes_linux/, space_poller/,
             // write_operations/state.rs busy set, menu eject action).
             VolumesChanged,
             VolumeMounted,

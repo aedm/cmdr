@@ -8,6 +8,7 @@ import { throwEjectError } from '$lib/file-explorer/navigation/eject-error'
 import {
   commands,
   events,
+  type FileSizeFormat,
   type Location,
   type LowDiskSpacePayload,
   type ResolveLocationResult,
@@ -311,6 +312,14 @@ export async function onLowDiskSpace(callback: (payload: LowDiskSpacePayload) =>
  */
 export async function setDiskSpaceThreshold(mb: number): Promise<void> {
   await commands.setDiskSpaceThreshold(Math.round(mb))
+}
+
+/**
+ * Tells the disk-space poller which base the readout rounds in (`appearance.fileSizeFormat`), so it
+ * emits only when the displayed figures would change.
+ */
+export async function setDiskSpaceSizeFormat(format: FileSizeFormat): Promise<void> {
+  await commands.setDiskSpaceSizeFormat(format)
 }
 
 /**

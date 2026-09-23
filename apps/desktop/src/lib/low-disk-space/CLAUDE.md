@@ -5,7 +5,7 @@ Frontend half of the low-disk-space warning. The backend `low-disk-space` event 
 notification; `false` (recovered above the re-arm margin) dismisses the in-app toast. Dispatch follows the
 `behavior.fileSystemWatching.lowDiskSpaceNotifications` setting (`'in-app' | 'macos' | 'off'`).
 
-Backend: the low-space section of `apps/desktop/src-tauri/src/space_poller.rs` (boot-volume watcher, hysteresis
+Backend: the low-space section of `apps/desktop/src-tauri/src/space_poller/mod.rs` (boot-volume watcher, hysteresis
 detector, the `set_low_disk_space_config` live-apply command).
 
 ## Module map

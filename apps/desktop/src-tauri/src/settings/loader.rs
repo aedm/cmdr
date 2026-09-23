@@ -99,6 +99,10 @@ pub struct Settings {
     pub adb_binary_path: Option<String>,
     #[serde(alias = "advanced.diskSpaceChangeThreshold", default)]
     pub disk_space_change_threshold_mb: Option<u64>,
+    /// `"binary"` or `"si"`: the base the disk-space readout rounds in, which the poller's emit
+    /// gate has to match (`space_poller/readout.rs`).
+    #[serde(alias = "appearance.fileSizeFormat", default)]
+    pub appearance_file_size_format: Option<String>,
     #[serde(alias = "behavior.fileSystemWatching.lowDiskSpaceNotifications", default)]
     pub low_disk_space_notifications: Option<String>,
     #[serde(alias = "behavior.fileSystemWatching.lowDiskSpaceThresholdPercent", default)]
@@ -218,6 +222,7 @@ impl Default for Settings {
             adb_enabled: None,
             adb_binary_path: None,
             disk_space_change_threshold_mb: None,
+            appearance_file_size_format: None,
             low_disk_space_notifications: None,
             low_disk_space_threshold_percent: None,
             smb_concurrency: None,
@@ -332,6 +337,10 @@ fn parse_settings(contents: &str) -> Result<Settings, serde_json::Error> {
         .and_then(|v| v.as_str())
         .map(String::from);
     let disk_space_change_threshold_mb = json.get("advanced.diskSpaceChangeThreshold").and_then(|v| v.as_u64());
+    let appearance_file_size_format = json
+        .get("appearance.fileSizeFormat")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let low_disk_space_notifications = json
         .get("behavior.fileSystemWatching.lowDiskSpaceNotifications")
         .and_then(|v| v.as_str())
@@ -386,6 +395,7 @@ fn parse_settings(contents: &str) -> Result<Settings, serde_json::Error> {
         adb_enabled,
         adb_binary_path,
         disk_space_change_threshold_mb,
+        appearance_file_size_format,
         low_disk_space_notifications,
         low_disk_space_threshold_percent,
         smb_concurrency,

@@ -257,6 +257,15 @@ export async function showMainWindow(reason: MainWindowShowReason): Promise<void
 }
 
 /**
+ * Tells the backend whether the main window can be seen (`document.visibilityState`), so the idle
+ * work that exists only to redraw it (the disk-space stream, listing size refreshes) can hold while
+ * it can't. See `src-tauri/src/main_window_visibility.rs`.
+ */
+export async function setMainWindowVisible(visible: boolean): Promise<void> {
+  await commands.setMainWindowVisible(visible)
+}
+
+/**
  * E2E-only: orders the labeled window behind everything without focusing it, so
  * a test run's child windows don't pop in front of the developer's work. No-op
  * outside E2E (the backend gates on `CMDR_E2E_MODE`). The caller is

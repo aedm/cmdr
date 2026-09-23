@@ -30,6 +30,8 @@ differs from the field name.
 - `show_staging_temp_files: Option<bool>` (from `advanced.showStagingTempFiles`, default off).
 - `mtp_enabled: Option<bool>` (from `fileOperations.mtpEnabled`).
 - `disk_space_change_threshold_mb: Option<u64>` (from `advanced.diskSpaceChangeThreshold`).
+- `appearance_file_size_format: Option<String>` (from `appearance.fileSizeFormat`; the disk-space poller rounds its emit
+  gate in the same base, `space_poller::FileSizeFormat::from_setting`).
 - `low_disk_space_notifications: Option<String>` (from `behavior.fileSystemWatching.lowDiskSpaceNotifications`;
   `low_disk_space_enabled()` maps any mode but "off" (or missing) to enabled).
 - `low_disk_space_threshold_percent: Option<u64>` (from `behavior.fileSystemWatching.lowDiskSpaceThresholdPercent`,

@@ -11,6 +11,7 @@ import {
   type SizeColorsPalette,
   type DateColorsPalette,
   type ThemeMode,
+  type FileSizeFormat,
 } from '$lib/settings'
 import { getAppLogger, setVerboseLogging } from '$lib/logging/logger'
 import {
@@ -25,6 +26,7 @@ import {
   mediaIndexSetSemanticSearchEnabled,
   setMtpEnabled,
   setDiskSpaceThreshold,
+  setDiskSpaceSizeFormat,
   setDirectSmbConnection,
   setShowSafeSaveFiles,
   setShowStagingTempFiles,
@@ -136,6 +138,9 @@ async function applyBackendSettings(): Promise<void> {
   // but a re-push keeps dev/hot-reload aligned with whatever the user persisted.
   await setShowVirtualGitPortal(getSetting('fileExplorer.git.showVirtualGitPortal'))
 
+  // Disk-space poller's rounding base. Same rationale: read at startup, re-pushed here.
+  await setDiskSpaceSizeFormat(getSetting('appearance.fileSizeFormat'))
+
   log.debug('Applied backend settings: debounce={debounce}ms, resolveTimeout={timeout}ms', {
     debounce: debounceMs,
     timeout: resolveTimeoutMs,
@@ -211,6 +216,8 @@ const passthroughBackendHandlers: Partial<Record<string, (value: unknown) => voi
   'fileOperations.adbEnabled': () => void pushAdbConfigToBackend(),
   'fileOperations.adbBinaryPath': () => void pushAdbConfigToBackend(),
   'advanced.diskSpaceChangeThreshold': (v) => void setDiskSpaceThreshold(v as number),
+  // The disk-space poller rounds its emit gate in the base the readout draws in.
+  'appearance.fileSizeFormat': (v) => void setDiskSpaceSizeFormat(v as FileSizeFormat),
   // Low-disk-space pair: either change re-pushes the full config. The helper
   // re-reads both settings fresh at call time (same shape as the AI triplet
   // below), so the mode and threshold always travel together.

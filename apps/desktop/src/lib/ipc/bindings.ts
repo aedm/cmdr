@@ -3324,6 +3324,10 @@ export const commands = {
    *  guess.
    */
   getLaunchDayCount: () => __TAURI_INVOKE<number>('get_launch_day_count'),
+  // Updates the size format the emit gate rounds in (from settings).
+  setDiskSpaceSizeFormat: (format: FileSizeFormat) => __TAURI_INVOKE<void>('set_disk_space_size_format', { format }),
+  // The main window's webview reports whether it's visible (`document.visibilityState`).
+  setMainWindowVisible: (visible: boolean) => __TAURI_INVOKE<void>('set_main_window_visible', { visible }),
   /**
    *  Enables or disables MTP support at runtime.
    *
@@ -7322,6 +7326,13 @@ export type FileIndexStatus = {
   path: string
   state: FileIndexState
 }
+
+// The `appearance.fileSizeFormat` setting: which base the size units step by.
+export type FileSizeFormat =
+  // Base 1024 (`KB`, `MB`, `GB`), the setting's default.
+  | 'binary'
+  // Base 1000 (`kB`, `MB`, `GB`).
+  | 'si'
 
 /**
  *  What a destination filesystem is. A factual classification used for the

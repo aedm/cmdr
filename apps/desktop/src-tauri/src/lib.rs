@@ -90,6 +90,7 @@ mod location;
 #[cfg(target_os = "macos")]
 mod macos_icons;
 mod main_window_show;
+mod main_window_visibility;
 mod mcp;
 mod menu;
 #[cfg(target_os = "macos")]
@@ -602,6 +603,9 @@ pub fn run() {
             // Initialize disk space poller (live status bar updates + low-disk-space warning)
             space_poller::init(app.handle());
             space_poller::set_threshold_mb(saved_settings.disk_space_change_threshold_mb.unwrap_or(1));
+            space_poller::set_size_format(space_poller::FileSizeFormat::from_setting(
+                saved_settings.appearance_file_size_format.as_deref(),
+            ));
             space_poller::configure_low_disk_space(
                 saved_settings.low_disk_space_enabled(),
                 saved_settings.low_disk_space_threshold_percent.unwrap_or(5),

@@ -23,6 +23,7 @@
  */
 
 import type { UnlistenFn } from '@tauri-apps/api/event'
+import { startMainWindowVisibilityReport } from './main-window-visibility'
 import { startAskCmdrTurnStream, stopAskCmdrTurnStream } from '$lib/ask-cmdr/ask-cmdr-turn-stream.svelte'
 import { startWakeIndicator, stopWakeIndicator } from '$lib/ask-cmdr/wake-indicator.svelte'
 import { startWakeToast, stopWakeToast } from '$lib/ask-cmdr/wake-toast.svelte'
@@ -105,6 +106,9 @@ const unlistenFns: UnlistenFn[] = []
 /** Tears down the native-menu enabled-state sync (HMR safety). */
 let stopMenuGate: (() => void) | null = null
 
+/** Tears down the main window's visibility report to the backend (HMR safety). */
+let stopVisibilityReport: (() => void) | null = null
+
 /** Tears down the "Open terminal here" menu-item sync (HMR safety). */
 let stopTerminalMenuGate: (() => void) | null = null
 
@@ -116,6 +120,9 @@ let stopMenuDialogGate: (() => void) | null = null
  * nothing below can fail in a way the window has to know about.
  */
 export function startEarlyWindowServices(): void {
+  // Tell the backend whether anyone can see this window, so the idle work that only redraws it
+  // (disk space, listing sizes) holds while hidden. Early: the first answer should beat the first poll.
+  stopVisibilityReport = startMainWindowVisibilityReport()
   // Grey out the File menu's operation items while a dialog is up or Ask Cmdr has focus.
   // Chrome only; every real refusal is elsewhere.
   stopMenuGate = startMenuOperationGate()
@@ -238,6 +245,8 @@ export async function startWindowServices(ctx: WindowServicesContext): Promise<v
 
 /** Tear down everything both phases started. Safe to call when neither ran. */
 export function stopWindowServices(): void {
+  stopVisibilityReport?.()
+  stopVisibilityReport = null
   stopSuggestedOpsBadge()
   stopAskCmdrTurnStream()
   stopWakeIndicator()

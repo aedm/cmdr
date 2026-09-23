@@ -2,7 +2,7 @@
  * Low-disk-space event bridge.
  *
  * Subscribes ONCE to the backend `low-disk-space` Tauri event (emitted by
- * `space_poller.rs` on each hysteresis edge) and dispatches per the current
+ * `space_poller/` on each hysteresis edge) and dispatches per the current
  * `behavior.fileSystemWatching.lowDiskSpaceNotifications` setting
  * (`'in-app' | 'macos' | 'off'`).
  *

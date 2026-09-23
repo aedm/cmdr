@@ -281,7 +281,10 @@ All under `apps/desktop/src-tauri/src/`.
   a timeout, appends every device provider's storages (`device_volumes.rs`), and enriches from the registry;
   `commands/volumes.rs` and `volume_broadcast.rs` both publish what it returns. See
   `apps/desktop/src-tauri/src/volumes/CLAUDE.md`
-- `space_poller.rs`: Live disk-space polling (per-volume-type intervals) plus the low-disk-space hysteresis warning
+- `space_poller/`: Live disk-space polling (per-volume-type intervals, emitting only what the readout would draw
+  differently, paused while the main window is hidden) plus the low-disk-space hysteresis warning
+- `main_window_visibility.rs`: whether the main window can be seen, as its webview reports it; the idle redraw work
+  holds on it
 - `fda_gate.rs`: Full Disk Access startup gate: blocks TCC reads + `NSWorkspace` icon calls until FDA is decided. See
   the `tauri-apis` rule in `.claude/rules/`
 - `instance_lock.rs`: Single-instance guard: one process per data dir, claimed at startup. See

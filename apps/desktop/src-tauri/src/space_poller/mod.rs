@@ -1,8 +1,11 @@
 //! Live disk-space poller.
 //!
 //! Polls `get_volume_space()` for volumes the frontend is actively displaying
-//! in panes, and emits `volume-space-changed` events when the value changes
-//! beyond a configurable threshold.
+//! in panes, and emits `volume-space-changed` only when the readout would draw a
+//! different figure (`readout.rs`) and the change passes the user's threshold.
+//! While the main window is hidden (`main_window_visibility`), it polls only the
+//! boot volume for the low-space check and emits nothing, then catches up the
+//! moment the window shows.
 //!
 //! Poll intervals are per-volume-type via `Volume::space_poll_interval()`:
 //! local volumes poll every 2 s, network/MTP every 5 s.
@@ -14,7 +17,7 @@
 //! threshold, `is_low: false` when it recovers above the re-arm margin (so the
 //! frontend auto-dismisses the toast). The live free-space numbers shown while
 //! the toast is up ride the separate `volume-space-changed` stream, which the
-//! boot-volume watcher already emits every tick. The poll loop deduplicates by
+//! boot-volume watcher feeds whenever the readout would change. The poll loop deduplicates by
 //! volume id, so a pane watching the boot volume shares the same single
 //! `statfs` per tick with the permanent watcher.
 
@@ -32,6 +35,10 @@ use crate::file_system::volume::SpaceInfo;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
 
+mod readout;
+
+pub use readout::FileSizeFormat;
+
 /// Global app handle for emitting events.
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
@@ -42,8 +49,15 @@ static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 /// volume_id to avoid polling the same volume twice per tick.
 static WATCHED: OnceLock<Mutex<HashMap<String, WatchEntry>>> = OnceLock::new();
 
-/// Last emitted space per volume, for change detection.
+/// The freshest reading per volume, for [`cached_space`]. Updated on every successful poll.
 static LAST_SPACE: OnceLock<Mutex<HashMap<String, SpaceInfo>>> = OnceLock::new();
+
+/// The last reading that went OUT per volume, what [`should_emit`] compares against.
+static LAST_EMITTED: OnceLock<Mutex<HashMap<String, SpaceInfo>>> = OnceLock::new();
+
+/// `appearance.fileSizeFormat` is SI. The readout's digits roll over at different byte counts per
+/// base, so the emit gate has to know which one the frontend draws in.
+static SIZE_FORMAT_SI: AtomicBool = AtomicBool::new(false);
 
 /// Rate limit for the per-emission debug line (the events themselves are never
 /// throttled; only the logging is). Per volume, so a churning boot disk can't
@@ -148,6 +162,20 @@ pub fn init(app: &AppHandle) {
     let _ = APP_HANDLE.set(app.clone());
     let _ = WATCHED.set(Mutex::new(HashMap::new()));
     let _ = LAST_SPACE.set(Mutex::new(HashMap::new()));
+    let _ = LAST_EMITTED.set(Mutex::new(HashMap::new()));
+}
+
+/// Applies `appearance.fileSizeFormat` (at startup and live from Settings).
+pub fn set_size_format(format: FileSizeFormat) {
+    SIZE_FORMAT_SI.store(format == FileSizeFormat::Si, Ordering::Relaxed);
+}
+
+fn size_format() -> FileSizeFormat {
+    if SIZE_FORMAT_SI.load(Ordering::Relaxed) {
+        FileSizeFormat::Si
+    } else {
+        FileSizeFormat::Binary
+    }
 }
 
 /// Updates the threshold from the Settings UI (value in megabytes).
@@ -225,6 +253,13 @@ pub fn set_disk_space_threshold(mb: u64) {
     set_threshold_mb(mb);
 }
 
+/// Updates the size format the emit gate rounds in (from settings).
+#[tauri::command]
+#[specta::specta]
+pub fn set_disk_space_size_format(format: FileSizeFormat) {
+    set_size_format(format);
+}
+
 /// Updates the low-disk-space warning config at runtime (from settings).
 #[tauri::command]
 #[specta::specta]
@@ -233,11 +268,27 @@ pub fn set_low_disk_space_config(enabled: bool, threshold_percent: u64) {
 }
 
 /// The core loop. Ticks every second; each volume is polled at its own cadence.
+///
+/// While the main window is hidden (`main_window_visibility`), nothing is drawn, so the loop polls
+/// only what the low-disk-space warning needs and emits nothing. The moment the window shows, it
+/// wakes, polls every watched volume at once, and emits whatever the readout would draw differently
+/// from the last reading that went out.
 async fn poll_loop() {
     let mut tick: u64 = 0;
+    let mut visibility = crate::main_window_visibility::subscribe();
+    let mut was_visible = crate::main_window_visibility::is_visible();
     loop {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-        tick += 1;
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(1)) => tick += 1,
+            // A closed channel can't happen (the sender is a static); if it did, fall back to ticking.
+            changed = visibility.changed() => if changed.is_err() { tokio::time::sleep(Duration::from_secs(1)).await },
+        }
+        let visible = crate::main_window_visibility::is_visible();
+        let catching_up = visible && !was_visible;
+        was_visible = visible;
+        if !visible && !LOW_SPACE_ENABLED.load(Ordering::Relaxed) {
+            continue;
+        }
 
         // Snapshot the watch list and deduplicate by volume_id.
         // Multiple panes on the same volume produce one poll.
@@ -256,8 +307,13 @@ async fn poll_loop() {
 
         let manager = get_volume_manager();
         let threshold = THRESHOLD_BYTES.load(Ordering::Relaxed);
+        let format = size_format();
 
         for (volume_id, path) in unique_volumes {
+            // Hidden: only the boot volume's low-space check still has a reader.
+            if !visible && volume_id != DEFAULT_VOLUME_ID {
+                continue;
+            }
             let volume = manager.get(&volume_id);
 
             // Determine poll interval from the Volume trait (elegant per-type cadence).
@@ -267,7 +323,7 @@ async fn poll_loop() {
                 .unwrap_or(DEFAULT_POLL_INTERVAL);
 
             let interval_secs = interval.as_secs().max(1);
-            if !tick.is_multiple_of(interval_secs) {
+            if !catching_up && !tick.is_multiple_of(interval_secs) {
                 continue;
             }
 
@@ -288,15 +344,17 @@ async fn poll_loop() {
                 _ => continue, // timeout or no data: skip this tick
             };
 
+            update_cache(&volume_id, &space);
+
             // The low-space check sees every fetch, not just the ones that
-            // pass the change-threshold gate below: a slow leak smaller than
-            // the 1 MB emit threshold must still trip the warning.
+            // pass the emit gate below: a slow leak smaller than the readout's
+            // last digit must still trip the warning.
             if volume_id == DEFAULT_VOLUME_ID {
                 check_low_space(&volume_id, &space);
             }
 
-            if exceeds_threshold(&volume_id, &space, threshold) {
-                update_cache(&volume_id, &space);
+            if visible && should_emit(last_emitted(&volume_id).as_ref(), &space, threshold, format) {
+                record_emitted(&volume_id, &space);
                 emit(&volume_id, &space);
             }
         }
@@ -447,25 +505,33 @@ fn log_figure(space: &SpaceInfo) -> String {
     }
 }
 
-/// Returns `true` if the new space exceeds the threshold relative to the last
-/// emission.
+/// Whether a fresh reading should reach the frontend, given the last one that did.
 ///
-/// A volume that changed SHAPE (a quota added or lifted between polls) always
-/// emits: the two figures aren't comparable, and the pane has a different thing
-/// to draw.
-fn exceeds_threshold(volume_id: &str, new: &SpaceInfo, threshold: u64) -> bool {
-    let cache = match LAST_SPACE.get() {
-        Some(c) => c,
-        None => return true,
-    };
-    let map = cache.lock_ignore_poison();
-    match map.get(volume_id) {
-        Some(old) if old.available_bytes().is_some() == new.available_bytes().is_some() => {
-            let diff = (moving_figure(old) as i64 - moving_figure(new) as i64).unsigned_abs();
-            diff >= threshold
-        }
-        // A changed shape, or a first fetch: always emit.
-        _ => true,
+/// Only when the readout would draw something different ([`readout`]), AND the moving figure
+/// moved by the user's `advanced.diskSpaceChangeThreshold`. A reading below the readout's last
+/// digit repaints both status bars for nothing, which was most of the GPU process's idle work.
+///
+/// A volume that changed SHAPE (a quota added or lifted between polls) always emits: the two
+/// figures aren't comparable, and the pane has a different thing to draw.
+fn should_emit(last_emitted: Option<&SpaceInfo>, new: &SpaceInfo, threshold: u64, format: FileSizeFormat) -> bool {
+    let Some(old) = last_emitted else { return true };
+    if old.available_bytes().is_some() != new.available_bytes().is_some() {
+        return true;
+    }
+    if readout::displayed_space(old, format) == readout::displayed_space(new, format) {
+        return false;
+    }
+    (moving_figure(old) as i64 - moving_figure(new) as i64).unsigned_abs() >= threshold
+}
+
+/// The last reading that went out for `volume_id`.
+fn last_emitted(volume_id: &str) -> Option<SpaceInfo> {
+    LAST_EMITTED.get()?.lock_ignore_poison().get(volume_id).copied()
+}
+
+fn record_emitted(volume_id: &str, space: &SpaceInfo) {
+    if let Some(map) = LAST_EMITTED.get() {
+        map.lock_ignore_poison().insert(volume_id.to_string(), *space);
     }
 }
 
@@ -588,5 +654,68 @@ mod tests {
     #[test]
     fn free_percent_computes_fraction() {
         assert!((free_percent(1000, 50) - 5.0).abs() < f64::EPSILON);
+    }
+}
+
+#[cfg(test)]
+mod emit_tests {
+    use super::*;
+
+    const GIB: u64 = 1024 * 1024 * 1024;
+    const MIB: u64 = 1024 * 1024;
+    const ONE_MB_THRESHOLD: u64 = 1_048_576;
+
+    fn free(available: u64) -> SpaceInfo {
+        SpaceInfo::bounded(926 * GIB, available)
+    }
+
+    #[test]
+    fn the_first_reading_always_goes_out() {
+        assert!(should_emit(
+            None,
+            &free(261 * GIB),
+            ONE_MB_THRESHOLD,
+            FileSizeFormat::Binary
+        ));
+    }
+
+    #[test]
+    fn a_change_the_readout_cannot_show_stays_home() {
+        // 261.20 GB free moving by 3 MiB: past the 1 MB setting, but both read 261.20 GB, 28%.
+        let last = free(261 * GIB + 205 * MIB);
+        let new = free(261 * GIB + 202 * MIB);
+        assert!(!should_emit(
+            Some(&last),
+            &new,
+            ONE_MB_THRESHOLD,
+            FileSizeFormat::Binary
+        ));
+    }
+
+    #[test]
+    fn a_change_the_readout_shows_goes_out() {
+        let last = free(261 * GIB + 205 * MIB);
+        let new = free(261 * GIB + 180 * MIB);
+        assert!(should_emit(Some(&last), &new, ONE_MB_THRESHOLD, FileSizeFormat::Binary));
+    }
+
+    #[test]
+    fn the_user_threshold_still_applies_on_top() {
+        // The digits move, but the user asked to hear only about 100 MB or more.
+        let last = free(261 * GIB + 205 * MIB);
+        let new = free(261 * GIB + 180 * MIB);
+        assert!(!should_emit(
+            Some(&last),
+            &new,
+            100 * ONE_MB_THRESHOLD,
+            FileSizeFormat::Binary
+        ));
+    }
+
+    #[test]
+    fn a_volume_that_changed_shape_always_goes_out() {
+        let last = SpaceInfo::Unbounded { used_bytes: 64 * MIB };
+        let new = SpaceInfo::bounded(GIB, GIB - 64 * MIB);
+        assert!(should_emit(Some(&last), &new, ONE_MB_THRESHOLD, FileSizeFormat::Binary));
     }
 }

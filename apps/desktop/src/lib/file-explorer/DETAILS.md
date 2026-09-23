@@ -371,11 +371,13 @@ E2E tests can assert the feature without poking at the DOM. See `src-tauri/src/m
 ### Live disk space
 
 The status bar and usage bar below each pane show live disk space. `FilePane` registers with the backend space poller
-(`space_poller.rs`) via `watchVolumeSpace(paneId, volumeId, path)` on mount and volume change, and listens for
+(`space_poller/`) via `watchVolumeSpace(paneId, volumeId, path)` on mount and volume change, and listens for
 `volume-space-changed` events. The watcher key is the pane ID, so two panes on the same volume have independent
 registrations (one pane navigating away doesn't affect the other). The backend deduplicates by volume_id, polls each
-volume at its own cadence (`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the change
-exceeds a configurable threshold (Settings > Advanced). The volume dropdown (`volume-space-manager.svelte.ts`) uses a
+volume at its own cadence (`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the readout
+would draw a different figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`).
+While the main window is hidden it polls only the boot volume's low-space check, then catches up the moment the window
+shows. The volume dropdown (`volume-space-manager.svelte.ts`) uses a
 separate on-demand fetch and is unaffected.
 
 The wording lives in `disk-space-utils.ts`, catalog-backed functions over one `SpaceInfo` plus an injected size

@@ -118,6 +118,17 @@ fn restricted_window_settings_carry_the_size_format() {
 }
 
 #[test]
+fn the_disk_space_poller_learns_the_size_format() {
+    // The poller rounds like the readout, so it has to know which base the readout steps by.
+    let json = r#"{ "appearance.fileSizeFormat": "si" }"#;
+    assert_eq!(
+        parse_settings(json).unwrap().appearance_file_size_format.as_deref(),
+        Some("si")
+    );
+    assert_eq!(parse_settings("{}").unwrap().appearance_file_size_format, None);
+}
+
+#[test]
 fn restricted_window_settings_carry_the_pinned_ui_language() {
     // The viewer and queue windows are restricted (no `store:default`) but each
     // resolves its own UI language through `initWindowLanguageSync`. Without the
