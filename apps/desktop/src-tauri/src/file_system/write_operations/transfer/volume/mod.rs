@@ -109,6 +109,11 @@ mod safety_grid_tests;
     reason = "used by SMB integration tests in file_system::volume::backends"
 )]
 pub(crate) use faulty_volume::{FaultyOp, FaultyVolume};
+// The forwarding macro, for a double outside this facade that lies about one
+// method of a LIVE volume (`network_gated_source_test_support.rs`'s gated reads).
+#[cfg(test)]
+#[allow(unused_imports, reason = "used by the network scenario suites outside this facade")]
+pub(crate) use faulty_volume::forward_volume_methods;
 
 /// Duplicating in place at the volume seam: both engines, plus the folded-leaf
 /// identity rule that stands in for `dev+ino` out here.

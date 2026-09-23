@@ -788,6 +788,8 @@ mod network_transfer_test_support;
 // drives and the other network backends can.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_semantics_test_support;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod network_safety_test_support;
 // Real copies, a move, a delete, and a mkdir between local disk and a phone over
 // ADB, against the crate's fake server, through the app's own write operations.
 // No Docker, so these run in the unit lane.
@@ -848,6 +850,8 @@ mod smb_stress_test;
 // `listing::smb_pane_close_watch_integration_test`), which reach it by path.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod sftp_transfer_semantics_test;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_transfer_safety_test;
 // The fixture dial every SFTP suite above shares.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod sftp_test_support;

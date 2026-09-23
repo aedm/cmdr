@@ -20,6 +20,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use cmdr_fs::volume::Volume;
 
+use super::transfer::volume::forward_volume_methods;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{CopyScanResult, InMemoryVolume, ListingProgress, VolumeError, VolumeReadStream};
 
@@ -164,6 +165,116 @@ pub(super) async fn gated_upload(bytes: Vec<u8>) -> GatedUpload {
         volume: Arc::new(GatedUploadSource {
             inner,
             bytes,
+            gate: Arc::clone(&gate),
+            handed_out: Arc::clone(&handed_out),
+        }),
+        gate,
+        handed_out,
+    }
+}
+
+// ── Holding a LIVE server's reads still ──────────────────────────────
+
+/// A live volume whose read streams hand out one chunk per permit, for a cell
+/// that cancels a DOWNLOAD mid-file.
+///
+/// Everything but `open_read_stream` forwards to the server untouched, so the
+/// walk, the metadata, and the bytes are all real; only their pace is the
+/// cell's.
+struct GatedReads {
+    inner: Arc<dyn Volume>,
+    gate: Arc<tokio::sync::Semaphore>,
+    handed_out: Arc<AtomicU64>,
+}
+
+/// The server's own stream, released one chunk per permit.
+struct GatedLiveStream {
+    inner: Box<dyn VolumeReadStream>,
+    gate: Arc<tokio::sync::Semaphore>,
+    handed_out: Arc<AtomicU64>,
+}
+
+impl VolumeReadStream for GatedLiveStream {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move {
+            match self.gate.acquire().await {
+                Ok(permit) => permit.forget(),
+                Err(_) => return None,
+            }
+            let chunk = self.inner.next_chunk().await;
+            if matches!(chunk, Some(Ok(_))) {
+                self.handed_out.fetch_add(1, Ordering::SeqCst);
+            }
+            chunk
+        })
+    }
+
+    fn total_size(&self) -> u64 {
+        self.inner.total_size()
+    }
+
+    fn bytes_read(&self) -> u64 {
+        self.inner.bytes_read()
+    }
+}
+
+impl Volume for GatedReads {
+    forward_volume_methods!(
+        inner => name,
+        root,
+        lane_key,
+        list_directory,
+        get_metadata,
+        exists,
+        is_directory,
+        create_file,
+        create_directory,
+        create_directory_all,
+        delete,
+        rename,
+        get_space_info,
+        local_path,
+        supports_streaming,
+        supports_export,
+        supports_local_fs_access,
+        operations_are_local,
+        max_concurrent_ops,
+        create_directory_errors_on_existing_dir,
+        scan_for_copy,
+        scan_for_copy_batch,
+        scan_for_conflicts,
+        write_from_stream,
+        write_is_single_shot,
+    );
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn open_read_stream<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn VolumeReadStream>, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let inner = self.inner.open_read_stream(path).await?;
+            let stream: Box<dyn VolumeReadStream> = Box::new(GatedLiveStream {
+                inner,
+                gate: Arc::clone(&self.gate),
+                handed_out: Arc::clone(&self.handed_out),
+            });
+            Ok(stream)
+        })
+    }
+}
+
+/// `remote`, with its reads held until the cell grants permits. Same handles as
+/// [`gated_upload`], with `volume` the wrapped server.
+pub(super) fn gated_reads(remote: Arc<dyn Volume>) -> GatedUpload {
+    let gate = Arc::new(tokio::sync::Semaphore::new(0));
+    let handed_out = Arc::new(AtomicU64::new(0));
+    GatedUpload {
+        volume: Arc::new(GatedReads {
+            inner: remote,
             gate: Arc::clone(&gate),
             handed_out: Arc::clone(&handed_out),
         }),

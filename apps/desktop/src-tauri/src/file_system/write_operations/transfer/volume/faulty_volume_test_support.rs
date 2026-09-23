@@ -230,7 +230,7 @@ macro_rules! forward_volume_methods {
     };
 }
 
-pub(super) use forward_volume_methods;
+pub(crate) use forward_volume_methods;
 
 /// The operations [`FaultyVolume`] can be armed to fail on. One variant per
 /// method whose failure a transfer has to survive; the enum keeps a test from
