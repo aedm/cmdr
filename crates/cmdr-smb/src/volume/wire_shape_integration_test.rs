@@ -373,20 +373,14 @@ async fn smb_integration_copy_concurrency_stays_within_the_credit_window() {
     ensure_clean(&vol, &dir).await;
 }
 
-/// A server whose credit window can't fund one compound READ still serves a
-/// hinted read: the fast path meets `Error::CreditStarvation` before anything
-/// reaches the wire, and falls through to streaming, which needs only a
-/// chunk's worth of credits at a time. Without that arm, a warm connection
-/// (whose `quick_read_limit` reaches `max_read`) would fail to copy a file the
-/// stream reads fine.
-///
-/// No fixture grants a small window, so `CreditCapProxy` clamps the guest
-/// fixture's grants to 64 credits. A 5 MiB READ charges 80, plus the CREATE
-/// and CLOSE riding with it.
-#[tokio::test]
-#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
-async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_instead() {
-    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+// ── A credit window too small for one big frame ────────────────
+
+/// No fixture grants a small window, so `CreditCapProxy` caps the guest
+/// fixture's at 64 credits, the way Samba's `smb2 max credits = 64` would. Its
+/// `max_read` and `max_write` stay at 8 MiB, which is the dangerous pairing: a
+/// 5 MiB READ or WRITE charges 80 credits, plus the CREATE, FLUSH, and CLOSE
+/// riding with it, so one compound frame of it can never be funded.
+async fn credit_capped_volume(proxy: &credit_cap_proxy::CreditCapProxy) -> SmbVolume {
     let volume_id = cmdr_fs::volume::smb_volume_id("127.0.0.1", proxy.port(), "public");
     let vol = connect_smb_volume(
         "public",
@@ -397,36 +391,60 @@ async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_inste
     )
     .await
     .expect("connecting through the credit-cap proxy");
-    // Seeded over a direct connection: the file goes up as one 80-credit WRITE,
-    // which the capped window can't fund either.
+    // A few round trips, so the server has had a chance to decline growing the
+    // window and smb2 knows its ceiling.
+    let _ = vol.list_directory(Path::new(""), None).await;
+    let (_tree, conn) = vol.clone_session().await.unwrap();
+    let ceiling = conn.credit_ceiling().expect("smb2 has seen the window stop growing");
+    assert!(ceiling <= 64, "the proxy caps the window at 64, smb2 saw {ceiling}");
+    vol
+}
+
+/// Five MiB of a recognizable pattern, seeded as `{dir}/five-mib.bin` over a
+/// direct (uncapped) connection.
+async fn seed_five_mib(direct: &SmbVolume, dir: &str) -> (String, Vec<u8>) {
+    let data: Vec<u8> = (0..=255u8).cycle().take(5 * 1024 * 1024).collect();
+    let path = format!("{}/five-mib.bin", dir);
+    direct.create_file(Path::new(&path), &data).await.unwrap();
+    (path, data)
+}
+
+/// A hinted read the window can't fund in one frame streams from the start:
+/// smb2's `quick_read_limit` counts the credit ceiling, so the fast path never
+/// sends a READ it can't pay for, even on a warm link whose rate alone would
+/// lift the limit to `max_read`. (If the ceiling shrinks between that check and
+/// the send, smb2 refuses the READ before it reaches the wire and the
+/// `CreditStarvation` arm streams anyway.)
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_instead() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
     let direct = make_docker_volume().await;
     let dir = test_dir_name();
     ensure_clean(&direct, &dir).await;
     direct.create_directory(Path::new(&dir)).await.unwrap();
-    let size = 5 * 1024 * 1024;
-    let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
-    let path = format!("{}/five-mib.bin", dir);
-    direct.create_file(Path::new(&path), &data).await.unwrap();
+    let (path, data) = seed_five_mib(&direct, &dir).await;
 
-    // Warm the link, so the limit rises past what the window can fund.
+    // Warm the link, so the rate alone would say "one READ".
     drain(vol.open_read_stream(Path::new(&path)).await.unwrap()).await;
-
     let (_tree, conn) = vol.clone_session().await.unwrap();
     assert!(
-        conn.quick_read_limit() >= size as u64,
-        "the warm-up should have lifted the limit to cover 5 MiB, got {}",
+        conn.quick_read_limit() < data.len() as u64,
+        "the credit ceiling must hold the limit under 5 MiB, got {}",
         conn.quick_read_limit()
     );
-    assert!(
-        conn.credits() < 80,
-        "the proxy should hold the window under one 5 MiB READ, got {} credits",
-        conn.credits()
-    );
 
+    let started = std::time::Instant::now();
     let mut stream = vol
-        .open_read_stream_with_hint(Path::new(&path), Some(size as u64))
+        .open_read_stream_with_hint(Path::new(&path), Some(data.len() as u64))
         .await
         .expect("an unfundable compound read must fall through to streaming");
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "the fallback must be immediate, not a credit wait; took {:?}",
+        started.elapsed()
+    );
     let mut got = Vec::new();
     let mut chunks = 0;
     while let Some(chunk) = stream.next_chunk().await {
@@ -434,7 +452,7 @@ async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_inste
         chunks += 1;
     }
 
-    assert_eq!(got, data, "the streamed fallback must serve the file whole");
+    assert_eq!(got, data, "the streamed read must serve the file whole");
     assert!(
         chunks > 1,
         "the file must arrive streamed, in chunks; the compound path hands it over as one"
@@ -444,6 +462,134 @@ async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_inste
         ConnectionState::Direct,
         "a window too small for one READ is not a dead connection"
     );
+
+    ensure_clean(&direct, &dir).await;
+}
+
+/// A write the window can't fund in one frame gets NO single-shot promise, so
+/// the transfer layer stages it, and the staged write streams in chunks the
+/// window can carry. Promising it would send a frame smb2 refuses, and the
+/// transfer would have nowhere safe to stream the bytes.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_streams() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let data: Vec<u8> = (0..=250u8).cycle().take(5 * 1024 * 1024).collect();
+    let size = data.len() as u64;
+
+    assert!(
+        size <= vol.negotiated_max_write().await.unwrap(),
+        "5 MiB fits one WRITE by size alone; only the credits rule it out"
+    );
+    assert!(
+        !vol.write_is_single_shot(size).await,
+        "a frame the window can't fund is no single shot"
+    );
+    assert!(
+        vol.write_is_single_shot(4096).await,
+        "a small file still fits one frame"
+    );
+
+    let temp = format!(
+        "{}/five-mib.bin{}{}",
+        dir,
+        cmdr_fs::staging::STAGING_TEMP_MARKER,
+        "credit-test"
+    );
+    let written = vol
+        .write_from_stream(
+            Path::new(&temp),
+            size,
+            Box::new(InlineReadStream::new(data.clone())),
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
+        .await
+        .expect("a staged write streams through a small window");
+    assert_eq!(written, size);
+    assert_eq!(
+        drain(direct.open_read_stream(Path::new(&temp)).await.unwrap()).await,
+        data
+    );
+
+    ensure_clean(&direct, &dir).await;
+}
+
+/// The one write that must NOT stream when its frame is refused: one to the
+/// user's real filename, which only a single-shot promise sends there. If the
+/// window shrank after the promise, the frame is refused before it reaches the
+/// wire, and streaming instead would leave a partial at that name through a
+/// crash. So the write fails, fast, and the name stays empty.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let data = vec![0x5Au8; 5 * 1024 * 1024];
+
+    let final_name = format!("{}/five-mib.bin", dir);
+    let started = std::time::Instant::now();
+    let result = vol
+        .write_from_stream(
+            Path::new(&final_name),
+            data.len() as u64,
+            Box::new(InlineReadStream::new(data)),
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
+        .await;
+
+    assert!(
+        result.is_err(),
+        "a refused one-shot frame must not stream to the real name"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "smb2 refuses an unfundable frame at once; took {:?}",
+        started.elapsed()
+    );
+    let names: Vec<String> = direct
+        .list_directory(Path::new(&dir), None)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|e| e.name)
+        .collect();
+    assert!(names.is_empty(), "nothing may reach the final name; got {names:?}");
+
+    ensure_clean(&direct, &dir).await;
+}
+
+/// The scan pool's prefetch reads up to a whole `max_read` in one frame. One
+/// the window can't fund falls through to streaming on the main session, the
+/// same as a file too big for one READ, so enrichment still gets the photo
+/// instead of skipping it as unreadable.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_prefetch_the_credit_window_cant_fund_streams_on_the_main_session() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let (path, data) = seed_five_mib(&direct, &dir).await;
+
+    vol.open_scan_pool().await;
+    assert!(vol.inner.scan_pool.read().await.is_some(), "the pool opened");
+    let stream = vol
+        .open_read_stream_for_scan_impl(Path::new(&path), Some(data.len() as u64))
+        .await
+        .expect("an unfundable prefetch must fall through, not fail the file");
+    assert_eq!(drain(stream).await, data);
+    vol.close_scan_pool().await;
 
     ensure_clean(&direct, &dir).await;
 }

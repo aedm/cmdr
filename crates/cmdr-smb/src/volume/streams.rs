@@ -30,8 +30,9 @@ pub(super) const ASSUMED_MAX_READ: u64 = 65536;
 /// fast path: the file fits the connection's `quick_read_limit()`, what the
 /// link moves in 250 ms at the rate a recent download measured. That's one
 /// streaming-download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`, 512 KiB) on a cold
-/// connection, and never more than the server's `max_read`; smb2 owns that
-/// arithmetic. The scan pool's prefetch deliberately doesn't use it
+/// connection, never more than the server's `max_read`, and never more than
+/// half the credit window funds once smb2 has seen the server's ceiling; smb2
+/// owns that arithmetic. The scan pool's prefetch deliberately doesn't use it
 /// (`scan_pool.rs` says why).
 ///
 /// The compound saves the round trip a stream spends on its own CREATE, but
@@ -55,18 +56,49 @@ pub(super) fn fits_one_compound_read(quick_read_limit: u64, size: u64) -> bool {
 /// the conservative floor rather than a guess.
 pub(super) const ASSUMED_MAX_WRITE: u64 = 65536;
 
-/// THE condition for the compound CREATE+WRITE+FLUSH+CLOSE fast path: one SMB2
-/// WRITE carries at most `max_write_size` bytes, and an empty file has no WRITE
-/// to compound with, so it goes to the streaming writer.
+/// THE condition for the compound CREATE+WRITE+FLUSH+CLOSE fast path: the write
+/// fits `limit`, and an empty file has no WRITE to compound with, so it goes to
+/// the streaming writer.
 ///
-/// One definition on purpose. `write_from_stream_impl` branches on it, and
-/// `write_is_single_shot` (the transfer layer's staging exemption) answers with
-/// it. If the two could ever disagree, a write the transfer left unstaged could
-/// take the multi-round-trip streaming path, and a force-quit mid-write would
-/// leave a truncated file at the user's real filename — the 2026-07-31 wedge
-/// over again (`docs/notes/incidents/2026-07-31-transfer-wedge/README.md`).
-pub(super) fn fits_one_compound_write(max_write: u64, size: u64) -> bool {
-    size > 0 && size <= max_write
+/// One definition on purpose. `write_is_single_shot` (the transfer layer's
+/// staging exemption) answers with it on smb2's `compound_write_limit`, and
+/// `write_from_stream_impl` branches on it with [`one_frame_write_limit`]. If a
+/// promised write could ever take the streaming path, a force-quit mid-write
+/// would leave a truncated file at the user's real filename — the 2026-07-31
+/// wedge over again (`docs/notes/incidents/2026-07-31-transfer-wedge/README.md`).
+pub(super) fn fits_one_compound_write(limit: u64, size: u64) -> bool {
+    size > 0 && size <= limit
+}
+
+/// The limit `write_from_stream` sends one compound frame up to, which must
+/// cover every size `write_is_single_shot` promised.
+///
+/// The promise reads smb2's `compound_write_limit`: `max_write`, lowered to what
+/// the credit window funds. That can shrink between the promise and the write
+/// (the connection learns the server's credit ceiling), so re-reading it here
+/// could send a promised write down the streaming path. Only a promised write
+/// targets the user's real name, though (every other one lands on a
+/// `.cmdr-tmp-*`), which splits it cleanly:
+///
+/// - A staging temp takes today's limit: a frame the window can't fund streams
+///   instead, which is safe on a temp.
+/// - The real name keeps `max_write`, the most any promise could have covered.
+///   A frame the window refuses there fails the write with nothing on the wire,
+///   and nothing at the name.
+pub(super) fn one_frame_write_limit(dest_is_scratch: bool, max_write: u64, compound_write_limit: u64) -> u64 {
+    if dest_is_scratch {
+        compound_write_limit.min(max_write)
+    } else {
+        max_write
+    }
+}
+
+/// Whether `dest` is one of Cmdr's scratch names (a `.cmdr-tmp-*` staging
+/// temp), which a partial write can never make look like the user's file.
+fn is_scratch_name(dest: &Path) -> bool {
+    dest.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(cmdr_fs::staging::is_staging_temp_name)
 }
 
 /// Whether a compound write failed AFTER the server had created the file.
@@ -268,12 +300,24 @@ impl SmbVolume {
         guard.as_ref().and_then(|c| c.params()).map(|p| p.max_write_size as u64)
     }
 
+    /// The largest write the live session sends as one compound frame right
+    /// now (smb2's `compound_write_limit`: `max_write_size`, lowered to what the
+    /// credit window funds), or `None` when there isn't a session. Same
+    /// no-clone, no-wire read as [`negotiated_max_write`](Self::negotiated_max_write).
+    async fn compound_write_limit(&self) -> Option<u64> {
+        let guard = self.inner.client.lock().await;
+        guard
+            .as_ref()
+            .filter(|c| c.params().is_some())
+            .map(|c| c.connection().compound_write_limit())
+    }
+
     /// Inherent body for the `write_is_single_shot` trait method (thin delegator
     /// in `volume_impl`): whether a write of `size` bytes takes the compound
     /// fast path below, which is what makes it all-or-nothing.
     pub(super) async fn write_is_single_shot_impl(&self, size: u64) -> bool {
-        match self.negotiated_max_write().await {
-            Some(max_write) => fits_one_compound_write(max_write, size),
+        match self.compound_write_limit().await {
+            Some(limit) => fits_one_compound_write(limit, size),
             // No live session: no promise. The transfer stages, as it would for
             // any backend without the guarantee.
             None => false,
@@ -316,7 +360,7 @@ impl SmbVolume {
             // Acquire a cloned session once, up front. Both the compound
             // fast-path and the streaming fallback drive their write on
             // this same clone — no second `clone_session` needed.
-            let (tree, conn) = self.clone_session().await?;
+            let (tree, mut conn) = self.clone_session().await?;
 
             // Best-effort delete of a partial file on a FRESH cloned session.
             // Once a `FileWriter` is open and bytes have streamed into it, an
@@ -348,12 +392,19 @@ impl SmbVolume {
             // this path whenever it still fits one WRITE — dropping into the
             // multi-round-trip streaming writer after promising one shot is what
             // would put a truncated file at the user's real filename.
+            //
+            // Which limit applies depends on the destination
+            // (`one_frame_write_limit`): a staging temp follows the credit
+            // window as it is now, the user's real name keeps the limit any
+            // promise could have been made under.
+            let dest_is_scratch = is_scratch_name(dest);
             let bytes_written = 'write: {
                 let max_write = conn
                     .params()
                     .map(|p| p.max_write_size as u64)
                     .unwrap_or(ASSUMED_MAX_WRITE);
-                if fits_one_compound_write(max_write, size) {
+                let limit = one_frame_write_limit(dest_is_scratch, max_write, conn.compound_write_limit());
+                if fits_one_compound_write(limit, size) {
                     let mut buffer = Vec::with_capacity(size as usize);
                     while let Some(chunk_result) = stream.next_chunk().await {
                         // Compound drain buffers in memory; no writer/handle
@@ -372,33 +423,49 @@ impl SmbVolume {
                     }
                     // The drained bytes, not the promised count, decide: a
                     // source that yielded short still goes out as one frame.
-                    if fits_one_compound_write(max_write, buffer.len() as u64) {
+                    if fits_one_compound_write(limit, buffer.len() as u64) {
                         debug!(
                             "SmbVolume::write_from_stream: using compound fast-path ({} bytes)",
                             buffer.len()
                         );
-                        let mut conn = conn;
                         let write_result = tree.write_file_compound(&mut conn, &smb_path, &buffer).await;
-                        if create_succeeded_but_write_failed(&write_result) {
-                            // The server created (hence truncated) the file and
-                            // then refused the bytes: out of space, over quota,
-                            // a lost lease. What's left is a 0-byte file that
-                            // may be wearing the user's real filename, since
-                            // this write was allowed to skip staging. Take it
-                            // away. A CREATE failure needs no cleanup: nothing
-                            // was created, and any existing file at that name
-                            // is still untouched, so a delete there would be
-                            // data loss.
-                            delete_partial().await;
+                        if dest_is_scratch && matches!(write_result, Err(smb2::Error::CreditStarvation { .. })) {
+                            // The window shrank after the limit was read, and
+                            // smb2 refused the frame before anything reached the
+                            // wire. A staging temp can take the bytes streamed;
+                            // the real name can't, so that one surfaces the
+                            // error below with nothing written.
+                            debug!(
+                                "SmbVolume::write_from_stream: the credit window can't fund one compound write; streaming the drained {} bytes instead",
+                                buffer.len()
+                            );
+                        } else {
+                            if create_succeeded_but_write_failed(&write_result) {
+                                // The server created (hence truncated) the file and
+                                // then refused the bytes: out of space, over quota,
+                                // a lost lease. What's left is a 0-byte file that
+                                // may be wearing the user's real filename, since
+                                // this write was allowed to skip staging. Take it
+                                // away. A CREATE failure needs no cleanup: nothing
+                                // was created, and any existing file at that name
+                                // is still untouched, so a delete there would be
+                                // data loss.
+                                delete_partial().await;
+                            }
+                            break 'write self.handle_smb_result(
+                                "write_from_stream(compound)",
+                                &smb_path,
+                                write_result,
+                            )?;
                         }
-                        break 'write self.handle_smb_result("write_from_stream(compound)", &smb_path, write_result)?;
                     }
-                    // The source yielded MORE than one WRITE can carry (it
-                    // reported a smaller size than it had). Feed the drained
+                    // The source yielded MORE than one frame can carry (it
+                    // reported a smaller size than it had), or the window
+                    // refused the frame for a staging temp. Feed the drained
                     // buffer through the streaming writer on the same cloned
                     // connection. No lock acquired; this is the rare path.
                     debug!(
-                        "SmbVolume::write_from_stream: compound fast-path source yielded {} bytes, expected {}; falling back to streaming writer",
+                        "SmbVolume::write_from_stream: {} drained bytes ({} expected) don't go out as one frame; falling back to streaming writer",
                         buffer.len(),
                         size
                     );

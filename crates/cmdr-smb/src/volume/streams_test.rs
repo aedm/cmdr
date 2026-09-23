@@ -121,6 +121,26 @@ fn only_a_write_that_fits_one_compound_frame_is_single_shot() {
     );
 }
 
+/// The limit a write goes out as one frame up to must cover every size a
+/// single-shot promise could have covered, even after the credit window shrank
+/// under it. A promised write is the only one aimed at the user's real name, so
+/// that name keeps `max_write`; a staging temp follows the window as it is now,
+/// since streaming onto a temp is safe.
+#[test]
+fn a_real_name_keeps_every_size_a_promise_could_have_covered() {
+    let max_write = 8 * 1024 * 1024;
+    let shrunk = 29 * 65_536;
+
+    assert_eq!(one_frame_write_limit(false, max_write, shrunk), max_write);
+    assert_eq!(one_frame_write_limit(true, max_write, shrunk), shrunk);
+    assert_eq!(one_frame_write_limit(true, max_write, max_write), max_write);
+    assert_eq!(
+        one_frame_write_limit(true, max_write, 0),
+        0,
+        "a tiny window streams every temp"
+    );
+}
+
 /// The hinted read's compound path follows the limit it's handed, which is
 /// `Connection::quick_read_limit()`: one download chunk on a cold connection,
 /// what the link moves in 250 ms once a download has measured it. The one-chunk

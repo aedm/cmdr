@@ -29,8 +29,8 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
   mutex (the QNAP deadlock); on error, `abort()` then delete the partial. Progress is `bytes_written()`
   (server-confirmed), ❌ never bytes handed to the pipeline.
 - **A hinted read compounds up to `conn.quick_read_limit()`** (`fits_one_compound_read`), sized via
-  `read_file_compound_sized` (unsized charges a whole `max_read` in credits). ❌ Don't tune `max_concurrent_ops`'s
-  credit clamp (inert).
+  `read_file_compound_sized` (unsized charges a whole `max_read`). ❌ A refused one-frame write to a non-scratch name
+  never streams (`one_frame_write_limit`).
 - **A streamed read ends at its last byte** (the CLOSE is already out): ❌ don't wait for `None` to drop `chunk_tx`.
 - **`scan_recursive` asks its `ScanBoundary` per entry, `dir()` BEFORE the listing** (`DETAILS.md` § "Scanning").
 - **Bulk work draws on the refcounted pool of extra sessions** (`scan_pool.rs`); a dead member retries on a sibling, ❌

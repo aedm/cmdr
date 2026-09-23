@@ -6,18 +6,24 @@
 //! smb2 asks for (smb2 steers toward 512), and no fixture limits it. So the
 //! proxy sits between the client and the ordinary guest fixture and rewrites
 //! the `CreditResponse` field of every response header on the way back, so the
-//! client never holds more than `cap` credits. The server never learns: it
+//! client's credit WINDOW never exceeds `cap`. The server never learns: it
 //! thinks it granted plenty, and the client simply uses fewer message ids.
 //!
-//! It tracks each connection's balance the way the client does (grants in,
-//! charges out, one credit to start), and only ever lowers a grant. A grant
-//! that would leave the balance empty is lowered only as far as one credit, so
-//! the connection can't deadlock.
+//! The window is what a real server bounds (Samba's `smb2 max credits`): the
+//! credits the client holds unspent PLUS the ones riding on requests it hasn't
+//! answered yet. Capping only the unspent balance would let the window swell
+//! with every request in flight, which no server does, and smb2 reads the
+//! server's ceiling off exactly that window. So the proxy tracks each
+//! connection the way Samba does (grants in, charges out, a request's charge
+//! counted in the window until its first response, one credit to start), and
+//! only ever lowers a grant. A grant that would leave the window empty is lowered
+//! only as far as one credit, so the connection can't deadlock.
 //!
 //! ❗ Rewriting headers is only possible on unsigned, unencrypted traffic,
 //! which is what the guest fixture speaks. A signed, encrypted, or compressed
 //! frame fails the test loudly rather than passing through unclamped.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -30,6 +36,7 @@ const HEADER_LEN: usize = 64;
 const CREDIT_CHARGE_AT: usize = 6;
 const CREDITS_AT: usize = 14;
 const FLAGS_AT: usize = 16;
+const MESSAGE_ID_AT: usize = 24;
 const NEXT_COMMAND_AT: usize = 20;
 const FLAG_SIGNED: u32 = 0x0000_0008;
 
@@ -67,9 +74,14 @@ impl Drop for CreditCapProxy {
     }
 }
 
-/// The client's credit balance on one connection, as the proxy sees it.
+/// The client's credit window on one connection, as the proxy sees it.
 struct Balance {
+    /// Granted and not yet spent.
     held: i64,
+    /// Spent on requests whose first response hasn't come back, by message id.
+    in_flight: HashMap<u64, i64>,
+    /// The sum of `in_flight`.
+    in_flight_total: i64,
     cap: i64,
 }
 
@@ -79,6 +91,8 @@ async fn forward(client: TcpStream, target_port: u16, cap: u16) {
     };
     let balance = Arc::new(Mutex::new(Balance {
         held: 1,
+        in_flight: HashMap::new(),
+        in_flight_total: 0,
         cap: i64::from(cap),
     }));
     let (client_read, client_write) = client.into_split();
@@ -137,18 +151,27 @@ fn rewrite_chain(frame: &mut [u8], balance: &Mutex<Balance>, direction: Directio
         );
         match direction {
             Direction::Requests => {
-                let charge = u16::from_le_bytes([header[CREDIT_CHARGE_AT], header[CREDIT_CHARGE_AT + 1]]).max(1);
-                state.held -= i64::from(charge);
+                let charge =
+                    i64::from(u16::from_le_bytes([header[CREDIT_CHARGE_AT], header[CREDIT_CHARGE_AT + 1]]).max(1));
+                state.held -= charge;
+                state.in_flight.insert(message_id(header), charge);
+                state.in_flight_total += charge;
             }
             Direction::Responses => {
+                // Only the FIRST response settles a request: an interim
+                // STATUS_PENDING carries its grant, the final answer none.
+                if let Some(charge) = state.in_flight.remove(&message_id(header)) {
+                    state.in_flight_total -= charge;
+                }
+                let window = state.held + state.in_flight_total;
                 let granted = i64::from(u16::from_le_bytes([header[CREDITS_AT], header[CREDITS_AT + 1]]));
-                let room = (state.cap - state.held).max(0);
+                let room = (state.cap - window).max(0);
                 let mut allowed = granted.min(room);
-                if state.held + allowed < 1 {
+                if window + allowed < 1 {
                     // Never strand the connection with nothing to send on, and
                     // never grant past the server: a message id it didn't fund
                     // gets the connection dropped.
-                    allowed = granted.min(1 - state.held);
+                    allowed = granted.min(1 - window);
                 }
                 state.held += allowed;
                 let allowed = u16::try_from(allowed).expect("a clamped grant fits a u16");
@@ -165,4 +188,12 @@ fn rewrite_chain(frame: &mut [u8], balance: &Mutex<Balance>, direction: Directio
         }
         at += next as usize;
     }
+}
+
+fn message_id(header: &[u8]) -> u64 {
+    u64::from_le_bytes(
+        header[MESSAGE_ID_AT..MESSAGE_ID_AT + 8]
+            .try_into()
+            .expect("eight bytes"),
+    )
 }

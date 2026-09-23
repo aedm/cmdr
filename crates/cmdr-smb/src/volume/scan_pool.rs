@@ -553,6 +553,12 @@ impl SmbVolume {
                         // a prefix, which is what keeps a prefetch from caching a
                         // truncated body.
                         Err(e) if matches!(e.kind(), smb2::ErrorKind::TooLarge) => break, // ⇒ streaming
+                        // The member's credit window can't fund this READ in one
+                        // frame (a small-window server; `max_read` alone says
+                        // nothing about credits). smb2 refused before anything
+                        // reached the wire, and the main session streams it in
+                        // chunks the window can carry.
+                        Err(smb2::Error::CreditStarvation { .. }) => break, // ⇒ streaming
                         // A real per-file error (permission, not-found, …): the same
                         // on any connection; surface it typed, don't touch the main
                         // session's state (this wasn't its connection).

@@ -577,46 +577,44 @@ short of the hint (`data.len() != size`) and falls through the same way. Neither
 file's final name. ❌ Never "simplify" either arm away, and never call the unsized `read_file_compound` from a path that
 knows the size: an 8 MB request against a 4 MB file is both the over-charge and a guard that can't fire.
 
-**A window too small to carry ONE compound read: closed for the foreground read, open on the scan pool and on writes.**
-The fast paths' conditions ask about sizes, not credits. The foreground read tops out at a 512 KiB file (a 10-credit
-chain) on a cold connection, but up to `max_read` once a download has measured a fast link, and the scan pool's prefetch
-always goes up to `max_read`. So a server granting a small window (embedded NAS firmware, a router's USB share, Samba
-built with a low `smb2 max credits`) can leave a 4 MB photo's 66-credit chain unfundable, and smb2 refuses with
-`Error::CreditStarvation` rather than hanging. The profile is specific: a LARGE `max_read` paired with a SMALL grant (a
-small `max_read` is safe, since `read_file_compound_sized` clamps to it). Both reference servers grant 513.
+**A window too small to carry ONE compound frame: every fast path sizes to the credit ceiling.** A server granting a
+small window (embedded NAS firmware, a router's USB share, Samba built with a low `smb2 max credits`) paired with a
+LARGE `max_read` / `max_write` can leave a 5 MiB file's 83-credit chain unfundable (a small `max_read` is safe, since
+`read_file_compound_sized` clamps to it). Both reference servers grant 513. smb2 (0.24.4+) learns the server's window
+ceiling once it declines to grow it (`Connection::credit_ceiling`), refuses a request wider than that at once with
+`Error::CreditStarvation` before anything reaches the wire, and sizes everything it picks the size of to half the
+ceiling. So each fast path here decides up front and keeps a reactive arm for the ceiling arriving or shrinking between
+the check and the send:
 
-- **The foreground read REACTS**: `open_read_stream_with_hint` matches the typed `smb2::Error::CreditStarvation` and
-  falls through to streaming, which needs only a chunk's worth of credits at a time. It costs nothing when the window is
-  simply small: `reserve_credits` refuses before anything reaches the wire, at once when nothing else is outstanding. A
-  server that stopped granting altogether starves the stream too, which then reports it, so the arm can't hide a dead
-  server; it only delays the verdict by the stream's own credit wait. Pinned by
-  `smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_instead`, which clamps the guest fixture's grants
-  to 64 credits through `volume/credit_cap_proxy.rs`.
-- **The scan pool has no such arm**: an unfundable prefetch surfaces as a per-file error, so the photo is skipped as
-  unreadable. The same fall-through (to main-session streaming) would close it.
-- **Writes have the same gap**: `write_file_compound` and the `FileWriter` both send one WRITE of up to `max_write`, so
-  a 5 MiB write needs 80 credits in one go and starves under the 64-credit proxy (seen writing that test's seed file).
-- ❌ Don't reach for a predictive gate on `credit_capacity_for`: it answers from a constant (see the clamp note above),
-  so it can't tell you whether THIS server can fund the read. ❌ And don't retry `CreditStarvation` generically: it
-  reports `is_retryable() == true` and classifies as `ErrorKind::TimedOut`, though an unfundable request never succeeds.
+- **The foreground read**: `quick_read_limit()` counts the ceiling, so an unfundable hinted read streams from the start.
+  The `CreditStarvation` arm in `open_read_stream_with_hint` catches the race. A server that stopped granting altogether
+  starves the stream too, which then reports it, so the arm can't hide a dead server.
+- **The scan pool's prefetch** (up to `max_read`, on purpose) matches `CreditStarvation` and falls through to
+  main-session streaming, like a file too big for one READ, instead of skipping the photo as unreadable.
+- **The write**: `write_is_single_shot` answers on smb2's `compound_write_limit()`, so the transfer stages a write the
+  window can't fund, and the `FileWriter` streams it in chunks the window carries. `write_from_stream` branches on
+  `streams::one_frame_write_limit`: a `.cmdr-tmp-*` dest follows today's limit (and streams if the frame is refused),
+  the user's real name keeps `max_write`, the most any promise could have covered, and a refused frame there fails the
+  write with nothing at the name. ❌ Never let a refused frame to a non-scratch name fall back to streaming: that name
+  only gets a frame because the transfer skipped staging on a single-shot promise.
+- Pinned by the `credit_cap_proxy.rs` cells in `wire_shape_integration_test.rs` (hinted read, staged write, refused
+  final-name write, prefetch), which cap the guest fixture's window at 64 credits. smb2 pins the same against a real
+  64-credit Samba (its `smb-smallcredits` fixture).
+- ❌ Don't retry `CreditStarvation` generically: it reports `is_retryable() == true` and classifies as
+  `ErrorKind::TimedOut`, though an unfundable request never succeeds.
 
-**`max_concurrent_ops` is clamped by what the window can carry — and that clamp cannot bind today.** The answer is
+**`max_concurrent_ops` is clamped by what the window can carry.** The answer is
 `min(setting, credit_capacity_for(512 KB))`, floored at 1 and never raised above what the user chose.
 `Connection::credit_capacity_for` is sync but the connection lives behind an async mutex, so `clone_session` stores the
 figure in `SmbVolumeInner::credit_copy_capacity` on its way through (every read and write passes there) and the sync
 method reads the atomic; `0` means nothing has measured it yet and the setting stands.
 
-❌ **Do not describe this as protecting a copy from a small credit window; measured, it protects nothing.**
-`credit_capacity_for` divides the CONSTANT `CREDIT_TARGET` (512) by the request's charge, so it reports what the client
-STEERS TOWARD, never what a server granted. The only server-dependent input is `max_read`, which merely clamps the
-`bytes` argument. That puts the answer between 51 (an 8 MB `max_read`) and 170 (a 64 KB one) for any real server, while
-`network.smbConcurrency` is clamped to 1..=32 — so `min(setting, capacity)` is `setting` for every input either can
-take. The plumbing is live and correct; the number it carries is inert until smb2 tracks the granted window (its
-`credits()` is unspent-right-now, not capacity). Both reference servers were measured at 513 granted credits, so the
-steer is honored in full there and the case this was written for did not occur. Reassess when a release can answer from
-the grant; until then, ❌ don't tune `REPRESENTATIVE_COPY_REQUEST_BYTES` expecting the cap to start biting, because a
-constant divisor makes any value a differently-written constant, and one small enough to bind would throttle a generous
-server on a guess.
+`credit_capacity_for` divides the smaller of smb2's `CREDIT_TARGET` (512) and the server's known credit ceiling by the
+request's charge. On a generous server (both reference servers grant 513, and Samba's default maximum is 8,192) the
+ceiling is never seen, the answer is 51 (an 8 MB `max_read`) to 170 (a 64 KB one), and `min(setting, capacity)` is the
+setting for every `network.smbConcurrency` value (1..=32). It binds only on a small-window server: 64 credits carry six
+512 KB copies at once. ❌ Don't tune `REPRESENTATIVE_COPY_REQUEST_BYTES` to make it bite on generous servers: a value
+small enough to bind there would throttle them on a guess.
 
 The 512 KB question is the judgement call in it. There's no per-file knowledge at that seam, and the risk isn't
 symmetric: because charge and in-flight bytes are the same quantity, extra slots beyond what the window carries only
@@ -809,25 +807,27 @@ leftover paths go through the pipelined stat. Decision is per-parent: one batch 
 paths, and if every path resolves via the oracle the stat pipeline is skipped entirely.
 
 **Decision**: `SmbVolume` has a compound fast-path in `open_read_stream_with_hint` for files up to the connection's
-`quick_read_limit()` (`streams::fits_one_compound_read`) and in `write_from_stream` for files ≤ `max_write_size`
-**Why**: The streaming open+read+close sequence costs 3 RTTs per file. For small files (typical 10 KB copies on a NAS)
-that dominates wall-clock at high-latency links (~60 ms RTT → ~180 ms/file just for protocol overhead, not data). `smb2`
-already exposes `Tree::read_file_compound` (CREATE+READ+CLOSE in a single compound frame = 1 RTT) and
-`Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT). The copy pipeline feeds per-file size hints from the
-pre-copy scan; when the size is known and fits the threshold, we take the compound path. The read side stops at what the
-link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of two or more chunks has measured
-the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s and a reconnect clears it),
-because a bigger compound READ carries the whole file with no progress, queued ahead of every listing on the connection
-(cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download` streams it through an adaptive read-ahead. Under
-the limit, the compound saves the stream's CREATE round trip. The arithmetic stays in smb2 so the window and the cut-off
-share one headroom constant. The numbers sit on `fits_one_compound_read`. The scan pool's prefetch keeps `max_read_size`
-on purpose (§ "SMB scan-connection pool", the reads bullet). Falls back cleanly to the streaming reader/writer when the
-hint is missing or the file is too big. Small compound reads return a `Vec<u8>` wrapped as a single-chunk
-`InlineReadStream` so the consumer API stays shaped the same. See `docs/notes/phase4-rtt-investigation.md` for the
-measurement. The WRITE side's condition is also a DATA-SAFETY contract: `write_is_single_shot` answers with the same
-`fits_one_compound_write` the fast path branches on, and the transfer layer skips its `.cmdr-tmp-*` staging on the
-strength of that answer. What the backend owes in return (short sources stay on the compound path, a post-CREATE failure
-cleans up after itself): `write_operations/transfer/DETAILS.md` § "The single-shot exemption".
+`quick_read_limit()` (`streams::fits_one_compound_read`) and in `write_from_stream` for files that fit one compound
+frame (`streams::fits_one_compound_write`) **Why**: The streaming open+read+close sequence costs 3 RTTs per file. For
+small files (typical 10 KB copies on a NAS) that dominates wall-clock at high-latency links (~60 ms RTT → ~180 ms/file
+just for protocol overhead, not data). `smb2` already exposes `Tree::read_file_compound` (CREATE+READ+CLOSE in a single
+compound frame = 1 RTT) and `Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT). The copy pipeline feeds
+per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take the compound path.
+The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of
+two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s
+and a reconnect clears it), because a bigger compound READ carries the whole file with no progress, queued ahead of
+every listing on the connection (cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download` streams it through
+an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The arithmetic stays in smb2
+so the window and the cut-off share one headroom constant. The numbers sit on `fits_one_compound_read`. The scan pool's
+prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the reads bullet). Falls back cleanly to the
+streaming reader/writer when the hint is missing or the file is too big. Small compound reads return a `Vec<u8>` wrapped
+as a single-chunk `InlineReadStream` so the consumer API stays shaped the same. See
+`docs/notes/phase4-rtt-investigation.md` for the measurement. The WRITE side's condition is also a DATA-SAFETY contract:
+`write_is_single_shot` answers with `fits_one_compound_write` on smb2's `compound_write_limit()`, the fast path takes
+the frame for every size such a promise could cover (`one_frame_write_limit`, § "Copy concurrency and the credit
+window"), and the transfer layer skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend owes
+in return (short sources stay on the compound path, a post-CREATE failure cleans up after itself):
+`write_operations/transfer/DETAILS.md` § "The single-shot exemption".
 
 **Decision**: a streamed read (`open_smb_download_stream`) ends the consumer's stream at its last byte, before the
 CLOSE's answer **Why**: smb2's `FileDownload::next_chunk` puts the CLOSE on the wire before it hands out the last chunk,
@@ -967,8 +967,10 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
   `STATUS_OBJECT_NAME_NOT_FOUND`. That last one is the conflict scan's: `scan_for_conflicts_impl` keeps its own
   cache-aware listing but reads a `NotFound` from it as an empty conflict list, which is the trait's contract for every
   backend (`Volume::scan_for_conflicts`), so pasting into a folder the transfer is about to create isn't refused.
-- `credit_cap_proxy.rs`: a test-only SMB-aware TCP proxy that rewrites response headers so a connection never holds more
-  than a set number of credits, the small-window server no fixture plays (unsigned guest traffic only).
+- `credit_cap_proxy.rs`: a test-only SMB-aware TCP proxy that rewrites response headers so a connection's credit window
+  (unspent plus in flight, as Samba's `smb2 max credits` bounds it) never exceeds a set number, the small-window server
+  no fixture plays (unsigned guest traffic only). ❌ Don't cap only the unspent balance: the window would swell with
+  every request in flight, and smb2 reads the server's ceiling off that window.
 - `test_support.rs` — the session-free builders (a struct-literal `SmbVolumeInner` with no client and no tree), the
   vocabulary every suite globs, a re-export of `volume::testing` so one `use` covers all three, and `drain`, which lives
   here rather than in one suite because the read and wire-shape files both drain a hinted read.

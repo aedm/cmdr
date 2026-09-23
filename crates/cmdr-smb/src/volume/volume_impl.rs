@@ -448,12 +448,13 @@ impl Volume for SmbVolume {
                                 e
                             );
                         }
-                        // The credit window can't fund this READ in one go (a
-                        // small-window server; a warm link lifts the limit to
-                        // `max_read`). smb2 refused before anything reached the
-                        // wire, and a stream needs only a chunk's worth at a
-                        // time. A server that stopped granting altogether
-                        // starves the stream too, which reports it then.
+                        // The credit window can't fund this READ in one go.
+                        // `quick_read_limit` counts the window's ceiling, so this
+                        // is the ceiling arriving or shrinking after that check.
+                        // smb2 refused before anything reached the wire, and a
+                        // stream needs only a chunk's worth at a time. A server
+                        // that stopped granting altogether starves the stream
+                        // too, which reports it then.
                         Err(e @ smb2::Error::CreditStarvation { .. }) => {
                             debug!(
                                 "SmbVolume::open_read_stream_with_hint: the credit window can't fund one compound read ({}); falling back to streaming",
