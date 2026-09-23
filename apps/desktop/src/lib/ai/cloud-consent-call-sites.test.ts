@@ -2,7 +2,7 @@
  * "Nothing reaches a cloud AI service until the user turns on Allow cloud AI" holds only if
  * nothing but that switch's click can record the consent. The backend can't tell a click from
  * any other caller of `accept_cloud_ai_consent`, so the frontend's call sites are the guard,
- * and this census pins them (plan D10).
+ * and this census pins them (`lib/ai/DETAILS.md` § Cloud AI consent).
  *
  * A source scan because the invariant is about the whole frontend, not one component: a new
  * surface that grants consent as a side effect (onboarding's Cloud pick, a "turn on" button in a

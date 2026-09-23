@@ -1,6 +1,6 @@
 /**
  * The one-time `askCmdr.enabled` mapping for installs that predate the switch, run as a
- * main-window startup step (plan D5/D6).
+ * main-window startup step (`lib/ask-cmdr/DETAILS.md` § Gates, cost, and settings).
  *
  * Before the switch, Ask Cmdr was "on" when its own opt-in was recorded in `main.db`. That
  * record grants nothing now (cloud consent is `$lib/ai/cloud-consent.svelte.ts`), but it still

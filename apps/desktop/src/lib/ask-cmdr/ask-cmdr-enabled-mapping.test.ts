@@ -1,5 +1,5 @@
 /**
- * The one-time `askCmdr.enabled` mapping for installs that predate the switch (plan D5/D6).
+ * The one-time `askCmdr.enabled` mapping for installs that predate the switch (`lib/ask-cmdr/DETAILS.md` § Gates, cost, and settings).
  * Someone who accepted Ask Cmdr's old opt-in keeps it on; someone who saw it and didn't, or
  * held a "no", stays off. It runs at every main-window launch but writes at most once.
  */

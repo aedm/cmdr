@@ -25,6 +25,9 @@ render the switch and say why a feature is quiet.
   folded when the switch turns on, so the locked setup below it comes into view (onboarding's Cloud column is where it
   was pushed off-screen); the user can reopen it any time (`AiCloudConsentToggle.test.ts`). The copy is versioned: a
   material change to `ai.cloudConsent.*` needs a `CLOUD_AI_CONSENT_VERSION` bump in the backend.
+- **Only the user's click grants consent.** `acceptCloudConsent` may be imported by `AiCloudConsentToggle.svelte` alone
+  (the one switch Settings and onboarding share); `cloud-consent-call-sites.test.ts` scans `src/` and fails on any
+  other importer. MCP can't reach the record at all (it lives in `main.db`, behind commands no MCP tool calls).
 - **Locked setup.** While blocked, `AiCloudSection` and onboarding's `CloudProviderSetup` are `inert` and dimmed, and
   their `ProviderSetupController` isn't pointed at the provider (that alone can start a connection check); it's pointed
   when the lock lifts. A check that does reach the backend answers `cloudConsentMissing`, which the controller reads as
