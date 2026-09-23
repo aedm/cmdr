@@ -46,7 +46,14 @@
     import { isDriveRow } from './drive-index-manager.svelte'
     import { filesystemLabel } from './filesystem-label'
     import { pathForPickedVolume } from './picked-volume-path'
-    import { rowMenuItems, runVolumeRowAction, volumeRowMenu, type RowMenuPick, type RowToggleKind } from './row-menu'
+    import {
+        rowMenuItems,
+        runRowFix,
+        runVolumeRowAction,
+        volumeRowMenu,
+        type RowMenuPick,
+        type RowToggleKind,
+    } from './row-menu'
     import { listSavedPlaces, setServerAutoReconnect, type SavedPlaceFacts } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
     import { groupByCategory } from './volume-grouping'
@@ -138,12 +145,14 @@
     }
 
     /**
-     * A row's → submenu: its actions (`row-menu.ts`, the one list right-click opens too),
-     * then its switches. An SMB share's "Use Cmdr's fast direct connection" is one of those,
+     * A row's → submenu: its actions, fixes, and switches (`row-menu.ts`, the one list
+     * right-click opens too). An SMB share's "Use Cmdr's fast direct connection" is a switch,
      * on every share Rust knows a switch for, direct ones too, so a direct share can go back
      * to the macOS mount from here; checking it on a share the OS mounted runs "Connect
-     * directly". ❗ A switch's pick closes the whole menu before `onSelect`, so nobody sees the
-     * check flip: the next open shows it, re-read from Rust.
+     * directly", and while it's on but the share is still OS-mounted, "Connect directly now"
+     * offers the same flow as a fix. Both read the switch value re-fetched on every open and
+     * the live `connectionState`, so neither is stale. ❗ A pick closes the whole menu before
+     * `onSelect`, so nobody sees the check flip: the next open shows it, re-read from Rust.
      */
     function rowSubmenu(volume: VolumeInfo): MenuItem<SwitcherRow>[] | undefined {
         const menu = volumeRowMenu(volume, {
@@ -290,6 +299,10 @@
     async function runRowEntry({ volume, entry }: RowMenuPick): Promise<void> {
         if (entry.type === 'toggle') {
             await flipToggle[entry.toggle](volume)
+            return
+        }
+        if (entry.type === 'fix') {
+            await runRowFix({ volume, fix: entry.fix })
             return
         }
         if (entry.action === 'open') {

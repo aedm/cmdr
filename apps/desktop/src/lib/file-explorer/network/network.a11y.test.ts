@@ -226,12 +226,13 @@ describe('ServersHubRowMenu a11y', () => {
 
   const actions: HubActions = {
     forget: () => Promise.resolve(),
-    rowMenu: () => [
-      [
+    rowMenu: () => ({
+      actions: [
         { type: 'action', action: 'open', label: 'Open', icon: 'arrow-right' },
         { type: 'action', action: 'disconnect', label: 'Disconnect', icon: 'unplug', disabled: true },
       ],
-      [
+      fixes: [],
+      settings: [
         {
           type: 'toggle',
           toggle: 'auto-reconnect',
@@ -240,7 +241,7 @@ describe('ServersHubRowMenu a11y', () => {
           tooltip: 'If the connection drops, Cmdr reconnects to this server on its own.',
         },
       ],
-    ],
+    }),
     runRowEntry: () => Promise.resolve(),
     openHostMenu: () => Promise.resolve(),
     runHostAction: () => Promise.resolve(),

@@ -1313,6 +1313,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "sourceHash": "2955143"
   },
+  "fileExplorer.navigation.connectDirectlyNow": "立即直接連線",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "sourceHash": "e81ea20"
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "此共享資料夾仍在使用較慢的系統連線。直接連線可以更快存取。",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "sourceHash": "42b6bcc"
+  },
   "fileExplorer.navigation.connectingDirectly": "正在直接連線…",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

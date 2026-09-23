@@ -1315,6 +1315,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "sourceHash": "2955143"
   },
+  "fileExplorer.navigation.connectDirectlyNow": "Anslut direkt nu",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "sourceHash": "e81ea20"
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "Den här delade mappen använder fortfarande den långsammare systemanslutningen. Anslut direkt för snabbare åtkomst.",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "sourceHash": "42b6bcc"
+  },
   "fileExplorer.navigation.connectingDirectly": "Ansluter direkt...",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

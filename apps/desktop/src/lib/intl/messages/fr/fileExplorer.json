@@ -1322,6 +1322,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "sourceHash": "2955143"
   },
+  "fileExplorer.navigation.connectDirectlyNow": "Se connecter directement maintenant",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "sourceHash": "e81ea20"
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "Ce partage utilise encore la connexion du système, plus lente. Connectez-vous directement pour un accès plus rapide.",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "sourceHash": "42b6bcc"
+  },
   "fileExplorer.navigation.connectingDirectly": "Connexion directe...",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

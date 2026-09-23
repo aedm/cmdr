@@ -17,6 +17,7 @@ import { disconnectNetworkHost, removeManualServer, showNetworkHostContextMenu }
 import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
 import { forgetSavedServer, setServerAutoReconnect } from '../navigation/server-row-actions'
 import {
+  runRowFix,
   runVolumeRowAction,
   volumeRowMenu,
   type RowMenu,
@@ -143,6 +144,10 @@ export function createHubActions(deps: HubActionDeps): HubActions {
   async function runRowEntry(row: HubRow, entry: RowMenuEntry): Promise<void> {
     if (entry.type === 'toggle') {
       await flipToggle[entry.toggle](row)
+      return
+    }
+    if (entry.type === 'fix') {
+      await runRowFix({ volume: volumeForRow(row), fix: entry.fix })
       return
     }
     if (entry.action === 'open') {

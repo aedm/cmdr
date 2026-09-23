@@ -1310,6 +1310,8 @@ export type MessageKey =
   | 'fileExplorer.mtp.noStorage'
   | 'fileExplorer.mtp.tryAgain'
   | 'fileExplorer.navigation.connectDirectly'
+  | 'fileExplorer.navigation.connectDirectlyNow'
+  | 'fileExplorer.navigation.connectDirectlyNowTooltip'
   | 'fileExplorer.navigation.connectingDirectly'
   | 'fileExplorer.navigation.connectingWithSavedPassword'
   | 'fileExplorer.navigation.connectionTooltipDirect'

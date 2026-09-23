@@ -1941,6 +1941,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "description": "Checkbox menu item in the submenu of a network share's row in the volume switcher. Checked (the default), Cmdr opens its own faster connection to this one share. Unchecked, the share stays on the slower connection macOS made. Applies to this share only, not the whole server."
   },
+  "fileExplorer.navigation.connectDirectlyNow": "Connect directly now",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "description": "Menu item in the submenu of a network share's row in the volume switcher, sitting just above the \"Use Cmdr's fast direct connection\" checkbox. It's a ONE-TIME ACTION, not a setting: clicking it makes Cmdr open its own faster connection to this share right now. It only appears when that checkbox is already on but the share is still on the slower connection macOS made (for example, the server was asleep or no password was saved). Use an imperative VERB phrase and keep the \"now\" meaning (this moment, once), so it can't be read as a mode or a preference."
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "This share still uses the slower system connection. Connect directly for faster access.",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "description": "Hover tooltip on the \"Connect directly now\" menu item in a network share's submenu in the volume switcher. Explains why the item is there: the share is still on the slower connection macOS made, and clicking it switches this share to Cmdr's faster direct connection once. \"System connection\" means the connection macOS made; keep it consistent with the connection indicator's tooltip."
+  },
   "fileExplorer.navigation.connectingDirectly": "Connecting directly...",
   "@fileExplorer.navigation.connectingDirectly": {
     "description": "Persistent progress toast shown while upgrading a network share to a direct connection."

@@ -191,7 +191,9 @@ describe('forget', () => {
 describe('rowMenu', () => {
   /** The menu's entries as their action names, so an assertion reads like the menu. */
   function actionsOf(row: HubRow, volumes: VolumeInfo[] = []): string[] {
-    return (actions(volumes).rowMenu(row) ?? []).flat().map((e) => (e.type === 'action' ? e.action : e.toggle))
+    const menu = actions(volumes).rowMenu(row)
+    if (!menu) return []
+    return [...menu.actions.map((e) => e.action), ...menu.fixes.map((e) => e.fix), ...menu.settings.map((e) => e.toggle)]
   }
 
   it('gives a one-place row the servers list, the same one the switcher row’s submenu shows', () => {
@@ -206,7 +208,7 @@ describe('rowMenu', () => {
       'forget-server',
       'auto-reconnect',
     ])
-    const toggle = (actions([liveVolume]).rowMenu(placeRow) ?? []).flat().find((e) => e.type === 'toggle')
+    const toggle = actions([liveVolume]).rowMenu(placeRow)?.settings[0]
     expect(toggle).toMatchObject({ toggle: 'auto-reconnect', checked: true })
   })
 

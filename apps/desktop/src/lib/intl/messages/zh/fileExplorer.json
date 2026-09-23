@@ -1313,6 +1313,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "sourceHash": "2955143"
   },
+  "fileExplorer.navigation.connectDirectlyNow": "立即直接连接",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "sourceHash": "e81ea20"
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "此共享仍在使用较慢的系统连接。直接连接可获得更快的访问速度。",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "sourceHash": "42b6bcc"
+  },
   "fileExplorer.navigation.connectingDirectly": "正在直接连接…",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

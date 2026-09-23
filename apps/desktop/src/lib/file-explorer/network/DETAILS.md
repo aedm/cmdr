@@ -236,8 +236,9 @@ User activates the "Add server…" row → the sign-in sheet opens in add mode
 `direct-connect.ts::connectDirectly({ volumeId, shareName })` is the single implementation behind every "turn this
 OS-mounted share into a direct smb2 session" affordance: the yellow-dot popup in
 `../navigation/VolumeBreadcrumb.svelte`, checking the switcher's "Use Cmdr's fast direct connection" row on an
-OS-mounted share (`../navigation/direct-connection-switch.svelte.ts`), and the retry button on the OS-mount fallback
-notice.
+OS-mounted share (`../navigation/direct-connection-switch.svelte.ts`), the switcher's "Connect directly now" fix on a
+share whose switch is on but still OS-mounted (`../navigation/row-menu.ts`'s `runRowFix`), and the retry button on the
+OS-mount fallback notice.
 
 The sequence, and who speaks at each step:
 
@@ -304,10 +305,11 @@ the toast: the component's question is "is there anything to offer", and every o
 Which reasons are which, and the two look-alikes that never arrive as this one: `src-tauri/src/network/DETAILS.md` §
 "Telling the user about a kernel-mount fallback".
 
-**Dismissal watches the volume list, not the button.** A share can reach a direct session four ways: this notice's
-button, the chip's yellow dot, the switcher's direct-connection switch, and the pane's credential form after a working
-password. All four end in `register_replacing_predecessor`, which broadcasts the volume list, so the bridge dismisses on
-any `volumes-changed` carrying that volume as `direct`. One rule covers every route, and a fifth route can't forget it.
+**Dismissal watches the volume list, not the button.** A share can reach a direct session five ways: this notice's
+button, the chip's yellow dot, the switcher's direct-connection switch or its "Connect directly now" fix, and the pane's
+credential form after a working password. All of them end in `register_replacing_predecessor`, which broadcasts the
+volume list, so the bridge dismisses on any `volumes-changed` carrying that volume as `direct`. One rule covers every
+route, and a new route can't forget it.
 A share that goes AWAY broadcasts the list too, so a notice whose volume is no longer listed retires the same way: its
 button could only say the share is gone. The bridge asks the toast store which notices are up (`getToasts`, matched by
 content component and `props.volumeId`) rather than keeping a list, so there's no frontend ledger to fall out of step

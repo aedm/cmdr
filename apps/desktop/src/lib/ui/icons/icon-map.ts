@@ -70,6 +70,7 @@ import IconTrash2 from '~icons/lucide/trash-2'
 import IconTriangleAlert from '~icons/lucide/triangle-alert'
 import IconUnplug from '~icons/lucide/unplug'
 import IconX from '~icons/lucide/x'
+import IconZap from '~icons/lucide/zap'
 import EjectIcon from './EjectIcon.svelte'
 
 /**
@@ -156,6 +157,7 @@ export const ICON_COMPONENTS = {
   'triangle-alert': IconTriangleAlert,
   unplug: IconUnplug,
   x: IconX,
+  zap: IconZap,
 } satisfies Record<string, Component>
 
 export type IconName = keyof typeof ICON_COMPONENTS

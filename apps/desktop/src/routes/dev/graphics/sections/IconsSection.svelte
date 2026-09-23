@@ -81,6 +81,7 @@
             'Warning marker in the delete and transfer dialogs, the onboarding AI step, unreachable tabs, the Advanced and Keyboard-shortcuts settings banners, the MTP connection error, and the SMB login form. Also the status-corner wake indicator when Ask Cmdr is allowed to watch but a gate (Full Disk Access, or a provider) still stands in the way.',
         unplug: 'Disconnect control on a server row in the volume switcher, where a removable drive shows Eject.',
         x: 'Clear-field button in the go-to-path dialog, and the dismiss button on toasts.',
+        zap: '"Connect directly now" in an SMB share\'s volume-switcher submenu, while the share is still on the macOS connection.',
     }
 
     interface IconEntry {

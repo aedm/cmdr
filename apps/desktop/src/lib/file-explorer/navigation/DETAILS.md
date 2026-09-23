@@ -314,12 +314,17 @@ per-share "Use Cmdr's fast direct connection" checkbox in its → submenu, under
 actions: the → submenu"). `direct-connection-switch.svelte.ts` owns the value: it asks Rust for each SMB share row's
 when the switcher opens (`null` means no switch, so no checkbox row), and a pick flips it. Rust does what OFF means (a
 direct share goes back to the OS mount at once, and `volumes-changed` repaints the dot); ON only saves there, so a share
-still on the OS mount then runs `connectDirectlyToRow`. That's why the submenu has no separate "Connect directly" row:
-checking the box IS that action, and two rows saying the same thing read as a riddle. ❗ An OS-mounted share whose
-switch is already ON (the auto upgrade couldn't dial, say, for want of credentials) shows a checked box, so from the
-switcher "Connect directly" takes unchecking and re-checking; the chip's yellow dot and the fallback notice offer it in
-one click. What the switch is and where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share
-direct-connection switch".
+still on the OS mount then runs `connectDirectlyToRow`. An OS-mounted share whose switch is already ON (the auto upgrade
+couldn't dial: no saved credentials, the server asleep, the pane-open cooldown) would show only a checked box, with no
+one-click way to connect, so exactly that state adds the one-shot fix "Connect directly now" (§ "Row actions: the →
+submenu"), which runs the same `connectDirectly` flow the yellow dot runs. Every other state shows the checkbox alone:
+with the switch OFF, checking it already connects, and a direct share has nothing to fix. There's deliberately no
+"Return to the macOS connection now": unchecking already does that at once. The fix only shows while the switch is on, so
+the backend's "a manual connect turns the switch back on" coupling never fires from it. Both inputs are current when the
+submenu opens: the switch values are re-fetched on every switcher open (the submenu re-derives when they land), and
+`connectionState` rides the live volume list. The fix's label stays its own key (`connectDirectlyNow`), apart from the
+chip popup's `connectDirectly`: a different surface, and "now" marks it as a one-time act beside a setting. What the
+switch is and where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
 
 ### Eject button
 
@@ -356,11 +361,24 @@ already routes to `DeviceDisconnect`). Its pick comes back over the `volume-cont
 
 A row's actions live in its → submenu, in the switcher, the favorites menu, and (as a right-click menu at the pointer)
 the servers hub. **`row-menu.ts` is the ONE list** every door shows, so no two surfaces drift on which items a row has,
-their order, or which a transfer greys:
+their order, or which a transfer greys.
+
+**Three named groups** (`RowMenu`'s `actions` / `fixes` / `settings`), always in this order, each with its own builder
+so a new item slots into a group, ❌ never by position:
+
+1. **Actions** on the volume itself (Open, Eject, Disconnect, the pin, the forgets).
+2. **Fixes**: one-shot repairs for the row's current state, each shown only while that state needs it ("Connect
+   directly now"; a future "Reconnect now" goes here too). They run straight on from the actions, no rule between, since
+   both are things to do now. `runRowFix` runs every fix, whichever surface picked it.
+3. **Settings**: per-row checkboxes, below a rule. A setting is a standing choice, so the rule sets it apart.
+
+`ruledBlocks` turns the groups into what's drawn (actions + fixes, then settings), so a submenu and a top-level section
+list can't disagree on where the rule goes.
 
 - **A drive or phone**: its detach item, worded and greyed from the same `detachControlFor` answer the inline button
   renders (`Eject ({name})`, or `Disconnect` with the unplug glyph on a phone). An SMB share adds its direct-connection
-  checkbox in a second group, under a rule.
+  checkbox under the rule, and "Connect directly now" as a fix while that switch is ON but the share is still
+  `os_mount` (§ "Connection state indicator" above has why only then).
 - **A server place**: `Open`, `Edit server…` (saved only), `Disconnect` (when `showsDisconnect`), `Pin to switcher` or
   `Unpin`, `Forget saved password`, `Forget server` (saved only). ❌ Never `Eject`: it promises safe-to-unplug, and a
   server has nothing to unplug. `Open` and `Edit server…` lead, the way the row's two purposes rank, and neither is
@@ -380,11 +398,11 @@ primitive does it (`$lib/ui/DETAILS.md` § Menu), so none of these rows raises a
 and land in the handlers the palette uses: `runVolumeRowAction` sends Eject and Disconnect through `runDetach` (the
 inline button's path, which refuses a busy volume whatever the menu showed) and the rest to `runServerRowAction`. `Open`
 is the surface's own navigation, so the switcher moves ITS pane (the same `openVolume` a click on the row runs) and the
-hub moves its.
+hub moves its. A fix pick goes to `runRowFix` on every surface.
 
 **Which picks keep the menu up** (`MenuItem.keepsMenuOpen`): Eject and Disconnect, like the inline button, so several go
-in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, and the two Forgets close
-it, since they navigate or open a dialog. The direct-connection checkbox closes it too, since checking it on an
+in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, the two Forgets, and every
+fix close it, since they navigate or open a dialog or sheet. The direct-connection checkbox closes it too, since checking it on an
 OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect automatically", so every switch
 behaves alike: the next open shows the new state, re-read from Rust.
 
@@ -395,6 +413,8 @@ a connected volume's live switch (`apps/desktop/src-tauri/src/network/DETAILS.md
 
 **Adding a per-row checkbox**: `row-menu.ts`'s header says where (a `RowToggleKind` member, a `VolumeRowFacts` field, a
 `rowToggles` entry, and the two `flipToggle` maps, each a `Record<RowToggleKind, …>` that won't compile until handled).
+**Adding a fix**: a `RowFixKind` member, a `rowFixes` entry gated on the state it repairs, and its runner in
+`runRowFix`'s `Record<RowFixKind, …>`.
 
 **Busy gating.** While a copy / move / delete reads from or writes to a volume, ejecting it is blocked so a disconnect
 can't truncate an in-flight file. `$lib/stores/volume-busy-store.svelte`'s `isVolumeBusy(id)` (fed by the backend

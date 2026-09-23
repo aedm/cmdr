@@ -774,17 +774,51 @@ describe('VolumeBreadcrumb share submenu', () => {
     expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
   })
 
-  // The switch is the one way to the direct connection from here: checking it on a share the
-  // OS mounted runs "Connect directly", so a second row offering the same thing only reads as
-  // a riddle. The row's actions lead, and the switch sits under a rule.
-  it("an OS-mounted share's submenu holds Eject, then the switch below a rule", async () => {
+  // Switch ON, yet the share is still on the macOS mount (the auto upgrade couldn't dial): the
+  // checked box alone would leave no one-click way to connect, so a one-shot fix sits between
+  // Eject and the switch, and only the switch gets the rule.
+  it("an OS-mounted share with its switch on offers Eject, then “Connect directly now”, then the switch below a rule", async () => {
+    await openWithSwitches([share])
+    await openShareSubmenu()
+
+    const rows = submenuRows()
+    expect(rows.map((row) => row.textContent.trim())).toEqual([
+      'Eject (Share)',
+      'Connect directly now',
+      "Use Cmdr's fast direct connection",
+    ])
+    expect(rows[1].previousElementSibling?.getAttribute('role')).not.toBe('separator')
+    expect(rows[2].hasAttribute('data-checked')).toBe(true)
+    expect(rows[2].previousElementSibling?.getAttribute('role')).toBe('separator')
+  })
+
+  it('“Connect directly now” runs "Connect directly" for the share, leaving the switch alone', async () => {
+    await openWithSwitches([share])
+    await openShareSubmenu()
+
+    press('ArrowDown')
+    expect(press('Enter')).toBe(true)
+    await settle()
+    expect(connectDirectly).toHaveBeenCalledWith({ volumeId: 'volumes-share', shareName: 'Share' })
+    expect(setSmbDirectConnectionEnabled).not.toHaveBeenCalled()
+  })
+
+  // Checking the box already connects, so an OFF switch needs no second door.
+  it("an OS-mounted share with its switch off holds Eject, then the switch below a rule", async () => {
+    stubs.directSwitch = false
     await openWithSwitches([share])
     await openShareSubmenu()
 
     const rows = submenuRows()
     expect(rows.map((row) => row.textContent.trim())).toEqual(['Eject (Share)', "Use Cmdr's fast direct connection"])
-    expect(rows[1].hasAttribute('data-checked')).toBe(true)
+    expect(rows[1].hasAttribute('data-checked')).toBe(false)
     expect(rows[1].previousElementSibling?.getAttribute('role')).toBe('separator')
+  })
+
+  it('a direct share with its switch on has nothing to fix', async () => {
+    await openWithSwitches([{ ...share, connectionState: 'direct' }])
+    await openShareSubmenu()
+    expect(submenuRows().map((row) => row.textContent.trim())).not.toContain('Connect directly now')
   })
 
   it('a share Rust has no switch for gets its Eject alone', async () => {

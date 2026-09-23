@@ -1316,6 +1316,14 @@
   "@fileExplorer.navigation.useDirectConnection": {
     "sourceHash": "2955143"
   },
+  "fileExplorer.navigation.connectDirectlyNow": "Kết nối trực tiếp ngay",
+  "@fileExplorer.navigation.connectDirectlyNow": {
+    "sourceHash": "e81ea20"
+  },
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "Mục chia sẻ này vẫn đang dùng kết nối hệ thống chậm hơn. Hãy kết nối trực tiếp để truy cập nhanh hơn.",
+  "@fileExplorer.navigation.connectDirectlyNowTooltip": {
+    "sourceHash": "42b6bcc"
+  },
   "fileExplorer.navigation.connectingDirectly": "Đang kết nối trực tiếp...",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

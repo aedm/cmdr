@@ -13,11 +13,23 @@
  * `VolumeContextActionKind` stays the action vocabulary, so a pick lands in the handlers the
  * palette and the breadcrumb's native Eject already use.
  *
+ * **Three named groups**, in this order (`RowMenu`): the row's ACTIONS on the volume (Open,
+ * Eject, Disconnect, the pin, the forgets), then one-shot FIXES for the row's current state
+ * ("Connect directly now"), then, below a rule, per-row SETTINGS (checkboxes). A fix shows
+ * only while its state needs it, and reads as something to do now, so it runs straight on
+ * from the actions; a setting is a standing choice, so it gets the rule. A new item goes
+ * into its group's builder (`serverActions` / `detachAction`, `rowFixes`, `rowToggles`), ❌
+ * never spliced in by position.
+ *
  * Adding a row's checkbox (a per-row setting): give `RowToggleKind` a member, give
  * `VolumeRowFacts` the value it shows, push a `toggle` entry in `rowToggles`, and handle
  * the kind in the two `flipToggle` maps (`VolumeChooserMenu.svelte` and
  * `../network/servers-hub-actions.ts`), each a `Record<RowToggleKind, …>` that stops
  * compiling until you do. The surfaces fill the fact from their stores.
+ *
+ * Adding a fix: give `RowFixKind` a member, push a `fix` entry in `rowFixes` gated on the
+ * state it repairs, and give `runRowFix`'s `Record<RowFixKind, …>` its runner. Every surface
+ * already sends a `fix` pick to `runRowFix`.
  */
 
 import type { VolumeContextActionKind } from '$lib/ipc/bindings'
@@ -25,6 +37,7 @@ import type { MessageKey } from '$lib/intl/keys.gen'
 import { tString } from '$lib/intl/messages.svelte'
 import type { IconName } from '$lib/ui/icons/icon-map'
 import type { MenuItem, MenuSection } from '$lib/ui/menu-types'
+import { connectDirectly } from '../network/direct-connect'
 import { showsDisconnect } from './connection-state'
 import { detachControlFor } from './detach-control'
 import { runDetach } from './detach-volume'
@@ -34,28 +47,62 @@ import type { VolumeInfo } from '../types'
 /** A per-row switch the submenu carries as a checkbox row. */
 export type RowToggleKind = 'direct-connection' | 'auto-reconnect'
 
-/** One row of a row's menu: an action to run, or a switch to flip. */
-export type RowMenuEntry =
-  | {
-      type: 'action'
-      action: VolumeContextActionKind
-      label: string
-      icon: IconName
-      disabled?: boolean
-      /** Leaves the menu up after the pick (see `MenuItem.keepsMenuOpen`). */
-      keepsMenuOpen?: boolean
-    }
-  | {
-      type: 'toggle'
-      toggle: RowToggleKind
-      label: string
-      checked: boolean
-      /** What the switch does, where the label alone invites a wrong reading. */
-      tooltip?: string
-    }
+/** A one-shot repair a row offers only while its current state needs it. */
+export type RowFixKind = 'connect-directly'
 
-/** Entries in groups: actions first, then the row's switches. A rule sits between two groups. */
-export type RowMenu = RowMenuEntry[][]
+/** An action on the volume itself. */
+export interface RowActionEntry {
+  type: 'action'
+  action: VolumeContextActionKind
+  label: string
+  icon: IconName
+  disabled?: boolean
+  /** Leaves the menu up after the pick (see `MenuItem.keepsMenuOpen`). */
+  keepsMenuOpen?: boolean
+}
+
+/** A one-shot fix: runs once, now. Closes the menu, since a fix may raise a sheet. */
+export interface RowFixEntry {
+  type: 'fix'
+  fix: RowFixKind
+  label: string
+  icon: IconName
+  /** Why the fix is on offer, since it appears and disappears with the row's state. */
+  tooltip: string
+}
+
+/** A per-row setting, drawn as a checkbox. */
+export interface RowToggleEntry {
+  type: 'toggle'
+  toggle: RowToggleKind
+  label: string
+  checked: boolean
+  /** What the switch does, where the label alone invites a wrong reading. */
+  tooltip?: string
+}
+
+/** One row of a row's menu: an action to run, a fix to apply, or a switch to flip. */
+export type RowMenuEntry = RowActionEntry | RowFixEntry | RowToggleEntry
+
+/** A row's menu in its three named groups (the header says why this order). */
+export interface RowMenu {
+  actions: RowActionEntry[]
+  fixes: RowFixEntry[]
+  settings: RowToggleEntry[]
+}
+
+/** A row that offers nothing. Spread it and replace a group, ❌ never push into one: the arrays are shared. */
+export const EMPTY_ROW_MENU: RowMenu = { actions: [], fixes: [], settings: [] }
+
+/**
+ * The groups as the menu draws them, a rule between each two: the actions and the fixes
+ * share a block (both are things to do), and the settings sit below a rule. Empty blocks
+ * drop out, so a lone block draws no rule.
+ */
+function ruledBlocks(menu: RowMenu): RowMenuEntry[][] {
+  const blocks: RowMenuEntry[][] = [[...menu.actions, ...menu.fixes], menu.settings]
+  return blocks.filter((block) => block.length > 0)
+}
 
 /** What the row's own fields can't say, read by the surface from its stores. */
 export interface VolumeRowFacts {
@@ -86,7 +133,7 @@ function action(
   labelKey: MessageKey,
   icon: IconName,
   options: { disabled?: boolean; keepsMenuOpen?: boolean } = {},
-): RowMenuEntry {
+): RowActionEntry {
   return { type: 'action', action: kind, label: tString(labelKey), icon, ...options }
 }
 
@@ -100,9 +147,9 @@ function action(
  * command answers instead (`forgetSavedSecret` words a `false`). Open, Edit, and the pin are
  * never greyed by a transfer: navigating, editing settings, and moving a pin break nothing.
  */
-function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowMenuEntry[] {
+function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowActionEntry[] {
   const { busy, isSaved } = facts
-  const entries: RowMenuEntry[] = [action('open', 'menu.network.open', 'arrow-right')]
+  const entries: RowActionEntry[] =[action('open', 'menu.network.open', 'arrow-right')]
   if (isSaved) entries.push(action('edit', 'menu.network.edit', 'pencil'))
   if (showsDisconnect(volume.connectionState)) {
     entries.push(
@@ -136,7 +183,7 @@ function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowMenuEntry[
  * A drive's or a phone's detach item, worded and greyed from the same `detachControlFor`
  * answer the row's inline button renders. `null` when the row has no detach at all.
  */
-function detachAction(volume: VolumeInfo, facts: VolumeRowFacts): RowMenuEntry | null {
+function detachAction(volume: VolumeInfo, facts: VolumeRowFacts): RowActionEntry | null {
   const detach = detachControlFor(volume, { busy: facts.busy, ejecting: facts.ejecting })
   if (detach?.action !== 'eject') return null
   const { disabled, icon } = detach.button
@@ -148,9 +195,31 @@ function detachAction(volume: VolumeInfo, facts: VolumeRowFacts): RowMenuEntry |
   return { type: 'action', action: 'eject', label, icon, disabled, keepsMenuOpen: true }
 }
 
+/**
+ * The fixes group: one-shot repairs, each gated on the state it repairs.
+ *
+ * "Connect directly now" shows ONLY while the share's switch is ON and the share is still
+ * on the macOS mount (the auto upgrade couldn't dial: no saved credentials, the server
+ * asleep, the pane-open cooldown). With the switch OFF, checking it already connects, and
+ * a direct share has nothing to fix, so in both the checkbox stands alone.
+ */
+function rowFixes(volume: VolumeInfo, facts: VolumeRowFacts): RowFixEntry[] {
+  const fixes: RowFixEntry[] = []
+  if (facts.directConnection === true && volume.connectionState === 'os_mount') {
+    fixes.push({
+      type: 'fix',
+      fix: 'connect-directly',
+      label: tString('fileExplorer.navigation.connectDirectlyNow'),
+      icon: 'zap',
+      tooltip: tString('fileExplorer.navigation.connectDirectlyNowTooltip'),
+    })
+  }
+  return fixes
+}
+
 /** The switches group: per-row settings, below a rule. */
-function rowToggles(facts: VolumeRowFacts): RowMenuEntry[] {
-  const toggles: RowMenuEntry[] = []
+function rowToggles(facts: VolumeRowFacts): RowToggleEntry[] {
+  const toggles: RowToggleEntry[] = []
   if (facts.directConnection !== undefined) {
     toggles.push({
       type: 'toggle',
@@ -175,14 +244,14 @@ function rowToggles(facts: VolumeRowFacts): RowMenuEntry[] {
 
 /** A volume-switcher (or servers-hub) row's menu. Empty when the row offers nothing. */
 export function volumeRowMenu(volume: VolumeInfo, facts: VolumeRowFacts): RowMenu {
-  const actions: RowMenuEntry[] = []
+  const actions: RowActionEntry[] = []
   if (isServerPlaceRow(volume)) {
     actions.push(...serverActions(volume, facts))
   } else {
     const detach = detachAction(volume, facts)
     if (detach) actions.push(detach)
   }
-  return [actions, rowToggles(facts)].filter((group) => group.length > 0)
+  return { actions, fixes: rowFixes(volume, facts), settings: rowToggles(facts) }
 }
 
 /**
@@ -191,17 +260,20 @@ export function volumeRowMenu(volume: VolumeInfo, facts: VolumeRowFacts): RowMen
  * greyed: a favorite is a stored `{ path, name }` pair nothing can be using.
  */
 export function favoriteRowMenu(): RowMenu {
-  return [
-    [
+  return {
+    ...EMPTY_ROW_MENU,
+    actions: [
       action('rename-favorite', 'menu.volume.renameFavorite', 'pencil', { keepsMenuOpen: true }),
       action('remove-favorite', 'menu.volume.removeFavorite', 'star-off', { keepsMenuOpen: true }),
     ],
-  ]
+  }
 }
 
-/** The entry's name within its row: the action, or the toggle behind a `toggle:` prefix. */
+/** The entry's name within its row: the action, or the fix or toggle behind its prefix. */
 function entryKey(entry: RowMenuEntry): string {
-  return entry.type === 'action' ? entry.action : `toggle:${entry.toggle}`
+  if (entry.type === 'action') return entry.action
+  if (entry.type === 'fix') return `fix:${entry.fix}`
+  return `toggle:${entry.toggle}`
 }
 
 /**
@@ -211,22 +283,24 @@ function entryKey(entry: RowMenuEntry): string {
  */
 function entryItem<T>(volumeId: string, entry: RowMenuEntry, wrap: (entry: RowMenuEntry) => T): MenuItem<T> {
   const common = { value: `row:${volumeId}:${entryKey(entry)}`, label: entry.label, data: wrap(entry) }
-  return entry.type === 'action'
-    ? { ...common, icon: { lucide: entry.icon }, disabled: entry.disabled, keepsMenuOpen: entry.keepsMenuOpen }
-    : { ...common, checked: entry.checked, tooltip: entry.tooltip }
+  if (entry.type === 'action') {
+    return { ...common, icon: { lucide: entry.icon }, disabled: entry.disabled, keepsMenuOpen: entry.keepsMenuOpen }
+  }
+  if (entry.type === 'fix') return { ...common, icon: { lucide: entry.icon }, tooltip: entry.tooltip }
+  return { ...common, checked: entry.checked, tooltip: entry.tooltip }
 }
 
 /**
  * A row's menu as a SUBMENU (the switcher's and the favorites menu's rows): one flat list,
- * with a rule above each group after the first. `undefined` for a row with nothing to
- * offer, so it draws no submenu arrow.
+ * with a rule above each block after the first (`ruledBlocks`). `undefined` for a row with
+ * nothing to offer, so it draws no submenu arrow.
  */
 export function rowMenuItems<T>(
   volumeId: string,
   menu: RowMenu,
   wrap: (entry: RowMenuEntry) => T,
 ): MenuItem<T>[] | undefined {
-  const items = menu.flatMap((group, groupIndex) =>
+  const items = ruledBlocks(menu).flatMap((group, groupIndex) =>
     group.map((entry, index) => ({
       ...entryItem(volumeId, entry, wrap),
       separatorBefore: groupIndex > 0 && index === 0,
@@ -236,18 +310,31 @@ export function rowMenuItems<T>(
 }
 
 /**
- * A row's menu as a TOP-LEVEL menu (the servers hub's right-click): a section per group,
- * which the primitive separates, since a top-level list draws no rules inside a section.
+ * A row's menu as a TOP-LEVEL menu (the servers hub's right-click): a section per ruled
+ * block, which the primitive separates, since a top-level list draws no rules inside a
+ * section.
  */
 export function rowMenuSections<T>(
   volumeId: string,
   menu: RowMenu,
   wrap: (entry: RowMenuEntry) => T,
 ): MenuSection<T>[] {
-  return menu.map((group, index) => ({
+  return ruledBlocks(menu).map((group, index) => ({
     id: `group-${String(index)}`,
     items: group.map((entry) => entryItem(volumeId, entry, wrap)),
   }))
+}
+
+/** What each fix runs. A `Record`, so a new `RowFixKind` won't compile until it's handled. */
+const fixRunners: Record<RowFixKind, (volume: VolumeInfo) => Promise<unknown>> = {
+  // The ONE "Connect directly" flow (`../network/DETAILS.md` § "Connect directly"), the one
+  // the chip's yellow dot and the fallback notice run, with its sign-in sheet and toasts.
+  'connect-directly': (volume) => connectDirectly({ volumeId: volume.id, shareName: volume.name }),
+}
+
+/** Runs a row's fix, whichever surface it was picked on. */
+export async function runRowFix(payload: { volume: VolumeInfo; fix: RowFixKind }): Promise<void> {
+  await fixRunners[payload.fix](payload.volume)
 }
 
 /**
