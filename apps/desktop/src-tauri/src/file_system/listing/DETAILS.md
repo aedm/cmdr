@@ -472,7 +472,8 @@ folder the share stores composed answers the kernel's decomposed spelling with `
   there on the listing IS the stored spelling: `CachedListing::path`, the watch, the overlays, the index enrich, and
   every entry path. `listing-complete` carries `storedPath` (only when it differs), and the pane re-spells its tab and
   current history entry in place (`navigate.ts::adoptStoredSpelling`), so there's no Back step to the other spelling and
-  a pinned tab doesn't fork. Favorites stay as the user wrote them.
+  a pinned tab doesn't fork. Favorites stay as the user wrote them: we don't silently edit something a person
+  authored, and the cost is one resolve per click, remembered per share until the folder changes.
 - **A backend swap respells what's open.** When `network/smb_upgrade.rs` hands a share from the kernel mount to a
   direct connection, `respell_listings_on_volume` re-reads each open listing on it through the new backend, holding the
   directory's refresh turn (`caching::refresh_turn`). A listing whose path changed spelling is re-keyed, its entries are

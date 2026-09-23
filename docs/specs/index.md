@@ -14,16 +14,6 @@ Each of these shipped and its durable intent already lives beside the code; the 
 the work against the plan it came from. Wipe per `DETAILS.md` § "Wiping a shipped spec" once the entry's own condition
 below is met.
 
-- [x] 2026-09-22 `smb-path-normalization.md` - **Shipped, all six milestones.** A file whose name an SMB server stores
-      in NFD was visible, sized, and impossible to open, copy, rename, or delete (`ERR-VETBX`, 712 photos on David's
-      NAS). SMB paths now carry the server's exact bytes; a foreign path (typed, restored, a Finder drop or paste, or a
-      pane carried over from the kernel mount) resolves once against a real listing where it enters; the share watcher
-      keys on the same bytes; a write never stands an identical-looking twin beside an entry held in another Unicode
-      form; new names go out composed; and two look-alikes are refused, never guessed. Durable intent lives in
-      `crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes" and the listing and write-operations `DETAILS.md`
-      files it points to. **Wipe per `DETAILS.md` § "Wiping a shipped spec"** once David has answered the six calls in
-      the file (the new-name policy, the ambiguity copy, a look-alike hint in the conflict dialog, case-only twins,
-      favorites, bulk rename).
 - [x] 2026-09-16 `select-same-kind.md` - **Shipped, all nine milestones.** Cmdr could select everything, nothing, the
       inverse, or a typed glob, but not "the rest of these, the same kind as this one." `⌥⇧=` (plus the numpad `⌥+`)
       adds every entry of the cursor row's kind — same extension case-insensitively, every extension-less file, or every
