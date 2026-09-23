@@ -35,7 +35,7 @@ spike before M2 starts.
   `apps/desktop/src-tauri/src/file_system/write_operations/human_wait.rs`). The elevation question parks the same way.
 - **MCP writes without a dialog**: `copy` / `move` / `delete` with `autoConfirm: true` plus the token from
   `<data_dir>/mcp.token`, and `dialog` with `action: "confirm"`, apply an operation with no human click
-  (`apps/desktop/src-tauri/src/mcp/auth.rs`, `apps/desktop/src-tauri/src/mcp/executor/file_ops.rs`). Six Playwright
+  (`apps/desktop/src-tauri/src/mcp/auth.rs`, `apps/desktop/src-tauri/src/mcp/executor/file_ops.rs`). Seven Playwright
   specs use `autoConfirm` (34 call sites) and two more use `dialog confirm`. The in-app agent can only propose.
 - **Signing**: `apps/desktop/src-tauri/Entitlements.plist` is an empty dict, so the hardened runtime has no holes and
   nothing can inject code into Cmdr. That's what makes decision 8's "trust whatever runs inside Cmdr" sound.
@@ -54,7 +54,7 @@ spike before M2 starts.
 - **Routing every operation through the helper**: every write would run as root and pay an XPC hop per syscall.
 - **`SMJobBless` for macOS 12 and below**: deprecated, needs a hand-rolled caller check, more attack surface for few
   users.
-- **Removing `autoConfirm` from MCP**: it wouldn't close the gap (`dialog confirm` does the same thing), it breaks eight
+- **Removing `autoConfirm` from MCP**: it wouldn't close the gap (`dialog confirm` does the same thing), it breaks nine
   E2E specs and David's own agent workflows, and it isn't needed once the elevation question lives outside every MCP
   tool (decision 13).
 

@@ -77,7 +77,7 @@ box diagnose only what's new or regressed, feeding one email at 06:00 Stockholm 
   - One log site can hide two causes (`"Couldn't copy: {error}"`). When the agent sees that, the fix is splitting the
     log site or putting the typed variant into the template.
 
-## 2. Registry (D1, migration `0017_error_signatures.sql`)
+## 2. Registry (D1, the next free migration number: `0020_error_signatures.sql` as of 2026-09-23)
 
 - **`error_signatures`**: `sig` (primary key), `target`, `template`, `status`, `alias_of`, `fixed_in`, `fixed_commits`,
   `first_seen`, `last_seen`, `first_version`, `updated_at`. No identifiers; kept indefinitely.
