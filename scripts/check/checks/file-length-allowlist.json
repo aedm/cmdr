@@ -8,6 +8,10 @@
     "scripts/check/checks/registry.go": "append-only check registry (one CheckDefinition entry per check); line count tracks the number of checks, not splittable logic"
   },
   "files": {
+    "apps/desktop/scripts/e2e-linux.sh": {
+      "lines": 872,
+      "reason": "This is one executable launcher whose bulk is two embedded `docker run ... bash -c` programs plus the comments that protect their quoting and environment contracts. The host orchestration shares one cleanup trap, lease state, cache volumes, image and target selection, and container arguments. Extracting the embedded programs would turn visible shell into generated command strings, while sourcing the host helpers would preserve the same global state across files and obscure teardown order; every named helper serves only this entry point."
+    },
     "apps/desktop/src-tauri/src/file_system/listing/caching.rs": {
       "lines": 903,
       "reason": "TODO: three concerns share one file and the test siblings already name the seams. Move the full-refresh machinery (`RefreshSlot`, `REFRESH_SLOTS`, `refresh_slot`, `spawn_full_refresh`, `notify_full_refresh`, `notify_full_refresh_locked`, `publish_replacement`, `find_listings_under_path_on_volume`, `refresh_archive_listings`, roughly lines 540-800) into `caching_refresh.rs` at about 260 lines, and the freshness oracle `try_get_authoritative_listing` with its long contract doc into `caching_oracle.rs` at about 105 lines, matching the `caching_replacement_test.rs` and `caching_oracle_test.rs` siblings that already test exactly those two. What stays is about 550 lines of listing lookups (`snapshot_listings`, `find_listings_for_path*`, `find_listings_on_volume`), the cache patch helpers (`insert_entry_sorted`, `remove_entries_by_paths`, `update_entry_sorted`, `carry_forward_tags`, `apply_tags_to_listing`), and the `notify_directory_changed` dispatch with its `notify_added` / `notify_removed` / `notify_modified` arms, which is what the module map in `listing/CLAUDE.md` calls this file."
