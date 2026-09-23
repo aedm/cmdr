@@ -368,6 +368,18 @@ are BOTH right, say where the boundary runs. That sentence is the thing that sto
 Hand an agent the block below as its system prompt, then feed it batches of keys with each key's `@key.description`,
 `placeholders`, and any `screenshot`/`screenshotNote`. Replace the bracketed parts; keep the rest verbatim.
 
+**Who translates, and in what shape.** Never the coding agent that added the strings: it writes English and the `@key`
+metadata, then a separate translator agent takes over. The lever is that the translator actually reads the language's
+`style.md` and searches its `glossary.md`; every agent already knows every language. One style guide plus one glossary
+runs ~50–60k words, so all ten shipped languages can't share one context. Pick the shape by batch size:
+
+- **A real batch** (a feature's strings, a review pass): one agent per language, each loading only its own material.
+- **One to five keys**: one translator agent is fine if it goes language by language, reading that `style.md` and
+  grepping that `glossary.md` for the terms in play before writing.
+
+(Measured 2026-09-23: a coding agent translated four keys into ten languages inline, opened no style guide or glossary,
+and passed every check anyway. The checks catch mechanics, not voice.)
+
 **Fanning out one agent per language: if you are yourself a subagent, spawn WITHOUT the `name` parameter.** The team
 roster is flat, so a named teammate can't spawn named teammates; passing `name` fails with "Teammates cannot spawn other
 teammates". Only the lead session can name them. Nine languages is also enough prompt text that it's worth writing each
