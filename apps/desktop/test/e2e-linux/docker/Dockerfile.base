@@ -80,6 +80,9 @@ RUN apt-get update && apt-get install -y \
     python3-websockify \
     # SMB support for network E2E tests
     smbclient \
+    # The server specs' side door to the SFTP fixture (e2e-shared/server-fixtures.ts):
+    # named here rather than trusted to arrive as some other package's recommend
+    openssh-client \
     cifs-utils \
     # Git for tests that synthesize repository fixtures (git-portal.spec.ts)
     git \

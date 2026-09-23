@@ -6,12 +6,14 @@ Eleven real OpenSSH servers in Docker, one per thing that breaks an SFTP client,
 ```bash
 ./start.sh          # core: every server the integration lane uses
 ./start.sh minimal  # the stock server and the key-only one
+./start.sh e2e      # the stock server alone, what the Playwright server specs dial
 ./start.sh bench    # the local-only measurement server
 ./stop.sh           # releases this shell's lease; downs only at zero holders
 ```
 
-`pnpm check` brings the stack up on its own (`desktop-rust-integration-tests` declares it), so a manual `start.sh` is
-for iterating by hand.
+`pnpm check` brings the stack up on its own (`desktop-rust-integration-tests` declares `core`; both Playwright lanes
+declare `e2e` for `server-ops-sftp.spec.ts`, and `e2e-linux.sh` leases it for CI), so a manual `start.sh` is for
+iterating by hand.
 
 ❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
 sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and the

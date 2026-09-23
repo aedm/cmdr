@@ -29,6 +29,11 @@ var (
 	// servers, because the lane runs the whole `cmdr-sftp` package and each
 	// server exists for a cell in it.
 	SftpCore = StackMode{Stack: "sftp", Mode: "core"}
+	// SftpE2E is what the Playwright suites dial through the real add-server
+	// sheet: the stock server alone.
+	SftpE2E = StackMode{Stack: "sftp", Mode: "e2e"}
+	// WebdavE2E is the Playwright suites' WebDAV server: the Basic-auth one alone.
+	WebdavE2E = StackMode{Stack: "webdav", Mode: "e2e"}
 	// WebdavCore is the WebDAV integration set: the Basic-auth server and the
 	// Digest-only one.
 	WebdavCore = StackMode{Stack: "webdav", Mode: "core"}

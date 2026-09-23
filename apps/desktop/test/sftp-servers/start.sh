@@ -8,6 +8,7 @@
 # Usage:
 #   ./start.sh           # core: every server the integration lane talks to
 #   ./start.sh minimal   # just the stock server and the key-only one
+#   ./start.sh e2e       # just the stock server, for the Playwright suites
 #   ./start.sh bench     # the local-only measurement server
 #   ./start.sh all       # everything the compose file defines
 
@@ -45,6 +46,11 @@ case "$mode" in
         echo "Starting the minimal SFTP servers (stock, key-only)..."
         services=(sftp-fixture-openssh sftp-fixture-keyonly)
         ;;
+    e2e)
+        # What the Playwright suites dial through the real add-server sheet.
+        echo "Starting the E2E SFTP server (stock, password auth)..."
+        services=(sftp-fixture-openssh)
+        ;;
     core)
         echo "Starting the core SFTP servers (every auth rung, every quirk, the big and odd exports)..."
         services=(sftp-fixture-openssh sftp-fixture-keyonly sftp-fixture-passphrase \
@@ -66,7 +72,7 @@ case "$mode" in
         ;;
     *)
         echo "Unknown mode: $mode"
-        echo "Usage: $0 [minimal|core|bench|all]"
+        echo "Usage: $0 [minimal|e2e|core|bench|all]"
         exit 1
         ;;
 esac

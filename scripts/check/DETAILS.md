@@ -877,6 +877,10 @@ teardown are one implementation over that value.
   rebuilds nor recreates a healthy one. SFTP declares one context, WebDAV two (its httpd image and its Nextcloud one);
   SMB's images are vendored and it declares none. The hash carries each context's own name beside each file's, so two
   contexts holding a `Dockerfile` can't cancel each other out.
+- **Both Playwright lanes lease the SFTP and WebDAV stacks in `e2e` mode**, one server each (`sftp-fixture-openssh`,
+  `webdav-fixture-apache`), for the `server-ops-*` specs. The Linux lane also lists `SmbE2E`; the macOS lane doesn't,
+  since `smb.spec.ts` is skipped there. CI runs `e2e-linux.sh` directly, so that script takes its own lease on all
+  three with holder `$$`, exactly as it always has for SMB.
 - **A check declares `NeedsContainers []StackMode`**, so it can ask for several stacks. Both strings resolve against the
   registry, and `TestEveryDeclaredStackModeResolves` (`stack_orchestrator_test.go`) turns a typo into a millisecond
   failure rather than one minutes into a run, after planning and `pnpm install`.

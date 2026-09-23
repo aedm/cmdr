@@ -17,7 +17,8 @@ for one shard isn't worth it.
 e2e-linux.sh
 ├─ Build Tauri binary in Docker (--features playwright-e2e,virtual-mtp,smb-e2e)
 ├─ Start SMB Docker containers (smb-consumer-guest, -auth, -50shares, -unicode)
-├─ Launch E2E container on smb-consumer_default network
+├─ Lease the SFTP and WebDAV stacks in `e2e` mode (sftp-fixture-openssh, webdav-fixture-apache)
+├─ Launch E2E container on smb-consumer_default, sftp-fixture_default, and webdav-fixture_default
 │   ├─ entrypoint.sh: Xvfb + dbus + GVFS + optional VNC
 │   ├─ Create fixtures, start Tauri app (with SMB_E2E_*_HOST/PORT env vars)
 │   ├─ Wait for /tmp/tauri-playwright.sock
@@ -134,6 +135,20 @@ deadline) emits `SMB e2e stack ready: all 4 containers accepting TCP on :445`. A
 `...at least one container is no longer accepting TCP, likely died mid-run` plus per-service compose state. Both banners
 are hoisted to the top of the failing-test summary (prefixed `[SMB]`): pre-OK + post-FAIL localises to "died mid-run",
 both OK to Cmdr-side SMB code, both FAIL to infra / Docker networking.
+
+## Server E2E networking
+
+The server specs (`../e2e-playwright/DETAILS.md` § "Real SFTP and WebDAV servers") dial the stock SFTP server and the
+Basic-auth WebDAV server, the only service in each stack's `e2e` mode. `e2e-linux.sh::start_server_stacks` leases each
+stack with holder `$$` (the fixture's `start.sh e2e` is the fallback when the Go helper can't run), probes the published
+port on the host, and checks the stack's network exists. `cleanup()` releases both leases; a stack downs only at its
+last holder.
+
+The container joins `sftp-fixture_default` and `webdav-fixture_default` next to SMB's network, with one `--network`
+flag per network on the same `docker run` (Docker 25+, API 1.44). Inside, compose's service name is the host:
+`SFTP_E2E_HOST=sftp-fixture-openssh`, `SFTP_E2E_PORT=22`, `WEBDAV_E2E_HOST=webdav-fixture-apache`,
+`WEBDAV_E2E_PORT=80`, read by `../e2e-shared/server-fixtures.ts` for both what the sheet is told and the side door.
+The side door needs `ssh` and `curl` in the image, and `Dockerfile.base` names both (`openssh-client`, `curl`).
 
 ## webkit2gtk caret bug (why the base is `ubuntu:26.04`)
 

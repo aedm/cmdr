@@ -24,8 +24,8 @@ BASE_IMAGE_REPO="cmdr-e2e-base"
 # ── Consolidated host-side cleanup (installed ONCE, before any branch) ────────
 # This script has several conditional concerns that each need teardown:
 #   - the VNC branch backs up and must restore the host .cargo/config.toml;
-#   - the main flow takes a machine-wide SMB lease (holder $$) that must be
-#     released so the shared stack downs at zero holders.
+#   - the main flow takes machine-wide SMB, SFTP, and WebDAV leases (holder $$)
+#     that must be released so each shared stack downs at zero holders.
 # Each is runtime-guarded on a variable that stays empty until its resource
 # exists, so a single early `trap cleanup EXIT` covers every concern regardless
 # of which branch ran — the guards no-op the irrelevant clauses. Installing it
@@ -42,6 +42,11 @@ cleanup() {
     if [[ -n "${SMB_LEASE_HELD:-}" ]]; then
         (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease release smb "$$" 2>/dev/null) || true
     fi
+    # The server stacks: the same rule, one lease each (see start_server_stacks).
+    local stack
+    for stack in ${SERVER_LEASES_HELD:-}; do
+        (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease release "$stack" "$$" 2>/dev/null) || true
+    done
     # Cargo config: restore the temporarily-cleared dev override if a backup
     # exists (the VNC branch sets CARGO_CONFIG_BAK).
     if [[ -n "${CARGO_CONFIG_BAK:-}" && -f "${CARGO_CONFIG_BAK:-}" ]]; then
@@ -549,6 +554,80 @@ start_smb_containers() {
 
 start_smb_containers
 
+# ── SFTP and WebDAV fixture servers ─────────────────────────────────────────
+# The server specs (`server-ops-sftp.spec.ts`, `server-ops-webdav.spec.ts`) add a
+# real server through the sheet and move bytes to and from it. Each stack is
+# leased in its `e2e` mode (one server each), and the E2E container joins each
+# stack's Docker network below, dialing the service by name on its container
+# port — exactly how it reaches SMB.
+#
+# Same lease model as SMB, own namespaces: never down a stack another holder
+# uses (the helper downs only at zero holders), never `compose down` it here.
+SERVER_STACKS=(
+    # stack   compose project   service                 container port   fixture dir
+    "sftp     sftp-fixture      sftp-fixture-openssh    22               sftp-servers"
+    "webdav   webdav-fixture    webdav-fixture-apache   80               webdav-servers"
+)
+
+# probe_server_stack returns 0 once the service's PUBLISHED port accepts TCP
+# within $4 seconds. Docker's `running` comes well before the daemon binds. NEVER
+# replace this with a blanket `sleep N`; see apps/desktop/test/CLAUDE.md.
+probe_server_stack() {
+    local project="$1" service="$2" port="$3" timeout="$4"
+    local deadline=$((SECONDS + timeout))
+    local host_port
+    host_port=$(docker compose -p "$project" port "$service" "$port" 2>/dev/null | awk -F: '{print $NF}')
+    [ -z "$host_port" ] && return 1
+    while ! (exec 3<>"/dev/tcp/127.0.0.1/$host_port") 2>/dev/null; do
+        [ $SECONDS -ge $deadline ] && return 1
+        sleep 0.1
+    done
+    exec 3<&-
+    exec 3>&-
+    return 0
+}
+
+start_server_stacks() {
+    local entry stack project service port fixture_dir
+    for entry in "${SERVER_STACKS[@]}"; do
+        read -r stack project service port fixture_dir <<< "$entry"
+        # The lease first, holder $$, exactly like SMB's: CI runs this script
+        # directly, so nothing else holds one for this job. A failed or missing
+        # helper falls back to the fixture's own start.sh (lease-aware itself).
+        if command -v go &> /dev/null && (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease acquire "$stack" "$$" e2e); then
+            SERVER_LEASES_HELD="${SERVER_LEASES_HELD:-} $stack"
+        else
+            log_warn "$stack lease helper unavailable; starting through $fixture_dir/start.sh e2e"
+            "$DESKTOP_DIR/test/$fixture_dir/start.sh" e2e
+        fi
+        if probe_server_stack "$project" "$service" "$port" 60; then
+            log_info "$stack e2e stack ready: $service accepting TCP"
+        else
+            log_error "$stack e2e stack NOT ready; aborting before tests"
+            docker compose -p "$project" ps
+            docker compose -p "$project" logs --tail=30 "$service" || true
+            exit 1
+        fi
+        if ! docker network inspect "${project}_default" > /dev/null 2>&1; then
+            log_error "$stack network '${project}_default' not found after starting the stack"
+            exit 1
+        fi
+    done
+}
+
+start_server_stacks
+
+# The container joins every fixture network: SMB's first (the one `--network`
+# has always named), then one per server stack. Several `--network` flags on one
+# `docker run` need Docker 25+ (API 1.44); this repo is on 29.
+SERVER_NETWORK_ARGS=""
+for entry in "${SERVER_STACKS[@]}"; do
+    read -r _ project _ _ _ <<< "$entry"
+    SERVER_NETWORK_ARGS="$SERVER_NETWORK_ARGS --network ${project}_default"
+done
+# Where the specs (`e2e-shared/server-fixtures.ts`) and the app dial each server.
+SERVER_ENV_ARGS="-e SFTP_E2E_HOST=sftp-fixture-openssh -e SFTP_E2E_PORT=22 -e WEBDAV_E2E_HOST=webdav-fixture-apache -e WEBDAV_E2E_PORT=80"
+
 # SMB env vars: inside the Docker network, containers are addressable by name on port 445
 # CMDR_MCP_ENABLED: release builds disable MCP by default; tests need it
 # --privileged: needed for mount -t cifs inside the container (SYS_ADMIN alone is
@@ -561,6 +640,7 @@ if $INTERACTIVE; then
     log_info "Binary path: $DOCKER_TAURI_BINARY"
     docker run -it --rm \
         --network "$SMB_NETWORK" \
+        $SERVER_NETWORK_ARGS \
         $SMB_DOCKER_ARGS \
         -v "$REPO_ROOT:/app" \
         -v "$CARGO_VOLUME:/root/.cargo/registry" \
@@ -574,6 +654,7 @@ if $INTERACTIVE; then
         -e CI=true \
         -e "E2E_GREP=${GREP_FILTER:-}" \
         $SMB_ENV_ARGS \
+        $SERVER_ENV_ARGS \
         "$IMAGE_NAME" \
         bash
 else
@@ -625,6 +706,7 @@ else
     docker_test_status=0
     docker run --rm \
         --network "$SMB_NETWORK" \
+        $SERVER_NETWORK_ARGS \
         $SMB_DOCKER_ARGS \
         -v "$REPO_ROOT:/app" \
         -v "$TARGET_VOLUME:/target" \
@@ -639,6 +721,7 @@ else
         -e "CMDR_E2E_JSON_REPORT=$CONTAINER_E2E_JSON_REPORT" \
         -e "RUST_LOG=${RUST_LOG:-info,cmdr_lib::mtp=debug,stall_probe::reconciler=debug}" \
         $SMB_ENV_ARGS \
+        $SERVER_ENV_ARGS \
         "$IMAGE_NAME" \
         bash -c '
             set -e

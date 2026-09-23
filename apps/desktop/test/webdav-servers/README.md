@@ -7,12 +7,14 @@ these.
 ```bash
 ./start.sh            # core: the three httpd servers the integration lane uses
 ./start.sh minimal    # the Basic-auth server alone
+./start.sh e2e        # the same server, as the Playwright server specs lease it
 ./start.sh nextcloud  # the sabre/dav server alone (slow: it installs itself on first boot)
 ./stop.sh             # releases this shell's lease; downs only at zero holders
 ```
 
 `pnpm check` brings the stack up on its own (`desktop-rust-integration-tests` declares `core`,
-`desktop-rust-webdav-nextcloud` declares `nextcloud`), so a manual `start.sh` is for iterating by hand.
+`desktop-rust-webdav-nextcloud` declares `nextcloud`, both Playwright lanes declare `e2e` for `server-ops-webdav.spec.ts`,
+and `e2e-linux.sh` leases it for CI), so a manual `start.sh` is for iterating by hand.
 
 ❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
 sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and the

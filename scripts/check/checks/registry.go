@@ -1057,7 +1057,7 @@ var AllChecks = []CheckDefinition{
 		App:             AppDesktop,
 		Tech:            "🎨 Svelte",
 		IsSlow:          true,
-		NeedsContainers: []StackMode{SmbE2E},
+		NeedsContainers: []StackMode{SmbE2E, SftpE2E, WebdavE2E},
 		NotInCI:         "the desktop-e2e-linux CI job runs this suite via apps/desktop/scripts/e2e-linux.sh, not through the check tool",
 		DependsOn:       []string{"desktop-svelte-e2e-linux-typecheck"},
 		Inputs:          desktopAppInputs(),
@@ -1071,9 +1071,12 @@ var AllChecks = []CheckDefinition{
 		App:         AppDesktop,
 		Tech:        "🎨 Svelte",
 		IsSlow:      true,
-		NotInCI:     "needs a macOS machine with a window server; run locally via --include-slow before milestones",
-		Inputs:      desktopAppInputs(),
-		Run:         RunDesktopE2EPlaywright,
+		// The server specs dial real SFTP and WebDAV servers through the add sheet;
+		// SMB stays out, since mounting a share on macOS needs an OS permission prompt.
+		NeedsContainers: []StackMode{SftpE2E, WebdavE2E},
+		NotInCI:         "needs a macOS machine with a window server; run locally via --include-slow before milestones",
+		Inputs:          desktopAppInputs(),
+		Run:             RunDesktopE2EPlaywright,
 	},
 
 	// Website checks

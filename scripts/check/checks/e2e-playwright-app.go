@@ -188,6 +188,11 @@ func startTauriApp(binaryPath string, s shardSpec) (*appHandle, error) {
 		// and that costs 88 of 290 tests: every MTP spec plus an onboarding-wizard cascade.
 		// Why, and the alternative: e2e-playwright/DETAILS.md § "The Full Disk Access pin".
 		"CMDR_MOCK_FDA=granted",
+		// Server passwords go to a plain file in the shard's data dir, ❌ never the login
+		// Keychain. The add sheet's Remember starts ON, so every run of the server specs
+		// would otherwise leave a `Cmdr-e2e-<shard>-<pid>` entry in the developer's
+		// Keychain (the instance suffix keeps it off prod, but nothing ever removes it).
+		"CMDR_SECRET_STORE=file",
 		// Drive Ask Cmdr's send path through the deterministic scripted fake LLM
 		// (commands/agent.rs::resolve_agent_llm gates on this), so ask-cmdr.spec.ts can
 		// assert send-and-render with no provider. It MUST live on the APP process env:

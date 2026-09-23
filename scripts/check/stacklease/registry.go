@@ -11,7 +11,8 @@ import (
 const (
 	// ModeMinimal is the smallest set that answers a smoke test.
 	ModeMinimal = "minimal"
-	// ModeE2E is what the Linux Docker E2E suite talks to.
+	// ModeE2E is what the Playwright E2E suites talk to (both lanes: macOS
+	// through host ports, Linux Docker over the stack's own network).
 	ModeE2E = "e2e"
 	// ModeCore is the integration-test set: every fixture an assertion needs.
 	ModeCore = "core"
@@ -106,6 +107,10 @@ var SFTP = &Stack{
 	portEnvPrefix: "SFTP_FIXTURE_",
 	modeServices: map[string][]string{
 		ModeMinimal: {"sftp-fixture-openssh", "sftp-fixture-keyonly"},
+		// What the Playwright suites dial through the real add-server sheet: the
+		// stock server, on password auth. One container, so a UI lane pays for
+		// nothing it never talks to.
+		ModeE2E: {"sftp-fixture-openssh"},
 		ModeCore: {
 			"sftp-fixture-openssh", "sftp-fixture-keyonly", "sftp-fixture-passphrase",
 			"sftp-fixture-kbdint", "sftp-fixture-twokeys", "sftp-fixture-changedkey",
@@ -149,7 +154,10 @@ var WEBDAV = &Stack{
 	portEnvPrefix: "WEBDAV_FIXTURE_",
 	modeServices: map[string][]string{
 		ModeMinimal: {"webdav-fixture-apache"},
-		ModeCore:    {"webdav-fixture-apache", "webdav-fixture-digest", "webdav-fixture-norange"},
+		// What the Playwright suites dial through the real add-server sheet: the
+		// Basic-auth server alone.
+		ModeE2E:  {"webdav-fixture-apache"},
+		ModeCore: {"webdav-fixture-apache", "webdav-fixture-digest", "webdav-fixture-norange"},
 		// ❗ Its own mode, and deliberately NOT part of `core`: Nextcloud is a
 		// ~1 GB image that installs itself before it binds a port, against
 		// httpd's ~60 MB and instant start. `desktop-rust-webdav-nextcloud` is

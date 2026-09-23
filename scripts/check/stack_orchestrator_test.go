@@ -56,8 +56,8 @@ func TestEveryDeclaredStackModeResolves(t *testing.T) {
 // declared rather than debugged.
 func TestDeclarableStackModesResolve(t *testing.T) {
 	for _, want := range []checks.StackMode{
-		checks.SmbCore, checks.SmbE2E, checks.SftpCore,
-		checks.WebdavCore, checks.WebdavNextcloud,
+		checks.SmbCore, checks.SmbE2E, checks.SftpCore, checks.SftpE2E,
+		checks.WebdavCore, checks.WebdavE2E, checks.WebdavNextcloud,
 	} {
 		stack, err := stacklease.Lookup(want.Stack)
 		if err != nil {

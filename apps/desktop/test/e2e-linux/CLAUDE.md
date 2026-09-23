@@ -2,8 +2,9 @@
 
 Docker setup for the Playwright E2E tests on Linux. The specs live in `../e2e-playwright/` (shared with macOS; see
 `e2e-playwright/CLAUDE.md`); this directory holds only the Docker infra. `e2e-linux.sh` builds the Tauri binary in
-Docker, starts the SMB containers, launches the E2E container, and runs `npx playwright test`. Architecture, build
-caching, and the investigations behind every gotcha below are in `DETAILS.md`.
+Docker, leases the SMB, SFTP, and WebDAV fixture stacks, launches the E2E container on all three networks, and runs
+`npx playwright test`. Architecture, build caching, and the investigations behind every gotcha below are in
+`DETAILS.md`.
 
 ## Running
 
@@ -30,13 +31,11 @@ pnpm test:e2e:linux:vnc                # VNC mode with hot reload (pnpm dev)
   remove it and every test fails at setup with `Executable doesn't exist`.
 - **Two Playwright-on-26.04 workarounds must stay in sync on every Playwright bump** (26.04 is newer than Playwright's
   platform registry knows): the `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE` arch tag in `entrypoint.sh`, and the chromium
-  runtime libs apt-installed in `Dockerfile.base` (we run `playwright install chromium`, NOT `--with-deps`, which fails
-  on 26.04). A local arm64 run masks amd64-only breaks: reproduce override changes under `--platform linux/amd64`.
-- **SMB container readiness is always actively probed** (`e2e-linux.sh:probe_smb_ports`, per-service TCP probe on :445)
-  on both fresh-start and already-running paths, because Docker reporting `running` doesn't mean smbd has bound the
-  port. A failed already-running probe tears down and restarts the stack; a post-flight probe runs after tests. Both
-  banners hoist into the failing-test summary (prefixed `[SMB]`). Enforces the no-magic-sleep rule
-  (`apps/desktop/test/CLAUDE.md`).
+  runtime libs apt-installed in `Dockerfile.base` (❌ never `--with-deps`: DETAILS). A local arm64 run masks amd64-only breaks: reproduce override changes under `--platform linux/amd64`.
+- **Fixture readiness is always actively probed** (`probe_smb_ports`, `probe_server_stack`): Docker's `running`
+  doesn't mean the port is bound. ❌ Never a `sleep`. DETAILS § "SMB E2E networking".
+- **The E2E container sits on every fixture stack's network** (one `--network` each) and dials servers by service
+  name. ❌ Never `compose down` a stack here: each is leased. DETAILS § "Server E2E networking".
 - **Volume name gotcha**: root is "Root" on Linux, "Macintosh HD" on macOS. Tests that emit `mcp-volume-select` to
   switch to a local volume use `LOCAL_VOLUME_NAME` constants (`smb.spec.ts`, `mtp.spec.ts`).
 - **`mcp-volume-select` listener exists only on the file explorer route (`/`), not `/settings`.** A `beforeEach` must

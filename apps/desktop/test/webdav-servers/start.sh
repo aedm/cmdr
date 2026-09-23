@@ -8,6 +8,7 @@
 # Usage:
 #   ./start.sh             # core: the three servers the integration lane talks to
 #   ./start.sh minimal     # just the Basic-auth server
+#   ./start.sh e2e         # the same server, as the Playwright suites ask for it
 #   ./start.sh nextcloud   # just the sabre/dav server (slow: it installs itself)
 #   ./start.sh all         # everything the compose file defines
 
@@ -30,6 +31,11 @@ case "$mode" in
         echo "Starting the minimal WebDAV server (Basic auth)..."
         services=(webdav-fixture-apache)
         ;;
+    e2e)
+        # What the Playwright suites dial through the real add-server sheet.
+        echo "Starting the E2E WebDAV server (Basic auth)..."
+        services=(webdav-fixture-apache)
+        ;;
     core)
         echo "Starting the core WebDAV servers (Basic, Digest, and the one that ignores Range)..."
         services=(webdav-fixture-apache webdav-fixture-digest webdav-fixture-norange)
@@ -48,7 +54,7 @@ case "$mode" in
         ;;
     *)
         echo "Unknown mode: $mode"
-        echo "Usage: $0 [minimal|core|nextcloud|all]"
+        echo "Usage: $0 [minimal|e2e|core|nextcloud|all]"
         exit 1
         ;;
 esac
