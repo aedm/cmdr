@@ -9,7 +9,7 @@
  * `ask-cmdr.spec.ts` does, capturing four states in the order the user meets them:
  *
  *  1. `ask-cmdr-gate-off`: the "Ask Cmdr is off" gate a fresh profile opens to.
- *  2. `ask-cmdr-empty`: switched on, no messages yet.
+ *  2. `ask-cmdr-empty`: switched on, a new chat with no messages yet.
  *  3. `ask-cmdr-chat`: one exchange, so the message chrome, the thinking line, and
  *     the cost footer render.
  *  4. `ask-cmdr-sessions`: the threads panel over a thread that exists.
@@ -158,6 +158,9 @@ export async function captureAskCmdrSurfaces(
     await captureCall(main, 'setSurface', 'ask-cmdr-empty')
     await captureCall<boolean>(main, 'enable')
     await unlockChat(main)
+    // A fresh chat, whatever the profile holds: opening the rail loads its latest thread,
+    // and a lane shard reaches here after the Ask Cmdr specs have left threads behind.
+    await main.evaluate(`document.querySelector('${RAIL} .header-actions [aria-label="New chat"]')?.click()`)
     await main.waitForSelector(`${RAIL} .empty .empty-title`, 5000)
     return { page: main }
   })
