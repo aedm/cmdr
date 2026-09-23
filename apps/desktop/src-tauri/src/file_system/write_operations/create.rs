@@ -23,9 +23,11 @@
 use std::path::{Path, PathBuf};
 
 use super::archive_edit::{self, ArchiveEditRequest};
+use super::look_alike::{NewEntry, place_new_entry};
 use super::manager::{self, OperationDescriptor, OperationSummaryText};
 use super::mutation_error::MutationError;
 use super::types::WriteOperationType;
+use crate::file_system::volume::Volume;
 use crate::file_system::volume::manager::get_volume_manager;
 use cmdr_archive::mutator::{AddEntry, AddSource, Changeset};
 
@@ -343,7 +345,7 @@ pub(crate) async fn create_directory_core(
 
     // Try to use Volume abstraction
     if let Some(volume) = get_volume_manager().get(&volume_id) {
-        let new_path = PathBuf::from(&expanded_path).join(name);
+        let new_path = new_entry_path(volume.as_ref(), &expanded_path, name).await?;
 
         // Register the new directory path with the downloads watcher's
         // ignore set; no-ops for paths outside ~/Downloads.
@@ -364,6 +366,18 @@ pub(crate) async fn create_directory_core(
     // executor, which would violate this module's "every FS-touching command is
     // timed" contract on a hung mount.
     Err(super::mutation_error::unregistered_volume_refusal(volume_id, Path::new(parent_path)).await)
+}
+
+/// Where the new folder or file `name` goes in `parent`: spelled the way the
+/// volume wants new names, and refused as taken when the folder already holds
+/// the name under another Unicode spelling, which a byte-exact share would
+/// otherwise create a twin beside (`look_alike.rs`).
+async fn new_entry_path(volume: &dyn Volume, parent: &str, name: &str) -> Result<PathBuf, MutationError> {
+    match place_new_entry(volume, &PathBuf::from(parent).join(name), None).await {
+        Ok(NewEntry::Free(path)) => Ok(path),
+        Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Err(MutationError::AlreadyExists { name: name.to_string() }),
+        Err(error) => Err(MutationError::Volume { error }),
+    }
 }
 
 /// Reports a taken name by the NAME the user typed, and everything else by the
@@ -407,7 +421,7 @@ pub(crate) async fn create_file_core(
 
     // Try to use Volume abstraction
     if let Some(volume) = get_volume_manager().get(&volume_id) {
-        let new_path = PathBuf::from(&expanded_path).join(name);
+        let new_path = new_entry_path(volume.as_ref(), &expanded_path, name).await?;
 
         // Register the new file path with the downloads watcher's ignore
         // set; no-ops for paths outside ~/Downloads.

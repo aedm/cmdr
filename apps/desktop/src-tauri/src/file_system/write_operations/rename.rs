@@ -17,9 +17,11 @@
 use std::path::{Path, PathBuf};
 
 use super::archive_edit::{self, ArchiveEditRequest};
+use super::look_alike::{NewEntry, place_new_entry};
 use super::manager::{self, OperationDescriptor, OperationSummaryText};
 use super::mutation_error::MutationError;
 use super::types::WriteOperationType;
+use crate::file_system::volume::Volume;
 use crate::operation_log::types::{Initiator, OpKind};
 use cmdr_archive::mutator::Changeset;
 
@@ -164,6 +166,22 @@ async fn rename_managed_inner(
     }
 
     let is_root = volume_id == "root";
+    // The target is a NEW name: spelled the way the volume wants new names, and
+    // taken when the folder holds it under another Unicode spelling (a byte-exact
+    // share would rename a twin in beside it). Settled before the journal and the
+    // descriptor, so both record where the entry really lands.
+    let to = if is_root {
+        to
+    } else {
+        match manager.get(&volume_id) {
+            Some(volume) => match rename_target(volume.as_ref(), &from, to, force).await {
+                Ok(target) => target,
+                Err(refusal) => return (Err(refusal), super::analytics::InstantTarget::Volume),
+            },
+            // The closure below refuses an unregistered volume in its own words.
+            None => to,
+        }
+    };
     let descriptor = rename_descriptor(&from, &to, &volume_id);
     // Journal the rename as a single-item op under the REAL volume id. Snapshot the
     // source kind BEFORE the closure moves `from`/`to` and the rename fires: local
@@ -299,6 +317,21 @@ async fn rename_managed_inner(
         }
     }
     (result, super::analytics::InstantTarget::Volume)
+}
+
+/// Where a volume rename of `from` to `to` really lands (`look_alike.rs`).
+///
+/// A look-alike of `to` refuses a plain rename as the taken name it is. A
+/// rename the user confirmed (`force`) replaces the look-alike under ITS
+/// spelling, so the folder ends with one entry. `from` itself as the look-alike
+/// is a respell, which is free.
+async fn rename_target(volume: &dyn Volume, from: &Path, to: PathBuf, force: bool) -> Result<PathBuf, MutationError> {
+    match place_new_entry(volume, &to, Some(from)).await {
+        Ok(NewEntry::Free(target)) => Ok(target),
+        Ok(NewEntry::Taken(entry)) if force => Ok(to.with_file_name(&entry.name)),
+        Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Err(MutationError::AlreadyExists { name: name_of(&to) }),
+        Err(error) => Err(MutationError::Volume { error }),
+    }
 }
 
 /// Routes an in-archive rename to the managed archive-edit driver. Both `from`
@@ -633,7 +666,7 @@ pub(crate) async fn check_rename_validity_impl(
 
     if volume_id != "root" {
         // Non-local volume: use Volume trait for conflict detection
-        let conflict_info = check_sibling_conflict_via_volume(&volume_id, &new_path).await;
+        let conflict_info = check_sibling_conflict_via_volume(&volume_id, &old_path, &new_path).await;
         RenameValidityResult {
             valid: true,
             error: None,
@@ -701,8 +734,13 @@ pub(crate) fn same_local_file(_left: &std::fs::Metadata, _right: &std::fs::Metad
 }
 
 /// Checks if a file with `new_path` exists on a non-local volume using the Volume trait's
-/// `get_metadata`.
-async fn check_sibling_conflict_via_volume(volume_id: &str, new_path: &Path) -> (bool, Option<ConflictFileInfo>) {
+/// `get_metadata`, or under another Unicode spelling of its name (`look_alike.rs`), which
+/// the rename itself would refuse too. `old_path` as that look-alike is a respell, not a clash.
+async fn check_sibling_conflict_via_volume(
+    volume_id: &str,
+    old_path: &Path,
+    new_path: &Path,
+) -> (bool, Option<ConflictFileInfo>) {
     // Plain `get`, not `resolve`: renaming INTO an archive is rejected upstream, so
     // the target is always a normal sibling (incl. a `.zip` file), checked on its
     // own volume — routing to the ArchiveVolume would mis-consult the zip's index.
@@ -713,7 +751,15 @@ async fn check_sibling_conflict_via_volume(volume_id: &str, new_path: &Path) -> 
 
     let entry = match volume.get_metadata(new_path).await {
         Ok(e) => e,
-        Err(_) => return (false, None), // No conflict: file doesn't exist
+        Err(crate::file_system::VolumeError::NotFound(_)) => {
+            match place_new_entry(volume.as_ref(), new_path, Some(old_path)).await {
+                Ok(NewEntry::Taken(look_alike)) => *look_alike,
+                // No conflict: nothing holds the name in any spelling. Several
+                // look-alikes leave the rename itself to refuse, by name.
+                _ => return (false, None),
+            }
+        }
+        Err(_) => return (false, None), // Couldn't tell; the rename answers for itself
     };
 
     let conflict = ConflictFileInfo {

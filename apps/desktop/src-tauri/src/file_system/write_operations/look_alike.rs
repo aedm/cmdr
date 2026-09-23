@@ -11,7 +11,7 @@
 //! `Report` and `report` read as two names, and a case-sensitive destination
 //! keeps both on purpose. `DETAILS.md` § "Look-alike names".
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use cmdr_fs::name_fold::differ_only_in_form;
 
@@ -70,6 +70,45 @@ pub(crate) async fn look_alike_in(volume: &dyn Volume, dir: &Path, name: &str) -
         Ok(entries) => Ok(among(&entries, name)),
         Err(VolumeError::NotFound(_)) => Ok(LookAlike::None),
         Err(e) => Err(e),
+    }
+}
+
+/// Where a NEW entry a person named goes: a new folder or file, or a rename's
+/// target.
+#[derive(Debug)]
+pub(crate) enum NewEntry {
+    /// Nothing holds the name in another spelling: create it here, spelled the
+    /// way the volume wants new names (`Volume::spell_new_name`).
+    Free(PathBuf),
+    /// This entry holds it under another spelling. A plain create or rename is
+    /// refused as a taken name; a rename the user confirmed replaces THIS entry.
+    Taken(Box<FileEntry>),
+    /// Several do, none spelled as asked.
+    Ambiguous,
+}
+
+/// Where a new entry named by `path` goes on `volume`. `renaming` is the entry a
+/// rename is moving: finding IT as the look-alike means the rename respells its
+/// own name, which is free (and the one way to fix a name other clients can't
+/// open).
+///
+/// An exact name the volume holds isn't this function's to report: the create
+/// or rename that follows refuses it with the backend's own `AlreadyExists`.
+pub(crate) async fn place_new_entry(
+    volume: &dyn Volume,
+    path: &Path,
+    renaming: Option<&Path>,
+) -> Result<NewEntry, VolumeError> {
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
+        return Ok(NewEntry::Free(path.to_path_buf()));
+    };
+    let spelled = volume.spell_new_name(name);
+    let spelled_path = dir.join(spelled.as_ref());
+    match look_alike_in(volume, dir, &spelled).await? {
+        LookAlike::None => Ok(NewEntry::Free(spelled_path)),
+        LookAlike::One(entry) if renaming == Some(dir.join(&entry.name).as_path()) => Ok(NewEntry::Free(spelled_path)),
+        LookAlike::One(entry) => Ok(NewEntry::Taken(entry)),
+        LookAlike::Several => Ok(NewEntry::Ambiguous),
     }
 }
 

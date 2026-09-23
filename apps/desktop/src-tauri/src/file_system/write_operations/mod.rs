@@ -35,6 +35,8 @@ mod journal;
 mod journal_search;
 mod ledger;
 mod look_alike;
+#[cfg(test)]
+mod look_alike_instant_tests;
 mod manager;
 mod mutation_error;
 mod operation_intent;
