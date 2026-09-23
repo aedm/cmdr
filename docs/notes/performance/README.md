@@ -16,6 +16,11 @@ Pure throughput benchmarks (scan, copy, search latency) stay in `docs/notes/READ
 
 ## Current measured state
 
+**The targets** every measurement here is judged against (set by David in a comment on the idle-cost issue, 2026-09-21):
+
+- **Steady-state RAM of 200–300 MB**, never above 300 MB while nothing is indexing, searching, or transferring.
+- **Idle CPU under 1%**.
+
 **Memory, prod v0.46.1 after ~25 h** (verified with `vmmap` and `footprint -s` on the `/Applications` build, 2026-09-22;
 breakdown in `mimalloc-purge-experiment-2026-09-22.md` § "Baseline"):
 

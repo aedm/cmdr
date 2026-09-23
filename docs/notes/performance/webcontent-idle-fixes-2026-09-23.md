@@ -71,13 +71,9 @@ throughout (load average up to 135, index replays of 40,000–230,000 events), w
 
 **Why the diagnosis's targets (WC 0.2–0.3, GPU 0.01) weren't reached**: what's left is values that really change on
 screen. The GPU's 0.01 was measured with disk-space events suppressed entirely; under build churn the free space itself
-moves. The WebContent remainder was mostly the hourglass blink (fixed by 6) and the directory diffs below.
+moves. The WebContent remainder was mostly the hourglass blink (fixed by 6) and the hidden-entry directory diffs below.
 
-## The next lead: diffs made only of hidden entries
+## Diffs made only of hidden entries
 
-The watcher re-reads `~` whenever anything in it changes, dotfiles included (every ~10 s, in bursts of five or six
-within a second), and a diff whose changes are all hidden entries still made a pane with hidden files off refetch its
-visible rows and re-read dir stats, although nothing on screen could change.
-
-**Status: in progress when this note was written.** A fix that drops such diffs for a listing that doesn't show hidden
-files was being built and measured in parallel; its result belongs here once it lands.
+The watcher re-reads `~` whenever anything in it changes, dotfiles included, and a pane with hidden files off used to
+refetch its rows for each such diff. Fixed, with its numbers, in `hidden-entry-diffs-2026-09-23.md`.
