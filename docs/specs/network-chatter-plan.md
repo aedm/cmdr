@@ -36,8 +36,12 @@ old clients (hourly, no events) keep working for as long as they exist:
 - `events`: array, max 500 items. Each item:
   - `event`: string, 1–100 chars, `^[a-z0-9_$]+$`-ish (match what the app sends today).
   - `timestamp`: RFC 3339 UTC string, the moment the event fired on the client.
+  - `appVersion`: optional semver string, the app version that produced the event. Events spooled under one release can
+    ship after an update, so the server prefers this over the beat's `appVersion` (falls back to the beat's when absent
+    or invalid) for both the D1 row and the forward.
   - `properties`: JSON object (may be empty). Only the event's own properties: the server adds identity (distinct id
-    from `analId`, app version, OS, arch) and the config snapshot when forwarding, so the client doesn't repeat them.
+    from `analId`, OS, arch, the app version above, and `source: "desktop"`, which the dashboard uses to split desktop
+    from website events) and the config snapshot when forwarding, so the client doesn't repeat them.
 
 Limits: request body cap goes from 32 KB to 256 KB; config blob cap stays 16 KB. Past 500 events the server keeps the
 first 500 and counts the rest as dropped (logged). The client never sends more than 500 per beat; the rest stay in the
