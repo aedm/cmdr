@@ -1,7 +1,7 @@
 # Open terminal here: details
 
-Depth behind `CLAUDE.md`. The spec that decided all of this is `docs/specs/open-terminal-here.md`; the launch table, the
-per-app recipes, and why there's no window-vs-tab control are `src-tauri/src/file_system/DETAILS.md`.
+Depth behind `CLAUDE.md`. The launch table, the per-app recipes, why there's no window-vs-tab control, and what was
+deferred are `src-tauri/src/file_system/DETAILS.md` § "Open terminal here (`terminal.rs`)".
 
 The whole feature is macOS-only, and the gating is per surface rather than one flag: the palette entry and the shortcut
 come from `isMacOS()` in `commands/sources/file-list.ts`, the menu item from the Rust side, and the Settings Terminal

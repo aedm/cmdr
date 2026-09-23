@@ -373,6 +373,12 @@ the per-app window-vs-tab survey) is `docs/notes/terminal-launch-sources-2026-09
   argv: Warp's recipe ends in a URI rather than a path, so a spec reading the argv would assert something different for
   one app in the table than for the other seven.
 
+**Considered and deferred** (revisit only when a user asks):
+
+- **A window-vs-tab toggle**, shown only for the apps that honor one (Warp, Ghostty, WezTerm).
+- **A "path to a binary" custom option.** A bare binary path doesn't say how to pass the folder. The right shape is a
+  command template with a `{path}` placeholder, split into argv without a shell.
+
 ## Text editor (`text_editor.rs`)
 
 Which app F4 opens a file in: the regular pane, the search-results pane, and the ⇧F4 new-file auto-open all reach
