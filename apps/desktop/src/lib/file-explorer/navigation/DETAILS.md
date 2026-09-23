@@ -500,6 +500,16 @@ three edits a favorite takes). Favorites arrive from `volume-store` as `VolumeIn
 refresh. `stripFavoritePrefix(locationId)` recovers the bare favorite id (remove / rename / reorder take the bare id,
 never the `fav-…` switcher id).
 
+**Why ⌃D** (David, 2026-09-16): it's what Total Commander and Double Commander bind for their favorites list ("Directory
+hotlist"), and it was free, so Duplicate keeps ⌘D and the error screen's ⌘D (Technical details) stays untouched. macOS
+reads ⌃D as forward-delete inside a text field; the central typing guard already bails there. "Favorites" is the one
+word everywhere (UI, command ids, code, events); "bookmark" and "hotlist" are palette keywords only.
+
+**Deliberately not built**: a favorites settings screen (the menu is where favorites get managed), favorites on
+non-local volumes (the store's v1 limit; the `0` row only makes the gate real), an MCP "open the menu" tool
+(`select_volume` already reaches a favorite by name and the `favorites` tool edits the list), and letters or
+type-to-filter inside the menu.
+
 **Two sections, and the primitive draws the separator between them**: the favorites (`reorderable`, with an `emptyLabel`
 so an emptied list still reads as a real state) and a one-row `add` section. The first nine favorites carry
 `accelerator: '1'`…`'9'`; past nine there's no single digit left to give, so those are listed with a blank number column
