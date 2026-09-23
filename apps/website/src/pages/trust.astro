@@ -47,12 +47,6 @@ const toc = [
         missing or unclear, write to <a href="mailto:security@getcmdr.com">security@getcmdr.com</a>.
     </p>
 
-    <DevTodo>
-        The pricing page's Commercial card says "Passes a security review" (<code>pricing.astro</code>, around line
-        173). Nothing published backs that yet, and this page lists real gaps. Suggest rewording it to something like
-        "Built to be reviewed: read the <a href="/trust">trust page</a> and every line of code on GitHub", or drop it.
-    </DevTodo>
-
     <nav aria-label="On this page">
         <ul>
             {
@@ -239,14 +233,14 @@ const toc = [
     </ul>
     <p>
         Nothing in Cmdr's code deletes old Discord notifications, emails in the Gmail inbox, or Resend's delivery
-        logs. PostHog keeps data according to its project settings.
+        logs.
     </p>
     <DevTodo>
         The R2 bucket <code>cmdr-error-reports</code> has no 90-day lifecycle rule (only the default multipart-abort
         rule), and zips from 2026-04-24 still exist. The privacy policy and <code>docs/security.md</code> promise 90
         days. Add an expiry rule scoped to the <code>error-reports/</code> prefix (NOT bucket-wide: the daily license
-        backup lives in the same bucket), then change this page's error-report line and drop the gap. Also: set and
-        state PostHog's retention, and check whether anything enforces Umami's "typically two years". Minor: <code>CMDR_SECRET_STORE=file</code> switches even a release build to a plaintext secret store (<code>secrets/mod.rs</code>); gate it to debug builds so the Keychain sentence above holds without a footnote.
+        backup lives in the same bucket), then change this page's error-report line and drop the gap. Also: confirm Cmdr is on PostHog's free plan (events kept one year; a paid plan keeps them seven), and check
+        whether anything enforces Umami's "typically two years".
     </DevTodo>
 
     <h2 id="signing">Signing, notarization, and updates</h2>
@@ -298,6 +292,11 @@ const toc = [
         <li>
             <strong>Turning updates off</strong>: per user only, in Settings &gt; Updates &amp; privacy. There's no
             central way to pin a version yet.
+        </li>
+        <li>
+            <strong>Signing keys</strong>: the release build signs with keys stored as GitHub secrets. The GitHub
+            account that controls them signs in with two-factor authentication, using hardware security keys. Every
+            signing key also has an encrypted backup outside GitHub.
         </li>
     </ul>
     <DevTodo>
@@ -393,9 +392,7 @@ const toc = [
     </p>
     <DevTodo>
         The non-agent AI features (<code>ai/suggestions.rs</code>, <code>commands/selection.rs</code>,
-        <code>commands/search.rs</code>) skip the Ask Cmdr consent gate. Decide whether they should share it. Separately,
-        <code>features.astro</code> (around line 121) says Cmdr "ships with a 3B language model"; it's downloaded on
-        demand. Fix that wording.
+        <code>commands/search.rs</code>) skip the Ask Cmdr consent gate. Decide whether they should share it.
     </DevTodo>
 
     <h2 id="development">How Cmdr is built</h2>
@@ -456,8 +453,9 @@ const toc = [
 
     <h2 id="report">Report a vulnerability</h2>
     <p>
-        Email <a href="mailto:security@getcmdr.com">security@getcmdr.com</a>. Please don't open a public GitHub issue.
-        The full policy, including scope and safe harbor, is
+        Email <a href="mailto:security@getcmdr.com">security@getcmdr.com</a>, or use GitHub's private reporting (the
+        <a href="https://github.com/vdavid/cmdr/security/advisories/new">Report a vulnerability</a> button on the
+        repository's Security tab). Please don't open a public GitHub issue. The full policy, including scope and safe harbor, is
         <a href="https://github.com/vdavid/cmdr/blob/main/SECURITY.md">SECURITY.md</a> on GitHub, also linked from
         <a href="/.well-known/security.txt">security.txt</a>. Only the latest version gets fixes. What to expect:
     </p>
@@ -465,8 +463,7 @@ const toc = [
         {vulnerabilityResponse.map((line) => <li>{line}</li>)}
     </ul>
     <DevTodo>
-        Enable GitHub private vulnerability reporting (repo Settings &gt; Code security). Once it's on, mention it
-        here and in <code>SECURITY.md</code>. If you change the response times, change both places.
+        If you change the response times, change them in <code>SECURITY.md</code> too.
     </DevTodo>
 
     <h2 id="gaps">Not in place yet</h2>

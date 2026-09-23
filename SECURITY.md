@@ -14,7 +14,8 @@ For how Cmdr handles data, signing, updates, and permissions, see the trust page
 Email **[security@getcmdr.com](mailto:security@getcmdr.com)**. Please don't open a public GitHub issue, discussion, or
 pull request for a security problem.
 
-<!-- ⚠️ David: GitHub private vulnerability reporting is OFF for this repo. Once you enable it (Settings > Code security > Private vulnerability reporting), add this line back in: "You can also use GitHub's private reporting: the **Report a vulnerability** button on the repository's Security tab." -->
+You can also use GitHub's private reporting: the **Report a vulnerability** button on the repository's
+[Security tab](https://github.com/vdavid/cmdr/security/advisories/new).
 
 A good report has:
 

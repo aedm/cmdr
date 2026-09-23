@@ -172,14 +172,14 @@ export const dataLocations: DataLocation[] = [
   },
   {
     name: 'Discord',
-    what: 'A private notification channel for new crash reports, error reports, feedback, and signups. Includes an email address if the user attached one, and a download link to an error report that expires after seven days.',
+    what: 'A private notification channel for new crash reports, error reports, feedback, and signups. Includes an email address if the user attached one, and a download link to an error report that expires after 24 hours.',
     where: 'United States.',
     inEu: 'no',
   },
   {
     name: 'Resend',
     what: 'Sends license emails (with the license key) and internal notification emails about reports and feedback.',
-    where: 'US company. It sends Cmdr's email from its Ireland region (eu-west-1).',
+    where: "US company. It sends Cmdr's email from its Ireland region (eu-west-1).",
     inEu: 'partly',
   },
   {
@@ -226,6 +226,11 @@ export const serverRetention: RetentionRule[] = [
   },
   { what: 'Feedback', rule: 'Email removed after two years. The message is kept.' },
   { what: 'Issued licenses', rule: 'Buyer email and license record kept with no time limit.' },
+  {
+    what: 'App feature events (PostHog)',
+    rule: "PostHog's free plan keeps them for at least one year and sets no end date. PostHog doesn't offer a shorter setting.",
+  },
+  { what: 'Website visit recordings (PostHog)', rule: 'Deleted after 30 days.' },
   { what: 'Purchase records at Paddle', rule: 'Seven years, as Swedish accounting law requires. Paddle keeps these.' },
 ]
 
@@ -251,12 +256,11 @@ export const notInPlaceYet: string[] = [
   '<strong>No automated tests on older macOS versions.</strong> A release-time check catches system frameworks and functions that are too new for them.',
   '<strong>No third-party audit or penetration test, and no SOC 2 or ISO 27001.</strong>',
   '<strong>No fuzzing</strong>, although Cmdr parses untrusted input (network protocols, archives, PDFs, images).',
-  "<strong>On GitHub, dependency vulnerability scans run every six days</strong>, not on every change. The maintainer's local checks rerun them only when the dependencies change.",
   "<strong>One person maintains Cmdr</strong> and holds all signing keys. There's no continuity clause in the terms and no written support commitment.",
   "<strong>No offline license file.</strong> A commercial license that can't reach <code>api.getcmdr.com</code> for 30 days falls back to the free personal tier.",
   "<strong>Local data isn't encrypted by Cmdr</strong>, so it relies on FileVault. There's no option to exclude Cmdr's index from backups.",
   '<strong>Not tested behind a TLS-inspecting proxy</strong>, and PAC files are untested.',
-  "<strong>No PGP key</strong> for vulnerability reports, GitHub's private vulnerability reporting isn't enabled, and there's no history of published advisories.",
+  '<strong>No PGP key</strong> for vulnerability reports, and no history of published advisories.',
 ]
 
 /** Response times for vulnerability reports. Keep in sync with the repo-root `SECURITY.md`. */
