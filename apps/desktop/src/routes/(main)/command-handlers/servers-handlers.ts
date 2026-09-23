@@ -99,6 +99,17 @@ export const serversHandlers = {
       onSmbHandOff: () => {
         explorerRef?.showServersInFocusedPane()
       },
+      // An SFTP or WebDAV server is a place, so the focused pane goes there: a sheet
+      // that closed on a live server with every pane where it was reads as a Connect
+      // that did nothing. The root lands on the place's start folder.
+      onConnected: ({ volumeId, root }) => {
+        if (!explorerRef) return
+        explorerRef.navigate({
+          pane: explorerRef.getFocusedPane(),
+          to: { selectVolume: { volumeId, path: root } },
+          source: 'user',
+        })
+      },
     })
   },
 } satisfies Partial<CommandHandlerRecord>

@@ -201,6 +201,11 @@
                 onNetworkHostChange?.(handOff.host)
                 if (handOff.sharePath) autoMountShare = handOff.sharePath
             },
+            // The hub's own pane goes to the place it just added, the way picking
+            // its row would take it there.
+            onConnected: ({ volumeId, root }) => {
+                onVolumeChange?.({ volumeId, volumePath: root, targetPath: root })
+            },
         })
         await tick()
         // Focus goes back to the explorer container so keyboard navigation resumes.

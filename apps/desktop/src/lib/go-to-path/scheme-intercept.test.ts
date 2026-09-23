@@ -182,7 +182,7 @@ describe('previewSchemeInput: what the box says under it', () => {
 describe('actOnSchemeInput: what the jump does', () => {
   it('reports a place as a directory, so the caller navigates the way it always has', async () => {
     expect(
-      await actOnSchemeInput({ kind: 'place', path: APP_ROOT, label: 'Naspolya' }, { onSmbHandOff: () => {} }),
+      await actOnSchemeInput({ kind: 'place', path: APP_ROOT, label: 'Naspolya' }, { onSmbHandOff: () => {}, onConnected: () => {} }),
     ).toEqual({
       kind: 'directory',
       path: APP_ROOT,
@@ -191,7 +191,7 @@ describe('actOnSchemeInput: what the jump does', () => {
   })
 
   it('opens the sheet on the address, and answers that it handed over', async () => {
-    const acting = actOnSchemeInput({ kind: 'add', address: 'https://cloud.example.com' }, { onSmbHandOff: () => {} })
+    const acting = actOnSchemeInput({ kind: 'add', address: 'https://cloud.example.com' }, { onSmbHandOff: () => {}, onConnected: () => {} })
     for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
       await new Promise((resolve) => setTimeout(resolve, 0))
     }
@@ -218,6 +218,7 @@ describe('actOnSchemeInput: what the jump does', () => {
         onSmbHandOff: () => {
           handedOver++
         },
+        onConnected: () => {},
       },
     )
     for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
@@ -231,5 +232,20 @@ describe('actOnSchemeInput: what the jump does', () => {
 
     closeSignInSheet({ kind: 'handed_off' })
     expect(await acting).toEqual({ kind: 'handed_off' })
+  })
+
+  it('lands on the place an SFTP or WebDAV address connected, the same place ⌘K does', async () => {
+    const landed: unknown[] = []
+    const acting = actOnSchemeInput(
+      { kind: 'add', address: 'sftp://ada@nas.local:22/srv/data' },
+      { onSmbHandOff: () => {}, onConnected: (place) => landed.push(place) },
+    )
+    for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    closeSignInSheet({ kind: 'connected', volumeId: SAVED_SERVER.places[0].volumeId })
+    expect(await acting).toEqual({ kind: 'handed_off' })
+    expect(landed).toEqual([{ volumeId: SAVED_SERVER.places[0].volumeId, root: APP_ROOT }])
   })
 })

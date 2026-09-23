@@ -20,7 +20,7 @@
 import { isSnapshotPath } from '$lib/file-explorer/navigation/real-folder-history'
 import { parseServerAddress } from '$lib/servers/address-parser'
 import { isServerPath, parseServerPath } from '$lib/servers/server-path-utils'
-import { openAddServerSheet } from '$lib/servers/open-sign-in'
+import { openAddServerSheet, type ConnectedPlace } from '$lib/servers/open-sign-in'
 import { listSavedServers } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 import { tString } from '$lib/intl/messages.svelte'
@@ -116,6 +116,8 @@ export async function actOnSchemeInput(
      * sheet ending differently for one input is what this exists to prevent.
      */
     onSmbHandOff: () => void
+    /** Where an SFTP or WebDAV address lands once the sheet connected it: the place itself. */
+    onConnected: (place: ConnectedPlace) => void
   },
 ): Promise<GoToPathOutcome> {
   if (intent.kind === 'place') return { kind: 'directory', path: intent.path }
@@ -125,7 +127,7 @@ export async function actOnSchemeInput(
   if (intent.kind === 'snapshot') {
     return { kind: 'invalid', reason: tString('goToPath.dialog.snapshotNotAPath') }
   }
-  await openAddServerSheet({ prefill: intent.address, onSmbHandOff: deps.onSmbHandOff })
+  await openAddServerSheet({ prefill: intent.address, onSmbHandOff: deps.onSmbHandOff, onConnected: deps.onConnected })
   return { kind: 'handed_off' }
 }
 

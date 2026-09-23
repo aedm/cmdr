@@ -289,7 +289,7 @@ describe('a REGISTERED place whose session wants a credential', () => {
 describe('add mode', () => {
   it('dials a typed server through the add command', async () => {
     ipc.mock('connect_server', () => ({ outcome: 'connected', volumeId: VOLUME_ID }))
-    const sheet = openAddServerSheet({ onSmbHandOff: () => {} })
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
     const request = await parkedRequest()
     expect(request.mode).toBe('add')
 
@@ -313,6 +313,33 @@ describe('add mode', () => {
     await sheet
   })
 
+  it('hands the caller the place it connected to, at its root, so a pane can land there', async () => {
+    // Pre-fix nobody was told: the sheet closed on a live server and every pane
+    // stayed where it was, so "Connect" looked like it had done nothing.
+    const landed: unknown[] = []
+    const sheet = openAddServerSheet({
+      onSmbHandOff: () => {},
+      onConnected: (place) => {
+        landed.push(place)
+      },
+    })
+    await parkedRequest()
+
+    closeSignInSheet({ kind: 'connected', volumeId: VOLUME_ID })
+    await sheet
+    expect(landed).toEqual([{ volumeId: VOLUME_ID, root: 'sftp://ada@nas.local:22/srv/data' }])
+  })
+
+  it('lands nobody anywhere when the sheet closes without connecting', async () => {
+    const landed: unknown[] = []
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: (place) => landed.push(place) })
+    await parkedRequest()
+
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+    expect(landed).toEqual([])
+  })
+
   it('hands an SMB address to its own places list instead of dialing a session', async () => {
     ipc.mock('connect_to_server', () => ({ host: { id: 'h1', name: 'naspolya' }, sharePath: null }))
     const handOffs: unknown[] = []
@@ -320,6 +347,7 @@ describe('add mode', () => {
       onSmbHandOff: (handOff) => {
         handOffs.push(handOff)
       },
+      onConnected: () => {},
     })
     const request = await parkedRequest()
 
@@ -339,7 +367,7 @@ describe('add mode', () => {
     ipc.mock('connect_to_server', () => {
       throw new Error("Couldn't reach 192.168.1.5:445")
     })
-    const sheet = openAddServerSheet({ onSmbHandOff: () => {} })
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
     const request = await parkedRequest()
 
     const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'smb://ada:hunter2@naspolya/photos' })

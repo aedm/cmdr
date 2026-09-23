@@ -71,6 +71,14 @@ export async function goToPath(explorer: ExplorerAPI | undefined, input: string)
       onSmbHandOff: () => {
         explorer.showServersInFocusedPane()
       },
+      // An SFTP or WebDAV address connects a place, and the jump lands on it.
+      onConnected: ({ volumeId, root }) => {
+        explorer.navigate({
+          pane: explorer.getFocusedPane(),
+          to: { selectVolume: { volumeId, path: root } },
+          source: 'user',
+        })
+      },
     })
     if (outcome.kind !== 'directory') return outcome
     const location = await resolveLocationOrToast(outcome.path)

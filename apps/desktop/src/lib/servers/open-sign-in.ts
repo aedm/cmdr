@@ -58,6 +58,13 @@ export interface SmbHandOff {
   sharePath: string | null
 }
 
+/** The place an add just connected to, for the caller to put a pane on. */
+export interface ConnectedPlace {
+  volumeId: string
+  /** The place's app root. A pane handed the root lands on its start folder. */
+  root: string
+}
+
 /**
  * Opens add mode. `prefill` is an address the caller already has (a pasted link,
  * a go-to-path input), as the user spelled it.
@@ -65,16 +72,45 @@ export interface SmbHandOff {
  * `onSmbHandOff` is what SMB's add path lands in: its connect is a share MOUNT
  * rather than a session, so `connectToServer` injects a manual host and the
  * caller opens its places list.
+ *
+ * `onConnected` is where an SFTP or WebDAV add lands: the place it just
+ * connected to. ❗ Every door calls it, ❌ never leaves it out: a sheet that
+ * closes on a live server while every pane stays put reads as a Connect that did
+ * nothing. The caller picks the pane (the focused one, or the hub's own).
  */
 export async function openAddServerSheet(options: {
   prefill?: string
   onSmbHandOff: (handOff: SmbHandOff) => void
+  onConnected: (place: ConnectedPlace) => void
 }): Promise<SignInSheetResult> {
-  return await openSignInSheet({
+  const result = await openSignInSheet({
     mode: 'add',
     prefill: options.prefill,
     attempt: (submission) => attemptAdd(submission, options.onSmbHandOff),
   })
+  if (result.kind === 'connected') {
+    const root = await placeRootOf(result.volumeId)
+    if (root) options.onConnected({ volumeId: result.volumeId, root })
+    else log.warn('The place {volumeId} connected, but no saved server lists it', { volumeId: result.volumeId })
+  }
+  return result
+}
+
+/**
+ * A place's app root, off the saved list.
+ *
+ * ❗ The backend's list, ❌ not the volume store: the connect registered the
+ * volume a moment ago, and `volumes-changed` is debounced (and waits on local
+ * mount discovery), so the store can still hold nothing for it, or a row from an
+ * earlier registration with an old root.
+ */
+async function placeRootOf(volumeId: string): Promise<string | null> {
+  const servers = await listSavedServers()
+  for (const server of servers) {
+    const place = server.places.find((p) => p.volumeId === volumeId)
+    if (place) return place.appRoot
+  }
+  return null
 }
 
 /** Opens edit mode on a saved server. Save writes; nothing dials. */
