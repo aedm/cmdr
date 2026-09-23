@@ -342,8 +342,8 @@ three has been scoped.
 - [ ] Make the live file watcher start on Linux. **The blocker, and the one that makes the app not work rather than work
       imperfectly**: one unreadable directory anywhere under the root aborts the whole recursive inotify watch, so a
       real home directory almost always ends up with no watcher at all. Without it a pane never notices a change
-      anything outside Cmdr made. Watch out for `max_user_watches` too; `docs/specs/later/indexing/` has the
-      branch-scoped watching that would bound it.
+      anything outside Cmdr made. Watch out for `max_user_watches` too; GitHub #151 covers what happens when the limit
+      runs out.
 - [ ] Rebind the menu accelerators. `Cmd+` bindings print as Super chords, which is not what a Linux user's muscle
       memory or their window manager expects.
 - [ ] Sweep the macOS-specific strings in the English catalog ("your Mac", `⌘`, "Finder"; about 600 lines match

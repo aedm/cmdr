@@ -277,10 +277,9 @@ already has the right shape here. It needs connecting, not replacing.
 
 ## 5. What it does for `swap-scan-plan.md`
 
-`docs/specs/later/indexing/swap-scan-plan.md` § 2.3 step 5 runs the whole quiesce → meta → durable marker → promote →
-re-point sequence on an owned `&mut mgr` taken out of the registry, and calls extraction "the single mutual-exclusion
-point: while it is out, a concurrent `stop_indexing` / `fail_index` / `clear_index` sees `ShuttingDown` and cannot win a
-second extract".
+`docs/specs/swap-scan-plan.md` § 2.3 step 5 runs the whole quiesce → meta → durable marker → promote → re-point sequence
+on an owned `&mut mgr` taken out of the registry, and calls extraction "the single mutual-exclusion point: while it is
+out, a concurrent `stop_indexing` / `fail_index` / `clear_index` sees `ShuttingDown` and cannot win a second extract".
 
 **That is true, and the plan's conclusion from it is right.** The ground-ownership plan's claim that M5 "invalidates
 swap-scan's stated exclusion design" is **wrong**, in both directions:

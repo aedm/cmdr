@@ -14,20 +14,20 @@ when its work ships (`DETAILS.md` § "Wiping a shipped spec"); what's still open
   [#108](https://github.com/vdavid/cmdr/issues/108).
 - `i18n-glossaries-as-data.md`: **The translator glossaries are prose, so nothing can check the facts in them.** Store
   one typed row per term per locale and generate the markdown. Issue: [#281](https://github.com/vdavid/cmdr/issues/281).
-- `later/search-arena-snapshot.md`: **Opening search waits ~1 s on every reopen past the idle window, and seconds on a
+- `search-arena-snapshot.md`: **Opening search waits ~1 s on every reopen past the idle window, and seconds on a
   session's first open.** Map a journaled columnar arena in place. Issue:
   [#114](https://github.com/vdavid/cmdr/issues/114).
-- `later/indexing/swap-scan-plan.md`: **A rescan of a completed local index takes ~15 minutes; a fresh parallel scan
-  takes two.** Build a fresh index beside the live one and swap it in atomically. Issues:
+- `swap-scan-plan.md`: **A rescan of a completed local index takes ~15 minutes; a fresh parallel scan takes two.** Build
+  a fresh index beside the live one and swap it in atomically. Issues:
   [#242](https://github.com/vdavid/cmdr/issues/242), [#243](https://github.com/vdavid/cmdr/issues/243).
-- `later/db-first-listings-plan.md`: **Serve directory listings from the SQLite index instead of `readdir` + `stat`**,
-  so first paint is a query. Blocked on a measurement first. Issues: [#244](https://github.com/vdavid/cmdr/issues/244),
+- `db-first-listings-plan.md`: **Serve directory listings from the SQLite index instead of `readdir` + `stat`**, so
+  first paint is a query. Blocked on a measurement first. Issues: [#244](https://github.com/vdavid/cmdr/issues/244),
   [#245](https://github.com/vdavid/cmdr/issues/245).
-- `later/data-dir-rename-spec-draft.md`: **Plain data-directory names** (`cmdr/`, not `com.veszelovszki.cmdr/`).
-  Cosmetic and low value; a timeboxed go/no-go comes first. Issues: [#282](https://github.com/vdavid/cmdr/issues/282),
+- `data-dir-rename-spec-draft.md`: **Plain data-directory names** (`cmdr/`, not `com.veszelovszki.cmdr/`). Cosmetic and
+  low value; a timeboxed go/no-go comes first. Issues: [#282](https://github.com/vdavid/cmdr/issues/282),
   [#283](https://github.com/vdavid/cmdr/issues/283).
-- `later/linux-builds-plan.md`: **A Linux release build (AppImage + .deb) and a website that offers it.** Three known
-  Linux gaps gate the download button. Issues: [#151](https://github.com/vdavid/cmdr/issues/151),
+- `linux-builds-plan.md`: **A Linux release build (AppImage + .deb) and a website that offers it.** Three known Linux
+  gaps gate the download button. Issues: [#151](https://github.com/vdavid/cmdr/issues/151),
   [#284](https://github.com/vdavid/cmdr/issues/284)–[#287](https://github.com/vdavid/cmdr/issues/287).
-- `later/dropbox-sync-status-linux.md`: **Cloud badges on Linux, which today are simply absent.** Holds the Dropbox
-  socket protocol research and what a Linux arm needs. Issue: [#288](https://github.com/vdavid/cmdr/issues/288).
+- `dropbox-sync-status-linux.md`: **Cloud badges on Linux, which today are simply absent.** Holds the Dropbox socket
+  protocol research and what a Linux arm needs. Issue: [#288](https://github.com/vdavid/cmdr/issues/288).

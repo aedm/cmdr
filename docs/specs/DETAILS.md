@@ -8,7 +8,6 @@ Read this before reorganizing the specs folder or its lifecycle conventions.
   project (labels such as `needs-decision`), one self-contained issue per item. ❌ No follow-ups files.
 - **Wipe policy**: this folder gets wiped periodically once each shipped plan's durable intent (feature rationale,
   process) is captured in code or colocated `CLAUDE.md` / `DETAILS.md`. Full statement: `README.md`.
-- **`later/`**: design docs for big work that isn't scheduled yet. Same index discipline; see `later/`.
 - **Discipline**: update `index.md` whenever you add or remove a spec, so each stays discoverable.
 
 ## Wiping a shipped spec
