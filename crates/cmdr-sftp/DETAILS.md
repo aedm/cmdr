@@ -541,9 +541,10 @@ s with the far end closed 100 ms later.
 Five cells keep the whole hazard honest, and they pin OUTCOMES rather than a workaround:
 `dropping_a_dial_inside_the_hello_window_closes_the_servers_session_at_once` for the abandon,
 `a_cancel_inside_the_hello_window_closes_the_servers_session_at_once` for the cancel,
-`a_hello_that_ends_in_an_error_tears_down_without_panicking` for the engine that ended on its own (`HelloPeer::Refusing`,
-which refuses the `limits@openssh.com` request: a refused VERSION would send `Sftp::new` into its own `Sftp::close()`,
-which never returns over a `russh` channel), and `abandoning_a_connect_does_not_panic_the_engines_task` plus
+`a_hello_that_ends_in_an_error_tears_down_without_panicking` for the engine that ended on its own
+(`HelloPeer::Refusing`, which refuses the `limits@openssh.com` request: a refused VERSION would send `Sftp::new` into
+its own `Sftp::close()`, which never returns over a `russh` channel), and
+`abandoning_a_connect_does_not_panic_the_engines_task` plus
 `a_cancel_inside_a_real_hello_window_stops_the_engine_without_panicking_it` for the abort that 0.15.8 made safe.
 
 ❗ A panic inside a spawned task fails NOTHING: tokio catches it and the test passes (verified 2026-09-24, tokio 1.53.1:
