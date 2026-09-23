@@ -342,10 +342,12 @@ under "file sizes" just as often.
 ### AI is a hybrid section (dynamic state + registry)
 
 `AiSection.svelte` is a thin wrapper that loads `getAiRuntimeStatus()`, listens to backend events, and renders the
-provider toggle, then conditionally mounts `AiCloudSection` or `AiLocalSection`. Cloud and local are independent feature
-areas with their own state machines (`connectionStatus` for cloud, `installStep` for local); they share only the
-`provider` toggle and `shouldShow` callback, passed in as props. `LicenseSection` follows the same pattern at smaller
-scale.
+provider toggle, then conditionally mounts `AiCloudSection` or `AiLocalSection`. On Cloud it first renders the Allow
+cloud AI switch (`$lib/ai/AiCloudConsentToggle.svelte`, a `row:ai.cloudConsent` searchable row in `AiSection.rows.ts`)
+and passes `locked` to `AiCloudSection` until consent reads accepted (`lib/ai/DETAILS.md` § Cloud AI consent). Cloud and
+local are independent feature areas with their own state machines (`connectionStatus` for cloud, `installStep` for
+local); they share only the `provider` toggle and `shouldShow` callback, passed in as props. `LicenseSection` follows
+the same pattern at smaller scale.
 
 ## Gotchas
 
@@ -652,12 +654,10 @@ file" would open Advanced with every card filtered out.
 The `AI › Ask Cmdr` subsection (second card under the AI card-menu), over the read-only chat rail. Its `askCmdr.*`
 registry entries all live at `section: ['AI', 'Ask Cmdr']`. Its parts:
 
-- **Enable toggle IS consent, not a registry setting.** The on/off state lives in `main.db` (the consent record), driven
-  by the consent commands via `lib/ask-cmdr/ask-cmdr-consent.svelte.ts` (`acceptConsent` / `revokeConsent`), not a
-  settings boolean. Deliberately so: the rail gates on the same consent record, and a separate `askCmdr.enabled` flag
-  would drift from it. The toggle is a `Button`, not a registry `SettingSwitch`.
-- **The "what Cmdr sends" disclosure** reuses the `askCmdr.consent.*` catalog copy verbatim (the same human-reviewed
-  strings as the rail's opt-in gate), so the two surfaces never diverge.
+- **The on/off is the `askCmdr.enabled` registry setting** (a `SettingSwitch`), a plain feature switch that grants no
+  data flow. Consent to send anything to a cloud service is the Allow cloud AI switch in `AI › Provider`; this section
+  only reads it (`cloudAiBlocked`) to show a "cloud AI is off" hint with an "Open AI settings" button when Ask Cmdr is
+  on over Cloud without it. Mechanics of the switch: `lib/ask-cmdr/DETAILS.md` § Gates, cost, and settings.
 - **The interactive slot is a MODEL-only setting.** `askCmdr.interactiveModel` (a hand-rolled text row — the registry
   has no generic text-input primitive) overrides the model; the provider, keys, and base URL come from the shared `ai/`
   config (Settings › AI). The section shows the current `ai.provider` as a hint. Backend resolution:

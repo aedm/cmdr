@@ -299,39 +299,41 @@ key later. The user can re-enter via `Cmdr > Onboarding…` or fix it in Setting
 ### What "off" turns off
 
 "Thanks but no thanks" is the clearest answer a user can give, so `StepAi.persist()` lands it on every piece of state
-that says AI is on, not just the one radio it came from. Three of them exist, in two different stores:
+that says AI is on, not just the one radio it came from. Four of them exist, in two different stores:
 
 1. **`ai.provider = 'off'`** (registry setting).
-2. **Ask Cmdr consent, revoked** via `ask-cmdr/ask-cmdr-consent.svelte::revokeConsent()`. This is NOT a setting: it's a
-   record in `main.db` behind the consent commands, and it's what `settings/sections/AskCmdrSection.svelte`'s "Ask Cmdr
-   is on / off" status reads. Without this step, a user who declined AI in the wizard still found Settings saying "Ask
-   Cmdr is on".
+2. **Cloud AI consent, declined** via `$lib/ai/cloud-consent.svelte::declineCloudConsent()`. NOT a setting: a record in
+   `main.db` behind the consent commands, the one the Allow cloud AI switch reads. So a later switch back to Cloud asks
+   again (David's call: "no AI" is the clearest "no" there is).
 3. **`askCmdr.proactive = false`**. The registry ships it `default: true` on purpose (the other gates keep it harmless
-   for someone who never opted into AI), so it stays armed unless something explicitly turns it off. An explicit "no AI"
-   is exactly that something.
+   for someone who never opted into AI), so it stays armed unless something explicitly turns it off.
+4. **`askCmdr.enabled = false`**, Ask Cmdr's own switch.
 
-The end state is `NeedsConsent` for `WakeReadiness`, so the status corner's wake indicator stays silent.
+The end state is `AskCmdrOff` for `WakeReadiness`, so the status corner's wake indicator stays silent.
 
-**❌ Picking cloud or local never grants consent.** Only the `'off'` branch touches consent, and only in the revoking
-direction. Consent is a separate deliberate act behind the disclosure copy (`askCmdr.consent.*`, shown in the rail's
-gate and the settings section), and the backend enforces it structurally in the send path; granting it as a side effect
-of choosing a provider would be a consent bypass. `StepAi.test.ts` asserts the absence explicitly for both branches.
+**Cloud and Local turn `askCmdr.enabled` on, only when nobody set it yet** (`isExplicitlySet`), so a re-run of the
+wizard can't re-arm a switch the user turned off. On Cloud it still waits for cloud consent, so it grants no data flow.
+
+**❌ Picking cloud or local never grants cloud consent.** Only the `'off'` branch touches consent, and only in the
+declining direction. Consent is the Allow cloud AI switch's own click (`$lib/ai/AiCloudConsentToggle.svelte`, shown at
+the top of the Cloud setup column), and the backend enforces it in `ai::manager::resolve_backend`; granting it as a side
+effect of choosing a provider would be a consent bypass. `StepAi.test.ts` asserts the absence for both branches, and
+`lib/ai/cloud-consent-call-sites.test.ts` pins that nothing but the switch can grant.
+
+**Cloud with the switch off locks the setup below it** (`CloudProviderSetup.svelte`'s `locked`: `inert`, dimmed, the
+controller not pointed at the provider, so nothing probes the service; the header still names the preset). The first
+Next then shows `onboarding.stepAi.cloudConsentOffNote` as a confirm-once footer note, the same mechanism as the
+missing-key gate below, which stays away while the setup is locked (there's no key to enter).
 
 **❌ Switching back from `'off'` to a provider does not re-arm `askCmdr.proactive`.** Turning AI on again shouldn't
 silently restart an agent that starts conversations on its own; Settings › AI › Ask Cmdr is where that goes back on.
 
-**Revoking has a real backend side effect, by design**: `agent::wake::inbox::Inbox::purge_if_consent_withdrawn` drops
-the proactive pipeline's stored rows once readiness no longer permits them. That's the point of an explicit "no", and
-it's why the cloud/local branches must not reach this call.
-
-**A refused revoke is retried, and still never strands the user.** `revokeConsent()` is a no-op for someone who never
-consented (the store deletes two absent `meta` rows). The step goes through `declineConsent()`, the same "no" path as
-Settings' Turn off: a refusal gets one more try, because a consent left recorded would greet a later "AI on" with Ask
-Cmdr already consented, and a second refusal HOLDS the "no" (the hidden `askCmdr.consentRevokePending` in
-`settings.json`), which every backend consent gate reads, so it holds at once while the store catches up on a later
-refresh or launch (`ask-cmdr/DETAILS.md` § Consent). Only when even the hold fails does the step log a warning; it moves
-on with the rest of the persist either way, and any other persist failure is logged and still advances. The footer's
-`advanceBusy` guard always clears in a `finally`. Same reasoning as the no-key-blocks-advance rule above: the wizard
+**A refused decline is retried, and still never strands the user.** A decline is a no-op for someone who never allowed
+cloud AI. A refusal gets one more try, and a second refusal HOLDS the "no" (the hidden `ai.cloudConsentRevokePending` in
+`settings.json`), which every backend cloud gate reads, so it holds at once while the store catches up on a later
+refresh or launch (`lib/ai/DETAILS.md` § Cloud AI consent). Only when even the hold fails does the step log a warning;
+it moves on with the rest of the persist either way, and any other persist failure is logged and still advances. The
+footer's `advanceBusy` guard always clears in a `finally`. Same reasoning as the no-key-blocks-advance rule: the wizard
 never traps someone on a step.
 
 ### The missing-API-key gate (confirm once, never block)

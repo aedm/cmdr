@@ -24,6 +24,10 @@ The dialog opens immediately with a focused input; AI runs in the background. If
 suggestion strip doesn't render and the dialog stays fully usable. `aiAvailable` starts at `null` ("checking") to avoid
 a flash-of-empty-strip on slow `getAiStatus()` responses.
 
+On Cloud without "Allow cloud AI" (`cloudAiBlocked`, after a `refreshCloudConsent()`), the dialog opens no stream and
+shows no strip, with no copy: the quiet treatment is deliberate, since the feature's absence costs nothing here. The
+backend refuses the call anyway (an empty `done`); `lib/ai/DETAILS.md` § Cloud AI consent.
+
 ### The name box is typeable the instant F7 opens
 
 `../NewEntryNameField.svelte` focuses and selects the box in its own `onMount`, and `ModalDialog` skips its scrim focus

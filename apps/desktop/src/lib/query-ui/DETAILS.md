@@ -45,14 +45,15 @@ wire everything Search-or-Selection-specific through a single [`QueryDialogConfi
 
 The config carries the title + max width (+ an optional stability `badge` rendered as a `StatusBadge` next to the title;
 both consumers derive it from `getBadgeStatus()` in `$lib/feature-status`), the cross-consumer state instance (the
-factory output), an `aiEnabled` flag, the per-chip visibility set, a `showPathColumn` flag, the run-hint copy, the
-history store + adapter + key, the empty-state hints, the filter-chips extras, the index lifecycle flags, an optional
-`noticeBanner`, the async `runQuery` + optional `translateAi` callbacks, primary + secondary action descriptors,
-callbacks for path-pill / example / row-menu / recent-activate / recent-remove / close events, optional `onMount` /
-`onDestroy` / `onClearState` hooks, and two optional consumer-owned snippets bracketing the results table, each owning
-its own data + lifecycle: `resultsNotice` above it (a caveat about the answer, or a wait worth naming — Search's
-coverage note and its index-load hint) and `resultsExtra` below it (a second result kind — Search's "text in images" OCR
-grid). Other consumers omit both.
+factory output), an `aiEnabled` flag and an optional `aiBlocked` one (Cloud without "Allow cloud AI": the chip stays,
+and `EmptyState` trades its AI prompts for `queryUi.ai.cloudOff.body` plus a button to the switch), the per-chip
+visibility set, a `showPathColumn` flag, the run-hint copy, the history store + adapter + key, the empty-state hints,
+the filter-chips extras, the index lifecycle flags, an optional `noticeBanner`, the async `runQuery` + optional
+`translateAi` callbacks, primary + secondary action descriptors, callbacks for path-pill / example / row-menu /
+recent-activate / recent-remove / close events, optional `onMount` / `onDestroy` / `onClearState` hooks, and two
+optional consumer-owned snippets bracketing the results table, each owning its own data + lifecycle: `resultsNotice`
+above it (a caveat about the answer, or a wait worth naming — Search's coverage note and its index-load hint) and
+`resultsExtra` below it (a second result kind — Search's "text in images" OCR grid). Other consumers omit both.
 
 `resultsNotice` is rendered with a `ResultsNoticeContext`, which today carries one field: `hasSearched`. It exists so a
 consumer's strip can stand down when the results area already speaks for the same thing. Search's index-load hint reads

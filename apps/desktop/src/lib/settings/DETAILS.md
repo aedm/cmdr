@@ -380,10 +380,10 @@ split-layout rule, and the `SettingPasswordInput` store-driven vs controlled mod
   is memoized at module scope (constructing `Intl.DateTimeFormat` per call shows up in virtualized scroll profiles).
 - **mcp-main-bridge.ts**: MCP bridge for settings. ❌ `set_setting` refuses a definition marked `mcpSettable: false` (a
   setting that records a consent answer: `analytics.enabled`, `updates.crashReports`, `updates.errorReports`, the two
-  `onboarding.termsAccepted*`, `askCmdr.consentRevokePending`) with a typed `notSettableOverMcp` refusal, keyed on the
-  registry mark, never the id; a new consent-bearing setting sets the mark. The YAML lists it too. It handles
-  `mcp-get-all-settings` and `mcp-set-setting` round-trip events in the main window (always alive), enabling AI agents
-  to query and modify settings without the settings window open
+  `onboarding.termsAccepted*`, `ai.cloudConsentRevokePending`, `askCmdr.consentRevokePending`, `askCmdr.enabled`) with a
+  typed `notSettableOverMcp` refusal, keyed on the registry mark, never the id; a new consent-bearing setting sets the
+  mark. The YAML lists it too. It handles `mcp-get-all-settings` and `mcp-set-setting` round-trip events in the main
+  window (always alive), enabling AI agents to query and modify settings without the settings window open
 
 ### Every open funnels through `openSettingsWindow`
 

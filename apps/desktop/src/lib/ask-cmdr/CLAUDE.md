@@ -23,8 +23,8 @@ The frontend of Ask Cmdr: a right-side panel for chatting with a BYO-key LLM abo
 - **Assistant prose is the XSS boundary.** Model text is untrusted (a crafted filename it echoes is an injection
   vector), so it renders ONLY through `renderAssistantMarkdown`. Everything else — tool labels, paths, user text, error
   copy, rename evidence — is plain `{text}`, NEVER `{@html}`.
-- **The rail gates on consent and sends NOTHING until the user opts in.** `consentState.accepted`: `false` shows the
-  gate, `true` the chat, `null` neither (no flash). ❌ Never render the composer outside that.
+- **Two gates (`railGate`)**: Ask Cmdr off, then Cloud without consent; `loading` shows nothing. ❌ No composer
+  outside `chat`, and ❌ neither gate grants cloud consent.
 - **The rail is a THIRD focus region via a parallel flag.** `explorerState.getRailFocused()` is a boolean ALONGSIDE the
   `'left'|'right'` `focusedPane` union; never widen it. It is NON-modal: ❌ never add it to `isModalDialogOpen()`.
 - **No reasoning blob reaches the frontend.** `MessageView` carries display blocks only. ❌ Never add a wire field
@@ -32,8 +32,9 @@ The frontend of Ask Cmdr: a right-side panel for chatting with a BYO-key LLM abo
 - **Turn events are subscribed by CONVERSATION, never per send**, so a reload mid-answer keeps rendering: ❌ never key a
   turn to the invoke that started it. Any live event means a turn is running; `discarded` means a quiet wake deleted the
   thread. Each mutates the LAST assistant message in place, and cancel finalizes LOCALLY.
-- **The wake indicator is SILENT without consent, with AI off, or `askCmdr.proactive` off**, and shows a running wake
-  either way (it's spending money now). `wakeIndicatorMode` is the gate. ❌ Subscription stays in the `.svelte.ts`.
+- **The wake indicator is SILENT while any gate is shut or `askCmdr.proactive` is off**, and
+  shows a running wake either way (it's spending money now). `wakeIndicatorMode` is the gate. ❌ Subscription stays in
+  the `.svelte.ts`.
 - **The toggle is wired in four places; a miss fails silently** (`ask-cmdr-shortcut.test.ts`).
 - **Opening the rail GROWS the main window so panes keep their size** (`rail-window.ts`). ❌ Never grow on hydration or
   re-open: the window is already rail-inclusive.

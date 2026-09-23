@@ -104,10 +104,10 @@ failure's message carries both.
 - **`interrupted` groups**: re-approving one mints a NEW group with a fresh preflight, which is spine machinery rather
   than dialog work, so surfacing them would mean designing the re-approval flow inside a dialog milestone. Deliberate,
   not missing.
-- **The degraded-state actions**: `WakeReadiness` types consent / AI-off / Full Disk Access / no-API-key as distinct
-  states, each with its own answer (open consent, say nothing, open the FDA screen, open AI settings). The indicator
-  renders a count today and should render the closable ones with their specific action rather than a generic
-  "unavailable".
+- **The degraded-state actions**: `WakeReadiness` types Ask Cmdr off / AI off / cloud AI not allowed / Full Disk Access
+  / no-API-key as distinct states, each with its own answer (the rail's turn-on gate, say nothing, the Allow cloud AI
+  switch, the FDA screen, AI settings). The indicator renders a count today and should render the closable ones with
+  their specific action rather than a generic "unavailable".
 - **The dialog-gallery preview**: the row is `not-triggerable` until fixtures exist for the interesting shapes (an
   irreversible group, a folder that will be created, a pattern-matched group, a 60,000-op group).
 - **Nine of the ten locales**: English and German ship; the rest wait on David's copy review, since translating copy

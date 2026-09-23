@@ -3,6 +3,33 @@
 Depth for the frontend AI module. `CLAUDE.md` holds the must-knows; this file holds the configuration wiring, wizard
 reuse, model registry, and dev commands.
 
+## Cloud AI consent
+
+The backend is the enforcer: every cloud call resolves through `ai::manager::resolve_backend`, which refuses without a
+current consent record (`src-tauri/src/ai/DETAILS.md` § Cloud AI consent). This module mirrors the record so the UI can
+render the switch and say why a feature is quiet.
+
+- **State** (`cloud-consent.svelte.ts`): `cloudConsentState.accepted` is `null` / `false` / `true`, read from
+  `cloud_ai_consent_status`; an unreadable status fails closed. The first `refreshCloudConsent()` in a window subscribes
+  to `CloudAiConsentChanged`, so a flip in Settings reaches the main window's gates at once.
+- **Accept / decline answer `done` / `notSaved`, never throw.** Accept is `done` only when the store then reads
+  accepted, and lets go of a held "no" first. Decline (the switch's off, onboarding's "no AI") revokes, retries once,
+  then HOLDS the "no" in the hidden `ai.cloudConsentRevokePending` (saved at once, then
+  `cloud_ai_consent_revoke_pending_changed`), which every Rust cloud gate reads. `settleHeldCloudConsentRevoke()`
+  retries the store on every refresh and as a main-window startup step. Revoking also stops in-flight cloud calls
+  (backend).
+- **The switch** (`AiCloudConsentToggle.svelte`) renders on Cloud only, in Settings > AI > Provider (with the
+  `settings-ai-cloud-consent` anchor every "Open AI settings" button deep-links to, `openCloudConsentSettings(surface)`)
+  and at the top of onboarding's Cloud column. Its disclosure lists what every feature sends and is open while off. The
+  copy is versioned: a material change to `ai.cloudConsent.*` needs a `CLOUD_AI_CONSENT_VERSION` bump in the backend.
+- **Locked setup.** While blocked, `AiCloudSection` and onboarding's `CloudProviderSetup` are `inert` and dimmed, and
+  their `ProviderSetupController` isn't pointed at the provider (that alone can start a connection check); it's pointed
+  when the lock lifts. A check that does reach the backend answers `cloudConsentMissing`, which the controller reads as
+  idle.
+- **Entry points stay quiet or say why**: New folder skips its suggestion stream (no copy), Search and Select show
+  `queryUi.ai.cloudOff.body` plus a button in the AI mode's empty state (the chip stays), a refused translate raises
+  `CloudAiOffToastContent`, and the Ask Cmdr rail shows its cloud gate (`lib/ask-cmdr/DETAILS.md`).
+
 ## Settings registry and config push
 
 `ai.provider`, `ai.cloudProvider`, `ai.cloudProviderConfigs`, and `ai.localContextSize` are defined in

@@ -99,7 +99,24 @@ Decisions made during implementation:
   (`tauri-commands/ask-cmdr.ts`): status reads the cloud status, revoke revokes cloud consent, and accept records
   NOTHING, because the Ask Cmdr disclosure never described the other AI features and so must not grant cloud AI for
   them. Between milestones 2 and 3 the rail refuses every send with `askCmdrOff` (nothing sets `askCmdr.enabled` yet);
-  that's expected.
+  that's expected. (Resolved in milestone 3: the shims are gone.)
+- **D20. The `askCmdr.enabled` applier saves `settings.json` before `askCmdrEnabledChanged()`.** The send gate reads the
+  file fresh, so "Turn on Ask Cmdr" in the rail then an immediate send could otherwise beat the 500 ms debounce and be
+  refused as off.
+- **D21. Onboarding's locked Cloud setup follows Settings**: `CloudProviderSetup` doesn't point its controller at the
+  provider while locked (no probe), and names the picked provider from its preset so the column isn't empty. The
+  missing-key footer note stays away while locked (no key can be entered); the consent note takes its place.
+- **D22. No re-consent copy.** The old Ask Cmdr `needsReconsent` / "what's new" state isn't ported: the disclosure is
+  open whenever the switch is off, which already puts the (possibly changed) promise in front of the person. A future
+  `CLOUD_AI_CONSENT_VERSION` bump that wants a "what changed" line adds one then.
+- **D23. Key names and reuse.** The onboarding note is `onboarding.stepAi.cloudConsentOffNote` (the step's existing
+  prefix), and the translate toast's button reuses `queryUi.ai.openSettings` (same words, same destination). The new
+  hidden `ai.cloudConsentRevokePending` setting needs a label key, `settings.ai.cloudConsentRevokePending.label`.
+- **D24. Retired-key glossary citations become prose, not allowlist entries.** Translator guides that cited a dropped
+  key as evidence for a term now name it unbackticked as retired (or drop it from a section's key list, or repoint to a
+  live key with the same English), since loosening `desktop-i18n-doc-citations-allowlist.json` needs David.
+- **D25. "Open AI settings" deep-links to a DOM anchor** (`settings-ai-cloud-consent`, stamped by the switch in
+  Settings), through one helper `openCloudConsentSettings(surface)` with four new `SettingsSurface` names.
 
 ## Census
 

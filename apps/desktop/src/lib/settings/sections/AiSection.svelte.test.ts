@@ -156,6 +156,9 @@ describe('Allow cloud AI in Settings > AI > Provider', () => {
 
     expect(acceptCloudAiConsent).toHaveBeenCalledOnce()
     expect(cloudSetup(target)?.hasAttribute('inert')).toBe(false)
+    // The switch itself reads on, not only the setup below it.
+    expect(consentSwitch(target)?.checked).toBe(true)
+    expect(target.querySelector('.switch-control')?.getAttribute('data-state')).toBe('checked')
   })
 
   it('switching it off stops cloud AI and leaves the AI mode on Cloud', async () => {

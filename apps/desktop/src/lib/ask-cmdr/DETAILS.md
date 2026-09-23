@@ -531,59 +531,48 @@ fake path — which never sets a real provider — needs the gate to treat the f
 `resolve_agent_llm` gates on), so "send is allowed" and "send is answered" can't drift. Off E2E the command returns
 `false` and the gate behaves normally.
 
-## Consent gate, cost, and settings
+## Gates, cost, and settings
 
-- **Consent** (`ask-cmdr-consent.svelte.ts` + `AskCmdrConsent.svelte`): the opt-in gate. `consentState.accepted` is
-  `null` (loading) / `false` (show the gate) / `true` (show the chat). The backend records consent in `main.db` (version
-  - timestamp) via `ask_cmdr_accept_consent`; the rail reads it with `ask_cmdr_consent_status` on open. The gate copy is
-    `askCmdr.consent.*`, human-reviewed (principle 6) and shared verbatim with the settings section's disclosure.
-    Nothing is sent to a provider until `accepted === true` for the CURRENT copy version. "Not now" closes the rail;
-    accepting re-runs `openRail` to bootstrap history + focus the composer.
-  - **`acceptConsent` / `revokeConsent` answer a `ConsentOutcome` (`done` / `notSaved`) and never throw.** `notSaved`
-    means the store holds something other than the person's choice (a refused write, or an accept that still reads
-    "off"), and every caller acts on it: the rail's gate and the settings row show `askCmdr.consent.notSaved`, and the
-    onboarding "no AI" pick retries once. ❌ Never treat `notSaved` as `done`: a swallowed revoke is a "no" that didn't
-    stick.
-  - **Every "no" goes through `declineConsent()`**, Settings' Turn off and onboarding's "no AI" alike: it revokes,
-    retries a refusal once, and holds the "no" below when the store refuses both. It answers `done` when the "no" holds
-    (recorded or held) and `notSaved` only when even `settings.json` refused the hold. ❌ Never a bare `revokeConsent()`
-    for a person's answer.
-  - **A "no" the store refused twice is HELD, fail-closed.** `holdConsentRevoke()` sets the hidden
-    `askCmdr.consentRevokePending`, saves `settings.json` at once, and calls `ask_cmdr_consent_revoke_pending_changed`
-    (the wake loop's readiness is cached). Every Rust gate takes the marker as an argument of `has_current_consent`
-    (`agent::consent::RevokePending`, read fresh from `settings.json`): the send gate, the wake readiness, and the
-    status command, so the "no" holds from the next check on. `settleHeldConsentRevoke()` retries the store on every
-    `refreshConsent()` and as a main-window startup step, and lets go once it lands; a deliberate accept lets go FIRST.
-    While held, `needsReconsent` stays false: it's a "no", not a paused opt-in. ❌ The marker lives in `settings.json`
-    because `main.db` is the store that refused; don't mirror it anywhere else. MCP `set_setting` can't clear it: the
-    registry marks it `mcpSettable: false` (`lib/settings/DETAILS.md`, `mcp-main-bridge.ts`).
-  - ⚠️ **`consentState.needsReconsent` is what keeps a copy-version bump from looking like a bug.** A bump revokes
-    everybody, so somebody with a whole thread history lands on the opt-in screen with no explanation, and the settings
-    section would say a bare "off" at them, indistinguishable from never having wanted AI. The flag (`accepted` false
-    but `acceptedVersion` present) adds `askCmdr.consent.whatsNew.*` above the gate and a third settings state, "Ask
-    Cmdr is paused", with the disclosure already open.
+- **Two gates** (`ask-cmdr-gate.svelte.ts` + `AskCmdrGate.svelte`). `railGate({ enabled, provider, cloudConsent })`, in
+  order: `askCmdr.enabled` off → `off` (a "Turn on Ask Cmdr" button that sets the setting); Cloud with consent unknown →
+  `loading` (the rail renders nothing, so nothing flashes); Cloud without consent → `cloudOff` (an "Open AI settings"
+  button to the Allow cloud AI switch, `openCloudConsentSettings('ask-cmdr-cloud-gate')`); otherwise `chat`. Local and
+  "off" need no consent (nothing leaves the Mac; the composer says when no provider is set up). The rail reads both
+  settings reactively and `cloudConsentState` from `$lib/ai/cloud-consent.svelte.ts` (`lib/ai/DETAILS.md` § Cloud AI
+  consent owns consent itself).
+  - `openRail` awaits `refreshRailGate()` and bootstraps history only when the gate reads `chat`; when a gate opens
+    later with the rail up, the rail calls `ensureThreadLoaded()` on the transition.
+  - The backend enforces both gates on every send, before a thread exists (`AskCmdrOff` / `NoCloudConsent` refusals). A
+    send refused as either re-runs `refreshRailGate()`, which flips the rail to the matching gate; `ask-cmdr-labels.ts`
+    keeps a line for each, for the rare race.
+  - **`askCmdr.enabled` saves `settings.json` at once** (the applier forceSaves, then `askCmdrEnabledChanged()`
+    refreshes the wake loop's cached readiness): the send path reads the file fresh, so "turn on, then send" can't beat
+    the debounced flush. MCP can't set it (`mcpSettable: false`): on Local it starts a proactive loop.
+  - **Existing installs get the switch once, at startup** (`ask-cmdr-enabled-mapping.ts`, the `askCmdrEnabledMapping`
+    step): a recorded legacy opt-in (any copy version, no held "no") maps to on, anything else to off, an unreadable
+    store to nothing (next launch asks again). It runs only after onboarding finished and only while the switch was
+    never set explicitly; fresh installs get it from the onboarding AI pick.
 - **Cost footer** (`AskCmdrCostFooter.svelte` + pure `ask-cmdr-cost.ts`): the active thread's cumulative tokens + cost,
   refetched (`ask_cmdr_conversation_cost`) when the thread changes or a turn finishes streaming. Honest miss-path: a
   local-only thread reads "free, on-device", an unpriced model reads "cost unknown", a priced thread shows "about
   {amount}" — never a silent $0. Hidden until a metered turn exists.
-- **Settings section** (`settings/sections/AskCmdrSection.svelte`, top-level `Ask Cmdr`): the enable toggle (drives the
-  same consent accept/revoke — enable state is consent, NOT a settings boolean), the "what Ask Cmdr sends" disclosure
-  (same copy as the gate), the provider hint (reads `ai.provider`) + the interactive-model row
-  (`askCmdr.interactiveModel`), the two memory controls, and the per-day spend rollup (`ask_cmdr_cost_summary`). The
-  interactive slot picks the MODEL only; provider/keys stay in Settings › AI. The memory pair (open the folder, forget
-  everything) is documented where the folder is: `apps/desktop/src-tauri/src/agent/memory/DETAILS.md` § The two controls
-  the user gets.
+- **Settings section** (`settings/sections/AskCmdrSection.svelte`, top-level `Ask Cmdr`): the `askCmdr.enabled` switch,
+  a "cloud AI is off" hint plus an "Open AI settings" button when it's on over Cloud without consent, the provider hint
+  (reads `ai.provider`) + the interactive-model row (`askCmdr.interactiveModel`), the two memory controls, and the
+  per-day spend rollup (`ask_cmdr_cost_summary`). The interactive slot picks the MODEL only; provider/keys stay in
+  Settings › AI. The memory pair (open the folder, forget everything) is documented where the folder is:
+  `apps/desktop/src-tauri/src/agent/memory/DETAILS.md` § The two controls the user gets.
 
 ## i18n
 
 Copy lives in `intl/messages/en/askCmdr.json` (`askCmdr.*`, including the `askCmdr.sessions.*`,
 `askCmdr.composer.attach`/`dropHint`, `askCmdr.attachment.*`, `askCmdr.loadEarlier`, `askCmdr.wake.*`,
-`askCmdr.wakeDigest.*`, and the `askCmdr.consent.*` + `askCmdr.cost.*` keys), the settings copy in `settings.json`
-(`settings.askCmdr.*`, `settings.section.askCmdr`), and the command label in `commands.json`
-(`commands.askCmdrToggle.*`), each with an `@key` translator description. Translated across all 10 locales, so
-`desktop-i18n-coverage` is green. The name and the consent copy are the re-translation surface if David adjusts the
-product calls. Tool + error labels are literal-keyed records in `ask-cmdr-labels.ts` (a computed prefix would trip the
-unused-key check).
+`askCmdr.wakeDigest.*`, `askCmdr.gate.*`, and `askCmdr.cost.*` keys; the "what Ask Cmdr sends" list moved to
+`ai.cloudConsent.askCmdr.*` in `ai.json`), the settings copy in `settings.json` (`settings.askCmdr.*`,
+`settings.section.askCmdr`), and the command label in `commands.json` (`commands.askCmdrToggle.*`), each with an `@key`
+translator description. Translated across all 10 locales, so `desktop-i18n-coverage` is green. The name and the gate
+copy are the re-translation surface if David adjusts the product calls. Tool + error labels are literal-keyed records in
+`ask-cmdr-labels.ts` (a computed prefix would trip the unused-key check).
 
 ## Decisions
 

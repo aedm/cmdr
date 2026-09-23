@@ -22,12 +22,11 @@ analytics disclosure and the terms (3) → Optional settings (4). Linux starts a
   checklist".
 - **Step 3's terms checkbox gates both footer buttons.** ❌ Never pre-tick or route around it. Unticked, they take
   `blockedReason`, ❌ not `disabled`, so a press still reveals the box, focused with `preventScroll: true`.
-- **"Thanks but no thanks" lands on THREE things**: `ai.provider = 'off'`, Ask Cmdr consent revoked (a `main.db`
-  record), and `askCmdr.proactive` cleared (it ships ON). ❌ Cloud or local must NEVER grant consent. DETAILS § "What
-  'off' turns off".
-- **Step 2's missing-API-key gate confirms once, ❌ never blocks**: cloud with no stored key warns on the first Next and
-  passes on the second. ❌ Its clearing listeners must keep exempting the wizard FOOTER, or that second press disarms
-  the gate.
+- **"No AI" turns off FOUR things**: `ai.provider`, cloud consent (`main.db`), `askCmdr.proactive`, `askCmdr.enabled`.
+  ❌ Cloud or local NEVER grants cloud consent. DETAILS § "What 'off' turns off".
+- **Step 2's footer notes confirm once, ❌ never block**: Cloud with Allow cloud AI off (setup locked), else Cloud with
+  no stored key, warns on the first Next and passes on the second. ❌ Its clearing listeners must keep exempting the
+  wizard FOOTER, or that second press disarms the gate.
 - **Steps 3 and 4 ARE Settings surfaces**: `<SectionCard>` + `<SettingRow>` + `<SettingSwitch>`, plus `UpdatesSection`'s
   email path (which POSTs only the email, ❌ never an install id). ❌ Never hand-roll a frame here.
 - **Long copy hides behind an `<InfoTip>` or a fold, ❌ never in the body.**

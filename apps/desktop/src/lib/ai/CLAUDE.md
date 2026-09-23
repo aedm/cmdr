@@ -11,13 +11,18 @@ llama-server process, inference client with provider routing).
 - **`AiToastContent.svelte`**: install-flow UI (offer → downloading → installing → ready). Imports `getAiState` +
   handlers directly from `ai-state.svelte.ts`.
 - **`translate-error-toast.ts`**: pure `aiTranslateErrorToast(kind)` + `isAiTranslateError` guard +
-  `showAiTranslateErrorToast(err)` (the one impure wrapper).
+  `showAiTranslateErrorToast(err)` (the one impure wrapper); `noCloudConsent` renders `CloudAiOffToastContent.svelte`.
+- **`cloud-consent.svelte.ts`** + **`AiCloudConsentToggle.svelte`**: the "Allow cloud AI" state and switch. `DETAILS.md`
+  § Cloud AI consent.
 
 No circular dependency: `ai-state.svelte.ts` never imports from the sync or content modules. Both are wired in
 `(main)/+layout.svelte`: `initAiToastSync()` synchronously in `onMount`, `initAiState()` as its last startup step.
 
 ## Must-knows
 
+- **Only the Allow cloud AI switch's click grants cloud consent.** `acceptCloudConsent` is imported by
+  `AiCloudConsentToggle.svelte` alone (`cloud-consent-call-sites.test.ts`). Every gate reads `cloudAiBlocked(provider)`,
+  where "not known yet" counts as blocked; every "no" goes through `declineCloudConsent` (retry, then hold).
 - **Copy lives in the `ai.*` catalog**, resolved via `t()`/`tString()`; don't hardcode user-facing strings
   (`cmdr/no-raw-user-facing-string` is enforced on `lib/ai/` AND the cloud/local AI settings sections). See `DETAILS.md`
   § i18n.
