@@ -477,7 +477,11 @@ folder the share stores composed answers the kernel's decomposed spelling with `
   direct connection, `respell_listings_on_volume` re-reads each open listing on it through the new backend, holding the
   directory's refresh turn (`caching::refresh_turn`). A listing whose path changed spelling is re-keyed, its entries are
   written whole (the diff matches rows by name, so it can't see every path changing), and the pane adopts the path from
-  `listing-respelled` and refetches its rows.
+  `listing-respelled` and refetches its rows. That sweep sees only listings already cached, and a pane landing on the
+  share starts the upgrade the moment it starts listing (`network/smb_pane_upgrade.rs`), so the swap often lands
+  mid-read. So `read_directory_with_progress`, right after its cache insert, re-reads its own listing when the registry
+  no longer serves the id with the backend that read it (`respell_if_read_by_a_replaced_backend`, pointer identity): a
+  swap before the insert is caught there, one after it by the sweep.
 - **Files from outside Cmdr respell where they enter.** A Finder drag-in and a paste of files copied in Finder hand
   over kernel-mount paths (`/Volumes/<share>/…`), which route to the direct SMB volume when the share has one
   (`resolveSourceVolumeId`). The frontend asks `stored_spellings` (`apps/desktop/src-tauri/src/commands/file_system/stored_spelling.rs` →

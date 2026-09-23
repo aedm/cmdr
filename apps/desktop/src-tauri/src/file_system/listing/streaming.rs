@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::benchmark;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE};
-use crate::file_system::listing::foreign_path::{Listed, list_as_stored};
+use crate::file_system::listing::foreign_path::{Listed, list_as_stored, respell_if_read_by_a_replaced_backend};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 use crate::file_system::volume::friendly_error::{
     ListingError, archive_needs_password_listing_error, archive_unreadable_listing_error, enrich_with_provider,
@@ -679,6 +679,9 @@ pub(crate) async fn read_directory_with_progress(
         cache.insert(listing_id.to_string(), listing);
     }
     let cache_write_ms = cache_write_start.elapsed().as_millis();
+    if !is_routed {
+        respell_if_read_by_a_replaced_backend(volume_id, listing_id, path, &volume);
+    }
 
     // Arm a change watch when the volume can carry one. A routed volume answers
     // `false` (a git snapshot's and an archive's paths aren't on disk, so

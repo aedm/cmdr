@@ -145,6 +145,35 @@ pub(crate) fn respell_listings_on_volume(volume_id: &str) {
     }
 }
 
+/// Re-reads a just-cached pane listing when the backend that read it no longer
+/// serves `volume_id`.
+///
+/// [`respell_listings_on_volume`] sees only the listings cached when the swap
+/// lands, and a pane landing on a kernel-mounted share starts the upgrade at the
+/// same moment it starts listing (`network::smb_pane_upgrade`), so the swap
+/// routinely lands mid-read. Checked after the cache insert, this closes that
+/// window: a swap before the insert is seen here, one after it sees the listing.
+/// Not for a routed listing (an archive), whose volume is never the registered one.
+pub(crate) fn respell_if_read_by_a_replaced_backend(
+    volume_id: &str,
+    listing_id: &str,
+    path: &Path,
+    read_by: &std::sync::Arc<dyn Volume>,
+) {
+    let serving = crate::file_system::volume::manager::get_volume_manager().get(volume_id);
+    if serving.is_some_and(|serving| !std::sync::Arc::ptr_eq(&serving, read_by)) {
+        log::debug!(
+            "listing {listing_id} was read by a backend replaced mid-read; re-reading {}",
+            path.display()
+        );
+        tauri::async_runtime::spawn(respell_listing(
+            volume_id.to_string(),
+            listing_id.to_string(),
+            path.to_path_buf(),
+        ));
+    }
+}
+
 /// One listing's respell; `pub(super)` so a test can await it directly.
 pub(super) async fn respell_listing(volume_id: String, listing_id: String, path: PathBuf) {
     let _turn = super::caching::refresh_turn(&volume_id, &path).await;

@@ -128,6 +128,127 @@ async fn a_backend_swap_respells_an_open_listing_and_its_entries() {
     );
 }
 
+/// The kernel mount, reading a folder while the direct connection replaces it:
+/// the swap lands after this listing started and before it's cached, which is
+/// exactly when a pane landing on the share triggers the upgrade
+/// (`network::smb_pane_upgrade`).
+struct SwappedMidListing {
+    kernel: InMemoryVolume,
+    volume_id: String,
+    successor: std::sync::Mutex<Option<std::sync::Arc<dyn Volume>>>,
+}
+
+impl Volume for SwappedMidListing {
+    fn name(&self) -> &str {
+        self.kernel.name()
+    }
+
+    fn root(&self) -> &Path {
+        self.kernel.root()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        path: &'a Path,
+        on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let successor = self.successor.lock().expect("test lock").take();
+            if let Some(successor) = successor {
+                crate::network::smb_upgrade::register_replacing_predecessor(&self.volume_id, successor).await;
+            }
+            self.kernel.list_directory(path, on_progress).await
+        })
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+        self.kernel.get_metadata(path)
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + 'a>> {
+        self.kernel.exists(path)
+    }
+
+    fn is_directory<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+        self.kernel.is_directory(path)
+    }
+}
+
+/// The upgrade's own re-read runs before this listing is cached, so it can't
+/// see it: the listing has to notice on its own that the backend that read it
+/// is gone, or the pane keeps the kernel's spelling on a byte-exact share.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_listing_read_while_the_backend_is_replaced_lands_on_the_stored_spelling() {
+    use crate::file_system::listing::caching_test_support::{TestListingGuard, unique_test_id};
+    use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder};
+    use crate::file_system::listing::streaming::{
+        CollectorListingEventSink, ListingEventSink, StreamingListingState, read_directory_with_progress,
+    };
+    use crate::file_system::volume::manager::get_volume_manager;
+    use crate::test_support::wait_until_async;
+
+    let volume_id = format!("respell-mid-listing-{}", uuid::Uuid::new_v4());
+    let kernel = InMemoryVolume::new("Share");
+    kernel.create_directory(Path::new(FOREIGN)).await.expect("seed");
+    kernel
+        .create_file(&Path::new(FOREIGN).join("photo.jpg"), b"jpeg")
+        .await
+        .expect("seed");
+    let direct = SpelledVolume::new(album().await).resolving(FOREIGN, Ok(Some(STORED)));
+    let swapped = SwappedMidListing {
+        kernel,
+        volume_id: volume_id.clone(),
+        successor: std::sync::Mutex::new(Some(std::sync::Arc::new(direct))),
+    };
+    get_volume_manager().register(&volume_id, std::sync::Arc::new(swapped));
+    let listing = TestListingGuard::adopt(unique_test_id("respell-mid-listing"));
+
+    let events: std::sync::Arc<dyn ListingEventSink> = std::sync::Arc::new(CollectorListingEventSink::new());
+    let state = std::sync::Arc::new(StreamingListingState {
+        cancel: CancellationToken::new(),
+    });
+    read_directory_with_progress(
+        &events,
+        listing.id(),
+        &state,
+        &volume_id,
+        Path::new(FOREIGN),
+        true,
+        SortColumn::Name,
+        SortOrder::Ascending,
+        DirectorySortMode::LikeFiles,
+    )
+    .await
+    .expect("the kernel mount lists the folder");
+    let respelled = || listing.with_listing(|cached| cached.path.as_path() == Path::new(STORED));
+    wait_until_async(
+        std::time::Duration::from_secs(5),
+        "the listing to be respelled",
+        respelled,
+    )
+    .await;
+    get_volume_manager().unregister(&volume_id);
+
+    listing.with_listing(|cached| {
+        let paths: Vec<&str> = cached.entries().iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            vec![format!("{STORED}/photo.jpg")],
+            "entries carry the stored bytes"
+        );
+    });
+}
+
 /// Only a miss is a spelling question: any other refusal is what it is.
 #[tokio::test]
 async fn a_refusal_other_than_a_miss_is_not_resolved() {
