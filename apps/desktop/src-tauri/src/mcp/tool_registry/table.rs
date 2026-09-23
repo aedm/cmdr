@@ -277,7 +277,7 @@ mcp_tools! {
         gate: TokenGate::Open,
         consumers: &[Consumer::AiClient],
         access: Access::Read,
-        run: params_only search::execute_ai_search
+        run: app_params search::execute_ai_search
     },
 
     // ── Settings ────────────────────────────────────────────────────────────

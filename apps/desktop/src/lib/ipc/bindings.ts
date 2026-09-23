@@ -1936,6 +1936,29 @@ export const commands = {
   checkAiConnection: (baseUrl: string, providerId: string) =>
     __TAURI_INVOKE<AiConnectionCheckResult>('check_ai_connection', { baseUrl, providerId }),
   /**
+   *  The cloud AI consent status. A missing or unreadable store reads as not accepted, so the gate
+   *  stays closed rather than failing open.
+   */
+  cloudAiConsentStatus: () => __TAURI_INVOKE<CloudAiConsentStatus>('cloud_ai_consent_status'),
+  /**
+   *  Record the user's "Allow cloud AI" (timestamp + copy version). Idempotent. ❌ Only the
+   *  switch's own click may call this: nothing else grants consent.
+   */
+  acceptCloudAiConsent: () => typedError<null, CloudAiConsentWriteError>(__TAURI_INVOKE('accept_cloud_ai_consent')),
+  /**
+   *  Turn cloud AI off: clear the record, then stop every in-flight cloud call (running Ask Cmdr
+   *  turns, rail and wake alike, and folder-suggestion streams). The cancel runs whether or not
+   *  the store took the clear: the user said "stop", and a refused write is held as a "no" by the
+   *  frontend, which closes every gate on the next check anyway. `ai.provider` stays as it is.
+   */
+  revokeCloudAiConsent: () => typedError<null, CloudAiConsentWriteError>(__TAURI_INVOKE('revoke_cloud_ai_consent')),
+  /**
+   *  Tell the cloud gates that a held "no" (`ai.cloudConsentRevokePending`) was just set or let go
+   *  of. No value crosses: the gates read `settings.json` themselves, so the frontend calls this
+   *  right after saving it. A newly held "no" stops in-flight calls exactly like a revoke.
+   */
+  cloudAiConsentRevokePendingChanged: () => __TAURI_INVOKE<void>('cloud_ai_consent_revoke_pending_changed'),
+  /**
    *  Returns system memory breakdown using macOS `host_statistics64` for accurate,
    *  non-overlapping categories (unlike `sysinfo` where used + available > total).
    */
@@ -1977,7 +2000,7 @@ export const commands = {
    *  Generates folder name suggestions for the given directory.
    *
    *  Suggestions are a nice-to-have enhancement: every "no backend" case (provider off,
-   *  missing key, local server not running) silently returns `Ok(Vec::new())`. UI hides
+   *  cloud AI not allowed, missing key, local server not running) silently returns `Ok(Vec::new())`. UI hides
    *  the feature instead of surfacing an error.
    */
   getFolderSuggestions: (listingId: string, currentPath: string, includeHidden: boolean) =>
@@ -4674,6 +4697,7 @@ export const events = {
   closeAllFileViewers: makeEvent<CloseAllFileViewers>('close-all-file-viewers'),
   closeConfirmation: makeEvent<CloseConfirmation>('close-confirmation'),
   closeFileViewer: makeEvent<CloseFileViewer>('close-file-viewer'),
+  cloudAiConsentChanged: makeEvent<CloudAiConsentChanged>('cloud-ai-consent-changed'),
   directoryDeleted: makeEvent<DirectoryDeletedEvent>('directory-deleted'),
   directoryDiff: makeEvent<DirectoryDiff>('directory-diff'),
   downloadDetected: makeEvent<DownloadDetectedEvent>('download-detected'),
@@ -4955,6 +4979,11 @@ export type AgentErrorKindView =
    */
   | 'noConsent'
   /**
+   *  Cloud AI is picked and the user hasn't allowed it ("Allow cloud AI" in Settings > AI).
+   *  View-only: the slot refuses before a thread exists (`session::SlotRefusal`).
+   */
+  | 'noCloudConsent'
+  /**
    *  The local server runs with a context window too small to hold one prompt, so the send
    *  was refused before it could be assembled against
    *  (`budget::BudgetRefusal::LocalWindowBelowFloor`). View-only: the runtime never produces
@@ -5048,6 +5077,8 @@ export type AiConnectionCheckResult = {
   authError: boolean
   models: string[]
   error: string | null
+  // The user hasn't allowed cloud AI, so nothing was sent. The other fields are empty.
+  cloudConsentMissing: boolean
 }
 
 export type AiExtracting = null
@@ -5126,6 +5157,8 @@ export type AiTranslateError = {
 export type AiTranslateErrorKind =
   // AI is turned off (`provider = "off"`).
   | 'off'
+  // Cloud AI is picked but the user hasn't allowed it in Settings > AI.
+  | 'noCloudConsent'
   // Provider is selected but not usable yet (no key, local server down, wrong provider).
   | 'notConfigured'
   // The provider rejected the API key (HTTP 401 / 403).
@@ -5787,6 +5820,38 @@ export type CloseConfirmation = null
 export type CloseFileViewer = {
   path: string | null
 }
+
+/**
+ *  Emitted after every consent write and every held-revoke change, so each window refreshes the
+ *  switch, the locked cloud setup, and the feature gates. No payload: listeners re-read the
+ *  status.
+ */
+export type CloudAiConsentChanged = null
+
+// Whether the user allowed cloud AI, and the audit of what they accepted.
+export type CloudAiConsentStatus = {
+  /**
+   *  True only when the user accepted the CURRENT `current_version` and no "no" is held for
+   *  the store: exactly what every cloud gate answers. The one flag the switch reads.
+   */
+  accepted: boolean
+  // The copy version the user must have accepted to be `accepted`.
+  currentVersion: number
+  // The version the user last accepted, or `None` if never.
+  acceptedVersion: number | null
+  // When the user last accepted (unix secs), or `None` if never.
+  acceptedAt: number | null
+}
+
+/**
+ *  Why a consent write didn't land. The frontend re-reads the status either way; this tells it
+ *  whether to retry or hold a "no".
+ */
+export type CloudAiConsentWriteError =
+  // The agent store never opened this launch, so there's nowhere to record anything.
+  | { kind: 'storeUnavailable' }
+  // `main.db` refused the write. `detail` is for logs only.
+  | { kind: 'storeRefused'; detail: string }
 
 /**
  *  Estimated compressed output size for a Compress operation, split by
@@ -15328,7 +15393,13 @@ export type WakePhase =
  *  serde derives on purpose: `readiness.rs` is values-in-values-out and knows nothing about a
  *  wire.
  */
-export type WakeReadinessView = 'ready' | 'needsConsent' | 'off' | 'needsFullDiskAccess' | 'needsApiKey'
+export type WakeReadinessView =
+  | 'ready'
+  | 'needsConsent'
+  | 'off'
+  | 'needsCloudConsent'
+  | 'needsFullDiskAccess'
+  | 'needsApiKey'
 
 /**
  *  How a live search's walk ended. Typed, because three of the four leave the

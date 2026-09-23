@@ -138,6 +138,9 @@ pub enum AgentErrorKindView {
     /// before touching a provider (the privacy line, enforced structurally, not just in the
     /// rail UI). Distinct from `NotConfigured` so the copy can say so honestly.
     NoConsent,
+    /// Cloud AI is picked and the user hasn't allowed it ("Allow cloud AI" in Settings > AI).
+    /// View-only: the slot refuses before a thread exists (`session::SlotRefusal`).
+    NoCloudConsent,
     /// The local server runs with a context window too small to hold one prompt, so the send
     /// was refused before it could be assembled against
     /// (`budget::BudgetRefusal::LocalWindowBelowFloor`). View-only: the runtime never produces
@@ -160,13 +163,14 @@ impl AgentErrorKindView {
     /// [`AgentErrorKind::as_token`] for every variant the two enums have in common (a test
     /// pins that). Both feed the SAME `failure` prop on `ask_cmdr_turn`, so a gate that
     /// tokenized differently either side of the turn boundary would be two numbers for one
-    /// thing. `NoConsent` and `LocalWindowTooSmall` are view-only: the runtime has no variant
-    /// for either, because the command layer refuses ahead of the turn.
+    /// thing. `NoConsent`, `NoCloudConsent`, and `LocalWindowTooSmall` are view-only: the
+    /// runtime has no variant for them, because the send refuses ahead of the turn.
     pub fn as_token(self) -> &'static str {
         match self {
             AgentErrorKindView::NoKey => "no_key",
             AgentErrorKindView::NotConfigured => "not_configured",
             AgentErrorKindView::NoConsent => "no_consent",
+            AgentErrorKindView::NoCloudConsent => "no_cloud_consent",
             AgentErrorKindView::LocalWindowTooSmall => "local_window_too_small",
             AgentErrorKindView::Unavailable => "unavailable",
             AgentErrorKindView::Timeout => "timeout",

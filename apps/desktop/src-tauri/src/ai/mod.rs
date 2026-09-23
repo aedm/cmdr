@@ -34,6 +34,7 @@ mod client_real_groq_test;
 mod client_real_openai_test;
 #[cfg(test)]
 mod client_streaming_test;
+pub mod cloud_consent;
 pub mod connection_check;
 // `pub(crate)`: the media-index CLIP model install reuses the resumable HTTP GET
 // (`download_file`) — the one piece of the AI install path that's genuinely generic

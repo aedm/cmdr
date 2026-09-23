@@ -42,10 +42,27 @@ pub struct AiBackend {
     log_ctx: Option<LlmLogContext>,
 }
 
+#[cfg(test)]
+impl AiBackend {
+    /// [`remote`](Self::remote) for tests outside `ai/` (live smoke tests, evals), which call a
+    /// provider directly and so have no consent to check.
+    pub(crate) fn remote_for_tests(api_key: String, base_url: String, model: String) -> Self {
+        Self::remote(api_key, base_url, model)
+    }
+
+    /// [`local`](Self::local) for tests outside `ai/`.
+    pub(crate) fn local_for_tests(port: u16) -> Self {
+        Self::local(port)
+    }
+}
+
 impl AiBackend {
     /// Local llama-server on `127.0.0.1:<port>`. Forces the OpenAI chat-completions
     /// adapter regardless of model name.
-    pub fn local(port: u16) -> Self {
+    ///
+    /// `pub(in crate::ai)`, like [`remote`](Self::remote): production code gets a backend only
+    /// from `manager::resolve_backend`, which is where cloud consent is enforced.
+    pub(in crate::ai) fn local(port: u16) -> Self {
         // Trailing slash is required: `genai` calls `Url::join("chat/completions")`,
         // which strips the last path segment when the base lacks `/`.
         let endpoint = format!("http://127.0.0.1:{port}/v1/");
@@ -65,7 +82,10 @@ impl AiBackend {
     /// `gemini-*` use their native protocols, `gpt-*` / `o*` / `chatgpt-*` use OpenAI (with
     /// `genai`'s gpt-5*/codex/pro → Responses-API auto-routing), and EVERYTHING ELSE is forced
     /// onto the OpenAI chat-completions adapter (see [`remote_model_iden`]).
-    pub fn remote(api_key: String, base_url: String, model: String) -> Self {
+    ///
+    /// ❌ `pub(in crate::ai)` on purpose: a cloud backend built outside `manager::resolve_backend`
+    /// would skip the cloud consent gate. Tests elsewhere use `remote_for_tests`.
+    pub(in crate::ai) fn remote(api_key: String, base_url: String, model: String) -> Self {
         // Without a trailing `/` the `Url::join` quirk above silently drops `/v1`.
         let endpoint = if base_url.ends_with('/') {
             base_url

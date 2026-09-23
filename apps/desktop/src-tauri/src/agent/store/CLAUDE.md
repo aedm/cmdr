@@ -11,6 +11,7 @@ proposal spine. Depth: `DETAILS.md`.
 - `query.rs` — conversations, messages, the FTS5 search + its input sanitizer, the cost meter. `AgentStore` (in
   `mod.rs`) owns the schema lifecycle; `agent::start` opens the DB and registers `AgentDb` in state.
 - `events.rs` — `ConversationEvent`, the timeline half of `messages`; `rows.rs` — the insert both writers share.
+- `consent.rs` — consent records in the `meta` table.
 - `proposals/` — the sweep / group / op spine and the claim transaction, its own C+D pair:
   `proposals/CLAUDE.md`. A producer's own per-op sidecar table lives with that producer (`proposal_rename_evidence` is
   `agent/tools/propose/rename/`'s), never as columns on the shared `proposal_ops`.
@@ -42,9 +43,7 @@ proposal spine. Depth: `DETAILS.md`.
   on `StoredContent` and decides what an event means. No `text_for_search`. ⚠️ Their limit: an outcome recorded only as
   an event teaches the agent nothing (`../outcomes.rs`). `last_model` (v2) + `last_chat_memory` (v9) power slot-change
   events; ❌ never stamp v3's `last_prompt_budget`, it's the gauge's (`DETAILS.md` § v9).
-- **Consent lives in the `meta` table, not a settings preference.** `get_consent`/`set_consent`/`clear_consent` own the
-  `ask_cmdr_consent_version` + `ask_cmdr_consent_at` rows; a partial or absent record reads as no consent, so the gate
-  fails CLOSED. The copy version belongs to `agent::consent::CONSENT_COPY_VERSION`, not here.
+- **Consent lives in `meta`, not a preference.** A partial or absent record reads as no consent: gates fail CLOSED.
 - **`conversation_cost` sums a thread's cost meter and ANDs `priced`** (any unpriced turn ⇒ `fully_priced = false`), so
   the footer stays honest: local ⇒ free, unpriced ⇒ unknown, never a silent $0. Pricing itself is
   `crate::agent::pricing`.

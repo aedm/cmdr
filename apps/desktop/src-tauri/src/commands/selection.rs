@@ -29,11 +29,12 @@ use crate::selection::history::{DEFAULT_MAX_COUNT, RECENT_SELECTIONS, SelectionH
 #[tauri::command]
 #[specta::specta]
 pub async fn translate_selection_query(
+    app: tauri::AppHandle,
     prompt: String,
     sample_names: Vec<String>,
     current_type: Option<bool>,
 ) -> Result<SelectionTranslateResult, AiTranslateError> {
-    let backend = crate::ai::manager::resolve_translate_backend(true)?
+    let backend = crate::ai::manager::resolve_translate_backend(&app, true)?
         .with_log_context(crate::ai::llm_log::LlmLogContext::translate_selection());
     let system_prompt = ai::build_classification_prompt(&sample_names, current_type);
 

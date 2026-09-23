@@ -62,6 +62,17 @@ fn no_consent_is_a_wire_only_kind_distinct_from_not_configured() {
     );
 }
 
+/// `NoCloudConsent` is the slot refusing because cloud AI isn't allowed: the backend refuses
+/// before a thread exists. Its own wire value, so the rail can point at the switch rather than
+/// at a setup that's already done.
+#[test]
+fn a_missing_cloud_consent_is_its_own_wire_kind() {
+    assert_eq!(
+        serde_json::to_value(AgentErrorKindView::NoCloudConsent).expect("serializes"),
+        "noCloudConsent"
+    );
+}
+
 /// `LocalWindowTooSmall` is the other wire-only kind: the command layer refuses a send whose
 /// local server runs with a window too small to hold one prompt, before a turn exists. It
 /// carries its own wire value so the copy can name the setting to change, rather than reading

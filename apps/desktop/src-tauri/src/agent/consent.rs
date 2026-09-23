@@ -51,7 +51,7 @@ impl RevokePending {
 /// consented", so a send is refused rather than proceeding on doubt.
 pub fn has_current_consent(conn: &Connection, revoke: RevokePending) -> bool {
     revoke == RevokePending::No
-        && matches!(store::get_consent(conn), Ok(Some(consent)) if consent.version == CONSENT_COPY_VERSION)
+        && matches!(store::get_consent(conn, store::ConsentRecord::AskCmdrLegacy), Ok(Some(consent)) if consent.version == CONSENT_COPY_VERSION)
 }
 
 #[cfg(test)]
@@ -77,7 +77,7 @@ mod tests {
     fn a_stale_copy_version_is_not_consented() {
         let conn = migrated_conn();
         // An older accepted version no longer counts once the copy (and the constant) moved on.
-        store::set_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set");
+        store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set");
         assert!(
             !has_current_consent(&conn, RevokePending::No),
             "a stale copy version ⇒ gate closed"
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn the_current_copy_version_is_consented() {
         let conn = migrated_conn();
-        store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set");
+        store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set");
         assert!(
             has_current_consent(&conn, RevokePending::No),
             "accepting the current copy ⇒ gate open"
@@ -98,7 +98,7 @@ mod tests {
     fn a_held_revoke_closes_the_gate_over_a_consent_the_store_still_records() {
         // The store refused the revoke, so the record is still there; the held "no" wins.
         let conn = migrated_conn();
-        store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set");
+        store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set");
         assert!(
             !has_current_consent(&conn, RevokePending::Yes),
             "a revoke held for the store ⇒ gate closed, whatever the store still says"

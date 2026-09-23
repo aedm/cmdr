@@ -47,7 +47,7 @@ fn opts() -> ChatOptions {
 /// production.
 async fn translate(prompt: &str, sample: &[&str]) -> SelectionTranslateResult {
     let api_key = api_key_or_skip().expect("OPENAI_API_KEY not set");
-    let backend = AiBackend::remote(api_key, BASE_URL.to_string(), MODEL.to_string());
+    let backend = AiBackend::remote_for_tests(api_key, BASE_URL.to_string(), MODEL.to_string());
 
     let sample: Vec<String> = sample.iter().map(|s| (*s).to_string()).collect();
     // The eval exercises the default "both" type context; type-specific intents are rare and

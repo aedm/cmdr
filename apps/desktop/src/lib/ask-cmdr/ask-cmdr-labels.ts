@@ -56,6 +56,8 @@ const ERROR_KEYS: Record<AskCmdrErrorKind, MessageKey> = {
   noKey: 'askCmdr.error.noKey',
   notConfigured: 'askCmdr.error.notConfigured',
   noConsent: 'askCmdr.error.noConsent',
+  // TODO(cloud-consent milestone 3): its own `askCmdr.error.noCloudConsent` copy.
+  noCloudConsent: 'askCmdr.error.notConfigured',
   localWindowTooSmall: 'askCmdr.error.localWindowTooSmall',
   unavailable: 'askCmdr.error.unavailable',
   timeout: 'askCmdr.error.timeout',

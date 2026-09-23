@@ -42,6 +42,16 @@ pub fn cancel_turn(conversation_id: i64) {
     }
 }
 
+/// Trip every in-flight turn, rail and wake alike: cloud AI was just turned off. Returns how
+/// many were tripped. Entries stay registered; each turn's own guard removes it as it winds down.
+pub fn cancel_all() -> usize {
+    let cancels = CANCELS.lock_ignore_poison();
+    for token in cancels.values() {
+        token.cancel();
+    }
+    cancels.len()
+}
+
 /// Unregister on drop, so a turn that returns early or panics can't leave a stale token behind
 /// for the next turn on the same thread to be cancelled by.
 pub struct CancelGuard(i64);
@@ -78,6 +88,20 @@ mod tests {
         cancel_turn(-9_001);
         assert!(token.is_cancelled());
         unregister_cancel(-9_001);
+    }
+
+    /// Turning cloud AI off stops every running turn at once, rail and wake alike, whatever
+    /// thread they belong to.
+    #[test]
+    fn cancel_all_trips_every_registered_turn() {
+        let first = register_cancel(-9_101);
+        let second = register_cancel(-9_102);
+
+        assert!(cancel_all() >= 2, "both turns were registered");
+        assert!(first.is_cancelled());
+        assert!(second.is_cancelled());
+        unregister_cancel(-9_101);
+        unregister_cancel(-9_102);
     }
 
     /// ⚠️ A turn that returned early must not leave its token behind: the next turn on the same

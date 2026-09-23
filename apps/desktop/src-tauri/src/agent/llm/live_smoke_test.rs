@@ -78,7 +78,7 @@ async fn run_one(backend: AiBackend, prompt: &str) -> String {
 async fn smoke_anthropic() {
     let key = env_or_skip("ANTHROPIC_API_KEY");
     // Reasoning is forced off for Anthropic in v1 (spike Gap A); a disablable model.
-    let backend = AiBackend::remote(
+    let backend = AiBackend::remote_for_tests(
         key,
         "https://api.anthropic.com/".into(),
         "claude-3-5-haiku-latest".into(),
@@ -91,7 +91,7 @@ async fn smoke_anthropic() {
 #[ignore = "real API call: set OPENAI_API_KEY to run"]
 async fn smoke_openai() {
     let key = env_or_skip("OPENAI_API_KEY");
-    let backend = AiBackend::remote(key, "https://api.openai.com/v1/".into(), "gpt-4o-mini".into());
+    let backend = AiBackend::remote_for_tests(key, "https://api.openai.com/v1/".into(), "gpt-4o-mini".into());
     let answer = run_one(backend, "Say hello.").await;
     assert!(!answer.trim().is_empty(), "expected a visible answer, got {answer:?}");
 }
@@ -100,7 +100,7 @@ async fn smoke_openai() {
 #[ignore = "real API call: set GEMINI_API_KEY to run"]
 async fn smoke_gemini() {
     let key = env_or_skip("GEMINI_API_KEY");
-    let backend = AiBackend::remote(
+    let backend = AiBackend::remote_for_tests(
         key,
         "https://generativelanguage.googleapis.com/".into(),
         "gemini-2.5-flash".into(),
@@ -115,7 +115,7 @@ async fn smoke_local() {
     let port: u16 = env_or_skip("LLAMA_PORT")
         .parse()
         .expect("LLAMA_PORT must be a port number");
-    let backend = AiBackend::local(port);
+    let backend = AiBackend::local_for_tests(port);
     let answer = run_one(backend, "Say hello.").await;
     assert!(!answer.trim().is_empty(), "expected a visible answer, got {answer:?}");
 }

@@ -26,6 +26,7 @@ const NEEDS_FULL_DISK_ACCESS: u8 = 1;
 const NEEDS_API_KEY: u8 = 2;
 const READY: u8 = 3;
 const OFF: u8 = 4;
+const NEEDS_CLOUD_CONSENT: u8 = 5;
 
 /// Starts closed. Before `agent::start` has run there is no store to read consent from, and
 /// "we haven't looked yet" must not read as "the user said yes".
@@ -38,6 +39,7 @@ fn as_code(readiness: WakeReadiness) -> u8 {
         WakeReadiness::NeedsApiKey => NEEDS_API_KEY,
         WakeReadiness::Ready => READY,
         WakeReadiness::Off => OFF,
+        WakeReadiness::NeedsCloudConsent => NEEDS_CLOUD_CONSENT,
     }
 }
 
@@ -47,6 +49,7 @@ fn from_code(code: u8) -> WakeReadiness {
         NEEDS_API_KEY => WakeReadiness::NeedsApiKey,
         READY => WakeReadiness::Ready,
         OFF => WakeReadiness::Off,
+        NEEDS_CLOUD_CONSENT => WakeReadiness::NeedsCloudConsent,
         // Anything unrecognized is the closed answer, which is also the initial one.
         _ => WakeReadiness::NeedsConsent,
     }
@@ -114,9 +117,10 @@ fn provider_gate<R: Runtime>(app: &AppHandle<R>) -> ProviderGate {
     }
     use crate::ai::manager::BackendResolution;
     let model_override = crate::settings::load_ask_cmdr_interactive_model(app);
-    match crate::ai::manager::resolve_backend_with_model(model_override.as_deref()) {
+    match crate::ai::manager::resolve_backend_with_model(app, model_override.as_deref()) {
         BackendResolution::Ready(_) => ProviderGate::Ready,
         BackendResolution::Off => ProviderGate::Off,
+        BackendResolution::NoCloudConsent => ProviderGate::NeedsCloudConsent,
         BackendResolution::NotConfigured(_) | BackendResolution::UnknownProvider(_) => ProviderGate::NotConfigured,
     }
 }
@@ -133,6 +137,7 @@ mod tests {
             WakeReadiness::Ready,
             WakeReadiness::NeedsConsent,
             WakeReadiness::Off,
+            WakeReadiness::NeedsCloudConsent,
             WakeReadiness::NeedsFullDiskAccess,
             WakeReadiness::NeedsApiKey,
         ] {

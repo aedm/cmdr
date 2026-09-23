@@ -15,7 +15,8 @@ use tauri::{AppHandle, Manager};
 
 use super::budget;
 use super::context::{ContextEnvelope, EnvelopeAttachment, EnvelopeConnectivity, EnvelopeFreshness, EnvelopeVolume};
-use super::runtime::{AgentErrorKind, now_secs};
+use super::runtime::now_secs;
+use super::stream::AgentErrorKindView;
 use crate::agent::llm::AgentLlm;
 use crate::agent::llm::fake::FakeAgentLlm;
 use crate::agent::llm::genai_impl::GenaiAgentLlm;
@@ -65,17 +66,39 @@ pub enum AgentSlot {
     Wake,
 }
 
+/// Why the slot can't resolve to an LLM. Decided before a thread exists, so it never reaches the
+/// turn runtime; the command layer maps it onto its wire refusal ([`SlotRefusal::view`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlotRefusal {
+    /// "AI off", a blank cloud key, a stopped local server, or an unknown provider: nothing is
+    /// configured to talk to. The settings surface disambiguates.
+    NotConfigured,
+    /// Cloud AI is picked, and the user hasn't allowed it (`ai::cloud_consent`).
+    NoCloudConsent,
+}
+
+impl SlotRefusal {
+    /// The wire kind the rail renders. A method here rather than a `From` beside the view type:
+    /// `stream` must not depend on `session`, or the two close a module cycle through `runtime`.
+    pub fn view(self) -> AgentErrorKindView {
+        match self {
+            SlotRefusal::NotConfigured => AgentErrorKindView::NotConfigured,
+            SlotRefusal::NoCloudConsent => AgentErrorKindView::NoCloudConsent,
+        }
+    }
+}
+
 /// Resolve the Ask Cmdr interactive slot into a ready LLM. The slot layers a dedicated
 /// model choice (`askCmdr.interactiveModel`, read fresh) OVER the shared `ai/` provider
 /// config (agent decision D43): provider on/off, keys, and base URLs stay single-sourced in
 /// `ai/`; only the model is slot-specific, so the bulk slot slots in later with no
 /// migration (D49). An empty override uses the model the `ai/` provider is configured with.
-/// Returns the backend plus the provider/model the cost meter records, or a typed error
-/// when AI is off/unconfigured.
+/// Returns the backend plus the provider/model the cost meter records, or a typed refusal
+/// when AI is off, unconfigured, or cloud AI isn't allowed.
 pub fn resolve_agent_llm(
     app: &AppHandle,
     slot: AgentSlot,
-) -> Result<(ResolvedAgentLlm, ProviderTag, String), AgentErrorKind> {
+) -> Result<(ResolvedAgentLlm, ProviderTag, String), SlotRefusal> {
     // E2E harness path: drive a deterministic scripted assistant with zero network, so the
     // rail's send-and-render can be tested without a provider. Guarded by an explicit env
     // flag so it never activates in a normal run.
@@ -88,16 +111,16 @@ pub fn resolve_agent_llm(
     }
     let model_override = crate::settings::load_ask_cmdr_interactive_model(app);
     use crate::ai::manager::BackendResolution;
-    match crate::ai::manager::resolve_backend_with_model(model_override.as_deref()) {
+    match crate::ai::manager::resolve_backend_with_model(app, model_override.as_deref()) {
         BackendResolution::Ready(backend) => {
             let (provider, model) = provider_and_model(model_override.as_deref());
             Ok((ResolvedAgentLlm::Genai(backend), provider, model))
         }
-        // "AI off", a blank cloud key, or a stopped local server all read the same to the
-        // rail: nothing is configured to talk to. The settings surface disambiguates.
         BackendResolution::Off | BackendResolution::NotConfigured(_) | BackendResolution::UnknownProvider(_) => {
-            Err(AgentErrorKind::NotConfigured)
+            Err(SlotRefusal::NotConfigured)
         }
+        // Refused before a thread exists: nothing reaches a cloud service the user didn't allow.
+        BackendResolution::NoCloudConsent => Err(SlotRefusal::NoCloudConsent),
     }
 }
 
@@ -312,4 +335,23 @@ fn to_envelope_volume(summary: &VolumeSummary) -> EnvelopeVolume {
 /// The local UTC offset now, for rendering timestamps in the user's timezone.
 pub fn local_offset() -> FixedOffset {
     *Local::now().offset()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A slot refusal reaches the rail as its OWN wire kind: a missing cloud consent must not
+    /// read as "set up a provider" to somebody whose provider is set up.
+    #[test]
+    fn each_slot_refusal_maps_to_its_own_wire_kind() {
+        assert_eq!(
+            serde_json::to_value(SlotRefusal::NoCloudConsent.view()).expect("serializes"),
+            "noCloudConsent"
+        );
+        assert_eq!(
+            serde_json::to_value(SlotRefusal::NotConfigured.view()).expect("serializes"),
+            "notConfigured"
+        );
+    }
 }

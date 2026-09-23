@@ -132,7 +132,7 @@ pub fn validate_params(name: &str, params: &Value) -> Result<(), ToolError> {
 ///
 /// - `app_params` — `handler(app, params).await` (async; most tools).
 /// - `app_only` — `handler(app).await` (async; no params: `toggle_hidden`, `mkdir`, …).
-/// - `params_only` — `handler(params).await` (async; no `app`: `search`, `ai_search`).
+/// - `params_only` — `handler(params).await` (async; no `app`: `search`, `favorites`, …).
 /// - `sync_app` — `handler(app)` (sync; `quit`, `switch_pane`, `swap_panes`).
 /// - `sync_app_params` — `handler(app, params)` (sync; `remove_manual_server`).
 /// - `nav` / `nav_params` — `handler(app, name)` / `handler(app, name, params)` for the nav

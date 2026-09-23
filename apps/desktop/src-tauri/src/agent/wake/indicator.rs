@@ -74,6 +74,7 @@ pub enum WakeReadinessView {
     Ready,
     NeedsConsent,
     Off,
+    NeedsCloudConsent,
     NeedsFullDiskAccess,
     NeedsApiKey,
 }
@@ -84,6 +85,7 @@ impl From<WakeReadiness> for WakeReadinessView {
             WakeReadiness::Ready => Self::Ready,
             WakeReadiness::NeedsConsent => Self::NeedsConsent,
             WakeReadiness::Off => Self::Off,
+            WakeReadiness::NeedsCloudConsent => Self::NeedsCloudConsent,
             WakeReadiness::NeedsFullDiskAccess => Self::NeedsFullDiskAccess,
             WakeReadiness::NeedsApiKey => Self::NeedsApiKey,
         }

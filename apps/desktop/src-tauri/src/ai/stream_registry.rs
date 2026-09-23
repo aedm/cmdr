@@ -38,3 +38,36 @@ pub fn cancel_stream(request_id: &str) {
         token.cancel();
     }
 }
+
+/// Cancel and remove every registered stream: cloud AI was just turned off. Returns how many
+/// were cancelled.
+pub(super) fn cancel_all() -> usize {
+    let drained: Vec<CancellationToken> = STREAM_CANCEL_TOKENS
+        .lock_ignore_poison()
+        .drain()
+        .map(|(_, t)| t)
+        .collect();
+    for token in &drained {
+        token.cancel();
+    }
+    drained.len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Turning cloud AI off stops every open suggestion stream at once. The registry is a
+    /// process-global, so the ids are deliberately unlike the UUIDs the app uses.
+    #[test]
+    fn cancel_all_trips_every_registered_stream() {
+        let first = register_stream("cancel-all-test-1");
+        let second = register_stream("cancel-all-test-2");
+
+        assert!(cancel_all() >= 2, "both streams were registered");
+        assert!(first.is_cancelled());
+        assert!(second.is_cancelled());
+        unregister_stream("cancel-all-test-1");
+        unregister_stream("cancel-all-test-2");
+    }
+}

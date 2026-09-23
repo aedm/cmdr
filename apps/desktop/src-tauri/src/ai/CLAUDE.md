@@ -14,20 +14,21 @@ The local-AI lifecycle is split by concern around ONE shared singleton: `state.r
 state. `download.rs` / `extract.rs` / `process.rs` are its stateless leaves.
 
 Cloud-side: `client.rs` is the `genai` chat client (`AiBackend`), tapped for logging into `llm_log/CLAUDE.md`;
-`api_keys.rs`, `suggestions.rs`, `translate_error.rs`, and the test-only `smoke_providers.rs` sit beside it. Per-file
-detail: DETAILS.md.
+`cloud_consent.rs` ("Allow cloud AI"), `api_keys.rs`, `suggestions.rs`, `translate_error.rs`, and the test-only
+`smoke_providers.rs` sit beside it. Per-file detail: DETAILS.md.
 
 ## Must-knows
 
+- **Every LLM backend comes from `resolve_backend(app)`, which enforces cloud consent**; `AiBackend::remote` stays
+  `pub(in crate::ai)`. Bump `CLOUD_AI_CONSENT_VERSION` on a material copy change. DETAILS.md § Cloud AI consent.
 - **Only local AI requires Apple Silicon.** Cloud AI (BYOK) works on Intel too, so gate only local-specific paths
   (`start_ai_server`, `start_ai_download`, `compute_ai_status`'s `Offer` branch) on `is_local_ai_supported()`. Gating
   `Offer` wrong offers Intel users a model they can't run.
 - **Unrecognized model names fall onto OpenAI chat-completions, never Ollama.** `remote_model_iden` forces everything
   that isn't `claude-*` / `gemini-*` onto `openai::`; `genai`'s own default is its Ollama adapter, which 404s against an
   OpenAI endpoint.
-- **A stored API key never crosses IPC to a webview.** `configure_ai` / `check_ai_connection` take a PROVIDER ID and
-  read it backend-side; `get_ai_api_key_status` returns is-set + a fingerprint. ❌ Never add a key-returning command or
-  key param back. `docs/security.md` § "AI API keys".
+- **A stored API key never crosses IPC to a webview.** Commands take a PROVIDER ID and read it backend-side. ❌ Never
+  add a key-returning command or key param back. `docs/security.md` § "AI API keys".
 - **Don't relax the `http://` base-URL gate.** `validate_ai_base_url` rejects plaintext `http://` to a non-loopback
   host when a key is set, blocking exfil to a malicious "free proxy". Loopback keeps `http://` (Ollama/LM Studio), and
   an empty key is allowed. The rejection IS the gate, not a warning.
@@ -43,14 +44,14 @@ detail: DETAILS.md.
 - **Process spawn + `child_pid` assignment must be synchronous inside the MANAGER lock** (`spawn_and_track_server`):
   an async spawn orphans llama-servers on rapid provider switching. Keep `wait_for_server_health`'s cleanup, which
   stops the process on timeout or early death.
-- **Two install flags both required**: `AiState.installed` AND `AiState.model_download_complete`, the second set only
-  after file-size verification, so a truncated 2 GB download never launches llama-server.
-- **`configure_ai` must NOT block**; blocking freezes the frontend on startup. Its health check, and
-  `start_ai_server`, use `tauri::async_runtime::spawn` (not `tokio::spawn`): both may run before tokio is ready.
+- **Two install flags both required** (`installed` AND size-verified `model_download_complete`), so a truncated
+  download never launches llama-server.
+- **`configure_ai` must NOT block** (it freezes startup). It and `start_ai_server` use `tauri::async_runtime::spawn`,
+  not `tokio::spawn`: both may run before tokio is ready.
 - **Cancellation needs the explicit `cancel_folder_suggestions` command** + `CancellationToken`, never `Channel::send`
   failure: `send` succeeds silently after the JS handler is GC'd, so the backend streams on (billing cloud, pegging
   local compute) past dialog close.
-- **`get_folder_suggestions` returns `Ok(Vec::new())` on AI errors**, not `Err` (folder suggestions are nice-to-have).
+- **`get_folder_suggestions` returns `Ok(Vec::new())` on AI errors** (folder suggestions are nice-to-have).
 
 Architecture, flows, and decision detail: `DETAILS.md`. Read it before any non-trivial work here: editing,
 planning, reorganizing, or advising.

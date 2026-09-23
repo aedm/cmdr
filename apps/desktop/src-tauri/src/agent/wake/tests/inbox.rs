@@ -694,6 +694,7 @@ fn a_closable_gap_or_a_flipped_switch_keeps_the_backlog() {
     for readiness in [
         WakeReadiness::Ready,
         WakeReadiness::Off,
+        WakeReadiness::NeedsCloudConsent,
         WakeReadiness::NeedsFullDiskAccess,
         WakeReadiness::NeedsApiKey,
     ] {

@@ -21,6 +21,8 @@ use super::client::AiError;
 pub enum AiTranslateErrorKind {
     /// AI is turned off (`provider = "off"`).
     Off,
+    /// Cloud AI is picked but the user hasn't allowed it in Settings > AI.
+    NoCloudConsent,
     /// Provider is selected but not usable yet (no key, local server down, wrong provider).
     NotConfigured,
     /// The provider rejected the API key (HTTP 401 / 403).
@@ -110,6 +112,15 @@ mod tests {
         for (err, expected) in cases {
             assert_eq!(AiTranslateError::from(err).kind, expected);
         }
+    }
+
+    /// The frontend branches on this token (`translate-error-toast.ts`), so it's pinned here.
+    #[test]
+    fn no_cloud_consent_crosses_ipc_as_its_own_token() {
+        assert_eq!(
+            serde_json::to_value(AiTranslateErrorKind::NoCloudConsent).expect("serializes"),
+            serde_json::json!("noCloudConsent")
+        );
     }
 
     #[test]

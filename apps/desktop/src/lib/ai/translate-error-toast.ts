@@ -20,6 +20,7 @@ export type AiTranslateThrown = Error & { kind: AiTranslateErrorKind }
 
 const ALL_KINDS: ReadonlySet<string> = new Set<AiTranslateErrorKind>([
   'off',
+  'noCloudConsent',
   'notConfigured',
   'authFailed',
   'rateLimited',
@@ -64,6 +65,9 @@ export function aiTranslateErrorToast(kind: AiTranslateErrorKind): AiTranslateTo
         body: tString('ai.translateError.off.body'),
         level: 'warn',
       }
+    // TODO(cloud-consent milestone 4): `noCloudConsent` gets its own copy and an "Open AI settings"
+    // action. Until then it reads as the not-set-up case, which points at the same settings page.
+    case 'noCloudConsent':
     case 'notConfigured':
       return {
         title: tString('ai.translateError.notConfigured.title'),

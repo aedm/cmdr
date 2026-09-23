@@ -315,6 +315,10 @@ macro_rules! ipc_command_manifest {
                     // configure_ai, start_ai_server, start_ai_download are generic (<R: Runtime>): excluded
                     crate::ai::server::stop_ai_server,
                     crate::ai::connection_check::check_ai_connection,
+                    crate::ai::cloud_consent::cloud_ai_consent_status,
+                    crate::ai::cloud_consent::accept_cloud_ai_consent,
+                    crate::ai::cloud_consent::revoke_cloud_ai_consent,
+                    crate::ai::cloud_consent::cloud_ai_consent_revoke_pending_changed,
                     crate::system_memory::get_system_memory_info,
                     crate::system_strings::get_localized_system_strings,
                     crate::intl::get_os_locales,
@@ -1119,6 +1123,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             AiInstalling,
             AiInstallComplete,
             AiExtracting,
+            crate::ai::cloud_consent::CloudAiConsentChanged,
             // Appearance / system (system_events.rs, menu/menu_handlers.rs,
             // commands/ui.rs, downloads/global_shortcut.rs). Scalar emits got
             // wrapped in named structs; the drag structs live in the always-compiled

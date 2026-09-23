@@ -160,6 +160,9 @@ fn current_unix_seconds() -> u64 {
 pub enum BackendResolution {
     /// `provider = "off"`: AI features are turned off.
     Off,
+    /// `provider = "cloud"`, but the user hasn't turned on "Allow cloud AI" (or turned it off).
+    /// Decided before any key or endpoint check: consent precedes setup.
+    NoCloudConsent,
     /// Provider is set but missing config (e.g. local server not running, cloud key blank).
     /// Includes a human-readable reason suitable for error toasts.
     NotConfigured(&'static str),
@@ -169,15 +172,22 @@ pub enum BackendResolution {
     UnknownProvider(String),
 }
 
-pub fn resolve_backend() -> BackendResolution {
+/// The ONE place an LLM backend comes from, and so the one place cloud consent is enforced
+/// (`super::cloud_consent`). Taking the app handle is what makes that structural: no caller can
+/// resolve a backend without the consent read, and `AiBackend::remote` is private to `ai/`.
+/// Consent is read only when the provider is cloud, and outside the `MANAGER` lock.
+pub fn resolve_backend<R: Runtime>(app: &AppHandle<R>) -> BackendResolution {
+    let provider = get_provider();
+    let cloud_consent = provider == "cloud" && super::cloud_consent::cloud_consent_from_app(app);
     let (api_key, base_url, model) = get_cloud_config();
     resolve_backend_inner(
-        &get_provider(),
+        &provider,
         get_port(),
         api_key,
         base_url,
         model,
         super::state::get_cloud_requires_api_key(),
+        cloud_consent,
     )
 }
 
@@ -185,10 +195,10 @@ pub fn resolve_backend() -> BackendResolution {
 /// resolved CLOUD backend — the Ask Cmdr interactive slot's own model choice. `None` (or a
 /// local provider, whose model is fixed) resolves exactly like [`resolve_backend`]. The
 /// slot layers a model choice OVER the shared `ai/` provider config (readiness, keys, base
-/// URL, on/off all come from `resolve_backend`), so it never forks provider management
+/// URL, consent, on/off all come from `resolve_backend`), so it never forks provider management
 /// (agent decision D49).
-pub fn resolve_backend_with_model(model_override: Option<&str>) -> BackendResolution {
-    let base = resolve_backend();
+pub fn resolve_backend_with_model<R: Runtime>(app: &AppHandle<R>, model_override: Option<&str>) -> BackendResolution {
+    let base = resolve_backend(app);
     match model_override {
         Some(model) if !model.is_empty() && get_provider() == "cloud" => match base {
             // Rebuild the ready cloud backend with the slot's model; the adapter is still
@@ -216,6 +226,10 @@ impl BackendResolution {
                 K::Off,
                 "AI is not configured. Enable an AI provider in settings.",
             )),
+            BackendResolution::NoCloudConsent => Err(AiTranslateError::new(
+                K::NoCloudConsent,
+                "Cloud AI isn't allowed in Settings > AI.",
+            )),
             BackendResolution::NotConfigured(reason) => Err(AiTranslateError::new(K::NotConfigured, reason)),
             BackendResolution::UnknownProvider(p) => Err(AiTranslateError::new(
                 K::UnknownProvider,
@@ -232,6 +246,10 @@ impl BackendResolution {
             BackendResolution::Ready(b) => Some(b),
             BackendResolution::Off => {
                 log::debug!("{context}: provider is off, returning empty");
+                None
+            }
+            BackendResolution::NoCloudConsent => {
+                log::debug!("{context}: cloud AI isn't allowed, returning empty");
                 None
             }
             BackendResolution::NotConfigured(reason) => {
@@ -255,19 +273,25 @@ impl BackendResolution {
 /// `ai.provider !== 'cloud'`, so this gate is the belt-and-braces check for a
 /// misconfigured frontend or an automation caller. Because a non-cloud provider
 /// (including `off`) is rejected here, the cloud path only ever reaches
-/// [`BackendResolution::into_translate_result`] with `Ready`/`NotConfigured`.
-pub fn resolve_translate_backend(cloud_only: bool) -> Result<super::client::AiBackend, AiTranslateError> {
+/// [`BackendResolution::into_translate_result`] with `Ready`/`NoCloudConsent`/`NotConfigured`.
+pub fn resolve_translate_backend<R: Runtime>(
+    app: &AppHandle<R>,
+    cloud_only: bool,
+) -> Result<super::client::AiBackend, AiTranslateError> {
     if cloud_only && get_provider() != "cloud" {
         return Err(AiTranslateError::new(
             AiTranslateErrorKind::NotConfigured,
             "AI selection needs a cloud provider. Set one in Settings > AI.",
         ));
     }
-    resolve_backend().into_translate_result()
+    resolve_backend(app).into_translate_result()
 }
 
 /// Pure provider-resolution decision, split out so the global `MANAGER` lock doesn't have to
 /// participate in tests (mirrors `compute_ai_status`).
+///
+/// Cloud consent is checked FIRST for cloud, before the key and endpoint: nothing about the
+/// service matters until the user allowed sending to it. Local and off ignore it.
 ///
 /// The empty-key → `NotConfigured` gate applies ONLY when the provider needs a key
 /// (`requires_api_key`). Keyless OpenAI-compatible endpoints (Ollama, LM Studio, a custom
@@ -279,6 +303,7 @@ fn resolve_backend_inner(
     base_url: String,
     model: String,
     requires_api_key: bool,
+    cloud_consent: bool,
 ) -> BackendResolution {
     match provider {
         "off" => BackendResolution::Off,
@@ -287,7 +312,9 @@ fn resolve_backend_inner(
             None => BackendResolution::NotConfigured("Local AI server isn't running. Start it in settings."),
         },
         "cloud" => {
-            if requires_api_key && api_key.is_empty() {
+            if !cloud_consent {
+                BackendResolution::NoCloudConsent
+            } else if requires_api_key && api_key.is_empty() {
                 BackendResolution::NotConfigured("Cloud AI API key not configured. Add it in settings.")
             } else if base_url.is_empty() {
                 BackendResolution::NotConfigured("Cloud AI endpoint not configured. Add it in settings.")
@@ -469,11 +496,11 @@ mod tests {
     #[test]
     fn resolve_off_and_unknown_provider() {
         assert!(matches!(
-            resolve_backend_inner("off", None, String::new(), String::new(), String::new(), true),
+            resolve_backend_inner("off", None, String::new(), String::new(), String::new(), true, true),
             BackendResolution::Off
         ));
         assert!(matches!(
-            resolve_backend_inner("bogus", None, String::new(), String::new(), String::new(), true),
+            resolve_backend_inner("bogus", None, String::new(), String::new(), String::new(), true, true),
             BackendResolution::UnknownProvider(p) if p == "bogus"
         ));
     }
@@ -481,11 +508,19 @@ mod tests {
     #[test]
     fn resolve_local_needs_a_running_port() {
         assert!(matches!(
-            resolve_backend_inner("local", None, String::new(), String::new(), String::new(), false),
+            resolve_backend_inner("local", None, String::new(), String::new(), String::new(), false, true),
             BackendResolution::NotConfigured(_)
         ));
         assert!(matches!(
-            resolve_backend_inner("local", Some(8080), String::new(), String::new(), String::new(), false),
+            resolve_backend_inner(
+                "local",
+                Some(8080),
+                String::new(),
+                String::new(),
+                String::new(),
+                false,
+                true
+            ),
             BackendResolution::Ready(_)
         ));
     }
@@ -501,6 +536,7 @@ mod tests {
                 String::from("https://api.openai.com/v1"),
                 String::from("gpt-4o-mini"),
                 true,
+                true,
             ),
             BackendResolution::NotConfigured(_)
         ));
@@ -512,6 +548,7 @@ mod tests {
                 String::from("sk-key"),
                 String::from("https://api.openai.com/v1"),
                 String::from("gpt-4o-mini"),
+                true,
                 true,
             ),
             BackendResolution::Ready(_)
@@ -530,6 +567,7 @@ mod tests {
                 String::from("http://localhost:11434/v1"),
                 String::from("llama3.2"),
                 false,
+                true,
             ),
             BackendResolution::Ready(_)
         ));
@@ -542,6 +580,7 @@ mod tests {
                 String::from("https://my-proxy.example.com/v1"),
                 String::from("some-model"),
                 false,
+                true,
             ),
             BackendResolution::Ready(_)
         ));
@@ -552,9 +591,91 @@ mod tests {
         // Keyless provider but no base URL yet (e.g. custom before the user types one): there's
         // nothing to connect to, so it's genuinely not configured.
         assert!(matches!(
-            resolve_backend_inner("cloud", None, String::new(), String::new(), String::new(), false),
+            resolve_backend_inner("cloud", None, String::new(), String::new(), String::new(), false, true),
             BackendResolution::NotConfigured(_)
         ));
+    }
+
+    // --- cloud AI consent: checked for cloud only, before any key or endpoint ---
+
+    fn cloud_ready_inputs(consented: bool) -> BackendResolution {
+        resolve_backend_inner(
+            "cloud",
+            None,
+            String::from("sk-key"),
+            String::from("https://api.openai.com/v1"),
+            String::from("gpt-4o-mini"),
+            true,
+            consented,
+        )
+    }
+
+    #[test]
+    fn cloud_without_consent_refuses_even_when_fully_configured() {
+        assert!(matches!(cloud_ready_inputs(false), BackendResolution::NoCloudConsent));
+    }
+
+    #[test]
+    fn cloud_with_consent_is_ready() {
+        assert!(matches!(cloud_ready_inputs(true), BackendResolution::Ready(_)));
+    }
+
+    /// Consent precedes setup: an unconfigured cloud provider without consent names the consent
+    /// gap, not the missing key.
+    #[test]
+    fn cloud_without_consent_or_key_names_the_consent_gap() {
+        assert!(matches!(
+            resolve_backend_inner("cloud", None, String::new(), String::new(), String::new(), true, false),
+            BackendResolution::NoCloudConsent
+        ));
+    }
+
+    /// Local AI never leaves the Mac, so it needs no consent.
+    #[test]
+    fn local_needs_no_cloud_consent() {
+        assert!(matches!(
+            resolve_backend_inner(
+                "local",
+                Some(8080),
+                String::new(),
+                String::new(),
+                String::new(),
+                false,
+                false
+            ),
+            BackendResolution::Ready(_)
+        ));
+    }
+
+    #[test]
+    fn off_is_off_whatever_the_consent() {
+        for consented in [true, false] {
+            assert!(matches!(
+                resolve_backend_inner(
+                    "off",
+                    None,
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                    true,
+                    consented
+                ),
+                BackendResolution::Off
+            ));
+        }
+    }
+
+    #[test]
+    fn a_missing_consent_maps_to_its_own_translate_kind() {
+        let Err(err) = BackendResolution::NoCloudConsent.into_translate_result() else {
+            panic!("a refused resolution must not translate to a backend");
+        };
+        assert_eq!(err.kind, AiTranslateErrorKind::NoCloudConsent);
+    }
+
+    #[test]
+    fn a_missing_consent_is_a_quiet_empty_for_nice_to_have_features() {
+        assert!(BackendResolution::NoCloudConsent.ready_or_log("test").is_none());
     }
 
     #[test]

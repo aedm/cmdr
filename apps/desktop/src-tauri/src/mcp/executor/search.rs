@@ -282,10 +282,26 @@ fn build_search_query_from_translate(
     }
 }
 
+/// The tool error for a translate refusal, chosen by the TYPED kind (no string-matching): the
+/// not-set-up and not-allowed cases get a clear, actionable message instead of the
+/// error-copy-rule-banned "failed".
+fn translate_refusal(e: &crate::ai::AiTranslateError) -> ToolError {
+    use crate::ai::translate_error::AiTranslateErrorKind as K;
+    match e.kind {
+        K::Off | K::NotConfigured => ToolError::invalid_params(
+            "AI isn't set up yet. Configure an AI provider in Settings > AI, then run ai_search again.",
+        ),
+        // Only the user can allow it, in the app: an MCP client can't flip this switch.
+        K::NoCloudConsent => ToolError::invalid_params("Cloud AI isn't allowed in Cmdr's settings.")
+            .with_data(serde_json::json!({ "reason": "cloudAiNotAllowed" })),
+        _ => ToolError::internal(format!("AI search couldn't run: {}", e.message)),
+    }
+}
+
 /// Execute the `ai_search` tool.
 ///
 /// Single-pass flow: translate natural language → structured query → search.
-pub async fn execute_ai_search(params: &Value) -> ToolResult {
+pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, params: &Value) -> ToolResult {
     let natural_query = params.get("query").and_then(|v| v.as_str()).ok_or_else(|| {
         log::warn!("MCP ai_search: missing 'query' parameter, returning error");
         ToolError::invalid_params("Missing 'query' parameter")
@@ -302,30 +318,21 @@ pub async fn execute_ai_search(params: &Value) -> ToolResult {
     log::debug!("MCP ai_search: calling translate_search_query");
     let t = std::time::Instant::now();
     // MCP has no dialog type-toggle context; pass `None` (both files and folders).
-    let translate_result = match crate::commands::search::translate_search_query(natural_query.to_string(), None).await
-    {
-        Ok(tr) => {
-            log::info!(
-                "MCP ai_search: translate_search_query succeeded in {:.1}s, pattern={:?}",
-                t.elapsed().as_secs_f64(),
-                tr.query.name_pattern
-            );
-            tr
-        }
-        Err(e) => {
-            log::warn!("MCP ai_search: translate returned {:?}: {e}", e.kind);
-            // Branch on the TYPED kind (no string-matching): the not-set-up cases get a
-            // clear, actionable message instead of the error-copy-rule-banned "failed".
-            use crate::ai::translate_error::AiTranslateErrorKind as K;
-            return match e.kind {
-                K::Off | K::NotConfigured => Err(ToolError::invalid_params(
-                    "AI isn't set up yet. Configure an AI provider in Settings > AI, then run ai_search again."
-                        .to_string(),
-                )),
-                _ => Err(ToolError::internal(format!("AI search couldn't run: {}", e.message))),
-            };
-        }
-    };
+    let translate_result =
+        match crate::commands::search::translate_search_query_with(app, natural_query.to_string(), None).await {
+            Ok(tr) => {
+                log::info!(
+                    "MCP ai_search: translate_search_query succeeded in {:.1}s, pattern={:?}",
+                    t.elapsed().as_secs_f64(),
+                    tr.query.name_pattern
+                );
+                tr
+            }
+            Err(e) => {
+                log::warn!("MCP ai_search: translate returned {:?}: {e}", e.kind);
+                return Err(translate_refusal(&e));
+            }
+        };
 
     let query = build_search_query_from_translate(&translate_result, scope_str, limit);
 
@@ -413,6 +420,16 @@ mod tests {
         assert_eq!(wait_budget(&json!({ "maxWaitSeconds": 45 })), Duration::from_secs(45));
         assert_eq!(wait_budget(&json!({ "maxWaitSeconds": 0 })), Duration::from_secs(1));
         assert_eq!(wait_budget(&json!({ "maxWaitSeconds": 9_000 })), search::AGENT_WAIT_MAX);
+    }
+
+    /// An MCP client can't flip the cloud AI switch, so it gets a typed answer it can act on
+    /// (tell the user) rather than a sentence to parse.
+    #[test]
+    fn a_missing_cloud_consent_is_a_typed_refusal_for_the_client() {
+        use crate::ai::{AiTranslateError, AiTranslateErrorKind};
+        let err = translate_refusal(&AiTranslateError::new(AiTranslateErrorKind::NoCloudConsent, "detail"));
+        assert_eq!(err.code, ToolError::invalid_params("").code);
+        assert_eq!(err.data, Some(json!({ "reason": "cloudAiNotAllowed" })));
     }
 
     #[test]

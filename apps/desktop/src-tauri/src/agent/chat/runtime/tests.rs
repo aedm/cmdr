@@ -596,7 +596,7 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
         !has_current_consent(&conn, RevokePending::No),
         "no consent record ⇒ gate closed"
     );
-    store::set_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set stale consent");
+    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set stale consent");
     assert!(
         !has_current_consent(&conn, RevokePending::No),
         "a stale copy version ⇒ gate closed"
@@ -618,7 +618,7 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
     assert!(llm.calls_seen().is_empty(), "a refused send makes ZERO LLM calls");
 
     // Accepting the CURRENT copy opens the gate; the send then drives the LLM once.
-    store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
+    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
     assert!(
         has_current_consent(&conn, RevokePending::No),
         "current consent ⇒ gate open"
@@ -659,7 +659,7 @@ async fn a_held_revoke_keeps_a_send_from_the_llm_while_the_store_still_records_c
     let (tx, _rx) = unbounded_channel();
 
     // The consent the refused revoke couldn't clear.
-    store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
+    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
 
     if has_current_consent(&conn, RevokePending::Yes) {
         run_turn(

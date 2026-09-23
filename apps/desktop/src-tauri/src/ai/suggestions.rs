@@ -24,11 +24,12 @@ const SUGGESTION_SYSTEM_PROMPT: &str = "You are a pattern-matching assistant. Ca
 /// Generates folder name suggestions for the given directory.
 ///
 /// Suggestions are a nice-to-have enhancement: every "no backend" case (provider off,
-/// missing key, local server not running) silently returns `Ok(Vec::new())`. UI hides
+/// cloud AI not allowed, missing key, local server not running) silently returns `Ok(Vec::new())`. UI hides
 /// the feature instead of surfacing an error.
 #[tauri::command]
 #[specta::specta]
 pub async fn get_folder_suggestions(
+    app: tauri::AppHandle,
     listing_id: String,
     current_path: String,
     include_hidden: bool,
@@ -39,7 +40,7 @@ pub async fn get_folder_suggestions(
         current_path
     );
 
-    let Some(backend) = super::manager::resolve_backend().ready_or_log("AI suggestions") else {
+    let Some(backend) = super::manager::resolve_backend(&app).ready_or_log("AI suggestions") else {
         return Ok(Vec::new());
     };
 
@@ -262,6 +263,7 @@ impl<'a> StreamingSanitizer<'a> {
 /// requires it. See `ai/CLAUDE.md` § Decisions.
 #[tauri::command]
 pub async fn stream_folder_suggestions(
+    app: tauri::AppHandle,
     request_id: String,
     listing_id: String,
     current_path: String,
@@ -282,7 +284,7 @@ pub async fn stream_folder_suggestions(
     }
     let _guard = UnregisterGuard(&request_id);
 
-    let Some(backend) = super::manager::resolve_backend().ready_or_log("AI suggestions stream") else {
+    let Some(backend) = super::manager::resolve_backend(&app).ready_or_log("AI suggestions stream") else {
         let _ = on_event.send(SuggestionStreamEvent::Done);
         return Ok(());
     };

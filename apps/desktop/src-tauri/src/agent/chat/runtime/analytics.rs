@@ -269,6 +269,7 @@ mod tests {
     #[test]
     fn the_pre_turn_only_gates_have_their_own_tokens() {
         assert_eq!(AgentErrorKindView::NoConsent.as_token(), "no_consent");
+        assert_eq!(AgentErrorKindView::NoCloudConsent.as_token(), "no_cloud_consent");
         assert_eq!(
             AgentErrorKindView::LocalWindowTooSmall.as_token(),
             "local_window_too_small"

@@ -15,6 +15,7 @@
 //! write-connection lifetime.
 
 mod connection;
+mod consent;
 mod events;
 mod inbox;
 mod migrations;
@@ -28,16 +29,21 @@ use rusqlite::{Connection, ErrorCode};
 
 pub use connection::open_read_connection;
 pub(crate) use connection::open_write_connection;
+#[cfg(test)]
+pub(crate) use consent::set_legacy_ask_cmdr_consent_for_tests;
+pub use consent::{
+    ConsentRecord, ConsentRecordView, clear_ask_cmdr_consent, clear_cloud_ai_consent, get_consent,
+    set_ask_cmdr_consent, set_cloud_ai_consent,
+};
 pub use events::{ConversationEvent, append_event};
 pub use inbox::{StoredInboxRow, clear_inbox, load_inbox, load_inbox_row, replace_inbox, upsert_inbox_row};
 pub use migrations::{MIGRATIONS, Migration, run_migrations};
 pub use query::{
-    AskCmdrConsent, ConversationCost, ConversationDetail, ConversationRow, ConversationSearchHit, CostDay, CostRecord,
-    CostSummary, StoredContent, StoredMessage, append_message, archive_conversation, clear_consent,
-    conversation_context_usage, conversation_cost, conversation_last_chat_memory, conversation_last_model,
-    cost_summary, create_conversation, delete_conversation, discard_conversation_keeping_cost, get_consent,
-    get_conversation, list_conversations, list_messages, proactive_tokens_for_day, quiet_wakes_conversation,
-    record_cost, rename_conversation, sanitize_fts_query, search_conversations, set_consent,
+    ConversationCost, ConversationDetail, ConversationRow, ConversationSearchHit, CostDay, CostRecord, CostSummary,
+    StoredContent, StoredMessage, append_message, archive_conversation, conversation_context_usage, conversation_cost,
+    conversation_last_chat_memory, conversation_last_model, cost_summary, create_conversation, delete_conversation,
+    discard_conversation_keeping_cost, get_conversation, list_conversations, list_messages, proactive_tokens_for_day,
+    quiet_wakes_conversation, record_cost, rename_conversation, sanitize_fts_query, search_conversations,
     set_conversation_context_usage, set_conversation_last_chat_memory, set_conversation_last_model,
 };
 

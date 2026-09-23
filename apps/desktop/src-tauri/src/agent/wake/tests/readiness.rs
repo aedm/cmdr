@@ -73,6 +73,49 @@ fn ai_being_off_outranks_the_gaps_it_would_make_pointless() {
     assert_eq!(readiness(off_and_blind), WakeReadiness::Off);
 }
 
+/// **Cloud AI not allowed is an answer too, and it comes right after `Off`.** The user picked a
+/// cloud service and hasn't allowed sending to it, so asking them for disk access or a key for a
+/// service they may never allow is noise. `Off` still outranks it: a user who turned AI off has
+/// nothing to allow.
+#[test]
+fn a_missing_cloud_consent_outranks_disk_access_and_the_key() {
+    let not_allowed = AgentGates {
+        fda_pending: true,
+        provider: ProviderGate::NeedsCloudConsent,
+        ..ready()
+    };
+
+    assert_eq!(readiness(not_allowed), WakeReadiness::NeedsCloudConsent);
+}
+
+/// `Off` and `NeedsCloudConsent` come from the same provider gate, so they can't both hold; the
+/// order that matters is against Ask Cmdr's own switch, which outranks the cloud one.
+#[test]
+fn ask_cmdr_being_off_outranks_a_missing_cloud_consent() {
+    let both = AgentGates {
+        consented: false,
+        provider: ProviderGate::NeedsCloudConsent,
+        ..ready()
+    };
+
+    assert_eq!(readiness(both), WakeReadiness::NeedsConsent);
+}
+
+/// **Without cloud consent nothing new is stored, and nothing runs, but the backlog stays.** Like
+/// `Off`: the rows were gathered while cloud AI was allowed (or on a local provider), and turning
+/// the switch off is something the user can flip straight back.
+#[test]
+fn a_missing_cloud_consent_stores_nothing_new_and_keeps_the_backlog() {
+    let not_allowed = readiness(AgentGates {
+        provider: ProviderGate::NeedsCloudConsent,
+        ..ready()
+    });
+
+    assert!(!not_allowed.admits_to_inbox());
+    assert!(not_allowed.permits_stored_signal());
+    assert!(!not_allowed.may_wake());
+}
+
 /// Disk access outranks the key, because it decides whether the agent can SEE anything. A user
 /// told to configure a key, who then finds the agent has nothing to say because it cannot read
 /// the flagship folder, has been sent round the houses.
@@ -170,6 +213,7 @@ fn only_a_ready_agent_may_wake() {
     for gap in [
         WakeReadiness::NeedsConsent,
         WakeReadiness::Off,
+        WakeReadiness::NeedsCloudConsent,
         WakeReadiness::NeedsFullDiskAccess,
         WakeReadiness::NeedsApiKey,
     ] {

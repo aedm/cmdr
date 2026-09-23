@@ -233,30 +233,66 @@ fn agent_role_tokens_round_trip_and_are_unique() {
     assert_token_round_trip(&roles, |r| r.as_token(), AgentRole::from_token);
 }
 
-/// Consent round-trips through the `meta` table: absent → recorded (version + timestamp) →
-/// cleared. A partial/absent record reads as no consent, so the gate stays closed.
+/// Cloud AI consent round-trips through the `meta` table: absent → recorded (version +
+/// timestamp) → cleared. A partial/absent record reads as no consent, so the gate stays closed.
 #[test]
-fn consent_round_trips() {
+fn cloud_ai_consent_round_trips() {
     let dir = tempfile::tempdir().expect("temp dir");
     let store = AgentStore::open(&main_db_path(dir.path())).expect("open");
     let conn = store.conn();
 
-    assert!(get_consent(conn).expect("read").is_none(), "no consent on a fresh DB");
+    assert!(
+        get_consent(conn, ConsentRecord::CloudAi).expect("read").is_none(),
+        "no consent on a fresh DB"
+    );
 
-    set_consent(conn, 1, 1_760_000_000).expect("record consent");
-    let recorded = get_consent(conn).expect("read").expect("consent present");
+    set_cloud_ai_consent(conn, 1, 1_760_000_000).expect("record consent");
+    let recorded = get_consent(conn, ConsentRecord::CloudAi)
+        .expect("read")
+        .expect("consent present");
     assert_eq!(recorded.version, 1);
     assert_eq!(recorded.at, 1_760_000_000);
 
     // Re-accepting a newer copy version overwrites in place.
-    set_consent(conn, 2, 1_760_000_100).expect("re-record");
-    assert_eq!(get_consent(conn).expect("read").expect("present").version, 2);
+    set_cloud_ai_consent(conn, 2, 1_760_000_100).expect("re-record");
+    assert_eq!(
+        get_consent(conn, ConsentRecord::CloudAi)
+            .expect("read")
+            .expect("present")
+            .version,
+        2
+    );
 
-    clear_consent(conn).expect("clear");
+    clear_cloud_ai_consent(conn).expect("clear");
     assert!(
-        get_consent(conn).expect("read").is_none(),
+        get_consent(conn, ConsentRecord::CloudAi).expect("read").is_none(),
         "cleared consent reads absent"
     );
+}
+
+/// The legacy Ask Cmdr record is a separate pair of keys that nothing writes any more: recording
+/// and clearing cloud consent leaves it exactly as it was, and the legacy read still sees it (the
+/// one-time Ask Cmdr on/off mapping depends on that).
+#[test]
+fn cloud_ai_consent_leaves_the_legacy_ask_cmdr_record_untouched() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let store = AgentStore::open(&main_db_path(dir.path())).expect("open");
+    let conn = store.conn();
+
+    set_legacy_ask_cmdr_consent_for_tests(conn, 4, 1_750_000_000);
+    assert!(
+        get_consent(conn, ConsentRecord::CloudAi).expect("read").is_none(),
+        "an Ask Cmdr opt-in grants no cloud consent"
+    );
+
+    set_cloud_ai_consent(conn, 1, 1_760_000_000).expect("record cloud consent");
+    clear_cloud_ai_consent(conn).expect("clear cloud consent");
+
+    let legacy = get_consent(conn, ConsentRecord::AskCmdrLegacy)
+        .expect("read")
+        .expect("legacy record still there");
+    assert_eq!(legacy.version, 4);
+    assert_eq!(legacy.at, 1_750_000_000);
 }
 
 /// The per-conversation cost total sums across days/models, ANDs the priced flag (any

@@ -4,6 +4,11 @@
 //! `/models` endpoint and guards the user's API key against plaintext exfiltration
 //! before any request carries it in an `Authorization: Bearer` header. No
 //! `ManagerState` access — every input is an explicit argument.
+//!
+//! The probe carries no user data, but it does reach the service, so it's gated on cloud
+//! consent (`super::cloud_consent`) like every LLM call: nothing reaches a cloud AI service
+//! until the user allows it. It's gated whatever `ai.provider` says, since the only thing it
+//! ever probes is a cloud endpoint being set up.
 
 use regex::Regex;
 use std::borrow::Cow;
@@ -17,6 +22,8 @@ pub struct AiConnectionCheckResult {
     pub auth_error: bool,
     pub models: Vec<String>,
     pub error: Option<String>,
+    /// The user hasn't allowed cloud AI, so nothing was sent. The other fields are empty.
+    pub cloud_consent_missing: bool,
 }
 
 /// Checks connectivity to the given provider's AI API endpoint.
@@ -26,9 +33,28 @@ pub struct AiConnectionCheckResult {
 /// which surfaces as the auth error it effectively is.
 #[tauri::command]
 #[specta::specta]
-pub async fn check_ai_connection(base_url: String, provider_id: String) -> AiConnectionCheckResult {
+pub async fn check_ai_connection(
+    app: tauri::AppHandle,
+    base_url: String,
+    provider_id: String,
+) -> AiConnectionCheckResult {
+    if let Some(refused) = refuse_without_consent(super::cloud_consent::cloud_consent_from_app(&app)) {
+        return refused;
+    }
     let (api_key, _) = super::api_keys::read_for_backend(&provider_id);
     probe_ai_endpoint(base_url, api_key).await
+}
+
+/// The consent half of [`check_ai_connection`], pure so it's testable: `Some` answer when cloud
+/// AI isn't allowed, `None` to go ahead and probe.
+fn refuse_without_consent(cloud_consent: bool) -> Option<AiConnectionCheckResult> {
+    (!cloud_consent).then(|| AiConnectionCheckResult {
+        connected: false,
+        auth_error: false,
+        models: vec![],
+        error: None,
+        cloud_consent_missing: true,
+    })
 }
 
 /// Probes GET {base_url}/models with an explicit key. Returns connection status, auth status, and
@@ -42,6 +68,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             auth_error: false,
             models: vec![],
             error: Some(message),
+            cloud_consent_missing: false,
         };
     }
 
@@ -58,6 +85,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
                 auth_error: false,
                 models: vec![],
                 error: Some(format!("Can't create HTTP client: {e}")),
+                cloud_consent_missing: false,
             };
         }
     };
@@ -82,6 +110,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
                 auth_error: false,
                 models: vec![],
                 error: Some(msg),
+                cloud_consent_missing: false,
             };
         }
     };
@@ -94,6 +123,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             auth_error: true,
             models: vec![],
             error: Some(String::from("API key is invalid")),
+            cloud_consent_missing: false,
         };
     }
 
@@ -106,6 +136,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             auth_error: false,
             models,
             error: None,
+            cloud_consent_missing: false,
         };
     }
 
@@ -117,6 +148,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
         auth_error: false,
         models: vec![],
         error: Some(format!("HTTP {status}: {body_preview}")),
+        cloud_consent_missing: false,
     }
 }
 
@@ -212,6 +244,23 @@ fn scrub_bearer_tokens(text: &str) -> Cow<'_, str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Without cloud consent the check answers at once, typed, and reaches nothing: no key read,
+    /// no URL validation, no client, no request.
+    #[test]
+    fn without_cloud_consent_the_check_refuses_before_any_request() {
+        let refused = refuse_without_consent(false).expect("no consent ⇒ a refusal");
+        assert!(refused.cloud_consent_missing);
+        assert!(!refused.connected);
+        assert!(!refused.auth_error);
+        assert!(refused.models.is_empty());
+        assert_eq!(refused.error, None, "a typed flag, not a sentence");
+    }
+
+    #[test]
+    fn with_cloud_consent_the_check_goes_ahead() {
+        assert!(refuse_without_consent(true).is_none());
+    }
 
     #[test]
     fn truncate_body_preview_is_char_safe_on_multibyte_boundary() {

@@ -37,6 +37,8 @@
 pub enum ProviderGate {
     /// `ai.provider = "off"`: the user turned AI off.
     Off,
+    /// A cloud provider is picked and the user hasn't allowed cloud AI (`ai::cloud_consent`).
+    NeedsCloudConsent,
     /// A provider is picked but would refuse a send: a blank key, a local server that is not up, an
     /// unrecognized provider id.
     NotConfigured,
@@ -69,6 +71,10 @@ pub enum WakeReadiness {
     /// The user turned AI off. Nothing new may be stored and nothing may run, and there is nothing
     /// to ask them for: they already answered. What was stored while AI was on stays.
     Off,
+    /// A cloud provider is picked and cloud AI isn't allowed. Like `Off`: nothing new may be
+    /// stored and nothing may run, what's stored stays, and the corner is silent (the switch is
+    /// the user's answer to give, in Settings).
+    NeedsCloudConsent,
     /// Signal may accumulate, but a digest built now would describe a fraction of the truth:
     /// the flagship scenario reads TCC-protected ground the indexer is not walking yet.
     NeedsFullDiskAccess,
@@ -87,7 +93,10 @@ impl WakeReadiness {
     /// opted in and left AI on, the gap is one they can close, and the backlog waiting for them is
     /// theirs.
     pub fn admits_to_inbox(self) -> bool {
-        !matches!(self, WakeReadiness::NeedsConsent | WakeReadiness::Off)
+        !matches!(
+            self,
+            WakeReadiness::NeedsConsent | WakeReadiness::Off | WakeReadiness::NeedsCloudConsent
+        )
     }
 
     /// Whether what is ALREADY stored may be kept.
@@ -113,6 +122,8 @@ pub fn readiness(gates: AgentGates) -> WakeReadiness {
         WakeReadiness::NeedsConsent
     } else if gates.provider == ProviderGate::Off {
         WakeReadiness::Off
+    } else if gates.provider == ProviderGate::NeedsCloudConsent {
+        WakeReadiness::NeedsCloudConsent
     } else if gates.fda_pending {
         WakeReadiness::NeedsFullDiskAccess
     } else if gates.provider != ProviderGate::Ready {

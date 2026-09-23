@@ -200,7 +200,7 @@ pub async fn ask_cmdr_send_message(
     // no thread.
     let (llm_kind, provider, model) = match resolve_agent_llm(&app, AgentSlot::Rail) {
         Ok(resolved) => resolved,
-        Err(kind) => return Err(AskCmdrSendRefusal::of(kind.into())),
+        Err(refusal) => return Err(AskCmdrSendRefusal::of(refusal.view())),
     };
 
     // Resolve the budget before a thread exists, so a local server too small to hold one

@@ -241,10 +241,21 @@ pub struct TranslateResult {
 #[tauri::command]
 #[specta::specta]
 pub async fn translate_search_query(
+    app: tauri::AppHandle,
     natural_query: String,
     current_type: Option<bool>,
 ) -> Result<TranslateResult, AiTranslateError> {
-    let backend = crate::ai::manager::resolve_translate_backend(false)?
+    translate_search_query_with(&app, natural_query, current_type).await
+}
+
+/// [`translate_search_query`] for any runtime: the MCP `ai_search` tool drives the same cloud
+/// call, so it resolves the backend (and so the cloud consent gate) the same way.
+pub async fn translate_search_query_with<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    natural_query: String,
+    current_type: Option<bool>,
+) -> Result<TranslateResult, AiTranslateError> {
+    let backend = crate::ai::manager::resolve_translate_backend(app, false)?
         .with_log_context(crate::ai::llm_log::LlmLogContext::translate_search());
     let system_prompt = ai::build_classification_prompt(current_type);
 
