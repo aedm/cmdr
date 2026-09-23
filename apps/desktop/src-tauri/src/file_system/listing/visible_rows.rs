@@ -118,7 +118,7 @@ impl VisibleMap {
         for (index, entry) in entries.iter().enumerate() {
             #[cfg(test)]
             scan_probe::record();
-            if !include_hidden && entry.is_hidden {
+            if !shown_by_setting(entry, include_hidden) {
                 continue;
             }
             if staging::could_be_hidden_from_listings(&entry.name) {
@@ -134,6 +134,19 @@ impl VisibleMap {
         settled.shrink_to_fit();
         Self { settled, candidates }
     }
+}
+
+/// Whether a pane with this `include_hidden` shows `entry` right now: THE
+/// visibility predicate, the one the row map is built from. Hidden means
+/// `FileEntry::is_hidden` (a dotfile, macOS's `UF_HIDDEN` flag, `/.hidden` at a
+/// volume root), never a name test; scratch hides whatever the setting.
+pub(crate) fn shows(entry: &FileEntry, include_hidden: bool) -> bool {
+    shown_by_setting(entry, include_hidden) && !staging::is_hidden_from_listings(&entry.name)
+}
+
+/// The half of [`shows`] that can't change while the entry sits unchanged.
+fn shown_by_setting(entry: &FileEntry, include_hidden: bool) -> bool {
+    include_hidden || !entry.is_hidden
 }
 
 /// One reader's view of a listing's rows: the settled map, plus the candidates
@@ -210,6 +223,33 @@ impl<'a> VisibleRows<'a> {
         }
         let entry_index = *self.map().settled.get(row.checked_sub(ahead)?)?;
         self.entries.get(entry_index as usize)
+    }
+
+    /// How many rows the pane shows above `entries[entry_index]`, whether or not
+    /// it shows that entry itself. Also where an entry inserted at `entry_index`
+    /// lands, if the pane shows it. Two binary searches.
+    pub(crate) fn rows_before(&self, entry_index: usize) -> usize {
+        let settled = self
+            .map()
+            .settled
+            .partition_point(|&index| (index as usize) < entry_index);
+        let live = self
+            .live
+            .partition_point(|candidate| (candidate.entry_index as usize) < entry_index);
+        settled + live
+    }
+
+    /// The row showing `entries[entry_index]`, or `None` when the pane leaves it out.
+    pub(crate) fn row_of_entry(&self, entry_index: usize) -> Option<usize> {
+        let entry = self.entries.get(entry_index)?;
+        let shown = if staging::could_be_hidden_from_listings(&entry.name) {
+            self.live
+                .binary_search_by_key(&entry_index, |candidate| candidate.entry_index as usize)
+                .is_ok()
+        } else {
+            self.map().settled.binary_search(&(entry_index as u32)).is_ok()
+        };
+        shown.then(|| self.rows_before(entry_index))
     }
 
     /// Every shown entry, in row order.

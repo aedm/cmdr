@@ -31,7 +31,7 @@ pub use metadata::{ExtendedMetadata, FileEntry};
 pub use operations::{
     ListingStartResult, ListingStats, ResortResult, RowBeside, find_file_index, find_file_indices, get_file_at,
     get_file_beside, get_file_range, get_listing_stats, get_total_count, list_directory_end,
-    list_directory_start_with_volume, refresh_listing_index_sizes, resort_listing,
+    list_directory_start_with_volume, refresh_listing_index_sizes, resort_listing, set_listing_include_hidden,
 };
 pub use reading::{ListingTally, get_single_entry, list_directory_core, list_directory_core_with_tally};
 pub use sorting::{DirectorySortMode, SortColumn, SortOrder};
@@ -42,9 +42,10 @@ pub use operations::{get_files_at_indices, get_paths_at_indices};
 
 // Internal re-exports for file_system module internals (pub(crate) for crate-internal use)
 pub(crate) use caching::{
-    ModifyResult, find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry,
-    increment_sequence, insert_entry_sorted, remove_entries_by_paths, update_entry_sorted,
+    find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry, increment_sequence,
+    insert_entry_sorted, remove_entries_by_paths, update_entry_sorted,
 };
+pub(crate) use diff::listing_changed;
 pub(crate) use orphan_reaper::start_orphan_listing_reaper;
 // Notification API for volume mutations
 pub(crate) use cached_listing::OverlayRows;
@@ -86,6 +87,8 @@ mod mtp_listing_path_test;
 mod operations_test;
 #[cfg(test)]
 mod overlay_refresh_test;
+#[cfg(test)]
+mod pane_diff_test;
 #[cfg(test)]
 mod path_index_test;
 #[cfg(test)]

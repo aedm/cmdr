@@ -203,6 +203,50 @@ caller that reads a single shallow row per mutation and nothing else is the shap
 accident. `find_file_indices` is the batch form of the first, and `get_file_beside` exists so a caller wanting a
 neighbour doesn't compose two calls; reach for those instead of a loop.
 
+## Diffs speak the pane's rows
+
+A `directory-diff` index is a row of the pane showing the listing, the same space `get_file_range` reads, ❌ never an
+index into `entries`. The pane's rows are `CachedListing::pane_rows()`: the row map at the listing's own
+`include_hidden`, recorded at `list_directory_start` and updated by `set_listing_include_hidden`, which the pane calls
+first thing in `hidden-files-resync.ts` (after every load and every toggle). It's per listing, and each pane holds its
+own listing, so two panes on one folder each get their own rows.
+
+**The rule: the cache takes every change; the pane hears only the rows it shows.** An entry the pane shows on neither
+side of a change (a dotfile, `~/Library`'s `UF_HIDDEN` flag, in-flight scratch) updates the cache and emits nothing, so
+turning hidden files on later shows fresh data at once. One it shows on one side only arrives as a remove (it turned
+hidden, or went) or an add (it turned visible, or came). One it shows on both is a modify or a move. A change with no
+visible part queues nothing, so no event and no sequence bump.
+
+**Why.** Two costs of reporting entry indices. The idle one: on a pane on `~`, dotfile writes produce a diff about
+every 10 s, in bursts, and each one cost the webview a count, range, stats, and column-width refetch with nothing
+visible to change, even with hidden files off (most of WebContent's idle CPU after the index-size work, GitHub #92).
+The correctness one: the pane reads the index as a row, so with hidden entries sorted above a change, the cursor and
+selection slid a row off on every add or remove (`pane_diff_test::a_removal_reports_the_row_it_left` reported entry 3
+for row 1).
+
+**How.**
+
+- The single-entry helpers (`insert_entry_sorted`, `remove_entries_by_paths`, `remove_entry_by_name`,
+  `update_entry_sorted`) return `PaneRows { before, after }`, read off the row map as it stood BEFORE their own patch and
+  under the same write lock (`VisibleRows::rows_before` / `row_of_entry`, two binary searches). ❗ Reading after the patch
+  would rebuild the map per patch, once per add in a burst. `DiffChange::for_pane` turns the pair into a change or none.
+- The batch re-reads (`publish_replacement`, the watcher's `handle_directory_change`) diff the SHOWN rows of old and new
+  with `compute_diff(old, new, include_hidden)`, so moves are judged among the pane's rows alone, and decide the cache
+  write separately with `listing_changed`: an empty pane diff can still owe the cache a hidden entry's news.
+- `visible_rows::shows` is the one predicate, the same one the row map is built from. ❌ No name test anywhere.
+- `is_entry_modified` counts `is_hidden`: with hidden files shown the row dims, and a `chflags hidden` reaching a full
+  re-read would otherwise leave the cache holding the old flag.
+- A toggle drops what's queued for the listing: it's numbered in the old row space, the pane re-reads its count and
+  cursor right after, and the cache already holds every change.
+
+**Everything else a hidden change could reach, checked:** the status bar's counts and sizes sum the pane's rows; the
+`..` row and folder sizes come over `listing-index-sizes-changed`, not this event; Brief column widths measure the
+pane's rows; the cursor and selection sit on shown rows, and an entry that turns hidden reaches them as a removal.
+
+**Known gap**: the Ask Cmdr bulk-rename review listens to every `directory-diff` by filename to recheck clashes. A
+hidden destination name (a rename to a dotfile) appearing or vanishing externally, in a folder whose pane hides hidden
+files, no longer triggers that recheck; the write engine's exclusive final rename still refuses the clash.
+
 ## Entries by path (path_index.rs)
 
 The other index space a caller arrives with. A row number comes from the pane; a PATH comes from anything that read the
@@ -379,7 +423,8 @@ loudly, so `sorting::tests::apply_permutation_moves_each_row_to_its_destination`
   before it tells the pane, so `get_listing_stats` stays read-only and sees up-to-date `recursive_size`. A whole-volume
   update runs the full `refresh_listing_index_sizes` re-enrich instead.
 - **Hidden-file filtering in Rust, not the frontend**: visible count is unknown until all files are read. APIs accept
-  `include_hidden: bool` and read through the listing's row map (§ "Row numbers").
+  `include_hidden: bool` and read through the listing's row map (§ "Row numbers"); `directory-diff` events use the
+  listing's own recorded setting (§ "Diffs speak the pane's rows").
 - **The listing read commands are `async`**: a sync `#[tauri::command]` runs on the MAIN thread in Tauri 2, so one slow
   accessor stops the app answering IPC at all, which is principle 2's "never block the main thread" broken at the IPC
   layer. `refresh_listing_index_sizes` goes one further onto the blocking pool, because it runs two indexed SQLite
@@ -424,8 +469,9 @@ Used by the watcher's incremental path and synthetic mkdir to patch listings wit
   (cheap clone for a flat `Vec<FileEntry>`, < 5 ms for 15k entries; matters because otherwise the volume call holds the
   cache lock across an await and blocks pane navigation). See the freshness-contract section in `volume/CLAUDE.md` for
   per-backend debounce windows callers must tolerate.
-- `insert_entry_sorted(listing_id, entry)`: inserts in sorted position, returns the insertion index.
-- `remove_entries_by_paths(listing_id, paths)`: removes by exact file-path match, returning `(pre-removal index,
+- `insert_entry_sorted(listing_id, entry)`: inserts in sorted position, returns the pane rows (`PaneRows`, § "Diffs
+  speak the pane's rows"). All four patch helpers here answer in pane rows.
+- `remove_entries_by_paths(listing_id, paths)`: removes by exact file-path match, returning `(pre-removal pane rows,
   entry)` highest-index-first. Used by the local FSEvents incremental path, where the event path shares the entries'
   path space. ❗ There is no single-path form: that caller is always a batch, and looping one was a quadratic. See
   § "Entries by path".
@@ -436,7 +482,7 @@ Used by the watcher's incremental path and synthetic mkdir to patch listings wit
   absolute `mtp://…` URL, so a full-path match never matched and `notify_mutation(Deleted)` silently no-oped (moved or
   deleted MTP files lingered in the source pane until a manual refresh).
 - `update_entry_sorted(listing_id, entry)`: updates an existing entry (remove + re-insert if sort position changed),
-  returns `ModifyResult`.
+  returns the pane rows before and after; a pair that differs is a `Move`.
 - `has_entry(listing_id, path)`: whether a path exists in the cached listing (classifies watcher events add vs modify).
 - `get_listing_path(listing_id)`: the directory path for a listing (filters watcher events to direct children).
 
@@ -568,7 +614,7 @@ away.
 
 **Why it's safe**: only the IPC emit is deferred. Cache mutations stay synchronous and inline at the call site, so
 `get_file_range` always sees the latest entries. Per-change `index` values stay correct because each producer computes
-them against the cache state at the moment it mutates.
+them against the pane's rows at the moment it mutates.
 
 **Cleanup**: `list_directory_end` calls `diff_emitter::drop_pending(listing_id)` so an in-flight buffer for a closed
 listing doesn't fire a trailing event. The E2E `flush_all_watchers` helper (`#[cfg(feature = "playwright-e2e")]`) also

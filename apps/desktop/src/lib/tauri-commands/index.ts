@@ -16,6 +16,7 @@ export {
   getPathsAtIndices,
   getFilesAtIndices,
   listDirectoryEnd,
+  setListingIncludeHidden,
   refreshListing,
   getListingStats,
   refreshListingIndexSizes,

@@ -96,6 +96,7 @@ pub async fn list_directory_start_with_volume(
         volume_id.to_string(),
         path.to_path_buf(),
         all_entries,
+        include_hidden,
         sort_by,
         sort_order,
         dir_sort_mode,
@@ -140,6 +141,26 @@ pub fn list_directory_end(listing_id: &str) {
     // reconciles against listing-cache membership, so releasing while the entry
     // is still there lets a racing arm re-take what this just gave back.
     crate::listing_lifecycle::listing_closed(listing_id);
+}
+
+/// Records the hidden-files setting of the pane showing `listing_id`, the row
+/// space its `directory-diff` events speak from here on.
+///
+/// A change drops what's queued for the listing: it was numbered in the old row
+/// space, and the pane re-reads its count and rows after the toggle anyway. The
+/// cache already holds every one of those changes, so nothing is lost.
+pub fn set_listing_include_hidden(listing_id: &str, include_hidden: bool) -> Result<(), String> {
+    let changed = {
+        let mut cache = LISTING_CACHE.write().map_err(|_| "Failed to acquire cache lock")?;
+        let listing = cache
+            .get_mut(listing_id)
+            .ok_or_else(|| format!("Listing not found: {}", listing_id))?;
+        listing.set_include_hidden(include_hidden)
+    };
+    if changed {
+        crate::file_system::listing::diff_emitter::drop_pending(listing_id);
+    }
+    Ok(())
 }
 
 // ============================================================================

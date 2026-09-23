@@ -11,20 +11,13 @@ use cmdr_fs::volume::WatchCoverage;
 
 use crate::file_system::listing::cached_listing::OverlayRows;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE, ListingPath};
+use crate::file_system::listing::diff::{DiffChange, PaneRows, compute_diff, listing_changed};
+use crate::file_system::listing::diff_emitter::enqueue_diff;
 use crate::file_system::listing::metadata::{FileEntry, TagRef};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, entry_comparator};
+use crate::file_system::listing::visible_rows::shows;
 use crate::file_system::volume::manager::RoutedKind;
 pub use cmdr_fs::volume::DirectoryChange;
-
-/// Result of updating an entry in-place or moving it to a new sorted position.
-#[derive(Debug)]
-pub enum ModifyResult {
-    /// Entry was updated without changing its sorted position.
-    UpdatedInPlace { index: usize },
-    /// Entry was removed from `old_index` and re-inserted at `new_index` because sort-relevant
-    /// fields changed.
-    Moved { old_index: usize, new_index: usize },
-}
 
 /// Lightweight summary of one cached listing, for `snapshot_listings`.
 pub struct ListingSummary {
@@ -148,9 +141,14 @@ pub(crate) fn find_listings_on_volume(
 /// Inserts a `FileEntry` into a cached listing at the correct sorted position.
 ///
 /// Uses `partition_point` with the listing's sort comparator to find the insertion index.
-/// Returns the insertion index, or `None` if the listing wasn't found or the entry
-/// already exists (checked by path).
-pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<usize> {
+/// Returns the row the pane shows it on (`after: None` when the pane doesn't show
+/// it), or `None` if the listing wasn't found or the entry already exists (checked
+/// by path).
+///
+/// ❗ Every helper here reads the pane's rows off the map as it stood BEFORE its own
+/// patch, while that map is still standing: the patch drops it, and rebuilding it
+/// per patch would make a burst of adds rebuild it once per add.
+pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<PaneRows> {
     let mut cache = LISTING_CACHE.write().ok()?;
     let listing = cache.get_mut(listing_id)?;
     listing.touch();
@@ -162,10 +160,13 @@ pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<usize> 
     }
 
     let cmp = entry_comparator(listing.sort_by, listing.sort_order, listing.directory_sort_mode);
-    let entries = listing.entries_mut();
-    let pos = entries.partition_point(|existing| cmp(existing, &entry).is_lt());
-    entries.insert(pos, entry);
-    Some(pos)
+    let pos = listing
+        .entries()
+        .partition_point(|existing| cmp(existing, &entry).is_lt());
+    // The rows above `pos` are the same ones before and after the insert.
+    let after = shows(&entry, listing.include_hidden()).then(|| listing.pane_rows().rows_before(pos));
+    listing.entries_mut().insert(pos, entry);
+    Some(PaneRows { before: None, after })
 }
 
 /// Returns the directory path for a cached listing, without cloning entries.
@@ -187,18 +188,18 @@ pub fn get_listing_volume_id_and_path(listing_id: &str) -> Option<(String, PathB
         .map(|listing| (listing.volume_id.clone(), listing.path.as_path().to_path_buf()))
 }
 
-/// Removes every entry `paths` names, returning `(pre-removal index, entry)` for
-/// the ones the listing held, HIGHEST INDEX FIRST.
+/// Removes every entry `paths` names, returning `(pane rows, entry)` for the ones
+/// the listing held, highest entry index first.
 ///
 /// **The batch form is the only by-path removal**, because its caller is always a
 /// batch: one coalesced watcher event carries up to 500 paths. Why that matters,
 /// and what removing them one at a time cost: `DETAILS.md` § "Entries by path".
 ///
-/// ❗ Indices are the PRE-removal listing's, which is the space a `directory-diff`
-/// payload speaks, and resolving plus removing under ONE write lock is what keeps
+/// ❗ Rows are the PRE-removal pane's, which is the space a `directory-diff`
+/// removal speaks, and resolving plus removing under ONE write lock is what keeps
 /// them true — no other writer can move a row in between. Highest-first is the
-/// order that stops each removal shifting a row a later one still points at.
-pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(usize, FileEntry)> {
+/// order that stops each removal shifting an entry a later one still points at.
+pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(PaneRows, FileEntry)> {
     let Ok(mut cache) = LISTING_CACHE.write() else {
         return Vec::new();
     };
@@ -224,12 +225,25 @@ pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(usiz
         return Vec::new();
     }
 
+    let rows: Vec<PaneRows> = {
+        let pane = listing.pane_rows();
+        doomed
+            .iter()
+            .map(|&index| PaneRows {
+                before: pane.row_of_entry(index),
+                after: None,
+            })
+            .collect()
+    };
     let entries = listing.entries_mut();
-    doomed.into_iter().map(|index| (index, entries.remove(index))).collect()
+    rows.into_iter()
+        .zip(doomed)
+        .map(|(rows, index)| (rows, entries.remove(index)))
+        .collect()
 }
 
-/// Removes the entry whose file name equals `name` from a listing, returning its
-/// index and value.
+/// Removes the entry whose file name equals `name` from a listing, returning the
+/// row the pane showed it on and the entry.
 ///
 /// A cached listing is exactly one directory, so entry names are unique, and
 /// matching by name (not full path) keeps the `Removed` patch independent of how
@@ -237,16 +251,20 @@ pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(usiz
 /// inner path (`/Documents/notes.txt`) while `notify_mutation` reports the parent
 /// at the `mtp://…` URL, so a full-path match would drop the removal. Local and
 /// SMB entries share the notifier's spelling, where name matching is equivalent.
-pub fn remove_entry_by_name(listing_id: &str, name: &std::ffi::OsStr) -> Option<(usize, FileEntry)> {
+pub fn remove_entry_by_name(listing_id: &str, name: &std::ffi::OsStr) -> Option<(PaneRows, FileEntry)> {
     let mut cache = LISTING_CACHE.write().ok()?;
     let listing = cache.get_mut(listing_id)?;
     listing.touch();
-    let entries = listing.entries_mut();
-    let idx = entries
+    let idx = listing
+        .entries()
         .iter()
         .position(|e| Path::new(&e.path).file_name() == Some(name))?;
-    let entry = entries.remove(idx);
-    Some((idx, entry))
+    let rows = PaneRows {
+        before: listing.pane_rows().row_of_entry(idx),
+        after: None,
+    };
+    let entry = listing.entries_mut().remove(idx);
+    Some((rows, entry))
 }
 
 /// Checks whether a cached listing contains an entry with the given path.
@@ -264,8 +282,9 @@ pub fn has_entry(listing_id: &str, path: &str) -> bool {
 ///
 /// If sort-relevant fields changed (size, modified_at, is_directory), removes the old entry
 /// and re-inserts at the correct sorted position. Otherwise updates in place.
-/// Returns `None` if the listing or entry wasn't found.
-pub fn update_entry_sorted(listing_id: &str, new_entry: FileEntry) -> Option<ModifyResult> {
+/// Returns the rows the pane showed it on before and shows it on after, or `None` if
+/// the listing or entry wasn't found.
+pub fn update_entry_sorted(listing_id: &str, new_entry: FileEntry) -> Option<PaneRows> {
     let mut cache = LISTING_CACHE.write().ok()?;
     let listing = cache.get_mut(listing_id)?;
     listing.touch();
@@ -276,25 +295,41 @@ pub fn update_entry_sorted(listing_id: &str, new_entry: FileEntry) -> Option<Mod
     // lock is held across both, and a modify that finds nothing now leaves both
     // maps standing rather than dropping them for a listing it never touched.
     let idx = listing.index_of_path(&new_entry.path)?;
-    let entries = listing.entries_mut();
-    let old = &entries[idx];
-
+    let old = &listing.entries()[idx];
     let sort_relevant_changed = old.size != new_entry.size
         || old.modified_at != new_entry.modified_at
         || old.is_directory != new_entry.is_directory;
 
+    // Where the entry goes, and the pane's rows around it, both read off the
+    // listing as it stands. Everything the old entry sorted below (itself too,
+    // when it did) sits above the new position once the old one is out.
+    let (new_pos, rows) = {
+        let pane = listing.pane_rows();
+        let before = pane.row_of_entry(idx);
+        let (new_pos, rows_above) = if sort_relevant_changed {
+            let below_new = listing
+                .entries()
+                .partition_point(|existing| cmp(existing, &new_entry).is_lt());
+            let old_was_below = idx < below_new;
+            (
+                below_new - usize::from(old_was_below),
+                pane.rows_before(below_new) - usize::from(old_was_below && before.is_some()),
+            )
+        } else {
+            (idx, pane.rows_before(idx))
+        };
+        let after = shows(&new_entry, listing.include_hidden()).then_some(rows_above);
+        (new_pos, PaneRows { before, after })
+    };
+
+    let entries = listing.entries_mut();
     if sort_relevant_changed {
         entries.remove(idx);
-        let new_pos = entries.partition_point(|existing| cmp(existing, &new_entry).is_lt());
         entries.insert(new_pos, new_entry);
-        Some(ModifyResult::Moved {
-            old_index: idx,
-            new_index: new_pos,
-        })
     } else {
         entries[idx] = new_entry;
-        Some(ModifyResult::UpdatedInPlace { index: idx })
     }
+    Some(rows)
 }
 
 /// Fills `entry.tags` from the cached entry of the same path when `entry` carries
@@ -339,9 +374,6 @@ pub fn carry_forward_tags(listing_id: &str, entry: &mut FileEntry) {
 /// (`path_index.rs`), so a 500-path enrichment chunk holds the write lock for the
 /// length of the chunk rather than 500 walks of the listing.
 pub fn apply_tags_to_listing(listing_id: &str, updates: Vec<(String, Vec<TagRef>)>) {
-    use crate::file_system::listing::diff::DiffChange;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
-
     let changes: Vec<DiffChange> = {
         let mut cache = match LISTING_CACHE.write() {
             Ok(c) => c,
@@ -351,15 +383,18 @@ pub fn apply_tags_to_listing(listing_id: &str, updates: Vec<(String, Vec<TagRef>
             return;
         };
         listing.touch();
-        listing
-            .set_tags_by_path(updates)
+        let changed = listing.set_tags_by_path(updates);
+        // A tag moves no row and hides none, so a row answers both sides.
+        let pane = listing.pane_rows();
+        changed
             .into_iter()
-            .map(|index| DiffChange::modified(listing.entries()[index].clone(), index))
+            .filter_map(|index| {
+                let row = pane.row_of_entry(index)?;
+                Some(DiffChange::modified(listing.entries()[index].clone(), row))
+            })
             .collect()
     };
-    if !changes.is_empty() {
-        enqueue_diff(listing_id, changes);
-    }
+    enqueue_diff(listing_id, changes);
 }
 
 /// Notifies the listing system that a directory's contents changed on a volume.
@@ -481,19 +516,16 @@ pub fn notify_directory_changed(volume_id: &str, parent_path: &Path, change: Dir
 /// mid-write, self-notify lost the race against `insert_entry_sorted`'s
 /// duplicate guard).
 pub(super) fn notify_added(listing_id: &str, entry: FileEntry) {
-    use crate::file_system::listing::diff::DiffChange;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
-
     if has_entry(listing_id, &entry.path) {
         notify_modified(listing_id, entry);
         return;
     }
 
-    let Some(index) = insert_entry_sorted(listing_id, entry.clone()) else {
+    let Some(rows) = insert_entry_sorted(listing_id, entry.clone()) else {
         return; // Listing gone (or, harmless: lost a TOCTOU race against another add — Modified would no-op).
     };
 
-    enqueue_diff(listing_id, vec![DiffChange::added(entry, index)]);
+    enqueue_diff(listing_id, DiffChange::for_pane(entry, rows).into_iter().collect());
 }
 
 /// Removes an entry from the cache and queues a single-remove change.
@@ -503,38 +535,29 @@ pub(super) fn notify_added(listing_id: &str, entry: FileEntry) {
 /// the notifier's resolved parent (MTP: inner `/Dir/file` entries vs `mtp://…`
 /// parent). See `remove_entry_by_name`.
 pub(super) fn notify_removed(listing_id: &str, full_path: &Path) {
-    use crate::file_system::listing::diff::DiffChange;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
-
     let Some(name) = full_path.file_name() else {
         return;
     };
-    let Some((index, removed_entry)) = remove_entry_by_name(listing_id, name) else {
+    let Some((rows, removed_entry)) = remove_entry_by_name(listing_id, name) else {
         return; // Not in cache or listing gone
     };
 
-    enqueue_diff(listing_id, vec![DiffChange::removed(removed_entry, index)]);
+    enqueue_diff(
+        listing_id,
+        DiffChange::for_pane(removed_entry, rows).into_iter().collect(),
+    );
 }
 
 /// Updates an entry in the cache and queues a modify (or, when its sort key changed, a move) change.
 fn notify_modified(listing_id: &str, mut entry: FileEntry) {
-    use crate::file_system::listing::diff::DiffChange;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
-
     // Preserve already-loaded Finder tags across this re-stat (see `carry_forward_tags`).
     carry_forward_tags(listing_id, &mut entry);
 
-    let result = match update_entry_sorted(listing_id, entry.clone()) {
-        Some(r) => r,
-        None => return,
+    let Some(rows) = update_entry_sorted(listing_id, entry.clone()) else {
+        return;
     };
 
-    let changes = match result {
-        ModifyResult::UpdatedInPlace { index } => vec![DiffChange::modified(entry, index)],
-        ModifyResult::Moved { old_index, new_index } => vec![DiffChange::moved(entry, old_index, new_index)],
-    };
-
-    enqueue_diff(listing_id, changes);
+    enqueue_diff(listing_id, DiffChange::for_pane(entry, rows).into_iter().collect());
 }
 
 /// Dispatches a `FullRefresh` re-read onto Tauri's global async runtime.
@@ -654,12 +677,10 @@ pub(super) async fn notify_full_refresh(
 /// virtual rows in this refresh must not read as authoritative to a walker
 /// afterwards (`crate::listing_overlays`).
 pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, overlay_rows: usize) {
-    use crate::file_system::listing::diff::compute_diff;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
     use crate::file_system::listing::sorting::sort_entries;
 
     let mut sorted = entries;
-    let old_entries = {
+    let (old_entries, include_hidden) = {
         let cache = match LISTING_CACHE.read() {
             Ok(c) => c,
             Err(_) => return,
@@ -675,13 +696,14 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
             listing.sort_order,
             listing.directory_sort_mode,
         );
-        listing.entries().to_vec()
+        (listing.entries().to_vec(), listing.include_hidden())
     };
 
-    let changes = compute_diff(&old_entries, &sorted);
-    if changes.is_empty() {
+    // The cache takes any change, hidden entries' included; the pane hears only its rows.
+    if !listing_changed(&old_entries, &sorted) {
         return;
     }
+    let changes = compute_diff(&old_entries, &sorted, include_hidden);
 
     // Entries and count under ONE lock acquisition: a walker asking the
     // fresh-listing oracle between the two writes would see six contributed

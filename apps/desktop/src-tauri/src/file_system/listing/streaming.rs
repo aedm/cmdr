@@ -659,6 +659,7 @@ pub(crate) async fn read_directory_with_progress(
         volume_id.to_string(),
         path.to_path_buf(),
         entries,
+        include_hidden,
         sort_by,
         sort_order,
         dir_sort_mode,

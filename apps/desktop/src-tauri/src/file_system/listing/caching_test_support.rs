@@ -84,7 +84,7 @@ impl Drop for TestListingGuard {
 }
 
 /// Builder for a test-owned `LISTING_CACHE` entry. Defaults to an empty listing
-/// on `root` at `/test`, sorted Name / Ascending / LikeFiles.
+/// on `root` at `/test`, sorted Name / Ascending / LikeFiles, hidden files shown.
 ///
 /// `last_accessed_ms` defaults to NOW, matching a listing that a live pane just
 /// touched. A stamp of 0 would make the fixture orphan-eligible under any other
@@ -97,6 +97,7 @@ pub(crate) struct TestListing {
     sort_order: SortOrder,
     directory_sort_mode: DirectorySortMode,
     entries: Vec<FileEntry>,
+    include_hidden: bool,
     sequence: u64,
     last_accessed_ms: u64,
     overlay_rows: usize,
@@ -111,6 +112,7 @@ impl TestListing {
             sort_order: SortOrder::Ascending,
             directory_sort_mode: DirectorySortMode::LikeFiles,
             entries: Vec::new(),
+            include_hidden: true,
             sequence: 0,
             last_accessed_ms: epoch_millis_now(),
             overlay_rows: 0,
@@ -136,6 +138,14 @@ impl TestListing {
 
     pub(crate) fn entries(mut self, entries: Vec<FileEntry>) -> Self {
         self.entries = entries;
+        self
+    }
+
+    /// The pane's hidden-files setting, which picks the row space its diffs
+    /// speak. Defaults to showing everything, where a row IS its entry index in
+    /// a fixture with no in-flight scratch.
+    pub(crate) fn include_hidden(mut self, include_hidden: bool) -> Self {
+        self.include_hidden = include_hidden;
         self
     }
 
@@ -165,6 +175,7 @@ impl TestListing {
             self.volume_id,
             self.path,
             self.entries,
+            self.include_hidden,
             self.sort_by,
             self.sort_order,
             self.directory_sort_mode,

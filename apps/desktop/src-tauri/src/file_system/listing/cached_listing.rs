@@ -75,6 +75,10 @@ pub(crate) struct CachedListing {
     /// anything index-shaped. Private so `entries_mut` is the only way to change
     /// it, which is what keeps the row map from ever going stale.
     entries: Vec<FileEntry>,
+    /// Whether the pane showing this listing shows hidden entries. It picks the
+    /// row space every `directory-diff` for this listing speaks, and so which
+    /// changes reach the pane at all. See [`Self::pane_rows`].
+    include_hidden: bool,
     /// Row numbers over the visible subset of `entries`, per `include_hidden`.
     /// Rebuilt lazily after any mutation; see `visible_rows.rs`.
     visible_rows: VisibleRowsCache,
@@ -137,11 +141,12 @@ pub(crate) enum OverlayRows {
 
 impl CachedListing {
     /// A listing freshly filled from a volume read: sequence 0, created and
-    /// accessed now.
+    /// accessed now. `include_hidden` is the pane's setting at the time.
     pub(crate) fn new(
         volume_id: String,
         path: PathBuf,
         entries: Vec<FileEntry>,
+        include_hidden: bool,
         sort_by: SortColumn,
         sort_order: SortOrder,
         directory_sort_mode: DirectorySortMode,
@@ -150,6 +155,7 @@ impl CachedListing {
             path: ListingPath::on_volume(&volume_id, &path),
             volume_id,
             entries,
+            include_hidden,
             visible_rows: VisibleRowsCache::new(),
             path_index: PathIndexCache::new(),
             sort_by,
@@ -282,5 +288,23 @@ impl CachedListing {
     /// about what the pane is showing.
     pub(crate) fn rows(&self, include_hidden: bool) -> VisibleRows<'_> {
         self.visible_rows.rows(&self.entries, include_hidden)
+    }
+
+    /// Whether the pane showing this listing shows hidden entries.
+    pub(crate) fn include_hidden(&self) -> bool {
+        self.include_hidden
+    }
+
+    /// Records the pane's hidden-files setting. Reports whether it changed.
+    pub(crate) fn set_include_hidden(&mut self, include_hidden: bool) -> bool {
+        let changed = self.include_hidden != include_hidden;
+        self.include_hidden = include_hidden;
+        changed
+    }
+
+    /// The rows the pane showing this listing draws: [`Self::rows`] at the pane's
+    /// own setting. What a `directory-diff` index means.
+    pub(crate) fn pane_rows(&self) -> VisibleRows<'_> {
+        self.rows(self.include_hidden)
     }
 }

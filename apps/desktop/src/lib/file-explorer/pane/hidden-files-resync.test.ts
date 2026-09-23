@@ -1,6 +1,7 @@
 /**
  * Tests for `hidden-files-resync.ts`, keeping a pane consistent after the
  * hidden-files toggle changes how many rows the listing has. They pin:
+ * - the backend hears the new setting before anything is read back,
  * - the new total is published before any cursor math runs,
  * - the cursor follows the file it was on, with the `..` row offset applied,
  * - a cursor left past the end is clamped, and only then,
@@ -9,11 +10,17 @@
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 
-const { ipc } = vi.hoisted<{ ipc: { getTotalCount: Mock; findFileIndex: Mock } }>(() => ({
-  ipc: { getTotalCount: vi.fn(), findFileIndex: vi.fn() },
+const { ipc } = vi.hoisted<{
+  ipc: { getTotalCount: Mock; findFileIndex: Mock; setListingIncludeHidden: Mock }
+}>(() => ({
+  ipc: { getTotalCount: vi.fn(), findFileIndex: vi.fn(), setListingIncludeHidden: vi.fn() },
 }))
 
-vi.mock('$lib/tauri-commands', () => ({ getTotalCount: ipc.getTotalCount, findFileIndex: ipc.findFileIndex }))
+vi.mock('$lib/tauri-commands', () => ({
+  getTotalCount: ipc.getTotalCount,
+  findFileIndex: ipc.findFileIndex,
+  setListingIncludeHidden: ipc.setListingIncludeHidden,
+}))
 
 import { resyncAfterHiddenFilesToggle } from './hidden-files-resync'
 
@@ -27,6 +34,7 @@ describe('resyncAfterHiddenFilesToggle', () => {
     setCursorIndex = vi.fn().mockResolvedValue(undefined)
     ipc.getTotalCount.mockResolvedValue(10)
     ipc.findFileIndex.mockResolvedValue(null)
+    ipc.setListingIncludeHidden.mockResolvedValue(undefined)
   })
 
   function run(over: Partial<Parameters<typeof resyncAfterHiddenFilesToggle>[0]> = {}) {
@@ -41,6 +49,24 @@ describe('resyncAfterHiddenFilesToggle', () => {
       ...over,
     })
   }
+
+  // The backend numbers `directory-diff` rows in the pane's row space and skips
+  // rows the pane can't see, so it has to know the setting before the pane
+  // re-reads anything in the new space.
+  it('tells the backend the new setting before reading the count', async () => {
+    const calls: string[] = []
+    ipc.setListingIncludeHidden.mockImplementation(() => {
+      calls.push('set')
+      return Promise.resolve()
+    })
+    ipc.getTotalCount.mockImplementation(() => {
+      calls.push('count')
+      return Promise.resolve(10)
+    })
+    await run({ includeHidden: false })
+    expect(ipc.setListingIncludeHidden).toHaveBeenCalledWith('listing-1', false)
+    expect(calls).toEqual(['set', 'count'])
+  })
 
   it('publishes the new total count', async () => {
     await run()

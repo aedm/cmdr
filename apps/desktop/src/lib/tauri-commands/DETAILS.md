@@ -11,7 +11,7 @@ commands, and notable non-obvious placements.
 - **`file-listing.ts`**: virtual-scroll listing API, batch accessors (`getPathsAtIndices`, `getFilesAtIndices`),
   `getFileBeside` (the row next to a named one, resolved and read under one backend lock), drag-and-drop, `pathExists`,
   `createDirectory`, `createFile`, sync status, font metrics, `getBriefColumnTextWidths` (Brief-view column
-  measurement).
+  measurement), `setListingIncludeHidden` (the pane's hidden-files setting, which picks its `directory-diff` rows).
 - **`file-viewer.ts`**: viewer session only: open, seek, search (with `useRegex` / `caseSensitive` modes), close, word
   wrap menu, `viewerSetSearchInputFocused` (the search box's claim on the viewer bar's Edit > Cut / Paste), encoding
   pickers (`viewerSetEncoding` / `viewerGetEncodingOptions`), tail mode (`viewerSetTailMode`), `viewerReload`.

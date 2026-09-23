@@ -537,8 +537,9 @@ a move by identity (`listing-diff-sync.svelte.ts::reconcileCursorAndSelection`).
 cursor instead stays on the vacated index, which now holds a neighbour. Watch a big folder being deleted in a
 date-sorted pane and that reads as if the wrong folder were disappearing, which is exactly how it was found.
 
-Both watcher paths produce it: the incremental path from `ModifyResult::Moved` (the cache re-inserts the entry at its
-new sorted position and knows both indices), and the full re-read path from `compute_diff`.
+Both watcher paths produce it: the incremental path from `update_entry_sorted`'s pane rows (the cache re-inserts the
+entry at its new sorted position, and a row that differs before and after is a move), and the full re-read path from
+`compute_diff`. Both speak the pane's rows, not entry indices: `listing/DETAILS.md` § "Diffs speak the pane's rows".
 
 `compute_diff` has to separate a real jump from the index shift every row below an add or a remove takes, or an ordinary
 delete would make the pane chase the cursor around. It reads the surviving rows' old positions in new order and keeps
@@ -546,8 +547,8 @@ the longest increasing subsequence of them (patience sorting, O(n log n)); those
 rest are the minimal set that genuinely moved.
 
 **One event's removals are one call**, `listing::remove_entries_by_paths`, not a loop: the batch resolves every doomed
-row against the pre-removal listing in a single pass under one write lock, which is what keeps the indices the
-`directory-diff` carries in one index space and stops a 500-path event walking the listing 1,000 times. Why, and what
+row against the pre-removal listing in a single pass under one write lock, which is what keeps the rows the
+`directory-diff` carries in one row space and stops a 500-path event walking the listing 1,000 times. Why, and what
 the loop cost: `listing/DETAILS.md` § "Entries by path".
 
 ## Replacing a watch root

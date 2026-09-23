@@ -60,6 +60,14 @@ export const commands = {
   cancelListing: (listingId: string) => __TAURI_INVOKE<void>('cancel_listing', { listingId }),
   listDirectoryEnd: (listingId: string) => __TAURI_INVOKE<void>('list_directory_end', { listingId }),
   /**
+   *  Tells the backend the pane showing `listing_id` now shows (or hides) hidden
+   *  files. Its `directory-diff` events speak that pane's rows, and skip changes
+   *  to rows it doesn't show, so the pane calls this before re-reading its rows
+   *  after the hidden-files toggle.
+   */
+  setListingIncludeHidden: (listingId: string, includeHidden: boolean) =>
+    typedError<null, string>(__TAURI_INVOKE('set_listing_include_hidden', { listingId, includeHidden })),
+  /**
    *  Re-reads a directory listing, emitting any diff.
    *
    *  `force` says whose idea the refresh was. `true` is an explicit "re-read this

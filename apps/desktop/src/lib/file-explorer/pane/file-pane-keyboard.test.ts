@@ -49,6 +49,7 @@ vi.mock('$lib/tauri-commands', () => ({
   }),
   findFileIndex: vi.fn().mockResolvedValue(0),
   getTotalCount: vi.fn().mockResolvedValue(10),
+  setListingIncludeHidden: vi.fn().mockResolvedValue(undefined),
   getSyncStatus: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
   // FilePane's onMount registers these image-enrichment listeners.
   onMediaEnrichProgress: vi.fn().mockResolvedValue(() => {}),

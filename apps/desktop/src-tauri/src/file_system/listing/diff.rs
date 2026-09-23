@@ -1,10 +1,12 @@
 //! The shape of a `directory-diff` and how to compute one.
 //!
-//! A diff names what happened to each row of a cached listing: added, removed,
-//! modified in place, or moved to a new sorted position. `diff_emitter` coalesces
-//! these into the `directory-diff` event; the incremental watcher path builds them
-//! row by row from the cache helpers, while the full re-read path derives them here
-//! with [`compute_diff`].
+//! A diff names what happened to each row of a PANE: added, removed, modified in
+//! place, or moved to a new sorted position. Rows are the pane's (`visible_rows.rs`),
+//! so a change to an entry the pane shows on neither side is no change at all, and
+//! a listing whose hidden entries alone changed emits nothing. `diff_emitter`
+//! coalesces these into the `directory-diff` event; the single-entry cache helpers
+//! build them through [`DiffChange::for_pane`], while the full re-read path derives
+//! them here with [`compute_diff`].
 //!
 //! Why `Move` is its own variant and how it stays minimal:
 //! `../DETAILS.md` § "Reordered rows".
@@ -13,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use super::FileEntry;
+use super::visible_rows::shows;
 
 /// What happened to one row of a listing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
@@ -79,6 +82,31 @@ impl DiffChange {
             previous_index: Some(previous_index),
         }
     }
+
+    /// What one patched entry means to the pane: the rows it sat on before the
+    /// patch and sits on after it. `None` when the pane shows it on neither side,
+    /// which is the whole point: a dotfile write in `~` with hidden files off.
+    ///
+    /// Only for a patch of this ONE entry, where a row that differs means the entry
+    /// itself changed places. A batch derives its moves with [`compute_diff`].
+    pub(crate) fn for_pane(entry: FileEntry, rows: PaneRows) -> Option<Self> {
+        match (rows.before, rows.after) {
+            (None, None) => None,
+            (Some(before), None) => Some(Self::removed(entry, before)),
+            (None, Some(after)) => Some(Self::added(entry, after)),
+            (Some(before), Some(after)) if before == after => Some(Self::modified(entry, after)),
+            (Some(before), Some(after)) => Some(Self::moved(entry, before, after)),
+        }
+    }
+}
+
+/// Where a patched entry shows in its pane before and after the patch; `None`
+/// on a side where the pane doesn't show it (hidden, scratch, not there yet, or
+/// gone). A row, never an entry index: see `CachedListing::pane_rows`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PaneRows {
+    pub before: Option<usize>,
+    pub after: Option<usize>,
 }
 
 /// `directory-diff` event sent to the frontend.
@@ -91,16 +119,38 @@ pub struct DirectoryDiff {
     pub changes: Vec<DiffChange>,
 }
 
-/// Computes the diff between old and new directory listings.
+/// Computes the diff a pane with this `include_hidden` sees between two sorted
+/// readings of its directory.
 ///
-/// Used by both local file watcher and MTP file watcher to generate
-/// incremental updates for the frontend.
+/// It diffs the rows the pane shows on each side (`visible_rows::shows`), so the
+/// indices are rows, an entry hidden on both sides is left out, and one that turns
+/// hidden or visible arrives as a remove or an add. Pair it with [`listing_changed`]
+/// to decide whether the CACHE takes the new reading: an empty pane diff still owes
+/// the listing its hidden entries' news.
 ///
 /// A row that survived is reported as `Move` only when it genuinely jumped the
 /// queue, ❌ never for the index shift every row below an add or a remove takes.
 /// The rows that kept their relative order are the longest increasing run of old
 /// positions read in new order, so the smallest possible set is called moved.
-pub fn compute_diff(old: &[FileEntry], new: &[FileEntry]) -> Vec<DiffChange> {
+pub fn compute_diff(old: &[FileEntry], new: &[FileEntry], include_hidden: bool) -> Vec<DiffChange> {
+    let old: Vec<&FileEntry> = old.iter().filter(|e| shows(e, include_hidden)).collect();
+    let new: Vec<&FileEntry> = new.iter().filter(|e| shows(e, include_hidden)).collect();
+    diff_rows(&old, &new)
+}
+
+/// Whether two sorted readings of a directory differ in anything a diff reports:
+/// which entries, their order, or an [`is_entry_modified`] field. The same test as
+/// "an all-entries [`compute_diff`] would be non-empty", without building it.
+pub(crate) fn listing_changed(old: &[FileEntry], new: &[FileEntry]) -> bool {
+    old.len() != new.len()
+        || old
+            .iter()
+            .zip(new)
+            .any(|(old, new)| old.path != new.path || is_entry_modified(old, new))
+}
+
+/// [`compute_diff`] over rows already picked out, so an index is a row.
+fn diff_rows(old: &[&FileEntry], new: &[&FileEntry]) -> Vec<DiffChange> {
     let mut changes = Vec::new();
 
     // Create lookup maps by path
@@ -124,22 +174,22 @@ pub fn compute_diff(old: &[FileEntry], new: &[FileEntry]) -> Vec<DiffChange> {
     let mut survivor_rank = 0usize;
     for (new_index, new_entry) in new.iter().enumerate() {
         let Some(&old_index) = old_map.get(new_entry.path.as_str()) else {
-            changes.push(DiffChange::added(new_entry.clone(), new_index));
+            changes.push(DiffChange::added((*new_entry).clone(), new_index));
             continue;
         };
         let rank = survivor_rank;
         survivor_rank += 1;
         if !in_order.contains(&rank) {
-            changes.push(DiffChange::moved(new_entry.clone(), old_index, new_index));
-        } else if is_entry_modified(&old[old_index], new_entry) {
-            changes.push(DiffChange::modified(new_entry.clone(), new_index));
+            changes.push(DiffChange::moved((*new_entry).clone(), old_index, new_index));
+        } else if is_entry_modified(old[old_index], new_entry) {
+            changes.push(DiffChange::modified((*new_entry).clone(), new_index));
         }
     }
 
     // Find removals (index refers to position in old listing)
     for (old_index, old_entry) in old.iter().enumerate() {
         if !new_map.contains(old_entry.path.as_str()) {
-            changes.push(DiffChange::removed(old_entry.clone(), old_index));
+            changes.push(DiffChange::removed((*old_entry).clone(), old_index));
         }
     }
 
@@ -177,11 +227,13 @@ fn longest_increasing_subsequence(values: &[usize]) -> Vec<usize> {
     result
 }
 
-/// Check if a file entry has been modified.
+/// Check if a file entry has been modified. `is_hidden` counts: a pane showing
+/// hidden files dims the row, and one hiding them loses it.
 fn is_entry_modified(old: &FileEntry, new: &FileEntry) -> bool {
     old.size != new.size
         || old.modified_at != new.modified_at
         || old.permissions != new.permissions
         || old.is_directory != new.is_directory
         || old.is_symlink != new.is_symlink
+        || old.is_hidden != new.is_hidden
 }

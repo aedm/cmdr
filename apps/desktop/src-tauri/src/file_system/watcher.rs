@@ -23,9 +23,9 @@ use tauri::AppHandle;
 use tauri_specta::Event as _;
 
 use crate::file_system::listing::{
-    DiffChange, FileEntry, ModifyResult, OverlayRows, compute_diff, get_listing_entries,
-    get_listing_volume_id_and_path, get_single_entry, has_entry, insert_entry_sorted, list_directory_core,
-    remove_entries_by_paths, update_entry_sorted, update_listing_entries,
+    DiffChange, FileEntry, OverlayRows, compute_diff, get_listing_entries, get_listing_volume_id_and_path,
+    get_single_entry, has_entry, insert_entry_sorted, list_directory_core, listing_changed, remove_entries_by_paths,
+    update_entry_sorted, update_listing_entries,
 };
 use crate::index_host::index;
 use cmdr_fs::firmlinks;
@@ -340,7 +340,7 @@ fn watch_root_identity_changed(events: &[DebouncedEvent], dir_path: &Path, canon
 /// Processes individual file-system events incrementally instead of re-reading the whole directory.
 ///
 /// Falls back to `handle_directory_change` when events are too numerous or ambiguous.
-fn handle_directory_change_incremental(listing_id: &str, events: Vec<DebouncedEvent>) {
+pub(super) fn handle_directory_change_incremental(listing_id: &str, events: Vec<DebouncedEvent>) {
     // Fallback: too many events or ambiguous event kinds
     if events.len() > 500
         || events
@@ -435,19 +435,21 @@ fn handle_directory_change_incremental(listing_id: &str, events: Vec<DebouncedEv
         index().enrich(&volume_id, std::slice::from_mut(entry));
     }
 
-    // Apply changes: removes first (their indices are the OLD listing's), then adds, then
-    // modifies. `remove_entries_by_paths` resolves every index against the pre-removal
-    // listing and drops the rows highest-index-first, so no removal shifts the next one's
-    // row, and the whole batch costs one lookup pass.
+    // Apply changes: removes first (their rows are the OLD pane's), then adds, then
+    // modifies. `remove_entries_by_paths` resolves every entry against the pre-removal
+    // listing and drops them highest-index-first, so no removal shifts the next one's
+    // entry, and the whole batch costs one lookup pass. Every patch lands in the cache;
+    // only the ones the pane shows on some side become a change (`DiffChange::for_pane`),
+    // so a dotfile write in `~` with hidden files off emits nothing.
     let mut changes: Vec<DiffChange> = Vec::new();
 
-    for (original_index, removed_entry) in remove_entries_by_paths(listing_id, &removes) {
-        changes.push(DiffChange::removed(removed_entry, original_index));
+    for (rows, removed_entry) in remove_entries_by_paths(listing_id, &removes) {
+        changes.extend(DiffChange::for_pane(removed_entry, rows));
     }
 
     for entry in adds {
-        if let Some(new_index) = insert_entry_sorted(listing_id, entry.clone()) {
-            changes.push(DiffChange::added(entry, new_index));
+        if let Some(rows) = insert_entry_sorted(listing_id, entry.clone()) {
+            changes.extend(DiffChange::for_pane(entry, rows));
         }
     }
 
@@ -455,14 +457,8 @@ fn handle_directory_change_incremental(listing_id: &str, events: Vec<DebouncedEv
         // Preserve already-loaded Finder tags across this re-stat: `get_single_entry`
         // reads no xattr, so a bare modify would otherwise blank the file's dots.
         crate::file_system::listing::caching::carry_forward_tags(listing_id, &mut entry);
-        match update_entry_sorted(listing_id, entry.clone()) {
-            Some(ModifyResult::UpdatedInPlace { index }) => {
-                changes.push(DiffChange::modified(entry, index));
-            }
-            Some(ModifyResult::Moved { old_index, new_index }) => {
-                changes.push(DiffChange::moved(entry, old_index, new_index));
-            }
-            None => {}
+        if let Some(rows) = update_entry_sorted(listing_id, entry.clone()) {
+            changes.extend(DiffChange::for_pane(entry, rows));
         }
     }
 
@@ -567,16 +563,22 @@ pub async fn handle_directory_change(listing_id: &str) {
 
     let mut new_entries = new_entries;
 
-    // The listing's sort params, taken once: the overlay pass between the enrich
-    // and the sort is `async`, and the cache guard can't be held across it.
-    let sort_params = {
+    // The listing's sort params and its pane's hidden-files setting, taken once: the
+    // overlay pass between the enrich and the sort is `async`, and the cache guard
+    // can't be held across it.
+    let (sort_params, include_hidden) = {
         use crate::file_system::listing::cached_listing::LISTING_CACHE;
 
-        LISTING_CACHE.read().ok().and_then(|cache| {
+        let listing_view = LISTING_CACHE.read().ok().and_then(|cache| {
             cache
                 .get(listing_id)
-                .map(|l| (l.sort_by, l.sort_order, l.directory_sort_mode))
-        })
+                .map(|l| ((l.sort_by, l.sort_order, l.directory_sort_mode), l.include_hidden()))
+        });
+        // A listing gone by now takes no update below either, so the setting is moot.
+        (
+            listing_view.map(|(sort, _)| sort),
+            listing_view.is_none_or(|(_, hidden)| hidden),
+        )
     };
 
     // Enrich with index data so diff entries have recursive_size etc. Skipped for
@@ -606,12 +608,12 @@ pub async fn handle_directory_change(listing_id: &str) {
         crate::file_system::listing::sorting::sort_entries(&mut new_entries, sort_by, sort_order, directory_sort_mode);
     }
 
-    // Compute diff
-    let changes = compute_diff(&old_entries, &new_entries);
-
-    if changes.is_empty() {
+    // The cache takes any change, hidden entries' included, so showing hidden files
+    // later is instant and right; the pane hears only about its own rows.
+    if !listing_changed(&old_entries, &new_entries) {
         return; // No actual changes
     }
+    let changes = compute_diff(&old_entries, &new_entries, include_hidden);
 
     // Update the unified LISTING_CACHE with new entries.
     update_listing_entries(listing_id, new_entries, overlay_rows);

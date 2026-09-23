@@ -143,6 +143,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::list_directory_start_streaming,
                     crate::commands::file_system::cancel_listing,
                     crate::commands::file_system::list_directory_end,
+                    crate::commands::file_system::set_listing_include_hidden,
                     crate::commands::file_system::refresh_listing,
                     crate::commands::file_system::get_file_range,
                     crate::commands::file_system::get_file_at,

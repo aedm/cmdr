@@ -13,6 +13,7 @@ use crate::file_system::{
     list_directory_end as ops_list_directory_end, list_directory_start_streaming as ops_list_directory_start_streaming,
     list_directory_start_with_volume as ops_list_directory_start_with_volume,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
+    set_listing_include_hidden as ops_set_listing_include_hidden,
 };
 use std::path::{Path, PathBuf};
 use tokio::time::Duration;
@@ -501,6 +502,16 @@ pub async fn get_files_at_indices(
 #[specta::specta]
 pub async fn list_directory_end(listing_id: String) {
     ops_list_directory_end(&listing_id);
+}
+
+/// Tells the backend the pane showing `listing_id` now shows (or hides) hidden
+/// files. Its `directory-diff` events speak that pane's rows, and skip changes
+/// to rows it doesn't show, so the pane calls this before re-reading its rows
+/// after the hidden-files toggle.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_listing_include_hidden(listing_id: String, include_hidden: bool) -> Result<(), String> {
+    ops_set_listing_include_hidden(&listing_id, include_hidden)
 }
 
 /// The listing's path when a non-local volume's own watcher claims to see every

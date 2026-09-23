@@ -32,9 +32,10 @@ export const INDEX_LISTING_UPDATE_MIN_INTERVAL_MS = 250
 
 /**
  * Pure reconciliation of cursor + selection against a directory diff. Backend
- * indices live in the listing's own space; the frontend offsets by 1 for the
- * `..` row when `hasParent`. Off-by-one here lands the cursor a row off or
- * shifts the selection, so the `offset` bookkeeping is load-bearing.
+ * indices are this pane's rows (the backend leaves out what the pane hides); the
+ * frontend offsets by 1 for the `..` row when `hasParent`. Off-by-one here lands
+ * the cursor a row off or shifts the selection, so the `offset` bookkeeping is
+ * load-bearing.
  *
  * The cursor and the selection FOLLOW their rows across a reorder: watch a big
  * folder being deleted in a date-sorted pane and it keeps bumping itself to the

@@ -143,3 +143,24 @@ pub(crate) fn pending_count(listing_id: &str) -> usize {
 pub(crate) fn flush_now_for_test(listing_id: &str) {
     flush(listing_id);
 }
+
+/// Keeps `listing_id`'s changes in the buffer until the test reads them, so an
+/// assertion on WHAT was queued can't lose a race against the 50 ms flush timer.
+/// Marking a flush as already scheduled is what stops `enqueue_diff` arming one.
+/// The listing's teardown (`drop_pending`) releases the hold.
+#[cfg(test)]
+pub(crate) fn hold_for_test(listing_id: &str) {
+    PENDING_DIFFS
+        .lock()
+        .expect("diff buffer poisoned by a panicking test")
+        .entry(listing_id.to_string())
+        .or_default()
+        .flush_scheduled = true;
+}
+
+/// The changes queued for `listing_id`, oldest first. Pair with [`hold_for_test`].
+#[cfg(test)]
+pub(crate) fn pending_changes_for_test(listing_id: &str) -> Vec<DiffChange> {
+    let pending = PENDING_DIFFS.lock().expect("diff buffer poisoned by a panicking test");
+    pending.get(listing_id).map(|e| e.changes.clone()).unwrap_or_default()
+}

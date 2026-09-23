@@ -5,9 +5,12 @@
  * "Somewhere sensible" means the file the user was looking at, wherever it moved
  * to once the hidden entries appeared or vanished. Only when that file is gone
  * (it WAS the hidden one) do we fall back to clamping the cursor into range.
+ *
+ * The backend hears the setting first: it numbers `directory-diff` rows in the
+ * pane's row space and skips changes to rows the pane doesn't show.
  */
 
-import { findFileIndex, getTotalCount } from '$lib/tauri-commands'
+import { findFileIndex, getTotalCount, setListingIncludeHidden } from '$lib/tauri-commands'
 
 export interface HiddenFilesResyncInput {
   listingId: string
@@ -23,6 +26,7 @@ export interface HiddenFilesResyncInput {
 }
 
 export async function resyncAfterHiddenFilesToggle(input: HiddenFilesResyncInput): Promise<void> {
+  await setListingIncludeHidden(input.listingId, input.includeHidden)
   const count = await getTotalCount(input.listingId, input.includeHidden)
   input.setTotalCount(count)
 

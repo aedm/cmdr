@@ -3,11 +3,12 @@
 use std::path::PathBuf;
 
 use super::caching::{
-    ModifyResult, apply_tags_to_listing, carry_forward_tags, find_listings_for_path, find_listings_for_path_on_volume,
-    has_entry, insert_entry_sorted, notify_added, notify_removed, remove_entries_by_paths, remove_entry_by_name,
+    apply_tags_to_listing, carry_forward_tags, find_listings_for_path, find_listings_for_path_on_volume, has_entry,
+    insert_entry_sorted, notify_added, notify_removed, remove_entries_by_paths, remove_entry_by_name,
     update_entry_sorted,
 };
 use super::caching_test_support::{TestListing, TestListingGuard, unique_test_id};
+use super::diff::PaneRows;
 use super::metadata::{FileEntry, TagRef};
 use super::sorting::{DirectorySortMode, SortColumn, SortOrder};
 
@@ -162,8 +163,14 @@ fn test_insert_entry_sorted_name_asc() {
     );
 
     // Insert "beta.txt", should land between alpha and gamma
-    let index = insert_entry_sorted(listing.id(), make_entry("beta.txt", false, Some(100)));
-    assert_eq!(index, Some(1));
+    let rows = insert_entry_sorted(listing.id(), make_entry("beta.txt", false, Some(100)));
+    assert_eq!(
+        rows,
+        Some(PaneRows {
+            before: None,
+            after: Some(1)
+        })
+    );
 
     assert_eq!(listing.entry_names(), ["alpha.txt", "beta.txt", "gamma.txt"]);
 }
@@ -185,8 +192,14 @@ fn test_insert_entry_sorted_size_desc_dirs_first() {
     );
 
     // Insert a directory with medium recursive size, should go between big_dir and small_dir
-    let index = insert_entry_sorted(listing.id(), make_dir_entry("mid_dir", Some(5000)));
-    assert_eq!(index, Some(1));
+    let rows = insert_entry_sorted(listing.id(), make_dir_entry("mid_dir", Some(5000)));
+    assert_eq!(
+        rows,
+        Some(PaneRows {
+            before: None,
+            after: Some(1)
+        })
+    );
 
     assert_eq!(
         listing.entry_names(),
@@ -270,8 +283,14 @@ fn test_remove_entries_by_paths_returns_correct_index_and_entry() {
 
     let removed = remove_entries_by_paths(listing.id(), &[PathBuf::from("/test/beta.txt")]);
     assert_eq!(removed.len(), 1);
-    let (idx, entry) = &removed[0];
-    assert_eq!(*idx, 1);
+    let (rows, entry) = &removed[0];
+    assert_eq!(
+        *rows,
+        PaneRows {
+            before: Some(1),
+            after: None
+        }
+    );
     assert_eq!(entry.name, "beta.txt");
 
     assert_eq!(listing.entry_names(), ["alpha.txt", "gamma.txt"]);
@@ -449,7 +468,13 @@ fn test_update_entry_sorted_in_place_for_non_sort_change() {
     updated.permissions = 0o755;
 
     let result = update_entry_sorted(listing.id(), updated);
-    assert!(matches!(result, Some(ModifyResult::UpdatedInPlace { index: 1 })));
+    assert_eq!(
+        result,
+        Some(PaneRows {
+            before: Some(1),
+            after: Some(1)
+        })
+    );
 
     assert_eq!(listing.entries()[1].permissions, 0o755);
 }
@@ -472,13 +497,13 @@ fn test_update_entry_sorted_moved_for_size_change() {
     // Change small.txt size to be the largest
     let updated = make_entry("small.txt", false, Some(5000));
     let result = update_entry_sorted(listing.id(), updated);
-    assert!(matches!(
+    assert_eq!(
         result,
-        Some(ModifyResult::Moved {
-            old_index: 0,
-            new_index: 2
+        Some(PaneRows {
+            before: Some(0),
+            after: Some(2)
         })
-    ));
+    );
 
     assert_eq!(listing.entry_names(), ["medium.txt", "large.txt", "small.txt"]);
 }
@@ -510,13 +535,13 @@ fn test_update_entry_sorted_moved_for_modified_at_change() {
     updated.modified_at = Some(3000);
 
     let result = update_entry_sorted(listing.id(), updated);
-    assert!(matches!(
+    assert_eq!(
         result,
-        Some(ModifyResult::Moved {
-            old_index: 0,
-            new_index: 1
+        Some(PaneRows {
+            before: Some(0),
+            after: Some(1)
         })
-    ));
+    );
 }
 
 #[test]

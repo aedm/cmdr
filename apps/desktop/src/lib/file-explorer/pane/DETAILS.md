@@ -90,7 +90,9 @@ suite:
   sources, and when a result is trashed from a normal pane. It needs `FilePane`'s `searchSnapshot` to read the store's
   mutation tick, which also keeps `effectiveTotalCount` (Cmd+A, cursor clamping) honest after a purge.
 - `path-sync.ts` / `hidden-files-resync.ts`: the prop-driven reload truth table, and the cursor follow after the
-  hidden-files toggle.
+  hidden-files toggle. The resync first tells the backend the setting (`setListingIncludeHidden`), which picks the row
+  space of the pane's `directory-diff`s and which changes reach it at all
+  (`src-tauri/src/file_system/listing/DETAILS.md` § "Diffs speak the pane's rows").
 - `entries-snapshot.ts`: the Selection dialog's entry list and the operation's selected-names snapshot. Both adapt a
   search snapshot's rows; the Selection list keeps the search engine's BASENAME in `name` (a mask like `*.txt` has to
   mean the filename), unlike `SearchResultsView`'s own adapter, which synthesizes the `~`-shortened full path for the

@@ -489,14 +489,17 @@ pub(super) fn emit_synthetic_entry_diff(volume_id: Option<&str>, entry_path: &Pa
         return;
     }
 
-    // 4. For each listing, insert and enqueue
+    // 4. For each listing, insert and enqueue (nothing, to a pane that doesn't show it)
     for (listing_id, _sort_by, _sort_order, _dir_sort_mode) in listings {
         // insert_entry_sorted acquires LISTING_CACHE write lock and releases it on return
-        let Some(index) = insert_entry_sorted(&listing_id, entry.clone()) else {
+        let Some(rows) = insert_entry_sorted(&listing_id, entry.clone()) else {
             continue; // Already exists or listing gone
         };
 
-        enqueue_diff(&listing_id, vec![DiffChange::added(entry.clone(), index)]);
+        enqueue_diff(
+            &listing_id,
+            DiffChange::for_pane(entry.clone(), rows).into_iter().collect(),
+        );
     }
 }
 

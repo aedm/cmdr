@@ -384,3 +384,83 @@ fn a_detached_arm_that_lost_the_race_leaves_no_watch_behind() {
         "an arm for an already-ended listing must not leave its watch behind"
     );
 }
+
+/// A real dotfile rewritten in a real folder, fed through the watcher's own
+/// incremental path: the idle cost on a pane on `~`. `hidden` is the pane's setting.
+#[cfg(test)]
+fn rewrite_a_dotfile_beside_a_visible_file(
+    tag: &str,
+    hidden: bool,
+) -> (
+    crate::test_support::TestDir,
+    crate::file_system::listing::caching_test_support::TestListingGuard,
+) {
+    use crate::file_system::listing::caching_test_support::{TestListing, unique_test_id};
+    use crate::file_system::listing::diff_emitter::hold_for_test;
+    use crate::file_system::listing::list_directory_core;
+    use crate::file_system::watcher::handle_directory_change_incremental;
+    use notify_debouncer_full::DebouncedEvent;
+    use notify_debouncer_full::notify::{
+        Event,
+        event::{DataChange, EventKind, ModifyKind},
+    };
+
+    let scratch = crate::test_support::TestDir::new(tag);
+    let dotfile = scratch.join(".zsh_history");
+    std::fs::write(&dotfile, b"ls\n").expect("scratch dir is writable");
+    std::fs::write(scratch.join("notes.txt"), b"n").expect("scratch dir is writable");
+
+    // An unregistered volume id, so the index enrich and the volume registry stay out of it.
+    let listing = TestListing::new()
+        .volume(&unique_test_id(&format!("{tag}-vol")))
+        .path(scratch.to_path_buf())
+        .include_hidden(hidden)
+        .entries(list_directory_core(&scratch).expect("the fresh dir lists"))
+        .insert(tag);
+    hold_for_test(listing.id());
+
+    std::fs::write(&dotfile, b"ls\ncd ~\n").expect("scratch dir is writable");
+    let event = Event {
+        kind: EventKind::Modify(ModifyKind::Data(DataChange::Content)),
+        paths: vec![dotfile],
+        attrs: Default::default(),
+    };
+    handle_directory_change_incremental(
+        listing.id(),
+        vec![DebouncedEvent::new(event, std::time::Instant::now())],
+    );
+    (scratch, listing)
+}
+
+#[test]
+fn a_dotfile_write_reaches_the_cache_but_not_a_pane_hiding_dotfiles() {
+    use crate::file_system::listing::diff_emitter::pending_changes_for_test;
+
+    let (_scratch, listing) = rewrite_a_dotfile_beside_a_visible_file("watch-dotfile-hidden-off", false);
+
+    assert_eq!(
+        pending_changes_for_test(listing.id()).len(),
+        0,
+        "nothing the pane shows changed"
+    );
+    let history = listing.entries().into_iter().find(|e| e.name == ".zsh_history");
+    assert_eq!(
+        history.and_then(|e| e.size),
+        Some(8),
+        "the cache holds the new size anyway, so showing hidden files later is instant and right"
+    );
+}
+
+#[test]
+fn a_dotfile_write_reaches_a_pane_showing_dotfiles() {
+    use crate::file_system::listing::diff::DiffChangeType;
+    use crate::file_system::listing::diff_emitter::pending_changes_for_test;
+
+    let (_scratch, listing) = rewrite_a_dotfile_beside_a_visible_file("watch-dotfile-hidden-on", true);
+
+    let queued: Vec<_> = pending_changes_for_test(listing.id())
+        .into_iter()
+        .map(|c| (c.change_type, c.entry.name))
+        .collect();
+    assert_eq!(queued, vec![(DiffChangeType::Modify, ".zsh_history".to_string())]);
+}

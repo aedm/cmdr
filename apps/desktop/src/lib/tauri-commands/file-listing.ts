@@ -272,6 +272,17 @@ export async function listDirectoryEnd(listingId: string): Promise<void> {
 }
 
 /**
+ * Tells the backend whether the pane showing this listing shows hidden files. Its
+ * `directory-diff` events number the pane's rows and skip rows it doesn't show.
+ * @param listingId - The listing ID from listDirectoryStart.
+ * @param includeHidden - The pane's hidden-files setting.
+ */
+export async function setListingIncludeHidden(listingId: string, includeHidden: boolean): Promise<void> {
+  const res = await commands.setListingIncludeHidden(listingId, includeHidden)
+  if (res.status === 'error') throwIpcError(res.error)
+}
+
+/**
  * Re-reads a listing, emitting any diff.
  *
  * `force` is required rather than defaulted, because the two callers mean

@@ -53,6 +53,7 @@ pub use listing::{
     compute_brief_column_text_widths, find_file_index, find_file_indices, fuzzy_find_first_match_in_listing,
     get_file_at, get_file_beside, get_file_range, get_listing_stats, get_total_count, list_directory_end,
     list_directory_start_streaming, list_directory_start_with_volume, refresh_listing_index_sizes, resort_listing,
+    set_listing_include_hidden,
 };
 // Batch accessors (used by drag, clipboard, and transfer dialogs)
 pub use listing::{get_files_at_indices, get_paths_at_indices};

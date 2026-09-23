@@ -11,10 +11,11 @@
 use std::path::PathBuf;
 
 use super::caching::{
-    ModifyResult, apply_tags_to_listing, carry_forward_tags, has_entry, insert_entry_sorted, remove_entries_by_paths,
+    apply_tags_to_listing, carry_forward_tags, has_entry, insert_entry_sorted, remove_entries_by_paths,
     update_entry_sorted,
 };
 use super::caching_test_support::{TestListing, TestListingGuard};
+use super::diff::PaneRows;
 use super::metadata::{FileEntry, TagRef};
 use super::operations::get_file_at;
 use super::path_index::lookup_probe;
@@ -254,8 +255,8 @@ fn a_removal_rides_the_map_a_tag_sweep_built() {
     let examined = examined_while(|| removed = remove_entries_by_paths(listing.id(), &[PathBuf::from(deep_row())]));
 
     assert_eq!(
-        removed.iter().map(|(index, _)| *index).collect::<Vec<_>>(),
-        vec![ENTRY_COUNT - 1],
+        removed.iter().map(|(rows, _)| rows.before).collect::<Vec<_>>(),
+        vec![Some(ENTRY_COUNT - 1)],
         "the removal landed on the wrong row"
     );
     assert!(
@@ -276,7 +277,11 @@ fn a_modify_rides_the_map_a_tag_sweep_built() {
     let examined = examined_while(|| result = update_entry_sorted(listing.id(), restat));
 
     assert!(
-        matches!(result, Some(ModifyResult::UpdatedInPlace { index }) if index == ENTRY_COUNT - 1),
+        result
+            == Some(PaneRows {
+                before: Some(ENTRY_COUNT - 1),
+                after: Some(ENTRY_COUNT - 1)
+            }),
         "the modify landed on {result:?}"
     );
     assert!(
@@ -290,7 +295,10 @@ fn a_modify_rides_the_map_a_tag_sweep_built() {
 fn an_inserts_duplicate_guard_rides_the_map_a_tag_sweep_built() {
     let listing = mapped_listing("path-index-insert-guard");
     let duplicate = entry(&format!("file-{:06}.bin", ENTRY_COUNT - 1));
-    let mut inserted = Some(0);
+    let mut inserted = Some(PaneRows {
+        before: None,
+        after: None,
+    });
 
     let examined = examined_while(|| inserted = insert_entry_sorted(listing.id(), duplicate));
 
@@ -383,8 +391,12 @@ fn a_batch_of_removals_reports_pre_removal_indices_highest_first() {
 
     let removed = remove_entries_by_paths(listing.id(), &paths);
 
-    let indices: Vec<usize> = removed.iter().map(|(index, _)| *index).collect();
-    assert_eq!(indices, vec![7, 5, 2], "removal indices came back in the wrong order");
+    let indices: Vec<Option<usize>> = removed.iter().map(|(rows, _)| rows.before).collect();
+    assert_eq!(
+        indices,
+        vec![Some(7), Some(5), Some(2)],
+        "removal indices came back in the wrong order"
+    );
     let names: Vec<&str> = removed.iter().map(|(_, entry)| entry.name.as_str()).collect();
     assert_eq!(names, ["file-000007.bin", "file-000005.bin", "file-000002.bin"]);
     assert_eq!(listing.entries().len(), ENTRY_COUNT - 3);
@@ -423,5 +435,5 @@ fn a_batch_of_removals_skips_paths_the_listing_never_held() {
     let removed = remove_entries_by_paths(listing.id(), &paths);
 
     assert_eq!(removed.len(), 1);
-    assert_eq!(removed[0].0, 3);
+    assert_eq!(removed[0].0.before, Some(3));
 }
