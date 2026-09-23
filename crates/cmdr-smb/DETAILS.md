@@ -591,12 +591,13 @@ the check and the send:
   starves the stream too, which then reports it, so the arm can't hide a dead server.
 - **The scan pool's prefetch** (up to `max_read`, on purpose) matches `CreditStarvation` and falls through to
   main-session streaming, like a file too big for one READ, instead of skipping the photo as unreadable.
-- **The write**: `write_is_single_shot` answers on smb2's `compound_write_limit()`, so the transfer stages a write the
-  window can't fund, and the `FileWriter` streams it in chunks the window carries. `write_from_stream` branches on
-  `streams::one_frame_write_limit`: a `.cmdr-tmp-*` dest follows today's limit (and streams if the frame is refused),
-  the user's real name keeps `max_write`, the most any promise could have covered, and a refused frame there fails the
-  write with nothing at the name. ❌ Never let a refused frame to a non-scratch name fall back to streaming: that name
-  only gets a frame because the transfer skipped staging on a single-shot promise.
+- **The write**: `write_is_single_shot` answers on smb2's `quick_write_limit()`, which never exceeds
+  `compound_write_limit()`, so the transfer stages a write the window can't fund, and the `FileWriter` streams it in
+  chunks the window carries. `write_from_stream` branches on `streams::one_frame_write_limit`: a `.cmdr-tmp-*` dest
+  follows today's limit (and streams if the frame is refused), the user's real name keeps `max_write`, the most any
+  promise could have covered, and a refused frame there fails the write with nothing at the name. ❌ Never let a refused
+  frame to a non-scratch name fall back to streaming: that name only gets a frame because the transfer skipped staging
+  on a single-shot promise.
 - Pinned by the `credit_cap_proxy.rs` cells in `wire_shape_integration_test.rs` (hinted read, staged write, refused
   final-name write in both `WriteMode`s, refused frame to a taken name, `CreateNew` temp streaming without clobbering,
   prefetch), which cap the guest fixture's window at 64 credits. smb2 pins the same against a real 64-credit Samba (its
@@ -827,12 +828,19 @@ arithmetic stays in smb2 so the window and the cut-off share one headroom consta
 `fits_one_compound_read`. The scan pool's prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the
 reads bullet). Falls back cleanly to the streaming reader/writer when the hint is missing or the file is too big. Small
 compound reads return a `Vec<u8>` wrapped as a single-chunk `InlineReadStream` so the consumer API stays shaped the
-same. See `docs/notes/phase4-rtt-investigation.md` for the measurement. The WRITE side's condition is also a DATA-SAFETY
-contract: `write_is_single_shot` answers with `fits_one_compound_write` on smb2's `compound_write_limit()`, the fast
-path takes the frame for every size such a promise could cover (`one_frame_write_limit`, § "Copy concurrency and the
-credit window"), and the transfer layer skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend
-owes in return (short sources stay on the compound path, a post-CREATE failure cleans up after itself):
-`write_operations/transfer/DETAILS.md` § "The single-shot exemption".
+same. See `docs/notes/phase4-rtt-investigation.md` for the measurement. The write side stops at the same 250 ms, the
+other way round: smb2's `quick_write_limit` (one 512 KiB upload chunk until an upload of two or more WRITEs has measured
+the uplink, then `rate × 250 ms`, capped at `compound_write_limit`, the upload rate kept apart from the download one
+because home links are asymmetric), since one compound WRITE carries the whole file up the link with nothing else
+moving: at 375 KB/s a `stat` waited 23 s behind an 8 MiB upload and 1.5 s behind a streamed one
+([smb2's upload benchmark](https://github.com/vdavid/smb2/blob/main/benchmarks/read-ahead/results/adaptive-uploads.md),
+smb2 0.25.0, 2026-09-23). The numbers sit on `fits_one_compound_write`. The WRITE side's condition is also a DATA-SAFETY
+contract: `write_is_single_shot` answers with `fits_one_compound_write` on that limit, the fast path takes the frame for
+every size such a promise could cover (`one_frame_write_limit`: a staging temp takes today's limit, the real name keeps
+`max_write`, because the limit moves with every upload and expires after 30 s), and the transfer layer skips its
+`.cmdr-tmp-*` staging on the strength of that answer. What the backend owes in return (short sources stay on the
+compound path, a post-CREATE failure cleans up after itself): `write_operations/transfer/DETAILS.md` § "The single-shot
+exemption".
 
 **Decision**: a streamed read (`open_smb_download_stream`) ends the consumer's stream at its last byte, before the
 CLOSE's answer **Why**: smb2's `FileDownload::next_chunk` puts the CLOSE on the wire before it hands out the last chunk,
@@ -847,14 +855,15 @@ only mark the file delete-pending until the CLOSE lands (verified against smb2 0
 2026-09-23). Pinned by `smb_integration_a_streamed_read_ends_before_the_close_is_answered` on the `slow` fixture.
 
 **Decision**: streaming-write progress reports the SERVER-CONFIRMED byte count (`FileWriter::bytes_written()`), never
-the count handed to the pipeline **Why**: `write_chunk` returns as soon as a chunk is accepted into smb2's
-`MAX_PIPELINE_WINDOW`-deep window, so accepted and acknowledged bytes differ by up to a full window per file, and by
-`concurrency x window` across an operation. In ERR-9WZRR (a 10-wide copy of 66 MB files to a NAS over a 6.7 MB/s link)
-that was ~320 MiB of pre-credited bytes: the bar ran ~48 s of wire time ahead, then flatlined while the queue drained,
-the ETA was built on bytes nothing had committed, and the transfer watchdog read the flatline as "no byte movement for
-20s" on a healthy copy. `finish()` drains the window and returns the confirmed total, so the loop reports the
-acknowledged count per chunk and one final call credits the last window. The per-chunk call still happens even when the
-count hasn't moved, because it doubles as the cancel poll.
+the count handed to the pipeline **Why**: `write_chunk` returns as soon as a chunk's WRITEs are on the wire, inside
+smb2's write-behind window, so accepted and acknowledged bytes differ by up to a full window per file (up to 4 MiB
+adaptive; the fixed 32-WRITE window smb2 had before 0.25 made it far more), and by `concurrency x window` across an
+operation. In ERR-9WZRR (a 10-wide copy of 66 MB files to a NAS over a 6.7 MB/s link) that was ~320 MiB of pre-credited
+bytes: the bar ran ~48 s of wire time ahead, then flatlined while the queue drained, the ETA was built on bytes nothing
+had committed, and the transfer watchdog read the flatline as "no byte movement for 20s" on a healthy copy. `finish()`
+drains the window and returns the confirmed total, so the loop reports the acknowledged count per chunk and one final
+call credits the last window. The per-chunk call still happens even when the count hasn't moved, because it doubles as
+the cancel poll.
 
 ❗ **Size any test that means to reach this path off `negotiated_max_write()`.** A payload that fits one compound write
 silently takes the fast path instead, so the test passes without ever touching the pipelined loop it was written for.
@@ -895,6 +904,15 @@ that string is the technical-details text, not something the frontend reads a fi
 **Gotcha**: Watcher filenames from SMB use backslashes; must normalize to forward slashes **Why**: SMB servers send
 paths like `papers\new-file.txt`. The watcher normalizes these to `papers/new-file.txt` before extracting parent
 directories and constructing display paths.
+
+**Gotcha**: the guest identity logs in with an EMPTY username, never `Guest` **Why**: smb2 (0.25+) refuses a guest or
+anonymous session to a login that names an account, since a server answering a named login that way is what an on-path
+downgrade looks like (it turns signing off), and a Samba set to `map to guest = bad user` answers exactly that way to
+the `Guest` name `SmbConnectionParams::new` stores for "no credentials". So every `smb2::ClientConfig` this crate builds
+takes `SmbConnectionParams::wire_username()`, which is empty for `Guest` with no password (`is_guest`), and the guest
+share listing sends an empty name outright. The params keep `Guest` as the identity (the sign-in prompt's guest button
+reads it). ❌ Never hand `params.username` to smb2: every guest connection fails with `Error::Auth` (verified against
+the `smb-consumer-guest` fixture, smb2 0.25.0, 2026-09-23).
 
 **Gotcha**: a share name reaches the wire NFC, so `SmbConnectionParams` must be built with `new` **Why**: `new` runs the
 NFC normalization; a struct literal filled from a raw `statfs` mount name carries macOS's NFD spelling straight to the
@@ -955,18 +973,20 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
     512 KiB, `(0, 4)` one byte over, in two chunks; after a measuring download, `(1, 3)` for 2 MiB), the streamed read
     ending at its last byte rather than at the CLOSE's answer (timed on the `slow` fixture, where that answer is 200 ms
     away), the single-shot write promise the transfer layer skips `.cmdr-tmp-*` staging on (the wire proof and the
-    `write_is_single_shot` predicate behind it, kept together), and the copy-slot clamp. It owns `request_counts`, the
-    diagnostics-metric reader those frame assertions run on. **Every cell here asserts on the PAIR
-    `(compound_requests_sent, requests_sent)`, because `requests_sent` alone reads like a frame count and is not one**:
-    smb2 ticks it once per sub-op of a chain (`allocate_msg_id` is the funnel every send path goes through), while
-    `compound_requests_sent` counts the chain, and `execute_compound` hands the whole chain to one `send_and_count`. So
-    a hinted read is `(1, 3)` for one frame carrying CREATE+READ+CLOSE, and the single-shot write is `(2, 8)` for two
-    frames of four ops each (verified against Samba in the `smb-consumer` container on smb2 0.21.0, 2026-09-02). Reading
-    the second number as round trips costs an afternoon: it makes `requests == 1` look like the fast path's proof, and
-    that assertion is unsatisfiable by construction. The pair also asserts more than either half: a streaming open reads
-    as `(0, 3)`, a loose round trip beside the compound as `(1, 4)`. The copy-concurrency cell exercises neither byte
-    path; it sits here because its subject is the credit window of § "Copy concurrency and the credit window", which the
-    sized read and the slot clamp are the two halves of.
+    `write_is_single_shot` predicate behind it, kept together, and where that promise stops: one upload chunk on a cold
+    connection, what a measured uplink moves in 250 ms after, with a staged write over it streaming and a promised one
+    still `(2, 8)`), and the copy-slot clamp. It owns `request_counts`, the diagnostics-metric reader those frame
+    assertions run on. **Every cell here asserts on the PAIR `(compound_requests_sent, requests_sent)`, because
+    `requests_sent` alone reads like a frame count and is not one**: smb2 ticks it once per sub-op of a chain
+    (`allocate_msg_id` is the funnel every send path goes through), while `compound_requests_sent` counts the chain, and
+    `execute_compound` hands the whole chain to one `send_and_count`. So a hinted read is `(1, 3)` for one frame
+    carrying CREATE+READ+CLOSE, and the single-shot write is `(2, 8)` for two frames of four ops each (verified against
+    Samba in the `smb-consumer` container on smb2 0.21.0, 2026-09-02). Reading the second number as round trips costs an
+    afternoon: it makes `requests == 1` look like the fast path's proof, and that assertion is unsatisfiable by
+    construction. The pair also asserts more than either half: a streaming open reads as `(0, 3)`, a loose round trip
+    beside the compound as `(1, 4)`. The copy-concurrency cell exercises neither byte path; it sits here because its
+    subject is the credit window of § "Copy concurrency and the credit window", which the sized read and the slot clamp
+    are the two halves of.
 - `conformance_test.rs` — the `cmdr_fs::volume::conformance` promises, answered by a real server rather than an
   in-process double (SMB has none): `STATUS_DIRECTORY_NOT_EMPTY`, `STATUS_OBJECT_NAME_COLLISION`,
   `STATUS_OBJECT_NAME_NOT_FOUND`. That last one is the conflict scan's: `scan_for_conflicts_impl` keeps its own

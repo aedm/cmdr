@@ -326,27 +326,156 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
     ensure_clean(&vol, &dir).await;
 }
 
-/// The other direction against a real server: a file too big for one WRITE gets
-/// NO promise, so the transfer layer keeps staging it. ❌ The answer must come
-/// from the negotiated `max_write_size`, never from a size the caller picked.
+/// The other direction against a real server: a file bigger than the uplink
+/// moves in about 250 ms gets NO promise, so the transfer layer stages it and it
+/// streams. The promise reads smb2's `quick_write_limit`, which on a connection
+/// that hasn't measured its uplink yet is one upload chunk (512 KiB), however
+/// big the negotiated `max_write`: one frame that size queues everything else on
+/// the connection behind it with no progress (a `stat` waited 23 s behind an
+/// 8 MiB upload at 375 KB/s). ❌ The answer must come from smb2's limit, never
+/// from `max_write` or a size the caller picked.
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
-async fn smb_integration_a_write_over_the_negotiated_limit_is_not_single_shot() {
+async fn smb_integration_a_cold_connection_promises_one_shot_up_to_one_upload_chunk() {
     let vol = make_docker_volume().await;
     let max_write = vol
         .negotiated_max_write()
         .await
         .expect("a connected volume has negotiated params");
-
-    assert!(vol.write_is_single_shot(max_write).await, "the limit itself fits");
+    let chunk = u64::from(smb2::UPLOAD_CHUNK_SIZE);
     assert!(
-        !vol.write_is_single_shot(max_write + 1).await,
-        "one byte over needs a second WRITE, so the write is no longer all-or-nothing"
+        max_write > chunk,
+        "the fixture must negotiate more than one chunk per WRITE, or this proves nothing"
+    );
+
+    assert!(
+        vol.write_is_single_shot(chunk).await,
+        "one chunk is one WRITE either way"
+    );
+    assert!(
+        !vol.write_is_single_shot(chunk + 1).await,
+        "a cold connection streams anything over one chunk, so the transfer stages it"
+    );
+    assert!(
+        !vol.write_is_single_shot(max_write).await,
+        "one WRITE's worth is no promise until the uplink has shown it moves that fast"
     );
     assert!(
         !vol.write_is_single_shot(0).await,
         "an empty file has no WRITE to compound with; it takes the streaming writer"
     );
+}
+
+/// A staged write over the connection's `quick_write_limit` streams through the
+/// `FileWriter`, even though one frame could carry it: that's what keeps a slow
+/// uplink from queueing the whole file ahead of every listing. The tell is the
+/// upload rate the stream leaves on the connection (two 512 KiB WRITEs measure
+/// the uplink; one compound frame measures nothing), which is also what lifts
+/// the limit for the next file.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_staged_write_over_the_quick_write_limit_streams() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+    let data: Vec<u8> = (0..=252u8).cycle().take(1024 * 1024).collect();
+    let size = data.len() as u64;
+    let (_tree, conn) = vol.clone_session().await.unwrap();
+    assert!(
+        size > conn.quick_write_limit() && size <= conn.compound_write_limit(),
+        "1 MiB must fit one frame by credits and size, and still be over a cold connection's limit"
+    );
+
+    let temp = format!(
+        "{}/one-mib.bin{}{}",
+        dir,
+        cmdr_fs::staging::STAGING_TEMP_MARKER,
+        "quick-test"
+    );
+    let written = vol
+        .write_from_stream(
+            Path::new(&temp),
+            WriteMode::CreateOrReplace,
+            size,
+            Box::new(InlineReadStream::new(data.clone())),
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(written, size);
+    assert!(
+        conn.upload_rate_hint().is_some(),
+        "the write must have streamed as two WRITEs, which leave the uplink's rate on the connection"
+    );
+    assert_eq!(drain(vol.open_read_stream(Path::new(&temp)).await.unwrap()).await, data);
+
+    ensure_clean(&vol, &dir).await;
+}
+
+/// Once an upload has measured a fast uplink, the promise covers what it moves
+/// in 250 ms (up to `compound_write_limit`), and a promised write to the user's
+/// real name still leaves as ONE compound frame: the promise and the write read
+/// the same limit, and the real name's frame limit covers every size a promise
+/// could have been made under.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_is_one_frame() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+
+    // Warm the uplink with a staged 8 MiB stream (loopback moves it at hundreds
+    // of MB/s, so 250 ms of it clears `compound_write_limit`).
+    let warm: Vec<u8> = vec![0x3C; 8 * 1024 * 1024];
+    let temp = format!(
+        "{}/warm.bin{}{}",
+        dir,
+        cmdr_fs::staging::STAGING_TEMP_MARKER,
+        "warm-test"
+    );
+    vol.write_from_stream(
+        Path::new(&temp),
+        WriteMode::CreateOrReplace,
+        warm.len() as u64,
+        Box::new(InlineReadStream::new(warm)),
+        &|_, _| std::ops::ControlFlow::Continue(()),
+    )
+    .await
+    .unwrap();
+
+    let data: Vec<u8> = (0..=240u8).cycle().take(4 * 1024 * 1024).collect();
+    let size = data.len() as u64;
+    assert!(
+        vol.write_is_single_shot(size).await,
+        "a warm loopback uplink moves 4 MiB in well under 250 ms"
+    );
+
+    let path = format!("{}/promised.bin", dir);
+    let (requests_before, compounds_before) = request_counts(&vol).await;
+    let written = vol
+        .write_from_stream(
+            Path::new(&path),
+            WriteMode::CreateOrReplace,
+            size,
+            Box::new(InlineReadStream::new(data.clone())),
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
+        .await
+        .unwrap();
+    let (requests_after, compounds_after) = request_counts(&vol).await;
+
+    assert_eq!(written, size);
+    assert_eq!(
+        (compounds_after - compounds_before, requests_after - requests_before),
+        (2, 8),
+        "the promised write must leave as ONE compound frame (plus the post-write stat)"
+    );
+    assert_eq!(drain(vol.open_read_stream(Path::new(&path)).await.unwrap()).await, data);
+
+    ensure_clean(&vol, &dir).await;
 }
 
 // ── The credit window and the copy-slot clamp ──────────────────

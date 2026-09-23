@@ -57,7 +57,7 @@ impl SmbVolumeInner {
         let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel();
         let addr = build_smb_addr(&params.server, params.port);
         let share = params.share_name.clone();
-        let username = params.username.clone();
+        let username = params.wire_username().to_string();
         let password = params.password.clone();
         let volume = super::watcher::WatchedVolume {
             volume_id: self.volume_id.clone(),

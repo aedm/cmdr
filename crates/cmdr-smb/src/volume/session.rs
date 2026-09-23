@@ -150,7 +150,7 @@ pub(super) async fn build_session(params: &SmbConnectionParams) -> Result<(SmbCl
     let config = ClientConfig {
         addr: build_smb_addr(&params.server, params.port),
         timeout: Duration::from_secs(10),
-        username: params.username.clone(),
+        username: params.wire_username().to_string(),
         password: params.password.clone(),
         domain: String::new(),
         auto_reconnect: false,

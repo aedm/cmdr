@@ -1111,14 +1111,14 @@ dependencies = [
 
 [[package]]
 name = "ccm"
-version = "0.6.0-rc.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4edea5ea70a1285565ac264767613d6c88351a9a0557e7af793a0942590baaed"
+checksum = "0be9b34d99d395af800e996c5784f810f8400ccd64202f91859dc677825b5378"
 dependencies = [
  "aead 0.6.1",
  "cipher 0.5.2",
  "ctr 0.10.1",
- "subtle",
+ "ctutils",
 ]
 
 [[package]]
@@ -5861,9 +5861,9 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "lz4_flex"
-version = "0.13.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ef0d4ed8669f8f8826eb00dc878084aa8f253506c4fd5e8f58f5bce72ddb97e"
+checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
 dependencies = [
  "twox-hash",
 ]
@@ -9339,15 +9339,16 @@ checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
 name = "smb2"
-version = "0.24.4"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8e2e89f0ad4d237dd2ee37ccaa5fe526d88dc8103b7b83793e516316e1d7b76"
+checksum = "c94137e5bb6ac1cb92cd558f794021bd47dace5815a9eb402a613d936be5718e"
 dependencies = [
  "aes 0.9.1",
  "aes-gcm 0.11.0",
  "async-trait",
  "ccm",
  "cmac",
+ "ctutils",
  "digest 0.11.3",
  "futures-util",
  "getrandom 0.4.3",

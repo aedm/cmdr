@@ -61,11 +61,21 @@ pub(super) const ASSUMED_MAX_WRITE: u64 = 65536;
 /// the streaming writer.
 ///
 /// One definition on purpose. `write_is_single_shot` (the transfer layer's
-/// staging exemption) answers with it on smb2's `compound_write_limit`, and
+/// staging exemption) answers with it on smb2's `quick_write_limit`, and
 /// `write_from_stream_impl` branches on it with [`one_frame_write_limit`]. If a
 /// promised write could ever take the streaming path, a force-quit mid-write
 /// would leave a truncated file at the user's real filename — the 2026-07-31
 /// wedge over again (`docs/notes/incidents/2026-07-31-transfer-wedge/README.md`).
+///
+/// The limit is what the uplink moves in about 250 ms, the headroom smb2's
+/// adaptive write-behind window allows: one upload chunk (`smb2::UPLOAD_CHUNK_SIZE`,
+/// 512 KiB) on a connection that hasn't measured its uplink, then `rate × 250 ms`,
+/// capped at `compound_write_limit` (`max_write`, lowered to what half the credit
+/// window funds). A bigger frame carries the whole file with no progress, queued
+/// ahead of every listing on the connection: at 375 KB/s a `stat` waited 23 s
+/// behind an 8 MiB upload, 1.5 s behind a streamed one (smb2's
+/// `benchmarks/read-ahead/results/adaptive-uploads.md`, smb2 0.25.0, 2026-09-23).
+/// smb2 owns that arithmetic.
 pub(super) fn fits_one_compound_write(limit: u64, size: u64) -> bool {
     size > 0 && size <= limit
 }
@@ -73,21 +83,21 @@ pub(super) fn fits_one_compound_write(limit: u64, size: u64) -> bool {
 /// The limit `write_from_stream` sends one compound frame up to, which must
 /// cover every size `write_is_single_shot` promised.
 ///
-/// The promise reads smb2's `compound_write_limit`: `max_write`, lowered to what
-/// the credit window funds. That can shrink between the promise and the write
-/// (the connection learns the server's credit ceiling), so re-reading it here
-/// could send a promised write down the streaming path. Only a promised write
-/// targets the user's real name, though (every other one lands on a
-/// `.cmdr-tmp-*`), which splits it cleanly:
+/// The promise reads smb2's `quick_write_limit`, which moves between the promise
+/// and the write: the upload rate it's built on changes with every upload on the
+/// connection and expires after 30 s, and the credit window can shrink under it.
+/// So re-reading it here could send a promised write down the streaming path.
+/// Only a promised write targets the user's real name, though (every other one
+/// lands on a `.cmdr-tmp-*`), which splits it cleanly:
 ///
-/// - A staging temp takes today's limit: a frame the window can't fund streams
-///   instead, which is safe on a temp.
-/// - The real name keeps `max_write`, the most any promise could have covered.
-///   A frame the window refuses there fails the write with nothing on the wire,
-///   and nothing at the name.
-pub(super) fn one_frame_write_limit(dest_is_scratch: bool, max_write: u64, compound_write_limit: u64) -> u64 {
+/// - A staging temp takes today's limit: anything bigger streams, which is safe
+///   on a temp, and a frame the window refuses streams too.
+/// - The real name keeps `max_write`, the most any promise could have covered
+///   (`quick_write_limit` never exceeds it). A frame the window refuses there
+///   fails the write with nothing on the wire, and nothing at the name.
+pub(super) fn one_frame_write_limit(dest_is_scratch: bool, max_write: u64, quick_write_limit: u64) -> u64 {
     if dest_is_scratch {
-        compound_write_limit.min(max_write)
+        quick_write_limit.min(max_write)
     } else {
         max_write
     }
@@ -316,23 +326,23 @@ impl SmbVolume {
         guard.as_ref().and_then(|c| c.params()).map(|p| p.max_write_size as u64)
     }
 
-    /// The largest write the live session sends as one compound frame right
-    /// now (smb2's `compound_write_limit`: `max_write_size`, lowered to what the
-    /// credit window funds), or `None` when there isn't a session. Same
+    /// The largest write worth sending as one compound frame on the live
+    /// session right now (smb2's `quick_write_limit`, see
+    /// [`fits_one_compound_write`]), or `None` when there isn't a session. Same
     /// no-clone, no-wire read as [`negotiated_max_write`](Self::negotiated_max_write).
-    async fn compound_write_limit(&self) -> Option<u64> {
+    async fn quick_write_limit(&self) -> Option<u64> {
         let guard = self.inner.client.lock().await;
         guard
             .as_ref()
             .filter(|c| c.params().is_some())
-            .map(|c| c.connection().compound_write_limit())
+            .map(|c| c.connection().quick_write_limit())
     }
 
     /// Inherent body for the `write_is_single_shot` trait method (thin delegator
     /// in `volume_impl`): whether a write of `size` bytes takes the compound
     /// fast path below, which is what makes it all-or-nothing.
     pub(super) async fn write_is_single_shot_impl(&self, size: u64) -> bool {
-        match self.compound_write_limit().await {
+        match self.quick_write_limit().await {
             Some(limit) => fits_one_compound_write(limit, size),
             // No live session: no promise. The transfer stages, as it would for
             // any backend without the guarantee.
@@ -411,8 +421,8 @@ impl SmbVolume {
             // would put a truncated file at the user's real filename.
             //
             // Which limit applies depends on the destination
-            // (`one_frame_write_limit`): a staging temp follows the credit
-            // window as it is now, the user's real name keeps the limit any
+            // (`one_frame_write_limit`): a staging temp follows the quick-write
+            // limit as it is now, the user's real name keeps the limit any
             // promise could have been made under.
             let dest_is_scratch = is_scratch_name(dest);
             let bytes_written = 'write: {
@@ -420,7 +430,7 @@ impl SmbVolume {
                     .params()
                     .map(|p| p.max_write_size as u64)
                     .unwrap_or(ASSUMED_MAX_WRITE);
-                let limit = one_frame_write_limit(dest_is_scratch, max_write, conn.compound_write_limit());
+                let limit = one_frame_write_limit(dest_is_scratch, max_write, conn.quick_write_limit());
                 if fits_one_compound_write(limit, size) {
                     let mut buffer = Vec::with_capacity(size as usize);
                     while let Some(chunk_result) = stream.next_chunk().await {
@@ -558,10 +568,10 @@ impl SmbVolume {
 
                     // `bytes_written()` is what the SERVER has acknowledged, not what
                     // we handed to the pipeline. `write_chunk` returns as soon as the
-                    // chunk is accepted into the `MAX_PIPELINE_WINDOW`-deep window, so
-                    // the two numbers differ by up to a full window per file — and by
-                    // `concurrency x window` across an operation, which on a slow link
-                    // is minutes of bytes.
+                    // chunk's WRITEs are on the wire, inside smb2's write-behind window,
+                    // so the two numbers differ by up to a full window per file (up to
+                    // 4 MiB, or 32 WRITEs on a fixed window) — and by
+                    // `concurrency x window` across an operation.
                     //
                     // Gotcha/Why: reporting the accepted count here made progress a
                     // lie that compounded. In ERR-9WZRR (10-wide copy of 66 MB files

@@ -122,9 +122,10 @@ fn only_a_write_that_fits_one_compound_frame_is_single_shot() {
 }
 
 /// The limit a write goes out as one frame up to must cover every size a
-/// single-shot promise could have covered, even after the credit window shrank
-/// under it. A promised write is the only one aimed at the user's real name, so
-/// that name keeps `max_write`; a staging temp follows the window as it is now,
+/// single-shot promise could have covered, even after smb2's `quick_write_limit`
+/// moved under it (the upload rate changed or expired, or the credit window
+/// shrank). A promised write is the only one aimed at the user's real name, so
+/// that name keeps `max_write`; a staging temp follows the limit as it is now,
 /// since streaming onto a temp is safe.
 #[test]
 fn a_real_name_keeps_every_size_a_promise_could_have_covered() {

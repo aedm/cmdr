@@ -417,10 +417,10 @@ async fn smb_integration_write_from_stream_source_error_deletes_partial() {
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_write_progress_reports_confirmed_bytes_not_queued_ones() {
-    // A streaming write pipelines up to `MAX_PIPELINE_WINDOW` WRITEs before it
-    // waits for any of them, so bytes handed to the pipeline and bytes the
-    // server has acknowledged are two different numbers. Progress must report
-    // the second one.
+    // A streaming write keeps several WRITEs in flight (smb2's write-behind
+    // window) before it waits for any of them, so bytes handed to the pipeline
+    // and bytes the server has acknowledged are two different numbers. Progress
+    // must report the second one.
     //
     // The tell is that acknowledged bytes STALL while the window fills: several
     // chunks go out before any response comes back, so consecutive callbacks
