@@ -43,6 +43,25 @@ var SMB = &Stack{
 	// `cpus`), in that order. Only `up` applies those keys.
 	composeFiles:  []string{"docker-compose.yml", "docker-compose.override.yml"},
 	portEnvPrefix: "SMB_CONSUMER_",
+	// cmdr's own host-port range, 11480+. The vendored compose defaults to
+	// smb2's 10480+, which smb2's own harness binds under ITS project name
+	// (`consumer`): sharing ports made the two mutually exclusive, since a stack
+	// leaked by an interrupted smb2 run (its `Drop` teardown doesn't fire on
+	// SIGKILL) squats 10480+ and blocks every cmdr bring-up with "port is already
+	// allocated", and vice versa. Pinned here, rather than in the compose file,
+	// because the compose is vendored and smb2's defaults are every other smb2
+	// consumer's contract.
+	//
+	// ❗ The one table: every compose call the lease makes binds these, and the
+	// check runner reads them back (`checks.ApplySmbPortEnv`) for the Rust tests
+	// and the macOS E2E app. Never move them: sibling worktrees adopt the running
+	// stack by these ports.
+	hostPorts: map[string]int{
+		"GUEST": 11480, "AUTH": 11481, "BOTH": 11482, "50SHARES": 11483,
+		"UNICODE": 11484, "LONGNAMES": 11485, "DEEPNEST": 11486, "MANYFILES": 11487,
+		"READONLY": 11488, "WINDOWS": 11489, "SYNOLOGY": 11490, "LINUX": 11491,
+		"FLAKY": 11492, "SLOW": 11493, "MAXREADSIZE": 11494,
+	},
 	modeServices: map[string][]string{
 		ModeMinimal: {"smb-consumer-guest", "smb-consumer-auth"},
 		ModeE2E: {

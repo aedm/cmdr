@@ -369,6 +369,11 @@ const (
 	webdavStartRel   = "apps/desktop/test/webdav-servers/start.sh"
 )
 
+// The SMB fixture's vendored compose, whose `${SMB_CONSUMER_*_PORT:-…}` defaults
+// are smb2's range. `TestSmbPinnedPortsCoverEveryVendoredService` checks that
+// `stacklease.SMB` pins a cmdr port for every one of them.
+const smbComposeRel = "apps/desktop/test/smb-servers/.compose/docker-compose.yml"
+
 // goTestsInputs is what `scripts-go-tests` reads, which is far more than the Go
 // trees. Fifteen tests in this package assert something about the REAL repo
 // rather than a fixture, and each can change verdict on a file no Go linter ever
@@ -383,8 +388,9 @@ const (
 //   - the frontend source roots (`TestNoFrontendSourceLoadsAgentDocs`, which is
 //     what makes `agentDocExclusions` safe),
 //   - `apps/desktop/package.json` (`TestBindingsRegenAsksCargoTheSameQuestionAsTheOtherLanes`),
-//   - the SFTP fixture quartet the fixture-path tests compare, and the WebDAV
-//     compose file and start script the port and mode tests read.
+//   - the SFTP fixture quartet the fixture-path tests compare, the WebDAV
+//     compose file and start script the port and mode tests read, and SMB's
+//     vendored compose the port-coverage test reads.
 //
 // ❗ No `agentDocExclusions` here. An exclusion vetoes across the whole union, so
 // borrowing one from `rustCompileInputs` would take `scripts/check/CLAUDE.md`
@@ -399,7 +405,7 @@ var goTestsInputs = inputs(
 	rustWorkspaceConfigInputs,
 	rustEmbeddedInputs,
 	treeGlobs(frontendSourceRoots...),
-	[]string{"apps/desktop/package.json", sftpComposeRel, sftpStartRel, sftpTestingRel, sftpEntrypointRel, webdavComposeRel, webdavStartRel},
+	[]string{"apps/desktop/package.json", sftpComposeRel, sftpStartRel, sftpTestingRel, sftpEntrypointRel, webdavComposeRel, webdavStartRel, smbComposeRel},
 )
 
 // workflowsInputs covers the GitHub workflow files the workflow-scanning checks

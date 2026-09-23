@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // leaseRootEnv points the lock file and lease dir at a sandbox. Tests set it to
@@ -107,6 +109,13 @@ type Stack struct {
 	// which is the one config dimension that genuinely differs across
 	// worktrees and sessions. They fold into the config hash.
 	portEnvPrefix string
+	// hostPorts pins `<portEnvPrefix><SUFFIX>_PORT` for every compose call and
+	// for the config hash, whatever the caller's env says. For a stack whose
+	// compose defaults are somebody else's range (SMB's vendored compose
+	// defaults to smb2's 10480+), this is what keeps every bring-up path
+	// (start.sh, the runner, e2e-linux.sh) on the stack's own range. Empty when
+	// the compose file's own defaults are the range.
+	hostPorts map[string]int
 }
 
 // LockPath is the flock target: a stable inode held for the full
@@ -245,6 +254,60 @@ func (s *Stack) Modes() []string {
 	}
 	sort.Strings(modes)
 	return modes
+}
+
+// HostPorts is the stack's pinned host-port table, keyed by the service suffix
+// in `<portEnvPrefix><SUFFIX>_PORT` ("GUEST" → 11480). A copy, so a caller can't
+// edit the registry. Empty for a stack whose compose defaults already carry its
+// range.
+func (s *Stack) HostPorts() map[string]int {
+	out := make(map[string]int, len(s.hostPorts))
+	for svc, port := range s.hostPorts {
+		out[svc] = port
+	}
+	return out
+}
+
+// PortEnvName is the variable the compose file reads a service's host port
+// from: `SMB_CONSUMER_GUEST_PORT` for SMB's "GUEST".
+func (s *Stack) PortEnvName(suffix string) string {
+	return s.portEnvPrefix + suffix + "_PORT"
+}
+
+// portEnv is the stack's effective port env, sorted `KEY=value` pairs: the
+// caller's own `<portEnvPrefix>*_PORT` vars, with every pinned port overriding
+// whatever the caller set for it. Both the config hash and every compose call
+// read this one view, so the ports a stack is hashed with are the ports it binds.
+func (s *Stack) portEnv() []string {
+	byKey := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, ok := strings.Cut(kv, "=")
+		if ok && strings.HasPrefix(k, s.portEnvPrefix) && strings.HasSuffix(k, "_PORT") {
+			byKey[k] = v
+		}
+	}
+	for svc, port := range s.hostPorts {
+		byKey[s.PortEnvName(svc)] = strconv.Itoa(port)
+	}
+	out := make([]string, 0, len(byKey))
+	for k, v := range byKey {
+		out = append(out, k+"="+v)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// composeEnv is the environment every `docker compose` call for this stack runs
+// under: this process's own, with the port env swapped for portEnv.
+func (s *Stack) composeEnv() []string {
+	env := make([]string, 0, len(os.Environ())+len(s.hostPorts))
+	for _, kv := range os.Environ() {
+		k, _, _ := strings.Cut(kv, "=")
+		if !strings.HasPrefix(k, s.portEnvPrefix) || !strings.HasSuffix(k, "_PORT") {
+			env = append(env, kv)
+		}
+	}
+	return append(env, s.portEnv()...)
 }
 
 func leaseRoot() string {

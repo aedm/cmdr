@@ -119,8 +119,9 @@ server exposing 50 shares, for share-list scale), and `smb-consumer-unicode` (sh
 names). They come from smb2's consumer test harness; `e2e-linux.sh` starts exactly this set (via
 `smb-servers/start.sh e2e`) and passes per-container env vars (`SMB_E2E_GUEST_HOST` / `_PORT`, plus the `AUTH` /
 `50SHARES` / `UNICODE` equivalents) to the Tauri app, which `virtual_smb_hosts.rs` reads to inject the correct
-addresses. On macOS (local dev), smb2's default ports (guest 10480, auth 10481, 50shares 10483, unicode 10484) are used
-instead.
+addresses. On macOS (local dev) the app dials the published host ports instead, cmdr's 11480+ range (guest 11480, auth
+11481, 50shares 11483, unicode 11484), which the lease helper pins (`stacklease.SMB` in
+`scripts/check/stacklease/registry.go`).
 
 The Docker image includes `smbclient` (for the `smb_smbclient.rs` fallback), `cifs-utils`, and GVFS packages (`gvfs`,
 `gvfs-backends`, `gvfs-daemons`, `gvfs-fuse`). The entrypoint starts `gvfsd` so `gio mount` works for user-space SMB

@@ -840,6 +840,89 @@ func TestSmbStackKeepsItsHistoricalLeasePaths(t *testing.T) {
 	}
 }
 
+// smbHostPorts is cmdr's dedicated SMB range, spelled out so the test pins the
+// numbers rather than echoing the registry back to itself.
+var smbHostPorts = map[string]int{
+	"GUEST": 11480, "AUTH": 11481, "BOTH": 11482, "50SHARES": 11483,
+	"UNICODE": 11484, "LONGNAMES": 11485, "DEEPNEST": 11486, "MANYFILES": 11487,
+	"READONLY": 11488, "WINDOWS": 11489, "SYNOLOGY": 11490, "LINUX": 11491,
+	"FLAKY": 11492, "SLOW": 11493, "MAXREADSIZE": 11494,
+}
+
+func TestSmbStackPinsItsOwnHostPortRange(t *testing.T) {
+	withFakes(t)
+	got := SMB.HostPorts()
+	if len(got) != len(smbHostPorts) {
+		t.Fatalf("SMB pins %d host ports, want %d: %v", len(got), len(smbHostPorts), got)
+	}
+	for svc, want := range smbHostPorts {
+		if got[svc] != want {
+			t.Errorf("SMB pins %s to %d, want %d", svc, got[svc], want)
+		}
+	}
+
+	// ❗ The regression: a caller whose env says 10480 (smb2's compose default,
+	// or a stale export) must still bring the stack up on 11480+, because every
+	// compose call the lease makes carries the pinned table.
+	t.Setenv("SMB_CONSUMER_GUEST_PORT", "10480")
+	t.Setenv("SMB_CONSUMER_SLOW_PORT", "10493")
+	seen := map[string][]string{}
+	for _, kv := range SMB.composeEnv() {
+		if k, v, ok := strings.Cut(kv, "="); ok && strings.HasPrefix(k, "SMB_CONSUMER_") {
+			seen[k] = append(seen[k], v)
+		}
+	}
+	for svc, want := range smbHostPorts {
+		key := "SMB_CONSUMER_" + svc + "_PORT"
+		if vals := seen[key]; len(vals) != 1 || vals[0] != strconv.Itoa(want) {
+			t.Errorf("compose env carries %s=%v, want exactly [%d]", key, vals, want)
+		}
+	}
+}
+
+func TestSmbConfigHashIgnoresTheCallersPortEnv(t *testing.T) {
+	withFakes(t)
+	// What the check runner stamped on the stack that's running today: every
+	// `SMB_CONSUMER_*_PORT` exported at its pinned value. A bare `start.sh` (no
+	// port env) and a caller exporting something else have to hash the same, or
+	// they'd recreate that stack instead of adopting it.
+	for svc, port := range smbHostPorts {
+		t.Setenv("SMB_CONSUMER_"+svc+"_PORT", strconv.Itoa(port))
+	}
+	runner := SMB.computeConfigHash(ModeE2E)
+
+	for svc := range smbHostPorts {
+		if err := os.Unsetenv("SMB_CONSUMER_" + svc + "_PORT"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if bare := SMB.computeConfigHash(ModeE2E); bare != runner {
+		t.Error("a caller with no SMB port env hashes differently from the runner, so a bare start.sh would recreate the running stack")
+	}
+
+	t.Setenv("SMB_CONSUMER_GUEST_PORT", "10480")
+	if stray := SMB.computeConfigHash(ModeE2E); stray != runner {
+		t.Error("a caller exporting smb2's 10480 hashes differently, yet compose binds the pinned port either way")
+	}
+}
+
+func TestAStackWithNoPinnedPortsLeavesTheComposeEnvAlone(t *testing.T) {
+	withFakes(t)
+	t.Setenv("SFTP_FIXTURE_OPENSSH_PORT", "12999")
+	if len(SFTP.HostPorts()) != 0 {
+		t.Fatalf("SFTP pins %v; its compose defaults own its range", SFTP.HostPorts())
+	}
+	found := false
+	for _, kv := range SFTP.composeEnv() {
+		if kv == "SFTP_FIXTURE_OPENSSH_PORT=12999" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a stack with no pinned ports dropped the caller's own port env")
+	}
+}
+
 func TestUnknownModeIsRejected(t *testing.T) {
 	withFakes(t)
 	if _, err := SMB.Acquire("manual", "not-a-mode"); err == nil {

@@ -85,15 +85,13 @@ func (s *Stack) computeConfigHash(mode string) string {
 		fmt.Fprintf(h, "svc=%s\n", svc)
 	}
 	// Port env: the one config dimension that genuinely changes container
-	// bindings across worktrees/sessions.
-	var ports []string
-	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, s.portEnvPrefix) && strings.Contains(kv, "_PORT=") {
-			ports = append(ports, kv)
-		}
-	}
-	sort.Strings(ports)
-	for _, kv := range ports {
+	// bindings across worktrees/sessions. The EFFECTIVE view, pinned ports
+	// included, so the hash names the ports compose actually binds.
+	//
+	// ❗ Same `KEY=value` lines, same order, as when the runner exported every
+	// pinned port itself: a stack it stamped hashes equal here, so a bare
+	// `start.sh` adopts it rather than recreating it under a live run.
+	for _, kv := range s.portEnv() {
 		fmt.Fprintf(h, "%s\n", kv)
 	}
 	// A first-party image: its build context decides what the containers RUN, so

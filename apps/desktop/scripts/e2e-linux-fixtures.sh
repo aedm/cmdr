@@ -136,13 +136,11 @@ start_smb_containers() {
             # down, no force-recreate). If other leases are live, the sick stack
             # is the first-comer's to manage; the probe below retries.
             log_warn "SMB containers running but not serving; reconciling (no down)"
-            if command -v go &> /dev/null && (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease reconcile smb e2e); then
-                : # reconciled under the lock
-            else
-                # Fallback (Go missing / helper broken): legacy down + restart.
-                log_warn "SMB reconcile helper unavailable; falling back to legacy down + restart"
-                docker compose -p smb-consumer down > /dev/null 2>&1 || true
-                "$SMB_SERVERS_DIR/start.sh" e2e
+            # No direct-compose fallback: the helper is what pins the stack's
+            # ports (`stacklease.SMB`), and `start.sh` needs it too.
+            if ! (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease reconcile smb e2e); then
+                log_error "SMB reconcile helper failed; can't bring the stack back without it"
+                exit 1
             fi
         fi
     else

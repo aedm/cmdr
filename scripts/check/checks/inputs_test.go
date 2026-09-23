@@ -434,6 +434,7 @@ var realTreeReadingTests = map[string][]string{
 	"TestWebdavFixturePortsBindToLoopback":                     {webdavComposeRel},
 	"TestWebdavFixturePortsMatchComposeDefaults":               {webdavComposeRel},
 	"TestWebdavModeServicesAgree":                              {webdavStartRel},
+	"TestSmbPinnedPortsCoverEveryVendoredService":              {smbComposeRel},
 	// Reads only the crate directories `fixtureIntegrationFilter` stats to
 	// decide whether a `package(…)` clause parses.
 	"TestEveryOwnLaneFixtureHasALaneOfItsOwn":                      {"Cargo.toml", "crates/cmdr-webdav/Cargo.toml"},

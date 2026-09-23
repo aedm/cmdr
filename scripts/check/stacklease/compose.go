@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -35,14 +34,16 @@ func (d dockerComposer) composeFileArgs() ([]string, error) {
 	return args, nil
 }
 
-func runDocker(args ...string) (string, error) {
+// runDocker runs one docker call for this stack. The environment is this
+// process's own with the stack's port env swapped in (`Stack.composeEnv`), so a
+// stack that pins its ports binds them whatever the caller exported, and one
+// that doesn't still passes the caller's own through to compose's `${...}`.
+func (d dockerComposer) runDocker(args ...string) (string, error) {
 	cmd := exec.Command("docker", args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	// Inherit the environment so the stack's port env (set by the orchestrator or
-	// by the bash caller) flows into compose's `${...}` port substitution.
-	cmd.Env = os.Environ()
+	cmd.Env = d.stack.composeEnv()
 	err := cmd.Run()
 	return out.String(), err
 }
@@ -57,7 +58,7 @@ type composePsLine struct {
 
 // Status returns the running and healthy service sets for the project.
 func (d dockerComposer) Status() (running map[string]bool, healthy map[string]bool, err error) {
-	out, err := runDocker("compose", "-p", d.stack.ProjectName, "ps", "--format", "json")
+	out, err := d.runDocker("compose", "-p", d.stack.ProjectName, "ps", "--format", "json")
 	if err != nil {
 		return nil, nil, fmt.Errorf("docker compose ps: %w\n%s", err, out)
 	}
@@ -93,7 +94,7 @@ func (d dockerComposer) Status() (running map[string]bool, healthy map[string]bo
 // RunningServices lists the project's running services (used for the
 // all-services mode).
 func (d dockerComposer) RunningServices() ([]string, error) {
-	out, err := runDocker("compose", "-p", d.stack.ProjectName, "ps", "--services", "--filter", "status=running")
+	out, err := d.runDocker("compose", "-p", d.stack.ProjectName, "ps", "--services", "--filter", "status=running")
 	if err != nil {
 		return nil, fmt.Errorf("docker compose ps --services: %w\n%s", err, out)
 	}
@@ -113,7 +114,7 @@ func (d dockerComposer) Up(services []string) error {
 	if err != nil {
 		return err
 	}
-	out, err := runDocker(d.upArgs(services, fileArgs)...)
+	out, err := d.runDocker(d.upArgs(services, fileArgs)...)
 	if err != nil {
 		return fmt.Errorf("docker compose up: %w\n%s", err, out)
 	}
@@ -128,7 +129,7 @@ func (d dockerComposer) Restart(services []string) error {
 		return nil
 	}
 	args := append([]string{"compose", "-p", d.stack.ProjectName, "restart"}, services...)
-	out, err := runDocker(args...)
+	out, err := d.runDocker(args...)
 	if err != nil {
 		return fmt.Errorf("docker compose restart: %w\n%s", err, out)
 	}
@@ -153,7 +154,7 @@ func (d dockerComposer) upArgs(services, fileArgs []string) []string {
 
 // Down tears the whole project down (matches stop.sh).
 func (d dockerComposer) Down() error {
-	out, err := runDocker("compose", "-p", d.stack.ProjectName, "down")
+	out, err := d.runDocker("compose", "-p", d.stack.ProjectName, "down")
 	if err != nil {
 		return fmt.Errorf("docker compose down: %w\n%s", err, out)
 	}

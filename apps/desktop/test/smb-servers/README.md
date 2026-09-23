@@ -14,6 +14,13 @@ Docker SMB containers for local development and E2E testing, provided by smb2's 
 The Docker Compose files live in `.compose/`. They're **vendored** from smb2's consumer test harness (see
 `.compose/VENDORED.md`). If they're missing or stale after an smb2 bump, follow the re-vendor steps there.
 
+**Ports are 11480+**, cmdr's own range: smb2's own harness binds the same compose on its defaults, 10480+, and two
+stacks sharing a range made them mutually exclusive on one machine. The vendored compose still defaults to 10480+, so
+the lease helper pins cmdr's range on every compose call (the `hostPorts` table on `stacklease.SMB` in
+`scripts/check/stacklease/registry.go`). That's why every bring-up goes through the helper and `start.sh` has no direct
+`compose up` fallback: it needs Go. A re-vendor that adds a service needs a port in that table, and
+`TestSmbPinnedPortsCoverEveryVendoredService` fails until it has one.
+
 CI runs the Rust SMB integration tests automatically via the `desktop-rust-integration-tests` check, which starts the
 `core` containers, runs `cargo nextest run --run-ignored only -E 'test(smb_integration_)'`, and tears them down.
 Locally, `pnpm check --rust` includes the same check.

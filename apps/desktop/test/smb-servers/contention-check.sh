@@ -29,13 +29,9 @@ COMPOSE_DIR="$SCRIPT_DIR/.compose"
 PROJECT_NAME="smb-consumer"
 MODE="e2e"
 
-# Pin cmdr's dedicated host-port range so the lease's config hash and the
-# compose bring-up match what the rest of the toolchain uses (11480+).
+# The lease pins cmdr's host-port range (11480+) itself (`stacklease.SMB`), so
+# the bring-up and config hash here match every other caller's with no port env.
 export CMDR_SMB_COMPOSE_DIR="$COMPOSE_DIR"
-export SMB_CONSUMER_GUEST_PORT=11480
-export SMB_CONSUMER_AUTH_PORT=11481
-export SMB_CONSUMER_50SHARES_PORT=11483
-export SMB_CONSUMER_UNICODE_PORT=11484
 
 pass=0
 fail=0

@@ -823,13 +823,17 @@ same containers), so a fixed-cost banner on every run drowned the one thing wort
 runs a _vendored copy_ of smb2's `consumer` compose under its own project name (`smb-consumer`), while smb2's own test
 harness runs the same compose under project `consumer` on 10480+. Same ports + different project = mutually exclusive: a
 stack leaked by an interrupted smb2 run (its `Drop` teardown doesn't fire on SIGKILL) squats 10480+ and blocks every
-cmdr `check.sh` with `port is already allocated`, cascading until manually cleaned. The orchestrator now calls
-`checks.ApplySmbPortEnv()` (`checks/smb_ports.go`) before bring-up, shifting cmdr to 11480+ via smb2's existing
-per-service env override. It flows by process-env inheritance — `docker compose up` (start.sh), the Rust integration
-tests (`guest_port()` reads `SMB_CONSUMER_*_PORT`), and the macOS E2E app (`SMB_E2E_*_PORT`) all pick it up; the Linux
-Docker E2E is unaffected (it talks to containers over the Docker network on internal `:445`, set explicitly in its
-`docker run -e`). Net: cmdr and smb2's harnesses coexist, and smb2's defaults/`guest_port()` contract stay untouched so
-every other smb2 consumer is unaffected.
+cmdr `check.sh` with `port is already allocated`, cascading until manually cleaned. The port table lives on the SMB
+registry entry (`hostPorts` in `stacklease/registry.go`), and the lease overrides smb2's per-service
+`SMB_CONSUMER_*_PORT` env on every compose call it makes, whatever the caller exported. So every bring-up path
+(`start.sh`, this runner, `e2e-linux.sh`, `contention-check.sh`) lands on 11480+, and the config hash reads the same
+pinned view, so a stack one path started is adopted by the others. Pinning in the compose file instead isn't an option:
+it's vendored, and its defaults are every other smb2 consumer's contract. The runner's read side is
+`checks.ApplySmbPortEnv()` (`checks/smb_ports.go`), which exports the same table as `SMB_CONSUMER_*_PORT` (the Rust
+integration tests' `guest_port()`) and `SMB_E2E_*_PORT` (the macOS E2E app). The Linux Docker E2E is unaffected (it
+talks to containers over the Docker network on internal `:445`, set explicitly in its `docker run -e`).
+`TestSmbPinnedPortsCoverEveryVendoredService` fails when a re-vendor adds a service the table misses. Net: cmdr and
+smb2's harnesses coexist, and smb2's defaults and `guest_port()` contract stay untouched.
 
 **Decision**: those host ports publish to `127.0.0.1`, not all interfaces. **Why**: Docker's default binding is
 `0.0.0.0`, so every bring-up put ~15 unauthenticated Samba servers (guest shares included) on the LAN and tailnet of
@@ -846,9 +850,10 @@ rebinding it.
 
 `stacklease` leases any Docker Compose fixture stack, not just SMB. Every protocol-shaped thing is a field on `Stack`
 (`stacklease/registry.go`): compose project, `/tmp` lock file, `/tmp` lease dir, the optional `/tmp` keys dir a stack's
-containers bind-mount, compose dir + files, mode → service table, the services that ship no `HEALTHCHECK`, and the
-port-env prefix that folds into the config hash. The adopt-or-reconcile policy, the dead-PID sweep, and the down-at-zero
-teardown are one implementation over that value.
+containers bind-mount, compose dir + files, mode → service table, the services that ship no `HEALTHCHECK`, the port-env
+prefix that folds into the config hash, and the optional pinned host-port table (`hostPorts`, SMB only: its vendored
+compose defaults to smb2's range, while SFTP's and WebDAV's own compose defaults already carry theirs). The
+adopt-or-reconcile policy, the dead-PID sweep, and the down-at-zero teardown are one implementation over that value.
 
 - **Separate namespaces are the point.** Each stack has its own flock target and its own lease dir, so one stack's
   holders are invisible to the other and downing one at zero can never touch the other's containers. The runner uses the

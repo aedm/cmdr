@@ -66,28 +66,25 @@ esac
 # scripts/check/stacklease for the model.
 #
 # On success the helper has already brought the stack up (or confirmed it's
-# serving), so we skip our own `up` and go straight to the probe. If `go` is
-# missing or the helper errors (a local-ergonomics edge — CI always has Go), we
-# warn loudly and FALL BACK to the legacy direct `up`, never blocking the user.
+# serving), so we go straight to the probe. The helper is also what puts the
+# stack on cmdr's own host ports (11480+, pinned on the `stacklease.SMB` registry
+# entry): the vendored compose defaults to smb2's 10480+.
+#
+# ❗ No direct `compose up` fallback. One would land on 10480+, clash with smb2's
+# own harness, and leave a stack on the wrong ports that every later check run
+# adopts. If `go` is missing or the helper errors, fix that instead.
 #
 # The override (`docker-compose.override.yml`, cmdr-owned, re-vendor-safe) layers
 # `restart: unless-stopped` + `mem_limit` + `cpus` onto every non-flaky consumer.
-# Only `up` applies those keys, so the override `-f` belongs at the up call sites
-# (the helper and the fallback) — the bare `compose ps`/`port`/`logs` calls
-# reconstruct config from container labels and work unchanged.
-lease_ok=false
-if command -v go &> /dev/null; then
-    if (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease acquire smb manual "$mode"); then
-        lease_ok=true
-    else
-        echo "WARN: SMB lease helper failed; falling back to direct 'compose up' (no cross-worktree refcounting)." >&2
-    fi
-else
-    echo "WARN: 'go' not found; falling back to direct 'compose up' (no cross-worktree SMB lease refcounting)." >&2
+# Only `up` applies those keys, and the helper layers it; the bare
+# `compose ps`/`port`/`logs` calls below reconstruct config from container labels.
+if ! command -v go &> /dev/null; then
+    echo "ERROR: 'go' not found. The SMB stack comes up through the Go lease helper, which pins its ports; install Go via mise." >&2
+    exit 1
 fi
-
-if [ "$lease_ok" = false ]; then
-    docker compose -p "$PROJECT_NAME" -f "$COMPOSE_DIR/docker-compose.yml" -f "$COMPOSE_DIR/docker-compose.override.yml" up -d "${services[@]}"
+if ! (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease acquire smb manual "$mode"); then
+    echo "ERROR: the SMB lease helper failed (output above). Check state with: (cd scripts/check && go run ./stack-lease status smb)" >&2
+    exit 1
 fi
 
 # Resolve the list of running services if `all` was requested.
@@ -130,14 +127,17 @@ docker compose -p "$PROJECT_NAME" -f "$COMPOSE_DIR/docker-compose.yml" ps
 echo ""
 echo "SMB servers ready! Connection URLs:"
 echo ""
-# Resolve each service's ACTUAL published host port — they shift whenever
-# SMB_CONSUMER_*_PORT is set (cmdr's check orchestrator pins 11480+, smb2's
-# default is 10480+), so a hardcoded URL would lie. Skip any service not running
-# in this mode.
+# Resolve each service's ACTUAL published host port rather than hardcoding
+# 11480+: a stack that some other tool brought up could sit elsewhere, and a
+# hardcoded URL would lie. Skip any service not running in this mode.
 print_url() {
     local service="$1" share="$2" note="$3" port
     port=$(docker compose -p "$PROJECT_NAME" -f "$COMPOSE_DIR/docker-compose.yml" port "$service" 445 2>/dev/null | awk -F: '{print $NF}')
-    [ -n "$port" ] && printf "  smb://localhost:%s/%s    # %s\n" "$port" "$share" "$note"
+    # An `if`, not `[ -n ] && printf`: that form returns 1 for a service this
+    # mode didn't start, and `set -e` then ends the script with exit 1.
+    if [ -n "$port" ]; then
+        printf "  smb://localhost:%s/%s    # %s\n" "$port" "$share" "$note"
+    fi
 }
 print_url smb-consumer-guest public "smb-consumer-guest (no auth)"
 print_url smb-consumer-auth private "smb-consumer-auth (user: testuser, pass: testpass)"
