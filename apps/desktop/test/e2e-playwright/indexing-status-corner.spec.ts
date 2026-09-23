@@ -30,19 +30,40 @@ type PageLike = TauriPage | BrowserPageAdapter
 
 /** The corner icon itself (`IndexingStatusIndicator`). */
 const CORNER_HOURGLASS = '.indexing-status'
-/** The tooltip body, which only exists while the indicator is visible. */
-const CORNER_TOOLTIP = '.indexing-status ~ div .tooltip-content'
+/**
+ * The tooltip body. It mounts only while the tooltip is open (the corner keeps no hidden body
+ * ticking), and once shown the tooltip adopts it out of its host, so it's found by class alone.
+ */
+const CORNER_TOOLTIP = '.tooltip-content'
 
 /** A drive id nothing real can claim, so this spec disturbs no live volume. */
 const SYNTHETIC_VOLUME = 'e2e-synthetic-drive'
 
-/** Whether the corner names our synthetic drive right now. The row renders only
- *  inside the indicator's `{#if visible}`, so a hit also proves the corner is up. */
-async function cornerNamesSyntheticDrive(tauriPage: PageLike): Promise<boolean> {
-  const text = await tauriPage.evaluate<string>(
-    `(document.querySelector(${JSON.stringify(CORNER_TOOLTIP)})?.textContent ?? '')`,
+/**
+ * What the corner says about our synthetic drive right now: `'named'`, `'not-named'`, or `'pending'`
+ * while its body hasn't mounted yet. Hovers the indicator first, since the body mounts only while
+ * the tooltip is open; a poll reads it on its next pass. `'pending'` is never an answer, so a negative
+ * check can't pass on a body that simply isn't there yet. No corner at all means `'not-named'`.
+ */
+async function cornerOnSyntheticDrive(tauriPage: PageLike): Promise<'named' | 'not-named' | 'pending'> {
+  return tauriPage.evaluate<'named' | 'not-named' | 'pending'>(
+    `(() => {
+      const corner = document.querySelector(${JSON.stringify(CORNER_HOURGLASS)})
+      if (!corner) return 'not-named'
+      document.dispatchEvent(new MouseEvent('mousemove'))
+      corner.dispatchEvent(new MouseEvent('mouseenter'))
+      const body = document.querySelector(${JSON.stringify(CORNER_TOOLTIP)})
+      if (!body) return 'pending'
+      return body.textContent.includes(${JSON.stringify(SYNTHETIC_VOLUME)}) ? 'named' : 'not-named'
+    })()`,
   )
-  return text.includes(SYNTHETIC_VOLUME)
+}
+
+/** Closes the corner tooltip the reads above opened, so no UI leaks into the next spec. */
+async function leaveCorner(tauriPage: PageLike): Promise<void> {
+  await tauriPage.evaluate(
+    `document.querySelector(${JSON.stringify(CORNER_HOURGLASS)})?.dispatchEvent(new MouseEvent('mouseleave'))`,
+  )
 }
 
 /** Announces a phased first index on the synthetic drive, as the backend would. */
@@ -71,6 +92,7 @@ async function endRun(tauriPage: PageLike): Promise<void> {
 // fails partway. Leaving the synthetic drive behind would put it in every later
 // spec's corner tooltip.
 test.afterEach(async ({ tauriPage }) => {
+  await leaveCorner(tauriPage)
   await endRun(tauriPage)
 })
 
@@ -80,15 +102,17 @@ test.describe('Indexing status corner', () => {
 
     // Baseline: no synthetic drive. (The corner itself may legitimately be up
     // for the app's own indexing, so the assertions below are scoped to ours.)
-    expect(await cornerNamesSyntheticDrive(tauriPage)).toBe(false)
+    await expect.poll(async () => cornerOnSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe('not-named')
+    await leaveCorner(tauriPage)
 
     await announcePhasedRun(tauriPage)
 
-    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe(true)
+    await expect.poll(async () => cornerOnSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe('named')
     expect(await tauriPage.isVisible(CORNER_HOURGLASS)).toBe(true)
+    await leaveCorner(tauriPage)
 
     await endRun(tauriPage)
 
-    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe(false)
+    await expect.poll(async () => cornerOnSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe('not-named')
   })
 })
