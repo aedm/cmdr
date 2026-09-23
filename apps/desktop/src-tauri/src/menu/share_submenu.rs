@@ -15,8 +15,7 @@
 //! pane. Since the list only ever holds what macOS currently offers, that item is the
 //! one route from Cmdr to the place a missing service is actually turned back on.
 
-use tauri::image::Image;
-use tauri::menu::{IconMenuItem, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
 
 use crate::file_system::share::ShareService;
@@ -24,6 +23,10 @@ use crate::intl::menu_t;
 
 /// Menu item ID prefix for one offered service. Followed by its index in the offer.
 pub const SHARE_SERVICE_ID_PREFIX: &str = "share-service:";
+
+/// The `Share` submenu's own ID, which `context_menu_icons.rs` finds it by to put each
+/// service's icon on its item. Outside the `share-service:` family, like the one below.
+pub const SHARE_SUBMENU_ID: &str = "share-submenu";
 
 /// Menu item ID for the trailing `Edit extensions`. Deliberately outside the
 /// `share-service:` family: it performs no share, and `share_service_index` must refuse
@@ -57,17 +60,11 @@ pub fn share_service_index(id: &str) -> Option<usize> {
 /// ❗ Call it only for a non-empty `services`: an empty submenu is the symptom this
 /// replaced, and the caller (`file_context_menu.rs`) leaves the whole item out instead.
 pub fn build_share_submenu<R: Runtime>(app: &AppHandle<R>, services: &[ShareService]) -> tauri::Result<Submenu<R>> {
-    let submenu = Submenu::new(app, share_label(), true)?;
+    let submenu = Submenu::with_id(app, SHARE_SUBMENU_ID, share_label(), true)?;
     for (index, service) in services.iter().enumerate() {
-        // Full-color, non-template pixels, which is the shape `IconMenuItem` renders
-        // correctly (see `open_with.rs` for why SF Symbols are the ones that don't).
-        // With `None` it falls back to the text-only renderer, so a failed draw costs
-        // the icon and nothing else.
-        let icon: Option<Image<'static>> = service
-            .icon
-            .as_ref()
-            .map(|pixels| Image::new_owned(pixels.as_raw().clone(), pixels.width(), pixels.height()));
-        let item = IconMenuItem::with_id(app, share_service_id(index), &service.title, true, icon, None::<&str>)?;
+        // A plain item: the service's own icon lands when the menu starts tracking, through
+        // `context_menu_icons.rs`, straight from the live offer's `NSSharingService`.
+        let item = MenuItem::with_id(app, share_service_id(index), &service.title, true, None::<&str>)?;
         submenu.append(&item)?;
     }
     submenu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -118,8 +115,10 @@ mod tests {
     fn edit_extensions_sits_outside_the_share_service_id_space() {
         // The two live in one flat ID space that `handle_menu_event` walks by prefix, so
         // the trailing item must never look like a service: it performs no share, and a
-        // near-miss would hand `perform_offered` an index the offer doesn't have.
+        // near-miss would hand `perform_offered` an index the offer doesn't have. The
+        // submenu's own ID is held to the same rule.
         assert!(!SHARE_EDIT_EXTENSIONS_ID.starts_with(SHARE_SERVICE_ID_PREFIX));
+        assert!(!SHARE_SUBMENU_ID.starts_with(SHARE_SERVICE_ID_PREFIX));
         for index in [0_usize, 1, 42] {
             assert_ne!(share_service_id(index), SHARE_EDIT_EXTENSIONS_ID);
         }

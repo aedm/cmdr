@@ -20,18 +20,11 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use image::RgbaImage;
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
 use objc2::runtime::AnyObject;
-use objc2_app_kit::NSSharingService;
+use objc2_app_kit::{NSImage, NSSharingService};
 use objc2_foundation::{NSArray, NSString, NSURL};
-
-/// How big the icon beside each service's name is drawn. macOS reports 16×16 for
-/// every service's own `image` (verified on macOS 26.6.2, reading `image.size` off
-/// all nine services offered for a text file, 2026-09-09), so this asks for the size
-/// the system already picked rather than resampling it.
-const ICON_SIZE: u16 = 16;
 
 /// Why a share didn't happen: a state the caller can log, never a message. One
 /// variant, because the main-thread question is answered by the `MainThreadMarker`
@@ -43,15 +36,12 @@ pub enum ShareError {
 }
 
 /// One service, as a menu item needs it: no AppKit types, so it crosses into the
-/// menu builder freely.
+/// menu builder freely. Its icon stays with the live offer ([`offered_image`]).
 pub struct ShareService {
     /// What the item says. `menuItemTitle` is the service's own answer for exactly
     /// this use, and it's macOS copy in the system language, ❌ never ours to
     /// translate.
     pub title: String,
-    /// The service's own icon, drawn into RGBA pixels. `None` when the draw failed,
-    /// which costs the item its icon and nothing else.
-    pub icon: Option<RgbaImage>,
 }
 
 /// The services macOS offers for `paths`, in its own order, and the arming of
@@ -79,11 +69,19 @@ pub fn services_for(_mtm: MainThreadMarker, paths: &[PathBuf]) -> Vec<ShareServi
         .iter()
         .map(|service| ShareService {
             title: service.menuItemTitle().to_string(),
-            icon: crate::icons::render_ns_image(&service.image(), ICON_SIZE),
         })
         .collect();
     OFFERED.with(|slot| slot.replace(Some(Offered { items, services })));
     offer
+}
+
+/// The icon of the service at `index` in the live offer: macOS's own `NSImage`, which the
+/// `Share` submenu puts beside its name (`menu/context_menu_icons.rs`). `None` when no offer
+/// is armed or the index is past its end.
+///
+/// ⚠️ The image is shared with the system; copy it before resizing it.
+pub fn offered_image(_mtm: MainThreadMarker, index: usize) -> Option<Retained<NSImage>> {
+    offered(index).map(|(_, service)| service.image())
 }
 
 /// Runs the service at `index` in the live offer, on the very items it was

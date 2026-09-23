@@ -37,11 +37,9 @@ pub(super) fn render_file_icon(path: &Path, size: u16) -> Option<RgbaImage> {
 
 /// Renders any `NSImage` into a `size`×`size` RGBA buffer.
 ///
-/// The half of this module that isn't about files: `NSSharingService` hands out its own
-/// `NSImage` for the `Share` submenu (`file_system/share.rs`), and it needs the same
-/// draw. ⚠️ It SETS the image's size as part of drawing, so an `NSImage` shared with
-/// something else on screen comes back resized.
-pub(crate) fn render_ns_image(image: &NSImage, size: u16) -> Option<RgbaImage> {
+/// ⚠️ It SETS the image's size as part of drawing, so an `NSImage` shared with something
+/// else on screen comes back resized.
+fn render_ns_image(image: &NSImage, size: u16) -> Option<RgbaImage> {
     let bitmap = create_bitmap_representation(size)?;
     let context = NSGraphicsContext::graphicsContextWithBitmapImageRep(&bitmap).or_else(|| {
         error!("Failed to create a graphics context for an icon bitmap");

@@ -64,19 +64,19 @@ window focus context.
   the (empty) item there; `lend_services_menu` borrows AppKit's own Services menu onto it for as long
   as the menu is up, and points it at the right-clicked rows. See "Services in the right-click menu".
 - `open_with.rs` (macOS): `build_open_with_submenu` for the file context menu's "Open with"
-  submenu. Returns the submenu plus a `bundle_id → app_path` map that callers stash in
+  submenu (`OPEN_WITH_SUBMENU_ID`). Returns the submenu plus a `bundle_id → app_path` map that callers stash in
   `MenuState.context.open_with_apps` so `on_menu_event` can resolve dynamic `open-with:<bundle-id>`
   click targets.
-- `share_submenu.rs` (macOS): `build_share_submenu` for the file context menu's `Share`, one
-  `IconMenuItem` per service in `FileContextInfo::share_services`, plus the `share-service:<index>` id
+- `share_submenu.rs` (macOS): `build_share_submenu` for the file context menu's `Share` (`SHARE_SUBMENU_ID`), one
+  plain item per service in `FileContextInfo::share_services`, plus the `share-service:<index>` id
   pair (`share_service_id` / `share_service_index`). The services themselves and the click side live in
   `file_system/share.rs`.
 - `file_provider_items.rs` (macOS): the file context menu's File Provider group, `append_file_provider_group` over a
   `ProviderOffer`, plus the `fp-action:<index>` id pair (`file_provider_action_id` / `file_provider_action_index`).
   The offer itself and the click side live in `file_system/file_provider_actions/`.
-- `context_menu_icons.rs` (macOS): `lend_context_menu_icons` and the `FILE_CONTEXT_ICONS` table, the SF Symbols the
-  file context menu carries, plus the provider logo on each provider action. See "SF Symbols on a CONTEXT menu" for why
-  the images land on the tracking notification rather than through `IconMenuItem`.
+- `context_menu_icons.rs` (macOS): every image the file context menu carries, through `lend_context_menu_icons` and the
+  pure `image_runs`: the `FILE_CONTEXT_ICONS` SF Symbols, the provider logo on each provider action, the app icons in
+  "Open with", each service's icon in `Share`, and the tag circles. See "Images on a CONTEXT menu".
 - `provider_logos.rs` (macOS): `PROVIDER_LOGOS`, which provider's logo is which, matched by app bundle ID, embedding the
   SVGs in `provider_logos/`. See "Provider logos on a CONTEXT menu".
 - `context_menu_header.rs`: the file context menu's first line, naming what the menu will act on.
@@ -88,7 +88,7 @@ window focus context.
 - `tag_row/` (macOS): the file context menu's Finder tag colors as one row of circles. `model.rs` holds the portable
   rules (the `SWATCHES` color table, layout, hit-testing, glyphs, captions, `find_tag_run`), `view.rs` the `NSView` that
   draws them, and `loan.rs` `lend_tag_row`, which installs the row on the tracking notification. See "The tag row".
-- `tag_icons.rs` (macOS): the circle bitmaps on the seven plain tag items, the look the row falls back to.
+- `tag_icons.rs` (macOS): the circle PNGs for the seven plain tag items, the look the row falls back to.
 - `media_index_items.rs`: `image_index_menu_items`, which decides the image-search group's labels and which of them are
   clickable.
 - `rebuild.rs`: `rebuild_menu_bar`, which throws the bar away and builds a new one in the current UI language.
@@ -184,7 +184,7 @@ Exceptions that do NOT use `"execute-command"`:
   `MenuState.context.open_with_apps[bundle_id]` and the launch paths via
   `MenuState.context.paths`. The "Other…" entry shows an `NSOpenPanel` filtered to `.app`
   bundles and launches the chosen app the same way.
-- **Finder tag colors** (macOS): the file context menu carries seven `IconMenuItem` circles
+- **Finder tag colors** (macOS): the file context menu carries seven circle items
   (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
   which `tag_row/` draws as Finder's one row of circles once the menu tracks ("The tag row"). Like "Open with", they're
   prefix-routed
@@ -199,10 +199,10 @@ Exceptions that do NOT use `"execute-command"`:
   - **Applied = every selected path carries the color** (`FileContextInfo.applied_tag_colors`, computed from
     `tags::applied_colors` at menu-build time); `toggle_color` then removes it (all-have) or adds it (some/none have).
     The row's hover caption says which of the two a click does, and nothing else can happen.
-  - **The plain items' look is the fallback**: muda's `IconMenuItem` has no native gutter checkmark (a fork would be a
-    two-repo muda+Tauri patch), so an applied color's bitmap composites a white check INTO the circle (`tag_icons.rs`,
-    36 px, 2× the 18 pt menu-icon size, in the row's light-mode colors with its darkened ring baked in). The 14 bitmaps
-    are cached once in a `LazyLock`. macOS-only — Linux menus carry no icons.
+  - **The plain items' look is the fallback**: an applied color's circle composites a white check INTO it rather than
+    leaning on a gutter checkmark (`tag_icons.rs`, 36 px shown at 18 pt, in the row's light-mode colors with its
+    darkened ring baked in). The 14 PNGs are cached once in a `LazyLock`, and `context_menu_icons.rs` puts them on the
+    items like every other context-menu image. macOS-only — Linux menus carry no icons.
 - **Share** (macOS): a submenu of one item per service macOS offers for the RIGHT-CLICKED rows, built by
   `share_submenu.rs` from the enumeration `show_file_context_menu` made. Ids are
   `share-service:<index>` into that offer, prefix-routed in `handle_menu_event` rather than listed in
@@ -689,13 +689,25 @@ exists, since it reads lines rather than control flow.
 
 **On macOS 27 a menu hides the images it was given, unless each item opts in.** `NSMenuItem` gained
 `preferredImageVisibility` there, defaulting to `Automatic`, under which AppKit hides an item's SYMBOL
-image and leaves a non-symbol one alone. `set_sf_symbol` and `set_logo` both finish by calling
-`keep_menu_image_visible`, which sets `Visible` through `msg_send!` (`objc2-app-kit` 0.3.2 binds no
-such property) above a `macos_at_least(27, 0)` gate.
+image and leaves a non-symbol one alone (and hides a bitmap too under the macOS 27 SDK, below).
+`keep_menu_image_visible` sets `Visible` through `msg_send!` (`objc2-app-kit` 0.3.2 binds no such
+property) above a `macos_at_least(27, 0)` gate.
 
-The failure it prevents is fully silent, which is why the opt-in sits in the two functions that set an
-image rather than at the call sites: `imageWithSystemSymbolName:` answers a valid image,
-`setImage:` takes it, `item.image()` reads back non-nil, and nothing draws. Measured on macOS 27.0
+**Every image on every Cmdr menu item goes through ONE door, `set_menu_item_image`** in
+`macos_appkit.rs`, which sets the image and then opts the item in. The menu bar's symbols, the Dock
+menu's (`set_sf_symbol`), and every context-menu image (`context_menu_icons.rs`) all end there, and
+`clear_menu_item_image` is the only other `setImage:` in the tree. **Clippy enforces it**: the root
+`clippy.toml` refuses `NSMenuItem::setImage` and muda's `IconMenuItem` (its type, its builder, and
+the `MenuBuilder` / `SubmenuBuilder` `icon` methods), and the two `#[expect]`s in the door are the only
+exemptions. So a new image route can't skip the opt-in by accident: it makes an `NSImage` and hands it
+to the door.
+
+The failure it prevents is fully silent, which is why the opt-in lives in the door rather than at the
+call sites: `imageWithSystemSymbolName:` answers a valid image, `setImage:` takes it, `item.image()`
+reads back non-nil, and nothing draws. That silence once blanked three icon sets under dev builds (the
+"Open with" app icons, the `Share` icons, and the tag circles), all `IconMenuItem`s whose `NSMenuItem`
+nothing of ours could reach to opt in, which is why clippy refuses the type instead of a doc asking
+nicely. Measured on macOS 27.0
 (26A428), `NSMenu.size` offscreen, 2026-09-21: a titled item carrying a symbol image lays out at
 72 pt, the same as an item with no image at all, and at 91 pt once `Visible` is set. Under the hood an
 `NSSymbolImageRep` reports `size` 15 × 17 but `pixelsWide` × `pixelsHigh` of 0 × 0, while any
@@ -711,36 +723,54 @@ an icon-only item (an image with an empty title) is 16 pt with or without a bitm
 outright. ❗ Measure this with a compiled binary and nothing else: a `swift` script is read by an
 interpreter whose OWN linked SDK is what AppKit consults, and it answers that bitmaps are unaffected.
 
-Cmdr SHIPS at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle), where a bitmap still
-draws. That, and only that, is why the `IconMenuItem` icons still show: the app icons in "Open with",
-the `NSSharingService` icons in `Share`, and the tag items' fallback circles are `NSMenuItem`s muda
-owns, and nothing here reaches them to opt them in. ❗ A dev build is NOT on the shipped SDK; it links
-whatever the installed Command Line Tools carry (27.0 since 2026-09-09 on David's Mac), so those
-three sets of icons are already absent under `pnpm dev` while the release still has them. Closing
-that gap is the precondition for moving the release runner to an Xcode 27 image, and nothing pins it
-today: `release.yml` builds on `macos-latest`, which moves on GitHub's schedule with no commit of
-ours.
+Cmdr SHIPS at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle). ❗ A dev build is NOT
+on the shipped SDK; it links whatever the installed Command Line Tools carry (27.0 since 2026-09-09 on
+David's Mac), so a dev build is where an image that skipped the opt-in shows up blank first. With every
+image behind the door, nothing in the menus depends on the SDK any more, which is the precondition for
+moving the release runner to an Xcode 27 image. Nothing pins that today: `release.yml` builds on
+`macos-latest`, which moves on GitHub's schedule with no commit of ours.
 
-#### SF Symbols on a CONTEXT menu
+#### Images on a CONTEXT menu
 
-`context_menu_icons.rs`, and it needs its own mechanism because Tauri hands out no `NSMenu` for a
-context menu (the same wall the Services loan hit, above). ❌ **`IconMenuItem` is not the answer**:
-muda turns the RGBA it is given into a PNG and hands `NSImage` that, never calling `setTemplate:`, so
-the bitmap draws as literal pixels. A monochrome glyph baked for light mode disappears in dark mode,
-and it stays dark on the accent-coloured fill of a highlighted row while the label beside it turns
-white. Only `NSMenuItem.setImage:` with a real symbol image gets AppKit's tinting for light, dark,
-and highlight.
+`context_menu_icons.rs` puts EVERY image on the file context menu: the Drive items' SF Symbols, the
+provider logos, the app icons in "Open with", each service's own icon in `Share`, and the tag items'
+fallback circles. Every one of those items is a plain `MenuItem`. It needs its own mechanism because
+Tauri hands out no `NSMenu` for a context menu (the same wall the Services loan hit, above).
 
-So the icons ride the same handle the loan does: `lend_context_menu_icons` reads the live title off
-each item in the `FILE_CONTEXT_ICONS` table (`(item ID, symbol name)`, IDs only — a title is
-translated text), arms them, and the `NSMenuDidBeginTrackingNotification` observer sets the images on
-whichever tracking menu carries those titles. AppKit posts that notification before it lays the menu
-out, which is why an image set there still gets its gutter. ❗ The returned `IconLoan` must outlive
-`popup()`, same as `ServicesLoan`; its `Drop` disarms so a later menu can't inherit stale titles.
-`macos_appkit.rs` owns `observe_menu_tracking`, `tracking_menu`, `find_ns_item`, and `set_sf_symbol`,
-shared by both consumers.
+❌ **`IconMenuItem` is not the answer, for any image**, and clippy refuses it. muda sets its image on an
+`NSMenuItem` nothing of ours can reach, so no door can opt it into macOS 27's visibility, and under the
+macOS 27 SDK it draws nothing. It also can't render a template image (muda hands `NSImage` a PNG and
+never calls `setTemplate:`), so a monochrome glyph would vanish in one appearance and stay dark on a
+highlighted row.
 
-`set_sf_symbol` is the one thing here that's `pub(crate)`, for a third consumer outside this module:
+- **What goes where is pure data.** `image_runs(&FileContextInfo)` lists, by item ID, what each item
+  shows (`ItemImage`: a symbol, a logo, an app's RGBA, a tag circle, or a share-service index), grouped
+  into RUNS: items that sit next to each other in one menu, the context menu itself or a submenu found
+  by its ID (`OPEN_WITH_SUBMENU_ID`, `SHARE_SUBMENU_ID`). Unit-tested without AppKit.
+- **Arming** (`lend_context_menu_icons`, before `popup()`) resolves each run's IDs to live titles (a
+  title is translated text, so it's read off the item rather than written down) and makes the
+  `NSImage`s. A run the menu didn't build, or built only part of, is dropped whole. ❗ The returned
+  `IconLoan` must outlive `popup()`, same as `ServicesLoan`; its `Drop` disarms so a later menu can't
+  inherit stale titles.
+- **Landing**: the `NSMenuDidBeginTrackingNotification` observer acts on the ROOT menu only (no
+  supermenu). AppKit posts it before laying the menu out, which is why an image set there still gets its
+  gutter, and the submenus already hang off the root by then, so "Open with" and `Share` get their
+  images before either opens. Each run is found as ONE contiguous stretch of titles (`find_title_run`,
+  compared up to the first TAB like `find_ns_item`), because a single title can collide: two apps or two
+  share extensions can share a name (pairing by position inside the run handles that), and the header
+  line carries the bare filename, so a folder named `Mail` would otherwise take the Mail service's icon.
+  A Drive item stays a run of one, where that collision is still possible and costs a stray icon at worst.
+- **An item a view draws gets no image**: the tag row's item would still claim the image column and push
+  every title right. `tag_row` clears it on install, and this pass skips it, so the two observers can run
+  in either order.
+- **Sizes**: 16 × 16 pt for logos, app icons (32 px, so 2× on Retina), and share icons, the box the
+  neighbouring symbols take; 18 pt for the tag circles (36 px). A share icon is macOS's own `NSImage`,
+  copied before sizing because the system shares it.
+
+`macos_appkit.rs` owns `observe_menu_tracking`, `tracking_menu`, `find_ns_item`, `find_ns_submenu`, and
+the door (`set_menu_item_image`, `sf_symbol_image`, `set_sf_symbol`), shared with the other consumers.
+
+`set_sf_symbol` and `set_menu_item_image` are `pub(crate)`, for a consumer outside this module:
 `../dock/menu/native.rs` hand-builds the Dock tile's `NSMenu` (Tauri exposes no `NSMenu` and a Dock
 menu never enters the menu bar, so none of the resolution machinery above transfers) and puts symbols
 on its bare `NSMenuItem`s directly — no arming, no tracking observer, because it owns the items rather
@@ -755,11 +785,6 @@ both spell AI with, shared with `Ask Cmdr` in the menu bar. All verified present
 are the provider's, and a glyph Cmdr picked would claim to know what each one does. They carry their
 provider's logo instead, which only says whose action a line is (next section).
 
-**Full-color non-template images do render correctly** through `IconMenuItem`, and that is what stays
-there: app-bundle icons in "Open with" (via `file_system::open_with::load_app_icon`), each
-`NSSharingService`'s own icon in `Share`, and the plain tag items' fallback circles (the row itself is drawn, see "The
-tag row").
-
 #### Provider logos on a CONTEXT menu
 
 Each line of a File Provider's own actions (`file_provider_items.rs`) carries that provider's logo, the way Finder shows
@@ -767,8 +792,8 @@ them: Dropbox, Google Drive, MacDroid, OneDrive, and Box (`PROVIDER_LOGOS` in `p
 from the table shows its lines without one. Cmdr's own three Drive items keep their SF Symbols: they're Cmdr's actions,
 built from Drive's links.
 
-- **Same pass as the symbols.** `lend_context_menu_icons` takes the menu's `ProviderOffer` and arms an `ItemIcon::Logo`
-  on each `fp-action:<index>` beside the `ItemIcon::Symbol`s, so one tracking observer and one loan cover both.
+- **Same pass as every other context-menu image.** `image_runs` turns the menu's `ProviderOffer` into one run of
+  `ItemImage::Logo` over its `fp-action:<index>` lines, so one tracking observer and one loan cover them all.
 - **Matched by the APP's bundle ID, on a dot boundary.** The offer's `provider_id` is File Provider's `providerID`, the
   extension's bundle ID, and macOS makes an extension's ID start with its app's plus a dot. So `com.box.desktop` claims
   `com.box.desktop.boxfileprovider`, and `com.microsoft.OneDrive` leaves `com.microsoft.OneDrive-mac.FileProvider` to
@@ -875,7 +900,7 @@ their behavior.
   `TITLE_COLUMN_X` is an estimate to tune by eye; when any visible item outside the tag run has an image, titles move
   right by `IMAGE_COLUMN_WIDTH` (measured) and the row follows. ❗ The row asks the live menu at every draw, hit-test,
   and accessibility-frame refresh (`TagRowView::title_x`, over the pure `menu_shows_images`), never once at install:
-  `context_menu_icons.rs` sets Drive and provider images from its own observer of the same notification, and
+  `context_menu_icons.rs` sets every image (the tag circles included) from its own observer of the same notification, and
   `NSNotificationCenter` promises no order between observers.
 - **Accessibility**: the row is an `AXGroup` named like its idle caption, holding seven `AXCheckBox` elements, each named
   after its color, valued 1 when applied, with a press that clicks. No keyboard path: views in menu items get no key
@@ -904,8 +929,8 @@ Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` s
 - **Mnemonics**: macOS doesn't use them. Linux gives `&` prefixes for GTK keyboard navigation, unique per submenu.
 - **Help search**: macOS has the native NSMenu search field via `setHelpMenu:`. Linux has none.
 - **System cleanup**: on macOS, objc2 strips the injected Edit items. Linux needs none.
-- **Menu icons**: macOS sets SF Symbols via objc2 (menu bar and context menus), provider logos (SVG) via objc2 on
-  context menus, and `IconMenuItem` for pixel icons. Linux doesn't support menu icons.
+- **Menu icons**: macOS sets every image via objc2 through `set_menu_item_image` (SF Symbols on the bar and context
+  menus; logos, app icons, share icons, and tag circles on context menus). Linux doesn't support menu icons.
 - **Tag colors**: macOS only, drawn as one row by a custom `NSView` over seven plain items. Linux has no tags.
 
 ## Menu structure
@@ -1071,15 +1096,19 @@ distinction is the load-bearing reason.
 **Why**: The rule above, read literally, says bare: opening System Settings changes nothing about what any Cmdr command acts on. OS parity wins here anyway, because this item's neighbours are the comparison a user actually makes. Both menus macOS puts next to ours end in an ellipsis on a settings-opening item: AppKit's Services menu ends with `Services Settings…`, ShareKit's share menu with `More…` (verified on macOS 26.6.2, 2026-09-09, by reading `AppKit.framework/…/Services.loctable` and `ShareKit.framework/…/ShareKit.loctable`). Cmdr's `Share` submenu sits inches from both, so a bare label there reads as a missing character rather than as a considered distinction — the same reasoning that earned `Check for updates…` its exception, applied where the convention is the *shape* of the label rather than its exact string. Two exceptions, both OS conventions at a boundary the user crosses into the system, still leave the mark informative everywhere else.
 Note that Finder has no `Edit Extensions…` item to copy on current macOS: that string appears in no `.loctable`, `.strings`, or `.nib` under `/System/Library` or `/System/Applications` (same verification), so the `@key.description` sends translators to the `Login Items & Extensions` settings page for the noun, and tells them to keep the `…`.
 
-**Decision**: SF Symbols go on real `NSMenuItem`s through objc2, ❌ never as `IconMenuItem` bitmaps.
-**Why**: Tauri exposes no SF Symbol API, and muda's `IconMenuItem` rasterizes what it's given without calling
+**Decision**: every menu image goes on a real `NSMenuItem` through objc2 and ONE door (`set_menu_item_image`), ❌ never
+through `IconMenuItem`, pixels included.
+**Why**: macOS 27 hides a menu item's image unless the item opts in, and muda's `IconMenuItem` sets its image on an
+`NSMenuItem` we can't reach to opt in, so it's invisible under the macOS 27 SDK. It also rasterizes without
 `setTemplate:`, so a monochrome glyph draws as literal pixels: it disappears in the appearance it wasn't baked for and
 stays dark on a highlighted row. `NSMenuItem.setImage:` with a real symbol image gets AppKit's tinting for light, dark,
 and highlight. The menu BAR is reached by walking `NSApplication.mainMenu()` post-construction (`set_macos_menu_icons`);
-a CONTEXT menu has no `NSMenu` to walk, so it goes through `NSMenuDidBeginTrackingNotification` instead — see "SF
-Symbols on a CONTEXT menu", and "The context menu's header line", which crosses the same boundary for its attributed
-title. `IconMenuItem` stays right for images that ARE pixels (app icons, share-service icons, the plain tag items'
-fallback circles).
+a CONTEXT menu has no `NSMenu` to walk, so it goes through `NSMenuDidBeginTrackingNotification` instead — see "Images on
+a CONTEXT menu", and "The context menu's header line", which crosses the same boundary for its attributed title. The
+rejected alternative was a sweep on that notification opting in whatever item already carried an image: it keeps
+`IconMenuItem` but has to tell Cmdr's menus from AppKit's (the borrowed Services submenu, the menu bar) with nothing to
+key on, and it leaves a second image route open for the next icon set to take. One door plus a clippy ban closes the
+class of bug.
 
 ## Gotchas
 
@@ -1113,8 +1142,9 @@ fallback circles).
   stays on the plain `FileScoped` path: AppKit has no standard "deselect all" responder action for
   text fields, so there's nothing native to forward to.
 - **An item carrying a view still claims the image column.** AppKit reserves image space for a view item's `image`, so
-  `tag_row/loan.rs` clears the first tag item's bitmap before `setView:`, or every title in the menu moves 24 pt right.
-  Hidden items don't count. (macOS 27.0, `NSMenu.size` offscreen, 2026-09-16.)
+  `tag_row/loan.rs` clears the first tag item's bitmap before `setView:`, or every title in the menu moves 24 pt right,
+  and `context_menu_icons.rs` never puts one on an item that carries a view, whichever observer runs first. Hidden items
+  don't count. (macOS 27.0, `NSMenu.size` offscreen, 2026-09-16.)
 - **Pin tab label**: `pin_tab` in MenuState is updated dynamically by the frontend to show
   "Pin tab" or "Unpin tab" based on the active tab's state.
 - **Reopen closed tab item**: The Tab submenu includes "Reopen closed tab" (⌘⇧T on macOS) between

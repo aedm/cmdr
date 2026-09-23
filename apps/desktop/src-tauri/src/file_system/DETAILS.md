@@ -315,13 +315,13 @@ may well share one. Thread-local rather than a `static` because `Retained` is ne
 `MainThreadMarker`, which is also what pins fill and read to the same thread.
 
 **Cost on the popup path**: about 11 ms warm, ~190 ms on the first enumeration of the process while LaunchServices wakes
-up, plus under 1 ms to draw the icons (measured on macOS 26.6.2, 2026-09-09). Uncached on purpose: the enumeration is
-per-selection and must be fresh, and the cold bill is the same one `compute_open_with_choices` already pays here.
+up (measured on macOS 26.6.2, 2026-09-09). Uncached on purpose: the enumeration is per-selection and must be fresh,
+and the cold bill is the same one `compute_open_with_choices` already pays here.
 
-**Each item's icon is the service's own `NSImage`, drawn to 16×16 RGBA** through `icons::render_ns_image`, then fed to
-`IconMenuItem` — the same route "Open with" takes for app-bundle icons, and full-colour non-template pixels are the
-shape a context menu renders correctly (`menu/DETAILS.md` § SF Symbol icons). macOS already reports 16×16 for every
-service image, so nothing is resampled.
+**Each item's icon is the service's own `NSImage`, straight from the live offer** (`offered_image`), never drawn to
+pixels: `menu/context_menu_icons.rs` copies it, sizes the copy to 16 × 16 pt, and puts it on the item through the one
+door every menu image takes (`menu/DETAILS.md` § SF Symbol icons). The copy matters because the image is shared with
+the system.
 
 **Which rows may be shared at all is the FRONTEND's answer**, arriving as `PaneContextMenuFacts.canShare`. A service
 needs a real file behind the URL, which rules out phones, the SMB host list, an archive's insides, and the virtual

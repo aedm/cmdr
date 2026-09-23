@@ -6,3 +6,20 @@ cognitive-complexity-threshold = 15
 # this exempts unwraps inside `#[test]` fns. Helper fns in `#[cfg(test)] mod`s aren't covered,
 # so those use the sanctioned `.expect("…")` form.
 allow-unwrap-in-tests = true
+
+# Every image on a macOS menu item goes through ONE door, `menu::macos_appkit::set_menu_item_image`,
+# which opts the item into showing it. Linked against the macOS 27 SDK, AppKit hides every menu-item
+# image that hasn't opted in, silently: the image reads back non-nil and nothing draws. So a bare
+# `setImage:` and muda's `IconMenuItem` (which sets its image where nothing can opt it in) are both
+# refused. See `apps/desktop/src-tauri/src/menu/DETAILS.md` § "SF Symbol icons".
+disallowed-methods = [
+  { path = "objc2_app_kit::NSMenuItem::setImage", reason = "a menu image goes through `menu::macos_appkit::set_menu_item_image`, or macOS 27 hides it" },
+  { path = "tauri::menu::MenuBuilder::icon", reason = "builds an `IconMenuItem`, whose image macOS 27 hides; set it through `set_menu_item_image`" },
+  { path = "tauri::menu::MenuBuilder::native_icon", reason = "builds an `IconMenuItem`, whose image macOS 27 hides; set it through `set_menu_item_image`" },
+  { path = "tauri::menu::SubmenuBuilder::icon", reason = "builds an `IconMenuItem`, whose image macOS 27 hides; set it through `set_menu_item_image`" },
+  { path = "tauri::menu::SubmenuBuilder::native_icon", reason = "builds an `IconMenuItem`, whose image macOS 27 hides; set it through `set_menu_item_image`" },
+]
+disallowed-types = [
+  { path = "tauri::menu::IconMenuItem", reason = "macOS 27 hides its image; build a plain item and set the image through `menu::macos_appkit::set_menu_item_image`" },
+  { path = "tauri::menu::IconMenuItemBuilder", reason = "macOS 27 hides its image; build a plain item and set the image through `menu::macos_appkit::set_menu_item_image`" },
+]

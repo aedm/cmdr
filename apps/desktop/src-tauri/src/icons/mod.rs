@@ -29,9 +29,6 @@ use std::sync::{LazyLock, RwLock};
 // from a rayon or tokio worker.
 #[cfg(target_os = "macos")]
 use macos_workspace::render_file_icon;
-// The `Share` submenu needs the same NSImage → RGBA draw for each service's own icon.
-#[cfg(target_os = "macos")]
-pub(crate) use macos_workspace::render_ns_image;
 
 /// Prefix marking per-path (per-folder) icon keys. Unlike `dir` / `ext:*` / `file`
 /// (an inherently bounded set), `path:` keys grow with the number of distinct
@@ -173,6 +170,19 @@ fn image_to_data_url(img: &DynamicImage) -> Option<String> {
 pub(crate) fn rgba_to_data_url(rgba: &[u8], width: u32, height: u32) -> Option<String> {
     let img = image::RgbaImage::from_raw(width, height, rgba.to_vec())?;
     image_to_data_url(&DynamicImage::ImageRgba8(img))
+}
+
+/// Encodes a raw RGBA buffer as PNG bytes, the form `NSImage initWithData:` reads with its
+/// alpha intact. `None` when the buffer doesn't hold `width` × `height` pixels.
+///
+/// For the bitmaps the context menu shows beside an item (`menu/context_menu_icons.rs`):
+/// app icons read out of a bundle, and the tag circles.
+#[cfg(target_os = "macos")]
+pub(crate) fn rgba_to_png(rgba: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
+    let img = image::RgbaImage::from_raw(width, height, rgba.to_vec())?;
+    let mut buffer = Cursor::new(Vec::new());
+    img.write_to(&mut buffer, ImageFormat::Png).ok()?;
+    Some(buffer.into_inner())
 }
 
 /// Fetches icon for a specific file path via the OS icon provider (macOS).

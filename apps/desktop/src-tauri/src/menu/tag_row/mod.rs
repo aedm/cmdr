@@ -1,7 +1,7 @@
 //! The file context menu's Finder tag row (macOS): seven color circles on one line, with a
 //! label under them that says what a click would do.
 //!
-//! The menu is built with seven plain `IconMenuItem`s (`file_context_menu.rs`), and those stay
+//! The menu is built with seven plain tag items (`file_context_menu.rs`), and those stay
 //! the fallback. When the menu starts tracking, `loan.rs` finds them, puts one `view.rs` row
 //! on the first, and hides the other six. A click on a circle fires that circle's own item,
 //! so `handle_menu_event` runs exactly as it does for the plain items.

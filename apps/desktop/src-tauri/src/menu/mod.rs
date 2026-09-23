@@ -31,8 +31,9 @@
 //! - `display_accelerators.rs` (macOS): the third such pass, drawing the shortcuts a menu item can
 //!   only SHOW as a right-aligned, dimmed run on its attributed title.
 //! - `open_with.rs` (macOS): "Open with" submenu builder.
-//! - `context_menu_icons.rs` (macOS): SF Symbols and provider logos on right-click items, which
-//!   needs the tracking notification because Tauri exposes no `NSMenu` for a context menu.
+//! - `context_menu_icons.rs` (macOS): every image on right-click items (SF Symbols, provider
+//!   logos, app icons, share icons, tag circles), which needs the tracking notification because
+//!   Tauri exposes no `NSMenu` for a context menu.
 //! - `provider_logos.rs` (macOS): which File Provider's logo is which, by app bundle ID.
 //! - `context_menu_header.rs`: the right-click menu's first line, naming what it will act on, plus
 //!   the macOS pass that makes it read as a header rather than a greyed-out command.

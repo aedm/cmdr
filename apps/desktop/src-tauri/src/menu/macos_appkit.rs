@@ -450,7 +450,7 @@ pub(super) fn find_ns_item(menu: &NSMenu, title: &str) -> Option<Retained<NSMenu
 
 /// A menu item's title without the display-accelerator run `display_accelerators.rs` may have
 /// appended to it.
-fn plain_title(title: &str) -> &str {
+pub(super) fn plain_title(title: &str) -> &str {
     title.split('\t').next().unwrap_or(title)
 }
 
@@ -460,7 +460,7 @@ fn plain_title(title: &str) -> &str {
 /// Shared by the two things that can only reach a CONTEXT menu's `NSMenu` through that
 /// notification, because Tauri exposes none for one (muda's `ns_menu()` sits behind a
 /// sealed trait): `services_context.rs` borrows AppKit's Services menu into it, and
-/// `context_menu_icons.rs` puts SF Symbols on its items.
+/// `context_menu_icons.rs` puts every image on its items.
 ///
 /// Takes the marker because the `Retained<NSMenu>` it mints is a main-thread-only
 /// object.
@@ -527,17 +527,48 @@ pub(super) fn observe_menu_tracking(
 /// They arrived with macOS 11, and the bundle's floor is 10.15, so Catalina gets
 /// menu items with no icons rather than an unrecognized-selector abort.
 pub(crate) fn set_sf_symbol(item: &NSMenuItemAppKit, symbol_name: &str) {
+    if let Some(image) = sf_symbol_image(symbol_name) {
+        set_menu_item_image(item, &image);
+    }
+}
+
+/// The SF Symbol with this name, or `None` below macOS 11 or for a name the OS doesn't
+/// have (logged, since a typo is otherwise silent).
+pub(super) fn sf_symbol_image(symbol_name: &str) -> Option<Retained<NSImage>> {
     if !macos_at_least(11, 0) {
-        return;
+        return None;
     }
     let name = NSString::from_str(symbol_name);
     // allowed-newer-selector: guarded by the `macos_at_least(11, 0)` early return above
-    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(&name, None) {
-        item.setImage(Some(&image));
-        keep_menu_image_visible(item);
-    } else {
+    let image = NSImage::imageWithSystemSymbolName_accessibilityDescription(&name, None);
+    if image.is_none() {
         log::warn!("SF Symbol not found: {symbol_name}");
     }
+    image
+}
+
+/// The one door every image on every Cmdr menu item goes through: sets it, then opts the
+/// item into showing it on macOS 27.
+///
+/// ❗ Clippy refuses `NSMenuItem::setImage` and `IconMenuItem` everywhere else
+/// (`clippy.toml`), because an image set any other way is invisible under the macOS 27 SDK
+/// and nothing says so. A new kind of menu image makes an `NSImage` and hands it here.
+pub(crate) fn set_menu_item_image(item: &NSMenuItemAppKit, image: &NSImage) {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this is the one door; `keep_menu_image_visible` right below is why"
+    )]
+    item.setImage(Some(image));
+    keep_menu_image_visible(item);
+}
+
+/// Takes an item's image away, the other half of [`set_menu_item_image`]'s monopoly.
+pub(super) fn clear_menu_item_image(item: &NSMenuItemAppKit) {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "clearing an image needs no visibility opt-in; it's here so the door stays the only caller"
+    )]
+    item.setImage(None);
 }
 
 /// `NSMenuItemImageVisibilityVisible`, the one value of `NSMenuItemImageVisibility` we ask for.
@@ -545,23 +576,19 @@ const IMAGE_VISIBILITY_VISIBLE: isize = 1;
 
 /// Opts one item out of macOS 27's rule that a menu hides the images it was given.
 ///
-/// ❗ Without this, every SF Symbol in the app is invisible on macOS 27 and nothing says so:
-/// `imageWithSystemSymbolName:` still answers a perfectly good image, `setImage:` still takes it,
-/// and `item.image()` still reads back non-nil. `NSMenuItem.preferredImageVisibility` arrived in
-/// macOS 27 defaulting to `Automatic`, under which AppKit hides an item's SYMBOL image; a
-/// non-symbol image (the provider logos) is left alone, which is why those kept showing while all
-/// 56 menu-bar icons and the Drive context items went blank on the same day. Measured on macOS
-/// 27.0 (26A428), `NSMenu.size` offscreen, 2026-09-21: a titled item with a symbol image lays out
-/// at 72 pt, exactly as one with no image, and at 91 pt once this is set. It rides with each image
-/// we set rather than switching the app's menus over wholesale, so whether an item deserves an icon
-/// stays a decision at the table: Apple's guidance is to carry one where an item names an object or
-/// a concept rather than an action.
-///
-/// Set on the LOGOS too, though today they show without it: linking against the macOS 27 SDK
-/// extends the hiding to non-symbol images, and that day is a runner-image bump away.
+/// ❗ Without this, every image in the app's menus is invisible on macOS 27 and nothing says
+/// so: `imageWithSystemSymbolName:` still answers a perfectly good image, `setImage:` still
+/// takes it, and `item.image()` still reads back non-nil. `NSMenuItem.preferredImageVisibility`
+/// arrived in macOS 27 defaulting to `Automatic`, under which AppKit hides an item's SYMBOL
+/// image; linked against the macOS 27 SDK it hides a bitmap too. Measured on macOS 27.0
+/// (26A428), `NSMenu.size` offscreen, 2026-09-21: a titled item with a symbol image lays out
+/// at 72 pt, exactly as one with no image, and at 91 pt once this is set. It rides with each
+/// image we set rather than switching the app's menus over wholesale, so whether an item
+/// deserves an image stays a decision at the call site: Apple's guidance is to carry one where
+/// an item names an object or a concept rather than an action.
 ///
 /// Through `msg_send!` because `objc2-app-kit` 0.3.2 binds no `preferredImageVisibility` yet.
-pub(super) fn keep_menu_image_visible(item: &NSMenuItemAppKit) {
+fn keep_menu_image_visible(item: &NSMenuItemAppKit) {
     if !macos_at_least(27, 0) {
         return;
     }

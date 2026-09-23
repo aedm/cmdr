@@ -4,26 +4,27 @@
 //! items into Finder's single row of circles, drawn live; the bitmaps show only where that
 //! doesn't happen.
 //!
-//! muda's `IconMenuItem` renders an arbitrary RGBA bitmap but has no native gutter
-//! checkmark, so the "applied" state composites a check INTO the circle (D7) — the
-//! same image path "Open with" app icons already use. Images are pure CPU work (no
-//! `MainThreadMarker` needed) and cached once in a `LazyLock`: the 14 bitmaps (seven
-//! colors × {normal, checked}) are tiny and identical every right-click.
+//! The "applied" state composites a check INTO the circle, so the fallback says the same
+//! thing the row does without a gutter checkmark beside it. The images are pure CPU work
+//! (no `MainThreadMarker` needed), encoded as PNG and cached once in a `LazyLock`: the 14
+//! bitmaps (seven colors × {normal, checked}) are tiny and identical every right-click.
+//! `context_menu_icons.rs` puts them on the items, like every other context-menu image.
 //!
 //! Colors are the row's light-mode ones (`tag_row::SWATCHES`, the `--color-tag-*` tokens),
 //! with the row's darkened ring baked in so a pale fill (yellow) still reads on a light
-//! menu. We render at 36 px square because muda fixes menu images to 18 pt logical — 2×
-//! keeps them crisp on Retina.
+//! menu. We render at 36 px square and show it at [`SIDE_POINTS`], so 2× keeps it crisp on
+//! Retina.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use tauri::image::Image;
-
 use super::tag_row::{SWATCHES, ring_rgb};
 
-/// Rendered side length in pixels (2× the 18 pt logical menu-icon size).
+/// Rendered side length in pixels (2× [`SIDE_POINTS`]).
 const SIZE: u32 = 36;
+
+/// The side a circle is shown at, in points.
+pub const SIDE_POINTS: f64 = 18.0;
 
 /// Renders one tag circle into a fresh RGBA buffer. Pure float math, so the bytes are
 /// deterministic (the unit test pins dimensions and normal≠checked).
@@ -113,11 +114,19 @@ static TAG_BITMAPS: LazyLock<HashMap<(u8, bool), Vec<u8>>> = LazyLock::new(|| {
         .collect()
 });
 
-/// The tag circle as a Tauri `Image` for `IconMenuItem`, or `None` for an out-of-range
-/// color. `checked` composites the applied-state checkmark into the circle.
-pub fn tag_circle_image(color: u8, checked: bool) -> Option<Image<'static>> {
-    let rgba = TAG_BITMAPS.get(&(color, checked))?;
-    Some(Image::new_owned(rgba.clone(), SIZE, SIZE))
+/// The same 14 bitmaps as PNG, which is what `NSImage` reads. A circle that somehow fails
+/// to encode is left out, which costs that item its circle and nothing else.
+static TAG_PNGS: LazyLock<HashMap<(u8, bool), Vec<u8>>> = LazyLock::new(|| {
+    TAG_BITMAPS
+        .iter()
+        .filter_map(|(&key, rgba)| Some((key, crate::icons::rgba_to_png(rgba, SIZE, SIZE)?)))
+        .collect()
+});
+
+/// The tag circle as PNG bytes, or `None` for an out-of-range color. `checked` composites
+/// the applied-state checkmark into the circle.
+pub fn tag_circle_png(color: u8, checked: bool) -> Option<&'static [u8]> {
+    TAG_PNGS.get(&(color, checked)).map(Vec::as_slice)
 }
 
 #[cfg(test)]
@@ -149,8 +158,23 @@ mod tests {
 
     #[test]
     fn out_of_range_colors_have_no_image() {
-        assert!(tag_circle_image(0, false).is_none());
-        assert!(tag_circle_image(8, false).is_none());
+        assert!(tag_circle_png(0, false).is_none());
+        assert!(tag_circle_png(8, false).is_none());
+    }
+
+    /// Each PNG decodes back to the bitmap it was made from, so `NSImage` gets the circle.
+    #[test]
+    fn every_circle_encodes_as_a_png_of_its_bitmap() {
+        for color in 1u8..=7 {
+            for checked in [false, true] {
+                let png = tag_circle_png(color, checked).expect("png present");
+                let decoded = image::load_from_memory_with_format(png, image::ImageFormat::Png)
+                    .expect("decodes")
+                    .to_rgba8();
+                assert_eq!(decoded.dimensions(), (SIZE, SIZE));
+                assert_eq!(decoded.as_raw(), TAG_BITMAPS.get(&(color, checked)).unwrap());
+            }
+        }
     }
 
     #[test]

@@ -13,10 +13,9 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - **Build from scratch; ❌ never `Menu::default()`**: it inherits OS-injected Edit items nothing can remove before
   display.
 - **❗ A macOS loan must outlive `popup()`; ❌ never `let _ =`** (Services, context icons, header, tag row).
-- **❌ Never `IconMenuItem` for a monochrome glyph** (muda's bitmaps aren't TEMPLATE images, so it vanishes in one
-  appearance); it stays right for real pixels.
-- **macOS 27 hides a menu item's image unless the item opts in**, silently: the image reads back non-nil and nothing
-  draws. Every `setImage:` ends with `keep_menu_image_visible`; a NEW image route needs it too.
+- **Every menu image goes through ONE door, `set_menu_item_image`**, because macOS 27 hides an item's image unless the
+  item opts in, silently (it reads back non-nil, nothing draws). Clippy refuses `NSMenuItem::setImage` and
+  `IconMenuItem` elsewhere. A context-menu image is an `ItemImage` in `context_menu_icons::image_runs`.
 - **A popup accelerator is a LABEL the payload carries, ❌ never a literal**: `context_item()` resolves its own menu id
   through `frontend_shortcut_to_menu_text`, ❌ not the bar's floored `frontend_shortcut_to_accelerator`.
 - **A BAR combo with no ⌘/⌃/⌥, or one whose key muda can't name (`+`, `*`, `ö`), is DISPLAYED, never registered** —

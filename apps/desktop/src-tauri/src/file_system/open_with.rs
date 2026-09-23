@@ -21,13 +21,13 @@ pub struct AppCandidate {
     pub bundle_id: String,
     pub display_name: String,
     pub app_path: PathBuf,
-    /// Pre-rasterized RGBA icon ready to feed `IconMenuItem`. `None` if the app has
-    /// no `CFBundleIconFile` or its `.icns` couldn't be parsed.
+    /// Pre-rasterized RGBA icon for the "Open with" item (`menu/context_menu_icons.rs`).
+    /// `None` if the app has no `CFBundleIconFile` or its `.icns` couldn't be parsed.
     pub icon: Option<AppIcon>,
 }
 
-/// RGBA icon bytes plus dimensions, sized for a macOS context-menu item.
-/// `IconMenuItem` accepts owned RGBA via `tauri::image::Image::new_owned`.
+/// RGBA icon bytes plus dimensions, sized for a macOS context-menu item (32 px, shown at
+/// 16 pt).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppIcon {
     pub rgba: Vec<u8>,
@@ -297,7 +297,7 @@ mod imp {
     const MENU_ICON_SIZE: u32 = 32;
 
     /// Reads the app's main icon (`CFBundleIconFile` from Info.plist) and returns it as
-    /// an RGBA buffer suitable for `tauri::image::Image::new_owned`. The `.icns` file
+    /// an RGBA buffer, which the menu encodes as PNG for its `NSImage`. The `.icns` file
     /// usually contains multiple sizes. We prefer 32x32, falling back to larger sizes
     /// (resized via the `image` crate) if 32x32 isn't present.
     pub fn load_app_icon(app_path: &Path) -> Option<AppIcon> {

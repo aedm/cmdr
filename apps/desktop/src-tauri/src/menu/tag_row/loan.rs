@@ -15,7 +15,7 @@ use tauri::Runtime;
 use tauri::menu::Menu;
 
 use super::super::TAG_COLOR_ID_PREFIX;
-use super::super::macos_appkit::{menu_item_text, observe_menu_tracking, tracking_menu};
+use super::super::macos_appkit::{clear_menu_item_image, menu_item_text, observe_menu_tracking, tracking_menu};
 use super::model::{ROW_LABEL_KEY, SWATCH_COUNT, SWATCHES, find_tag_run, hover_label_key};
 use super::view::{RowContent, SwatchContent, TagRowView};
 use crate::intl::{menu_t, menu_t_with};
@@ -150,7 +150,7 @@ fn install(mtm: MainThreadMarker, menu: &NSMenu, armed: ArmedRow) {
     // ❗ Drop the fallback bitmap from the item that carries the row: AppKit still reserves the
     // image column for an item's image when a view draws it, which would push every title in
     // the menu 24 pt right (measured on macOS 27.0, `NSMenu.size` offscreen, 2026-09-16).
-    items[start].setImage(None);
+    clear_menu_item_image(&items[start]);
     items[start].setView(Some(&row));
     for item in &items[start + 1..run.end] {
         item.setHidden(true);
