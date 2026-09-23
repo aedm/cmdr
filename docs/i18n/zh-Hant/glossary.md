@@ -2115,17 +2115,17 @@ SMB 共享上兩個名稱在畫面上一模一樣，但伺服器存成不同的�
 
 ## 「允許使用雲端 AI」開關，以及雲端 AI 關閉時的提示（`ai.cloudConsent.*`、`askCmdr.gate.*`，2026-09-23）
 
-這是一個隱私同意開關：預設關閉，開啟之前什麼都不會離開這部 Mac。文字要平靜，絕不能誇大 Cmdr 做的事。M1 上沒有參考資料庫，證據取自已安裝的
-macOS，做法見 `docs/i18n/reference-pile/how-to-mine.md` 的 "No pile on this machine?" 一節。
+這是一個隱私同意開關：預設關閉，開啟之前什麼都不會離開這部 Mac。文字要平靜，絕不能誇大 Cmdr 做的事。M1 上沒有參考資料庫，證據取自已安裝的 macOS，做法見
+`docs/i18n/reference-pile/how-to-mine.md` 的 "No pile on this machine?" 一節。
 
-- **Allow cloud AI（開關標籤，`ai.cloudConsent.label`）** · `允許使用雲端 AI` · `Allow` → `允許` 是 macOS zh-TW 和 zh-HK
-  權限請求裡的按鈕，兩地一致（`TCC.framework` `Localizable.loctable`，`REQUEST_ACCESS_ALLOW`，macOS 26.6.2 build 25G83，
-  2026-09-23 讀取）；`雲端 AI` 是 `settings.ai.provider.opt.cloud` 已發布的值。❗ 這裡是 `允許` 不是 `同意`：`同意`
-  在本目錄是 _approve_（核可一個動作），而這個開關是放行資料送出，正是 Apple 的 `允許` · `high`
+- **Allow cloud AI（開關標籤，`ai.cloudConsent.label`）** · `允許使用雲端 AI` · `Allow` → `允許` 是 macOS
+  zh-TW 和 zh-HK 權限請求裡的按鈕，兩地一致（`TCC.framework` `Localizable.loctable`，`REQUEST_ACCESS_ALLOW`，macOS
+  26.6.2 build 25G83，2026-09-23 讀取）；`雲端 AI` 是 `settings.ai.provider.opt.cloud` 已發布的值。❗ 這裡是 `允許` 不是
+  `同意`：`同意` 在本目錄是 _approve_（核可一個動作），而這個開關是放行資料送出，正是 Apple 的 `允許` · `high`
 - **雲端 AI 關閉的狀態** · `雲端 AI 已關閉`，與 `ai.translateError.off.title`（`AI 已關閉`）同一形式 · `high`
-- **引用開關時逐字照搬標籤。** `settings.ai.cloudConsent.lockedHint` 用 `「允許使用雲端 AI」`；`askCmdr.gate.cloudOff.body`
-  和 `settings.askCmdr.cloudOffHint` 在句中直接寫 `允許使用雲端 AI`。英文只說 “Allow it” 的地方寫 `允許使用`
-  （`請到「設定 > AI」允許使用`）。
+- **引用開關時逐字照搬標籤。** `settings.ai.cloudConsent.lockedHint` 用
+  `「允許使用雲端 AI」`；`askCmdr.gate.cloudOff.body` 和 `settings.askCmdr.cloudOffHint` 在句中直接寫
+  `允許使用雲端 AI`。英文只說 “Allow it” 的地方寫 `允許使用` （`請到「設定 > AI」允許使用`）。
 - **Settings > AI** · `「設定 > AI」`，角括號、`>`，與 `ai.translateError.*` 的兄弟字串一致。
 - **AI service / cloud AI service** · `AI 服務` / `雲端 AI 服務`（`settings.ai.cloudProvider.description` 已用）；英文把
   `service` 和 `ai.cloudConsent.askCmdr.*` 裡的 `provider`（`提供者`）分開，中文也分開。

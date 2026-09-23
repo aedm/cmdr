@@ -3372,12 +3372,12 @@ Um interruptor de consentimento de privacidade: desligado por padrão, e nada sa
 de ser calmo e nunca prometer mais do que o Cmdr faz. Fontes vêm do macOS instalado (a pilha não está no M1), o caminho
 de `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
 
-- Allow cloud AI (o rótulo do interruptor, `ai.cloudConsent.label`) · **Permitir IA na nuvem** · `Allow` → `Permitir` é o
-  botão dos pedidos de permissão do macOS pt-BR (`TCC.framework` `Localizable.loctable`, `REQUEST_ACCESS_ALLOW`, macOS
+- Allow cloud AI (o rótulo do interruptor, `ai.cloudConsent.label`) · **Permitir IA na nuvem** · `Allow` → `Permitir` é
+  o botão dos pedidos de permissão do macOS pt-BR (`TCC.framework` `Localizable.loctable`, `REQUEST_ACCESS_ALLOW`, macOS
   26.6.2 build 25G83, lido 2026-09-23); `IA na nuvem` é o valor já publicado de `settings.ai.provider.opt.cloud`, a
   opção que a pessoa escolheu logo acima · `high`
-- cloud AI (substantivo, feminino) · **a IA na nuvem**; estado desligado · **A IA na nuvem está desativada**, no molde de
-  `ai.translateError.off.title` (`A IA está desativada`) · `high`
+- cloud AI (substantivo, feminino) · **a IA na nuvem**; estado desligado · **A IA na nuvem está desativada**, no molde
+  de `ai.translateError.off.title` (`A IA está desativada`) · `high`
 - **As frases que citam o interruptor põem o rótulo entre aspas curvas depois de `Ative`:**
   `Ative “Permitir IA na nuvem” …` (`settings.ai.cloudConsent.lockedHint`, `askCmdr.gate.cloudOff.body`,
   `settings.askCmdr.cloudOffHint`). O imperativo `Permita a IA na nuvem` não reproduziria o rótulo, e a `@key` pede o

@@ -2967,23 +2967,23 @@ replacement target. Four rules bind this whole group:
 
 ## “允许使用云端 AI”开关，以及云端 AI 关闭时的提示（`ai.cloudConsent.*`、`askCmdr.gate.*`，2026-09-23）
 
-这是一个隐私同意开关：默认关闭，打开之前什么都不会离开这台 Mac。文字要平静，绝不能夸大 Cmdr 做的事。M1 上没有参考资料库，证据取自已安装的
-macOS，做法见 `docs/i18n/reference-pile/how-to-mine.md` 的 "No pile on this machine?" 一节。
+这是一个隐私同意开关：默认关闭，打开之前什么都不会离开这台 Mac。文字要平静，绝不能夸大 Cmdr 做的事。M1 上没有参考资料库，证据取自已安装的 macOS，做法见
+`docs/i18n/reference-pile/how-to-mine.md` 的 "No pile on this machine?" 一节。
 
-- **Allow cloud AI（开关标签，`ai.cloudConsent.label`）** · `允许使用云端 AI` · `Allow` → `允许` 是 macOS zh-CN
-  权限请求里的按钮（`TCC.framework` `Localizable.loctable`，`REQUEST_ACCESS_ALLOW`，macOS 26.6.2 build 25G83，2026-09-23
-  读取）；`云端 AI` 是 `settings.ai.provider.opt.cloud` 已发布的值，也就是紧挨着上方的那个选项。加 `使用`，因为
-  `允许云端 AI` 读起来缺个动词 · `high`
+- **Allow cloud AI（开关标签，`ai.cloudConsent.label`）** · `允许使用云端 AI` · `Allow` → `允许` 是 macOS
+  zh-CN 权限请求里的按钮（`TCC.framework` `Localizable.loctable`，`REQUEST_ACCESS_ALLOW`，macOS 26.6.2 build
+  25G83，2026-09-23读取）；`云端 AI` 是 `settings.ai.provider.opt.cloud` 已发布的值，也就是紧挨着上方的那个选项。加
+  `使用`，因为 `允许云端 AI` 读起来缺个动词 · `high`
 - **云端 AI 关闭的状态** · `云端 AI 已关闭`，与 `ai.translateError.off.title`（`AI 已关闭`）同一形式 · `high`
 - **引用开关时逐字照搬标签。** `settings.ai.cloudConsent.lockedHint` 加引号写 `“允许使用云端 AI”`；
-  `askCmdr.gate.cloudOff.body` 和 `settings.askCmdr.cloudOffHint` 在句中直接写 `允许使用云端 AI`，与标签一字不差。英文只说
-  “Allow it” 的地方写 `允许使用`（`请到“设置 > AI”中允许使用`）。
+  `askCmdr.gate.cloudOff.body` 和 `settings.askCmdr.cloudOffHint` 在句中直接写
+  `允许使用云端 AI`，与标签一字不差。英文只说“Allow it” 的地方写 `允许使用`（`请到“设置 > AI”中允许使用`）。
 - **Settings > AI** · `“设置 > AI”`，加引号、用 `>`，与 `ai.translateError.*` 的兄弟字符串一致。
 - **AI service / cloud AI service** · `AI 服务` / `云端 AI 服务`；英文把 `service` 和 `ai.cloudConsent.askCmdr.*` 里的
   `provider`（`提供方`）分开，中文也分开。
 - **custom endpoints** · `自定义端点` · `high`
 - **side panel** · `侧边面板` · `high`
-- **折叠区里的功能名（`<b>` 内）**：`新建文件夹的名称建议`、`用自然语言搜索`（沿用 `queryUi.bar.aria.ai` 的 `自然语言`）、
-  `按描述选择` · `high`
+- **折叠区里的功能名（`<b>` 内）**：`新建文件夹的名称建议`、`用自然语言搜索`（沿用 `queryUi.bar.aria.ai` 的
+  `自然语言`）、 `按描述选择` · `high`
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`，与英文相同，带 `sameAsSourceJustification`（产品名，同
   `settings.section.askCmdr`）。

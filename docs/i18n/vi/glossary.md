@@ -3440,9 +3440,9 @@ theo `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   `askCmdr.gate.cloudOff.body` và `settings.askCmdr.cloudOffHint` viết thẳng `cho phép AI đám mây`; riêng
   `settings.ai.cloudConsent.lockedHint` trích nhãn trong ngoặc thẳng `"…"`, theo các chuỗi bên cạnh trong
   `settings.json`.
-- Settings > AI · **Cài đặt > AI**, giữ `>` như các chuỗi cùng họ `ai.translateError.*` và đúng như `@key` yêu cầu ("keep
-  it as shown"). Quy tắc `›` trong `style.md` là cho đường dẫn tới các mục cài đặt khác; ở họ chuỗi AI này, catalog đã
-  ship `>` bốn lần.
+- Settings > AI · **Cài đặt > AI**, giữ `>` như các chuỗi cùng họ `ai.translateError.*` và đúng như `@key` yêu cầu
+  ("keep it as shown"). Quy tắc `›` trong `style.md` là cho đường dẫn tới các mục cài đặt khác; ở họ chuỗi AI này,
+  catalog đã ship `>` bốn lần.
 - AI service / cloud AI service · **dịch vụ AI** / **dịch vụ AI đám mây**; tiếng Anh tách `service` khỏi `provider`
   (`nhà cung cấp`) của `ai.cloudConsent.askCmdr.*`, tiếng Việt cũng vậy.
 - custom endpoints · **các điểm cuối tùy chỉnh** · `high`
