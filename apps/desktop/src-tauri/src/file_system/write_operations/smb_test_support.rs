@@ -27,3 +27,17 @@ use cmdr_smb::volume::SmbVolume;
 pub(crate) async fn make_docker_volume() -> SmbVolume {
     make_docker_volume_with_host(crate::volume_host::host()).await
 }
+
+/// A live share and a scratch directory of its own on it, already created, in
+/// the shape the backend-blind `network_*_test_support.rs` scenarios take. They
+/// take the directory away themselves.
+pub(crate) async fn fixture() -> (Arc<dyn Volume>, PathBuf) {
+    let volume = make_docker_volume().await;
+    let base = test_dir_name();
+    ensure_clean(&volume, &base).await;
+    volume
+        .create_directory(Path::new(&base))
+        .await
+        .expect("the scratch dir on the share");
+    (Arc::new(volume), PathBuf::from(base))
+}

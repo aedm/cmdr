@@ -1145,7 +1145,9 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
   `supports_export` is a declaration the copy ENGINE reads, and the free-space pre-flight is the engine's own. The cells
   that would have caught them are `write_operations/sftp_transfer_integration_test.rs`, which drives
   `copy_between_volumes` in both directions against `sftp-fixture-openssh` and checksums both ends. Anything touching
-  this backend's capability answers or its error payloads owes a check on that side too.
+  this backend's capability answers or its error payloads owes a check on that side too. The rest of the app-side
+  coverage (merges, policies, moves, safety, look-alikes, archives) sits beside it, listed in
+  `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "The network transfer suites".
 
 The suites' prelude is `volume/test_support.rs`, ❌ not a `use super::*` glob out of `mod.rs`: what a glob pulls in
 isn't determinable without building, which is what made the SMB extraction's suites impossible to size in advance.

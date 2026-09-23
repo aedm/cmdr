@@ -35,12 +35,12 @@ pub(super) const CAFE_NFC: &str = "caf\u{e9}.txt";
 pub(super) const CAFE_NFD: &str = "cafe\u{301}.txt";
 const FOTOK_NFC: &str = "fot\u{f3}k";
 const FOTOK_NFD: &str = "foto\u{301}k";
-const RESUME_NFC: &str = "r\u{e9}sum\u{e9}.txt";
-const RESUME_NFD: &str = "re\u{301}sume\u{301}.txt";
+pub(super) const RESUME_NFC: &str = "r\u{e9}sum\u{e9}.txt";
+pub(super) const RESUME_NFD: &str = "re\u{301}sume\u{301}.txt";
 
 /// How `remote` spells a NEW entry it's handed as `nfd`: composed where the
 /// backend asks for it, else exactly as given.
-fn new_name_on(remote: &dyn Volume, nfc: &str, nfd: &str) -> String {
+pub(super) fn new_name_on(remote: &dyn Volume, nfc: &str, nfd: &str) -> String {
     if remote.composes_new_names() {
         nfc.to_string()
     } else {

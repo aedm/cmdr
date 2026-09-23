@@ -85,10 +85,10 @@ The full top-level inventory is here:
   scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
-  `test_support.rs`, plus `network_transfer_test_support.rs` and `network_gated_source_test_support.rs` (the
-  backend-blind transfer scenarios the WebDAV and SFTP Docker suites both drive, and the chunk-gated source one of them
-  needs; see § "The network transfer suites") and `smb_test_support.rs` (the app-wired fixture volume the `smb_*` Docker
-  suites share; see § "The SMB app-side suites").
+  `test_support.rs`, plus the backend-blind `network_*_test_support.rs` scenarios the WebDAV, SFTP, SMB, and ADB suites
+  drive and the chunk-gated sources in `network_gated_source_test_support.rs` (§ "The network transfer suites"), and
+  `smb_test_support.rs` / `sftp_test_support.rs` (the fixture dials the `smb_*` and `sftp_*` Docker suites share; see
+  § "The SMB app-side suites").
 
 What the mechanisms DO is in the sections below: the registry, lanes, and `run_instant` in § "Operation manager";
 the zip-edit driver in § "Archive edits"; cancellation, pause, Stop-mode conflicts, safe overwrite, scan-preview caching,
@@ -498,7 +498,7 @@ identical-looking twin beside the user's entry.
   and a "yes" for a look-alike would send them to a miss).
 - The transfers apply the same rule through `transfer/volume/landing.rs`: `transfer/volume/DETAILS.md` § "Look-alike
   names and new-name spelling". Extract lands through the same merge levels. Instant-op cells:
-  `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs`.
+  `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs` and `sftp_look_alike_test.rs`.
 - **Not covered, on purpose**: paste-as-file (`pasted (N).<ext>`, ASCII), rescue names (` (recovered)` off a name the
   landing already spelled; an error path that never overwrites), remote archive-edit temps (`.cmdr-tmp-<uuid>`), and
   undo (it restores an entry's own stored bytes).
@@ -1196,9 +1196,30 @@ live fixture server through `copy_between_volumes`, which is the seam neither ba
 of an actual copy were once broken in the app while `cmdr-sftp`'s own Docker suite was fully green (a `supports_export`
 predicate the crate never states, and a free-space pre-flight reading `NotSupported` as "no room").
 
-- **The scenarios are backend-blind and live in `network_transfer_test_support.rs`.** Everything they touch is
-  `dyn Volume`, so a claim proved against WebDAV is proved in the same words against SFTP and the two suites can't
-  drift. Each backend file connects its own fixture, mints a scratch dir, and delegates.
+- **The scenarios are backend-blind and live in `network_*_test_support.rs`.** Everything they touch is `dyn Volume`,
+  taken as `(remote: Arc<dyn Volume>, dir: PathBuf)` (a live volume plus a scratch dir it owns and removes), so a claim
+  proved against one backend is proved in the same words against the others and the suites can't drift. Each backend
+  file connects its own fixture (`sftp_test_support::fixture`, `smb_test_support::fixture`, WebDAV's `fixture()`) and
+  delegates. Five files, by what they prove:
+  - `network_transfer_test_support.rs`: the byte path (below).
+  - `network_semantics_test_support.rs`: merges under Skip / Overwrite / Rename / OverwriteSmaller, a move-merge that
+    spares what it skipped, whole-folder moves both ways, same-server move-merge, move, and copy, a missing nested
+    destination, a 6 MiB odd-length round trip, and 40 files at full concurrency. Every merge asserts through
+    `transfer::volume::assert_operation_was_safe`. Also the shared seeding and driving helpers (`seed`, `transfer`).
+  - `network_safety_test_support.rs`: a failed merge copy or move onto the user's folder, a delete bound to a
+    local-shaped preview, a recursive delete that takes exactly the selection, an unanswerable source-type probe, and
+    a download cancelled mid-file. Faults go on the LOCAL side (`FaultyVolume`); the server is what users run.
+    `Registered` puts a volume in the registry for the ops that look it up, and cleans BEFORE unregistering, because
+    unregistering retires the volume and a retired network volume drops its session.
+  - `network_look_alike_test_support.rs`: an NFD name onto its NFC twin (Skip, Overwrite, folder merge, same-server
+    move, bulk rename), new names spelled per the volume's own `composes_new_names`, and an inline rename that never
+    lands on a taken name or its other spelling.
+  - `network_archive_test_support.rs`: a zip on the server browsed and extracted through the copy engine, the routing
+    predicate, a remote edit and its cancel before the swap, files copied into a remote zip, a compress, and a
+    compress onto a look-alike name.
+- **Which backend drives what.** SFTP and SMB drive all five; WebDAV and ADB drive `network_transfer_test_support.rs`.
+  SFTP also points the same-server move and copy, the inline rename, and the remote zip edit at
+  `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace.
 - **`adb_transfer_test.rs` runs the same scenarios against a phone on `cmdr-adb`'s in-process fake server**, so it
   needs no Docker, runs in the unit lane, and has no name prefix to keep. Its own cells start a copy from two registered
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own
@@ -1228,7 +1249,11 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   finished nor a run the host starved can satisfy the later claims for the wrong reason. It waits for TWO chunks, not
   one: the stream is polled again only once the destination has taken the previous chunk, so the second hand-out is what
   proves the first reached the server. That also keeps the cell inside the workspace-wide 8 s nextest cap,
-  which a payload big enough to outrun a stopwatch would not.
+  which a payload big enough to outrun a stopwatch would not. The download twin gates a LIVE server's own read stream
+  (`gated_reads`, a `forward_volume_methods!` double), with a payload over two of SMB's 8 MiB read chunks.
+- **❗ The SFTP cells share one stock server, one SSH session per cell** (nextest runs each test in its own process).
+  That server gets two CPUs where the others get half of one; at half, two concurrent lanes pushed every SFTP cell past
+  the 8 s cap. `apps/desktop/test/sftp-servers/README.md`.
 
 ## The SMB app-side suites
 
@@ -1241,6 +1266,9 @@ Every SMB cell whose other half is this app rather than the protocol lives here:
 other modules reach `smb_test_support` from there: `listing/smb_pane_close_watch_integration_test.rs` and
 `volume/smb_media_fetch_integration_test.rs`.
 
+- **The semantics, safety, look-alike, and archive cells delegate** to the shared `network_*_test_support.rs`
+  scenarios through `smb_test_support::fixture`; only the dialog-addressed move and the replaced-volume copy in
+  `smb_transfer_semantics_test.rs` are SMB's own bodies.
 - **Docker SMB integration tests**: `#[ignore]` tests that require Docker SMB containers (start with
   `apps/desktop/test/smb-servers/start.sh`). Run with `cargo nextest run smb_integration --run-ignored all`. Connect via
   `smb2::testing::guest_port()` (10480, guest/no-auth), `auth_port()` (10481, `testuser`/`testpass`), `readonly_port()`

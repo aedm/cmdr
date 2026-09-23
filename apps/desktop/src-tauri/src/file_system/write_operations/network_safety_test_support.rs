@@ -351,9 +351,13 @@ pub(super) async fn an_unknown_source_type_never_clears_a_server_folder(remote: 
     clean_deep(remote.as_ref(), &dir).await;
 }
 
-/// How big the file a download cancel interrupts is: several of any backend's
-/// read chunks, so two permits can't finish it.
-const DOWNLOAD_BYTES: usize = 4 * 1024 * 1024;
+/// How big the file a download cancel interrupts is: more than two of any
+/// backend's read chunks, so two permits can't finish it.
+///
+/// ❗ SMB streams in chunks of the server's `max_read_size`, 8 MiB on the fixture's
+/// Samba, so anything at or under 16 MiB can leave the server in one or two
+/// chunks and the "two chunks out, the third held" premise never holds.
+const DOWNLOAD_BYTES: usize = 20 * 1024 * 1024;
 
 /// A copy OFF the server stopped mid-file leaves local disk as it found it: the
 /// user's filename never appears for bytes that didn't all arrive, and no

@@ -775,7 +775,8 @@ mod approved_op_parity_tests;
 mod journal_capture_tests;
 #[cfg(test)]
 mod journal_capture_volume_tests;
-// The source the cancel scenario holds still at a chunk boundary.
+// The sources the cancel scenarios hold still at a chunk boundary: an in-memory
+// upload source, and a live server's own reads.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_gated_source_test_support;
 // The transfer scenarios the WebDAV, SFTP, and ADB suites below share, written
@@ -784,8 +785,8 @@ mod network_gated_source_test_support;
 mod network_transfer_test_support;
 // What copy and move MEAN on a server that already holds the user's files
 // (merges, policies, moves both ways, same-server work), its data-safety cells,
-// its look-alike names, and its archives: backend-blind scenarios the SFTP suite
-// drives and the other network backends can.
+// its look-alike names, and its archives: backend-blind scenarios the SFTP and
+// SMB suites both drive.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_semantics_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
@@ -823,11 +824,24 @@ mod settle_event_tests;
 // The one cooperative-stop boundary every serial loop here asks at.
 #[cfg(test)]
 mod stop_or_park_tests;
-// Real copies in BOTH directions against a live SFTP server, through
-// `copy_between_volumes`. Gated on the Docker fixture, and named for the
-// `sftp_integration_` lane the check runner selects on.
+// The app-side SFTP suites: real copies in BOTH directions through
+// `copy_between_volumes`, then merges, policies, moves, data safety, look-alike
+// names, and archives, each delegating to the shared `network_*` scenarios above.
+// Gated on the Docker fixture, and named for the `sftp_integration_` lane the
+// check runner selects on.
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_archive_integration_test;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_look_alike_test;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod sftp_transfer_integration_test;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_transfer_safety_test;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_transfer_semantics_test;
+// The fixture dial every SFTP suite above shares.
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_test_support;
 // Archive browsing and remote editing over a virtual MTP device: the archive
 // routing is this app's, so the cell sits with the pipeline it asserts on rather
 // than with the backend. The MTP twin of `smb_archive_integration_test`.
@@ -852,17 +866,6 @@ mod smb_stress_test;
 // The fixture wiring those suites share, plus the two outside this directory
 // (`volume::smb_media_fetch_integration_test` and
 // `listing::smb_pane_close_watch_integration_test`), which reach it by path.
-#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
-mod sftp_transfer_semantics_test;
-#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
-mod sftp_transfer_safety_test;
-#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
-mod sftp_look_alike_test;
-#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
-mod sftp_archive_integration_test;
-// The fixture dial every SFTP suite above shares.
-#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
-mod sftp_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 pub(crate) mod smb_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]

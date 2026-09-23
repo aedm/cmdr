@@ -25,7 +25,7 @@ use cmdr_fs::volume::Volume;
 use cmdr_fs::volume::host::VolumeHost;
 
 use super::event_sinks::{CollectorEventSink, OperationEventSink};
-use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD};
+use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD, RESUME_NFC, RESUME_NFD, new_name_on};
 use super::network_safety_test_support::Registered;
 use super::network_semantics_test_support::{Transfer, local_volume, names_in, seed, transfer, try_read};
 use super::network_transfer_test_support::{assert_no_staging_litter, clean_deep, read_all};
@@ -331,7 +331,8 @@ pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(remote: Arc<dyn
 /// A compress onto a name the server holds in the other Unicode spelling: the
 /// dialog's probe (`destination_exists`) says it's there, `path_exists` stays
 /// byte-exact, and the compress replaces THAT archive in place, so the folder
-/// ends with one entry in the server's spelling.
+/// ends with one entry in the server's spelling. A NEW archive's name then lands
+/// spelled the way the volume says new names go out.
 pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Arc<dyn Volume>, dir: PathBuf) {
     use crate::commands::file_system::{destination_exists, path_exists};
 
@@ -360,6 +361,21 @@ pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Ar
         back.get("one.txt").map(Vec::as_slice),
         Some(&b"first"[..]),
         "the archive the server held is replaced by the new zip in place"
+    );
+
+    let resume_nfd = RESUME_NFD.replace(".txt", ".zip");
+    let new_there = destination_exists(Some(registered.id.clone()), dir.join(&resume_nfd).display().to_string()).await;
+    assert!(!new_there.data && !new_there.timed_out, "a free name reads free: {new_there:?}");
+    compress_onto(&local, &["one.txt"], dir.join(&resume_nfd), &registered.id).await;
+    let mut expected = vec![
+        zip_nfc.clone(),
+        new_name_on(remote.as_ref(), &RESUME_NFC.replace(".txt", ".zip"), &resume_nfd),
+    ];
+    expected.sort();
+    assert_eq!(
+        names_in(remote.as_ref(), &dir).await,
+        expected,
+        "a new archive lands beside it, spelled the way the server asks"
     );
 
     clean_deep(remote.as_ref(), &dir).await;
