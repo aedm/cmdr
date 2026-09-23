@@ -177,7 +177,6 @@ const MENU_BAR_ICONS: &[MenuIcons] = &[
         menu_id: FILE_MENU_ID,
         items: &[
             (OPEN_ID, "arrow.up.forward"),
-            (SERVERS_CONNECT_ID, "network"),
             (FILE_VIEW_ID, "document"),
             (EDIT_ID, "pencil"),
             (FILE_COPY_ID, "document.on.document"),
@@ -249,6 +248,7 @@ const MENU_BAR_ICONS: &[MenuIcons] = &[
             (GO_HOME_ID, "house"),
             (GO_TO_PATH_ID, "arrow.right.to.line"),
             (GO_LATEST_DOWNLOAD_ID, "arrow.down.circle"),
+            (SERVERS_CONNECT_ID, "network"),
             (SERVERS_SHOW_ID, "server.rack"),
         ],
         nested: &[],

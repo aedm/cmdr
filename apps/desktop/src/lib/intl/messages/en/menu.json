@@ -109,11 +109,6 @@
     "description": "VERB (imperative). First item of the File menu and of a file's right-click menu: hands the selected file to whichever app the system opens that kind of file with, or enters the folder. This is Finder's File > Open. ❗ Not \"open\" as in unlocking or unsealing, and not the adjective."
   },
 
-  "menu.file.connectToServer": "Connect to server…",
-  "@menu.file.connectToServer": {
-    "description": "VERB phrase (imperative). Item in the menu-bar File menu, right under Open (⌘K): opens a form where the user types a network file server's address (SMB, SFTP, or WebDAV) and signs in. The trailing … is U+2026 and must stay: the form decides which server it connects to. Use the wording macOS Finder uses for its own Go > \"Connect to Server…\" item in this language."
-  },
-
   "menu.file.view": "View",
   "@menu.file.view": {
     "description": "VERB (imperative), unlike the View MENU title (menu.bar.view) which is a noun: this item OPENS the selected file in Cmdr's own built-in read-only viewer (F3). It never modifies the file. Classic two-pane file managers call this key \"View\"; if your language distinguishes viewing from editing, pick the viewing verb."
@@ -457,9 +452,14 @@
     "description": "VERB phrase (imperative). Pins the current folder to Cmdr's own favorites list in the volume dropdown, for one-click return later. \"favorites\" is Cmdr's list, not macOS's sidebar Favorites, but using the same word your macOS Finder uses keeps it recognizable. No ellipsis: nothing is asked."
   },
 
+  "menu.go.connectToServer": "Connect to server…",
+  "@menu.go.connectToServer": {
+    "description": "VERB phrase (imperative). Item in the menu-bar Go menu (⌘K), just above Show servers, where macOS Finder keeps its own \"Connect to Server…\": opens a form where the user types a network file server's address (SMB, SFTP, or WebDAV) and signs in. The trailing … is U+2026 and must stay: the form decides which server it connects to. Use the wording macOS Finder uses for its own Go > \"Connect to Server…\" item in this language."
+  },
+
   "menu.go.showServers": "Show servers",
   "@menu.go.showServers": {
-    "description": "VERB phrase (imperative). Item in the menu-bar Go menu, next to Show favorites: takes the active file pane to Cmdr's servers list, which shows every saved and nearby network file server. No ellipsis: nothing is asked."
+    "description": "VERB phrase (imperative). Item in the menu-bar Go menu, right under Connect to server…: takes the active file pane to Cmdr's servers list, which shows every saved and nearby network file server. No ellipsis: nothing is asked."
   },
 
   "menu.tab.newTab": "New tab",

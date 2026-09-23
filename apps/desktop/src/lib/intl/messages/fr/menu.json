@@ -88,10 +88,6 @@
   "@menu.file.open": {
     "sourceHash": "ed077f3"
   },
-  "menu.file.connectToServer": "Se connecter au serveur…",
-  "@menu.file.connectToServer": {
-    "sourceHash": "6188f47"
-  },
   "menu.file.view": "Visualiser",
   "@menu.file.view": {
     "sourceHash": "dcc839a"
@@ -370,6 +366,10 @@
   "menu.go.addToFavorites": "Ajouter aux favoris",
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
+  },
+  "menu.go.connectToServer": "Se connecter au serveur…",
+  "@menu.go.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.go.showServers": "Afficher les serveurs",
   "@menu.go.showServers": {

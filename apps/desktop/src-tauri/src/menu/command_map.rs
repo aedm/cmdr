@@ -168,7 +168,7 @@ pub const GO_LATEST_DOWNLOAD_ID: &str = "go_latest_download";
 /// ("Hide Cmdr"), so the shifted combo is the one Cmdr can own.
 pub const GO_HOME_ID: &str = "go_home";
 
-/// "Connect to server…" (⌘K, File menu): opens the add-server sheet, the same `servers.connect` the palette runs.
+/// "Connect to server…" (⌘K, Go menu): opens the add-server sheet, the same `servers.connect` the palette runs.
 pub const SERVERS_CONNECT_ID: &str = "servers_connect";
 /// "Show servers" (Go menu): takes the focused pane to the servers hub (`servers.show`). No default shortcut.
 pub const SERVERS_SHOW_ID: &str = "servers_show";

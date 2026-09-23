@@ -87,10 +87,6 @@
   "@menu.file.open": {
     "sourceHash": "ed077f3"
   },
-  "menu.file.connectToServer": "Anslut till server…",
-  "@menu.file.connectToServer": {
-    "sourceHash": "6188f47"
-  },
   "menu.file.view": "Visa",
   "@menu.file.view": {
     "sourceHash": "dcc839a"
@@ -368,6 +364,10 @@
   "menu.go.addToFavorites": "Lägg till i favoriter",
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
+  },
+  "menu.go.connectToServer": "Anslut till server…",
+  "@menu.go.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.go.showServers": "Visa servrar",
   "@menu.go.showServers": {

@@ -41,25 +41,24 @@ menu Cmdr id=menu_app
   15 predefined quit menu.app.quit
 menu menu.bar.file id=menu_file
   0 item open menu.file.open tracked
-  1 item servers_connect menu.file.connectToServer [Cmd+K] tracked
-  2 item file_view menu.file.view [F3] tracked
-  3 item edit menu.file.edit [F4] tracked
-  4 separator
-  5 item file_copy menu.file.copy [F5] tracked
-  6 item file_move menu.file.move [F6] tracked
-  7 item file_duplicate menu.file.duplicate [Cmd+D] tracked
-  8 item file_compress menu.file.compress [Alt+F5] tracked
-  9 item file_new_folder menu.file.newFolder [F7] tracked
-  10 item file_new_file menu.file.newFile [Shift+F4] tracked
-  11 item file_delete menu.file.delete [F8] tracked
-  12 item file_delete_permanently menu.file.deletePermanently [Shift+F8] tracked
-  13 separator
-  14 item rename menu.file.rename [F2] tracked
-  15 separator
-  16 item show_in_finder menu.file.showInFinder [Alt+Cmd+O] tracked
-  17 item open_terminal_here menu.file.openTerminalHere [Alt+Cmd+T] tracked
-  18 item get_info menu.file.getInfo [Cmd+I] tracked
-  19 item quick_look menu.file.quickLook [Shift+Space] tracked
+  1 item file_view menu.file.view [F3] tracked
+  2 item edit menu.file.edit [F4] tracked
+  3 separator
+  4 item file_copy menu.file.copy [F5] tracked
+  5 item file_move menu.file.move [F6] tracked
+  6 item file_duplicate menu.file.duplicate [Cmd+D] tracked
+  7 item file_compress menu.file.compress [Alt+F5] tracked
+  8 item file_new_folder menu.file.newFolder [F7] tracked
+  9 item file_new_file menu.file.newFile [Shift+F4] tracked
+  10 item file_delete menu.file.delete [F8] tracked
+  11 item file_delete_permanently menu.file.deletePermanently [Shift+F8] tracked
+  12 separator
+  13 item rename menu.file.rename [F2] tracked
+  14 separator
+  15 item show_in_finder menu.file.showInFinder [Alt+Cmd+O] tracked
+  16 item open_terminal_here menu.file.openTerminalHere [Alt+Cmd+T] tracked
+  17 item get_info menu.file.getInfo [Cmd+I] tracked
+  18 item quick_look menu.file.quickLook [Shift+Space] tracked
 menu menu.bar.edit id=menu_edit
   0 predefined undo menu.edit.undo
   1 predefined redo menu.edit.redo
@@ -128,7 +127,9 @@ menu menu.bar.go id=menu_go
   8 separator
   9 item favorites_add menu.go.addToFavorites tracked
   10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
-  11 item servers_show menu.go.showServers tracked
+  11 separator
+  12 item servers_connect menu.go.connectToServer [Cmd+K] tracked
+  13 item servers_show menu.go.showServers tracked
 menu menu.bar.tab id=menu_tab
   0 item new_tab menu.tab.newTab [Cmd+T] tracked
   1 item close_tab menu.tab.closeTab [Cmd+W] tracked
@@ -153,24 +154,23 @@ menu menu.bar.help id=menu_help
 const LINUX_MENU_BAR: &str = "\
 menu menu.bar.file
   0 item open menu.file.open tracked
-  1 item servers_connect menu.file.connectToServer [Cmd+K] tracked
-  2 item file_view menu.file.view tracked
-  3 item edit menu.file.edit tracked
-  4 separator
-  5 item file_copy menu.file.copy tracked
-  6 item file_move menu.file.move tracked
-  7 item file_duplicate menu.file.duplicate tracked
-  8 item file_compress menu.file.compress tracked
-  9 item file_new_folder menu.file.newFolder tracked
-  10 item file_new_file menu.file.newFile tracked
-  11 item file_delete menu.file.delete tracked
-  12 item file_delete_permanently menu.file.deletePermanently tracked
-  13 separator
-  14 item rename menu.file.rename tracked
-  15 separator
-  16 item show_in_finder menu.file.showInFileManager [Alt+Ctrl+O] tracked
-  17 item get_info menu.file.getInfo [Cmd+I] tracked
-  18 item quick_look menu.file.quickLook tracked
+  1 item file_view menu.file.view tracked
+  2 item edit menu.file.edit tracked
+  3 separator
+  4 item file_copy menu.file.copy tracked
+  5 item file_move menu.file.move tracked
+  6 item file_duplicate menu.file.duplicate tracked
+  7 item file_compress menu.file.compress tracked
+  8 item file_new_folder menu.file.newFolder tracked
+  9 item file_new_file menu.file.newFile tracked
+  10 item file_delete menu.file.delete tracked
+  11 item file_delete_permanently menu.file.deletePermanently tracked
+  12 separator
+  13 item rename menu.file.rename tracked
+  14 separator
+  15 item show_in_finder menu.file.showInFileManager [Alt+Ctrl+O] tracked
+  16 item get_info menu.file.getInfo [Cmd+I] tracked
+  17 item quick_look menu.file.quickLook tracked
 menu menu.bar.edit
   0 item edit_cut menu.edit.cut [Ctrl+X] tracked
   1 item edit_copy menu.edit.copy [Ctrl+C] tracked
@@ -241,7 +241,9 @@ menu menu.bar.go
   8 separator
   9 item favorites_add menu.go.addToFavorites tracked
   10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
-  11 item servers_show menu.go.showServers tracked
+  11 separator
+  12 item servers_connect menu.go.connectToServer [Cmd+K] tracked
+  13 item servers_show menu.go.showServers tracked
 menu menu.bar.tab
   0 item new_tab menu.tab.newTab [Cmd+T] tracked
   1 item close_tab menu.tab.closeTab [Cmd+W] tracked

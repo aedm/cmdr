@@ -1014,14 +1014,14 @@ AND the JS keydown dispatch on macOS (see `shortcuts/DETAILS.md` § "Modifier-ke
 safe here without any suppression hack: ⌘G's dialog-open is idempotency-guarded in `+page.svelte`, and ⌘J's re-reveal is
 naturally idempotent. Expect two `FE:user-action downloads.goToLatest` log lines on one ⌘J press — harmless.
 
-The **server items** have no menu of their own: `Connect to server…` (⌘K, `SERVERS_CONNECT_ID` → `servers.connect`,
-key `menu.file.connectToServer`) sits in File right under `Open`, since ⌘K is Finder's shortcut for it, and
-`Show servers` (no default shortcut, `SERVERS_SHOW_ID` → `servers.show`, key `menu.go.showServers`) closes Go, beside
-`Show favorites`, as the other list of places. Two items don't earn a top-level menu, and the File placement is the
-discoverable door the `⌥F1` volume selector's bottom row alone wasn't. Both are menu faces of existing palette
-commands, `FileScoped` because each acts in the main window: the first opens the add-server sheet, the second takes the
-focused pane to the servers hub. macOS SF Symbols are `network` and `server.rack`, in the File and Go icon lists. What
-the commands do: `apps/desktop/src/routes/(main)/command-handlers/servers-handlers.ts`.
+The **server items** have no menu of their own: they close Go as a pair below a separator, `Connect to server…` (⌘K,
+`SERVERS_CONNECT_ID` → `servers.connect`, key `menu.go.connectToServer`) then `Show servers` (no default shortcut,
+`SERVERS_SHOW_ID` → `servers.show`, key `menu.go.showServers`). Go is where Finder keeps ⌘K "Connect to Server…", so a
+Mac user looks there first. Two items don't earn a top-level menu, and the menu bar is the discoverable door the `⌥F1`
+volume selector's bottom row alone wasn't. Both are menu faces of existing palette commands, `FileScoped` because each
+acts in the main window: the first opens the add-server sheet, the second takes the focused pane to the servers hub.
+macOS SF Symbols are `network` and `server.rack`, both in the Go icon list. What the commands do:
+`apps/desktop/src/routes/(main)/command-handlers/servers-handlers.ts`.
 
 The **Help** submenu holds, in order: `Keyboard shortcuts`, separator, `What's new`, `Send feedback…`,
 `Send error report…` (Linux, which has no app menu, starts with `About`, `Acknowledgements`, and a separator, and has

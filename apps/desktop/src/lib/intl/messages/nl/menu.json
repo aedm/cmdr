@@ -90,10 +90,6 @@
     "sourceHash": "ed077f3",
     "sameAsSourceJustification": "The Dutch bare-stem imperative of \"openen\" is \"Open\", which happens to be spelt like English; macOS Dutch Finder shows exactly this."
   },
-  "menu.file.connectToServer": "Verbind met server…",
-  "@menu.file.connectToServer": {
-    "sourceHash": "6188f47"
-  },
   "menu.file.view": "Toon",
   "@menu.file.view": {
     "sourceHash": "dcc839a"
@@ -376,6 +372,10 @@
   "menu.go.addToFavorites": "Voeg aan favorieten toe",
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
+  },
+  "menu.go.connectToServer": "Verbind met server…",
+  "@menu.go.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.go.showServers": "Toon servers",
   "@menu.go.showServers": {

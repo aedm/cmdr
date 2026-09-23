@@ -87,10 +87,6 @@
   "@menu.file.open": {
     "sourceHash": "ed077f3"
   },
-  "menu.file.connectToServer": "連接伺服器…",
-  "@menu.file.connectToServer": {
-    "sourceHash": "6188f47"
-  },
   "menu.file.view": "檢視",
   "@menu.file.view": {
     "sourceHash": "dcc839a"
@@ -371,6 +367,10 @@
   "menu.go.addToFavorites": "加入喜好項目",
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
+  },
+  "menu.go.connectToServer": "連接伺服器…",
+  "@menu.go.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.go.showServers": "顯示伺服器",
   "@menu.go.showServers": {

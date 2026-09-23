@@ -142,8 +142,6 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
         "menu.bar.file",
         &[
             item(OPEN_ID, "menu.file.open", NONE),
-            // ⌘K is Finder's "Connect to Server…" shortcut; next to Open, it reads as another way in.
-            item(SERVERS_CONNECT_ID, "menu.file.connectToServer", both("Cmd+K")),
             item(FILE_VIEW_ID, "menu.file.view", macos("F3")),
             item(EDIT_ID, "menu.file.edit", macos("F4")),
             SEPARATOR,
@@ -363,8 +361,10 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
             item(FAVORITES_ADD_ID, "menu.go.addToFavorites", NONE),
             // ⌃D, matching the registry default and what Total Commander binds for the same list.
             item(FAVORITES_OPEN_ID, "menu.go.showFavorites", both("Ctrl+D")),
-            // Another list of places, so it sits with favorites. No default: `servers.show` ships
-            // without a shortcut.
+            SEPARATOR,
+            // The servers pair. ⌘K is Finder's "Connect to Server…", and Finder keeps it in Go too.
+            item(SERVERS_CONNECT_ID, "menu.go.connectToServer", both("Cmd+K")),
+            // No default: `servers.show` ships without a shortcut.
             item(SERVERS_SHOW_ID, "menu.go.showServers", NONE),
         ],
     ),
