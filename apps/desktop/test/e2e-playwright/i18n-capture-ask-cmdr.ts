@@ -31,7 +31,7 @@
 
 import { waitBudget } from './wait-budget.js'
 import { expect } from './fixtures.js'
-import { ensureAppReady, dispatchMenuCommand } from './helpers.js'
+import { ensureAppReady, dispatchMenuCommand, waitForAskCmdrOnInBackend } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import { type SurfaceEntry, captureCall, captureSurface } from './i18n-capture-helpers.js'
 
@@ -103,6 +103,9 @@ async function unlockChat(main: TauriPage): Promise<void> {
       { timeout: waitBudget(5000) },
     )
     .toBe(true)
+  // The rail flips at once; the backend learns the switch a save and a push later, and the
+  // chat surface's send would otherwise be refused as off inside that window.
+  await waitForAskCmdrOnInBackend(main)
 }
 
 /**
