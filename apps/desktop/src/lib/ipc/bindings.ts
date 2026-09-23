@@ -12305,8 +12305,8 @@ export type SearchIndexReadyEvent = {
 // A search match found by a backend.
 export type SearchMatch = {
   /**
-   *  0-based ROW index (milestone 4 renames the field; the coordinate is already a
-   *  row). Search scans rows, so a match inside a 300 MB line comes back with a
+   *  0-based ROW index (the coordinate is already a row; the field rename is open,
+   *  `docs/specs/viewer-row-wrap-follow-ups.md` § 1). Search scans rows, so a match inside a 300 MB line comes back with a
    *  column that fits on screen instead of one 2.5 million units wide.
    */
   line: number
