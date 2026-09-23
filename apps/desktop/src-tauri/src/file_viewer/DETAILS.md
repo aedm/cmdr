@@ -275,8 +275,7 @@ byte just past a newline, or `b` is a multiple of `SEGMENT_BYTES` **below EOF** 
 newline**. (A multiple exactly on EOF starts no row: nothing follows it, and admitting it lets the character snap drag
 it back and invent a row of truncated bytes.) That last clause is the whole design: a newline-free segment implies a line at least that long, so in a file whose lines are
 all shorter no multiple ever qualifies and rows come out exactly equal to lines. Full derivation, the read bounds, and
-the UTF-16 and character-boundary snaps: the module doc in `rows.rs`. Plan and invariants:
-`docs/specs/viewer-row-wrap.md`.
+the UTF-16 and character-boundary snaps: the module doc in `rows.rs`. The invariants every row change is checked against: § "The row invariants" below.
 
 **Two readings of that one set, and why.** `RowRuler::row_start` / `row_end` answer one probe with one bounded window,
 which is what a SEEK wants and costs a two-segment read per row. A fetch walks thousands of rows in sequence, so
@@ -324,6 +323,27 @@ hands out comes back as itself. On a newline-free file the sample sees whole seg
 offset within its ROW, so it is bounded by two segments rather than arriving 2.5 million units wide. A needle
 straddling a segment break is missed, which is inherent to searching rows and is why `SEGMENT_BYTES` is far larger
 than any query.
+
+### The row invariants
+
+The register every row change is checked against. A change that breaks one is wrong even if every test passes; code
+and tests cite them by number.
+
+- **I1. Bounded work.** No read path allocates or copies more than `O(SEGMENT_BYTES × rows_requested)`, whatever the
+  file size or line length. Opening a 50 GB single-line file reads tens of kilobytes.
+- **I2. No total-length dependency.** Nothing needed to render a row may require knowing where its physical line ends,
+  how long that line is, or how many lines the file has. The one most easily lost by accident: a `memchr` "just to find
+  the line end" reintroduces the unbounded read.
+- **I3. No silent truncation.** Anything the user can select, copy, or save is delivered in full or refused out loud,
+  and byte counts shown to the user are true counts (they pick the 10 MiB copy confirm and the 100 MiB refusal). When
+  in doubt, refuse rather than deliver less than asked.
+- **I4. Deterministic rows.** `row_start(offset)` yields the same boundary for every probe offset inside that row, in
+  every backend, on every fetch, in every encoding. Rows must not shift as the user scrolls back and forth.
+- **I5. Rows don't depend on wrap mode.** Toggling word wrap renumbers nothing, which is why the FETCH size
+  (`CHUNK_BUDGET_BYTES`) adapts to wrapped rows and the segment size never does.
+- **I6. Ordinary files are unaffected.** A file whose every line is shorter than `SEGMENT_BYTES` has rows and lines
+  one-to-one and behaves byte-identically to a line-based viewer. `row_characterization_test.rs` and
+  `routes/viewer/viewer-row-characterization.test.ts` are the register for this one.
 
 ## Backend selection logic
 

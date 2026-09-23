@@ -48,7 +48,7 @@
 //! The forward walk over this boundary set, and the row types a fetch hands back,
 //! live in `row_walk.rs`. This file is the rule; that one reads it.
 //!
-//! Architecture and the rest of the plan: `docs/specs/viewer-row-wrap.md`.
+//! Architecture and the invariants (I1-I6): `DETAILS.md` § "Rows, not lines".
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};

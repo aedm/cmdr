@@ -111,8 +111,8 @@ pub enum SeekTargetKind {
 
 /// Where to seek in the file.
 ///
-/// The numeric coordinate is a ROW index, not a physical line; milestone 4 of
-/// `docs/specs/viewer-row-wrap.md` renames the variant to match.
+/// The numeric coordinate is a ROW index, not a physical line; renaming the variant
+/// to match is open (`docs/specs/viewer-row-wrap-follow-ups.md` § 1).
 #[derive(Debug, Clone)]
 pub enum SeekTarget {
     /// Jump to a specific row (0-based). Exact on `FullLoadBackend` and
@@ -167,8 +167,8 @@ impl LineChunk {
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMatch {
-    /// 0-based ROW index (milestone 4 renames the field; the coordinate is already a
-    /// row). Search scans rows, so a match inside a 300 MB line comes back with a
+    /// 0-based ROW index (the coordinate is already a row; the field rename is open,
+    /// `docs/specs/viewer-row-wrap-follow-ups.md` § 1). Search scans rows, so a match inside a 300 MB line comes back with a
     /// column that fits on screen instead of one 2.5 million units wide.
     pub line: usize,
     /// UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by

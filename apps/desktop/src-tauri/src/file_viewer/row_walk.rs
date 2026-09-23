@@ -13,7 +13,7 @@
 //! ❗ Nothing here may grow with a physical line's length (invariant I2). The buffer is
 //! one refill chunk plus at most two segments, whatever the file.
 //!
-//! Architecture and the rest of the plan: `docs/specs/viewer-row-wrap.md`.
+//! Architecture and the invariants (I1-I6): `DETAILS.md` § "Rows, not lines".
 
 use std::collections::VecDeque;
 
@@ -171,7 +171,7 @@ pub struct RowReader<S: RowSource> {
     total_bytes: u64,
     /// The file's first content byte, past any BOM.
     ///
-    /// The row GRID is absolute (`docs/specs/viewer-row-wrap.md`: a BOM must not shift
+    /// The row GRID is absolute (`DETAILS.md` § "Rows, not lines": a BOM must not shift
     /// one backend's rows against another's), but a file's first row starts where its
     /// text starts. That is what makes all three backends agree on row 0, and what
     /// stops ByteSeek handing the user a selectable `U+FEFF`.

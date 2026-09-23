@@ -1,7 +1,7 @@
 //! Characterization tests: what the viewer's three text backends do TODAY.
 //!
 //! The viewer is about to stop serving physical lines and start serving bounded rows
-//! (`docs/specs/viewer-row-wrap.md`). Invariant I6 says every file whose lines are all
+//! (`DETAILS.md` § "The row invariants"). Invariant I6 says every file whose lines are all
 //! shorter than the segment size must behave byte-identically afterwards. These tests
 //! are the register that claim gets checked against, so the rewrite is measured against
 //! reality rather than against the plan's hopes.
@@ -30,7 +30,7 @@ use super::{CHUNK_BUDGET_BYTES, ChunkEnd, FileViewerBackend, SearchMatch, SeekTa
 use crate::pluralize::pluralize;
 use crate::test_support::TestDir;
 
-/// The row grid the rewrite introduces (`docs/specs/viewer-row-wrap.md` § Constants).
+/// The row grid the rewrite introduces (`rows::SEGMENT_BYTES`).
 /// Only the `red_*` tests use it; everything else predates rows.
 const SEGMENT_BYTES: usize = 20_000;
 

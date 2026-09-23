@@ -2,7 +2,7 @@
  * Characterization tests: what select-all and the copy-size arithmetic do TODAY.
  *
  * The viewer is about to stop counting physical lines and start counting bounded rows
- * (`docs/specs/viewer-row-wrap.md`). Invariant I6 says a file whose every line is
+ * (`src-tauri/src/file_viewer/DETAILS.md` § "The row invariants"). Invariant I6 says a file whose every line is
  * shorter than the segment size must behave byte-identically afterwards, and these
  * tests are the register that claim is checked against.
  *
