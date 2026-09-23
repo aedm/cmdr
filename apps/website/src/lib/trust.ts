@@ -39,7 +39,7 @@ export const networkConnections: NetworkConnection[] = [
     name: 'Update check and download',
     destination:
       '<code>api.getcmdr.com</code>, then <code>getcmdr.com/latest.json</code>. The update itself downloads from <code>github.com</code> and <code>release-assets.githubusercontent.com</code>.',
-    when: 'At launch, then every hour. Users can set the interval from five minutes to 24 hours.',
+    when: 'At most once every three hours, starting at launch. Users can set the interval from five minutes to 24 hours.',
     sends:
       'The app version and CPU architecture, in the URL. The server keeps a one-way hash of the IP address, the date, the version, and the architecture. It deletes each record after seven days and keeps only daily totals.',
     control:
@@ -48,8 +48,9 @@ export const networkConnections: NetworkConnection[] = [
   {
     id: 'usage-stats',
     name: 'Usage stats',
-    destination: "<code>api.getcmdr.com/heartbeat</code>, and PostHog's EU cloud at <code>eu.i.posthog.com</code>.",
-    when: 'At launch, then every hour while the app is open, plus an event when a feature is used.',
+    destination:
+      "<code>api.getcmdr.com/heartbeat</code>. The app doesn't contact PostHog: our server passes the feature events on to PostHog's EU cloud.",
+    when: 'At most once every three hours while the app is open. Feature events wait on the Mac and go with the next send.',
     sends:
       'A random install id created on the Mac (not linked to a name, email, or license), app version, macOS version, CPU architecture, the names of features used, and a fixed list of settings values (like light or dark mode). No file names, paths, file contents, search terms, or AI prompts. That list is enforced by code review, not by an automatic filter.',
     control:
@@ -129,7 +130,6 @@ export const allowlistHosts: { host: string; purpose: string }[] = [
   { host: 'api.getcmdr.com', purpose: 'update checks, license checks, usage stats, reports' },
   { host: 'getcmdr.com', purpose: 'the update manifest (latest.json)' },
   { host: 'github.com, release-assets.githubusercontent.com', purpose: 'update downloads' },
-  { host: 'eu.i.posthog.com', purpose: 'usage stats (can be blocked; the app works without it)' },
   { host: 'license.getcmdr.com', purpose: 'license checks from older versions only' },
   { host: 'huggingface.co', purpose: 'optional, only for local AI and image-search model downloads' },
   { host: 'your AI provider', purpose: 'optional, only if a user sets up cloud AI' },
@@ -154,7 +154,7 @@ export const dataLocations: DataLocation[] = [
   },
   {
     name: 'PostHog',
-    what: 'Usage stats from the app, and visit recordings and heatmaps from the website.',
+    what: 'Usage stats from the app, which our API server passes on, and visit recordings and heatmaps from the website.',
     where: 'PostHog EU cloud (Frankfurt, according to PostHog).',
     inEu: 'yes',
   },
@@ -211,7 +211,7 @@ export interface RetentionRule {
 /** Server-side retention. A daily job enforces the D1 rows; the rest say what enforces them. */
 export const serverRetention: RetentionRule[] = [
   { what: 'Update checks', rule: 'Deleted after seven days. Daily totals per version are kept.' },
-  { what: 'Usage stats (heartbeats)', rule: 'Deleted after two years.' },
+  { what: 'Usage stats (heartbeats and feature events)', rule: 'Deleted after two years.' },
   {
     what: 'Download records',
     rule: 'IP hash and browser user agent removed after 90 days. Version, architecture, country, and referrer are kept.',

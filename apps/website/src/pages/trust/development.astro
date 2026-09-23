@@ -89,7 +89,7 @@ const toc = [
             publication before Cmdr uses it. Known vulnerabilities in dependencies are scanned for automatically.
         </li>
         <li>
-            <strong>Fixes reach users fast.</strong> The app checks for updates every hour and installs them by itself.
+            <strong>Fixes reach users fast.</strong> The app checks for updates every three hours and installs them by itself.
             About {updateAdoption.firstDay.percent}% of active installs run a new release within 24 hours, and
             {updateAdoption.thirdDay.percent}% by the third day. The two most recent dependency advisories reached a release
             {latestAdvisories.map((fix) => fix.days).sort((a, b) => a - b).join(' and ')} days after they were published.
@@ -345,7 +345,7 @@ const toc = [
     <h2 id="updates">Update delivery</h2>
     <ul>
         <li>
-            <strong>How</strong>: the app checks for a new version at launch and every hour. It downloads the update,
+            <strong>How</strong>: the app checks for a new version at launch and every three hours. It downloads the update,
             checks its signature, installs it in place, and asks the user to restart. It only ever installs a newer
             version. Users can turn this off per Mac; IT can't yet control it centrally.
         </li>
@@ -363,7 +363,7 @@ const toc = [
         </li>
         <li>
             <strong>From a fix to users</strong>: a fix ships with the next release (usually within a few days), the
-            release is public {releaseBuildMinutes.min}–{releaseBuildMinutes.max} minutes after the tag, and running copies find it within an hour.
+            release is public {releaseBuildMinutes.min}–{releaseBuildMinutes.max} minutes after the tag, and running copies find it within three hours.
         </li>
     </ul>
 

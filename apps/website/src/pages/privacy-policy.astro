@@ -5,7 +5,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 <LegalLayout
     title="Privacy policy"
     description="How Cmdr collects, uses, and protects your personal data. GDPR compliant."
-    lastUpdated="2026-09-23"
+    lastUpdated="2026-09-24"
 >
     <p>
         Your privacy matters to us a lot. This policy explains what data we collect, why, and how we protect it. We've
@@ -119,8 +119,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         </li>
         <li>
             <strong>Usage stats</strong> (open beta): which features you use, basic preferences (like light or dark
-            mode), and your app version, macOS version, and Mac architecture. The app sends these at launch and about
-            once an hour while it's open. They're tied to a random id created on your Mac, never to your name, email, or
+            mode), and your app version, macOS version, and Mac architecture. The app sends these about once every
+            three hours while it's open. They're tied to a random id created on your Mac, never to your name, email, or
             license. That id stays the same between launches, which is how we tell 100 people opening the app once from
             one person opening it 100 times. That makes these stats pseudonymous rather than truly anonymous: we can't
             work out who you are, but the records do link to each other. No file names, contents, paths, search terms,
@@ -221,7 +221,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         <li>
             <strong>PostHog</strong> (website behavior and desktop usage stats): session recordings and heatmaps to help
             us improve the website experience, and the PII-free feature stats the desktop app sends during the open
-            beta, tied to the random id described above. Cloud-hosted in the EU.
+            beta, tied to the random id described above. The app doesn't contact PostHog: these stats reach it through
+            our API server. Cloud-hosted in the EU.
             <a href="https://posthog.com/privacy" target="_blank" rel="noopener noreferrer">PostHog's privacy policy</a>
         </li>
         <li>
