@@ -577,25 +577,28 @@ short of the hint (`data.len() != size`) and falls through the same way. Neither
 file's final name. ❌ Never "simplify" either arm away, and never call the unsized `read_file_compound` from a path that
 knows the size: an 8 MB request against a 4 MB file is both the over-charge and a guard that can't fire.
 
-**Known gap, unfixed on purpose: a window too small to carry even ONE compound read.** The fast paths' conditions ask
-about sizes, not credits. The foreground read tops out at a 512 KiB file (a 10-credit chain) on a cold connection, but
-up to `max_read` once a download has measured a fast link, and the scan pool's prefetch always goes up to `max_read`. So
-a server granting a small window (embedded NAS firmware, a router's USB share, Samba built with a low
-`smb2 max credits`) can leave a 4 MB photo's 66-credit chain unservable: smb2 refuses with `Error::CreditStarvation`
-rather than hanging, neither path has an arm for it, and the photo is skipped as unreadable (or, on a warm foreground
-copy, fails to copy) instead of falling through to a streaming read that would have worked at ~10 credits a chunk.
-Nothing has been observed hitting this — both reference servers were measured granting 513 credits — which is exactly
-why no recovery branch was written: an untested error path is worse than a documented gap. The profile that would show
-it is specific: a LARGE `max_read` paired with a SMALL grant. A server with a small `max_read` is automatically safe,
-because `read_file_compound_sized` clamps `requested` to it and the charge falls with it.
+**A window too small to carry ONE compound read: closed for the foreground read, open on the scan pool and on writes.**
+The fast paths' conditions ask about sizes, not credits. The foreground read tops out at a 512 KiB file (a 10-credit
+chain) on a cold connection, but up to `max_read` once a download has measured a fast link, and the scan pool's prefetch
+always goes up to `max_read`. So a server granting a small window (embedded NAS firmware, a router's USB share, Samba
+built with a low `smb2 max credits`) can leave a 4 MB photo's 66-credit chain unfundable, and smb2 refuses with
+`Error::CreditStarvation` rather than hanging. The profile is specific: a LARGE `max_read` paired with a SMALL grant (a
+small `max_read` is safe, since `read_file_compound_sized` clamps to it). Both reference servers grant 513.
 
-The fix, if it ever does show up, is to REACT rather than predict: `reserve_credits` refuses before anything reaches the
-wire, so an unfundable compound read costs zero round trips and the fast path can fall through to streaming on the spot.
-That is correct on every server, including one whose window moves mid-connection. What blocks it today is that smb2
-can't tell "unfundable here" from "transient": `Error::CreditStarvation` reports `is_retryable() == true` and classifies
-as `ErrorKind::TimedOut`, so a generic retry loop would retry a request that can never succeed. ❌ Don't reach instead
-for a predictive gate on `credit_capacity_for` — it answers from a constant (see the clamp note above), so it cannot
-tell you whether THIS server can fund the read.
+- **The foreground read REACTS**: `open_read_stream_with_hint` matches the typed `smb2::Error::CreditStarvation` and
+  falls through to streaming, which needs only a chunk's worth of credits at a time. It costs nothing when the window is
+  simply small: `reserve_credits` refuses before anything reaches the wire, at once when nothing else is outstanding. A
+  server that stopped granting altogether starves the stream too, which then reports it, so the arm can't hide a dead
+  server; it only delays the verdict by the stream's own credit wait. Pinned by
+  `smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_instead`, which clamps the guest fixture's grants
+  to 64 credits through `volume/credit_cap_proxy.rs`.
+- **The scan pool has no such arm**: an unfundable prefetch surfaces as a per-file error, so the photo is skipped as
+  unreadable. The same fall-through (to main-session streaming) would close it.
+- **Writes have the same gap**: `write_file_compound` and the `FileWriter` both send one WRITE of up to `max_write`, so
+  a 5 MiB write needs 80 credits in one go and starves under the 64-credit proxy (seen writing that test's seed file).
+- ❌ Don't reach for a predictive gate on `credit_capacity_for`: it answers from a constant (see the clamp note above),
+  so it can't tell you whether THIS server can fund the read. ❌ And don't retry `CreditStarvation` generically: it
+  reports `is_retryable() == true` and classifies as `ErrorKind::TimedOut`, though an unfundable request never succeeds.
 
 **`max_concurrent_ops` is clamped by what the window can carry — and that clamp cannot bind today.** The answer is
 `min(setting, credit_capacity_for(512 KB))`, floored at 1 and never raised above what the user chose.
@@ -960,6 +963,8 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
   `STATUS_OBJECT_NAME_NOT_FOUND`. That last one is the conflict scan's: `scan_for_conflicts_impl` keeps its own
   cache-aware listing but reads a `NotFound` from it as an empty conflict list, which is the trait's contract for every
   backend (`Volume::scan_for_conflicts`), so pasting into a folder the transfer is about to create isn't refused.
+- `credit_cap_proxy.rs`: a test-only SMB-aware TCP proxy that rewrites response headers so a connection never holds more
+  than a set number of credits, the small-window server no fixture plays (unsigned guest traffic only).
 - `test_support.rs` — the session-free builders (a struct-literal `SmbVolumeInner` with no client and no tree), the
   vocabulary every suite globs, a re-export of `volume::testing` so one `use` covers all three, and `drain`, which lives
   here rather than in one suite because the read and wire-shape files both drain a hinted read.

@@ -626,6 +626,8 @@ mod params_normalization_test {
 #[cfg(test)]
 mod conformance_test;
 #[cfg(test)]
+mod credit_cap_proxy;
+#[cfg(test)]
 mod host_seam_test;
 #[cfg(test)]
 mod integration_test;

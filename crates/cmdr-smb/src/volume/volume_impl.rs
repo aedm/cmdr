@@ -424,7 +424,8 @@ impl Volume for SmbVolume {
             // while barely filling the wire.
             //
             // Falls through to the streaming path when the hint is missing or
-            // over the limit, or when the file changed size since the
+            // over the limit, when the credit window can't fund the one READ,
+            // or when the file changed size since the
             // scan. `expected_size` is a HARD bound, so the two drift arms split
             // cleanly and TOGETHER are what keeps a changed file from being
             // copied truncated: a file that SHRANK comes back short of the hint
@@ -444,6 +445,18 @@ impl Volume for SmbVolume {
                         Err(e) if matches!(e.kind(), smb2::ErrorKind::TooLarge) => {
                             debug!(
                                 "SmbVolume::open_read_stream_with_hint: file grew past the hinted size since the scan ({}); falling back to streaming",
+                                e
+                            );
+                        }
+                        // The credit window can't fund this READ in one go (a
+                        // small-window server; a warm link lifts the limit to
+                        // `max_read`). smb2 refused before anything reached the
+                        // wire, and a stream needs only a chunk's worth at a
+                        // time. A server that stopped granting altogether
+                        // starves the stream too, which reports it then.
+                        Err(e @ smb2::Error::CreditStarvation { .. }) => {
+                            debug!(
+                                "SmbVolume::open_read_stream_with_hint: the credit window can't fund one compound read ({}); falling back to streaming",
                                 e
                             );
                         }

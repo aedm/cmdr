@@ -372,3 +372,78 @@ async fn smb_integration_copy_concurrency_stays_within_the_credit_window() {
 
     ensure_clean(&vol, &dir).await;
 }
+
+/// A server whose credit window can't fund one compound READ still serves a
+/// hinted read: the fast path meets `Error::CreditStarvation` before anything
+/// reaches the wire, and falls through to streaming, which needs only a
+/// chunk's worth of credits at a time. Without that arm, a warm connection
+/// (whose `quick_read_limit` reaches `max_read`) would fail to copy a file the
+/// stream reads fine.
+///
+/// No fixture grants a small window, so `CreditCapProxy` clamps the guest
+/// fixture's grants to 64 credits. A 5 MiB READ charges 80, plus the CREATE
+/// and CLOSE riding with it.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_hinted_read_the_credit_window_cant_fund_streams_instead() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let volume_id = cmdr_fs::volume::smb_volume_id("127.0.0.1", proxy.port(), "public");
+    let vol = connect_smb_volume(
+        "public",
+        MountAnchor::at_share_root(TEST_MOUNT_ROOT),
+        &volume_id,
+        SmbConnectionParams::new("127.0.0.1", "public", proxy.port(), None, None),
+        VolumeHost::detached(),
+    )
+    .await
+    .expect("connecting through the credit-cap proxy");
+    // Seeded over a direct connection: the file goes up as one 80-credit WRITE,
+    // which the capped window can't fund either.
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let size = 5 * 1024 * 1024;
+    let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
+    let path = format!("{}/five-mib.bin", dir);
+    direct.create_file(Path::new(&path), &data).await.unwrap();
+
+    // Warm the link, so the limit rises past what the window can fund.
+    drain(vol.open_read_stream(Path::new(&path)).await.unwrap()).await;
+
+    let (_tree, conn) = vol.clone_session().await.unwrap();
+    assert!(
+        conn.quick_read_limit() >= size as u64,
+        "the warm-up should have lifted the limit to cover 5 MiB, got {}",
+        conn.quick_read_limit()
+    );
+    assert!(
+        conn.credits() < 80,
+        "the proxy should hold the window under one 5 MiB READ, got {} credits",
+        conn.credits()
+    );
+
+    let mut stream = vol
+        .open_read_stream_with_hint(Path::new(&path), Some(size as u64))
+        .await
+        .expect("an unfundable compound read must fall through to streaming");
+    let mut got = Vec::new();
+    let mut chunks = 0;
+    while let Some(chunk) = stream.next_chunk().await {
+        got.extend_from_slice(&chunk.unwrap());
+        chunks += 1;
+    }
+
+    assert_eq!(got, data, "the streamed fallback must serve the file whole");
+    assert!(
+        chunks > 1,
+        "the file must arrive streamed, in chunks; the compound path hands it over as one"
+    );
+    assert_eq!(
+        vol.session_state(),
+        ConnectionState::Direct,
+        "a window too small for one READ is not a dead connection"
+    );
+
+    ensure_clean(&direct, &dir).await;
+}
