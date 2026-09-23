@@ -120,8 +120,7 @@ fn filter_cost(width: usize) -> Duration {
         always_index_folders: ["/Users/dev/Pictures".to_string()].into_iter().collect(),
         ..Default::default()
     };
-    let scores: std::collections::HashMap<String, f64> =
-        [("/Users/dev/Pictures/Trips".to_string(), 0.9)].into_iter().collect();
+    let scores: crate::media_index::coverage::FolderScores = [("/Users/dev/Pictures/Trips", 0.9)].into_iter().collect();
 
     let start = Instant::now();
     let kept = dirs
@@ -151,7 +150,11 @@ fn gate_cost(width: usize) -> (Duration, Duration, Duration) {
     let start = Instant::now();
     let cached = crate::media_index::coverage::importance_scores(temp.path(), &volume, Some(0.0)).expect("scored");
     let cold = start.elapsed();
-    assert_eq!(cached.len(), width, "the cache agrees with the direct read");
+    assert_eq!(
+        cached.count_at_least(0.0),
+        width as u64,
+        "the cache agrees with the direct read"
+    );
 
     let start = Instant::now();
     let _ = crate::media_index::coverage::importance_scores(temp.path(), &volume, Some(0.0)).expect("scored");

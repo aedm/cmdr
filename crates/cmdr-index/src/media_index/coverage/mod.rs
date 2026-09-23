@@ -34,7 +34,6 @@ mod scores;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use super::gate::IndexScope;
@@ -42,7 +41,8 @@ use super::paths::parent_dir;
 
 pub use eligible::{FolderImageCounts, cached, get_or_build, invalidate};
 pub(crate) use eligible::{patch_touched_dirs, replace_from_entries};
-pub use scores::importance_scores;
+pub(crate) use scores::release_scores;
+pub use scores::{FolderScores, importance_scores};
 // The walk-parity tests in `scheduler/enrich_tests.rs` are the only callers outside the
 // eligible cache itself; production reaches them through `get_or_build`.
 #[cfg(test)]
@@ -79,24 +79,24 @@ pub fn folder_coverage(data_dir: &Path, volume_id: &str, folders: &[String]) -> 
 }
 
 /// The covered folder + image counts for ONE volume at `threshold`, given its cached
-/// image counts and its importance folder scores. `folder_scores` is `Some(map)` of
-/// `folder → score` (importance ≥ some floor); `None` means importance hasn't scored
-/// this volume yet (the caller reports it pending). Pure, so the threshold arithmetic
-/// is unit-testable without an index or importance DB.
-pub fn covered_for_volume(
-    counts: &FolderImageCounts,
-    folder_scores: &HashMap<String, f64>,
-    threshold: f64,
-) -> (u64, u64) {
-    let mut folders = 0u64;
-    let mut images = 0u64;
-    for (folder, score) in folder_scores {
-        if *score >= threshold {
-            folders += 1;
-            images += counts.per_folder.get(folder).copied().unwrap_or(0);
-        }
-    }
+/// image counts and its importance folder scores: how many scored folders reach the
+/// threshold (image-holding or not), and how many images the ones holding images hold.
+/// Pure, so the threshold arithmetic is unit-testable without an index or importance DB.
+pub fn covered_for_volume(counts: &FolderImageCounts, folder_scores: &FolderScores, threshold: f64) -> (u64, u64) {
+    let folders = folder_scores.count_at_least(threshold);
+    let images = counts
+        .per_folder
+        .iter()
+        .filter(|(folder, _)| scores_at_least(folder_scores, folder, threshold))
+        .map(|(_, count)| *count)
+        .sum();
     (folders, images)
+}
+
+/// Whether `folder` is scored at or above `threshold`: the one membership rule the
+/// coverage arithmetic and the reclaim partition share.
+fn scores_at_least(folder_scores: &FolderScores, folder: &str, threshold: f64) -> bool {
+    folder_scores.get(folder).is_some_and(|score| score >= threshold)
 }
 
 /// The reclaim partition of a volume's STORED media rows: the set that SURVIVES the
@@ -130,7 +130,7 @@ pub struct StoredPartition {
 /// keeping this core pure and shared across both volume kinds.
 pub fn partition_stored(
     stored_paths: &[String],
-    folder_scores: &HashMap<String, f64>,
+    folder_scores: &FolderScores,
     threshold: f64,
     scope: IndexScope,
     is_override: &dyn Fn(&str) -> bool,
@@ -165,7 +165,7 @@ pub fn partition_stored(
 /// [`local_should_enrich`]: crate::media_index::scheduler
 pub(crate) fn stored_row_survives(
     path: &str,
-    folder_scores: &HashMap<String, f64>,
+    folder_scores: &FolderScores,
     threshold: f64,
     scope: IndexScope,
     is_override: &dyn Fn(&str) -> bool,
@@ -177,7 +177,7 @@ pub(crate) fn stored_row_survives(
     if is_override(path) {
         return true;
     }
-    scope.consults_importance() && folder_scores.get(parent_dir(path)).is_some_and(|s| *s >= threshold)
+    scope.consults_importance() && scores_at_least(folder_scores, parent_dir(path), threshold)
 }
 
 /// The chosen-folder counts for ONE volume: how many folders holding qualifying images
@@ -205,7 +205,7 @@ pub fn chosen_for_volume(counts: &FolderImageCounts, is_override: &dyn Fn(&str) 
 /// neither can drift from the enrichment gate.
 pub fn covered_in_scope(
     counts: &FolderImageCounts,
-    folder_scores: &HashMap<String, f64>,
+    folder_scores: &FolderScores,
     threshold: f64,
     scope: IndexScope,
     is_override: &dyn Fn(&str) -> bool,
@@ -218,7 +218,7 @@ pub fn covered_in_scope(
             // otherwise be missing from a count the enrichment gate does include.
             let (mut folders, mut images) = covered_for_volume(counts, folder_scores, threshold);
             for (folder, count) in &counts.per_folder {
-                let scored_in = folder_scores.get(folder.as_str()).is_some_and(|s| *s >= threshold);
+                let scored_in = scores_at_least(folder_scores, folder, threshold);
                 if !scored_in && is_override(folder) {
                     folders += 1;
                     images += count;

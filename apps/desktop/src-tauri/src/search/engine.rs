@@ -515,17 +515,17 @@ pub(crate) fn reconstruct_path_from_index(index: &SearchIndex, entry_id: i64) ->
     format!("/{}", components.join("/"))
 }
 
-/// The [`hash_path`](ranking::hash_path) of an entry's full path, without ever
+/// The [`hash_path`](cmdr_fs::path_hash::hash_path) of an entry's full path, without ever
 /// building that path.
 ///
 /// The ranking blend needs a folder's importance weight, and a weight lookup is a
 /// hash lookup — the path `String` [`reconstruct_path_from_index`] would build exists
 /// only to be hashed and dropped. A broad query ranks millions of candidates, so this
-/// walks the same parent chain and streams the bytes into a [`PathHasher`](super::ranking::PathHasher) instead.
+/// walks the same parent chain and streams the bytes into a [`PathHasher`](cmdr_fs::path_hash::PathHasher) instead.
 /// Byte-identical to hashing the reconstructed path (pinned by
 /// `streamed_hash_matches_whole_path_hash`).
 pub(crate) fn hash_path_from_index(index: &SearchIndex, entry_id: i64) -> u64 {
-    let mut hasher = ranking::PathHasher::new();
+    let mut hasher = cmdr_fs::path_hash::PathHasher::new();
     if entry_id == ROOT_ID {
         hasher.write(b"/");
         return hasher.finish();

@@ -30,7 +30,7 @@ fn path_reconstruction_top_level_dir() {
 /// top-level dir, a nested dir, and files.
 #[test]
 fn streamed_hash_matches_whole_path_hash() {
-    use crate::search::ranking::hash_path;
+    use cmdr_fs::path_hash::hash_path;
 
     let index = make_test_index();
     for entry in &index.entries {

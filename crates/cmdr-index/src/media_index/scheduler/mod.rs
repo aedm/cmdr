@@ -39,6 +39,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use super::backend::VisionBackend;
+use super::coverage::FolderScores;
 use super::gate;
 use super::network;
 use super::network::enrich::{NetworkEnrichCtx, NetworkPassOutcome, PauseReason, enrich_network_and_gc};
@@ -330,7 +331,7 @@ impl MediaScheduler {
         // so a folder excluded WHILE this pass runs is vetoed immediately — the veto is
         // a hard privacy line, not a tuning knob that can wait for the next pass.
         let config = network::config::snapshot();
-        let (should_enrich, is_excluded, folder_score) = lifecycle::pass_gates(scores.as_deref(), &config, volume_id);
+        let (should_enrich, is_excluded, folder_score) = lifecycle::pass_gates(scores.as_ref(), &config, volume_id);
         let ordered = enrich::prioritized(&images, &folder_score);
 
         // Progress + terminal emitters. The guard emits `Failed` on drop if the
@@ -415,7 +416,7 @@ impl MediaScheduler {
     /// (release build, M1 Max, `scheduler/live_bench.rs`, 2026-08-21 —
     /// `docs/notes/live-tick-cost-2026-08-21.md`). The `Arc` is the cache's own map, so
     /// a caller holds a handle rather than tens of MB of its own.
-    pub(crate) fn folder_scores(&self, volume_id: &str, threshold: f64) -> Option<Arc<HashMap<String, f64>>> {
+    pub(crate) fn folder_scores(&self, volume_id: &str, threshold: f64) -> Option<FolderScores> {
         super::coverage::importance_scores(&self.data_dir, volume_id, Some(threshold))
     }
 
@@ -590,7 +591,7 @@ impl MediaScheduler {
             let index_path = os_path.strip_prefix(mount_root.as_str()).unwrap_or(os_path);
             let importance = scores
                 .as_ref()
-                .map(|m| m.get(parent_dir(index_path)).copied().unwrap_or(0.0) as f32);
+                .map(|m| m.get(parent_dir(index_path)).unwrap_or(0.0) as f32);
             network::policy::should_enrich_image(covered, importance, threshold as f32)
         };
         // Every root this share was indexed under, so a folder excluded under an old mount

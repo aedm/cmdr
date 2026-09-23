@@ -113,6 +113,12 @@ pub(crate) fn set_config(config: IndexConfig) {
     use crate::media_index::{gate, network};
 
     gate::set_enabled(config.media.enabled);
+    if !config.media.enabled {
+        // Nothing reads importance scores while the feature is off, and a big volume's
+        // table is megabytes, so let go of it rather than hold it for a pass that
+        // won't come.
+        crate::media_index::coverage::release_scores(&config.data_dir);
+    }
     gate::set_scope(config.media.scope);
     gate::set_importance_threshold(config.media.importance_threshold);
     gate::set_parallelism(config.media.parallelism);

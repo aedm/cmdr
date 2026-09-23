@@ -43,9 +43,9 @@ use crate::ignore_poison::IgnorePoison;
 use super::engine::{derive_icon_id, home_relative_parent};
 use super::excludes::ExcludeRules;
 use super::matcher::{CompiledQuery, covered_name};
-use super::ranking::hash_path;
 use super::types::{SearchQuery, SearchResultEntry};
 use super::volumes;
+use cmdr_fs::path_hash::hash_path;
 
 pub(crate) mod collect;
 pub(crate) mod events;

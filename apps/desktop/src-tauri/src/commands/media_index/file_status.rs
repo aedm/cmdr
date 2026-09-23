@@ -116,15 +116,15 @@ pub async fn media_index_file_status(
 /// reads no importance at all (override-only, so `None`). An unscored volume in the
 /// automatic scope is `None` too, matching the pass's defer-to-override-only behavior.
 ///
-/// The filtered map is cached per volume, so this stays cheap however often the badge
-/// query runs; ❌ don't re-derive it from `coverage::importance_scores` here, which is
-/// a copy of every scored folder per call.
+/// The threshold view is a handle on the volume's cached table, so this stays cheap
+/// however often the badge query runs; ❌ don't read the unthresholded view and filter
+/// it here, which walks every scored folder per call.
 fn coverage_scores(
     data_dir: &std::path::Path,
     volume_id: &str,
     scope: gate::IndexScope,
     threshold: f64,
-) -> Option<Arc<std::collections::HashMap<String, f64>>> {
+) -> Option<coverage::FolderScores> {
     if !scope.consults_importance() {
         return None;
     }
@@ -159,7 +159,7 @@ fn classify_file_statuses(
         &qualifying,
         &stored,
         stamp,
-        scores.as_deref(),
+        scores.as_ref(),
         &config,
         volume_id,
         is_enriching,
@@ -178,7 +178,7 @@ pub(super) fn classify_all(
     qualifying: &std::collections::HashMap<String, read::ImageEntry>,
     stored: &std::collections::HashMap<String, store::MediaStatusRow>,
     stamp: Option<&str>,
-    scores: Option<&std::collections::HashMap<String, f64>>,
+    scores: Option<&coverage::FolderScores>,
     config: &network_config::NetworkEnrichConfig,
     volume_id: &str,
     is_enriching: bool,
@@ -215,7 +215,7 @@ pub(super) fn classify_one(
     entry: Option<&read::ImageEntry>,
     stored: Option<&store::MediaStatusRow>,
     stamp: Option<&str>,
-    scores: Option<&std::collections::HashMap<String, f64>>,
+    scores: Option<&coverage::FolderScores>,
     config: &network_config::NetworkEnrichConfig,
     volume_id: &str,
     is_enriching: bool,

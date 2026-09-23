@@ -9457,8 +9457,8 @@ export type MediaIndexVolumeState = {
    *  current slider threshold — the honest denominator for the settings progress line
    *  "N of M in your covered folders", which can reach done at any slider position
    *  (unlike `qualifying_count`, the full volume total). `None` when importance hasn't
-   *  scored the volume yet (the same `stored_coverage` single source as the reclaim
-   *  numbers, so they never disagree).
+   *  scored the volume yet or image indexing is off (the same `stored_coverage` single
+   *  source as the reclaim numbers, so they never disagree).
    */
   coveredQualifyingCount: number | null
   /**
@@ -9466,7 +9466,7 @@ export type MediaIndexVolumeState = {
    *  setting and kept searchable (the slider is forward-only). Drives the quiet
    *  kept-rows line "K more indexed from broader settings — still searchable", which
    *  composes with the reclaim line as one narrative. `None` when importance is
-   *  unscored.
+   *  unscored or image indexing is off.
    */
   keptCount: number | null
 }

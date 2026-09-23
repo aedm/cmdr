@@ -13,8 +13,8 @@ fn img(path: &str) -> ImageEntry {
     }
 }
 
-fn scores(entries: &[(&str, f64)]) -> HashMap<String, f64> {
-    entries.iter().map(|(p, s)| (p.to_string(), *s)).collect()
+fn scores(entries: &[(&str, f64)]) -> FolderScores {
+    entries.iter().copied().collect()
 }
 
 #[test]
@@ -29,13 +29,7 @@ fn covered_counts_folders_and_images_above_threshold() {
         .collect(),
         total: 145,
     };
-    let scores: HashMap<String, f64> = [
-        ("/high".to_string(), 0.9),
-        ("/mid".to_string(), 0.5),
-        ("/low".to_string(), 0.1),
-    ]
-    .into_iter()
-    .collect();
+    let scores = scores(&[("/high", 0.9), ("/mid", 0.5), ("/low", 0.1)]);
 
     // Threshold 0.5: /high and /mid qualify ⇒ 2 folders, 140 images.
     assert_eq!(covered_for_volume(&counts, &scores, 0.5), (2, 140));
@@ -53,9 +47,7 @@ fn covered_ignores_a_scored_folder_with_no_qualifying_images() {
         per_folder: [("/photos".to_string(), 10u64)].into_iter().collect(),
         total: 10,
     };
-    let scores: HashMap<String, f64> = [("/photos".to_string(), 0.8), ("/empty".to_string(), 0.8)]
-        .into_iter()
-        .collect();
+    let scores = scores(&[("/photos", 0.8), ("/empty", 0.8)]);
     assert_eq!(covered_for_volume(&counts, &scores, 0.5), (2, 10));
 }
 

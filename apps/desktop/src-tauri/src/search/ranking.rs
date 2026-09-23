@@ -29,6 +29,7 @@
 //! — byte-for-byte today's behavior. That's the degradation contract: absent
 //! importance, ranking equals what it was before this feature.
 
+use cmdr_fs::path_hash::{PrehashedState, hash_path};
 use rayon::prelude::*;
 
 use super::index::SearchIndex;
@@ -248,7 +249,7 @@ impl ImportanceWeights {
 
     /// The weight for a folder whose path the caller has already hashed with
     /// [`hash_path`]. The ranking hot path hashes a folder's path straight off the
-    /// index's parent chain ([`PathHasher`]) instead of materializing a `String` only
+    /// index's parent chain ([`PathHasher`](cmdr_fs::path_hash::PathHasher)) instead of materializing a `String` only
     /// to hash it and drop it.
     pub(crate) fn weight_for_hash(&self, path_hash: u64) -> f64 {
         self.map.get(&path_hash).copied().unwrap_or(0.0)
@@ -265,104 +266,6 @@ impl ImportanceWeights {
     /// also guarantees byte-for-byte-today behavior).
     pub(crate) fn is_empty(&self) -> bool {
         self.map.is_empty()
-    }
-}
-
-/// The FNV-1a 64-bit offset basis and prime.
-const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-
-/// Hash a folder path to the 64-bit key [`ImportanceWeights`] stores in place of the
-/// path.
-///
-/// FNV-1a over the bytes, then a splitmix64 finalizer. The finalizer is not optional:
-/// raw FNV-1a barely mixes its LOW bits, and that's exactly where hashbrown takes its
-/// bucket index, so paths sharing a suffix would pile into the same buckets.
-///
-/// Fixed and fully specified on purpose, rather than `RandomState` or any hasher whose
-/// output can move under us: a given path hashes to the same value in every run and
-/// every build, so the mapping is a testable property instead of an implementation
-/// detail. Nothing persists a hash, so this is free to change — a different function
-/// just yields a different, equally consistent mapping.
-pub(crate) fn hash_path(path: &str) -> u64 {
-    let mut hasher = PathHasher::new();
-    hasher.write(path.as_bytes());
-    hasher.finish()
-}
-
-/// [`hash_path`] fed one piece at a time, so a caller that can produce a path's bytes
-/// in order without owning the whole string doesn't have to build one.
-///
-/// The ranking hot path walks the index's parent chain to get a folder's path, and the
-/// only thing it does with that path is hash it. Feeding the components straight in
-/// keeps a broad query (millions of matches) from allocating a `String` per candidate.
-/// Byte-for-byte identical to `hash_path` of the joined path — pinned by
-/// `streamed_hash_matches_whole_path_hash`.
-pub(crate) struct PathHasher(u64);
-
-impl PathHasher {
-    pub(crate) fn new() -> Self {
-        Self(FNV_OFFSET_BASIS)
-    }
-
-    /// Fold the next chunk of the path's bytes in (FNV-1a).
-    pub(crate) fn write(&mut self, bytes: &[u8]) {
-        for byte in bytes {
-            self.0 ^= *byte as u64;
-            self.0 = self.0.wrapping_mul(FNV_PRIME);
-        }
-    }
-
-    /// The finished key. splitmix64's finalizer: avalanches every input bit across all
-    /// 64 output bits. Not optional — raw FNV-1a barely mixes its LOW bits, which is
-    /// exactly where hashbrown takes its bucket index.
-    pub(crate) fn finish(self) -> u64 {
-        let mut hash = self.0;
-        hash ^= hash >> 30;
-        hash = hash.wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        hash ^= hash >> 27;
-        hash = hash.wrapping_mul(0x94d0_49bb_1331_11eb);
-        hash ^ (hash >> 31)
-    }
-}
-
-/// The `BuildHasher` for a map whose keys are ALREADY well-mixed 64-bit hashes: it
-/// passes the key straight through instead of hashing it a second time.
-///
-/// Sound only because every key comes from [`hash_path`], which finalizes its output —
-/// feeding a raw or weakly-mixed `u64` through this would cluster hashbrown's buckets.
-#[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct PrehashedState;
-
-impl std::hash::BuildHasher for PrehashedState {
-    type Hasher = PrehashedHasher;
-
-    fn build_hasher(&self) -> PrehashedHasher {
-        PrehashedHasher(FNV_OFFSET_BASIS)
-    }
-}
-
-/// See [`PrehashedState`].
-#[derive(Debug)]
-pub(crate) struct PrehashedHasher(u64);
-
-impl std::hash::Hasher for PrehashedHasher {
-    fn write_u64(&mut self, value: u64) {
-        self.0 = value;
-    }
-
-    /// Never reached in practice (the key is a `u64`, which hashes via `write_u64`),
-    /// but a `Hasher` has to handle any input, so fall back to FNV-1a rather than
-    /// silently collapsing every byte string to one hash.
-    fn write(&mut self, bytes: &[u8]) {
-        for byte in bytes {
-            self.0 ^= *byte as u64;
-            self.0 = self.0.wrapping_mul(FNV_PRIME);
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.0
     }
 }
 

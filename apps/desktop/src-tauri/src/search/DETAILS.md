@@ -745,7 +745,7 @@ home dir), so this pass — not the rayon scan — was the search's dominant cos
 - **A per-thread `folder_id → weight` memo.** Matches cluster hard by folder, and a weight lookup means
   walking the folder's parent chain.
 - **The folder path is HASHED, never built.** `engine::hash_path_from_index` streams the parent chain's
-  components into `ranking::PathHasher` (incremental FNV-1a + the same splitmix finalizer), so the
+  components into `cmdr_fs::path_hash::PathHasher` (incremental FNV-1a + the same splitmix finalizer), so the
   `String` that existed only to be hashed and dropped is gone. It's byte-identical to
   `hash_path(reconstruct_path_from_index(..))`, pinned by `streamed_hash_matches_whole_path_hash` — a
   drift there would silently read the wrong weight, with no symptom beyond subtly worse ranking.

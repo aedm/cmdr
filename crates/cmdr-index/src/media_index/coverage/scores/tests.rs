@@ -115,8 +115,7 @@ fn a_patch_applies_removals_before_upserts() {
     // A path in BOTH lists must end up at its upserted value: the store's transaction
     // cleared the subtree and rewrote it, and the rewrite is the fresher fact.
     let mut entry = CachedScores {
-        all: Arc::new(HashMap::from([("/keep".to_string(), 0.4), ("/gone".to_string(), 0.7)])),
-        projection: Some((0.5, Arc::new(HashMap::new()))),
+        all: Arc::new(table_from([("/keep", 0.4), ("/gone", 0.7)].into_iter())),
         notices: subscribe("patch-order"),
     };
     patch(
@@ -124,13 +123,10 @@ fn a_patch_applies_removals_before_upserts() {
         &[("/both".to_string(), 0.8)],
         &["/gone".to_string(), "/both".to_string()],
     );
-    assert_eq!(entry.all.get("/keep"), Some(&0.4), "an untouched folder stays");
-    assert_eq!(entry.all.get("/gone"), None, "a removed folder goes");
-    assert_eq!(entry.all.get("/both"), Some(&0.8), "the upsert wins over the removal");
-    assert!(
-        entry.projection.is_none(),
-        "the threshold projection is derived, so a patch must drop it"
-    );
+    let score = |path: &str| entry.all.get(&hash_path(path)).copied();
+    assert_eq!(score("/keep"), Some(0.4), "an untouched folder stays");
+    assert_eq!(score("/gone"), None, "a removed folder goes");
+    assert_eq!(score("/both"), Some(0.8), "the upsert wins over the removal");
 }
 
 // --- The cache, end to end over a real store ---------------------------------------
@@ -147,8 +143,8 @@ fn a_quiet_store_is_read_once_however_often_it_is_asked() {
 
     let first = importance_scores(dir.path(), volume, None).expect("scored");
     let second = importance_scores(dir.path(), volume, None).expect("scored");
-    assert!(Arc::ptr_eq(&first, &second), "a quiet store is not re-read");
-    assert_eq!(first.get("/photos"), Some(&0.9));
+    assert!(first.shares_table_with(&second), "a quiet store is not re-read");
+    assert_eq!(first.get("/photos"), Some(0.9));
 }
 
 #[test]
@@ -162,7 +158,7 @@ fn a_delta_lands_without_going_back_to_the_store() {
 
     notify_recompute_completed_for_test(volume, delta(&[("/only-in-the-delta", 0.7)], &["/photos"]));
     let patched = importance_scores(dir.path(), volume, None).expect("scored");
-    assert_eq!(patched.get("/only-in-the-delta"), Some(&0.7), "the upsert landed");
+    assert_eq!(patched.get("/only-in-the-delta"), Some(0.7), "the upsert landed");
     assert_eq!(patched.get("/photos"), None, "the removal landed");
 }
 
@@ -173,14 +169,14 @@ fn a_full_pass_makes_the_next_read_see_the_new_table() {
     let dir = store_with(volume, 1, &[("/old", 0.9)]);
     assert_eq!(
         importance_scores(dir.path(), volume, None).expect("scored").get("/old"),
-        Some(&0.9)
+        Some(0.9)
     );
 
     write_into(dir.path(), volume, 2, &[("/new", 0.4)]);
     notify_recompute_completed_for_test(volume, WeightsChanged::ReloadAll { generation: 2 });
 
     let reloaded = importance_scores(dir.path(), volume, None).expect("scored");
-    assert_eq!(reloaded.get("/new"), Some(&0.4), "the new table is read");
+    assert_eq!(reloaded.get("/new"), Some(0.4), "the new table is read");
     assert_eq!(reloaded.get("/old"), None, "a full pass replaces, it doesn't merge");
 }
 
@@ -194,26 +190,43 @@ fn an_unscored_volume_reads_none_so_the_gate_falls_back_to_overrides() {
 }
 
 #[test]
-fn the_threshold_projection_is_memoized_and_follows_the_scores() {
-    let volume = "cache-projection";
+fn a_threshold_view_hides_the_folders_below_it_and_follows_the_scores() {
+    let volume = "cache-threshold-view";
     clear_cache_for_test(volume);
     let dir = store_with(volume, 1, &[("/high", 0.9), ("/low", 0.2)]);
 
     let first = importance_scores(dir.path(), volume, Some(0.5)).expect("scored");
-    assert_eq!(first.len(), 1, "only the folders at or above the threshold");
-    assert_eq!(first.get("/high"), Some(&0.9));
+    assert_eq!(
+        first.count_at_least(0.0),
+        1,
+        "only the folders at or above the threshold"
+    );
+    assert_eq!(first.get("/high"), Some(0.9));
+    assert!(
+        !first.contains("/low"),
+        "a folder below the threshold is outside the view"
+    );
 
-    let again = importance_scores(dir.path(), volume, Some(0.5)).expect("scored");
-    assert!(Arc::ptr_eq(&first, &again), "the same threshold reuses the projection");
+    let everything = importance_scores(dir.path(), volume, None).expect("scored");
+    assert!(
+        first.shares_table_with(&everything),
+        "a threshold view is a handle on the one table, never a copy of the folders that pass"
+    );
+    assert_eq!(
+        importance_scores(dir.path(), volume, Some(0.1))
+            .expect("scored")
+            .count_at_least(0.0),
+        2,
+        "a lower threshold lets more through"
+    );
 
-    let wider = importance_scores(dir.path(), volume, Some(0.1)).expect("scored");
-    assert_eq!(wider.len(), 2, "a different threshold projects again");
-
-    // A patch invalidates the projection, so a stale one can't outlive the scores it
-    // was derived from.
     notify_recompute_completed_for_test(volume, delta(&[("/low", 0.8)], &[]));
     let after = importance_scores(dir.path(), volume, Some(0.5)).expect("scored");
-    assert_eq!(after.len(), 2, "the rescored folder is above the threshold now");
+    assert_eq!(
+        after.count_at_least(0.0),
+        2,
+        "the rescored folder is above the threshold now"
+    );
 }
 
 #[test]
@@ -221,15 +234,14 @@ fn a_threshold_read_answers_from_a_cold_cache_too() {
     // The threshold view must never DEPEND on an entry already being there. `None` means
     // "importance never scored this volume" and sends the coverage gates to override-only,
     // so any path that reports it for a merely-absent cache entry silently narrows what
-    // gets enriched. (The same reason the projection step never `?`s on the entry, which
-    // it re-looks-up after releasing the lock.)
+    // gets enriched.
     let volume = "cache-cold-threshold";
     clear_cache_for_test(volume);
     let dir = store_with(volume, 1, &[("/high", 0.9), ("/low", 0.1)]);
 
     let projected = importance_scores(dir.path(), volume, Some(0.5)).expect("a scored volume is never 'unscored'");
-    assert_eq!(projected.len(), 1);
-    assert_eq!(projected.get("/high"), Some(&0.9));
+    assert_eq!(projected.count_at_least(0.0), 1);
+    assert_eq!(projected.get("/high"), Some(0.9));
 }
 
 #[test]
@@ -237,12 +249,35 @@ fn a_patch_leaves_an_already_taken_snapshot_untouched() {
     // `Arc::make_mut` clones when a reader holds the handle, so a caller that took the
     // map keeps reading the scores it asked for rather than watching them mutate.
     let mut entry = CachedScores {
-        all: Arc::new(HashMap::from([("/a".to_string(), 0.4)])),
-        projection: None,
+        all: Arc::new(table_from([("/a", 0.4)].into_iter())),
         notices: subscribe("patch-snapshot"),
     };
     let snapshot = Arc::clone(&entry.all);
     patch(&mut entry, &[("/b".to_string(), 0.9)], &[]);
     assert_eq!(snapshot.len(), 1, "the taken snapshot is stable");
     assert_eq!(entry.all.len(), 2, "the cache moved on");
+}
+
+#[test]
+fn releasing_a_data_dir_drops_its_tables_and_the_next_read_rereads() {
+    // What turning media indexing off does: no table stays resident for a feature that
+    // isn't running. The next read after it comes back is a fresh one, so it can't serve
+    // a table that missed the recomputes that happened meanwhile.
+    let volume = "cache-release";
+    clear_cache_for_test(volume);
+    let dir = store_with(volume, 1, &[("/photos", 0.9)]);
+    let before = importance_scores(dir.path(), volume, None).expect("scored");
+
+    release_scores(dir.path());
+    assert!(
+        !CACHE.lock_ignore_poison().keys().any(|key| key.data_dir == dir.path()),
+        "nothing from the released data dir stays cached"
+    );
+
+    let after = importance_scores(dir.path(), volume, None).expect("still scored");
+    assert!(
+        !after.shares_table_with(&before),
+        "the next read goes back to the store"
+    );
+    assert_eq!(after.get("/photos"), Some(0.9));
 }

@@ -75,7 +75,7 @@ fn unscored_local_defers_the_gated_remainder_but_honors_overrides() {
 fn scored_local_enriches_folders_in_the_map_and_defers_the_rest() {
     let config = config_with(&[], &[]);
     // `scores` holds only the above-threshold folders (already filtered by the caller).
-    let scores: HashMap<String, f64> = [("/keep".to_string(), 0.8)].into_iter().collect();
+    let scores: FolderScores = [("/keep", 0.8)].into_iter().collect();
     assert!(
         local_should_enrich("/keep/a.jpg", Some(&scores), &config, ROOT),
         "in-map folder enriches"
@@ -636,10 +636,7 @@ fn folder_scores_reads_an_incremental_only_store_as_scored() {
         scores.is_some(),
         "incremental-only weights (generation 0) read as scored"
     );
-    assert!(
-        scores.expect("some").contains_key("/photos"),
-        "the weight row is visible"
-    );
+    assert!(scores.expect("some").contains("/photos"), "the weight row is visible");
 }
 
 #[test]

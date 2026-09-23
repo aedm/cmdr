@@ -15,7 +15,7 @@
 //! `crate::test_read_pool_lock()` to serialize against parallel tests and resets the gate
 //! itself. Fixtures are shared with `kick_tests` (the same shapes).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use super::kick_tests::{
     build_index, config_with, fake_backend, reset_gate, seed_importance_full_pass, seed_media_row, use_automatic_scope,
@@ -58,7 +58,7 @@ proptest::proptest! {
             always_index_folders: always.iter().map(|s| s.to_string()).collect(),
             excluded_folders: Default::default(),
         };
-        let scores: HashMap<String, f64> = scored.iter().map(|s| (s.to_string(), 0.9)).collect();
+        let scores: FolderScores = scored.iter().map(|s| (*s, 0.9)).collect();
         let scores = if unscored { None } else { Some(&scores) };
         let path = if dir == "/" { format!("/{name}") } else { format!("{dir}/{name}") };
         if local_should_enrich(&path, scores, &config, ROOT) {

@@ -322,11 +322,22 @@ in the app starved — directory listings never completed and the volume list ti
 timer too: it was 45.8 ms of every 60-second media live tick at 90,308 folders (release build, M1 Max,
 `scheduler/live_bench.rs`, 2026-08-21 — `docs/notes/live-tick-cost-2026-08-21.md`).
 
-`coverage::importance_scores(data_dir, volume_id, at_least)` therefore serves a per-volume cached `Arc<HashMap>`.
-`at_least: None` is every scored folder, so a slider drag gets one read serving every position; `Some(threshold)`
-memoizes the projection the enrichment gate checks MEMBERSHIP against (`local_should_enrich`), so the gate stops copying
-the whole map per call. ONE function taking the threshold rather than two functions, because the crate's public surface
-is capped (`index-crate-isolation`). ❌ Never call `above_threshold` straight from anywhere else.
+`coverage::importance_scores(data_dir, volume_id, at_least)` therefore serves a `FolderScores`: a cheap handle onto a
+per-volume cached table. `at_least: None` is every scored folder, so a slider drag gets one read serving every position;
+`Some(threshold)` is a view hiding the folders below it, which is what the enrichment gate checks MEMBERSHIP against
+(`local_should_enrich`). Both views share the one table, so no call copies it. ONE function taking the threshold rather
+than two functions, because the crate's public surface is capped (`index-crate-isolation`). ❌ Never call
+`above_threshold` straight from anywhere else.
+
+**The table keeps path hashes, not paths** (`cmdr_fs::path_hash`, the same key search's importance weights use). No
+consumer enumerates the paths, so a folder costs a 17-byte slot: 179,949 folders held 31 MiB as `String`s plus their
+table and hold ~4.5 MiB hashed (page census on a release build, 2026-09-23; shape pinned by `coverage/scores/memory_tests.rs`).
+What a 64-bit collision would cost, and why it's acceptable: `FolderScores` § Collisions.
+
+**Only while media indexing is on.** `indexing::host::config::set_config` calls `coverage::release_scores(data_dir)`
+when the toggle is off, and the app's `media_index_volume_state` poll (which runs at launch for every user) doesn't read
+the reclaim split while it's off, so a user who never enabled the feature never builds a table. Every other reader
+already short-circuits on the toggle.
 
 **Keyed by data dir AND volume**, because the volume id alone doesn't name a store: `data_dir/importance-<vol>.db` does.
 The app has exactly one data dir, so production sees one entry per volume either way; what it buys is that two tests

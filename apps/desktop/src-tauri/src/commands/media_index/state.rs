@@ -65,14 +65,14 @@ pub struct MediaIndexVolumeState {
     /// current slider threshold — the honest denominator for the settings progress line
     /// "N of M in your covered folders", which can reach done at any slider position
     /// (unlike `qualifying_count`, the full volume total). `None` when importance hasn't
-    /// scored the volume yet (the same `stored_coverage` single source as the reclaim
-    /// numbers, so they never disagree).
+    /// scored the volume yet or image indexing is off (the same `stored_coverage` single
+    /// source as the reclaim numbers, so they never disagree).
     pub covered_qualifying_count: Option<u64>,
     /// How many STORED rows fall OUTSIDE current coverage — indexed under a broader past
     /// setting and kept searchable (the slider is forward-only). Drives the quiet
     /// kept-rows line "K more indexed from broader settings — still searchable", which
     /// composes with the reclaim line as one narrative. `None` when importance is
-    /// unscored.
+    /// unscored or image indexing is off.
     pub kept_count: Option<u64>,
 }
 
@@ -140,8 +140,15 @@ pub(crate) async fn volume_state<R: tauri::Runtime>(
             // The scope- and threshold-aware split (`None` unless the volume is
             // reclaim-eligible AND the partition is safe — the SAME single source as the
             // reclaim numbers, via `stored_coverage_counts`, so they never disagree).
+            // ❌ Not while the feature is off: the split reads the volume's importance
+            // score table, which stays resident once read (31 MiB of paths on a 180,000-
+            // folder boot volume before it was hashed), and nothing shows these numbers
+            // for a disabled feature. This poll runs at launch for every user, so reading
+            // here kept the table alive for people who never turned indexing on.
             let coverage_counts = match (&scheduler, &mount_root) {
-                (Some(scheduler), Some(mount)) => scheduler.stored_coverage_counts(&vid, mount, threshold, scope),
+                (Some(scheduler), Some(mount)) if enabled => {
+                    scheduler.stored_coverage_counts(&vid, mount, threshold, scope)
+                }
                 _ => None,
             };
             Ok::<_, String>((enriched, qualifying, importance_scored, coverage_counts))
@@ -227,7 +234,7 @@ pub async fn media_index_covered_count(
                 // folders alone, so an unscored volume is answerable there.
                 let scores = match coverage::importance_scores(&data_dir, vid, None) {
                     Some(scores) => scores,
-                    None if !scope.consults_importance() => Arc::new(std::collections::HashMap::new()),
+                    None if !scope.consults_importance() => coverage::FolderScores::empty(),
                     None => {
                         pending = true;
                         continue;

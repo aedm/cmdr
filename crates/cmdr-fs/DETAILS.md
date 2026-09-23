@@ -31,10 +31,11 @@ the next section.
 - `staging.rs`: `StagingTemp`, the ONLY way to name a scratch file.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
-  `path_locations.rs` (how many PLACES a set of directories amounts to), `git_meta` (what a git portal row's Size cell
-  states), `name_fold.rs` (the ONE "same name, spelled another way" key: NFC + lowercase, shared by share IDs, transfer
-  conflict buckets, the SMB spelling resolve, and cursor placement), `log_rollup`, `tcc_paths`, `ignore_poison`,
-  `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
+  `path_locations.rs` (how many PLACES a set of directories amounts to), `path_hash.rs` (the fixed 64-bit folder-path
+  hash two resident maps key on instead of the path: search's importance weights and the media coverage score cache),
+  `git_meta` (what a git portal row's Size cell states), `name_fold.rs` (the ONE "same name, spelled another way" key:
+  NFC + lowercase, shared by share IDs, transfer conflict buckets, the SMB spelling resolve, and cursor placement),
+  `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
 - `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; `tcp_proxy.rs` (`TcpProxy`, a
   loopback proxy a network backend's test puts in front of a shared Docker fixture to cut the connection, refused or
   silent, without touching a container other runs lease; its header has the usage); on macOS, `disk_images/` (the
@@ -66,6 +67,9 @@ through a local helper, a fully-qualified call inline in an expression, a `use` 
   `ps -M` reports per-thread cumulative CPU but no thread names, so a thread has to report its own. It's cumulative on
   purpose, so a window is the difference of two readings; the index writer's heartbeat is its one consumer today
   (`../cmdr-index/src/indexing/writer/probe_stats.rs`).
+- **`path_hash`.** The folder-path hash both resident score maps key on: search's `ImportanceWeights` app-side and the
+  media coverage score cache in `cmdr-index`. Neither side can own it without the other reaching across, and two copies
+  of a hash that has to agree with a streamed variant (`PathHasher`) would drift.
 - **`sqlite_util`.** A leaf over `std` + `rusqlite`, whose only two in-crate calls are `pluralize` and `ignore_poison`,
   both already here. It belongs here because the stores that share it sit on both sides of the boundary: the three index
   DBs live in `cmdr-index`, while the agent's and the operation log's stay app-side. Putting it in `cmdr-index` would

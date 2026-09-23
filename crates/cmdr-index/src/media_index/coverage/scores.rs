@@ -1,5 +1,5 @@
-//! The cached importance folder scores the coverage gates read, and the
-//! threshold projection of them the enrichment gate checks membership against.
+//! The cached importance folder scores the coverage gates read, and the threshold view
+//! of them the enrichment gate checks membership against.
 //!
 //! **Why a cache at all.** Reading a volume's scores is `above_threshold(0.0)`: an
 //! ordered read of EVERY scored folder, which SQLite runs as an external merge sort
@@ -34,6 +34,16 @@
 //! thundering herd for the SAME volume collapses into one read instead of N identical
 //! ones, which is the case that actually hurt. Keep it that way unless a profile says
 //! otherwise; per-volume locks buy little once the cache is warm.
+//!
+//! **Why paths are hashed, and why only while media indexing is on.** A volume's table
+//! is resident for as long as anything reads it, and it's big: 179,949 scored folders on
+//! one boot volume held 31 MiB as path `String`s plus their table (release build, page
+//! census, 2026-09-23), and a NAS scores 368,043. Every consumer LOOKS UP a folder and
+//! none enumerates the paths, so the table keeps [`hash_path`] in their place: a 17-byte
+//! slot per folder, ~4.5 MiB at that size (pinned by `scores/memory_tests.rs`). The host
+//! also drops a data dir's tables when media indexing turns off ([`release_scores`]), and
+//! its volume-state poll doesn't read scores while it's off, so a user who never turned
+//! the feature on never pays for them at all.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -44,17 +54,97 @@ use tokio::sync::broadcast::error::TryRecvError;
 
 use crate::importance::read::{WeightsChanged, subscribe};
 use cmdr_fs::ignore_poison::IgnorePoison;
+use cmdr_fs::path_hash::{PrehashedState, hash_path};
+
+/// `hash_path(folder)` → importance score. The resident shape; see the module header.
+type ScoreTable = HashMap<u64, f64, PrehashedState>;
+
+/// A volume's importance folder scores: a cheap handle onto the cached table, optionally
+/// narrowed to the folders at or above a threshold.
+///
+/// Keyed by path HASH, so a folder is looked up by its path but never listed. Each lookup
+/// hashes the path once, which costs about what hashing a `String` key did.
+///
+/// ## Collisions
+///
+/// Two folders whose paths hash to the same `u64` share one entry, so one reads the
+/// other's score. At 368,043 folders (the biggest volume measured) against 64 bits, the
+/// chance of ANY collision on that volume is ~3.7e-9 (`n² / 2⁶⁵`). If one happened:
+///
+/// - An unscored folder reading a real score gets covered: its images get enriched, and
+///   a reclaim keeps its rows. Extra work, never lost data.
+/// - A scored folder reading a LOWER score may drop below the threshold: its images wait,
+///   and a user-confirmed reclaim may delete its rows, which are derived from the images
+///   and come back on the next pass that covers them.
+/// - A delta's removal keyed on a colliding hash drops the other folder's score until the
+///   next full recompute rebuilds the table.
+///
+/// All of it bounded, self-healing, and about as likely as a cosmic-ray bit flip in the
+/// table itself, which is why this doesn't keep the paths to rule it out.
+#[derive(Clone)]
+pub struct FolderScores {
+    table: Arc<ScoreTable>,
+    /// `Some(threshold)` hides every folder scoring below it: the view the enrichment gate
+    /// reads, where MEMBERSHIP is the coverage decision.
+    at_least: Option<f64>,
+}
+
+impl FolderScores {
+    /// No scored folders: every lookup misses. What a scope that never consults
+    /// importance counts against.
+    pub fn empty() -> FolderScores {
+        FolderScores {
+            table: Arc::new(ScoreTable::default()),
+            at_least: None,
+        }
+    }
+
+    /// `folder`'s score, or `None` when it isn't scored or scores below this view's
+    /// threshold.
+    pub fn get(&self, folder: &str) -> Option<f64> {
+        let score = *self.table.get(&hash_path(folder))?;
+        match self.at_least {
+            Some(threshold) if score < threshold => None,
+            _ => Some(score),
+        }
+    }
+
+    /// Whether `folder` is in this view: scored, and at or above its threshold.
+    pub fn contains(&self, folder: &str) -> bool {
+        self.get(folder).is_some()
+    }
+
+    /// How many folders in this view score at or above `threshold`. A pass over the
+    /// table, so it's for settings previews, ❌ never per image.
+    pub fn count_at_least(&self, threshold: f64) -> u64 {
+        let floor = self.at_least.map_or(threshold, |own| own.max(threshold));
+        self.table.values().filter(|score| **score >= floor).count() as u64
+    }
+
+    /// Whether `a` and `b` read the same table: the test proof that no re-read happened.
+    #[cfg(test)]
+    pub(crate) fn shares_table_with(&self, other: &FolderScores) -> bool {
+        Arc::ptr_eq(&self.table, &other.table)
+    }
+}
+
+/// Build a view over every folder in `scores`, for tests and a host with its own score
+/// source. Production reads through [`importance_scores`].
+impl<S: AsRef<str>> FromIterator<(S, f64)> for FolderScores {
+    fn from_iter<I: IntoIterator<Item = (S, f64)>>(scores: I) -> FolderScores {
+        FolderScores {
+            table: Arc::new(table_from(scores.into_iter())),
+            at_least: None,
+        }
+    }
+}
 
 /// One volume's cached scores, plus the subscription that keeps them honest.
 struct CachedScores {
-    /// Every scored folder's `path → score`, exactly what a fresh
-    /// `above_threshold(0.0)` would build. Held as an `Arc` so a reader clones a
-    /// handle rather than a map that costs tens of MB.
-    all: Arc<HashMap<String, f64>>,
-    /// The last threshold projection built from `all`, memoized because the gate asks
-    /// for the same threshold on every call and rebuilding it copies the whole map.
-    /// Dropped whenever `all` is rebuilt or patched.
-    projection: Option<(f64, Arc<HashMap<String, f64>>)>,
+    /// Every scored folder, exactly what a fresh `above_threshold(0.0)` would read. Held
+    /// as an `Arc` so a reader clones a handle rather than a table that costs megabytes;
+    /// a threshold view shares it rather than copying the folders that pass.
+    all: Arc<ScoreTable>,
     /// Recompute notices for this volume. Subscribed BEFORE the first read, so a pass
     /// that finishes during that read lands in the channel instead of being missed.
     notices: Receiver<WeightsChanged>,
@@ -80,8 +170,9 @@ impl StoreKey {
     }
 }
 
-/// Per-store score caches. Entries live for the process, like the recompute bus
-/// itself: an unmounted volume's entry costs one map and stays correct if it returns.
+/// Per-store score caches. An entry lives until the host releases its data dir
+/// ([`release_scores`], when media indexing turns off): an unmounted volume's entry costs
+/// one table and stays correct if it returns.
 static CACHE: LazyLock<Mutex<HashMap<StoreKey, CachedScores>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// What draining the notices told us to do with a cached entry.
@@ -150,26 +241,25 @@ fn drain(notices: &mut Receiver<WeightsChanged>) -> Refresh {
 fn patch(entry: &mut CachedScores, upserted: &[(String, f64)], removed: &[String]) {
     let all = Arc::make_mut(&mut entry.all);
     for path in removed {
-        all.remove(path);
+        all.remove(&hash_path(path));
     }
     for (path, score) in upserted {
-        all.insert(path.clone(), *score);
+        all.insert(hash_path(path), *score);
     }
-    entry.projection = None;
 }
 
 /// Read every scored folder for `volume_id` straight from the store, bypassing the
 /// cache. `None` when importance has NEVER scored the volume (fresh, offline, or
 /// importance disabled) — the load-bearing signal that sends the coverage gates to
 /// override-only rather than to "cover everything".
-fn read_all(data_dir: &Path, volume_id: &str) -> Option<HashMap<String, f64>> {
+fn read_all(data_dir: &Path, volume_id: &str) -> Option<ScoreTable> {
     use crate::importance::{ImportanceIndex, SignalSet};
     let index = ImportanceIndex::open(data_dir, volume_id, SignalSet::all());
     if !index.is_scored() {
         return None;
     }
     match index.above_threshold(0.0) {
-        Ok(weights) => Some(weights.into_iter().map(|w| (w.path, w.score.value())).collect()),
+        Ok(weights) => Some(table_from(weights.into_iter().map(|w| (w.path, w.score.value())))),
         Err(e) => {
             log::debug!(target: "media_index", "importance scores unreadable for '{volume_id}': {e}");
             None
@@ -177,11 +267,17 @@ fn read_all(data_dir: &Path, volume_id: &str) -> Option<HashMap<String, f64>> {
     }
 }
 
+/// Build the resident table from `(folder, score)` pairs, keeping each path's hash and
+/// dropping the path.
+fn table_from<S: AsRef<str>>(scores: impl Iterator<Item = (S, f64)>) -> ScoreTable {
+    scores.map(|(path, score)| (hash_path(path.as_ref()), score)).collect()
+}
+
 /// Every scored folder for `volume_id`, refreshing the cached map first. Private
 /// because a host reaches this through [`importance_scores`], whose `at_least`
 /// argument also covers the gate's threshold-filtered view: two public functions would
-/// spend one of the crate's capped public items on a projection this one can serve.
-fn all_scores(data_dir: &Path, volume_id: &str) -> Option<Arc<HashMap<String, f64>>> {
+/// spend one of the crate's capped public items on a view this one can serve.
+fn all_scores(data_dir: &Path, volume_id: &str) -> Option<Arc<ScoreTable>> {
     let key = StoreKey::new(data_dir, volume_id);
     let mut cache = CACHE.lock_ignore_poison();
     // Taking the entry OUT hands us its receiver to carry into the rebuild below. ❌
@@ -197,11 +293,7 @@ fn all_scores(data_dir: &Path, volume_id: &str) -> Option<Arc<HashMap<String, f6
                 // during the read waits in the channel rather than falling into the
                 // gap. The cost is re-applying a notice the read already reflects,
                 // which is idempotent.
-                {
-                    let all = read_all(data_dir, volume_id)?;
-                    entry.all = Arc::new(all);
-                    entry.projection = None;
-                }
+                entry.all = Arc::new(read_all(data_dir, volume_id)?);
             }
         }
         let all = Arc::clone(&entry.all);
@@ -215,16 +307,15 @@ fn all_scores(data_dir: &Path, volume_id: &str) -> Option<Arc<HashMap<String, f6
         key,
         CachedScores {
             all: Arc::clone(&all),
-            projection: None,
             notices,
         },
     );
     Some(all)
 }
 
-/// A volume's importance folder scores as a `folder → score` map, or `None` when
-/// importance never scored it (fresh / offline / disabled) — the load-bearing signal
-/// that sends the coverage gates to override-only rather than to "cover everything".
+/// A volume's importance folder scores, or `None` when importance never scored it
+/// (fresh / offline / disabled) — the load-bearing signal that sends the coverage gates to
+/// override-only rather than to "cover everything".
 ///
 /// `at_least` picks the view:
 ///
@@ -232,51 +323,29 @@ fn all_scores(data_dir: &Path, volume_id: &str) -> Option<Arc<HashMap<String, f6
 ///   position during a debounced drag.
 /// - `Some(threshold)`: only the folders at or above it, because the enrichment gate
 ///   ([`local_should_enrich`](crate::media_index::scheduler::local_should_enrich)) keys
-///   on score-map MEMBERSHIP — the threshold has to be baked into the map rather than
-///   checked at lookup. ❌ Don't filter the `None` view yourself: that copies the whole
-///   map per call, which is the cost this cache exists to avoid.
+///   on MEMBERSHIP — the threshold has to be part of the view rather than checked at
+///   lookup.
 ///
-/// Cheap after the first call per volume: a fresh read happens only when the store says
-/// its weights moved, and the threshold view is memoized for the LAST threshold asked
-/// (all a gate needs, since it reads one live setting). See this module's header for
-/// why that freshness signal is the recompute subscription and not the generation
-/// stamp.
-pub fn importance_scores(data_dir: &Path, volume_id: &str, at_least: Option<f64>) -> Option<Arc<HashMap<String, f64>>> {
-    // Refresh (and cache) the full map first, so any projection below is built from
-    // scores that are current, and the drained notices can't be lost.
-    let all = all_scores(data_dir, volume_id)?;
-    let Some(threshold) = at_least else {
-        return Some(all);
-    };
+/// Both views share the one cached table, so either is a handle, never a copy. Cheap
+/// after the first call per volume: a fresh read happens only when the store says its
+/// weights moved. See this module's header for why that freshness signal is the
+/// recompute subscription and not the generation stamp.
+pub fn importance_scores(data_dir: &Path, volume_id: &str, at_least: Option<f64>) -> Option<FolderScores> {
+    Some(FolderScores {
+        table: all_scores(data_dir, volume_id)?,
+        at_least,
+    })
+}
 
-    let mut cache = CACHE.lock_ignore_poison();
-    // The lock was released between `all_scores` and here, so the entry may have moved
-    // on (or gone). The memo is an OPTIMIZATION: everything below still answers from
-    // `all`, and the cache is only where the answer gets kept. ❌ Never `?` on the entry
-    // here — `None` is the "importance never scored this volume" signal that sends the
-    // coverage gates to override-only, and a lost race must not forge it.
-    let entry = cache.get_mut(&StoreKey::new(data_dir, volume_id));
-    if let Some(entry) = &entry
-        && let Some((cached_threshold, projection)) = &entry.projection
-        && cached_threshold.to_bits() == threshold.to_bits()
-    {
-        return Some(Arc::clone(projection));
-    }
-    let projection: Arc<HashMap<String, f64>> = Arc::new(
-        all.iter()
-            .filter(|(_, score)| **score >= threshold)
-            .map(|(path, score)| (path.clone(), *score))
-            .collect(),
-    );
-    // Keep it only if the entry still holds the very map we projected. If another
-    // thread rebuilt it meanwhile, storing this would leave a projection that disagrees
-    // with its own `all`, and the next caller at this threshold would read it as fresh.
-    if let Some(entry) = entry
-        && Arc::ptr_eq(&entry.all, &all)
-    {
-        entry.projection = Some((threshold, Arc::clone(&projection)));
-    }
-    Some(projection)
+/// Drop every cached table read from `data_dir`, which the host does when media indexing
+/// turns off: nothing that reads scores runs while it's off, and a table can hold tens of
+/// MiB on a big volume. A reader still holding a view keeps it until it's done, and the
+/// next read after the feature comes back re-reads the store.
+///
+/// Per data dir, like the cache key: tests running in parallel each own one, so releasing
+/// one can't pull a table out from under another.
+pub(crate) fn release_scores(data_dir: &Path) {
+    CACHE.lock_ignore_poison().retain(|key, _| key.data_dir != data_dir);
 }
 
 /// Drop ONE volume's cached entries (in every data dir), so a test starts from a cold
@@ -294,3 +363,6 @@ fn clear_cache_for_test(volume_id: &str) {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod memory_tests;

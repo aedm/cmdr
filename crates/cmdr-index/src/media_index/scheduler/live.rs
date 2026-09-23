@@ -191,7 +191,7 @@ impl MediaScheduler {
         // of every dir it dropped.
         let covered_dirs: HashSet<String> = touched_dirs
             .iter()
-            .filter(|dir| super::lifecycle::local_dir_may_be_covered(dir, scores.as_deref(), &config, volume_id))
+            .filter(|dir| super::lifecycle::local_dir_may_be_covered(dir, scores.as_ref(), &config, volume_id))
             .cloned()
             .collect();
         if covered_dirs.is_empty() {
@@ -217,7 +217,7 @@ impl MediaScheduler {
             .map_err(|e| e.to_string())?;
 
         let (should_enrich, is_excluded, folder_score) =
-            super::lifecycle::pass_gates(scores.as_deref(), &config, volume_id);
+            super::lifecycle::pass_gates(scores.as_ref(), &config, volume_id);
         let ordered = enrich::prioritized(&images, &folder_score);
 
         // Progress honesty: light up the indicator ONLY when the enrichable
