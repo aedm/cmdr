@@ -448,13 +448,13 @@
         })
         // Which rows are on screen and how they're measured: while this stays put, only in-place
         // data changed (index sizes, the hourglass), and `holdSizeColumnWidth` keeps Size from
-        // flapping and re-running the 300 ms grid transition over every row. A directory diff
-        // (`softRefreshTick`) counts as new rows, so deleting the widest file still shrinks it.
+        // flapping and re-running the 300 ms grid transition over every row. ❌ Don't key it on
+        // `softRefreshTick`: a home folder takes a directory diff every few seconds, and each one
+        // let the column shrink only for the next index update to grow it back.
         const rowsKey = [
             listingId,
             includeHidden,
             cacheGeneration,
-            softRefreshTick,
             first,
             last,
             sizeDisplayMode,
