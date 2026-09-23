@@ -100,7 +100,7 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   HTTP/1.1 keep-alive held by the CLIENT's pool. Carries the per-connection cost (one fd, one tokio task, ~46 KB) and
   the proof nothing accumulates per session (`McpState` has one `session_id`, not a map). Read it before re-opening "MCP
   is leaking", and for the one real finding it turned up: two SMB sockets stuck in `CLOSE_WAIT`, which unlike the MCP
-  ones never self-reap.
+  ones never self-reaped (an `smb2` socket-ownership bug, fixed in `smb2` 0.24.1).
 - `idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for most of that 643 MB, measured: Core ML
   holding the two CLIP towers costs **307–412 MB of `MALLOC_LARGE` plus 120–176 MB of `MALLOC_SMALL`, from the first
   encode of a session until the process exits**, 80% of it the text tower that enrichment never calls, and all of it

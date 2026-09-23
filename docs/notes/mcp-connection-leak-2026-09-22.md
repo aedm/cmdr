@@ -88,3 +88,9 @@ While inventorying the app's 26 sockets, two have sat in `CLOSE_WAIT` on port 44
 reap, so each one is a descriptor held forever. Two is harmless, but the count only moves one way across an app's
 lifetime, and both peers are ones that go away (a sleeping NAS, a roaming Tailscale host), so this is worth a look in
 the SMB layer's teardown path. Not investigated here; flagging only.
+
+**Resolved in `smb2` 0.24.1 (2026-09-23).** Two `smb2` defects, not Cmdr's: a server hang-up left the socket in
+`CLOSE_WAIT` until the `Connection` dropped (these two), and a dropped `Connection` never closed its socket at all until
+the server hung up (78 of those to the Docker fixtures in the same prod process, from E2E mount/unmount cycles). Cmdr
+needed only the version bump. The ownership rules that prevent both live in the `smb2` repo, in the client module's
+agent doc, § "Socket lifetime".
