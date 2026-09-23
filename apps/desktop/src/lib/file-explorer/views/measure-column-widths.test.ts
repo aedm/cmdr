@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import type { FileEntry } from '../types'
 
-import { _setMeasureForTests, computeFullListColumnWidths } from './measure-column-widths'
+import { _setMeasureForTests, computeFullListColumnWidths, holdSizeColumnWidth } from './measure-column-widths'
 import { isDirSizeUpdating } from './full-list-utils'
 import { NO_WALKED_GROUND, isPathAffectedByWalk, type WalkedGround } from '$lib/indexing/walked-ground'
 import { _setLocaleForTests } from '$lib/intl/locale'
@@ -417,5 +417,33 @@ describe('computeFullListColumnWidths', () => {
       // shrink-wrapped width is identical: the separator swap doesn't drift it.
       expect(deWidth).toBe(enWidth)
     })
+  })
+})
+
+// A pane sitting still on `~` under index churn saw its Size column flap between two widths (a folder's
+// hourglass or unit coming and going), and each flap ran a 300 ms transition over every row.
+describe('holdSizeColumnWidth', () => {
+  const wide = { ext: 30, size: 92, date: 80 }
+  const narrow = { ext: 30, size: 66, date: 80 }
+
+  it('keeps the wider Size column while the rows on screen stay the same', () => {
+    expect(holdSizeColumnWidth({ previous: wide, next: narrow, sameRows: true })).toEqual(wide)
+  })
+
+  it('grows at once, even while the rows stay the same', () => {
+    expect(holdSizeColumnWidth({ previous: narrow, next: wide, sameRows: true })).toEqual(wide)
+  })
+
+  it('shrink-wraps again once the rows on screen change (scroll, resize, navigation, settings)', () => {
+    expect(holdSizeColumnWidth({ previous: wide, next: narrow, sameRows: false })).toEqual(narrow)
+  })
+
+  it('holds only the Size column: Ext and Modified still follow the rows', () => {
+    const next = { ext: 28, size: 66, date: 70 }
+    expect(holdSizeColumnWidth({ previous: wide, next, sameRows: true })).toEqual({ ext: 28, size: 92, date: 70 })
+  })
+
+  it('answers the previous object when nothing moved, so the grid is left alone', () => {
+    expect(holdSizeColumnWidth({ previous: wide, next: { ...wide }, sameRows: true })).toBe(wide)
   })
 })

@@ -46,7 +46,8 @@
         pickSizeDisplay,
         isHiddenRowDimmed,
     } from './full-list-utils'
-    import { computeFullListColumnWidths } from './measure-column-widths'
+    import { computeFullListColumnWidths, holdSizeColumnWidth } from './measure-column-widths'
+    import { untrack } from 'svelte'
     import {
         getRowHeight,
         getIconSize,
@@ -281,6 +282,8 @@
 
     // Column widths are declared after the virtual window, which gates parent-row inclusion.
     let columnWidths = $state({ ext: 60, size: 115, date: 80 })
+    /** The rows the current `columnWidths` were measured for; see `holdSizeColumnWidth`. */
+    let widthsRowsKey = ''
     let skipTransition = $state(false)
 
     /** Icon column width in the grid template, tracks density × text scale. */
@@ -430,8 +433,8 @@
         // direct read is what prevents a startup race where a Full-mode
         // listing is measured at scale 1 and then never re-measured after the
         // real scale lands.
-        void getEffectiveScale()
-        columnWidths = computeFullListColumnWidths({
+        const scale = getEffectiveScale()
+        const measured = computeFullListColumnWidths({
             entries: visible,
             parentDirStats: parentStats,
             formattedDate,
@@ -443,6 +446,29 @@
             isRestricted,
             showExtensionInName,
         })
+        // Which rows are on screen and how they're measured: while this stays put, only in-place
+        // data changed (index sizes, the hourglass), and `holdSizeColumnWidth` keeps Size from
+        // flapping and re-running the 300 ms grid transition over every row. A directory diff
+        // (`softRefreshTick`) counts as new rows, so deleting the widest file still shrinks it.
+        const rowsKey = [
+            listingId,
+            includeHidden,
+            cacheGeneration,
+            softRefreshTick,
+            first,
+            last,
+            sizeDisplayMode,
+            sizeFormatOpts.unit,
+            sizeFormatOpts.format,
+            sortBy,
+            showSizeMismatchWarning,
+            showExtensionInName,
+            scale,
+        ].join('|')
+        const previous = untrack(() => columnWidths)
+        const next = holdSizeColumnWidth({ previous, next: measured, sameRows: rowsKey === widthsRowsKey })
+        widthsRowsKey = rowsKey
+        if (next !== previous) columnWidths = next
     })
 
     /** The entry at a UI index (`..` included). Called by the host pane. */

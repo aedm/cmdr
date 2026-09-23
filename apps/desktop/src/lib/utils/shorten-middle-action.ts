@@ -60,14 +60,26 @@ export function useShortenMiddle(node: HTMLElement, params: ShortenMiddleParams)
     tip.update?.(!params.tooltipWhenTruncated || truncated ? currentText : '')
   }
 
+  // What the last truncation was computed for and what it wrote. A width transition resizes every
+  // cell each frame for 300 ms, and a write whose text comes out the same still costs a DOM mutation
+  // plus style and layout, so both the re-measure and the write are skipped when nothing moved.
+  let lastWidth = -1
+  let lastInput = ''
+  let lastResult: string | null = null
+
   function truncate() {
     if (!measureWidth) return
     const width = node.clientWidth
     if (width <= 0) return
+    if (width === lastWidth && currentText === lastInput) return
     const result = shortenMiddle(currentText, width, measureWidth, {
       preferBreakAt: params.preferBreakAt,
       startRatio: params.startRatio,
     })
+    lastWidth = width
+    lastInput = currentText
+    if (result === lastResult) return
+    lastResult = result
     node.textContent = result
     applyTooltip(result !== currentText)
   }

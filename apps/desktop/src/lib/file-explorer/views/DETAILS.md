@@ -387,6 +387,14 @@ when that row is actually on screen. Otherwise the size column would stay oversi
 `SelectionInfo` keeps using `measureDateColumnWidth` (worst-case sampling) because it renders a single-entry snapshot
 with no "visible set" to measure from.
 
+**Decision**: While the same rows stay on screen, the Size column grows at once but never shrinks
+(`holdSizeColumnWidth`, keyed in `FullList` on listing, cache generation, directory-diff tick, visible range, and every
+measuring setting). **Why**: index updates rewrite folder sizes in place, and a folder's hourglass or unit coming and
+going moved the width back and forth (66 px ↔ 92 px on a pane sitting on `~`). Each move ran the 300 ms transition over
+every row, and the transition resized every name cell per frame, so an idle pane rewrote name cells about 900 times
+a minute (measured 2026-09-23, dev build, pane on `~` with indexing on). Scrolling, resizing, navigating, a directory
+diff, or a settings change lets it shrink-wrap again. Ext and Modified don't move on index updates and always follow.
+
 **Decision**: The date column renders as one segment list with tabular figures, no split. **Why**: Earlier the column
 split into a fixed-width date half plus a time half so the times lined up across rows despite proportional digits. With
 `font-variant-numeric: tabular-nums` on `.col-date` every digit takes the same advance, and every token format (`YYYY`=4

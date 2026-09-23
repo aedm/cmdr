@@ -433,3 +433,26 @@ function foldEntries(
   }
   return { extMax, sizeMax, sizeIconSuffixMax, dateMax }
 }
+
+/**
+ * The column widths to apply, holding the Size column steady while the rows on screen stay the same.
+ *
+ * Index updates rewrite folder sizes in place, and a folder's hourglass or unit coming and going moves
+ * the shrink-wrapped Size width back and forth. Each move runs the grid's 300 ms transition over every
+ * row, which on a pane sitting on `~` under ordinary background writes meant a transition every few
+ * seconds for a change nobody asked for. So while the rows are the same ones (`sameRows`), Size grows at
+ * once but never shrinks; any change to which rows are on screen, or to how they're measured, lets it
+ * shrink-wrap again. Ext and Modified don't move on index updates, so they always follow `next`.
+ *
+ * Returns `previous` itself when nothing moved, so the caller can skip the write.
+ */
+export function holdSizeColumnWidth(args: {
+  previous: ColumnWidths
+  next: ColumnWidths
+  sameRows: boolean
+}): ColumnWidths {
+  const { previous, next, sameRows } = args
+  const size = sameRows ? Math.max(previous.size, next.size) : next.size
+  if (size === previous.size && next.ext === previous.ext && next.date === previous.date) return previous
+  return { ext: next.ext, size, date: next.date }
+}
