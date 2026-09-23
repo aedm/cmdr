@@ -24,7 +24,7 @@ use super::copy_concurrent::ConcurrentCopy;
 use super::copy_concurrent_task::CopyTask;
 use super::landing::{DestFolder, Landing, NewName, where_it_lands};
 use super::preflight::SourceFileFacts;
-use super::strategy::{MergeProbe, resolve_source_is_directory};
+use super::strategy::{LandingName, MergeProbe, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::VolumeError;
 use crate::ignore_poison::IgnorePoison;
@@ -164,7 +164,16 @@ impl ConcurrentCopy<'_> {
         // in-flight `.cmdr-tmp-<uuid>` for the backend writer's abort to
         // clean; never the merged root.) Pinned by
         // `cancel_mid_merge_stream_concurrent_preserves_preexisting_dest_file`.
-        if !source_is_dir {
+        //
+        // ❗ And only a path that can hold OUR partial: a plain staged write's
+        // final name never does (`failed_write_leaves_ours_at`), and cleaning it
+        // deleted whatever another writer put there.
+        let landing = if dest_name_claimed {
+            LandingName::ClaimedByTheCaller
+        } else {
+            LandingName::ExpectedFree
+        };
+        if !source_is_dir && failed_write_leaves_ours_at(staging_for(&replace_after_write, landing)) {
             self.in_flight_partials
                 .lock_ignore_poison()
                 .push(dest_item_path.clone());

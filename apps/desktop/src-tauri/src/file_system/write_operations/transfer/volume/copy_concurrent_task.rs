@@ -27,7 +27,10 @@ use super::super::super::types::VolumeCopyConfig;
 use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskProbeHandle};
 use super::preflight::{SourceFileFacts, SourceHint};
-use super::strategy::{CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, copy_single_path, staging_for};
+use super::strategy::{
+    CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, copy_single_path, failed_write_leaves_ours_at,
+    staging_for,
+};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
@@ -217,6 +220,14 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
     // for its own children to get theirs would deadlock the operation outright at
     // width 1.
     let _leaf_permit = if source_is_dir { None } else { window.reserve().await };
+    let staging = staging_for(
+        &replace_after_write,
+        if dest_name_claimed {
+            LandingName::ClaimedByTheCaller
+        } else {
+            LandingName::ExpectedFree
+        },
+    );
     let copy_fut = copy_single_path(
         &source_volume,
         &source_path,
@@ -228,14 +239,7 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         &created,
         &source_progress,
         Some(&merge_ctx),
-        staging_for(
-            &replace_after_write,
-            if dest_name_claimed {
-                LandingName::ClaimedByTheCaller
-            } else {
-                LandingName::ExpectedFree
-            },
-        ),
+        staging,
     );
     // Bind this task's probe as a task-local for the whole copy, so
     // `stream_pipe_file` and `CheckpointStream` can record their phases without
@@ -314,7 +318,10 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
             })
         }
         // Stream failure (incl. mid-stream cancel): the dest/temp is a
-        // half-written partial → clean it (`cleanup_temp = true`). For a
+        // half-written partial → clean it (`cleanup_temp = true`), ❗ but only
+        // when `dest_path` can hold OUR partial. A plain staged write's final
+        // name never does, and cleaning it deleted whatever another writer put
+        // there (`failed_write_leaves_ours_at`). For a
         // DIRECTORY source, carry the per-file ledger so the result handler
         // records the individual partials instead of the dir root — the post-loop
         // must never recursively delete a merged dest dir and destroy
@@ -327,7 +334,7 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
             // A deep-merge leaf's finalize failure arrives here too, carrying
             // where its rescued bytes went.
             new_data_at: e.new_data_at,
-            cleanup_temp: true,
+            cleanup_temp: failed_write_leaves_ours_at(staging),
             source_is_dir,
             overwrote: task_overwrote,
             created_files,

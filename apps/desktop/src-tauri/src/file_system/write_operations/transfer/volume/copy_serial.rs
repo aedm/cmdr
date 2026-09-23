@@ -422,7 +422,13 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         }),
                     };
 
-                    *last_dest_cell.lock_ignore_poison() = Some(dest_item_path.clone());
+                    let staging = super::strategy::staging_for(&replace_after_write, landing);
+                    // ❗ Only a path that can hold OUR partial is designated for
+                    // the post-loop cleanup. A plain staged write's final name
+                    // never does, and deleting it on failure deleted whatever
+                    // another writer put there (`failed_write_leaves_ours_at`).
+                    *last_dest_cell.lock_ignore_poison() =
+                        super::strategy::failed_write_leaves_ours_at(staging).then(|| dest_item_path.clone());
 
                     // This driver STREAMS the source itself rather than handing
                     // it to a window, so from here until the next iteration
@@ -467,7 +473,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         &created,
                         &leaf_progress,
                         Some(&merge_ctx),
-                        super::strategy::staging_for(&replace_after_write, landing),
+                        staging,
                     );
                     // Bind this source's probe as a task-local for the whole
                     // copy, so `stream_pipe_file` and `CheckpointStream`

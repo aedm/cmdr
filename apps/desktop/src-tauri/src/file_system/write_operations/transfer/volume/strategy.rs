@@ -25,7 +25,9 @@ use super::super::staged_write::StagedWrite;
 // this module's API) name the staging choice without a second import path.
 use super::super::recovered_name::FinalizeFailure;
 use super::super::retry;
-pub(super) use super::super::staged_write::{LandingName, WriteStaging};
+pub(super) use super::super::staged_write::{
+    LandingName, WriteStaging, failed_write_leaves_ours_at, resolve_staging, staging_for,
+};
 use super::super::transfer_driver::{LeafProgressLedger, SourceProgress};
 use super::super::transfer_probe::{
     OperationProbe, TaskPhase, TaskRow, arm_current_task_stall_abort, note_task_retry, set_task_bytes, set_task_phase,
@@ -454,58 +456,6 @@ pub(super) async fn copy_single_path(
     }
 }
 
-/// The staging every call site derives the same way: a conflict resolution that
-/// handed back a temp to swap over an original (`Some(orig)`) already staged the
-/// write, anything else is ours to stage.
-///
-/// `landing` is the OTHER thing only the caller knows: whether a conflict
-/// resolution put this write at this name. It decides what the landing rename's
-/// `AlreadyExists` means (see `staged_write.rs::land`), so ❌ never pass
-/// `ClaimedByTheCaller` for a write nothing resolved — that is the reading that
-/// clears the user's file.
-pub(super) fn staging_for(replace_after_write: &Option<PathBuf>, landing: LandingName) -> WriteStaging {
-    match (replace_after_write, landing) {
-        (Some(_), _) => WriteStaging::AlreadyStaged,
-        (None, LandingName::ExpectedFree) => WriteStaging::Stage,
-        (None, LandingName::ClaimedByTheCaller) => WriteStaging::StageOntoClaimedName,
-    }
-}
-
-/// Drops the staging for a write the DESTINATION lands in one indivisible shot.
-///
-/// Staging keeps a byte-incomplete file from wearing the user's real filename.
-/// A single-shot write has no in-between state to protect against — it either
-/// lands whole or leaves nothing — so the `.cmdr-tmp-*` and the rename that
-/// lands it would buy nothing and cost a round trip per file (on SMB that
-/// roughly doubles the wire cost of a file the compound fast path finishes in
-/// one frame; on a 10k-tiny-file copy to a NAS that is the whole difference).
-///
-/// ❌ The question is single-shot-ness, never smallness, and only the
-/// destination can answer it: the caller asks `Volume::write_is_single_shot`
-/// about the same `size` `write_from_stream` gets, off the same stream, and the
-/// backend answers with the very condition its one-shot path branches on. A
-/// caller-side size threshold would drift from that condition the day a backend
-/// retunes it, and drifting apart means truncated files at real names again.
-///
-/// The answer arrives as a plain `bool` rather than being probed here, because
-/// `stream_pipe_file`'s OTHER consumer needs the raw fact: the destination-side
-/// foreground yield exempts a single-shot write from the min-progress floor, and
-/// the returned enum can't tell it apart from a staged one. ❗ Ask ONCE per
-/// write and share the answer; two probes could straddle a reconnect and
-/// disagree.
-///
-/// `AlreadyStaged` is never touched: the caller's temp keeps the ORIGINAL file
-/// in place until the new bytes are complete, which is a stronger guarantee than
-/// single-shot-ness and the caller's to land.
-pub(super) fn resolve_staging(requested: WriteStaging, write_is_single_shot: bool) -> WriteStaging {
-    let we_stage = matches!(requested, WriteStaging::Stage | WriteStaging::StageOntoClaimedName);
-    if we_stage && write_is_single_shot {
-        WriteStaging::SingleShot
-    } else {
-        requested
-    }
-}
-
 /// Pulls one source path (a file or a whole subtree) from `source_volume` into
 /// `dest_volume` at `dest_path` with NO conflict resolution — the destination is
 /// assumed empty (a fresh scratch dir), so nothing is merged or overwritten.
@@ -612,6 +562,12 @@ pub(super) async fn stream_pipe_file(
     }
 
     let mut staging = staging;
+    // Set once a destination that can't land a staged write sends the file back
+    // to be written at its final name. From then on a failed attempt's partial
+    // sits AT that name and is ours, so the terminal failure removes it here:
+    // the driver can't, because it only knows the staging it asked for
+    // (`failed_write_leaves_ours_at`).
+    let mut writing_at_the_final_name = false;
     // Which attempt at THIS file we're on, 1-based. A transport blip
     // (`retry::is_retryable`) runs the file again from its first byte on a fresh
     // source stream and a fresh staging temp, up to `retry::MAX_ATTEMPTS`; see
@@ -775,12 +731,14 @@ pub(super) async fn stream_pipe_file(
             // log the user's own click as a failed transfer.
             Err(e) if retry::is_retryable(&e) && super::super::super::state::is_cancelled(&state.intent) => {
                 staged.abandon(dest_volume).await;
+                remove_unstaged_partial(writing_at_the_final_name, dest_volume, dest_path).await;
                 return Err(VolumeError::Cancelled("Operation cancelled by user".to_string()).into());
             }
             Err(e) => {
                 // The staged bytes are a partial (a mid-stream failure, or the
                 // cancel the backend turned into `Cancelled`); drop them.
                 staged.abandon(dest_volume).await;
+                remove_unstaged_partial(writing_at_the_final_name, dest_volume, dest_path).await;
                 if attempt > 1 {
                     log::warn!(
                         target: "copy",
@@ -819,6 +777,7 @@ pub(super) async fn stream_pipe_file(
                     dest_path.display()
                 );
                 staging = WriteStaging::AlreadyStaged;
+                writing_at_the_final_name = true;
                 continue;
             }
             // The write SUCCEEDED and the landing didn't: the temp holds the only
@@ -828,6 +787,23 @@ pub(super) async fn stream_pipe_file(
             // `new_data_at` says where they are. Surface the failure.
             Err(e) => return Err(e),
         }
+    }
+}
+
+/// Removes the partial a failed write left AT its final name, which happens only
+/// after a destination that can't land a staged write sent the file back to be
+/// written there unstaged. Best-effort: the write's own error is the one to
+/// report.
+async fn remove_unstaged_partial(writing_at_the_final_name: bool, dest_volume: &Arc<dyn Volume>, dest_path: &Path) {
+    if !writing_at_the_final_name {
+        return;
+    }
+    if let Err(e) = dest_volume.delete(dest_path).await {
+        log::debug!(
+            target: "copy",
+            "stream_pipe_file: couldn't remove the unstaged partial {}: {e}",
+            dest_path.display()
+        );
     }
 }
 

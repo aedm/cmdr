@@ -27,7 +27,7 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
 ## Staging and cleanup
 
 - **A cross-volume file write stages on `.cmdr-tmp-<uuid>`**, taking its final name after its last byte. Ask
-  `strategy.rs::resolve_staging`; ❌ single-shot-ness earns an exemption, NEVER smallness.
+  `../staged_write.rs::resolve_staging`; ❌ single-shot-ness earns an exemption, NEVER smallness.
 - **The SOURCE's mode goes on the temp BEFORE that rename** (`landed_mode.rs`), local destinations only, never wider
   than what the destination created. `0` means no mode: ❌ never guess or fail over one. A new write path owes the call.
 - **A same-`Arc` copy tries `strategy.rs::try_server_side_copy` (`Volume::copy_within`) first**, staged, ❌ never

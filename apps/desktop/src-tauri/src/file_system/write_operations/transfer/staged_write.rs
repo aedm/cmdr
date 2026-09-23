@@ -358,6 +358,81 @@ async fn land(
     }
 }
 
+/// The staging every call site derives the same way: a conflict resolution that
+/// handed back a temp to swap over an original (`Some(orig)`) already staged the
+/// write, anything else is ours to stage.
+///
+/// `landing` is the OTHER thing only the caller knows: whether a conflict
+/// resolution put this write at this name. It decides what the landing rename's
+/// `AlreadyExists` means (see `staged_write.rs::land`), so ❌ never pass
+/// `ClaimedByTheCaller` for a write nothing resolved — that is the reading that
+/// clears the user's file.
+pub(super) fn staging_for(replace_after_write: &Option<PathBuf>, landing: LandingName) -> WriteStaging {
+    match (replace_after_write, landing) {
+        (Some(_), _) => WriteStaging::AlreadyStaged,
+        (None, LandingName::ExpectedFree) => WriteStaging::Stage,
+        (None, LandingName::ClaimedByTheCaller) => WriteStaging::StageOntoClaimedName,
+    }
+}
+
+/// Whether a FILE write handed `dest_path` with `staging` can leave anything of
+/// THIS operation at `dest_path` when it fails, which is what makes that path a
+/// partial for the post-loop cleanup to remove.
+///
+/// - `AlreadyStaged`: `dest_path` IS the caller's safe-replace temp. Ours.
+/// - `StageOntoClaimedName`: the caller claimed the name (a `Rename` pick's
+///   `O_EXCL` placeholder, a cleared cross-type destination). Ours.
+/// - `Stage`: ❗ **never ours.** The bytes went to a `.cmdr-tmp-*` sibling that
+///   `stream_pipe_file` abandons itself, and the name was FREE when the driver
+///   looked. Anything there now is someone else's, and the likeliest reason the
+///   write failed at all is that someone else took the name mid-upload (the
+///   landing refuses, `staged_write.rs::land`). Cleaning `dest_path` then
+///   deleted their file. Pinned by `copy_landing_race_tests.rs` and, on live
+///   servers, `a_name_taken_mid_upload_is_never_replaced`.
+/// - `SingleShot` is resolved inside `stream_pipe_file` and never reaches a
+///   driver; its failed attempt is the backend's to clean.
+pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
+    match staging {
+        WriteStaging::AlreadyStaged | WriteStaging::StageOntoClaimedName => true,
+        WriteStaging::Stage | WriteStaging::SingleShot => false,
+    }
+}
+
+/// Drops the staging for a write the DESTINATION lands in one indivisible shot.
+///
+/// Staging keeps a byte-incomplete file from wearing the user's real filename.
+/// A single-shot write has no in-between state to protect against — it either
+/// lands whole or leaves nothing — so the `.cmdr-tmp-*` and the rename that
+/// lands it would buy nothing and cost a round trip per file (on SMB that
+/// roughly doubles the wire cost of a file the compound fast path finishes in
+/// one frame; on a 10k-tiny-file copy to a NAS that is the whole difference).
+///
+/// ❌ The question is single-shot-ness, never smallness, and only the
+/// destination can answer it: the caller asks `Volume::write_is_single_shot`
+/// about the same `size` `write_from_stream` gets, off the same stream, and the
+/// backend answers with the very condition its one-shot path branches on. A
+/// caller-side size threshold would drift from that condition the day a backend
+/// retunes it, and drifting apart means truncated files at real names again.
+///
+/// The answer arrives as a plain `bool` rather than being probed here, because
+/// `stream_pipe_file`'s OTHER consumer needs the raw fact: the destination-side
+/// foreground yield exempts a single-shot write from the min-progress floor, and
+/// the returned enum can't tell it apart from a staged one. ❗ Ask ONCE per
+/// write and share the answer; two probes could straddle a reconnect and
+/// disagree.
+///
+/// `AlreadyStaged` is never touched: the caller's temp keeps the ORIGINAL file
+/// in place until the new bytes are complete, which is a stronger guarantee than
+/// single-shot-ness and the caller's to land.
+pub(super) fn resolve_staging(requested: WriteStaging, write_is_single_shot: bool) -> WriteStaging {
+    let we_stage = matches!(requested, WriteStaging::Stage | WriteStaging::StageOntoClaimedName);
+    if we_stage && write_is_single_shot {
+        WriteStaging::SingleShot
+    } else {
+        requested
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

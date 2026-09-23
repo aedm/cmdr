@@ -27,9 +27,11 @@ use super::super::seed_incoherent_scan_result_for_test;
 use super::super::state::{WriteOperationState, cancel_write_operation};
 use super::super::transfer::volume::{FaultyOp, FaultyVolume, copy_volumes_with_progress, move_volumes_with_progress};
 use super::super::types::{ConflictResolution, VolumeCopyConfig, WriteOperationConfig};
-use super::network_gated_source_test_support::gated_reads;
+use super::network_gated_source_test_support::{CANCEL_PAYLOAD_BYTES, gated_reads, gated_upload};
 use super::network_semantics_test_support::{local_volume, names_in, seed, try_read};
-use super::network_transfer_test_support::{assert_no_staging_litter, clean_deep, self_describing_bytes, start_copy};
+use super::network_transfer_test_support::{
+    assert_no_staging_litter, clean_deep, self_describing_bytes, sha256, start_copy,
+};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
@@ -416,6 +418,108 @@ pub(super) async fn a_cancelled_download_leaves_nothing_behind(remote: Arc<dyn V
         "❗ the user's filename must never appear for a download that didn't finish; local disk holds {left:?}"
     );
     assert_no_staging_litter(local.as_ref(), Path::new(""), "a cancelled download").await;
+
+    clean_deep(remote.as_ref(), &dir).await;
+}
+
+// ── A name another writer takes mid-upload ───────────────────────────
+
+/// An upload no backend takes single-shot, so it is staged and lands through
+/// the no-replace rename: over SMB's compound limit (the negotiated
+/// `max_write`, 8 MiB on the fixture's Samba).
+pub(super) const STAGED_ON_EVERY_BACKEND: usize = 12 * 1024 * 1024;
+
+/// An upload SMB lands single-shot, straight at the final name.
+pub(super) const FITS_ONE_SMB_WRITE: usize = CANCEL_PAYLOAD_BYTES;
+
+/// A name another writer takes WHILE our upload is on the wire is never
+/// replaced, and our bytes don't vanish without a word.
+///
+/// The name was free when the copy looked, so nothing asked anybody about it.
+/// What guards it is the landing: the staged bytes take their name with a
+/// rename that must not replace (`rename(temp, final, false)`, and
+/// `staged_write.rs`'s `LandingName::ExpectedFree` refuses to clear the way),
+/// which the SERVER evaluates atomically: WebDAV `MOVE` with `Overwrite: F`,
+/// SFTP's plain rename, SMB's non-replacing rename. A landing that checked
+/// first and then renamed with replace would clobber the other writer's file in
+/// the gap.
+///
+/// The upload is held mid-body by the gated source, so "the other writer got
+/// there first" is a fact the cell arranges rather than a race it hopes to win.
+///
+/// `ours_len` picks the write path: [`STAGED_ON_EVERY_BACKEND`] is staged
+/// everywhere, which is what the landing guard covers; a size a backend lands
+/// single-shot (SMB under its negotiated `max_write`) goes straight to the
+/// final name and never meets that guard.
+pub(super) async fn a_name_taken_mid_upload_is_never_replaced(
+    remote: Arc<dyn Volume>,
+    dir: PathBuf,
+    policy: ConflictResolution,
+    ours_len: usize,
+) {
+    let ours = self_describing_bytes(ours_len, "ours");
+    let theirs = self_describing_bytes(30_000, "someone-elses");
+    let source = gated_upload(ours.clone()).await;
+
+    let running = start_copy(
+        "name-taken-mid-upload",
+        Arc::clone(&source.volume),
+        vec![PathBuf::from("/big.bin")],
+        Arc::clone(&remote),
+        dir.clone(),
+        VolumeCopyConfig {
+            conflict_resolution: policy,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await;
+
+    // Two chunks in, so the upload is provably on the wire to its staging
+    // sibling while the user's filename is still free.
+    source.gate.add_permits(2);
+    crate::test_support::wait_until_async(Duration::from_secs(6), "the upload to get two chunks in", || {
+        source.handed_out.load(std::sync::atomic::Ordering::SeqCst) >= 2
+    })
+    .await;
+    remote
+        .create_file(&dir.join("big.bin"), &theirs)
+        .await
+        .expect("the other writer takes the free name");
+    source.gate.add_permits(10_000);
+    running.settle().await;
+
+    let names = names_in(remote.as_ref(), &dir).await;
+    let errors: Vec<String> = running
+        .events
+        .errors
+        .lock_ignore_poison()
+        .iter()
+        .map(|e| format!("{:?}", e.error))
+        .collect();
+    let completed = !running.events.complete.lock_ignore_poison().is_empty();
+    assert_eq!(
+        try_read(remote.as_ref(), &dir.join("big.bin"))
+            .await
+            .map(|b| sha256(&b)),
+        Some(sha256(&theirs)),
+        "❗ under {policy:?}, a file another writer put at the name mid-upload must survive our landing byte \
+         for byte (completed: {completed}, errors: {errors:?}, the server holds {names:?})"
+    );
+    let mut ours_kept_at = None;
+    for name in names.iter().filter(|n| n.as_str() != "big.bin") {
+        if try_read(remote.as_ref(), &dir.join(name)).await.as_deref() == Some(ours.as_slice()) {
+            ours_kept_at = Some(name.clone());
+        }
+    }
+    assert!(
+        ours_kept_at.is_some() || !errors.is_empty(),
+        "under {policy:?}, our bytes either stay on the server or the copy says it couldn't place them; \
+         it did neither (the server holds {names:?})"
+    );
+    log::info!(
+        target: "test",
+        "name taken mid-upload under {policy:?}: ours kept at {ours_kept_at:?}, errors {errors:?}, server holds {names:?}"
+    );
 
     clean_deep(remote.as_ref(), &dir).await;
 }

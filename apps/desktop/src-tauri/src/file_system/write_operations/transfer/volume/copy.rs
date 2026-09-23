@@ -1296,6 +1296,9 @@ mod merge_tests;
 #[path = "merge_window_tests.rs"]
 mod merge_window_tests;
 
+#[cfg(test)]
+#[path = "copy_landing_race_tests.rs"]
+mod landing_race_tests;
 /// What a deep merge does with the ` (N)` name it reserved for a child.
 #[cfg(test)]
 #[path = "merge_placeholder_tests.rs"]
