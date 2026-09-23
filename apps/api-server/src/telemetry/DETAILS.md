@@ -114,11 +114,15 @@ Old clients send none and the row stores NULL, which the engagement query reads 
 
 **Events** (`analytics_event`): each is `{ event, timestamp, properties }`. The name matches `^[a-z0-9_$]{1,100}$`, the
 timestamp is RFC 3339 with a `Z` or an offset, between 2025-01-01 and a day past our clock, normalized to UTC, and
-`properties` is a plain object (absent means `{}`). The server keeps the first 500 (`maxEventsPerBeat`) and drops the
-rest, then drops any malformed one among those, logging each kind with a count. Only the container can fail the beat
-(`events` present and not an array → 400): an ITEM rejection would fail every beat carrying it, and the app would resend
-it forever. `occurred_at` is the client's timestamp, `received_at` ours; retention and every server-side "when" use
-`received_at`.
+`properties` is a plain object (absent means `{}`). Two optional extras never drop an event: `appVersion` (the build
+that produced it, which outlives an update while the event sits in the spool; a bad or missing one falls back to the
+beat's) and `id` (a lowercase v4 UUID the app mints per event; a bad one is stored as NULL). The server keeps the first
+500 (`maxEventsPerBeat`) and drops the rest, then drops any malformed one among those, logging each kind with a count.
+Only the container can fail the beat (`events` present and not an array → 400): an ITEM rejection would fail every beat
+carrying it, and the app would resend it forever. `occurred_at` is the client's timestamp, `received_at` ours; retention
+and every server-side "when" use `received_at`. `event_id` has a unique index and the insert is `INSERT OR IGNORE`, so a
+beat retried after its 204 got lost stores each event once; events without an id can't be deduped and are stored each
+time.
 
 **One batch, awaited.** The heartbeat row and the events go in ONE `db.batch` (a transaction), and the route awaits it:
 a 204 tells the app both are stored, which is its signal to truncate the spool; a D1 failure answers a soft 502 so it
@@ -131,11 +135,12 @@ statement per event puts up to 500 statements in the batch against D1's per-invo
 `https://eu.i.posthog.com/batch/` in one request, so PostHog's history continues unbroken while nothing reads the D1
 copy yet. The body mirrors what the app used to send to `/capture/` per event: `distinct_id` = `analId`, the identity
 properties `source: desktop`, `app_version`, `os_version`, `arch` (set last, so an event property can't shadow them),
-and the config snapshot as `$set`. New because the sender changed: a per-event `timestamp`, and `$geoip_disable: true`,
-since the IP PostHog sees is the Worker's (we don't forward the user's). It runs only after D1 has the events, because
-the app retries a failed beat and an earlier forward would double-count. Without `POSTHOG_PROJECT_KEY` it's a silent
-no-op; a PostHog error is logged and never touches the beat. Dropping PostHog = delete that file, its test, the one call
-in `heartbeat.ts`, and the secret.
+and the config snapshot as `$set`. `app_version` is the event's own, not the carrying beat's. New because the sender
+changed: a per-event `timestamp`, the event id as `uuid` (PostHog dedupes on it too), and `$geoip_disable: true`, since
+the IP PostHog sees is the Worker's (we don't forward the user's). It runs only after D1 has the events, because the app
+retries a failed beat and an earlier forward would double-count. Without `POSTHOG_PROJECT_KEY` it's a silent no-op; a
+PostHog error is logged and never touches the beat. Dropping PostHog = delete that file, its test, the one call in
+`heartbeat.ts`, and the secret.
 
 **Rate limiting:** `HEARTBEAT_LIMITER` (`[[ratelimits]]` in `wrangler.toml`, type `RateLimit`, `.limit({ key })` →
 `{ success }`) keyed by `cf-connecting-ip` at 12 req/min/IP (`period` must be 10 or 60). Legit traffic is a beat per

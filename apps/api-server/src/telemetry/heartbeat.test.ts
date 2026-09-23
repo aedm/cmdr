@@ -291,18 +291,28 @@ function heartbeatArgs(batched: () => RecordedStatement[]): unknown[] {
 }
 
 /** The events the route handed D1, decoded from the one JSON parameter they travel in. */
-function storedEvents(
-  batched: () => RecordedStatement[],
-): { event: string; occurredAt: string; properties: unknown }[] {
-  const statement = batched().find((s) => s.sql.includes('INSERT INTO analytics_event'))
+interface StoredEvent {
+  event: string
+  occurredAt: string
+  properties: unknown
+  appVersion: string
+  id: string | null
+}
+
+function storedEvents(batched: () => RecordedStatement[]): StoredEvent[] {
+  const statement = batched().find((s) => s.sql.includes('INTO analytics_event'))
   if (!statement) return []
-  const rows = JSON.parse(statement.args[2] as string) as [string, string, string][]
-  return rows.map(([event, occurredAt, properties]) => ({
+  const rows = JSON.parse(statement.args[1] as string) as [string, string, string, string, string | null][]
+  return rows.map(([event, occurredAt, properties, appVersion, id]) => ({
     event,
     occurredAt,
     properties: JSON.parse(properties) as unknown,
+    appVersion,
+    id,
   }))
 }
+
+const eventId = '3b241101-e2bb-4255-8caf-4136c566a962'
 
 function makeEvent(overrides: Record<string, unknown> = {}) {
   return { event: 'search_used', timestamp: '2026-09-24T10:00:00Z', properties: { mode: 'ai' }, ...overrides }
@@ -362,13 +372,18 @@ describe('POST /heartbeat: events', () => {
     expect(batched().map((s) => s.sql.includes('INSERT INTO heartbeat'))).toEqual([true, false])
 
     const eventStatement = batched()[1]
-    expect(eventStatement.sql).toContain('INSERT INTO analytics_event')
+    expect(eventStatement.sql).toContain('INSERT OR IGNORE INTO analytics_event')
     expect(eventStatement.sql).not.toContain('ip')
     expect(eventStatement.args[0]).toBe(validBeat.analId)
-    expect(eventStatement.args[1]).toBe(validBeat.appVersion)
     expect(storedEvents(batched)).toEqual([
-      { event: 'search_used', occurredAt: '2026-09-24T10:00:00.000Z', properties: { mode: 'ai' } },
-      { event: 'app_launched', occurredAt: '2026-09-24T10:00:00.000Z', properties: {} },
+      {
+        event: 'search_used',
+        occurredAt: '2026-09-24T10:00:00.000Z',
+        properties: { mode: 'ai' },
+        appVersion: '1.2.3',
+        id: null,
+      },
+      { event: 'app_launched', occurredAt: '2026-09-24T10:00:00.000Z', properties: {}, appVersion: '1.2.3', id: null },
     ])
   })
 
@@ -457,6 +472,42 @@ describe('POST /heartbeat: events', () => {
     expect(storedEvents(batched)[0].occurredAt).toBe('2026-09-24T10:00:00.500Z')
   })
 
+  it('keeps the version that produced an event, even when a newer build sends it', async () => {
+    // Spooled under 1.2.2, shipped by the 1.2.3 build after an update.
+    const { db, batched } = createMockD1()
+    await postHeartbeat(
+      { ...validBeat, events: [makeEvent({ appVersion: '1.2.2' }), makeEvent()] },
+      createBindings({ TELEMETRY_DB: db }),
+    )
+    expect(storedEvents(batched).map((e) => e.appVersion)).toEqual(['1.2.2', '1.2.3'])
+  })
+
+  it.each([
+    ['null', null],
+    ['not semver', 'v1.2'],
+    ['a number', 1.2],
+  ])('falls back to the beat version for a %s event appVersion, keeping the event', async (_label, appVersion) => {
+    const { db, batched } = createMockD1()
+    await postHeartbeat({ ...validBeat, events: [makeEvent({ appVersion })] }, createBindings({ TELEMETRY_DB: db }))
+    expect(storedEvents(batched).map((e) => e.appVersion)).toEqual(['1.2.3'])
+  })
+
+  it('stores the client event id, so a retried beat is not stored twice', async () => {
+    const { db, batched } = createMockD1()
+    await postHeartbeat({ ...validBeat, events: [makeEvent({ id: eventId })] }, createBindings({ TELEMETRY_DB: db }))
+    expect(storedEvents(batched).map((e) => e.id)).toEqual([eventId])
+  })
+
+  it.each([
+    ['uppercase', eventId.toUpperCase()],
+    ['not a UUID', 'evt-1'],
+    ['a number', 7],
+  ])('stores no id for a %s event id, keeping the event', async (_label, id) => {
+    const { db, batched } = createMockD1()
+    await postHeartbeat({ ...validBeat, events: [makeEvent({ id })] }, createBindings({ TELEMETRY_DB: db }))
+    expect(storedEvents(batched).map((e) => e.id)).toEqual([null])
+  })
+
   it('treats absent properties as an empty object', async () => {
     const { db, batched } = createMockD1()
     await postHeartbeat(
@@ -484,8 +535,10 @@ describe('POST /heartbeat: the PostHog forward', () => {
     )
     expect(res.status).toBe(204)
     expect(fetchMock).toHaveBeenCalledOnce()
-    const [url] = fetchMock.mock.calls[0] as unknown as [string]
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('https://eu.i.posthog.com/batch/')
+    const body = JSON.parse(init.body as string) as { batch: { properties: Record<string, unknown> }[] }
+    expect(body.batch[0].properties).toMatchObject({ source: 'desktop', app_version: '1.2.3' })
   })
 
   it('makes no call without the secret', async () => {

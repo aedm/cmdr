@@ -3,14 +3,19 @@ import { buildPostHogBatch, forwardEventsToPostHog, type ForwardIdentity } from 
 
 const identity: ForwardIdentity = {
   analId: 'anal_0123456789abcdef0123456789abcdef0123',
-  appVersion: '1.2.3',
   osVersion: 'macOS 26.0',
   arch: 'aarch64',
 }
 
 const events = [
-  { event: 'search_used', timestamp: '2026-09-24T10:00:00.000Z', properties: { mode: 'ai' } },
-  { event: 'app_launched', timestamp: '2026-09-24T09:00:00.000Z', properties: {} },
+  {
+    event: 'search_used',
+    timestamp: '2026-09-24T10:00:00.000Z',
+    properties: { mode: 'ai' },
+    appVersion: '1.2.3',
+    id: '3b241101-e2bb-4255-8caf-4136c566a962',
+  },
+  { event: 'app_launched', timestamp: '2026-09-24T09:00:00.000Z', properties: {}, appVersion: '1.2.2', id: null },
 ]
 
 describe('buildPostHogBatch', () => {
@@ -37,6 +42,17 @@ describe('buildPostHogBatch', () => {
     })
   })
 
+  it('tags each event with the version that produced it, not the beat that carried it', () => {
+    const { batch } = buildPostHogBatch('phc_test', identity, events, null)
+    expect(batch.map((e) => e.properties.app_version)).toEqual(['1.2.3', '1.2.2'])
+  })
+
+  it('sends the client event id as `uuid`, which PostHog dedupes on, and none when there is no id', () => {
+    const { batch } = buildPostHogBatch('phc_test', identity, events, null)
+    expect(batch[0].uuid).toBe('3b241101-e2bb-4255-8caf-4136c566a962')
+    expect(batch[1]).not.toHaveProperty('uuid')
+  })
+
   it('turns geo-IP off, since the caller PostHog sees is our Worker', () => {
     const [entry] = buildPostHogBatch('phc_test', identity, events, null).batch
     expect(entry.properties.$geoip_disable).toBe(true)
@@ -48,6 +64,8 @@ describe('buildPostHogBatch', () => {
         event: 'e',
         timestamp: '2026-09-24T10:00:00.000Z',
         properties: { source: 'sneaky', app_version: '9.9.9', arch: 'sparc', $geoip_disable: false },
+        appVersion: '1.2.3',
+        id: null,
       },
     ]
     const [entry] = buildPostHogBatch('phc_test', identity, sneaky, null).batch

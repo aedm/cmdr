@@ -21,6 +21,8 @@ const heartbeatRequiredFields = ['analId', 'appVersion', 'osVersion', 'arch'] as
 const analIdPattern = /^anal_[0-9a-f-]{36}$/
 // What the app's event names look like (`search_used`), plus `$` for PostHog's reserved names.
 const eventNamePattern = /^[a-z0-9_$]{1,100}$/
+// The client's per-event id: a lowercase hyphenated v4 UUID.
+const eventIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 // RFC 3339 date-time: a `Z` or a numeric offset is required, so a zone-less time can't be misread.
 const rfc3339Pattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
 /** No Cmdr build predates this, so an earlier event timestamp is a broken clock. */
@@ -48,6 +50,10 @@ interface RelayedEvent {
   event: string
   timestamp: string
   properties: Record<string, unknown>
+  /** The build that produced the event: its own `appVersion` when valid, else the beat's. */
+  appVersion: string
+  /** The client's per-event UUID, or null when it sent none (or a malformed one). */
+  id: string | null
 }
 
 const insertHeartbeatSql = `INSERT INTO heartbeat (anal_id, app_version, os_version, arch, build_mode, config_json, uptime_seconds)
@@ -55,13 +61,15 @@ const insertHeartbeatSql = `INSERT INTO heartbeat (anal_id, app_version, os_vers
 
 /**
  * Inserts a whole beat's events in ONE statement: they travel as a single JSON parameter
- * (`[[event, occurredAt, propertiesJson], ...]`) and `json_each` unpacks them. One statement per
- * event would put up to 500 statements in the batch, against D1's per-invocation query limit, and a
- * multi-row VALUES list would hit its 100-bound-parameter cap at 16 events.
+ * (`[[event, occurredAt, propertiesJson, appVersion, id], ...]`) and `json_each` unpacks them. One
+ * statement per event would put up to 500 statements in the batch, against D1's per-invocation query
+ * limit, and a multi-row VALUES list would hit its 100-bound-parameter cap at 16 events. `OR IGNORE`
+ * skips an event whose `event_id` is already stored: a retried beat whose first 204 got lost.
  */
-const insertEventsSql = `INSERT INTO analytics_event (anal_id, app_version, event, occurred_at, properties_json)
-     SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]')
-     FROM json_each(?3)`
+const insertEventsSql = `INSERT OR IGNORE INTO analytics_event (anal_id, event, occurred_at, properties_json, app_version, event_id)
+     SELECT ?1, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'),
+            json_extract(value, '$[3]'), json_extract(value, '$[4]')
+     FROM json_each(?2)`
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -128,16 +136,38 @@ function validateHeartbeatShape(beat: Record<string, unknown>): string | null {
   )
 }
 
-/** One event, validated and normalized, or null to drop it. `properties` may be absent (it means `{}`). */
-function parseEvent(raw: unknown, nowMs: number): RelayedEvent | null {
-  if (!isPlainObject(raw)) return null
-  const { event, timestamp, properties } = raw
-  if (typeof event !== 'string' || !eventNamePattern.test(event)) return null
-  if (typeof timestamp !== 'string' || !rfc3339Pattern.test(timestamp)) return null
-  const occurredMs = Date.parse(timestamp)
+/** A string matching `pattern`, or null for anything else. For the optional fields a bad value only unsets. */
+function matching(value: unknown, pattern: RegExp): string | null {
+  return typeof value === 'string' && pattern.test(value) ? value : null
+}
+
+/** The event's timestamp as UTC ISO, or null when it's malformed or outside what a working clock says. */
+function parseOccurredAt(timestamp: unknown, nowMs: number): string | null {
+  const text = matching(timestamp, rfc3339Pattern)
+  if (text === null) return null
+  const occurredMs = Date.parse(text)
   if (Number.isNaN(occurredMs) || occurredMs < earliestEventMs || occurredMs > nowMs + maxEventClockSkewMs) return null
-  if (properties !== undefined && properties !== null && !isPlainObject(properties)) return null
-  return { event, timestamp: new Date(occurredMs).toISOString(), properties: properties ?? {} }
+  return new Date(occurredMs).toISOString()
+}
+
+/**
+ * One event, validated and normalized, or null to drop it. `properties` may be absent (it means `{}`).
+ * A bad `appVersion` or `id` doesn't drop the event, since both are extras: the version falls back to
+ * the beat's, and the id to none.
+ */
+function parseEvent(raw: unknown, beatAppVersion: string, nowMs: number): RelayedEvent | null {
+  if (!isPlainObject(raw)) return null
+  const event = matching(raw.event, eventNamePattern)
+  const timestamp = parseOccurredAt(raw.timestamp, nowMs)
+  const properties = raw.properties ?? {}
+  if (event === null || timestamp === null || !isPlainObject(properties)) return null
+  return {
+    event,
+    timestamp,
+    properties,
+    appVersion: matching(raw.appVersion, versionPattern) ?? beatAppVersion,
+    id: matching(raw.id, eventIdPattern),
+  }
 }
 
 /**
@@ -145,13 +175,13 @@ function parseEvent(raw: unknown, nowMs: number): RelayedEvent | null {
  * logged with a count: past the cap means a client ignored its own limit, and an invalid item means
  * a call site in the app sends something the contract doesn't allow.
  */
-function parseEvents(raw: unknown[] | null | undefined): RelayedEvent[] {
+function parseEvents(raw: unknown[] | null | undefined, beatAppVersion: string): RelayedEvent[] {
   if (!raw) return []
   const nowMs = Date.now()
   const overCap = Math.max(0, raw.length - maxEventsPerBeat)
   const kept: RelayedEvent[] = []
   for (const item of raw.slice(0, maxEventsPerBeat)) {
-    const parsed = parseEvent(item, nowMs)
+    const parsed = parseEvent(item, beatAppVersion, nowMs)
     if (parsed) kept.push(parsed)
   }
   const invalid = Math.min(raw.length, maxEventsPerBeat) - kept.length
@@ -210,7 +240,7 @@ heartbeat.post('/heartbeat', async (c) => {
     return c.json({ error: validationError }, 400)
   }
   const beat = parsed as unknown as Heartbeat
-  const events = parseEvents(beat.events)
+  const events = parseEvents(beat.events, beat.appVersion)
   const config = beat.config ?? null
 
   // The config blob is stored verbatim as a single JSON column (not per-field columns), so new
@@ -228,8 +258,8 @@ heartbeat.post('/heartbeat', async (c) => {
       .bind(beat.analId, beat.appVersion, beat.osVersion, beat.arch, beat.buildMode ?? null, configJson, uptimeSeconds),
   ]
   if (events.length > 0) {
-    const rows = events.map((e) => [e.event, e.timestamp, JSON.stringify(e.properties)])
-    statements.push(db.prepare(insertEventsSql).bind(beat.analId, beat.appVersion, JSON.stringify(rows)))
+    const rows = events.map((e) => [e.event, e.timestamp, JSON.stringify(e.properties), e.appVersion, e.id])
+    statements.push(db.prepare(insertEventsSql).bind(beat.analId, JSON.stringify(rows)))
   }
 
   // AWAITED, and one batch (D1 runs a batch as a transaction): a 2xx tells the client both the beat
@@ -248,7 +278,7 @@ heartbeat.post('/heartbeat', async (c) => {
     c,
     forwardEventsToPostHog(
       c.env.POSTHOG_PROJECT_KEY,
-      { analId: beat.analId, appVersion: beat.appVersion, osVersion: beat.osVersion, arch: beat.arch },
+      { analId: beat.analId, osVersion: beat.osVersion, arch: beat.arch },
       events,
       config,
     ),

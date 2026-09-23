@@ -12,7 +12,11 @@ ALTER TABLE heartbeat ADD COLUMN uptime_seconds INTEGER;
 -- carried it so the app never talks to a third party directly. Keyed by the same random `anal_<uuid>`
 -- as `heartbeat`, and like it, no IP. `occurred_at` is the client's own clock (events can ride a beat
 -- hours after they fired); `received_at` is ours, and is what retention sweeps on, since a client
--- clock can't be trusted to age a row out. `properties_json` holds the event's own PII-free
+-- clock can't be trusted to age a row out. `app_version` is the build that PRODUCED the event, which
+-- can be older than the one whose beat carried it (events spooled before an update). `event_id` is the
+-- client's per-event UUID: a beat whose response got lost is retried with the same events, and the
+-- unique index lets `INSERT OR IGNORE` store each one once. NULL when the client sent none (SQLite's
+-- unique index allows any number of NULLs). `properties_json` holds the event's own PII-free
 -- properties only: identity (version, OS, arch) is on the row, and the config snapshot is on the
 -- heartbeat.
 CREATE TABLE analytics_event (
@@ -22,8 +26,11 @@ CREATE TABLE analytics_event (
     occurred_at TEXT NOT NULL,       -- RFC 3339 UTC, normalized server-side (`YYYY-MM-DDTHH:MM:SS.sssZ`)
     received_at TEXT NOT NULL DEFAULT (datetime('now')),
     app_version TEXT NOT NULL,
-    properties_json TEXT NOT NULL    -- a JSON object, `{}` when the event has none
+    properties_json TEXT NOT NULL,   -- a JSON object, `{}` when the event has none
+    event_id TEXT                    -- client-minted v4 UUID, nullable
 );
+
+CREATE UNIQUE INDEX idx_analytics_event_event_id ON analytics_event(event_id);
 
 CREATE INDEX idx_analytics_event_occurred ON analytics_event(occurred_at);
 CREATE INDEX idx_analytics_event_event_occurred ON analytics_event(event, occurred_at);

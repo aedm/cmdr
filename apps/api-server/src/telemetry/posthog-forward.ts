@@ -12,7 +12,8 @@
  * carries `source`, `app_version`, `os_version`, and `arch` (injected last, so an event property of
  * the same name can't shadow them), and the config snapshot rides as `$set` person properties. Two
  * things are new because the caller changed: each event carries its own client `timestamp` (it may
- * reach us hours after it fired), and `$geoip_disable` is on, because the IP PostHog sees is our
+ * reach us hours after it fired) and the app version that produced it, a `uuid` from the client's event
+ * id so PostHog drops the repeats of a retried beat, and `$geoip_disable` is on, because the IP PostHog sees is our
  * Worker's, and we don't need a country per install anyway. We don't forward the user's IP.
  *
  * Best effort by design: runs in `waitUntil` after the beat is acknowledged, and never throws. A
@@ -25,10 +26,9 @@ const posthogBatchUrl = 'https://eu.i.posthog.com/batch/'
 /** How long one forward may take. `waitUntil` work gets 30 s after the response; this stays well inside. */
 const forwardTimeoutMs = 10_000
 
-/** Who sent the events: the beat's install id plus the build and platform it ran on. */
+/** Who sent the events: the beat's install id plus the platform it ran on. The version is per event. */
 export interface ForwardIdentity {
   analId: string
-  appVersion: string
   osVersion: string
   arch: string
 }
@@ -38,12 +38,17 @@ export interface ForwardEvent {
   event: string
   timestamp: string
   properties: Record<string, unknown>
+  /** The build that produced the event, which can be older than the beat that carried it. */
+  appVersion: string
+  /** The client's per-event UUID, forwarded as `uuid` so PostHog drops a retried beat's repeats. */
+  id: string | null
 }
 
 interface PostHogBatchEntry {
   event: string
   distinct_id: string
   timestamp: string
+  uuid?: string
   properties: Record<string, unknown>
 }
 
@@ -65,10 +70,11 @@ export function buildPostHogBatch(
       event: e.event,
       distinct_id: identity.analId,
       timestamp: e.timestamp,
+      ...(e.id ? { uuid: e.id } : {}),
       properties: {
         ...e.properties,
         source: 'desktop',
-        app_version: identity.appVersion,
+        app_version: e.appVersion,
         os_version: identity.osVersion,
         arch: identity.arch,
         $geoip_disable: true,

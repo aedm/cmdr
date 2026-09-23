@@ -19,6 +19,7 @@ function openDb(): DatabaseSync {
 }
 
 const analId = 'anal_0123456789abcdef0123456789abcdef0123'
+const eventId = '3b241101-e2bb-4255-8caf-4136c566a962'
 
 describe('the heartbeat INSERTs against real SQLite', () => {
   it('stores the beat with its uptime', () => {
@@ -35,14 +36,14 @@ describe('the heartbeat INSERTs against real SQLite', () => {
   it('unpacks every event from the one JSON parameter into its own row and columns', () => {
     const db = openDb()
     const rows = [
-      ['search_used', '2026-09-24T10:00:00.000Z', '{"mode":"ai","count":3}'],
-      ['app_launched', '2026-09-24T09:00:00.000Z', '{}'],
+      ['search_used', '2026-09-24T10:00:00.000Z', '{"mode":"ai","count":3}', '1.2.3', eventId],
+      ['app_launched', '2026-09-24T09:00:00.000Z', '{}', '1.2.2', null],
     ]
-    db.prepare(insertEventsSql).run(analId, '1.2.3', JSON.stringify(rows))
+    db.prepare(insertEventsSql).run(analId, JSON.stringify(rows))
 
     const stored = db
       .prepare(
-        `SELECT anal_id, app_version, event, occurred_at, properties_json, received_at FROM analytics_event ORDER BY id`,
+        `SELECT anal_id, app_version, event, occurred_at, properties_json, received_at, event_id FROM analytics_event ORDER BY id`,
       )
       .all() as Record<string, unknown>[]
     expect(stored).toHaveLength(2)
@@ -52,10 +53,33 @@ describe('the heartbeat INSERTs against real SQLite', () => {
       event: 'search_used',
       occurred_at: '2026-09-24T10:00:00.000Z',
       properties_json: '{"mode":"ai","count":3}',
+      event_id: eventId,
     })
-    expect(stored[1]).toMatchObject({ event: 'app_launched', properties_json: '{}' })
+    expect(stored[1]).toMatchObject({
+      event: 'app_launched',
+      properties_json: '{}',
+      app_version: '1.2.2',
+      event_id: null,
+    })
     // Ours, not the client's: the retention sweep keys on it.
     expect(stored[0].received_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    db.close()
+  })
+
+  it('ignores an event whose id it already has, and keeps every event without one', () => {
+    // A beat stored but whose 204 got lost is retried with the same events.
+    const db = openDb()
+    const rows = JSON.stringify([
+      ['search_used', '2026-09-24T10:00:00.000Z', '{}', '1.2.3', eventId],
+      ['app_launched', '2026-09-24T09:00:00.000Z', '{}', '1.2.3', null],
+    ])
+    db.prepare(insertEventsSql).run(analId, rows)
+    db.prepare(insertEventsSql).run(analId, rows)
+    const counts = db.prepare(`SELECT event, COUNT(*) AS n FROM analytics_event GROUP BY event ORDER BY event`).all()
+    expect(counts.map((r) => ({ ...r }))).toEqual([
+      { event: 'app_launched', n: 2 },
+      { event: 'search_used', n: 1 },
+    ])
     db.close()
   })
 
@@ -63,8 +87,7 @@ describe('the heartbeat INSERTs against real SQLite', () => {
     const db = openDb()
     db.prepare(insertEventsSql).run(
       analId,
-      '1.2.3',
-      JSON.stringify([['e', '2026-09-24T10:00:00.000Z', '{"label":"[1,2]"}']]),
+      JSON.stringify([['e', '2026-09-24T10:00:00.000Z', '{"label":"[1,2]"}', '1.2.3', null]]),
     )
     const row = db.prepare(`SELECT properties_json FROM analytics_event`).get() as { properties_json: string }
     expect(JSON.parse(row.properties_json)).toEqual({ label: '[1,2]' })
