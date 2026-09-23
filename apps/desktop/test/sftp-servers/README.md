@@ -13,6 +13,10 @@ Eleven real OpenSSH servers in Docker, one per thing that breaks an SFTP client,
 `pnpm check` brings the stack up on its own (`desktop-rust-integration-tests` declares it), so a manual `start.sh` is
 for iterating by hand.
 
+❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
+sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and
+the fixture and cut that (`crates/cmdr-sftp/src/volume/connection_drop_test.rs`).
+
 ## What differs from the SMB stack next door
 
 - **First-party.** SMB's compose is vendored from the `smb2` crate and lives under a `.compose/` marker dir with a

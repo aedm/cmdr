@@ -116,7 +116,7 @@ impl SftpVolume {
             // Dropping the transport IS the shutdown; the engine's own drop
             // orders it and both its tasks exit. ❌ Never `Sftp::close()` here:
             // it hangs forever over a `russh` channel (`DETAILS.md` § hazard 1).
-            inner.session.write().await.take();
+            inner.drop_dead_session().await;
             drop(inner);
             if auto_reconnect {
                 run_reconnect_loop(handle).await;
@@ -198,7 +198,14 @@ impl SftpVolumeInner {
             )));
         }
         if self.session.read().await.is_some() {
-            return Ok(());
+            if self.connection_state() == ConnectionState::Connected {
+                return Ok(());
+            }
+            // ❗ The dead session a lost-session notice hasn't got round to
+            // dropping yet: that happens on a spawned task, and the frontend's
+            // reconnect fires on the very event that notice sent. Answering
+            // "fine" here would tell it a server that is still gone is back.
+            self.drop_dead_session().await;
         }
         if !attended {
             self.check_unattended_policy()?;
@@ -218,10 +225,15 @@ impl SftpVolumeInner {
                         self.volume_id.clone(),
                     )));
                 }
-                *self.session.write().await = Some(Arc::new(connection));
+                // ❗ Installed and marked `Connected` under ONE guard, so
+                // `drop_dead_session` never sees the new session beside a
+                // state that still says the old one died.
+                let mut session = self.session.write().await;
+                *session = Some(Arc::new(connection));
                 self.set_auth_rung(rung);
                 self.auth_attempt_spent.store(false, Ordering::Relaxed);
                 self.emit_if_changed(ConnectionState::Connected);
+                drop(session);
                 info!(target: "volume", "sftp volume '{}' is back", self.volume_id);
                 Ok(())
             }
@@ -244,6 +256,21 @@ impl SftpVolumeInner {
             Err(SftpConnectError::Unreachable(what) | SftpConnectError::Transport(what)) => {
                 Err(Stalled::Transient(VolumeError::DeviceDisconnected(what)))
             }
+        }
+    }
+
+    /// Drops the installed session if it's the one that died.
+    ///
+    /// ❗ Only while the state says it's gone. The lost-session notice runs this
+    /// on a spawned task, and by the time it gets the lock a reconnect may
+    /// already have installed a FRESH session; taking that one would leave a
+    /// volume reporting `Connected` with nothing behind it. A fresh session is
+    /// installed under the same guard that marks it `Connected`, so the state
+    /// read here is never stale.
+    async fn drop_dead_session(&self) {
+        let mut session = self.session.write().await;
+        if self.connection_state() != ConnectionState::Connected {
+            session.take();
         }
     }
 
@@ -446,3 +473,7 @@ fn still_worth_reconnecting(handle: &SelfHandle<SftpVolumeInner>) -> Option<Arc<
 #[cfg(test)]
 #[path = "reconnect_test.rs"]
 mod reconnect_test;
+
+#[cfg(test)]
+#[path = "connection_drop_test.rs"]
+mod connection_drop_test;

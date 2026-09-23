@@ -308,6 +308,21 @@ There is no watcher here, so nothing notices a dead session until something uses
 `Connected` → `Disconnected` edge, drops the transport, and starts the backoff loop in `reconnect.rs`. ❗ A delegator
 added without `noting` leaves a volume showing as connected until somebody else's call notices.
 
+**A server that goes SILENT is given up on after 30 s**, and only because the session sends keepalives
+(`transport::KEEPALIVE_INTERVAL` 10 s, torn down after `KEEPALIVE_MAX_UNANSWERED` 2 go unanswered). A NAS asleep, Wi-Fi
+gone, or a VPN dropped closes nothing: SFTP has no request deadline and the OS keeps an idle TCP connection for hours, so
+without them every operation on such a volume waited forever. The teardown ends the engine, every waiting operation
+answers `DeviceDisconnected`, and the first one starts the backoff. Any byte from the server resets the clock (a busy
+transfer never sends one), and `sshd` answers a keepalive outside the `sftp-server` process, so a server busy with one
+long request still does. 30 s matches the silence `cmdr-smb` allows.
+
+❗ **An installed session counts as live only while the state says `Connected`.** `note_lost_session` drops the dead
+session on a spawned task, and the frontend's reconnect fires on the very event that notice sent, so it can land first.
+`rebuild` treats a session still installed under a `Disconnected` state as the dead one (drops it and dials) rather
+than answering "fine" for a server that is still gone. The other half: a fresh session is installed and marked
+`Connected` under ONE write guard, and `drop_dead_session` takes only under a non-`Connected` state, so the late task
+can never take the fresh one.
+
 **The state is three-valued** (`state.rs`), where SMB's is two: `NeedsCredentials` is a state this backend RESTS in,
 because a rung that redials out of the secret store stops after one refusal and a keyboard-interactive one never dials
 at all. Every report goes through `emit_if_changed`, so a server that is down produces one event rather than one per
@@ -852,8 +867,8 @@ Beyond the four required methods, `volume_impl.rs` states these deliberately:
 - **`copy_within` is answered where the server can do it** (§ "Copying inside one server"), and `NotSupported`
   otherwise.
 - **`retirement` is published, `on_superseded` retires the id, `attempt_reconnect` and `reconnect_with_credentials` are
-  answered** (§ "Coming back"). ❗ `connection_liveness` stays `None`: this stack has no keepalive, and elapsed silence
-  is not an answer.
+  answered** (§ "Coming back"). ❗ `connection_liveness` stays `None`: the keepalive's count lives inside `russh`, which
+  exposes no pollable reading, and elapsed silence is not an answer.
 - **`get_space_info` → `NotSupported`, `space_poll_interval` → `None`.** `statvfs@openssh.com` is **not reachable from
   this crate stack**: `openssh-sftp-client-lowlevel` has no `send_statvfs_request`, and `openssh-sftp-protocol` carries
   only the extension _name_ so the hello parses. There is no `support_statvfs` predicate either — the predicates are
@@ -1112,6 +1127,11 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
 - **Here**: the contract, the trust table, path translation, the auth ladder, the reading and writing surfaces, the
   crate hazards, and calling a connect off (`volume/cancel_test.rs`, plus the `phase` cells in `transport_test.rs`).
   These are white-box tests — several build a volume with no session behind it.
+- **A real drop** is `volume/connection_drop_test.rs`: the server refused and then back (reported down with a typed
+  error, back on its own; with the switch off, no dial until a person asks), and the server silent (given up on at
+  `SILENT_SERVER_DEADLINE`, under a paused clock). ❗ The cut is a `cmdr_fs::testing::tcp_proxy::TcpProxy` the cell
+  owns, ❌ never a paused or stopped container: the stack is shared by lease. `reconnect_test.rs` covers the gates with
+  `simulate_session_loss`, which proves the policy and never the wire.
 - ❗ **A write cell picks the server that could let its bug through.** `conformance_test.rs` runs on
   `sftp-fixture-openssh` because it HAS `posix-rename@openssh.com`; the same cells against `sftp-fixture-noposixrename`
   pass while a clobbering rename ships. The byte-exactness cell that matters runs on `sftp-fixture-smalllimits`, because

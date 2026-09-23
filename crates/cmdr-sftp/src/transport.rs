@@ -91,6 +91,32 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 /// up. A server with no `sftp-server` installed simply never answers.
 const SUBSYSTEM_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// How long a live session may hear NOTHING from its server before it asks
+/// whether anyone is there (`keepalive@openssh.com`).
+///
+/// ❗ Without it a server that goes silent (a NAS asleep, Wi-Fi gone, a VPN
+/// dropped) holds every operation forever: nothing closes the socket, SFTP has
+/// no request deadline, and the OS doesn't give up on an idle TCP connection
+/// for hours. Any byte from the server resets the clock, so a busy transfer
+/// never sends one, and `sshd` answers it outside the `sftp-server` process, so
+/// a server busy with a long request still does.
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+
+/// How many keepalives may go unanswered before the session is torn down.
+///
+/// The teardown ends the SFTP engine, so every waiting operation answers
+/// `DeviceDisconnected` and the first one starts the backoff loop
+/// (`volume/reconnect.rs`).
+const KEEPALIVE_MAX_UNANSWERED: u32 = 2;
+
+/// How long a server can be silent before an operation on it is given up on:
+/// `russh` gives up on the tick AFTER the last unanswered keepalive. The same
+/// 30 s of silence `cmdr-smb` allows (via `smb2`'s own deadline). Named for the
+/// cell that holds the promise (`volume/connection_drop_test.rs`).
+#[cfg(test)]
+pub(crate) const SILENT_SERVER_DEADLINE: Duration =
+    Duration::from_secs(KEEPALIVE_INTERVAL.as_secs() * (KEEPALIVE_MAX_UNANSWERED as u64 + 1));
+
 /// The channel window Cmdr advertises for data it RECEIVES, in bytes.
 ///
 /// `russh`'s default is OpenSSH's own 2 MiB, and at 50 ms RTT that is the
@@ -642,10 +668,13 @@ pub fn approve(host: &VolumeHost, server: &str, port: u16, algorithm: &str, fing
     trust::record_approval(host.host_keys(), server, port, algorithm, fingerprint);
 }
 
-/// The client config, with the channel window raised and key negotiation pinned.
+/// The client config, with the channel window raised, the keepalive armed, and
+/// key negotiation pinned.
 fn build_config(pinned: &[String]) -> client::Config {
     let mut config = client::Config {
         window_size: CHANNEL_WINDOW_BYTES,
+        keepalive_interval: Some(KEEPALIVE_INTERVAL),
+        keepalive_max: KEEPALIVE_MAX_UNANSWERED as usize,
         ..client::Config::default()
     };
     if !pinned.is_empty() {

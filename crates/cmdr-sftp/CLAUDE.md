@@ -43,7 +43,8 @@ user-facing words.
 - **❌ A secret is offered once unattended, then a person** (`auth::reconnect_policy`), on both the password and the
   encrypted-key rungs.
 - **❗ Operations ARE how a dead session is found** (no watcher here), so every wire-touching delegator in
-  `volume_impl.rs` wraps itself in `noting`.
+  `volume_impl.rs` wraps itself in `noting`. ❌ Never drop the keepalive in `build_config`: it's the only thing that
+  ends a wait on a SILENT server (30 s).
 - **❗ Report transitions, never states** (`state.rs`); a retired volume reports nothing.
 - **⚠️ A non-UTF-8 filename kills the SESSION**, not just the listing.
 - **❗ Every `#[ignore]`d test here is a Docker cell** (the lane runs `--run-ignored only`). ❌ Never gate on
