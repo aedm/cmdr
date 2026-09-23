@@ -521,7 +521,7 @@ pub fn early_load_max_log_storage_mb() -> Option<u64> {
 ///
 /// Empty/absent ⇒ use the model the shared `ai/` provider is already configured with (the
 /// v1 default, zero extra config). A non-empty value is a dedicated model id for Ask Cmdr,
-/// layered OVER the shared `ai/` provider config (agent-spec D43: two slots, interactive +
+/// layered OVER the shared `ai/` provider config (agent decision D43: two slots, interactive +
 /// a later bulk slot). The bulk slot slots in beside this as its own additive key
 /// (`askCmdr.bulkModel`), no migration. Only the model is slot-specific; provider on/off,
 /// keys, and base URLs stay single-sourced in the `ai/` config (D49: extend, don't fork).

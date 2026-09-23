@@ -3,7 +3,7 @@
 //! The store (`agent/store/proposals/`) owns rows, the lifecycle machine, and the claim
 //! transaction. This layer owns everything above them that a row can't: turning a selector
 //! into a frozen op list against the drive index, and reporting the one metric that says
-//! whether the feature is worth having (acceptance rate, agent-spec D46).
+//! whether the feature is worth having (acceptance rate, agent decision D46).
 //!
 //! ## The guiding principle
 //!

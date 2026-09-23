@@ -1,6 +1,6 @@
 //! The Ask Cmdr agent's in-process tool layer: the reads, the proposals, and its own memory.
 //!
-//! One authored registry, two consumer views (agent-spec D49): the agent's tools
+//! One authored registry, two consumer views (agent decision D49): the agent's tools
 //! are `consumers: [Agent], access: Read` entries in the shared `mcp_tools!` table,
 //! and this module is where their handlers, schemas, and typed result shapes live
 //! ([`read`]) and where the runtime reaches them:

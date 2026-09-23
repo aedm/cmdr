@@ -28,7 +28,7 @@ pub use config::McpConfig;
 pub use dialog_state::SoftDialogTracker;
 pub use pane_state::PaneStateStore;
 
-// The agent runtime (`crate::agent`) is the registry's second consumer (agent-spec D49):
+// The agent runtime (`crate::agent`) is the registry's second consumer (agent decision D49):
 // it dispatches the read-only `Consumer::Agent` view in-process. These are the exact
 // surface it needs — the dispatch entry, the agent view, the consumer/access tokens, and
 // the tool result types its handlers return. Deliberately narrow so the agent can't reach

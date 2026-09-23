@@ -1,6 +1,6 @@
 //! PII-free PostHog events for the suggestion lifecycle.
 //!
-//! Acceptance rate is the agent's north-star metric (agent-spec D46): a suggestion feature
+//! Acceptance rate is the agent's north-star metric (agent decision D46): a suggestion feature
 //! whose suggestions get rejected is worse than none, and the only way to know is to count
 //! both. These three events are what answer it.
 //!

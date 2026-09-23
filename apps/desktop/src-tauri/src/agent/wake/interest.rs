@@ -10,8 +10,8 @@ use super::EventBundle;
 
 /// Wake within seconds: something arrived somewhere that matters.
 ///
-/// The three tier values are coarse on purpose and want tuning against real use (agent-spec
-/// §18); what has to hold is the ORDER, which `wake_delay` is tested for.
+/// The three tier values are coarse on purpose and want tuning against real use
+/// (`wake/DETAILS.md`); what has to hold is the ORDER, which `wake_delay` is tested for.
 pub const DEFAULT_HOT_DELAY: Duration = Duration::from_secs(5);
 
 /// Every cadence the `askCmdr.wakeDelay` slider can land on, in seconds, shortest first.

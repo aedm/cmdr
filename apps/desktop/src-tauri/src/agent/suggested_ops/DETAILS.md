@@ -54,7 +54,7 @@ theirs.
 
 ## The metric
 
-Acceptance rate is the agent's north-star metric (agent-spec D46): a suggestion feature whose suggestions get rejected
+Acceptance rate is the agent's north-star metric (agent decision D46): a suggestion feature whose suggestions get rejected
 is worse than none. `analytics.rs` emits `suggestion_group_proposed`, `suggestion_group_approved`, and
 `suggestion_group_rejected`, each carrying the verb token and a coarse count bucket through the shared
 `analytics::item_count_bucket` (shared so two dashboards can't end up with two ideas of what "a lot" means).

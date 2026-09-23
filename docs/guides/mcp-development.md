@@ -37,7 +37,7 @@ every view, so they can't drift:
 - `tool_gate()` + `TokenGate` — the bearer-token classification `auth.rs` reads.
 - `tool_consumers()` / `tool_access()` — the `consumers` (exposure) and `access` (read/write) dimensions.
 
-Two AI consumers share this one registry (agent-spec D49: extend it, don't fork a parallel agent table). See
+Two AI consumers share this one registry (agent decision D49: extend it, don't fork a parallel agent table). See
 `src/mcp/DETAILS.md` § Consumer and access views for the model and why `access` is a stronger read-only guarantee than
 the `TokenGate`.
 

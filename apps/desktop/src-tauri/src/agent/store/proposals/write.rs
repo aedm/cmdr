@@ -17,7 +17,7 @@ pub struct NewSweep {
     /// The chat thread this came out of, when it came out of one. A background wake has
     /// none, and deleting the thread later NULLs this rather than deleting the sweep.
     pub conversation_id: Option<i64>,
-    /// Which model produced it. Provenance only: no logic reads it (agent-spec D32).
+    /// Which model produced it. Provenance only: no logic reads it (agent decision D32).
     pub created_by_model: Option<String>,
     /// The agent's words for the sweep as a whole.
     pub rationale: Option<String>,

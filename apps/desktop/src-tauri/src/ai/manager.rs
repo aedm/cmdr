@@ -186,7 +186,7 @@ pub fn resolve_backend() -> BackendResolution {
 /// local provider, whose model is fixed) resolves exactly like [`resolve_backend`]. The
 /// slot layers a model choice OVER the shared `ai/` provider config (readiness, keys, base
 /// URL, on/off all come from `resolve_backend`), so it never forks provider management
-/// (agent-spec D49).
+/// (agent decision D49).
 pub fn resolve_backend_with_model(model_override: Option<&str>) -> BackendResolution {
     let base = resolve_backend();
     match model_override {

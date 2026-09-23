@@ -18,7 +18,7 @@
 //! know about. The count and coverage tests are then cheap guards over a property that's true by
 //! construction.
 //!
-//! **Two view dimensions, why both (agent-spec D49/D59):** one authored registry feeds two
+//! **Two view dimensions, why both (agent decisions D49/D59):** one authored registry feeds two
 //! consumers. `consumers` is the exposure axis — the agent's dispatch view physically excludes
 //! every tool not tagged `[agent]`, so its write path is absent by construction, not policy.
 //! `access` is a stronger guarantee than the gate can give: [`TokenGate::Open`] covers

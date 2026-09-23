@@ -175,7 +175,7 @@ impl ChangeCounters {
 }
 
 /// One folder's changes within one window: what the coalescer produces, and what an inbox row
-/// would hold (agent-spec §4.2's `agent_inbox`).
+/// would hold (`main.db`'s `agent_inbox`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventBundle {
     pub folder: String,

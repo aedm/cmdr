@@ -1,6 +1,6 @@
 # Agent store (`agent/store/`)
 
-`main.db`: the agent's durable store, a peer to `operation-log.db` in the app data dir (agent-spec D1/D3).
+`main.db`: the agent's durable store, a peer to `operation-log.db` in the app data dir (agent decisions D1/D3).
 Conversations, messages (typed `content_blocks` JSON), an FTS5 index over message text, a per-day cost meter, and the
 proposal spine. Depth: `DETAILS.md`.
 

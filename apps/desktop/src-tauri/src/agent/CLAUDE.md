@@ -42,5 +42,5 @@ the surface, so every later slice grows here too.
   conversation-keyed event a wake shares. Register a new command in the `ipc.rs` manifest. Frontend:
   `apps/desktop/src/lib/ask-cmdr/CLAUDE.md`.
 
-Layout rationale, the proposal tier, and the **invariants register** (where a bare `(invariant 6)` citation resolves):
-`DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
+Layout rationale, the proposal tier, the **invariants register** (where a bare `(invariant 6)` citation resolves), the
+principles, and the **decision log** (where `agent decision D49` resolves): `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

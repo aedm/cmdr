@@ -607,7 +607,7 @@ export interface SettingsValues {
   // Ask Cmdr
   // The interactive-slot model override (empty = use the shared `ai/` provider's model).
   // Read fresh backend-side each send (`load_ask_cmdr_interactive_model`); a later bulk
-  // slot slots in as its own additive key with no migration (agent-spec D43).
+  // slot slots in as its own additive key with no migration (agent decision D43).
   'askCmdr.interactiveModel': string
   // The prompt budget one message may claim; `'auto'` follows the model's window. Read fresh
   // backend-side each send (`load_ask_cmdr_chat_memory_size`), like the model override above.

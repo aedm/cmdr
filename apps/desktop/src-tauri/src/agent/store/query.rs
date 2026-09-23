@@ -711,7 +711,7 @@ const CONSENT_VERSION_KEY: &str = "ask_cmdr_consent_version";
 const CONSENT_AT_KEY: &str = "ask_cmdr_consent_at";
 
 /// A recorded consent: which copy version the user accepted, and when. Stored in the
-/// durable `main.db` (agent state, not a preference — agent-spec D56), so it lives beside
+/// durable `main.db` (agent state, not a preference — agent decision D56), so it lives beside
 /// the chats it governs and is `sqlite3`-inspectable. Wire type (the consent record).
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]

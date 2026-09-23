@@ -67,7 +67,7 @@ pub enum AgentSlot {
 
 /// Resolve the Ask Cmdr interactive slot into a ready LLM. The slot layers a dedicated
 /// model choice (`askCmdr.interactiveModel`, read fresh) OVER the shared `ai/` provider
-/// config (agent-spec D43): provider on/off, keys, and base URLs stay single-sourced in
+/// config (agent decision D43): provider on/off, keys, and base URLs stay single-sourced in
 /// `ai/`; only the model is slot-specific, so the bulk slot slots in later with no
 /// migration (D49). An empty override uses the model the `ai/` provider is configured with.
 /// Returns the backend plus the provider/model the cost meter records, or a typed error

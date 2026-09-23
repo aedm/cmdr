@@ -437,7 +437,7 @@ mcp_tools! {
     },
 
     // ── Photo search ──────────────────────────────────────────────────────────
-    // Shared read (agent-spec D49: one authored entry, both consumer views). The in-app
+    // Shared read (agent decision D49: one authored entry, both consumer views). The in-app
     // Ask Cmdr agent AND external MCP clients search enriched photos. `access: Read` — it
     // only reads the media index. Handler shapes the `media_index` read API and never emits
     // image bytes (text-only DTO). PRIVACY: paths + the in-image OCR snippet / tag it returns
@@ -481,7 +481,7 @@ mcp_tools! {
     },
 
     // ── Agent read-only tools ─────────────────────────────────────────────────
-    // The Ask Cmdr agent's own read-only surface (agent-spec D49: one authored registry, two
+    // The Ask Cmdr agent's own read-only surface (agent decision D49: one authored registry, two
     // consumer views). `consumers: [Agent]`, `access: Read` — filtered out of `get_all_tools()`,
     // so the ai-client wire snapshot is unchanged. Handlers, schemas, and typed result shapes are
     // colocated in `crate::agent::tools::read` (feature-organized). `gate: Open` is inert here (the

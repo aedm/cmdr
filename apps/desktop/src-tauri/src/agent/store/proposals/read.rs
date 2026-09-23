@@ -40,7 +40,7 @@ pub struct ProposalSweep {
     /// cascaded when that thread is deleted, so the decision record outlives it.
     pub conversation_id: Option<i64>,
     pub created_at: i64,
-    /// Provenance only: no logic reads it (agent-spec D32).
+    /// Provenance only: no logic reads it (agent decision D32).
     pub created_by_model: Option<String>,
     /// The agent's words for the sweep as a whole.
     pub rationale: Option<String>,

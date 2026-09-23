@@ -1,7 +1,7 @@
 //! The forward-migration ladder for `main.db` — the second in this codebase, mirroring
 //! the operation log's (`operation_log/store/migrations.rs`), which proved the pattern.
 //!
-//! `main.db` lives for years (agent-spec D1/D3), so it never delete-and-recreates on a
+//! `main.db` lives for years (agent decisions D1/D3), so it never delete-and-recreates on a
 //! schema change: it migrates forward. [`run_migrations`] compares the stored
 //! `meta.schema_version` against the ladder and, for each step newer than the stored
 //! version, runs that step's `up` inside a transaction and bumps the version — stepwise,
@@ -379,7 +379,7 @@ fn migrate_v5_rename_evidence(tx: &Transaction<'_>) -> rusqlite::Result<()> {
 }
 
 /// Version 6: `agent_inbox` — the folder-window bundles waiting for a deliver-by deadline
-/// (agent-spec §4.2, §6.2).
+/// (agent decision D17).
 ///
 /// Three shapes here are deliberate:
 ///

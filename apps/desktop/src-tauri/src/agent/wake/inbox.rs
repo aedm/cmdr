@@ -1,6 +1,6 @@
 //! The inbox: bundles waiting with deliver-by deadlines, and what a restart does to them.
 //!
-//! The pipeline's only real output decision is WHEN to wake the agent (agent-spec §6.2). The
+//! The pipeline's only real output decision is WHEN to wake the agent (agent decision D17). The
 //! interest scorer decides whether something matters; this turns that into a deadline, holds
 //! the row until something wakes, and hands everything over at once when it does.
 //!

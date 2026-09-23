@@ -6,7 +6,7 @@ use crate::mcp::tool_registry::{
 
 // ── Consumer + access dimensions (the no-write gate) ──────
 //
-// One authored registry, two consumer views (agent-spec D49/D59). `consumers` is the exposure
+// One authored registry, two consumer views (agent decisions D49/D59). `consumers` is the exposure
 // axis; `access` is a stronger guarantee than `TokenGate::Open` can give (Open covers
 // destructive-but-prompting ops). These tests pin the agent view to exactly its authored
 // `[agent]` entries AND require every one to be `Access::Read` or `Access::Propose`, never

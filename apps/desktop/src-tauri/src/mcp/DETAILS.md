@@ -86,7 +86,7 @@ before it runs, and its answer reaches a person as a fact. An ai-client schema m
 
 ### Consumer and access views
 
-One authored registry serves two consumers (agent-spec D49: **extend the consolidated registry, don't fork a parallel
+One authored registry serves two consumers (agent decision D49: **extend the consolidated registry, don't fork a parallel
 agent-only table**). Two per-entry dimensions express the split:
 
 - **`consumers`** (`&[Consumer]`, `AiClient` / `Agent`): the exposure axis. `get_all_tools()` returns entries whose

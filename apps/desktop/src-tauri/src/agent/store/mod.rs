@@ -2,7 +2,7 @@
 //! pragmas, and the conversation / message / FTS / cost-meter query layer.
 //!
 //! The app's second durable DB, a peer to `operation-log.db` in the app data dir
-//! (agent-spec D1/D3). Like the operation log and unlike every disposable per-volume
+//! (agent decisions D1/D3). Like the operation log and unlike every disposable per-volume
 //! cache here, it lives for years, so it carries a forward-migration ladder
 //! (`migrations`) and refuses to wipe on a version bump. It reuses that template exactly;
 //! the one net-new piece is the external-content FTS5 index over message text (the

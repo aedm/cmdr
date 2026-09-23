@@ -1,7 +1,7 @@
 # Agent tools (`agent/tools/`)
 
 Ask Cmdr's in-process tool layer: read families, propose families, and the two memory tools, authored as
-`consumers: [Agent]` entries of the shared `mcp_tools!` registry (agent-spec D49, one authored source), with handlers
+`consumers: [Agent]` entries of the shared `mcp_tools!` registry (agent decision D49, one authored source), with handlers
 and typed result shapes colocated here.
 
 ## Module map

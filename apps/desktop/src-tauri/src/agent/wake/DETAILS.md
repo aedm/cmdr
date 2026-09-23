@@ -3,7 +3,7 @@
 Pull-tier docs for `agent/wake/`. Must-knows: `CLAUDE.md`. What a wake produces:
 `../suggested_ops/DETAILS.md`.
 
-## The tap point (agent-spec 18.14, resolved)
+## The tap point
 
 The agent subscribes as a **second observer inside `process_live_batch`**
 (`crates/cmdr-index/src/indexing/watch/event_loop/live.rs`), where `ChurnObserver` already sits. Four things decide it:
@@ -60,7 +60,7 @@ one pathological folder cannot out-shout every other bundle in the inbox.
 which reports `Floored` and `Unscored` as the same `0.0`. `UNKNOWN_IMPORTANCE_WEIGHT` is 0.35: above zero so a folder
 the scorer has not reached stays visible, below any folder actually scored as mattering.
 
-**Both numbers are tuning knobs, not settled design** (agent-spec 18.5). The importance weight and the hot/warm
+**Both numbers are tuning knobs, not settled design** (`docs/specs/later/ai/wake-loop-follow-ups.md`). The importance weight and the hot/warm
 thresholds stay guesses; what the user gets to move is the CADENCE.
 
 ## The three tiers, and the one number the user moves
@@ -279,7 +279,6 @@ be overdue; deferring a null one would hand every cold row a deadline at each la
 **A deadline missed while the app was closed waits out `SETTLE_AFTER_LAUNCH` (60s).** Launch replays the index journal,
 and that roll-forward is itself a burst of corrected events; waking mid-burst would have the agent report the app own
 catch-up as though the user had just done it. Announcing your own noise back at the user is worse than silence.
-agent-spec 6.4 covers restart reconciliation but does not say this.
 
 **Rows whose newest change is older than `STALE_AFTER` (7 days) are dropped and COUNTED.** Pre-proposal signal goes
 stale in a way a proposal never does: a proposal is a decision the user still owes an answer to, while a three-week-old

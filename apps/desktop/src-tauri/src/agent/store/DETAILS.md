@@ -8,7 +8,7 @@ built on the operation log's proven template (`operation_log/store/`); this file
 
 `main.db` holds agent state (conversations, messages, cost) and lives for years, so it can't be a
 delete-and-recreate cache like the drive index or `importance.db`. The operation-log effort built the forward-migration
-ladder as a reusable template (agent-spec D3: a second consumer proves it generalizes). `store/migrations.rs` and
+ladder as a reusable template (agent decision D3: a second consumer proves it generalizes). `store/migrations.rs` and
 `store/connection.rs` mirror the operation log's structure closely: a `meta` anchor table outside the ladder, one
 transaction per step, refuse-downgrade, delete-and-recreate only on the typed corrupt-DB sqlite code, and WAL +
 incremental auto-vacuum pragmas with NO custom collation (so the file stays `sqlite3`-inspectable). The two ladders are
