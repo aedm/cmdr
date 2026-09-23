@@ -775,18 +775,14 @@ mod approved_op_parity_tests;
 mod journal_capture_tests;
 #[cfg(test)]
 mod journal_capture_volume_tests;
-// The sources the cancel scenarios hold still at a chunk boundary: an in-memory
-// upload source, and a live server's own reads.
+// The sources the cancel scenarios hold still at a chunk boundary.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_gated_source_test_support;
 // The transfer scenarios the WebDAV, SFTP, and ADB suites below share, written
 // once and driven against every one of those backends.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_transfer_test_support;
-// What copy and move MEAN on a server that already holds the user's files
-// (merges, policies, moves both ways, same-server work), its data-safety cells,
-// its look-alike names, and its archives: backend-blind scenarios the SFTP and
-// SMB suites both drive.
+// Merges, moves, safety, look-alikes, archives: the SFTP and SMB suites drive these.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_archive_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
@@ -824,11 +820,8 @@ mod settle_event_tests;
 // The one cooperative-stop boundary every serial loop here asks at.
 #[cfg(test)]
 mod stop_or_park_tests;
-// The app-side SFTP suites: real copies in BOTH directions through
-// `copy_between_volumes`, then merges, policies, moves, data safety, look-alike
-// names, and archives, each delegating to the shared `network_*` scenarios above.
-// Gated on the Docker fixture, and named for the `sftp_integration_` lane the
-// check runner selects on.
+// The app-side SFTP suites, delegating to the `network_*` scenarios above. Gated
+// on the Docker fixture and named for the `sftp_integration_` lane.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod sftp_archive_integration_test;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
