@@ -383,6 +383,22 @@ pub struct SmbFellBackToOsMount {
     pub reason: smb_connect_failure::UpgradeFailure,
 }
 
+/// Typed `smb-os-mount-notice-withdrawn` Tauri event: the notice a
+/// [`SmbFellBackToOsMount`] raised for this volume has nothing left to offer, so
+/// the frontend takes it down.
+///
+/// Emitted when the share's "Use Cmdr's fast direct connection" switch goes off
+/// (`smb_direct_switch`): the notice's button would do exactly what the user just
+/// opted out of. The other two ways a notice goes moot (the share goes direct, or
+/// leaves the list) already ride `volumes-changed`. Lives here for the same
+/// `collect_events!` reason as the two types above it.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SmbOsMountNoticeWithdrawn {
+    /// The volume the withdrawn notice named, matching its `SmbFellBackToOsMount::volume_id`.
+    pub volume_id: String,
+}
+
 /// Current network discovery state, accessible globally.
 struct NetworkDiscoveryState {
     hosts: HashMap<String, NetworkHost>,

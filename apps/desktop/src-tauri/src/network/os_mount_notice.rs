@@ -79,9 +79,9 @@ pub(crate) enum FallbackNotice {
 /// A server the user was told is on the slow path, and the share the notice named.
 struct Told {
     server: String,
-    /// The volume id of the share the notice named. The frontend retires that
-    /// notice once this volume leaves the list, and that's when the server stops
-    /// counting as told.
+    /// The volume id of the share the notice named. The notice retires once this
+    /// volume leaves the list or its direct connection is switched off, and that's
+    /// when the server stops counting as told.
     volume_id: String,
 }
 
@@ -178,6 +178,40 @@ pub(crate) fn clear_os_mount_notice(server: &str) {
 /// a remount, for the rest of the run, with no notice on screen to account for it.
 pub(crate) fn forget_unmounted_volume(volume_id: &str) {
     OS_MOUNT_NOTICES.lock_ignore_poison().forget_volume(volume_id);
+}
+
+/// Takes back the notice naming `volume_id`: forgets its server here, and tells
+/// the frontend to take the toast down.
+///
+/// Called when the share's direct connection is switched off, which leaves the
+/// notice's "Connect directly" button offering exactly what the user just opted
+/// out of. Forgetting follows [`forget_unmounted_volume`]'s reasoning: with the
+/// notice gone, a server still counted as told would mute a later genuine
+/// fallback on another of its shares with nothing on screen to account for it.
+/// Harmless when no notice named this volume: nothing is forgotten, and the
+/// frontend finds no toast to dismiss.
+pub(crate) fn withdraw_os_mount_notice(volume_id: &str) {
+    OS_MOUNT_NOTICES.lock_ignore_poison().forget_volume(volume_id);
+    use tauri_specta::Event;
+    if let Some(app) = app_handle()
+        && let Err(e) = (crate::network::SmbOsMountNoticeWithdrawn {
+            volume_id: volume_id.to_string(),
+        })
+        .emit(&app)
+    {
+        log::warn!("Failed to emit smb-os-mount-notice-withdrawn: {}", e);
+    }
+}
+
+/// Whether the run-wide ledger counts `server` as told, for tests that drive it
+/// through the public doors.
+#[cfg(test)]
+pub(crate) fn server_is_told(server: &str) -> bool {
+    OS_MOUNT_NOTICES
+        .lock_ignore_poison()
+        .told
+        .iter()
+        .any(|told| same_server(&told.server, server, &[]))
 }
 
 #[cfg(test)]

@@ -594,6 +594,16 @@ counted as told would stay silent through a genuine fallback after a remount, wi
 the silence. The ledger remembers which volume each server's notice named, and only that volume's departure counts:
 another of the server's shares unmounting leaves the notice up, so the server stays told.
 
+**So does switching that share's direct connection off, which also withdraws the notice** (`withdraw_os_mount_notice`,
+called from `smb_direct_switch::set_direct_connection_for` on every switch-off). The notice's button would otherwise
+offer exactly what the user just opted out of. The volume list doesn't carry the switch, so the frontend can't infer
+this one: the backend forgets the ledger entry (same per-volume rule as the unmount) and emits
+`SmbOsMountNoticeWithdrawn { volume_id }`, which the frontend bridge turns into a dismissal. Living in the switch's one
+volume-keyed setter means every route to it (the switcher row today, MCP or anything later) withdraws the notice
+without remembering to. A later fallback on another of the server's shares still speaks, since no notice is on screen
+for it anymore; the switched-off share itself never dials, so it can't raise one. Pinned by
+`smb_direct_switch_test.rs::switching_off_withdraws_the_shares_slow_connection_notice`.
+
 ## The per-share direct-connection switch
 
 "Use Cmdr's fast direct connection" is a per-SHARE choice, defaulting to on. Running a direct session is a property of
@@ -632,7 +642,9 @@ it. The OS mount stayed up underneath the whole time, so a `LocalPosixVolume` at
 saved BEFORE the lock is taken, so an auto upgrade already waiting on it sees the switch off. Now rather than at the
 next mount because the switch sits beside the connection dot, and a dot that stays green reads as a switch that
 didn't work. On only saves; the frontend then runs "Connect directly" for an `os_mount` share, which owns sign-in and
-the toasts.
+the toasts. Every off also withdraws the share's slow-connection notice (§ "Telling the user about a kernel-mount
+fallback"), so ❗ a new route that switches a share off goes through `set_direct_connection_for`, not
+`known_shares::set_direct_connection_enabled` directly.
 
 ## A pane on an OS-mounted share tries the direct connection
 

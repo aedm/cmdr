@@ -295,6 +295,10 @@ pub fn direct_connection_enabled(server_names: &[&str], share: &str) -> bool {
 /// persists it. Every "Connect directly" calls this with `true`: asking for the direct
 /// session is consent to it, so the switch can't strand someone in a state they can't
 /// click their way out of.
+///
+/// ❗ Switching OFF goes through `smb_direct_switch::set_direct_connection_for`, which
+/// also withdraws the share's slow-connection notice; calling this with `false`
+/// directly would leave that notice offering what the user just opted out of.
 pub fn set_direct_connection_enabled(server_name: &str, share: &str, enabled: bool) {
     let hosts = crate::network::get_discovered_hosts();
     {

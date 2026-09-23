@@ -13,6 +13,7 @@ import type {
   SignInShape,
   SmbCredentials,
   SmbFellBackToOsMount,
+  SmbOsMountNoticeWithdrawn,
   UpgradeResult,
 } from '$lib/ipc/bindings'
 import { throwIpcError } from './ipc-types'
@@ -590,6 +591,20 @@ export function onNetworkHostContextAction(handler: (payload: NetworkHostContext
  */
 export function onSmbFellBackToOsMount(handler: (payload: SmbFellBackToOsMount) => void): Promise<UnlistenFn> {
   return events.smbFellBackToOsMount.listen((event) => {
+    handler(event.payload)
+  })
+}
+
+/**
+ * Subscribes to the backend taking back a slow-connection notice it raised with
+ * `smb-fell-back-to-os-mount`: the share's direct connection was switched off, so
+ * the notice's retry has nothing left to offer. Call the returned `UnlistenFn` on
+ * destroy.
+ */
+export function onSmbOsMountNoticeWithdrawn(
+  handler: (payload: SmbOsMountNoticeWithdrawn) => void,
+): Promise<UnlistenFn> {
+  return events.smbOsMountNoticeWithdrawn.listen((event) => {
     handler(event.payload)
   })
 }

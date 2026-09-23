@@ -99,3 +99,39 @@ async fn a_mount_that_doesnt_answer_saves_nothing() {
 
     assert_eq!(answer, DirectConnectionSwitch::MountNotResponding);
 }
+
+/// Switched off, a share's slow-connection notice has nothing left to offer: its
+/// button would do exactly what the user just opted out of. The withdrawal happens
+/// here, so every route to the switch takes the notice down. Switching ON leaves it:
+/// the connect that follows may still fail, and then the notice still holds.
+#[tokio::test]
+async fn switching_off_withdraws_the_shares_slow_connection_notice() {
+    use crate::network::os_mount_notice::{
+        FallbackNotice, announce_os_mount_fallback, server_is_told, withdraw_os_mount_notice,
+    };
+    use crate::network::smb_connect_failure::UpgradeFailure;
+    let dir = TestDir::new("direct_switch_withdraws");
+    let volume = Registered::at("withdraws", &dir);
+    let (server, share) = ("198.51.100.53", "withdraws");
+    let limit = Duration::from_secs(3);
+    announce_os_mount_fallback(
+        server,
+        &volume.0,
+        share,
+        UpgradeFailure::Unreachable,
+        FallbackNotice::Announce,
+    );
+
+    let on = set_direct_connection_within(&volume.0, true, limit, share_on(server, share)).await;
+    let told_after_on = server_is_told(server);
+    let off = set_direct_connection_within(&volume.0, false, limit, share_on(server, share)).await;
+    let told_after_off = server_is_told(server);
+    // Leaves the saved choice and the ledger as every other test expects them.
+    set_direct_connection_within(&volume.0, true, limit, share_on(server, share)).await;
+    withdraw_os_mount_notice(&volume.0);
+
+    assert_eq!(on, DirectConnectionSwitch::Saved);
+    assert!(told_after_on, "switching on keeps the notice");
+    assert_eq!(off, DirectConnectionSwitch::Saved);
+    assert!(!told_after_off, "switching off withdraws the notice naming this share");
+}

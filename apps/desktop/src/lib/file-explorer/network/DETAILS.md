@@ -314,6 +314,13 @@ longer listed retires the same way: its button could only say the share is gone.
 notices are up (`getToasts`, matched by content component and `props.volumeId`) rather than keeping a list, so there's
 no frontend ledger to fall out of step with the backend's or with the user closing one.
 
+**Switching the share's direct connection off withdraws it too.** The notice's button would then do exactly what the
+user just opted out of. The volume list doesn't carry the per-share switch, so the backend owns this one: it emits
+`smb-os-mount-notice-withdrawn { volumeId }` from `smb_direct_switch`, where the switch goes off whatever route flipped
+it, and the bridge dismisses `smb-os-mount:<volumeId>`. Switching ON leaves the notice up: the connect it starts may
+still fail, and the `direct` broadcast retires the notice when it doesn't. Backend side:
+`src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount fallback".
+
 ❗ **Only a listing that finished may retire a notice by absence.** A `timedOut` payload is the last complete list
 standing in for a fresh one, so a share missing from it proves nothing. The rule's one gap: a discovery that started
 before a brand-new mount and finished slowly (inside its timeout) after that mount's fallback could retire the fresh

@@ -76,7 +76,7 @@ use crate::mtp::{
 };
 use crate::network::{
     NetworkDiscoveryStateChanged, NetworkHostContextAction, NetworkHostFound, NetworkHostLost, NetworkHostResolved,
-    SmbFellBackToOsMount, VolumeConnectionChanged,
+    SmbFellBackToOsMount, SmbOsMountNoticeWithdrawn, VolumeConnectionChanged,
 };
 use crate::reveal::RevealDelivered;
 use crate::search::live::events::{SearchCancelledEvent, SearchCompleteEvent, SearchErrorEvent, SearchProgressEvent};
@@ -1044,6 +1044,8 @@ pub fn builder() -> Builder<tauri::Wry> {
             // reason this type lives in `network/mod.rs`: it has to resolve here on
             // every platform.
             SmbFellBackToOsMount,
+            // That notice taken back: its share's direct connection was switched off.
+            SmbOsMountNoticeWithdrawn,
             // A reveal from another app just moved a pane ("Reveal in Cmdr").
             // The mechanism is macOS-only but the type resolves everywhere, for
             // the same reason the two above it do.

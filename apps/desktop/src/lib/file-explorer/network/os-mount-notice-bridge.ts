@@ -3,7 +3,8 @@
  *
  * Turns the backend's `smb-fell-back-to-os-mount` event into the persistent INFO
  * toast that offers a retry, and retires that toast once it has nothing left to
- * offer: the share reached a direct connection, or it left the volume list.
+ * offer: the share reached a direct connection, it left the volume list, or the
+ * user switched its direct connection off.
  *
  * **Why the dismissal watches `volumes-changed` rather than the retry button.**
  * A share can go direct through four routes: this notice's button, the yellow dot
@@ -14,6 +15,11 @@
  * AWAY (an unmount, an eject, a network drop) broadcasts the list too, and a
  * retry on it could only say it's gone.
  *
+ * **Switching the share off is the backend's call.** The volume list doesn't
+ * carry the per-share switch, so the backend emits `smb-os-mount-notice-withdrawn`
+ * from `smb_direct_switch`, the one place the switch goes off whatever route
+ * flipped it, and this bridge dismisses the named notice.
+ *
  * Mounted from `routes/(main)/+page.svelte` beside the other event bridges. The
  * unsubscribes are returned so the caller can clean up on destroy.
  */
@@ -22,7 +28,7 @@ import { type UnlistenFn } from '@tauri-apps/api/event'
 import { addToast, dismissToast, getToasts } from '$lib/ui/toast'
 import { getAppLogger } from '$lib/logging/logger'
 import { tString } from '$lib/intl/messages.svelte'
-import { onSmbFellBackToOsMount, onVolumesChanged } from '$lib/tauri-commands'
+import { onSmbFellBackToOsMount, onSmbOsMountNoticeWithdrawn, onVolumesChanged } from '$lib/tauri-commands'
 import type { SmbFellBackToOsMount } from '$lib/ipc/bindings'
 import type { VolumeInfo } from '../types'
 import SmbOsMountFallbackToastContent from './SmbOsMountFallbackToastContent.svelte'
@@ -38,16 +44,20 @@ export function osMountNoticeToastId(volumeId: string): string {
   return `smb-os-mount:${volumeId}`
 }
 
-/** Mounts both listeners. Returns one unsubscribe covering them. */
+/** Mounts all three listeners. Returns one unsubscribe covering them. */
 export async function startOsMountNoticeBridge(): Promise<UnlistenFn> {
   const unlistenFallback = await onSmbFellBackToOsMount(raiseNotice)
   const unlistenVolumes = await onVolumesChanged((payload) => {
     retireMootNotices(payload.data, payload.timedOut)
   })
+  const unlistenWithdrawn = await onSmbOsMountNoticeWithdrawn(({ volumeId }) => {
+    dismissToast(osMountNoticeToastId(volumeId))
+  })
   log.debug('OS-mount fallback notice bridge mounted')
   return () => {
     unlistenFallback()
     unlistenVolumes()
+    unlistenWithdrawn()
   }
 }
 

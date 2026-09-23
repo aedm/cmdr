@@ -4744,6 +4744,7 @@ export const events = {
   searchProgress: makeEvent<SearchProgressEvent>('search-progress'),
   settingsChanged: makeEvent<SettingsChanged>('settings-changed'),
   smbFellBackToOsMount: makeEvent<SmbFellBackToOsMount>('smb-fell-back-to-os-mount'),
+  smbOsMountNoticeWithdrawn: makeEvent<SmbOsMountNoticeWithdrawn>('smb-os-mount-notice-withdrawn'),
   suggestionsChanged: makeEvent<SuggestionsChanged>('suggestions-changed'),
   systemTextSizeChanged: makeEvent<SystemTextSizeChanged>('system-text-size-changed'),
   tabContextAction: makeEvent<TabContextAction>('tab-context-action'),
@@ -13373,6 +13374,22 @@ export type SmbIndexGateReason =
    *  wrong with the share; the user turned indexing off in settings.
    */
   | 'indexing_disabled'
+
+/**
+ *  Typed `smb-os-mount-notice-withdrawn` Tauri event: the notice a
+ *  [`SmbFellBackToOsMount`] raised for this volume has nothing left to offer, so
+ *  the frontend takes it down.
+ *
+ *  Emitted when the share's "Use Cmdr's fast direct connection" switch goes off
+ *  (`smb_direct_switch`): the notice's button would do exactly what the user just
+ *  opted out of. The other two ways a notice goes moot (the share goes direct, or
+ *  leaves the list) already ride `volumes-changed`. Lives here for the same
+ *  `collect_events!` reason as the two types above it.
+ */
+export type SmbOsMountNoticeWithdrawn = {
+  // The volume the withdrawn notice named, matching its `SmbFellBackToOsMount::volume_id`.
+  volumeId: string
+}
 
 export type SmbVolumeRef = {
   volume_id: string

@@ -202,3 +202,48 @@ fn announcing_quietly_leaves_the_run_wide_ledger_untouched() {
     forget_unmounted_volume(volume_id);
     assert!(admitted, "a later loud caller on the same server must still speak");
 }
+
+// ── Withdrawing a notice ───────────────────────────────────────────────────────
+
+/// Withdrawing the notice naming a share (its direct connection switched off)
+/// leaves the server untold: with no notice on screen to speak for it, a later
+/// fallback on another of its shares is news.
+#[test]
+fn withdrawing_a_notice_lets_its_server_speak_again() {
+    // A server no other test names: the ledger is process-wide.
+    let server = "withdrawn-notice.example";
+    let volume_id = "smb-withdrawn-notice";
+    announce_os_mount_fallback(
+        server,
+        volume_id,
+        "share",
+        UpgradeFailure::Unreachable,
+        FallbackNotice::Announce,
+    );
+    assert!(server_is_told(server));
+
+    withdraw_os_mount_notice(volume_id);
+
+    assert!(!server_is_told(server), "no notice speaks for the server anymore");
+}
+
+/// Only the share the notice named withdraws it: a sibling share on the same
+/// server switched off leaves the notice, and so the ledger entry, standing.
+#[test]
+fn withdrawing_another_share_leaves_the_notice_standing() {
+    let server = "withdrawn-sibling.example";
+    let named = "smb-withdrawn-sibling-named";
+    announce_os_mount_fallback(
+        server,
+        named,
+        "named",
+        UpgradeFailure::Unreachable,
+        FallbackNotice::Announce,
+    );
+
+    withdraw_os_mount_notice("smb-withdrawn-sibling-other");
+
+    let still_told = server_is_told(server);
+    withdraw_os_mount_notice(named);
+    assert!(still_told, "the notice about the named share is still up");
+}

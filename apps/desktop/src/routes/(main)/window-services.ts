@@ -214,7 +214,7 @@ export async function startWindowServices(ctx: WindowServicesContext): Promise<v
   unlistenFns.push(await startLowDiskSpaceEventBridge())
   // OS-mount fallback notice: one `smb-fell-back-to-os-mount` listener turning the backend's
   // once-per-server signal into a persistent toast with a "Try connecting directly" button,
-  // retired when the share goes direct.
+  // retired when the share goes direct, goes away, or has its direct connection switched off.
   unlistenFns.push(await startOsMountNoticeBridge())
   // Kept-leftovers notice: one `move-leftovers-kept` listener turning the leftover sweep's
   // "a drive came back holding an unfinished move's working folder, and every file in it stays"

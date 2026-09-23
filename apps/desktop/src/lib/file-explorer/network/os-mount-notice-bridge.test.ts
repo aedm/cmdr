@@ -1,10 +1,10 @@
 /**
  * Tests for the OS-mount fallback notice bridge: one notice per fallback event,
- * retired the moment the share reports a direct connection or leaves the volume
- * list.
+ * retired the moment the share reports a direct connection, leaves the volume
+ * list, or the backend withdraws it (the share's direct connection switched off).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { SmbFellBackToOsMount } from '$lib/ipc/bindings'
+import type { SmbFellBackToOsMount, SmbOsMountNoticeWithdrawn } from '$lib/ipc/bindings'
 import type { VolumeInfo } from '../types'
 
 /**
@@ -41,11 +41,17 @@ let emitFallback: (payload: SmbFellBackToOsMount) => void
 let emitVolumes: (payload: { data: VolumeInfo[]; timedOut: boolean }) => void
 const unlistenFallback = vi.fn()
 const unlistenVolumes = vi.fn()
+let emitWithdrawn: (payload: SmbOsMountNoticeWithdrawn) => void
+const unlistenWithdrawn = vi.fn()
 
 vi.mock('$lib/tauri-commands', () => ({
   onSmbFellBackToOsMount: (handler: (payload: SmbFellBackToOsMount) => void) => {
     emitFallback = handler
     return Promise.resolve(unlistenFallback)
+  },
+  onSmbOsMountNoticeWithdrawn: (handler: (payload: SmbOsMountNoticeWithdrawn) => void) => {
+    emitWithdrawn = handler
+    return Promise.resolve(unlistenWithdrawn)
   },
   onVolumesChanged: (handler: (payload: { data: VolumeInfo[]; timedOut: boolean }) => void) => {
     emitVolumes = handler
@@ -170,12 +176,25 @@ describe('the OS-mount fallback notice', () => {
     expect(dismissToast).not.toHaveBeenCalled()
   })
 
-  it('unsubscribes both listeners together', async () => {
+  // The user switched the share's direct connection off, so the notice's button
+  // would do exactly what they just opted out of. The backend withdraws it from
+  // the one place every route to the switch passes through.
+  it('retires the notice the backend withdraws, and only that one', () => {
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
+    emitFallback({ volumeId: 'smb-photos', share: 'photos', reason: 'unexpected' })
+
+    emitWithdrawn({ volumeId: 'smb-archive' })
+
+    expect(dismissToast).toHaveBeenCalledExactlyOnceWith(osMountNoticeToastId('smb-archive'))
+  })
+
+  it('unsubscribes every listener together', async () => {
     const unlisten = await startOsMountNoticeBridge()
 
     unlisten()
 
     expect(unlistenFallback).toHaveBeenCalled()
     expect(unlistenVolumes).toHaveBeenCalled()
+    expect(unlistenWithdrawn).toHaveBeenCalled()
   })
 })

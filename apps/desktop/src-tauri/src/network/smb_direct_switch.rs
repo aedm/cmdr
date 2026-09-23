@@ -10,6 +10,7 @@
 use crate::deadline::blocking_with_timeout;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::network::known_shares;
+use crate::network::os_mount_notice::withdraw_os_mount_notice;
 use crate::network::smb_upgrade::{MOUNT_READ_LIMIT, return_to_os_mount};
 #[cfg(target_os = "macos")]
 use crate::volumes::{SmbMountInfo, get_smb_mount_info};
@@ -111,6 +112,12 @@ async fn set_direct_connection_within(
     // ❗ Saved BEFORE the hand-back takes the upgrade lock, so an auto upgrade
     // already waiting on that lock re-checks after us and sees the switch off.
     known_shares::set_direct_connection_enabled(&info.server, &info.share, enabled);
+    // Off retires the share's slow-connection notice, whatever route flipped it:
+    // its button would do exactly what the user just opted out of. On leaves it,
+    // since the connect the caller starts next may still fail.
+    if !enabled {
+        withdraw_os_mount_notice(volume_id);
+    }
     if !enabled && return_to_os_mount(volume_id).await {
         return DirectConnectionSwitch::ReturnedToOsMount;
     }

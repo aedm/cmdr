@@ -257,6 +257,7 @@ export {
   onNetworkHostResolved,
   onNetworkDiscoveryStateChanged,
   onSmbFellBackToOsMount,
+  onSmbOsMountNoticeWithdrawn,
   disconnectNetworkHost,
   ensureNetworkDiscoveryStarted,
   setNetworkEnabled,
