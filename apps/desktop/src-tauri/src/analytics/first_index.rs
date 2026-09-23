@@ -45,7 +45,7 @@ fn clocks() -> &'static Mutex<HashMap<String, Instant>> {
 /// Take one index event and report what it says about a first index.
 ///
 /// Called for every event on the sink's own thread, so it stays a hash lookup in
-/// the common case and touches PostHog only at the three moments that matter.
+/// the common case and records an event only at the three moments that matter.
 pub(crate) fn observe(event: &IndexEvent) {
     match event {
         IndexEvent::ScanStarted {
@@ -68,14 +68,14 @@ fn started(volume_id: &str) {
     clocks()
         .lock_ignore_poison()
         .insert(volume_id.to_string(), Instant::now());
-    super::posthog::capture("first_index_started", serde_json::json!({}));
+    super::events::capture("first_index_started", serde_json::json!({}));
 }
 
 fn home_covered(volume_id: &str) {
     let Some(elapsed) = clocks().lock_ignore_poison().get(volume_id).map(Instant::elapsed) else {
         return;
     };
-    super::posthog::capture(
+    super::events::capture(
         "first_index_home_covered",
         serde_json::json!({ "duration_bucket": short_bucket(elapsed) }),
     );
@@ -85,7 +85,7 @@ fn completed(volume_id: &str) {
     let Some(started_at) = clocks().lock_ignore_poison().remove(volume_id) else {
         return; // Not a phased run: a change check or a rebuild finishing.
     };
-    super::posthog::capture(
+    super::events::capture(
         "first_index_completed",
         serde_json::json!({ "duration_bucket": long_bucket(started_at.elapsed()) }),
     );

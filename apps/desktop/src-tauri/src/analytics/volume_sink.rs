@@ -1,9 +1,9 @@
 //! The app's answer to a backend's PII-free product counters.
 //!
 //! A storage backend reports that something happened and knows nothing about
-//! consent, dev/CI suppression, or PostHog. It asks through
+//! consent, dev/CI suppression, or where events go. It asks through
 //! `cmdr_fs::volume::host::analytics::AnalyticsSink`; this hands the event to
-//! [`posthog::capture`](super::posthog::capture), which owns every one of those
+//! [`events::capture`](super::events::capture), which owns every one of those
 //! gates.
 //!
 //! ❌ The seam takes `&[(&str, &str)]` so a struct can't slip through and carry
@@ -15,9 +15,9 @@ use serde_json::{Map, Value};
 use cmdr_fs::volume::host::analytics::AnalyticsSink;
 
 /// Sends a backend's counters through the app's consent-gated analytics client.
-pub struct PostHogVolumeAnalytics;
+pub struct SpooledVolumeAnalytics;
 
-/// The seam's string pairs as the flat object PostHog takes.
+/// The seam's string pairs as the flat props object an event carries.
 fn properties_to_json(properties: &[(&str, &str)]) -> Value {
     Value::Object(
         properties
@@ -27,9 +27,9 @@ fn properties_to_json(properties: &[(&str, &str)]) -> Value {
     )
 }
 
-impl AnalyticsSink for PostHogVolumeAnalytics {
+impl AnalyticsSink for SpooledVolumeAnalytics {
     fn record(&self, event: &str, properties: &[(&str, &str)]) {
-        super::posthog::capture(event, properties_to_json(properties));
+        super::events::capture(event, properties_to_json(properties));
     }
 }
 

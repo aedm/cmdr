@@ -29,7 +29,7 @@ pub(super) fn group_rejected(verb: ProposalVerb, op_count: u64) {
 }
 
 fn capture(event: &str, verb: ProposalVerb, op_count: usize) {
-    crate::analytics::posthog::capture(
+    crate::analytics::events::capture(
         event,
         json!({ "verb": verb.as_token(), "op_count": item_count_bucket(op_count) }),
     );

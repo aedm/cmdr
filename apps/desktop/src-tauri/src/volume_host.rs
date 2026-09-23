@@ -11,7 +11,7 @@
 //! - host keys — `network::sftp_host_keys::AppHostKeys`
 //! - indexing — `index_host::VolumeIndexNotifier`
 //! - activity — `priority::host_policy::AppUserActivity`
-//! - analytics — `analytics::volume_sink::PostHogVolumeAnalytics`
+//! - analytics — `analytics::volume_sink::SpooledVolumeAnalytics`
 //! - settings — `file_system::backend_settings::AppBackendSettings`
 //! - runtime — the app's own tokio handle, so there's one thread pool
 //!
@@ -57,7 +57,7 @@ fn wire(events: Option<Arc<dyn VolumeEventSink>>) -> VolumeHost {
         // the index, or `cargo check` on it would compile a quarter of the app.
         .indexing(Arc::new(crate::index_host::VolumeIndexNotifier))
         .activity(Arc::new(crate::priority::host_policy::AppUserActivity))
-        .analytics(Arc::new(crate::analytics::volume_sink::PostHogVolumeAnalytics))
+        .analytics(Arc::new(crate::analytics::volume_sink::SpooledVolumeAnalytics))
         .settings(Arc::new(crate::file_system::backend_settings::AppBackendSettings));
     match events {
         Some(events) => builder

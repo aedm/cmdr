@@ -1,38 +1,29 @@
-//! Anonymous beta usage analytics: the heartbeat sender + consent gate.
+//! Anonymous beta usage analytics: the consent gate, the event spool, and the heartbeat.
 //!
-//! See `analytics/CLAUDE.md` for the full model. In short: a background loop posts a `/heartbeat`
-//! on launch and then hourly, carrying the random `anal_` install id, app/OS/arch identity, and a
-//! PII-free config-shape snapshot. Everything is gated on consent (tri-state, default-on) and on
-//! [`suppression_reason`], which keeps every dev, CI, E2E, and capture instance out of production
-//! analytics unless explicitly forced for integration tests.
+//! See `analytics/CLAUDE.md` for the full model. In short: feature events land in an on-disk spool
+//! ([`events::capture`]), and a background loop ([`heartbeat`]) posts a `/heartbeat` at most once
+//! per three hours, carrying the random `anal_` install id, app/OS/arch identity, a PII-free
+//! config-shape snapshot, the uptime since the last beat, and the spooled events. Everything is
+//! gated on consent (tri-state, default-on) and on [`suppression_reason`], which keeps every dev,
+//! CI, E2E, and capture instance out of production analytics unless explicitly forced for
+//! integration tests.
 
 mod config_shape;
+pub mod events;
 pub(crate) mod first_index;
-pub mod posthog;
+mod heartbeat;
 pub mod session;
+mod spool;
 pub mod volume_sink;
 
-use serde::Serialize;
+use spool::Spool;
 use std::path::PathBuf;
 use std::sync::OnceLock;
-use std::time::Duration;
 use tauri::AppHandle;
 
-/// Heartbeat ingestion endpoint. Debug builds hit the local Worker; release hits production.
-#[cfg(debug_assertions)]
-const HEARTBEAT_URL: &str = "http://localhost:8787/heartbeat";
-#[cfg(not(debug_assertions))]
-const HEARTBEAT_URL: &str = "https://api.getcmdr.com/heartbeat";
-
-/// How often to beat after the launch beat.
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60 * 60);
-
-/// Network timeout for one fire-and-forget beat. Mirrors the crash/error reporters.
-const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Override env var that forces beats from an otherwise-suppressed instance, so an integration
+/// Override env var that forces analytics from an otherwise-suppressed instance, so an integration
 /// test can drive the loop against a localhost Worker. Without it, no dev, CI, E2E, or capture
-/// instance ever beats, so a test run can't pollute production analytics.
+/// instance ever spools or beats, so a test run can't pollute production analytics.
 const FORCE_ENV: &str = "CMDR_ANALYTICS_FORCE";
 
 /// Bundle id from `tauri.conf.json`, mirrored so the raw-settings read works without an
@@ -41,45 +32,57 @@ const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
-/// The `/heartbeat` request body. Field names are camelCase on the wire (matching the M2 Worker
-/// contract); `Option::None` serializes to `null`. M4 (PostHog) and M7 (diag id) must keep this
-/// shape in sync with the server's validator.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct HeartbeatPayload {
-    /// `anal_` + a lowercase hyphenated v4 UUID. Required; matches `^anal_[0-9a-f-]{36}$`.
-    anal_id: String,
-    /// Semver `x.y.z` from `CARGO_PKG_VERSION`.
-    app_version: String,
-    /// Human-readable OS version, always non-empty.
-    os_version: String,
-    /// `aarch64` / `x86_64`.
-    arch: String,
-    /// `"release"` / `"debug"`.
-    build_mode: Option<String>,
-    /// The PII-free config-shape snapshot. An arbitrary JSON object, stored verbatim by the server.
-    config: serde_json::Value,
-}
+/// The event spool, opened at [`init`]. `None` before then, or when the data dir can't be resolved.
+static SPOOL: OnceLock<Spool> = OnceLock::new();
 
-/// Stores the app handle. Call once during setup, before [`start`].
+/// Stores the app handle and opens the event spool. Call once during setup, before [`start`].
 pub fn init(app: &AppHandle) {
     let _ = APP_HANDLE.set(app.clone());
+    if let Some(dir) = data_dir() {
+        let _ = SPOOL.set(Spool::new(dir.join(spool::SPOOL_FILE_NAME)));
+    }
 }
 
-/// Starts the background heartbeat loop: one beat on launch, then one every hour. Call once from
-/// setup, after [`init`].
+/// Starts the background heartbeat loop. Call once from setup, after [`init`].
 pub fn start() {
-    tauri::async_runtime::spawn(async {
-        loop {
-            send_beat_if_allowed().await;
-            tokio::time::sleep(HEARTBEAT_INTERVAL).await;
-        }
-    });
+    heartbeat::start();
 }
 
-/// Whether analytics may send right now, per the tri-state consent rule. `None` (no key persisted,
-/// the opted-in default) and `Some(true)` mean granted; only `Some(false)` is an opt-out. Both the
-/// heartbeat loop and (later) `track_event` gate through this one helper.
+fn data_dir() -> Option<PathBuf> {
+    let app = APP_HANDLE.get()?;
+    crate::config::resolved_app_data_dir(app)
+        .inspect_err(|e| log::warn!(target: "analytics", "No app data dir for analytics: {e}"))
+        .ok()
+}
+
+fn spool() -> Option<&'static Spool> {
+    SPOOL.get()
+}
+
+/// Whether this process may collect and send analytics right now.
+enum SendPermission {
+    /// Not a real user's install (see [`suppression_reason`]).
+    Suppressed(SuppressionReason),
+    /// The user turned analytics off.
+    OptedOut,
+    Granted,
+}
+
+/// Asks both gates: the suppression gate first (it's free), then consent from `settings.json`.
+fn send_permission() -> SendPermission {
+    if let Some(reason) = suppression_reason() {
+        return SendPermission::Suppressed(reason);
+    }
+    let Some(app) = APP_HANDLE.get() else {
+        return SendPermission::Suppressed(SuppressionReason::NotInitialized);
+    };
+    if analytics_consent_granted(crate::settings::load_settings(app).analytics_enabled) {
+        SendPermission::Granted
+    } else {
+        SendPermission::OptedOut
+    }
+}
+
 /// Buckets an item count into a coarse, PII-free range string for analytics. A raw count is fine to
 /// ship (it's not PII), but a bucket keeps the dashboard's cardinality low and the signal readable.
 ///
@@ -96,6 +99,8 @@ pub fn item_count_bucket(count: usize) -> &'static str {
     }
 }
 
+/// Whether analytics may send, per the tri-state consent rule. `None` (no key persisted, the
+/// opted-in default) and `Some(true)` mean granted; only `Some(false)` is an opt-out.
 pub fn analytics_consent_granted(analytics_enabled: Option<bool>) -> bool {
     analytics_enabled != Some(false)
 }
@@ -108,6 +113,8 @@ enum SuppressionReason {
     DebugBuild,
     /// One of [`crate::prod_instance::NON_PROD_ENV_VARS`] is set in this process's environment.
     NonProdEnv(&'static str),
+    /// [`init`] hasn't run, so there's no settings to read consent from.
+    NotInitialized,
 }
 
 impl std::fmt::Display for SuppressionReason {
@@ -115,6 +122,7 @@ impl std::fmt::Display for SuppressionReason {
         match self {
             Self::DebugBuild => f.write_str("debug build"),
             Self::NonProdEnv(name) => write!(f, "{name} is set"),
+            Self::NotInitialized => f.write_str("analytics not initialized"),
         }
     }
 }
@@ -137,8 +145,8 @@ fn suppression_reason_for(
 }
 
 /// The ONE analytics gate: `Some(reason)` when this process must not send, `None` when it may.
-/// Both the heartbeat loop and `posthog::capture` call it, so the heartbeat and the event stream
-/// can never disagree about whether an install is real.
+/// Both the heartbeat loop and `events::capture` call it (through [`send_permission`]), so the
+/// heartbeat and the event stream can never disagree about whether an install is real.
 ///
 /// `CMDR_ANALYTICS_FORCE=1` overrides every condition, which is what lets an integration test
 /// drive the loop against a localhost Worker.
@@ -146,46 +154,6 @@ fn suppression_reason() -> Option<SuppressionReason> {
     suppression_reason_for(cfg!(debug_assertions), std::env::var_os(FORCE_ENV).is_some(), &|name| {
         std::env::var_os(name).is_some()
     })
-}
-
-async fn send_beat_if_allowed() {
-    if let Some(reason) = suppression_reason() {
-        log::debug!(target: "analytics", "Heartbeat suppressed ({reason}, no force override)");
-        return;
-    }
-
-    // Read consent through the shared settings loader the rest of the backend uses (the same path
-    // M4's `track_event` gate will reuse), so consent resolution stays consistent app-wide.
-    let Some(app) = APP_HANDLE.get() else {
-        log::warn!(target: "analytics", "Heartbeat skipped: app handle not initialized");
-        return;
-    };
-    let settings = crate::settings::load_settings(app);
-    if !analytics_consent_granted(settings.analytics_enabled) {
-        // Fully silent: an opted-out install sends nothing at all, not even an "I opted out" bit.
-        return;
-    }
-
-    let payload = build_payload();
-    send_payload(payload).await;
-}
-
-fn build_payload() -> HeartbeatPayload {
-    let fda_granted = !crate::fda_gate::is_fda_pending_runtime();
-    let config = config_shape::build_config_shape(&read_raw_settings(), fda_granted);
-
-    HeartbeatPayload {
-        anal_id: crate::install_id::analytics_id(),
-        app_version: env!("CARGO_PKG_VERSION").to_string(),
-        os_version: crate::platform::os_version(),
-        arch: std::env::consts::ARCH.to_string(),
-        build_mode: Some(current_build_mode().to_string()),
-        config,
-    }
-}
-
-fn current_build_mode() -> &'static str {
-    if cfg!(debug_assertions) { "debug" } else { "release" }
 }
 
 /// Reads `settings.json` as a raw JSON value for the config-shape builder. Resolves the data dir
@@ -205,29 +173,6 @@ fn read_raw_settings() -> serde_json::Value {
         .ok()
         .and_then(|contents| serde_json::from_str(&contents).ok())
         .unwrap_or(serde_json::Value::Null)
-}
-
-async fn send_payload(payload: HeartbeatPayload) {
-    let client = match reqwest::Client::builder().timeout(HEARTBEAT_TIMEOUT).build() {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!(target: "analytics", "Couldn't build heartbeat HTTP client: {e}");
-            return;
-        }
-    };
-
-    match client.post(HEARTBEAT_URL).json(&payload).send().await {
-        Ok(response) if response.status().is_success() => {
-            log::debug!(target: "analytics", "Heartbeat sent ({})", response.status());
-        }
-        Ok(response) => {
-            log::warn!(target: "analytics", "Heartbeat server returned {}", response.status());
-        }
-        Err(e) => {
-            // Fire-and-forget: a failed beat is fine, the next hourly tick retries.
-            log::debug!(target: "analytics", "Heartbeat send failed: {e}");
-        }
-    }
 }
 
 #[cfg(test)]
@@ -288,7 +233,6 @@ mod suppression_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
     fn consent_none_is_granted() {
@@ -304,48 +248,6 @@ mod tests {
     #[test]
     fn consent_some_false_is_opted_out() {
         assert!(!analytics_consent_granted(Some(false)));
-    }
-
-    #[test]
-    fn payload_serializes_with_camelcase_and_nested_config() {
-        let payload = HeartbeatPayload {
-            anal_id: "anal_178c8e27-511f-4f0e-a1fc-6a44f2ab7341".to_string(),
-            app_version: "1.2.3".to_string(),
-            os_version: "macOS 26.0".to_string(),
-            arch: "aarch64".to_string(),
-            build_mode: Some("release".to_string()),
-            config: json!({ "theme.mode": "dark", "fdaGranted": true }),
-        };
-        let value = serde_json::to_value(&payload).expect("serialize");
-
-        // camelCase field names on the wire, matching the M2 Worker contract.
-        assert_eq!(value["analId"], json!("anal_178c8e27-511f-4f0e-a1fc-6a44f2ab7341"));
-        assert_eq!(value["appVersion"], json!("1.2.3"));
-        assert_eq!(value["osVersion"], json!("macOS 26.0"));
-        assert_eq!(value["arch"], json!("aarch64"));
-        assert_eq!(value["buildMode"], json!("release"));
-        // config is a nested object, stored verbatim.
-        assert_eq!(value["config"]["theme.mode"], json!("dark"));
-        assert_eq!(value["config"]["fdaGranted"], json!(true));
-
-        // The anal id matches the heartbeat contract regex shape.
-        let anal = value["analId"].as_str().expect("string");
-        assert!(anal.starts_with("anal_"));
-        assert_eq!(anal.strip_prefix("anal_").expect("prefix").len(), 36);
-    }
-
-    #[test]
-    fn payload_none_build_mode_serializes_to_null() {
-        let payload = HeartbeatPayload {
-            anal_id: "anal_x".to_string(),
-            app_version: "1.0.0".to_string(),
-            os_version: "macOS 26.0".to_string(),
-            arch: "aarch64".to_string(),
-            build_mode: None,
-            config: json!({}),
-        };
-        let value = serde_json::to_value(&payload).expect("serialize");
-        assert_eq!(value["buildMode"], json!(null));
     }
 }
 

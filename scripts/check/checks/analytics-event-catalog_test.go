@@ -33,7 +33,7 @@ func writeCatalog(t *testing.T, dir string, bullets ...string) {
 func TestRunAnalyticsEventCatalog_EverySentEventIsDocumented(t *testing.T) {
 	tmp := t.TempDir()
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/lib.rs",
-		`analytics::posthog::capture("app_launched", json!({}));`)
+		`analytics::events::capture("app_launched", json!({}));`)
 	writeEventCatalogFile(t, tmp, "apps/desktop/src/lib/pane/loader.ts",
 		`void trackEvent('pane_navigated', { volume_kind: kind })`)
 	writeEventCatalogFile(t, tmp, "crates/cmdr-smb/src/volume/mod.rs",
@@ -60,10 +60,10 @@ func TestRunAnalyticsEventCatalog_EverySentEventIsDocumented(t *testing.T) {
 func TestRunAnalyticsEventCatalog_UndocumentedEventFails(t *testing.T) {
 	tmp := t.TempDir()
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/agent/wake/runner.rs",
-		"crate::analytics::posthog::capture(\n    \"agent_wake\",\n    json!({}),\n);")
+		"crate::analytics::events::capture(\n    \"agent_wake\",\n    json!({}),\n);")
 	writeCatalog(t, tmp, "`app_launched` (backend): no props.")
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/lib.rs",
-		`analytics::posthog::capture("app_launched", json!({}));`)
+		`analytics::events::capture("app_launched", json!({}));`)
 
 	_, err := RunAnalyticsEventCatalog(&CheckContext{RootDir: tmp})
 	if err == nil {
@@ -82,7 +82,7 @@ func TestRunAnalyticsEventCatalog_DocumentedEventWithNoEmitterFails(t *testing.T
 	// metric someone will keep waiting on.
 	tmp := t.TempDir()
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/lib.rs",
-		`analytics::posthog::capture("app_launched", json!({}));`)
+		`analytics::events::capture("app_launched", json!({}));`)
 	writeCatalog(t,
 		tmp,
 		"`app_launched` (backend): no props.",
@@ -102,11 +102,11 @@ func TestRunAnalyticsEventCatalog_TestFilesDontCount(t *testing.T) {
 	// A fake event name in a test never ships, so it must not demand a bullet.
 	tmp := t.TempDir()
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/lib.rs",
-		`analytics::posthog::capture("app_launched", json!({}));`)
+		`analytics::events::capture("app_launched", json!({}));`)
 	writeEventCatalogFile(t, tmp, "crates/cmdr-fs/src/volume/host/host_test.rs",
 		`host.analytics().record("something_happened", &[]);`)
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/agent/wake/tests/inbox.rs",
-		`crate::analytics::posthog::capture("staged_in_a_test", json!({}));`)
+		`crate::analytics::events::capture("staged_in_a_test", json!({}));`)
 	writeEventCatalogFile(t, tmp, "apps/desktop/src/lib/search/search.test.ts",
 		`void trackEvent('search_used_in_a_test', {})`)
 	writeCatalog(t, tmp, "`app_launched` (backend): no props.")
@@ -160,7 +160,7 @@ func TestRunAnalyticsEventCatalog_RenamedSectionIsLoud(t *testing.T) {
 	// turn the check into a rubber stamp, so an empty section is an error.
 	tmp := t.TempDir()
 	writeEventCatalogFile(t, tmp, "apps/desktop/src-tauri/src/lib.rs",
-		`analytics::posthog::capture("app_launched", json!({}));`)
+		`analytics::events::capture("app_launched", json!({}));`)
 	writeEventCatalogFile(t, tmp, analyticsCatalogDoc,
 		"# Analytics\n\n## The events we send\n\n- `app_launched` (backend): no props.\n")
 

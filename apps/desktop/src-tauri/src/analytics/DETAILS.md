@@ -5,14 +5,14 @@ Depth behind the must-knows in `CLAUDE.md`.
 ## Wiring
 
 `analytics::init(app.handle())` + `analytics::start()` run from `lib.rs` setup (mirroring `space_poller`): `init`
-stores the app handle, `start` spawns the loop (one beat on launch, then hourly). `install_id::init()` runs earlier in
+stores the app handle and opens the spool, `start` spawns the heartbeat loop. `install_id::init()` runs earlier in
 setup (before the crash reporter) so it can snapshot the diag id for the panic hook.
 
 ## The suppression gate: what counts as a real install
 
-`suppression_reason()` in `mod.rs` is the ONE gate; the heartbeat loop and `posthog::capture` both call it, so the two
-pipelines can never disagree about whether an install is real. It returns `Some(reason)` (a named condition, logged at
-debug) when this process must not send, `None` when it may. `CMDR_ANALYTICS_FORCE=1` overrides every condition, which
+`suppression_reason()` in `mod.rs` is the ONE gate; the heartbeat loop and `events::capture` both reach it through
+`send_permission()`, so the two can never disagree about whether an install is real. It returns `Some(reason)` (a
+named condition, logged at debug) when this process must not send, `None` when it may. `CMDR_ANALYTICS_FORCE=1` overrides every condition, which
 is what lets an integration test drive the loop against a localhost Worker.
 
 Suppressed when the build is a debug build, OR when any of `NON_PROD_ENV_VARS` is present in the environment: `CI`,
@@ -62,9 +62,38 @@ If two datasets *can* be joined, treat them as joined, so we make them genuinely
 an attached email links only to the diagnostics stream; the analytics stream stays unjoinable to any identity. The
 `anal_`/`diag_` prefixes make the ids self-identifying in payloads, PostHog, and the D1 tables.
 
+## The heartbeat: schedule, uptime, and what a 2xx settles
+
+`heartbeat.rs` runs one loop per process. It wakes every 5 minutes, asks `send_permission()`, and:
+
+- **Granted**: adds the time since the last wake to the unreported uptime, beats if `CADENCE` says one is due, and
+  persists its state.
+- **Opted out**: zeroes the unreported uptime and deletes the spool. Nothing collected while opted in leaves after an
+  opt-out.
+- **Suppressed**: does nothing, and logs why once.
+
+**The schedule is a throttle** (`crate::send_schedule`, shared with the update check): at most one acknowledged beat per
+3 h, a failed beat retried no sooner than 15 min later. It's persisted, so a relaunch or a wake re-asks the same "is it
+due?" and gets the same answer: a burst of triggers collapses into one beat and never pushes the next one out. A clock
+set backwards reads a stored future time as now, so the worst case is one interval of waiting.
+
+**Uptime** is `Instant` time between wakes, which doesn't advance while the machine sleeps, so a closed lid isn't
+runtime. Whole seconds go to `unreportedUptimeSeconds`, the remainder carries in memory. It's written to
+`analytics-heartbeat.json` every wake, so a session that ended before its beat still counts on the next one. It measures
+the app being open, never the person at the keyboard (same caveat as the session ladder below).
+
+**What a beat's outcome does** (`settle`):
+
+- **2xx**: the schedule records a success, the uptime drops by exactly what was sent, and the spool drops exactly the
+  batch. Seconds and events recorded while the beat was on the wire stay for the next one.
+- **400 / 413 / 422**: the server refused these exact bytes, so the batch is dropped (logged at `warn`) and the uptime
+  kept. Retrying the same batch would be refused every 15 min forever, and the daily-active signal with it.
+- **Anything else** (no answer, timeout, 429, 5xx): a failure; everything stays for the retry.
+
 ## Heartbeat payload
 
-`HeartbeatPayload` (camelCase on the wire, `Option::None` → `null`) matches the Worker's validator:
+`HeartbeatPayload` (camelCase on the wire, `Option::None` → `null`) matches the Worker's validator. Contract:
+`docs/specs/network-chatter-plan.md` § Wire contract; `payload_field_names_match_the_wire_contract` pins the names.
 
 - `analId` (required): `anal_` + lowercase hyphenated v4 UUID, `^anal_[0-9a-f-]{36}$`.
 - `appVersion` (required): semver from `CARGO_PKG_VERSION`.
@@ -72,70 +101,67 @@ an attached email links only to the diagnostics stream; the analytics stream sta
 - `arch` (required): `std::env::consts::ARCH`.
 - `buildMode` (optional): `"release"` / `"debug"`.
 - `config` (optional): the config-shape object, verbatim.
+- `uptimeSeconds`: runtime no earlier acknowledged beat reported. Always sent.
+- `events`: up to 500 spooled events, oldest first, and at most 192 KB of them (the server caps the body at 256 KB).
+  Always sent, possibly empty. Each is `{ event, timestamp, id, appVersion, properties }`.
 
-Fire-and-forget POST mirroring the crash/error reporters (10 s timeout, errors logged at debug, next hourly tick
-retries). Endpoint: `http://localhost:8787/heartbeat` (debug) / `https://api.getcmdr.com/heartbeat` (release).
+20 s timeout (a beat can carry a couple of hundred KB). Endpoint: `http://localhost:8787/heartbeat` (debug) /
+`https://api.getcmdr.com/heartbeat` (release).
 
-## PostHog `/capture/` body and key mechanism
+## The event spool
 
-`posthog::capture(event, props)` builds the body and fire-and-forget POSTs to `https://eu.i.posthog.com/capture/` (EU
-cloud, project `136072`). Shape:
+`events::capture(event, props)` validates the name (1–100 chars of `[a-z0-9_$]`, what the Worker accepts; anything else
+is dropped with a `warn`), stamps it, and appends one line to `analytics-events.jsonl` in the app data dir on a
+blocking worker, so no call site waits on disk. It makes no request.
 
-```json
-{ "api_key": "phc_...", "event": "<name>", "distinct_id": "anal_<uuid>",
-  "properties": { "source": "desktop", "app_version": "0.39.0", "os_version": "macOS 26.0",
-                  "arch": "aarch64", ...props },
-  "$set": <config-shape> }
-```
-
-- **`$set` is the config-shape verbatim**: person properties reuse `config_shape::build_config_shape` (same allowlisted
-  object the heartbeat ships), so there's one source of truth and no second PII surface.
-- **An absent key is not "the default"**, on either transport. `settings.json` is sparse (only explicitly-set keys are
+- **The stamp** is an RFC 3339 UTC timestamp with milliseconds, a fresh v4 `id`, and this build's `appVersion`. The id
+  is what lets the Worker store a retried beat's events once (and PostHog dedupe on it as `uuid`). The version rides
+  the event because PostHog person properties are last-write-wins and an event spooled before an update can ship
+  after it: only the event's own copy says which release produced a number.
+- **Only the event's own props.** The Worker adds identity (`distinct_id` from `analId`, OS, arch,
+  `source: "desktop"`) and the config snapshot as `$set` when it forwards, so the client doesn't repeat them per event.
+- **Bounded, oldest first.** Past 5,000 events plus 10% slack, the front is cut back to 5,000. A line over 8 KB is
+  refused at append.
+- **Acknowledgment is exact under concurrency.** `take_batch` copies from the front and removes nothing; `acknowledge`
+  removes that batch's lines. A trim that ran while the beat was in flight already removed part of the front, so the
+  spool counts every line removed from the front and a batch acknowledges only the part of it still there
+  (`a_trim_during_a_beat_never_costs_an_unsent_event`).
+- **A torn line** (a crash mid-append) is closed off on first use, skipped by the batch but counted in it, so the next
+  acknowledgment clears it.
+- **An absent key is not "the default"** in the config shape. `settings.json` is sparse (only explicitly-set keys are
   written), so the shape carries deviation, never adoption. Reading it as adoption needs the per-version defaults
   manifest the dashboard resolves against: `apps/analytics-dashboard/DETAILS.md` § Settings adoption.
   `CATEGORICAL_STRING_KEYS` is an input to that manifest, so adding a key here widens what the dashboard can answer.
 - **Cloud AI consent ships as settings only.** `askCmdr.enabled` and `ai.cloudConsentRevokePending` are booleans, so
   they ride the shape with no allowlist change. The "Allow cloud AI" record itself lives in `main.db`'s `meta` table
   (`ai/DETAILS.md` § Cloud AI consent), is no setting, and doesn't ship.
-- **`source: "desktop"`** is injected first and can't be shadowed by a caller `source` prop, so the dashboard always
-  splits desktop events from website events.
-- **The `EventIdentity` trio rides every event**: `app_version` (`CARGO_PKG_VERSION`, the same string the heartbeat
-  ships), `os_version` (`crate::platform::os_version()`), and `arch` (`std::env::consts::ARCH`), injected alongside
-  `source` and equally unshadowable (`injected_identity_cannot_be_shadowed_by_props`).
 
-  **Why on the event and not only in `$set`.** PostHog person properties are last-write-wins, so the config-shape and
-  the heartbeat's per-install identity both answer "what is true now", never "what was true when this event fired". An
-  event without its own `app_version` is therefore uninterpretable the moment a release changes what an event means: of
-  406 `search_used` events over 90 days, 265 carried only `mode` and none of the richer props, almost certainly from
-  builds predating the richer event, and nothing in the data could say so. `os_version` and `arch` are there for the
-  same reason at the same cost (three low-cardinality strings): a platform-specific regression shows up as a version
-  mix otherwise.
-
-  All three are categorical and PII-free, so they need no exemption from the prop rule.
-- **The key is `option_env!("CMDR_POSTHOG_KEY")`**, baked at build time (a GitHub secret on the `tauri-action` step in
-  `release.yml`; `build.rs` has a `rerun-if-env-changed` for it). `None` locally → `capture` is a no-op (logged once at
-  debug). The key is public by design (PostHog ingest keys are safe in client code).
+**Why the app doesn't call PostHog itself.** People who watch their network traffic notice a third-party analytics
+domain, and company policies block it. Everything goes to `api.getcmdr.com`, and dropping PostHog later is a
+server-side change.
 
 ## The `track_event` IPC
 
-Frontend events call the `track_event` IPC (`commands/analytics.rs`), a thin pass-through to `capture`. It takes
+Frontend events call the `track_event` IPC (`commands/analytics.rs`), a thin pass-through to `events::capture`. It takes
 `props_json: String` rather than a structured type because the prop set is open and `serde_json::Value` can't cross the
 specta IPC boundary; the frontend's typed `trackEvent` wrapper `JSON.stringify`s the props. A malformed or non-object
-`props_json` degrades to no props (the event still fires with `source: "desktop"`).
+`props_json` degrades to no props (the event still fires).
 
 ## How to add an event
 
 Open set, no enum, no schema:
 
 - **Backend event**: at the success chokepoint,
-  `crate::analytics::posthog::capture("my_event", serde_json::json!({ "kind": some_enum }))`.
+  `crate::analytics::events::capture("my_event", serde_json::json!({ "kind": some_enum }))`.
 - **Frontend event**: `import { trackEvent } from '$lib/tauri-commands'`, then `void trackEvent('my_event', { kind: someEnum })`.
 - Name internals after the UI; keep props categorical.
 
 ## Reading a zero (before calling it a bug)
 
 An event with no data in PostHog is the normal way an instrumentation bug shows up, and also the normal way an unused
-feature shows up. Walk these in order; each one is cheap and rules out a whole class.
+feature shows up. Walk these in order; each one is cheap and rules out a whole class. First, though, mind the lag: an
+event waits in the spool for the next beat, so it reaches PostHog up to 3 h after it fired, or at the next launch's
+first beat after that if the app quit first. Its `timestamp` is still the moment it fired.
 
 1. **Did it ship?** An event only fires from a released binary. Compare the emitter's commit date against
    `git for-each-ref --sort=-creatordate refs/tags`, and confirm directly against the shipped app by looking for the

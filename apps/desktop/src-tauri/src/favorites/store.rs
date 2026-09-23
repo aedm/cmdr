@@ -407,7 +407,7 @@ where
     // The list SIZE rides along bucketed, because "do people keep favorites?" is
     // answered by how many they end up with, not by how often they touch the list.
     // Never a path or a label: both are the user's own text.
-    crate::analytics::posthog::capture(
+    crate::analytics::events::capture(
         "favorite_changed",
         serde_json::json!({
             "action": action.as_token(),

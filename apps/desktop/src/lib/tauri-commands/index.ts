@@ -359,7 +359,7 @@ export type {
   CompressedSizeEstimate,
 } from './write-operations'
 
-// Analytics (PostHog feature events through the single backend path)
+// Analytics (feature events through the single backend path)
 export { trackEvent, itemCountBucket } from './analytics'
 // Launch-day ledger (on-device only; the gate for usage-gated hints)
 export { getLaunchDayCount } from './usage'

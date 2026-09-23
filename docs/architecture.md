@@ -218,8 +218,11 @@ All under `apps/desktop/src-tauri/src/`.
   `apps/desktop/src-tauri/src/listing_index_sizes/CLAUDE.md`
 - `mcp/`: MCP server (tools, YAML resources, agent-centric API)
 - `ai/`: llama-server lifecycle, model download, inference client
-- `analytics/`: Anonymous beta usage analytics: hourly `/heartbeat` sender (true DAU + a PII-free config-shape snapshot
-  built by allowlist), tri-state consent gate, dev/CI suppression. PostHog feature events ride the same gate
+- `analytics/`: Anonymous beta usage analytics: a `/heartbeat` at most every 3 h (true DAU, uptime, a PII-free
+  config-shape snapshot built by allowlist, and the spooled feature events), tri-state consent gate, dev/CI suppression.
+  See `apps/desktop/src-tauri/src/analytics/CLAUDE.md`
+- `send_schedule.rs`: the persisted throttle the heartbeat and the update check share (one success per interval, a retry
+  floor after a failure)
 - `install_id.rs`: Two Rust-owned per-install random ids (`anal_` for analytics, `diag_` for diagnostics) that never
   meet by construction. AppHandle-free accessors, one `install-ids.json`
 - `usage/`: The launch-day ledger: which local calendar days the app was opened on, appended once per launch to

@@ -127,6 +127,7 @@ mod reveal;
 pub mod search;
 mod secrets;
 pub mod selection;
+mod send_schedule;
 // `Cmdr > Services`: what Cmdr tells AppKit it can hand a service, and what the selection is at the
 // moment one is picked. macOS only. An outer `///` here would merge with the module's own `//!`
 // header and break its intra-doc links (see the `rustdoc` check's hint).
@@ -612,8 +613,8 @@ pub fn run() {
             // and suppressed in dev/CI; see `analytics/CLAUDE.md`.
             analytics::init(app.handle());
             analytics::start();
-            // One PostHog `app_launched` event per startup, through the same consent gate.
-            analytics::posthog::capture("app_launched", serde_json::json!({}));
+            // One `app_launched` event per startup, through the same consent gate.
+            analytics::events::capture("app_launched", serde_json::json!({}));
             // The session-length ladder, anchored HERE rather than at quit: a crash or a
             // force-quit leaves no moment to report in. See `analytics/session.rs`.
             analytics::session::start();

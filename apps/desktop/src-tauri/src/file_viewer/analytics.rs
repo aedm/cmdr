@@ -88,7 +88,7 @@ pub(super) fn emit_viewer_opened(
         // an empty text file.
         Err(e) => ("unknown", "unknown", "failed", failure_token(e)),
     };
-    crate::analytics::posthog::capture(
+    crate::analytics::events::capture(
         "viewer_opened",
         serde_json::json!({
             "content": content,

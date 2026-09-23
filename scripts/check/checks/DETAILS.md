@@ -736,7 +736,7 @@ including the three carrying the agent's north-star acceptance rate. Both direct
 gets an allowlist.
 
 Four emitter shapes are recognized, matching the ones `analytics/DETAILS.md` § "How to add an event" prescribes:
-`posthog::capture("…")`, `analytics().record("…")` (the `AnalyticsSink` seam the tauri-free crates use), the frontend's
+`events::capture("…")`, `analytics().record("…")` (the `AnalyticsSink` seam the tauri-free crates use), the frontend's
 `trackEvent('…')`, and a bare `capture("…")` inside a file named `analytics.rs` (where an area's event wrappers live by
 convention; the same call elsewhere is some other function). Test files are skipped by name, since a fake event name in
 a test never ships. Coverage is honest rather than total: an event smuggled through a helper taking a runtime `&str` is

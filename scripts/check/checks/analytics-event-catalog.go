@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// The catalog every PostHog event name has to appear in, and the section of it
+// The catalog every analytics event name has to appear in, and the section of it
 // that holds the list.
 const (
 	analyticsCatalogDoc     = "apps/desktop/src-tauri/src/analytics/DETAILS.md"
@@ -25,13 +25,13 @@ var analyticsEventRoots = []string{
 	"crates",
 }
 
-// Backend emitters. `posthog::capture("name", …)` is the direct form; the bare
+// Backend emitters. `events::capture("name", …)` is the direct form; the bare
 // `capture("name", …)` form is accepted only inside a file named `analytics.rs`,
 // which is where an area's event wrappers live by convention (a bare `capture(`
 // elsewhere is some other function).
 var (
-	posthogCaptureRe = regexp.MustCompile(`posthog::capture\(\s*"([a-z0-9_]+)"`)
-	bareCaptureRe    = regexp.MustCompile(`\bcapture\(\s*"([a-z0-9_]+)"`)
+	eventsCaptureRe = regexp.MustCompile(`events::capture\(\s*"([a-z0-9_]+)"`)
+	bareCaptureRe   = regexp.MustCompile(`\bcapture\(\s*"([a-z0-9_]+)"`)
 	// The `AnalyticsSink` seam the backend crates use, since they can't see `tauri`.
 	analyticsSinkRe = regexp.MustCompile(`analytics\(\)\.record\(\s*"([a-z0-9_]+)"`)
 	// The frontend's one path, the `track_event` IPC wrapper.
@@ -47,7 +47,7 @@ type analyticsEmitter struct {
 	file  string
 }
 
-// RunAnalyticsEventCatalog pins the PostHog event vocabulary to its catalog: every
+// RunAnalyticsEventCatalog pins the analytics event vocabulary to its catalog: every
 // event name emitted in the tree must be documented in the analytics DETAILS.md,
 // and every documented name must have a live emitter.
 //
@@ -146,7 +146,7 @@ func findAnalyticsEmitters(rootDir string) ([]analyticsEmitter, error) {
 // analyticsEventsIn returns the event names one source file sends. `base` is the
 // file's name, which decides whether the bare `capture("…")` form counts.
 func analyticsEventsIn(source, base string) []string {
-	patterns := []*regexp.Regexp{posthogCaptureRe, analyticsSinkRe, trackEventRe}
+	patterns := []*regexp.Regexp{eventsCaptureRe, analyticsSinkRe, trackEventRe}
 	if base == "analytics.rs" {
 		patterns = append(patterns, bareCaptureRe)
 	}

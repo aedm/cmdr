@@ -308,7 +308,7 @@ pub(super) fn record_outcome(outcome: &'static str, tier: Option<WakeTier>, fold
         target: LOG_TARGET,
         "wake {outcome}: tier {tier}, {folders} folder(s), {proposals} proposal(s)"
     );
-    crate::analytics::posthog::capture(
+    crate::analytics::events::capture(
         "agent_wake",
         serde_json::json!({
             "outcome": outcome,

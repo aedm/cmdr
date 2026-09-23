@@ -243,7 +243,7 @@ pub fn toggle_color(paths: &[String], color: u8) -> std::io::Result<Vec<(String,
 /// permissions reads as "unused" otherwise.
 #[cfg(target_os = "macos")]
 fn emit_tag_analytics(applied: bool, color: &str, item_count: usize, succeeded: bool) {
-    crate::analytics::posthog::capture(
+    crate::analytics::events::capture(
         "tag_toggled",
         serde_json::json!({
             "action": if applied { "applied" } else { "removed" },

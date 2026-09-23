@@ -331,7 +331,7 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `error_report_amend_url(id)` the way the send path supplies its own URL). `flow_a_request` is the single place note validation, id reuse, and wrapping an address in
   `AttachedEmail` happen. Network skipped in dev/CI. The two preview commands are dispatch-only (a `BundleManifest`
   holds a `serde_json::Value`, which specta can't describe), so the frontend reaches them by raw invoke.
-- **`analytics.rs`**: `track_event(name, props_json)`, a thin pass-through to `posthog::capture` for the open set of
+- **`analytics.rs`**: `track_event(name, props_json)`, a thin pass-through to `events::capture` for the open set of
   frontend feature events. No capability entry; the PII-free prop contract lives in `analytics/CLAUDE.md`.
 - **`usage.rs`**: `get_launch_day_count()`, the read seam over the on-device launch-day ledger, so the frontend can gate
   a hint on "at least N days of use". Read-only (Rust appends at startup) and 2 s-deadlined; a missing, unreadable, or

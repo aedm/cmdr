@@ -76,7 +76,7 @@ pub fn start() {
     tauri::async_runtime::spawn(async {
         for (gap, token) in gaps() {
             tokio::time::sleep(gap).await;
-            super::posthog::capture("session_reached", serde_json::json!({ "milestone": token }));
+            super::events::capture("session_reached", serde_json::json!({ "milestone": token }));
         }
     });
 }

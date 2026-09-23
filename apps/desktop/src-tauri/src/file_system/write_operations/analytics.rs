@@ -32,17 +32,17 @@ pub(super) fn emit_completion_analytics(event: &WriteCompleteEvent) {
             } else {
                 "move"
             };
-            crate::analytics::posthog::capture(
+            crate::analytics::events::capture(
                 "file_transfer_completed",
                 json!({ "op": op, "item_count": bucket, "had_conflicts": event.files_skipped > 0 }),
             );
         }
         WriteOperationType::Delete | WriteOperationType::Trash => {
             let trashed = event.operation_type == WriteOperationType::Trash;
-            crate::analytics::posthog::capture("delete_used", json!({ "trashed": trashed, "item_count": bucket }));
+            crate::analytics::events::capture("delete_used", json!({ "trashed": trashed, "item_count": bucket }));
         }
         WriteOperationType::ArchiveEdit => {
-            crate::analytics::posthog::capture("archive_edit_completed", json!({ "item_count": bucket }));
+            crate::analytics::events::capture("archive_edit_completed", json!({ "item_count": bucket }));
         }
         // Instant metadata ops (`manager::run_instant`) never reach this function:
         // they return their `Result` inline and produce no `WriteCompleteEvent`.
@@ -94,7 +94,7 @@ fn instant_outcome<T, E>(result: &Result<T, E>) -> &'static str {
 /// Props are the initiator (who asked: the person, the agent, or an AI client), where
 /// it landed, and whether it worked. Never a name, a path, or the reason it failed.
 pub(super) fn emit_rename_analytics<T, E>(initiator: Initiator, target: InstantTarget, result: &Result<T, E>) {
-    crate::analytics::posthog::capture("rename_used", instant_props(initiator, target, result));
+    crate::analytics::events::capture("rename_used", instant_props(initiator, target, result));
 }
 
 /// Emits the PII-free event for a completed new-folder / new-file. Same shape and
@@ -113,8 +113,8 @@ pub(super) fn emit_create_analytics<T, E>(
     // a name that arrives as a `&str` would be invisible to it and could drift from
     // the catalog forever. Worth the duplicated call.
     match op {
-        WriteOperationType::CreateFolder => crate::analytics::posthog::capture("folder_created", props),
-        WriteOperationType::CreateFile => crate::analytics::posthog::capture("file_created", props),
+        WriteOperationType::CreateFolder => crate::analytics::events::capture("folder_created", props),
+        WriteOperationType::CreateFile => crate::analytics::events::capture("file_created", props),
         // Unreachable by construction (both call sites pass one of the two above),
         // and a silent no-op beats inventing an event name for a fourth op type.
         _ => {}

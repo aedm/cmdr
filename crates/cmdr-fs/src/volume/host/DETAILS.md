@@ -237,7 +237,7 @@ mid-window simply re-parks with a new deadline.
 
 ### `AnalyticsSink`
 
-⇐ `analytics::posthog::capture`, one site (`connect_smb_volume` records that a direct SMB session came up). The
+⇐ `analytics::events::capture`, one site (`connect_smb_volume` records that a direct SMB session came up). The
 `&[(&str, &str)]` shape is deliberate: consent, dev/CI suppression, and batching are host business, and there's no way
 to hand the seam a struct and hope its serialization is PII-free.
 

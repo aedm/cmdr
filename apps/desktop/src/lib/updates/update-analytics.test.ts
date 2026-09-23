@@ -61,7 +61,7 @@ describe('updateCheckProps', () => {
   })
 
   /**
-   * The debug-build net in `posthog::sanitize_props` only warns, so the vocabulary has to be right
+   * The debug-build net in `events::sanitize_props` only warns, so the vocabulary has to be right
    * here. Nothing on this event may look like a URL, a path, or a sentence.
    */
   it('emits only short categorical tokens', () => {

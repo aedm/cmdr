@@ -3,9 +3,9 @@
 import { commands } from '$lib/ipc/bindings'
 
 /**
- * Records a frontend-originated PostHog feature event through the single backend analytics path.
- * Fire-and-forget: the backend gates it (consent + dev/CI suppression + missing-key no-op), so call
- * it unconditionally.
+ * Records a frontend-originated feature event through the single backend analytics path.
+ * Fire-and-forget: the backend gates it (consent + dev/CI suppression) and spools it for the next
+ * heartbeat, so call it unconditionally.
  *
  * `props` must be a PII-free map of enums, counts, and bools only: never paths, file names, search
  * queries, prompts, or hostnames. It's serialized to JSON for the IPC boundary (the prop set is open

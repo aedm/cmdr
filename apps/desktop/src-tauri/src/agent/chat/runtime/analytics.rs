@@ -18,11 +18,11 @@ use crate::analytics::item_count_bucket;
 
 /// Reports one finished turn.
 pub(super) fn turn_finished(params: &TurnParams<'_>, result: &TurnResult, tally: &TurnTally) {
-    crate::analytics::posthog::capture("ask_cmdr_turn", turn_props(params, result, tally));
+    crate::analytics::events::capture("ask_cmdr_turn", turn_props(params, result, tally));
 }
 
 /// The event's properties. Pure (no I/O, no gating), so the vocabulary is unit-testable
-/// without a running app — the same split `analytics/posthog.rs` uses for the body.
+/// without a running app — the same split `analytics/events.rs` uses for the body.
 fn turn_props(params: &TurnParams<'_>, result: &TurnResult, tally: &TurnTally) -> Value {
     let (outcome, failure) = match result {
         TurnResult::Answered { .. } => ("answered", "none"),
@@ -58,7 +58,7 @@ fn origin_token(user: Option<&UserTurn<'_>>) -> &'static str {
 /// funnel is invisible and "nobody configured a provider" looks identical to "nobody opened
 /// the rail". Same event and same prop names as a turn, so one insight covers both.
 pub(crate) fn send_refused(kind: AgentErrorKindView) {
-    crate::analytics::posthog::capture("ask_cmdr_turn", refusal_props(kind));
+    crate::analytics::events::capture("ask_cmdr_turn", refusal_props(kind));
 }
 
 /// The refusal's properties. Pure, for the same reason [`turn_props`] is.
@@ -177,7 +177,7 @@ mod tests {
     }
 
     /// Every property is categorical or a bucket: no value may look like a path, a name, or
-    /// a prompt. The debug-build net in `posthog::sanitize_props` only warns, so the
+    /// a prompt. The debug-build net in `events::sanitize_props` only warns, so the
     /// vocabulary has to be right here.
     #[test]
     fn every_prop_value_is_a_short_token_or_bucket() {

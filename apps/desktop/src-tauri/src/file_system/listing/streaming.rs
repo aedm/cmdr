@@ -195,7 +195,7 @@ impl ListingEventSink for TauriListingEventSink {
                 .ok()
                 .and_then(|v| v.as_str().map(str::to_string));
             if let Some(category) = category {
-                crate::analytics::posthog::capture("error_encountered", serde_json::json!({ "category": category }));
+                crate::analytics::events::capture("error_encountered", serde_json::json!({ "category": category }));
             }
         }
         let _ = ListingErrorEvent {
