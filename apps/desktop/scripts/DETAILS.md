@@ -113,6 +113,14 @@ Three things about it are load-bearing:
 
 The two locale generators emit `#[rustfmt::skip]`, so they own their layout and need no Rust toolchain.
 
+## The frontend SBOM plugin
+
+`vite-frontend-sbom.ts` is a Vite plugin `vite.config.js` loads only under `CMDR_FRONTEND_SBOM=1`, in the client build
+only. It writes `build/sbom/frontend.cdx.json`: the npm packages whose code the bundle holds, plus the ones a plugin
+inlines without a traceable import (today `@iconify-json/lucide`). The release workflow's `sbom` job sets the flag;
+every other build leaves it unset, so the shipped app carries no SBOM. `docs/guides/releasing.md` § Provenance and SBOM
+attestations.
+
 ## Key decisions
 
 - **Pure helpers in `instance-id.ts`, side effects in `tauri-wrapper.ts`.** The sanitizer, identifier composer,
