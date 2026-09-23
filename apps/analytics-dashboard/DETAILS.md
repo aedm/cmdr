@@ -198,8 +198,8 @@ Each source under `src/lib/server/sources/` exports a typed fetch returning `Sou
 - `umami.ts` (JWT login): page views, visitors, referrers, countries, download events for veszelovszki.com, getcmdr.com,
   getprvw.com.
 - `cloudflare.ts` (Bearer via `LICENSE_SERVER_ADMIN_TOKEN`): downloads (by version/arch/country/source, raw +
-  same-day-deduped), true per-day DAU + beats from the heartbeat, per-day update-check activity by version, from worker
-  endpoints (`/admin/downloads`, `/admin/heartbeat-dau`, `/admin/update-activity`).
+  same-day-deduped), true per-day DAU + app hours from the heartbeat, per-day update-check activity by version, from
+  worker endpoints (`/admin/downloads`, `/admin/heartbeat-dau`, `/admin/update-activity`).
 - `paddle.ts` (Bearer, cursor pagination): completed transactions, subscriptions by status.
 - `github.ts` (optional Bearer): release download counts per asset; star history (daily + cumulative) for cmdr and
   mtp-rs.
@@ -454,7 +454,12 @@ have a happy-path test carrying the real `type: 'app'` stamp, so the discriminat
   D7 needs old cohorts; Paddle has minor webhook lag; all days UTC).
 - **"Active use" daily-active count comes from the heartbeat** (`/admin/heartbeat-dau`, `COUNT(DISTINCT anal_id)` per
   day), not from summed update checks (which multiplied a ~10/day figure into a wildly inflated total). Charted gold
-  over the range, with `beats/day` as an engagement signal. Starts empty at release and fills as beta testers update.
+  over the range. Starts empty at release and fills as beta testers update.
+- **Engagement is app hours, never a beat count.** `/admin/heartbeat-dau` returns `appHours` per day,
+  `SUM(COALESCE(uptime_seconds, 3600)) / 3600`: each beat reports the runtime it covers, and a beat from a build too old
+  to report it counts as an hour (those beat hourly), so old and new rows form one series. The Active use tile and the
+  report show app hours per active install per day (`sum(appHours) / sum(dau)` over the range). ❌ Don't go back to
+  counting beats: the app beats every three hours now, and a row count measures that cadence rather than use.
 - **"New installs" (Download) and "Got the latest release" (Active use) are two distinct charts off two distinct tables,
   never merged.** A DMG download (`downloads` table) is a fresh acquisition; an update check (`update_checks` table) is
   an existing install updating in place; in-app auto-updates fetch from GitHub and never hit the download endpoint, so

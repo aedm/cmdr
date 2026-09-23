@@ -29,8 +29,8 @@ const sampleDownloadsResponse = [
 ]
 
 const sampleHeartbeatDauResponse = [
-  { date: '2025-03-20', dau: 8, beats: 42 },
-  { date: '2025-03-21', dau: 10, beats: 57 },
+  { date: '2025-03-20', dau: 8, appHours: 42 },
+  { date: '2025-03-21', dau: 10, appHours: 57.5 },
 ]
 
 const sampleUpdateActivityResponse = [
@@ -81,27 +81,27 @@ describe('parseUpdateActivityRows', () => {
 })
 
 describe('parseHeartbeatDauRows', () => {
-  it('passes through per-day dau and beats unchanged', () => {
+  it('passes through per-day dau and app hours unchanged', () => {
     const rows = parseHeartbeatDauRows(sampleHeartbeatDauResponse)
     expect(rows).toEqual([
-      { date: '2025-03-20', dau: 8, beats: 42 },
-      { date: '2025-03-21', dau: 10, beats: 57 },
+      { date: '2025-03-20', dau: 8, appHours: 42 },
+      { date: '2025-03-21', dau: 10, appHours: 57.5 },
     ])
   })
 
   it('sorts by date oldest-first', () => {
     const rows = parseHeartbeatDauRows([
-      { date: '2025-03-21', dau: 10, beats: 57 },
-      { date: '2025-03-19', dau: 4, beats: 20 },
-      { date: '2025-03-20', dau: 8, beats: 42 },
+      { date: '2025-03-21', dau: 10, appHours: 57.5 },
+      { date: '2025-03-19', dau: 4, appHours: 20 },
+      { date: '2025-03-20', dau: 8, appHours: 42 },
     ])
     expect(rows.map((r) => r.date)).toEqual(['2025-03-19', '2025-03-20', '2025-03-21'])
   })
 
-  it('keeps dau distinct from beats (engagement signal)', () => {
-    const rows = parseHeartbeatDauRows([{ date: '2025-03-20', dau: 8, beats: 42 }])
+  it('keeps dau distinct from app hours (the engagement signal)', () => {
+    const rows = parseHeartbeatDauRows([{ date: '2025-03-20', dau: 8, appHours: 42.25 }])
     expect(rows[0].dau).toBe(8)
-    expect(rows[0].beats).toBe(42)
+    expect(rows[0].appHours).toBe(42.25)
   })
 
   it('handles empty data', () => {

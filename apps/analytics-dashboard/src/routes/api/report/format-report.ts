@@ -470,24 +470,25 @@ function writeDownloadSection(
 function writeHeartbeatDau(w: ReportWriter, dau: HeartbeatDauRow[], updateActivity: UpdateActivityRow[]): void {
   const bounds = boundsByDay(dau, updateActivity)
   const peakDau = dau.reduce((max, r) => Math.max(max, r.dau), 0)
-  const totalBeats = dau.reduce((s, r) => s + r.beats, 0)
+  const totalAppHours = dau.reduce((s, r) => s + r.appHours, 0)
   const totalDau = dau.reduce((s, r) => s + r.dau, 0)
-  const beatsPerActive = totalDau > 0 ? (totalBeats / totalDau).toFixed(1) : '0'
+  const hoursPerActive = totalDau > 0 ? (totalAppHours / totalDau).toFixed(1) : '0'
   const unseen = largestUnseenShare(bounds)
 
   w.line(`- Active installs (latest day): ${formatBound(latestBound(bounds))}`)
   w.line(`- Peak confirmed running: ${num(peakDau)}`)
-  w.line(`- Beats per active install: ${beatsPerActive}`)
+  w.line(`- App hours per active install per day: ${hoursPerActive}`)
   if (unseen !== null) {
     w.line(`- Widest blind spot: ${String(Math.round(unseen * 100))}% of the high end never sent a heartbeat`)
   }
 
   w.blank()
-  w.line('The low end counts install ids we heard from on the hourly heartbeat, so those installs definitely ran')
-  w.line('Cmdr. The high end counts distinct addresses that checked for updates, a separate consent that installs')
+  w.line('The low end counts install ids we heard from on the heartbeat, so those installs definitely ran Cmdr.')
+  w.line('The high end counts distinct addresses that checked for updates, a separate consent that installs')
   w.line('with analytics off still ride. The high end is a rough reach, not a ceiling: addresses are not installs,')
   w.line('a shared connection counts an office or household once, a changing home address counts one install more')
   w.line('than once across days, and anyone with automatic update checks off never appears at all.')
+  w.line('App hours add up how long the app ran that day. A beat from a build too old to report it counts as an hour.')
 
   w.blank()
   w.line('Active installs (by day, heard from / checked for updates):')
@@ -495,7 +496,7 @@ function writeHeartbeatDau(w: ReportWriter, dau: HeartbeatDauRow[], updateActivi
     const bound = bounds.find((b) => b.day === row.date)
     const reach = bound?.reach ?? null
     w.line(
-      `  ${row.date}: ${num(row.dau)} heard from, ${reach === null ? 'no update data' : `${num(reach)} checked`}, ${num(row.beats)} beats`,
+      `  ${row.date}: ${num(row.dau)} heard from, ${reach === null ? 'no update data' : `${num(reach)} checked`}, ${num(Math.round(row.appHours))} app hours`,
     )
   }
 }

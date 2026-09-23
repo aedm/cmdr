@@ -49,16 +49,16 @@
         {@const latest = latestBound(bounds)}
         {@const unseen = largestUnseenShare(bounds)}
         {@const peakDau = dau.reduce((max, r) => Math.max(max, r.dau), 0)}
-        {@const totalBeats = dau.reduce((sum, r) => sum + r.beats, 0)}
+        {@const totalAppHours = dau.reduce((sum, r) => sum + r.appHours, 0)}
         {@const totalDau = dau.reduce((sum, r) => sum + r.dau, 0)}
-        {@const beatsPerActive = totalDau > 0 ? totalBeats / totalDau : 0}
+        {@const hoursPerActive = totalDau > 0 ? totalAppHours / totalDau : 0}
 
         {#if dau.length > 0}
             <MetricRow
                 metrics={[
                     { label: 'Active installs (latest day)', value: formatBound(latest), color: COLOR_GOLD },
                     { label: 'Peak confirmed running', value: formatNumber(peakDau) },
-                    { label: 'Beats per active install', value: beatsPerActive.toFixed(1) },
+                    { label: 'App hours per active install per day', value: hoursPerActive.toFixed(1) },
                 ]}
             />
 
@@ -68,6 +68,8 @@
                 {#if unseen !== null}
                     At the widest, {Math.round(unseen * 100)}% of the high end never sent a heartbeat.
                 {/if}
+                App hours per active install is how long Cmdr ran on an average day for each install we heard from.
+                A beat from a build too old to report its runtime counts as an hour.
             </p>
 
             <div class="mt-4">
@@ -83,7 +85,7 @@
                     height={180}
                 />
                 <Methodology
-                    text={'Heard from: distinct install ids on the hourly heartbeat, everyone who consented to ' +
+                    text={'Heard from: distinct install ids on the heartbeat, everyone who consented to ' +
                         'analytics. Checked for updates: distinct addresses that asked our server for the latest ' +
                         'version, a separate consent that opted-out installs still ride. Treat the high end as a ' +
                         'rough reach, not a ceiling: addresses are not installs, one office or household behind a ' +

@@ -3,7 +3,7 @@ import { boundsByDay, formatBound, largestUnseenShare, latestBound } from './act
 import type { HeartbeatDauRow, UpdateActivityRow } from './server/sources/cloudflare.js'
 
 function dau(rows: Array<[string, number]>): HeartbeatDauRow[] {
-  return rows.map(([date, count]) => ({ date, dau: count, beats: count * 8 }))
+  return rows.map(([date, count]) => ({ date, dau: count, appHours: count * 8 }))
 }
 
 function updates(rows: Array<[string, string, number]>): UpdateActivityRow[] {

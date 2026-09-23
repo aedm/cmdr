@@ -16,11 +16,16 @@ export interface DownloadRow {
   uniqueDownloads: number
 }
 
-/** One day of true daily-active data from the heartbeat: distinct installs (`dau`) and total beats. */
+/** One day of true daily-active data from the heartbeat: distinct installs and how long the app ran. */
 export interface HeartbeatDauRow {
   date: string
   dau: number
-  beats: number
+  /**
+   * App hours that day, summed over installs: each beat's reported uptime, and one hour for a beat
+   * from a build too old to report it (those beat hourly). The engagement signal, independent of
+   * how often the app beats. Fractional.
+   */
+  appHours: number
 }
 
 /** One day of update-check activity: distinct update-enabled installs that ran while on `version`. */
@@ -84,10 +89,10 @@ export function parseDownloadRows(raw: WorkerDownloadRow[]): DownloadRow[] {
   }))
 }
 
-/** Passes through the worker's per-day DAU rows (already `{ date, dau, beats }`), sorted oldest-first. */
+/** Passes through the worker's per-day DAU rows (already `{ date, dau, appHours }`), sorted oldest-first. */
 export function parseHeartbeatDauRows(raw: HeartbeatDauRow[]): HeartbeatDauRow[] {
   return [...raw]
-    .map((row) => ({ date: row.date, dau: row.dau, beats: row.beats }))
+    .map((row) => ({ date: row.date, dau: row.dau, appHours: row.appHours }))
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 

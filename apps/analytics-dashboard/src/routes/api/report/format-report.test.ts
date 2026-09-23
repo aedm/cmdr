@@ -143,8 +143,8 @@ const richData: DashboardData = {
         },
       ],
       heartbeatDau: [
-        { date: '2026-07-31', dau: 40, beats: 320 },
-        { date: '2026-08-01', dau: 55, beats: 500 },
+        { date: '2026-07-31', dau: 40, appHours: 320.4 },
+        { date: '2026-08-01', dau: 55, appHours: 500 },
       ],
       updateActivity: [
         // 2026-08-01 reaches past that day's 55 heartbeats, so the bound reads as a range; 2026-07-31
@@ -502,18 +502,19 @@ GitHub releases (all-time):
 
 - Active installs (latest day): 55–62
 - Peak confirmed running: 55
-- Beats per active install: 8.6
+- App hours per active install per day: 8.6
 - Widest blind spot: 11% of the high end never sent a heartbeat
 
-The low end counts install ids we heard from on the hourly heartbeat, so those installs definitely ran
-Cmdr. The high end counts distinct addresses that checked for updates, a separate consent that installs
+The low end counts install ids we heard from on the heartbeat, so those installs definitely ran Cmdr.
+The high end counts distinct addresses that checked for updates, a separate consent that installs
 with analytics off still ride. The high end is a rough reach, not a ceiling: addresses are not installs,
 a shared connection counts an office or household once, a changing home address counts one install more
 than once across days, and anyone with automatic update checks off never appears at all.
+App hours add up how long the app ran that day. A beat from a build too old to report it counts as an hour.
 
 Active installs (by day, heard from / checked for updates):
-  2026-08-01: 55 heard from, 62 checked, 500 beats
-  2026-07-31: 40 heard from, 30 checked, 320 beats
+  2026-08-01: 55 heard from, 62 checked, 500 app hours
+  2026-07-31: 40 heard from, 30 checked, 320 app hours
 
 Got the latest release per day (update-enabled installs that checked, deduped, by version):
   2026-08-01: 62 total (v1.10.0: 50, v1.2.0: 12)
