@@ -478,8 +478,8 @@ the capture walks, one test per step.
 `server-ops-helpers.ts`. What they cover, through the UI: the add sheet from the Go menu's `servers.connect` (host key
 trust on first SFTP contact, then the password), a wrong password refused under its field with nothing saved, the
 focused pane landing on the new place, copy and move both ways byte for byte, rename, delete, a conflict answered Skip
-and Overwrite, NFC/NFD names both ways, the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnect
-from the switcher sending the pane home.
+and Overwrite, a decomposed (NFD) local name uploading composed (NFC) while a server's NFD name downloads byte for byte,
+the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnect from the switcher sending the pane home.
 
 - **Every server-side assertion goes through a side door** (`../e2e-shared/server-fixtures.ts`): `ssh` for SFTP (the
   fixture user has a shell; the password rides `SSH_ASKPASS`, so no `sshpass` and no TTY), `curl` for WebDAV. ❌ Never

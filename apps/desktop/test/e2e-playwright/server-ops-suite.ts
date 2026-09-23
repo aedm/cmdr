@@ -325,25 +325,36 @@ export function defineServerOpsSuite(protocol: ServerProtocol): void {
       expect(fixture.list(dir).filter((name) => name.includes('clash-overwrite'))).toEqual(['clash-overwrite.txt'])
     })
 
-    test('NFC and NFD names survive the trip both ways, byte for byte', async ({ tauriPage }) => {
+    test('an uploaded name lands composed, and a server name comes down byte for byte', async ({ tauriPage }) => {
       const volumeId = await ensureServer(tauriPage)
       const fixtureRoot = getFixtureRoot()
-      // Two different words, so a filesystem that folds normalization for lookups
-      // (APFS does) can't take them for one name.
+      // Three different words, so a filesystem that folds normalization for
+      // lookups (APFS does) can't take any two for one name. `nfd` is spelled
+      // decomposed in this source file.
       const nfd = 'Café nfd.txt'
       const nfc = 'Crème nfc.txt'
+      const nfdUp = 'Árvíz nfd-up.txt'.normalize('NFD')
       fixture.writeFile(`${dir}/${nfd}`, payload('nfd'))
       fs.writeFileSync(path.join(fixtureRoot, 'left', nfc), payload('nfc'))
-      await ensureAppReady(tauriPage, { leftPane: [nfc] })
+      fs.writeFileSync(path.join(fixtureRoot, 'left', nfdUp), payload('nfd-up'))
+      await ensureAppReady(tauriPage, { leftPane: [nfc, nfdUp] })
       await openServerInPane(tauriPage, 'right', volumeId, nfd)
 
+      // A name Cmdr creates on the server goes out composed (NFC), whatever
+      // spelling the local disk gave it: servers match bytes, and NFC is what
+      // links, scripts, and other clients there expect.
       await focusSide(tauriPage, 'left')
       expect(await moveCursorToFile(tauriPage, nfc)).toBe(true)
       await transferCursored(tauriPage, 'F5')
+      expect(await moveCursorToFile(tauriPage, nfdUp)).toBe(true)
+      await transferCursored(tauriPage, 'F5')
       const onServer = fixture.list(dir)
       expect(onServer).toContain(nfc)
-      expect(onServer, 'the server got the NFC spelling, not a re-normalized one').not.toContain(nfc.normalize('NFD'))
+      expect(onServer, 'an NFC name stays NFC').not.toContain(nfc.normalize('NFD'))
       expect(fixture.readFile(`${dir}/${nfc}`)).toEqual(payload('nfc'))
+      expect(onServer, 'a decomposed local name lands composed').toContain(nfdUp.normalize('NFC'))
+      expect(onServer, 'and never in its decomposed spelling').not.toContain(nfdUp)
+      expect(fixture.readFile(`${dir}/${nfdUp.normalize('NFC')}`)).toEqual(payload('nfd-up'))
 
       await focusSide(tauriPage, 'right')
       expect(await moveCursorToFile(tauriPage, nfd)).toBe(true)

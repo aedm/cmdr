@@ -1164,10 +1164,12 @@ pub trait Volume: Send + Sync {
     /// [`spell_new_name`](Self::spell_new_name), ❌ never directly.
     ///
     /// For a backend that stores a name's bytes as sent while the clients sharing
-    /// it expect one spelling. SMB answers `true`: macOS hands out many local
-    /// names decomposed, and a decomposed name on a share is one Finder (over the
-    /// kernel mount, which composes on lookup), Windows, and Linux clients list and
-    /// then can't open. Default `false`: the name goes out as given.
+    /// it expect one spelling. SMB, SFTP, and WebDAV answer `true`: macOS hands
+    /// out many local names decomposed, and a decomposed name on a share is one
+    /// Finder (over the kernel mount, which composes on lookup), Windows, and
+    /// Linux clients list and then can't open, while on an SFTP or WebDAV server
+    /// it's one that web servers and scripts matching bytes don't find. Default
+    /// `false`: the name goes out as given.
     ///
     /// ❗ A new name only: a copy or move to a free name, a new folder or file, a
     /// rename's target, a ` (1)` rename pick. An operation that addresses an

@@ -28,7 +28,7 @@ use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::super::state::WriteOperationState;
 use super::super::types::ConflictResolution;
 use super::super::{EditError, OperationIntent, compress_start, pull_apply_upload_swap, route_archive_copy_into};
-use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD, RESUME_NFC, RESUME_NFD, new_name_on};
+use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD, RESUME_NFC, RESUME_NFD, assert_composes_new_names};
 use super::network_safety_test_support::Registered;
 use super::network_semantics_test_support::{Transfer, local_volume, names_in, seed, transfer, try_read};
 use super::network_transfer_test_support::{assert_no_staging_litter, clean_deep, read_all};
@@ -337,7 +337,7 @@ pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(remote: Arc<dyn
 /// dialog's probe (`destination_exists`) says it's there, `path_exists` stays
 /// byte-exact, and the compress replaces THAT archive in place, so the folder
 /// ends with one entry in the server's spelling. A NEW archive's name then lands
-/// spelled the way the volume says new names go out.
+/// composed.
 pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Arc<dyn Volume>, dir: PathBuf) {
     use crate::commands::file_system::{destination_exists, path_exists};
 
@@ -378,15 +378,13 @@ pub(super) async fn a_compress_replaces_a_look_alike_archive_in_place(remote: Ar
         "a free name reads free: {new_there:?}"
     );
     compress_onto(&local, &["one.txt"], dir.join(&resume_nfd), &registered.id).await;
-    let mut expected = vec![
-        zip_nfc.clone(),
-        new_name_on(remote.as_ref(), &RESUME_NFC.replace(".txt", ".zip"), &resume_nfd),
-    ];
+    assert_composes_new_names(remote.as_ref());
+    let mut expected = vec![zip_nfc.clone(), RESUME_NFC.replace(".txt", ".zip")];
     expected.sort();
     assert_eq!(
         names_in(remote.as_ref(), &dir).await,
         expected,
-        "a new archive lands beside it, spelled the way the server asks"
+        "❗ a new archive lands beside it, composed"
     );
 
     clean_deep(remote.as_ref(), &dir).await;

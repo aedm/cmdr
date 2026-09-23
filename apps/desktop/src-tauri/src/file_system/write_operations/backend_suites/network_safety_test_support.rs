@@ -177,7 +177,7 @@ impl Registered {
 }
 
 /// Runs one volume delete of `sources` to the end.
-async fn delete_on(
+pub(super) async fn delete_on(
     remote: &Arc<dyn Volume>,
     volume_id: &str,
     label: &str,

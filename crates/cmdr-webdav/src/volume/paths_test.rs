@@ -112,3 +112,31 @@ fn the_root_of_a_volume_normalizes_to_one_spelling() {
     assert_eq!(root_remote_path(Path::new("Photos/")), "/Photos");
     assert_eq!(root_remote_path(Path::new("/Photos")), "/Photos");
 }
+
+/// ❗ **A name Cmdr creates goes out composed (NFC).** macOS hands out many local
+/// names decomposed, and a WebDAV server on Linux stores the bytes the URL
+/// spelled, where web servers, PHP, and scripts match bytes: a decomposed
+/// `café.jpg` would look right and break every link to it. The engine respells a
+/// new name through `Volume::spell_new_name`; this pins the answer it reads.
+#[test]
+fn a_new_name_goes_out_composed() {
+    use cmdr_fs::volume::Volume;
+    let volume = make_test_volume(ROOT);
+    assert!(volume.composes_new_names());
+    assert_eq!(volume.spell_new_name("cafe\u{301}.jpg"), "caf\u{e9}.jpg");
+    assert_eq!(volume.spell_new_name("caf\u{e9}.jpg"), "caf\u{e9}.jpg");
+}
+
+/// ❗ **A path to an EXISTING entry keeps its exact bytes.** A read, a delete,
+/// or an overwrite of a decomposed name the server holds must address THAT
+/// name: a composed path would miss it, or hit a composed twin beside it.
+#[test]
+fn a_path_to_an_existing_entry_keeps_its_exact_bytes() {
+    let volume = make_test_volume(ROOT);
+    assert_eq!(
+        volume
+            .to_remote_path(Path::new("fo\u{301}to\u{301}k/cafe\u{301}.jpg"))
+            .expect("under the root"),
+        "/srv/data/fo\u{301}to\u{301}k/cafe\u{301}.jpg"
+    );
+}

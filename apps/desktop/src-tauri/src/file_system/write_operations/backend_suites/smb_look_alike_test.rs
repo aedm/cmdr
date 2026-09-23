@@ -4,9 +4,10 @@
 //! The fixture's Samba stores a name's bytes exactly as sent and matches them
 //! exactly, so `café` composed (NFC) and `café` decomposed (NFD, what macOS hands
 //! out for many local files) are two entries to it. SMB answers `true` to
-//! `Volume::composes_new_names`, so a genuinely new name lands composed here,
-//! which `a_new_name_lands_spelled_the_way_the_server_asks` asserts from that
-//! answer.
+//! `Volume::composes_new_names`, so a genuinely new name lands composed here
+//! (`a_new_name_lands_composed`), while an entry the share already holds
+//! decomposed keeps its bytes
+//! (`an_existing_decomposed_entry_keeps_its_exact_bytes`).
 //!
 //! The scenarios are backend-blind and live in
 //! `network_look_alike_test_support.rs` (the compress one in
@@ -19,8 +20,8 @@
 use super::network_archive_test_support::a_compress_replaces_a_look_alike_archive_in_place;
 use super::network_look_alike_test_support::{
     a_bulk_rename_skips_a_look_alike, a_decomposed_file_onto_its_composed_twin_is_skipped,
-    a_decomposed_folder_merges_into_its_composed_twin, a_new_name_lands_spelled_the_way_the_server_asks,
-    a_rename_never_lands_on_a_taken_name, a_same_server_move_skips_a_look_alike,
+    a_decomposed_folder_merges_into_its_composed_twin, a_new_name_lands_composed, a_rename_never_lands_on_a_taken_name,
+    a_same_server_move_skips_a_look_alike, an_existing_decomposed_entry_keeps_its_exact_bytes,
     overwriting_a_composed_twin_leaves_one_entry,
 };
 use super::smb_test_support::fixture;
@@ -50,7 +51,14 @@ async fn smb_integration_a_decomposed_folder_merges_into_its_composed_twin() {
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_a_new_name_lands_on_the_share_composed() {
     let (remote, dir) = fixture().await;
-    a_new_name_lands_spelled_the_way_the_server_asks(remote, dir).await;
+    a_new_name_lands_composed(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_an_existing_decomposed_entry_keeps_its_exact_bytes() {
+    let (remote, dir) = fixture().await;
+    an_existing_decomposed_entry_keeps_its_exact_bytes(remote, dir).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

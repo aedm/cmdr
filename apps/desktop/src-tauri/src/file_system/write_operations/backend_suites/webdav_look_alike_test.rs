@@ -4,11 +4,12 @@
 //! Apache `mod_dav` on Linux stores a name's bytes as the percent-decoded URL
 //! spelled them and matches them exactly, so `café` composed and `café`
 //! decomposed are two entries to it: the case the look-alike guard exists for.
-//! WebDAV keeps the trait defaults for `composes_new_names` (`false`) and
-//! `matches_names_in_any_unicode_form` (`false`); the backend folds nothing
-//! itself, so every scenario applies.
-//! `a_new_name_lands_spelled_the_way_the_server_asks` pins whichever answer the
-//! backend gives.
+//! WebDAV answers `composes_new_names` with `true` and keeps the trait default
+//! for `matches_names_in_any_unicode_form` (`false`); the backend folds nothing
+//! itself, so every scenario applies. A name Cmdr creates lands composed
+//! (`a_new_name_lands_composed`) while an entry the server already holds
+//! decomposed keeps its bytes
+//! (`an_existing_decomposed_entry_keeps_its_exact_bytes`).
 //!
 //! The scenarios are backend-blind and live in
 //! `network_look_alike_test_support.rs` (the compress one in
@@ -18,8 +19,8 @@
 
 use super::network_look_alike_test_support::{
     a_bulk_rename_skips_a_look_alike, a_decomposed_file_onto_its_composed_twin_is_skipped,
-    a_decomposed_folder_merges_into_its_composed_twin, a_new_name_lands_spelled_the_way_the_server_asks,
-    a_rename_never_lands_on_a_taken_name, a_same_server_move_skips_a_look_alike,
+    a_decomposed_folder_merges_into_its_composed_twin, a_new_name_lands_composed, a_rename_never_lands_on_a_taken_name,
+    a_same_server_move_skips_a_look_alike, an_existing_decomposed_entry_keeps_its_exact_bytes,
     overwriting_a_composed_twin_leaves_one_entry,
 };
 use super::webdav_test_support::fixture;
@@ -47,9 +48,16 @@ async fn webdav_integration_a_decomposed_folder_merges_into_its_composed_twin() 
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
-async fn webdav_integration_a_new_name_lands_spelled_the_way_the_server_asks() {
+async fn webdav_integration_a_new_name_lands_composed() {
     let (remote, dir) = fixture().await;
-    a_new_name_lands_spelled_the_way_the_server_asks(remote, dir).await;
+    a_new_name_lands_composed(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_an_existing_decomposed_entry_keeps_its_exact_bytes() {
+    let (remote, dir) = fixture().await;
+    an_existing_decomposed_entry_keeps_its_exact_bytes(remote, dir).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

@@ -467,7 +467,7 @@ identical-looking twin beside the user's entry.
 - **It costs a listing only when it can matter**: never for an ASCII name, never on a volume whose lookups match any
   form (`Volume::matches_names_in_any_unicode_form`, APFS), otherwise one listing of the folder after the exact lookup
   missed.
-- **New names take the volume's spelling** (`Volume::spell_new_name`; SMB composes). `place_new_entry` is the instant
+- **New names take the volume's spelling** (`Volume::spell_new_name`; SMB, SFTP, and WebDAV compose). `place_new_entry` is the instant
   ops' door: a new folder or file is refused as `AlreadyExists` beside a look-alike; a rename's target is refused the
   same way unless the user confirmed replacing it, which then replaces the look-alike under ITS spelling (one entry). A
   rename whose look-alike is the entry being renamed is a respell, which is free. The rename editor's live check
@@ -504,12 +504,25 @@ identical-looking twin beside the user's entry.
   landing already spelled; an error path that never overwrites), remote archive-edit temps (`.cmdr-tmp-<uuid>`), and
   undo (it restores an entry's own stored bytes).
 
-**Decision**: new names Cmdr creates on SMB go out composed (NFC); every other backend keeps the name as given. **Why**:
-SMB is where the evidence is. A decomposed name on a share is one that Finder over the kernel mount (which composes on
-lookup), Windows, and Linux clients list and then can't open (`ERR-VETBX`, `crates/cmdr-smb/DETAILS.md` § "SMB names
-are opaque bytes"), and every name older Cmdr builds wrote to a share is composed. SFTP, MTP, and ADB never composed, and nothing
-measured says their clients expect it, so they keep today's behavior. Extending it is one `composes_new_names` override
-per backend; dropping it is deleting SMB's.
+**Decision**: new names Cmdr creates on SMB, SFTP, and WebDAV go out composed (NFC); MTP, ADB, and local volumes keep
+the name as given. Names that already exist on the server are never rewritten, an operation on an existing entry
+(read, delete, overwrite, merge, same-server move, navigation) uses the exact bytes the server listed, and a download
+keeps the server's bytes. **Why**:
+
+- **SMB**: a decomposed name on a share is one that Finder over the kernel mount (which composes on lookup), Windows,
+  and Linux clients list and then can't open (`ERR-VETBX`, `crates/cmdr-smb/DETAILS.md` § "SMB names are opaque
+  bytes"). Apple's own SMB client composes too.
+- **SFTP and WebDAV**: the server is usually Linux, which stores a name's bytes as sent, and web servers, PHP, and
+  scripts there match bytes. macOS hands out many local names decomposed, so an NFD `café.jpg` uploaded as-is looks
+  right in every listing and breaks every link and script that spells it the usual (composed) way.
+- **What other tools do** (as surveyed 2026-09-23): Cyberduck NFC-normalizes every local path it sends
+  (iterate-ch/cyberduck#5162), FileZilla sends NFC, and Git on macOS precomposes (`core.precomposeUnicode`). OpenSSH
+  `sftp`/`scp` and `rsync` send bytes as they are, which is how decomposed names end up on servers.
+- **MTP and ADB** never composed, and nothing measured says their clients expect it.
+
+Look-alike detection is what makes composing safe: an incoming composed name finds a decomposed entry the server
+already holds as taken, so it's a conflict (or an in-place overwrite), never a second identical-looking entry. Changing
+a backend is one `composes_new_names` override.
 
 ## Naming the folder that refused a write
 
@@ -1218,7 +1231,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
     `Registered` puts a volume in the registry for the ops that look it up, and cleans BEFORE unregistering, because
     unregistering retires the volume and a retired network volume drops its session.
   - `network_look_alike_test_support.rs`: an NFD name onto its NFC twin (Skip, Overwrite, folder merge, same-server
-    move, bulk rename), new names spelled per the volume's own `composes_new_names`, and an inline rename that never
+    move, bulk rename), new names landing composed, an existing decomposed entry read, downloaded, overwritten, and deleted under its own bytes, and an inline rename that never
     lands on a taken name or its other spelling.
   - `network_archive_test_support.rs`: a zip on the server browsed and extracted through the copy engine, the routing
     predicate, a remote edit and its cancel before the swap, files copied into a remote zip, a compress, and a

@@ -7,9 +7,10 @@
 //! source's spelling hears "no" and writes a second, identical-looking entry
 //! beside the user's. These scenarios pin the guard on a live server: such a
 //! name is a conflict like any other, an Overwrite or a merge lands on the entry
-//! that is there (so the server ends with ONE), and a genuinely new name goes out
-//! the way the volume SAYS new names go out (`Volume::composes_new_names`), so
-//! the scenario holds whichever answer a backend gives.
+//! that is there (so the server ends with ONE), a genuinely new name goes out
+//! composed (every network backend answers `Volume::composes_new_names` with
+//! `true`), and an entry the server already holds decomposed is read,
+//! downloaded, overwritten, and deleted under its own bytes.
 //!
 //! A backend whose own lookups fold Unicode forms
 //! (`matches_names_in_any_unicode_form`) can't hold two spellings in the first
@@ -25,7 +26,7 @@ use cmdr_fs::volume::Volume;
 use super::super::event_sinks::CollectorEventSink;
 use super::super::types::ConflictResolution;
 use super::super::{BulkRenameRow, MutationError, SourceFingerprint, rename_managed, start_bulk_rename};
-use super::network_safety_test_support::Registered;
+use super::network_safety_test_support::{Registered, delete_on};
 use super::network_semantics_test_support::{Transfer, local_volume, names_in, seed, transfer, try_read};
 use super::network_transfer_test_support::clean_deep;
 use crate::ignore_poison::IgnorePoison;
@@ -38,14 +39,14 @@ const FOTOK_NFD: &str = "foto\u{301}k";
 pub(super) const RESUME_NFC: &str = "r\u{e9}sum\u{e9}.txt";
 pub(super) const RESUME_NFD: &str = "re\u{301}sume\u{301}.txt";
 
-/// How `remote` spells a NEW entry it's handed as `nfd`: composed where the
-/// backend asks for it, else exactly as given.
-pub(super) fn new_name_on(remote: &dyn Volume, nfc: &str, nfd: &str) -> String {
-    if remote.composes_new_names() {
-        nfc.to_string()
-    } else {
-        nfd.to_string()
-    }
+/// Asserts `remote` spells a NEW name composed, the premise of every "lands
+/// composed" assertion here. A network backend that stops answering `true`
+/// fails loudly on this line instead of on a listing that merely differs.
+pub(super) fn assert_composes_new_names(remote: &dyn Volume) {
+    assert!(
+        remote.composes_new_names(),
+        "every network backend sends a name it creates composed (NFC)"
+    );
 }
 
 /// A decomposed file copied onto a server holding its composed twin, under
@@ -152,9 +153,11 @@ pub(super) async fn a_decomposed_folder_merges_into_its_composed_twin(remote: Ar
     clean_deep(remote.as_ref(), &dir).await;
 }
 
-/// Names the copy CREATES go out spelled the way the volume says new names go
-/// out, at every depth.
-pub(super) async fn a_new_name_lands_spelled_the_way_the_server_asks(remote: Arc<dyn Volume>, dir: PathBuf) {
+/// Names the copy CREATES go out composed, at every depth: a decomposed name
+/// from macOS would land in a form that web servers, PHP, and scripts on the
+/// server (which match bytes) don't find.
+pub(super) async fn a_new_name_lands_composed(remote: Arc<dyn Volume>, dir: PathBuf) {
+    assert_composes_new_names(remote.as_ref());
     let (_local_dir, local) = local_volume("look-alike-new-name");
     seed(
         local.as_ref(),
@@ -174,24 +177,104 @@ pub(super) async fn a_new_name_lands_spelled_the_way_the_server_asks(remote: Arc
     )
     .await;
 
-    let cafe = new_name_on(remote.as_ref(), CAFE_NFC, CAFE_NFD);
-    let fotok = new_name_on(remote.as_ref(), FOTOK_NFC, FOTOK_NFD);
-    let mut top = vec![cafe.clone(), fotok.clone()];
+    let mut top = vec![CAFE_NFC.to_string(), FOTOK_NFC.to_string()];
     top.sort();
-    assert_eq!(names_in(remote.as_ref(), &dir).await, top, "top-level names");
     assert_eq!(
-        names_in(remote.as_ref(), &dir.join(&fotok)).await,
-        vec![cafe.clone()],
-        "and the names inside a folder the copy created"
+        names_in(remote.as_ref(), &dir).await,
+        top,
+        "❗ top-level names land composed"
     );
     assert_eq!(
-        try_read(remote.as_ref(), &dir.join(&fotok).join(&cafe))
+        names_in(remote.as_ref(), &dir.join(FOTOK_NFC)).await,
+        vec![CAFE_NFC.to_string()],
+        "❗ and so do the names inside a folder the copy created"
+    );
+    assert_eq!(
+        try_read(remote.as_ref(), &dir.join(FOTOK_NFC).join(CAFE_NFC))
             .await
             .as_deref(),
         Some(&b"SOURCE"[..])
     );
 
     clean_deep(remote.as_ref(), &dir).await;
+}
+
+/// An entry the server ALREADY holds decomposed is only ever addressed by its
+/// own bytes: it reads, it downloads under its own spelling, an Overwrite from
+/// either spelling replaces it in place (no composed twin appears beside it),
+/// and a delete removes it. Only names Cmdr creates get composed.
+pub(super) async fn an_existing_decomposed_entry_keeps_its_exact_bytes(remote: Arc<dyn Volume>, dir: PathBuf) {
+    seed(remote.as_ref(), &dir, &[(CAFE_NFD, b"THEIRS")]).await;
+    assert_eq!(
+        try_read(remote.as_ref(), &dir.join(CAFE_NFD)).await.as_deref(),
+        Some(&b"THEIRS"[..]),
+        "it reads under its own bytes"
+    );
+
+    // Downloading it keeps the server's spelling.
+    let (_down_dir, down) = local_volume("look-alike-existing-down");
+    transfer(
+        "look-alike-existing-down",
+        Transfer::Copy,
+        &remote,
+        &[dir.join(CAFE_NFD)],
+        &down,
+        Path::new(""),
+        ConflictResolution::Stop,
+    )
+    .await;
+    assert_eq!(
+        names_in(down.as_ref(), Path::new("")).await,
+        vec![CAFE_NFD.to_string()],
+        "❗ a download keeps the server's bytes"
+    );
+
+    // An Overwrite in EITHER spelling replaces that entry where it stands.
+    for (label, spelling, bytes) in [
+        ("look-alike-existing-same", CAFE_NFD, &b"SAME SPELLING"[..]),
+        ("look-alike-existing-other", CAFE_NFC, &b"OTHER SPELLING"[..]),
+    ] {
+        let (_up_dir, up) = local_volume(label);
+        seed(up.as_ref(), Path::new(""), &[(spelling, bytes)]).await;
+        transfer(
+            label,
+            Transfer::Copy,
+            &up,
+            &[PathBuf::from(spelling)],
+            &remote,
+            &dir,
+            ConflictResolution::Overwrite,
+        )
+        .await;
+        assert_eq!(
+            names_in(remote.as_ref(), &dir).await,
+            vec![CAFE_NFD.to_string()],
+            "❗ {label}: the overwrite lands on the stored name, never a composed twin"
+        );
+        assert_eq!(
+            try_read(remote.as_ref(), &dir.join(CAFE_NFD)).await.as_deref(),
+            Some(bytes),
+            "{label}"
+        );
+    }
+
+    let registered = Registered::new(&remote, "look-alike-existing-delete");
+    let deleted = delete_on(
+        &remote,
+        &registered.id,
+        "look-alike-existing-delete",
+        &[dir.join(CAFE_NFD)],
+        None,
+    )
+    .await;
+    assert!(deleted.is_ok(), "the delete should succeed: {deleted:?}");
+    assert!(
+        names_in(remote.as_ref(), &dir).await.is_empty(),
+        "❗ the delete removed the decomposed entry itself"
+    );
+
+    clean_deep(remote.as_ref(), &dir).await;
+    registered.leave();
 }
 
 /// A SAME-SERVER move of a decomposed file, deep in a merged folder and at the
@@ -321,7 +404,7 @@ pub(super) async fn a_rename_never_lands_on_a_taken_name(remote: Arc<dyn Volume>
 
 /// An Ask Cmdr bulk rename on the server: a row whose destination the folder
 /// holds in the other spelling is skipped (no twin), and a genuinely new name
-/// lands spelled the way the server asks.
+/// lands composed.
 pub(super) async fn a_bulk_rename_skips_a_look_alike(remote: Arc<dyn Volume>, dir: PathBuf) {
     seed(
         remote.as_ref(),
@@ -356,11 +439,8 @@ pub(super) async fn a_bulk_rename_skips_a_look_alike(remote: Arc<dyn Volume>, di
     })
     .await;
 
-    let mut expected = vec![
-        CAFE_NFC.to_string(),
-        "a.txt".to_string(),
-        new_name_on(remote.as_ref(), RESUME_NFC, RESUME_NFD),
-    ];
+    assert_composes_new_names(remote.as_ref());
+    let mut expected = vec![CAFE_NFC.to_string(), "a.txt".to_string(), RESUME_NFC.to_string()];
     expected.sort();
     assert_eq!(names_in(remote.as_ref(), &dir).await, expected);
     assert_eq!(

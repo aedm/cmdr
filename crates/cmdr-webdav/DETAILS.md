@@ -89,6 +89,20 @@ Listings are one `PROPFIND Depth: 1` with a body naming
 paths, never by position. With redirects off, a PROPFIND on a slash-less collection that answers 3xx (nginx and some NAS
 firmware) is retried once WITH the slash.
 
+## New names go out composed
+
+Every path goes out byte for byte (`url_for` percent-encodes the bytes it's given), so an entry stored decomposed (NFD)
+is read, deleted, and overwritten under its own spelling. Only a name Cmdr CREATES (an upload's free name, a new folder
+or file, a rename's target, a ` (N)` pick, a new archive) goes out composed (NFC): `composes_new_names` answers `true`,
+and the app's write layer respells the name through `Volume::spell_new_name`, ❌ never this crate. Downloads keep the
+server's bytes.
+
+Why: a WebDAV server on Linux stores the bytes the URL spelled, where web servers, PHP, and scripts match bytes, so a
+decomposed `café.jpg` from macOS looks right and breaks every link to it. The decision and which other tools do the
+same: `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names". Unit cells:
+`src/volume/paths_test.rs`; Docker cells:
+`apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/webdav_look_alike_test.rs`.
+
 ## Write staging
 
 **Decision**: the transfer engine owns staging, and this backend doesn't stage a `CreateOrReplace` write again.

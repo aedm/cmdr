@@ -240,6 +240,13 @@ impl Volume for SftpVolume {
         true
     }
 
+    /// New names go out composed (NFC); every path still goes out byte for byte,
+    /// and only a name Cmdr is creating gets respelled, by the caller that knows
+    /// it's creating it. `DETAILS.md` § "New names go out composed".
+    fn composes_new_names(&self) -> bool {
+        true
+    }
+
     fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
         Box::pin(self.noting(self.delete_impl(path)))
     }

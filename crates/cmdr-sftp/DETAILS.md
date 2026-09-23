@@ -820,6 +820,20 @@ Resolution is lexical — no round trip, no symlink following. The question is "
 this volume", which is about the path they wrote rather than about what it resolves to, and asking the server would be
 both a round trip per path and a TOCTOU window.
 
+## New names go out composed
+
+Every path goes out byte for byte: a read, a delete, an overwrite, or a listing addresses the exact bytes the server
+listed, so an entry stored decomposed (NFD) stays reachable and nothing lands beside it. Only a name Cmdr CREATES (an
+upload's free name, a new folder or file, a rename's target, a ` (N)` pick, a new archive) goes out composed (NFC):
+`composes_new_names` answers `true`, and the app's write layer respells the name through `Volume::spell_new_name`, ❌
+never this crate, which can't tell a new name from an existing one. Downloads keep the server's bytes.
+
+Why: OpenSSH on Linux stores a name's bytes as sent, and web servers, PHP, and scripts there match bytes, so a
+decomposed `café.jpg` from macOS looks right and breaks every link to it. The decision, its reasoning, and which other
+tools do the same: `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names". Unit
+cells: `src/volume/paths_test.rs`; Docker cells:
+`apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/sftp_look_alike_test.rs`.
+
 ## The `Volume` answers, and why
 
 Beyond the four required methods, `volume_impl.rs` states these deliberately:
