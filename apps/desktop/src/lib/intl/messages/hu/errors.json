@@ -639,11 +639,11 @@
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "A `{path}` útvonalra több elem is illik a szerveren. A nevük ugyanúgy néz ki, de a szerver eltérő írásmóddal tárolja őket (egy ékezetes betű kétféleképpen is tárolható, és néhány szerver megkülönbözteti a kis- és nagybetűket), ezért a Cmdr nem választott helyetted.",
+  "errors.listing.ambiguousName.explanation": "A szerveren több elem is illik erre az útvonalra: `{path}`. A nevük ugyanúgy néz ki, de a szerver eltérő írásmóddal tárolja őket (egy ékezetes betű kétféleképpen is tárolható, és néhány szerver megkülönbözteti a kis- és nagybetűket), ezért a Cmdr nem választott helyetted.",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "Ezeket próbálhatod:\n- Nyisd meg a szülőmappát, és válaszd ki a listából azt az elemet, amelyiket szeretnéd\n- Hogy legközelebb ne forduljon elő, nevezd át az egyiket, hogy a két név egyértelműen különbözzön",
+  "errors.listing.ambiguousName.suggestion": "Ezeket próbálhatod:\n- Nyisd meg a szülőmappát, és válaszd ki a listából azt az elemet, amelyiket szeretnéd\n- Legközelebb elkerülheted, ha az egyiket átnevezed úgy, hogy a két név jól láthatóan különbözzön",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },

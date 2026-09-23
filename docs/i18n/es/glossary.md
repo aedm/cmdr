@@ -3485,3 +3485,26 @@ recurso compartido con ese nombre. Por eso este aviso no lleva botón, y el tono
 - El aviso corto cierra con `así que sigue usando la conexión del sistema`, el mismo final que
   `fileExplorer.pane.directConnectionUnreachableToast` y sus dos hermanos.
 - Ningún valor necesita `sameAsSourceJustification`: los dos difieren del inglés.
+
+## Nombres que se ven iguales en el servidor (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.*`, `errors.volume.ambiguousName`, 2026-09-23)
+
+Dos elementos del servidor con nombres que en pantalla son idénticos pero se guardan con caracteres distintos (`é` como
+un carácter o como `e` + tilde, o mayúsculas frente a minúsculas).
+
+- **"look the same" → `se ven iguales`** · lo fijó `errors.listing.ambiguousName.explanation`, y la nota nueva del
+  diálogo de conflicto lo repite para que las dos superficies digan lo mismo · `high`.
+- **"the server spells them differently" → `el servidor los escribe de forma distinta`** · en la nota corta; la
+  explicación larga dice `los guarda escritos de forma distinta`, que es su inglés ("stores them spelled differently").
+  Sin tecnicismos (`Unicode`, `normalización`), como pide la descripción · `high`.
+- **accented letter → `letra con tilde`** · `tilde` es la palabra corriente para la marca del acento en los dos lados
+  del Atlántico · `high`.
+- **Un botón nombrado en prosa va entre comillas curvas:** `“Sobrescribir” reemplaza el elemento que ya está ahí.` Sin
+  comillas, el infinitivo a principio de frase se lee como sustantivo verbal ("sobrescribir reemplaza…"), no como el
+  botón. Misma regla que `{nextLabel}` en `style.md` · `high`.
+- **"the one that's there" → `el elemento que ya está ahí`** · se nombra el sustantivo: un `el que` a secas concordaría
+  con `nombres`, y `elemento` cubre archivo y carpeta sin exponer género · `high`.
+- **`{path}` en `errors.volume.ambiguousName` → `“{path}”`** · el inglés trae comillas rectas, pero es texto plano de la
+  familia `errors.volume.*`, que usa curvas en todas sus hermanas (§ Los avisos de una línea de renombrar / crear) ·
+  `high`.
+- **"rename one of them" → `renombra uno de ellos`** · sigue la entrada «`rename` (verbo) → `renombrar`, incluso en
+  prosa»; ❌ no `cambia el nombre de`, que es la perífrasis del sustantivo · `high`.

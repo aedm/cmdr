@@ -507,6 +507,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "這兩個名稱看起來一樣，但伺服器儲存的寫法不同。按一下「覆寫」會取代現有的那一個。",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "現有（資料夾）：",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

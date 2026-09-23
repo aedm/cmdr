@@ -639,7 +639,7 @@
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "`{path}` correspond à plusieurs éléments sur le serveur. Leurs noms se ressemblent à l'identique, mais le serveur les stocke écrits différemment (une lettre accentuée peut être stockée de deux façons, et certains serveurs distinguent majuscules et minuscules) : Cmdr n'en a donc choisi aucun à votre place.",
+  "errors.listing.ambiguousName.explanation": "`{path}` correspond à plusieurs éléments sur le serveur. Leurs noms semblent identiques, mais le serveur les écrit différemment (une lettre accentuée peut s'écrire de deux façons, et certains serveurs distinguent majuscules et minuscules) : Cmdr n'en a donc choisi aucun à votre place.",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
@@ -1789,7 +1789,7 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.ambiguousName": "Plusieurs éléments du serveur correspondent à « {path} », Cmdr n'en a donc choisi aucun. Choisissez-le plutôt depuis son dossier.",
+  "errors.volume.ambiguousName": "Plusieurs éléments du serveur correspondent à « {path} » : Cmdr n'en a donc choisi aucun. Choisissez plutôt l'élément voulu dans son dossier.",
   "@errors.volume.ambiguousName": {
     "sourceHash": "024d1da"
   },

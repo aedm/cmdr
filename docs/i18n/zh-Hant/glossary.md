@@ -2093,3 +2093,22 @@ replacement target. Four rules bind this whole group:
 - **短提示省略主語（`所以會繼續使用系統連線`）** · 前半句已經把話題定在共享資料夾上，再寫一次就囉嗦；結尾
   `會繼續使用系統連線` 與 `fileExplorer.pane.directConnectionUnreachableToast` 等三則一致 · `high`。
 - 兩條值都跟英文不同，不需要 `sameAsSourceJustification`；`{server}`、`macOS`、`SMB` 前後留空格。
+
+## 伺服器上「看起來一樣、寫法不同」的名稱（`fileOperations.transferProgress.lookAlikeHint`、`errors.listing.ambiguousName.*`、`errors.volume.ambiguousName`，2026-09-23）
+
+SMB 共享上兩個名稱在畫面上一模一樣，但伺服器存成不同的字元（`é` 一個字元，或 `e`
+加一個獨立的重音符號；有些伺服器還分大小寫）。這一族的四條錯誤訊息和一條衝突提示講的是同一件事，用同一套說法。
+
+- **"the server spells them differently" / "stores them spelled differently" → `伺服器儲存的寫法不同`**
+  · 語料沒有對應說法；`寫法`
+  是口語裡講「同一個字寫成不同樣子」最自然的詞，而且不必搬出 Unicode、正規化之類的術語（英文描述明確要求）·
+  `high`。兩處用同一個片語，❌ 別在其中一處改成 `拼法`（中文的 `拼` 指拼音，會讓人以為是讀音不同）。
+- **accent mark / accented letter** · `重音符號` / `帶重音符號的字母` · MS zh-Hant TBX（`accent` → `重音符號`，另有
+  `diacritic` → `變音符號`）、Total Commander zh-TW（`將帶有重音符號的名稱儲存到額外欄位中`）· `high`。❗ 不寫光禿的
+  `重音`：那通常指讀音的輕重，不是字母上的符號。
+- **"the one that's there"（衝突步驟裡目的地已有的那一個）** · `現有的那一個` · 呼應同一個步驟的欄位標籤
+  `fileOperations.transferProgress.existingFolderLabel` `現有（資料夾）：` · `high`。
+- **按鈕名稱在說明句裡** · `按一下「覆寫」` · 按鈕文字逐字沿用 `fileOperations.transferProgress.conflictOverwrite`
+  `覆寫`，依 § Punctuation 加角括號，動詞依 style.md 的 `按一下` · `high`。
+- **match（一個路徑符合幾個項目）** · `符合` · 目錄既有用法 · `high`。
+- 所有值都與英文不同，不需要 `sameAsSourceJustification`。

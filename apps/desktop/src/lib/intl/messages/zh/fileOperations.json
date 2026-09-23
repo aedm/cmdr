@@ -507,6 +507,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "这两个名称看起来一样，但服务器存储的写法不同。“覆盖”会替换现有的那一项。",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "现有（文件夹）：",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

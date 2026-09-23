@@ -3742,3 +3742,27 @@ megosztása. Ezért a buborék mellett nincs gomb, és a szöveg nem sugallhat s
   értéke nem kap toldalékot (`style.md` § Agglutination) · high. A záró `ezért a rendszerkapcsolaton marad` a három
   testvér-buborék (`fileExplorer.pane.directConnectionUnreachableToast`…) végződése.
 - `sameAsSourceJustification` egyik kulcsnál sem kell: mindkét érték eltér az angoltól.
+
+## Egyformának látszó nevek a szerveren (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.explanation`, `errors.listing.ambiguousName.suggestion`, `errors.volume.ambiguousName`)
+
+A szerver két nevet eltérő karaktersorként tárol (összetett vagy felbontott ékezet, kis- és nagybetű), a képernyőn
+viszont egyformák.
+
+- **„spelled differently” / „spells them differently” → `eltérő írásmóddal tárolja őket`** · nincs forrás a kupacban
+  (egyik referencia sem nevezi meg ezt a jelenséget) · tentative. A hibapanel és az ütközési párbeszédablak ugyanezt az
+  alakot használja, hogy a két felület ugyanazt mondja. ❌ Ne `Unicode` vagy `normalizálás`: az angol leírás
+  kifejezetten köznyelvet kér.
+- **„look the same” → `ugyanúgy néz ki`** · köznyelvi fordulat, nincs forrás · high.
+- **„matches” (egy útvonal több elemre) → `illik`** · a katalógus korábbi alakja; a Double Commander a mintára
+  `illeszkedik`-et mond (`A Péld* illeszkedik a Példa.txt-re`), de egy útvonalnál az `illik` a természetesebb · high.
+- **„upper and lower case” → `kis- és nagybetűk`** · Double Commander, KDE Dolphin, macOS AppKit
+  (`A kis- és nagybetűk azonosak`) · high.
+- **Gombnév futó szövegben: `A „Felülírás” gomb`** · a címke a `fileOperations.transferProgress.conflictOverwrite`
+  alakja, idézőjelben, ahogy az Apple is idézi a címkéit (`style.md` § Notes, macOS panelnevei) · high. „the one that's
+  there” → `a meglévő elemet`, mert a párbeszédablak sora is `Meglévő (fájl):`.
+- **Az `errors.listing.ambiguousName.explanation` útvonala kettőspont mögé kerül**
+  (`… illik erre az útvonalra: {path}`), mert a korábbi mondatkezdő `A {path} útvonalra` puszta `A` névelőt tett egy
+  ismeretlen kezdőhangú érték elé (`style.md` § Notes). A rövid `errors.volume.ambiguousName` marad
+  `a(z) „{path}” útvonalra`: ott a házi `a(z)` alak helyes, és a mondat folytatódik.
+- **„To avoid this next time, rename one…” → `Legközelebb elkerülheted, ha az egyiket átnevezed úgy, hogy…`** · a
+  korábbi `Hogy legközelebb …, hogy …` két `hogy`-ot tett egy mondatba · high.

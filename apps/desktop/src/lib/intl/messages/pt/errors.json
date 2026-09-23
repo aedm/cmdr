@@ -639,11 +639,11 @@
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "`{path}` corresponde a mais de um item no servidor. Os nomes parecem iguais, mas o servidor os guarda escritos de forma diferente (uma letra acentuada pode ser guardada de duas maneiras, e alguns servidores diferenciam maiúsculas de minúsculas), então o Cmdr não escolheu nenhum por você.",
+  "errors.listing.ambiguousName.explanation": "`{path}` corresponde a mais de um item no servidor. Os nomes parecem iguais, mas o servidor os armazena escritos de forma diferente (uma letra acentuada pode ser armazenada de duas maneiras, e alguns servidores diferenciam maiúsculas de minúsculas), então o Cmdr não escolheu nenhum por você.",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "Veja o que tentar:\n- Abra a pasta acima e escolha na lista o item que você quer\n- Para evitar isso da próxima vez, renomeie um deles para que os dois nomes fiquem claramente diferentes",
+  "errors.listing.ambiguousName.suggestion": "Veja o que tentar:\n- Abra a pasta superior e escolha na lista o item que você quer\n- Para evitar isso da próxima vez, renomeie um deles para que os dois nomes fiquem claramente diferentes",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },
@@ -1789,7 +1789,7 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.ambiguousName": "Mais de um item no servidor corresponde a \"{path}\", então o Cmdr não escolheu nenhum. Escolha-o a partir da pasta dele.",
+  "errors.volume.ambiguousName": "Mais de um item no servidor corresponde a \"{path}\", então o Cmdr não escolheu nenhum. Escolha o item na pasta onde ele está.",
   "@errors.volume.ambiguousName": {
     "sourceHash": "024d1da"
   },

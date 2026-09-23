@@ -643,7 +643,7 @@
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "Đây là những cách để thử:\n- Mở thư mục cha và chọn mục bạn muốn trong danh sách\n- Để tránh chuyện này lần sau, hãy đổi tên một trong hai mục để hai tên khác nhau rõ ràng",
+  "errors.listing.ambiguousName.suggestion": "Bạn có thể thử:\n- Mở thư mục cha và chọn mục bạn muốn trong danh sách\n- Để lần sau không gặp lại chuyện này, hãy đổi tên một trong hai mục cho hai tên khác nhau rõ ràng",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },
@@ -1789,7 +1789,7 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.ambiguousName": "Có nhiều mục trên máy chủ khớp với \"{path}\", nên Cmdr không chọn mục nào. Hãy chọn nó từ thư mục chứa nó.",
+  "errors.volume.ambiguousName": "Có nhiều mục trên máy chủ khớp với \"{path}\", nên Cmdr không tự chọn mục nào. Hãy mở thư mục chứa nó rồi chọn ở đó.",
   "@errors.volume.ambiguousName": {
     "sourceHash": "024d1da"
   },

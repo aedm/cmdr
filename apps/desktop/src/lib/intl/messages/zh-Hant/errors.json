@@ -639,11 +639,11 @@
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "`{path}` 符合伺服器上的不只一個項目。它們的名稱看起來一樣，但伺服器儲存的寫法不同（帶重音的字母可以用兩種方式儲存，有些伺服器還會區分大小寫），所以 Cmdr 沒有替你挑選其中一個。",
+  "errors.listing.ambiguousName.explanation": "`{path}` 符合伺服器上的不只一個項目。它們的名稱看起來一樣，但伺服器儲存的寫法不同（帶重音符號的字母可以用兩種方式儲存，有些伺服器還會區分大小寫），所以 Cmdr 沒有替你挑選其中一個。",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "可以這樣試試：\n- 打開上一層資料夾，從清單裡選出你想要的那一項\n- 為了下次不再遇到，把其中一個改名，讓兩個名稱明顯不同",
+  "errors.listing.ambiguousName.suggestion": "可以這樣試試：\n- 開啟上層資料夾，從清單裡選出你想要的那一項\n- 想避免下次再遇到，就把其中一個重新命名，讓兩個名稱明顯不同",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },

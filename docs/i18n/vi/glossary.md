@@ -3399,3 +3399,27 @@ như vậy. Vì thế thông báo này không có nút, và giọng văn không 
 - **Thông báo ngắn gọi lại mục chia sẻ là `mục này`** để khỏi lặp `mục chia sẻ` hai lần trong một câu · `high`. Phần
   đuôi `vẫn dùng kết nối hệ thống` là của ba thông báo anh em (`fileExplorer.pane.directConnectionUnreachableToast`…).
 - Both values differ from English, so neither needs a `sameAsSourceJustification`.
+
+## Tên trông giống hệt nhau trên máy chủ (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.*`, `errors.volume.ambiguousName`, 2026-09-23)
+
+Hai mục có tên hiện ra y hệt nhau nhưng máy chủ lưu bằng chuỗi ký tự khác (é một ký tự so với e + dấu rời, hoặc chữ hoa
+so với chữ thường). Bốn khóa phải kể cùng một câu chuyện bằng cùng một cụm từ.
+
+- **"look the same, but the server spells them differently" →
+  `trông giống hệt nhau, nhưng máy chủ lưu chúng theo cách viết khác nhau`** · cùng gốc với
+  `errors.listing.ambiguousName.explanation` (`lưu chúng với cách viết khác nhau`) · `high`. ❌ Không
+  `máy chủ viết chúng khác nhau`: máy chủ không "viết", nó lưu. Không nhắc Unicode hay chuẩn hóa.
+- **"the one that's there" → `mục hiện có`** · nối thẳng với nhãn `Hiện có (thư mục):` / `Hiện có (tệp):` ngay trên
+  trong cùng hộp thoại (`fileOperations.transferProgress.existingFolderLabel`) · `high`. `hiện có` = "existing", không
+  phải động từ "show".
+- **Nhắc tới nút Ghi đè trong câu: `Nút Ghi đè sẽ thay thế …`** · tên nút lấy nguyên từ
+  `fileOperations.transferProgress.conflictOverwrite`; động từ mô tả là `thay thế`, đúng như nút Replace trong hộp thoại
+  trùng tên của Finder (`PE108` → `Thay thế`) · `high`. Thêm `Nút` để câu không mở đầu bằng một nhãn trần.
+- **"so Cmdr didn't pick one" → `nên Cmdr không tự chọn mục nào`** ở cả hai khóa lỗi · `tự` mang đúng ý "đoán hộ bạn" ·
+  `high`.
+- **"Choose it from its folder instead" → `Hãy mở thư mục chứa nó rồi chọn ở đó.`** · ở đây `thư mục chứa nó` là cụm mô
+  tả ("thư mục đang chứa nó"), không phải thuật ngữ parent folder; bản gợi ý dài vẫn dùng `thư mục cha` như catalog ·
+  `high`.
+- **Lời dẫn "Here's what to try" là `Bạn có thể thử:`** (60 khóa trong `errors.json`); ba khóa còn viết
+  `Đây là những cách để thử:` là trôi thuật ngữ. `errors.listing.ambiguousName.suggestion` đã sửa; hai khóa
+  `errors.listing.notFound.suggestion` và `errors.listing.pathNotFoundErrno.suggestion` vẫn chờ một đợt rà soát.

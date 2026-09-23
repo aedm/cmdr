@@ -509,6 +509,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "Os dois nomes parecem iguais, mas o servidor os escreve de forma diferente. “Substituir” troca o item que já está lá.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Existente (pasta):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

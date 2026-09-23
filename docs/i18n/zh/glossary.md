@@ -2942,3 +2942,25 @@ replacement target. Four rules bind this whole group:
 - **短提示省略主语（`所以继续使用系统连接`）** · 前半句已经把话题定在共享上，中文再写一次 `此共享` 就啰嗦了；结尾
   `继续使用系统连接` 与 `fileExplorer.pane.directConnectionUnreachableToast` 等三条一致 · `high`。
 - 两条值都与英文不同，无需 `sameAsSourceJustification`；`{server}`、`macOS`、`SMB` 前后留空格。
+
+## 服务器上「看起来一样」的名称（`fileOperations.transferProgress.lookAlikeHint`、`errors.listing.ambiguousName.explanation`、`errors.volume.ambiguousName`，2026-09-23）
+
+两个名称在屏幕上一模一样，只是服务器存的字符不同（带重音的字母两种存法，或大小写不同）。这一族共用同一套说法，改一处要连着看另外两处。
+
+- **"look the same, but the server spells them differently / stores them spelled differently" →
+  `看起来一样，但服务器存储的写法不同`** · 两个键逐字一致。`写法` 是口语里「拼法」的说法；❌ 不写 `编码`、`规范化` 或
+  `Unicode`（英文描述明确要求不用技术词）。语料里没有这个概念（Finder 只有 `忽略大小写`、`区分大小写`），所以是
+  `tentative`。
+- **upper and lower case** · `大小写`（`区分大小写`）· macOS AppKit `忽略大小写`，目录里 `viewer.search.caseSensitive` ·
+  `high`。
+- **"More than one item on the server matches X" → `服务器上有不止一个项目匹配 X`**
+  · 两个错误键同一句式，路径不再放句首；`errors.listing.*` 里的 `{path}` 用反引号并两侧留空格，`errors.volume.*` 里用
+  `“{path}”` 不留空格 · `high`。
+- **"Overwrite" 在句中指按钮** · 写成 `“覆盖”`，与 `fileOperations.transferProgress.conflictOverwrite`
+  完全一致；按钮在正文里加 `“…”` 的先例是 `adb.connect.unauthorized`（`点按“允许”`）· `high`。
+- **"the one that's there" → `现有的那一项`** · `现有` 与同一对话框的
+  `fileOperations.transferProgress.existingFolderLabel`（`现有（文件夹）：`）一致；`项`
+  回指「项目」，文件和文件夹都适用 · `high`。
+- **错误正文里的「改名」「上一级文件夹」** · `errors.listing.ambiguousName.suggestion` 沿用 `errors.json`
+  里已有的口语说法（`先给其中一个改名`，`进入上一级文件夹`），不换成按钮/菜单用的
+  `重命名`、`上层文件夹`：正文和标签分开 · `high`。

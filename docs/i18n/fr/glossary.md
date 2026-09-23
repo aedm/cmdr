@@ -3800,3 +3800,27 @@ réessayez »), contrairement à ses sœurs.
   masculin lui aussi · high. La fin `reste donc sur la connexion système` est celle des trois sœurs
   (`fileExplorer.pane.directConnectionUnreachableToast`…).
 - Aucun `sameAsSourceJustification` : les deux valeurs diffèrent de l'anglais.
+
+## Les noms « sosies » sur un serveur (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.*`, `errors.volume.ambiguousName`, 2026-09-23)
+
+Deux noms identiques à l'écran que le serveur enregistre avec des caractères différents (é composé ou décomposé, ou une
+casse différente sur un serveur sensible à la casse). Les quatre clés doivent parler de la même chose avec les mêmes
+mots.
+
+- **« look the same » → `semblent identiques`** · ❌ jamais « se ressemblent à l'identique » (tournure bancale) ni « se
+  ressemblent » seul (perd le « identiques » : ils ne se distinguent pas du tout) · high.
+- **« spells / stores them spelled differently » → `les écrit différemment`** ; « an accented letter can be stored two
+  ways » → `une lettre accentuée peut s'écrire de deux façons` · mots de tous les jours, comme l'exige la description
+  (pas de « Unicode », « normalisation », ni « stocke écrits ») · high.
+- **« upper and lower case » → `majuscules et minuscules`** · macOS dit « Sensible à la casse », mais « casse » est du
+  jargon typographique ; la phrase explicative garde les mots courants · high.
+- **Le bouton cité dans une phrase se met entre guillemets, avec la valeur exacte du bouton** : « Écraser » =
+  `fileOperations.transferProgress.conflictOverwrite`, comme « Supprimer » ailleurs dans le catalogue · high.
+- **« the one that's there » → `l'élément déjà présent`** · plus clair que « celui qui s'y trouve », dont l'antécédent
+  flotte · high.
+- **« Choose it from its folder » → `Choisissez plutôt l'élément voulu dans son dossier`** · ❌ pas « Choisissez-le » :
+  l'antécédent le plus proche est « plusieurs éléments » (pluriel), le pronom ne renvoie à rien. `dans son dossier` suit
+  le Finder (« dans le dossier de destination ») · high.
+- **Le constat « so Cmdr didn't pick one » passe après un deux-points : `… : Cmdr n'en a donc choisi aucun.`** · même
+  moule dans l'explication du panneau et dans la notification courte ; la virgule d'avant faisait une phrase soudée ·
+  high.

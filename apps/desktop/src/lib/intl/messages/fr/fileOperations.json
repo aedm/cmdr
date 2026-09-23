@@ -510,6 +510,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "Ces noms semblent identiques, mais le serveur les écrit différemment. « Écraser » remplace l''élément déjà présent.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Existant (dossier) :",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

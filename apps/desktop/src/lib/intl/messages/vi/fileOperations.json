@@ -508,6 +508,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "Hai tên này trông giống hệt nhau, nhưng máy chủ lưu chúng theo cách viết khác nhau. Nút Ghi đè sẽ thay thế mục hiện có.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Hiện có (thư mục):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

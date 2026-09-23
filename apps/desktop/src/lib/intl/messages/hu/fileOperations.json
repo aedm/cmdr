@@ -509,6 +509,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "A két név ugyanúgy néz ki, de a szerver eltérő írásmóddal tárolja őket. A „Felülírás” gomb a meglévő elemet cseréli le.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Meglévő (mappa):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

@@ -508,6 +508,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "Estos nombres se ven iguales, pero el servidor los escribe de forma distinta. “Sobrescribir” reemplaza el elemento que ya está ahí.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Existente (carpeta):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

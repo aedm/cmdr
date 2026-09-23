@@ -509,6 +509,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "c560c0f"
   },
+  "fileOperations.transferProgress.lookAlikeHint": "Deze namen zien er hetzelfde uit, maar de server slaat ze anders op. Met ‘Overschrijf’ vervang je het onderdeel dat er al staat.",
+  "@fileOperations.transferProgress.lookAlikeHint": {
+    "sourceHash": "2d35ddf"
+  },
   "fileOperations.transferProgress.existingFolderLabel": "Bestaand (map):",
   "@fileOperations.transferProgress.existingFolderLabel": {
     "sourceHash": "44cab6d"

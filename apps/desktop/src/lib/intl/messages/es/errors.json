@@ -643,7 +643,7 @@
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "Esto es lo que puedes probar:\n- Abre la carpeta superior y elige el elemento que quieres de la lista\n- Para evitarlo la próxima vez, cambia el nombre de uno de ellos para que los dos se distingan claramente",
+  "errors.listing.ambiguousName.suggestion": "Esto es lo que puedes probar:\n- Abre la carpeta superior y elige el elemento que quieres de la lista\n- Para evitarlo la próxima vez, renombra uno de ellos para que los dos se distingan claramente",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },
@@ -1789,7 +1789,7 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.ambiguousName": "Más de un elemento del servidor coincide con \"{path}\", así que Cmdr no eligió ninguno. Elígelo desde su carpeta.",
+  "errors.volume.ambiguousName": "Más de un elemento del servidor coincide con “{path}”, así que Cmdr no eligió ninguno. Elígelo desde su carpeta.",
   "@errors.volume.ambiguousName": {
     "sourceHash": "024d1da"
   },

@@ -3340,3 +3340,26 @@ compartilhamento com aquele nome. Por isso este aviso não traz botão, e o tom 
 - Marcadores brasileiros conferidos: `compartilhamento` (nunca "partilha"), `conectado`, `renomeado`. Varredura pt-PT
   (ficheiro, `estar a` + infinitivo, próclise): zero ocorrências.
 - Nenhum valor precisa de `sameAsSourceJustification`: os dois diferem do inglês.
+
+## Nomes que parecem iguais no servidor (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.explanation`, `errors.volume.ambiguousName`)
+
+Dois nomes idênticos na tela que o servidor armazena com caracteres diferentes (`é` composto vs `e` + acento, ou só a
+caixa das letras).
+
+- **"look the same" → `parecem iguais`** · a forma corrente em pt-BR, já publicada em
+  `errors.listing.ambiguousName.explanation` · `high`.
+- **"spells them differently" → `os escreve de forma diferente`**; "stores them spelled differently" →
+  `os armazena escritos de forma diferente` · sem fonte na pilha (nem Finder nem MS falam desse caso); palavras comuns,
+  sem `Unicode` nem `normalização`, como a `@key` pede · `high`.
+- **store (um nome, no servidor) → `armazenar`, nunca `guardar`** · `guardar` é marcador pt-PT (§ Variant do `style.md`)
+  e o catálogo já diz `O destino não consegue armazenar esse nome` (`errors.volume.invalidName`) · `high`.
+- **case-sensitive → `diferenciam maiúsculas de minúsculas`** · a forma já fixada em § As derivas corrigidas. O Finder
+  pt-BR diz `não faz distinção entre letras maiúsculas e minúsculas` (`LocalizableMerged.json`), que também serviria,
+  mas trocar abriria uma costura com a busca · `high`.
+- **"the folder above" (a pasta que contém o caminho) → `a pasta superior`** · o termo de navegação fixado em § parent
+  folder; `pasta acima` lia como "a pasta listada acima" · `high`.
+- **"Choose it from its folder" → `Escolha o item na pasta onde ele está`** · nomeia o item em vez do enclítico `-o` (o
+  antecedente fica longe, depois de `{path}`) e evita o calque `a partir da pasta` · `high`.
+- **O botão citado em texto corrido vai entre aspas curvas**: `“Substituir” troca o item que já está lá`, no molde de
+  `fileOperations.delete.cloudOnlineOnlyHandedBack` (`oferece “Apagar”`). O rótulo copia
+  `fileOperations.transferProgress.conflictOverwrite` byte a byte · `high`.

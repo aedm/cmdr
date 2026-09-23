@@ -635,15 +635,15 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
-  "errors.listing.ambiguousName.title": "Meer dan één item past bij deze naam",
+  "errors.listing.ambiguousName.title": "Meer dan één onderdeel past bij deze naam",
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "`{path}` past bij meer dan één item op de server. De namen zien er hetzelfde uit, maar de server slaat ze verschillend gespeld op (een letter met accent kan op twee manieren worden opgeslagen, en sommige servers maken onderscheid tussen hoofdletters en kleine letters), dus Cmdr heeft er niet zelf een gekozen.",
+  "errors.listing.ambiguousName.explanation": "`{path}` past bij meer dan één onderdeel op de server. De namen zien er hetzelfde uit, maar de server slaat ze anders op (een letter met een accent kan op twee manieren worden geschreven, en sommige servers maken onderscheid tussen hoofdletters en kleine letters), dus Cmdr heeft er niet zelf een voor je gekozen.",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },
-  "errors.listing.ambiguousName.suggestion": "Dit kun je proberen:\n- Open de bovenliggende map en kies het item dat je wilt uit de lijst\n- Om dit de volgende keer te voorkomen, geef je een van de twee een andere naam, zodat ze duidelijk verschillen",
+  "errors.listing.ambiguousName.suggestion": "Dit kun je proberen:\n- Open de bovenliggende map en kies daar in de lijst het onderdeel dat je bedoelt\n- Voorkom dit de volgende keer: wijzig de naam van een van de twee, zodat ze duidelijk verschillen",
   "@errors.listing.ambiguousName.suggestion": {
     "sourceHash": "8334ece"
   },
@@ -1789,7 +1789,7 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.ambiguousName": "Meer dan één item op de server past bij \"{path}\", dus Cmdr heeft er geen gekozen. Kies het in plaats daarvan vanuit de map.",
+  "errors.volume.ambiguousName": "Meer dan één onderdeel op de server past bij ‘{path}’, dus Cmdr heeft er geen gekozen. Open de map waarin het staat en kies het daar.",
   "@errors.volume.ambiguousName": {
     "sourceHash": "024d1da"
   },

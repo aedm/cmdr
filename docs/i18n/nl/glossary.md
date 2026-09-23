@@ -3764,3 +3764,31 @@ gedeelde map met die naam heeft. Daarom staat er geen knop bij deze melding, en 
   de-woorden blijven zweven · high. Het slot `blijft op de systeemverbinding` is dat van de drie zusjes
   (`fileExplorer.pane.directConnectionUnreachableToast`…).
 - Geen `sameAsSourceJustification` nodig: beide waarden wijken af van het Engels.
+
+## Namen die er hetzelfde uitzien (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.title`, `errors.volume.ambiguousName`, 2026-09-23)
+
+Een server kan twee namen bewaren die op het scherm identiek zijn (een `é` als één teken of als `e` plus accent, of
+alleen een verschil in hoofdletters). De eerdere Nederlandse versie van de `ambiguousName`-sleutels kwam van een
+programmeeragent die deze gids niet had gelezen; deze pas trekt ze recht.
+
+- **item → `onderdeel`, ook hier** · de gewone glossary-rij (macOS Finder `items` → `onderdelen`) · high. `item` in
+  `errors.json` is drift; `errors.listing.invalidName.suggestion` draagt het nog en is buiten deze pas gelaten.
+- **"look the same" → `zien er hetzelfde uit`** · gewone Nederlandse wending, geen bron nodig · high.
+- **"the server spells them differently" / "stores them spelled differently" → `de server slaat ze anders op`** · de
+  `@key`-beschrijving vraagt om gewone woorden voor "andere tekenreeks"; `spellen` voor een server leest vreemd en
+  `verschillend gespeld opslaan` is een Engelse constructie · high. Binnen de uitleg tussen haakjes wordt het
+  `kan op twee manieren worden geschreven`, zodat `opslaan` niet twee keer in één zin staat.
+- **"matches" (een pad dat bij meer onderdelen hoort) → `past bij`** · kort en ongeacht of `{path}` een bestand of map
+  is · tentative (geen bron voor deze zin in de stapel; `komt overeen met` is het formelere alternatief).
+- **upper and lower case → `hoofdletters en kleine letters`** · macOS (`Negeer hoofdletters`, `Hoofdletters`) · high.
+- **De knopnaam in een zin: `Met ‘Overschrijf’ vervang je …`** · de knop heet `Overschrijf`
+  (`fileOperations.transferProgress.conflictOverwrite`); een stam-imperatief als onderwerp leest vreemd, dus de knopnaam
+  staat tussen enkele krulaanhalingstekens achter `Met` en het werkwoord wordt `vervangen` (Finder `Replace` →
+  `Vervang`) · high.
+- **"the one that's there" → `het onderdeel dat er al staat`** · `onderdeel` is een het-woord en dekt bestand én map ·
+  high.
+- **"Choose it from its folder instead" → `Open de map waarin het staat en kies het daar`** · `in plaats daarvan` was
+  letterlijk en stroef; `het` verwijst naar `onderdeel` · high. `{path}` staat, zoals in alle `errors.volume.*` -zusjes,
+  tussen `‘…’`, niet tussen rechte `"…"`.
+- **"To avoid this next time, rename one of them" → `Voorkom dit de volgende keer: wijzig de naam van een van de twee`**
+  · rename in lopende tekst is `de naam wijzigen` (Finder), en de lijst opent elders ook met een imperatief · high.

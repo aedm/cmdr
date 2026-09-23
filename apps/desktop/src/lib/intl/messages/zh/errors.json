@@ -639,7 +639,7 @@
   "@errors.listing.ambiguousName.title": {
     "sourceHash": "b72d687"
   },
-  "errors.listing.ambiguousName.explanation": "`{path}` 匹配服务器上的不止一个项目。它们的名称看起来一样，但服务器存储的写法不同（带重音的字母可以用两种方式存储，有些服务器还区分大小写），所以 Cmdr 没有替你挑选其中一个。",
+  "errors.listing.ambiguousName.explanation": "服务器上有不止一个项目匹配 `{path}`。它们的名称看起来一样，但服务器存储的写法不同（带重音的字母可以用两种方式存储，有些服务器还区分大小写），所以 Cmdr 没有替你挑选其中一个。",
   "@errors.listing.ambiguousName.explanation": {
     "sourceHash": "0d964db"
   },

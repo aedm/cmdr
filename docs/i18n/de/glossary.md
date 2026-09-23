@@ -3289,3 +3289,24 @@ kein „noch einmal versuchen“) — genau darin unterscheidet er sich von sein
   längeren Hinweis steht, wo kein Pronomen folgt. Das Satzende `daher bleibt sie bei der Systemverbindung` folgt
   `fileExplorer.pane.directConnectionUnreachableToast` und seinen zwei Geschwistern.
 - Kein `sameAsSourceJustification` nötig: beide Werte unterscheiden sich vom Englischen.
+
+## Namen, die gleich aussehen (`fileOperations.transferProgress.lookAlikeHint`, `errors.listing.ambiguousName.title`, `errors.listing.ambiguousName.explanation`, `errors.listing.ambiguousName.suggestion`, `errors.volume.ambiguousName`)
+
+Eine SMB-Freigabe kann zwei Namen halten, die auf dem Bildschirm identisch aussehen (`é` als ein Zeichen oder als `e`
+plus Akzent, oder nur Groß-/Kleinschreibung verschieden).
+
+- **item → `Objekt`, auch hier** · Finder `PE82` („Das Objekt „^0“ kann nicht kopiert werden, da es denselben Namen hat
+  wie ein anderes Objekt auf dem Ziel …“) · `high`. Die erste Fassung dieser Familie sagte `Element`; das ist Microsofts
+  Wort und widerspricht dem Glossar.
+- **„the server spells them differently“ → `der Server schreibt sie unterschiedlich`**, im längeren Fehlertext **„stores
+  them spelled differently“ → `speichert sie in unterschiedlicher Schreibweise`** · kein Beleg im Stapel benennt
+  Unicode-Normalisierung; beide Formen sind schlichtes Deutsch ohne Fachwort, wie die `@key`-Beschreibung verlangt ·
+  `tentative`. ❌ Nicht `speichert sie unterschiedlich geschrieben` (doppeltes Partizip, holprig).
+- **„tell upper and lower case apart“ → `zwischen Groß- und Kleinschreibung unterscheiden`** · Finder („… und dieses bei
+  Dateinamen nicht zwischen Groß- und Kleinschreibung unterscheidet.“) · `high`. Das `zwischen` gehört dazu.
+- **Der Tastenname im Fließtext steht in `„…“`**: `„Überschreiben“ ersetzt das Objekt, das schon da ist.` Der Tastenname
+  ist wortgleich mit `fileOperations.transferProgress.conflictOverwrite`, das Verb `ersetzen` folgt der Glossarzeile
+  `replace → ersetzt`. „the one that's there“ wird ein Relativsatz, weil `das vorhandene Objekt` steifer klingt ·
+  `high`.
+- **`{path}` im Rohtext steht in `„{path}“`**, nicht in ASCII-`"`, wie die übrigen sechs `„{path}“` in `errors.json` ·
+  `high`.

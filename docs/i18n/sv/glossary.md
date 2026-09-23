@@ -3312,3 +3312,25 @@ med det namnet. Därför står ingen knapp bredvid den här aviseringen, och ton
   dessutom den vanliga svenska formen för ett påstående som någon annan står för · `high`. Slutet
   `så den ligger kvar på systemanslutningen` är systrarnas (`fileExplorer.pane.directConnectionUnreachableToast` …).
 - **Inga `sameAsSourceJustification`** · båda värdena skiljer sig från engelskan.
+
+## Namn som ser likadana ut men stavas olika (`errors.listing.ambiguousName.*`, `errors.volume.ambiguousName`, `fileOperations.transferProgress.lookAlikeHint`, 2026-09-23)
+
+Två namn på en server som ser identiska ut men lagras som olika tecken (ett `é` som ett tecken eller som `e` plus
+accent, eller olika versaler/gemener). Återanvänder `objekt`, `server`, `mapp` och `skriv över`.
+
+- **"spells them differently" → `stavar dem olika`; "stores them spelled differently" →
+  `lagrar dem med olika stavning`** · vardaglig bild som engelskan, ingen teknisk term (inga `Unicode`/`normalisering`,
+  som `@key` kräver). ❌ Inte `lagrar dem olika stavade`: participet hänger inte ihop med `lagrar` · `high`.
+- **"upper and lower case" → `stora och små bokstäver`** · macOS Finder sv (`LocalizableMerged`: "den volymen skiljer
+  inte på stora och små bokstäver i filnamn"). `skiftlägeskänslig` finns i Dolphin/TC men är för tekniskt för en
+  förklarande mening · `high`.
+- **"the folder above" (föräldern) → `den överordnade mappen`** · Finder sv "Öppna överordnad mapp", och katalogens
+  `errors.listing.notFound.suggestion` ("Gå till den överordnade mappen …"). `mappen ovanför` kan läsas som en rad
+  ovanför i listan · `high`.
+- **"choose it from its folder" → `välj det i mappen där det ligger`** · `välja` (inte `markera`) eftersom det gäller
+  att välja vilket av två objekt som avses; ❌ inte `dess mapp`, som låter stelt · `high`.
+- **Knappnamnet som subjekt: `Skriv över ersätter det som redan finns där`** · samma form som
+  `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` ("Avbryt stoppar ändå Cmdr …"): knappens etikett
+  ordagrant, utan citattecken · `high`.
+- **`{path}` i `errors.volume.ambiguousName` står inom `”…”`**, som i systrarna
+  `errors.volume.notFound`/`.alreadyExists` · `high`.
