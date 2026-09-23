@@ -13,15 +13,251 @@ use std::path::Path;
 use std::time::Duration;
 
 use cmdr_fs::volume::ConnectionState;
-use cmdr_webdav::{WebdavConnectionParams, WebdavVolume};
+use cmdr_webdav::{UnattendedReconnect, WebdavConnectionParams, WebdavVolume};
 
-use cmdr_webdav::volume::testing::{FIXTURE_USER, fixture_target};
+use cmdr_webdav::volume::testing::{FIXTURE_USER, FixtureTarget, fixture_target};
 
 use crate::network::one_shot_credentials::SecretOffer;
 use crate::network::saved_server_fields::SavedServerOutcome;
 use crate::network::webdav_known_servers::KnownWebdavServer;
 use crate::network::webdav_volume_wiring::{self, WebdavConnection};
 use crate::network::{keychain, webdav_known_servers};
+
+/// The stock Apache fixture, as `FIXTURE_USER`.
+fn stock_target() -> FixtureTarget {
+    fixture_target("APACHE", 13480, FIXTURE_USER)
+}
+
+/// Seeds the secret store the way a user who had signed in once would leave
+/// it. The store is the test backend, which writes inside the caller's
+/// `isolate_secrets()` scratch dir and goes with it.
+fn signed_in_already(target: &FixtureTarget) {
+    let params = target.params();
+    keychain::save_credentials(
+        &params.credential_service(),
+        Some(&params.username),
+        &params.username,
+        &target.password,
+    )
+    .expect("the test secret store always accepts");
+}
+
+/// Connects to the stock fixture with its secret stored, under `attempt_id`.
+async fn connected(target: &FixtureTarget, display_name: &str, attempt_id: &str) -> String {
+    signed_in_already(target);
+    let WebdavConnection::Connected { volume_id } =
+        webdav_volume_wiring::connect_and_register(display_name, None, target.params(), attempt_id, None).await
+    else {
+        panic!("a fixture with its password stored must connect");
+    };
+    volume_id
+}
+
+/// The saved entry for the fixture account.
+fn saved(target: &FixtureTarget) -> Option<KnownWebdavServer> {
+    webdav_known_servers::find(target.base_url.as_str(), &target.username)
+}
+
+/// The saved entry an edit sheet sends for the fixture account, unnamed, at
+/// `remote_root`.
+fn edited(target: &FixtureTarget, remote_root: &str) -> KnownWebdavServer {
+    KnownWebdavServer {
+        url: target.base_url.to_string(),
+        username: target.username.clone(),
+        display_name: String::new(),
+        remote_root: remote_root.to_string(),
+        start_folder: None,
+        auto_reconnect: true,
+        pinned: true,
+        last_connected_at: chrono::Utc::now().to_rfc3339(),
+    }
+}
+
+/// What the app addresses `remote` by on the fixture account.
+fn app_path(params: &WebdavConnectionParams, remote: &str) -> String {
+    format!(
+        "{}{remote}",
+        cmdr_fs::volume::webdav_app_root(params.host(), params.port(), &params.username)
+    )
+}
+
+/// A successful connect leaves two things behind: a volume under its id, and a
+/// server in the list.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_connecting_registers_the_volume_and_remembers_the_server() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let params = target.params();
+
+    let volume_id = connected(&target, "Fixture server", "webdav-register").await;
+
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let volume = manager.get(&volume_id).expect("a connect registers the volume it made");
+    assert!(
+        volume.exists(Path::new(&app_path(&params, "/hello.txt"))).await,
+        "the registered volume is the live one, not a placeholder"
+    );
+
+    let remembered = saved(&target).expect("a successful connect remembers the server");
+    assert_eq!(remembered.display_name, "Fixture server");
+    assert_eq!(remembered.remote_root, target.root);
+    assert!(remembered.auto_reconnect, "a connect saves the switch it dialed with");
+
+    webdav_volume_wiring::disconnect(&volume_id).await;
+}
+
+/// A server that turns the offered password away asks a person again, and ❗
+/// leaves nothing behind: no volume, no saved server, no secret.
+///
+/// WebDAV's nearest cousin of SFTP's "an unapproved host key asks before it
+/// connects": a dial that needs a human answers with a typed outcome and holds
+/// nothing while it waits. The offer is one-shot, so no secret is written.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_a_refused_password_registers_and_remembers_nothing() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let params = target.params();
+
+    let outcome = webdav_volume_wiring::connect_and_register(
+        "Fixture server",
+        None,
+        params.clone(),
+        "webdav-refused",
+        Some(SecretOffer {
+            secret: "not-the-password".to_string(),
+            remember: false,
+        }),
+    )
+    .await;
+    assert!(
+        matches!(outcome, WebdavConnection::AuthenticationRejected),
+        "a wrong password is a rejection, which is what tells the sheet to say so"
+    );
+
+    let volume_id = cmdr_fs::volume::webdav_volume_id(params.host(), params.port(), &params.username);
+    assert!(
+        crate::file_system::volume::manager::get_volume_manager()
+            .get(&volume_id)
+            .is_none(),
+        "❗ a refused dial registers nothing"
+    );
+    assert!(saved(&target).is_none(), "❗ and remembers no server");
+    assert!(
+        !keychain::has_credentials(&params.credential_service(), Some(&params.username)),
+        "❗ and writes no secret"
+    );
+}
+
+/// ❗ **Disconnecting drops the client and takes the volume out of the
+/// registry**, and whoever still holds the volume fails fast rather than
+/// finding a dead entry. The saved server stays: a disconnect isn't a forget.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_disconnecting_drops_the_client_and_unregisters_the_volume() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let params = target.params();
+    let volume_id = connected(&target, "fixture", "webdav-disconnect").await;
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let volume = manager.get(&volume_id).expect("just registered");
+
+    let disconnected = tokio::time::timeout(Duration::from_secs(5), webdav_volume_wiring::disconnect(&volume_id))
+        .await
+        .expect("dropping a client has nothing to wait on");
+
+    assert!(disconnected);
+    assert!(
+        manager.get(&volume_id).is_none(),
+        "a disconnected server is out of the registry, not a dead entry in it"
+    );
+    assert!(
+        matches!(
+            volume.list_directory(Path::new(&app_path(&params, "/")), None).await,
+            Err(cmdr_fs::volume::VolumeError::DeviceDisconnected(_))
+        ),
+        "whoever still holds the volume fails fast rather than dialing again"
+    );
+    assert!(saved(&target).is_some(), "a disconnect keeps the saved server");
+}
+
+/// ❗ **Forgetting a server drops its client too.** Leaving it up would keep a
+/// switcher row that no store knows about and no second "Forget" can reach. The
+/// ordering that makes a tab on it go home: `crate::commands::DETAILS.md` §
+/// `servers.rs`.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_forgetting_a_server_drops_its_client_and_unregisters_it() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let volume_id = connected(&target, "fixture", "webdav-forget").await;
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    assert!(manager.get(&volume_id).is_some(), "just registered");
+
+    let forgotten = tokio::time::timeout(
+        Duration::from_secs(5),
+        crate::commands::servers::forget_server(volume_id.clone()),
+    )
+    .await
+    .expect("forgetting has nothing to wait on");
+
+    assert!(forgotten);
+    assert!(
+        manager.get(&volume_id).is_none(),
+        "a forgotten server is out of the registry, not a live volume no store can name"
+    );
+    assert!(saved(&target).is_none(), "and out of the saved list");
+}
+
+// ── "Reconnect automatically", from the row menu ──────────────────────
+
+/// ❗ **The row menu's switch moves BOTH copies on a connected place, both
+/// ways**: the saved entry, and the live volume's own switch, so it acts now
+/// rather than on the next connect.
+///
+/// Through `set_place_auto_reconnect`, the command the menu calls, because
+/// finding a WebDAV entry by volume id (a URL parsed back into host and port)
+/// is part of what has to work. The live switch is read back through
+/// `unattended_reconnect`, the answer the frontend itself reads: `SwitchOff`
+/// has exactly one source, the switch.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_the_reconnect_switch_moves_the_saved_entry_and_the_live_volume() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let volume_id = connected(&target, "fixture", "webdav-auto-reconnect").await;
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let volume = manager.get(&volume_id).expect("just registered");
+    let webdav = volume.as_any().downcast_ref::<WebdavVolume>().expect("a WebDAV volume");
+    let switch = || saved(&target).expect("still saved").auto_reconnect;
+    assert!(switch(), "a connect saves the switch on");
+    assert_eq!(webdav.unattended_reconnect().await, UnattendedReconnect::Possible);
+
+    assert!(crate::commands::servers::set_place_auto_reconnect(
+        volume_id.clone(),
+        false
+    ));
+    assert!(!switch(), "the saved entry is switched off");
+    assert_eq!(
+        webdav.unattended_reconnect().await,
+        UnattendedReconnect::SwitchOff,
+        "❗ and so is the live volume, without a reconnect"
+    );
+
+    assert!(crate::commands::servers::set_place_auto_reconnect(
+        volume_id.clone(),
+        true
+    ));
+    assert!(switch(), "the saved entry is switched back on");
+    assert_eq!(
+        webdav.unattended_reconnect().await,
+        UnattendedReconnect::Possible,
+        "❗ and so is the live volume"
+    );
+
+    webdav_volume_wiring::disconnect(&volume_id).await;
+}
 
 /// Disconnecting something that isn't a WebDAV volume answers no rather than
 /// tearing down whatever is under that id.
@@ -275,17 +511,7 @@ async fn webdav_integration_widening_a_connected_root_applies_live_over_the_same
         .expect("a live client");
     let prefix = cmdr_fs::volume::webdav_app_root(params.host(), params.port(), &params.username);
 
-    let outcome = webdav_volume_wiring::save_without_connecting(KnownWebdavServer {
-        url: target.base_url.to_string(),
-        username: target.username.clone(),
-        display_name: String::new(),
-        remote_root: "/".to_string(),
-        start_folder: None,
-        auto_reconnect: true,
-        pinned: true,
-        last_connected_at: chrono::Utc::now().to_rfc3339(),
-    })
-    .await;
+    let outcome = webdav_volume_wiring::save_without_connecting(edited(&target, "/")).await;
 
     assert_eq!(outcome, SavedServerOutcome::Saved);
     let wide = manager.get(&volume_id).expect("still registered");
@@ -320,6 +546,33 @@ async fn webdav_integration_widening_a_connected_root_applies_live_over_the_same
     assert!(
         wide.list_directory(Path::new(&wide_root), None).await.is_ok(),
         "the rebuilt client serves the wider root"
+    );
+
+    webdav_volume_wiring::disconnect(&volume_id).await;
+}
+
+/// ❗ **A root the server doesn't have is refused over the live client, and
+/// NOTHING moves**: not the store, not the registry.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_a_connected_root_the_server_lacks_is_refused_and_writes_nothing() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let target = stock_target();
+    let params = target.params();
+    let volume_id = connected(&target, "", "webdav-edit-missing-root").await;
+
+    let outcome = webdav_volume_wiring::save_without_connecting(edited(&target, "/cmdr-no-such-root")).await;
+
+    assert_eq!(outcome, SavedServerOutcome::RootNotFound);
+    assert_eq!(
+        saved(&target).expect("still saved").remote_root,
+        target.root,
+        "❗ a refusal writes nothing"
+    );
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    assert_eq!(
+        manager.get(&volume_id).expect("still registered").root(),
+        Path::new(&app_path(&params, &target.root))
     );
 
     webdav_volume_wiring::disconnect(&volume_id).await;
