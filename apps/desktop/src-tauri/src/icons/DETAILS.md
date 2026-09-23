@@ -21,6 +21,9 @@ Decision/Why: this replaced the `file_icon_provider` crate, which did the same d
 
 ## Cache tiers and persistence
 
+`mod.rs` holds the fetch paths; the hot in-memory tier (`IconCache`, its LRU, the `clear_*` entry points) lives in
+`memory_cache.rs`, the warm on-disk tier in `disk_cache.rs`.
+
 `dir` / `ext:*` / `file` / `symlink*` / `special:*` are inherently bounded, so they're uncapped in the in-memory cache
 and persist to localStorage on the FE. `path:*` / `pkg:*` are unbounded (grow with folders visited), so they're LRU-
 capped (`PATH_KEY_CAP`, 256) and never persisted to localStorage. The Rust side keeps a persistent on-disk warm tier
