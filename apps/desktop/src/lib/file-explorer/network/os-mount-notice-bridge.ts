@@ -48,7 +48,7 @@ export function osMountNoticeToastId(volumeId: string): string {
 export async function startOsMountNoticeBridge(): Promise<UnlistenFn> {
   const unlistenFallback = await onSmbFellBackToOsMount(raiseNotice)
   const unlistenVolumes = await onVolumesChanged((payload) => {
-    retireMootNotices(payload.data, payload.timedOut)
+    retireMootNotices(payload.data, payload.timedOut || payload.discoveryPending)
   })
   const unlistenWithdrawn = await onSmbOsMountNoticeWithdrawn(({ volumeId }) => {
     dismissToast(osMountNoticeToastId(volumeId))
@@ -90,17 +90,18 @@ function raiseNotice(payload: SmbFellBackToOsMount): void {
  * the user closing one.
  *
  * ❗ A TIMED-OUT listing is the last complete list standing in for a fresh one,
- * so a share missing from it proves nothing: only a listing that finished is
- * allowed to retire a notice by absence.
+ * and so is one whose discovery is still PENDING (fresh server rows beside the
+ * cached local part), so a share missing from either proves nothing: only a
+ * listing that finished is allowed to retire a notice by absence.
  */
-function retireMootNotices(volumes: VolumeInfo[], listingTimedOut: boolean): void {
+function retireMootNotices(volumes: VolumeInfo[], localPartStandingIn: boolean): void {
   const listed = new Map(volumes.map((volume) => [volume.id, volume]))
   const moot = getToasts().filter((toast) => {
     if (toast.content !== SmbOsMountFallbackToastContent) return false
     const volumeId: unknown = toast.props?.volumeId
     if (typeof volumeId !== 'string') return false
     const volume = listed.get(volumeId)
-    return volume === undefined ? !listingTimedOut : volume.connectionState === 'direct'
+    return volume === undefined ? !localPartStandingIn : volume.connectionState === 'direct'
   })
   // Collected first: dismissing splices the very array being read.
   for (const toast of moot) dismissToast(toast.id)

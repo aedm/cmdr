@@ -322,7 +322,9 @@ still fail, and the `direct` broadcast retires the notice when it doesn't. Backe
 `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount fallback".
 
 ❗ **Only a listing that finished may retire a notice by absence.** A `timedOut` payload is the last complete list
-standing in for a fresh one, so a share missing from it proves nothing. The rule's one gap: a discovery that started
+standing in for a fresh one, and a `discoveryPending` one carries the cached local part beside fresh server rows while
+discovery is still out (`src-tauri/src/volumes/DETAILS.md`, "Server rows never wait on local discovery"), so a share
+missing from either proves nothing. The rule's one gap: a discovery that started
 before a brand-new mount and finished slowly (inside its timeout) after that mount's fallback could retire the fresh
 notice. The share keeps its yellow dot either way.
 

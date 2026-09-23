@@ -15248,8 +15248,21 @@ export type VolumesBusyChanged = {
 export type VolumesChanged = {
   // The full volume list (local + MTP).
   data: LocationInfo[]
-  // Whether the local volume listing timed out (some volumes may be missing).
+  /**
+   *  Whether the latest finished local listing timed out, so the local part is
+   *  the last complete list standing in (some volumes may be missing).
+   */
   timedOut: boolean
+  /**
+   *  Whether a local discovery is still running, so the local part is the cached
+   *  snapshot and another `volumes-changed` follows. Server, device, and registry
+   *  rows are fresh either way.
+   *
+   *  ❗ Like `timed_out`, it means "don't retire anything by its absence from the
+   *  local part". Unlike it, it's no verdict on the listing: the UI keeps its
+   *  "may be missing" state and a pending retry until a non-pending event.
+   */
+  discoveryPending: boolean
 }
 
 /**

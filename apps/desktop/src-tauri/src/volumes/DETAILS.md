@@ -166,7 +166,17 @@ flat ~30s (one smbfs kernel timeout). (Incident: live NAS QA, 2026-07-13.)
    `list_locations` and re-emits it (still flagged `timed_out`) when a later one misses the deadline. Publishing the
    empty list beside that flag told the frontend "you have no volumes", and since the picker's refresh button re-ran the
    same listing into the same timeout, nothing the user could do brought them back. Rationale and the staleness bound:
-   `volume_broadcast.rs` § `LAST_GOOD_LOCAL`.
+   `apps/desktop/src-tauri/src/volume_broadcast/round.rs` § `LocalSnapshot`. A discovery that STARTED before the one already applied can't roll
+   the snapshot back, since overlapping rounds are the norm while a mount hangs.
+5. **Server rows never wait on local discovery.** Every `volumes-changed` round races discovery against
+   `PROVISIONAL_AFTER` (100 ms). A healthy listing wins and the round emits once. A slow one makes the round emit the
+   cached local part beside fresh server, device, and registry rows with `discovery_pending: true`, then emit again
+   when discovery lands or times out. Before this, one hung mount (a Tailscale SMB share) held the whole list, server
+   rows included, for the full 2 s, so a server re-added with a new folder kept its old folder in the switcher (same
+   id: host + port + user) and opening it said "Path not found". A mutex orders the events, so one composed from an
+   older snapshot never lands after a newer one. Consumers treat `discovery_pending` like `timed_out` for
+   retire-by-absence, and the volume store settles a retry only on a non-pending event. `apps/desktop/src-tauri/src/volume_broadcast/round.rs` §
+   `Broadcaster::round`.
 
 Note that the 2s deadline fires for reasons other than a hung mount: `list_locations` runs on the shared blocking pool,
 so a subsystem that saturates the pool starves it just as effectively (`commands/CLAUDE.md` § `BlockingBudget`).

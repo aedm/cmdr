@@ -38,7 +38,7 @@ vi.mock('$lib/ui/toast', () => ({
 }))
 
 let emitFallback: (payload: SmbFellBackToOsMount) => void
-let emitVolumes: (payload: { data: VolumeInfo[]; timedOut: boolean }) => void
+let emitVolumes: (payload: { data: VolumeInfo[]; timedOut: boolean; discoveryPending?: boolean }) => void
 const unlistenFallback = vi.fn()
 const unlistenVolumes = vi.fn()
 let emitWithdrawn: (payload: SmbOsMountNoticeWithdrawn) => void
@@ -53,7 +53,7 @@ vi.mock('$lib/tauri-commands', () => ({
     emitWithdrawn = handler
     return Promise.resolve(unlistenWithdrawn)
   },
-  onVolumesChanged: (handler: (payload: { data: VolumeInfo[]; timedOut: boolean }) => void) => {
+  onVolumesChanged: (handler: (payload: { data: VolumeInfo[]; timedOut: boolean; discoveryPending?: boolean }) => void) => {
     emitVolumes = handler
     return Promise.resolve(unlistenVolumes)
   },
@@ -164,6 +164,16 @@ describe('the OS-mount fallback notice', () => {
     emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     emitVolumes({ data: [], timedOut: true })
+
+    expect(dismissToast).not.toHaveBeenCalled()
+  })
+
+  it('keeps the notice through a listing whose discovery is still pending, which carries the cached local part', () => {
+    // A hung mount makes the backend publish fresh server rows beside the LAST
+    // local listing, which may predate this share's mount.
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
+
+    emitVolumes({ data: [], timedOut: false, discoveryPending: true })
 
     expect(dismissToast).not.toHaveBeenCalled()
   })

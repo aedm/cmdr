@@ -192,7 +192,7 @@ every row comes up grey.
   synchronous AppKit callback. Doing it properly means a Dock-owned cache of a cheap
   projection (id, name, path, category, connection state), refreshed from the finished
   list `volume_broadcast::do_emit` publishes on every `volumes-changed`, and read with a
-  `try_lock` like the other two sources. `volume_broadcast::LAST_GOOD_LOCAL` won't do: it's
+  `try_lock` like the other two sources. `volume_broadcast`'s `LocalSnapshot` won't do: it's
   private and holds only the local half, not devices or servers. `LocationInfo`'s
   `category`, `connection_state`, `device_readiness`, and `pinned` decide which rows belong.
 - **Creating the main window when it's missing.** Closing the main window quits the

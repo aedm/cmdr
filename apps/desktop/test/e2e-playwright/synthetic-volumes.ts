@@ -54,6 +54,7 @@ export async function publishSyntheticVolumes(tauriPage: PageLike, rows: Synthet
   await emitBackendEvent(tauriPage, 'volumes-changed', {
     data: [...(real as unknown[]), ...rows],
     timedOut: false,
+    discoveryPending: false,
   })
 }
 

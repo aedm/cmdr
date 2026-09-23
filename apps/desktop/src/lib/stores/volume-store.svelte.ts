@@ -215,8 +215,10 @@ export async function initVolumeStore(): Promise<void> {
     volumes = published
     timedOut = payload.timedOut
 
-    // Detect retry failure: we were refreshing and it's still timed out
-    if (refreshing) {
+    // Detect retry failure: we were refreshing and it's still timed out. ❗ Only
+    // on a SETTLED event: a pending one carries the cached local part while the
+    // retry's own discovery is still out, so it says nothing about the retry.
+    if (refreshing && !payload.discoveryPending) {
       refreshing = false
       if (payload.timedOut) markRetryFailed()
     }

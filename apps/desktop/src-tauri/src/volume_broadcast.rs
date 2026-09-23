@@ -7,12 +7,19 @@
 //!
 //! A 150ms debounce coalesces rapid events (e.g. multiple mounts in quick
 //! succession, or MTP connect immediately after USB hotplug).
+//!
+//! Server rows never wait on local mount discovery: a round whose discovery is
+//! late emits the cached local part beside fresh rows first
+//! (`discovery_pending: true`), then again when discovery lands. See `round.rs`.
 
+#[cfg(test)]
 use crate::ignore_poison::IgnorePoison;
-use crate::volume_listing::{self, ListingOutcome, LocationInfo};
+use crate::volume_listing::{self, LocationInfo};
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
-use std::sync::{Mutex, OnceLock};
+#[cfg(test)]
+use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri_specta::Event;
@@ -30,24 +37,18 @@ const DEBOUNCE_MS: u64 = 150;
 
 /// Timeout for listing local volumes. If `list_locations()` takes longer (for example,
 /// a hung mount, or a saturated blocking pool the listing can't get a thread from), we
-/// emit the LAST GOOD list with `timed_out: true` — see [`LAST_GOOD_LOCAL`].
+/// emit the LAST GOOD list with `timed_out: true` — see [`round::LocalSnapshot`].
 const LIST_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// The most recent SUCCESSFUL local volume listing, re-emitted when a later one times
-/// out.
+/// How long a broadcast waits for local discovery before publishing without it.
 ///
-/// **Why a timeout must not publish an empty list.** `timed_out: true` means "this list
-/// may be missing volumes", and the frontend voices exactly that. Pairing it with an
-/// empty list said "you have no volumes" instead: the picker went blank, and its
-/// refresh button re-ran the same listing into the same timeout, so nothing the user
-/// could do brought the volumes back. A transient 2 s stall on one hung mount left the
-/// app looking like it had lost every drive, permanently.
-///
-/// A stale entry is the right trade against a blank picker: it's flagged stale, an
-/// unmount arrives on its own `volume-unmounted` event regardless, and picking a volume
-/// that has since gone reports a normal missing-path error. ❌ Don't "simplify" this
-/// back to emitting `vec![]` on timeout.
-static LAST_GOOD_LOCAL: Mutex<Vec<LocationInfo>> = Mutex::new(Vec::new());
+/// Past this, the round publishes the cached local snapshot beside FRESH server,
+/// device, and registry rows (`discovery_pending: true`), then publishes again when
+/// discovery lands. A healthy listing beats it, so the common case stays one event.
+const PROVISIONAL_AFTER: Duration = Duration::from_millis(100);
+
+/// The one broadcaster every `volumes-changed` goes through.
+static BROADCASTER: Broadcaster = Broadcaster::new();
 
 /// Stores the app handle for later use. Call once during app setup.
 pub fn init(app: &AppHandle) {
@@ -148,8 +149,17 @@ pub fn emit_volumes_changed_now() {
 pub struct VolumesChanged {
     /// The full volume list (local + MTP).
     pub data: Vec<LocationInfo>,
-    /// Whether the local volume listing timed out (some volumes may be missing).
+    /// Whether the latest finished local listing timed out, so the local part is
+    /// the last complete list standing in (some volumes may be missing).
     pub timed_out: bool,
+    /// Whether a local discovery is still running, so the local part is the cached
+    /// snapshot and another `volumes-changed` follows. Server, device, and registry
+    /// rows are fresh either way.
+    ///
+    /// ❗ Like `timed_out`, it means "don't retire anything by its absence from the
+    /// local part". Unlike it, it's no verdict on the listing: the UI keeps its
+    /// "may be missing" state and a pending retry until a non-pending event.
+    pub discovery_pending: bool,
 }
 
 /// Typed `volume-mounted` Tauri event (per-volume, carries the mount path).
@@ -313,56 +323,36 @@ pub fn emit_volume_root_changed(change: VolumeRootChanged) {
 // Emission
 // ============================================================================
 
-/// The local volumes to publish for one `outcome`, and whether the result is flagged
-/// incomplete — folding [`LAST_GOOD_LOCAL`] in. Split out of [`do_emit`] so the rule
-/// that a failed listing never publishes an empty list is directly testable, without an
-/// `AppHandle` or a hung mount.
+/// Runs one broadcast round: discovers the local volumes and emits the list.
 ///
-/// A panic reports `timed_out: false`: the frontend's flag drives a retry affordance
-/// for a slow listing, and a panicked one isn't slow. The last-good set still carries,
-/// for the same reason it does on a timeout.
-fn publishable(outcome: ListingOutcome, last_good: &mut Vec<LocationInfo>) -> (Vec<LocationInfo>, bool) {
-    match outcome {
-        ListingOutcome::Listed(volumes) => {
-            last_good.clone_from(&volumes);
-            (volumes, false)
-        }
-        ListingOutcome::TimedOut => (last_good.clone(), true),
-        ListingOutcome::Panicked => (last_good.clone(), false),
-    }
-}
-
-/// Computes the full volume list and emits the event.
+/// Discovery gets a timeout of its own here rather than going through
+/// `volume_listing::list_with_timeout`, because this caller has somewhere to fall back
+/// to: the cached [`round::LocalSnapshot`] takes the place of the empty list a bare timeout
+/// would publish. How a round orders its events: [`Broadcaster::round`].
 async fn do_emit() {
-    let app = match APP_HANDLE.get() {
-        Some(a) => a,
-        None => {
-            error!("volumes-changed: no app handle (broadcast not initialized)");
-            return;
-        }
+    let Some(app) = APP_HANDLE.get() else {
+        error!("volumes-changed: no app handle (broadcast not initialized)");
+        return;
     };
 
-    // Discovery gets a timeout of its own here rather than going through
-    // `volume_listing::list_with_timeout`, because this caller has somewhere to fall
-    // back to: [`LAST_GOOD_LOCAL`] takes the place of the empty list a bare timeout
-    // would publish.
-    let outcome = volume_listing::discover_local(LIST_TIMEOUT).await;
-    let (local_volumes, timed_out) = publishable(outcome, &mut LAST_GOOD_LOCAL.lock_ignore_poison());
-    let volumes = volume_listing::complete(local_volumes).await;
-
-    debug!(
-        "Emitting volumes-changed ({} volumes, timed_out={})",
-        volumes.len(),
-        timed_out
-    );
-    let payload = VolumesChanged {
-        data: volumes,
-        timed_out,
-    };
-    if let Err(e) = payload.emit(app) {
-        error!("Failed to emit volumes-changed: {}", e);
-    }
+    let discovery = volume_listing::discover_local(LIST_TIMEOUT);
+    BROADCASTER
+        .round(discovery, volume_listing::complete, |payload| {
+            debug!(
+                "Emitting volumes-changed ({} volumes, timed_out={}, discovery_pending={})",
+                payload.data.len(),
+                payload.timed_out,
+                payload.discovery_pending
+            );
+            if let Err(e) = payload.emit(app) {
+                error!("Failed to emit volumes-changed: {}", e);
+            }
+        })
+        .await;
 }
+
+mod round;
+use round::Broadcaster;
 
 #[cfg(test)]
 mod tests;

@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VolumeInfo } from '$lib/file-explorer/types'
 
-type VolumesPayload = { data: VolumeInfo[]; timedOut: boolean }
+type VolumesPayload = { data: VolumeInfo[]; timedOut: boolean; discoveryPending?: boolean }
 
 // Hoisted mocks: must run before importing the module under test.
 const mockListVolumes = vi.fn<() => Promise<VolumesPayload>>()
@@ -85,6 +85,23 @@ describe('requestVolumeRefresh', () => {
       expect.any(String),
       expect.objectContaining({ error: 'Error: the bridge is gone' }),
     )
+  })
+
+  it('waits out an event whose discovery is still pending before judging the retry', async () => {
+    // A hung mount makes the backend publish the cached local part first, with the
+    // real verdict to follow. Judging the retry on that first event would say
+    // "still missing" about a listing that hasn't answered yet.
+    mockListVolumes.mockResolvedValue({ data: [], timedOut: true })
+    await initVolumeStore()
+    requestVolumeRefresh()
+
+    lastVolumesHandler?.({ data: [], timedOut: true, discoveryPending: true })
+    expect(isVolumesRefreshing()).toBe(true)
+    expect(isVolumeRetryFailed()).toBe(false)
+
+    lastVolumesHandler?.({ data: [], timedOut: false, discoveryPending: false })
+    expect(isVolumesRefreshing()).toBe(false)
+    expect(isVolumeRetryFailed()).toBe(false)
   })
 })
 

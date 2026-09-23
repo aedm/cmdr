@@ -176,6 +176,11 @@ export async function getEjectingVolumeIds(): Promise<string[]> {
 export interface VolumesChangedPayload {
   data: VolumeInfo[]
   timedOut: boolean
+  /**
+   * A local discovery is still running: the local part is the cached snapshot and
+   * another event follows. Like `timedOut`, don't retire anything by its absence.
+   */
+  discoveryPending: boolean
 }
 
 /**
