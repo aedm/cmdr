@@ -296,7 +296,10 @@ and what the write cells do to a real account, is in `apps/desktop/test/webdav-s
 
 - Digest authentication (`AuthMethodUnsupported`). OAuth and app-password flows are plain passwords to this backend.
 - Certificate pinning or a trust prompt: an untrusted certificate is a typed refusal and nothing more.
-- WebDAV locks (LOCK/UNLOCK); a 423 is reported as busy.
+- WebDAV locks (LOCK/UNLOCK); a 423 is reported as busy. **Decision: deliberately not. Why:** locks guard against
+  concurrent EDITORS, which Cmdr isn't: it copies, moves, and renames whole files, and the staged PUT+MOVE already keeps
+  a partial off the user's filename. A lock adds server-side state that outlives a crash (a dead lock a person has to
+  clear) for no operation Cmdr performs. Revisit only if a server refuses unlocked writes in practice.
 - No watcher: `listing_watch_coverage` is `None`; `notify_mutation` is what keeps a pane honest.
 - Quota (`get_space_info`) where the server reports a usable `quota-used-bytes`: with a non-negative
   `quota-available-bytes` beside it that's a bounded account, without one it's an unbounded reading (§ "What a real

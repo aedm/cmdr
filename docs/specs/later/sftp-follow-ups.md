@@ -1,72 +1,36 @@
-# What the SFTP backend still owes
+# SFTP follow-ups
 
-The backend and its IPC surface are done: `crates/cmdr-sftp` connects, lists, reads, writes, copies, scans, and comes
-back after a drop, and `crates/cmdr-sftp/DETAILS.md` is the canonical account of all of it. So is the frontend (§ 1).
-Three things are open, and each one is written down beside the code it belongs to. This file exists so they stay
-schedulable rather than only discoverable by someone already reading the crate.
+The backend and its IPC surface are `crates/cmdr-sftp` (canonical account: `crates/cmdr-sftp/DETAILS.md`), and the
+frontend it shares with WebDAV is `apps/desktop/src/lib/servers/DETAILS.md`. Two items are open, both deferred until a
+user asks.
 
-❌ Nothing here restates a mechanism. Every item points at the doc that owns it.
+## 1. Free space and non-UTF-8 filenames, both via vendoring the SFTP protocol crates
 
-## 1. The frontend: shipped, ❌ not an open item
+- **Problem**: two gaps with one fix. `get_space_info` answers `NotSupported`, so a pane never shows how full an SFTP
+  server is: `statvfs@openssh.com` is unreachable from the current crate stack (no request to send it, no predicate to
+  ask whether the server has it). And a filename that isn't valid UTF-8 costs the whole SESSION, not only the listing
+  that hit it, so a server holding one such name is unusable.
+- **Impact**: low today. No user has reported either. The non-UTF-8 failure is loud and lossless, which beats the
+  alternative crate's U+FFFD substitution (a name that addresses nothing).
+- **Solution**: vendor `openssh-sftp-protocol` and `ssh_format` under `crates/` as **path** dependencies (❌ not
+  `git =`: `deny.toml` denies unknown git sources), then add the `statvfs` request and make `NameEntry::filename`
+  byte-backed. The detail and the pinned behavior: `crates/cmdr-sftp/DETAILS.md` § "4. A filename that isn't UTF-8
+  costs the SESSION" and § "The `Volume` answers, and why" (the `get_space_info` bullet; the app-side half of that
+  contract is already paid).
+- **Size**: L. Roughly 2,750 lines of vendored `src/` (mostly protocol tables nobody edits after the first read), plus
+  a permanent maintenance obligation on two crates. **Blocked on a trigger**: a real user report of either gap.
 
-Kept as a numbered placeholder so the § references elsewhere still land on the right sections. Where it is written down:
-`apps/desktop/src/lib/servers/DETAILS.md` and `apps/desktop/src/lib/file-explorer/navigation/DETAILS.md`.
+## 2. `~/.ssh/config` host aliases as completions in the add form's address field
 
-## 2. Free space and non-UTF-8 filenames both wait on one vendoring
-
-Two unrelated-looking gaps with the same fix, which is why they are one piece of work rather than two.
-
-- **`get_space_info` answers `NotSupported`**, so a pane never shows how full a server is. `statvfs@openssh.com` is
-  unreachable from this crate stack: no request to send it, and no predicate to ask whether the server has it.
-- **A filename that isn't valid UTF-8 costs the whole session**, not just the listing that hit it. That is the loud
-  failure and the right one to have, but it means a server with one such name is unusable.
-
-**The fix for both**: vendor `openssh-sftp-protocol` and `ssh_format` under `crates/` as **path** dependencies (❌ not
-`git =`; `deny.toml` denies unknown git sources), then add the `statvfs` request and make `NameEntry::filename`
-byte-backed. Roughly 2 750 lines of `src/` between them at the pinned versions, most of it protocol tables nobody edits
-after the first read.
-
-**Where the detail lives**: `crates/cmdr-sftp/DETAILS.md` § "4. A filename that isn't UTF-8 costs the SESSION" and §
-"The `Volume` answers, and why" (the `get_space_info` bullet, including the app-side half of that contract, which is
-already paid).
-
-**Trigger**: a user hitting either. Vendoring buys a permanent maintenance obligation on two crates, so it wants a real
-report behind it rather than a hypothetical.
-
-## 3. Not SFTP, but this effort surfaced it: two backends drop the path from `NotFound`
-
-`VolumeError::NotFound` and `PermissionDenied` are defined to carry the missing PATH, and the transfer layer forwards
-that payload straight into what the frontend renders as the name of the file the user is looking for. `LocalPosixVolume`
-puts an errno string there and `SmbVolume` puts an NTSTATUS sentence there, so a copy that loses a file tells the user
-to go hunting for a name that was never on their disk.
-
-`cmdr_fs::volume::conformance::assert_not_found_carries_the_path` is the shared assertion, wired into every backend that
-keeps the contract; its doc comment names both gaps and the reason each one has. `cmdr-smb/DETAILS.md` § "The `NotFound`
-payload gap" carries SMB's site counts and the fix shape (`cmdr-sftp`'s `map_sftp_error`: give the mapper the path it is
-mapping a failure for, so a pathless `NotFound` stops being constructible). LocalPosix's cause is the blanket
-`impl From<std::io::Error> for VolumeError`, which fills all three path-carrying variants with `err.to_string()`; its
-cell exists, `#[ignore]`d, in `local_posix_conformance_test.rs`.
-
-**Two independent changes**, each across a shipping backend's whole error surface, which is why neither rode along with
-the SFTP work. ❗ SMB's cell can't be added ahead of its fix: the SMB integration lane runs `--run-ignored only`, so an
-`#[ignore]`d cell recording the gap would still run and still fail.
-
-## 4. `~/.ssh/config` host aliases as autocomplete in the address field
-
-**The gap**: someone who reaches a server as `ssh naspi` has to retype `ada@nas.local:2222` into the add form, because
-Cmdr never reads `~/.ssh/config`. The alias is the name they know the machine by, and it already carries the host, the
-port, the user, and often the identity file.
-
-**The shape**: a backend command that parses `~/.ssh/config` (including `Include`) and answers a list of
-`{ alias, hostname, port, user, identityFile }`, which the sheet's address field offers as completions; picking one
-fills the endpoint fields and leaves them editable, exactly as the address parser's own answer does. ❌ Read-only, and
-❗ never write to `~/.ssh/config` or `~/.ssh/known_hosts` (the second is already a standing rule in
-`apps/desktop/src-tauri/src/network/CLAUDE.md`).
-
-**Why it is not in the servers effort**: it is backend work with its own parser and its own edge cases (`Match` blocks,
-tokens like `%h`, a config that names a `ProxyJump` Cmdr can't honor), and the add form is usable without it. The
-frontend side is one more source of completions behind the field the address parser already fills.
-
-**Cost**: a day for a config parser that handles `Host`, `HostName`, `Port`, `User`, `IdentityFile`, and `Include`, plus
-the decision about what to do with an alias whose directives Cmdr can't act on (offer it and let the connect refuse, or
-hide it).
+- **Problem**: someone who reaches a server as `ssh naspi` has to retype `ada@nas.local:2222` into the add form,
+  because Cmdr never reads `~/.ssh/config`. The alias is the name they know the machine by, and it already carries the
+  host, the port, the user, and often the identity file.
+- **Impact**: friction for exactly the audience most likely to use SFTP. The add form works without it.
+- **Solution**: a backend command that parses `~/.ssh/config` (including `Include`) and answers a list of
+  `{ alias, hostname, port, user, identityFile }`, which the sheet's address field offers as completions; picking one
+  fills the endpoint fields and leaves them editable, as the address parser's own answer does. ❌ Read-only, and ❗ never
+  write to `~/.ssh/config` or `~/.ssh/known_hosts` (a standing rule in `apps/desktop/src-tauri/src/network/CLAUDE.md`).
+  Edge cases to decide: `Match` blocks, tokens like `%h`, and an alias naming a `ProxyJump` Cmdr can't honor. **Needs a
+  David decision**: offer such an alias and let the connect refuse, or hide it.
+- **Size**: M, about a day for a parser handling `Host`, `HostName`, `Port`, `User`, `IdentityFile`, and `Include`,
+  plus the frontend completion source.
