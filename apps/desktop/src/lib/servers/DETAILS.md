@@ -395,7 +395,7 @@ whichever doc owns the item now; ❌ nothing here restates a mechanism.
   places keep reaching the switcher as mounted volumes instead.
 - **`~/.ssh/config` host aliases as address-field completions**: `docs/specs/later/sftp-follow-ups.md` § 2. It is a
   backend parser with its own edge cases, and the add form is usable without it.
-- **One switcher row per phone** rather than one per protocol: `docs/specs/later/adb-merged-phone-row.md`. The "(ADB)"
+- **One switcher row per phone** rather than one per protocol: `docs/specs/later/adb-follow-ups.md` § 3. The "(ADB)"
   name suffix is the stopgap.
 - **Certificate trust-on-first-use**, which is why a self-signed NAS lands on the honest `certificate_untrusted` wording
   with no button that could work: `docs/specs/webdav-backend-follow-ups.md` § 1, backend work.

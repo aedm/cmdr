@@ -23,7 +23,7 @@
  *
  * The real-device pass (the authorize prompt on hardware, an `unauthorized` →
  * `device` transition mid-session, a 2 GB transfer) stays a by-hand job:
- * `docs/specs/later/adb-backend-follow-ups.md` § 1.
+ * `docs/specs/later/adb-follow-ups.md` § 1.
  */
 
 import { waitBudget } from './wait-budget.js'
