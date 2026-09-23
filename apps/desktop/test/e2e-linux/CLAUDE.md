@@ -33,8 +33,9 @@ pnpm test:e2e:linux:vnc                # VNC mode with hot reload (pnpm dev)
   platform registry knows): the `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE` arch tag in `entrypoint.sh`, and the chromium
   runtime libs apt-installed in `Dockerfile.base` (❌ never `--with-deps`: DETAILS). A local arm64 run masks amd64-only
   breaks: reproduce override changes under `--platform linux/amd64`.
-- **Fixture readiness is always actively probed** (`probe_smb_ports`, `probe_server_stack`): Docker's `running` doesn't
-  mean the port is bound. ❌ Never a `sleep`. DETAILS § "SMB E2E networking".
+- **Fixture readiness is always actively probed** (`probe_smb_ports`, `wait_for_published_port` in
+  `scripts/e2e-linux-fixtures.sh`): Docker's `running` doesn't mean the port is bound. ❌ Never a `sleep`. DETAILS §
+  "SMB E2E networking".
 - **The E2E container sits on every fixture stack's network** (one `--network` each) and dials servers by service name.
   ❌ Never `compose down` a stack here: each is leased. DETAILS § "Server E2E networking".
 - **Volume name gotcha**: root is "Root" on Linux, "Macintosh HD" on macOS. Tests that emit `mcp-volume-select` to

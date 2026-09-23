@@ -31,7 +31,7 @@ import (
 // Leases are per stack, so needing two stacks means two independent lease
 // namespaces: downing one at zero can never touch the other.
 //
-// The standalone scripts (a fixture's start.sh, e2e-linux.sh::start_smb_containers)
+// The standalone scripts (a fixture's start.sh, e2e-linux-fixtures.sh::start_smb_containers)
 // still work for manual / non-runner invocations: they take their OWN leases
 // ("manual" for start.sh, $$ for e2e-linux.sh), so a manual run alongside a
 // check.sh run just registers as a second holder and neither tears the other's

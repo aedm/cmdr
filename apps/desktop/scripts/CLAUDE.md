@@ -26,7 +26,7 @@ launch boundary, the llama-server fetch, and the type-drift check.
   ImageMagick, and a missing `magick` fails up front
 - **`capture-runtime.ts`**: launch primitives for both capture orchestrators (`ensureE2eBinary`), plus
   `createTrackedArtifactGuard` (only a green run keeps its rewrite of tracked artifacts; DETAILS § "The capture guard")
-- **`e2e-linux.sh`**: Linux Docker E2E launcher (`playwright-e2e,virtual-mtp`, single shard, legacy fixture)
+- **`e2e-linux.sh`** + its sourced `e2e-linux-fixtures.sh` (fixture stacks): Linux Docker E2E
 
 Wrapper architecture, decisions, instance-isolation reference: `DETAILS.md`, `docs/tooling/instance-isolation.md`.
 

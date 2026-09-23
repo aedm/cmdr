@@ -796,11 +796,11 @@ the shared `smb-consumer` Docker Compose project. Two layers of contention had t
   `Stack.Release` on each held stack (down only at zero holders, lock held across the down). The orchestrator imports
   the lib in-process — no subprocess — because it's already Go in the same module.
 
-The standalone scripts (`start.sh`, `e2e-linux.sh::start_smb_containers`) take their **own** leases (`manual` for
-`start.sh`, `$$` for `e2e-linux.sh`), so a manual run alongside a `check.sh` run just registers as a second holder and
-neither tears the other's stack down. The SIGINT handler in `main.go` captures the orchestrator via shared variable so a
-Ctrl+C also releases every held lease (with a banner) before exiting 130. See the `stacklease/` module map above for the
-lock/lease/policy model, and § "Two fixture stacks, two lease namespaces" for how a second protocol plugs in.
+The standalone scripts (`start.sh`, `e2e-linux-fixtures.sh::start_smb_containers`) take their **own** leases (`manual`
+for `start.sh`, `$$` for `e2e-linux.sh`), so a manual run alongside a `check.sh` run just registers as a second holder
+and neither tears the other's stack down. The SIGINT handler in `main.go` captures the orchestrator via shared variable
+so a Ctrl+C also releases every held lease (with a banner) before exiting 130. See the `stacklease/` module map above
+for the lock/lease/policy model, and § "Two fixture stacks, two lease namespaces" for how a second protocol plugs in.
 
 **Decision**: bring-up and teardown are silent on the common path; only the decisions that cost real wall-clock time
 print. **Why**: adopting an already-serving stack is the overwhelmingly common case (every worktree racing to reuse the

@@ -16,8 +16,9 @@ for one shard isn't worth it.
 ```
 e2e-linux.sh
 ├─ Build Tauri binary in Docker (--features playwright-e2e,virtual-mtp,smb-e2e)
-├─ Start SMB Docker containers (smb-consumer-guest, -auth, -50shares, -unicode)
-├─ Lease the SFTP and WebDAV stacks in `e2e` mode (sftp-fixture-openssh, webdav-fixture-apache)
+├─ start_fixture_stacks (e2e-linux-fixtures.sh, sourced)
+│   ├─ Lease + probe SMB (smb-consumer-guest, -auth, -50shares, -unicode)
+│   └─ Lease + probe SFTP and WebDAV in `e2e` mode (sftp-fixture-openssh, webdav-fixture-apache)
 ├─ Launch E2E container on smb-consumer_default, sftp-fixture_default, and webdav-fixture_default
 │   ├─ entrypoint.sh: Xvfb + dbus + GVFS + optional VNC
 │   ├─ Create fixtures, start Tauri app (with SMB_E2E_*_HOST/PORT env vars)
@@ -28,6 +29,8 @@ e2e-linux.sh
 
 Files:
 
+- `../../scripts/e2e-linux-fixtures.sh`: the fixture stacks, sourced by `e2e-linux.sh`: one lease model for SMB, SFTP,
+  and WebDAV, the published-port probes, and the `--network` and env args the E2E container gets.
 - `docker/Dockerfile.base`: Ubuntu 26.04 system layer (Tauri prereqs, Xvfb, Rust, Node, Playwright chromium libs,
   patchelf).
 - `docker/Dockerfile`: thin final layer (`FROM cmdr-e2e-base:<hash>` + entrypoint).
@@ -139,10 +142,10 @@ both OK to Cmdr-side SMB code, both FAIL to infra / Docker networking.
 ## Server E2E networking
 
 The server specs (`../e2e-playwright/DETAILS.md` § "Real SFTP and WebDAV servers") dial the stock SFTP server and the
-Basic-auth WebDAV server, the only service in each stack's `e2e` mode. `e2e-linux.sh::start_server_stacks` leases each
-stack with holder `$$` (the fixture's `start.sh e2e` is the fallback when the Go helper can't run), probes the published
-port on the host, and checks the stack's network exists. `cleanup()` releases both leases; a stack downs only at its
-last holder.
+Basic-auth WebDAV server, the only service in each stack's `e2e` mode. `e2e-linux-fixtures.sh::start_server_stacks`
+leases each stack with holder `$$` (the fixture's `start.sh e2e` is the fallback when the Go helper can't run), probes
+the published port on the host, and checks the stack's network exists. `e2e-linux.sh`'s `cleanup()` releases every lease
+through `release_fixture_leases`; a stack downs only at its last holder.
 
 The container joins `sftp-fixture_default` and `webdav-fixture_default` next to SMB's network, with one `--network` flag
 per network on the same `docker run` (Docker 25+, API 1.44). Inside, compose's service name is the host:

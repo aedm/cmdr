@@ -21,6 +21,11 @@ DOCKER_DIR="$DESKTOP_DIR/test/e2e-linux/docker"
 IMAGE_NAME="cmdr-e2e"
 BASE_IMAGE_REPO="cmdr-e2e-base"
 
+# The SMB, SFTP, and WebDAV fixture stacks: leases, probes, and the network and
+# env args the E2E container needs (start_fixture_stacks, release_fixture_leases).
+# shellcheck source=e2e-linux-fixtures.sh
+source "$SCRIPT_DIR/e2e-linux-fixtures.sh"
+
 # ── Consolidated host-side cleanup (installed ONCE, before any branch) ────────
 # This script has several conditional concerns that each need teardown:
 #   - the VNC branch backs up and must restore the host .cargo/config.toml;
@@ -37,16 +42,9 @@ BASE_IMAGE_REPO="cmdr-e2e-base"
 # container-internal state (an ephemeral `--rm` filesystem, the container's app
 # PID) that this host-side handler cannot reach.
 cleanup() {
-    # SMB lease: release only if we acquired one (never down a stack we don't
-    # hold; the helper itself downs only at zero holders).
-    if [[ -n "${SMB_LEASE_HELD:-}" ]]; then
-        (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease release smb "$$" 2>/dev/null) || true
-    fi
-    # The server stacks: the same rule, one lease each (see start_server_stacks).
-    local stack
-    for stack in ${SERVER_LEASES_HELD:-}; do
-        (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease release "$stack" "$$" 2>/dev/null) || true
-    done
+    # Fixture leases: only the ones this run acquired (never down a stack we
+    # don't hold; the helper itself downs only at zero holders).
+    release_fixture_leases
     # Cargo config: restore the temporarily-cleared dev override if a backup
     # exists (the VNC branch sets CARGO_CONFIG_BAK).
     if [[ -n "${CARGO_CONFIG_BAK:-}" && -f "${CARGO_CONFIG_BAK:-}" ]]; then
@@ -316,7 +314,7 @@ if $VNC_MODE; then
         -v "$TARGET_VOLUME:/target" \
         -v "$ROOT_NODE_MODULES_VOLUME:/app/node_modules" \
         -v "$DESKTOP_NODE_MODULES_VOLUME:/app/apps/desktop/node_modules" \
-    -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
+        -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
         -w /app \
         -p 5990:5990 \
         -p 6090:6090 \
@@ -358,7 +356,7 @@ docker run --rm \
     -v "$TARGET_VOLUME:/target" \
     -v "$ROOT_NODE_MODULES_VOLUME:/app/node_modules" \
     -v "$DESKTOP_NODE_MODULES_VOLUME:/app/apps/desktop/node_modules" \
-    -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
+        -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
     -w /app/apps/desktop \
     -e CI=true \
     -e CARGO_TARGET_DIR=/target \
@@ -424,237 +422,28 @@ log_info "Using Linux target: $LINUX_TARGET"
 # The binary is named "Cmdr" (capital C) not "cmdr"
 DOCKER_TAURI_BINARY="/target/$LINUX_TARGET/release/Cmdr"
 
-# ── SMB container management ────────────────────────────────────────────────
-# Start Docker SMB containers for network E2E tests. The E2E test container
-# joins the smb-consumer_default network so it can reach smb-consumer-guest:445
-# and smb-consumer-auth:445 by container name (no host port mapping needed).
-# Containers come from smb2's consumer test harness.
-
-SMB_SERVERS_DIR="$DESKTOP_DIR/test/smb-servers"
-SMB_NETWORK="smb-consumer_default"
-SMB_E2E_SERVICES=(smb-consumer-guest smb-consumer-auth smb-consumer-50shares smb-consumer-unicode)
-
-# probe_smb_ports returns 0 if every required service's published port 445
-# accepts TCP within $1 seconds, otherwise 1. NEVER replace this with a
-# blanket `sleep N`; see apps/desktop/test/CLAUDE.md "Testing principles".
-probe_smb_ports() {
-    local timeout="${1:-10}"
-    local deadline=$((SECONDS + timeout))
-    for service in "${SMB_E2E_SERVICES[@]}"; do
-        local host_port
-        host_port=$(docker compose -p smb-consumer port "$service" 445 2>/dev/null | awk -F: '{print $NF}')
-        if [ -z "$host_port" ]; then
-            return 1
-        fi
-        while ! (exec 3<>"/dev/tcp/127.0.0.1/$host_port") 2>/dev/null; do
-            if [ $SECONDS -ge $deadline ]; then
-                log_warn "  ! $service did not accept TCP on :$host_port within ${timeout}s"
-                return 1
-            fi
-            sleep 0.1
-        done
-        exec 3<&-
-        exec 3>&-
-    done
-    return 0
-}
-
-start_smb_containers() {
-    # Take this whole run's machine-wide SMB lease FIRST, holder $$ (this
-    # long-lived harness shell, distinct from the short-lived inner start.sh that
-    # runs as the "manual" holder — coexisting is fine, the helper is idempotent
-    # per holder). CI runs e2e-linux.sh DIRECTLY (never through check.sh), so the
-    # orchestrator's lease never exists for this job; the script must own its
-    # own. The lease is released by the consolidated cleanup() EXIT trap.
-    #
-    # Go-missing fallback: if the helper can't run we proceed with the legacy
-    # logic below (which shells out to start.sh, itself lease-aware) and never
-    # set SMB_LEASE_HELD, so cleanup() won't try to release a lease we don't hold.
-    if command -v go &> /dev/null; then
-        if (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease acquire smb "$$" e2e); then
-            SMB_LEASE_HELD=1
-        else
-            log_warn "SMB lease helper failed; proceeding without a cross-worktree lease (legacy path)"
-        fi
-    else
-        log_warn "'go' not found; proceeding without a cross-worktree SMB lease (legacy path)"
-    fi
-
-    # Check that ALL four required containers are running. A prior `minimal` or
-    # `core` invocation leaves guest+auth up but not 50shares/unicode, so a
-    # guest-only check falsely reports "already running" and tests that need
-    # the other two fail with "Cannot reach smb-consumer-50shares".
-    #
-    # ALSO: "running" per `docker compose ps` only means the container is
-    # alive; smbd inside may be hung, OOM-killed, or still loading. We always
-    # follow the running-check with an active TCP probe; if it fails, we
-    # reconcile the SMB stack rather than letting the E2E run hit "Cannot reach"
-    # errors mid-test. See the case study in
-    # apps/desktop/test/CLAUDE.md "Testing principles".
-    local running
-    running=$(docker compose -p smb-consumer ps --services --filter status=running 2>/dev/null || true)
-    local all_running=true
-    for service in "${SMB_E2E_SERVICES[@]}"; do
-        if ! echo "$running" | grep -q "^${service}$"; then
-            all_running=false
-            break
-        fi
-    done
-
-    if $all_running; then
-        log_info "SMB containers already running; verifying smbd reachability..."
-        if probe_smb_ports 10; then
-            log_info "SMB containers healthy"
-        else
-            # Running-but-not-serving. NEVER blanket-`down` the shared stack:
-            # a sibling worktree's suite may be mid-run against it. Reconcile
-            # instead — `up -d` the e2e services under the lock (additive, no
-            # down, no force-recreate). If other leases are live, the sick stack
-            # is the first-comer's to manage; the probe below retries.
-            log_warn "SMB containers running but not serving; reconciling (no down)"
-            if command -v go &> /dev/null && (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease reconcile smb e2e); then
-                : # reconciled under the lock
-            else
-                # Fallback (Go missing / helper broken): legacy down + restart.
-                log_warn "SMB reconcile helper unavailable; falling back to legacy down + restart"
-                docker compose -p smb-consumer down > /dev/null 2>&1 || true
-                "$SMB_SERVERS_DIR/start.sh" e2e
-            fi
-        fi
-    else
-        log_info "Starting SMB containers (e2e)..."
-        "$SMB_SERVERS_DIR/start.sh" e2e
-    fi
-
-    # Wait for the network to exist (docker compose creates it)
-    for i in $(seq 1 10); do
-        docker network inspect "$SMB_NETWORK" > /dev/null 2>&1 && break
-        sleep 1
-    done
-    if ! docker network inspect "$SMB_NETWORK" > /dev/null 2>&1; then
-        log_error "SMB network '$SMB_NETWORK' not found after starting containers"
-        exit 1
-    fi
-
-    # Final confirmation banner. Surfaces in the failing-test output (per the
-    # checker's filter) so an agent reading a failed run knows whether SMB
-    # came up healthy or not, without spelunking container state.
-    if probe_smb_ports 30; then
-        log_info "SMB e2e stack ready: all 4 containers accepting TCP on :445"
-    else
-        log_error "SMB e2e stack NOT ready after restart; aborting before tests"
-        docker compose -p smb-consumer ps
-        for service in "${SMB_E2E_SERVICES[@]}"; do
-            log_warn "--- last 30 lines of $service log ---"
-            docker compose -p smb-consumer logs --tail=30 "$service" || true
-        done
-        exit 1
-    fi
-}
-
-start_smb_containers
-
-# ── SFTP and WebDAV fixture servers ─────────────────────────────────────────
-# The server specs (`server-ops-sftp.spec.ts`, `server-ops-webdav.spec.ts`) add a
-# real server through the sheet and move bytes to and from it. Each stack is
-# leased in its `e2e` mode (one server each), and the E2E container joins each
-# stack's Docker network below, dialing the service by name on its container
-# port — exactly how it reaches SMB.
-#
-# Same lease model as SMB, own namespaces: never down a stack another holder
-# uses (the helper downs only at zero holders), never `compose down` it here.
-SERVER_STACKS=(
-    # stack   compose project   service                 container port   fixture dir
-    "sftp     sftp-fixture      sftp-fixture-openssh    22               sftp-servers"
-    "webdav   webdav-fixture    webdav-fixture-apache   80               webdav-servers"
-)
-
-# probe_server_stack returns 0 once the service's PUBLISHED port accepts TCP
-# within $4 seconds. Docker's `running` comes well before the daemon binds. NEVER
-# replace this with a blanket `sleep N`; see apps/desktop/test/CLAUDE.md.
-probe_server_stack() {
-    local project="$1" service="$2" port="$3" timeout="$4"
-    local deadline=$((SECONDS + timeout))
-    local host_port
-    host_port=$(docker compose -p "$project" port "$service" "$port" 2>/dev/null | awk -F: '{print $NF}')
-    [ -z "$host_port" ] && return 1
-    while ! (exec 3<>"/dev/tcp/127.0.0.1/$host_port") 2>/dev/null; do
-        [ $SECONDS -ge $deadline ] && return 1
-        sleep 0.1
-    done
-    exec 3<&-
-    exec 3>&-
-    return 0
-}
-
-start_server_stacks() {
-    local entry stack project service port fixture_dir
-    for entry in "${SERVER_STACKS[@]}"; do
-        read -r stack project service port fixture_dir <<< "$entry"
-        # The lease first, holder $$, exactly like SMB's: CI runs this script
-        # directly, so nothing else holds one for this job. A failed or missing
-        # helper falls back to the fixture's own start.sh (lease-aware itself).
-        if command -v go &> /dev/null && (cd "$REPO_ROOT/scripts/check" && go run ./stack-lease acquire "$stack" "$$" e2e); then
-            SERVER_LEASES_HELD="${SERVER_LEASES_HELD:-} $stack"
-        else
-            log_warn "$stack lease helper unavailable; starting through $fixture_dir/start.sh e2e"
-            "$DESKTOP_DIR/test/$fixture_dir/start.sh" e2e
-        fi
-        if probe_server_stack "$project" "$service" "$port" 60; then
-            log_info "$stack e2e stack ready: $service accepting TCP"
-        else
-            log_error "$stack e2e stack NOT ready; aborting before tests"
-            docker compose -p "$project" ps
-            docker compose -p "$project" logs --tail=30 "$service" || true
-            exit 1
-        fi
-        if ! docker network inspect "${project}_default" > /dev/null 2>&1; then
-            log_error "$stack network '${project}_default' not found after starting the stack"
-            exit 1
-        fi
-    done
-}
-
-start_server_stacks
-
-# The container joins every fixture network: SMB's first (the one `--network`
-# has always named), then one per server stack. Several `--network` flags on one
-# `docker run` need Docker 25+ (API 1.44); this repo is on 29.
-SERVER_NETWORK_ARGS=""
-for entry in "${SERVER_STACKS[@]}"; do
-    read -r _ project _ _ _ <<< "$entry"
-    SERVER_NETWORK_ARGS="$SERVER_NETWORK_ARGS --network ${project}_default"
-done
-# Where the specs (`e2e-shared/server-fixtures.ts`) and the app dial each server.
-SERVER_ENV_ARGS="-e SFTP_E2E_HOST=sftp-fixture-openssh -e SFTP_E2E_PORT=22 -e WEBDAV_E2E_HOST=webdav-fixture-apache -e WEBDAV_E2E_PORT=80"
-
-# SMB env vars: inside the Docker network, containers are addressable by name on port 445
-# CMDR_MCP_ENABLED: release builds disable MCP by default; tests need it
-# --privileged: needed for mount -t cifs inside the container (SYS_ADMIN alone is
-# blocked by Docker's default seccomp profile which denies the mount syscall)
-SMB_ENV_ARGS="-e SMB_E2E_GUEST_HOST=smb-consumer-guest -e SMB_E2E_GUEST_PORT=445 -e SMB_E2E_AUTH_HOST=smb-consumer-auth -e SMB_E2E_AUTH_PORT=445 -e SMB_E2E_50SHARES_HOST=smb-consumer-50shares -e SMB_E2E_50SHARES_PORT=445 -e SMB_CONSUMER_50SHARES_PORT=445 -e SMB_E2E_UNICODE_HOST=smb-consumer-unicode -e SMB_E2E_UNICODE_PORT=445 -e SMB_CONSUMER_UNICODE_PORT=445 -e CMDR_MCP_ENABLED=true"
-SMB_DOCKER_ARGS="--privileged"
+# SMB, SFTP, and WebDAV, leased and probed; sets FIXTURE_DOCKER_ARGS and
+# FIXTURE_ENV_ARGS for the `docker run`s below (e2e-linux-fixtures.sh).
+start_fixture_stacks
 
 if $INTERACTIVE; then
     log_info "Starting interactive shell in container..."
     log_info "Binary path: $DOCKER_TAURI_BINARY"
     docker run -it --rm \
-        --network "$SMB_NETWORK" \
-        $SERVER_NETWORK_ARGS \
-        $SMB_DOCKER_ARGS \
+        $FIXTURE_DOCKER_ARGS \
         -v "$REPO_ROOT:/app" \
         -v "$CARGO_VOLUME:/root/.cargo/registry" \
         -v "$TARGET_VOLUME:/target" \
         -v "$ROOT_NODE_MODULES_VOLUME:/app/node_modules" \
         -v "$DESKTOP_NODE_MODULES_VOLUME:/app/apps/desktop/node_modules" \
-    -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
+        -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
         -w /app/apps/desktop \
         -p 5900:5900 \
         -e TAURI_BINARY="$DOCKER_TAURI_BINARY" \
         -e CI=true \
         -e "E2E_GREP=${GREP_FILTER:-}" \
-        $SMB_ENV_ARGS \
-        $SERVER_ENV_ARGS \
+        -e CMDR_MCP_ENABLED=true \
+        $FIXTURE_ENV_ARGS \
         "$IMAGE_NAME" \
         bash
 else
@@ -705,14 +494,12 @@ else
     set +e
     docker_test_status=0
     docker run --rm \
-        --network "$SMB_NETWORK" \
-        $SERVER_NETWORK_ARGS \
-        $SMB_DOCKER_ARGS \
+        $FIXTURE_DOCKER_ARGS \
         -v "$REPO_ROOT:/app" \
         -v "$TARGET_VOLUME:/target" \
         -v "$ROOT_NODE_MODULES_VOLUME:/app/node_modules" \
         -v "$DESKTOP_NODE_MODULES_VOLUME:/app/apps/desktop/node_modules" \
-    -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
+        -v "$DESKTOP_SVELTEKIT_VOLUME:/app/apps/desktop/.svelte-kit" \
         -v "$LINUX_E2E_JSON_REPORT:$CONTAINER_E2E_JSON_REPORT" \
         -w /app/apps/desktop \
         -e TAURI_BINARY="$DOCKER_TAURI_BINARY" \
@@ -720,8 +507,8 @@ else
         -e "E2E_GREP=${GREP_FILTER:-}" \
         -e "CMDR_E2E_JSON_REPORT=$CONTAINER_E2E_JSON_REPORT" \
         -e "RUST_LOG=${RUST_LOG:-info,cmdr_lib::mtp=debug,stall_probe::reconciler=debug}" \
-        $SMB_ENV_ARGS \
-        $SERVER_ENV_ARGS \
+        -e CMDR_MCP_ENABLED=true \
+        $FIXTURE_ENV_ARGS \
         "$IMAGE_NAME" \
         bash -c '
             set -e
@@ -845,23 +632,10 @@ else
     docker_test_status=$?
     set -e
 
-    # Post-flight SMB probe: did the consumer containers survive the run?
-    # The pre-flight probe confirms TCP at start; this one tells us whether
-    # the same containers are still serving when the test phase exits.
-    # Diverging results (pre-flight OK, post-flight FAIL) point at containers
-    # dying mid-run (memory pressure, smbd crash) vs Cmdr-side bugs.
-    # Runs with `set +e` because we never want this diagnostic to mask the
-    # underlying test result.
+    # Did the SMB containers survive the run? `set +e` so this diagnostic can
+    # never mask the test result.
     set +e
-    if probe_smb_ports 5; then
-        log_info "SMB post-flight: all 4 containers still accepting TCP on :445"
-    else
-        log_warn "SMB post-flight: at least one container is no longer accepting TCP, likely died mid-run"
-        for service in "${SMB_E2E_SERVICES[@]}"; do
-            state=$(docker compose -p smb-consumer ps --format '{{.State}} {{.Status}}' "$service" 2>/dev/null | head -1)
-            log_warn "  $service: ${state:-unknown}"
-        done
-    fi
+    report_smb_post_flight
     set -e
 
     if [ "$docker_test_status" -ne 0 ]; then

@@ -24,8 +24,9 @@ the next section.
   `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and `secret_store.rs` (the bodies a stat-and-listing backend gets for
   free); `remote_paths.rs` (a server tree's `<scheme>://user@host:port` app spelling, and the ONE translation);
   `friendly_error/` (typed, word-free classification); `usb_speed.rs` (❗ its doc comment reaches `bindings.ts`);
-  `in_memory.rs` (the store and its knobs; `in_memory/volume_impl.rs` is its `impl Volume`); `conformance.rs`; and `host/` (what a backend needs from the app, as named traits; read
-  `src/volume/host/CLAUDE.md` before writing a backend).
+  `in_memory.rs` (the store and its knobs; `in_memory/volume_impl.rs` is its `impl Volume`); `conformance.rs`; and
+  `host/` (what a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md` before writing a
+  backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
 - `sqlite_util.rs`: the ONE process-wide page-cache slab, and the connection factories every store opens through.
 - `staging.rs`: `StagingTemp`, the ONLY way to name a scratch file.
