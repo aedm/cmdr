@@ -1,7 +1,7 @@
 //! Generic key-value secret storage with pluggable backends.
 //!
 //! Backend selection happens once at first access via `store()`:
-//! - `CMDR_SECRET_STORE=file` env var forces plain file (dev mode)
+//! - `CMDR_SECRET_STORE=file` or `CMDR_E2E_MODE=1` forces plain file, in dev and E2E builds only
 //! - macOS: Keychain via `security-framework`
 //! - Linux: Secret Service via `keyring`, falling back to encrypted file via `cocoon`
 //! - Other platforms: plain file fallback
@@ -100,27 +100,25 @@ fn init_store() -> Box<dyn SecretStore> {
         return Box::new(TestStore);
     }
 
-    // Check env var override first
-    if let Ok(val) = std::env::var("CMDR_SECRET_STORE")
-        && val == "file"
-    {
-        let dir = secret_store_dir();
-        info!("Secret store: PlainFileStore (CMDR_SECRET_STORE=file)");
-        FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
-        return Box::new(plain_file::PlainFileStore::new(dir));
-    }
-
     // E2E runs must never hit the OS keychain. A locked macOS Keychain pops a
     // GUI password prompt that blocks every secret read until the user types
     // their password — fatal for an unattended test run (the dialog steals
     // focus, the tests time out, half the suite goes red for non-code reasons).
     // Force the file backend so an E2E session's credentials live alongside its
     // ephemeral data dir and disappear with it.
-    if crate::test_mode::is_e2e_mode() {
-        let dir = secret_store_dir();
-        info!("Secret store: PlainFileStore (CMDR_E2E_MODE=1)");
-        FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
-        return Box::new(plain_file::PlainFileStore::new(dir));
+    let secret_store_env = std::env::var("CMDR_SECRET_STORE").ok();
+    let e2e_mode = crate::test_mode::is_e2e_mode();
+    match plaintext_override(secret_store_env.as_deref(), e2e_mode, PLAINTEXT_OVERRIDE_HONORED) {
+        Some(reason) => {
+            let dir = secret_store_dir();
+            info!("Secret store: PlainFileStore ({reason})");
+            FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
+            return Box::new(plain_file::PlainFileStore::new(dir));
+        }
+        None if secret_store_env.as_deref() == Some("file") || e2e_mode => {
+            log::warn!("Secret store: ignoring the plaintext override, since this is a release build");
+        }
+        None => {}
     }
 
     #[cfg(target_os = "macos")]
@@ -147,6 +145,25 @@ fn init_store() -> Box<dyn SecretStore> {
         info!("Secret store: PlainFileStore (unsupported platform fallback)");
         FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
         Box::new(plain_file::PlainFileStore::new(dir))
+    }
+}
+
+/// Whether this build honors the plaintext-store overrides (`CMDR_SECRET_STORE=file`, `CMDR_E2E_MODE=1`).
+/// Dev builds and E2E builds do. A release build ignores them, so an environment variable can't
+/// move a user's saved passwords and API keys out of the Keychain into a plaintext file.
+const PLAINTEXT_OVERRIDE_HONORED: bool = cfg!(any(debug_assertions, feature = "playwright-e2e"));
+
+/// Which override, if any, puts this process on the plaintext `PlainFileStore`.
+/// `honored` is `PLAINTEXT_OVERRIDE_HONORED`, passed in so tests can cover the release arm.
+fn plaintext_override(secret_store_env: Option<&str>, e2e_mode: bool, honored: bool) -> Option<&'static str> {
+    if !honored {
+        None
+    } else if secret_store_env == Some("file") {
+        Some("CMDR_SECRET_STORE=file")
+    } else if e2e_mode {
+        Some("CMDR_E2E_MODE=1")
+    } else {
+        None
     }
 }
 
@@ -234,6 +251,26 @@ mod tests {
 
         let parsed: SecretStoreError = serde_json::from_str(&json).unwrap();
         assert!(matches!(parsed, SecretStoreError::NotFound(msg) if msg == "my-key"));
+    }
+
+    /// A release build must keep secrets in the Keychain whatever the environment says: an env
+    /// var that moves them into a plaintext file is a downgrade anyone who can set one gets free.
+    #[test]
+    fn a_release_build_ignores_the_plaintext_overrides() {
+        assert_eq!(plaintext_override(Some("file"), false, false), None);
+        assert_eq!(plaintext_override(None, true, false), None);
+        assert_eq!(plaintext_override(Some("file"), true, false), None);
+    }
+
+    #[test]
+    fn dev_and_e2e_builds_honor_the_plaintext_overrides() {
+        assert_eq!(
+            plaintext_override(Some("file"), false, true),
+            Some("CMDR_SECRET_STORE=file")
+        );
+        assert_eq!(plaintext_override(None, true, true), Some("CMDR_E2E_MODE=1"));
+        assert_eq!(plaintext_override(Some("keychain"), false, true), None);
+        assert_eq!(plaintext_override(None, false, true), None);
     }
 
     /// `CMDR_DATA_DIR` is the whole isolation mechanism: if `secret_store_dir()` ever stopped

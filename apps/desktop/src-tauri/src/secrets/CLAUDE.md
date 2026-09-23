@@ -17,8 +17,9 @@ and `ai/api_keys.rs` (cloud AI API keys, raw UTF-8 under `ai.apiKey.<provider>` 
 
 ## Backend selection
 
-`store()` picks once at first access: `CMDR_SECRET_STORE=file` env (set by `tauri-wrapper.ts` in dev) → `PlainFileStore`;
-else macOS → Keychain; else Linux + Secret Service available → Keyring; else Linux → `EncryptedFileStore`; else
+`store()` picks once at first access: `CMDR_SECRET_STORE=file` env (set by `tauri-wrapper.ts` in dev) or
+`CMDR_E2E_MODE=1` → `PlainFileStore`, honored only in debug and `playwright-e2e` builds (a release build logs a warning
+and ignores both, so an env var can't downgrade a user's Keychain to plaintext); else macOS → Keychain; else Linux + Secret Service available → Keyring; else Linux → `EncryptedFileStore`; else
 `PlainFileStore`. Chosen at init via an `is_available()` write-read-delete probe, not per-operation.
 
 ## Must-knows
