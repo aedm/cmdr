@@ -1662,6 +1662,18 @@ export const commands = {
    */
   trackEvent: (name: string, propsJson: string) => __TAURI_INVOKE<void>('track_event', { name, propsJson }),
   /**
+   *  Milliseconds until the next background update check is due, for an interval of `interval_ms`.
+   *  Zero means "check now". Manual checks don't ask; they just run and report through
+   *  [`record_update_check`].
+   */
+  updateCheckDueIn: (intervalMs: number) => __TAURI_INVOKE<number>('update_check_due_in', { intervalMs }),
+  /**
+   *  Records that an update check finished: `answered` when the update server replied (whatever it
+   *  said), `false` when the check itself didn't land. A download or install failure after an
+   *  answer still counts as answered: the check is what this schedules.
+   */
+  recordUpdateCheck: (answered: boolean) => __TAURI_INVOKE<void>('record_update_check', { answered }),
+  /**
    *  Subscribes a beta contact email to the mailing list. Sends ONLY the email to the api-server,
    *  which forwards it to Listmonk for double opt-in. Returns a typed result the UI branches on.
    *

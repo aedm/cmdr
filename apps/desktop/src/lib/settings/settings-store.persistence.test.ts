@@ -304,7 +304,7 @@ describe('migration 5: the archive Enter blob unpacks into one setting per forma
     // Never in the blob (the format wasn't configurable), so it takes its registry default.
     expect(store.getSetting('behavior.archiveEnter.ooxml')).toBe('open')
     expect(disk.has('behavior.archiveEnterBehavior')).toBe(false)
-    expect(disk.get('_schemaVersion')).toBe(6)
+    expect(disk.get('_schemaVersion')).toBe(7)
   })
 
   it('leaves a format the blob never mentioned on its default, with nothing on disk', async () => {
@@ -417,7 +417,7 @@ describe('migration 4: the onboarding keys move into the registry', () => {
     }
     // A run stamps the CURRENT schema version, not the one whose migration did the
     // work, so this number moves with every bump.
-    expect(disk.get('_schemaVersion')).toBe(6)
+    expect(disk.get('_schemaVersion')).toBe(7)
   })
 
   it('survives a re-run: the second launch finds nothing to move and changes nothing', async () => {
@@ -470,7 +470,7 @@ describe('migration 6: the open FDA state renames to `unanswered`', () => {
     await store.initializeSettings()
 
     expect(store.getSetting('onboarding.fullDiskAccessChoice')).toBe('unanswered')
-    expect(disk.get('_schemaVersion')).toBe(6)
+    expect(disk.get('_schemaVersion')).toBe(7)
   })
 
   it('leaves a real answer alone', async () => {
@@ -490,5 +490,43 @@ describe('migration 6: the open FDA state renames to `unanswered`', () => {
 
     expect([...disk.keys()]).toEqual([])
     expect(store.getSetting('onboarding.fullDiskAccessChoice')).toBe('unanswered')
+  })
+})
+
+/**
+ * Migration 7 lets the old one-hour update-check default go. Until the store went sparse, every
+ * install's first launch wrote the whole registry-default map to disk, so a stored 60 minutes is
+ * almost always that old default rather than a choice, and it would pin those installs to hourly
+ * checks after the default moved to three hours.
+ */
+describe('migration 7: a stored one-hour update check interval takes the new default', () => {
+  it('drops a stored 60 minutes, so the three-hour default applies', async () => {
+    disk.set('advanced.updateCheckInterval', 3_600_000)
+    disk.set('_schemaVersion', 6)
+
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect(disk.has('advanced.updateCheckInterval')).toBe(false)
+    expect(store.getSetting('advanced.updateCheckInterval')).toBe(10_800_000)
+    expect(disk.get('_schemaVersion')).toBe(7)
+  })
+
+  it('keeps any other interval, which somebody picked', async () => {
+    disk.set('advanced.updateCheckInterval', 1_800_000)
+    disk.set('_schemaVersion', 6)
+
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect(disk.get('advanced.updateCheckInterval')).toBe(1_800_000)
+    expect(store.getSetting('advanced.updateCheckInterval')).toBe(1_800_000)
+  })
+
+  it('writes nothing on a fresh install', async () => {
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect([...disk.keys()]).toEqual([])
   })
 })

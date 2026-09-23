@@ -28,6 +28,9 @@ Frontend auto-update checker, restart toast, and the manual "Check for updates" 
 - **A bundle that can't be written never downloads**, but a FAILED classification is ❌ not permission to update.
 - **Every exit of `checkForUpdates()` fires one `update_check` event**, with the phase read off `updateState.status`, ❌
   never off the error message. `trigger` is defaultless, so a new call site has to pick its own bucket.
+- **The background check is throttled by the backend** (`updateCheckDueIn` / `recordUpdateCheck`, persisted across
+  relaunches): the loop wakes every 5 min and checks only when due. Every exit of a check reports whether the server
+  answered. `DETAILS.md` § The schedule.
 - **Only a real production install reaches the endpoint** (`check_for_update` answers `None` otherwise), and the
   manifest URL is hardcoded in Rust. `src-tauri/src/updater/CLAUDE.md`.
 

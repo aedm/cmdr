@@ -654,8 +654,8 @@ Reactive settings must live in `reactive-settings.svelte.ts` (not `.ts`). Svelte
 
 ### Schema version is mandatory
 
-When modifying the settings format, increment `SCHEMA_VERSION` in `settings-store.ts` and add a migration case to
-`migrateSettings()`. Otherwise old settings files may cause crashes.
+When modifying the settings format, add a step to `MIGRATIONS` in `settings-migrations.ts` (`SCHEMA_VERSION` is its last
+step's version). Otherwise old settings files may cause crashes.
 
 Current cases: v2 renamed `appearance.dateColors`'s "off" value to "none"; v3 states `mediaIndex.scope` for installs
 that already had image indexing on, so the new "only folders I choose" default doesn't silently narrow what they've
@@ -666,7 +666,9 @@ the sparse save can't prune on its own; v5 unpacks the `behavior.archiveEnterBeh
 blob, writing nothing for a format the blob never named (so an untouched format stays on its registry default) and
 nothing at all for a blob it can't read (every format then falls to its default, the same answer the resolver already
 gave for an unreadable blob); v6 renames `onboarding.fullDiskAccessChoice`'s open state from `notAskedYet` to
-`unanswered`.
+`unanswered`; v7 drops a stored `advanced.updateCheckInterval` of exactly one hour, the old default that pre-sparse
+files pinned, so the three-hour default applies (it also resets someone who picked one hour on purpose, which can't be
+told apart and costs them one settings visit).
 
 A migration that changes a BACKEND-read setting also needs the same rule applied Rust-side (v3:
 `media_index::gate::scope_from_settings`), because the backend reads `settings.json` at startup and would otherwise see

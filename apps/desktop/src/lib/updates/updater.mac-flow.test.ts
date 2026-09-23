@@ -33,6 +33,9 @@ vi.mock('$lib/tauri-commands', () => ({
   downloadUpdate: downloadUpdateMock,
   installUpdate: installUpdateMock,
   updateWriteBlocker: updateWriteBlockerMock,
+  // Always due, so every wake of the loop checks: the schedule itself is `updater.schedule.test.ts`'s.
+  updateCheckDueIn: vi.fn(() => Promise.resolve(0)),
+  recordUpdateCheck: vi.fn(() => Promise.resolve()),
   trackEvent: trackEventMock,
 }))
 
@@ -59,6 +62,7 @@ vi.mock('$lib/logging/logger', () => ({
 }))
 
 import {
+  UPDATE_WAKE_TICK_MS,
   _resetUpdaterStateForTest,
   applyAutoCheckEnabled,
   checkForUpdates,
@@ -236,9 +240,9 @@ describe('what set a check going', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(reportedTriggers()).toEqual(['startup'])
 
-    // One poll interval on. The launch check and the loop are different questions about the
-    // population: one says how many installs came up, the other how long they stay up.
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    // One wake on. The launch check and the loop are different questions about the population:
+    // one says how many installs came up, the other how long they stay up.
+    await vi.advanceTimersByTimeAsync(UPDATE_WAKE_TICK_MS)
     expect(reportedTriggers()).toEqual(['startup', 'poll'])
     stop()
   })

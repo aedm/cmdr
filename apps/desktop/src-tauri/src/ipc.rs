@@ -285,6 +285,8 @@ macro_rules! ipc_command_manifest {
                     crate::space_poller::set_disk_space_threshold,
                     crate::space_poller::set_low_disk_space_config,
                     crate::commands::analytics::track_event,
+                    crate::update_schedule::update_check_due_in,
+                    crate::update_schedule::record_update_check,
                     crate::commands::beta_signup::beta_signup,
                     crate::commands::crash_reporter::check_pending_crash_report,
                     crate::commands::crash_reporter::dismiss_crash_report,

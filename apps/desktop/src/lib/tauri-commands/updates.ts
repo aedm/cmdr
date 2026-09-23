@@ -1,7 +1,7 @@
 // macOS custom-updater commands: check / download / install, preserving TCC /
 // Full Disk Access by syncing files into the existing `.app` bundle (see
 // `$lib/updates/updater.svelte.ts` for the full flow, including the non-macOS
-// Tauri-plugin fallback).
+// Tauri-plugin fallback). Plus the cross-platform background-check schedule.
 
 import { commands, type BundleWriteBlocker } from '$lib/ipc/bindings'
 import { throwServerRequestError } from '$lib/error-messages/server-request'
@@ -47,4 +47,29 @@ export async function downloadUpdate(url: string, signature: string): Promise<vo
 export async function installUpdate(): Promise<void> {
   const res = await commands.installUpdate()
   if (res.status === 'error') throwIpcError(res.error)
+}
+
+/**
+ * Milliseconds until the background update check is due for an interval of `intervalMs` (0 = now), or `null` when
+ * the backend couldn't say. The backend remembers the last answered check across relaunches, so a relaunch within the
+ * interval doesn't check again. Every platform, unlike the three commands above.
+ */
+export async function updateCheckDueIn(intervalMs: number): Promise<number | null> {
+  try {
+    return await commands.updateCheckDueIn(intervalMs)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Tells the backend a check finished: `answered` when the update server replied, whatever it said. Best-effort: a
+ * failed record only means the next wake asks a stale schedule.
+ */
+export async function recordUpdateCheck(answered: boolean): Promise<void> {
+  try {
+    await commands.recordUpdateCheck(answered)
+  } catch {
+    // Nothing to do: the schedule is a courtesy to the network, never a gate on updating.
+  }
 }

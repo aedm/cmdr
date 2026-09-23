@@ -519,7 +519,7 @@ export const advancedSettings: SettingDefinitionSource[] = [
     descriptionKey: 'settings.advanced.updateCheckInterval.description',
     keywords: ['update', 'interval', 'background', 'check'],
     type: 'duration',
-    default: 3600000, // 60 minutes
+    default: 10_800_000, // 3 hours
     component: 'duration',
     constraints: {
       unit: 'min',

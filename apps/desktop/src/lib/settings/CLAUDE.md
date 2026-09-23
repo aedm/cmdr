@@ -5,8 +5,8 @@ Registry-based user settings: defined once in `settings-registry.ts`, accessed u
 ## Module map
 
 - `settings-registry.ts` (logic; data in `definitions/*.ts`), `settings-store.ts` (persistence, cache, cross-window
-  sync), `settings-applier.ts` (side effects), `reactive-settings.svelte.ts` (`$state`), `window-settings.ts`
-  (per-window init).
+  sync; schema steps in `settings-migrations.ts`), `settings-applier.ts` (side effects), `reactive-settings.svelte.ts`
+  (`$state`), `window-settings.ts` (per-window init).
 - `sections/` (UI) and `components/` (row primitives) carry their own CLAUDE.md; shortcuts are separate
   (`lib/shortcuts/CLAUDE.md`).
 
@@ -26,8 +26,8 @@ Registry-based user settings: defined once in `settings-registry.ts`, accessed u
 - **Persistence is sparse: `settings.json` holds ONLY keys an actor explicitly set.** "Explicit" is structural (which
   mutator ran), NEVER `value !== default` — seeding defaults or comparing values re-opens the `developer.mcpEnabled`
   leak. DETAILS § Sparse persistence.
-- **Changing the settings FORMAT needs a `SCHEMA_VERSION` bump plus an idempotent `migrateSettings()` case** (a new key
-  is additive, no bump). DETAILS § Schema version.
+- **Changing the settings FORMAT needs an idempotent step in `settings-migrations.ts`'s `MIGRATIONS`** (a new key is
+  additive, no bump). DETAILS § Schema version.
 - **Card visibility is section-owned**, never re-derived from the registry `card` field (the empty-card bug); a row that
   isn't a setting is a `SearchableRow`, ❌ never a `hidden` setting. DETAILS §§ Card groups, Searchable rows.
 - **A control whose value lives in the OS is an OS-backed row**: no registry entry, no store key, read through on every

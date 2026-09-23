@@ -223,6 +223,8 @@ All under `apps/desktop/src-tauri/src/`.
   See `apps/desktop/src-tauri/src/analytics/CLAUDE.md`
 - `send_schedule.rs`: the persisted throttle the heartbeat and the update check share (one success per interval, a retry
   floor after a failure)
+- `update_schedule.rs`: when the frontend's background update check is due, persisted across relaunches. See
+  `apps/desktop/src/lib/updates/DETAILS.md` § The schedule
 - `install_id.rs`: Two Rust-owned per-install random ids (`anal_` for analytics, `diag_` for diagnostics) that never
   meet by construction. AppHandle-free accessors, one `install-ids.json`
 - `usage/`: The launch-day ledger: which local calendar days the app was opened on, appended once per launch to

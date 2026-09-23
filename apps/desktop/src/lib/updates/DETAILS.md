@@ -7,17 +7,33 @@ always-loaded must-knows; this is the depth.
 
 `startUpdateChecker()` runs once from `+layout.svelte`:
 
-1. If `updates.autoCheck` is `true` (default), fires an immediate `checkForUpdates()` and schedules a `setInterval` from
-   `advanced.updateCheckInterval`. If `false`, skips both (opted out of the background poll).
-2. Listens for `advanced.updateCheckInterval` changes; clears and re-creates the interval on change (only if the loop is
-   running). `setInterval` can't change its delay after creation, so re-creating is simpler than a recursive
-   `setTimeout` chain; one extra tick at the old interval is acceptable.
-3. Returns a cleanup function that `+layout.svelte` calls in `onDestroy`.
+1. If `updates.autoCheck` is `true` (default), starts the poll loop with an immediate first wake. If `false`, skips it
+   (opted out of the background poll).
+2. Returns a cleanup function that `+layout.svelte` calls in `onDestroy`.
 
 `applyAutoCheckEnabled(enabled)` lets the live-apply hook in `settings-applier.ts`'s `passthroughBackendHandlers` flip
 the poll loop in place when the user toggles `updates.autoCheck` (Settings switch, onboarding step 3, or any MCP/IPC
-writer). On enable it fires one immediate check; on disable it stops the loop but leaves `updateState.status` alone so
-an in-flight update isn't lost.
+writer). On enable it fires one immediate check (whatever the schedule says: the user just asked for updates) and
+restarts the loop from the next wake; on disable it stops the loop but leaves `updateState.status` alone so an in-flight
+update isn't lost.
+
+## The schedule: throttled, and remembered across relaunches
+
+The loop wakes every `UPDATE_WAKE_TICK_MS` (5 min), asks the backend `updateCheckDueIn(advanced.updateCheckInterval)`,
+and checks only when the answer is 0. The backend (`apps/desktop/src-tauri/src/update_schedule.rs`, on the throttle it
+shares with the analytics heartbeat, `apps/desktop/src-tauri/src/send_schedule.rs`) persists the last check in
+`update-check.json`:
+
+- **At most one answered check per interval** (default 3 h). A relaunch within the interval doesn't check, and a burst
+  of wakes collapses into one check without pushing the next one out.
+- **A check that got no answer is retried no sooner than 15 min later.**
+- **Every check reports back**, the manual ones included: `recordUpdateCheck(true)` once the update server answered
+  (whatever it said, and even if the download then fails, since the check is what's scheduled), `false` when the check
+  itself didn't land. So a manual check also resets the background clock.
+- **The interval is read at every wake**, so a changed setting takes effect within one tick with no listener.
+- **A backend that can't answer means no check that wake**, never a check every 5 min.
+
+It's independent of analytics consent: an opted-out install still checks for updates.
 
 ## State machine
 
@@ -206,8 +222,9 @@ When a gate opens, the helper re-attempts the toast; if the download finished du
 
 ## Patterns and gotchas
 
-- No retry or backoff on error; the next interval fires a fresh attempt.
-- Default interval 60 minutes; configurable 5 minutes to 24 hours.
+- A failed check is retried after the 15 min floor (see § The schedule); there's no other backoff.
+- Default interval 3 hours; configurable 5 minutes to 24 hours. A stored exactly-one-hour value is the old default that
+  pre-sparse settings files pinned, so settings migration 7 drops it (`settings-store.ts`).
 - Unit tests (`updater.test.ts`) cover the gating logic via `shouldShowUpdateToast` plus the `notifyOnboardingComplete`
   and `setOnboardingShowing` triggers, and the staged re-check matrix through the mocked plugin flow (same build, newer
   build, failed check, failed download, in-flight statuses, the nudge cadence under fake timers). The macOS
@@ -224,8 +241,8 @@ When a gate opens, the helper re-attempts the toast; if the download finished du
   The convention itself is documented in `src-tauri/src/error_reporter/DETAILS.md` § convention.
 - `_resetUpdaterStateForTest` / `_setUpdateStatusForTest` exist for `updater.test.ts` and the toast tests. Don't reach
   for them from app code: they write the singleton without going through the state machine.
-- `startUpdateChecker()` returns a teardown fn that `+layout.svelte` must call in `onDestroy`, or the poll interval
-  leaks across a route teardown. Anything holding `$state` here lives in a `.svelte.ts` file.
+- `startUpdateChecker()` returns a teardown fn that `+layout.svelte` must call in `onDestroy`, or the poll loop leaks
+  across a route teardown. Anything holding `$state` here lives in a `.svelte.ts` file.
 
 ## Dependencies
 

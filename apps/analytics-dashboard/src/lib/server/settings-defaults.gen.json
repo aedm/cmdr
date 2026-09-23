@@ -1690,7 +1690,7 @@
     "advanced.serviceResolveTimeout": 5000,
     "advanced.showSafeSaveFiles": true,
     "advanced.showStagingTempFiles": false,
-    "advanced.updateCheckInterval": 3600000,
+    "advanced.updateCheckInterval": 10800000,
     "advanced.virtualizationBufferColumns": 2,
     "advanced.virtualizationBufferRows": 20,
     "ai.cloudConsentRevokePending": false,

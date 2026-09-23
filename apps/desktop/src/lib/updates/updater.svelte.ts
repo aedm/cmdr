@@ -1,12 +1,18 @@
-import { checkForUpdate, downloadUpdate, installUpdate, updateWriteBlocker } from '$lib/tauri-commands'
+import {
+  checkForUpdate,
+  downloadUpdate,
+  installUpdate,
+  recordUpdateCheck,
+  updateCheckDueIn,
+  updateWriteBlocker,
+} from '$lib/tauri-commands'
 import type { BundleWriteBlocker } from '$lib/tauri-commands'
 import type { ServerRequestError } from '$lib/ipc/bindings'
 import { getVersion } from '@tauri-apps/api/app'
-import { forceSave, getSetting, onSpecificSettingChange, setSetting } from '$lib/settings/settings-store'
+import { forceSave, getSetting, setSetting } from '$lib/settings/settings-store'
 import { getAppLogger } from '$lib/logging/logger'
 import { LogOnceGate } from '$lib/logging/log-once'
 import { serverRequestFailureOf, serverRequestLogLevel } from '$lib/error-messages/server-request'
-import { pluralize } from '$lib/utils/pluralize'
 import { compareVersions } from '$lib/utils/version'
 import { blockerFailure, reportUpdateCheck, type UpdateCheckFailure, type UpdateCheckTrigger } from './update-analytics'
 import UpdateToastContent from './UpdateToastContent.svelte'
@@ -30,7 +36,7 @@ const log = getAppLogger('updater')
 
 /**
  * A check that keeps failing the same way logs once, until a check gets an answer. An offline laptop would otherwise
- * write the same warn every poll tick, and a manifest this build can't read would auto-send an error report every hour.
+ * write the same warn every poll tick, and a manifest this build can't read would auto-send an error report every interval.
  */
 const checkFailureLog = new LogOnceGate()
 
@@ -244,9 +250,11 @@ async function runMacUpdateFlow(
   try {
     update = await checkForUpdate()
   } catch (error) {
+    void recordUpdateCheck(false)
     finishCheckWithFailure(trigger, error, 'check', staged)
     return
   }
+  void recordUpdateCheck(true)
   // The check got an answer, so the next breakage speaks.
   checkFailureLog.clear()
 
@@ -296,9 +304,11 @@ async function runPluginUpdateFlow(
     const { check } = await import('@tauri-apps/plugin-updater')
     update = await check()
   } catch (error) {
+    void recordUpdateCheck(false)
     finishCheckWithFailure(trigger, error, 'check', staged)
     return
   }
+  void recordUpdateCheck(true)
   // The check got an answer, so the next breakage speaks.
   checkFailureLog.clear()
 
@@ -497,32 +507,64 @@ export async function runMenuTriggeredCheck(): Promise<void> {
 }
 
 /**
- * Module-scoped interval handle for the auto-check poll loop. Lifted to module scope so
- * `applyAutoCheckEnabled()` can stop and restart the loop in response to live
- * `updates.autoCheck` flips, without restarting the whole checker. `undefined` means
- * "no poll loop active right now" (either auto-check is off, or the checker hasn't
- * started yet).
+ * How often the background loop wakes to ask the backend whether a check is due. The backend holds
+ * the last answered check across relaunches (`src-tauri/src/update_schedule.rs`), so the loop never
+ * sleeps a whole interval: a relaunch, a wake from sleep, or a changed interval is picked up within
+ * one tick, and a burst of them collapses into one check.
  */
-let pollIntervalId: ReturnType<typeof setInterval> | undefined
+export const UPDATE_WAKE_TICK_MS = 5 * 60 * 1000
 
-function startPollLoop(): void {
-  if (pollIntervalId !== undefined) return
-  pollIntervalId = setInterval(() => {
-    void checkForUpdates('poll')
-  }, getCheckIntervalMs())
+/**
+ * The poll loop's pending wake. Module-scoped so `applyAutoCheckEnabled()` can stop and restart the
+ * loop in response to live `updates.autoCheck` flips, without restarting the whole checker.
+ * `pollGeneration` names the running loop (0 = stopped). A tick carries the generation it was
+ * scheduled under, so one still awaiting the backend when the loop stops, or stops and restarts,
+ * schedules nothing and can't leave two loops running.
+ */
+let pollTimer: ReturnType<typeof setTimeout> | undefined
+let pollGeneration = 0
+let lastPollGeneration = 0
+
+/** When to wake next, given how long until a check is due. */
+function nextWakeMs(dueInMs: number | null): number {
+  return dueInMs === null || dueInMs === 0 ? UPDATE_WAKE_TICK_MS : Math.min(dueInMs, UPDATE_WAKE_TICK_MS)
+}
+
+/**
+ * One wake: ask whether a check is due, run it if so, schedule the next wake. A backend that can't
+ * answer (`null`) means no check this time, rather than a check on every tick.
+ */
+async function pollTick(generation: number, trigger: UpdateCheckTrigger): Promise<void> {
+  pollTimer = undefined
+  const dueInMs = await updateCheckDueIn(getCheckIntervalMs())
+  if (generation !== pollGeneration) return
+  if (dueInMs === 0) {
+    await checkForUpdates(trigger)
+    if (generation !== pollGeneration) return
+  }
+  pollTimer = setTimeout(() => void pollTick(generation, 'poll'), nextWakeMs(dueInMs))
+}
+
+function startPollLoop(firstWakeMs: number, firstTrigger: UpdateCheckTrigger): void {
+  if (pollGeneration !== 0) return
+  lastPollGeneration += 1
+  const generation = lastPollGeneration
+  pollGeneration = generation
+  pollTimer = setTimeout(() => void pollTick(generation, firstTrigger), firstWakeMs)
 }
 
 function stopPollLoop(): void {
-  if (pollIntervalId === undefined) return
-  clearInterval(pollIntervalId)
-  pollIntervalId = undefined
+  pollGeneration = 0
+  if (pollTimer === undefined) return
+  clearTimeout(pollTimer)
+  pollTimer = undefined
 }
 
 /**
  * Live-apply hook for `updates.autoCheck`. Off cancels the background poll loop in
  * place (the user keeps whatever update state we last computed; we just stop asking).
- * On re-starts the loop and fires one immediate check, so users who turn the toggle
- * back on don't have to wait an interval for the first tick. Called from
+ * On fires one immediate check, whatever the schedule says (the user just asked for
+ * updates), and restarts the loop from the next wake. Called from
  * `settings-applier.ts`'s `passthroughBackendHandlers` lookup whenever the setting
  * flips, including from the onboarding wizard's step 3.
  *
@@ -532,8 +574,8 @@ function stopPollLoop(): void {
  */
 export function applyAutoCheckEnabled(enabled: boolean): void {
   if (enabled) {
-    startPollLoop()
     void checkForUpdates('auto_check_on')
+    startPollLoop(UPDATE_WAKE_TICK_MS, 'poll')
   } else {
     stopPollLoop()
   }
@@ -550,25 +592,11 @@ export function startUpdateChecker(): () => void {
   const autoCheckEnabled = getSetting('updates.autoCheck')
 
   if (autoCheckEnabled) {
-    // Check immediately on start
-    void checkForUpdates('startup')
-    startPollLoop()
+    // The first wake is right away; it checks only if the schedule says one is due.
+    startPollLoop(0, 'startup')
   } else {
-    log.debug('Auto-check disabled; skipping initial check and poll loop')
+    log.debug('Auto-check disabled; skipping the poll loop')
   }
-
-  // Re-create interval when the cadence changes (only if the loop is running).
-  const unsubscribeInterval = onSpecificSettingChange('advanced.updateCheckInterval', () => {
-    if (pollIntervalId === undefined) return
-    stopPollLoop()
-    const newInterval = getCheckIntervalMs()
-    const minutes = newInterval / 60000
-    log.info('Interval changed to {minutes} {minutesNoun}', {
-      minutes,
-      minutesNoun: pluralize(minutes, 'minute'),
-    })
-    startPollLoop()
-  })
 
   // Live-apply for `updates.autoCheck` lives in `settings-applier.ts`'s
   // `passthroughBackendHandlers`, calling `applyAutoCheckEnabled()` above. One source
@@ -578,7 +606,6 @@ export function startUpdateChecker(): () => void {
   // Return cleanup function
   return () => {
     stopPollLoop()
-    unsubscribeInterval()
   }
 }
 
@@ -586,6 +613,7 @@ export function startUpdateChecker(): () => void {
  * Test-only hook: reset module-level gating flags. Production code should never call this.
  */
 export function _resetUpdaterStateForTest(): void {
+  stopPollLoop()
   onboarded = false
   onboardingShowing = false
   lastRestartToastAt = null

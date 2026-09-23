@@ -21,6 +21,8 @@ vi.mock('$lib/tauri-commands', () => ({
   downloadUpdate: vi.fn(() => Promise.resolve()),
   installUpdate: vi.fn(() => Promise.resolve()),
   updateWriteBlocker: vi.fn(() => Promise.resolve(null)),
+  updateCheckDueIn: vi.fn(() => Promise.resolve(0)),
+  recordUpdateCheck: vi.fn(() => Promise.resolve()),
   trackEvent: vi.fn(),
 }))
 
