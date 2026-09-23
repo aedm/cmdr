@@ -2202,11 +2202,12 @@ export const commands = {
          */
         recursiveHasSymlinks: boolean
         /**
-         *  `true` while the indexer still has unprocessed writes affecting this
-         *  directory or a descendant (a big delete/copy in flight). The frontend
-         *  shows a "size updating" hourglass so the number isn't read as settled.
-         *  Sourced from the in-memory `pending_sizes` tracker at build time, not the
-         *  DB. See `indexing/read/pending_sizes.rs`.
+         *  `true` while the indexer has been behind on this directory or a
+         *  descendant for at least two seconds (a big delete/copy in flight). The
+         *  frontend shows a "size updating" hourglass so the number isn't read as
+         *  settled; shorter blips don't count, or it would blink under background
+         *  churn. Sourced from the in-memory `pending_sizes` tracker at build time,
+         *  not the DB. See `indexing/read/pending_sizes.rs`.
          */
         recursiveSizePending: boolean
         /**
@@ -6472,11 +6473,12 @@ export type DirStats = {
    */
   recursiveHasSymlinks: boolean
   /**
-   *  `true` while the indexer still has unprocessed writes affecting this
-   *  directory or a descendant (a big delete/copy in flight). The frontend
-   *  shows a "size updating" hourglass so the number isn't read as settled.
-   *  Sourced from the in-memory `pending_sizes` tracker at build time, not the
-   *  DB. See `indexing/read/pending_sizes.rs`.
+   *  `true` while the indexer has been behind on this directory or a
+   *  descendant for at least two seconds (a big delete/copy in flight). The
+   *  frontend shows a "size updating" hourglass so the number isn't read as
+   *  settled; shorter blips don't count, or it would blink under background
+   *  churn. Sourced from the in-memory `pending_sizes` tracker at build time,
+   *  not the DB. See `indexing/read/pending_sizes.rs`.
    */
   recursiveSizePending: boolean
   /**
