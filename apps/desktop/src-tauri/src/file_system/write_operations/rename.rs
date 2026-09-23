@@ -754,6 +754,14 @@ async fn check_sibling_conflict_via_volume(
         Err(crate::file_system::VolumeError::NotFound(_)) => {
             match place_new_entry(volume.as_ref(), new_path, Some(old_path)).await {
                 Ok(NewEntry::Taken(look_alike)) => *look_alike,
+                // Respelled onto a name the folder holds exactly, which the rename
+                // itself refuses (or, confirmed, replaces).
+                Ok(NewEntry::Free(spelled)) if spelled != new_path && spelled != old_path => {
+                    match volume.get_metadata(&spelled).await {
+                        Ok(entry) => entry,
+                        Err(_) => return (false, None),
+                    }
+                }
                 // No conflict: nothing holds the name in any spelling. Several
                 // look-alikes leave the rename itself to refuse, by name.
                 _ => return (false, None),

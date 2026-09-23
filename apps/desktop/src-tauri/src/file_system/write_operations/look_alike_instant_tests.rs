@@ -180,3 +180,21 @@ async fn the_live_rename_check_reports_a_look_alike() {
     assert!(validity.has_conflict);
     assert_eq!(validity.conflict.map(|c| c.name).as_deref(), Some(CAFE_NFD));
 }
+
+/// The mirror case: the typed name composes onto a name the folder holds
+/// exactly. The rename itself refuses it, so the live check has to say so too,
+/// or the editor promises a name that Enter then refuses.
+#[tokio::test]
+async fn the_live_rename_check_reports_the_name_a_typed_one_composes_onto() {
+    let (id, volume) = share("validity-composed").await;
+    volume.create_file(Path::new("/dir/a.txt"), b"x").await.unwrap();
+    volume
+        .create_file(Path::new(&format!("/dir/{CAFE_NFC}")), b"x")
+        .await
+        .unwrap();
+
+    let validity = check_rename_validity_impl("/dir".into(), "a.txt".into(), CAFE_NFD.into(), id).await;
+
+    assert!(validity.has_conflict);
+    assert_eq!(validity.conflict.map(|c| c.name).as_deref(), Some(CAFE_NFC));
+}
