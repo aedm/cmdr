@@ -21,7 +21,8 @@ all live on this side of the boundary.
   their `specta::Type` derives with their subsystems: a schema derive on a value is fine there, a presentation decision
   isn't.
 - **The coverage-branch hold is the one thing the sink doesn't forward on sight**, and the rule lives here: ❌ never in
-  `cmdr-index` (the crate reports what it's doing), ❌ never in the frontend (which holds no timers).
+  `cmdr-index` (the crate reports what it's doing), ❌ never in the frontend (which holds no timers). `DirsUpdated`
+  isn't forwarded at all: it goes to `listing_index_sizes/`, which emits per touched listing.
 - ❗ **Two `TauriEventSink` types exist in the crate**: this one (`IndexEvent`) and
   `file_system::write_operations::TauriEventSink` (`OperationEventSink`). Deliberate, but a bare grep returns both.
 
