@@ -1,8 +1,3 @@
-<script lang="ts" module>
-    /** Lives here so `escape-key.ts` imports the component and its id from one place. */
-    export const ESCAPE_FULL_SCREEN_TOAST_ID = 'escape-full-screen-hint'
-</script>
-
 <script lang="ts">
     /**
      * The one-time toast after Escape took the main window out of full screen
@@ -18,6 +13,8 @@
     import { tString } from '$lib/intl/messages.svelte'
     import { useBooleanSetting } from '$lib/settings/components/boolean-setting.svelte'
     import { openSettingsWindow, settingAnchorId } from '$lib/settings/settings-window'
+
+    import { ESCAPE_FULL_SCREEN_TOAST_ID } from './escape-full-screen-toast-id'
 
     const setting = useBooleanSetting('advanced.exitFullScreenOnEscape')
 

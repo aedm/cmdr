@@ -23,7 +23,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getSetting, setSetting } from '$lib/settings'
 import { addToast } from '$lib/ui/toast'
 import { getAppLogger } from '$lib/logging/logger'
-import EscapeFullScreenToastContent, { ESCAPE_FULL_SCREEN_TOAST_ID } from './EscapeFullScreenToastContent.svelte'
+import EscapeFullScreenToastContent from './EscapeFullScreenToastContent.svelte'
+import { ESCAPE_FULL_SCREEN_TOAST_ID } from './escape-full-screen-toast-id'
 
 const log = getAppLogger('escapeKey')
 

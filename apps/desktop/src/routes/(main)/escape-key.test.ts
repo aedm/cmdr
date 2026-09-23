@@ -20,10 +20,7 @@ vi.mock('$lib/settings', () => ({
   },
 }))
 vi.mock('$lib/ui/toast', () => ({ addToast }))
-vi.mock('./EscapeFullScreenToastContent.svelte', () => ({
-  default: {},
-  ESCAPE_FULL_SCREEN_TOAST_ID: 'escape-full-screen-hint',
-}))
+vi.mock('./EscapeFullScreenToastContent.svelte', () => ({ default: {} }))
 
 import { exitFullScreenOnEscape, installEscapeStopClaims } from './escape-key'
 
