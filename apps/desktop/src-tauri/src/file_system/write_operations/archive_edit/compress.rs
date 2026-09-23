@@ -20,8 +20,10 @@ use std::time::Duration;
 
 use super::super::OperationEventSink;
 use super::super::archive_remote_edit::{self, RemoteEditError};
+use super::super::look_alike::{NewEntry, place_new_entry};
 use super::super::scratch_dir::ScratchDir;
 use super::super::state::WriteOperationState;
+use super::super::transfer::volume::{PathRole, map_volume_error};
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult};
 use super::copy_into::route_archive_copy_into_with_provenance;
 use crate::file_system::staging::StagingTemp;
@@ -108,6 +110,33 @@ async fn seed_empty_zip_remote(parent: &dyn Volume, dest_zip_full_path: &Path) -
         })
 }
 
+/// Where a compress creates a NEW archive on a remote parent, for a target the
+/// parent doesn't hold byte for byte (`look_alike.rs`): spelled the way the
+/// parent wants new names, and refused when the folder holds it under another
+/// Unicode spelling.
+///
+/// A look-alike is refused, ❌ never replaced: the dialog's overwrite warning
+/// asks for the exact bytes, so nobody was told this archive would go, and
+/// seeding beside it would plant an identical-looking twin. The same answer a
+/// single rename onto a look-alike gets without the user's confirmation.
+async fn new_archive_path(parent: &dyn Volume, target: PathBuf) -> Result<PathBuf, WriteOperationError> {
+    let refused = || WriteOperationError::DestinationExists {
+        path: target.display().to_string(),
+    };
+    match place_new_entry(parent, &target, None).await {
+        // Respelled onto a name the parent holds exactly: that entry is the
+        // look-alike, and the seed would replace it without a word.
+        Ok(NewEntry::Free(path)) if path != target && parent.exists(&path).await => Err(refused()),
+        Ok(NewEntry::Free(path)) => Ok(path),
+        Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Err(refused()),
+        Err(e) => Err(map_volume_error(
+            &target.display().to_string(),
+            PathRole::Destination,
+            e,
+        )),
+    }
+}
+
 /// fsyncs the target's parent directory so a just-completed rename is durable.
 /// Best-effort (opening a dir read-only can fail on some filesystems).
 fn fsync_parent_dir(path: &Path) {
@@ -180,19 +209,26 @@ pub(crate) async fn compress_start(
     // creates/overwrites it): a net-new archive is rollbackable (delete it), an
     // overwrite of a prior archive is not (the prior bytes aren't retained). This
     // `net_new` flag is the driver-supplied fact the journal can't derive (Finding
-    // 3), passed into finalize via [`ArchiveProvenance`].
-    let net_new = match get_volume_manager().get(&parent_volume_id) {
+    // 3), passed into finalize via [`ArchiveProvenance`]. A remote target that
+    // isn't there is a new name (`new_archive_path`); a local parent's lookups
+    // go through the macOS kernel, which finds a name in any Unicode form.
+    let (net_new, dest_zip_full_path) = match get_volume_manager().get(&parent_volume_id) {
         Some(parent) if !parent.supports_local_fs_access() => {
             let existed = parent.exists(&dest_zip_full_path).await;
+            let dest_zip_full_path = if existed {
+                dest_zip_full_path
+            } else {
+                new_archive_path(parent.as_ref(), dest_zip_full_path).await?
+            };
             seed_empty_zip_remote(parent.as_ref(), &dest_zip_full_path).await?;
-            !existed
+            (!existed, dest_zip_full_path)
         }
         // Local parent, or an unregistered id (`route_archive_copy_into` falls back
         // to a local in-place edit for it) — seed the local filesystem.
         _ => {
             let existed = std::fs::symlink_metadata(&dest_zip_full_path).is_ok();
             seed_empty_zip(&dest_zip_full_path)?;
-            !existed
+            (!existed, dest_zip_full_path)
         }
     };
 

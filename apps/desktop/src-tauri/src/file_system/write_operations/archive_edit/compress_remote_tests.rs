@@ -215,3 +215,147 @@ async fn compress_onto_an_mtp_style_remote_parent_seeds_and_packs() {
 
     get_volume_manager().unregister(&parent_id);
 }
+
+const CAFE_ZIP_NFC: &str = "caf\u{e9}.zip";
+const CAFE_ZIP_NFD: &str = "cafe\u{301}.zip";
+
+/// A registered SMB-shaped parent: byte-exact, composing new names, holding
+/// `/share` and, when `existing` names one, a zip with one `stale.txt` entry.
+async fn register_share(existing: Option<&str>) -> (String, Arc<InMemoryVolume>) {
+    let id = format!("remote-share-{}", Uuid::new_v4());
+    let vol = InMemoryVolume::new("Share")
+        .with_lane_key(id.clone())
+        .with_composed_new_names();
+    vol.create_directory(Path::new("/share"))
+        .await
+        .expect("seed parent dir");
+    if let Some(name) = existing {
+        vol.create_file(&Path::new("/share").join(name), &zip_bytes(&[("stale.txt", b"old")]))
+            .await
+            .expect("seed existing zip");
+    }
+    let vol = Arc::new(vol);
+    get_volume_manager().register(&id, Arc::clone(&vol) as Arc<dyn Volume>);
+    (id, vol)
+}
+
+/// Starts a compress of one local `new.txt` into `/share/<name>` and, when it
+/// starts, waits for it to complete.
+async fn compress_to_share(parent_id: &str, name: &str) -> Result<(), WriteOperationError> {
+    let (_src_tmp, source_volume) = local_source_with(&[("new.txt", b"brand new")]);
+    let events = Arc::new(CollectorEventSink::new());
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("new.txt")],
+        Path::new("/share").join(name),
+        parent_id.to_string(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await?;
+    wait_until_async(Duration::from_secs(5), "a terminal event (complete or error)", || {
+        !events.complete.lock_ignore_poison().is_empty() || !events.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(
+        !events.complete.lock_ignore_poison().is_empty(),
+        "the compress should complete, errors: {:?}",
+        events.errors.lock_ignore_poison()
+    );
+    Ok(())
+}
+
+async fn names_in_share(parent: &dyn Volume) -> Vec<String> {
+    let mut names = sibling_names(parent, Path::new("/share/x.zip")).await;
+    names.sort();
+    names
+}
+
+#[tokio::test]
+async fn a_new_archive_on_a_share_is_named_composed() {
+    let (parent_id, parent) = register_share(None).await;
+
+    compress_to_share(&parent_id, CAFE_ZIP_NFD)
+        .await
+        .expect("start compress");
+
+    assert_eq!(names_in_share(parent.as_ref()).await, vec![CAFE_ZIP_NFC.to_string()]);
+    let archive = Path::new("/share").join(CAFE_ZIP_NFC);
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "new.txt").await.as_deref(),
+        Some(b"brand new".as_slice())
+    );
+    get_volume_manager().unregister(&parent_id);
+}
+
+/// The dialog's overwrite warning asks for the exact bytes, so it stays quiet
+/// about a look-alike: replacing it would lose an archive nobody was warned
+/// about, and landing beside it would plant a twin. Refused, like a single
+/// rename onto a look-alike nobody confirmed.
+#[tokio::test]
+async fn a_compress_onto_a_look_alike_of_an_existing_archive_is_refused_and_leaves_it_alone() {
+    let (parent_id, parent) = register_share(Some(CAFE_ZIP_NFD)).await;
+
+    let refused = compress_to_share(&parent_id, CAFE_ZIP_NFC).await;
+
+    assert!(
+        matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
+        "{refused:?}"
+    );
+    assert_eq!(names_in_share(parent.as_ref()).await, vec![CAFE_ZIP_NFD.to_string()]);
+    let archive = Path::new("/share").join(CAFE_ZIP_NFD);
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "stale.txt")
+            .await
+            .as_deref(),
+        Some(b"old".as_slice()),
+        "the user's archive keeps its bytes"
+    );
+    get_volume_manager().unregister(&parent_id);
+}
+
+/// The mirror case: the target composes onto a name the share holds exactly.
+/// Still the dialog never saw it, so still refused, ❌ never seeded over.
+#[tokio::test]
+async fn a_compress_whose_composed_name_the_share_holds_is_refused_and_leaves_it_alone() {
+    let (parent_id, parent) = register_share(Some(CAFE_ZIP_NFC)).await;
+
+    let refused = compress_to_share(&parent_id, CAFE_ZIP_NFD).await;
+
+    assert!(
+        matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
+        "{refused:?}"
+    );
+    let archive = Path::new("/share").join(CAFE_ZIP_NFC);
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "stale.txt")
+            .await
+            .as_deref(),
+        Some(b"old".as_slice()),
+        "the user's archive keeps its bytes"
+    );
+    get_volume_manager().unregister(&parent_id);
+}
+
+/// The exact stored spelling is the name the dialog warned about: it's replaced
+/// in place, under its own bytes, as it always was.
+#[tokio::test]
+async fn a_compress_onto_the_exact_stored_spelling_still_replaces_it_in_place() {
+    let (parent_id, parent) = register_share(Some(CAFE_ZIP_NFD)).await;
+
+    compress_to_share(&parent_id, CAFE_ZIP_NFD)
+        .await
+        .expect("start compress");
+
+    assert_eq!(names_in_share(parent.as_ref()).await, vec![CAFE_ZIP_NFD.to_string()]);
+    let archive = Path::new("/share").join(CAFE_ZIP_NFD);
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "new.txt").await.as_deref(),
+        Some(b"brand new".as_slice())
+    );
+    get_volume_manager().unregister(&parent_id);
+}
