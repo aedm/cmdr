@@ -6,8 +6,8 @@ share is invisible until the user walks the servers hub down to it again.
 
 Closing that gap is a share-level writer plus one id rule, and both are cheap. The reason it was left out of the servers
 effort is recorded beside the command family that would have carried it
-(`apps/desktop/src-tauri/src/commands/DETAILS.md` § `servers.rs`): half-building it would have shipped pins that
-silently never match a mounted share.
+(`apps/desktop/src-tauri/src/commands/DETAILS.md` § "File inventory", the `servers.rs` entry): half-building it would
+have shipped pins that silently never match a mounted share.
 
 ❌ Nothing here restates a mechanism. Every item points at the doc that owns it.
 
