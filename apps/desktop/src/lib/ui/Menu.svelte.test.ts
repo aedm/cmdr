@@ -319,7 +319,12 @@ describe('submenu rows', () => {
             submenu: [
               { value: 'eject', label: 'Eject (busy)', icon: { lucide: 'eject' }, disabled: true },
               { value: 'forget', label: 'Forget server', icon: { lucide: 'trash-2' } },
-              { value: 'fast', label: 'Use the fast connection', check: { kind: 'toggle', checked: true }, separatorBefore: true },
+              {
+                value: 'fast',
+                label: 'Use the fast connection',
+                check: { kind: 'toggle', checked: true },
+                separatorBefore: true,
+              },
             ],
           },
         ],

@@ -193,7 +193,11 @@ describe('rowMenu', () => {
   function actionsOf(row: HubRow, volumes: VolumeInfo[] = []): string[] {
     const menu = actions(volumes).rowMenu(row)
     if (!menu) return []
-    return [...menu.actions.map((e) => e.action), ...menu.fixes.map((e) => e.fix), ...menu.settings.map((e) => e.toggle)]
+    return [
+      ...menu.actions.map((e) => e.action),
+      ...menu.fixes.map((e) => e.fix),
+      ...menu.settings.map((e) => e.toggle),
+    ]
   }
 
   it('gives a one-place row the servers list, the same one the switcher row’s submenu shows', () => {

@@ -319,9 +319,9 @@ couldn't dial: no saved credentials, the server asleep, the pane-open cooldown) 
 one-click way to connect, so exactly that state adds the one-shot fix "Connect directly now" (§ "Row actions: the →
 submenu"), which runs the same `connectDirectly` flow the yellow dot runs. Every other state shows the checkbox alone:
 with the switch OFF, checking it already connects, and a direct share has nothing to fix. There's deliberately no
-"Return to the macOS connection now": unchecking already does that at once. The fix only shows while the switch is on, so
-the backend's "a manual connect turns the switch back on" coupling never fires from it. Both inputs are current when the
-submenu opens: the switch values are re-fetched on every switcher open (the submenu re-derives when they land), and
+"Return to the macOS connection now": unchecking already does that at once. The fix only shows while the switch is on,
+so the backend's "a manual connect turns the switch back on" coupling never fires from it. Both inputs are current when
+the submenu opens: the switch values are re-fetched on every switcher open (the submenu re-derives when they land), and
 `connectionState` rides the live volume list. The fix's label stays its own key (`connectDirectlyNow`), apart from the
 chip popup's `connectDirectly`: a different surface, and "now" marks it as a one-time act beside a setting. What the
 switch is and where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
@@ -367,9 +367,9 @@ their order, or which a transfer greys.
 so a new item slots into a group, ❌ never by position:
 
 1. **Actions** on the volume itself (Open, Eject, Disconnect, the pin, the forgets).
-2. **Fixes**: one-shot repairs for the row's current state, each shown only while that state needs it ("Connect
-   directly now"; a future "Reconnect now" goes here too). They run straight on from the actions, no rule between, since
-   both are things to do now. `runRowFix` runs every fix, whichever surface picked it.
+2. **Fixes**: one-shot repairs for the row's current state, each shown only while that state needs it ("Connect directly
+   now"; a future "Reconnect now" goes here too). They run straight on from the actions, no rule between, since both are
+   things to do now. `runRowFix` runs every fix, whichever surface picked it.
 3. **Settings**: per-row checkboxes, below a rule. A setting is a standing choice, so the rule sets it apart.
 
 `ruledBlocks` turns the groups into what's drawn (actions + fixes, then settings), so a submenu and a top-level section
@@ -377,8 +377,8 @@ list can't disagree on where the rule goes.
 
 - **A drive or phone**: its detach item, worded and greyed from the same `detachControlFor` answer the inline button
   renders (`Eject ({name})`, or `Disconnect` with the unplug glyph on a phone). An SMB share adds its direct-connection
-  checkbox under the rule, and "Connect directly now" as a fix while that switch is ON but the share is still
-  `os_mount` (§ "Connection state indicator" above has why only then).
+  checkbox under the rule, and "Connect directly now" as a fix while that switch is ON but the share is still `os_mount`
+  (§ "Connection state indicator" above has why only then).
 - **A server place**: `Open`, `Edit server…` (saved only), `Disconnect` (when `showsDisconnect`), `Pin to switcher` or
   `Unpin`, `Forget saved password`, `Forget server` (saved only). ❌ Never `Eject`: it promises safe-to-unplug, and a
   server has nothing to unplug. `Open` and `Edit server…` lead, the way the row's two purposes rank, and neither is
@@ -402,9 +402,9 @@ hub moves its. A fix pick goes to `runRowFix` on every surface.
 
 **Which picks keep the menu up** (`MenuItem.keepsMenuOpen`): Eject and Disconnect, like the inline button, so several go
 in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, the two Forgets, and every
-fix close it, since they navigate or open a dialog or sheet. The direct-connection checkbox closes it too, since checking it on an
-OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect automatically", so every switch
-behaves alike: the next open shows the new state, re-read from Rust.
+fix close it, since they navigate or open a dialog or sheet. The direct-connection checkbox closes it too, since
+checking it on an OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect
+automatically", so every switch behaves alike: the next open shows the new state, re-read from Rust.
 
 A switch writes through a NARROW command that moves its one field (`set_place_auto_reconnect`, like `set_place_pinned`),
 ❌ never `update_saved_server` with the whole record: a menu holds a snapshot from when it opened, and writing that back

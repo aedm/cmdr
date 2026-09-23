@@ -777,7 +777,7 @@ describe('VolumeBreadcrumb share submenu', () => {
   // Switch ON, yet the share is still on the macOS mount (the auto upgrade couldn't dial): the
   // checked box alone would leave no one-click way to connect, so a one-shot fix sits between
   // Eject and the switch, and only the switch gets the rule.
-  it("an OS-mounted share with its switch on offers Eject, then “Connect directly now”, then the switch below a rule", async () => {
+  it('an OS-mounted share with its switch on offers Eject, then “Connect directly now”, then the switch below a rule', async () => {
     await openWithSwitches([share])
     await openShareSubmenu()
 
@@ -804,7 +804,7 @@ describe('VolumeBreadcrumb share submenu', () => {
   })
 
   // Checking the box already connects, so an OFF switch needs no second door.
-  it("an OS-mounted share with its switch off holds Eject, then the switch below a rule", async () => {
+  it('an OS-mounted share with its switch off holds Eject, then the switch below a rule', async () => {
     stubs.directSwitch = false
     await openWithSwitches([share])
     await openShareSubmenu()

@@ -149,7 +149,7 @@ function action(
  */
 function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowActionEntry[] {
   const { busy, isSaved } = facts
-  const entries: RowActionEntry[] =[action('open', 'menu.network.open', 'arrow-right')]
+  const entries: RowActionEntry[] = [action('open', 'menu.network.open', 'arrow-right')]
   if (isSaved) entries.push(action('edit', 'menu.network.edit', 'pencil'))
   if (showsDisconnect(volume.connectionState)) {
     entries.push(

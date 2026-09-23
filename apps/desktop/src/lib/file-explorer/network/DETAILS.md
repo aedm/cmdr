@@ -309,11 +309,10 @@ Which reasons are which, and the two look-alikes that never arrive as this one: 
 button, the chip's yellow dot, the switcher's direct-connection switch or its "Connect directly now" fix, and the pane's
 credential form after a working password. All of them end in `register_replacing_predecessor`, which broadcasts the
 volume list, so the bridge dismisses on any `volumes-changed` carrying that volume as `direct`. One rule covers every
-route, and a new route can't forget it.
-A share that goes AWAY broadcasts the list too, so a notice whose volume is no longer listed retires the same way: its
-button could only say the share is gone. The bridge asks the toast store which notices are up (`getToasts`, matched by
-content component and `props.volumeId`) rather than keeping a list, so there's no frontend ledger to fall out of step
-with the backend's or with the user closing one.
+route, and a new route can't forget it. A share that goes AWAY broadcasts the list too, so a notice whose volume is no
+longer listed retires the same way: its button could only say the share is gone. The bridge asks the toast store which
+notices are up (`getToasts`, matched by content component and `props.volumeId`) rather than keeping a list, so there's
+no frontend ledger to fall out of step with the backend's or with the user closing one.
 
 ❗ **Only a listing that finished may retire a notice by absence.** A `timedOut` payload is the last complete list
 standing in for a fresh one, so a share missing from it proves nothing. The rule's one gap: a discovery that started
