@@ -337,3 +337,140 @@ async fn smb_integration_a_same_share_move_skips_a_look_alike_instead_of_landing
 
     ensure_clean(&smb, &base).await;
 }
+
+const RESUME_NFC: &str = "r\u{e9}sum\u{e9}.txt";
+const RESUME_NFD: &str = "re\u{301}sume\u{301}.txt";
+const CAFE_ZIP_NFC: &str = "caf\u{e9}.zip";
+const CAFE_ZIP_NFD: &str = "cafe\u{301}.zip";
+const RESUME_ZIP_NFC: &str = "r\u{e9}sum\u{e9}.zip";
+const RESUME_ZIP_NFD: &str = "re\u{301}sume\u{301}.zip";
+
+/// The share, registered under a unique id so an op that looks its volume up
+/// finds it. Unregister with `get_volume_manager().unregister(&id)`.
+fn register(smb: &Arc<cmdr_smb::volume::SmbVolume>, base: &str) -> String {
+    let id = format!("smb-look-alike-{base}");
+    crate::file_system::volume::manager::get_volume_manager().register(&id, smb.clone() as Arc<dyn Volume>);
+    id
+}
+
+/// An Ask Cmdr bulk rename on the share: a row whose destination the folder
+/// holds in the other spelling is skipped (no twin), and a genuinely new name
+/// lands composed. Unit twins: `rename/bulk/look_alike_tests.rs`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_bulk_rename_skips_a_look_alike_and_names_new_ones_composed() {
+    use crate::file_system::write_operations::{BulkRenameRow, SourceFingerprint, start_bulk_rename};
+
+    let smb = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb, &base).await;
+    let vol: Arc<dyn Volume> = smb.clone();
+    smb.create_directory(Path::new(&base)).await.unwrap();
+    for (name, bytes) in [(CAFE_NFC, b"THEIRS".as_slice()), ("a.txt", b"A"), ("b.txt", b"B")] {
+        smb.create_file(Path::new(&format!("{base}/{name}")), bytes)
+            .await
+            .unwrap();
+    }
+    let id = register(&smb, &base);
+
+    let mut rows = Vec::new();
+    for (source, destination) in [("a.txt", CAFE_NFD), ("b.txt", RESUME_NFD)] {
+        let source = PathBuf::from(format!("{base}/{source}"));
+        rows.push(BulkRenameRow {
+            row_id: rows.len().to_string(),
+            expected_fingerprint: SourceFingerprint::capture_remote(vol.as_ref(), &source)
+                .await
+                .expect("fingerprint"),
+            source,
+            destination: PathBuf::from(format!("{base}/{destination}")),
+        });
+    }
+    let events = Arc::new(CollectorEventSink::new());
+    start_bulk_rename(
+        events.clone() as Arc<dyn crate::file_system::OperationEventSink>,
+        id.clone(),
+        rows,
+        crate::operation_log::types::Initiator::Agent,
+    )
+    .expect("start bulk rename");
+    crate::test_support::wait_until_async(Duration::from_secs(30), "the bulk rename to settle", || {
+        !events.settled.lock().unwrap().is_empty()
+    })
+    .await;
+
+    let mut expected = vec![CAFE_NFC.to_string(), "a.txt".to_string(), RESUME_NFC.to_string()];
+    expected.sort();
+    assert_eq!(names_in(&vol, &base).await, expected);
+    assert_eq!(read_smb(&vol, &format!("{base}/{CAFE_NFC}")).await, b"THEIRS");
+    assert_eq!(events.complete.lock().unwrap()[0].files_skipped, 1);
+
+    crate::file_system::volume::manager::get_volume_manager().unregister(&id);
+    ensure_clean(&smb, &base).await;
+}
+
+/// A compress onto the share: a target the share holds in the other spelling is
+/// refused before anything is written (the dialog's overwrite warning never saw
+/// it), and a new archive's name lands composed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_compress_refuses_a_look_alike_archive_and_names_new_ones_composed() {
+    use crate::file_system::write_operations::{WriteOperationError, compress_start};
+
+    let smb = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb, &base).await;
+    let vol: Arc<dyn Volume> = smb.clone();
+    smb.create_directory(Path::new(&base)).await.unwrap();
+    smb.create_file(Path::new(&format!("{base}/{CAFE_ZIP_NFC}")), b"THEIR ARCHIVE")
+        .await
+        .unwrap();
+    let id = register(&smb, &base);
+
+    let local = tempfile::TempDir::new().expect("create TempDir");
+    std::fs::write(local.path().join("one.txt"), b"first").unwrap();
+    let source = local_source(&local);
+
+    let compress = |name: &str| {
+        let events = Arc::new(CollectorEventSink::new());
+        let started = compress_start(
+            events.clone() as Arc<dyn crate::file_system::OperationEventSink>,
+            Arc::clone(&source),
+            vec![PathBuf::from("one.txt")],
+            PathBuf::from(format!("{base}/{name}")),
+            id.clone(),
+            ConflictResolution::Overwrite,
+            100,
+            None,
+            None,
+            crate::operation_log::types::Initiator::User,
+        );
+        async move { (started.await, events) }
+    };
+
+    let (refused, _) = compress(CAFE_ZIP_NFD).await;
+    assert!(
+        matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
+        "{refused:?}"
+    );
+    assert_eq!(names_in(&vol, &base).await, vec![CAFE_ZIP_NFC.to_string()]);
+    assert_eq!(
+        read_smb(&vol, &format!("{base}/{CAFE_ZIP_NFC}")).await,
+        b"THEIR ARCHIVE"
+    );
+
+    let (started, events) = compress(RESUME_ZIP_NFD).await;
+    started.expect("start the compress of a new archive");
+    crate::test_support::wait_until_async(Duration::from_secs(30), "the SMB compress to complete", || {
+        let completed = !events.complete.lock().unwrap().is_empty();
+        let errs = events.errors.lock().unwrap();
+        assert!(errs.is_empty(), "SMB compress errored: {errs:?}");
+        completed
+    })
+    .await;
+    let mut expected = vec![CAFE_ZIP_NFC.to_string(), RESUME_ZIP_NFC.to_string()];
+    expected.sort();
+    assert_eq!(names_in(&vol, &base).await, expected);
+
+    crate::file_system::volume::manager::get_volume_manager().unregister(&id);
+    ensure_clean(&smb, &base).await;
+}
