@@ -405,11 +405,12 @@ async fn abandoning_a_connect_does_not_panic_the_engines_task() {
     // broad net: `cancel_test` aims at the hello on purpose, and this sweeps the
     // phases nothing can aim at. Aborting `Sftp::new` mid-hello is the move
     // `openssh-sftp-client` 0.15.8 made safe, so this pins the upstream fix as
-    // much as our own teardown. A regression either side surfaces as a panic in
-    // the test binary rather than as a failing assertion, which is what this cell
-    // converts back into a finding.
+    // much as our own teardown. A regression either side panics a SPAWNED task,
+    // which tokio catches and fails nothing with, so `count_panics` is what
+    // converts it back into a finding.
     let params = fixture_params("OPENSSH", 12480);
     let host = fixture_host(&params, Some(FIXTURE_PASSWORD));
+    let panics = count_panics();
 
     for _ in 0..10 {
         let dial = connect_sftp_volume(
@@ -430,6 +431,11 @@ async fn abandoning_a_connect_does_not_panic_the_engines_task() {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     let volume = connect_fixture(&host, params).await;
     assert!(volume.exists(Path::new("hello.txt")).await);
+    assert_eq!(
+        panics.seen(),
+        0,
+        "an abandoned connect must not panic any task it leaves behind"
+    );
 }
 
 // ── The byte path ────────────────────────────────────────────────────

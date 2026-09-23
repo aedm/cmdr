@@ -365,6 +365,9 @@ async fn start_engine(
 /// The engine's own task, still waiting on the server's hello.
 type StartingEngine = JoinHandle<Result<Sftp, openssh_sftp_client::Error>>;
 
+/// How the engine's task ended: the hello's answer, or the task itself dying.
+type EngineEnded = Result<Result<Sftp, openssh_sftp_client::Error>, tokio::task::JoinError>;
+
 /// An engine still waiting on its hello, and the session underneath it, held
 /// together because the two only ever end in ORDER.
 ///
@@ -377,10 +380,16 @@ type StartingEngine = JoinHandle<Result<Sftp, openssh_sftp_client::Error>>;
 ///
 /// [`Self::delivered`] is the one ending that doesn't, and correctly so: a hello
 /// that arrived becomes an [`SshConnection`], which owns its own shutdown.
+///
+/// ❗ **The two halves end INDEPENDENTLY.** An engine that ended on its own (an
+/// error, or a task that died) leaves a spent join handle and a session that
+/// still needs disconnecting; polling that handle again panics inside tokio
+/// (CRASH-8R6RQ) and the disconnect after it never runs.
 struct PendingEngine {
-    /// `None` only after [`Self::stop`] or [`Self::delivered`] has taken it.
+    /// `None` once [`Self::race`] has seen the engine end, or [`Self::stop`] has
+    /// taken it. ❗ A handle still here is one nobody has polled to completion.
     starting: Option<StartingEngine>,
-    /// Taken alongside `starting`, so the two can never end apart.
+    /// `None` only after [`Self::stop`] or [`Self::delivered`] has taken it.
     session: Option<client::Handle<TrustHandler>>,
     /// The app's runtime, because a `Drop` can't await and [`stop_engine`] must.
     runtime: tokio::runtime::Handle,
@@ -395,28 +404,34 @@ impl PendingEngine {
         }
     }
 
-    /// The engine's task, for the race in [`await_hello`].
+    /// Waits for the engine's hello until `deadline`.
     ///
-    /// ❗ Borrowed rather than taken, so the handle survives every ending and can
-    /// still be aborted.
-    fn starting(&mut self) -> &mut StartingEngine {
-        self.starting
+    /// ❗ The ONE place the handle is polled, and it lets go of the handle the
+    /// moment the poll completes, so "spent" and "polled" can never drift apart.
+    /// Borrowed for the wait itself, so a race the cancel wins or the deadline
+    /// ends still leaves a live handle for [`stop_engine`] to abort.
+    async fn race(&mut self, deadline: tokio::time::Instant) -> Result<EngineEnded, tokio::time::error::Elapsed> {
+        let starting = self
+            .starting
             .as_mut()
-            .expect("the engine is raced before it is stopped or delivered")
+            .expect("the engine is raced once, before it is stopped or delivered");
+        let joined = tokio::time::timeout_at(deadline, starting).await;
+        if joined.is_ok() {
+            self.starting = None;
+        }
+        joined
     }
 
     /// Ends both, in order, for a caller still around to await it.
     async fn stop(&mut self) {
-        let (Some(starting), Some(session)) = (self.starting.take(), self.session.take()) else {
-            return;
-        };
-        stop_engine(starting, session).await;
+        if let Some(session) = self.session.take() {
+            stop_engine(self.starting.take(), session).await;
+        }
     }
 
     /// Hands the session over to the [`SshConnection`] the hello produced, which
     /// leaves the `Drop` below nothing to stop.
     fn delivered(&mut self) -> client::Handle<TrustHandler> {
-        self.starting = None;
         self.session
             .take()
             .expect("a hello that arrived delivers its session exactly once")
@@ -425,15 +440,15 @@ impl PendingEngine {
 
 impl Drop for PendingEngine {
     fn drop(&mut self) {
-        let (Some(starting), Some(session)) = (self.starting.take(), self.session.take()) else {
+        let Some(session) = self.session.take() else {
             return;
         };
         // ❗ Spawned rather than awaited, because a `Drop` can't await. The task
-        // outlives this future by exactly one abort and one disconnect, and it is
+        // outlives this future by at most one abort and one disconnect, and it is
         // the ONLY thing still running once nobody polls the dial: the phase
         // deadline can't help, since a deadline the dial carries only fires while
         // something polls the dial.
-        self.runtime.spawn(stop_engine(starting, session));
+        self.runtime.spawn(stop_engine(self.starting.take(), session));
     }
 }
 
@@ -473,7 +488,7 @@ async fn await_hello(
     let waited = tokio::select! {
         biased;
         () = cancel.cancelled() => Err(SftpConnectError::Cancelled),
-        joined = tokio::time::timeout_at(deadline, pending.starting()) => joined.map_err(|_elapsed| SftpConnectError::TimedOut),
+        joined = pending.race(deadline) => joined.map_err(|_elapsed| SftpConnectError::TimedOut),
     };
     let joined = match waited {
         Ok(joined) => joined,
@@ -486,9 +501,10 @@ async fn await_hello(
         }
     };
 
-    // ❗ Both failing arms leave `pending` holding the session, so its `Drop`
-    // disconnects on the way out. An engine that answered with an error has
-    // already released the channel, but the session is ours to close either way.
+    // ❗ Both failing arms leave `pending` holding the session and nothing else
+    // (the race let go of the spent handle), so its `Drop` only disconnects. An
+    // engine that answered with an error has already released the channel, but
+    // the session is ours to close either way.
     match joined {
         // The engine's own task DIED rather than ended, which on 0.15.8 should
         // not happen whatever we do to the future: the regression tell for
@@ -522,13 +538,44 @@ pub(crate) enum HelloPeer {
     /// in the server's process table is found by, which is how a cell watches
     /// the server-side session go.
     Stalling(String),
+    /// A command whose hello ENDS in an error ([`REFUSED_LIMITS`]), the way a
+    /// server with a broken `sftp-server` ends one. Then it holds the channel
+    /// open like [`Self::Stalling`], and carries its marker the same way.
+    Refusing(String),
 }
+
+/// A hello `Sftp::new` answers with `Err`, played by a shell over the channel.
+///
+/// It reads the engine's 9-byte `SSH_FXP_INIT`, answers a v3 `SSH_FXP_VERSION`
+/// advertising `limits@openssh.com`, and answers the 31-byte limits request with
+/// an `SSH_FXP_STATUS` of `SSH_FX_FAILURE`. The request id is copied through by
+/// the bare 4-byte `dd`, since the engine picks it. ❗ `dd bs=1`, ❌ never
+/// `head -c`: busybox's `head` reads ahead, swallowing the bytes the next
+/// read in the script is waiting for.
+///
+/// ❗ Refused at the LIMITS request on purpose: it's the error `Sftp::new` returns
+/// straight away. A refused VERSION (say, protocol 2) sends it through its own
+/// `Sftp::close()`, which never returns over a `russh` channel, so the dial
+/// would end at the phase deadline rather than in an error (openssh-sftp-client
+/// 0.15.8, `Sftp::init`, read 2026-09-24).
+#[cfg(test)]
+const REFUSED_LIMITS: &str = concat!(
+    r"dd bs=1 count=9 >/dev/null 2>&1; ",
+    r"printf '\000\000\000\040\002\000\000\000\003\000\000\000\022limits@openssh.com\000\000\000\0011'; ",
+    r"dd bs=1 count=5 >/dev/null 2>&1; ",
+    r"printf '\000\000\000\021\145'; ",
+    r"dd bs=1 count=4 2>/dev/null; ",
+    r"dd bs=1 count=22 >/dev/null 2>&1; ",
+    r"printf '\000\000\000\004\000\000\000\000\000\000\000\000'; ",
+);
 
 /// Stops an engine nobody is waiting for any more, and closes the transport
 /// under it.
 ///
 /// The order is [`SshConnection`]'s own: the aborted task is awaited out first,
 /// so the engine has let its end of the channel go before the session goes.
+/// `starting` is `None` when the engine already ended on its own, and ❗ the
+/// session is disconnected either way.
 ///
 /// ❗ The abort happens on the FIRST poll, which is what makes this safe to
 /// interrupt: a teardown that is itself dropped part-way has already ended the
@@ -542,9 +589,11 @@ pub(crate) enum HelloPeer {
 /// loop, which closes the transport and errors those tasks out with it. ❗ Only
 /// this path needs it: a session that reached [`SshConnection`] is shut down by
 /// dropping the ENGINE, whose own drop orders its tasks to stop.
-async fn stop_engine(starting: StartingEngine, session: client::Handle<TrustHandler>) {
-    starting.abort();
-    let _aborted = starting.await;
+async fn stop_engine(starting: Option<StartingEngine>, session: client::Handle<TrustHandler>) {
+    if let Some(starting) = starting {
+        starting.abort();
+        let _aborted = starting.await;
+    }
     let _closing = session.disconnect(Disconnect::ByApplication, "", "").await;
     drop(session);
 }
@@ -585,15 +634,21 @@ pub(crate) async fn dial_cancelling_inside_the_hello(
     let deadline = tokio::time::Instant::now() + SUBSYSTEM_TIMEOUT;
     let starting = match peer {
         HelloPeer::Subsystem => start_engine(&session, &host, &live, deadline).await?,
-        HelloPeer::Stalling(marker) => {
+        HelloPeer::Stalling(ref marker) | HelloPeer::Refusing(ref marker) => {
             let channel = open_channel(&session, &live, deadline).await?;
             // `cat` reads the engine's `SSH_FXP_INIT` and writes nothing back;
             // the `:` after it is what carries `marker` into the process table
-            // and ends the moment the session's pipes close.
+            // and ends the moment the session's pipes close. A refusing peer
+            // first plays the hello, see `REFUSED_LIMITS`.
+            let answer = if matches!(peer, HelloPeer::Refusing(_)) {
+                REFUSED_LIMITS
+            } else {
+                ""
+            };
             within(
                 &live,
                 deadline,
-                channel.exec(true, format!("cat >/dev/null; : {marker}")),
+                channel.exec(true, format!("{answer}cat >/dev/null; : {marker}")),
             )
             .await?
             .map_err(|e| SftpConnectError::Transport(e.to_string()))?;

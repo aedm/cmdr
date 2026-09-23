@@ -10,6 +10,7 @@
 //! shipped build. The stack itself: `apps/desktop/test/sftp-servers/README.md`.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::credentials::InMemoryCredentials;
@@ -19,6 +20,33 @@ use tokio_util::sync::CancellationToken;
 use super::{SftpConnectOutcome, SftpVolume, connect_sftp_volume};
 use crate::params::SftpConnectionParams;
 use crate::transport::HostKeyPromptKind;
+
+/// Panics seen in this process since [`count_panics`], on any thread.
+pub struct PanicCount(&'static AtomicUsize);
+
+impl PanicCount {
+    /// How many panics so far.
+    pub fn seen(&self) -> usize {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+
+/// Counts every panic in this process from here on, on any thread, and still
+/// prints each one the usual way.
+///
+/// ❗ The only way a cell sees a panic in a SPAWNED task: tokio catches it, fails
+/// nothing, and the test passes. ❗ Only sound under nextest's process-per-test
+/// model; under `cargo test` it would also count the panics of every test running
+/// alongside.
+pub fn count_panics() -> PanicCount {
+    static PANICS: AtomicUsize = AtomicUsize::new(0);
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        PANICS.fetch_add(1, Ordering::SeqCst);
+        previous(info);
+    }));
+    PanicCount(&PANICS)
+}
 
 /// The remote directory every fixture server exports.
 pub const FIXTURE_ROOT: &str = "/srv/data";

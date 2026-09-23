@@ -239,18 +239,85 @@ async fn dropping_a_dial_inside_the_hello_window_closes_the_servers_session_at_o
     assert!(volume.exists(Path::new("hello.txt")).await, "{FIXTURE}");
 }
 
+/// ❗ **The ending nobody asked for: a hello that ends in an ERROR.** A server
+/// whose hello ends in something `Sftp::new` refuses (a broken or non-conforming
+/// `sftp-server`) must still have its session closed, and closing it must not
+/// panic.
+///
+/// Different from the cells above in the one way that matters: the race in
+/// `await_hello` has already consumed the engine's output, so the teardown gets
+/// a SPENT join handle. Awaiting it again panicked inside the teardown
+/// (CRASH-8R6RQ, tokio's "`JoinHandle` polled after completion") BEFORE the
+/// disconnect ran, which left the SSH session open for the life of the process.
+///
+/// ❗ That panic lands in a spawned task, which fails nothing, and the far end's
+/// channel closes either way (the engine's own drop releases it), so neither the
+/// dial's answer nor the marker can tell. The cell counts panics instead
+/// ([`count_panics`]).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn a_hello_that_ends_in_an_error_tears_down_without_panicking() {
+    let params = fixture_params("OPENSSH", 12480);
+    let host = fixture_host(&params, Some(FIXTURE_PASSWORD));
+    drop(connect_fixture(&host, params.clone()).await);
+    let panics = count_panics();
+
+    let port = params.port;
+    let marker = format!("cmdr-refused-hello-{}", std::process::id());
+    let (reached, _unwatched) = tokio::sync::oneshot::channel();
+    let started = Instant::now();
+    let outcome = tokio::time::timeout(
+        PROMPTLY,
+        transport::dial_cancelling_inside_the_hello(
+            params.clone(),
+            host.clone(),
+            transport::HelloPeer::Refusing(marker.clone()),
+            CancellationToken::new(),
+            reached,
+        ),
+    )
+    .await
+    .expect("a refused hello ends the dial on the spot, not at the phase budget");
+    match outcome {
+        Err(SftpConnectError::Transport(_)) => {}
+        Err(e) => panic!("a refused hello answers a transport failure, got {e:?}"),
+        Ok(_) => panic!("a peer that refuses the limits request can't have delivered a hello"),
+    }
+
+    let gone = format!("the server's session to close after a refused hello ({FIXTURE})");
+    wait_until_async(PROMPTLY, &gone, || sessions_open(port, &marker) == 0).await;
+    assert!(
+        started.elapsed() < PROMPTLY * 2,
+        "the refusal and the close together have to stay inside the budget"
+    );
+
+    // A fresh dial is both proof the server survived and enough time for the
+    // teardown task (spawned at the refusal, done in well under a millisecond)
+    // to have run.
+    let volume = connect_fixture(&host, params).await;
+    assert!(volume.exists(Path::new("hello.txt")).await, "{FIXTURE}");
+    // ❗ The point of the cell.
+    assert_eq!(
+        panics.seen(),
+        0,
+        "tearing down after a refused hello must not panic, or the disconnect after it never runs"
+    );
+}
+
 /// A cancel inside a REAL hello window, which is the shape production hits.
 ///
 /// The window is about a millisecond wide against a local server, so the cell
 /// hands `await_hello` an already-cancelled token rather than trying to time one.
 /// What it guards is the hazardous moment: aborting `Sftp::new` while the engine
-/// is genuinely mid-hello used to panic a task inside `openssh-sftp-client`.
+/// is genuinely mid-hello used to panic a task inside `openssh-sftp-client`,
+/// which only [`count_panics`] can see.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
 async fn a_cancel_inside_a_real_hello_window_stops_the_engine_without_panicking_it() {
     let params = fixture_params("OPENSSH", 12480);
     let host = fixture_host(&params, Some(FIXTURE_PASSWORD));
     drop(connect_fixture(&host, params.clone()).await);
+    let panics = count_panics();
 
     for _ in 0..5 {
         let cancel = CancellationToken::new();
@@ -278,6 +345,7 @@ async fn a_cancel_inside_a_real_hello_window_stops_the_engine_without_panicking_
 
     let volume = connect_fixture(&host, params).await;
     assert!(volume.exists(Path::new("hello.txt")).await, "{FIXTURE}");
+    assert_eq!(panics.seen(), 0, "stopping an engine mid-hello must not panic it");
 }
 
 /// How many sessions the fixture server behind `port` is running for `marker`.

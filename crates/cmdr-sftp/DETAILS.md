@@ -515,12 +515,18 @@ engine's own tasks out with it (russh 0.62.7's client session loop, read 2026-08
 ❗ Only the unanswered-hello path needs the disconnect. A session that reached `SshConnection` is shut down by dropping
 the ENGINE, whose own drop orders its tasks to stop and releases the channel (§ 1).
 
-**`transport::PendingEngine` is what makes an abandoned dial safe**, and it holds the engine's join handle and the
-session together precisely because those two only ever end in order. Every ending goes through `stop_engine`: the cancel
-and the phase deadline await it, an engine that answered with an error gets it on the way out, and a caller who simply
-stops polling gets it from the guard's `Drop`, which spawns the teardown on `host.runtime()` because a `Drop` can't
-await. `PendingEngine::delivered` is the one ending that skips it, and correctly: a hello that arrived becomes an
-`SshConnection`, which owns its own shutdown (§ 1).
+**`transport::PendingEngine` is what makes an abandoned dial safe**: it holds the engine's join handle and the session,
+and every ending goes through `stop_engine`. The cancel and the phase deadline await it, an engine that answered with an
+error gets it on the way out, and a caller who simply stops polling gets it from the guard's `Drop`, which spawns the
+teardown on `host.runtime()` because a `Drop` can't await. `PendingEngine::delivered` is the one ending that skips it,
+and correctly: a hello that arrived becomes an `SshConnection`, which owns its own shutdown (§ 1).
+
+❗ **The two halves end independently.** `PendingEngine::race` is the ONE place the handle is polled, and it drops the
+handle the moment that poll completes; `stop_engine` then aborts a handle only if one is left, and disconnects the
+session either way. Polling a completed `JoinHandle` again panics inside tokio ("`JoinHandle` polled after completion"),
+and it did in the field (CRASH-8R6RQ, 0.46.1): a hello that ended in an error left the spent handle in the guard, the
+teardown re-awaited it, and the panic landed BEFORE the disconnect, so the session stayed open for the life of the
+process on top of the "kept running" crash toast.
 
 ❗ **The guard is the only lever an abandoned dial has**, because letting go of the join handle DETACHES the engine
 rather than aborting it, and a `russh` `Handle`'s own drop only logs: both conditions above at once. `SUBSYSTEM_TIMEOUT`
@@ -532,13 +538,18 @@ dropped dial's session is gone from the server well inside the 2 s the cell allo
 surviving every probe out to 15 s without the guard. The deadline arm still ends where it always did, `TimedOut` at 9.8
 s with the far end closed 100 ms later.
 
-Four cells keep the whole hazard honest, and they pin OUTCOMES rather than a workaround:
+Five cells keep the whole hazard honest, and they pin OUTCOMES rather than a workaround:
 `dropping_a_dial_inside_the_hello_window_closes_the_servers_session_at_once` for the abandon,
-`a_cancel_inside_the_hello_window_closes_the_servers_session_at_once` for the cancel, and
-`abandoning_a_connect_does_not_panic_the_engines_task` plus
-`a_cancel_inside_a_real_hello_window_stops_the_engine_without_panicking_it` for the abort that 0.15.8 made safe. A panic
-inside a spawned task doesn't fail the task that spawned it, so it surfaces as an unrelated test binary crash rather
-than a failing assertion, which is what the cells convert back into a finding.
+`a_cancel_inside_the_hello_window_closes_the_servers_session_at_once` for the cancel,
+`a_hello_that_ends_in_an_error_tears_down_without_panicking` for the engine that ended on its own (`HelloPeer::Refusing`,
+which refuses the `limits@openssh.com` request: a refused VERSION would send `Sftp::new` into its own `Sftp::close()`,
+which never returns over a `russh` channel), and `abandoning_a_connect_does_not_panic_the_engines_task` plus
+`a_cancel_inside_a_real_hello_window_stops_the_engine_without_panicking_it` for the abort that 0.15.8 made safe.
+
+❗ A panic inside a spawned task fails NOTHING: tokio catches it and the test passes (verified 2026-09-24, tokio 1.53.1:
+the refused-hello cell passed while printing the CRASH-8R6RQ panic). The panic cells therefore count panics with
+`volume::testing::count_panics`, a process-wide panic hook that's sound only because nextest runs each test in a process
+of its own.
 
 ### 2b. Calling a connect off
 

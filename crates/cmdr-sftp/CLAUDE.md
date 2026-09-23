@@ -20,7 +20,8 @@ user-facing words.
   and the upload reports success on bytes nobody committed.
 - **❗ A hello that never arrives ends in `transport::stop_engine`, ❌ never a bare `drop(session)`**: the engine's
   tasks hold the channel and a sender the session lives on, so the socket would stay open for the life of the process.
-  `transport::PendingEngine` owns the pair so every ending reaches it, an ABANDONED dial's included, from its `Drop`.
+  `transport::PendingEngine` owns the pair so every ending reaches it, an ABANDONED dial's too (its `Drop`).
+  ❌ Poll its handle only in `race`: re-polling panics.
   `DETAILS.md` § "2. An abandoned `Sftp::new`".
 - **❗ A connect is called off with a `CancellationToken`**, which is what makes it answer `Cancelled` and register,
   remember, and store nothing. Every phase stops where it stands, the hello included.
