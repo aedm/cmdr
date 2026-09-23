@@ -1180,7 +1180,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own
   staging `mv`, and read the pane patch a mkdir, a move, and a delete each owe from a `RecordingListings` host.
   ❗ A transfer onto a phone runs at width 1 (the `"adb"` row in `MAX_CONCURRENT_OPERATIONS_SOURCES`), so the serial
-  driver runs it: the pre-existing-folder scenario there holds the per-name probe (`landing::name_at_destination`),
+  driver runs it: the pre-existing-folder scenario there holds the per-name probe (`landing::top_level_precheck`),
   never the concurrent driver's skip on a `Created` answer.
 - **❗ The cells themselves must stay in the two backend files, on the `webdav_integration_` / `sftp_integration_` name
   prefix.** The integration lane selects the app crate's Docker cells by NAME (`scripts/check/checks/fixture-lane-coverage.go`,
