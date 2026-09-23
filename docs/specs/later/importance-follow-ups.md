@@ -1,62 +1,46 @@
-# What the importance subsystem still owes
+# Importance follow-ups
 
-The folder-importance subsystem shipped as its own neutral thing: `crates/cmdr-index/src/importance/` scores every
-folder on a Local or SMB volume from index rows alone, stores the scalar plus its raw signal vector in a disposable
-per-volume `importance.db`, recomputes fully on scan completion and incrementally on live listing changes, and answers
-`weight_for` / `top_n` / `above_threshold` / `explain` through one read API, even for an unmounted volume. Its own docs
-are the canonical account: `crates/cmdr-index/src/importance/CLAUDE.md` routes to five area doc pairs (`scorer/`,
-`store/`, `scheduler/`, `read/`, `evals/`), and the lifecycle bus it rides lives in
-`crates/cmdr-index/src/indexing/DETAILS.md`.
+The folder-importance subsystem is shipped: `crates/cmdr-index/src/importance/` scores every folder on a Local or SMB
+volume from index rows alone, and its `CLAUDE.md` routes to five area doc pairs (`scorer/`, `store/`, `scheduler/`,
+`read/`, `evals/`). The lifecycle bus it rides is in `crates/cmdr-index/src/indexing/DETAILS.md`. Three things are open.
 
-❌ Nothing here restates a mechanism. Every item points at the doc that owns it.
+## 1. Tune the importance weights against a real home directory
 
-## 1. The weights are still a guess, and the instrument that would fix that is built
+- **Problem**: The scorer's coefficients are untuned defaults. The whole tuning loop is built (`importance/evals/`: the
+  scenario format, hard and soft constraint tiers, and a corpus importer that derives signals through production code;
+  plus the `importance-tune`, `importance-snapshot`, `importance-measure`, and `importance-diff` bins in
+  `crates/index-query/`), but real corpus dumps are gitignored, so CI runs with zero corpus files and proves only that
+  the shape holds.
+- **Impact**: Every consumer inherits the ranking: folder-summary gating, event-bundle interest, and media enrichment
+  order. A bad weight quietly spends effort on the wrong folders everywhere.
+- **Solution**: Follow `docs/guides/importance-evals.md` on David's machine: dump an anonymized snapshot of his home,
+  write constraints for folders he knows matter or don't, and iterate the weights with `importance-tune`'s `explain`
+  breakdowns. If a change genuinely improves the aggregate, raise `SOFT_SCORE_FLOOR` in the same commit
+  (`evals/CLAUDE.md`).
+- **Size**: M. Blocked on David: it needs his own home directory and his judgment on what matters.
 
-**The gap**: the scorer's coefficients are defaults nobody has tuned against a real tree. Every consumer (summary
-gating, event-bundle interest, media enrichment order) inherits whatever they rank.
+## 2. Measure what the Spotlight last-used sampler costs on a real home
 
-**What already exists**: the whole tuning loop. `evals/` holds the scenario format, the hard and soft constraint tiers,
-and a corpus importer that derives signals through PRODUCTION code, so a dump scores identically to the live volume.
-Three dev bins drive it (`importance-tune` to eyeball a ranking with `explain` breakdowns, `importance-snapshot` to dump
-an anonymized scenario, `importance-measure` for the cost side), and `docs/guides/importance-evals.md` is the
-David-facing how-to.
+- **Problem**: `importance/last_used.rs` samples `kMDItemLastUsedDate` for at most `SAMPLE_CAP` (500) folders per pass.
+  Both the cap and the sampling strategy are guesses (`importance/DETAILS.md` § "Sampled `kMDItemLastUsedDate`").
+- **Impact**: Probably small. Sampling runs only where the volume says `last_used_available`, so SMB never pays it and
+  the cost stays on the boot disk. But an unmeasured cap could be either wasting seconds per pass or starving the
+  recency signal.
+- **Solution**: Run `importance-measure` against a real Spotlight index at a few cap values, record the sampling phase's
+  wall-clock share in `docs/notes/`, and pick the cap from the data. ⚠️ This is separate from the shipped first-run
+  recency signal (`apps/desktop/src-tauri/src/priority/DETAILS.md` § "The recency signal"), which asks Spotlight at
+  launch before any index exists; don't merge the two.
+- **Size**: S. Not blocked.
 
-**Why it hasn't happened**: real dumps land in a gitignored corpus dir and are never committed, so CI runs with zero
-corpus files and the suite proves the shape holds, not that the ranking is good. Closing this needs David's own home
-directory on his own machine.
+## 3. Let the memory watchdog and shutdown stop an importance recompute
 
-**The guardrail that survives either way**: `SOFT_SCORE_FLOOR` is a FIXED floor. A tuning pass that genuinely improves
-quality raises it consciously in the same commit; ❌ never lower it to make a change pass (`evals/CLAUDE.md`).
-
-## 2. `SAMPLE_CAP` has never been measured on a real home
-
-**The gap**: `last_used.rs` samples `kMDItemLastUsedDate` for at most 500 folders per pass, on a dedicated 8 MB-stack OS
-thread inside an autoreleasepool. Both the cap and the sample strategy are guesses, and `importance/DETAILS.md` §
-"Sampled `kMDItemLastUsedDate`" says so outright.
-
-**Cost**: a measurement, not a fix. `importance-measure` already reports a full pass's phase wall-clock split, so the
-missing number is what the sampling phase costs against a real Spotlight index at a few cap values.
-
-**Bounded by construction**: sampling runs only where the volume mask says `last_used_available`, so SMB never pays it
-and the cost is confined to the boot disk.
-
-⚠️ **Not the same work as the shipped first-run recency signal** (`apps/desktop/src-tauri/src/priority/DETAILS.md` §
-"The recency signal"). That one asks Spotlight at LAUNCH to seed `priority_roots` on a true first run, before any index
-exists. This one is about what the in-crate sampler costs once one does. Don't merge them.
-
-## 3. A recompute can't be stopped
-
-**The gap**: every other long walk in the crate runs under a `CancellationToken` rooted at the volume. An importance
-pass runs under nothing and registers no stop hook, so `stop_all_indexing` (the memory watchdog's emergency stop AND the
-shutdown path) doesn't reach it: a running pass walks the whole index to the end regardless.
-
-**Why it hasn't hurt**: the full walk is seconds, not minutes (5.5–6.4 s over real 391k- and 611k-folder indexes,
-measured 2026-07-29), and an incremental is microseconds. Seconds of unstoppable work inside an emergency stop is
-survivable where a scan's minutes would not be.
-
-**The fix shape is already written down**, next to the `TODO(importance)` it belongs to:
-`crates/cmdr-index/src/importance/scheduler/DETAILS.md` § "A pass can't be stopped". Thread a child of the volume's
-token in from whoever starts the pass and register a stop hook. ❌ Don't introduce a second primitive; the one-token
-tree is what makes stopping a volume stop everything under it at once.
-
-**Trigger**: a pass that stops being seconds, or a memory watchdog stop that visibly fails to free anything.
+- **Problem**: Every other long walk in the crate runs under a `CancellationToken` rooted at the volume. An importance
+  pass runs under nothing and registers no stop hook, so `stop_all_indexing` (the memory watchdog's emergency stop and
+  the shutdown path) doesn't reach it, and a running pass walks the whole index to the end.
+- **Impact**: Low today: a full pass takes 5.5–6.4 s on real 391k- and 611k-folder indexes (measured 2026-07-29), and an
+  incremental one takes microseconds. It becomes real if a pass grows to minutes or a watchdog stop visibly fails to
+  free memory.
+- **Solution**: Thread a child of the volume's token into the pass and poll it in `recompute_folders` (the
+  `TODO(importance)` in `importance/scheduler/recompute.rs`), and register a stop hook. ❌ Don't add a second
+  cancellation primitive. Fix shape: `importance/scheduler/DETAILS.md` § "A pass can't be stopped".
+- **Size**: S. Not blocked; do it when the trigger above fires, or alongside other scheduler work.
