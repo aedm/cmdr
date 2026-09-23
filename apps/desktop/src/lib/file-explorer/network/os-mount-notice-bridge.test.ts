@@ -53,7 +53,9 @@ vi.mock('$lib/tauri-commands', () => ({
     emitWithdrawn = handler
     return Promise.resolve(unlistenWithdrawn)
   },
-  onVolumesChanged: (handler: (payload: { data: VolumeInfo[]; timedOut: boolean; discoveryPending?: boolean }) => void) => {
+  onVolumesChanged: (
+    handler: (payload: { data: VolumeInfo[]; timedOut: boolean; discoveryPending?: boolean }) => void,
+  ) => {
     emitVolumes = handler
     return Promise.resolve(unlistenVolumes)
   },

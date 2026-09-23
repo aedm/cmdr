@@ -324,9 +324,9 @@ still fail, and the `direct` broadcast retires the notice when it doesn't. Backe
 ❗ **Only a listing that finished may retire a notice by absence.** A `timedOut` payload is the last complete list
 standing in for a fresh one, and a `discoveryPending` one carries the cached local part beside fresh server rows while
 discovery is still out (`src-tauri/src/volumes/DETAILS.md`, "Server rows never wait on local discovery"), so a share
-missing from either proves nothing. The rule's one gap: a discovery that started
-before a brand-new mount and finished slowly (inside its timeout) after that mount's fallback could retire the fresh
-notice. The share keeps its yellow dot either way.
+missing from either proves nothing. The rule's one gap: a discovery that started before a brand-new mount and finished
+slowly (inside its timeout) after that mount's fallback could retire the fresh notice. The share keeps its yellow dot
+either way.
 
 **What the button does on a second failure.** It runs `connectDirectly`, which raises its own error toast naming the
 typed reason, and the notice STAYS UP with the button live again: the situation it describes hasn't changed, and the

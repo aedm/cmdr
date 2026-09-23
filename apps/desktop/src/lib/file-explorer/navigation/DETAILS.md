@@ -825,9 +825,9 @@ component to render inline indicators (no toasts):
     `destroy()`.
   - Reduced motion: spinner degrades to pulsing opacity, shake degrades to opacity flash.
 - **Volume list timeout** (`volumesTimedOut`): Tracked in `volume-store.svelte.ts` (not in the manager). The component
-  reads it via `getVolumesTimedOut()` and shows a warning row with a retry button at the bottom of the dropdown. A
-  retry settles only on a `volumes-changed` with `discoveryPending: false`: a pending one is the backend publishing
-  fresh server rows beside the cached local part while its discovery is still out, so it says nothing about the retry.
+  reads it via `getVolumesTimedOut()` and shows a warning row with a retry button at the bottom of the dropdown. A retry
+  settles only on a `volumes-changed` with `discoveryPending: false`: a pending one is the backend publishing fresh
+  server rows beside the cached local part while its discovery is still out, so it says nothing about the retry.
 
 ## Dependencies
 
