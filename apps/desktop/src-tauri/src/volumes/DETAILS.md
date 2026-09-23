@@ -24,8 +24,9 @@ DO (`supports_eviction`), which is why the enum sits in `file_system/` rather th
 
 ## Which mounts get a row
 
-**Decision**: `is_user_facing_mount` admits a mount when the OS doesn't mark it `MNT_DONTBROWSE`, or when it sits
-strictly inside `$HOME`. It still drops the boot volume (which has its own row), a dot-prefixed mount, and anything
+**Decision**: `is_user_facing_mount` admits a mount when the OS doesn't mark it `MNT_DONTBROWSE`, or when
+`provider_for_mount` recognizes who serves it (path pattern or fs type: `pcloudfs`, `macfuse` / `osxfuse`,
+`/Volumes/pCloudDrive`, `/Volumes/veracrypt*`, `~/.CMVolumes`), wherever it's mounted. It still drops the boot volume (which has its own row), a dot-prefixed mount, and anything
 under `~/Library/CloudStorage` (the cloud arm publishes those, and a second row would be a duplicate).
 
 **Why the flag**: `MNT_DONTBROWSE` is the same bit Finder reads to decide what belongs in its sidebar, so it separates
@@ -34,10 +35,23 @@ drives from plumbing without this module naming a single system path. Measured o
 all carry it; `/` and a mounted SMB share don't. The `/Volumes/` prefix test it replaces got this wrong in both
 directions: it let `/Volumes/Recovery` through (only a name check saved it) and hid every drive mounted anywhere else.
 
-**Why the home clause**: a cloud client mounts its drive into the home folder (pCloud's `~/pCloud Drive`), and some mark
-that mount unbrowsable while adding their own Finder sidebar shortcut instead, so the flag alone would hide a drive the
-user plainly has. No system mount lives under `$HOME`, so the clause can't readmit plumbing. `$HOME` itself is excluded:
-a network-homed Mac mounts it, and a home folder is not a drive.
+**Why the provider clause**: a cloud client or FUSE layer may mark its mount unbrowsable and add its own Finder sidebar
+shortcut instead, and the flag alone would hide that drive. It's an allowlist of mounts we positively recognize, so it
+fails closed: a new system mount stays out without anyone naming it. Nobody has confirmed a real client that does this
+(pCloud 4.3.1 was installed on the test Mac with its mount never approved, so there was nothing to inspect, 2026-09-21);
+the clause is a precaution, and costs nothing if no provider ever needs it.
+
+**Why not "anything inside `$HOME`"**: that was the rule, on the premise that no system mount lives there. Xcode breaks
+it: CoreDevice's `DeviceFS` is an FSKit mount at `~/Library/Developer/CoreDevice/DeviceFS`, fs type `devicefs`, flagged
+`nobrowse`, holding only a `.VolumeIcon.icns` and reporting a synthetic 1.10 TB with no BSD disk behind it, so it
+showed as a phantom "Devices" drive (verified on macOS 27.0 26A428 with Xcode 27.0, via `mount`, `df`, and
+`diskutil info`, 2026-09-21). Unknown: whether it changes shape once an iPhone is attached; it's excluded either way.
+
+**Two questions, one detection**: admission asks `provider.is_some()`; the CLOUD-or-VOLUMES group and the index
+affordances ask `is_cloud_storage()` (`is_cloud_mount`). A VeraCrypt or plain macFUSE mount is recognized but isn't
+cloud storage, so it gets a row in VOLUMES. Gating admission on `is_cloud_storage()` would drop it; a test pins the
+split. The one family where this arm could overlap the cloud arm is iCloud Drive's folder: a mount exactly there shares
+the cloud arm's path, and `list_locations` dedupes on path.
 
 **What this does NOT decide**: whether a path can be OPENED. The volume registry sweeps the whole mount table regardless
 (`file_system/volume/DETAILS.md` § "Registration covers the whole mount table"); a mount dropped here is still

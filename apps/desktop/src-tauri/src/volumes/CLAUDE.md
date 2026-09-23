@@ -20,14 +20,14 @@ it: `ids.rs`, `fs_type.rs` (non-blocking `statfs`), `nsurl.rs` (blocking enrichm
   dedupes on ID, ❌ never path alone.
 - **What this module publishes is the SWITCHER's list, ❌ never the registry's**: `mount_roots` hands the whole mount
   table to `file_system::volume::mount_registration`. A row filtered out here must never mean a path can't be opened.
-- **A mount earns a row by NOT carrying `MNT_DONTBROWSE` (Finder's own rule), or by sitting inside `$HOME`**
-  (`is_user_facing_mount`), ❌ never by a `/Volumes/` prefix, which hid every drive mounted elsewhere.
+- **A mount earns a row by NOT carrying `MNT_DONTBROWSE`, or by a recognized provider** (`provider.is_some()`, ❌ never
+  `is_cloud_storage()`), ❌ never by location (Xcode's `DeviceFS` sits in `$HOME`).
 - **A cloud provider's own MOUNT is a `CloudDrive` row with `is_cloud_mount: true`** (`is_cloud_provider_mount`), which
   groups it under CLOUD and drops the index affordances. ❌ Never ask it about a non-mount path: a
   `~/Library/CloudStorage` folder names a provider too, and the index reads those at local speed.
 - **Discovery must never block on a hung mount** (a wedged NAS once froze launch): `getfsstat(MNT_NOWAIT)`, ❌ never
-  NSFileManager, and ❌ never a per-mount `statfs` (thread the snapshot's `fs_type` instead); blocking NSURL / NSWorkspace / DiskArbitration enrichment for LOCAL mounts only, never on the main
-  thread. **❗ A mount table that wouldn't answer is its OWN answer, ❌ never an empty one**, or an unmount takes a
+  NSFileManager or per-mount `statfs`; blocking NSURL / NSWorkspace / DiskArbitration enrichment for LOCAL mounts
+  only, never on the main thread. **❗ A mount table that wouldn't answer is its OWN answer, ❌ never an empty one**, or an unmount takes a
   sibling down under its live watcher.
 - **Detect SMB with `is_smb_fs_type()`**, ❌ never raw `"smbfs"` / `"cifs"`: one place covers both platforms.
 - **An SMB share is ONE path segment; everything below it is a directory INSIDE the share** (`SmbMountInfo::subpath`),

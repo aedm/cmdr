@@ -175,8 +175,15 @@ impl cmdr_fs::volume::canonical_root::MountRootCandidate for LocationInfo {
 /// `fs_type` is the type the mount table listed, so this makes no syscall and a
 /// hung network mount can't stall discovery through it.
 pub(crate) fn is_cloud_provider_mount(mount_root: &str, fs_type: &str) -> bool {
+    mount_provider(mount_root, fs_type).is_some_and(|provider| provider.is_cloud_storage())
+}
+
+/// Which provider serves the mount at `mount_root`, from the fs type the mount
+/// table listed it with: no syscall. [`is_cloud_provider_mount`] asks whether
+/// that provider is cloud storage; `mounts::is_user_facing_mount` asks only
+/// whether there's one at all.
+pub(crate) fn mount_provider(mount_root: &str, fs_type: &str) -> Option<cmdr_fs::volume::friendly_error::Provider> {
     cmdr_fs::volume::friendly_error::provider_for_mount(Path::new(mount_root), fs_type)
-        .is_some_and(|provider| provider.is_cloud_storage())
 }
 
 /// Default volume ID for the root filesystem.
