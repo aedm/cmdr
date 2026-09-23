@@ -300,6 +300,10 @@ default binding through `update_menu_accelerator` (only CUSTOM shortcuts are re-
 default stays display-only; a user who deliberately rebinds the command to a ⌥ combo gets a real accelerator, which is
 what "a rebind stays honest" means below.
 
+❌ **No display rule prettifies the glyph** (`⌥⇧=` → `⌥+`, `⇧8` → `*`). The menu shows the physical combo because that
+is true on every layout, and David types on a custom mixed English/Hungarian one where the "friendly" spelling is wrong.
+The numpad spelling is the command's SECOND default (`['⌥⇧=', '⌥+']`), not a display alias.
+
 **The modifier floor** is where that rule lives. `frontend_shortcut_to_accelerator` answers `None` for any combo
 without one of the three (Shift alone doesn't clear it, since `⇧8` IS `*`), so a bare key can't reach a menu item by
 accident — including through a rebind in Settings > Keyboard shortcuts, which is how one used to. The unfloored
