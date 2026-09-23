@@ -1,0 +1,53 @@
+name: Advisory scan
+
+# Daily check of `Cargo.lock` against the RustSec advisory database, so a new
+# advisory for a dependency that hasn't changed shows up within a day. Both
+# checks read the lockfile and crate metadata only, nothing compiles, so this
+# is cheap next to the every-6-days `slow-checks.yml` lane (which also runs
+# them, beside `cargo-udeps` and the rest). The `/trust/development` page on
+# the website states this one-day cadence: change both together.
+# GitHub automatically emails repo admins on failure.
+on:
+  schedule:
+    - cron: '17 4 * * *' # daily, 5:17 AM CET = 4:17 AM UTC
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: Rust advisories
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - name: Install tools with mise
+        run: mise install
+
+      # The checks `cargo install` their pinned tool versions when missing, which
+      # compiles for minutes. The versions live in the two check files, so a
+      # version bump there changes the key and reinstalls. A daily run keeps
+      # this cache inside GitHub's 7-day eviction window.
+      - name: Cache cargo-audit and cargo-deny
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/bin/cargo-audit
+            ~/.cargo/bin/cargo-deny
+          key: ${{ runner.os }}-advisory-tools-${{ hashFiles('scripts/check/checks/desktop-rust-cargo-audit.go', 'scripts/check/checks/desktop-rust-cargo-deny.go') }}
+
+      - name: Build check tool
+        run: go build -o check .
+        working-directory: ./scripts/check
+
+      - name: Run cargo-audit
+        run: ./scripts/check/check --check desktop-rust-cargo-audit --ci
+
+      - name: Run cargo-deny
+        run: ./scripts/check/check --check desktop-rust-cargo-deny --ci

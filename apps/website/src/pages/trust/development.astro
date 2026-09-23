@@ -232,8 +232,11 @@ const toc = [
             failure means a fix follows; it doesn't block the change.
         </li>
         <li>
-            <strong>Every six days, on GitHub</strong>: the full dependency vulnerability and license scans
-            (<code>cargo-audit</code>, <code>cargo-deny</code>, and <code>govulncheck</code> for build scripts), an
+            <strong>Every day, on GitHub</strong>: the Rust dependency vulnerability and license scans
+            (<code>cargo-audit</code> and <code>cargo-deny</code>) against the locked versions.
+        </li>
+        <li>
+            <strong>Every six days, on GitHub</strong>: <code>govulncheck</code> for the Go build scripts, an
             unused-dependency scan, the slowest lints, and live tests against five AI providers' real APIs.
         </li>
         <li>
@@ -270,8 +273,8 @@ const toc = [
         <li>
             <strong>When the scans run</strong>: <code>cargo-deny</code> runs on the maintainer's Mac whenever the
             dependencies or the policy change. On GitHub, <code>cargo-deny</code> and <code>cargo-audit</code> (which
-            also covers Linux-only and test-only crates) run every six days, not on every change. So a new advisory
-            for a dependency that hasn't changed can take up to six days to show up.
+            also covers Linux-only and test-only crates) check the locked versions every day. So a new advisory for a
+            dependency that hasn't changed shows up within a day.
         </li>
         <li>
             <strong>A three-day wait</strong>: a new version of any dependency is used only once it's been public for
@@ -290,7 +293,9 @@ const toc = [
         <li>
             <strong>How updates happen</strong>: Renovate proposes minor updates every Monday and major ones monthly.
             Updates for the website and server merge automatically once their checks pass. Updates for the Mac app and
-            all major versions go through a weekly manual pass, because they often need code changes.
+            all major versions go through a weekly manual pass, because they often need code changes. Security
+            fixes skip the schedule: GitHub's Dependabot alerts tell Renovate about a vulnerable dependency, and
+            Renovate proposes the fixed version as soon as it's three days old.
         </li>
         <li>
             <strong>In numbers</strong>: in the last {window.days} days, locked dependency versions changed in
@@ -299,15 +304,6 @@ const toc = [
             {window.weeks} weeks.
         </li>
     </ul>
-    <DevTodo>
-        Two things to decide. (1) Renovate's security PRs come from GitHub's Dependabot alerts, which are off for this
-        repo (the fact sheet found <code>vulnerability-alerts</code> returning 404), so the "security updates at any
-        time" rule in <code>renovate.json</code> likely never fires. Either turn on Dependabot alerts (you can keep
-        Dependabot's own PRs off) or set <code>"osvVulnerabilityAlerts": true</code>. (2) Add a daily
-        <code>cargo-audit</code> + <code>cargo-deny advisories</code> job. It reads only <code>Cargo.lock</code>, so
-        it's cheap next to the six-day lane (which compiles for <code>cargo-udeps</code>), and it turns "up to six
-        days" into "up to one day" above.
-    </DevTodo>
 
     <h2 id="release">Build and release</h2>
     <ul>
