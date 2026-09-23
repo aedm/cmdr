@@ -598,8 +598,9 @@ the check and the send:
   write with nothing at the name. ❌ Never let a refused frame to a non-scratch name fall back to streaming: that name
   only gets a frame because the transfer skipped staging on a single-shot promise.
 - Pinned by the `credit_cap_proxy.rs` cells in `wire_shape_integration_test.rs` (hinted read, staged write, refused
-  final-name write, prefetch), which cap the guest fixture's window at 64 credits. smb2 pins the same against a real
-  64-credit Samba (its `smb-smallcredits` fixture).
+  final-name write in both `WriteMode`s, refused frame to a taken name, `CreateNew` temp streaming without clobbering,
+  prefetch), which cap the guest fixture's window at 64 credits. smb2 pins the same against a real 64-credit Samba (its
+  `smb-smallcredits` fixture).
 - ❌ Don't retry `CreditStarvation` generically: it reports `is_retryable() == true` and classifies as
   `ErrorKind::TimedOut`, though an unfundable request never succeeds.
 

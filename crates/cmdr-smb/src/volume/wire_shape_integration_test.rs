@@ -578,6 +578,82 @@ async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() 
     ensure_clean(&direct, &dir).await;
 }
 
+/// A refused frame to a name another writer already holds leaves THEIR file
+/// byte for byte, in both modes: smb2 refuses before anything reaches the wire,
+/// so neither `CreateNew`'s exclusive CREATE nor `CreateOrReplace`'s truncating
+/// one ever runs, and there's no partial for the cleanup to take away.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_refused_frame_to_a_taken_final_name_leaves_the_file_there_whole() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let theirs = b"another writer's file".to_vec();
+    let final_name = format!("{}/taken.bin", dir);
+    direct.create_file(Path::new(&final_name), &theirs).await.unwrap();
+
+    for mode in [WriteMode::CreateNew, WriteMode::CreateOrReplace] {
+        let data = vec![0xA5u8; 5 * 1024 * 1024];
+        let result = vol
+            .write_from_stream(
+                Path::new(&final_name),
+                mode,
+                data.len() as u64,
+                Box::new(InlineReadStream::new(data)),
+                &|_, _| std::ops::ControlFlow::Continue(()),
+            )
+            .await;
+
+        assert!(result.is_err(), "{mode:?}: the frame must be refused, got {result:?}");
+        assert_eq!(
+            drain(direct.open_read_stream(Path::new(&final_name)).await.unwrap()).await,
+            theirs,
+            "{mode:?}: a refused frame must leave the other writer's file untouched"
+        );
+    }
+
+    ensure_clean(&direct, &dir).await;
+}
+
+/// A staging temp the window can't carry in one frame streams, and the
+/// streaming writer honors `WriteMode` the way the frame does: `CreateNew`
+/// opens with `FileCreate`, so a taken temp name is refused typed and left
+/// alone, while a free one lands every byte.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_create_new_temp_the_window_cant_frame_streams_without_clobbering() {
+    let proxy = credit_cap_proxy::CreditCapProxy::start(guest_port(), 64).await;
+    let vol = credit_capped_volume(&proxy).await;
+    let direct = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&direct, &dir).await;
+    direct.create_directory(Path::new(&dir)).await.unwrap();
+    let temp_name = |tag: &str| format!("{}/five-mib.bin{}{}", dir, cmdr_fs::staging::STAGING_TEMP_MARKER, tag);
+    let (taken, free) = (temp_name("taken"), temp_name("free"));
+    direct
+        .create_file(Path::new(&taken), b"someone else's temp")
+        .await
+        .unwrap();
+    let data: Vec<u8> = (0..=250u8).cycle().take(5 * 1024 * 1024).collect();
+    assert!(
+        !vol.write_is_single_shot(data.len() as u64).await,
+        "fixture precondition: 5 MiB must not fit one frame through the capped window"
+    );
+
+    cmdr_fs::volume::conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        &vol,
+        Path::new(&taken),
+        Path::new(&free),
+        &data,
+    )
+    .await;
+
+    ensure_clean(&direct, &dir).await;
+}
+
 /// The scan pool's prefetch reads up to a whole `max_read` in one frame. One
 /// the window can't fund falls through to streaming on the main session, the
 /// same as a file too big for one READ, so enrichment still gets the photo
