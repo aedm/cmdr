@@ -198,11 +198,13 @@ parser text. The amend route reads its JSON body the same way, under its own 512
 `parseBody` problem, and counting bytes rather than `String.length` keeps the budget from running ~1.5x loose on
 multi-byte text.
 
-**Discord notifications:** every upload triggers an embed with a presigned R2 GET URL valid for 24 hours (`PRESIGN_TTL_HOURS`), minted through the R2
-S3-compatible API via `aws4fetch` (`AwsClient.sign` with `signQuery: true` + `X-Amz-Expires`). The short window is deliberate: the same link sits in Discord, the notification email, and the triage issue, and anyone holding it gets the whole bundle; after it lapses, fetch through the Cloudflare API.
-The link stays at all because only the maintainer reads `#error-reports`. The three R2
-secrets and their rotation runbook: `../../DETAILS.md` § R2 presigned URLs. `createPresigner` memoizes the URL per
-upload, so the email and the embed hand out the same link and an upload that notifies neither signs nothing.
+**Discord notifications:** every upload triggers an embed with a presigned R2 GET URL valid for 24 hours
+(`PRESIGN_TTL_HOURS`), minted through the R2 S3-compatible API via `aws4fetch` (`AwsClient.sign` with
+`signQuery: true` + `X-Amz-Expires`). The short window is deliberate: the same link sits in Discord, the notification
+email, and the triage issue, and anyone holding it gets the whole bundle; after it lapses, fetch through the Cloudflare
+API. The link stays at all because only the maintainer reads `#error-reports`. The three R2 secrets and their rotation
+runbook: `../../DETAILS.md` § R2 presigned URLs. `createPresigner` memoizes the URL per upload, so the email and the
+embed hand out the same link and an upload that notifies neither signs nothing.
 
 ### The report index and the amend credential
 
@@ -296,9 +298,9 @@ footer (`replyToLine`, shared with the feedback card).
 
 **What it says:** the short id, the note with `white-space: pre-wrap` so the writer's line breaks survive, app version,
 OS version, arch, bundle size, a `prod`/`dev` chip, the reply-to line, and the download link with its 24-hour expiry
-stated next to it (`linkTtlHours` is `PRESIGN_TTL_HOURS`, so the copy can't drift). Debug builds get a
-`[DEV]` subject mark; release builds get none, because a tag on every ordinary report is noise in an inbox list.
-Rendering lives in `../email/error-report.ts`.
+stated next to it (`linkTtlHours` is `PRESIGN_TTL_HOURS`, so the copy can't drift). Debug builds get a `[DEV]` subject
+mark; release builds get none, because a tag on every ordinary report is noise in an inbox list. Rendering lives in
+`../email/error-report.ts`.
 
 ### Eviction (8/6 GB watermarks + 60-day age floor + lifecycle)
 

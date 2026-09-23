@@ -130,8 +130,8 @@ Each upload triggers a one-line Discord notification to the private `#error-repo
 embedded; the notification email and the triage issue carry the same link. **TTL: 24 hours** (`PRESIGN_TTL_HOURS` in
 `apps/api-server/src/telemetry/error-report.ts`). The link grants the whole bundle to whoever holds it, and it sits in
 three places, so it lives only long enough for a same-day click. Older bundles come through the Cloudflare API
-(`docs/tooling/feedback-and-error-digest.md`). If a click-later link is ever needed, add an admin re-mint endpoint rather
-than lengthening the TTL.
+(`docs/tooling/feedback-and-error-digest.md`). If a click-later link is ever needed, add an admin re-mint endpoint
+rather than lengthening the TTL.
 
 ## Folder-importance visit signal
 
