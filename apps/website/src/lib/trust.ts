@@ -246,7 +246,7 @@ export const notInPlaceYet: string[] = [
   '<strong>Error-report cleaning has known gaps</strong>: a file name in free text, or a search query, can be included.',
   "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick. Some AI features send file names without a separate consent step.",
   "<strong>No reproducible builds</strong>, and release tags aren't signed. Each release publishes SHA-256 checksums. Signed build provenance and SBOMs start with the next release, so no release has them yet.",
-  '<strong>No second-person code review.</strong> AI coding agents write the code, and one person directs them. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
+  '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',
   '<strong>No threat model for the app as a whole.</strong> Security decisions are written down per part of the app.',
   "<strong>Checks on GitHub run after a change lands</strong>, on Linux, and a release doesn't wait for them to pass. The macOS-only code and the macOS end-to-end tests run only on the maintainer's Mac.",

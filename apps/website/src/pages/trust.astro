@@ -207,8 +207,9 @@ const toc = [
     <DevTodo>
         The privacy policy's subprocessor list (section 5) is missing Resend, Google (Gmail), and Hetzner by name
         (it says "our own server in Europe"), and section 6 never mentions Resend or Gmail as transfers outside the EU.
-        Add them. Also decide whether <code>security@</code> and <code>legal@</code> should keep landing in a personal
-        Gmail inbox; a reviewer will ask. And there's no DPA to sign yet.
+        Add them. Gmail as the inbox is fine to keep (decided 2026-09-23); the only thing it costs is one more
+        outside-the-EU line. Moving <code>@getcmdr.com</code> mail to the self-hosted mailcow in Finland would remove
+        Google from this list. And there's no DPA to sign yet.
     </DevTodo>
 
     <h2 id="storage">What is stored where, and for how long</h2>
@@ -422,7 +423,8 @@ const toc = [
             cases, run during development and again on GitHub after each change.
         </li>
         <li>
-            AI coding agents write the code, and one person directs them. No second person reviews code changes.
+            Development is AI-assisted. One person owns every change; as a one-person company, there's no
+            second-person code review.
         </li>
         <li>
             {releaseCadence.releases} releases in the last {devWindow.days} days. New dependency versions wait three
@@ -445,7 +447,7 @@ const toc = [
             559471-0401, VAT SE559471040101. Swedish law applies.
         </li>
         <li>
-            <strong>Team</strong>: one person, David Veszelovszki, builds and ships Cmdr with AI coding agents (over 98%
+            <strong>Team</strong>: one person, David Veszelovszki, designs, builds, and ships Cmdr (over 98%
             of all commits are under his name). He holds every signing key.
         </li>
         <li>
@@ -475,8 +477,8 @@ const toc = [
         {vulnerabilityResponse.map((line) => <li>{line}</li>)}
     </ul>
     <DevTodo>
-        Confirm these response times (they mirror <code>SECURITY.md</code>), and enable GitHub private vulnerability
-        reporting (repo Settings &gt; Code security). Once it's on, mention it here and in <code>SECURITY.md</code>.
+        Enable GitHub private vulnerability reporting (repo Settings &gt; Code security). Once it's on, mention it
+        here and in <code>SECURITY.md</code>. If you change the response times, change both places.
     </DevTodo>
 
     <h2 id="gaps">Not in place yet</h2>

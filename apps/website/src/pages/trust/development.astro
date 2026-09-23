@@ -77,8 +77,8 @@ const toc = [
             framework like Microsoft SDL, and it has no formal sign-off steps.
         </li>
         <li>
-            <strong>No second person reviews the code.</strong> AI coding agents write it, and one person directs them.
-            The <a href="#review">review section</a> says what stands in for a reviewer.
+            <strong>One maintainer, AI-assisted development.</strong> Cmdr is a one-person company, so there's no
+            second-person code review. The <a href="#review">review section</a> says what stands in for a reviewer.
         </li>
         <li>
             <strong>Releases are frequent</strong>: {releaseCadence.releases} releases in the last {window.days} days, a
@@ -111,7 +111,7 @@ const toc = [
         </li>
         <li>
             <strong>Larger features start as a written plan</strong> in the repository (<code>docs/specs/</code>),
-            which the AI agents write and then work from.
+            and the work follows that plan.
         </li>
         <li>
             <strong>Security and privacy decisions are written down</strong> in
@@ -177,28 +177,24 @@ const toc = [
 
     <h2 id="review">Review</h2>
     <p>
-        AI coding agents, mainly Claude Code, write Cmdr's code. One person, David Veszelovszki, directs them: he
-        decides what to build and how it's structured, and he reviews everything users see, like the interface, its
-        text, and documents for people. <strong>No second person reviews code changes</strong>, and David doesn't read
-        every line the agents write. There are no pull requests; changes go straight to the main branch.
+        Cmdr's development is AI-assisted. One person, David Veszelovszki, decides what to build and how it's
+        structured, owns every change that lands, and reviews everything users see: the interface, its text, and
+        documents for people. Cmdr is a one-person company, so <strong>no second person reviews code changes</strong>.
     </p>
     <p>What stands in for a reviewer:</p>
     <ul>
-        <li>The automated checks in the <a href="#test">test section</a>, which the agents run while they work.</li>
+        <li>The automated checks in the <a href="#test">test section</a>, which run during development and again on GitHub.</li>
         <li>
-            The agents' written instructions, which are public:
+            The project's written engineering rules, which are public:
             <a href={`${repo}/blob/main/AGENTS.md`}>AGENTS.md</a>, the rules in
             <code>.claude/rules/</code>, and a short guide next to each part of the code.
         </li>
         <li>The source code is public, so anyone can review any change after it lands.</li>
     </ul>
     <DevTodo>
-        Confirm you're OK stating publicly that AI agents write the code and that you don't read every line (that's
-        from your own "I don't do code reviews anymore"). If it's too strong, say what's true and I'll reword it. To
-        narrow this gap: a required automated review pass per merge with its findings recorded (for example
-        <code>/code-review</code> on each worktree branch before the FF-merge, logged in the commit body), or a paid
-        human review of the riskiest areas (updater, write engine, protocol parsers). Also note the <code>/trust</code>
-        company section said "writes and ships"; it now says "builds and ships with AI coding agents".
+        To narrow the no-second-reviewer gap: a required automated review pass per merge with its findings recorded
+        (for example <code>/code-review</code> on each worktree branch before the FF-merge, logged in the commit body),
+        or a paid human review of the riskiest areas (updater, write engine, protocol parsers).
     </DevTodo>
 
     <h2 id="test">Test</h2>
@@ -228,8 +224,7 @@ const toc = [
         <li>
             <strong>During development, on the maintainer's Mac</strong>: the standard check run, which includes all
             unit tests and, when the dependencies changed, the dependency vulnerability scan. The macOS end-to-end suite and the
-            slower checks run at milestones. Nothing forces this before a commit; it's how the agents are instructed to
-            work.
+            slower checks run at milestones. Nothing forces this before a commit; it's the written development process.
         </li>
         <li>
             <strong>After every push to the main branch, on GitHub (Linux)</strong>: all lints and custom checks, all

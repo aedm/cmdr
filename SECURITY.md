@@ -30,8 +30,6 @@ email without the details, and we'll agree on a channel.
 
 ## What to expect
 
-<!-- ⚠️ David: confirm these four numbers. They're deliberately modest for a solo maintainer. Whatever you pick, the /trust page repeats them, so change both. -->
-
 - **Acknowledgment within five business days**, so you know a human has read it.
 - **A first assessment within 14 days**: whether we can reproduce it, how serious we think it is, and a rough plan.
 - **A fix for critical and high-severity issues within 30 days** where that's technically possible, and within 90 days
