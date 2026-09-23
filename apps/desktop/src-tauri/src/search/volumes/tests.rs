@@ -238,6 +238,32 @@ fn load_gates_are_per_volume() {
     assert!(Arc::ptr_eq(&a, &load_gate("smb-gate-a")), "one gate per volume id");
 }
 
+// ── Lifecycle: an agent search has no dialog to close ─────────────────
+
+/// An MCP search reclaims the arena the way closing the dialog does: 30 s after its
+/// answer, rather than after the 10-minute backstop. While one is still waiting on its
+/// answer the drop holds off, so a second call can't lose its arena mid-search.
+#[test]
+fn an_agent_search_arms_the_idle_drop_when_it_ends_and_holds_it_off_while_it_runs() {
+    assert!(
+        !idle_drop_deferred(),
+        "no dialog and no agent search: nothing to wait for"
+    );
+
+    let search = agent_search_started();
+    assert!(
+        idle_drop_deferred(),
+        "an agent waiting on its answer still needs the arena"
+    );
+    drop(search);
+
+    assert!(!idle_drop_deferred(), "the answer is in, nothing holds the drop off");
+    assert!(
+        idle_timer_armed(),
+        "and the 30 s idle drop is armed, as a dialog close would"
+    );
+}
+
 fn describe(load: &VolumeLoad) -> String {
     match load {
         VolumeLoad::Loaded(_) => "Loaded".to_string(),

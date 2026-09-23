@@ -6,7 +6,7 @@ Depth for the search backend. `CLAUDE.md` holds the must-knows; this file holds 
 
 - **In-memory `Vec` + rayon instead of SQLite queries**: the index has ~5M entries. SQLite `LIKE '%query%'` takes 1–3s
   (full table scan). Loading entries into a `Vec` and scanning with rayon gives sub-second results. The index loads
-  lazily on the dialog opening or its target volume changing, and drops after idle (30 s timer + 10 min backstop),
+  lazily on the dialog opening or its target volume changing, and drops after idle (30 s after the dialog closes or an MCP search answers, + 10 min backstop),
   ~320 MB resident while active on a 5.39 M-row boot index.
 - **Structured `SearchQuery` model, not free-text SQL**: safe (no injection), composable (the AI mode fills the same
   struct), and simple to execute (single pass over the in-memory `Vec`). The frontend owns query building; the backend
@@ -224,7 +224,10 @@ mount root while the volume is mounted (the only time a `/Volumes/…` scope eve
 scan-completion path and `start_indexing_for_smb` now persist it (the latter heals an existing DB on the next
 registration — no rescan). Lifecycle is dialog-scoped, not per-volume: opening the dialog pre-loads
 root and arms the timers; a search lazily loads its scope's volumes; idle/backstop drops ALL arenas at once (RAM
-reclaim). A long root pre-load is cancelable (`cancel_active_loads` on dialog close).
+reclaim). A long root pre-load is cancelable (`cancel_active_loads` on dialog close). An MCP search has no dialog, so its
+call stands in for one (`volumes::AgentSearch`): the 30 s idle drop arms when its answer returns, and holds off while any
+agent call is still waiting, so a burst of calls shares one arena and the ~400 MiB goes 30 s after the last rather than at
+the 10-minute backstop.
 
 **Staleness: serve warm, refresh behind.** Only the root writer bumps the global `WRITER_GENERATION`, so only root can
 fall behind its stamp; a non-root volume stamps `0` and simply reloads next dialog session (a NAS/MTP index is far less

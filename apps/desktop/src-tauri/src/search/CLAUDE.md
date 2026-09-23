@@ -32,7 +32,7 @@ via `volumes.rs`); `matcher.rs`, `excludes.rs`, `ranking.rs` judge and order a r
 - **A directory's size filter applies BEFORE ranking** (`dir_sizes_for`), ❌ never after, and ❌ never fall back to "no
   map" on a read error — the engine reads that as "no filter". DETAILS § Directory size filters.
 - **Memory is the design constraint**: arena-allocated names (❌ no owned `String`s), importance keyed on `hash_path`,
-  ranking per MATCH and so top-k. An idle arena drops 30 s after the dialog closes.
+  ranking per MATCH and so top-k. An idle arena drops 30 s after its dialog or MCP call.
 - **The arena is sorted by `id`; `index_of_id` binary-searches it.** ❌ No `id_to_index` map (~143 MB), and ❌ no
   fixture building rows out of id order: the loader can't produce one and search answers wrong on it. The load splits
   across eight rowid ranges and its merge is the memory peak. DETAILS § Loading in parallel, § Finding a row by id.

@@ -103,9 +103,10 @@ pub(crate) const AGENT_WAIT_MAX: std::time::Duration = std::time::Duration::from
 /// does not stop the walk: its rows land in the index either way, so the same
 /// search run again continues from where this one left off.
 pub(crate) fn run_live_collected(query: SearchQuery, budget: std::time::Duration) -> Result<LiveAnswer, String> {
-    // Activity only, no `cancel_idle_timer`: that pairs with the dialog closing
-    // to restart it, and an agent has no dialog. The backstop timer stays the
-    // one thing that eventually drops the arena.
+    // An agent has no dialog to close, so the call itself stands in for one: the
+    // arena drops 30 s after its answer (the 10-minute backstop stays underneath), and
+    // not while this call or another agent's still waits on one.
+    let _in_flight = volumes::agent_search_started();
     volumes::touch_activity();
 
     let target = resolve_target(&query).map_err(|e| e.to_string())?;

@@ -17,7 +17,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::ignore_poison::IgnorePoison;
@@ -495,7 +495,8 @@ static LAST_SEARCH_ACTIVITY: AtomicU64 = AtomicU64::new(0);
 /// Whether the search dialog is open. Timers defer dropping while it's true.
 pub(crate) static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 
-/// Idle timeout: drop every loaded arena 30 seconds after the dialog closes.
+/// Idle timeout: drop every loaded arena 30 seconds after the dialog closes or an agent
+/// search answers.
 ///
 /// The arena is the single biggest thing the app holds (~320 MB on a 5.39 M-row boot
 /// index), and it is worth nothing while the dialog is down. 30 s covers the "closed it
@@ -503,8 +504,9 @@ pub(crate) static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 /// because a reload is parallel now; it could not before, when reopening cost seconds.
 const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Backstop timeout: drop everything if no search calls arrive within 10 minutes
-/// (covers MCP-driven loads, which have no dialog to close).
+/// Backstop timeout: drop everything if no search calls arrive within 10 minutes. The
+/// dialog close and an agent search's end each arm the 30 s [`IDLE_TIMEOUT`] drop first;
+/// this catches whatever neither covers.
 const BACKSTOP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 
 /// The lifecycle timer handles. Global (not per-volume): the whole set of loaded
@@ -583,6 +585,41 @@ pub(crate) fn reset_backstop_timer() {
     ensure_backstop_running();
 }
 
+/// Agent (MCP) searches waiting on their answer right now. The idle drop holds off
+/// while any is, the way it does while the dialog is open.
+static AGENT_SEARCHES_IN_FLIGHT: AtomicUsize = AtomicUsize::new(0);
+
+/// An agent (MCP) search waiting on its answer. Dropping it is the agent's "dialog
+/// close": it arms the same [`IDLE_TIMEOUT`] drop, so an MCP-driven arena (~400 MiB on a
+/// 6 M-entry boot index) goes 30 s after the answer rather than at the 10-minute
+/// backstop. A later agent call inside those 30 s holds the drop off and re-arms it.
+pub(crate) struct AgentSearch(());
+
+/// Note that an agent search started; the returned guard ends it.
+pub(crate) fn agent_search_started() -> AgentSearch {
+    AGENT_SEARCHES_IN_FLIGHT.fetch_add(1, Ordering::Relaxed);
+    AgentSearch(())
+}
+
+impl Drop for AgentSearch {
+    fn drop(&mut self) {
+        AGENT_SEARCHES_IN_FLIGHT.fetch_sub(1, Ordering::Relaxed);
+        start_idle_timer();
+    }
+}
+
+/// Whether the idle drop has to wait: the dialog is open, or an agent is still waiting on
+/// an answer from the arena.
+fn idle_drop_deferred() -> bool {
+    DIALOG_OPEN.load(Ordering::Relaxed) || AGENT_SEARCHES_IN_FLIGHT.load(Ordering::Relaxed) > 0
+}
+
+/// Whether an idle timer is armed right now.
+#[cfg(test)]
+fn idle_timer_armed() -> bool {
+    TIMERS.lock_ignore_poison().idle.is_some()
+}
+
 /// Cancel any pending idle timer (a new search is active).
 pub(crate) fn cancel_idle_timer() {
     if let Some(h) = TIMERS.lock_ignore_poison().idle.take() {
@@ -590,8 +627,9 @@ pub(crate) fn cancel_idle_timer() {
     }
 }
 
-/// Start the idle timer ([`IDLE_TIMEOUT`]). Called when the search dialog closes; drops every
-/// loaded arena when it fires unless the dialog reopened.
+/// Start the idle timer ([`IDLE_TIMEOUT`]). Called when the search dialog closes and when an
+/// agent search ends; drops every loaded arena when it fires unless the dialog reopened or
+/// an agent search is still waiting on its answer.
 pub(crate) fn start_idle_timer() {
     let mut timers = TIMERS.lock_ignore_poison();
     if let Some(h) = timers.idle.take() {
@@ -600,8 +638,8 @@ pub(crate) fn start_idle_timer() {
     timers.idle = Some(tauri::async_runtime::spawn(async {
         loop {
             tokio::time::sleep(IDLE_TIMEOUT).await;
-            if DIALOG_OPEN.load(Ordering::Relaxed) {
-                log::debug!("Search idle timer deferred, dialog still open");
+            if idle_drop_deferred() {
+                log::debug!("Search idle timer deferred, the dialog or an agent search still needs the arena");
                 continue;
             }
             log::debug!("Search idle timeout reached, dropping indices");
