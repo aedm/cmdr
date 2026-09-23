@@ -389,9 +389,9 @@ bytes the server gave you" (ERR-VETBX).
   otherwise a real `list_directory`. A 58,440-entry directory took 17.2 s over Tailscale (spec evidence, 2026-09-22), so
   the resolve checks its `CancellationToken` between round trips and the pane seam runs it inside the cancelable listing
   task; one listing itself is a single call.
-- **Matching: NFC-and-lowercase fold (`cmdr_fs::name_fold`, the app's one such key), exact wins.** An entry with the wanted bytes wins even beside
-  look-alikes, because it IS what the caller named. One folded match is the answer. Two or more with no exact one is
-  `AmbiguousName`: picking one is a wrong-file hazard on the next delete or overwrite.
+- **Matching: NFC-and-lowercase fold (`cmdr_fs::name_fold`, the app's one such key), exact wins.** An entry with the
+  wanted bytes wins even beside look-alikes, because it IS what the caller named. One folded match is the answer. Two or
+  more with no exact one is `AmbiguousName`: picking one is a wrong-file hazard on the next delete or overwrite.
 - **Corrections are remembered per share** (`SpellingCache`, on `SmbVolumeInner`, keyed by share-relative parent and the
   foreign bytes, capped at 256, oldest out). A remembered one is only a guess: the next probe checks it, a miss drops it
   and lists again (`a_stale_remembered_spelling_heals`), and the watcher forgets a directory's corrections on any event

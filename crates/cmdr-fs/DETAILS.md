@@ -32,8 +32,9 @@ the next section.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
   `path_locations.rs` (how many PLACES a set of directories amounts to), `git_meta` (what a git portal row's Size cell
-  states), `name_fold.rs` (the ONE "same name, spelled another way" key: NFC + lowercase, shared by share IDs,
-  transfer conflict buckets, the SMB spelling resolve, and cursor placement), `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
+  states), `name_fold.rs` (the ONE "same name, spelled another way" key: NFC + lowercase, shared by share IDs, transfer
+  conflict buckets, the SMB spelling resolve, and cursor placement), `log_rollup`, `tcc_paths`, `ignore_poison`,
+  `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
 - `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; on macOS, `disk_images/` (the
   synthetic APFS/HFS+ image harness and its guarded runner, § "`testing::disk_images`").
 

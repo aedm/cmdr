@@ -9,9 +9,10 @@ anywhere else is resolved against a real listing once, at the moment a directory
 that listing is exact thereafter. Two related defects ride along: a scan failure that names no path, and a write that
 can plant a second entry indistinguishable from one already there.
 
-Status: approved 2026-09-22. M0, M1, and M2 done 2026-09-23 (byte-faithful paths and watcher keys; foreign paths resolve
-at the pane's directory open and on the kernel-mount upgrade, look-alikes refused; all Docker-pinned); M3–M5 not
-started.
+Status: approved 2026-09-22. M0, M1, M2, and M3 done 2026-09-23 (byte-faithful paths and watcher keys; foreign paths
+resolve at the pane's directory open, on the kernel-mount upgrade, and for files dragged in or pasted from Finder,
+look-alikes refused; the cursor finds a look-alike name; a failed scan fails its operation with a typed, named error;
+one shared fold key, `cmdr_fs::name_fold`); M4 and M5 not started.
 
 ## What is actually true about SMB names
 
