@@ -514,6 +514,13 @@ export const commands = {
    */
   statPathsKinds: (paths: string[]) => __TAURI_INVOKE<TimedOut<(boolean | null)[]>>('stat_paths_kinds', { paths }),
   /**
+   *  `paths` (index-aligned) in the spelling `volume_id` stores them under. A path
+   *  with no other stored spelling, an ambiguous one, or a volume that isn't
+   *  registered comes back as given.
+   */
+  storedSpellings: (volumeId: string, paths: string[]) =>
+    __TAURI_INVOKE<TimedOut<string[]>>('stored_spellings', { volumeId, paths }),
+  /**
    *  Creates a folder and returns its new path. Thin pass-through to the managed
    *  create op (`write_operations::create`): expand tilde (root only), wrap in the
    *  5 s write timeout, and ship the typed `MutationError` the frontend renders

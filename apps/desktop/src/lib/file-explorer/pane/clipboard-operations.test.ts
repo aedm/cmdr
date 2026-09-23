@@ -13,6 +13,7 @@ const {
   readClipboardFilesSpy,
   clearClipboardCutStateSpy,
   resolvePathVolumeSpy,
+  storedSpellingsSpy,
   addToastSpy,
   resolveSnapshotPathsSpy,
   getSnapshotSpy,
@@ -28,6 +29,7 @@ const {
   readClipboardFilesSpy: vi.fn<() => Promise<{ paths: string[]; isCut: boolean; isDirectory?: (boolean | null)[] }>>(),
   clearClipboardCutStateSpy: vi.fn<() => Promise<void>>(),
   resolvePathVolumeSpy: vi.fn<(path: string) => Promise<{ volume: { id: string } | null }>>(),
+  storedSpellingsSpy: vi.fn<(volumeId: string, paths: string[]) => Promise<string[]>>(),
   addToastSpy: vi.fn<(content: ToastContent, options?: ToastOptions) => string>(),
   resolveSnapshotPathsSpy: vi.fn<() => string[]>(),
   getSnapshotSpy: vi.fn<(id: string) => { volumeId: string } | undefined>(),
@@ -46,6 +48,7 @@ vi.mock('$lib/tauri-commands', () => ({
   readClipboardFiles: readClipboardFilesSpy,
   clearClipboardCutState: clearClipboardCutStateSpy,
   resolvePathVolume: resolvePathVolumeSpy,
+  storedSpellings: storedSpellingsSpy,
 }))
 
 vi.mock('$lib/ui/toast', () => ({
@@ -174,6 +177,8 @@ beforeEach(() => {
   // volume" (`tauri-commands/storage.ts`), so an unplaceable path is the default
   // here too: the paste resolves to `root`, the honest unknown.
   resolvePathVolumeSpy.mockResolvedValue({ volume: null })
+  // Every pasted path is already its volume's own spelling unless a test says otherwise.
+  storedSpellingsSpy.mockImplementation((_volumeId, paths) => Promise.resolve(paths))
   // A snapshot of a boot-disk search unless a test says otherwise.
   getSnapshotSpy.mockReturnValue({ volumeId: 'root' })
   // The shipped defaults, unless a test rebinds one.
@@ -786,6 +791,29 @@ describe('pasteFromClipboard', () => {
 
     expect(dialogsStub.startTransferProgress.mock.calls[0][0]).toMatchObject({ sourceVolumeId: 'stick' })
     expect(resolvePathVolumeSpy).not.toHaveBeenCalled()
+  })
+
+  it("pastes files copied in Finder under the source volume's own spelling", async () => {
+    // Finder spells an accented name the way the macOS kernel mount does
+    // (decomposed); a direct SMB connection stores it composed and would miss.
+    readClipboardFilesSpy.mockResolvedValue({ paths: ['/Volumes/Stick/foto\u0301k.jpg'], isCut: false })
+    storedSpellingsSpy.mockResolvedValue(['/Volumes/Stick/fot\u00f3k.jpg'])
+    getCommonParentPathSpy.mockReturnValue('/Volumes/Stick')
+    const access = buildAccess({
+      volumeId: 'root',
+      path: '/dest',
+      volumes: [
+        { id: 'root', name: 'Macintosh HD', path: '/' },
+        { id: 'stick', name: 'Stick', path: '/Volumes/Stick' },
+      ],
+    })
+
+    await createClipboardOperations(access, buildDialogs()).pasteFromClipboard(false)
+
+    expect(storedSpellingsSpy).toHaveBeenCalledWith('stick', ['/Volumes/Stick/foto\u0301k.jpg'])
+    expect(dialogsStub.startTransferProgress.mock.calls[0][0]).toMatchObject({
+      sourcePaths: ['/Volumes/Stick/fot\u00f3k.jpg'],
+    })
   })
 
   it('asks the backend for the source volume when no registered root matches the clipboard paths', async () => {

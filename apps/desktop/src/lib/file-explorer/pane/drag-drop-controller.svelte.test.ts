@@ -53,6 +53,7 @@ const {
   stopModifierTrackingSpy,
   getModifierStateSpy,
   statPathsKindsSpy,
+  storedSpellingsSpy,
   addToastSpy,
   operationStartIsBlockedSpy,
   trackEventSpy,
@@ -66,6 +67,7 @@ const {
   clearSelfDragIdentitySpy: vi.fn(),
   setSelfDragResolvedOperationSpy: vi.fn<() => Promise<void>>(),
   statPathsKindsSpy: vi.fn<(paths: string[]) => Promise<(boolean | null)[]>>(),
+  storedSpellingsSpy: vi.fn<(volumeId: string, paths: string[]) => Promise<string[]>>(),
   getCachedIconSpy: vi.fn<(iconId: string) => string | undefined>(),
   showOverlaySpy: vi.fn(),
   updateOverlaySpy: vi.fn(),
@@ -88,6 +90,7 @@ vi.mock('$lib/tauri-commands', () => ({
   itemCountBucket: (n: number) => String(n),
   setSelfDragResolvedOperation: setSelfDragResolvedOperationSpy,
   statPathsKinds: statPathsKindsSpy,
+  storedSpellings: storedSpellingsSpy,
   // `resolvePathVolume` is the controller's default fallback. Tests that want it
   // to fire inject a per-test spy via `create(..., resolvePathVolume)`; this stub
   // keeps the import resolvable for the default path (no registered-root miss in
@@ -222,6 +225,8 @@ describe('drag-drop-controller', () => {
     // Default: kinds unknown so the props builder uses today's approximate
     // shape unless a test opts into a specific split.
     statPathsKindsSpy.mockResolvedValue([])
+    // Default: every path is already the volume's own spelling.
+    storedSpellingsSpy.mockImplementation((_volumeId, paths) => Promise.resolve(paths))
   })
 
   afterEach(() => {
@@ -966,6 +971,30 @@ describe('drag-drop-controller', () => {
       expect(props.sourceVolumeId).toBe('mtp-dev:65537')
       expect(props.sourcePaths).toEqual(['mtp://dev/65537/DCIM/IMG_0001.JPG'])
       expect(statPathsKindsSpy).toHaveBeenCalled()
+    })
+
+    it("an external drop hands the transfer the source volume's own spelling of each path", async () => {
+      // Finder spells an accented name the way the macOS kernel mount does
+      // (decomposed); a direct SMB connection stores it composed and would miss.
+      // The respell runs once, here, so the scan, the transfer, and its journal
+      // all carry the stored spelling.
+      getIsDraggingFromSelfSpy.mockReturnValue(false)
+      getSelfDragIdentitySpy.mockReturnValue(null)
+      resolveDropTargetSpy.mockReturnValue(paneTarget('right'))
+      storedSpellingsSpy.mockResolvedValue(['/Volumes/Ext/fot\u00f3k.jpg'])
+      const { controller, showTransfer } = create({
+        focusedPane: 'left',
+        volumeIds: { left: 'root', right: 'root' },
+        paths: { right: '/Users/x/dest' },
+        volumes: [ROOT_VOLUME, EXT_VOLUME],
+      })
+
+      controller.handleDrop(['/Volumes/Ext/foto\u0301k.jpg'], { x: 1, y: 1 })
+      await flushDrop()
+
+      expect(storedSpellingsSpy).toHaveBeenCalledWith('ext', ['/Volumes/Ext/foto\u0301k.jpg'])
+      const props = showTransfer.mock.calls[0][0]
+      expect(props.sourcePaths).toEqual(['/Volumes/Ext/fot\u00f3k.jpg'])
     })
 
     it('a stale-cleared record (self-drag flag reset) falls back to the resolver, never claiming a later external drop', async () => {

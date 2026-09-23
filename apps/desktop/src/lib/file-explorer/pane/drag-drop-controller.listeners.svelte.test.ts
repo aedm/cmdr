@@ -47,6 +47,7 @@ const {
   stopModifierTrackingSpy,
   getModifierStateSpy,
   statPathsKindsSpy,
+  storedSpellingsSpy,
   addToastSpy,
   listenHandlers,
   dragDropHandlerRef,
@@ -58,6 +59,7 @@ const {
   clearSelfDragIdentitySpy: vi.fn(),
   setSelfDragResolvedOperationSpy: vi.fn<() => Promise<void>>(),
   statPathsKindsSpy: vi.fn<(paths: string[]) => Promise<(boolean | null)[]>>(),
+  storedSpellingsSpy: vi.fn<(volumeId: string, paths: string[]) => Promise<string[]>>(),
   getCachedIconSpy: vi.fn<(iconId: string) => string | undefined>(),
   showOverlaySpy: vi.fn(),
   updateOverlaySpy: vi.fn(),
@@ -79,6 +81,7 @@ vi.mock('$lib/tauri-commands', () => ({
   itemCountBucket: (n: number) => String(n),
   setSelfDragResolvedOperation: setSelfDragResolvedOperationSpy,
   statPathsKinds: statPathsKindsSpy,
+  storedSpellings: storedSpellingsSpy,
   // `resolvePathVolume` is the controller's default fallback. Tests that want it
   // to fire inject a per-test spy via `create(..., resolvePathVolume)`; this stub
   // keeps the import resolvable for the default path (no registered-root miss in
@@ -213,6 +216,7 @@ describe('drag-drop-controller — native listeners', () => {
     // Default: kinds unknown so the props builder uses today's approximate
     // shape unless a test opts into a specific split.
     statPathsKindsSpy.mockResolvedValue([])
+    storedSpellingsSpy.mockImplementation((_volumeId, paths) => Promise.resolve(paths))
   })
 
   afterEach(() => {

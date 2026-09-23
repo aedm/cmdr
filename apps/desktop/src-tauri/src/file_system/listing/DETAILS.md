@@ -478,14 +478,27 @@ folder the share stores composed answers the kernel's decomposed spelling with `
   directory's refresh turn (`caching::refresh_turn`). A listing whose path changed spelling is re-keyed, its entries are
   written whole (the diff matches rows by name, so it can't see every path changing), and the pane adopts the path from
   `listing-respelled` and refetches its rows.
-- **Decision: only these two seams resolve.** **Why:** a resolve can't tell "another spelling of this folder" from "a
+- **Files from outside Cmdr respell where they enter.** A Finder drag-in and a paste of files copied in Finder hand
+  over kernel-mount paths (`/Volumes/<share>/…`), which route to the direct SMB volume when the share has one
+  (`resolveSourceVolumeId`). The frontend asks `stored_spellings` (`apps/desktop/src-tauri/src/commands/file_system/stored_spelling.rs` →
+  `foreign_path::stored_spellings`) once, right after resolving the source volume, so the scan preview, the conflict
+  check, the transfer, and the journal (which a rollback replays) all carry one spelling. All-ASCII paths skip the
+  round trip (one Unicode form, and the kernel keeps the server's case); a path with no other spelling, two look-alikes,
+  or a deadline past 10 s goes as given, so an operation still means exact bytes and never a guessed twin.
+- **Decision: only these seams resolve.** **Why:** a resolve can't tell "another spelling of this folder" from "a
   different folder sharing its folded name, the one named having vanished". A delete walker, a copy scan, a watcher
   refresh, or an existence probe holds a path that came out of a listing, so a miss there means it's gone, and
   resolving would hand the walker a look-alike twin. ❌ Don't route those through `list_as_stored`.
+- **Entry points deliberately left alone.** MCP tools never hand a volume a raw file path (they go through pane
+  navigation or row names). The file viewer reads a direct share through the kernel mount (`paths_are_os_visible`), and
+  only reaches `SmbVolume` when that mount is gone. An approved agent proposal replays paths from the drive index, which
+  on a direct share holds the server's bytes; its fingerprint binding refuses a path that no longer opens, and its
+  per-op reporting is keyed on the proposal's own paths, so a respell there would unhook it.
 - The `AmbiguousName` refusal (two look-alikes, neither exact) reaches the pane as its own listing error.
 
-Pinned by `foreign_path_test.rs`, `streaming_test.rs::a_foreign_spelling_lands_the_listing_on_the_stored_path`, and
-the Docker cell `network/smb_upgrade_respell_test.rs`.
+Pinned by `foreign_path_test.rs`, `streaming_test.rs::a_foreign_spelling_lands_the_listing_on_the_stored_path`, the
+Docker cell `network/smb_upgrade_respell_test.rs`, and on the frontend the drop and paste suites
+(`drag-drop-controller.svelte.test.ts`, `clipboard-operations.test.ts`).
 
 ## Change notification API (caching.rs)
 

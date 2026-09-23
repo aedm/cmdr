@@ -28,6 +28,7 @@ export {
   pathExists,
   pathExistsChecked,
   statPathsKinds,
+  storedSpellings,
   createDirectory,
   createFile,
   getSyncStatus,

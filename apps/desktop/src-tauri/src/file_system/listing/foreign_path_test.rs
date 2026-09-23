@@ -1,6 +1,6 @@
 //! `list_as_stored` against a byte-exact volume that knows a foreign spelling.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::*;
 use crate::file_system::listing::caching_test_support::SpelledVolume;
@@ -143,4 +143,46 @@ async fn a_refusal_other_than_a_miss_is_not_resolved() {
         result.err()
     );
     assert_eq!(volume.resolves(), 0, "a refusal is not a spelling question");
+}
+
+/// A file dragged in from Finder, or pasted after a copy there: the kernel
+/// mount spelled it decomposed, the server stores it composed. The source lands
+/// on the server's own spelling before any operation sees it.
+#[tokio::test]
+async fn a_leaf_from_outside_cmdr_takes_the_stored_spelling() {
+    let foreign_leaf = format!("{FOREIGN}/re\u{301}sz.jpg");
+    let stored_leaf = format!("{STORED}/r\u{e9}sz.jpg");
+    let volume = SpelledVolume::new(album().await).resolving(&foreign_leaf, Ok(Some(&stored_leaf)));
+
+    let paths = stored_spellings(&volume, vec![PathBuf::from(&foreign_leaf)]).await;
+
+    assert_eq!(paths, vec![PathBuf::from(stored_leaf)]);
+}
+
+/// An all-ASCII path can't differ in Unicode form, and the kernel mount keeps
+/// case, so it's never a round trip. A path whose spelling is already the
+/// stored one keeps it.
+#[tokio::test]
+async fn an_exact_or_ascii_leaf_stays_as_given() {
+    let volume = SpelledVolume::new(album().await);
+    let exact = format!("{STORED}/photo.jpg");
+
+    let paths = stored_spellings(&volume, vec![PathBuf::from("/plain/photo.jpg"), PathBuf::from(&exact)]).await;
+
+    assert_eq!(paths, vec![PathBuf::from("/plain/photo.jpg"), PathBuf::from(exact)]);
+    assert_eq!(volume.resolves(), 1, "only the accented path asks the volume");
+}
+
+/// Two look-alikes and no exact match: the path stays as given, so whatever
+/// the operation does next means those exact bytes (on a byte-exact share, a
+/// plain "couldn't find"), and never lands on a twin it guessed.
+#[tokio::test]
+async fn a_look_alike_leaf_is_never_guessed() {
+    let foreign_leaf = format!("{FOREIGN}/photo.jpg");
+    let volume = SpelledVolume::new(album().await)
+        .resolving(&foreign_leaf, Err(VolumeError::AmbiguousName(foreign_leaf.clone())));
+
+    let paths = stored_spellings(&volume, vec![PathBuf::from(&foreign_leaf)]).await;
+
+    assert_eq!(paths, vec![PathBuf::from(foreign_leaf)]);
 }

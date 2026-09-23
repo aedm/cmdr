@@ -131,12 +131,12 @@ export function buildDialogs(): {
 
 /**
  * `handleDrop` fires `handleFileDrop` without awaiting; `handleFileDrop` awaits
- * `statPathsKinds` before opening the dialog. Flush a couple of microtask turns
- * so the dialog open lands before the assertion.
+ * the source volume, `statPathsKinds`, and `storedSpellings` before opening the
+ * dialog. One macrotask turn drains every microtask those mocked calls queue, so
+ * the dialog open lands before the assertion however many awaits the drop has.
  */
 export async function flushDrop(): Promise<void> {
-  await Promise.resolve()
-  await Promise.resolve()
+  await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 export function paneTarget(paneId: 'left' | 'right'): DropTarget {

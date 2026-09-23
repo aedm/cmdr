@@ -10,9 +10,13 @@
 //! its watcher key, and every child path are the volume's own bytes, and the
 //! pane adopts the spelling from `listing-complete`.
 //!
-//! ❌ Only for a PANE opening a directory. A delete walker, a copy scan, or a
-//! refresh lists paths that came out of a listing, and there a miss means the
-//! directory is gone: resolving it could hand the walker a look-alike twin.
+//! Paths from outside Cmdr that name FILES (a Finder drag-in, a paste of files
+//! copied in Finder) are respelled once where they enter, by
+//! [`stored_spellings`], before any operation sees them.
+//!
+//! ❌ Only at those two seams. A delete walker, a copy scan, or a refresh lists
+//! paths that came out of a listing, and there a miss means the directory is
+//! gone: resolving it could hand the walker a look-alike twin.
 
 use std::path::{Path, PathBuf};
 
@@ -66,6 +70,45 @@ pub(crate) async fn list_as_stored(
     log::debug!("list_as_stored: {} is stored as {}", path.display(), stored.display());
     let entries = volume.list_directory_with_cancel(&stored, on_progress, cancel).await?;
     Ok(Listed { path: stored, entries })
+}
+
+/// Each of `paths` in the spelling `volume` stores it under, for paths that
+/// entered from outside Cmdr: a Finder drag-in or a paste of files copied in
+/// Finder, both spelled by the macOS kernel mount.
+///
+/// Called ONCE where those paths enter (`commands::file_system::stored_spellings`),
+/// so the scan preview, the conflict check, the transfer, and its journal all
+/// carry one spelling. A path with no other stored spelling, or with two
+/// look-alikes and no exact match, stays as given: every operation then means
+/// those exact bytes, so nothing ever lands on a guessed twin.
+///
+/// An all-ASCII path is never asked about: it has one Unicode form, and the kernel
+/// mount keeps the server's case, so these paths can only differ in form. That
+/// keeps a drop of a thousand plain names from costing a thousand round trips.
+pub(crate) async fn stored_spellings(volume: &dyn Volume, paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut stored = Vec::with_capacity(paths.len());
+    for path in paths {
+        if path.as_os_str().is_ascii() {
+            stored.push(path);
+            continue;
+        }
+        match volume.find_stored_spelling(&path, None).await {
+            Ok(Some(spelling)) => {
+                log::debug!(
+                    "stored_spellings: {} is stored as {}",
+                    path.display(),
+                    spelling.display()
+                );
+                stored.push(spelling);
+            }
+            Ok(None) => stored.push(path),
+            Err(e) => {
+                log::debug!("stored_spellings: keeping {} as given: {e}", path.display());
+                stored.push(path);
+            }
+        }
+    }
+    stored
 }
 
 /// `listing-respelled`: an open listing now shows its directory under another

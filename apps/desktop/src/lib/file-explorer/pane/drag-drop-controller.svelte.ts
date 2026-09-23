@@ -26,7 +26,7 @@ import {
   setModifiers,
 } from '../modifier-key-tracker.svelte'
 import { addToast } from '$lib/ui/toast'
-import { statPathsKinds, resolvePathVolume } from '$lib/tauri-commands'
+import { statPathsKinds, storedSpellings, resolvePathVolume } from '$lib/tauri-commands'
 import { buildTransferPropsFromDroppedPaths } from './transfer-operations'
 import type { DuplicateFollowUp } from './duplicate-rename'
 import { checkTransferDestinationGuard, resolveSourceVolumeId } from './transfer-entry'
@@ -224,10 +224,15 @@ export function createDragDropController(deps: DragDropControllerDeps) {
       isDirectoryFlags = undefined
     }
 
+    // Finder spells the paths the way the macOS kernel mount does, which a
+    // direct SMB connection may store another way. Asked once, here, so the
+    // scan, the transfer, and its journal all carry the volume's own spelling.
+    const storedPaths = await storedSpellings(sourceVolumeId, sourcePaths)
+
     dialogs.showTransfer({
       ...buildTransferPropsFromDroppedPaths(
         operation,
-        sourcePaths,
+        storedPaths,
         destPath,
         targetPane,
         destVolId,

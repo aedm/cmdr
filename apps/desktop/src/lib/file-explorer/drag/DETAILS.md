@@ -178,6 +178,10 @@ clipboard paste use, so all three entry points prepare a transfer identically. O
   pasteboard, a vanished entry, a stat timeout, or a length mismatch), `buildTransferPropsFromDroppedPaths` reverts the
   whole batch to the legacy approximate shape (`fileCount = count`, `folderCount = 0`), which makes the toast composer
   fall back to flattened file-count wording. Honest beats half-right — a partial split would misreport.
+- **Respells the dropped paths in the source volume's own spelling** (`storedSpellings`, once, after the kind probe).
+  Finder hands over kernel-mount paths, which spell accented names decomposed; a share on a direct SMB connection may
+  store them composed and match bytes exactly. The paste path does the same. Rule and rationale:
+  `src-tauri/src/file_system/listing/DETAILS.md` § "A pane path the volume stores another way".
 
 ### Drag image detection (macOS-specific hack)
 

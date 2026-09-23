@@ -7,6 +7,7 @@ mod e2e_support;
 mod git;
 mod listing;
 mod stat;
+mod stored_spelling;
 mod volume_copy;
 mod write_ops;
 
@@ -17,6 +18,7 @@ pub use e2e_support::*;
 pub use git::*;
 pub use listing::*;
 pub use stat::*;
+pub use stored_spelling::*;
 pub use volume_copy::*;
 pub use write_ops::*;
 

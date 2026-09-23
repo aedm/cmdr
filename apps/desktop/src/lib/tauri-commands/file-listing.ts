@@ -424,6 +424,18 @@ export async function statPathsKinds(paths: string[]): Promise<(boolean | null)[
 }
 
 /**
+ * `paths` in the spelling `volumeId` stores them under, index-aligned. For paths
+ * that entered from OUTSIDE Cmdr (a Finder drag-in, a paste of files copied in
+ * Finder): the macOS kernel mount spells accented names decomposed, which a
+ * direct SMB connection stores another way and would miss. Call it once, where
+ * the paths enter; a path with no other stored spelling comes back as given.
+ */
+export async function storedSpellings(volumeId: string, paths: string[]): Promise<string[]> {
+  const result = await commands.storedSpellings(volumeId, paths)
+  return result.data
+}
+
+/**
  * Creates a new directory.
  * @param parentPath - The parent directory path.
  * @param name - The folder name to create.

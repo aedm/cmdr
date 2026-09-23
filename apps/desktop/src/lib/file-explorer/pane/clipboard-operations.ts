@@ -6,6 +6,7 @@ import {
   readClipboardFiles,
   clearClipboardCutState,
   resolvePathVolume,
+  storedSpellings,
 } from '$lib/tauri-commands'
 import { addToast, addToastForPane } from '$lib/ui/toast'
 import { getSnapshot, resolveSnapshotPaths, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
@@ -427,16 +428,6 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
 
       const operationType: TransferOperationType = result.isCut || forceMove ? 'move' : 'copy'
 
-      // A move of items that are ALL already here does nothing at all: no
-      // dialog, no transfer, no "Moved 0 files". The clipboard survives, so a
-      // paste somewhere that matters still works. A copy takes the opposite
-      // route and duplicates them.
-      if (pasteWouldMoveNothing(operationType, result.paths, destPath)) return
-
-      const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
-      const destVolId = access.getPaneVolumeId(access.getFocusedPane())
-      const sourceFolderPath = getCommonParentPath(result.paths)
-
       // The volume the sources really sit on, resolved through the same seam the
       // drop path runs. Everything keyed on the source volume depends on it: the
       // busy set that keeps Eject disabled while the paste reads off a stick, a
@@ -444,6 +435,20 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       // progress dialog's source label. `resolveSourceVolumeId` answers root when
       // the sources span volumes or can't be placed, the honest unknown.
       const sourceVolumeId = await resolveSourceVolumeId(result.paths, access.getVolumes(), resolvePathVolume)
+      // Files copied in Finder carry the macOS kernel mount's spelling, which a
+      // direct SMB connection may store another way. Asked once, here, so every
+      // step after this (the move-nothing check included) sees the stored one.
+      const sourcePaths = await storedSpellings(sourceVolumeId, result.paths)
+
+      // A move of items that are ALL already here does nothing at all: no
+      // dialog, no transfer, no "Moved 0 files". The clipboard survives, so a
+      // paste somewhere that matters still works. A copy takes the opposite
+      // route and duplicates them.
+      if (pasteWouldMoveNothing(operationType, sourcePaths, destPath)) return
+
+      const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
+      const destVolId = access.getPaneVolumeId(access.getFocusedPane())
+      const sourceFolderPath = getCommonParentPath(sourcePaths)
 
       // Per-type top-level split for the completion toast ("Copied 1 file and 2
       // folders"). `readClipboardFiles` returns each path's kind. We surface the
@@ -453,7 +458,7 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
 
       dialogs.startTransferProgress({
         operationType,
-        sourcePaths: result.paths,
+        sourcePaths,
         sourceFolderPath,
         // Clipboard files don't belong to a specific pane; pick the opposite as
         // best guess. A wrong guess costs nothing: the settled-transfer tail
