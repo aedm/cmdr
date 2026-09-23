@@ -341,7 +341,7 @@ pub(super) async fn clean_abandoned_staged_writes(
 /// subtree waits for a transfer into THAT directory — which is where the
 /// 2026-07-31 incident's partials were.
 ///
-/// Guards, mirroring `archive_remote_edit::reap_remote_temps`:
+/// Guards, mirroring `archive_edit::remote::reap_remote_temps`:
 /// - **One round trip.** A single `list_directory`, then a `delete` per match.
 /// - **Age-gated.** Only leftovers older than [`STALE_TEMP_MIN_AGE`] go, so a
 ///   temp another instance is streaming into right now is never removed. An entry

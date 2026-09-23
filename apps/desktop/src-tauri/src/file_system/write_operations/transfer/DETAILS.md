@@ -462,7 +462,7 @@ left is a thread that never came back.
   `.cmdr-tmp-*` FILE whose mtime is at least `STALE_TEMP_MIN_AGE` (1 hour) old. The age gate is what makes it safe
   against a concurrent instance — a live staged write touches its temp every chunk, and even a destination-side
   foreground park is capped at a second — and an entry with no reported mtime is spared. It mirrors
-  `archive_remote_edit::reap_remote_temps`. This is the backstop for anything the log missed (a power loss, a
+  `archive_edit::remote::reap_remote_temps`. This is the backstop for anything the log missed (a power loss, a
   non-UTF-8 path); a leftover deeper inside a copied subtree waits for a transfer into that directory, and there is no
   global filesystem sweep and there shouldn't be. ⚠️ It runs on both transfer verbs because a destination folder a
   person only ever MOVES into would otherwise keep its leftovers forever; the copy path pays for one extra customer of

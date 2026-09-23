@@ -19,13 +19,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::super::OperationEventSink;
-use super::super::archive_remote_edit::{self, RemoteEditError};
 use super::super::look_alike::{LookAlike, look_alike_in, spelled_new_path};
 use super::super::scratch_dir::ScratchDir;
 use super::super::state::WriteOperationState;
 use super::super::transfer::volume::{PathRole, map_volume_error};
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult};
 use super::copy_into::route_archive_copy_into_with_provenance;
+use super::edit_error::EditError;
+use super::remote;
 use crate::file_system::staging::StagingTemp;
 use crate::file_system::volume::Volume;
 use crate::file_system::volume::manager::get_volume_manager;
@@ -100,13 +101,13 @@ async fn seed_empty_zip_remote(parent: &dyn Volume, dest_zip_full_path: &Path) -
     // A fresh, never-cancelled state: the seed is a 22-byte write that runs BEFORE
     // the managed op exists, so there is no live cancel to thread through it.
     let state = WriteOperationState::new(Duration::from_millis(0));
-    archive_remote_edit::place_local_file(parent, &local_seed, dest_zip_full_path, &state)
+    remote::place_local_file(parent, &local_seed, dest_zip_full_path, &state)
         .await
         .map_err(|e| match e {
-            RemoteEditError::Cancelled => WriteOperationError::Cancelled {
+            EditError::Cancelled => WriteOperationError::Cancelled {
                 message: "the compress seed was cancelled".to_string(),
             },
-            RemoteEditError::Op(w) => w,
+            EditError::Op(w) => w,
         })
 }
 

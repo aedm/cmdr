@@ -96,7 +96,7 @@ async fn smb_integration_archive_browse_and_extract_via_read_range() {
 // zip-inner path over SMB, an extract-out materializes to local disk, and a
 // remote EDIT (pull → apply → upload → swap) commits — while a cancel before the
 // swap leaves the remote original byte-for-byte intact. The data-safety contract
-// unit-tested with an `InMemoryVolume` in `archive_remote_edit_tests`, now over
+// unit-tested with an `InMemoryVolume` in `archive_edit::remote_tests`, now over
 // real SMB.
 
 /// A no-op `MutationHooks` for the mutator (never pauses/cancels here).
@@ -218,7 +218,7 @@ async fn smb_integration_archive_routing_detection_and_extract_out() {
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_remote_zip_edit_deletes_an_entry_through_the_share() {
-    use crate::file_system::write_operations::{RemoteEditError, WriteOperationState, pull_apply_upload_swap};
+    use crate::file_system::write_operations::{EditError, WriteOperationState, pull_apply_upload_swap};
     use cmdr_archive::mutator::{self, Changeset};
     use std::time::Duration;
 
@@ -231,7 +231,7 @@ async fn smb_integration_remote_zip_edit_deletes_an_entry_through_the_share() {
         Arc::clone(&vol) as Arc<dyn Volume>,
         zip_path.clone(),
         state,
-        move |working: &Path| -> Result<(), RemoteEditError> {
+        move |working: &Path| -> Result<(), EditError> {
             let changeset = Changeset {
                 deletes: vec!["drop.txt".to_string()],
                 ..Default::default()
@@ -271,7 +271,7 @@ async fn smb_integration_remote_zip_edit_deletes_an_entry_through_the_share() {
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_remote_zip_edit_cancel_before_swap_keeps_original() {
     use crate::file_system::write_operations::{
-        OperationIntent, RemoteEditError, WriteOperationState, pull_apply_upload_swap,
+        EditError, OperationIntent, WriteOperationState, pull_apply_upload_swap,
     };
     use cmdr_archive::mutator::{self, Changeset};
     use std::sync::atomic::Ordering;
@@ -289,7 +289,7 @@ async fn smb_integration_remote_zip_edit_cancel_before_swap_keeps_original() {
         Arc::clone(&vol) as Arc<dyn Volume>,
         zip_path.clone(),
         state,
-        move |working: &Path| -> Result<(), RemoteEditError> {
+        move |working: &Path| -> Result<(), EditError> {
             let changeset = Changeset {
                 deletes: vec!["drop.txt".to_string()],
                 ..Default::default()
@@ -303,7 +303,7 @@ async fn smb_integration_remote_zip_edit_cancel_before_swap_keeps_original() {
     )
     .await;
     assert!(
-        matches!(result, Err(RemoteEditError::Cancelled)),
+        matches!(result, Err(EditError::Cancelled)),
         "a cancel before the swap must report Cancelled"
     );
 

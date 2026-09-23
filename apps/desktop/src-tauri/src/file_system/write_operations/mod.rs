@@ -17,7 +17,6 @@
 
 mod analytics;
 mod archive_edit;
-mod archive_remote_edit;
 mod cancellable;
 mod compress_estimate;
 mod conflict;
@@ -254,10 +253,10 @@ pub(crate) use archive_edit::{compress_start, route_archive_copy_into, route_arc
 pub(crate) use transfer::volume::copy_volumes_with_progress;
 // The remote zip-edit orchestration (pull-local, apply, upload, swap). Exposed at
 // crate scope for the live-SMB / MTP integration suites, which drive the real
-// mechanism against a real remote volume. The managed driver reaches it directly
-// via `super::archive_remote_edit`, so this re-export is test-only.
+// mechanism against a real remote volume. The managed driver reaches it inside
+// `archive_edit`, so this re-export is test-only.
 #[cfg(test)]
-pub(crate) use archive_remote_edit::{RemoteEditError, pull_apply_upload_swap};
+pub(crate) use archive_edit::{EditError, pull_apply_upload_swap};
 // A live operation's in-flight table, so a suite that bounds its own wait can put
 // the transfer probe's dump in its panic message. Used by the live-SMB
 // full-concurrency suite, which sits outside this module.

@@ -123,7 +123,7 @@ async fn virtual_mtp_archive_browses_and_extracts_via_read_range() {
 /// the delete-then-rename swap, re-verified by re-reading the zip off the device.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn virtual_mtp_remote_zip_edit_deletes_an_entry_through_the_device() {
-    use crate::file_system::write_operations::{RemoteEditError, WriteOperationState, pull_apply_upload_swap};
+    use crate::file_system::write_operations::{EditError, WriteOperationState, pull_apply_upload_swap};
     use cmdr_archive::mutator::{self, Changeset, MutationHooks};
     use std::sync::Arc;
     use std::time::Duration;
@@ -146,7 +146,7 @@ async fn virtual_mtp_remote_zip_edit_deletes_an_entry_through_the_device() {
         Arc::clone(&vol) as Arc<dyn Volume>,
         archive_path.clone(),
         state,
-        move |working: &Path| -> Result<(), RemoteEditError> {
+        move |working: &Path| -> Result<(), EditError> {
             let changeset = Changeset {
                 deletes: vec!["a.txt".to_string()],
                 ..Default::default()

@@ -60,7 +60,7 @@ sink, pause gate, cancel intent via the `MutationHooks` seam, and the remote pul
   guard. This LOCAL reap deletes every matching sibling unconditionally (edits of one archive serialize on the parent
   lane, so a local leftover is always abandoned). A REMOTE archive edit leaves its leftover on the SHARE (a crash after
   upload, before swap), not on the local scratch copy this `apply` reaps; that leftover is reaped by an age-gated mirror
-  of this reap on the REMOTE parent at the next edit of the same archive — see `write_operations/archive_remote_edit.rs`
+  of this reap on the REMOTE parent at the next edit of the same archive — see `write_operations/archive_edit/remote.rs`
   (`reap_remote_temps`) and `apps/desktop/src-tauri/src/file_system/write_operations/archive_edit/DETAILS.md` § "Remote
   edit" for why the remote side needs the age gate.
 - **Deletes/renames reshape the retained set.** A delete drops a file or a whole subtree (component-wise match, so `foo`

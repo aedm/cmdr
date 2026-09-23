@@ -81,8 +81,8 @@ The full top-level inventory is here:
   `types/errors.rs`, `WriteOperationError` with the typed payloads its variants carry — both re-exported through
   `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
   between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
-  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. Remote
-  archive I/O: `archive_remote_edit.rs`, `scratch_dir.rs`. Entry points: `create/` + `create.rs`, `rename/` +
+  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
+  scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
   `test_support.rs`, plus `network_transfer_test_support.rs` and `network_gated_source_test_support.rs` (the
@@ -244,19 +244,14 @@ either is a `use` of a sibling, so the floor rule already forbids it). `Lifecycl
 frontend as a serde/specta enum. `manager` imports it like everyone else.
 
 **How it stays cut.** `module-cycles` re-measures this home on every slow run, and its allowlist for
-`cmdr::file_system::write_operations` is ratcheted to the remaining tangle. A new upward import from `types` fails the
-check with the whole eleven back. `scripts/check/checks/DETAILS.md` § "Rust module cycles" documents how to read its
+`cmdr::file_system::write_operations` holds no tangle at all, so any new circle here warns. A new upward import from
+`types` brings the whole eleven back. `scripts/check/checks/DETAILS.md` § "Rust module cycles" documents how to read its
 output, including the ways `cargo-modules` misattributes an edge.
 
-**What's left, and why it stays.** One 2-tangle remains at this home: `archive_edit::engine` ↔ `archive_remote_edit`.
-It is the `From`-impl shape trap 4 in `scripts/check/checks/DETAILS.md` describes. `archive_remote_edit.rs` imports
-nothing from `archive_edit` — only `engine.rs` knows both types — but it holds BOTH conversions between the twin error
-enums (`PlanError` and `RemoteEditError`), and `cargo-modules` files each impl under the module defining the type it
-PRODUCES, so one prints as an edge in each direction. Both conversions are live:
-`pull_apply_upload_swap` takes `E: Into<RemoteEditError>` and hands back a `RemoteEditError` the engine turns into a
-`PlanError` (removing either one fails to compile, verified 2026-08-23). Moving one impl next to the type it produces
-would turn a reported cycle into a real one; merging the twin enums is a behavior question for the archive engine, not
-a graph cleanup. So it stays, and the allowlist keeps it at 2.
+**Two smaller cuts keep it at zero.** Both point a lower module at what it really needs, never at a module above it.
+The in-flight sweep calls `volume::rename_local_exclusive`, the primitive behind `overwrite::rename_no_replace` (§ "What
+the sweep does with each kind"). Archive edits share one `EditError` leaf, where twin enums bridged by `From` impls once
+sat (`archive_edit/DETAILS.md` § "Local vs remote: one closure, one dispatcher").
 
 ## Architecture / data flow
 

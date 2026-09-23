@@ -20,7 +20,8 @@ use super::super::types::{
     CancelRollback, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent, WriteErrorEvent, WriteOperationError,
     WriteOperationStartResult, WriteOperationType, WriteProgressEvent,
 };
-use super::engine::{MutatorHooks, PlanError, run_managed_edit, to_write_error};
+use super::edit_error::EditError;
+use super::engine::{MutatorHooks, run_managed_edit, to_write_error};
 use super::routing::{ensure_zip_writable, normalize_inner_path, read_only_error};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
@@ -268,8 +269,8 @@ pub(crate) async fn route_archive_move_out(
                 Arc::clone(&state),
                 move |working: &Path| {
                     mutator::apply(working, &changeset, &*hooks_for_blocking).map_err(|e| match e {
-                        MutationError::Cancelled => PlanError::Cancelled,
-                        other => PlanError::Op(to_write_error(working, other)),
+                        MutationError::Cancelled => EditError::Cancelled,
+                        other => EditError::Op(to_write_error(working, other)),
                     })
                 },
             )
@@ -293,7 +294,7 @@ pub(crate) async fn route_archive_move_out(
                     // CONVERGES: the prefix is already gone from the archive).
                     Some(err) => events.emit_error(WriteErrorEvent::new(op_id.clone(), WriteOperationType::Move, err)),
                 },
-                Err(PlanError::Cancelled) => {
+                Err(EditError::Cancelled) => {
                     // Cancelled during the archive rewrite: the extract already
                     // landed and the archive is intact (temp abandoned) —
                     // effectively a completed copy.
@@ -304,7 +305,7 @@ pub(crate) async fn route_archive_move_out(
                         rollback: CancelRollback::none(),
                     });
                 }
-                Err(PlanError::Op(err)) => {
+                Err(EditError::Op(err)) => {
                     // The extract landed but the archive couldn't be rewritten. The
                     // originals are intact and the copies are at the destination (no
                     // data loss), so surface the failure — the move degraded to a copy.

@@ -9,7 +9,8 @@ one is an O(archive) temp+rename rewrite of the whole file. Up: `../CLAUDE.md`. 
 - `routing.rs`: the shared primitives every route builds on — inner-path helpers, `ensure_zip_writable` (the one
   write-side chokepoint refusing tar/7z), `archive_inner_exists` (the duplicate pre-check), the instant-op sink builder.
 - `driver.rs`: `archive_edit_start` (the managed op's whole lifecycle) plus `route_archive_delete`. `engine.rs`:
-  `run_managed_edit`, the local-vs-remote dispatcher. `conflicts.rs`: resolution against the archive index.
+  `run_managed_edit`, the local-vs-remote dispatcher, and `remote.rs` its remote leg (pull, apply, upload, swap).
+  `edit_error.rs`: `EditError`, the leaf both of them return. `conflicts.rs`: resolution against the archive index.
 - Per-shape routes: `copy_into.rs` (`route_archive_copy_into`, plus the remote-source pull), `move_out.rs`,
   `compress.rs` (`seed_empty_zip` + `compress_start`). The create and rename routes live with their instant ops in
   `../create.rs` and `../rename.rs`, and call in here.

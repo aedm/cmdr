@@ -16,9 +16,11 @@
 //!   the archive-boundary path helpers, the zip-only write guard, the
 //!   duplicate-existence oracle, and the instant-op sink builder.
 //! - [`engine`]: the single apply chokepoint (`run_managed_edit`, LOCAL vs
-//!   REMOTE dispatch), the `PlanError` cancel-vs-fault split, the mutator
-//!   control-seam `MutatorHooks`, error mapping, and the post-commit source
-//!   deletion.
+//!   REMOTE dispatch), the mutator control-seam `MutatorHooks`, error mapping,
+//!   and the post-commit source deletion.
+//! - [`remote`]: the REMOTE leg of that dispatch (pull, apply locally, upload
+//!   to a temp name, swap), and the upload-and-swap `compress` seeds with.
+//! - [`edit_error`]: `EditError`, the cancel-vs-fault split every stage returns.
 //! - [`conflicts`]: how a copy/move-into collision resolves (pre-resolved policy
 //!   or interactive Stop-mode prompt).
 //! - [`copy_into`]: the copy/move INTO a zip flow — route, changeset planning,
@@ -41,8 +43,10 @@ mod compress;
 mod conflicts;
 mod copy_into;
 mod driver;
+mod edit_error;
 mod engine;
 mod move_out;
+mod remote;
 mod routing;
 
 pub(crate) use compress::compress_start;
@@ -52,6 +56,9 @@ pub(crate) use move_out::route_archive_move_out;
 pub(crate) use routing::{
     archive_inner_exists, ensure_zip_writable, global_tauri_sink, join_inner_path, normalize_inner_path,
 };
+// The remote edit, exposed for the live-SMB / MTP integration suites one level up.
+#[cfg(test)]
+pub(crate) use {edit_error::EditError, remote::pull_apply_upload_swap};
 
 #[cfg(test)]
 mod test_support;

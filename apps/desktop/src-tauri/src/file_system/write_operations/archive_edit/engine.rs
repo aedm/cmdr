@@ -1,8 +1,9 @@
 //! The shared apply engine: the single chokepoint that runs a plan+apply closure
 //! against an archive (LOCAL in place, or REMOTE pull-apply-upload-swap), the
-//! [`PlanError`] cancel-vs-fault split, the mutator control-seam [`MutatorHooks`]
-//! (cancel/pause/progress/downloads-ignore, plus E2E pacing), the mutator-error
-//! mapping, and the post-commit source deletion for an into-archive move.
+//! mutator control-seam [`MutatorHooks`] (cancel/pause/progress/downloads-ignore,
+//! plus E2E pacing), the mutator-error mapping, and the post-commit source
+//! deletion for an into-archive move. The cancel-vs-fault split every stage
+//! returns is [`EditError`], in its own leaf so `remote` can name it too.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -16,37 +17,11 @@ use super::super::types::{
     CancelRollback, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent, WriteOperationError, WriteOperationPhase,
     WriteOperationType, WriteProgressEvent,
 };
+use super::edit_error::EditError;
+use super::remote::pull_apply_upload_swap;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
 use cmdr_archive::mutator::{MutationError, MutationHooks, MutationProgress};
-
-/// A planning failure that separates a user cancel (archive untouched, nothing to
-/// report as an error) from a genuine fault.
-pub(super) enum PlanError {
-    /// The user cancelled a Stop prompt (the oneshot sender was dropped).
-    Cancelled,
-    /// A real planning fault (unreadable source, unparseable archive, Stop under a
-    /// pre-resolved policy).
-    Op(WriteOperationError),
-}
-
-impl From<PlanError> for super::super::archive_remote_edit::RemoteEditError {
-    fn from(e: PlanError) -> Self {
-        match e {
-            PlanError::Cancelled => Self::Cancelled,
-            PlanError::Op(w) => Self::Op(w),
-        }
-    }
-}
-
-impl From<super::super::archive_remote_edit::RemoteEditError> for PlanError {
-    fn from(e: super::super::archive_remote_edit::RemoteEditError) -> Self {
-        match e {
-            super::super::archive_remote_edit::RemoteEditError::Cancelled => Self::Cancelled,
-            super::super::archive_remote_edit::RemoteEditError::Op(w) => Self::Op(w),
-        }
-    }
-}
 
 /// Runs a plan+apply closure against an archive, transparently LOCAL or REMOTE.
 ///
@@ -54,10 +29,9 @@ impl From<super::super::archive_remote_edit::RemoteEditError> for PlanError {
 /// plans against, and mutates, the path it's handed). For a LOCAL parent this is
 /// byte-identical to before — the closure runs on the real archive file via
 /// `spawn_blocking`, and the mutator's own temp+rename commits the edit. For a
-/// REMOTE parent (direct SMB / MTP) it routes through
-/// [`super::super::archive_remote_edit::pull_apply_upload_swap`]: pull the `.zip`
-/// to a local temp, run the closure there, upload the result under a remote temp
-/// name, and swap. The remote original is untouched until that final swap; a
+/// REMOTE parent (direct SMB / MTP) it routes through [`pull_apply_upload_swap`]:
+/// pull the `.zip` to a local temp, run the closure there, upload the result
+/// under a remote temp name, and swap. The remote original is untouched until that final swap; a
 /// cancel or fault anywhere before it leaves the original intact.
 ///
 /// `parent_volume_id` is the drive holding the `.zip` (`"root"` for a local disk);
@@ -68,9 +42,9 @@ pub(super) async fn run_managed_edit<T, F>(
     archive_path: PathBuf,
     state: Arc<WriteOperationState>,
     plan_and_apply: F,
-) -> Result<T, PlanError>
+) -> Result<T, EditError>
 where
-    F: FnOnce(&Path) -> Result<T, PlanError> + Send + 'static,
+    F: FnOnce(&Path) -> Result<T, EditError> + Send + 'static,
     T: Send + 'static,
 {
     let parent = get_volume_manager().get(parent_volume_id);
@@ -81,7 +55,7 @@ where
         let path = archive_path.clone();
         return match tokio::task::spawn_blocking(move || plan_and_apply(&path)).await {
             Ok(result) => result,
-            Err(join) => Err(PlanError::Op(WriteOperationError::IoError {
+            Err(join) => Err(EditError::Op(WriteOperationError::IoError {
                 path: archive_path.display().to_string(),
                 message: format!("archive edit task failed: {join}"),
             })),
@@ -89,9 +63,7 @@ where
     }
 
     let parent = parent.expect("is_remote is only true when the parent is registered");
-    super::super::archive_remote_edit::pull_apply_upload_swap(parent, archive_path, state, plan_and_apply)
-        .await
-        .map_err(PlanError::from)
+    pull_apply_upload_swap(parent, archive_path, state, plan_and_apply).await
 }
 
 /// Maps a mutator failure onto the typed `WriteOperationError` the FE renders.
@@ -159,7 +131,7 @@ pub(super) async fn delete_move_sources(sources: &[PathBuf]) {
 pub(super) fn emit_archive_terminal(
     events: &dyn OperationEventSink,
     op_id: &str,
-    outcome: Result<(), PlanError>,
+    outcome: Result<(), EditError>,
     skipped_count: usize,
     final_progress: &MutationProgress,
 ) {
@@ -174,13 +146,13 @@ pub(super) fn emit_archive_terminal(
             top_level_skipped: None,
             refused: None,
         }),
-        Err(PlanError::Cancelled) => events.emit_cancelled(WriteCancelledEvent {
+        Err(EditError::Cancelled) => events.emit_cancelled(WriteCancelledEvent {
             operation_id: op_id.to_string(),
             operation_type: WriteOperationType::ArchiveEdit,
             files_processed: final_progress.entries_done,
             rollback: CancelRollback::none(),
         }),
-        Err(PlanError::Op(err)) => {
+        Err(EditError::Op(err)) => {
             events.emit_error(WriteErrorEvent::new(
                 op_id.to_string(),
                 WriteOperationType::ArchiveEdit,

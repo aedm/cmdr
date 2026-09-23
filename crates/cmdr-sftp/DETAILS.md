@@ -436,7 +436,7 @@ protocol DOES distinguish is never re-read through it.
 
 **`force = true` uses `Fs::rename` directly**, which reaches for `posix-rename@openssh.com` when the server offers it.
 Here that is exactly right: the extension is defined to replace the destination atomically, which is what gives a remote
-archive edit its atomic swap (`write_operations/archive_remote_edit.rs::swap_into_place` gates that fast path on
+archive edit its atomic swap (`write_operations/archive_edit/remote.rs::swap_into_place` gates that fast path on
 `create_directory_errors_on_existing_dir()` plus a forced rename succeeding, and this backend answers both). A server
 without the extension sends plain `SSH_FXP_RENAME`, which REFUSES an occupied destination, so that one gets the
 destination cleared first — ❗ and only once the probe proves something is in it, because clearing on any failure is the

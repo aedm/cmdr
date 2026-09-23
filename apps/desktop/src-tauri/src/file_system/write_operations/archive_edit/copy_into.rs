@@ -24,9 +24,8 @@ use super::super::transfer::volume::{TreeRemoval, remove_tree};
 use super::super::types::ReadOnlySide;
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult, WriteOperationType};
 use super::conflicts::{ConflictMode, conditional_overwrites, find_unique_inner, resolve_effective};
-use super::engine::{
-    MutatorHooks, PlanError, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error,
-};
+use super::edit_error::EditError;
+use super::engine::{MutatorHooks, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error};
 use super::routing::{ensure_zip_writable, normalize_inner_path, read_only_error};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{LaneKey, LocalPosixVolume, Volume, VolumeError};
@@ -223,7 +222,7 @@ async fn materialize_sources(
     source_paths: &[PathBuf],
     src_local_root: Option<PathBuf>,
     state: &Arc<WriteOperationState>,
-) -> Result<MaterializedSources, PlanError> {
+) -> Result<MaterializedSources, EditError> {
     if let Some(root) = src_local_root {
         return Ok(MaterializedSources {
             absolute: source_paths.iter().map(|p| root.join(p)).collect(),
@@ -233,7 +232,7 @@ async fn materialize_sources(
     }
 
     let scratch = ScratchDir::new("cmdr-archive-source-pull").map_err(|e| {
-        PlanError::Op(WriteOperationError::IoError {
+        EditError::Op(WriteOperationError::IoError {
             path: String::new(),
             message: e.to_string(),
         })
@@ -266,7 +265,7 @@ async fn materialize_sources(
 /// Streams one remote source (a file or a whole subtree) into the local scratch
 /// dir through the copy engine's `pull_path_to_local` seam, so the pull inherits
 /// its streaming (never whole-file-buffered), nested-tree recursion, cancel, and
-/// pause. A cancel surfaces as `PlanError::Cancelled`; any other fault surfaces
+/// pause. A cancel surfaces as `EditError::Cancelled`; any other fault surfaces
 /// typed. The pull is silent — the archive rewrite stage drives the progress bar.
 async fn pull_one_source(
     source_volume: &Arc<dyn Volume>,
@@ -274,9 +273,9 @@ async fn pull_one_source(
     dest_volume: &Arc<dyn Volume>,
     dest_path: &Path,
     state: &Arc<WriteOperationState>,
-) -> Result<(), PlanError> {
+) -> Result<(), EditError> {
     let is_directory = source_volume.is_directory(source_path).await.map_err(|e| {
-        PlanError::Op(WriteOperationError::ReadError {
+        EditError::Op(WriteOperationError::ReadError {
             path: source_path.display().to_string(),
             message: e.to_string(),
         })
@@ -286,8 +285,8 @@ async fn pull_one_source(
         .await
         .map(|_bytes| ())
         .map_err(|e| match e {
-            VolumeError::Cancelled(_) => PlanError::Cancelled,
-            other => PlanError::Op(WriteOperationError::ReadError {
+            VolumeError::Cancelled(_) => EditError::Cancelled,
+            other => EditError::Op(WriteOperationError::ReadError {
                 path: source_path.display().to_string(),
                 message: other.to_string(),
             }),
@@ -313,9 +312,9 @@ fn build_copy_into_changeset(
 ) -> Result<CopyIntoPlan, WriteOperationError> {
     let mut mode = ConflictMode::Policy(conflict);
     build_copy_into_changeset_inner(archive_path, absolute_sources, dest_inner, &mut mode).map_err(|e| match e {
-        PlanError::Op(w) => w,
+        EditError::Op(w) => w,
         // A pre-resolved policy never prompts, so it can't be cancelled here.
-        PlanError::Cancelled => WriteOperationError::Cancelled {
+        EditError::Cancelled => WriteOperationError::Cancelled {
             message: "the archive copy was cancelled".to_string(),
         },
     })
@@ -332,7 +331,7 @@ fn build_copy_into_changeset_interactive(
     events: &dyn OperationEventSink,
     operation_id: &str,
     state: &Arc<WriteOperationState>,
-) -> Result<CopyIntoPlan, PlanError> {
+) -> Result<CopyIntoPlan, EditError> {
     let mut latch = ApplyToAll::default();
     let mut mode = ConflictMode::Interactive {
         events,
@@ -351,15 +350,15 @@ fn build_copy_into_changeset_inner(
     absolute_sources: &[PathBuf],
     dest_inner: &str,
     mode: &mut ConflictMode<'_>,
-) -> Result<CopyIntoPlan, PlanError> {
+) -> Result<CopyIntoPlan, EditError> {
     let source = LocalFileSource::open(archive_path).map_err(|e| {
-        PlanError::Op(WriteOperationError::WriteError {
+        EditError::Op(WriteOperationError::WriteError {
             path: archive_path.display().to_string(),
             message: e.to_string(),
         })
     })?;
     let index = ArchiveIndex::parse(Arc::new(source), ArchiveFormat::Zip, None).map_err(|e| {
-        PlanError::Op(WriteOperationError::WriteError {
+        EditError::Op(WriteOperationError::WriteError {
             path: archive_path.display().to_string(),
             message: e.to_string(),
         })
@@ -378,7 +377,7 @@ fn build_copy_into_changeset_inner(
         };
         let base_inner = join_inner_str(dest_inner, name);
         let meta = std::fs::symlink_metadata(src).map_err(|e| {
-            PlanError::Op(WriteOperationError::ReadError {
+            EditError::Op(WriteOperationError::ReadError {
                 path: src.display().to_string(),
                 message: e.to_string(),
             })
@@ -470,7 +469,7 @@ fn plan_file_add(
     deletes: &mut Vec<String>,
     planned: &mut HashSet<String>,
     skipped_count: &mut usize,
-) -> Result<(), PlanError> {
+) -> Result<(), EditError> {
     let in_index = index.exists(&inner);
     let collides = in_index || planned.contains(&inner);
 
@@ -488,7 +487,7 @@ fn plan_file_add(
             ConflictResolution::Stop => {
                 // Only reachable under a pre-resolved `Policy(Stop)` (the
                 // interactive path never returns Stop). Treat as a hard collision.
-                return Err(PlanError::Op(WriteOperationError::DestinationExists { path: inner }));
+                return Err(EditError::Op(WriteOperationError::DestinationExists { path: inner }));
             }
             ConflictResolution::Overwrite => {
                 if in_index {
@@ -638,10 +637,10 @@ async fn archive_copy_into_start(
             ));
 
             // Materialize sources (pull if remote), then plan+apply against the
-            // archive. One `Result<skipped_count, PlanError>` funnels into a single
+            // archive. One `Result<skipped_count, EditError>` funnels into a single
             // terminal emit below. A cancel/fault in the PULL returns before
             // `run_managed_edit` ever opens the zip, so the archive stays untouched.
-            let outcome: Result<usize, PlanError> = async {
+            let outcome: Result<usize, EditError> = async {
                 let materialized = materialize_sources(&source_volume, &source_paths, src_local_root, &state).await?;
                 let absolute_sources = materialized.absolute.clone();
 
@@ -652,7 +651,7 @@ async fn archive_copy_into_start(
                         let op_id_for_blocking = op_id.clone();
                         let hooks_for_blocking = Arc::clone(&hooks);
                         let dest_inner = dest_inner.clone();
-                        move |working: &Path| -> Result<(bool, usize), PlanError> {
+                        move |working: &Path| -> Result<(bool, usize), EditError> {
                             // Stop → interactive per-file prompts; any pre-resolved
                             // policy → non-interactive. Both plan against `working`
                             // (the pulled-local copy for a remote parent), never the
@@ -668,15 +667,15 @@ async fn archive_copy_into_start(
                                 )?
                             } else {
                                 build_copy_into_changeset(working, &absolute_sources, &dest_inner, conflict)
-                                    .map_err(PlanError::Op)?
+                                    .map_err(EditError::Op)?
                             };
                             // The user's compression level governs every newly added
                             // entry in this edit (the mutator clamps it to 1..=9).
                             plan.changeset.compression_level = compression_level;
                             let should_delete = is_move && plan.skipped_count == 0;
                             mutator::apply(working, &plan.changeset, &*hooks_for_blocking).map_err(|e| match e {
-                                MutationError::Cancelled => PlanError::Cancelled,
-                                other => PlanError::Op(to_write_error(working, other)),
+                                MutationError::Cancelled => EditError::Cancelled,
+                                other => EditError::Op(to_write_error(working, other)),
                             })?;
                             Ok((should_delete, plan.skipped_count))
                         }
@@ -695,8 +694,8 @@ async fn archive_copy_into_start(
             // below (which moves the error out of `outcome`).
             let execution_status = match &outcome {
                 Ok(_) => ExecutionStatus::Done,
-                Err(PlanError::Cancelled) => ExecutionStatus::Canceled,
-                Err(PlanError::Op(_)) => ExecutionStatus::Failed,
+                Err(EditError::Cancelled) => ExecutionStatus::Canceled,
+                Err(EditError::Op(_)) => ExecutionStatus::Failed,
             };
             let skipped_count = *outcome.as_ref().unwrap_or(&0);
             emit_archive_terminal(

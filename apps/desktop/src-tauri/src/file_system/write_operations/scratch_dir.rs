@@ -1,7 +1,7 @@
 //! A private local scratch directory whose `Drop` removes it (and everything
 //! inside) however the operation ends — success, error, or cancel. The
 //! archive-edit flows that stage bytes locally share it: the remote-PARENT
-//! pull-apply-upload-swap ([`super::archive_remote_edit`]) and the remote-SOURCE
+//! pull-apply-upload-swap (`archive_edit/remote.rs`) and the remote-SOURCE
 //! pull-into-zip ([`super::archive_edit`]). The local temp never outlives the op.
 
 use std::path::{Path, PathBuf};

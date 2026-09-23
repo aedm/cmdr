@@ -18,7 +18,7 @@ use super::super::conflict::{
 use super::super::look_alike::is_look_alike_clash;
 use super::super::state::{ConflictResolutionResponse, WriteOperationState};
 use super::super::types::{ConflictResolution, WriteConflictEvent, WriteConflictResolvedEvent};
-use super::engine::PlanError;
+use super::edit_error::EditError;
 use cmdr_archive::ArchiveIndex;
 
 /// How a copy/move-into resolves collisions with existing archive entries.
@@ -57,7 +57,7 @@ pub(super) fn resolve_effective(
     archive_path: &Path,
     index: &ArchiveIndex,
     is_file_to_folder: bool,
-) -> Result<ConflictResolution, PlanError> {
+) -> Result<ConflictResolution, EditError> {
     let kind = ClashKind::of(IncomingItem::Leaf, Some(is_file_to_folder));
     match mode {
         ConflictMode::Policy(c) => Ok(resolution_for_clash(None, *c, kind, &inner)),
@@ -89,7 +89,7 @@ pub(super) fn resolve_effective(
 /// Emits a `write-conflict` for an in-archive file collision and blocks on the
 /// user's answer. Stores the oneshot sender BEFORE the emit (a responder can only
 /// answer a conflict it has observed; emit-first races the take and hangs the
-/// recv). A dropped sender (cancel) surfaces as `PlanError::Cancelled`.
+/// recv). A dropped sender (cancel) surfaces as `EditError::Cancelled`.
 #[allow(
     clippy::too_many_arguments,
     reason = "the prompt gathers both sides' metadata from distinct sources (local file + archive index); bundling adds ceremony"
@@ -103,7 +103,7 @@ fn prompt_archive_conflict(
     src_path: &Path,
     archive_path: &Path,
     is_file_to_folder: bool,
-) -> Result<ConflictResolutionResponse, PlanError> {
+) -> Result<ConflictResolutionResponse, EditError> {
     let node = index.get(inner);
     let dest_size = node.as_ref().and_then(|n| n.size);
     let dest_modified = node.as_ref().and_then(|n| n.modified);
@@ -147,7 +147,7 @@ fn prompt_archive_conflict(
     // Blocking recv: the planner runs on the blocking pool (like the local-FS Stop
     // path), so parking this thread on the oneshot is correct. A dropped sender
     // (cancel) returns `Err` → `Cancelled`.
-    let response = rx.blocking_recv().map_err(|_| PlanError::Cancelled)?;
+    let response = rx.blocking_recv().map_err(|_| EditError::Cancelled)?;
     // Answered, so every surface showing this clash can take it down — including
     // the ones that answered nothing. Only on `Ok`: a cancel leaves no answer,
     // and the operation going away is what clears the prompt there.

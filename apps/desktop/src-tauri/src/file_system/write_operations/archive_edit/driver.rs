@@ -16,9 +16,8 @@ use super::super::manager::{self, ManagedTaskGuard, OperationDescriptor, Operati
 use super::super::state::{WriteOperationState, WriteSettledGuard};
 use super::super::types::ReadOnlySide;
 use super::super::types::{WriteOperationError, WriteOperationStartResult, WriteOperationType};
-use super::engine::{
-    MutatorHooks, PlanError, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error,
-};
+use super::edit_error::EditError;
+use super::engine::{MutatorHooks, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error};
 use super::routing::{ensure_zip_writable, normalize_inner_path, read_only_error};
 use crate::file_system::volume::LaneKey;
 use crate::file_system::volume::manager::get_volume_manager;
@@ -198,8 +197,8 @@ pub(crate) async fn archive_edit_start(
                 Arc::clone(&state),
                 move |working: &Path| {
                     mutator::apply(working, &changeset, &*hooks_for_blocking).map_err(|e| match e {
-                        MutationError::Cancelled => PlanError::Cancelled,
-                        other => PlanError::Op(to_write_error(working, other)),
+                        MutationError::Cancelled => EditError::Cancelled,
+                        other => EditError::Op(to_write_error(working, other)),
                     })
                 },
             )

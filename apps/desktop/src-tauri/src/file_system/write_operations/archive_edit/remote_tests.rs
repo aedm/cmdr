@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use super::super::state::{OperationIntent, WriteOperationState};
+use super::super::super::state::{OperationIntent, WriteOperationState};
 use super::pull_apply_upload_swap;
 use crate::file_system::volume::{InMemoryVolume, Volume};
 use cmdr_archive::mutator::{self, AddEntry, AddSource, Changeset, MutationHooks};
@@ -130,7 +130,7 @@ async fn run_add_edit(parent: Arc<dyn Volume>, archive_path: PathBuf) -> bool {
         parent,
         archive_path,
         running_state(),
-        move |working: &Path| -> Result<(), super::RemoteEditError> {
+        move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
                 ..Default::default()
@@ -248,7 +248,7 @@ async fn remote_edit_adds_an_entry_and_swaps_it_into_place() {
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
-        move |working: &Path| -> Result<(), super::RemoteEditError> {
+        move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
                 ..Default::default()
@@ -292,7 +292,7 @@ async fn remote_edit_cancel_before_swap_leaves_the_original_intact() {
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
-        move |working: &Path| -> Result<(), super::RemoteEditError> {
+        move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
                 ..Default::default()
@@ -306,7 +306,7 @@ async fn remote_edit_cancel_before_swap_leaves_the_original_intact() {
     )
     .await;
     assert!(
-        matches!(result, Err(super::RemoteEditError::Cancelled)),
+        matches!(result, Err(super::EditError::Cancelled)),
         "a cancel before the swap must report Cancelled"
     );
 
@@ -339,7 +339,7 @@ async fn remote_edit_swaps_via_delete_then_rename_on_a_sibling_allowing_backend(
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
-        move |working: &Path| -> Result<(), super::RemoteEditError> {
+        move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 deletes: vec!["keep.txt".to_string()],
                 adds: vec![add_entry("added.txt", b"fresh bytes")],

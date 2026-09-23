@@ -30,7 +30,7 @@
 //!
 //! A cancel at ANY point before the swap completes leaves the remote original
 //! intact (the local temp and any partial remote temp are cleaned up). Pinned by
-//! `archive_remote_edit_tests`.
+//! `remote_tests`.
 
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -40,9 +40,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
-use super::scratch_dir::ScratchDir;
-use super::state::{WriteOperationState, is_cancelled};
-use super::types::WriteOperationError;
+use super::super::scratch_dir::ScratchDir;
+use super::super::state::{WriteOperationState, is_cancelled};
+use super::super::types::WriteOperationError;
+use super::edit_error::EditError;
 use crate::file_system::volume::{LocalPosixVolume, Volume, VolumeError};
 
 /// Same-directory temp infix: `foo.zip` uploads as `foo.zip.cmdr-tmp-<uuid>`.
@@ -62,24 +63,8 @@ use cmdr_fs::staging::STAGING_TEMP_MARKER as TEMP_INFIX;
 /// the device's). A leftover is harmless while it waits (the original is intact and
 /// the temp holds the fully-uploaded NEW bytes), so erring long costs almost
 /// nothing; erring short risks deleting a legitimate in-flight upload. See the
-/// module docs and `write_operations/DETAILS.md` § "Remote edit".
+/// module docs and `archive_edit/DETAILS.md` § "Remote edit".
 const REMOTE_TEMP_REAP_MIN_AGE: Duration = Duration::from_secs(24 * 60 * 60);
-
-/// A failure from the remote pull / upload / swap orchestration. Structurally the
-/// twin of `archive_edit::engine::PlanError` (a `From` impl in that module bridges them),
-/// so the driver's terminal-event handling stays uniform local vs remote.
-///
-/// `pub(crate)` (not `pub(super)`) so the live-SMB and MTP integration suites
-/// under `file_system::volume::backends` can drive [`pull_apply_upload_swap`]
-/// directly against a real remote volume.
-pub(crate) enum RemoteEditError {
-    /// The op was cancelled before the swap committed — the remote original is
-    /// untouched.
-    Cancelled,
-    /// A real fault at a remote stage (pull, upload, or swap) or in the local
-    /// apply closure.
-    Op(WriteOperationError),
-}
 
 /// Runs a local plan+apply closure against a REMOTE archive by pulling it to a
 /// local temp first and uploading+swapping after. `plan_and_apply` is exactly the
@@ -89,19 +74,21 @@ pub(crate) enum RemoteEditError {
 ///
 /// The closure runs on the blocking pool (it decompresses/compresses/fsyncs); the
 /// pull, upload, and swap are async I/O against the parent volume.
-pub(crate) async fn pull_apply_upload_swap<T, E, F>(
+///
+/// `pub(crate)` so the live-SMB and MTP integration suites can drive it directly
+/// against a real remote volume.
+pub(crate) async fn pull_apply_upload_swap<T, F>(
     parent: Arc<dyn Volume>,
     archive_path: PathBuf,
     state: Arc<WriteOperationState>,
     plan_and_apply: F,
-) -> Result<T, RemoteEditError>
+) -> Result<T, EditError>
 where
-    F: FnOnce(&Path) -> Result<T, E> + Send + 'static,
-    E: Into<RemoteEditError> + Send + 'static,
+    F: FnOnce(&Path) -> Result<T, EditError> + Send + 'static,
     T: Send + 'static,
 {
     if is_cancelled(&state.intent) {
-        return Err(RemoteEditError::Cancelled);
+        return Err(EditError::Cancelled);
     }
 
     // Reap any stale upload temp left on the remote by a prior crash between an
@@ -123,12 +110,12 @@ where
     //    original (its own temp abandoned) — nothing remote has changed yet.
     let working_for_blocking = working.clone();
     let value = match tokio::task::spawn_blocking(move || plan_and_apply(&working_for_blocking)).await {
-        Ok(result) => result.map_err(Into::into)?,
+        Ok(result) => result?,
         Err(join) => return Err(io_op(&working.display().to_string(), &join.to_string())),
     };
 
     if is_cancelled(&state.intent) {
-        return Err(RemoteEditError::Cancelled);
+        return Err(EditError::Cancelled);
     }
 
     // 3+4) Upload the edited local copy under a remote TEMP name, then swap it into
@@ -143,16 +130,14 @@ where
 /// `.cmdr-tmp-<uuid>` sibling, then swap it into place. The remote target keeps its
 /// old bytes — or its ABSENCE, for a brand-new target — until the atomic swap, so a
 /// cancel/fault before the swap leaves it untouched with no torn file. Used to SEED
-/// a remote compress target with a valid empty zip (see `archive_edit::compress`),
-/// and as `pull_apply_upload_swap`'s own commit.
-///
-/// `pub(crate)` so the compress seed (in `archive_edit`) can reuse it.
-pub(crate) async fn place_local_file(
+/// a remote compress target with a valid empty zip (see `compress.rs`), and as
+/// `pull_apply_upload_swap`'s own commit.
+pub(super) async fn place_local_file(
     parent: &dyn Volume,
     local_file: &Path,
     remote_path: &Path,
     state: &WriteOperationState,
-) -> Result<(), RemoteEditError> {
+) -> Result<(), EditError> {
     let remote_temp = remote_temp_sibling(remote_path);
     upload_archive(parent, local_file, &remote_temp, state).await?;
     swap_into_place(parent, &remote_temp, remote_path).await?;
@@ -167,7 +152,7 @@ async fn pull_archive(
     remote_path: &Path,
     local_working: &Path,
     state: &WriteOperationState,
-) -> Result<(), RemoteEditError> {
+) -> Result<(), EditError> {
     let mut stream = parent
         .open_read_stream(remote_path)
         .await
@@ -178,7 +163,7 @@ async fn pull_archive(
 
     while let Some(chunk) = stream.next_chunk().await {
         if is_cancelled(&state.intent) {
-            return Err(RemoteEditError::Cancelled);
+            return Err(EditError::Cancelled);
         }
         let chunk = chunk.map_err(vol_op(remote_path))?;
         file.write_all(&chunk)
@@ -202,7 +187,7 @@ async fn upload_archive(
     local_working: &Path,
     remote_temp: &Path,
     state: &WriteOperationState,
-) -> Result<(), RemoteEditError> {
+) -> Result<(), EditError> {
     let size = std::fs::metadata(local_working)
         .map_err(|e| io_op(&local_working.display().to_string(), &e.to_string()))?
         .len();
@@ -230,9 +215,9 @@ async fn upload_archive(
             // stray `.cmdr-tmp-*` (harmless — the original is intact — but tidy).
             let _ = parent.delete(remote_temp).await;
             if is_cancelled(&state.intent) {
-                Err(RemoteEditError::Cancelled)
+                Err(EditError::Cancelled)
             } else {
-                Err(RemoteEditError::Op(to_write_error(remote_temp, &err)))
+                Err(EditError::Op(to_write_error(remote_temp, &err)))
             }
         }
     }
@@ -240,7 +225,7 @@ async fn upload_archive(
 
 /// Swaps the uploaded temp into the original's place — the ONLY step that changes
 /// the remote original. See the module-level data-safety contract.
-async fn swap_into_place(parent: &dyn Volume, remote_temp: &Path, archive_path: &Path) -> Result<(), RemoteEditError> {
+async fn swap_into_place(parent: &dyn Volume, remote_temp: &Path, archive_path: &Path) -> Result<(), EditError> {
     // Prefer an ATOMIC rename-overwrite where the backend rejects a same-name
     // collision (SMB, local FS): if the server supports `ReplaceIfExists` the
     // rename replaces the original in one step; if not, it fails and we fall
@@ -260,7 +245,7 @@ async fn swap_into_place(parent: &dyn Volume, remote_temp: &Path, archive_path: 
     match parent.delete(archive_path).await {
         Ok(()) => {}
         Err(VolumeError::NotFound(_)) => {}
-        Err(err) => return Err(RemoteEditError::Op(to_write_error(archive_path, &err))),
+        Err(err) => return Err(EditError::Op(to_write_error(archive_path, &err))),
     }
     parent
         .rename(remote_temp, archive_path, false)
@@ -341,8 +326,8 @@ async fn reap_remote_temps(parent: &dyn Volume, archive_path: &Path) {
     }
 }
 
-fn vol_op(path: &Path) -> impl Fn(VolumeError) -> RemoteEditError + '_ {
-    move |err| RemoteEditError::Op(to_write_error(path, &err))
+fn vol_op(path: &Path) -> impl Fn(VolumeError) -> EditError + '_ {
+    move |err| EditError::Op(to_write_error(path, &err))
 }
 
 fn to_write_error(path: &Path, err: &VolumeError) -> WriteOperationError {
@@ -352,13 +337,13 @@ fn to_write_error(path: &Path, err: &VolumeError) -> WriteOperationError {
     }
 }
 
-fn io_op(path: &str, message: &str) -> RemoteEditError {
-    RemoteEditError::Op(WriteOperationError::IoError {
+fn io_op(path: &str, message: &str) -> EditError {
+    EditError::Op(WriteOperationError::IoError {
         path: path.to_string(),
         message: message.to_string(),
     })
 }
 
 #[cfg(test)]
-#[path = "archive_remote_edit_tests.rs"]
-mod archive_remote_edit_tests;
+#[path = "remote_tests.rs"]
+mod remote_tests;
