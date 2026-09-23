@@ -48,8 +48,11 @@ then subscribes to `onVolumeSpaceChanged` (filtered to its `volumeId`) and updat
 drains. That stream already flows for the boot volume: the poller's permanent `low-space:boot` watcher keeps
 `volume-space-changed` emitting every tick while the warning is on, independent of what the panes show. The percent is
 computed on the frontend from `available / total` (mirroring the backend's `free_percent`, including the
-`total == 0 → 100` guard), so no pre-baked percent crosses the IPC boundary. The listener is unsubscribed on destroy,
-with a `disposed` guard for the case where the toast is dismissed before the async `listen` resolves.
+`total == 0 → 100` guard), so no pre-baked percent crosses the IPC boundary. `figures.ts` (`lowSpaceFigures`) writes
+both figures for the toast and the macOS notification: the free space scaled to the drive exactly as the status bar
+writes it, and the percent to a tenth in the active locale. While the toast is up, the poller also emits on that tenth
+(`toast_up` in `space_poller/mod.rs`). The listener is unsubscribed on destroy, with a `disposed` guard for the case
+where the toast is dismissed before the async `listen` resolves.
 
 "Disable these notifications" flips the mode to `'off'` (the applier pushes the disable to the backend), dismisses the
 toast, and deep-links to the Settings sub-group so the user sees where to re-enable it.

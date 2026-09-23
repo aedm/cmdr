@@ -18,7 +18,7 @@
     import { onMount } from 'svelte'
     import { dismissToast } from '$lib/ui/toast'
     import Button from '$lib/ui/Button.svelte'
-    import { formatByteSize } from '$lib/units'
+    import { lowSpaceFigures } from './figures'
     import { onVolumeSpaceChanged } from '$lib/tauri-commands'
     import { setLowDiskSpaceNotificationsMode, openSettingsToLowDiskSpace } from './notifications-mode'
     import { getAppLogger } from '$lib/logging/logger'
@@ -39,11 +39,7 @@
     let available = $state(availableBytes)
     let total = $state(totalBytes)
 
-    // Mirror the backend's `free_percent`: an unknown total reads as 100 (not low)
-    // so a bogus fetch can't render a nonsense percentage.
-    const freePercent = $derived(total === 0 ? 100 : (available / total) * 100)
-    const freeText = $derived(formatByteSize(available))
-    const percentText = $derived(freePercent.toFixed(1))
+    const figures = $derived(lowSpaceFigures(available, total))
 
     onMount(() => {
         let unlisten: (() => void) | undefined
@@ -80,7 +76,7 @@
 
 <div class="content">
     <span class="message">
-        {tString('lowDiskSpace.toast.message', { freeText, percentText })}
+        {tString('lowDiskSpace.toast.message', figures)}
     </span>
     <div class="actions">
         <Button size="mini" variant="secondary" onclick={() => void handleDisable()}

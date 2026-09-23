@@ -152,6 +152,8 @@ var rustWorkspaceConfigInputs = []string{
 // rustEmbeddedInputs are the non-`.rs` files a member's sources pull into the
 // binary with `include_str!`. `whats_new` embeds the repo-root changelog and a
 // test parses the real thing, so it's a compile-time source like any `.rs` file.
+// The disk-space emit gate's test reads the drive-figure table it shares with the
+// frontend (`space_poller/readout.rs`).
 //
 // A lane carries this whenever its own set covers the tree that does the
 // embedding, which is what `TestRustInputsCoverEveryEmbeddedFile` walks the whole
@@ -161,6 +163,7 @@ var rustWorkspaceConfigInputs = []string{
 // edits and reported a green describing the previous content.
 var rustEmbeddedInputs = []string{
 	"CHANGELOG.md",
+	"apps/desktop/src/lib/units/drive-figure-cases.json",
 }
 
 // rustScanInputs is what a Rust source scanner of the given jurisdiction reads:

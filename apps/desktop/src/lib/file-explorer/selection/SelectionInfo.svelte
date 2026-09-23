@@ -35,12 +35,11 @@
     import { useShortenMiddle } from '$lib/utils/shorten-middle-action'
     import type { SpaceInfo } from '$lib/ipc/bindings'
     import { formatDiskSpaceStatus, formatSpaceNotes } from '../disk-space-utils'
-    import { formatFileSizeWithFormat, formatByteSize } from '$lib/units'
+    import { formatByteSize } from '$lib/units'
 
     // Free-space text is intentionally uncolored: red GB would falsely signal "low space".
     function diskSpaceStatusText(space: SpaceInfo): string {
-        const format = getFileSizeFormat()
-        return formatDiskSpaceStatus(space, (b) => formatFileSizeWithFormat(b, format))
+        return formatDiskSpaceStatus(space, getFileSizeFormat())
     }
 
     // The same sentences the usage bar's tooltip appends, so this text carries the

@@ -87,7 +87,7 @@
     import { getVolumes as getStoreVolumes } from '$lib/stores/volume-store.svelte'
     import type { UnreachableState } from '../tabs/tab-types'
     import { getUsageBar, formatBarTooltip } from '../disk-space-utils'
-    import { getTypeToJumpResetDelay } from '$lib/settings/reactive-settings.svelte'
+    import { getFileSizeFormat, getTypeToJumpResetDelay } from '$lib/settings/reactive-settings.svelte'
     import { createRowOverlays } from './row-overlays.svelte'
     import { createSelectionInfoFeed } from './selection-info-feed.svelte'
     import { createPaneKeyRouter } from './pane-key-router'
@@ -102,7 +102,6 @@
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
-    import { formatByteSize } from '$lib/units'
 
     interface Props {
         initialPath: string
@@ -2063,7 +2062,7 @@
         <div
             class="disk-usage-bar-wrapper"
             use:tooltip={diskSpace.volumeSpace
-                ? { text: formatBarTooltip(diskSpace.volumeSpace, formatByteSize, mtpSpaceHint) }
+                ? { text: formatBarTooltip(diskSpace.volumeSpace, getFileSizeFormat(), mtpSpaceHint) }
                 : ''}
         >
             <div

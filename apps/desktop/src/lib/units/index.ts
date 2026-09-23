@@ -35,7 +35,7 @@
  */
 
 import { getFileSizeFormat } from '$lib/settings/reactive-settings.svelte'
-import { formatFileSizeWithFormat } from './byte-size'
+import { formatDriveFigure, formatFileSizeWithFormat } from './byte-size'
 
 export {
   type ByteCount,
@@ -46,6 +46,7 @@ export {
   unitLabel,
   dynamicTierIndex,
   formatFileSizeWithFormat,
+  formatDriveFigure,
 } from './byte-size'
 
 export { type Seconds, seconds, formatDuration, formatMilliseconds, formatFilesPerSecond } from './duration'
@@ -59,4 +60,16 @@ export { type Seconds, seconds, formatDuration, formatMilliseconds, formatFilesP
  */
 export function formatByteSize(byteCount: number, forceUnit?: 'kB' | 'MB' | 'GB'): string {
   return formatFileSizeWithFormat(byteCount, getFileSizeFormat(), forceUnit)
+}
+
+/**
+ * Format a drive's free or total space as precisely as the drive's size makes worth reading,
+ * honoring the user's binary/SI setting. The free-space readouts use it (status bar, usage-bar
+ * tooltip, drive picker, low-space warning); see `formatDriveFigure`.
+ *
+ * @param byteCount The figure: free or total bytes
+ * @param driveBytes The drive's total size, which sets the precision
+ */
+export function formatDriveSize(byteCount: number, driveBytes: number): string {
+  return formatDriveFigure(byteCount, driveBytes, getFileSizeFormat())
 }

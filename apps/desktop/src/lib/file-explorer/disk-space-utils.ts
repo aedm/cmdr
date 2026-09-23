@@ -1,8 +1,8 @@
 import { tString } from '$lib/intl/messages.svelte'
 import { formatInteger } from '$lib/intl/number-format'
 import type { SpaceInfo } from '$lib/ipc/bindings'
-
-type FormatSize = (bytes: number) => string
+import type { FileSizeFormat } from '$lib/settings/types'
+import { formatDriveFigure, formatFileSizeWithFormat } from '$lib/units'
 
 /** The bounded half of `SpaceInfo`: the only shape a percentage means anything on. */
 export type BoundedSpaceInfo = Extract<SpaceInfo, { kind: 'bounded' }>
@@ -60,33 +60,43 @@ function freePercentText(space: BoundedSpaceInfo): string {
 }
 
 /**
- * Formats the status bar text: "420 GB of 1 TB free (42%)", or "64 MB used"
+ * The free and total figures, each as precise as the drive's size makes worth reading
+ * (`formatDriveFigure`): about one step per pixel of the usage bar, so a write the bar can't show
+ * doesn't change the text either. The backend's emit gate rounds the same way
+ * (`space_poller/readout.rs`).
+ */
+function driveFigures(space: BoundedSpaceInfo, format: FileSizeFormat): { freeText: string; totalText: string } {
+  return {
+    freeText: formatDriveFigure(space.availableBytes, space.totalBytes, format),
+    totalText: formatDriveFigure(space.totalBytes, space.totalBytes, format),
+  }
+}
+
+/** What storage with no ceiling holds. No drive size to scale by, so the usual two decimals. */
+function usedText(usedBytes: number, format: FileSizeFormat): string {
+  return tString('fileExplorer.diskSpace.used', { usedText: formatFileSizeWithFormat(usedBytes, format) })
+}
+
+/**
+ * Formats the status bar text: "261 GB of 926 GB free (28%)", or "64.21 MB used"
  * where there is no ceiling and so no free figure to state.
  */
-export function formatDiskSpaceStatus(space: SpaceInfo, formatSize: FormatSize): string {
-  if (space.kind !== 'bounded') {
-    return tString('fileExplorer.diskSpace.used', { usedText: formatSize(space.usedBytes) })
-  }
+export function formatDiskSpaceStatus(space: SpaceInfo, format: FileSizeFormat): string {
+  if (space.kind !== 'bounded') return usedText(space.usedBytes, format)
   return tString('fileExplorer.diskSpace.free', {
-    freeText: formatSize(space.availableBytes),
-    totalText: formatSize(space.totalBytes),
+    ...driveFigures(space, format),
     percentText: freePercentText(space),
   })
 }
 
 /**
- * Formats the short volume selector text: "420 GB free of 1 TB", or "64 MB used"
+ * Formats the short volume selector text: "261 GB free of 926 GB", or "64.21 MB used"
  * where there is no ceiling. The unbounded line is already short, so it's the
  * same sentence the status bar shows.
  */
-export function formatDiskSpaceShort(space: SpaceInfo, formatSize: FormatSize): string {
-  if (space.kind !== 'bounded') {
-    return tString('fileExplorer.diskSpace.used', { usedText: formatSize(space.usedBytes) })
-  }
-  return tString('fileExplorer.diskSpace.freeShort', {
-    freeText: formatSize(space.availableBytes),
-    totalText: formatSize(space.totalBytes),
-  })
+export function formatDiskSpaceShort(space: SpaceInfo, format: FileSizeFormat): string {
+  if (space.kind !== 'bounded') return usedText(space.usedBytes, format)
+  return tString('fileExplorer.diskSpace.freeShort', driveFigures(space, format))
 }
 
 /**
@@ -121,11 +131,11 @@ export function formatSpaceNotes(space: SpaceInfo, mtpHint?: string): string {
  * owns how they're joined: a language that ends a sentence with something other
  * than `. ` gets to say so.
  */
-export function formatBarTooltip(space: SpaceInfo, formatSize: FormatSize, mtpHint?: string): string {
+export function formatBarTooltip(space: SpaceInfo, format: FileSizeFormat, mtpHint?: string): string {
   const notes = formatSpaceNotes(space, mtpHint)
   return tString('fileExplorer.diskSpace.barTooltip', {
     hasNotes: notes ? 'yes' : 'no',
-    sizes: formatDiskSpaceStatus(space, formatSize),
+    sizes: formatDiskSpaceStatus(space, format),
     notes,
   })
 }

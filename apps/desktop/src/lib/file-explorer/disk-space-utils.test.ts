@@ -12,8 +12,6 @@ import {
 } from './disk-space-utils'
 import type { SpaceInfo } from '$lib/ipc/bindings'
 
-const mockFormatSize = (bytes: number): string => `${String(bytes)} B`
-
 function createSpace(totalBytes: number, availableBytes: number): BoundedSpaceInfo {
   return { kind: 'bounded', totalBytes, availableBytes, usedBytes: totalBytes - availableBytes }
 }
@@ -123,92 +121,93 @@ describe('getUsedPercent', () => {
 describe('formatDiskSpaceStatus', () => {
   it('formats status text with free space and percentage', () => {
     const space = createSpace(1000, 420)
-    const result = formatDiskSpaceStatus(space, mockFormatSize)
-    expect(result).toBe('420 B of 1000 B free (42%)')
+    const result = formatDiskSpaceStatus(space, 'binary')
+    expect(result).toBe('420 bytes of 1000 bytes free (42%)')
   })
 
   it('handles full disk', () => {
     const space = createSpace(1000, 0)
-    const result = formatDiskSpaceStatus(space, mockFormatSize)
-    expect(result).toBe('0 B of 1000 B free (0%)')
+    const result = formatDiskSpaceStatus(space, 'binary')
+    expect(result).toBe('0 bytes of 1000 bytes free (0%)')
   })
 
   it('handles empty disk', () => {
     const space = createSpace(1000, 1000)
-    const result = formatDiskSpaceStatus(space, mockFormatSize)
-    expect(result).toBe('1000 B of 1000 B free (100%)')
+    const result = formatDiskSpaceStatus(space, 'binary')
+    expect(result).toBe('1000 bytes of 1000 bytes free (100%)')
   })
 })
 
 describe('formatDiskSpaceShort', () => {
   it('formats short text', () => {
     const space = createSpace(1000, 420)
-    const result = formatDiskSpaceShort(space, mockFormatSize)
-    expect(result).toBe('420 B free of 1000 B')
+    const result = formatDiskSpaceShort(space, 'binary')
+    expect(result).toBe('420 bytes free of 1000 bytes')
   })
 
   it('handles full disk', () => {
     const space = createSpace(1000, 0)
-    const result = formatDiskSpaceShort(space, mockFormatSize)
-    expect(result).toBe('0 B free of 1000 B')
+    const result = formatDiskSpaceShort(space, 'binary')
+    expect(result).toBe('0 bytes free of 1000 bytes')
   })
 })
 
 describe('formatBarTooltip', () => {
   it('shows sizes and percentage when space is OK', () => {
     const space = createSpace(1000, 400) // 60% used, 40% free
-    expect(formatBarTooltip(space, mockFormatSize)).toBe('400 B of 1000 B free (40%)')
+    expect(formatBarTooltip(space, 'binary')).toBe('400 bytes of 1000 bytes free (40%)')
   })
 
   it('includes yellow warning when space is somewhat low', () => {
     const space = createSpace(1000, 100) // 90% used, 10% free
-    expect(formatBarTooltip(space, mockFormatSize)).toBe(
-      '100 B of 1000 B free (10%). This bar is yellow to indicate that the volume is somewhat low on space.',
+    expect(formatBarTooltip(space, 'binary')).toBe(
+      '100 bytes of 1000 bytes free (10%). This bar is yellow to indicate that the volume is somewhat low on space.',
     )
   })
 
   it('includes red warning when space is low', () => {
     const space = createSpace(1000, 20) // 98% used, 2% free
-    expect(formatBarTooltip(space, mockFormatSize)).toBe(
-      '20 B of 1000 B free (2%). This bar is red to indicate that the volume is low on space.',
+    expect(formatBarTooltip(space, 'binary')).toBe(
+      '20 bytes of 1000 bytes free (2%). This bar is red to indicate that the volume is low on space.',
     )
   })
 
   it('shows 100% free for empty disk', () => {
     const space = createSpace(1000, 1000)
-    expect(formatBarTooltip(space, mockFormatSize)).toBe('1000 B of 1000 B free (100%)')
+    expect(formatBarTooltip(space, 'binary')).toBe('1000 bytes of 1000 bytes free (100%)')
   })
 
   it('shows 0% free for full disk with red warning', () => {
     const space = createSpace(1000, 0)
-    expect(formatBarTooltip(space, mockFormatSize)).toBe(
-      '0 B of 1000 B free (0%). This bar is red to indicate that the volume is low on space.',
+    expect(formatBarTooltip(space, 'binary')).toBe(
+      '0 bytes of 1000 bytes free (0%). This bar is red to indicate that the volume is low on space.',
     )
   })
 
-  it('uses the provided formatSize function', () => {
-    const space = createSpace(1073741824, 536870912)
-    const customFormat = (bytes: number): string => `${String(Math.round(bytes / 1073741824))} GB`
-    expect(formatBarTooltip(space, customFormat)).toBe('1 GB of 1 GB free (50%)')
+  it('scales the figures to the drive, about one step per pixel of the bar', () => {
+    // A 926 GB SSD moves in whole gigabytes: a tenth of one is a tenth of a pixel.
+    const space = createSpace(994_286_378_496, 280_660_262_912)
+    expect(formatBarTooltip(space, 'binary')).toBe('261 GB of 926 GB free (28%)')
+    expect(formatDiskSpaceShort(space, 'si')).toBe('281 GB free of 994 GB')
   })
 
   it('appends the extra hint after the sizes when space is OK', () => {
     const space = createSpace(1000, 400) // 60% used
-    expect(formatBarTooltip(space, mockFormatSize, 'Phones hide app data.')).toBe(
-      '400 B of 1000 B free (40%). Phones hide app data.',
+    expect(formatBarTooltip(space, 'binary', 'Phones hide app data.')).toBe(
+      '400 bytes of 1000 bytes free (40%). Phones hide app data.',
     )
   })
 
   it('appends the extra hint after a low-space warning', () => {
     const space = createSpace(1000, 100) // 90% used → yellow
-    expect(formatBarTooltip(space, mockFormatSize, 'Phones hide app data.')).toBe(
-      '100 B of 1000 B free (10%). This bar is yellow to indicate that the volume is somewhat low on space. Phones hide app data.',
+    expect(formatBarTooltip(space, 'binary', 'Phones hide app data.')).toBe(
+      '100 bytes of 1000 bytes free (10%). This bar is yellow to indicate that the volume is somewhat low on space. Phones hide app data.',
     )
   })
 
   it('omits the hint when none is provided', () => {
     const space = createSpace(1000, 400)
-    expect(formatBarTooltip(space, mockFormatSize, undefined)).toBe('400 B of 1000 B free (40%)')
+    expect(formatBarTooltip(space, 'binary', undefined)).toBe('400 bytes of 1000 bytes free (40%)')
   })
 
   it('reports the same percentage the status bar does, even where the two roundings diverge', () => {
@@ -216,8 +215,8 @@ describe('formatBarTooltip', () => {
     // rounding the free half gives 40. The tooltip used to do the former and the
     // status bar the latter, so the same volume read two ways at once.
     const space = createSpace(1000, 395)
-    expect(formatBarTooltip(space, mockFormatSize)).toBe(formatDiskSpaceStatus(space, mockFormatSize))
-    expect(formatBarTooltip(space, mockFormatSize)).toBe('395 B of 1000 B free (40%)')
+    expect(formatBarTooltip(space, 'binary')).toBe(formatDiskSpaceStatus(space, 'binary'))
+    expect(formatBarTooltip(space, 'binary')).toBe('395 bytes of 1000 bytes free (40%)')
   })
 })
 
@@ -242,11 +241,11 @@ describe('storage with no ceiling', () => {
   })
 
   it('states what is stored instead of what is free', () => {
-    expect(formatDiskSpaceStatus(createUnbounded(64_000_000), mockFormatSize)).toBe('64000000 B used')
+    expect(formatDiskSpaceStatus(createUnbounded(64_000_000), 'binary')).toBe('61.04 MB used')
   })
 
   it('states the same thing in the narrow drive picker', () => {
-    expect(formatDiskSpaceShort(createUnbounded(64_000_000), mockFormatSize)).toBe('64000000 B used')
+    expect(formatDiskSpaceShort(createUnbounded(64_000_000), 'binary')).toBe('61.04 MB used')
   })
 
   it('never fires a low-space warning, however much is stored', () => {
@@ -258,14 +257,14 @@ describe('storage with no ceiling', () => {
   })
 
   it('explains in the tooltip why there is no bar', () => {
-    expect(formatBarTooltip(createUnbounded(64_000_000), mockFormatSize)).toBe(
-      "64000000 B used. This storage has no size limit, so there's no bar to fill.",
+    expect(formatBarTooltip(createUnbounded(64_000_000), 'binary')).toBe(
+      "61.04 MB used. This storage has no size limit, so there's no bar to fill.",
     )
   })
 
   it('still carries the phone-storage hint after its own note', () => {
-    expect(formatBarTooltip(createUnbounded(64_000_000), mockFormatSize, 'Phones hide app data.')).toBe(
-      "64000000 B used. This storage has no size limit, so there's no bar to fill. Phones hide app data.",
+    expect(formatBarTooltip(createUnbounded(64_000_000), 'binary', 'Phones hide app data.')).toBe(
+      "61.04 MB used. This storage has no size limit, so there's no bar to fill. Phones hide app data.",
     )
   })
 })

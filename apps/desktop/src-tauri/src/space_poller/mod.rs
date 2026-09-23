@@ -366,7 +366,11 @@ async fn poll_loop() {
                 check_low_space(&volume_id, &space);
             }
 
-            if visible && should_emit(last_emitted(&volume_id).as_ref(), &space, threshold, format) {
+            // The toast shows the boot volume's free percent to a tenth while the warning is up.
+            let toast_up = volume_id == DEFAULT_VOLUME_ID
+                && LOW_SPACE_ENABLED.load(Ordering::Relaxed)
+                && !LOW_SPACE_ARMED.load(Ordering::Relaxed);
+            if visible && should_emit(last_emitted(&volume_id).as_ref(), &space, threshold, format, toast_up) {
                 record_emitted(&volume_id, &space);
                 emit(&volume_id, &space);
             }
@@ -521,17 +525,25 @@ fn log_figure(space: &SpaceInfo) -> String {
 /// Whether a fresh reading should reach the frontend, given the last one that did.
 ///
 /// Only when the readout would draw something different ([`readout`]), AND the moving figure
-/// moved by the user's `advanced.diskSpaceChangeThreshold`. A reading below the readout's last
-/// digit repaints both status bars for nothing, which was most of the GPU process's idle work.
+/// moved by the user's `advanced.diskSpaceChangeThreshold`. The readout resolves a drive into
+/// about 1,000 steps, so a busy 1 TB disk emits once per gigabyte, not once per 10 MB: a reading
+/// below its last digit repaints both status bars for nothing, which was most of the GPU process's
+/// idle work. `toast_up`: the low-space toast's tenth-of-a-percent counts too.
 ///
 /// A volume that changed SHAPE (a quota added or lifted between polls) always emits: the two
 /// figures aren't comparable, and the pane has a different thing to draw.
-fn should_emit(last_emitted: Option<&SpaceInfo>, new: &SpaceInfo, threshold: u64, format: FileSizeFormat) -> bool {
+fn should_emit(
+    last_emitted: Option<&SpaceInfo>,
+    new: &SpaceInfo,
+    threshold: u64,
+    format: FileSizeFormat,
+    toast_up: bool,
+) -> bool {
     let Some(old) = last_emitted else { return true };
     if old.available_bytes().is_some() != new.available_bytes().is_some() {
         return true;
     }
-    if readout::displayed_space(old, format) == readout::displayed_space(new, format) {
+    if readout::displayed_space(old, format, toast_up) == readout::displayed_space(new, format, toast_up) {
         return false;
     }
     (moving_figure(old) as i64 - moving_figure(new) as i64).unsigned_abs() >= threshold
@@ -682,53 +694,42 @@ mod emit_tests {
         SpaceInfo::bounded(926 * GIB, available)
     }
 
+    fn emits(last: Option<&SpaceInfo>, new: &SpaceInfo, threshold: u64) -> bool {
+        should_emit(last, new, threshold, FileSizeFormat::Binary, false)
+    }
+
     #[test]
     fn the_first_reading_always_goes_out() {
-        assert!(should_emit(
-            None,
-            &free(261 * GIB),
-            ONE_MB_THRESHOLD,
-            FileSizeFormat::Binary
-        ));
+        assert!(emits(None, &free(261 * GIB), ONE_MB_THRESHOLD));
     }
 
     #[test]
     fn a_change_the_readout_cannot_show_stays_home() {
-        // 261.20 GB free moving by 3 MiB: past the 1 MB setting, but both read 261.20 GB, 28%.
-        let last = free(261 * GIB + 205 * MIB);
-        let new = free(261 * GIB + 202 * MIB);
-        assert!(!should_emit(
-            Some(&last),
-            &new,
-            ONE_MB_THRESHOLD,
-            FileSizeFormat::Binary
-        ));
+        // 261 GB of 926 GB, moving by 300 MiB: past the 1 MB setting, but both read 261 GB, 28%.
+        let last = free(261 * GIB + 100 * MIB);
+        let new = free(261 * GIB + 400 * MIB);
+        assert!(!emits(Some(&last), &new, ONE_MB_THRESHOLD));
     }
 
     #[test]
     fn a_change_the_readout_shows_goes_out() {
         let last = free(261 * GIB + 205 * MIB);
-        let new = free(261 * GIB + 180 * MIB);
-        assert!(should_emit(Some(&last), &new, ONE_MB_THRESHOLD, FileSizeFormat::Binary));
+        let new = free(260 * GIB + 100 * MIB);
+        assert!(emits(Some(&last), &new, ONE_MB_THRESHOLD));
     }
 
     #[test]
     fn the_user_threshold_still_applies_on_top() {
-        // The digits move, but the user asked to hear only about 100 MB or more.
+        // The digits move, but the user asked to hear only about 2,000 MB or more.
         let last = free(261 * GIB + 205 * MIB);
-        let new = free(261 * GIB + 180 * MIB);
-        assert!(!should_emit(
-            Some(&last),
-            &new,
-            100 * ONE_MB_THRESHOLD,
-            FileSizeFormat::Binary
-        ));
+        let new = free(260 * GIB + 100 * MIB);
+        assert!(!emits(Some(&last), &new, 2000 * ONE_MB_THRESHOLD));
     }
 
     #[test]
     fn a_volume_that_changed_shape_always_goes_out() {
         let last = SpaceInfo::Unbounded { used_bytes: 64 * MIB };
         let new = SpaceInfo::bounded(GIB, GIB - 64 * MIB);
-        assert!(should_emit(Some(&last), &new, ONE_MB_THRESHOLD, FileSizeFormat::Binary));
+        assert!(emits(Some(&last), &new, ONE_MB_THRESHOLD));
     }
 }

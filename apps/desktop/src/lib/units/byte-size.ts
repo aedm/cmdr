@@ -197,3 +197,53 @@ export function dynamicTierIndex(byteCount: number, format: FileSizeFormat): num
   }
   return tier
 }
+
+/**
+ * How many steps a drive's free-space readout resolves the drive into: about one per pixel of a
+ * pane's usage bar. The figure never claims more precision than that, so a write the bar can't
+ * show doesn't change the text either.
+ *
+ * ❗ Mirrored by `src-tauri/src/space_poller/readout.rs` (`DRIVE_STEPS`), whose emit gate has to
+ * know when this text changes. Both test against `drive-figure-cases.json`.
+ */
+const DRIVE_STEPS = 1000
+
+/**
+ * Format a figure on a drive of `driveBytes` (its free or total space) as precisely as the drive's
+ * size makes worth reading: about one step per pixel of the usage bar ({@link DRIVE_STEPS}), and
+ * never coarser than the live form ("2.3 GB", "261 GB").
+ *
+ * In the friendliest unit, the fraction digits are the most (up to two) whose step is still at
+ * least 1/1000 of the drive, and at least one below ten. So an 8 MB card reads "3.20 MB", a 1 TB
+ * SSD "261 GB", a 4 TB drive "1.23 TB", and the same SSD nearly full "2.3 GB", then "800 MB".
+ */
+export function formatDriveFigure(byteCount: number, driveBytes: number, format: FileSizeFormat): string {
+  const base = baseFor(format)
+  const units = format === 'binary' ? binaryUnits : siUnits
+  let value = byteCount
+  let unitIndex = 0
+  while (value >= base && unitIndex < units.length - 1) {
+    value /= base
+    unitIndex++
+  }
+  if (unitIndex === 0) return `${formatSizeInteger(value)} ${units[0]}`
+
+  const unitBytes = base ** unitIndex
+  const pixelBytes = driveBytes / DRIVE_STEPS
+  let pixelDigits = 0
+  for (const digits of [2, 1]) {
+    if (unitBytes / 10 ** digits >= pixelBytes) {
+      pixelDigits = digits
+      break
+    }
+  }
+  // The live form's rule, decided on the value as shown: a tenth below ten.
+  const liveDigits = Math.round(value * 10) / 10 < 10 ? 1 : 0
+  const fractionDigits = Math.max(pixelDigits, liveDigits)
+  const text = getNumberFormatter({
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+    useGrouping: false,
+  }).format(value)
+  return `${text} ${units[unitIndex]}`
+}

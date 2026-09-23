@@ -18,7 +18,7 @@
     import { eventMatchesCommand } from '$lib/shortcuts'
     import { tString } from '$lib/intl/messages.svelte'
     import { restrictedFolderTooltip } from '$lib/system-strings.svelte'
-    import { formatByteSize } from '$lib/units'
+    import { getFileSizeFormat } from '$lib/settings/reactive-settings.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import Icon from '$lib/ui/Icon.svelte'
     import Menu from '$lib/ui/Menu.svelte'
@@ -450,7 +450,7 @@
                             ></div>
                         </div>
                     {/if}
-                    <span class="volume-space-text">{formatDiskSpaceShort(space, formatByteSize)}</span>
+                    <span class="volume-space-text">{formatDiskSpaceShort(space, getFileSizeFormat())}</span>
                 </div>
             {:else if spaceRetryingSet.has(volume.id)}
                 <div

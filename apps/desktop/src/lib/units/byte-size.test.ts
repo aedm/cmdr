@@ -3,7 +3,9 @@
  * `lib/settings/format-utils.test.ts`.
  */
 import { afterEach, describe, it, expect } from 'vitest'
-import { formatFileSizeWithFormat, fixedUnitFor, dynamicTierIndex, unitLabel } from './byte-size'
+import { formatFileSizeWithFormat, formatDriveFigure, fixedUnitFor, dynamicTierIndex, unitLabel } from './byte-size'
+import driveFigureCases from './drive-figure-cases.json'
+import type { FileSizeFormat } from '$lib/settings/types'
 import { _setLocaleForTests } from '$lib/intl/locale'
 
 describe('formatFileSizeWithFormat', () => {
@@ -264,5 +266,23 @@ describe('fixedUnitFor', () => {
     expect(fixedUnitFor('kB')).toBe('kB')
     expect(fixedUnitFor('MB')).toBe('MB')
     expect(fixedUnitFor('GB')).toBe('GB')
+  })
+})
+
+describe('formatDriveFigure', () => {
+  afterEach(() => {
+    _setLocaleForTests('en-US')
+  })
+
+  // The same table the backend's emit gate is tested against (`space_poller/readout.rs`), so the
+  // figure on screen and the rule deciding when it changed can't drift apart.
+  it.each(driveFigureCases.cases)('$name reads $text', ({ bytes, driveBytes, format, text }) => {
+    _setLocaleForTests('en-US')
+    expect(formatDriveFigure(bytes, driveBytes, format as FileSizeFormat)).toBe(text)
+  })
+
+  it('writes the decimals the way the locale does', () => {
+    _setLocaleForTests('de-DE')
+    expect(formatDriveFigure(5_000_000_000, 16_000_000_000, 'binary')).toBe('4,7 GB')
   })
 })

@@ -15,6 +15,8 @@ detector, the `set_low_disk_space_config` live-apply command).
 - **`event-bridge.svelte.ts`**: one `low-disk-space` subscription; shows/dismisses per `isLow` and the settings enum.
 - **`LowDiskSpaceToastContent.svelte`**: the persistent WARN toast (free space + percent, "Disable these
   notifications"); live-follows the boot volume's space.
+- **`figures.ts`**: `lowSpaceFigures`, the free space (scaled to the drive, like the status bar) and percent both
+  surfaces write.
 
 ## Must-knows
 
