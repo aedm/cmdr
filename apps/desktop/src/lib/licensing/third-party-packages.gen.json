@@ -413,7 +413,7 @@
     },
     {
       "name": "ccm",
-      "version": "0.6.0-rc.3",
+      "version": "0.6.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/RustCrypto/AEADs"
     },
@@ -2099,7 +2099,7 @@
     },
     {
       "name": "lz4_flex",
-      "version": "0.13.1",
+      "version": "0.14.0",
       "license": "MIT",
       "url": "https://github.com/pseitz/lz4_flex"
     },
@@ -3377,7 +3377,7 @@
     },
     {
       "name": "smb2",
-      "version": "0.24.4",
+      "version": "0.25.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/vdavid/smb2"
     },
