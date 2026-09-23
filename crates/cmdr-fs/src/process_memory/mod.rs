@@ -279,7 +279,6 @@ pub fn query_mimalloc_heap() -> MimallocHeap {
     }
 }
 
-/// How much of mimalloc's committed memory is live data: see [`query_heap_census`].
 #[cfg(target_os = "macos")]
 mod heap_census;
 #[cfg(target_os = "macos")]
