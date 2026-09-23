@@ -108,6 +108,8 @@ export type SettingsSurface =
   | 'query-ai-cloud-off'
   /** The "Cloud AI is off" translate-error toast's action. */
   | 'ai-translate-toast'
+  /** The one-time "Escape left full screen" toast, deep-linking to its switch. */
+  | 'escape-full-screen-toast'
 
 /**
  * Opens the settings window, or focuses it if already open. When `section` is provided,

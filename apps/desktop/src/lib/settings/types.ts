@@ -640,6 +640,13 @@ export interface SettingsValues {
 
   // Advanced
   'advanced.dragThreshold': number
+  /** Whether an Escape nothing else used takes the main window out of full screen. */
+  'advanced.exitFullScreenOnEscape': boolean
+  /**
+   * Whether the one-time "Escape left full screen" toast has been shown. Hidden
+   * internal state, written by `routes/(main)/escape-key.ts`.
+   */
+  'advanced.exitFullScreenOnEscapeHintShown': boolean
   'advanced.prefetchBufferSize': number
   'advanced.virtualizationBufferRows': number
   'advanced.virtualizationBufferColumns': number

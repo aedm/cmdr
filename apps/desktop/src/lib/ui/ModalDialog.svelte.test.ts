@@ -459,3 +459,25 @@ describe('ModalDialog MCP close registry', () => {
     target.remove()
   })
 })
+
+describe('ModalDialog Escape', () => {
+  it('closes AND prevents the default, so macOS never sees the key and leaves full screen', async () => {
+    const onclose = vi.fn()
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const component = mount(ModalDialog, {
+      target,
+      props: { titleId: 't', title: titleSnippet, children: bodySnippet, onclose },
+    })
+    await tick()
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    target.querySelector('.modal-overlay')?.dispatchEvent(event)
+
+    expect(onclose).toHaveBeenCalledOnce()
+    expect(event.defaultPrevented).toBe(true)
+
+    void unmount(component)
+    target.remove()
+  })
+})

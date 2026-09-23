@@ -15,6 +15,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { resolveGlobalKeyAction, unclaimedDispatchWarning } from './global-keydown'
 import { claimKey } from '$lib/shortcuts/claim-key'
+import { commands } from '$lib/commands/command-registry'
 import type { DialogsOnScreen } from './command-dispatch-context'
 import { initShortcutDispatch, destroyShortcutDispatch } from '$lib/shortcuts/shortcut-dispatch'
 
@@ -200,6 +201,40 @@ describe('resolveGlobalKeyAction', () => {
       const stopped = vi.spyOn(claimed, 'stopPropagation')
       claimKey(claimed)
       expect(stopped).toHaveBeenCalled()
+    })
+  })
+
+  // Anything but `ignore` for an unprevented Escape means `+page.svelte` prevents
+  // it, and a prevented Escape never reaches AppKit, which would leave full screen.
+  describe('Escape', () => {
+    it('is an unused Escape when nothing is open and nothing used it', () => {
+      expect(resolveGlobalKeyAction(bare('Escape'), NOTHING_OPEN)).toEqual({ kind: 'unusedEscape' })
+    })
+
+    it('is left alone when a local handler already used it', () => {
+      const e = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
+      e.preventDefault()
+      expect(resolveGlobalKeyAction(e, NOTHING_OPEN)).toEqual({ kind: 'ignore' })
+    })
+
+    it('is only suppressed over a dialog or the palette, never an unused one', () => {
+      expect(resolveGlobalKeyAction(bare('Escape'), DIALOG_OPEN)).toEqual({ kind: 'suppress' })
+      expect(resolveGlobalKeyAction(bare('Escape'), PALETTE_OPEN)).toEqual({ kind: 'suppress' })
+    })
+
+    it('is only suppressed in a text field', () => {
+      cleanupFocus = focus('input')
+      expect(resolveGlobalKeyAction(bare('Escape'), NOTHING_OPEN)).toEqual({ kind: 'suppress' })
+    })
+
+    it('stays off the dispatch road: every Escape binding is handled where it lives', () => {
+      // If this fails, a command started relying on the central dispatch for Escape,
+      // which `resolveEscape` never does. Wire it there, or handle it in its component.
+      const escapeBound = commands
+        .filter((command) => command.shortcuts.includes('Escape'))
+        .map((command) => command.id)
+        .sort()
+      expect(escapeBound).toEqual(['about.close', 'palette.close', 'share.back', 'volume.close'])
     })
   })
 })

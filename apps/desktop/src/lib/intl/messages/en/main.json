@@ -167,5 +167,20 @@
   "main.oldWebkit.quit": "Quit",
   "@main.oldWebkit.quit": {
     "description": "Label of the only button on the notice under main.oldWebkit.title. Pressing it quits Cmdr. It is a VERB (the action the button performs), not a noun, and it should match how the target language labels the standard macOS Quit menu item."
+  },
+  "main.escapeFullScreenHint.message": "Escape took Cmdr out of full screen.",
+  "@main.escapeFullScreenHint.message": {
+    "description": "First line of a one-time info toast, shown right after the user pressed the Escape key with nothing else open and the main window left macOS full screen because of it. \"Escape\" is the keyboard key; \"full screen\" is macOS's full-screen window mode (the window gets its own Space). \"Cmdr\" is the product name and must stay verbatim. It states what just happened, without blame; the switch below it offers to turn the behavior off."
+  },
+  "main.escapeFullScreenHint.switchLabel": "Exit full screen on Escape",
+  "@main.escapeFullScreenHint.switchLabel": {
+    "description": "Label of an on/off switch inside the one-time toast from main.escapeFullScreenHint.message. It is the same setting as settings.advanced.exitFullScreenOnEscape.label, so translate it the same way. Turning it off makes Escape leave full-screen windows alone."
+  },
+  "main.escapeFullScreenHint.settingsLine": "You can also change this in <settingsLink>Settings > Advanced</settingsLink>.",
+  "@main.escapeFullScreenHint.settingsLine": {
+    "description": "Last line of the Escape full-screen toast, linking to where the same switch lives in Settings. The <settingsLink>…</settingsLink> tag wraps the clickable link text, which names the Settings location; keep it pointing at the Advanced page.",
+    "placeholders": {
+      "settingsLink": "the clickable link wrapping the text \"Settings > Advanced\""
+    }
   }
 }

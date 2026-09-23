@@ -32,8 +32,27 @@ export type GlobalKeyAction =
   | { kind: 'openDebugWindow' }
   /** `preventDefault` and nothing else: a browser default we don't want. */
   | { kind: 'suppress' }
+  /** `preventDefault`, then `exitFullScreenOnEscape()`: an Escape nothing else used. */
+  | { kind: 'unusedEscape' }
 
 const IGNORE: GlobalKeyAction = { kind: 'ignore' }
+const SUPPRESS: GlobalKeyAction = { kind: 'suppress' }
+
+/**
+ * Escape is never a centrally dispatched key. Every command bound to it is handled
+ * where it lives (`share.back`, `volume.close`, `palette.close` are fixed-key, and
+ * `about.close` is `ModalDialog`'s Escape), and the shortcut editor can't record it.
+ *
+ * What this decides is whether AppKit may see the key: never (`escape-key.ts` §
+ * why). A handler that used it already prevented its default, so it's done. Over a
+ * dialog, the palette, or in a text field, it's an Escape for them, not a request to
+ * leave full screen. Anything else is an Escape nothing used.
+ */
+function resolveEscape(event: KeyboardEvent, onScreen: DialogsOnScreen): GlobalKeyAction {
+  if (event.defaultPrevented) return IGNORE
+  if (onScreen.dialogOpen || onScreen.paletteOpen || isTextInputFocused()) return SUPPRESS
+  return { kind: 'unusedEscape' }
+}
 
 /** ⌘⇧D opens the debug window (dev only). Exact combo: ⌃⌘⇧D / ⌥⌘⇧D are other combos. */
 function isDebugWindowShortcut(event: KeyboardEvent): boolean {
@@ -88,6 +107,7 @@ function commandForCombo(combo: string): CommandId | undefined {
  */
 export function resolveGlobalKeyAction(event: KeyboardEvent, onScreen: DialogsOnScreen): GlobalKeyAction {
   const combo = formatKeyCombo(event)
+  if (combo === 'Escape') return resolveEscape(event, onScreen)
   const commandId = commandForCombo(combo)
   if (
     commandId &&

@@ -1679,6 +1679,8 @@
   "next": {
     "advanced.diskSpaceChangeThreshold": 1,
     "advanced.dragThreshold": 5,
+    "advanced.exitFullScreenOnEscape": true,
+    "advanced.exitFullScreenOnEscapeHintShown": false,
     "advanced.fileWatcherDebounce": 200,
     "advanced.logLlmCalls": false,
     "advanced.maxLogStorageMb": 200,

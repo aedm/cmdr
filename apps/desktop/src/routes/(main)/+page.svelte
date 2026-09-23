@@ -48,6 +48,7 @@
     } from './command-dispatch-context'
     import { navCommandForMouseButton } from './mouse-nav'
     import { resolveGlobalKeyAction, unclaimedDispatchWarning } from './global-keydown'
+    import { exitFullScreenOnEscape, installEscapeStopClaims } from './escape-key'
     import { resolveGlobalContextMenuAction } from './global-contextmenu'
     import { isMacOS } from '$lib/shortcuts/key-capture'
     import { getMessage, tString } from '$lib/intl/messages.svelte'
@@ -156,6 +157,7 @@
     let handleContextMenu: ((e: MouseEvent) => void) | undefined
     let handleMouseDown: ((e: MouseEvent) => void) | undefined
     let handleMouseUp: ((e: MouseEvent) => void) | undefined
+    let uninstallEscapeStopClaims: (() => void) | undefined
 
     /** Opens the debug window (dev mode only) */
     async function openDebugWindow() {
@@ -235,6 +237,10 @@
                 break
             case 'suppress':
                 e.preventDefault()
+                break
+            case 'unusedEscape':
+                e.preventDefault()
+                void exitFullScreenOnEscape()
                 break
             case 'ignore':
                 break
@@ -401,6 +407,7 @@
         handleMouseDown = handleGlobalMouseDown
         handleMouseUp = handleGlobalMouseUp
         document.addEventListener('keydown', handleKeyDown)
+        uninstallEscapeStopClaims = installEscapeStopClaims()
         document.addEventListener('contextmenu', handleContextMenu, true)
         document.addEventListener('mousedown', handleMouseDown)
         document.addEventListener('mouseup', handleMouseUp)
@@ -443,6 +450,7 @@
         if (handleMouseUp) {
             document.removeEventListener('mouseup', handleMouseUp)
         }
+        uninstallEscapeStopClaims?.()
     })
 
     /**

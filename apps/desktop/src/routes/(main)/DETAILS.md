@@ -19,11 +19,11 @@ here:
   precisely because they read and write `$state` directly. On the dispatch side the mirror rule is that only
   `handleTextRegionShortcut` and `blockedByCapabilities` belong in the core; everything else is a handler.
 - **`global-keydown.ts` owns the keydown DECISION, `+page.svelte` owns the side effects.**
-  `resolveGlobalKeyAction(event, onScreen)` is pure (`dispatch` / `openDebugWindow` / `suppress` / `ignore`), so every
-  branch is unit-testable without mounting the shell; the component supplies `dialogsOnScreen()` (the only reactive
-  input, § What `dialogsOnScreen()` is made of) and then runs `preventDefault` and `dispatchers.keyboard`. Keeping the
-  decision out of the component is also what stops the `file-length`-flagged `+page.svelte` from growing per keyboard
-  rule.
+  `resolveGlobalKeyAction(event, onScreen)` is pure (`dispatch` / `openDebugWindow` / `suppress` / `unusedEscape` /
+  `ignore`; Escape has its own branch, § Escape and full screen), so every branch is unit-testable without mounting the
+  shell; the component supplies `dialogsOnScreen()` (the only reactive input, § What `dialogsOnScreen()` is made of) and
+  then runs `preventDefault` and `dispatchers.keyboard`. Keeping the decision out of the component is also what stops
+  the `file-length`-flagged `+page.svelte` from growing per keyboard rule.
 - **`global-contextmenu.ts` is the same split for the right-click**: `resolveGlobalContextMenuAction(event)` is pure
   (`native-text-menu` / `suppress`), `+page.svelte` runs `stopPropagation` or `preventDefault`. § Right-click ownership.
 - **`startup-gates.ts` owns what a launch SHOWS.** § Startup gates.
@@ -317,6 +317,27 @@ the button, and why only the id travels: `$lib/file-operations/queue/DETAILS.md`
   single-occupancy progress slot (`$lib/file-explorer/pane/DETAILS.md` § "Birth context") and taking `busy` back to the
   toast. ❌ Don't route it through the command bus: a bus dispatch is fire-and-forget and would drop the verdict, and
   the queue window would have no way to learn its button did nothing.
+
+## Escape and full screen
+
+WKWebView hands every keydown the page leaves unprevented back to AppKit, which turns Escape into `cancelOperation:`,
+and a full-screen window answers that by leaving full screen. So any Escape handler that forgot `preventDefault` (a
+dialog closing, a dropdown closing) ALSO restores the window, which a user reported as "Escape in a dialog kicks me out
+of full screen" (verified on macOS 27, Tauri dev build, 2026-09-23). So the main window never lets AppKit see an Escape:
+
+- **A stopped Escape is a used one.** `installEscapeStopClaims` (`escape-key.ts`) is a capture-phase `window` listener
+  that makes `stopPropagation` / `stopImmediatePropagation` on an Escape also `preventDefault`, so local handlers
+  (dropdowns, menus, popovers, `ModalDialog`, the rename editor) can't leak it even if they forget.
+- **Every Escape reaching the document dispatcher is prevented.** `resolveEscape` (`global-keydown.ts`) never dispatches
+  it (every Escape binding is fixed-key or dialog-owned; a test pins the list): already prevented means a handler used
+  it; over a dialog, the palette, or a text field it's `suppress`; anything else is `unusedEscape`.
+- **`unusedEscape` leaves full screen on purpose**, via `exitFullScreenOnEscape`, gated on
+  `advanced.exitFullScreenOnEscape` (default on, like Finder). The first time, a toast explains it and carries the
+  switch (`EscapeFullScreenToastContent.svelte`, once per install via the hidden `…HintShown` flag). Needs the
+  `core:window:allow-set-fullscreen` capability.
+
+Not covered: an Escape AppKit gets before the webview is first responder (for example right after clicking the green
+full-screen button) never reaches JS, so macOS's own handling applies there.
 
 ## Mouse back / forward buttons
 

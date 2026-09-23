@@ -1604,6 +1604,22 @@
     "description": "Help text for the drag-threshold setting (advanced). \"pixels\" is the unit.",
     "screenshot": "settings-advanced.png"
   },
+  "settings.advanced.exitFullScreenOnEscape.label": "Exit full screen on Escape",
+  "@settings.advanced.exitFullScreenOnEscape.label": {
+    "description": "Advanced-section label for a switch: when on, pressing the Escape key in the main window (with no dialog or menu open) takes the window out of macOS full screen. \"Escape\" is the keyboard key; \"full screen\" is macOS's full-screen window mode (the window gets its own Space)."
+  },
+  "settings.advanced.exitFullScreenOnEscape.description": "When the main window is in full screen, Escape takes it out. Escape in a dialog or menu only closes that.",
+  "@settings.advanced.exitFullScreenOnEscape.description": {
+    "description": "Help text for the \"Exit full screen on Escape\" switch (advanced). Explains that the switch never affects closing dialogs or menus with Escape."
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Escape full-screen hint shown",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
+    "description": "Internal, hidden-from-UI label for a flag tracking whether the one-time \"Escape took you out of full screen\" toast has already been shown. Not user-facing."
+  },
+  "settings.advanced.exitFullScreenOnEscapeHintShown.description": "Internal: tracks whether the one-time toast about Escape leaving full screen has been shown. Hidden from the UI.",
+  "@settings.advanced.exitFullScreenOnEscapeHintShown.description": {
+    "description": "Internal help text for the Escape full-screen hint flag (not user-facing)."
+  },
   "settings.fileExplorer.typeToJump.resetDelay.label": "Type-to-jump reset delay",
   "@settings.fileExplorer.typeToJump.resetDelay.label": {
     "description": "Advanced-section label for the type-to-jump reset-delay control. \"type-to-jump\" = the feature where typing letters jumps to a matching file. \"reset delay\" = how long the typed buffer survives between keystrokes.",

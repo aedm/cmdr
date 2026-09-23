@@ -197,6 +197,19 @@ export const advancedSettings: SettingDefinitionSource[] = [
     },
   },
   {
+    // macOS's own default (Finder does it), but plenty of people find it jarring,
+    // so it's a switch. `routes/(main)/escape-key.ts` owns the behavior.
+    id: 'advanced.exitFullScreenOnEscape',
+    section: ['Advanced'],
+    cardKey: 'settings.advanced.card.input',
+    labelKey: 'settings.advanced.exitFullScreenOnEscape.label',
+    descriptionKey: 'settings.advanced.exitFullScreenOnEscape.description',
+    keywords: ['escape', 'esc', 'full screen', 'fullscreen', 'maximize', 'window', 'restore', 'exit'],
+    type: 'boolean',
+    default: true,
+    component: 'switch',
+  },
+  {
     id: 'fileExplorer.typeToJump.resetDelay',
     section: ['Advanced'],
     cardKey: 'settings.advanced.card.input',
@@ -384,6 +397,19 @@ export const advancedSettings: SettingDefinitionSource[] = [
     section: ['Advanced'],
     labelKey: 'settings.advanced.oldMacosNoticeShown.label',
     descriptionKey: 'settings.advanced.oldMacosNoticeShown.description',
+    keywords: [],
+    type: 'boolean',
+    default: false,
+    component: 'switch',
+    hidden: true,
+  },
+  {
+    // Hidden like `advanced.oldMacosNoticeShown`: it records that the user was told
+    // once, and the toast itself links to the real switch.
+    id: 'advanced.exitFullScreenOnEscapeHintShown',
+    section: ['Advanced'],
+    labelKey: 'settings.advanced.exitFullScreenOnEscapeHintShown.label',
+    descriptionKey: 'settings.advanced.exitFullScreenOnEscapeHintShown.description',
     keywords: [],
     type: 'boolean',
     default: false,

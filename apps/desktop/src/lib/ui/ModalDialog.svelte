@@ -379,6 +379,10 @@
             return
         }
         if (event.key === 'Escape' && onclose) {
+            // ❌ Never drop this. An Escape the webview leaves unprevented goes back to
+            // AppKit, which reads it as `cancelOperation:` and takes a full-screen window
+            // out of full screen, so closing the dialog would ALSO restore the window.
+            event.preventDefault()
             onclose()
             return
         }
