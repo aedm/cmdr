@@ -182,5 +182,9 @@
     "placeholders": {
       "settingsLink": "the clickable link wrapping the text \"Settings > Advanced\""
     }
+  },
+  "main.escapeFullScreenHint.onceNote": "You''ll only see this once.",
+  "@main.escapeFullScreenHint.onceNote": {
+    "description": "Small footnote at the bottom of the one-time Escape full-screen toast (main.escapeFullScreenHint.message). It reassures the user that this toast never comes back, so they don't need to turn anything off to stop seeing it. \"this\" refers to the toast itself. Keep it short and friendly."
   }
 }

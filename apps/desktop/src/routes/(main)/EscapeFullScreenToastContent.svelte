@@ -43,6 +43,7 @@
     <p class="settings-line">
         <Trans key="main.escapeFullScreenHint.settingsLine" snippets={{ settingsLink }} />
     </p>
+    <p class="once-note">{tString('main.escapeFullScreenHint.onceNote')}</p>
 </div>
 
 <style>
@@ -59,5 +60,11 @@
     .settings-line {
         margin-top: var(--spacing-sm);
         color: var(--color-text-secondary);
+    }
+
+    .once-note {
+        margin-top: var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        color: var(--color-text-tertiary);
     }
 </style>

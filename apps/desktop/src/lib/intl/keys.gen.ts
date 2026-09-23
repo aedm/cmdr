@@ -2008,6 +2008,7 @@ export type MessageKey =
   | 'main.dockPinNudge.title'
   | 'main.dockPinNudge.unpinNote'
   | 'main.escapeFullScreenHint.message'
+  | 'main.escapeFullScreenHint.onceNote'
   | 'main.escapeFullScreenHint.settingsLine'
   | 'main.escapeFullScreenHint.switchLabel'
   | 'main.instanceLock.alertBody'
