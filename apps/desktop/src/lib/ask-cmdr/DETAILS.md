@@ -315,7 +315,13 @@ the exception — there is no conversation left to review against, so its plans 
 
 The cost of the turn boundary, taken deliberately: nothing shows while the model works through the batches. Opening
 immediately and growing the list was the alternative, and it makes preflight a moving target under a user who is already
-reading.
+reading. Two more were considered and rejected:
+
+- ❌ **Predicting the batch count** from the file total and `files_per_batch`: the model may propose fewer rows than
+  hinted, and then the review never opens. A prediction that can silently fail to resolve is worse than a wait.
+- ❌ **Per-rule approval** (approve the renaming rule, not each row), declined by David: approval stays per row, and the
+  volume problem is already answered by the suggested-ops dialog's group-level Approve / Reject (`approveGroup` /
+  `rejectGroup`), so 500 files never mean 500 clicks.
 
 **The grouping is presentational; the proposal stays the unit.** `BulkRenameReview` is a list of
 `BulkRenameReviewProposal`s, each with its own rows, `preflighting`, `expired`, and `requestVersion`, because preflight,
