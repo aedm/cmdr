@@ -9,7 +9,7 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
   concern (`paths`, `query`, `mutation`, `session`/`reconnect`/`state`, `scan`/`scan_pool`, `streams`, `mapping`,
   `spelling`, `foreground_yield`, `liveness`, `watcher/`, `testing` for the Docker fixtures).
 - `src/{types,errors,connection}.rs`: share-listing vocabulary, `smb2::Error` classification, the address builder.
-  Re-exported at the root, so callers write `cmdr_smb::`.
+  Re-exported at the root (`cmdr_smb::`).
 
 ## Backend must-knows
 
@@ -28,9 +28,10 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 - **`write_from_stream` drives an OWNED `FileWriter` on a cloned `Connection`**, ❌ never one borrowed under the client
   mutex (the QNAP deadlock); on error, `abort()` then delete the partial. Progress is `bytes_written()`
   (server-confirmed), ❌ never bytes handed to the pipeline.
-- **A hinted read compounds only up to one download chunk** (`fits_one_compound_read`), sized via
-  `read_file_compound_sized`: unsized it charges a whole `max_read` in credits (parked 7 of 10 copy slots). ❌ Don't
-  tune `max_concurrent_ops`'s credit clamp; it divides a constant, so it's inert.
+- **A hinted read compounds up to `conn.quick_read_limit()`** (`fits_one_compound_read`), sized via
+  `read_file_compound_sized` (unsized charges a whole `max_read` in credits). ❌ Don't tune `max_concurrent_ops`'s
+  credit clamp (inert).
+- **A streamed read ends at its last byte** (the CLOSE is already out): ❌ don't wait for `None` to drop `chunk_tx`.
 - **`scan_recursive` asks its `ScanBoundary` per entry, `dir()` BEFORE the listing** (`DETAILS.md` § "Scanning").
 - **Bulk work draws on the refcounted pool of extra sessions** (`scan_pool.rs`); a dead member retries on a sibling, ❌
   never moving the MAIN volume's connection state.
@@ -51,5 +52,5 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 - ❌ Never gate behavior on `cfg(test)`; use `any(test, feature = "testing")`, or it flips silently when a consumer
   compiles this crate.
 
-Lifecycles, anchored mounts, `rerooted`, credits, Unicode names and the resolve, the `specta` pin, tests, and decisions:
-`DETAILS.md`. Read it first.
+Lifecycles, anchored mounts, `rerooted`, credits, Unicode names, the `specta` pin, tests, and decisions: `DETAILS.md`.
+Read it first.

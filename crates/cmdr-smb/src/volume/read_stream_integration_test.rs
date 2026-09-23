@@ -180,7 +180,8 @@ async fn smb_integration_open_read_stream_cancel_by_drop() {
 ///
 /// The refusal trips at the hint, never at `max_read`, so a file that grew but
 /// would still fit one READ is caught here. Both sizes stay under one
-/// `smb2::DOWNLOAD_CHUNK_SIZE` so the hint takes the compound path at all.
+/// `smb2::DOWNLOAD_CHUNK_SIZE`, the `quick_read_limit` of this fresh
+/// connection, so the hint takes the compound path at all.
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_a_file_that_grew_since_the_scan_is_never_read_truncated() {

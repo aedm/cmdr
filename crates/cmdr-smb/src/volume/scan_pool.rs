@@ -513,15 +513,17 @@ impl SmbVolume {
                     let Some((idx, tree, mut conn)) = pool.acquire().await else {
                         break; // every member momentarily dead ⇒ main session
                     };
-                    // Up to a whole `max_read`, NOT the foreground read's one-chunk
-                    // `fits_one_compound_read`: enrichment fetches whole photos (1–8
-                    // MiB typically), and a chunk ceiling would move nearly all of
-                    // them off these connections onto the main session the pane
-                    // browses through, serialized there by ksmbd. The costs the chunk
-                    // ceiling avoids don't apply here: nothing watches this read's
-                    // progress (the fetcher drains it under one whole-read timeout),
-                    // and the listings it can queue ahead of are the background
-                    // scan's own, never the pane's.
+                    // Up to a whole `max_read`, NOT the foreground read's
+                    // `fits_one_compound_read` on `quick_read_limit()`: enrichment
+                    // fetches whole photos (1–8 MiB typically), and that limit is one
+                    // chunk on a member that never streams (so never measures its
+                    // link), which would move nearly all of them off these
+                    // connections onto the main session the pane browses through,
+                    // serialized there by ksmbd. The costs that limit avoids don't
+                    // apply here: nothing watches this read's progress (the fetcher
+                    // drains it under one whole-read timeout), and the listings it
+                    // can queue ahead of are the background scan's own, never the
+                    // pane's.
                     let max_read = conn.params().map_or(ASSUMED_MAX_READ, |p| p.max_read_size as u64);
                     if size > max_read {
                         break; // too big for one compound READ ⇒ main-session streaming

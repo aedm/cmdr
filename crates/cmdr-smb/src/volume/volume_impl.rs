@@ -10,7 +10,7 @@
 //! answers, whose whole content is the reasoning in their doc comments.
 
 use super::state::ConnectionState;
-use super::streams::{ASSUMED_MAX_READ, InlineReadStream, fits_one_compound_read};
+use super::streams::{InlineReadStream, fits_one_compound_read};
 use super::{SmbVolume, foreground_yield};
 use cmdr_fs::entry::FileEntry;
 
@@ -409,10 +409,11 @@ impl Volume for SmbVolume {
         Box::pin(async move {
             let smb_path = self.to_smb_path(path)?;
 
-            // Compound fast-path: if the caller-provided hint fits one download
-            // chunk (`fits_one_compound_read` says why a chunk and not `max_read`),
-            // send CREATE+READ+CLOSE as a single compound frame (1 RTT) instead
-            // of the 3-RTT streaming open. Drives the compound on a cloned
+            // Compound fast-path: if the caller-provided hint fits the
+            // connection's `quick_read_limit()` (`fits_one_compound_read` says
+            // why that limit and not `max_read`), send CREATE+READ+CLOSE as a
+            // single compound frame (1 RTT) instead of the streaming open's
+            // extra round trips. Drives the compound on a cloned
             // `Connection` with no lock held, so N concurrent small reads
             // pipeline over one SMB session.
             //
@@ -423,7 +424,7 @@ impl Volume for SmbVolume {
             // while barely filling the wire.
             //
             // Falls through to the streaming path when the hint is missing or
-            // bigger than one chunk, or when the file changed size since the
+            // over the limit, or when the file changed size since the
             // scan. `expected_size` is a HARD bound, so the two drift arms split
             // cleanly and TOGETHER are what keeps a changed file from being
             // copied truncated: a file that SHRANK comes back short of the hint
@@ -434,8 +435,7 @@ impl Volume for SmbVolume {
             // either one copies a changed file under its final name, short.
             if let Some(size) = size_hint {
                 let (tree, mut conn) = self.clone_session().await?;
-                let max_read = conn.params().map_or(ASSUMED_MAX_READ, |p| p.max_read_size as u64);
-                if fits_one_compound_read(max_read, size) {
+                if fits_one_compound_read(conn.quick_read_limit(), size) {
                     debug!(
                         "SmbVolume::open_read_stream_with_hint: share={}, path={:?}, size={}; using compound fast-path",
                         self.inner.share_name, smb_path, size

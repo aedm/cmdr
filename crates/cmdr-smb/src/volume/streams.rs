@@ -27,26 +27,27 @@ pub(super) const SMB_STREAM_CHANNEL_CAPACITY: usize = 4;
 pub(super) const ASSUMED_MAX_READ: u64 = 65536;
 
 /// THE condition for `open_read_stream_with_hint`'s compound CREATE+READ+CLOSE
-/// fast path: the file fits ONE streaming-download chunk
-/// (`smb2::DOWNLOAD_CHUNK_SIZE`, 512 KiB, capped by the server's `max_read`).
-/// The scan pool's prefetch deliberately doesn't use it (`scan_pool.rs` says
-/// why).
+/// fast path: the file fits the connection's `quick_read_limit()`, what the
+/// link moves in 250 ms at the rate a recent download measured. That's one
+/// streaming-download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`, 512 KiB) on a cold
+/// connection, and never more than the server's `max_read`; smb2 owns that
+/// arithmetic. The scan pool's prefetch deliberately doesn't use it
+/// (`scan_pool.rs` says why).
 ///
-/// At or below a chunk, the compound is strictly better: one round trip against
-/// three, and the same single READ on the wire. Above it, the compound carries
-/// the whole file as ONE READ with no progress, queued ahead of every listing on
-/// the connection, while `Tree::download` streams it in chunks through an
-/// adaptive window that matches the big READ on a fast link. Measured on smb2's
-/// read-ahead bench (`benchmarks/read-ahead/results/adaptive.md` in the smb2
-/// repo, smb2 0.24.0, 2026-09-23): at 375 KB/s the single READ took 2.8 s for
-/// 1 MiB and 23 s for 8 MiB with nothing in between (cmdr-reports#15), while at
-/// +60 ms the download matched it (1 MiB 191 ms vs 195 ms, 8 MiB 338 ms vs
-/// 328 ms). The price is CREATE and CLOSE as their own round trips for files
-/// over a chunk, which is what a high-RTT fast link pays: on the `slow` fixture
-/// (+200 ms, unthrottled; warm connection, 2026-09-23) a 4 MiB file took 830 ms
-/// streamed against 411 ms as one compound, and 8 MiB 1,046 ms against 634 ms.
-pub(super) fn fits_one_compound_read(max_read: u64, size: u64) -> bool {
-    size > 0 && size <= u64::from(smb2::DOWNLOAD_CHUNK_SIZE).min(max_read)
+/// The compound saves the round trip a stream spends on its own CREATE, but
+/// carries the whole file as ONE READ with no progress, queued ahead of every
+/// listing on the connection, while `Tree::download` streams it in chunks
+/// through an adaptive window. So it pays off exactly while the READ is short:
+/// at 375 KB/s a single READ took 23 s for 8 MiB with nothing in between
+/// (cmdr-reports#15), which the cold one-chunk limit and the measured rate both
+/// keep off it. Measured on smb2's read-ahead bench
+/// (`benchmarks/read-ahead/results/close-and-quick-read.md` in the smb2 repo,
+/// smb2 0.24.2, warm connection, last chunk in ms, 2026-09-23): at +60 ms a
+/// 4 MiB file took 139 compounded against 203 streamed; at +200 ms 1 MiB took
+/// 212 against 422. The rate errs low, so a borderline file streams: at +200 ms,
+/// 4 MiB still streams (619 against 427 compounded).
+pub(super) fn fits_one_compound_read(quick_read_limit: u64, size: u64) -> bool {
+    size > 0 && size <= quick_read_limit
 }
 
 /// The `max_write_size` to assume when the session hasn't reported its
@@ -181,6 +182,7 @@ impl SmbVolume {
                 return;
             }
 
+            let mut finished = false;
             loop {
                 tokio::select! {
                     biased;
@@ -197,6 +199,12 @@ impl SmbVolume {
                                 // Consumer dropped; stop pumping.
                                 break;
                             }
+                            if download.bytes_received() == total_size {
+                                // The last byte. smb2 put the CLOSE on the wire
+                                // before handing it out; only its answer is left.
+                                finished = true;
+                                break;
+                            }
                         }
                         Some(Err(e)) => {
                             update_state_on_smb_error(&host, &state_arc, &retirement, &volume_id, &e);
@@ -207,11 +215,29 @@ impl SmbVolume {
                             let _ = chunk_tx.send(Err(map_smb_error(e, &display_path))).await;
                             break;
                         }
-                        None => break, // download complete
+                        None => break, // download complete (a file that shrank ends here)
                     }
                 }
             }
-            // `download` drops here (releases SMB file handle at connection close).
+            // End the consumer's stream NOW, before the CLOSE's answer: waiting
+            // for it cost every streamed file one round trip. That's safe for a
+            // move that deletes the source next: the CLOSE went out on this
+            // connection's socket before the last chunk was handed out, so any
+            // request the consumer sends afterwards is behind it on the wire,
+            // and the download opened with `FILE_SHARE_DELETE` anyway.
+            drop(chunk_tx);
+            if finished && let Some(Err(e)) = download.next_chunk().await {
+                // The consumer has every byte, so there's nobody to hand this to.
+                // A dead connection still counts for the volume's state.
+                update_state_on_smb_error(&host, &state_arc, &retirement, &volume_id, &e);
+                debug!(
+                    "SmbVolume::download(share={}, path={}): CLOSE after the last byte: {}",
+                    share_name, smb_path_owned, e
+                );
+            }
+            // `download` drops here. After the last byte its handle is closed
+            // (the CLOSE is out); a download stopped earlier (cancel, consumer
+            // gone, error) leaves its handle open until the SMB session ends.
             // `conn` and `tree` drop here: the `Arc<Connection>` inner and the
             // `Arc<Tree>` unwind when every concurrent task finishes.
         });

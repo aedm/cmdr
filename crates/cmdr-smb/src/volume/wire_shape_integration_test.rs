@@ -5,9 +5,10 @@
 //! they ask whether the bytes are right, this one asks how many frames carried
 //! them and how many such operations the server's credit window can carry at
 //! once. So the hinted read is here for its ONE compound frame (and where that
-//! frame stops paying off, one download chunk) while its
-//! size-drift behavior stays in `read_stream_integration_test.rs`, and the
-//! single-shot write promise is here (both the wire proof and the
+//! frame stops paying off, the connection's `quick_read_limit`), and the
+//! streamed read for ending at its last byte rather than a round trip later,
+//! while the hinted read's size-drift behavior stays in
+//! `read_stream_integration_test.rs`, and the single-shot write promise is here (both the wire proof and the
 //! `write_is_single_shot` predicate the transfer layer skips its `.cmdr-tmp-*`
 //! staging on), while everything else `write_from_stream` does stays in
 //! `write_stream_integration_test.rs`.
@@ -86,11 +87,13 @@ async fn smb_integration_a_hinted_read_leaves_as_one_compound_frame() {
     ensure_clean(&vol, &dir).await;
 }
 
-/// The compound path ends at ONE download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`),
-/// not at the server's `max_read` (8 MiB on the fixture). A file one byte past
-/// it has to stream: the compound would carry it as a single READ with no
-/// progress, queued ahead of every listing on the connection until the whole
-/// body arrived (cmdr-reports#15: 23 s for 8 MiB on a 375 KB/s link).
+/// On a COLD connection (no download has measured the link yet), the compound
+/// path ends at ONE download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`), not at the
+/// server's `max_read` (8 MiB on the fixture). A file one byte past it has to
+/// stream: with nothing known about the link, the compound could carry it as a
+/// single READ with no progress, queued ahead of every listing on the
+/// connection until the whole body arrived (cmdr-reports#15: 23 s for 8 MiB on
+/// a 375 KB/s link).
 ///
 /// The streaming side reads `(0, 4)`: CREATE, two READs, CLOSE as loose
 /// requests, and the body reaches the consumer in more than one chunk, which is
@@ -104,6 +107,12 @@ async fn smb_integration_the_compound_read_stops_at_one_download_chunk() {
     vol.create_directory(Path::new(&dir)).await.unwrap();
 
     let chunk = smb2::DOWNLOAD_CHUNK_SIZE as usize;
+    let (_tree, conn) = vol.clone_session().await.unwrap();
+    assert_eq!(
+        conn.quick_read_limit(),
+        chunk as u64,
+        "a fresh connection has measured nothing, so its limit is one chunk"
+    );
     for (size, expected_frames, expected_chunks, what) in [
         (chunk, (1, 3), 1, "a file of exactly one chunk takes the compound path"),
         (chunk + 1, (0, 4), 2, "a file one byte over a chunk streams"),
@@ -133,6 +142,117 @@ async fn smb_integration_the_compound_read_stops_at_one_download_chunk() {
         );
         assert_eq!(chunks, expected_chunks, "{what}: wrong chunk count");
     }
+
+    ensure_clean(&vol, &dir).await;
+}
+
+/// Once a download has measured the link, the compound path takes whatever the
+/// link moves in 250 ms (`Connection::quick_read_limit`), so a multi-chunk file
+/// on a fast link leaves as ONE frame again. That's the round trip streaming
+/// can't save: at +60 ms a 4 MiB file's last byte arrived in 139 ms compounded
+/// against 203 ms streamed (smb2's `benchmarks/read-ahead/results/close-and-quick-read.md`,
+/// smb2 0.24.2, 2026-09-23).
+///
+/// The rate lives on the connection, so every clone the next read takes sees
+/// what the warm-up download measured.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_measured_fast_link_compounds_a_multi_chunk_file() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+
+    // Any download of two or more chunks measures the link.
+    let warm_up: Vec<u8> = (0..=255u8).cycle().take(8 * 1024 * 1024).collect();
+    let warm_up_path = format!("{}/warm-up.bin", dir);
+    vol.create_file(Path::new(&warm_up_path), &warm_up).await.unwrap();
+    drain(vol.open_read_stream(Path::new(&warm_up_path)).await.unwrap()).await;
+
+    let size = 2 * 1024 * 1024;
+    let (_tree, conn) = vol.clone_session().await.unwrap();
+    assert!(
+        conn.quick_read_limit() >= size as u64,
+        "loopback moves far more than 2 MiB in 250 ms, so the limit should have risen from one chunk, got {}",
+        conn.quick_read_limit()
+    );
+
+    let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
+    let path = format!("{}/two-mib.bin", dir);
+    vol.create_file(Path::new(&path), &data).await.unwrap();
+
+    let (requests_before, compounds_before) = request_counts(&vol).await;
+    let stream = vol
+        .open_read_stream_with_hint(Path::new(&path), Some(size as u64))
+        .await
+        .unwrap();
+    let got = drain(stream).await;
+    let (requests_after, compounds_after) = request_counts(&vol).await;
+
+    assert_eq!(got, data, "the compound path must serve the file byte for byte");
+    assert_eq!(
+        (compounds_after - compounds_before, requests_after - requests_before),
+        (1, 3),
+        "a 2 MiB file under a measured fast link's limit must leave as ONE compound frame"
+    );
+
+    ensure_clean(&vol, &dir).await;
+}
+
+// ── The streamed read: ends at the last byte ───────────────────
+
+/// Connects to the `slow` fixture (200 ms of netem delay on the server's side),
+/// where a round trip is long enough to see on a clock.
+async fn make_slow_docker_volume() -> SmbVolume {
+    let port = smb2::testing::slow_port();
+    let volume_id = cmdr_fs::volume::smb_volume_id("127.0.0.1", port, "public");
+    connect_smb_volume(
+        "public",
+        MountAnchor::at_share_root(TEST_MOUNT_ROOT),
+        &volume_id,
+        SmbConnectionParams::new("127.0.0.1", "public", port, None, None),
+        VolumeHost::detached(),
+    )
+    .await
+    .unwrap_or_else(|e| {
+        panic!("Failed to connect to the slow SMB container at 127.0.0.1:{port}. Is it running? ({e:?})")
+    })
+}
+
+/// A streamed read ends the moment its last byte arrives, not a round trip
+/// later when the CLOSE's answer does. smb2 puts the CLOSE on the wire before it
+/// hands out the last chunk, so the handle is closing either way; a consumer
+/// that waited for the answer paid 200 ms per file on this fixture for nothing.
+///
+/// Timed from the last chunk to end-of-stream, so the fixture's own delay can't
+/// blur it: without the early end, that gap IS one round trip.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_streamed_read_ends_before_the_close_is_answered() {
+    let vol = make_slow_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+
+    // Two chunks, so it streams on this cold connection.
+    let data: Vec<u8> = (0..=255u8).cycle().take(1024 * 1024).collect();
+    let path = format!("{}/two-chunks.bin", dir);
+    vol.create_file(Path::new(&path), &data).await.unwrap();
+
+    let mut stream = vol.open_read_stream(Path::new(&path)).await.unwrap();
+    let mut got = Vec::new();
+    let mut last_chunk_at = None;
+    while let Some(chunk) = stream.next_chunk().await {
+        got.extend_from_slice(&chunk.unwrap());
+        last_chunk_at = Some(std::time::Instant::now());
+    }
+    let tail = last_chunk_at.expect("a 1 MiB file has chunks").elapsed();
+
+    assert_eq!(got, data, "the bytes must arrive whole");
+    assert!(
+        tail < Duration::from_millis(100),
+        "the stream must end at the last byte, not wait out the CLOSE's 200 ms round trip; it ended {tail:?} after the last chunk"
+    );
 
     ensure_clean(&vol, &dir).await;
 }

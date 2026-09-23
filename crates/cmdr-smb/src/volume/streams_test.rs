@@ -121,26 +121,30 @@ fn only_a_write_that_fits_one_compound_frame_is_single_shot() {
     );
 }
 
-/// The hinted read's compound path stops at ONE download chunk, not at
-/// `max_read`: a bigger file goes out as a streaming download so it reports
-/// progress per chunk and doesn't sit on the connection as one long READ. The
-/// boundary is inclusive, a small `max_read` still caps it, and an empty file
-/// has nothing to read.
+/// The hinted read's compound path follows the limit it's handed, which is
+/// `Connection::quick_read_limit()`: one download chunk on a cold connection,
+/// what the link moves in 250 ms once a download has measured it. The one-chunk
+/// floor and the `MaxReadSize` cap are smb2's arithmetic, tested there. The
+/// boundary is inclusive, and an empty file has nothing to read.
 #[test]
-fn only_a_read_that_fits_one_download_chunk_takes_the_compound_path() {
+fn a_read_takes_the_compound_path_up_to_the_quick_read_limit() {
     let chunk = smb2::DOWNLOAD_CHUNK_SIZE as u64;
-    let eight_mib = 8 * 1024 * 1024;
-    assert!(!fits_one_compound_read(eight_mib, 0), "an empty file has no READ");
-    assert!(fits_one_compound_read(eight_mib, 1));
-    assert!(fits_one_compound_read(eight_mib, chunk), "one chunk itself fits");
+    let measured = 4_000_000; // 16 MB/s × 250 ms
+    assert!(!fits_one_compound_read(chunk, 0), "an empty file has no READ");
+    assert!(fits_one_compound_read(chunk, 1));
+    assert!(fits_one_compound_read(chunk, chunk), "the limit itself fits");
     assert!(
-        !fits_one_compound_read(eight_mib, chunk + 1),
-        "one byte over a chunk streams, however big the server's max_read is"
+        !fits_one_compound_read(chunk, chunk + 1),
+        "a cold connection streams anything over one chunk"
     );
-    assert!(!fits_one_compound_read(eight_mib, 4 * 1024 * 1024));
     assert!(
-        !fits_one_compound_read(65_536, 65_537),
-        "a server with a small max_read still caps it"
+        fits_one_compound_read(measured, chunk + 1),
+        "a link measured fast enough takes a multi-chunk file in one READ"
+    );
+    assert!(fits_one_compound_read(measured, measured));
+    assert!(
+        !fits_one_compound_read(measured, measured + 1),
+        "one byte past the limit streams"
     );
 }
 
