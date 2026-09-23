@@ -543,6 +543,14 @@ impl Volume for LocalPosixVolume {
         true
     }
 
+    fn matches_names_in_any_unicode_form(&self) -> bool {
+        // APFS keeps the spelling a name was created with and finds it in either
+        // form (verified on macOS 27.0: a decomposed `café.txt` stats under its
+        // composed spelling and lists decomposed, 2026-09-23). A Linux disk
+        // matches bytes, so it gets the byte-exact default.
+        cfg!(target_os = "macos")
+    }
+
     fn max_concurrent_ops(&self) -> usize {
         // Local disk can handle several concurrent I/O streams; clamp to
         // physical-ish core count so we never spawn hundreds of tasks for

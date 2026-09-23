@@ -43,15 +43,18 @@
 //!
 //! ## Case-insensitive backends and TOCTOU
 //!
-//! The dest name map is exact-match, but SMB servers and APFS are typically
-//! case-insensitive: `Foo.txt` vs `foo.txt` collides at the backend with no map
-//! hit. An unexpected `AlreadyExists` from a child rename is therefore treated as
+//! The dest level's `DestNameIndex` settles an exact name and a name held in
+//! another Unicode form (a byte-exact share would take the latter as free and
+//! rename a look-alike in beside it). A CASE-only match stays the backend's call,
+//! and SMB servers and APFS are typically case-insensitive: `Foo.txt` vs
+//! `foo.txt` collides at the backend with no index hit. An unexpected `AlreadyExists` from a child rename is therefore treated as
 //! a late-detected conflict and routed through the resolver — never a hard error.
 //! Per-level decisions already made via the map are tracked in a
 //! `name → MergeChildResolution` map so a late collision on an already-resolved
 //! child finalizes its stored decision instead of re-prompting.
 
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -60,6 +63,7 @@ use super::super::super::conflict::ApplyToAll;
 use super::super::super::event_sinks::OperationEventSink;
 use super::super::super::state::{WriteOperationState, is_cancelled};
 use super::super::super::types::{RecoveredOriginal, VolumeCopyConfig, WriteOperationError};
+use super::super::dest_name_index::{DestLookup, DestNameIndex};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::transfer_error::{PathRole, map_volume_error};
@@ -145,12 +149,11 @@ pub(super) async fn rename_merge_directory(
     }
 
     // List both levels once. The dest level pre-exists (we're merging into it),
-    // so build a `name → entry` map for exact-match collision detection.
-    let dest_by_name: HashMap<String, FileEntry> = volume_list(ctx.volume, dest_dir)
-        .await?
-        .into_iter()
-        .map(|e| (e.name.clone(), e))
-        .collect();
+    // so index it for collision detection: an exact name, or one spelled in
+    // another Unicode form, which a byte-exact share would otherwise rename a
+    // twin in beside (`look_alike.rs`). A case-only match stays the backend's
+    // call, caught late below if it refuses.
+    let dest_index = DestNameIndex::build(volume_list(ctx.volume, dest_dir).await?);
     let source_entries = volume_list(ctx.volume, source_dir).await?;
 
     // Per-level decisions for children whose name hit the dest map. A
@@ -173,8 +176,20 @@ pub(super) async fn rename_merge_directory(
         }
 
         let child_source = PathBuf::from(&entry.path);
-        let child_dest = dest_dir.join(&entry.name);
-        let dest_hit = dest_by_name.get(&entry.name);
+        // A look-alike is a hit on the entry that's there, addressed by ITS
+        // name from here on. A move keeps the name it moves, so a free name is
+        // never respelled.
+        let (child_dest, dest_hit) = match dest_index.lookup(Some(OsStr::new(&entry.name))) {
+            DestLookup::Present(hit) => (dest_dir.join(&entry.name), Some(*hit)),
+            DestLookup::LookAlike(hit) => (dest_dir.join(&hit.name), Some(*hit)),
+            DestLookup::Ambiguous => {
+                return Err(WriteOperationError::DestinationExists {
+                    path: dest_dir.join(&entry.name).display().to_string(),
+                });
+            }
+            DestLookup::Absent | DestLookup::Unknown => (dest_dir.join(&entry.name), None),
+        };
+        let dest_hit = dest_hit.as_ref();
 
         if merges_as_a_directory(entry) && dest_hit.is_some_and(merges_as_a_directory) {
             // Real dir vs real dir: always merge, never prompt. Recurse. A

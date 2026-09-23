@@ -20,6 +20,7 @@ use std::ffi::OsStr;
 
 use cmdr_fs::name_fold::fold_name;
 
+use super::super::look_alike::{self, LookAlike};
 use crate::file_system::listing::FileEntry;
 
 /// What one destination listing can say about a name a copy is about to write.
@@ -30,6 +31,12 @@ pub(super) enum DestLookup {
     /// The listing holds this exact name, carrying the same `size` /
     /// `is_directory` a `get_metadata` probe would have returned.
     Present(Box<FileEntry>),
+    /// The listing holds this name under another Unicode spelling, and not in
+    /// the one asked for (`look_alike.rs`). It's taken, by THIS entry, whose own
+    /// name is the only spelling a write may address it by.
+    LookAlike(Box<FileEntry>),
+    /// Two or more look-alikes and no exact name: which one is meant is a guess.
+    Ambiguous,
     /// The listing can't settle this name. Ask the backend.
     Unknown,
 }
@@ -40,10 +47,11 @@ pub(super) enum DestLookup {
 /// Entries are bucketed under a folded key (NFC + lowercase), so a name that
 /// collides with a stored one under EITHER case-insensitivity (SMB shares,
 /// macOS volumes) or Unicode normalization (macOS and SMB move paths between
-/// NFC and NFD) lands in the same bucket. Within a bucket, only a byte-exact
-/// name is answered from memory; a fold-only match is [`DestLookup::Unknown`],
-/// because whether the two names are the same file is the destination
-/// filesystem's call, not ours.
+/// NFC and NFD) lands in the same bucket. Within a bucket, a byte-exact name is
+/// [`DestLookup::Present`] and a name differing only in Unicode form is a
+/// [`DestLookup::LookAlike`]: both are taken, whatever the backend's lookups do.
+/// A case-only match is [`DestLookup::Unknown`], because whether two names a
+/// person can tell apart are one file is the destination filesystem's call.
 pub(super) struct DestNameIndex {
     by_folded: HashMap<String, Vec<FileEntry>>,
 }
@@ -83,9 +91,16 @@ impl DestNameIndex {
             return DestLookup::Unknown;
         };
         if let Some(bucket) = self.by_folded.get(&fold(name)) {
-            return match bucket.iter().find(|entry| entry.name == name) {
-                Some(entry) => DestLookup::Present(Box::new(entry.clone())),
-                None => DestLookup::Unknown,
+            if let Some(entry) = bucket.iter().find(|entry| entry.name == name) {
+                return DestLookup::Present(Box::new(entry.clone()));
+            }
+            // A form-only twin is settled here, whatever the backend's lookups
+            // do: a byte-exact one would miss it and write beside it. Only a
+            // case-only match is still the backend's call.
+            return match look_alike::among(bucket, name) {
+                LookAlike::One(entry) => DestLookup::LookAlike(entry),
+                LookAlike::Several => DestLookup::Ambiguous,
+                LookAlike::None => DestLookup::Unknown,
             };
         }
         if self.may_resolve_to_a_stored_name(name) {

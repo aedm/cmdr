@@ -34,6 +34,7 @@ mod in_flight_temps;
 mod journal;
 mod journal_search;
 mod ledger;
+mod look_alike;
 mod manager;
 mod mutation_error;
 mod operation_intent;
@@ -825,6 +826,8 @@ mod mtp_archive_test;
 mod smb_archive_integration_test;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod smb_full_concurrency_test;
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod smb_look_alike_test;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod smb_soak_test;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]

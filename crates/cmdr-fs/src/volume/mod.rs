@@ -1159,6 +1159,49 @@ pub trait Volume: Send + Sync {
         true
     }
 
+    /// Whether a NEW name Cmdr creates here goes out composed (NFC), whatever
+    /// spelling the name arrived in. Read through
+    /// [`spell_new_name`](Self::spell_new_name), ❌ never directly.
+    ///
+    /// For a backend that stores a name's bytes as sent while the clients sharing
+    /// it expect one spelling. SMB answers `true`: macOS hands out many local
+    /// names decomposed, and a decomposed name on a share is one Finder (over the
+    /// kernel mount, which composes on lookup), Windows, and Linux clients list and
+    /// then can't open. Default `false`: the name goes out as given.
+    ///
+    /// ❗ A new name only: a copy or move to a free name, a new folder or file, a
+    /// rename's target, a ` (1)` rename pick. An operation that addresses an
+    /// EXISTING entry (an overwrite, a merge into a folder that's there, a move
+    /// that keeps an entry's name) uses that entry's stored bytes, or it plants a
+    /// look-alike beside it.
+    fn composes_new_names(&self) -> bool {
+        false
+    }
+
+    /// Whether this volume's own lookups find a name whatever Unicode form it's
+    /// asked in, so one folder can never hold two spellings of it.
+    ///
+    /// A write guard reads it to skip the listing it would otherwise take to find
+    /// a look-alike after a lookup missed (`write_operations/look_alike.rs`): here
+    /// the miss already means there's none. `LocalPosixVolume` answers `true` on
+    /// macOS (APFS and HFS+ match names normalization-insensitively). Default
+    /// `false`, the byte-exact answer (SMB, SFTP, MTP, ADB, an in-memory store),
+    /// which costs a listing only for a non-ASCII name nothing matched.
+    fn matches_names_in_any_unicode_form(&self) -> bool {
+        false
+    }
+
+    /// `name` as this volume wants a NEW entry spelled: composed where
+    /// [`composes_new_names`](Self::composes_new_names) asks for it, else as given.
+    /// ❌ Don't override; answer `composes_new_names` instead.
+    fn spell_new_name<'n>(&self, name: &'n str) -> std::borrow::Cow<'n, str> {
+        if self.composes_new_names() {
+            crate::name_fold::composed(name)
+        } else {
+            std::borrow::Cow::Borrowed(name)
+        }
+    }
+
     /// Opens a streaming reader for the given path.
     ///
     /// Returns a VolumeReadStream that yields chunks of data.

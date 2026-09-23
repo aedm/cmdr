@@ -1275,6 +1275,9 @@ mod crashsafe_tests;
 #[path = "copy_extract_out_tests.rs"]
 mod extract_out_tests;
 #[cfg(test)]
+#[path = "look_alike_tests.rs"]
+mod look_alike_tests;
+#[cfg(test)]
 #[path = "merge_case_fold_tests.rs"]
 mod merge_case_fold_tests;
 #[cfg(test)]

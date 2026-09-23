@@ -422,7 +422,10 @@ pub(crate) async fn move_within_same_volume_with_progress(
             move |p: &Path| -> FetchFut<'_> {
                 let volume = Arc::clone(&volume);
                 let p_owned = p.to_path_buf();
-                Box::pin(async move { super::conflict::size_of_whatever_is_at(&volume, &p_owned).await })
+                Box::pin(async move {
+                    // A same-volume move keeps the entry it moves, name and all.
+                    super::landing::name_at_destination(&volume, &p_owned, super::landing::NewName::Keep).await
+                })
             }
         },
         {

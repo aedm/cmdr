@@ -105,6 +105,9 @@ pub struct InMemoryVolume {
     /// exactly like a missing source. Default `false`. Set via
     /// [`Self::with_create_directory_not_found`].
     create_directory_not_found: bool,
+    /// What [`Volume::composes_new_names`] reports. Default `false`; set via
+    /// [`Self::with_composed_new_names`] to stand in for a share.
+    composes_new_names: bool,
     /// Paths whose [`Volume::is_directory`] and [`Volume::get_metadata`] fail with
     /// an `IoError` instead of answering, modeling a stat that couldn't complete
     /// (a dropped MTP session, a hung mount) rather than a path that isn't there.
@@ -151,6 +154,7 @@ impl InMemoryVolume {
             rename_failure: None,
             rename_to_failing: RwLock::new(HashSet::new()),
             create_directory_not_found: false,
+            composes_new_names: false,
             stat_failing: RwLock::new(HashSet::new()),
             connection_state: None,
             backend_kind: BackendKind::Local,
@@ -236,6 +240,14 @@ impl InMemoryVolume {
     /// SOURCE.
     pub fn with_create_directory_not_found(mut self) -> Self {
         self.create_directory_not_found = true;
+        self
+    }
+
+    /// Makes [`Volume::composes_new_names`] report `true`, standing in for a share
+    /// whose new names go out composed. The store itself stays byte-exact, like
+    /// the server behind one.
+    pub fn with_composed_new_names(mut self) -> Self {
+        self.composes_new_names = true;
         self
     }
 
@@ -1070,6 +1082,10 @@ impl Volume for InMemoryVolume {
 
     fn create_directory_errors_on_existing_dir(&self) -> bool {
         !self.sibling_duplicates_allowed
+    }
+
+    fn composes_new_names(&self) -> bool {
+        self.composes_new_names
     }
 
     fn space_poll_interval(&self) -> Option<std::time::Duration> {

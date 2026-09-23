@@ -354,6 +354,14 @@ impl Volume for SmbVolume {
         true
     }
 
+    /// New names go out composed. Every path still goes out byte-for-byte
+    /// (`paths.rs::to_smb_path`); only a name Cmdr is creating gets respelled,
+    /// by the caller that knows it's creating it. `DETAILS.md` § "SMB names are
+    /// opaque bytes".
+    fn composes_new_names(&self) -> bool {
+        true
+    }
+
     fn max_concurrent_ops(&self) -> usize {
         // Read per batch dispatch, never captured at construction: the user moves
         // the slider and the next batch picks it up, with no remount. What the

@@ -157,10 +157,20 @@ pub fn fold_batch(per_path: Vec<(PathBuf, CopyScanResult)>) -> BatchScanResult {
 /// paths) still owes the caller the same `ScanConflict` shape, and the shape is
 /// what a conflict dialog renders. [`scan_conflicts`] is the wrapper for a
 /// backend with nothing special to say about the listing.
+///
+/// A name held only under another Unicode form (`name_fold::differ_only_in_form`)
+/// is a conflict too, naming the entry in the destination's own spelling: a
+/// byte-exact backend would otherwise take the copy beside it as a second,
+/// identical-looking entry. An exact match wins over a look-alike.
 pub fn conflicts_against(source_items: &[SourceItemInfo], dest_entries: &[FileEntry]) -> Vec<ScanConflict> {
     let mut conflicts = Vec::new();
     for item in source_items {
-        let Some(existing) = dest_entries.iter().find(|entry| entry.name == item.name) else {
+        let existing = dest_entries.iter().find(|entry| entry.name == item.name).or_else(|| {
+            dest_entries
+                .iter()
+                .find(|entry| crate::name_fold::differ_only_in_form(&entry.name, &item.name))
+        });
+        let Some(existing) = existing else {
             continue;
         };
         conflicts.push(ScanConflict {

@@ -153,13 +153,27 @@ pub(in crate::file_system::write_operations::transfer) use sync_driver::drive_tr
 /// one module cycle: the dispatcher imported the two engines, and both engines
 /// imported the dispatcher back for these three lines.
 ///
-/// ❗ The `Result` is the data-safety half. `Ok(None)` means the destination
-/// SAID the name is free; an `Err` means it wouldn't say, and the driver fails
-/// that item rather than writing. ❌ Never fold the two together: a flaky link
-/// then becomes a silent overwrite under a Skip or Stop policy, because no
-/// resolver runs, no policy is consulted, and the landing clears whatever the
-/// probe was asked about.
-pub(super) type FetchFut<'a> = Pin<Box<dyn Future<Output = Result<Option<u64>, WriteOperationError>> + Send + 'a>>;
+/// ❗ The `Result` is the data-safety half. `Ok(NameAtDest::Free)` means the
+/// destination SAID the name is free; an `Err` means it wouldn't say, and the
+/// driver fails that item rather than writing. ❌ Never fold the two together: a
+/// flaky link then becomes a silent overwrite under a Skip or Stop policy,
+/// because no resolver runs, no policy is consulted, and the landing clears
+/// whatever the probe was asked about.
+pub(super) type FetchFut<'a> = Pin<Box<dyn Future<Output = Result<NameAtDest, WriteOperationError>> + Send + 'a>>;
+
+/// What the destination holds at one top-level name, as the async driver's
+/// `dest_meta_fetcher` answers it. Both arms carry the path to use from then on,
+/// which need not be the one the driver asked about: a name the destination
+/// holds under another Unicode spelling is taken by THAT entry, and a free name
+/// may be respelled for the destination (`volume/landing.rs`).
+#[derive(Debug)]
+pub(super) enum NameAtDest {
+    /// Nothing holds the name: the new entry goes here.
+    Free(PathBuf),
+    /// The entry at `path` holds it, `size` bytes big (`0` when the backend
+    /// reports none). The resolver decides what happens to it.
+    Taken { path: PathBuf, size: u64 },
+}
 
 /// Per-call future shape for [`drive_transfer_serial_async`]'s `conflict_resolver`
 /// closure. See [`FetchFut`] for why these live with the driver.

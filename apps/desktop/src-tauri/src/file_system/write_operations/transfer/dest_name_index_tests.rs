@@ -49,19 +49,27 @@ fn a_case_difference_is_the_backends_call_not_ours() {
     assert!(matches!(lookup(&index, "NOTES.txt"), DestLookup::Unknown));
 }
 
-/// ❌ macOS and SMB move paths between NFC and NFD, so one user-visible name is
-/// two byte strings. A byte-exact key misses what the backend would find.
+/// ❌ macOS hands out NFD names and a share may store NFC, so one user-visible
+/// name is two byte strings. A byte-exact backend misses the stored one, so the
+/// listing settles it: taken, by the entry in its OWN spelling.
 #[test]
-fn a_normalization_difference_is_the_backends_call_not_ours() {
+fn a_normalization_difference_is_the_entry_that_is_there() {
     // Stored composed, asked decomposed, and the other way round.
-    assert!(matches!(
-        lookup(&listing(&["caf\u{e9}.txt"]), "cafe\u{301}.txt"),
-        DestLookup::Unknown
-    ));
-    assert!(matches!(
-        lookup(&listing(&["cafe\u{301}.txt"]), "caf\u{e9}.txt"),
-        DestLookup::Unknown
-    ));
+    let DestLookup::LookAlike(entry) = lookup(&listing(&["caf\u{e9}.txt"]), "cafe\u{301}.txt") else {
+        panic!("a composed entry is the decomposed name's look-alike");
+    };
+    assert_eq!(entry.name, "caf\u{e9}.txt");
+    let DestLookup::LookAlike(entry) = lookup(&listing(&["cafe\u{301}.txt"]), "caf\u{e9}.txt") else {
+        panic!("and the other way round");
+    };
+    assert_eq!(entry.name, "cafe\u{301}.txt");
+}
+
+/// Two look-alikes and no exact spelling: which one the copy means is a guess.
+#[test]
+fn two_look_alikes_and_no_exact_name_are_ambiguous() {
+    let index = listing(&["\u{e9}l\u{151}", "e\u{301}lo\u{30b}"]);
+    assert!(matches!(lookup(&index, "\u{e9}lo\u{30b}"), DestLookup::Ambiguous));
 }
 
 #[test]

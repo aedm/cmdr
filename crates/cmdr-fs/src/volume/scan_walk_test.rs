@@ -298,6 +298,40 @@ fn the_pairing_maps_both_sides_field_by_field() {
     assert_eq!(folder.dest_size, 12);
 }
 
+/// A destination name that differs from a source's only in Unicode form is the
+/// same name to a person, and on a byte-exact share the copy would stand a
+/// second one beside it, so the dialog has to hear about it. It names the entry
+/// that's THERE, in its own spelling. A name differing in case is a separate
+/// name, and an exact match wins over a look-alike.
+#[test]
+fn a_name_the_destination_spells_another_way_is_a_conflict() {
+    let composed = FileEntry::new("caf\u{e9}.txt".into(), "/dest/caf\u{e9}.txt".into(), false, false);
+    let cased = FileEntry::new("readme.md".into(), "/dest/readme.md".into(), false, false);
+    let exact = FileEntry::new("r\u{e9}sz".into(), "/dest/r\u{e9}sz".into(), true, false);
+    let look_alike = FileEntry::new("re\u{301}sz".into(), "/dest/re\u{301}sz".into(), true, false);
+    let dest = [composed, cased, look_alike, exact];
+
+    let source = [
+        item("cafe\u{301}.txt", 1, false),
+        item("README.md", 1, false),
+        item("r\u{e9}sz", 0, true),
+    ];
+
+    let conflicts = conflicts_against(&source, &dest);
+
+    let pairs: Vec<(&str, &str)> = conflicts
+        .iter()
+        .map(|c| (c.source_path.as_str(), c.dest_path.as_str()))
+        .collect();
+    assert_eq!(
+        pairs,
+        [
+            ("cafe\u{301}.txt", "/dest/caf\u{e9}.txt"),
+            ("r\u{e9}sz", "/dest/r\u{e9}sz"),
+        ]
+    );
+}
+
 #[test]
 fn folding_an_empty_batch_is_all_zeroes_rather_than_a_panic() {
     let batch = fold_batch(Vec::new());

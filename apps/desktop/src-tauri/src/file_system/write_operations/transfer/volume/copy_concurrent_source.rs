@@ -19,14 +19,13 @@ use std::time::Instant;
 
 use super::super::super::state::update_operation_status;
 use super::super::super::types::{WriteOperationPhase, WriteOperationType, WriteProgressEvent};
-use super::super::dest_name_index::DestLookup;
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::copy_concurrent::ConcurrentCopy;
 use super::copy_concurrent_task::CopyTask;
+use super::landing::{DestFolder, Landing, NewName, where_it_lands};
 use super::preflight::SourceFileFacts;
 use super::strategy::{MergeProbe, resolve_source_is_directory};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
-use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::VolumeError;
 use crate::ignore_poison::IgnorePoison;
 
@@ -94,7 +93,7 @@ impl ConcurrentCopy<'_> {
         // Nothing has resolved anything yet, so the name this task writes to is
         // one we believe free (`staged_write.rs::LandingName`).
         let mut dest_name_claimed = false;
-        let existing_dest = self
+        let (landing_path, existing_dest) = self
             .existing_dest_entry(source_index, source_path, &dest_item_path)
             .await
             .map_err(|e| {
@@ -103,7 +102,11 @@ impl ConcurrentCopy<'_> {
                     PathRole::Destination,
                     e,
                 ))
-            })?;
+            })?
+            .into_parts();
+        // The entry that's THERE, in its own spelling, or the new name spelled
+        // for the destination.
+        dest_item_path = landing_path;
         if let Some(dest_meta) = existing_dest {
             // The type and size come from the scan (or the one probe above),
             // never a re-stat: an MTP `scan_for_copy` lists the parent dir,
@@ -244,52 +247,60 @@ impl ConcurrentCopy<'_> {
     /// "Answering the pre-check from one listing".
     ///
     /// ❗ A probe that can't ANSWER fails the item (`Err`), and is never read as
-    /// `None`: a `ConnectionTimeout` on a flaky share would otherwise hand the
+    /// free: a `ConnectionTimeout` on a flaky share would otherwise hand the
     /// source to the fresh-write path with no resolver and no policy. Only
-    /// `NotFound` is a free name. `conflict.rs::size_of_whatever_is_at` holds
-    /// the rule the three serial engines share.
+    /// `NotFound` is a free name. `landing.rs::where_it_lands` holds the rule,
+    /// the look-alike guard, and the new-name spelling for every engine.
     async fn existing_dest_entry(
         &self,
         source_index: usize,
         source_path: &Path,
         dest_item_path: &Path,
-    ) -> Result<Option<FileEntry>, VolumeError> {
-        if self.dest_dir_is_ours {
-            return Ok(None);
-        }
-        match self
-            .dest_index
-            .as_ref()
-            .map(|index| index.lookup(source_path.file_name()))
-        {
-            Some(DestLookup::Absent) => Ok(None),
-            Some(DestLookup::Present(entry)) => Ok(Some(*entry)),
-            // No index (a local destination, or a listing that failed), or a
-            // name only the backend can settle.
-            Some(DestLookup::Unknown) | None => {
-                // Record the pre-check BEFORE awaiting it. In the 2026-07-31
-                // incident this destination `get_metadata` was the driver's last
-                // log line and nothing said whether it returned, so a dump has to
-                // be able to name it as the step in progress.
-                if let Some(probe) = self.op_probe.as_ref() {
-                    probe.set_driver_phase(
-                        super::super::transfer_probe::DriverPhase::PreparingNext,
-                        // The same label the source's own row renders under, so a
-                        // reader can match the driver's step against the table.
-                        &format!(
-                            "{} {}",
-                            super::super::transfer_probe::TaskRow::source(source_index).label(),
-                            dest_item_path.display()
-                        ),
-                    );
-                }
-                match self.dest_volume.get_metadata(dest_item_path).await {
-                    Ok(entry) => Ok(Some(entry)),
-                    Err(VolumeError::NotFound(_)) => Ok(None),
-                    Err(e) => Err(e),
-                }
+    ) -> Result<Landing, VolumeError> {
+        let folder = if self.dest_dir_is_ours {
+            DestFolder::CreatedByUs
+        } else {
+            match self.dest_index.as_ref() {
+                Some(index) => DestFolder::Listed(index),
+                // A local destination, or a listing that failed.
+                None => DestFolder::Unlisted,
             }
+        };
+        let (Some(dest_dir), Some(name)) = (dest_item_path.parent(), source_path.file_name()) else {
+            // A source with no name of its own lands on the destination folder
+            // itself, which no listing describes.
+            if matches!(folder, DestFolder::CreatedByUs) {
+                return Ok(Landing::Free(dest_item_path.to_path_buf()));
+            }
+            return match self.dest_volume.get_metadata(dest_item_path).await {
+                Ok(entry) => Ok(Landing::Taken {
+                    path: dest_item_path.to_path_buf(),
+                    entry: Box::new(entry),
+                }),
+                Err(VolumeError::NotFound(_)) => Ok(Landing::Free(dest_item_path.to_path_buf())),
+                Err(e) => Err(e),
+            };
+        };
+        // Record the pre-check BEFORE awaiting it. In the 2026-07-31 incident
+        // this destination `get_metadata` was the driver's last log line and
+        // nothing said whether it returned, so a dump has to be able to name it
+        // as the step in progress. A listed folder only probes a name its
+        // listing can't settle, but naming the step costs nothing either way.
+        if !matches!(folder, DestFolder::CreatedByUs)
+            && let Some(probe) = self.op_probe.as_ref()
+        {
+            probe.set_driver_phase(
+                super::super::transfer_probe::DriverPhase::PreparingNext,
+                // The same label the source's own row renders under, so a
+                // reader can match the driver's step against the table.
+                &format!(
+                    "{} {}",
+                    super::super::transfer_probe::TaskRow::source(source_index).label(),
+                    dest_item_path.display()
+                ),
+            );
         }
+        where_it_lands(&self.dest_volume, dest_dir, name, folder, NewName::Respell).await
     }
 
     /// Runs the conflict resolver for one top-level clash, on the driver.

@@ -187,7 +187,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                     }
                     // Any successful stat is a conflict; a stat that can't
                     // answer fails the item rather than writing.
-                    super::conflict::size_of_whatever_is_at(&dest_volume, &p_owned).await
+                    super::landing::name_at_destination(&dest_volume, &p_owned, super::landing::NewName::Respell).await
                 })
             }
         },

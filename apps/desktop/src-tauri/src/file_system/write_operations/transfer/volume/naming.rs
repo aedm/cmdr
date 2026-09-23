@@ -7,9 +7,11 @@
 //! `ClaimedNames` ledger over both. Kept out of `conflict.rs`, which decides
 //! conflict POLICY and only asks this for a name.
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use super::super::super::look_alike::{LookAlike, look_alike_in};
 use super::super::super::unique_name::ClaimedNames;
 use super::super::super::unique_name::NameCandidates;
 use crate::file_system::volume::Volume;
@@ -89,7 +91,10 @@ pub(super) async fn find_unique_volume_name(
     };
 
     loop {
-        let new_path = candidates.current();
+        // A pick is a NEW name, so it takes the destination's spelling
+        // (`Volume::spell_new_name`), whatever the clashing name it counts up
+        // from was spelled in.
+        let new_path = spelled_for(dest_volume, candidates.current());
 
         if !claimed.claim(&new_path) {
             // Spoken for by another source of this same operation.
@@ -124,7 +129,9 @@ pub(super) async fn find_unique_volume_name(
         } else {
             // Non-local backend: best-effort `exists()` probe. Re-check right
             // before returning to keep the residual window as narrow as we can.
-            if !dest_volume.exists(&new_path).await {
+            // A byte-exact backend also holds names in other spellings, which
+            // the probe can't see and which are just as taken.
+            if !dest_volume.exists(&new_path).await && !holds_a_look_alike(dest_volume, &new_path).await {
                 return ClaimedName::probed(new_path);
             }
             candidates.advance();
@@ -136,6 +143,32 @@ pub(super) async fn find_unique_volume_name(
             return ClaimedName::probed(candidates.current());
         }
     }
+}
+
+/// `path` with its leaf spelled the way `dest_volume` wants a new name.
+fn spelled_for(dest_volume: &Arc<dyn Volume>, path: PathBuf) -> PathBuf {
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
+        return path;
+    };
+    match dest_volume.spell_new_name(name) {
+        Cow::Borrowed(_) => path,
+        Cow::Owned(spelled) => parent.join(spelled),
+    }
+}
+
+/// Whether `path`'s folder holds its name under another Unicode spelling.
+///
+/// A listing that fails leaves the probe's "free" standing: the pick is a new
+/// name either way, so the worst case is an identical-looking sibling, never a
+/// write over somebody's file.
+async fn holds_a_look_alike(dest_volume: &Arc<dyn Volume>, path: &Path) -> bool {
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
+        return false;
+    };
+    matches!(
+        look_alike_in(dest_volume.as_ref(), parent, name).await,
+        Ok(LookAlike::One(_) | LookAlike::Several)
+    )
 }
 
 /// Resolves a destination-volume path against a local-FS volume root, so the

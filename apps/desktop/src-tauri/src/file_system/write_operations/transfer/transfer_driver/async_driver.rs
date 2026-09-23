@@ -10,8 +10,8 @@ use crate::file_system::write_operations::state::{OperationIntent, WriteOperatio
 use crate::file_system::write_operations::types::WriteOperationError;
 
 use super::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, PostLoopIntent, ResolveFut, TransferContext,
-    TransferFut, TransferLoopOutcome, TransferOutcome, emit_progress_and_status,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, NameAtDest, PostLoopIntent, ResolveFut,
+    TransferContext, TransferFut, TransferLoopOutcome, TransferOutcome, emit_progress_and_status,
 };
 
 /// Async serial driver for volume operations.
@@ -156,11 +156,12 @@ where
         };
 
         // Conflict detection via caller-supplied dest meta fetcher.
-        // `Ok(Some(size))` => conflict; `Ok(None)` => the destination said the
-        // name is free. An `Err` is neither: the destination wouldn't say, so
-        // this item fails HERE, before any resolver or write. See `FetchFut`.
-        let dest_size_hint = match dest_meta_fetcher(&initial_dest_path).await {
-            Ok(hint) => hint,
+        // `Taken` => conflict, with the entry's own path; `Free` => the
+        // destination said the name is free, and where the new entry goes. An
+        // `Err` is neither: the destination wouldn't say, so this item fails
+        // HERE, before any resolver or write. See `FetchFut`.
+        let name_at_dest = match dest_meta_fetcher(&initial_dest_path).await {
+            Ok(answer) => answer,
             Err(e) => {
                 return TransferLoopOutcome {
                     files_done,
@@ -172,66 +173,67 @@ where
             }
         };
 
-        let (resolved_dest, replace_after_write, dest_name_claimed) = if dest_size_hint.is_some() {
-            log::debug!(
-                "drive_transfer_serial_async: conflict detected at {}",
-                initial_dest_path.display()
-            );
-            let decision = conflict_resolver(ConflictDecisionInput {
-                source_path,
-                initial_dest_path: &initial_dest_path,
-                dest_size_hint,
-                source_is_directory_hint: None,
-                source_size_hint: None,
-            })
-            .await;
-
-            match decision {
-                Ok(ConflictDecision::Skip { bytes_accounted }) => {
-                    // Per-iter skip accounting: bump counters and emit
-                    // throttled progress so the bar reflects the skip
-                    // immediately.
-                    files_done += 1;
-                    bytes_done += bytes_accounted;
-                    files_skipped += 1;
-                    bytes_skipped += bytes_accounted;
-                    state.note_skipped(1, bytes_accounted);
-                    if last_progress_time.elapsed() >= progress_interval {
-                        last_progress_time = Instant::now();
-                        emit_progress_and_status(
-                            events,
-                            state,
-                            operation_id,
-                            config.operation_type,
-                            config.phase,
-                            source_path.file_name().map(|n| n.to_string_lossy().to_string()),
-                            files_done,
-                            total_files,
-                            bytes_done,
-                            total_bytes,
-                        );
-                    }
-                    continue;
-                }
-                Ok(ConflictDecision::Proceed {
-                    dest_path,
-                    replace_after_write,
-                }) => (dest_path, replace_after_write, true),
-                Err(e) => {
-                    return TransferLoopOutcome {
-                        files_done,
-                        bytes_done,
-                        files_skipped,
-                        bytes_skipped,
-                        intent: PostLoopIntent::Failed(e),
-                    };
-                }
-            }
-        } else {
+        let (resolved_dest, replace_after_write, dest_name_claimed) = match name_at_dest {
             // Nothing sits at this name as far as the pre-check could tell, so
             // nothing resolved anything: the closure's write is landing on a
             // name it believes free.
-            (initial_dest_path, None, false)
+            NameAtDest::Free(free_path) => (free_path, None, false),
+            NameAtDest::Taken { path: taken_path, size } => {
+                log::debug!(
+                    "drive_transfer_serial_async: conflict detected at {}",
+                    taken_path.display()
+                );
+                let decision = conflict_resolver(ConflictDecisionInput {
+                    source_path,
+                    initial_dest_path: &taken_path,
+                    dest_size_hint: Some(size),
+                    source_is_directory_hint: None,
+                    source_size_hint: None,
+                })
+                .await;
+
+                match decision {
+                    Ok(ConflictDecision::Skip { bytes_accounted }) => {
+                        // Per-iter skip accounting: bump counters and emit
+                        // throttled progress so the bar reflects the skip
+                        // immediately.
+                        files_done += 1;
+                        bytes_done += bytes_accounted;
+                        files_skipped += 1;
+                        bytes_skipped += bytes_accounted;
+                        state.note_skipped(1, bytes_accounted);
+                        if last_progress_time.elapsed() >= progress_interval {
+                            last_progress_time = Instant::now();
+                            emit_progress_and_status(
+                                events,
+                                state,
+                                operation_id,
+                                config.operation_type,
+                                config.phase,
+                                source_path.file_name().map(|n| n.to_string_lossy().to_string()),
+                                files_done,
+                                total_files,
+                                bytes_done,
+                                total_bytes,
+                            );
+                        }
+                        continue;
+                    }
+                    Ok(ConflictDecision::Proceed {
+                        dest_path,
+                        replace_after_write,
+                    }) => (dest_path, replace_after_write, true),
+                    Err(e) => {
+                        return TransferLoopOutcome {
+                            files_done,
+                            bytes_done,
+                            files_skipped,
+                            bytes_skipped,
+                            intent: PostLoopIntent::Failed(e),
+                        };
+                    }
+                }
+            }
         };
 
         let ctx = TransferContext {

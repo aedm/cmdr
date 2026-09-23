@@ -33,10 +33,11 @@ use futures_util::stream::FuturesUnordered;
 
 use super::super::super::state::WriteOperationState;
 use super::super::super::types::WriteOperationError;
-use super::super::dest_name_index::{DestLookup, DestNameIndex};
+use super::super::dest_name_index::DestNameIndex;
 use super::super::transfer_driver::SourceProgress;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskPhase, TaskProbeHandle, TaskRole, set_task_phase};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
+use super::landing::{DestFolder, NewName, where_it_lands};
 use super::naming::take_back_reservation;
 use super::preflight::SourceFileFacts;
 use super::strategy::{
@@ -306,7 +307,9 @@ async fn copy_leaf<'a>(
 ///   always merges, never prompts). A child the index reports free is copied
 ///   straight in. One listing per level, in-memory lookups after; the only
 ///   `get_metadata` is for a name the listing can't settle, which on an
-///   ordinary tree is none of them (`what_the_destination_holds`).
+///   ordinary tree is none of them (`landing.rs::where_it_lands`). A child the
+///   destination holds under another Unicode spelling is a clash with THAT
+///   entry, and the walk addresses it by its stored name from then on.
 ///
 /// The `Ok` vs `AlreadyExists` split also drives rollback: `Ok` records the dir
 /// in `created` (rollback may remove it once empty); `AlreadyExists` does NOT,
@@ -505,10 +508,23 @@ async fn merge_level<'a>(
         }
 
         let child_source = PathBuf::from(&entry.path);
-        let child_dest = dest_path.join(&entry.name);
-        let dest_hit = what_the_destination_holds(dest_volume, dest_index.as_ref(), &entry.name, &child_dest)
-            .await
-            .at(&child_source)?;
+        // The level listing settles almost every child: a byte-exact hit, a
+        // look-alike (taken, in ITS spelling), or a name nothing folds onto. Only
+        // a case-only match costs a probe, and on an ordinary tree none does.
+        let folder = match dest_index.as_ref() {
+            Some(index) => DestFolder::Listed(index),
+            None => DestFolder::CreatedByUs,
+        };
+        let (child_dest, dest_hit) = where_it_lands(
+            dest_volume,
+            dest_path,
+            OsStr::new(&entry.name),
+            folder,
+            NewName::Respell,
+        )
+        .await
+        .at(&child_source)?
+        .into_parts();
         let dest_hit = dest_hit.as_ref();
 
         if entry.is_directory {
@@ -652,41 +668,6 @@ async fn merge_level<'a>(
     }
 
     Ok(())
-}
-
-/// What the destination holds at one child's name, answered the way the
-/// backend would resolve it rather than byte-for-byte.
-///
-/// `None` ⇒ the name is free and the child may be written straight in. `Some` ⇒
-/// a clash the caller routes through the resolver (or, for dir-vs-dir, merges
-/// into).
-///
-/// The level listing settles almost everything: a byte-exact match is the entry
-/// itself, and a name no stored entry can fold onto is genuinely free. What it
-/// CAN'T settle is a name that folds onto one it holds (`Report.docx` against
-/// `report.docx`, NFD against NFC) — whether those are one file is the
-/// destination filesystem's call, so we ask it. On an ordinary ASCII tree that
-/// probe never fires; see `dest_name_index.rs` for the residual list.
-///
-/// ❗ A probe that can't answer fails the item. Reading a transport failure as
-/// "nothing is there" hands the child to the fresh-write path, whose landing
-/// then clears whatever the probe was asked about — the same discipline
-/// `conflict.rs` states for its own probes.
-async fn what_the_destination_holds(
-    dest_volume: &Arc<dyn Volume>,
-    dest_index: Option<&DestNameIndex>,
-    name: &str,
-    child_dest: &Path,
-) -> Result<Option<FileEntry>, VolumeError> {
-    match dest_index.map(|index| index.lookup(Some(OsStr::new(name)))) {
-        None | Some(DestLookup::Absent) => Ok(None),
-        Some(DestLookup::Present(entry)) => Ok(Some(*entry)),
-        Some(DestLookup::Unknown) => match dest_volume.get_metadata(child_dest).await {
-            Ok(entry) => Ok(Some(entry)),
-            Err(VolumeError::NotFound(_)) => Ok(None),
-            Err(e) => Err(e),
-        },
-    }
 }
 
 /// Whether this backend's `create_directory` reliably returns

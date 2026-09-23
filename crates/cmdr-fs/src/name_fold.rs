@@ -9,6 +9,10 @@
 //!
 //! ❌ A comparison key only, never sent to a volume: the server stores the bytes
 //! it was given, and one directory can hold both forms.
+//!
+//! Two narrower answers ride beside it: [`differ_only_in_form`], the pair a
+//! write guard treats as ONE name (a person can't tell them apart; case they
+//! can), and [`composed`], the spelling a NEW name takes on a volume that asks.
 
 use std::borrow::Cow;
 
@@ -27,6 +31,31 @@ pub fn fold_name(name: &str) -> Cow<'_, str> {
     Cow::Owned(name.nfc().flat_map(char::to_lowercase).collect())
 }
 
+/// Whether `a` and `b` are two spellings of ONE name that differ only in Unicode
+/// form: byte-different, identical once composed. A person can't tell them
+/// apart on screen, so a destination holding one is taken for the other.
+///
+/// Stricter than sharing [`fold_name`]'s key: `Report` and `report` share a key
+/// but read as two names, and a case-sensitive destination keeps both on
+/// purpose. Two names that differ only in form are never a choice anybody made.
+pub fn differ_only_in_form(a: &str, b: &str) -> bool {
+    // Pure ASCII has one form, so two ASCII names are equal or different names.
+    a != b && !(a.is_ascii() && b.is_ascii()) && a.nfc().eq(b.nfc())
+}
+
+/// `name` in composed form (NFC), the spelling a NEW name takes on a volume that
+/// asks for it ([`Volume::composes_new_names`](crate::volume::Volume::composes_new_names)).
+/// Borrows when there's nothing to compose.
+///
+/// ❌ Never for a name that addresses an existing entry: that entry's stored
+/// bytes are the only spelling that reaches it.
+pub fn composed(name: &str) -> Cow<'_, str> {
+    if name.is_ascii() || unicode_normalization::is_nfc(name) {
+        return Cow::Borrowed(name);
+    }
+    Cow::Owned(name.nfc().collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,6 +72,28 @@ mod tests {
         let decomposed = "re\u{301}sz.jpg";
         assert_eq!(fold_name(composed), fold_name(decomposed));
         assert_eq!(fold_name(decomposed), "r\u{e9}sz.jpg");
+    }
+
+    #[test]
+    fn only_a_difference_in_form_makes_a_look_alike() {
+        assert!(differ_only_in_form("caf\u{e9}", "cafe\u{301}"));
+        assert!(
+            !differ_only_in_form("caf\u{e9}", "caf\u{e9}"),
+            "one spelling is no pair"
+        );
+        assert!(!differ_only_in_form("Report", "report"), "case reads as two names");
+        assert!(
+            !differ_only_in_form("Caf\u{e9}", "cafe\u{301}"),
+            "and so does case plus form"
+        );
+        assert!(!differ_only_in_form("a.txt", "b.txt"));
+    }
+
+    #[test]
+    fn composing_borrows_what_is_already_composed() {
+        assert!(matches!(composed("plain.txt"), Cow::Borrowed(_)));
+        assert!(matches!(composed("caf\u{e9}"), Cow::Borrowed(_)));
+        assert_eq!(composed("cafe\u{301}"), "caf\u{e9}");
     }
 
     #[test]
