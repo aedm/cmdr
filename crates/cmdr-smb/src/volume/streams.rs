@@ -308,7 +308,9 @@ impl SmbVolume {
     /// Reads the client's own connection rather than cloning a session: the
     /// clones `clone_session` hands out share the connection's negotiated
     /// params, so this is the same number the upload will see, for the price of
-    /// a brief uncontended mutex and no wire traffic.
+    /// a brief uncontended mutex and no wire traffic. Only tests size a payload
+    /// off it, so a release build without `testing` leaves it out.
+    #[cfg(any(test, feature = "testing"))]
     pub(super) async fn negotiated_max_write(&self) -> Option<u64> {
         let guard = self.inner.client.lock().await;
         guard.as_ref().and_then(|c| c.params()).map(|p| p.max_write_size as u64)
