@@ -3337,3 +3337,30 @@ accent, eller olika versaler/gemener). Återanvänder `objekt`, `server`, `mapp`
   ordagrant, utan citattecken · `high`.
 - **`{path}` i `errors.volume.ambiguousName` står inom `”…”`**, som i systrarna
   `errors.volume.notFound`/`.alreadyExists` · `high`.
+
+## Strömbrytaren ”Tillåt moln-AI” och lägena när moln-AI är avstängt (`ai.cloudConsent.*`, `askCmdr.gate.*`, 2026-09-23)
+
+Ett samtycke för integritet: av som standard, och ingenting lämnar Macen förrän det slås på. Texten ska vara lugn och
+aldrig lova mer än Cmdr gör. Belägg från det installerade macOS (referenssamlingen finns inte på M1), enligt
+`docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
+
+- Allow cloud AI (strömbrytarens etikett, `ai.cloudConsent.label`) · **Tillåt moln-AI** · `Allow` → `Tillåt` är knappen
+  i macOS sv:s behörighetsfrågor (`TCC.framework` `Localizable.loctable`, `REQUEST_ACCESS_ALLOW`, macOS 26.6.2 build
+  25G83, läst 2026-09-23); `Moln-AI` är det redan publicerade värdet för `settings.ai.provider.opt.cloud`, alternativet
+  precis ovanför · `high`
+- cloud AI (substantiv, neutrum som `AI`) · **moln-AI**; avstängt läge · **Moln-AI är avstängt**, samma form som
+  `ai.translateError.off.title` (`AI är avstängt`); pronomen `det` (`Tillåt det i Inställningar > AI`) · `high`
+- **Etiketten återges ordagrant.** Imperativet `Tillåt moln-AI` är samtidigt etiketten, så `askCmdr.gate.cloudOff.body`
+  och `settings.askCmdr.cloudOffHint` skriver det utan citattecken, medan `settings.ai.cloudConsent.lockedHint` citerar
+  den med `”…”` efter `Slå på`, som engelskan.
+- `Ask Cmdr` som subjekt tar `den` (en-genus, som `Cmdr … när den …`): `Ask Cmdr är avstängd`, `Slå på den`. Turn on →
+  `Slå på` (katalogens och macOS verb, se § Turn it on in Settings) · `high`
+- AI service / cloud AI service · **AI-tjänst** / **moln-AI-tjänst** (redan i `settings.ai.cloudProvider.description`).
+  Engelskan skiljer `service` från `provider` i `ai.cloudConsent.askCmdr.*`, som säger `leverantör`; båda står kvar.
+- custom endpoints · **anpassade slutpunkter** (`slutpunkt` är redan katalogens ord) · `high`
+- side panel · **sidopanel** (Thunar `Sidopanel`, `panel` är katalogens ord) · `high`
+- Funktionsnamnen i utfällningen (inom `<b>`): `Namnförslag för nya mappar`, `Sök med vanliga ord`,
+  `Markera med en beskrivning` (select → `markera`, macOS `Markera allt`) · `high`
+- Settings > AI · **Inställningar > AI**, med `>` som syskonen i `ai.translateError.*`.
+- `settings.askCmdr.enabled.label` = `Ask Cmdr`, identiskt med engelskan och med `sameAsSourceJustification`
+  (produktnamn, som `settings.section.askCmdr`).

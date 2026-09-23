@@ -55,39 +55,39 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
-  "ai.cloudConsent.label": "Allow cloud AI",
+  "ai.cloudConsent.label": "Tillåt moln-AI",
   "@ai.cloudConsent.label": {
     "sourceHash": "9947821"
   },
-  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "ai.cloudConsent.description": "Cmdr skickar ingenting till en moln-AI-tjänst förrän du slår på det här.",
   "@ai.cloudConsent.description": {
     "sourceHash": "2f568e5"
   },
-  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "ai.cloudConsent.disclosureTitle": "Vad Cmdr skickar",
   "@ai.cloudConsent.disclosureTitle": {
     "sourceHash": "6907e64"
   },
-  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "ai.cloudConsent.intro": "När det här är på skickar Cmdr följande till AI-tjänsten som du ställer in nedan:",
   "@ai.cloudConsent.intro": {
-    "sourceHash": "9449148"
+    "sourceHash": "9462a5a"
   },
-  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "ai.cloudConsent.whereItGoes": "Vart dina data tar vägen, och vad som händer med dem där, beror på vilken tjänst du väljer och ditt avtal med den. Det gäller även Ollama, LM Studio och anpassade slutpunkter: dina data hamnar där den servern körs. Cmdrs egna servrar ser aldrig något av det.",
   "@ai.cloudConsent.whereItGoes": {
-    "sourceHash": "8c036fa"
+    "sourceHash": "f80daf9"
   },
-  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "ai.cloudConsent.folderSuggestions": "<b>Namnförslag för nya mappar</b>: sökvägen till den aktuella mappen och upp till 100 namn i den",
   "@ai.cloudConsent.folderSuggestions": {
     "sourceHash": "02790c2"
   },
-  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "ai.cloudConsent.search": "<b>Sök med vanliga ord</b>: texten du skriver",
   "@ai.cloudConsent.search": {
     "sourceHash": "e6d4ef9"
   },
-  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "ai.cloudConsent.selection": "<b>Markera med en beskrivning</b>: det du skriver, plus upp till 240 namn från den aktuella mappen",
   "@ai.cloudConsent.selection": {
     "sourceHash": "1e1c3c3"
   },
-  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, när du chattar eller när den startar ett samtal på eget initiativ:",
   "@ai.cloudConsent.askCmdr.title": {
     "sourceHash": "26e139c"
   },
@@ -131,7 +131,7 @@
   "@ai.cloudConsent.askCmdr.proactive": {
     "sourceHash": "abfa80b"
   },
-  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Dina chattar i Ask Cmdr stannar på din Mac, i en lokal databas som du kan öppna och läsa.",
   "@ai.cloudConsent.askCmdr.chatsStayLocal": {
     "sourceHash": "283cdd7"
   },
@@ -139,7 +139,7 @@
   "@ai.cloudConsent.logsNote": {
     "sourceHash": "7e211fc"
   },
-  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "ai.cloudConsent.turnOffAnyTime": "Stäng av det här när som helst, så slutar Cmdr skicka direkt. Tjänsten, nyckeln och chattarna finns kvar som de är.",
   "@ai.cloudConsent.turnOffAnyTime": {
     "sourceHash": "464c39f"
   },
@@ -155,11 +155,11 @@
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
   },
-  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "ai.translateError.noCloudConsent.title": "Moln-AI är avstängt",
   "@ai.translateError.noCloudConsent.title": {
     "sourceHash": "2e56781"
   },
-  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "ai.translateError.noCloudConsent.body": "Tillåt det i Inställningar > AI och försök sedan igen.",
   "@ai.translateError.noCloudConsent.body": {
     "sourceHash": "fde3eb5"
   },

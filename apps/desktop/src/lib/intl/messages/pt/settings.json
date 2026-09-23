@@ -924,9 +924,9 @@
   "@settings.ai.cloudConsent.onSince": {
     "sourceHash": "2f573fd"
   },
-  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "settings.ai.cloudConsent.lockedHint": "Ative “Permitir IA na nuvem” acima para configurar um serviço.",
   "@settings.ai.cloudConsent.lockedHint": {
-    "sourceHash": "36f676c"
+    "sourceHash": "6f4097a"
   },
   "settings.ai.cloudProvider.description": "Qual serviço de IA na nuvem usar.",
   "@settings.ai.cloudProvider.description": {
@@ -1385,7 +1385,7 @@
   "@settings.askCmdr.consentRevokePending.label": {
     "sourceHash": "1ecd887"
   },
-  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "settings.ai.cloudConsentRevokePending.label": "IA na nuvem desativada, aguardando salvamento",
   "@settings.ai.cloudConsentRevokePending.label": {
     "sourceHash": "16456dc"
   },
@@ -1699,19 +1699,20 @@
   "@settings.askCmdr.intro": {
     "sourceHash": "3b16f89"
   },
-  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "settings.askCmdr.enabled.label": "Ask Cmdr",
   "@settings.askCmdr.enabled.label": {
-    "sourceHash": "0d656c4"
+    "sourceHash": "aafb1ce",
+    "sameAsSourceJustification": "Product name (the Ask Cmdr chat panel), kept verbatim in every locale per the do-not-translate rule; the same value settings.section.askCmdr already justifies."
   },
-  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "settings.askCmdr.enabled.description": "Converse com o Cmdr sobre seus arquivos em um painel lateral.",
   "@settings.askCmdr.enabled.description": {
     "sourceHash": "a1116db"
   },
-  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "settings.askCmdr.cloudOffHint": "O Ask Cmdr usa seu serviço de IA na nuvem. Ative “Permitir IA na nuvem” nos ajustes de IA para começar a conversar.",
   "@settings.askCmdr.cloudOffHint": {
-    "sourceHash": "59e0db8"
+    "sourceHash": "1d3ec5d"
   },
-  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "settings.askCmdr.openAiSettings": "Abrir ajustes de IA",
   "@settings.askCmdr.openAiSettings": {
     "sourceHash": "edcc53b"
   },

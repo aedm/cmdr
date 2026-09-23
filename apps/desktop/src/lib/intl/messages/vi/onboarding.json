@@ -307,7 +307,7 @@
   "@onboarding.stepAi.missingKeyWarning": {
     "sourceHash": "3d66d11"
   },
-  "onboarding.stepAi.cloudConsentOffNote": "Cloud AI stays off until you allow it. You can do that later in Settings > AI.",
+  "onboarding.stepAi.cloudConsentOffNote": "AI đám mây sẽ tắt cho đến khi bạn cho phép. Bạn có thể làm việc đó sau trong Cài đặt > AI.",
   "@onboarding.stepAi.cloudConsentOffNote": {
     "sourceHash": "82d27b6"
   },

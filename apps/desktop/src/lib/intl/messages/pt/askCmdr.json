@@ -212,11 +212,11 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "askCmdr.error.askCmdrOff": "O Ask Cmdr está desativado.",
   "@askCmdr.error.askCmdrOff": {
     "sourceHash": "6599ee1"
   },
-  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "askCmdr.error.noCloudConsent": "A IA na nuvem está desativada. Permita-a em Ajustes > IA.",
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
@@ -358,27 +358,27 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "askCmdr.gate.off.title": "O Ask Cmdr está desativado",
   "@askCmdr.gate.off.title": {
     "sourceHash": "0420c9a"
   },
-  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "askCmdr.gate.off.body": "Ative-o para conversar com o Cmdr sobre seus arquivos.",
   "@askCmdr.gate.off.body": {
     "sourceHash": "48b16af"
   },
-  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "askCmdr.gate.off.turnOn": "Ativar Ask Cmdr",
   "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "askCmdr.gate.cloudOff.title": "A IA na nuvem está desativada",
   "@askCmdr.gate.cloudOff.title": {
     "sourceHash": "2e56781"
   },
-  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "askCmdr.gate.cloudOff.body": "O Ask Cmdr conversa com o serviço de IA na nuvem que você configurou. Ative “Permitir IA na nuvem” nos Ajustes primeiro, e o chat fica pronto para usar.",
   "@askCmdr.gate.cloudOff.body": {
     "sourceHash": "d3d3252"
   },
-  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "askCmdr.gate.cloudOff.openSettings": "Abrir ajustes de IA",
   "@askCmdr.gate.cloudOff.openSettings": {
     "sourceHash": "edcc53b"
   },

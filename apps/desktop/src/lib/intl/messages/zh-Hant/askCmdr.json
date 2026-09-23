@@ -212,11 +212,11 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "askCmdr.error.askCmdrOff": "Ask Cmdr 已關閉。",
   "@askCmdr.error.askCmdrOff": {
     "sourceHash": "6599ee1"
   },
-  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "askCmdr.error.noCloudConsent": "雲端 AI 已關閉。請到「設定 > AI」允許使用。",
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
@@ -356,27 +356,27 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "askCmdr.gate.off.title": "Ask Cmdr 已關閉",
   "@askCmdr.gate.off.title": {
     "sourceHash": "0420c9a"
   },
-  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "askCmdr.gate.off.body": "開啟後就能和 Cmdr 聊聊你的檔案。",
   "@askCmdr.gate.off.body": {
     "sourceHash": "48b16af"
   },
-  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "askCmdr.gate.off.turnOn": "開啟 Ask Cmdr",
   "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "askCmdr.gate.cloudOff.title": "雲端 AI 已關閉",
   "@askCmdr.gate.cloudOff.title": {
     "sourceHash": "2e56781"
   },
-  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr 透過你設定的雲端 AI 服務來對話。先到「設定」允許使用雲端 AI，就可以開始聊了。",
   "@askCmdr.gate.cloudOff.body": {
     "sourceHash": "d3d3252"
   },
-  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "askCmdr.gate.cloudOff.openSettings": "開啟 AI 設定",
   "@askCmdr.gate.cloudOff.openSettings": {
     "sourceHash": "edcc53b"
   },

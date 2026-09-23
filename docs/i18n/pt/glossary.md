@@ -3365,3 +3365,32 @@ caixa das letras).
 - **O botão citado em texto corrido vai entre aspas curvas**: `“Substituir” troca o item que já está lá`, no molde de
   `fileOperations.delete.cloudOnlineOnlyHandedBack` (`oferece “Apagar”`). O rótulo copia
   `fileOperations.transferProgress.conflictOverwrite` byte a byte · `high`.
+
+## O interruptor “Permitir IA na nuvem” e os estados de nuvem desligada (`ai.cloudConsent.*`, `askCmdr.gate.*`, 2026-09-23)
+
+Um interruptor de consentimento de privacidade: desligado por padrão, e nada sai do Mac até ele ser ligado. O texto tem
+de ser calmo e nunca prometer mais do que o Cmdr faz. Fontes vêm do macOS instalado (a pilha não está no M1), o caminho
+de `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
+
+- Allow cloud AI (o rótulo do interruptor, `ai.cloudConsent.label`) · **Permitir IA na nuvem** · `Allow` → `Permitir` é o
+  botão dos pedidos de permissão do macOS pt-BR (`TCC.framework` `Localizable.loctable`, `REQUEST_ACCESS_ALLOW`, macOS
+  26.6.2 build 25G83, lido 2026-09-23); `IA na nuvem` é o valor já publicado de `settings.ai.provider.opt.cloud`, a
+  opção que a pessoa escolheu logo acima · `high`
+- cloud AI (substantivo, feminino) · **a IA na nuvem**; estado desligado · **A IA na nuvem está desativada**, no molde de
+  `ai.translateError.off.title` (`A IA está desativada`) · `high`
+- **As frases que citam o interruptor põem o rótulo entre aspas curvas depois de `Ative`:**
+  `Ative “Permitir IA na nuvem” …` (`settings.ai.cloudConsent.lockedHint`, `askCmdr.gate.cloudOff.body`,
+  `settings.askCmdr.cloudOffHint`). O imperativo `Permita a IA na nuvem` não reproduziria o rótulo, e a `@key` pede o
+  rótulo igual. Onde o inglês diz só `Allow it`, fica o pronome: `Permita-a em Ajustes > IA` (enclítico feminino,
+  `a IA`).
+- Settings > AI · **Ajustes > IA**, com `>` como nos irmãos de `ai.translateError.*` e como a `@key` pede.
+- AI service / cloud AI service · **serviço de IA** / **serviço de IA na nuvem**. O inglês distingue `service` do
+  `provider` das chaves `ai.cloudConsent.askCmdr.*` (que seguem com `provedor`); o português acompanha, e as duas
+  famílias convivem sem choque.
+- custom endpoints · **pontos de extremidade personalizados** · termo já fixado em § Os passos de configuração de
+  provedor de IA · `high`
+- side panel · **painel lateral** · `high`
+- Nomes das funções no dobrável (dentro de `<b>`): `Sugestões de nome para novas pastas`, `Busca em linguagem natural`
+  (o termo de `queryUi.bar.aria.ai`), `Seleção por descrição` · `high`
+- `settings.askCmdr.enabled.label` = `Ask Cmdr`, idêntico ao inglês com `sameAsSourceJustification` (nome do produto,
+  como `settings.section.askCmdr`).

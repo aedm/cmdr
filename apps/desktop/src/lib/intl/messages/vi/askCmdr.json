@@ -212,11 +212,11 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "askCmdr.error.askCmdrOff": "Ask Cmdr đang tắt.",
   "@askCmdr.error.askCmdrOff": {
     "sourceHash": "6599ee1"
   },
-  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "askCmdr.error.noCloudConsent": "AI đám mây đang tắt. Hãy cho phép trong Cài đặt > AI.",
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
@@ -356,27 +356,27 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "askCmdr.gate.off.title": "Ask Cmdr đang tắt",
   "@askCmdr.gate.off.title": {
     "sourceHash": "0420c9a"
   },
-  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "askCmdr.gate.off.body": "Bật lên để trò chuyện với Cmdr về các tệp của bạn.",
   "@askCmdr.gate.off.body": {
     "sourceHash": "48b16af"
   },
-  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "askCmdr.gate.off.turnOn": "Bật Ask Cmdr",
   "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "askCmdr.gate.cloudOff.title": "AI đám mây đang tắt",
   "@askCmdr.gate.cloudOff.title": {
     "sourceHash": "2e56781"
   },
-  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr trò chuyện qua dịch vụ AI đám mây mà bạn đã thiết lập. Trước tiên, hãy cho phép AI đám mây trong Cài đặt, rồi bạn có thể trò chuyện ngay.",
   "@askCmdr.gate.cloudOff.body": {
     "sourceHash": "d3d3252"
   },
-  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "askCmdr.gate.cloudOff.openSettings": "Mở cài đặt AI",
   "@askCmdr.gate.cloudOff.openSettings": {
     "sourceHash": "edcc53b"
   },

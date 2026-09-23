@@ -307,7 +307,7 @@
   "@onboarding.stepAi.missingKeyWarning": {
     "sourceHash": "3d66d11"
   },
-  "onboarding.stepAi.cloudConsentOffNote": "Cloud AI stays off until you allow it. You can do that later in Settings > AI.",
+  "onboarding.stepAi.cloudConsentOffNote": "Moln-AI förblir avstängt tills du tillåter det. Du kan göra det senare i Inställningar > AI.",
   "@onboarding.stepAi.cloudConsentOffNote": {
     "sourceHash": "82d27b6"
   },

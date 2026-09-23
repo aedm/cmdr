@@ -3424,3 +3424,31 @@ so với chữ thường). Bốn khóa phải kể cùng một câu chuyện b�
   dẫn này (kể cả khi nó đứng sau một câu mở, như `errors.provider.*`). ❌ Không `Đây là những cách để thử:`: dịch sát
   từng chữ và dài hơn. Trong `errors.listing.notFound.suggestion` / `…pathNotFoundErrno.suggestion`, "the share" là
   `mục chia sẻ` như catalog đã chốt, không phải `thư mục chia sẻ` (shared folder).
+
+## Công tắc "Cho phép AI đám mây" và các trạng thái AI đám mây đang tắt (`ai.cloudConsent.*`, `askCmdr.gate.*`, 2026-09-23)
+
+Một công tắc đồng ý về quyền riêng tư: mặc định tắt, và không gì rời khỏi máy Mac cho đến khi bật. Câu chữ phải bình
+tĩnh và không bao giờ hứa nhiều hơn những gì Cmdr làm. Nguồn lấy từ macOS đang cài (máy M1 không có kho tham chiếu),
+theo `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
+
+- Allow cloud AI (nhãn công tắc, `ai.cloudConsent.label`) · **Cho phép AI đám mây** · `Allow` → `Cho phép` là nút trong
+  các hộp hỏi quyền của macOS vi (`TCC.framework` `Localizable.loctable`, `REQUEST_ACCESS_ALLOW`, macOS 26.6.2 build
+  25G83, đọc 2026-09-23); `AI đám mây` là giá trị đã ship của `settings.ai.provider.opt.cloud`, lựa chọn ngay phía trên
+  · `high`
+- cloud AI đang tắt · **AI đám mây đang tắt**, cùng khuôn `AI đang tắt` của `ai.translateError.off.title` · `high`
+- **Nhắc lại nhãn công tắc từng chữ.** `Cho phép AI đám mây` vừa là nhãn vừa là câu mệnh lệnh tự nhiên, nên
+  `askCmdr.gate.cloudOff.body` và `settings.askCmdr.cloudOffHint` viết thẳng `cho phép AI đám mây`; riêng
+  `settings.ai.cloudConsent.lockedHint` trích nhãn trong ngoặc thẳng `"…"`, theo các chuỗi bên cạnh trong
+  `settings.json`.
+- Settings > AI · **Cài đặt > AI**, giữ `>` như các chuỗi cùng họ `ai.translateError.*` và đúng như `@key` yêu cầu ("keep
+  it as shown"). Quy tắc `›` trong `style.md` là cho đường dẫn tới các mục cài đặt khác; ở họ chuỗi AI này, catalog đã
+  ship `>` bốn lần.
+- AI service / cloud AI service · **dịch vụ AI** / **dịch vụ AI đám mây**; tiếng Anh tách `service` khỏi `provider`
+  (`nhà cung cấp`) của `ai.cloudConsent.askCmdr.*`, tiếng Việt cũng vậy.
+- custom endpoints · **các điểm cuối tùy chỉnh** · `high`
+- side panel · **khung bên** (thuật ngữ sidebar đã chốt) · `high`
+- Tên tính năng trong phần mở rộng (trong `<b>`): `Gợi ý tên thư mục mới`, `Tìm kiếm bằng ngôn ngữ tự nhiên` (thuật ngữ
+  của `queryUi.bar.aria.ai`), `Chọn theo mô tả`; "what you type" là `nội dung bạn nhập` (`nhập` cho ô nhập liệu) ·
+  `high`
+- `settings.askCmdr.enabled.label` = `Ask Cmdr`, giống hệt tiếng Anh, có `sameAsSourceJustification` (tên sản phẩm, như
+  `settings.section.askCmdr`).
