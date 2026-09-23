@@ -199,6 +199,13 @@ the store and re-probes. A refusal latches `auth_attempt_spent`, moves to `Needs
 the typed password. `UnattendedReconnect` is `SwitchOff`, `NoStoredSecret`, or `Possible`. `sign_in_prompt` is always
 `SignInShape::Password`, so the sheet renders one field under a read-only username.
 
+⚠️ **Known gap: a SILENT server never flips the state.** A black-holed request ends at its own budget (a listing at
+`PROPFIND_BUDGET`, 60 s) with `ConnectionTimeout`, which `note_lost_session` ignores by design (the transfer layer
+retries a timeout rather than remounting). So a sleeping NAS costs every listing 60 s, the volume keeps reporting
+`Connected`, and no banner shows; it serves again on its own once the path clears, because HTTP holds no session to
+rebuild. Treating a PROPFIND timeout as a lost connection would fix the banner at the price of a `Disconnected` flicker
+on a slow-but-alive listing. Pinned as-is by `volume/connection_drop_test.rs`.
+
 ## Connecting from the frontend
 
 The sign-in UI's command surface is protocol-agnostic: `connectServer` (a brand-new target) and `connectSavedPlace` (one
@@ -220,8 +227,10 @@ one place that default is spelled. `getWebdavUnattendedReconnect(volumeId)`, and
 ## Which side a test lives on
 
 This crate: the parser, the path translation, the status table, the state machine (no server), and the Docker cells
-against the fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, and the "reconnect automatically"
-cells in `volume/reconnect_test.rs`, all `#[ignore]`d without it). The
+against the fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, the "reconnect automatically"
+cells in `volume/reconnect_test.rs`, and the real-drop cells in `volume/connection_drop_test.rs`, all `#[ignore]`d
+without it). The drop cells cut the TCP connection in a `cmdr_fs::testing::tcp_proxy::TcpProxy` they own, refused and
+silent; ❌ never pause or stop a container for that, since the stack is shared by lease. The
 conformance cells answer with Apache's own verbs, which is the point: `MOVE` overwrites by default, `DELETE` on a
 collection is recursive, and a `PROPFIND` of a collection nobody has created yet is a 404 that the conflict scan owes an
 empty list for. The app: anything whose other half is the transfer pipeline, the registry, or the listing cache, built

@@ -14,6 +14,10 @@ these.
 `pnpm check` brings the stack up on its own (`desktop-rust-integration-tests` declares `core`,
 `desktop-rust-webdav-nextcloud` declares `nextcloud`), so a manual `start.sh` is for iterating by hand.
 
+❌ **Never pause, stop, or kill a container to simulate a server going away**: other test binaries, worktrees, and
+sessions lease the same stack at the same time. Put a `cmdr_fs::testing::tcp_proxy::TcpProxy` between the client and
+the fixture and cut that (`crates/cmdr-webdav/src/volume/connection_drop_test.rs`).
+
 ## What differs from the SFTP stack next door
 
 - **Same shape, smaller.** First-party compose file in this directory, one env-driven image under `image/` for the three
@@ -151,6 +155,8 @@ watch them go by. They need something only the seeded fixture has:
 - `a_reconnect_against_a_live_server_succeeds_and_keeps_listing` — `hello.txt` and `docs/`.
 - `a_digest_only_server_is_a_typed_refusal` — a server that offers no Basic scheme, which is `webdav-fixture-digest` and
   nothing else.
+- The three cells in `connection_drop_test.rs` — a plain-HTTP fixture to put a proxy in front of; a TLS server's
+  certificate wouldn't match `127.0.0.1`.
 - `quota_reports_the_accounts_own_numbers_not_the_servers_disk` and
   `an_account_with_no_quota_reports_no_free_space_at_all` — the Nextcloud fixture's two accounts and its exact 5 GiB
   quota.
