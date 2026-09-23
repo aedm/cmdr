@@ -1,8 +1,14 @@
 # Swap-scan: replace the in-place reconcile rescan with a build-and-swap
 
 Status: plan, not started. Nothing below is built: there is no `.building.db`, no `.swap` marker, and no swap route, and
-the in-place reconcile is still the only rescan path for a completed local index (re-derived from the tree 2026-08-27).
+the in-place reconcile is still the only rescan path for a completed local index (re-derived from the tree 2026-09-23).
 Local-disk only. Author-facing (AI agents).
+
+Since this was written, a LAUNCH routes first through `lifecycle/manager/launch_route.rs` (replay the journal, walk the
+volume, or cover in phases; `crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "What a launch does with the index
+it finds"). A never-completed index now covers in phases rather than truncate-scanning, so § 4's route (1) mostly no
+longer reaches `start_scan`. Swap-scan is unaffected: it lives inside `start_scan`'s "rescan of a completed index"
+branch, which every "walk the volume" route still reaches.
 
 Read three notes first: `docs/notes/swap-scan-feasibility.md` (the read-only study and the traps),
 `docs/notes/indexing-benchmarks-2026-07-21.md` § "Swap-scan re-measurement, 2026-07-22" (the justification), and
