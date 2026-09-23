@@ -55,39 +55,39 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
-  "ai.cloudConsent.label": "Allow cloud AI",
+  "ai.cloudConsent.label": "Felhő-AI engedélyezése",
   "@ai.cloudConsent.label": {
     "sourceHash": "9947821"
   },
-  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "ai.cloudConsent.description": "A Cmdr semmit sem küld felhő-AI-szolgáltatásnak, amíg ezt be nem kapcsolod.",
   "@ai.cloudConsent.description": {
     "sourceHash": "2f568e5"
   },
-  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "ai.cloudConsent.disclosureTitle": "Amit a Cmdr elküld",
   "@ai.cloudConsent.disclosureTitle": {
     "sourceHash": "6907e64"
   },
-  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "ai.cloudConsent.intro": "Ha ez be van kapcsolva, a Cmdr ezeket küldi el a lent beállított AI-szolgáltatásnak:",
   "@ai.cloudConsent.intro": {
-    "sourceHash": "9449148"
+    "sourceHash": "9462a5a"
   },
-  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "ai.cloudConsent.whereItGoes": "Hogy hová kerülnek az adataid, és mi történik velük ott, az a választott szolgáltatástól és a vele kötött megállapodásodtól függ. Az Ollama, az LM Studio és az egyéni végpontok esetében is így van: az adatok oda kerülnek, ahol az adott szerver fut. A Cmdr saját szerverei ebből semmit sem látnak.",
   "@ai.cloudConsent.whereItGoes": {
-    "sourceHash": "8c036fa"
+    "sourceHash": "f80daf9"
   },
-  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "ai.cloudConsent.folderSuggestions": "<b>Névjavaslatok új mappához</b>: a jelenlegi mappa útvonala és legfeljebb 100 benne lévő név",
   "@ai.cloudConsent.folderSuggestions": {
     "sourceHash": "02790c2"
   },
-  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "ai.cloudConsent.search": "<b>Keresés hétköznapi szavakkal</b>: a beírt szöveg",
   "@ai.cloudConsent.search": {
     "sourceHash": "e6d4ef9"
   },
-  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "ai.cloudConsent.selection": "<b>Kijelölés leírás alapján</b>: amit beírsz, valamint legfeljebb 240 név a jelenlegi mappából",
   "@ai.cloudConsent.selection": {
     "sourceHash": "1e1c3c3"
   },
-  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, amikor csevegsz vele, vagy amikor magától kezd beszélgetést:",
   "@ai.cloudConsent.askCmdr.title": {
     "sourceHash": "26e139c"
   },
@@ -131,7 +131,7 @@
   "@ai.cloudConsent.askCmdr.proactive": {
     "sourceHash": "abfa80b"
   },
-  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Az Ask Cmdr-csevegéseid a Mac-eden maradnak, egy helyi adatbázisban, amelyet megnyithatsz és elolvashatsz.",
   "@ai.cloudConsent.askCmdr.chatsStayLocal": {
     "sourceHash": "283cdd7"
   },
@@ -139,7 +139,7 @@
   "@ai.cloudConsent.logsNote": {
     "sourceHash": "7e211fc"
   },
-  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "ai.cloudConsent.turnOffAnyTime": "Bármikor kikapcsolhatod, és a Cmdr azonnal abbahagyja a küldést. A szolgáltatásod, a kulcsod és a csevegéseid maradnak, ahogy vannak.",
   "@ai.cloudConsent.turnOffAnyTime": {
     "sourceHash": "464c39f"
   },
@@ -155,11 +155,11 @@
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
   },
-  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "ai.translateError.noCloudConsent.title": "A felhő-AI ki van kapcsolva",
   "@ai.translateError.noCloudConsent.title": {
     "sourceHash": "2e56781"
   },
-  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "ai.translateError.noCloudConsent.body": "Engedélyezd itt: Beállítások > AI, majd próbáld újra.",
   "@ai.translateError.noCloudConsent.body": {
     "sourceHash": "fde3eb5"
   },

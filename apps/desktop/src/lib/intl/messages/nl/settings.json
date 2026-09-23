@@ -927,9 +927,9 @@
   "@settings.ai.cloudConsent.onSince": {
     "sourceHash": "2f573fd"
   },
-  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "settings.ai.cloudConsent.lockedHint": "Zet ‘Cloud-AI toestaan’ hierboven aan om een service in te stellen.",
   "@settings.ai.cloudConsent.lockedHint": {
-    "sourceHash": "36f676c"
+    "sourceHash": "6f4097a"
   },
   "settings.ai.cloudProvider.description": "Welke cloud-AI-service moet worden gebruikt.",
   "@settings.ai.cloudProvider.description": {
@@ -1387,7 +1387,7 @@
   "@settings.askCmdr.consentRevokePending.label": {
     "sourceHash": "1ecd887"
   },
-  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "settings.ai.cloudConsentRevokePending.label": "Cloud-AI uit, wacht op opslaan",
   "@settings.ai.cloudConsentRevokePending.label": {
     "sourceHash": "16456dc"
   },
@@ -1704,19 +1704,20 @@
   "@settings.askCmdr.intro": {
     "sourceHash": "3b16f89"
   },
-  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "settings.askCmdr.enabled.label": "Ask Cmdr",
   "@settings.askCmdr.enabled.label": {
-    "sourceHash": "0d656c4"
+    "sourceHash": "aafb1ce",
+    "sameAsSourceJustification": "Productnaam: de schakelaar draagt de naam van de assistent, en ‘Ask Cmdr’ blijft in elke taal onvertaald (zoals askCmdr.title)."
   },
-  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "settings.askCmdr.enabled.description": "Chat met Cmdr over je bestanden in een zijpaneel.",
   "@settings.askCmdr.enabled.description": {
     "sourceHash": "a1116db"
   },
-  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr gebruikt je cloud-AI-service. Sta cloud-AI toe in de AI-instellingen om te beginnen met chatten.",
   "@settings.askCmdr.cloudOffHint": {
-    "sourceHash": "59e0db8"
+    "sourceHash": "1d3ec5d"
   },
-  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "settings.askCmdr.openAiSettings": "Open AI-instellingen",
   "@settings.askCmdr.openAiSettings": {
     "sourceHash": "edcc53b"
   },

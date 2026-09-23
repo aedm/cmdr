@@ -3508,3 +3508,28 @@ un carácter o como `e` + tilde, o mayúsculas frente a minúsculas).
   `high`.
 - **"rename one of them" → `renombra uno de ellos`** · sigue la entrada «`rename` (verbo) → `renombrar`, incluso en
   prosa»; ❌ no `cambia el nombre de`, que es la perífrasis del sustantivo · `high`.
+
+## El interruptor “Permitir IA en la nube” y los estados con la IA en la nube desactivada (`ai.cloudConsent.label`, `ai.cloudConsent.description`, `askCmdr.gate.cloudOff.body`, `settings.ai.cloudConsent.lockedHint`, `settings.askCmdr.enabled.label`, 2026-09-23)
+
+Un interruptor de privacidad: Cmdr no envía nada a un servicio de IA en la nube hasta que se activa. Tono tranquilo, sin
+prometer más de lo que hace Cmdr. La pila de referencia no estaba en la máquina de traducción; cada elección se apoya en
+términos ya documentados en este glosario y en el catálogo.
+
+- **Allow cloud AI (nombre del interruptor) → `Permitir IA en la nube`** · `IA en la nube` es la opción
+  `settings.ai.provider.opt.cloud`; `permitir` viene de MS (allow → `Permitir`, fijado en el pase de revisión de
+  renombrados) y el molde `Permitir <objeto>` de `settings.fileOperations.allowFileExtensionChanges.label` · `high`. Se
+  cita con comillas curvas `“…”` (una etiqueta que Cmdr muestra) en `settings.ai.cloudConsent.lockedHint`. Donde el
+  inglés usa “Allow cloud AI” como verbo (`askCmdr.gate.cloudOff.body`, `settings.askCmdr.cloudOffHint`) va
+  `Permite … la IA en la nube`: las mismas palabras, conjugadas.
+- **cloud AI (en la frase) → `la IA en la nube`**, pronombre `la` (`Permítela en Ajustes > IA`) · `high`.
+- **“X is off” → `X está desactivado/a`** · como `servers.hub.discoveryOff` · `high`.
+- **Turn on Ask Cmdr (botón) → `Activar Ask Cmdr`** · infinitivo de botón, como
+  `fileExplorer.navigation.driveIndex.menuEnable` · `high`.
+- **Open AI settings → `Abrir los ajustes de IA`** · como `commands.appSettings.label` (“Abrir los ajustes”) · `high`.
+- **side panel → `panel lateral`** · `tentative` (sin precedente en el catálogo).
+- **custom endpoints → `puntos de conexión personalizados`** · `punto de conexión` ya fijado en
+  `onboarding.cloudSetup.hint.azureEndpoint` · `high`.
+- **Search in plain words → `Búsqueda con tus propias palabras`** · describe la función; no copia el nombre del modo
+  (`queryUi.mode.ai.label`) · `tentative`.
+- `settings.askCmdr.enabled.label` ahora es solo “Ask Cmdr” (el nombre del producto en el interruptor) y lleva
+  `sameAsSourceJustification`.

@@ -3798,3 +3798,28 @@ programmeeragent die deze gids niet had gelezen; deze pas trekt ze recht.
   tussen `‘…’`, niet tussen rechte `"…"`.
 - **"To avoid this next time, rename one of them" → `Voorkom dit de volgende keer: wijzig de naam van een van de twee`**
   · rename in lopende tekst is `de naam wijzigen` (Finder), en de lijst opent elders ook met een imperatief · high.
+
+## De schakelaar ‘Cloud-AI toestaan’ en de toestanden waarin cloud-AI uit staat (`ai.cloudConsent.label`, `ai.cloudConsent.description`, `askCmdr.gate.cloudOff.body`, `settings.ai.cloudConsent.lockedHint`, `settings.askCmdr.enabled.label`, 2026-09-23)
+
+Een privacyschakelaar: zolang hij uit staat, stuurt Cmdr niets naar een cloud-AI-service. De toon is rustig en belooft
+nooit meer dan Cmdr doet. De referentiestapel stond niet op de vertaalmachine; elke keuze leunt op termen die al in deze
+woordenlijst staan en op de catalogus.
+
+- **Allow cloud AI (naam van de schakelaar) → `Cloud-AI toestaan`** · `Cloud-AI` is de optie
+  `settings.ai.provider.opt.cloud`, `toestaan` komt uit MS en AOSP (allow → `toestaan`, hierboven vastgelegd), en de
+  vorm `<object> toestaan` volgt `settings.fileOperations.allowFileExtensionChanges.label` · `high`. Geciteerd met `‘…’`
+  (`settings.ai.cloudConsent.lockedHint`). Waar het Engels ‘Allow cloud AI’ als werkwoord gebruikt
+  (`askCmdr.gate.cloudOff.body`, `settings.askCmdr.cloudOffHint`), staat `Sta … cloud-AI toe`: dezelfde woorden,
+  vervoegd.
+- **cloud AI (in een zin) → `cloud-AI`**, een de-woord: verwijs terug met `die` of herhaal het woord
+  (`Sta cloud-AI toe bij Instellingen > AI`), niet met `het` · `high`.
+- **‘X is off’ → `X staat uit`** · zoals `servers.hub.discoveryOff` · `high`.
+- **Turn on Ask Cmdr (knop) → `Zet Ask Cmdr aan`** · de gebiedende knopvorm, zoals
+  `fileExplorer.navigation.driveIndex.menuEnable` · `high`.
+- **Open AI settings → `Open AI-instellingen`** · zoals `commands.appSettings.label` (‘Open instellingen’) · `high`.
+- **side panel → `zijpaneel`** · `tentative` (geen precedent in de catalogus).
+- **custom endpoints → `aangepaste eindpunten`** · `Aangepast` voor custom (macOS), `eindpunt` uit
+  `onboarding.cloudSetup.hint.azureEndpoint` · `high`.
+- **Ask Cmdr chats → `Ask Cmdr-chats`** · zoals `Ask Cmdr-instellingen` in `ai.cloudConsent.askCmdr.memory` · `high`.
+- `settings.askCmdr.enabled.label` is nu alleen ‘Ask Cmdr’ (de productnaam op de schakelaar) en heeft een
+  `sameAsSourceJustification`.

@@ -3767,3 +3767,30 @@ viszont egyformák.
   `a(z) „{path}” útvonalra`: ott a házi `a(z)` alak helyes, és a mondat folytatódik.
 - **„To avoid this next time, rename one…” → `Legközelebb elkerülheted, ha az egyiket átnevezed úgy, hogy…`** · a
   korábbi `Hogy legközelebb …, hogy …` két `hogy`-ot tett egy mondatba · high.
+
+## A „Felhő-AI engedélyezése” kapcsoló és a kikapcsolt felhő-AI állapotai (`ai.cloudConsent.label`, `ai.cloudConsent.description`, `askCmdr.gate.cloudOff.body`, `settings.ai.cloudConsent.lockedHint`, `settings.askCmdr.enabled.label`, 2026-09-23)
+
+Adatvédelmi kapcsoló: amíg ki van kapcsolva, a Cmdr semmit sem küld felhő-AI-szolgáltatásnak. A hang nyugodt, és sosem
+állít többet, mint amit a Cmdr tesz. A referenciakupac nem volt a fordítógépen; minden döntés az itt már rögzített
+kifejezésekre és a katalógusra épül.
+
+- **Allow cloud AI (a kapcsoló neve) → `Felhő-AI engedélyezése`** · a `Felhő-AI` a `settings.ai.provider.opt.cloud`
+  opció, az `engedélyez` a fent rögzített allow → `Engedélyezés` (macOS), a névszói címkeforma pedig a
+  `settings.fileOperations.allowFileExtensionChanges.label` mintája · `high`. Idézve `„…”` jelek között
+  (`settings.ai.cloudConsent.lockedHint`). Ahol az angol igeként használja (`askCmdr.gate.cloudOff.body`,
+  `settings.askCmdr.cloudOffHint`), ott `engedélyezd a felhő-AI-t`: ugyanazok a szavak, ragozva.
+- **cloud AI (mondatban) → `a felhő-AI`** (kisbetűvel, tárgyeset `felhő-AI-t`); összetételben `felhő-AI-szolgáltatás`,
+  mint a `settings.ai.cloudProvider.description` · `high`.
+- **„X is off” → `X ki van kapcsolva`** · mint a `servers.hub.discoveryOff` · `high`.
+- **Turn on Ask Cmdr → `Ask Cmdr bekapcsolása`** · a már rögzített minta (§ Ask Cmdr) · `high`.
+- **Open AI settings → `AI-beállítások megnyitása`** · mint a `commands.appSettings.label` („Beállítások megnyitása”) ·
+  `high`.
+- **side panel → `oldalpanel`** · `tentative` (nincs katalógusbeli előzmény).
+- **custom endpoints → `egyéni végpontok`** · `Egyéni` a custom (`settings.network.timeoutMode.opt.custom`), `végpont`
+  az `onboarding.cloudSetup.hint.azureEndpoint` alapján · `high`. Az Ollama és az LM Studio ragozatlanul áll
+  (`Az Ollama, az LM Studio … esetében`), hogy a márkanév betűre megmaradjon.
+- **Cmdr + -val/-vel → `Cmdrrel`** · kötőjel nélkül, mint a katalógus `Cmdrben`, `Cmdrhez` alakjai, a kiejtett
+  „commander” hangrendje szerint · `high`.
+- **Ask Cmdr chats → `Ask Cmdr-csevegések`** · többszavas tulajdonnév + köznév, kötőjellel · `high`.
+- A `settings.askCmdr.enabled.label` most már csak „Ask Cmdr” (a terméknév a kapcsolón),
+  `sameAsSourceJustification`-nel.

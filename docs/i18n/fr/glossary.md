@@ -3825,3 +3825,29 @@ mots.
 - **Le constat « so Cmdr didn't pick one » passe après un deux-points : `… : Cmdr n'en a donc choisi aucun.`** · même
   moule dans l'explication du panneau et dans la notification courte ; la virgule d'avant faisait une phrase soudée ·
   high.
+
+## L'interrupteur « Autoriser l'IA dans le cloud » et les états où l'IA dans le cloud est désactivée (`ai.cloudConsent.label`, `ai.cloudConsent.description`, `askCmdr.gate.cloudOff.body`, `settings.ai.cloudConsent.lockedHint`, `settings.askCmdr.enabled.label`, 2026-09-23)
+
+Un interrupteur de confidentialité : tant qu'il est désactivé, Cmdr n'envoie rien à un service d'IA dans le cloud. Ton
+calme, sans jamais promettre plus que ce que fait Cmdr. La pile de référence n'était pas sur la machine de traduction ;
+chaque choix s'appuie sur des termes déjà documentés dans ce glossaire et sur le catalogue.
+
+- **Allow cloud AI (nom de l'interrupteur) → `Autoriser l'IA dans le cloud`** · `IA dans le cloud` est l'option
+  `settings.ai.provider.opt.cloud` ; `autoriser` vient de macOS Finder (allow → `Autoriser`, fixé plus haut) et le moule
+  `Autoriser <objet>` de `settings.fileOperations.allowFileExtensionChanges.label` · `high`. Cité entre guillemets « … »
+  dans `settings.ai.cloudConsent.lockedHint`. Là où l'anglais emploie « Allow cloud AI » comme verbe
+  (`askCmdr.gate.cloudOff.body`, `settings.askCmdr.cloudOffHint`), on écrit `Autorisez … l'IA dans le cloud` : les mêmes
+  mots, conjugués.
+- **cloud AI (dans la phrase) → `l'IA dans le cloud`**, pronom `la` (`Autorisez-la dans Réglages > IA`) · `high`.
+- **« X is off » → `X est désactivé(e)`** · comme `servers.hub.discoveryOff` · `high`.
+- **Turn on Ask Cmdr (bouton) → `Activer Ask Cmdr`** · infinitif de bouton, comme
+  `fileExplorer.navigation.driveIndex.menuEnable` · `high`.
+- **Open AI settings → `Ouvrir les réglages d'IA`** · comme `commands.appSettings.label` (« Ouvrir les réglages ») ·
+  `high`.
+- **side panel → `panneau latéral`** · `tentative` (pas de précédent dans le catalogue).
+- **custom endpoints → `points de terminaison personnalisés`** · `point de terminaison` déjà dans
+  `onboarding.cloudSetup.hint.azureEndpoint` · `high`.
+- **Ask Cmdr chats → `conversations Ask Cmdr`** · chat (nom) → `conversation`, fixé pendant la passe `ask-cmdr` ·
+  `high`.
+- `settings.askCmdr.enabled.label` n'est plus que « Ask Cmdr » (le nom du produit sur l'interrupteur) et porte une
+  `sameAsSourceJustification`.

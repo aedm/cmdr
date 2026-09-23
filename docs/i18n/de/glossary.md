@@ -3312,3 +3312,30 @@ plus Akzent, oder nur Groß-/Kleinschreibung verschieden).
   `high`.
 - **`{path}` im Rohtext steht in `„{path}“`**, nicht in ASCII-`"`, wie die übrigen sechs `„{path}“` in `errors.json` ·
   `high`.
+
+## Der Schalter „Cloud-KI erlauben“ und die Zustände „Cloud-KI ist deaktiviert“ (`ai.cloudConsent.label`, `ai.cloudConsent.description`, `askCmdr.gate.cloudOff.body`, `settings.ai.cloudConsent.lockedHint`, `settings.askCmdr.enabled.label`, 2026-09-23)
+
+Ein Datenschutzschalter: Cmdr sendet nichts an einen Cloud-KI-Dienst, bevor er an ist. Der Ton ist ruhig und sagt nie
+mehr, als Cmdr tut. Der Referenzstapel lag auf dem Übersetzungsrechner nicht vor; jede Wahl stützt sich auf bereits in
+diesem Glossar belegte Begriffe und auf den Katalog.
+
+- **Allow cloud AI (Schaltername) → `Cloud-KI erlauben`** · `Cloud-KI` ist die Option `settings.ai.provider.opt.cloud`,
+  `erlauben` die Regel „`allow` → `erlauben`, auch in den Einstellungen“ weiter oben, und die Form `<Objekt> erlauben`
+  folgt `settings.fileOperations.allowFileExtensionChanges.label` · `high`. Zitiert wird der Name mit `„…“`
+  (`settings.ai.cloudConsent.lockedHint`). Wo das Englische „Allow cloud AI“ als Satzverb benutzt
+  (`askCmdr.gate.cloudOff.body`, `settings.askCmdr.cloudOffHint`), steht `Erlaube … Cloud-KI`: dieselben Wörter,
+  gebeugt, ohne Anführungszeichen.
+- **cloud AI (Fließtext) → `Cloud-KI`, Pronomen `sie`** (die KI): `Erlaube sie unter Einstellungen > KI` · `high`.
+- **„X is off“ → `X ist deaktiviert`** · wie `servers.hub.discoveryOff` und `settings.mediaIndex.clip.offButInstalled`;
+  passt zu `turn on/off → aktivieren/deaktivieren` · `high`.
+- **Turn on Ask Cmdr (Schaltfläche) → `Ask Cmdr aktivieren`** · Infinitiv-Schaltfläche wie `Alle erlauben` · `high`.
+- **Open AI settings → `KI-Einstellungen öffnen`** · wie `commands.appSettings.label` („Einstellungen öffnen“) · `high`.
+- **side panel → `Seitenbereich`** · `tentative`: bewusst nicht `Seitenleiste`, das in macOS die Finder-Seitenleiste
+  meint.
+- **custom endpoints → `eigene Endpunkte`** · `Eigenes` für „Custom“ (`settings.network.timeoutMode.opt.custom`),
+  `Endpunkt` aus `onboarding.cloudSetup.hint.azureEndpoint` · `high`.
+- **Cmdr's own servers → `Die eigenen Server von Cmdr`** · analytischer Genitiv statt `Cmdrs` (§ Ask Cmdr) · `high`.
+- **Ask Cmdr chats → `Ask-Cmdr-Chats`** · durchgekoppelt wie `Ask-Cmdr-Einstellungen` in
+  `ai.cloudConsent.askCmdr.memory` · `high`.
+- `settings.askCmdr.enabled.label` ist nur noch „Ask Cmdr“ (der Produktname auf dem Schalter) und trägt eine
+  `sameAsSourceJustification`.

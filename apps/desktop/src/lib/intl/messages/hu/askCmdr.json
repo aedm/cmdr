@@ -212,11 +212,11 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "askCmdr.error.askCmdrOff": "Az Ask Cmdr ki van kapcsolva.",
   "@askCmdr.error.askCmdrOff": {
     "sourceHash": "6599ee1"
   },
-  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "askCmdr.error.noCloudConsent": "A felhő-AI ki van kapcsolva. Engedélyezd itt: Beállítások > AI.",
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
@@ -356,27 +356,27 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "askCmdr.gate.off.title": "Az Ask Cmdr ki van kapcsolva",
   "@askCmdr.gate.off.title": {
     "sourceHash": "0420c9a"
   },
-  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "askCmdr.gate.off.body": "Kapcsold be, és csevegj a Cmdrrel a fájljaidról.",
   "@askCmdr.gate.off.body": {
     "sourceHash": "48b16af"
   },
-  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "askCmdr.gate.off.turnOn": "Ask Cmdr bekapcsolása",
   "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "askCmdr.gate.cloudOff.title": "A felhő-AI ki van kapcsolva",
   "@askCmdr.gate.cloudOff.title": {
     "sourceHash": "2e56781"
   },
-  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "askCmdr.gate.cloudOff.body": "Az Ask Cmdr a beállított felhő-AI-szolgáltatással beszélget. Előbb engedélyezd a felhő-AI-t a Beállításokban, és máris cseveghetsz.",
   "@askCmdr.gate.cloudOff.body": {
     "sourceHash": "d3d3252"
   },
-  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "askCmdr.gate.cloudOff.openSettings": "AI-beállítások megnyitása",
   "@askCmdr.gate.cloudOff.openSettings": {
     "sourceHash": "edcc53b"
   },

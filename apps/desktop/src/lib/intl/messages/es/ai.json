@@ -55,39 +55,39 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
-  "ai.cloudConsent.label": "Allow cloud AI",
+  "ai.cloudConsent.label": "Permitir IA en la nube",
   "@ai.cloudConsent.label": {
     "sourceHash": "9947821"
   },
-  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "ai.cloudConsent.description": "Cmdr no envía nada a ningún servicio de IA en la nube hasta que actives esto.",
   "@ai.cloudConsent.description": {
     "sourceHash": "2f568e5"
   },
-  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "ai.cloudConsent.disclosureTitle": "Lo que envía Cmdr",
   "@ai.cloudConsent.disclosureTitle": {
     "sourceHash": "6907e64"
   },
-  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "ai.cloudConsent.intro": "Con esto activado, Cmdr envía lo siguiente al servicio de IA que configures abajo:",
   "@ai.cloudConsent.intro": {
-    "sourceHash": "9449148"
+    "sourceHash": "9462a5a"
   },
-  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "ai.cloudConsent.whereItGoes": "Adónde van tus datos, y qué pasa con ellos allí, depende del servicio que elijas y de tu acuerdo con él. Eso incluye Ollama, LM Studio y los puntos de conexión personalizados: los datos van adonde se ejecute ese servidor. Los servidores de Cmdr nunca ven nada de ello.",
   "@ai.cloudConsent.whereItGoes": {
-    "sourceHash": "8c036fa"
+    "sourceHash": "f80daf9"
   },
-  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "ai.cloudConsent.folderSuggestions": "<b>Sugerencias de nombre para carpetas nuevas</b>: la ruta de la carpeta actual y hasta 100 nombres que hay en ella",
   "@ai.cloudConsent.folderSuggestions": {
     "sourceHash": "02790c2"
   },
-  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "ai.cloudConsent.search": "<b>Búsqueda con tus propias palabras</b>: el texto que escribes",
   "@ai.cloudConsent.search": {
     "sourceHash": "e6d4ef9"
   },
-  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "ai.cloudConsent.selection": "<b>Selección por descripción</b>: lo que escribes, más hasta 240 nombres de la carpeta actual",
   "@ai.cloudConsent.selection": {
     "sourceHash": "1e1c3c3"
   },
-  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, cuando chateas o cuando abre una conversación por su cuenta:",
   "@ai.cloudConsent.askCmdr.title": {
     "sourceHash": "26e139c"
   },
@@ -131,7 +131,7 @@
   "@ai.cloudConsent.askCmdr.proactive": {
     "sourceHash": "abfa80b"
   },
-  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Tus chats de Ask Cmdr se quedan en tu Mac, en una base de datos local que puedes abrir y leer.",
   "@ai.cloudConsent.askCmdr.chatsStayLocal": {
     "sourceHash": "283cdd7"
   },
@@ -139,7 +139,7 @@
   "@ai.cloudConsent.logsNote": {
     "sourceHash": "7e211fc"
   },
-  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "ai.cloudConsent.turnOffAnyTime": "Desactívalo cuando quieras y Cmdr dejará de enviar al instante. Tu servicio, tu clave y tus chats se quedan como están.",
   "@ai.cloudConsent.turnOffAnyTime": {
     "sourceHash": "464c39f"
   },
@@ -155,11 +155,11 @@
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
   },
-  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "ai.translateError.noCloudConsent.title": "La IA en la nube está desactivada",
   "@ai.translateError.noCloudConsent.title": {
     "sourceHash": "2e56781"
   },
-  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "ai.translateError.noCloudConsent.body": "Permítela en Ajustes > IA y vuelve a intentarlo.",
   "@ai.translateError.noCloudConsent.body": {
     "sourceHash": "fde3eb5"
   },
