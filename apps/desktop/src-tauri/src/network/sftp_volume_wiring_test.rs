@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use cmdr_fs::volume::ConnectionState;
+use cmdr_sftp::auth::UnattendedReconnect;
 use cmdr_sftp::volume::testing::{FIXTURE_PASSWORD, FIXTURE_ROOT, FIXTURE_USER, fixture_port};
 
 use crate::network::one_shot_credentials::SecretOffer;
@@ -414,6 +415,63 @@ async fn sftp_integration_forgetting_a_server_drops_its_session_and_unregisters_
             .any(|e| cmdr_fs::volume::sftp_volume_id(&e.host, e.port, &e.username) == volume_id),
         "and out of the saved list"
     );
+}
+
+// ── "Reconnect automatically", from the row menu ──────────────────────
+
+/// ❗ **The row menu's switch moves BOTH copies on a connected place, both
+/// ways**: the saved entry, and the live volume's own switch, so it acts now
+/// rather than on the next connect.
+///
+/// Through `set_place_auto_reconnect`, the command the menu calls, because the
+/// saved-entry lookup by volume id is part of what has to work. The live
+/// switch is read back through `unattended_reconnect`, the answer the frontend
+/// itself reads: `TurnedOff` has exactly one source, the switch.
+#[tokio::test]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_the_reconnect_switch_moves_the_saved_entry_and_the_live_volume() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let params = stock_params();
+    signed_in_already(&params).await;
+    let SftpConnection::Connected { volume_id } =
+        sftp_volume_wiring::connect_and_register("fixture", None, params.clone(), "sftp-auto-reconnect", None).await
+    else {
+        panic!("a fixture with its key approved and its password stored must connect");
+    };
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let volume = manager.get(&volume_id).expect("just registered");
+    let sftp = volume.as_any().downcast_ref::<SftpVolume>().expect("an SFTP volume");
+    let saved = || {
+        sftp_known_servers::find(&params.host, params.port, &params.username)
+            .expect("a successful connect remembers the server")
+            .auto_reconnect
+    };
+    assert!(saved(), "a connect saves the switch on");
+    assert_eq!(sftp.unattended_reconnect().await, UnattendedReconnect::Ready);
+
+    assert!(crate::commands::servers::set_place_auto_reconnect(
+        volume_id.clone(),
+        false
+    ));
+    assert!(!saved(), "the saved entry is switched off");
+    assert_eq!(
+        sftp.unattended_reconnect().await,
+        UnattendedReconnect::TurnedOff,
+        "❗ and so is the live volume, without a reconnect"
+    );
+
+    assert!(crate::commands::servers::set_place_auto_reconnect(
+        volume_id.clone(),
+        true
+    ));
+    assert!(saved(), "the saved entry is switched back on");
+    assert_eq!(
+        sftp.unattended_reconnect().await,
+        UnattendedReconnect::Ready,
+        "❗ and so is the live volume"
+    );
+
+    sftp_volume_wiring::disconnect(&volume_id).await;
 }
 
 // ── Editing a connected place ────────────────────────────────────────
