@@ -20,8 +20,11 @@ render the switch and say why a feature is quiet.
   (backend).
 - **The switch** (`AiCloudConsentToggle.svelte`) renders on Cloud only, in Settings > AI > Provider (with the
   `settings-ai-cloud-consent` anchor every "Open AI settings" button deep-links to, `openCloudConsentSettings(surface)`)
-  and at the top of onboarding's Cloud column. Its disclosure lists what every feature sends and is open while off. The
-  copy is versioned: a material change to `ai.cloudConsent.*` needs a `CLOUD_AI_CONSENT_VERSION` bump in the backend.
+  and at the top of onboarding's Cloud column. Its disclosure (a native `<details>`, so its expanded state is announced)
+  lists what every feature sends. The fold follows the switch: open while off, because people read it while deciding;
+  folded when the switch turns on, so the locked setup below it comes into view (onboarding's Cloud column is where it
+  was pushed off-screen); the user can reopen it any time (`AiCloudConsentToggle.test.ts`). The copy is versioned: a
+  material change to `ai.cloudConsent.*` needs a `CLOUD_AI_CONSENT_VERSION` bump in the backend.
 - **Locked setup.** While blocked, `AiCloudSection` and onboarding's `CloudProviderSetup` are `inert` and dimmed, and
   their `ProviderSetupController` isn't pointed at the provider (that alone can start a connection check); it's pointed
   when the lock lifts. A check that does reach the backend answers `cloudConsentMissing`, which the controller reads as

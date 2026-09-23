@@ -42,6 +42,11 @@
     // re-run to flip the switch back.
     let checked = $derived(accepted)
 
+    // The disclosure's fold follows the switch: open while it's off (people read it while
+    // deciding), folded once it's on, so what sits below it (onboarding's service setup) stays
+    // in view. The user's own open/close writes through `bind:open` until the switch moves.
+    let disclosureOpen = $derived(!accepted)
+
     let busy = $state(false)
     /** The last flip didn't reach the store; the switch shows what did. */
     let notSaved = $state(false)
@@ -55,6 +60,7 @@
             notSaved = outcome === 'notSaved'
         } finally {
             checked = cloudConsentState.accepted === true
+            disclosureOpen = !checked
             busy = false
         }
     }
@@ -93,8 +99,8 @@
     {/if}
 
     <!-- Open while off: this is what the person is agreeing to, so it's in view before the
-         click. Once on, it folds away and stays one click from reach. -->
-    <details class="disclosure" open={!accepted}>
+         click. Turning it on folds it away; it stays one click from reach. -->
+    <details class="disclosure" bind:open={disclosureOpen}>
         <summary>{tString('ai.cloudConsent.disclosureTitle')}</summary>
         <div class="disclosure-body">
             <p>{tString('ai.cloudConsent.intro')}</p>

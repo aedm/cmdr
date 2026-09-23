@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, tick } from 'svelte'
 import { expectNoA11yViolations } from '$lib/test-a11y'
-import { getMessage } from '$lib/intl/messages.svelte'
+import { getMessage, tString } from '$lib/intl/messages.svelte'
 
 const { consentState } = vi.hoisted(() => {
   // An annotation, not an `as`: the lint auto-fix strips an assertion it thinks is unnecessary.
@@ -99,7 +99,8 @@ describe('what the disclosure promises', () => {
 
   it('says where the data goes, including self-hosted and custom endpoints', async () => {
     const target = await mountToggle()
-    expect(target.textContent).toContain(getMessage('ai.cloudConsent.whereItGoes'))
+    // Formatted, not raw: the message carries an ICU-escaped apostrophe (`''`).
+    expect(target.textContent).toContain(tString('ai.cloudConsent.whereItGoes'))
     target.remove()
   })
 })
