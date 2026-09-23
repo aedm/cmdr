@@ -86,6 +86,18 @@ pub(crate) async fn look_alike_in(volume: &dyn Volume, dir: &Path, name: &str) -
     ListedFolders::new(volume).look_alike_in(dir, name).await
 }
 
+/// Whether `volume` holds `path`'s name under another spelling, one entry or
+/// several, for a caller whose exact probe of `path` just missed. The question a
+/// dialog asks before a write ("is this destination already there?"): the write
+/// that follows lands on a look-alike or refuses it, so the answer the person
+/// sees is "there", ❌ never "free".
+pub(crate) async fn held_in_another_spelling(volume: &dyn Volume, path: &Path) -> Result<bool, VolumeError> {
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
+        return Ok(false);
+    };
+    Ok(!matches!(look_alike_in(volume, dir, name).await?, LookAlike::None))
+}
+
 /// Where a NEW entry a person named goes: a new folder or file, or a rename's
 /// target.
 #[derive(Debug)]

@@ -408,13 +408,15 @@ async fn smb_integration_a_bulk_rename_skips_a_look_alike_and_names_new_ones_com
     ensure_clean(&smb, &base).await;
 }
 
-/// A compress onto the share: a target the share holds in the other spelling is
-/// refused before anything is written (the dialog's overwrite warning never saw
-/// it), and a new archive's name lands composed.
+/// A compress onto the share: the dialog's probe (`destination_exists`) hears
+/// that a target the share holds in the other spelling is there, so the dialog
+/// warns, and the compress then replaces THAT archive in place (one entry, the
+/// share's spelling). A new archive's name lands composed.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
-async fn smb_integration_a_compress_refuses_a_look_alike_archive_and_names_new_ones_composed() {
-    use crate::file_system::write_operations::{WriteOperationError, compress_start};
+async fn smb_integration_a_compress_replaces_a_look_alike_archive_in_place_and_names_new_ones_composed() {
+    use crate::commands::file_system::{destination_exists, path_exists};
+    use crate::file_system::write_operations::compress_start;
 
     let smb = Arc::new(make_docker_volume().await);
     let base = test_dir_name();
@@ -425,6 +427,17 @@ async fn smb_integration_a_compress_refuses_a_look_alike_archive_and_names_new_o
         .await
         .unwrap();
     let id = register(&smb, &base);
+
+    let asked = format!("{base}/{CAFE_ZIP_NFD}");
+    let there = destination_exists(Some(id.clone()), asked.clone()).await;
+    assert!(there.data && !there.timed_out, "the dialog must warn: {there:?}");
+    let exact = path_exists(Some(id.clone()), asked).await;
+    assert!(
+        !exact.data && !exact.timed_out,
+        "path_exists stays byte-exact: {exact:?}"
+    );
+    let new = destination_exists(Some(id.clone()), format!("{base}/{RESUME_ZIP_NFD}")).await;
+    assert!(!new.data && !new.timed_out, "{new:?}");
 
     let local = tempfile::TempDir::new().expect("create TempDir");
     std::fs::write(local.path().join("one.txt"), b"first").unwrap();
@@ -444,29 +457,27 @@ async fn smb_integration_a_compress_refuses_a_look_alike_archive_and_names_new_o
             None,
             crate::operation_log::types::Initiator::User,
         );
-        async move { (started.await, events) }
+        async move {
+            started.await.expect("start the compress");
+            crate::test_support::wait_until_async(Duration::from_secs(30), "the SMB compress to complete", || {
+                let completed = !events.complete.lock().unwrap().is_empty();
+                let errs = events.errors.lock().unwrap();
+                assert!(errs.is_empty(), "SMB compress errored: {errs:?}");
+                completed
+            })
+            .await;
+        }
     };
 
-    let (refused, _) = compress(CAFE_ZIP_NFD).await;
-    assert!(
-        matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
-        "{refused:?}"
-    );
+    compress(CAFE_ZIP_NFD).await;
     assert_eq!(names_in(&vol, &base).await, vec![CAFE_ZIP_NFC.to_string()]);
-    assert_eq!(
-        read_smb(&vol, &format!("{base}/{CAFE_ZIP_NFC}")).await,
-        b"THEIR ARCHIVE"
+    let replaced = read_smb(&vol, &format!("{base}/{CAFE_ZIP_NFC}")).await;
+    assert!(
+        replaced.starts_with(b"PK"),
+        "the archive the share held is replaced by the new zip in place"
     );
 
-    let (started, events) = compress(RESUME_ZIP_NFD).await;
-    started.expect("start the compress of a new archive");
-    crate::test_support::wait_until_async(Duration::from_secs(30), "the SMB compress to complete", || {
-        let completed = !events.complete.lock().unwrap().is_empty();
-        let errs = events.errors.lock().unwrap();
-        assert!(errs.is_empty(), "SMB compress errored: {errs:?}");
-        completed
-    })
-    .await;
+    compress(RESUME_ZIP_NFD).await;
     let mut expected = vec![CAFE_ZIP_NFC.to_string(), RESUME_ZIP_NFC.to_string()];
     expected.sort();
     assert_eq!(names_in(&vol, &base).await, expected);

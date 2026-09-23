@@ -11,6 +11,11 @@
  * treated as inconclusive — we stay quiet rather than promise a create we can't
  * confirm.
  *
+ * The probe is `destinationExists`, ❌ not `pathExistsChecked`: a name the volume
+ * holds in another Unicode spelling counts as there, because the write lands on
+ * that entry. So a copy doesn't promise to create a folder it will merge into, and
+ * compress warns before it replaces a look-alike archive.
+ *
  * The write-access answer shows only when the backend can say a folder takes no
  * writes (`destinationWriteAccess`): "can't tell" shows nothing, and the transfer
  * asks again before it writes, which is the answer that refuses.
@@ -21,7 +26,7 @@
  * creates this synchronously at component init.
  */
 
-import { destinationWriteAccess, pathExistsChecked } from '$lib/tauri-commands'
+import { destinationExists, destinationWriteAccess } from '$lib/tauri-commands'
 import type { UnwritableReason } from '$lib/file-explorer/types'
 import { validateDirectoryPath } from '$lib/utils/filename-validation'
 import { createDebounce } from '$lib/utils/timing'
@@ -72,7 +77,7 @@ export function createTransferDestExistsCheck(deps: TransferDestExistsCheckDeps)
       // Both at once. A failed write-access probe says nothing (`null`), ❌ never
       // takes the existence answer down with it.
       const [result, access] = await Promise.all([
-        pathExistsChecked(path, volumeId),
+        destinationExists(path, volumeId),
         destinationWriteAccess(volumeId, path).catch((err: unknown) => {
           deps.log.debug('Destination write-access check failed: {error}', { error: err })
           return null
@@ -126,7 +131,7 @@ export function createTransferDestExistsCheck(deps: TransferDestExistsCheckDeps)
       const path = deps.getEditedPath()
       if (validateDirectoryPath(path).severity === 'error') return false
       try {
-        const result = await pathExistsChecked(path, deps.getSelectedVolumeId())
+        const result = await destinationExists(path, deps.getSelectedVolumeId())
         return result.timedOut || result.data
       } catch (err) {
         deps.log.debug('Destination existence probe failed: {error}', { error: err })

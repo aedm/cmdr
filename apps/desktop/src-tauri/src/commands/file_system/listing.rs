@@ -17,11 +17,14 @@ use crate::file_system::{
 use std::path::{Path, PathBuf};
 use tokio::time::Duration;
 
-use crate::deadline::{TimedOut, blocking_typed_result_with_timeout, blocking_with_timeout_flag};
+use crate::deadline::{
+    TimedOut, blocking_typed_result_with_timeout, blocking_with_timeout_flag, timeout_detached_typed,
+};
 use crate::file_system::listing::brief_columns::BriefColumnsError;
 use crate::file_system::listing::fuzzy_jump::FuzzyJumpError;
 use crate::file_system::validation::{MAX_NAME_BYTES, MAX_PATH_BYTES};
 use crate::file_system::volume::manager::get_volume_manager;
+use crate::file_system::write_operations::held_in_another_spelling;
 use cmdr_fs::volume::WatchCoverage;
 
 use super::expand_tilde;
@@ -109,6 +112,36 @@ pub fn get_path_limits() -> PathLimits {
 #[tauri::command]
 #[specta::specta]
 pub async fn path_exists(volume_id: Option<String>, path: String) -> TimedOut<bool> {
+    exists_on_volume(volume_id, path, Spelling::Exact).await
+}
+
+/// [`path_exists`] for a write's DESTINATION, asked by the transfer and compress
+/// dialogs: a name the volume holds in another Unicode spelling counts as there
+/// (`write_operations::held_in_another_spelling`), because the write that follows
+/// lands on that entry or refuses it. So copy/move don't promise to create a
+/// folder they'll merge into, and compress warns before it overwrites.
+///
+/// Costs one listing of the parent, only after the exact probe missed a non-ASCII
+/// name on a volume that matches names byte for byte. A listing that fails reads
+/// as "couldn't tell", ❌ never "not there".
+#[tauri::command]
+#[specta::specta]
+pub async fn destination_exists(volume_id: Option<String>, path: String) -> TimedOut<bool> {
+    exists_on_volume(volume_id, path, Spelling::AnyForm).await
+}
+
+/// Which spellings of a path's name an existence check counts.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Spelling {
+    /// These bytes only. [`path_exists`]: a pane's remembered path and the
+    /// directory-eviction poll ask about a path they then list, and a "yes" for a
+    /// look-alike would send them to a path that misses.
+    Exact,
+    /// These bytes, or the name in another Unicode form. [`destination_exists`].
+    AnyForm,
+}
+
+async fn exists_on_volume(volume_id: Option<String>, path: String, spelling: Spelling) -> TimedOut<bool> {
     let volume_id = volume_id.unwrap_or_else(|| "root".to_string());
 
     // For local volumes, expand tilde
@@ -132,7 +165,22 @@ pub async fn path_exists(volume_id: Option<String>, path: String) -> TimedOut<bo
         // for every subfolder, and the dialog promises to create one that's
         // already there.
         let path_for_check = cmdr_fs::volume::root_anchored(volume.root(), Path::new(&expanded_path));
-        match tokio::time::timeout(PATH_EXISTS_TIMEOUT, volume.exists(&path_for_check)).await {
+        // Detached, so a deadline never abandons an MTP transaction mid-flight
+        // (`deadline/CLAUDE.md`). `Err(())` is "couldn't tell": the deadline, or
+        // a look-alike listing that failed.
+        let probe = {
+            let volume = std::sync::Arc::clone(&volume);
+            async move {
+                let exists = volume.exists(&path_for_check).await;
+                if exists || spelling == Spelling::Exact {
+                    return Ok(exists);
+                }
+                held_in_another_spelling(volume.as_ref(), &path_for_check)
+                    .await
+                    .map_err(|_| ())
+            }
+        };
+        match timeout_detached_typed(PATH_EXISTS_TIMEOUT, || (), |_| (), probe).await {
             Ok(exists) => {
                 // The session dropped while we asked? Then the `false` we got back is
                 // meaningless. Surface it as a timeout-equivalent so callers know.
@@ -592,3 +640,7 @@ pub fn benchmark_log(message: String) {
 #[cfg(test)]
 #[path = "refresh_listing_test.rs"]
 mod refresh_listing_test;
+
+#[cfg(test)]
+#[path = "destination_exists_test.rs"]
+mod destination_exists_test;

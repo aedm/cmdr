@@ -504,6 +504,19 @@ export const commands = {
   pathExists: (volumeId: string | null, path: string) =>
     __TAURI_INVOKE<TimedOut<boolean>>('path_exists', { volumeId, path }),
   /**
+   *  [`path_exists`] for a write's DESTINATION, asked by the transfer and compress
+   *  dialogs: a name the volume holds in another Unicode spelling counts as there
+   *  (`write_operations::held_in_another_spelling`), because the write that follows
+   *  lands on that entry or refuses it. So copy/move don't promise to create a
+   *  folder they'll merge into, and compress warns before it overwrites.
+   *
+   *  Costs one listing of the parent, only after the exact probe missed a non-ASCII
+   *  name on a volume that matches names byte for byte. A listing that fails reads
+   *  as "couldn't tell", ❌ never "not there".
+   */
+  destinationExists: (volumeId: string | null, path: string) =>
+    __TAURI_INVOKE<TimedOut<boolean>>('destination_exists', { volumeId, path }),
+  /**
    *  Batched per-path directory probe for the drag-and-drop transfer path.
    *
    *  Returns a `Vec<Option<bool>>` index-aligned with `paths` (see

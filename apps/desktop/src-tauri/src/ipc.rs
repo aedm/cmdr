@@ -158,6 +158,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::enrich_tags,
                     crate::commands::file_system::toggle_tags,
                     crate::commands::file_system::path_exists,
+                    crate::commands::file_system::destination_exists,
                     crate::commands::file_system::stat_paths_kinds,
                     crate::commands::file_system::stored_spellings,
                     crate::commands::file_system::create_directory,

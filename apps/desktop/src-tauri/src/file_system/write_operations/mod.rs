@@ -141,6 +141,8 @@ pub use manager::{
 // call these; `RenameValidityResult` rides into `bindings.ts` via the
 // `check_rename_validity` command signature.
 pub(crate) use create::{create_directory_managed, create_file_managed};
+// The transfer and compress dialogs' destination probe (`destination_exists`).
+pub(crate) use look_alike::held_in_another_spelling;
 #[cfg(target_os = "macos")]
 pub(crate) use paste_clipboard::write_payload_to_dir;
 pub(crate) use rename::{

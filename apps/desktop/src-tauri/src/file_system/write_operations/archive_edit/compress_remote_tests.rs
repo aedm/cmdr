@@ -292,52 +292,83 @@ async fn a_new_archive_on_a_share_is_named_composed() {
     get_volume_manager().unregister(&parent_id);
 }
 
-/// The dialog's overwrite warning asks for the exact bytes, so it stays quiet
-/// about a look-alike: replacing it would lose an archive nobody was warned
-/// about, and landing beside it would plant a twin. Refused, like a single
-/// rename onto a look-alike nobody confirmed.
+/// A target the share holds in another spelling is the archive the dialog warned
+/// about (`destination_exists` counts a look-alike), so it's replaced IN PLACE:
+/// one archive, under the share's own spelling, ❌ never a twin beside it.
 #[tokio::test]
-async fn a_compress_onto_a_look_alike_of_an_existing_archive_is_refused_and_leaves_it_alone() {
+async fn a_compress_onto_a_look_alike_of_an_existing_archive_replaces_it_in_place() {
     let (parent_id, parent) = register_share(Some(CAFE_ZIP_NFD)).await;
 
-    let refused = compress_to_share(&parent_id, CAFE_ZIP_NFC).await;
+    compress_to_share(&parent_id, CAFE_ZIP_NFC)
+        .await
+        .expect("start compress");
 
-    assert!(
-        matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
-        "{refused:?}"
-    );
     assert_eq!(names_in_share(parent.as_ref()).await, vec![CAFE_ZIP_NFD.to_string()]);
     let archive = Path::new("/share").join(CAFE_ZIP_NFD);
     assert_eq!(
-        read_remote_entry(parent.as_ref(), &archive, "stale.txt")
-            .await
-            .as_deref(),
-        Some(b"old".as_slice()),
-        "the user's archive keeps its bytes"
+        read_remote_entry(parent.as_ref(), &archive, "new.txt").await.as_deref(),
+        Some(b"brand new".as_slice())
+    );
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "stale.txt").await,
+        None,
+        "a fresh archive, never a merge into the old one"
     );
     get_volume_manager().unregister(&parent_id);
 }
 
 /// The mirror case: the target composes onto a name the share holds exactly.
-/// Still the dialog never saw it, so still refused, ❌ never seeded over.
+/// Same entry, same answer: replaced in place, still one archive.
 #[tokio::test]
-async fn a_compress_whose_composed_name_the_share_holds_is_refused_and_leaves_it_alone() {
+async fn a_compress_whose_composed_name_the_share_holds_replaces_that_archive() {
     let (parent_id, parent) = register_share(Some(CAFE_ZIP_NFC)).await;
 
-    let refused = compress_to_share(&parent_id, CAFE_ZIP_NFD).await;
+    compress_to_share(&parent_id, CAFE_ZIP_NFD)
+        .await
+        .expect("start compress");
+
+    assert_eq!(names_in_share(parent.as_ref()).await, vec![CAFE_ZIP_NFC.to_string()]);
+    let archive = Path::new("/share").join(CAFE_ZIP_NFC);
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &archive, "new.txt").await.as_deref(),
+        Some(b"brand new".as_slice())
+    );
+    get_volume_manager().unregister(&parent_id);
+}
+
+/// Two archives fit the target and neither is spelled as asked: which one to
+/// replace is a guess, so the compress refuses before anything is seeded.
+#[tokio::test]
+async fn a_compress_two_stored_archives_fit_is_refused_and_leaves_both_alone() {
+    let composed = "\u{e9}l\u{151}.zip";
+    let decomposed = "e\u{301}lo\u{30b}.zip";
+    let (parent_id, parent) = register_share(Some(composed)).await;
+    parent
+        .create_file(
+            &Path::new("/share").join(decomposed),
+            &zip_bytes(&[("stale.txt", b"old")]),
+        )
+        .await
+        .expect("seed the second archive");
+
+    let refused = compress_to_share(&parent_id, "\u{e9}lo\u{30b}.zip").await;
 
     assert!(
         matches!(refused, Err(WriteOperationError::DestinationExists { .. })),
         "{refused:?}"
     );
-    let archive = Path::new("/share").join(CAFE_ZIP_NFC);
-    assert_eq!(
-        read_remote_entry(parent.as_ref(), &archive, "stale.txt")
-            .await
-            .as_deref(),
-        Some(b"old".as_slice()),
-        "the user's archive keeps its bytes"
-    );
+    let mut expected = vec![composed.to_string(), decomposed.to_string()];
+    expected.sort();
+    assert_eq!(names_in_share(parent.as_ref()).await, expected);
+    for name in [composed, decomposed] {
+        assert_eq!(
+            read_remote_entry(parent.as_ref(), &Path::new("/share").join(name), "stale.txt")
+                .await
+                .as_deref(),
+            Some(b"old".as_slice()),
+            "{name:?} keeps its bytes"
+        );
+    }
     get_volume_manager().unregister(&parent_id);
 }
 

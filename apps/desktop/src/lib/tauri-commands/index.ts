@@ -27,6 +27,7 @@ export {
   getPathLimits,
   pathExists,
   pathExistsChecked,
+  destinationExists,
   statPathsKinds,
   storedSpellings,
   createDirectory,

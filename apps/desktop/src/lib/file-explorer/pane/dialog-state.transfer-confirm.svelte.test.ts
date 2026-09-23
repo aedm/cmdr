@@ -47,6 +47,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   onScanPreviewCancelled: vi.fn(),
   scanVolumeForConflicts: vi.fn(() => Promise.resolve([])),
   pathExistsChecked: vi.fn(() => Promise.resolve({ data: true, timedOut: false })),
+  destinationExists: vi.fn(() => Promise.resolve({ data: true, timedOut: false })),
   destinationWriteAccess: vi.fn(() => Promise.resolve({ kind: 'unknown' })),
 }))
 

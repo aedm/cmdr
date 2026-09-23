@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use super::super::OperationEventSink;
 use super::super::archive_remote_edit::{self, RemoteEditError};
-use super::super::look_alike::{NewEntry, place_new_entry};
+use super::super::look_alike::{LookAlike, look_alike_in, spelled_new_path};
 use super::super::scratch_dir::ScratchDir;
 use super::super::state::WriteOperationState;
 use super::super::transfer::volume::{PathRole, map_volume_error};
@@ -110,25 +110,30 @@ async fn seed_empty_zip_remote(parent: &dyn Volume, dest_zip_full_path: &Path) -
         })
 }
 
-/// Where a compress creates a NEW archive on a remote parent, for a target the
-/// parent doesn't hold byte for byte (`look_alike.rs`): spelled the way the
-/// parent wants new names, and refused when the folder holds it under another
-/// Unicode spelling.
+/// Where a compress lands its archive on a remote parent, and whether something
+/// was already there: the target itself when the parent holds it byte for byte;
+/// else the one entry holding it under another Unicode spelling (`look_alike.rs`),
+/// replaced in place under ITS spelling; else a new name, spelled the way the
+/// parent wants new names.
 ///
-/// A look-alike is refused, ❌ never replaced: the dialog's overwrite warning
-/// asks for the exact bytes, so nobody was told this archive would go, and
-/// seeding beside it would plant an identical-looking twin. The same answer a
-/// single rename onto a look-alike gets without the user's confirmation.
-async fn new_archive_path(parent: &dyn Volume, target: PathBuf) -> Result<PathBuf, WriteOperationError> {
-    let refused = || WriteOperationError::DestinationExists {
-        path: target.display().to_string(),
+/// Replacing a look-alike is what the user agreed to: the dialog's overwrite
+/// warning asks `destination_exists`, which counts one, so it warned about this
+/// archive. Seeding beside it would plant an identical-looking twin. Two or more
+/// look-alikes, none spelled as asked, are refused: which one to replace would be
+/// a guess.
+async fn archive_landing(parent: &dyn Volume, target: PathBuf) -> Result<(PathBuf, bool), WriteOperationError> {
+    if parent.exists(&target).await {
+        return Ok((target, true));
+    }
+    let (Some(dir), Some(name)) = (target.parent(), target.file_name().and_then(|n| n.to_str())) else {
+        return Ok((target, false));
     };
-    match place_new_entry(parent, &target, None).await {
-        // Respelled onto a name the parent holds exactly: that entry is the
-        // look-alike, and the seed would replace it without a word.
-        Ok(NewEntry::Free(path)) if path != target && parent.exists(&path).await => Err(refused()),
-        Ok(NewEntry::Free(path)) => Ok(path),
-        Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Err(refused()),
+    match look_alike_in(parent, dir, name).await {
+        Ok(LookAlike::None) => Ok((spelled_new_path(parent, &target), false)),
+        Ok(LookAlike::One(entry)) => Ok((dir.join(&entry.name), true)),
+        Ok(LookAlike::Several) => Err(WriteOperationError::DestinationExists {
+            path: target.display().to_string(),
+        }),
         Err(e) => Err(map_volume_error(
             &target.display().to_string(),
             PathRole::Destination,
@@ -209,17 +214,13 @@ pub(crate) async fn compress_start(
     // creates/overwrites it): a net-new archive is rollbackable (delete it), an
     // overwrite of a prior archive is not (the prior bytes aren't retained). This
     // `net_new` flag is the driver-supplied fact the journal can't derive (Finding
-    // 3), passed into finalize via [`ArchiveProvenance`]. A remote target that
-    // isn't there is a new name (`new_archive_path`); a local parent's lookups
-    // go through the macOS kernel, which finds a name in any Unicode form.
+    // 3), passed into finalize via [`ArchiveProvenance`]. A remote target lands
+    // on the entry holding its name in any spelling, or as a new name
+    // (`archive_landing`); a local parent's lookups go through the macOS kernel,
+    // which finds a name in any Unicode form.
     let (net_new, dest_zip_full_path) = match get_volume_manager().get(&parent_volume_id) {
         Some(parent) if !parent.supports_local_fs_access() => {
-            let existed = parent.exists(&dest_zip_full_path).await;
-            let dest_zip_full_path = if existed {
-                dest_zip_full_path
-            } else {
-                new_archive_path(parent.as_ref(), dest_zip_full_path).await?
-            };
+            let (dest_zip_full_path, existed) = archive_landing(parent.as_ref(), dest_zip_full_path).await?;
             seed_empty_zip_remote(parent.as_ref(), &dest_zip_full_path).await?;
             (!existed, dest_zip_full_path)
         }

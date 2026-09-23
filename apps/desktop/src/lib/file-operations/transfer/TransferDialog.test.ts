@@ -49,10 +49,12 @@ const scanVolumeForConflictsMock = vi.fn<
   }) => Promise<VolumeConflictInfo[]>
 >(() => Promise.resolve([]))
 
-// Destination-existence probe behind the "this folder will be created" warning.
+// Destination-existence probe (`destinationExists`, which counts a name the
+// volume holds in another Unicode spelling) behind the "this folder will be
+// created" warning.
 // Defaults to "exists" so most tests see no warning; a test overrides it. Same
 // positional-real-signature reasoning as `scanVolumeForConflictsMock` above.
-const pathExistsCheckedMock = vi.fn<
+const destinationExistsMock = vi.fn<
   (payload: { path: string; volumeId?: string }) => Promise<{ data: boolean; timedOut: boolean }>
 >(() => Promise.resolve({ data: true, timedOut: false }))
 
@@ -99,7 +101,7 @@ vi.mock('$lib/tauri-commands', () => ({
     sourceVolumeId?: string,
     sourcePaths?: string[],
   ) => scanVolumeForConflictsMock({ volumeId, sourceItems, destPath, sourceVolumeId, sourcePaths }),
-  pathExistsChecked: (path: string, volumeId?: string) => pathExistsCheckedMock({ path, volumeId }),
+  destinationExists: (path: string, volumeId?: string) => destinationExistsMock({ path, volumeId }),
   destinationWriteAccess: (volumeId: string, path: string) => destinationWriteAccessMock({ volumeId, path }),
   DEFAULT_VOLUME_ID: 'root',
 }))
@@ -219,8 +221,8 @@ beforeEach(() => {
   scanCompleteCb = null
   scanVolumeForConflictsMock.mockReset()
   scanVolumeForConflictsMock.mockResolvedValue([])
-  pathExistsCheckedMock.mockReset()
-  pathExistsCheckedMock.mockResolvedValue({ data: true, timedOut: false })
+  destinationExistsMock.mockReset()
+  destinationExistsMock.mockResolvedValue({ data: true, timedOut: false })
   destinationWriteAccessMock.mockReset()
   destinationWriteAccessMock.mockResolvedValue({ kind: 'unknown' })
   startScanPreviewMock.mockClear()
@@ -733,7 +735,7 @@ describe('TransferDialog destination path', () => {
   })
 
   it('warns that a non-existent destination folder will be created', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const target = mountDialog({ operationType: 'copy', destinationPath: '/Users/test/brand-new' })
     await settleExistsCheck()
 
@@ -746,7 +748,7 @@ describe('TransferDialog destination path', () => {
   })
 
   it('uses the move-specific copy for the create warning when moving', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const target = mountDialog({ operationType: 'move', destinationPath: '/Users/test/brand-new' })
     await settleExistsCheck()
 
@@ -758,7 +760,7 @@ describe('TransferDialog destination path', () => {
     // recursive create was local-FS only). Now `create_directory_all` makes the
     // dest on every backend, so the yellow "will be created" warning shows
     // honestly for an SMB/MTP destination as well.
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const target = mountDialog({
       operationType: 'copy',
       currentVolumeId: 'smb://nas.local/public',
@@ -772,7 +774,7 @@ describe('TransferDialog destination path', () => {
   })
 
   it('does not warn when the destination folder already exists', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: true, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: true, timedOut: false })
     const target = mountDialog({ destinationPath: '/Users/test/dest' })
     await settleExistsCheck()
 
@@ -781,7 +783,7 @@ describe('TransferDialog destination path', () => {
   })
 
   it('stays quiet when the existence check times out (inconclusive)', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: true })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: true })
     const target = mountDialog({ destinationPath: '/Users/test/maybe' })
     await settleExistsCheck()
 
@@ -789,7 +791,7 @@ describe('TransferDialog destination path', () => {
   })
 
   it('lets the red error win over the yellow warning for an invalid path', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const target = mountDialog({ destinationPath: 'relative/path' })
     await settleExistsCheck()
 
@@ -802,7 +804,7 @@ describe('TransferDialog destination path', () => {
     // ❗ The Pixel case: copying onto a phone's `/` only surfaced after confirm, as
     // "Not enough space". The folder doesn't exist yet AND takes no writes, so
     // "Cmdr will create it" would be a promise the copy can't keep.
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     destinationWriteAccessMock.mockResolvedValue({ kind: 'unwritable', reason: 'unexplained' })
     const target = mountDialog({ operationType: 'copy', destinationPath: '/system/New', currentVolumeId: 'root' })
     await settleExistsCheck()
@@ -868,7 +870,7 @@ describe('TransferDialog compress mode', () => {
 
   it('warns that an existing archive will be replaced', async () => {
     // The target zip already exists at the destination.
-    pathExistsCheckedMock.mockResolvedValue({ data: true, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: true, timedOut: false })
     const target = mountDialog({ operationType: 'compress' })
     await settleExistsCheck()
     const warning = target.querySelector('.path-warning')
@@ -878,7 +880,7 @@ describe('TransferDialog compress mode', () => {
   })
 
   it('shows no overwrite warning when the target does not exist yet', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const target = mountDialog({ operationType: 'compress' })
     await settleExistsCheck()
     expect(target.querySelector('.path-warning')).toBeNull()
@@ -887,7 +889,7 @@ describe('TransferDialog compress mode', () => {
   it('auto-confirm does NOT overwrite an existing archive (surfaces the dialog instead)', async () => {
     // Auto-confirm (MCP) with the target zip already present: the dialog must NOT
     // dispatch — it stays open so the user decides.
-    pathExistsCheckedMock.mockResolvedValue({ data: true, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: true, timedOut: false })
     const onConfirm = vi.fn<ConfirmFn>()
     mountDialog({ operationType: 'compress', autoConfirm: true, onConfirm })
     await flushMicrotasks()
@@ -895,7 +897,7 @@ describe('TransferDialog compress mode', () => {
   })
 
   it('auto-confirm proceeds when the target archive does not exist', async () => {
-    pathExistsCheckedMock.mockResolvedValue({ data: false, timedOut: false })
+    destinationExistsMock.mockResolvedValue({ data: false, timedOut: false })
     const onConfirm = vi.fn<ConfirmFn>()
     mountDialog({ operationType: 'compress', autoConfirm: true, onConfirm })
     await flushMicrotasks()

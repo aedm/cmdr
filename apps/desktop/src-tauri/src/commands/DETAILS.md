@@ -30,7 +30,7 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `spawn_blocking` under the read timeout, never a subtree walk; per-item failures map to `None` so a virtual MTP/SMB
   path on the pasteboard can't poison the batch. The pure `stat_paths_kinds_blocking` helper is reused by
   `clipboard.rs::read_clipboard_files`. `drag.rs`: native drag, self-drag overlay (see "Drag session locality" below).
-  `e2e_support.rs`: feature-gated E2E/debug commands. `listing.rs::path_exists` is session-aware: a remote volume whose session
+  `e2e_support.rs`: feature-gated E2E/debug commands. `listing.rs::path_exists` means these exact bytes; its twin `destination_exists` (the transfer and compress dialogs) also counts a name the volume holds in another Unicode spelling (`write_operations::held_in_another_spelling`, one parent listing only after an exact miss of a non-ASCII name on a byte-exact volume), because the write lands on that entry. Both run detached (`deadline::timeout_detached_typed`) and are session-aware: a remote volume whose session
   drops returns an immediate `false`, so it re-checks `connection_state()` and reports `timedOut: true` unless the
   session is still live, and a transient blip can't evict the user from a network folder. An id nothing registered but
   something still names answers `timedOut: true` too, never a confident `false`: a phone its device provider lists but

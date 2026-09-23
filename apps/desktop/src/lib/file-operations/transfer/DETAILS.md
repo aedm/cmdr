@@ -591,12 +591,17 @@ Two niceties on top:
   destination pane sitting at home root), replaces it with the absolute path (`/Users/me`) — a bare `~` in the box reads
   as a glitch. A `~/sub` path keeps its short form; only the exact-home case expands. Done before the scan and conflict
   check so they run against the absolute path.
-- **Yellow "this folder will be created" warning.** A debounced (`createDebounce`, 300 ms) `pathExistsChecked` probe of
+- **Yellow "this folder will be created" warning.** A debounced (`createDebounce`, 300 ms) `destinationExists` probe of
   the resolved destination flips `targetMissing`. When the path is structurally valid (no red `pathError`) but the
   folder doesn't exist, the field takes `TextInput`'s `warning` state (a yellow border and ring) and a yellow message
   line (`.path-warning`, keys `targetWillBeCreated{Copy,Move}`). The red error always wins — the two never show at once.
   A timeout is inconclusive (hung mount), so it stays quiet rather than over-promising. A monotonic `existsCheckSeq`
-  drops a stale probe that lands after a newer keystroke.
+  drops a stale probe that lands after a newer keystroke. **The probe counts a look-alike** (`destinationExists`, ❌ not
+  `pathExistsChecked`): a folder the share holds in another Unicode spelling (`fotók` composed vs decomposed) is where
+  the copy merges, so "will be created" would lie, and compress's overwrite warning (below) must show for an archive
+  it's about to replace in place. It costs one listing of the parent, only for a non-ASCII name that missed on a
+  byte-exact volume; a listing that fails reads as "couldn't tell". Backend:
+  `apps/desktop/src-tauri/src/commands/file_system/listing.rs`.
 - **Red "nothing can go here" notice.** The same debounced probe also asks `destinationWriteAccess` (the
   `destination_write_access` command: `Volume::write_access_at` on the resolved folder, 2 s, `unknown` for an
   unregistered volume). A definite `unwritable` shows a red line under the box (`#transfer-path-refusal`, keys
@@ -631,12 +636,13 @@ identically.
 - **`null` rather than a guess** for a path that can't yield a parent (relative, `~`-rooted). Backend paths are absolute
   or virtual-volume URLs, so that is a bug elsewhere, and the prompt shows the name alone rather than inventing a
   folder.
-- **A look-alike clash says so** (`destinationIsLookAlike`: the destination holds the name in another Unicode
-  spelling, `café` composed vs decomposed). A quiet line under the folder (`lookAlikeHint`) explains that the names
-  look the same but the server spells them differently and that Overwrite replaces the one that's there. The headline
-  is already the stored entry's own spelling, which is the one Overwrite replaces and keeps, so nothing else changes;
-  the incoming spelling prints identically and isn't shown. Backend side:
-  `src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Look-alike names and new-name spelling".
+- **A look-alike clash says so** (`destinationIsLookAlike`: the destination holds the name in another Unicode spelling,
+  `café` composed vs decomposed). A quiet line under the folder (`lookAlikeHint`) explains that the names look the same
+  but the server spells them differently and that Overwrite replaces the one that's there. The headline is already the
+  stored entry's own spelling, which is the one Overwrite replaces and keeps, so nothing else changes; the incoming
+  spelling prints identically and isn't shown. Backend side:
+  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Look-alike names and new-name
+  spelling".
 
 ### Index conversion for ".." entry
 

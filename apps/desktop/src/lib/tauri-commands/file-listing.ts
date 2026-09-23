@@ -408,6 +408,16 @@ export async function pathExistsChecked(path: string, volumeId?: string): Promis
 }
 
 /**
+ * `pathExistsChecked` for a write's destination (the transfer and compress dialogs):
+ * a name the volume holds in another Unicode spelling (`café` composed vs
+ * decomposed on an SMB share) counts as there, since the write lands on that
+ * entry. A navigation keeps `pathExistsChecked`, which means these exact bytes.
+ */
+export async function destinationExists(path: string, volumeId?: string): Promise<TimedOut<boolean>> {
+  return commands.destinationExists(volumeId ?? null, path)
+}
+
+/**
  * Batched top-level "is this a directory?" probe for a list of absolute paths.
  * Returns a per-path array index-aligned with `paths`: `true` = directory,
  * `false` = file, `null` = unknown (the path doesn't resolve to the local

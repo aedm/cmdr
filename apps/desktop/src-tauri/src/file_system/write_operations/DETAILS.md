@@ -480,8 +480,8 @@ identical-looking twin beside the user's entry.
   renames skip all of it.
 - **Respelling can land on an exact name.** `place_new_entry` answers `Free(spelled)` when the folder holds the SPELLED
   name byte for byte (`among` treats an exact entry as "no look-alike"); a create or rename then hears the backend's
-  `AlreadyExists`. A write that would REPLACE silently instead (the compress seed) must check `spelled != asked &&
-  exists(spelled)` itself.
+  `AlreadyExists`. A write that would REPLACE silently instead must ask `look_alike_in` with the ASKED name, which
+  finds that entry (compress does).
 - **Bulk rename (`rename/bulk.rs`)** respells every destination once, in `start_bulk_rename`, before the plan, the run,
   and the journal see it (non-root volumes only). `settle_remote_conflicts` then treats a destination held under another
   spelling like an exact clash: the row is `Skipped` (`Ambiguous` too), a listing failure fails it, and a look-alike
@@ -491,11 +491,16 @@ identical-looking twin beside the user's entry.
   the planner orders the two rows. Off macOS that key is exact, the vacating row goes unseen, and the row is refused
   rather than landing beside the entry it waits on. Rotation temporaries are `.cmdr-bulk-rename-<numeric id>-<uuid>`,
   ASCII, so they have one spelling. Cells: `rename/bulk/look_alike_tests.rs`.
-- **Compress (`archive_edit/compress.rs::new_archive_path`)**: on a remote parent, a target the parent doesn't hold
-  byte for byte is a new name, spelled the parent's way. A look-alike (either direction) is refused as
-  `DestinationExists` before anything is seeded, ❌ never replaced: the dialog's overwrite warning
-  (`transfer-dest-exists.svelte.ts` → `path_exists`) asks for the exact bytes, so nobody was told that archive would go.
-  The exact stored spelling still overwrites as it always did. Cells: `archive_edit/compress_remote_tests.rs`.
+- **Compress (`archive_edit/compress.rs::archive_landing`)**: on a remote parent, the exact stored spelling is
+  overwritten; else ONE look-alike (either direction) is replaced in place, under its stored spelling, and counts as
+  "existed" (not rollbackable, like any overwrite); else the target is a new name, spelled the parent's way. Two or
+  more look-alikes are refused as `DestinationExists` before anything is seeded. Replacing is safe because the dialog
+  warned: its overwrite warning asks `destination_exists` (`transfer-dest-exists.svelte.ts`), which counts a look-alike
+  via `held_in_another_spelling`, and MCP auto-confirm refuses to proceed on the same answer. Cells:
+  `archive_edit/compress_remote_tests.rs`, `apps/desktop/src-tauri/src/commands/file_system/destination_exists_test.rs`.
+- **The dialogs' existence probe** (`apps/desktop/src-tauri/src/commands/file_system/listing.rs::destination_exists`) is the look-alike-aware twin
+  of `path_exists`, which stays byte-exact for the panes (a remembered path and the eviction poll then LIST the path,
+  and a "yes" for a look-alike would send them to a miss).
 - The transfers apply the same rule through `transfer/volume/landing.rs`: `transfer/volume/DETAILS.md` § "Look-alike
   names and new-name spelling". Extract lands through the same merge levels. Instant-op cells:
   `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs`.
