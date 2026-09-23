@@ -14,6 +14,7 @@ import {
   fetchVisibleRange,
   refetchIconsForEntries,
   updateIndexSizesInPlace,
+  applyFolderSizes,
   getImageIndexBadge,
   getFolderCoverageBadge,
 } from './file-list-utils'
@@ -684,5 +685,69 @@ describe('getFolderCoverageBadge', () => {
   it('treats accounted >= eligible as all-indexed (a stray over-count never reads pending)', () => {
     const cov: FolderCoverage = { path: '/a', eligible: 50, accounted: 60 }
     expect(getFolderCoverageBadge(cov, t)?.icon).toBe('circle-check')
+  })
+})
+
+// The backend pushes the moved rows' readings with `listing-index-sizes-changed`, so applying them
+// must cost no IPC and touch only the rows it names.
+describe('applyFolderSizes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function folder(name: string, overrides: Partial<FileEntry> = {}): FileEntry {
+    return {
+      name,
+      path: `/dir/${name}`,
+      isDirectory: true,
+      isSymlink: false,
+      permissions: 0o755,
+      owner: 'user',
+      group: 'group',
+      iconId: 'dir',
+      extendedMetadataLoaded: true,
+      ...overrides,
+    }
+  }
+
+  function reading(path: string, recursiveSize: number, recursiveSizePending = false) {
+    return {
+      path,
+      recursiveSize,
+      recursivePhysicalSize: recursiveSize,
+      recursiveFileCount: 3,
+      recursiveDirCount: 1,
+      recursiveHasSymlinks: false,
+      recursiveSizePending,
+      recursiveSizeComplete: true,
+      recursiveSizeStale: false,
+    }
+  }
+
+  it('writes the reading onto the named row and leaves the others alone', () => {
+    const library = folder('Library', { recursiveSize: 10 })
+    const music = folder('Music', { recursiveSize: 20 })
+    const touched = applyFolderSizes(
+      [library, music],
+      [{ path: '/dir/Library', stats: reading('/dir/Library', 99, true) }],
+    )
+
+    expect(touched).toBe(true)
+    expect(library.recursiveSize).toBe(99)
+    expect(library.recursiveSizePending).toBe(true)
+    expect(music.recursiveSize).toBe(20)
+    expect(getDirStatsBatch).not.toHaveBeenCalled()
+  })
+
+  it('clears the hourglass but keeps the size when the index lost the folder', () => {
+    const library = folder('Library', { recursiveSize: 10, recursiveSizePending: true })
+    applyFolderSizes([library], [{ path: '/dir/Library', stats: null }])
+    expect(library.recursiveSize).toBe(10)
+    expect(library.recursiveSizePending).toBe(false)
+  })
+
+  it('reports false when none of the rows is in the window', () => {
+    const music = folder('Music', { recursiveSize: 20 })
+    expect(applyFolderSizes([music], [{ path: '/dir/Library', stats: reading('/dir/Library', 99) }])).toBe(false)
   })
 })

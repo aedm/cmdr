@@ -31,9 +31,9 @@ carry live here:
   coalesced by a leading + trailing `createThrottle` at `INDEX_LISTING_UPDATE_MIN_INTERVAL_MS` (250 ms, ≤4/sec). Under
   heavy churn the backend `diff_emitter` only collapses to ~50 ms (~20/sec), and each unthrottled refetch re-renders the
   range into fresh WebKit compositor surfaces (1+ GB GPU under a storm), so the throttle is the demand-side cap. The
-  index-SIZE refresh path (`listing-index-sizes-changed` → `refreshIndexSizes`) is a separate source: the backend names
-  the listing an index update touched (`src-tauri/src/listing_index_sizes/`), and `index-events.ts` leading-throttles it
-  at 2 s per pane.
+  index-SIZE path (`listing-index-sizes-changed` → `FilePane.applyIndexSizes`) is a separate source, paced by the
+  backend (`src-tauri/src/listing_index_sizes/`: only rows whose shown values moved, at most one per listing per 2 s,
+  none while the window is hidden), and applied with no IPC but the status-bar totals.
 - **`git-browser-sync.svelte.ts::cleanup()` has to drop the SETTING listeners too**, not just the repo subscription, or
   they leak per pane.
 - **Two independent MCP mirrors, so a change to one doesn't cover the other**: `pane-mcp-sync.svelte.ts` mirrors pane

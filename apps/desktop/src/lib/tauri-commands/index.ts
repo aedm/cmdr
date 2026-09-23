@@ -876,6 +876,7 @@ export type {
   IndexReplayProgressEvent,
   IndexReplayCompleteEvent,
   ListingIndexSizesChanged,
+  FolderSizes,
   IndexMemoryWarningEvent,
 } from '$lib/ipc/bindings'
 

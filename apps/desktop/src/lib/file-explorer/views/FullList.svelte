@@ -3,7 +3,7 @@
     import StatusGlyph from '$lib/ui/StatusGlyph.svelte'
     import { dependOn } from '$lib/utils/reactivity'
     import type { FileEntry, SelectPayload, SortColumn, SortOrder, SyncStatus, VisibleRangePayload } from '../types'
-    import type { FileIndexState, FolderCoverage } from '$lib/tauri-commands'
+    import type { FileIndexState, FolderCoverage, ListingIndexSizesChanged } from '$lib/tauri-commands'
     import { calculateVirtualWindow, getScrollToPosition } from './virtual-scroll'
     import { startSelectionDragTracking } from '../drag/drag-drop'
     import {
@@ -484,6 +484,11 @@
     /** Updates index size fields on cached directory entries AND on the ".." row. */
     export function refreshIndexSizes(): void {
         cache.refreshIndexSizes()
+    }
+
+    /** Applies a pushed index-size change to the cached rows and the ".." row (no IPC). */
+    export function applyIndexSizes(change: ListingIndexSizesChanged): void {
+        cache.applyIndexSizes(change)
     }
 
     /** Fetches the entries the current virtual window needs. */

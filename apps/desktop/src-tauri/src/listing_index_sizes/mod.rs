@@ -1,40 +1,81 @@
-//! Index size updates, delivered only to the listings they touch.
+//! Index size updates, delivered only to the listings they touch, and only when a row would change.
 //!
 //! The drive index reports batches of directories whose recursive sizes changed
 //! (`IndexEvent::DirsUpdated`, about once a second on a busy disk). This module keeps the set of open
-//! listings (a [`ListingLifecycle`] observer), works out which of them a batch touches
-//! ([`touched`]), and tells the frontend about those listings alone, with
-//! `listing-index-sizes-changed`. A pane on `~/Downloads` no longer hears about a write in
-//! `~/Library`.
+//! listings (a [`ListingLifecycle`] observer), works out which rows of which listings a batch touches
+//! ([`touched`]), reads those rows' fresh stats from the index, and sends
+//! `listing-index-sizes-changed` carrying only the rows whose shown values moved ([`refresh`]). It
+//! also writes them into the listing cache, so status-bar totals and MCP reads see them.
+//!
+//! Three things keep an idle pane quiet:
+//! - A batch that touched nothing a listing shows is dropped (a write in `~/Library` and a pane on
+//!   `~/Downloads`).
+//! - A reading that matches what a row already shows sends nothing (a cache file written and removed
+//!   inside one flush).
+//! - At most one refresh per listing per [`COOLDOWN`], with a trailing one so the last change always
+//!   lands; and none at all while the main window is hidden (`main_window_visibility`), which the
+//!   first refresh after it shows catches up in one go.
 //!
 //! The work runs on its own task, fed through a channel: the batch arrives on the index writer's
 //! thread, which must not wait on anything here.
 
+mod refresh;
 mod touched;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
+use std::time::Duration;
 
+use cmdr_fs::ignore_poison::RwLockIgnorePoison;
+use cmdr_index::store::DirStats;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_specta::Event;
 use tokio::sync::mpsc;
+use tokio::time::Instant;
 
 use crate::file_system::listing::cached_listing::LISTING_CACHE;
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
+use crate::index_host::index;
 use crate::listing_lifecycle::{ListingLifecycle, register_listing_lifecycle};
-use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 
+use refresh::RowSizes;
 pub(crate) use touched::{Touched, touched};
 
-/// A listing's folder sizes changed in the index, so its pane should refresh them.
+/// The shortest gap between two refreshes of one listing. A busy disk moves a pane on `~` every
+/// second; a size that settles two seconds late reads the same, and half the refreshes cost half.
+const COOLDOWN: Duration = Duration::from_secs(2);
+
+/// One folder row's fresh index reading.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderSizes {
+    /// The row's path, as the listing holds it.
+    pub path: String,
+    /// The reading, or `None` when the index doesn't cover the folder (sizes stay, hourglass clears).
+    pub stats: Option<DirStats>,
+}
+
+/// A listing's folder sizes moved in the index.
+///
+/// Carries only the rows whose shown values moved, already written into the listing cache, so the
+/// pane applies them without asking again. `full` is the whole-volume case (a scan finishing), where
+/// every row moved and the pane re-reads its window instead.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
 #[serde(rename_all = "camelCase")]
 pub struct ListingIndexSizesChanged {
     /// The listing whose rows moved.
     pub listing_id: String,
+    /// Every row moved: re-read the window's sizes rather than apply `folders`.
+    pub full: bool,
+    /// The folder rows whose shown values moved.
+    pub folders: Vec<FolderSizes>,
+    /// The listing's own folder moved (the `..` row), to `current_dir`.
+    pub current_dir_changed: bool,
+    /// The listing's own folder reading, when `current_dir_changed`.
+    pub current_dir: Option<DirStats>,
 }
 
 /// One open listing, as the index spells its folder.
@@ -98,11 +139,79 @@ pub(crate) fn dirs_updated(paths: Vec<String>) {
     }
 }
 
+/// What the worker remembers about one listing between refreshes.
+#[derive(Default)]
+struct ListingState {
+    /// What the batches since the last refresh touched.
+    pending: Option<Touched>,
+    /// When the last refresh ran, for the cooldown.
+    last_refresh: Option<Instant>,
+    /// Rows whose hourglass was last sent lit (the flag isn't on the cached entry).
+    lit: HashSet<String>,
+    /// The listing's own folder reading as last sent; `None` until the first send.
+    current_dir: Option<Option<DirStats>>,
+}
+
 async fn run(app: AppHandle, mut batches: mpsc::UnboundedReceiver<Vec<String>>) {
-    while let Some(paths) = batches.recv().await {
-        for listing_id in touched_listings(&paths).into_keys() {
-            let _ = ListingIndexSizesChanged { listing_id }.emit(&app);
+    let mut states: HashMap<String, ListingState> = HashMap::new();
+    let mut visibility = crate::main_window_visibility::subscribe();
+    loop {
+        // Hidden: no deadline, or a held refresh that's already due would spin the loop.
+        let next_due = crate::main_window_visibility::is_visible()
+            .then(|| next_due(&states))
+            .flatten();
+        tokio::select! {
+            batch = batches.recv() => {
+                let Some(paths) = batch else { return };
+                for (listing_id, touched) in touched_listings(&paths) {
+                    let state = states.entry(listing_id).or_default();
+                    match &mut state.pending {
+                        Some(pending) => pending.merge(touched),
+                        None => state.pending = Some(touched),
+                    }
+                }
+            }
+            changed = visibility.changed() => {
+                // The sender is a static, so this can't close; if it did, stop listening for it.
+                if changed.is_err() {
+                    visibility = crate::main_window_visibility::subscribe();
+                }
+            }
+            () = sleep_until(next_due) => {}
         }
+        // Hidden: hold everything; the first pass after the window shows catches up.
+        if !crate::main_window_visibility::is_visible() {
+            continue;
+        }
+        let open: HashSet<String> = OPEN.lock_ignore_poison().keys().cloned().collect();
+        states.retain(|listing_id, _| open.contains(listing_id));
+        let now = Instant::now();
+        for (listing_id, state) in &mut states {
+            if state.pending.is_none() || state.last_refresh.is_some_and(|at| now < at + COOLDOWN) {
+                continue;
+            }
+            let Some(touched) = state.pending.take() else { continue };
+            state.last_refresh = Some(now);
+            if let Some(event) = refresh_listing(listing_id, touched, state).await {
+                let _ = event.emit(&app);
+            }
+        }
+    }
+}
+
+/// When the next held refresh is due, if any listing has one waiting.
+fn next_due(states: &HashMap<String, ListingState>) -> Option<Instant> {
+    states
+        .values()
+        .filter(|state| state.pending.is_some())
+        .map(|state| state.last_refresh.map_or_else(Instant::now, |at| at + COOLDOWN))
+        .min()
+}
+
+async fn sleep_until(due: Option<Instant>) {
+    match due {
+        Some(due) => tokio::time::sleep_until(due).await,
+        None => std::future::pending().await,
     }
 }
 
@@ -112,4 +221,143 @@ fn touched_listings(paths: &[String]) -> HashMap<String, Touched> {
     open.into_iter()
         .filter_map(|(id, listing)| touched(paths, &listing.volume_id, &listing.index_dir).map(|t| (id, t)))
         .collect()
+}
+
+/// Re-reads what `touched` names from the index, writes what moved into the listing cache, and
+/// returns the event to send, or `None` when nothing a row shows moved.
+async fn refresh_listing(
+    listing_id: &str,
+    touched: Touched,
+    state: &mut ListingState,
+) -> Option<ListingIndexSizesChanged> {
+    let listing_id = listing_id.to_string();
+    let lit = std::mem::take(&mut state.lit);
+    let last_current = state.current_dir.clone();
+    // The index reads are indexed SQLite queries: the blocking pool, not this async worker.
+    let outcome = tokio::task::spawn_blocking(move || refresh_blocking(&listing_id, &touched, lit, last_current))
+        .await
+        .ok()?;
+    state.lit = outcome.lit;
+    state.current_dir = outcome.current_dir;
+    outcome.event
+}
+
+struct RefreshOutcome {
+    event: Option<ListingIndexSizesChanged>,
+    lit: HashSet<String>,
+    current_dir: Option<Option<DirStats>>,
+}
+
+fn refresh_blocking(
+    listing_id: &str,
+    touched: &Touched,
+    mut lit: HashSet<String>,
+    last_current: Option<Option<DirStats>>,
+) -> RefreshOutcome {
+    let unchanged = |lit, current_dir| RefreshOutcome {
+        event: None,
+        lit,
+        current_dir,
+    };
+
+    // The rows to re-read, as the cache holds them now.
+    let Some((dir_path, rows)) = rows_to_read(listing_id, touched) else {
+        return unchanged(lit, last_current);
+    };
+    let mut paths: Vec<String> = rows.iter().map(|(path, _)| path.clone()).collect();
+    paths.push(dir_path);
+    let Ok(mut stats) = index().dir_stats_batch(&paths) else {
+        return unchanged(lit, last_current);
+    };
+    paths.pop();
+    let current = stats.pop().flatten();
+
+    if matches!(touched, Touched::Whole) {
+        // Every row moved: a full re-enrich of the cache, and the pane re-reads its window.
+        let _ = crate::file_system::listing::operations::refresh_listing_index_sizes(listing_id);
+        lit.clear();
+        return RefreshOutcome {
+            event: Some(ListingIndexSizesChanged {
+                listing_id: listing_id.to_string(),
+                full: true,
+                folders: Vec::new(),
+                current_dir_changed: true,
+                current_dir: current.clone(),
+            }),
+            lit,
+            current_dir: Some(current),
+        };
+    }
+
+    // Keep only the rows whose shown values move, and write those into the cache.
+    let mut moved: Vec<(usize, RowSizes)> = Vec::new();
+    for (position, ((path, before), reading)) in rows.iter().zip(&stats).enumerate() {
+        let before = RowSizes::of(before, lit.contains(path));
+        let after = before.after(reading.as_ref());
+        if after != before {
+            moved.push((position, after));
+        }
+    }
+    if !moved.is_empty() {
+        let moved_paths: Vec<String> = moved.iter().map(|(position, _)| paths[*position].clone()).collect();
+        if let Some(listing) = LISTING_CACHE.write_ignore_poison().get_mut(listing_id) {
+            listing.update_index_sizes_by_path(&moved_paths, |i, entry| moved[i].1.apply_to(entry));
+        }
+    }
+    for (position, after) in &moved {
+        if after.pending() {
+            lit.insert(paths[*position].clone());
+        } else {
+            lit.remove(&paths[*position]);
+        }
+    }
+
+    // `DirStats` has no `PartialEq`; compared as the `..` row would show it.
+    let shown = |reading: &Option<DirStats>| RowSizes::default().after(reading.as_ref());
+    let current_dir_changed = last_current.as_ref().is_none_or(|last| shown(last) != shown(&current));
+    if moved.is_empty() && !current_dir_changed {
+        return unchanged(lit, last_current);
+    }
+    let folders = moved
+        .iter()
+        .map(|(position, _)| FolderSizes {
+            path: paths[*position].clone(),
+            stats: stats[*position].clone(),
+        })
+        .collect();
+    RefreshOutcome {
+        event: Some(ListingIndexSizesChanged {
+            listing_id: listing_id.to_string(),
+            full: false,
+            folders,
+            current_dir_changed,
+            current_dir: current.clone(),
+        }),
+        lit,
+        current_dir: Some(current),
+    }
+}
+
+/// The listing's own path and the folder rows `touched` names, with their cached entries, or `None`
+/// when the listing is gone.
+fn rows_to_read(
+    listing_id: &str,
+    touched: &Touched,
+) -> Option<(String, Vec<(String, crate::file_system::listing::metadata::FileEntry)>)> {
+    let cache = LISTING_CACHE.read_ignore_poison();
+    let listing = cache.get(listing_id)?;
+    let dir_path = listing.path.as_path().to_string_lossy().into_owned();
+    let is_folder = |entry: &&crate::file_system::listing::metadata::FileEntry| entry.is_directory && !entry.is_symlink;
+    let rows = match touched {
+        // Whole reads nothing per row: the full re-enrich covers them.
+        Touched::Whole => Vec::new(),
+        Touched::Rows { children, .. } => listing
+            .entries()
+            .iter()
+            .filter(is_folder)
+            .filter(|entry| children.contains(&entry.name))
+            .map(|entry| (entry.path.clone(), entry.clone()))
+            .collect(),
+    };
+    Some((dir_path, rows))
 }

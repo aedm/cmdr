@@ -35,8 +35,10 @@ import {
   shouldResetCache,
   refetchIconsForEntries,
   updateIndexSizesInPlace,
+  applyFolderSizes,
   type DirStats,
 } from './file-list-utils'
+import type { ListingIndexSizesChanged } from '$lib/tauri-commands'
 
 /** Live reads of `FullList`'s props. One getter per prop; see the ❌ note above. */
 export interface FullListCacheDeps {
@@ -103,6 +105,11 @@ export interface FullListCache {
   syncStaticEntries: () => void
   /** Refreshes index size fields on cached directories AND on the `..` row. */
   refreshIndexSizes: () => void
+  /**
+   * Applies a pushed `listing-index-sizes-changed` to the cached rows and the `..` row, with no
+   * IPC. A `full` change (every row moved) re-reads instead, like `refreshIndexSizes`.
+   */
+  applyIndexSizes: (change: ListingIndexSizesChanged) => void
   /** Re-fetches icons for the cached entries (icon cache cleared). */
   refetchIcons: () => void
   /** Loads (or clears) the current folder's recursive stats for the `..` row. */
@@ -172,6 +179,16 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     } finally {
       isFetching = false
     }
+  }
+
+  /** Re-reads the index sizes of the cached directories AND the `..` row over IPC. */
+  function refreshIndexSizesNow(): void {
+    const hasParent = deps.hasParent()
+    if (entries.length === 0 && !hasParent) return
+    void updateIndexSizesInPlace(entries, hasParent ? deps.currentPath() : undefined).then((stats) => {
+      parentDirStats = stats
+      noteRenderedFolderSizes(entries, deps.volumeId())
+    })
   }
 
   return {
@@ -257,13 +274,16 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       range = { start: 0, end: src.length }
     },
 
-    refreshIndexSizes: () => {
-      const hasParent = deps.hasParent()
-      if (entries.length === 0 && !hasParent) return
-      void updateIndexSizesInPlace(entries, hasParent ? deps.currentPath() : undefined).then((stats) => {
-        parentDirStats = stats
-        noteRenderedFolderSizes(entries, deps.volumeId())
-      })
+    refreshIndexSizes: refreshIndexSizesNow,
+
+    applyIndexSizes: (change: ListingIndexSizesChanged) => {
+      if (change.full) {
+        refreshIndexSizesNow()
+        return
+      }
+      applyFolderSizes(entries, change.folders)
+      if (change.currentDirChanged && deps.hasParent()) parentDirStats = change.currentDir
+      noteRenderedFolderSizes(entries, deps.volumeId())
     },
 
     refetchIcons: () => {

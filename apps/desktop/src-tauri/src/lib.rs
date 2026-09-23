@@ -605,14 +605,7 @@ pub fn run() {
 
             // Initialize disk space poller (live status bar updates + low-disk-space warning)
             space_poller::init(app.handle());
-            space_poller::set_threshold_mb(saved_settings.disk_space_change_threshold_mb.unwrap_or(1));
-            space_poller::set_size_format(space_poller::FileSizeFormat::from_setting(
-                saved_settings.appearance_file_size_format.as_deref(),
-            ));
-            space_poller::configure_low_disk_space(
-                saved_settings.low_disk_space_enabled(),
-                saved_settings.low_disk_space_threshold_percent.unwrap_or(5),
-            );
+            space_poller::apply_saved_settings(&saved_settings);
             space_poller::start();
 
             // Start the anonymous beta-analytics heartbeat (launch beat + hourly). Consent-gated

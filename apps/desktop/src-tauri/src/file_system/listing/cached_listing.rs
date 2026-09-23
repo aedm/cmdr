@@ -250,6 +250,27 @@ impl CachedListing {
         changed
     }
 
+    /// Rewrites the index-derived folder sizes of the entries at `paths`, in place: `update` gets
+    /// each found entry with its position in `paths`. A path the listing doesn't hold is skipped.
+    ///
+    /// **Deliberately not routed through [`Self::entries_mut`]**, for the reason
+    /// [`Self::set_tags_by_path`] gives: a recursive size is not a name or a visibility input, so
+    /// neither map can go stale, and dropping them would rebuild a 74k-row map for every size
+    /// refresh. It doesn't re-sort either, the same as enrichment always has: a size sort settles on
+    /// the next re-sort.
+    pub(crate) fn update_index_sizes_by_path(
+        &mut self,
+        paths: &[String],
+        mut update: impl FnMut(usize, &mut FileEntry),
+    ) {
+        let found = self.indices_of_paths(paths.iter().map(String::as_str));
+        for (position, index) in found.into_iter().enumerate() {
+            if let Some(index) = index {
+                update(position, &mut self.entries[index]);
+            }
+        }
+    }
+
     /// Replaces the entries wholesale (a re-read, a re-sort).
     pub(crate) fn set_entries(&mut self, entries: Vec<FileEntry>) {
         *self.entries_mut() = entries;

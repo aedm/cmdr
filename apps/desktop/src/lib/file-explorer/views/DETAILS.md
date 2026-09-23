@@ -37,7 +37,7 @@ pre-measured column width agree: don't re-inline the decision in any of them.
   progresses", so a fresh install reads as quietly working rather than `Scanning...` on every row. Freshness-stale
   (`'size-stale'`) renders exactly like `'size'`: no glyph, no muting, with the staleness voiced by the per-drive
   freshness badge and the tooltip's stale line (see `$lib/indexing/DETAILS.md` § Honest size rendering). The per-dir
-  flag rides `DirStats.recursiveSizePending`, copied onto entries by `updateIndexSizesInPlace` / `createParentEntry`
+  flag rides `DirStats.recursiveSizePending`, copied onto entries by `updateIndexSizesInPlace` / `applyFolderSizes` / `createParentEntry`
   (backend: `indexing/read/pending_sizes.rs`).
 
 **The walked-ground input is PER ROW, and the measurer contract follows from it.** `getWalkedGround(volumeId)` +
@@ -489,8 +489,9 @@ cache). Real files start at index 1. Adjust: `cache_index = ui_index - 1`.
 column is otherwise wasted space. Showing the total for the folder the user is browsing (sum of everything visible plus
 unloaded entries) answers "how much is in here?", more useful than "how big is the place I'd go if I pressed Backspace."
 Implementation: `createParentEntry(parentPath, stats?)` in `file-list-utils.ts` takes optional stats;
-`BriefList`/`FullList` fetch them via `getDirStatsBatch([currentPath])` on dir change and via
-`updateIndexSizesInPlace(cachedEntries, currentPath)` on index refresh (single batch IPC call).
+`BriefList`/`FullList` fetch them via `getDirStatsBatch([currentPath])` on dir change, then take the pushed
+`currentDir` from `listing-index-sizes-changed` (`applyIndexSizes`, no IPC); a `full` change re-reads through
+`updateIndexSizesInPlace(cachedEntries, currentPath)`.
 
 **Gotcha**: Scroll position must use `transform`, not absolute positioning **Why**: Absolute positioning causes full
 layout recalc. `transform` uses GPU compositor for 60fps.

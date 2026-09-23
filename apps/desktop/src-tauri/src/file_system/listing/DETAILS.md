@@ -374,9 +374,10 @@ loudly, so `sorting::tests::apply_permutation_moves_each_row_to_its_destination`
   after all entries are collected. Cost is ~105 ms per 100k entries (§ "Collating names"), well under the I/O it
   follows.
 - **Enrichment at cache-write time, not on `get_file_range`**: every path that stores entries (streaming, watcher
-  update, re-sort) enriches first. Index freshness is event-driven: `listing-index-sizes-changed` → `refreshIndexSizes` →
-  `refresh_listing_index_sizes` (write-locks the cache, re-enriches entries). This keeps `get_listing_stats` read-only
-  while it sees up-to-date `recursive_size`. The frontend calls `refreshListingIndexSizes` before `fetchListingStats`.
+  update, re-sort) enriches first. Index freshness is event-driven: `src-tauri/src/listing_index_sizes/` writes the rows
+  an index update moved straight into the cache (`CachedListing::update_index_sizes_by_path`, which keeps both maps)
+  before it tells the pane, so `get_listing_stats` stays read-only and sees up-to-date `recursive_size`. A whole-volume
+  update runs the full `refresh_listing_index_sizes` re-enrich instead.
 - **Hidden-file filtering in Rust, not the frontend**: visible count is unknown until all files are read. APIs accept
   `include_hidden: bool` and read through the listing's row map (§ "Row numbers").
 - **The listing read commands are `async`**: a sync `#[tauri::command]` runs on the MAIN thread in Tauri 2, so one slow

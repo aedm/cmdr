@@ -12,6 +12,7 @@
     } from '../types'
     import {
         refreshListingIndexSizes,
+        type ListingIndexSizesChanged,
         type Location,
         updateMenuContext,
         updateServicesSelection,
@@ -1124,7 +1125,26 @@
         // Mirror the refreshed sizes (and the `recursiveSizePending` hourglass flag)
         // into the MCP pane state so agents see `[size-pending]` update live during
         // an index storm, not just on cursor/nav changes. Debounced (300ms), so a
-        // burst of index-dir-updated refreshes coalesces into one sync.
+        // burst of index size updates coalesces into one sync.
+        debouncedSyncMcp.call()
+    }
+
+    /**
+     * Applies a pushed `listing-index-sizes-changed` for this pane's listing. The backend
+     * sends one only when a row's shown values moved, carries the fresh readings, and has
+     * already written them into its listing cache, so the rows update with no IPC and only
+     * the status-bar totals are re-read. A `full` change (a scan finished) re-reads it all.
+     */
+    export function applyIndexSizes(change: ListingIndexSizesChanged): void {
+        if (change.full) {
+            refreshIndexSizes()
+            return
+        }
+        const listRef = viewMode === 'brief' ? briefListRef : fullListRef
+        listRef?.applyIndexSizes(change)
+        // In place, so the cursor entry keeps its identity and the effects keyed on it stay put.
+        selectionInfo.applyFolderSizes(change.folders)
+        void selectionInfo.fetchStats()
         debouncedSyncMcp.call()
     }
 

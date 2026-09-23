@@ -9,6 +9,7 @@ import {
   getDirStatsBatch,
   type DirStats,
   type FileIndexState,
+  type FolderSizes,
   type FolderCoverage,
 } from '$lib/tauri-commands'
 import { prefetchIcons, prefetchCustomFolderIcons } from '$lib/icon-cache'
@@ -384,21 +385,44 @@ export async function updateIndexSizesInPlace(
   }
 
   for (let j = 0; j < dirIndices.length; j++) {
-    const entry = cachedEntries[dirIndices[j]]
-    const stat = stats[j]
-    if (stat) {
-      entry.recursiveSize = stat.recursiveSize
-      entry.recursivePhysicalSize = stat.recursivePhysicalSize
-      entry.recursiveFileCount = stat.recursiveFileCount
-      entry.recursiveDirCount = stat.recursiveDirCount
-      entry.recursiveSizeComplete = stat.recursiveSizeComplete
-      entry.recursiveSizeStale = stat.recursiveSizeStale
-    }
-    // Update the hourglass flag every refresh, even when `stat` is null, so a
-    // dir that has drained clears back to false instead of staying stuck-on
-    // from a prior tick.
-    entry.recursiveSizePending = stat?.recursiveSizePending ?? false
+    writeFolderReading(cachedEntries[dirIndices[j]], stats[j])
   }
 
   return hasCurrent ? (stats[stats.length - 1] ?? null) : null
+}
+
+/**
+ * Writes one index reading onto a cached folder entry. Mutates in place so Svelte 5's fine-grained
+ * reactivity touches only the DOM whose text actually changes.
+ */
+function writeFolderReading(entry: FileEntry, stat: DirStats | null | undefined): void {
+  if (stat) {
+    entry.recursiveSize = stat.recursiveSize
+    entry.recursivePhysicalSize = stat.recursivePhysicalSize
+    entry.recursiveFileCount = stat.recursiveFileCount
+    entry.recursiveDirCount = stat.recursiveDirCount
+    entry.recursiveHasSymlinks = stat.recursiveHasSymlinks
+    entry.recursiveSizeComplete = stat.recursiveSizeComplete
+    entry.recursiveSizeStale = stat.recursiveSizeStale
+  }
+  // The hourglass flag updates on every reading, even a missing one, so a dir that has drained
+  // clears back to false instead of staying stuck-on from a prior tick.
+  entry.recursiveSizePending = stat?.recursiveSizePending ?? false
+}
+
+/**
+ * Applies the readings `listing-index-sizes-changed` carries to the cached rows they name, with no
+ * IPC: the backend already read them (and wrote them into its listing cache). Rows outside the
+ * cached window are skipped; they arrive fresh when fetched. Returns whether any cached row changed.
+ */
+export function applyFolderSizes(cachedEntries: FileEntry[], folders: FolderSizes[]): boolean {
+  if (folders.length === 0) return false
+  const byPath = new Map(folders.map((folder) => [folder.path, folder.stats]))
+  let touched = false
+  for (const entry of cachedEntries) {
+    if (!byPath.has(entry.path)) continue
+    writeFolderReading(entry, byPath.get(entry.path))
+    touched = true
+  }
+  return touched
 }

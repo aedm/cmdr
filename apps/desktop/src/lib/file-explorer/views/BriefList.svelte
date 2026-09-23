@@ -31,8 +31,10 @@
         shouldResetCache,
         refetchIconsForEntries,
         updateIndexSizesInPlace,
+        applyFolderSizes,
         type DirStats,
     } from './file-list-utils'
+    import type { ListingIndexSizesChanged } from '$lib/tauri-commands'
     import {
         createBriefColumnWidths,
         clampColumnWidths,
@@ -320,6 +322,17 @@
             parentDirStats = stats
             noteRenderedFolderSizes(cachedEntries, volumeId)
         })
+    }
+
+    /** Applies a pushed index-size change to the cached rows and the ".." row (no IPC). */
+    export function applyIndexSizes(change: ListingIndexSizesChanged): void {
+        if (change.full) {
+            refreshIndexSizes()
+            return
+        }
+        applyFolderSizes(cachedEntries, change.folders)
+        if (change.currentDirChanged && hasParent) parentDirStats = change.currentDir
+        noteRenderedFolderSizes(cachedEntries, volumeId)
     }
 
     // Fetch entries for the visible range.

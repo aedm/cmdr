@@ -30,6 +30,27 @@ pub(crate) enum Touched {
     },
 }
 
+impl Touched {
+    /// Folds a later update into this one, so a listing that sat out a few batches refreshes once
+    /// for all of them.
+    pub(crate) fn merge(&mut self, later: Touched) {
+        match (&mut *self, later) {
+            (Touched::Whole, _) => {}
+            (_, Touched::Whole) => *self = Touched::Whole,
+            (
+                Touched::Rows { own, children },
+                Touched::Rows {
+                    own: later_own,
+                    children: later_children,
+                },
+            ) => {
+                *own |= later_own;
+                children.extend(later_children);
+            }
+        }
+    }
+}
+
 /// What `paths` touched in the listing at `dir` (in the index's path space) on `volume_id`, or `None`
 /// when nothing it shows moved.
 pub(crate) fn touched(paths: &[String], volume_id: &str, dir: &str) -> Option<Touched> {
@@ -154,5 +175,26 @@ mod tests {
     fn matching_is_component_aware() {
         let batch = paths(&["/Users/me/Downloads-old/x", "/Users/me/Downloads-old"]);
         assert_eq!(touched(&batch, "root", "/Users/me/Downloads"), None);
+    }
+
+    #[test]
+    fn merging_folds_rows_and_whole_wins() {
+        let mut first = Touched::Rows {
+            own: false,
+            children: ["a".to_string()].into(),
+        };
+        first.merge(Touched::Rows {
+            own: true,
+            children: ["b".to_string()].into(),
+        });
+        assert_eq!(Some(first.clone()), rows(true, &["a", "b"]));
+
+        first.merge(Touched::Whole);
+        assert_eq!(first, Touched::Whole);
+        first.merge(Touched::Rows {
+            own: false,
+            children: BTreeSet::new(),
+        });
+        assert_eq!(first, Touched::Whole);
     }
 }

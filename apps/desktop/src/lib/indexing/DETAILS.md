@@ -500,8 +500,8 @@ The whole reason a drive is covered in the order its owner cares about is that a
 size in seconds instead of minutes. Nothing was timing that, because the moment lives on screen.
 
 `noteRenderedFolderSizes(entries, volumeId)` is called from `views/full-list-cache.svelte.ts` at the two points where
-rows the user is looking at gain sizes: after a window fetch lands, and after `updateIndexSizesInPlace` resolves an
-`listing-index-sizes-changed` refresh. It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`,
+rows the user is looking at gain sizes: after a window fetch lands, and after a `listing-index-sizes-changed` update
+lands (`applyIndexSizes`). It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`,
 then goes inert for the rest of the launch (every later call is one boolean read). Props are a `seconds_bucket` since
 the frontend booted plus `covering` (was a phased first index running on that drive?) — ❌ never a path or a name.
 

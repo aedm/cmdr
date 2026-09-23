@@ -67,9 +67,8 @@ back on, and a search's walk evicting an index whose coverage this build refuses
 
 `enrich_entries_with_index(entries)` is the root-defaulting wrapper;
 `enrich_entries_with_index_on_volume(volume_id, entries)` is the volume-routed form. Called when entries land in the
-listing cache (streaming, watcher update, re-sort), NOT on `get_file_range`; live freshness flows separately via
-`DirsUpdated` → `refreshIndexSizes` → `getDirStatsBatch`. A live pane triggers a pass about twice a second whether
-or not anything changed.
+listing cache (streaming, watcher update, re-sort), NOT on `get_file_range`; live freshness flows separately: `DirsUpdated` reaches the app's `listing_index_sizes/`, which reads the
+touched rows' `dir_stats` and pushes only the ones that changed to the pane.
 
 **The skip-vs-route gate.** `get_read_pool_for(volume_id)` returning `None` IS the "no index registered for this volume"
 signal — enrichment early-returns before any DB work. The gate is pool-presence rather than registry-key presence so it

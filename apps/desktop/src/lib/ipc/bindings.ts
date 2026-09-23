@@ -1081,7 +1081,7 @@ export const commands = {
    *  Re-enriches cached listing entries with fresh drive index data.
    *
    *  On the blocking pool rather than inline: this one runs two indexed SQLite
-   *  queries, and an index storm fires it once per `index-dir-updated` event per
+   *  queries, and an index storm fires it once per `DirsUpdated` event per
    *  pane. An async worker held for the length of a database query starves every
    *  other future scheduled on it, which is the same shape of problem as the main
    *  thread, one layer down.
@@ -7413,6 +7413,14 @@ export type FolderCoverage = {
   accounted: number
 }
 
+// One folder row's fresh index reading.
+export type FolderSizes = {
+  // The row's path, as the listing holds it.
+  path: string
+  // The reading, or `None` when the index doesn't cover the folder (sizes stay, hourglass clears).
+  stats: DirStats | null
+}
+
 /**
  *  `foreground-operation`: the operation queue asks the main window to show one
  *  operation in its progress dialog (the row's Foreground button). Carries only
@@ -8969,10 +8977,24 @@ export type ListingErrorReason =
       kind: FriendlyGitErrorKind
     }
 
-// A listing's folder sizes changed in the index, so its pane should refresh them.
+/**
+ *  A listing's folder sizes moved in the index.
+ *
+ *  Carries only the rows whose shown values moved, already written into the listing cache, so the
+ *  pane applies them without asking again. `full` is the whole-volume case (a scan finishing), where
+ *  every row moved and the pane re-reads its window instead.
+ */
 export type ListingIndexSizesChanged = {
   // The listing whose rows moved.
   listingId: string
+  // Every row moved: re-read the window's sizes rather than apply `folders`.
+  full: boolean
+  // The folder rows whose shown values moved.
+  folders: FolderSizes[]
+  // The listing's own folder moved (the `..` row), to `current_dir`.
+  currentDirChanged: boolean
+  // The listing's own folder reading, when `current_dir_changed`.
+  currentDir: DirStats | null
 }
 
 // Opening event payload (emitted just before read_dir starts - the slow part for network folders)

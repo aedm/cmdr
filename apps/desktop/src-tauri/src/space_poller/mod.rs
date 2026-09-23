@@ -178,6 +178,19 @@ fn size_format() -> FileSizeFormat {
     }
 }
 
+/// Seeds the poller's settings from `settings.json` at startup; live changes arrive through the
+/// commands below (the settings live-apply rule).
+pub fn apply_saved_settings(settings: &crate::settings::loader::Settings) {
+    set_threshold_mb(settings.disk_space_change_threshold_mb.unwrap_or(1));
+    set_size_format(FileSizeFormat::from_setting(
+        settings.appearance_file_size_format.as_deref(),
+    ));
+    configure_low_disk_space(
+        settings.low_disk_space_enabled(),
+        settings.low_disk_space_threshold_percent.unwrap_or(5),
+    );
+}
+
 /// Updates the threshold from the Settings UI (value in megabytes).
 pub fn set_threshold_mb(mb: u64) {
     THRESHOLD_BYTES.store(mb.saturating_mul(1_048_576), Ordering::Relaxed);

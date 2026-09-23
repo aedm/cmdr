@@ -16,11 +16,11 @@
  * the row under the cursor, and the stats are folded by `snapshot-stats.ts`.
  */
 
-import { getFileAt, getListingStats } from '$lib/tauri-commands'
+import { getFileAt, getListingStats, type FolderSizes } from '$lib/tauri-commands'
 import type { FileEntry, ListingStats } from '../types'
 import type { CanonicalPath } from '$lib/path/canonical'
 import type { SearchSnapshot } from '$lib/search/snapshot-store.svelte'
-import { updateIndexSizesInPlace } from '../views/file-list-utils'
+import { applyFolderSizes, updateIndexSizesInPlace } from '../views/file-list-utils'
 import { createDebounce, createThrottle } from '$lib/utils/timing'
 import { createParentEntry } from './parent-entry'
 import { computeSnapshotStats } from './snapshot-stats'
@@ -59,6 +59,11 @@ export interface SelectionInfoFeed {
   fetchEntry: () => Promise<void>
   /** Refetch the listing stats now. */
   fetchStats: () => Promise<void>
+  /**
+   * Applies pushed folder readings to the cursor entry when it's one of them, in place: no IPC,
+   * and no new entry object for the effects keyed on it to re-run over.
+   */
+  applyFolderSizes: (folders: FolderSizes[]) => void
   /** Drop the entry (the listing loader calls this when a new listing starts). */
   clearEntry: () => void
   /** Cancel the pending debounce/throttle. Call from `onDestroy`. */
@@ -107,8 +112,8 @@ export function createSelectionInfoFeed(deps: SelectionInfoFeedDeps): SelectionI
     // on `get_file_range`, so SelectionInfo's Brief readout couldn't show the
     // "size updating" hourglass without this. Reuses the same enrichment the
     // list rows get; no-op for files. Fire-and-forget (mutates in place, so
-    // Svelte reactivity updates SelectionInfo); re-runs on `index-dir-updated`
-    // via `refreshIndexSizes`. Skips "..", whose entry path is the *parent*
+    // Svelte reactivity updates SelectionInfo); pushed updates then land through
+    // `applyFolderSizes` (`listing-index-sizes-changed`). Skips "..", whose entry path is the *parent*
     // folder, so enriching it would fetch the wrong folder's stats.
     if (entry?.isDirectory && entry.name !== '..') {
       void updateIndexSizesInPlace([entry])
@@ -227,6 +232,10 @@ export function createSelectionInfoFeed(deps: SelectionInfoFeedDeps): SelectionI
     },
     fetchEntry,
     fetchStats,
+    applyFolderSizes: (folders: FolderSizes[]) => {
+      // `..` carries the PARENT folder's path, so it never matches a child reading.
+      if (entry?.isDirectory && entry.name !== '..') applyFolderSizes([entry], folders)
+    },
     clearEntry: () => {
       entry = null
     },

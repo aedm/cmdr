@@ -591,7 +591,7 @@
 
         // Refresh a pane's folder sizes when the index moved them (the backend names the listing).
         unlistenIndexEvents = await onListingIndexSizesChanged((payload) => {
-            handleListingIndexSizesChanged(payload.listingId)
+            handleListingIndexSizesChanged(payload)
         })
 
         // Refresh both panes when aggregation completes (all dir_stats are now in the DB)

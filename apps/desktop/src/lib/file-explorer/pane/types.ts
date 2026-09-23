@@ -1,6 +1,6 @@
 import type { FileEntry, FriendlyError, NetworkHost, ShareInfo } from '../types'
 import type { DragAutoScrollFrameResult, DragAutoScrollPointer } from '../drag/drag-auto-scroll'
-import type { Initiator, Location } from '$lib/tauri-commands'
+import type { Initiator, ListingIndexSizesChanged, Location } from '$lib/tauri-commands'
 import type { HubRow } from '../network/servers-hub-rows'
 import type { FavoritesMenuOpenTrigger } from '../navigation/favorites-analytics'
 
@@ -233,6 +233,8 @@ export interface FilePaneAPI {
   refreshView(): void
   refreshVolumeSpace(): Promise<void>
   refreshIndexSizes(): void
+  /** Applies a pushed `listing-index-sizes-changed` for this pane's listing. */
+  applyIndexSizes(change: ListingIndexSizesChanged): void
 
   navigateToParent(): Promise<boolean>
   /**
@@ -268,6 +270,8 @@ export interface FilePaneAPI {
 export interface ListViewAPI {
   scrollToIndex(index: number): void
   refreshIndexSizes(): void
+  /** Applies a pushed `listing-index-sizes-changed` to the cached rows (no IPC). */
+  applyIndexSizes(change: ListingIndexSizesChanged): void
   getEntryAt(globalIndex: number): FileEntry | undefined
   /** The UI index of a loaded row, or `undefined` when it isn't in the window. */
   indexOfEntry(path: string): number | undefined
