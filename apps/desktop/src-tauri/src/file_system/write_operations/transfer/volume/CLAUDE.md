@@ -21,8 +21,8 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
 - **❌ Never fabricate a destination size for the conflict dialog**; report `None` (a fabricated `0` makes "Overwrite all
   smaller" unconditional).
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
-  empty. Top level and deep merge share `DestNameIndex`: ❌ a fold-only name is never free, and an unanswerable
-  probe fails the item.
+  empty. Every name asks `landing.rs`: a look-alike is taken (by ITS bytes), only free names respell, and an
+  unanswerable probe fails the item.
 
 ## Staging and cleanup
 

@@ -371,9 +371,16 @@ bytes the server gave you" (ERR-VETBX).
   `readdir`) is not the server's spelling, and no single normalization spells a mixed-form path. Every `Volume` call
   here still sends it as given and misses; it becomes exact only through `Volume::find_stored_spelling`, § "Resolving a
   foreign path".
-- **A name Cmdr creates goes out as given**, so a Cocoa-written local file (NFD) copied to a share lands NFD, and a
-  destination holding the other form of the same name is a second entry the byte-exact `get_metadata` probe can't see.
-  The folded destination guard is M4 of the same spec.
+- **A NEW name Cmdr creates goes out composed** (`composes_new_names` answers `true`): a copy's free name, a new folder
+  or file, a rename's target, a ` (N)` pick. The caller that knows it's creating respells it through
+  `Volume::spell_new_name`; this crate never does, because a name that addresses an EXISTING entry (an overwrite, a
+  merge, a same-share move) must keep the stored bytes or it plants a twin. Why composed: every build before
+  byte-faithful paths composed every SMB path, and a decomposed name on a share is one Finder over the kernel mount
+  (composes on lookup), Windows, and Linux clients list and can't open.
+- **A name the share holds in another spelling is taken, never free**: a write that asked in the wrong spelling would
+  stand a second, identical-looking entry beside it. The app's write layer finds it with one listing after a byte-exact
+  miss (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names"). Docker-pinned by
+  `write_operations/smb_look_alike_test.rs`.
 
 ### Resolving a foreign path
 

@@ -72,7 +72,9 @@ The full top-level inventory is here:
   a preview), `compress_estimate.rs`. Conflicts and overwrite:
   `conflict.rs` (policy), `conflict_preflight.rs` (the transfer dialog's BEFORE-the-write check, § "The pre-flight
   conflict check"), `unique_name.rs` (the ` (N)` namer), `conflict_slot.rs` (the one-answer-wins slot behind
-  `resolve_write_conflict`), `overwrite.rs` (tests in `overwrite_tests.rs`). Cancellation and durability:
+  `resolve_write_conflict`), `overwrite.rs` (tests in `overwrite_tests.rs`), `look_alike.rs` (a name a byte-exact
+  volume holds in another Unicode spelling, and where a new folder, file, or rename target goes; § "Look-alike
+  names"). Cancellation and durability:
   `cancellable.rs`, `rollback.rs`, `durability.rs`.
   `rollback.rs` wears two hats: the history dialog's reversal, and the executor the operation-log engine injects.
 - Vocabulary and edges: `types.rs` (+ `types/events.rs`, every `#[tauri_specta(event_name)]` payload, and
@@ -137,8 +139,10 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   cross-FS move stages both under that one name inside `.cmdr-staging-<op>/`, so the second one's children meet the
   first one's staged files instead of an empty slot and resolve as conflicts against a copy the user never put there,
   and the rename phase then hunts for a staged tree the first source already carried away. Byte-exact names only: a
-  case- or normalization-only difference is the destination filesystem's call, the same rule `DestNameIndex` follows for
-  a fold-only match, and refusing it here would block a legitimate transfer onto a case-sensitive volume. Runs right
+  case- or normalization-only difference is the destination filesystem's call, and refusing it here would block a
+  legitimate transfer onto a case-sensitive volume. (Two sources differing only in Unicode form onto a share that
+  composes new names both want the one composed name; the second one's landing refuses the occupied name with
+  `DestinationExists`, never overwrites it.) Runs right
   after `validate_sources` in both `copy_files_start` and `move_files_start`. Pinned by
   `validation_integration_test.rs::{two_sources_sharing_a_name_are_refused, sources_differing_only_in_case_are_allowed,
   distinct_source_names_are_allowed}`.
@@ -453,6 +457,34 @@ with the backend's own typed answer.
 stage a reader can't tell which half answered, and without the line at all a refusal reaches the error-report bundle
 over an empty log: that was ERR-8RFN4, and the pre-flight kept that blind spot for one release after the rename closed
 it. Only the file log chain is `Debug` unconditionally, so both levels land in the bundle.
+
+## Look-alike names
+
+`look_alike.rs` answers one question for every write that makes a name: does the folder already hold it under another
+Unicode spelling? A byte-exact volume (an SMB share, SFTP, a phone) keeps `café` composed and decomposed as two entries
+and finds each only by its own bytes, so without this a write asking in the other spelling hears "free" and stands an
+identical-looking twin beside the user's entry.
+
+- **Only a difference in FORM counts** (`cmdr_fs::name_fold::differ_only_in_form`): a person can't tell the two apart.
+  Case differences read as two names, and a case-sensitive volume keeps both on purpose.
+- **It costs a listing only when it can matter**: never for an ASCII name, never on a volume whose lookups match any
+  form (`Volume::matches_names_in_any_unicode_form`, APFS), otherwise one listing of the folder after the exact lookup
+  missed.
+- **New names take the volume's spelling** (`Volume::spell_new_name`; SMB composes). `place_new_entry` is the instant
+  ops' door: a new folder or file is refused as `AlreadyExists` beside a look-alike; a rename's target is refused the
+  same way unless the user confirmed replacing it, which then replaces the look-alike under ITS spelling (one entry). A
+  rename whose look-alike is the entry being renamed is a respell, which is free. The rename editor's live check
+  (`check_rename_validity_impl`) reports the look-alike as the conflict. Local root renames skip all of it.
+- The transfers apply the same rule through `transfer/volume/landing.rs`: `transfer/volume/DETAILS.md` § "Look-alike
+  names and new-name spelling". Instant-op cells: `look_alike_instant_tests.rs`.
+- **Not covered**: bulk rename and a compress's archive name still take the name as given and check exact names only.
+
+**Decision**: new names Cmdr creates on SMB go out composed (NFC); every other backend keeps the name as given. **Why**:
+SMB is where the evidence is. Every build before byte-faithful SMB paths composed every SMB path, and a decomposed name
+on a share is one that Finder over the kernel mount (which composes on lookup), Windows, and Linux clients list and then
+can't open (`ERR-VETBX`, `docs/specs/smb-path-normalization.md`). SFTP, MTP, and ADB never composed, and nothing
+measured says their clients expect it, so they keep today's behavior. Extending it is one `composes_new_names` override
+per backend; dropping it is deleting SMB's.
 
 ## Naming the folder that refused a write
 
@@ -1148,7 +1180,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own
   staging `mv`, and read the pane patch a mkdir, a move, and a delete each owe from a `RecordingListings` host.
   ❗ A transfer onto a phone runs at width 1 (the `"adb"` row in `MAX_CONCURRENT_OPERATIONS_SOURCES`), so the serial
-  driver runs it: the pre-existing-folder scenario there holds the per-name probe (`conflict::size_of_whatever_is_at`),
+  driver runs it: the pre-existing-folder scenario there holds the per-name probe (`landing::name_at_destination`),
   never the concurrent driver's skip on a `Created` answer.
 - **❗ The cells themselves must stay in the two backend files, on the `webdav_integration_` / `sftp_integration_` name
   prefix.** The integration lane selects the app crate's Docker cells by NAME (`scripts/check/checks/fixture-lane-coverage.go`,

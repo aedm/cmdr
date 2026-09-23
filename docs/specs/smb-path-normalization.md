@@ -12,7 +12,10 @@ can plant a second entry indistinguishable from one already there.
 Status: approved 2026-09-22. M0, M1, M2, and M3 done 2026-09-23 (byte-faithful paths and watcher keys; foreign paths
 resolve at the pane's directory open, on the kernel-mount upgrade, and for files dragged in or pasted from Finder,
 look-alikes refused; the cursor finds a look-alike name; a failed scan fails its operation with a typed, named error;
-one shared fold key, `cmdr_fs::name_fold`); M4 and M5 not started.
+one shared fold key, `cmdr_fs::name_fold`). M4 done 2026-09-23: a name the destination holds in another Unicode form is
+a conflict addressed by its stored bytes, in every transfer engine and in new folder / new file / rename; two
+look-alikes refuse; and new names Cmdr creates on SMB go out composed (a policy for David to confirm, one override to
+revert). M5 not started.
 
 ## What is actually true about SMB names
 

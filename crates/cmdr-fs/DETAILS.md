@@ -277,6 +277,11 @@ about an "unexpected `cfg` condition value" and takes the false branch forever.
   a directory and a backend swap's respell, never an operation's own calls, where a resolve could land a delete on a
   look-alike twin (`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "A pane path the volume stores another
   way").
+- **What spelling a NEW name takes, and whether a look-alike needs a listing to find.** The trait names both facts
+  (`Volume::composes_new_names`, read through the provided `spell_new_name`;
+  `Volume::matches_names_in_any_unicode_form`), `name_fold` holds the two comparisons (`composed`,
+  `differ_only_in_form`), and the app decides which writes create a name and which address an existing entry
+  (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names").
 - **`icons/per_path.rs`'s custom-folder-icon half**, the NSWorkspace fetch, and the icon disk cache.
 - **The scratch-visibility settings** (`advanced.showStagingTempFiles`, `advanced.showSafeSaveFiles`) and the listing
   read-path filter over them. "Is this ours, and does a live operation own it?" is vocabulary; "does the user see it?"

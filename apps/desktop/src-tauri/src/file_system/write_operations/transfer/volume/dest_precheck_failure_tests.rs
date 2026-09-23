@@ -11,8 +11,8 @@
 //!
 //! So the rule these cells pin, for all four sites (serial copy, concurrent
 //! copy, cross-volume move, same-volume move): only `NotFound` means free, and
-//! anything else fails THAT item with the error at the DESTINATION path. Same
-//! discipline `merge.rs::what_the_destination_holds` follows for a merge child.
+//! anything else fails THAT item with the error at the DESTINATION path. Every
+//! site and every merge child ask `landing.rs::where_it_lands`, which holds it.
 //!
 //! `VolumeError::ConnectionTimeout` is the fault throughout because it maps to
 //! a `WriteOperationError::ConnectionInterrupted` nothing downstream produces,
