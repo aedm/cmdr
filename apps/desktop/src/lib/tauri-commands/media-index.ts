@@ -1,6 +1,6 @@
 // Media-index (image-ML) commands: the OCR-search read surface, the honest
 // per-volume enrichment state, and the `cmdr-media://` thumbnail-token helpers the
-// search-results grid uses to reuse the EXISTING viewer preview path (plan Decision 5).
+// search-results grid uses to reuse the EXISTING viewer preview path (media_index Decision 5).
 // Every wrapper delegates to the typed `commands.*` bindings.
 
 import { type UnlistenFn } from '@tauri-apps/api/event'

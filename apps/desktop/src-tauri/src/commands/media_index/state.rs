@@ -14,7 +14,7 @@ use cmdr_index::media_index::read::MediaIndex;
 use cmdr_index::media_index::scheduler::MediaScheduler;
 
 /// The minimal, honest per-volume enrichment state the search UI reads to voice its
-/// own coverage (plan § Coverage honesty + per-volume state). Deliberately NOT a
+/// own coverage (`media_index/DETAILS.md` § Coverage honesty). Deliberately NOT a
 /// progress percentage or ETA — those are a later milestone; this only lets the UI
 /// tell apart "indexing is off", "still indexing", "indexed but empty result", and
 /// "not indexed yet". Crosses the IPC boundary, so it derives `Serialize` +
@@ -33,8 +33,9 @@ pub struct MediaIndexVolumeState {
     /// distinct from a genuinely empty search result over a populated index.
     pub enriched_count: u64,
     /// How many images the drive index says QUALIFY for enrichment on this volume —
-    /// the honest denominator behind "12,000 of 38,900 images indexed" (plan §
-    /// Honest progress). `None` when there's no honest number YET: the volume's index
+    /// the honest denominator behind "12,000 of 38,900 images indexed"
+    /// (`media_index/DETAILS.md` § Coverage honesty). `None` when there's no honest number
+    /// YET: the volume's index
     /// isn't ready (offline / still scanning), OR nothing has computed the counts (this
     /// command reads the coverage cache and never builds it — a cold build is a
     /// whole-index walk). Either way the UI voices the wait rather than a fabricated

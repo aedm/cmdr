@@ -210,7 +210,7 @@ pub(super) fn start() -> Option<Arc<MediaScheduler>> {
     crate::indexing::resources::subsystem_stop::register_subsystem_stop_hook(Box::new(|| {
         gate::request_cancel();
         // Release the resident vector caches too, so they're counted against the ONE
-        // shared ceiling (plan § Query-time vector residency): they reload lazily.
+        // shared ceiling (`vector/DETAILS.md` § The resident cache): they reload lazily.
         crate::media_index::vector::cache::clear_all();
     }));
 

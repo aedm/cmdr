@@ -54,7 +54,7 @@ three — decoding the original three times would dominate cost.
 - Every new `unsafe` block carries a per-site `// SAFETY:` (the request `new()`s, the observation accessors, the
   `NSData` byte read is the safe `to_vec`), same discipline as the OCR path.
 
-## The analyze provenance stamp (plan Decision 4)
+## The analyze provenance stamp (media_index Decision 4)
 
 `analysis_stamp` folds the OCR engine revision, the tag-taxonomy (classify) revision, and the feature-print revision
 into ONE stamp stored in the `media_status.engine_version` column and used by `needs_enrichment`. Because one decode

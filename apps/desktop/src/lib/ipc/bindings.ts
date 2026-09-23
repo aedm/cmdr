@@ -2417,7 +2417,7 @@ export const commands = {
     typedError<MediaIndexVolumeState, string>(__TAURI_INVOKE('media_index_volume_state', { volumeId })),
   /**
    *  Mint a `cmdr-media://` token so the search-results grid can render an image's
-   *  thumbnail through the EXISTING viewer preview scheme (plan Decision 5 — reuse the
+   *  thumbnail through the EXISTING viewer preview scheme (media_index Decision 5 — reuse the
    *  preview path, never a media_index-produced thumbnail file). Returns `None` when the
    *  path isn't a renderable image (the grid then falls back to a plain tile).
    *
@@ -2448,7 +2448,7 @@ export const commands = {
   /**
    *  Set (or clear) a whole-volume "always index" override: enrich regardless of the
    *  importance threshold (a rarely-browsed NAS scores low, so without this its photos
-   *  defer forever — plan Decision 6). Enabling kicks an immediate pass. Live-applied;
+   *  defer forever — media_index Decision 6). Enabling kicks an immediate pass. Live-applied;
    *  the frontend persists `mediaIndex.alwaysIndexVolumes` and calls this on change.
    */
   mediaIndexSetAlwaysIndexVolume: (volumeId: string, always: boolean) =>
@@ -2485,8 +2485,9 @@ export const commands = {
   mediaIndexSetScope: (scope: string) => __TAURI_INVOKE<void>('media_index_set_scope', { scope }),
   /**
    *  Set (or clear) a per-folder photo-search EXCLUSION: no image at or under `folder`
-   *  (an absolute OS path) enriches (the privacy complement to the opt-in — plan §
-   *  Privacy). A hard veto that beats any "always index" override.
+   *  (an absolute OS path) enriches (the privacy complement to the opt-in —
+   *  `media_index/DETAILS.md` § Per-folder photo-search exclude). A hard veto that beats
+   *  any "always index" override.
    *
    *  EXCLUDING retro-deletes existing rows at or under the folder across the reachable
    *  volumes, so already-extracted OCR text stops being searchable at once (privacy is a
@@ -2621,7 +2622,7 @@ export const commands = {
    */
   mediaIndexClipModelStatus: () => typedError<ClipModelStatus, string>(__TAURI_INVOKE('media_index_clip_model_status')),
   /**
-   *  Download + checksum-verify + install the CLIP towers on demand (plan M3, Decision 9),
+   *  Download + checksum-verify + install the CLIP towers on demand (media_index Decision 9),
    *  then kick a pass so already-enriched images gain CLIP embeddings. Each tower is fetched
    *  via the shared resumable HTTP GET (`ai::download`), verified against its pinned SHA-256
    *  BEFORE unpacking (a truncated download never installs), and unzipped into the model dir.
@@ -9353,7 +9354,7 @@ export type MediaIndexFolderExclusion = {
 
 /**
  *  The minimal, honest per-volume enrichment state the search UI reads to voice its
- *  own coverage (plan § Coverage honesty + per-volume state). Deliberately NOT a
+ *  own coverage (`media_index/DETAILS.md` § Coverage honesty). Deliberately NOT a
  *  progress percentage or ETA — those are a later milestone; this only lets the UI
  *  tell apart "indexing is off", "still indexing", "indexed but empty result", and
  *  "not indexed yet". Crosses the IPC boundary, so it derives `Serialize` +
@@ -9378,8 +9379,9 @@ export type MediaIndexVolumeState = {
   enrichedCount: number
   /**
    *  How many images the drive index says QUALIFY for enrichment on this volume —
-   *  the honest denominator behind "12,000 of 38,900 images indexed" (plan §
-   *  Honest progress). `None` when there's no honest number YET: the volume's index
+   *  the honest denominator behind "12,000 of 38,900 images indexed"
+   *  (`media_index/DETAILS.md` § Coverage honesty). `None` when there's no honest number
+   *  YET: the volume's index
    *  isn't ready (offline / still scanning), OR nothing has computed the counts (this
    *  command reads the coverage cache and never builds it — a cold build is a
    *  whole-index walk). Either way the UI voices the wait rather than a fabricated

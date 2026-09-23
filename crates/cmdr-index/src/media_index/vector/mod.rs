@@ -1,5 +1,5 @@
 //! The vector store for image feature-print embeddings: brute-force cosine
-//! similarity in Rust (plan Decision 2 — brute-force first, NO `sqlite-vec`), plus a
+//! similarity in Rust (media_index Decision 2 — brute-force first, NO `sqlite-vec`), plus a
 //! resident per-volume cache so query-time work never reloads ~MBs of BLOBs per call.
 //!
 //! ## Why brute-force
@@ -13,7 +13,7 @@
 //! ## Resident cache + the memory watchdog
 //!
 //! Loading every embedding from `media.db` per query is real work that must run OFF
-//! the synchronous IPC thread (plan § Query-time vector residency). [`cache`] keeps a
+//! the synchronous IPC thread (`DETAILS.md` § The resident cache). [`cache`] keeps a
 //! load-once [`BruteForceVectorStore`] per volume (mirroring `search/`'s warm
 //! `SEARCH_INDEX` arena). It's invalidated per completed enrichment pass (not per
 //! write — that would thrash-reload mid-pass; the plan accepts eventual consistency

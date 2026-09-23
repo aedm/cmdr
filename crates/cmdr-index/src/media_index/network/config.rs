@@ -25,7 +25,7 @@ pub struct NetworkEnrichConfig {
     pub opted_in_volumes: HashSet<String>,
     /// Volume ids marked "always index": enrich regardless of the importance
     /// threshold (a NAS archive scores low on navigation-based importance, so without
-    /// this its photos defer forever — plan Decision 6).
+    /// this its photos defer forever — media_index Decision 6).
     pub always_index_volumes: HashSet<String>,
     /// Absolute folder paths (OS-mount form, e.g. `/Volumes/naspi/Photos`) marked
     /// "always index": every image at or under one enriches regardless of importance.

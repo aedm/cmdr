@@ -1,6 +1,6 @@
 //! The real macOS [`VisionBackend`]: OCR via Vision's `VNRecognizeTextRequest`, fed
 //! a downscaled, in-memory decode from ImageIO (`CGImageSource`) — no thumbnail
-//! files on disk (plan Decision 5).
+//! files on disk (media_index Decision 5).
 //!
 //! ## Threading + the 8 MB stack
 //!
@@ -60,7 +60,7 @@ use super::{Analysis, ImageInput, MediaAnalysis, OcrResult, Tag, VisionBackend, 
 /// text recognition gains little above a few thousand pixels while a full-resolution
 /// decode of a 48-megapixel photo would spike ~190 MB of bitmap; capping the long
 /// edge here bounds the decoded bitmap to ~36 MB and keeps small text legible
-/// (plan Decision 5 — feed a downscaled decode, never the original).
+/// (media_index Decision 5 — feed a downscaled decode, never the original).
 const MAX_OCR_DIMENSION: i64 = 3072;
 
 /// Vision refuses an image with ANY pixel dimension under this (it errors "The image is
@@ -256,7 +256,7 @@ fn worker_loop(receiver: mpsc::Receiver<Job>) {
 /// the combined analyze stamp. Each carries the macOS version plus the relevant Vision
 /// request revision, so any OS upgrade that bumps a recognizer, the tag taxonomy, or
 /// the feature-print model mismatches a stored row and re-runs analysis (data-coverage
-/// — plan Decision 4). Cheap and stable within an OS version.
+/// — media_index Decision 4). Cheap and stable within an OS version.
 ///
 /// Returns `(engine_version, taxonomy_version, analysis_stamp)`.
 fn compute_stamps() -> (String, String, String) {
@@ -308,7 +308,7 @@ fn recognize_text(path: &str, prefetched: Option<&[u8]>) -> Result<OcrResult, Vi
 }
 
 /// Run the full enrichment analysis — OCR, scene/object tags, and the feature-print
-/// embedding — over ONE decode of the image (plan Decision 5), performing all three
+/// embedding — over ONE decode of the image (media_index Decision 5), performing all three
 /// Vision requests on a single image request handler. Fails closed to a typed
 /// [`VisionError`] on hostile input, exactly as [`recognize_text`] does.
 ///
@@ -512,7 +512,7 @@ unsafe extern "C-unwind" {
     ) -> *mut CGContext;
 }
 
-/// Decode an image downscaled in-memory (no thumbnail files — plan Decision 5),
+/// Decode an image downscaled in-memory (no thumbnail files — media_index Decision 5),
 /// returning the `CGImage` for the Vision requests. Fails closed to a typed
 /// [`VisionError`] on any hostile input.
 ///

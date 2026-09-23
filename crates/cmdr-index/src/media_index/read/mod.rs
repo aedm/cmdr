@@ -2,7 +2,7 @@
 //!
 //! Ported from `importance/read` (`ImportanceIndex`): the ONE way a consumer
 //! (`search/`, and the Ask Cmdr / MCP `search_photos` tool via
-//! `mcp::executor::photos`) reaches image-enrichment results (plan Decision 8). No
+//! `mcp::executor::photos`) reaches image-enrichment results (media_index Decision 8). No
 //! consumer takes a raw `rusqlite` dep on `media.db`; they call
 //! this. It owns a `platform_case`-registered read connection and reads the DB
 //! directly, so it answers OFFLINE from `media.db` after the volume unmounts.
@@ -161,7 +161,7 @@ impl MediaIndex {
     /// The `k` images most similar to the one at `source_path` (by feature-print
     /// cosine), highest first, excluding the source itself. Reads the source's stored
     /// embedding, then brute-force ranks it against the volume's resident vector cache
-    /// (loaded once, kept warm — plan § Query-time vector residency). An empty result
+    /// (loaded once, kept warm — `vector/DETAILS.md` § The resident cache). An empty result
     /// when the source has no embedding, sits under an excluded folder, or the volume is
     /// un-enriched/offline.
     pub fn find_similar(&self, source_path: &str, k: usize) -> Result<Vec<SimilarImage>, MediaStoreError> {
@@ -191,8 +191,8 @@ impl MediaIndex {
     }
 
     /// The `k` images whose CLIP embeddings are closest (by cosine) to an
-    /// already-encoded `query` text vector — natural-language text→image search (plan
-    /// M3). The query text is tokenized + text-encoded by the command layer (the warm
+    /// already-encoded `query` text vector — natural-language text→image search.
+    /// The query text is tokenized + text-encoded by the command layer (the warm
     /// CLIP text tower), which keeps this method a pure vector query testable with
     /// deterministic vectors. Empty when the volume has no CLIP embeddings (no model
     /// installed, un-enriched, or offline).

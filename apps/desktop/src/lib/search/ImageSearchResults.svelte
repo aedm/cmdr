@@ -18,15 +18,15 @@
      *     space. It gates THIS surface only; the file-list status badges and Ask Cmdr /
      *     MCP photo search read the same index regardless.
      *
-     * Honesty (plan § Coverage honesty): when enabled, the section voices its own coverage
-     * from the backend `mediaIndexVolumeState`, so an empty result is never a confident lie:
+     * Honesty (`media_index/DETAILS.md` § Coverage honesty): when enabled, the section
+     * voices its own coverage from the backend `mediaIndexVolumeState`, so an empty result is never a confident lie:
      *   - a pass running for the vol → "still indexing images, results may be incomplete".
      *   - no images enriched yet     → "not indexed yet", distinct from a genuine miss.
      *   - enriched but no match      → an honest "no text found".
      *   - a network volume not opted in / paused → the network-voice hints.
      *
      * Thumbnails reuse the EXISTING viewer preview scheme (`cmdr-media://` via
-     * `mediaUrl`), never a media_index-produced thumbnail file (plan Decision 5). Each
+     * `mediaUrl`), never a media_index-produced thumbnail file (media_index Decision 5). Each
      * displayed image mints a token; the component drops every token it minted when the
      * result set changes or it unmounts, so the backend token map never leaks.
      */

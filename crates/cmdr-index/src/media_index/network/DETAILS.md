@@ -101,7 +101,7 @@ Typed knobs (`ConservativeFetchPolicy`), each a real gate, not a comment:
 ## The "always index" override (`config.rs`) — why it's load-bearing
 
 Navigation-based importance scores a rarely-browsed NAS archive LOW everywhere, so importance-first ordering would defer
-the user's photos forever (plan Decision 6). The override forces enrichment regardless of importance.
+the user's photos forever (media_index Decision 6). The override forces enrichment regardless of importance.
 `should_enrich_image(covered_by_override, importance, threshold)` = `covered || importance ≥ threshold`. The importance
 slider is present, but for network volumes the production importance oracle yields `None` and **the override is the
 load-bearing input**: only override-covered volumes/folders enrich. The gate seam keeps the importance path drop-in.

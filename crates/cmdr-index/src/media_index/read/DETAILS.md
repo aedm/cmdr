@@ -6,7 +6,7 @@ The IPC commands that wrap these entry points live in `apps/desktop/src-tauri/sr
 
 ## The entry points
 
-`MediaIndex` (plan Decision 8) opens `media-{volume_id}.db` and answers:
+`MediaIndex` (media_index Decision 8) opens `media-{volume_id}.db` and answers:
 
 - `search_ocr(query, limit)` → `OcrHit`s (path + a highlighted `snippet`, the "why matched" reason).
 - `facts_for_paths(&[&str])` → `Vec<ImageFacts>` (§ The lookup direction).

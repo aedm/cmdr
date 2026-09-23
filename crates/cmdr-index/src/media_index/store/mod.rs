@@ -1,7 +1,7 @@
 //! Per-volume `media.db`: the disposable store for image-enrichment results.
 //!
 //! Ported from `importance/store/`, carrying the drive index's disposable-cache
-//! discipline verbatim (plan Decision 3):
+//! discipline verbatim (media_index Decision 3):
 //!
 //! - **`platform_case` collation on every connection** (reused from
 //!   `indexing::store`; not persisted, so re-registered per connection).
@@ -22,7 +22,7 @@
 //! - **No per-row scan-generation column.** Staleness is `(path, mtime, size)` from
 //!   the index row plus the OS/Vision engine stamp (below), which makes a generation
 //!   stamp redundant. The lifecycle-bus `generation` is a transient wake counter and
-//!   is NEVER persisted (plan Decision 3 — re-read it before adding a column).
+//!   is NEVER persisted (media_index Decision 3 — re-read it before adding a column).
 //! - **A real GC, not wholesale table replacement.** Media enrichment is expensive
 //!   and incremental, so a pass does NOT rewrite the whole table; instead the
 //!   scheduler GCs rows for deleted paths on a completed-scan edge (see
@@ -45,7 +45,7 @@
 //! - `media_tags` — the structured tags (`file_id, label, score`) for tag-score
 //!   filtering; the folded FTS rows above are its keyword-search index.
 //! - `media_embedding` — the image feature-print embedding (`file_id, dims, vector` `f16`
-//!   BLOB) for image↔image similarity + dedup (plan Decision 2).
+//!   BLOB) for image↔image similarity + dedup (media_index Decision 2).
 //! - `media_clip_embedding` — the CLIP image embedding (`file_id, dims, vector` `f16` BLOB)
 //!   for natural-language text→image search. A SEPARATE table from
 //!   `media_embedding`: CLIP and the Vision feature print are DIFFERENT vector spaces,
@@ -211,7 +211,7 @@ pub struct MediaStatusRow {
 /// Whether an image at `path` needs (re-)enrichment given its stored status row and
 /// its CURRENT `(mtime, size)` and the backend's CURRENT engine version.
 ///
-/// This is the path-keyed staleness predicate (plan Decision 3, a TDD target).
+/// This is the path-keyed staleness predicate (media_index Decision 3, a TDD target).
 /// Stale when there is no row, or when the `(mtime, size)` identity changed, or when
 /// the analyze provenance stamp changed (an OS upgrade to the OCR engine, tag
 /// taxonomy, or feature-print model re-runs analysis even on an unchanged file — one

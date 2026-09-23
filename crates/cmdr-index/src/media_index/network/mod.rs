@@ -13,7 +13,7 @@
 //!
 //! The scheduler wiring (route by volume kind; MTP never background-sweeps) lives in
 //! [`super::scheduler`]; the read API answers OFFLINE from `media.db` after unmount
-//! (plan Decision 8), so a network volume's photos stay searchable with the NAS gone.
+//! (media_index Decision 8), so a network volume's photos stay searchable with the NAS gone.
 
 pub(crate) mod budget;
 pub mod config;

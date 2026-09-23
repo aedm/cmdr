@@ -353,13 +353,13 @@ pub(crate) struct EnrichGates<'a> {
 /// A pure set difference: everything stored but not in `current`. Safe ONLY because
 /// the caller runs it against a COMPLETED scan (the `Completed` bus edge fires
 /// post-writer-flush, so the tree is whole) — never mid-`Scanning`, when the index
-/// truncate window transiently empties the tree (plan Decision 3).
+/// truncate window transiently empties the tree (media_index Decision 3).
 pub(crate) fn gc_targets<'a>(stored: impl IntoIterator<Item = &'a String>, current: &HashSet<String>) -> Vec<String> {
     stored.into_iter().filter(|p| !current.contains(*p)).cloned().collect()
 }
 
-/// Order the walked images so HIGH-importance folders enrich first (plan
-/// Cross-cutting § Importance-prioritized enrichment): sort by the folder's
+/// Order the walked images so HIGH-importance folders enrich first
+/// (`DETAILS.md` § Importance-prioritized scheduling): sort by the folder's
 /// importance score descending, ties broken by path for determinism. A folder with
 /// no score (offline importance DB, floored/unscored, override-only) sorts as `0.0`,
 /// so it enriches after the scored folders but is NOT dropped — the `should_enrich`

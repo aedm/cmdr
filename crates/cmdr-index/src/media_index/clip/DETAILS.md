@@ -181,7 +181,7 @@ enrichment pass no longer pays for a text tower it will never call. What is left
 that has gone idle, and the compute-unit trade above; both are open, and both carry a question that memory alone can't
 answer.
 
-## Model install (`install.rs`, plan Decision 9)
+## Model install (`install.rs`, media_index Decision 9)
 
 New code reusing only `ai::download::download_file` (the resumable HTTP GET). Distinct from the GGUF two-flag gate: Core
 ML models are `.mlpackage` DIRECTORY bundles (zipped), so this adds a zip extractor (with a zip-slip guard) and — unlike

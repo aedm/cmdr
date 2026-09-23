@@ -14,7 +14,7 @@
 //!
 //! [`analyze`](VisionBackend::analyze) is the enrichment entry point: it runs OCR,
 //! scene/object classification (tags), and an image feature-print embedding over ONE
-//! decode of the image (plan Decision 5 — decode once, reuse). OCR alone stays
+//! decode of the image (media_index Decision 5 — decode once, reuse). OCR alone stays
 //! available via [`ocr`](VisionBackend::ocr) for the focused macOS OCR tests. CLIP
 //! embeddings and face detect/embed become sibling methods as those
 //! milestones land.
@@ -33,7 +33,7 @@ use crate::media_index::predicate::MediaKind;
 /// special-case a Live Photo still later.
 ///
 /// `bytes` is the byte-source seam that lets the SAME backend serve local and
-/// network volumes (plan Decision 6, network enrichment):
+/// network volumes (media_index Decision 6, network enrichment):
 /// - `None` — the backend reads `path` itself via `std::fs::read` (the local case;
 ///   `path` is a real on-disk filesystem path).
 /// - `Some(bytes)` — the caller ALREADY fetched the compressed image bytes (the
@@ -74,7 +74,7 @@ pub struct Tag {
     pub score: f32,
 }
 
-/// The full enrichment analysis of ONE image, computed from a single decode (plan
+/// The full enrichment analysis of ONE image, computed from a single decode (media_index
 /// Decision 5). OCR text (possibly empty — an image with no text), the scene/object
 /// tags (possibly empty), and the image feature-print embedding (`None` if the
 /// feature-print request produced nothing).
@@ -143,7 +143,7 @@ pub trait VisionBackend: Send + Sync {
     /// A stable stamp for the Vision scene/object TAG taxonomy (the classifier
     /// revision). When macOS ships a new tag taxonomy this bumps, so stored tags go
     /// stale and re-tag via [`analysis_stamp`](VisionBackend::analysis_stamp) — the
-    /// tag-taxonomy-version component of the provenance key (plan Decision 4).
+    /// tag-taxonomy-version component of the provenance key (media_index Decision 4).
     fn taxonomy_version(&self) -> String;
 
     /// The COMBINED provenance/staleness stamp the scheduler persists on each

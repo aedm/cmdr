@@ -36,7 +36,7 @@ pub fn media_index_set_network_volume_enabled(app: AppHandle, volume_id: String,
 
 /// Set (or clear) a whole-volume "always index" override: enrich regardless of the
 /// importance threshold (a rarely-browsed NAS scores low, so without this its photos
-/// defer forever — plan Decision 6). Enabling kicks an immediate pass. Live-applied;
+/// defer forever — media_index Decision 6). Enabling kicks an immediate pass. Live-applied;
 /// the frontend persists `mediaIndex.alwaysIndexVolumes` and calls this on change.
 #[tauri::command]
 #[specta::specta]
@@ -111,8 +111,9 @@ pub(super) fn scope_change_should_kick(previous: gate::IndexScope, next: gate::I
 }
 
 /// Set (or clear) a per-folder photo-search EXCLUSION: no image at or under `folder`
-/// (an absolute OS path) enriches (the privacy complement to the opt-in — plan §
-/// Privacy). A hard veto that beats any "always index" override.
+/// (an absolute OS path) enriches (the privacy complement to the opt-in —
+/// `media_index/DETAILS.md` § Per-folder photo-search exclude). A hard veto that beats
+/// any "always index" override.
 ///
 /// EXCLUDING retro-deletes existing rows at or under the folder across the reachable
 /// volumes, so already-extracted OCR text stops being searchable at once (privacy is a

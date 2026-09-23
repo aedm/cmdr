@@ -18,7 +18,7 @@
 //! ceiling on a RAW-heavy corpus. A fetch worker classifies its errors exactly as the
 //! sequential loop does; a typed disconnect stops the dispatcher and pauses the pass.
 //!
-//! ## Data-safety lines (plan Decision 3 + Cross-cutting § Cancellation)
+//! ## Data-safety lines (media_index Decision 3 + `DETAILS.md` § Resumability across unmount)
 //!
 //! - A **disconnect** (fetch timeout / I/O error) is NOT a bad file: the pass returns
 //!   [`NetworkPassOutcome::Paused`], keeps every completed row, writes NO `Failed` row

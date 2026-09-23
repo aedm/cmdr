@@ -109,7 +109,7 @@ impl FakeVisionBackend {
     }
 
     /// Override the tag-taxonomy-version stamp (to simulate an OS taxonomy change,
-    /// which must re-tag stale rows — plan Decision 4).
+    /// which must re-tag stale rows — media_index Decision 4).
     #[allow(
         dead_code,
         reason = "a fake's scripting surface; not every knob has a test behind it yet"

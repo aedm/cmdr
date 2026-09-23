@@ -22,7 +22,7 @@
 //!   image encoding folded into the Vision backend's combined `analyze_media`, each with a
 //!   deterministic fake so the pipeline is testable with no model/FFI.
 //! - [`install`] — on-demand model download + SHA-256 verify + zip unpack + the
-//!   install/loaded gate (distinct from the GGUF two-flag gate — plan Decision 9).
+//!   install/loaded gate (distinct from the GGUF two-flag gate — media_index Decision 9).
 //!
 //! The conversion that produces the shipped `.mlpackage` towers is an out-of-tree dev
 //! script (`apps/desktop/scripts/convert-clip-model/`), never run by CI/pnpm.

@@ -1,7 +1,7 @@
 //! The media enrichment scheduler: run a volume's image-OCR enrichment when its
 //! index finishes scanning, and once at startup for a volume Fresh at launch.
 //!
-//! Ported from `importance/scheduler` (plan Decision 7), with its OWN `start()`
+//! Ported from `importance/scheduler` (media_index Decision 7), with its OWN `start()`
 //! mirroring importance's ordering (subscribe to registrations → sweep
 //! `ready_volumes_with_kind()` → wire per-volume subscriptions). It can't piggyback
 //! importance's subscription; because `app.manage` is keyed by type, an
@@ -378,8 +378,8 @@ impl MediaScheduler {
         });
 
         // The volume's embeddings changed; drop the resident cache so the next
-        // find-similar / dedup reloads (per-pass invalidation, not per-write — plan §
-        // Query-time vector residency).
+        // find-similar / dedup reloads (per-pass invalidation, not per-write —
+        // `vector/DETAILS.md` § The resident cache).
         if summary.enriched > 0 || summary.gc_count > 0 {
             // Land the pass's buffered ANN ops BEFORE invalidating, so the mmap view
             // the next query reloads is current (plan M6). Best-effort.
@@ -481,7 +481,7 @@ impl MediaScheduler {
             return Ok(PassOutcome::Done(0));
         }
         // The per-volume SMB opt-in: turning on the master toggle does NOT auto-enrich
-        // network volumes (plan Decision 6).
+        // network volumes (media_index Decision 6).
         if !network::config::is_opted_in(volume_id) {
             log::debug!(target: "media_index", "network enrichment skips '{volume_id}': not opted in");
             return Ok(PassOutcome::Done(0));
@@ -565,7 +565,7 @@ impl MediaScheduler {
         let host = crate::indexing::host::policy::current();
         let is_idle =
             move || network::policy::volume_clear_for_enrichment(host.clearance(&gate_volume, idle_threshold));
-        // The conservative per-image gate (plan Decision 6 + importance): an excluded folder
+        // The conservative per-image gate (media_index Decision 6 + importance): an excluded folder
         // never enriches (privacy veto); otherwise enrich when an "always index"
         // override covers it OR its folder importance meets the slider threshold.
         // Importance keys on the INDEX identity, so strip the mount root off the OS

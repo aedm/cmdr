@@ -1,9 +1,9 @@
 //! The search-results grid's thumbnails: mint and drop `cmdr-media://` tokens through the
-//! EXISTING viewer preview scheme (plan Decision 5 — never a media_index-produced
+//! EXISTING viewer preview scheme (media_index Decision 5 — never a media_index-produced
 //! thumbnail file).
 
 /// Mint a `cmdr-media://` token so the search-results grid can render an image's
-/// thumbnail through the EXISTING viewer preview scheme (plan Decision 5 — reuse the
+/// thumbnail through the EXISTING viewer preview scheme (media_index Decision 5 — reuse the
 /// preview path, never a media_index-produced thumbnail file). Returns `None` when the
 /// path isn't a renderable image (the grid then falls back to a plain tile).
 ///

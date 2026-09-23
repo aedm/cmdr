@@ -431,7 +431,8 @@ on. The two dev CLIs and the vendored fork are ordinary members.
     find-similar, offline after unmount). Enriches local volumes plus opt-in network (SMB) volumes conservatively
     (priority-gated via `priority/`, bandwidth-bounded byte-fetch through the app's own smb2 session for Direct volumes
     with an OS-mount fallback; disconnect pauses without losing coverage; MTP never background-sweeps). Off by default.
-    See its `crates/cmdr-index/src/media_index/CLAUDE.md` and `specs/later/indexing/media-ml-index-plan.md`
+    See its `crates/cmdr-index/src/media_index/CLAUDE.md`; faces and captions are in
+    `specs/later/indexing/media-index-follow-ups.md`
 - `crates/index-query/`: developer CLI that queries the index DB with the `platform_case` collation `sqlite3` can't
   supply, plus the three importance measurement binaries. Depends on `cmdr-index` alone. See
   `docs/tooling/index-query.md`

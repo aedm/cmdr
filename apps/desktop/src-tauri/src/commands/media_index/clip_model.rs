@@ -47,7 +47,7 @@ pub async fn media_index_clip_model_status(app: AppHandle) -> Result<ClipModelSt
     .map_err(|e| format!("clip status task panicked: {e}"))?
 }
 
-/// Download + checksum-verify + install the CLIP towers on demand (plan M3, Decision 9),
+/// Download + checksum-verify + install the CLIP towers on demand (media_index Decision 9),
 /// then kick a pass so already-enriched images gain CLIP embeddings. Each tower is fetched
 /// via the shared resumable HTTP GET (`ai::download`), verified against its pinned SHA-256
 /// BEFORE unpacking (a truncated download never installs), and unzipped into the model dir.

@@ -1,4 +1,4 @@
-//! The conservative-fetch policy for network enrichment (plan Decision 6): the
+//! The conservative-fetch policy for network enrichment (media_index Decision 6): the
 //! typed knobs plus the PURE decisions the pass gates on, so "does it defer or
 //! proceed?" is unit-testable over a fake clock / fake idle signal.
 //!
@@ -79,7 +79,7 @@ pub fn throttle_delay(bytes: u64, max_bytes_per_sec: u64) -> Duration {
 
 /// The pure per-image enrichment gate: enrich when the override covers it OR when its
 /// importance meets the threshold. Without an override, a low-importance NAS folder
-/// defers (the "navigation-based importance starves a photo archive" hazard — plan
+/// defers (the "navigation-based importance starves a photo archive" hazard — media_index
 /// Decision 6); the override is the escape hatch.
 ///
 /// Before the importance slider lands the production importance oracle yields `None`,

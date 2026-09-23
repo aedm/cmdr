@@ -37,7 +37,7 @@ mod client_streaming_test;
 pub mod connection_check;
 // `pub(crate)`: the media-index CLIP model install reuses the resumable HTTP GET
 // (`download_file`) — the one piece of the AI install path that's genuinely generic
-// (plan M3, Decision 9).
+// (media_index Decision 9).
 pub(crate) mod download;
 pub mod extract;
 pub mod install;

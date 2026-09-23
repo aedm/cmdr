@@ -8,8 +8,8 @@
 //!
 //! A deliberate port of `importance/` (store, scheduler, read API); see
 //! [`CLAUDE.md`](CLAUDE.md) for the must-knows and [`DETAILS.md`](DETAILS.md) for the
-//! port rationale, the GC safety argument, and the schema. Full plan:
-//! `docs/specs/later/media-ml-index-plan.md`.
+//! port rationale, the GC safety argument, the schema, and the numbered decision
+//! log that `media_index Decision N` comments cite.
 
 pub(crate) mod ann;
 pub(crate) mod backend;

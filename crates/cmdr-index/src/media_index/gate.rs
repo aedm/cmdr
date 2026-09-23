@@ -13,7 +13,7 @@
 //!   no pass embeds CLIP), so turning it off stops all new CLIP work at once.
 //! - **[`is_cancelled`]**: the emergency stop the indexing memory watchdog sets via
 //!   its subsystem-stop hook (media_index shares the ONE resident-memory ceiling,
-//!   it does not stand up a second one — see the plan's Resources cross-cutting).
+//!   it does not stand up a second one — see `DETAILS.md` § Settings + memory).
 //!   The pass checks it BETWEEN images so it yields promptly under memory pressure.
 //!   Enabling the feature clears it, so re-enabling recovers.
 //!

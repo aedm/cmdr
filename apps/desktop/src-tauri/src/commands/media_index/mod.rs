@@ -1,4 +1,4 @@
-//! The media-index IPC commands: the read/query surface (plan Decision 8), plus the
+//! The media-index IPC commands: the read/query surface (media_index Decision 8), plus the
 //! coverage-CHANGING setters in [`policy`].
 //!
 //! Thin per the commands-layer rule: resolve the app data dir, open the

@@ -2,7 +2,7 @@
 
 The depth behind `CLAUDE.md`. Read this before any non-trivial work here: editing, planning, reorganizing, or advising.
 
-## The store (plan Decision 2)
+## The store (media_index Decision 2)
 
 Brute-force cosine in Rust, NO `sqlite-vec` (a loadable extension our `rusqlite` isn't built for; a real build+signing
 project adopted only if a library outgrows brute force, behind this same `VectorStore` trait). The store holds vectors

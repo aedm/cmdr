@@ -111,7 +111,7 @@ The guards live in `enrich_memory_tests.rs`: one pins the whole walk's allocatio
 per-folder allocation blows straight through it), the other pins the compact tree at several times smaller than the
 full-row shape.
 
-## Importance-prioritized scheduling (the headline — plan Cross-cutting)
+## Importance-prioritized scheduling
 
 The local `run_pass_blocking` and the network `should_enrich` read `importance/`'s `ImportanceIndex`
 (`MediaScheduler::folder_scores` → `above_threshold(threshold)`), the SAME signal the importance slider sets. The

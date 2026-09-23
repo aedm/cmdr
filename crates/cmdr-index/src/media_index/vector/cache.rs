@@ -1,7 +1,7 @@
 //! The resident per-volume vector caches: load a volume's embeddings from `media.db`
 //! ONCE and keep the [`BruteForceVectorStore`] warm, so repeated find-similar / dedup /
-//! semantic-search queries don't re-read the BLOBs each time (plan § Query-time vector
-//! residency; mirrors `search/`'s warm `SEARCH_INDEX` arena).
+//! semantic-search queries don't re-read the BLOBs each time (`DETAILS.md` § The resident
+//! cache; mirrors `search/`'s warm `SEARCH_INDEX` arena).
 //!
 //! There are TWO independent spaces per volume (plan M3): the Vision feature print
 //! (`media_embedding`, image↔image similarity + dedup) and CLIP (`media_clip_embedding`,
