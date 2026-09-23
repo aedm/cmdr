@@ -170,9 +170,9 @@ estimates with an explicit "unknown" fallback.
 ## The pending-sizes hourglass (`pending_sizes.rs`)
 
 `PendingSizes`: an in-memory map of directory paths with unprocessed writes in flight (each to when its episode
-started), so the UI can show a per-directory "size updating" hourglass during big deletes/copies. Two signals, cleanly split: the global
-`indexing` flag means every size is in flux during a full scan; per-dir `recursive_size_pending` means live writes are
-in flight for that dir even when no scan runs.
+started), so the UI can show a per-directory "size updating" hourglass during big deletes/copies. Two signals, cleanly
+split: the global `indexing` flag means every size is in flux during a full scan; per-dir `recursive_size_pending` means
+live writes are in flight for that dir even when no scan runs.
 
 - `mark(path)` inserts the normalized path plus every ancestor, keeping an existing start; `view(path)` answers what the
   UI shows; `clear()` wipes the transient set and returns the paths whose hourglass was showing. `is_pending` (raw
@@ -193,22 +193,22 @@ in flight for that dir even when no scan runs.
   one consumer, so the listing pushes, the webview's own `get_dir_stats_batch` reads, SelectionInfo, and the agent's
   `list_dir` all agree on what's "updating".
 - **Read** when building `DirStats` (`queries.rs`), surfaced via `DirStats.recursive_size_pending` (shown) and the
-  Rust-only `recursive_size_pending_changes_in` (`#[serde(skip)]`). It rides `DirStats`
-  only, NOT the Rust `FileEntry`/`get_file_range` enrichment path — that path isn't where live size refreshes flow, and
-  adding a field to `FileEntry` (no `Default`, ~30 literal sites) buys only a sub-2s hourglass on a folder navigated
-  into mid-storm. This half is deliberately not "fixed".
+  Rust-only `recursive_size_pending_changes_in` (`#[serde(skip)]`). It rides `DirStats` only, NOT the Rust
+  `FileEntry`/`get_file_range` enrichment path — that path isn't where live size refreshes flow, and adding a field to
+  `FileEntry` (no `Default`, ~30 literal sites) buys only a sub-2s hourglass on a folder navigated into mid-storm. This
+  half is deliberately not "fixed".
 
 **The held-roots tier (for coalesced rescans).** A detached `reconcile_subtree` runs for seconds while the writer queue
 oscillates empty, so the wholesale queue-drain `clear()` would wipe the mark long before the reconcile finishes, and
 nothing marked its scope at queue time. So `PendingSizes` has a SECOND held-roots tier (rescan root paths only):
-`queue_must_scan_sub_dirs` holds the root; a path is pending for any transient mark OR when it's related to a
-held root in EITHER direction (an ancestor-or-equal, whose aggregate includes the rewriting subtree, OR a descendant,
-whose own rows are being rewritten); and the writer-drain `clear()` wipes only the TRANSIENT set — holds survive.
-Holding roots (not expanded ancestors) with a query-time prefix test keeps release exact under overlapping rescans
-(`/a/b` and `/a/c` share `/a`; expanding would strip it while one is still in flight). On completion the sequence is
-`release(root)` FIRST, then emit `DirsUpdated` for the root + ancestors via `WriteMessage::EmitDirUpdated`: release
-before emit, else the triggered refetch re-reads `pending = true`. The mark/clear mechanics that feed this from the
-writer side (the `dir_stats` ledger, the drain point) are owned by `../writer/DETAILS.md`.
+`queue_must_scan_sub_dirs` holds the root; a path is pending for any transient mark OR when it's related to a held root
+in EITHER direction (an ancestor-or-equal, whose aggregate includes the rewriting subtree, OR a descendant, whose own
+rows are being rewritten); and the writer-drain `clear()` wipes only the TRANSIENT set — holds survive. Holding roots
+(not expanded ancestors) with a query-time prefix test keeps release exact under overlapping rescans (`/a/b` and `/a/c`
+share `/a`; expanding would strip it while one is still in flight). On completion the sequence is `release(root)` FIRST,
+then emit `DirsUpdated` for the root + ancestors via `WriteMessage::EmitDirUpdated`: release before emit, else the
+triggered refetch re-reads `pending = true`. The mark/clear mechanics that feed this from the writer side (the
+`dir_stats` ledger, the drain point) are owned by `../writer/DETAILS.md`.
 
 ## The coverage frontier (`coverage.rs`)
 

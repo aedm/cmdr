@@ -96,10 +96,10 @@ far more (it serves a warm arena with a 30 s refresh floor).
 
 Every `writer_loop` iteration ends with two hooks that run only when `queue_depth == 0`: the pending-size hourglass
 clear (`pending_sizes::get_pending_sizes_for(volume_id).clear()`, which emits `DirsUpdated` for the folders whose
-hourglass was SHOWING, since no write is coming to tell the panes they settled; the blips that never showed stay
-silent) and `settle_the_ledger`, which rolls up the ancestors
-a burst of subtree aggregates left owing and then drains the deferred `dir_stats` repairs (why that's the right moment:
-§ "The dir_stats ledger"). Together they are the writer's caught-up point.
+hourglass was SHOWING, since no write is coming to tell the panes they settled; the blips that never showed stay silent)
+and `settle_the_ledger`, which rolls up the ancestors a burst of subtree aggregates left owing and then drains the
+deferred `dir_stats` repairs (why that's the right moment: § "The dir_stats ledger"). Together they are the writer's
+caught-up point.
 
 `Flush` replies from INSIDE `process_message`, so `flush_blocking()` and `flush().await` return one hook run too early:
 every prior message is committed, but the hourglass is still up and the repair queue still full. No production caller
