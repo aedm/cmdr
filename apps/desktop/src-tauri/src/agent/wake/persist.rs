@@ -280,7 +280,7 @@ mod tests {
         let conn = migrated_conn();
         let refused = admit(
             &conn,
-            WakeReadiness::NeedsConsent,
+            WakeReadiness::NeedsCloudConsent,
             bundle("/Users/someone/Downloads", 4, 100),
             FolderImportance::Scored(0.9),
             DEFAULT_HOT_DELAY,

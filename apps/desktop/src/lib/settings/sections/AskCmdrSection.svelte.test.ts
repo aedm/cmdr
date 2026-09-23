@@ -146,7 +146,7 @@ describe('AskCmdrSection on/off', () => {
     const target = await mountSection()
     const labelFors = Array.from(target.querySelectorAll('label.setting-label')).map((el) => el.getAttribute('for'))
     expect(labelFors).toContain('askCmdr.enabled')
-    expect(target.querySelector('label.setting-label[for="askCmdr.enabled"]')?.textContent?.trim()).toBe('Ask Cmdr')
+    expect(target.querySelector('label.setting-label[for="askCmdr.enabled"]')?.textContent.trim()).toBe('Ask Cmdr')
     target.remove()
   })
 
