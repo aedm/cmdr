@@ -100,7 +100,7 @@ export const networkConnections: NetworkConnection[] = [
     name: 'AI features (optional)',
     destination:
       'The AI provider the user picks, straight from the Mac. None of it goes through Cmdr\'s servers. Details in <a href="#ai">AI features and your files</a>.',
-    when: 'Only after the user sets up a cloud provider with their own API key.',
+    when: 'Only after the user sets up a cloud provider with their own API key. From the next release on, also only after they turn on "Allow cloud AI".',
     sends: 'File and folder names and, when asked, parts of file contents. See the AI section.',
     control: '<strong>Off by default.</strong> Settings &gt; AI &gt; Provider.',
   },
@@ -247,7 +247,7 @@ export const notInPlaceYet: string[] = [
   '<strong>No data processing agreement (DPA)</strong> ready to sign.',
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",
   '<strong>Error-report cleaning has known gaps</strong>: a file name in free text, or a search query, can be included.',
-  "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick. Some AI features send file names without a separate consent step.",
+  "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick. Until the next release, some AI features send file names without a separate consent step.",
   "<strong>No reproducible builds</strong>, and release tags aren't signed. Each release publishes SHA-256 checksums. Signed build provenance and SBOMs start with the next release, so no release has them yet.",
   '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',

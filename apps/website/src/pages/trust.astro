@@ -362,28 +362,32 @@ const toc = [
     </p>
     <ul>
         <li>
-            <strong>Local AI</strong>: a model that runs on the Mac (downloaded on request), or Ollama or LM Studio on
-            the same Mac. Nothing leaves the Mac.
+            <strong>Local AI</strong>: Cmdr's own model, which runs on the Mac (downloaded on request). Nothing leaves
+            the Mac.
         </li>
         <li>
-            <strong>Cloud AI with their own API key</strong>: OpenAI, Anthropic, Google Gemini, Groq, Together AI,
-            Fireworks AI, Mistral, OpenRouter, DeepSeek, Qwen (Alibaba), xAI, Perplexity, Azure OpenAI, or a custom
-            endpoint. The app talks straight to that provider, under that provider's terms. The key is kept in the macOS
+            <strong>Cloud AI</strong>, with the user's own API key where the service needs one: OpenAI, Anthropic, Google Gemini, Groq, Together AI,
+            Fireworks AI, Mistral, OpenRouter, DeepSeek, Qwen (Alibaba), xAI, Perplexity, Azure OpenAI, a custom
+            endpoint, or an Ollama or LM Studio server, which can run on the same Mac or on another machine. The app
+            talks straight to that provider, under that provider's terms. The key is kept in the macOS
             Keychain, and Cmdr won't send it over plain HTTP except to the same Mac.
         </li>
     </ul>
+    <p>
+        From the next release on, nothing reaches a cloud AI service until the user turns on "Allow cloud AI" in
+        Settings, which lists what each feature sends. The app's backend enforces this for every AI feature. Cmdr's own
+        on-device model needs no switch, because nothing leaves the Mac.
+    </p>
     <p>With cloud AI, this is what reaches the provider:</p>
     <ul>
         <li>
             <strong>Ask Cmdr</strong> (the assistant): file and folder names, paths, sizes, and dates. When the user's
             question needs it, also parts of text files, text from PDF pages, archive listings, photo metadata (which
-            can include GPS location), and text read from images. The assistant asks for consent before first use and
-            can't change or delete files.
+            can include GPS location), and text read from images. The assistant can't change or delete files.
         </li>
         <li>
             <strong>Folder name suggestions, select-by-description, and natural-language search</strong>: up to a few
-            hundred file and folder names from the current folder, or the search text. These work once a cloud
-            provider is set up, without a separate consent step.
+            hundred file and folder names from the current folder, or the search text.
         </li>
     </ul>
     <p>
@@ -391,8 +395,9 @@ const toc = [
         frameworks. IT can't yet turn AI off centrally or limit which providers are allowed.
     </p>
     <DevTodo>
-        The non-agent AI features (<code>ai/suggestions.rs</code>, <code>commands/selection.rs</code>,
-        <code>commands/search.rs</code>) skip the Ask Cmdr consent gate. Decide whether they should share it.
+        After the release that ships "Allow cloud AI", drop "From the next release on" from the AI consent sentence
+        here, from the privacy policy's AI bullet, and from the AI row in <code>src/lib/trust.ts</code>, and delete the
+        "Until the next release" sentence from that file's "No central control over AI" gap.
     </DevTodo>
 
     <h2 id="development">How Cmdr is built</h2>
