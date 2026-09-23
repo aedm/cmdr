@@ -211,7 +211,7 @@ One GitHub release per tag, carrying these assets for each of the three arches (
   would inflate the per-version counts.
 - Three CycloneDX SBOMs, uploaded by the `attest` job: `Cmdr_<version>_aarch64.rust.cdx.json` and
   `Cmdr_<version>_x64.rust.cdx.json` (the Rust crate graph per target triple) and `Cmdr_<version>_frontend.cdx.json`
-  (the desktop app's npm packages). Details in § Provenance and SBOM attestations.
+  (the npm packages whose code is in the built frontend). Details in § Provenance and SBOM attestations.
 
 Every asset also carries a signed SLSA build provenance attestation, stored on the repo rather than on the release (same
 section).
@@ -240,9 +240,10 @@ Two jobs in `release.yml`, beside the build-and-publish chain:
 
 - **`sbom`** (`needs: guard`, read-only token, no OIDC) runs beside the macOS builds. It generates the three SBOMs:
   `cargo cyclonedx` (version pinned in the workflow, CycloneDX 1.5) on `apps/desktop/src-tauri/Cargo.toml` with default
-  features, once per target triple, and `pnpm sbom --filter @cmdr/desktop` for the npm side. It fails if a lockfile
-  moved while resolving, or if an SBOM isn't CycloneDX, doesn't name this version as its root, or lists 100 components
-  or fewer. It hands them on as the `sboms` workflow artifact.
+  features, once per target triple, and a frontend build with `CMDR_FRONTEND_SBOM=1` for the npm side, which lists the
+  packages the bundler actually put in the app (`apps/desktop/scripts/vite-frontend-sbom.ts`; `package.json` can't say,
+  since Svelte ships from devDependencies). It fails if a lockfile moved while resolving, or if an SBOM isn't CycloneDX,
+  doesn't name this version as its root, or lists too few components (100 for Rust, 30 for the frontend). It hands them on as the `sboms` workflow artifact.
 - **`attest`** (`needs: [publish, sbom]`, holds `id-token: write` and `attestations: write`) downloads every asset back
   from the published release, uploads the SBOMs to it, and runs `actions/attest`: one SLSA provenance attestation
   covering every asset (SBOMs included), then one SBOM attestation per SBOM, bound to the builds it describes (each Rust

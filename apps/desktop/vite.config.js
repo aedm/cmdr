@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import { sveltekit } from '@sveltejs/kit/vite'
 import Icons from 'unplugin-icons/vite'
+import { frontendSbom } from './scripts/vite-frontend-sbom.ts'
 import { stripCatalogMetadata } from './scripts/vite-strip-catalog-metadata.ts'
 
 const host = process.env.TAURI_DEV_HOST
@@ -31,13 +32,23 @@ const e2eBuild = process.env.CMDR_E2E_BUILD === '1'
 // `src/lib/app-mode.ts`.
 const worktreeLabel = process.env.CMDR_WORKTREE_LABEL ?? ''
 
+// Set by the release workflow's `sbom` job, for a build whose only product is
+// `build/sbom/frontend.cdx.json` (see `scripts/vite-frontend-sbom.ts`). Every other build leaves
+// it unset, so the shipped app carries no SBOM file.
+const withFrontendSbom = process.env.CMDR_FRONTEND_SBOM === '1'
+
 export default defineConfig(async () => ({
   // `stripCatalogMetadata` runs `pre`, so it sees each locale catalog before
   // Vite's JSON transform and hands on messages-only JSON. Every build gets it,
   // dev included, so dev and prod agree on what a catalog contains; only
   // `vitest.config.ts` omits it, which is what keeps the runtime `stripMetadata`
   // under test. See that plugin's module doc for the measured saving.
-  plugins: [stripCatalogMetadata(), Icons({ compiler: 'svelte' }), sveltekit()],
+  plugins: [
+    stripCatalogMetadata(),
+    Icons({ compiler: 'svelte' }),
+    sveltekit(),
+    ...(withFrontendSbom ? [frontendSbom()] : []),
+  ],
 
   define: {
     __CMDR_E2E_BUILD__: JSON.stringify(e2eBuild),

@@ -315,9 +315,8 @@ jobs:
         run: cargo install cargo-cyclonedx --version 0.5.9 --locked
 
       - name: Fetch the frontend's npm packages
-        # `pnpm sbom` reads licenses and hashes from the store; with `--lockfile-only` it
-        # would emit names and versions and nothing else. Only the desktop app's packages,
-        # and no install scripts, since nothing here runs them.
+        # Only the desktop app's packages, and no install scripts: none of its packages is on
+        # `allowBuilds` in `pnpm-workspace.yaml`, so a release build runs none either.
         run: pnpm install --frozen-lockfile --ignore-scripts --filter @cmdr/desktop
 
       - name: Generate the SBOMs
@@ -325,7 +324,7 @@ jobs:
           set -euo pipefail
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          # `cargo cyclonedx` stamps the commit time rather than "now" (`pnpm sbom` ignores it).
+          # `cargo cyclonedx` stamps the commit time rather than "now". The frontend SBOM carries no timestamp.
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
           mkdir -p sbom
@@ -343,21 +342,26 @@ jobs:
               mv "apps/desktop/src-tauri/sbom-$arch.json" "sbom/Cmdr_${VERSION}_${arch}.rust.cdx.json"
           done
 
-          # The whole desktop package, dev dependencies included and marked `scope: excluded`.
-          # `--prod` would be wrong here: `svelte` and `@sveltejs/kit` are devDependencies
-          # whose runtime the bundler compiles into the app.
-          pnpm sbom --filter @cmdr/desktop --sbom-format cyclonedx --sbom-spec-version 1.5 \
-              --sbom-type application --out "sbom/Cmdr_${VERSION}_frontend.cdx.json"
+          # The npm packages whose code is in the built frontend, read from the bundle itself by
+          # a frontend build with `CMDR_FRONTEND_SBOM=1` (`apps/desktop/scripts/vite-frontend-sbom.ts`).
+          # `package.json` can't answer this: Svelte ships from devDependencies, and most
+          # devDependencies don't ship at all. Same commit and lockfile as the build job, so the
+          # same modules; this build's own output is thrown away.
+          pnpm --filter @cmdr/desktop exec svelte-kit sync
+          CMDR_FRONTEND_SBOM=1 pnpm --filter @cmdr/desktop build
+          mv apps/desktop/build/sbom/frontend.cdx.json "sbom/Cmdr_${VERSION}_frontend.cdx.json"
 
           # Resolving must not have changed a lockfile, or the SBOM describes something
           # other than what the build job compiled.
           git diff --exit-code -- Cargo.lock pnpm-lock.yaml
 
           # Each SBOM must be CycloneDX, name this version as its root, and list a real tree.
-          # A silently empty or mislabelled SBOM is worse than none.
+          # A silently empty or mislabelled SBOM is worse than none. The frontend's floor is
+          # lower because it lists only what ships (about 50 packages), not every tool.
           for f in sbom/*.json; do
-              jq -e --arg v "$VERSION" \
-                  '.bomFormat == "CycloneDX" and .metadata.component.version == $v and (.components | length) > 100' \
+              case "$f" in *_frontend.cdx.json) floor=30 ;; *) floor=100 ;; esac
+              jq -e --arg v "$VERSION" --argjson floor "$floor" \
+                  '.bomFormat == "CycloneDX" and .metadata.component.version == $v and (.components | length) > $floor' \
                   "$f" > /dev/null || { echo "::error::$f is not a CycloneDX SBOM of $VERSION with a full component list"; exit 1; }
               echo "$f: $(jq '.components | length' "$f") components, $(wc -c < "$f") bytes"
           done

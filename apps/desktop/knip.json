@@ -12,7 +12,7 @@
     "cldr-core"
   ],
   "ignoreExportsUsedInFile": true,
-  "project": ["src/**/*.{ts,svelte}"],
+  "project": ["src/**/*.{ts,svelte}", "scripts/vite-*.ts"],
   "svelte": {
     "entry": ["src/routes/**/+page.svelte", "src/routes/**/+layout.svelte"]
   }
