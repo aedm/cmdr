@@ -19,7 +19,7 @@
   "@errors.listing.notEnoughMemory.explanation": {
     "sourceHash": "ff103cd"
   },
-  "errors.listing.notEnoughMemory.suggestion": "Đây là những cách để thử:\n- Đóng bớt vài ứng dụng để giải phóng bộ nhớ, nhất là những ứng dụng dùng nhiều tài nguyên (trình duyệt mở nhiều tab, trình soạn thảo, ứng dụng đa phương tiện)\n- Kiểm tra mức dùng bộ nhớ trong **Activity Monitor** (tìm nó trong Spotlight)\n- Mở lại nơi này để thử lại",
+  "errors.listing.notEnoughMemory.suggestion": "Bạn có thể thử:\n- Đóng bớt vài ứng dụng để giải phóng bộ nhớ, nhất là những ứng dụng dùng nhiều tài nguyên (trình duyệt mở nhiều tab, trình soạn thảo, ứng dụng đa phương tiện)\n- Kiểm tra mức dùng bộ nhớ trong **Activity Monitor** (tìm nó trong Spotlight)\n- Mở lại nơi này để thử lại",
   "@errors.listing.notEnoughMemory.suggestion": {
     "sourceHash": "26a7a46"
   },
@@ -55,7 +55,7 @@
   "@errors.listing.networkDown.explanation": {
     "sourceHash": "e2106be"
   },
-  "errors.listing.networkDown.suggestion": "Đây là những cách để thử:\n- Kiểm tra trạng thái Wi-Fi hoặc Ethernet trong **{system_settings} > Mạng**\n- Nếu bạn đang dùng Wi-Fi, thử tắt rồi bật lại\n- Trong Terminal, chạy `ping google.com` để kiểm tra kết nối\n- Mở lại nơi này khi bạn đã trực tuyến lại",
+  "errors.listing.networkDown.suggestion": "Bạn có thể thử:\n- Kiểm tra trạng thái Wi-Fi hoặc Ethernet trong **{system_settings} > Mạng**\n- Nếu bạn đang dùng Wi-Fi, thử tắt rồi bật lại\n- Trong Terminal, chạy `ping google.com` để kiểm tra kết nối\n- Mở lại nơi này khi bạn đã trực tuyến lại",
   "@errors.listing.networkDown.suggestion": {
     "sourceHash": "3fe671d"
   },
@@ -67,7 +67,7 @@
   "@errors.listing.networkConnectionDropped.explanation": {
     "sourceHash": "b155930"
   },
-  "errors.listing.networkConnectionDropped.suggestion": "Đây là những cách để thử:\n- Kiểm tra kết nối mạng của bạn\n- Nếu bạn đang dùng VPN, đảm bảo nó vẫn còn kết nối\n- Mở lại nơi này để thử lại",
+  "errors.listing.networkConnectionDropped.suggestion": "Bạn có thể thử:\n- Kiểm tra kết nối mạng của bạn\n- Nếu bạn đang dùng VPN, đảm bảo nó vẫn còn kết nối\n- Mở lại nơi này để thử lại",
   "@errors.listing.networkConnectionDropped.suggestion": {
     "sourceHash": "17c6bb8"
   },
@@ -79,7 +79,7 @@
   "@errors.listing.connectionDropped.explanation": {
     "sourceHash": "2d447c3"
   },
-  "errors.listing.connectionDropped.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem máy chủ có đang chạy và phản hồi không\n- Kiểm tra kết nối mạng của bạn\n- Mở lại nơi này để thử lại",
+  "errors.listing.connectionDropped.suggestion": "Bạn có thể thử:\n- Kiểm tra xem máy chủ có đang chạy và phản hồi không\n- Kiểm tra kết nối mạng của bạn\n- Mở lại nơi này để thử lại",
   "@errors.listing.connectionDropped.suggestion": {
     "sourceHash": "d8fba7b"
   },
@@ -91,7 +91,7 @@
   "@errors.listing.connectionReset.explanation": {
     "sourceHash": "3ccfa1c"
   },
-  "errors.listing.connectionReset.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem máy chủ có đang chạy không\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Mở lại nơi này để thử lại",
+  "errors.listing.connectionReset.suggestion": "Bạn có thể thử:\n- Kiểm tra xem máy chủ có đang chạy không\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Mở lại nơi này để thử lại",
   "@errors.listing.connectionReset.suggestion": {
     "sourceHash": "0ee3d15"
   },
@@ -103,7 +103,7 @@
   "@errors.listing.connectionTimedOutErrno.explanation": {
     "sourceHash": "33612d4"
   },
-  "errors.listing.connectionTimedOutErrno.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem thiết bị hoặc máy chủ có đang bật và tới được không\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Trong Terminal, thử `ping <hostname>` để kiểm tra kết nối\n- Mở lại nơi này để thử lại",
+  "errors.listing.connectionTimedOutErrno.suggestion": "Bạn có thể thử:\n- Kiểm tra xem thiết bị hoặc máy chủ có đang bật và tới được không\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Trong Terminal, thử `ping <hostname>` để kiểm tra kết nối\n- Mở lại nơi này để thử lại",
   "@errors.listing.connectionTimedOutErrno.suggestion": {
     "sourceHash": "4172538"
   },
@@ -115,7 +115,7 @@
   "@errors.listing.hostDown.explanation": {
     "sourceHash": "cf59cab"
   },
-  "errors.listing.hostDown.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem máy chủ có đang bật và kết nối với mạng không\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được không\n- Nếu đó là một NAS hoặc máy chủ, hãy xem giao diện quản lý của nó\n- Mở lại nơi này khi máy chủ hoạt động trở lại",
+  "errors.listing.hostDown.suggestion": "Bạn có thể thử:\n- Kiểm tra xem máy chủ có đang bật và kết nối với mạng không\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được không\n- Nếu đó là một NAS hoặc máy chủ, hãy xem giao diện quản lý của nó\n- Mở lại nơi này khi máy chủ hoạt động trở lại",
   "@errors.listing.hostDown.suggestion": {
     "sourceHash": "4a09e8e"
   },
@@ -127,7 +127,7 @@
   "@errors.listing.staleConnection.explanation": {
     "sourceHash": "3712df2"
   },
-  "errors.listing.staleConnection.suggestion": "Đây là những cách để thử:\n- Rời khỏi thư mục này rồi quay lại\n- Nếu đây là ổ đĩa mạng, thử bỏ gắn kết rồi gắn kết lại trong Finder\n- Kiểm tra xem máy chủ chứa thư mục này có đang chạy không\n- Trong Terminal, chạy `mount` để xem các ổ đĩa đang gắn kết",
+  "errors.listing.staleConnection.suggestion": "Bạn có thể thử:\n- Rời khỏi thư mục này rồi quay lại\n- Nếu đây là ổ đĩa mạng, thử bỏ gắn kết rồi gắn kết lại trong Finder\n- Kiểm tra xem máy chủ chứa thư mục này có đang chạy không\n- Trong Terminal, chạy `mount` để xem các ổ đĩa đang gắn kết",
   "@errors.listing.staleConnection.suggestion": {
     "sourceHash": "05960c8"
   },
@@ -139,7 +139,7 @@
   "@errors.listing.lockUnavailable.explanation": {
     "sourceHash": "154df3c"
   },
-  "errors.listing.lockUnavailable.suggestion": "Đây là những cách để thử:\n- Đóng bớt vài ứng dụng, nhất là những ứng dụng làm việc với nhiều tệp (trình soạn thảo, IDE, công cụ sao lưu)\n- Trong Terminal, chạy `lsof | wc -l` để xem có bao nhiêu tệp đang mở trên tất cả ứng dụng\n- Nếu vấn đề cứ tiếp diễn, bạn có thể nâng giới hạn bằng `ulimit -n 4096` trong Terminal\n- Mở lại nơi này để thử lại",
+  "errors.listing.lockUnavailable.suggestion": "Bạn có thể thử:\n- Đóng bớt vài ứng dụng, nhất là những ứng dụng làm việc với nhiều tệp (trình soạn thảo, IDE, công cụ sao lưu)\n- Trong Terminal, chạy `lsof | wc -l` để xem có bao nhiêu tệp đang mở trên tất cả ứng dụng\n- Nếu vấn đề cứ tiếp diễn, bạn có thể nâng giới hạn bằng `ulimit -n 4096` trong Terminal\n- Mở lại nơi này để thử lại",
   "@errors.listing.lockUnavailable.suggestion": {
     "sourceHash": "f9c9f8d"
   },
@@ -163,7 +163,7 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "ddf8a5d"
   },
-  "errors.listing.notPermitted.suggestion": "Đây là những cách để thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Nếu đây là thư mục được hệ thống bảo vệ (như thư mục hệ thống), bạn có thể cần cấp cho Cmdr **{full_disk_access}** trong {privacy_and_security}\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để kiểm tra quyền sở hữu và quyền truy cập",
+  "errors.listing.notPermitted.suggestion": "Bạn có thể thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Nếu đây là thư mục được hệ thống bảo vệ (như thư mục hệ thống), bạn có thể cần cấp cho Cmdr **{full_disk_access}** trong {privacy_and_security}\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để kiểm tra quyền sở hữu và quyền truy cập",
   "@errors.listing.notPermitted.suggestion": {
     "sourceHash": "32e9d74"
   },
@@ -175,7 +175,7 @@
   "@errors.listing.pathNotFoundErrno.explanation": {
     "sourceHash": "0c4bb13"
   },
-  "errors.listing.pathNotFoundErrno.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem đường dẫn có viết đúng không\n- Nếu nó nằm trên ổ đĩa mạng, đảm bảo ổ đĩa đã kết nối và thư mục chia sẻ truy cập được\n- Đi tới thư mục cha và tìm mục đó ở đấy\n- Trong Terminal, chạy `ls -la` trên thư mục cha để xem có gì trong đó",
+  "errors.listing.pathNotFoundErrno.suggestion": "Bạn có thể thử:\n- Kiểm tra xem đường dẫn có viết đúng không\n- Nếu nó nằm trên ổ đĩa mạng, đảm bảo ổ đĩa đã kết nối và có thể truy cập mục chia sẻ\n- Đi tới thư mục cha và tìm mục đó ở đấy\n- Trong Terminal, chạy `ls -la` trên thư mục cha để xem có gì trong đó",
   "@errors.listing.pathNotFoundErrno.suggestion": {
     "sourceHash": "d25f62b"
   },
@@ -187,7 +187,7 @@
   "@errors.listing.noPermissionErrno.explanation": {
     "sourceHash": "a2955dc"
   },
-  "errors.listing.noPermissionErrno.suggestion": "Đây là những cách để thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Kiểm tra quyền của thư mục trong Finder: bấm chuột phải, chọn Lấy thông tin, và xem phần Chia sẻ & quyền\n- Nếu đây là thư mục chia sẻ, hãy nhờ chủ sở hữu cập nhật quyền\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem quyền hiện tại",
+  "errors.listing.noPermissionErrno.suggestion": "Bạn có thể thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Kiểm tra quyền của thư mục trong Finder: bấm chuột phải, chọn Lấy thông tin, và xem phần Chia sẻ & quyền\n- Nếu đây là thư mục chia sẻ, hãy nhờ chủ sở hữu cập nhật quyền\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem quyền hiện tại",
   "@errors.listing.noPermissionErrno.suggestion": {
     "sourceHash": "ea316e7"
   },
@@ -247,7 +247,7 @@
   "@errors.listing.diskFullErrno.explanation": {
     "sourceHash": "30d0741"
   },
-  "errors.listing.diskFullErrno.suggestion": "Đây là những cách để thử:\n- Giải phóng dung lượng bằng cách di chuyển hoặc xóa các tệp bạn không cần nữa\n- Dọn Thùng rác (bấm chuột phải vào biểu tượng Thùng rác trên Dock)\n- Trong Terminal, chạy `df -h` để xem mỗi ổ đĩa còn bao nhiêu dung lượng\n- Xem **{system_settings} > Cài đặt chung > Dung lượng** để biết chi tiết những gì đang chiếm dung lượng",
+  "errors.listing.diskFullErrno.suggestion": "Bạn có thể thử:\n- Giải phóng dung lượng bằng cách di chuyển hoặc xóa các tệp bạn không cần nữa\n- Dọn Thùng rác (bấm chuột phải vào biểu tượng Thùng rác trên Dock)\n- Trong Terminal, chạy `df -h` để xem mỗi ổ đĩa còn bao nhiêu dung lượng\n- Xem **{system_settings} > Cài đặt chung > Dung lượng** để biết chi tiết những gì đang chiếm dung lượng",
   "@errors.listing.diskFullErrno.suggestion": {
     "sourceHash": "bf54d66"
   },
@@ -259,7 +259,7 @@
   "@errors.listing.readOnlyVolumeErrno.explanation": {
     "sourceHash": "cb19e8c"
   },
-  "errors.listing.readOnlyVolumeErrno.suggestion": "Đây là những cách để thử:\n- Nếu thiết bị có công tắc chống ghi vật lý (thường thấy trên thẻ SD), hãy gạt nó về tắt\n- Nếu đây là ảnh đĩa, gắn kết lại với quyền ghi\n- Nếu không, hãy sao chép các tệp tới một nơi có thể ghi trước",
+  "errors.listing.readOnlyVolumeErrno.suggestion": "Bạn có thể thử:\n- Nếu thiết bị có công tắc chống ghi vật lý (thường thấy trên thẻ SD), hãy gạt nó về tắt\n- Nếu đây là ảnh đĩa, gắn kết lại với quyền ghi\n- Nếu không, hãy sao chép các tệp tới một nơi có thể ghi trước",
   "@errors.listing.readOnlyVolumeErrno.suggestion": {
     "sourceHash": "6ce54da"
   },
@@ -283,7 +283,7 @@
   "@errors.listing.networkUnreachable.explanation": {
     "sourceHash": "f92dedc"
   },
-  "errors.listing.networkUnreachable.suggestion": "Đây là những cách để thử:\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Đảm bảo bạn đang ở đúng mạng (ví dụ Wi-Fi văn phòng hoặc VPN)\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Mở lại nơi này khi bạn đã kết nối",
+  "errors.listing.networkUnreachable.suggestion": "Bạn có thể thử:\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Đảm bảo bạn đang ở đúng mạng (ví dụ Wi-Fi văn phòng hoặc VPN)\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Mở lại nơi này khi bạn đã kết nối",
   "@errors.listing.networkUnreachable.suggestion": {
     "sourceHash": "b1754b4"
   },
@@ -295,7 +295,7 @@
   "@errors.listing.connectionRefused.explanation": {
     "sourceHash": "537cf4e"
   },
-  "errors.listing.connectionRefused.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem máy chủ có đang chạy và dịch vụ chia sẻ tệp của nó có đang bật không\n- Xác nhận địa chỉ và cổng máy chủ là đúng\n- Trong Terminal, thử `ping <hostname>` để xem có tới được máy chủ không\n- Mở lại nơi này để thử lại",
+  "errors.listing.connectionRefused.suggestion": "Bạn có thể thử:\n- Kiểm tra xem máy chủ có đang chạy và dịch vụ chia sẻ tệp của nó có đang bật không\n- Xác nhận địa chỉ và cổng máy chủ là đúng\n- Trong Terminal, thử `ping <hostname>` để xem có tới được máy chủ không\n- Mở lại nơi này để thử lại",
   "@errors.listing.connectionRefused.suggestion": {
     "sourceHash": "4afa12d"
   },
@@ -307,7 +307,7 @@
   "@errors.listing.symlinkLoopErrno.explanation": {
     "sourceHash": "cb728c1"
   },
-  "errors.listing.symlinkLoopErrno.suggestion": "Đây là những cách để thử:\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem các liên kết tượng trưng trỏ tới đâu\n- Tìm và sửa liên kết tạo ra vòng lặp\n- Nếu bạn không chắc liên kết nào là vấn đề, hãy lần theo từng cái một bằng `readlink <path>`",
+  "errors.listing.symlinkLoopErrno.suggestion": "Bạn có thể thử:\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem các liên kết tượng trưng trỏ tới đâu\n- Tìm và sửa liên kết tạo ra vòng lặp\n- Nếu bạn không chắc liên kết nào là vấn đề, hãy lần theo từng cái một bằng `readlink <path>`",
   "@errors.listing.symlinkLoopErrno.suggestion": {
     "sourceHash": "0a439fb"
   },
@@ -331,7 +331,7 @@
   "@errors.listing.hostUnreachable.explanation": {
     "sourceHash": "3e5e6f9"
   },
-  "errors.listing.hostUnreachable.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem máy chủ có đang bật và ở cùng mạng không\n- Nếu bạn cần VPN để tới được nó, đảm bảo VPN đã kết nối\n- Trong Terminal, thử `ping <hostname>` để kiểm tra kết nối\n- Mở lại nơi này khi máy chủ tới được",
+  "errors.listing.hostUnreachable.suggestion": "Bạn có thể thử:\n- Kiểm tra xem máy chủ có đang bật và ở cùng mạng không\n- Nếu bạn cần VPN để tới được nó, đảm bảo VPN đã kết nối\n- Trong Terminal, thử `ping <hostname>` để kiểm tra kết nối\n- Mở lại nơi này khi máy chủ tới được",
   "@errors.listing.hostUnreachable.suggestion": {
     "sourceHash": "8e7a1cf"
   },
@@ -355,7 +355,7 @@
   "@errors.listing.quotaExceeded.explanation": {
     "sourceHash": "6fa75c0"
   },
-  "errors.listing.quotaExceeded.suggestion": "Đây là những cách để thử:\n- Giải phóng dung lượng bằng cách gỡ bỏ các tệp bạn không cần nữa trên ổ đĩa này\n- Nhờ quản trị viên hệ thống tăng hạn ngạch cho bạn\n- Trong Terminal, chạy `quota` để xem mức dùng và giới hạn hiện tại của bạn",
+  "errors.listing.quotaExceeded.suggestion": "Bạn có thể thử:\n- Giải phóng dung lượng bằng cách gỡ bỏ các tệp bạn không cần nữa trên ổ đĩa này\n- Nhờ quản trị viên hệ thống tăng hạn ngạch cho bạn\n- Trong Terminal, chạy `quota` để xem mức dùng và giới hạn hiện tại của bạn",
   "@errors.listing.quotaExceeded.suggestion": {
     "sourceHash": "e24428a"
   },
@@ -367,7 +367,7 @@
   "@errors.listing.authRequiredEauth.explanation": {
     "sourceHash": "7b51115"
   },
-  "errors.listing.authRequiredEauth.suggestion": "Đây là những cách để thử:\n- Ngắt kết nối rồi kết nối lại ổ đĩa, và nhập lại tên người dùng cùng mật khẩu\n- Kiểm tra xem mật khẩu của bạn có thay đổi hay hết hạn không\n- Nếu đây là máy chủ của công ty, hãy liên hệ nhóm IT của bạn",
+  "errors.listing.authRequiredEauth.suggestion": "Bạn có thể thử:\n- Ngắt kết nối rồi kết nối lại ổ đĩa, và nhập lại tên người dùng cùng mật khẩu\n- Kiểm tra xem mật khẩu của bạn có thay đổi hay hết hạn không\n- Nếu đây là máy chủ của công ty, hãy liên hệ nhóm IT của bạn",
   "@errors.listing.authRequiredEauth.suggestion": {
     "sourceHash": "9ba659e"
   },
@@ -379,7 +379,7 @@
   "@errors.listing.authRequiredEneedauth.explanation": {
     "sourceHash": "b4e86e5"
   },
-  "errors.listing.authRequiredEneedauth.suggestion": "Đây là những cách để thử:\n- Ngắt kết nối rồi kết nối lại ổ đĩa trong Finder\n- Nhập tên người dùng và mật khẩu khi được hỏi\n- Nếu bạn không chắc về thông tin đăng nhập, hãy liên hệ quản trị viên của máy chủ",
+  "errors.listing.authRequiredEneedauth.suggestion": "Bạn có thể thử:\n- Ngắt kết nối rồi kết nối lại ổ đĩa trong Finder\n- Nhập tên người dùng và mật khẩu khi được hỏi\n- Nếu bạn không chắc về thông tin đăng nhập, hãy liên hệ quản trị viên của máy chủ",
   "@errors.listing.authRequiredEneedauth.suggestion": {
     "sourceHash": "0b61f53"
   },
@@ -415,7 +415,7 @@
   "@errors.listing.diskReadProblem.explanation": {
     "sourceHash": "9e9cd43"
   },
-  "errors.listing.diskReadProblem.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối đúng cách không\n- Mở **Disk Utility** (tìm nó trong Spotlight) và chạy **First Aid** trên ổ đĩa này\n- Nếu việc này cứ tiếp diễn, hãy sao lưu dữ liệu của bạn càng sớm càng tốt. Đĩa có thể đang sinh các vùng hỏng hoặc bắt đầu xuống cấp.",
+  "errors.listing.diskReadProblem.suggestion": "Bạn có thể thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối đúng cách không\n- Mở **Disk Utility** (tìm nó trong Spotlight) và chạy **First Aid** trên ổ đĩa này\n- Nếu việc này cứ tiếp diễn, hãy sao lưu dữ liệu của bạn càng sớm càng tốt. Đĩa có thể đang sinh các vùng hỏng hoặc bắt đầu xuống cấp.",
   "@errors.listing.diskReadProblem.suggestion": {
     "sourceHash": "792c921"
   },
@@ -427,7 +427,7 @@
   "@errors.listing.unexpectedSystemResponse.explanation": {
     "sourceHash": "eeddaa7"
   },
-  "errors.listing.unexpectedSystemResponse.suggestion": "Đây là những cách để thử:\n- Mở lại nơi này để thử lại\n- Nếu việc này cứ tiếp diễn, mở **Disk Utility** (tìm nó trong Spotlight) và chạy **First Aid** trên ổ đĩa này để kiểm tra hệ thống tệp",
+  "errors.listing.unexpectedSystemResponse.suggestion": "Bạn có thể thử:\n- Mở lại nơi này để thử lại\n- Nếu việc này cứ tiếp diễn, mở **Disk Utility** (tìm nó trong Spotlight) và chạy **First Aid** trên ổ đĩa này để kiểm tra hệ thống tệp",
   "@errors.listing.unexpectedSystemResponse.suggestion": {
     "sourceHash": "4e5a9bb"
   },
@@ -439,7 +439,7 @@
   "@errors.listing.deviceProblem.explanation": {
     "sourceHash": "a809613"
   },
-  "errors.listing.deviceProblem.suggestion": "Đây là những cách để thử:\n- Ngắt kết nối rồi kết nối lại thiết bị\n- Thử một cổng USB hoặc cáp khác\n- Nếu là ổ đĩa ngoài, thử cắm nó vào một máy tính khác để xem trục trặc có theo thiết bị không\n- Nếu việc này cứ tiếp diễn, có thể thiết bị cần sửa chữa hoặc thay thế",
+  "errors.listing.deviceProblem.suggestion": "Bạn có thể thử:\n- Ngắt kết nối rồi kết nối lại thiết bị\n- Thử một cổng USB hoặc cáp khác\n- Nếu là ổ đĩa ngoài, thử cắm nó vào một máy tính khác để xem trục trặc có theo thiết bị không\n- Nếu việc này cứ tiếp diễn, có thể thiết bị cần sửa chữa hoặc thay thế",
   "@errors.listing.deviceProblem.suggestion": {
     "sourceHash": "2cbb1cf"
   },
@@ -451,7 +451,7 @@
   "@errors.listing.couldntReadUnknown.explanation": {
     "sourceHash": "80b9ff5"
   },
-  "errors.listing.couldntReadUnknown.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối không\n- Mở lại nơi này để thử lại\n- Nếu việc này cứ tiếp diễn, mở **Disk Utility** và chạy **First Aid** trên ổ đĩa này",
+  "errors.listing.couldntReadUnknown.suggestion": "Bạn có thể thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối không\n- Mở lại nơi này để thử lại\n- Nếu việc này cứ tiếp diễn, mở **Disk Utility** và chạy **First Aid** trên ổ đĩa này",
   "@errors.listing.couldntReadUnknown.suggestion": {
     "sourceHash": "0073987"
   },
@@ -463,7 +463,7 @@
   "@errors.listing.notFound.explanation": {
     "sourceHash": "0c4bb13"
   },
-  "errors.listing.notFound.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem đường dẫn có viết đúng không\n- Nếu nó nằm trên ổ đĩa mạng, đảm bảo ổ đĩa đã kết nối và thư mục chia sẻ truy cập được\n- Đi tới thư mục cha và tìm mục đó ở đấy\n- Trong Terminal, chạy `ls -la` trên thư mục cha để xem có gì trong đó",
+  "errors.listing.notFound.suggestion": "Bạn có thể thử:\n- Kiểm tra xem đường dẫn có viết đúng không\n- Nếu nó nằm trên ổ đĩa mạng, đảm bảo ổ đĩa đã kết nối và có thể truy cập mục chia sẻ\n- Đi tới thư mục cha và tìm mục đó ở đấy\n- Trong Terminal, chạy `ls -la` trên thư mục cha để xem có gì trong đó",
   "@errors.listing.notFound.suggestion": {
     "sourceHash": "d25f62b"
   },
@@ -487,7 +487,7 @@
   "@errors.listing.permissionDenied.explanation": {
     "sourceHash": "a2955dc"
   },
-  "errors.listing.permissionDenied.suggestion": "Đây là những cách để thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Kiểm tra quyền của thư mục trong Finder: bấm chuột phải vào thư mục, chọn Lấy thông tin, và xem phần Chia sẻ & quyền\n- Nếu đây là thư mục chia sẻ, hãy nhờ chủ sở hữu cập nhật quyền\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem quyền hiện tại",
+  "errors.listing.permissionDenied.suggestion": "Bạn có thể thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Kiểm tra quyền của thư mục trong Finder: bấm chuột phải vào thư mục, chọn Lấy thông tin, và xem phần Chia sẻ & quyền\n- Nếu đây là thư mục chia sẻ, hãy nhờ chủ sở hữu cập nhật quyền\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để xem quyền hiện tại",
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "0fa0829"
   },
@@ -499,7 +499,7 @@
   "@errors.listing.remotePermissionDenied.explanation": {
     "sourceHash": "4e6b9ef"
   },
-  "errors.listing.remotePermissionDenied.suggestion": "Đây là những cách để thử:\n- Kiểm tra quyền của thư mục trên máy chủ, và tài khoản bạn đã dùng để gắn kết bản chia sẻ\n- Một số thư mục thuộc về tài khoản hệ thống của chính máy chủ (ví dụ `lost+found` trên một bản chia sẻ Linux) và luôn đóng với mọi người khác\n- Để kết nối bằng tài khoản khác, hãy đẩy bản chia sẻ ra rồi gắn kết lại với thông tin đăng nhập đó",
+  "errors.listing.remotePermissionDenied.suggestion": "Bạn có thể thử:\n- Kiểm tra quyền của thư mục trên máy chủ, và tài khoản bạn đã dùng để gắn kết bản chia sẻ\n- Một số thư mục thuộc về tài khoản hệ thống của chính máy chủ (ví dụ `lost+found` trên một bản chia sẻ Linux) và luôn đóng với mọi người khác\n- Để kết nối bằng tài khoản khác, hãy đẩy bản chia sẻ ra rồi gắn kết lại với thông tin đăng nhập đó",
   "@errors.listing.remotePermissionDenied.suggestion": {
     "sourceHash": "506e57a"
   },
@@ -535,7 +535,7 @@
   "@errors.listing.deviceDisconnected.explanation": {
     "sourceHash": "c8b7b10"
   },
-  "errors.listing.deviceDisconnected.suggestion": "Đây là những cách để thử:\n- Kết nối lại thiết bị và đảm bảo cáp đã chắc chắn\n- Nếu là điện thoại, hãy mở khóa và đảm bảo chế độ truyền tệp đang bật\n- Mở lại nơi này khi thiết bị hoạt động trở lại",
+  "errors.listing.deviceDisconnected.suggestion": "Bạn có thể thử:\n- Kết nối lại thiết bị và đảm bảo cáp đã chắc chắn\n- Nếu là điện thoại, hãy mở khóa và đảm bảo chế độ truyền tệp đang bật\n- Mở lại nơi này khi thiết bị hoạt động trở lại",
   "@errors.listing.deviceDisconnected.suggestion": {
     "sourceHash": "9f6c9a0"
   },
@@ -547,7 +547,7 @@
   "@errors.listing.notConnected.explanation": {
     "sourceHash": "4c508d7"
   },
-  "errors.listing.notConnected.suggestion": "Đây là những cách để thử:\n- Mở điện thoại hoặc máy chủ từ bộ chọn ổ đĩa để kết nối\n- Nếu là điện thoại, hãy mở khóa và chấp nhận mọi lời nhắc hiện ra\n- Mở lại nơi này khi đã kết nối",
+  "errors.listing.notConnected.suggestion": "Bạn có thể thử:\n- Mở điện thoại hoặc máy chủ từ bộ chọn ổ đĩa để kết nối\n- Nếu là điện thoại, hãy mở khóa và chấp nhận mọi lời nhắc hiện ra\n- Mở lại nơi này khi đã kết nối",
   "@errors.listing.notConnected.suggestion": {
     "sourceHash": "3c48bcd"
   },
@@ -571,7 +571,7 @@
   "@errors.listing.readOnly.explanation": {
     "sourceHash": "99924c3"
   },
-  "errors.listing.readOnly.suggestion": "Đây là những cách để thử:\n- Nếu thiết bị có công tắc chống ghi vật lý (thường thấy trên thẻ SD), hãy gạt nó về tắt\n- Nếu đây là ảnh đĩa, gắn kết lại với quyền ghi\n- Nếu không, hãy sao chép các tệp tới một nơi có thể ghi trước",
+  "errors.listing.readOnly.suggestion": "Bạn có thể thử:\n- Nếu thiết bị có công tắc chống ghi vật lý (thường thấy trên thẻ SD), hãy gạt nó về tắt\n- Nếu đây là ảnh đĩa, gắn kết lại với quyền ghi\n- Nếu không, hãy sao chép các tệp tới một nơi có thể ghi trước",
   "@errors.listing.readOnly.suggestion": {
     "sourceHash": "6ce54da"
   },
@@ -583,7 +583,7 @@
   "@errors.listing.storageFull.explanation": {
     "sourceHash": "30d0741"
   },
-  "errors.listing.storageFull.suggestion": "Đây là những cách để thử:\n- Giải phóng dung lượng bằng cách di chuyển hoặc xóa các tệp bạn không cần nữa\n- Dọn Thùng rác (bấm chuột phải vào biểu tượng Thùng rác trên Dock)\n- Trong Terminal, chạy `df -h` để xem mỗi ổ đĩa còn bao nhiêu dung lượng",
+  "errors.listing.storageFull.suggestion": "Bạn có thể thử:\n- Giải phóng dung lượng bằng cách di chuyển hoặc xóa các tệp bạn không cần nữa\n- Dọn Thùng rác (bấm chuột phải vào biểu tượng Thùng rác trên Dock)\n- Trong Terminal, chạy `df -h` để xem mỗi ổ đĩa còn bao nhiêu dung lượng",
   "@errors.listing.storageFull.suggestion": {
     "sourceHash": "fcdd42d"
   },
@@ -595,7 +595,7 @@
   "@errors.listing.connectionTimedOut.explanation": {
     "sourceHash": "5b3f8b2"
   },
-  "errors.listing.connectionTimedOut.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem thiết bị hoặc máy chủ có đang bật và tới được không\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Thử lại",
+  "errors.listing.connectionTimedOut.suggestion": "Bạn có thể thử:\n- Kiểm tra xem thiết bị hoặc máy chủ có đang bật và tới được không\n- Kiểm tra kết nối Wi-Fi hoặc Ethernet của bạn\n- Trong Terminal, thử `ping <hostname>` để kiểm tra xem có tới được máy chủ không\n- Thử lại",
   "@errors.listing.connectionTimedOut.suggestion": {
     "sourceHash": "f9b8a2d"
   },
@@ -619,7 +619,7 @@
   "@errors.listing.deletePending.explanation": {
     "sourceHash": "047ad2f"
   },
-  "errors.listing.deletePending.suggestion": "Đây là những cách để thử:\n- Đợi một chút rồi thử lại — khi handle cuối cùng đóng, tệp sẽ biến mất\n- Đóng bất kỳ ứng dụng nào khác có thể đang mở tệp này\n- Nếu nó vẫn còn đó, hãy khởi động lại Cmdr để nhả mọi handle nó có thể còn giữ",
+  "errors.listing.deletePending.suggestion": "Bạn có thể thử:\n- Đợi một chút rồi thử lại — khi handle cuối cùng đóng, tệp sẽ biến mất\n- Đóng bất kỳ ứng dụng nào khác có thể đang mở tệp này\n- Nếu nó vẫn còn đó, hãy khởi động lại Cmdr để nhả mọi handle nó có thể còn giữ",
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "6dbe760"
   },
@@ -631,7 +631,7 @@
   "@errors.listing.invalidName.explanation": {
     "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Đây là những cách để thử:\n- Đổi tên mục đó thành tên ngắn hơn và đơn giản hơn\n- Một số đích từ chối các tên dành riêng như `CON`, `NUL` hoặc `LPT1`\n- Tên quá dài có thể vượt giới hạn của chính đích, ngay cả khi mọi ký tự trong đó đều ổn",
+  "errors.listing.invalidName.suggestion": "Bạn có thể thử:\n- Đổi tên mục đó thành tên ngắn hơn và đơn giản hơn\n- Một số đích từ chối các tên dành riêng như `CON`, `NUL` hoặc `LPT1`\n- Tên quá dài có thể vượt giới hạn của chính đích, ngay cả khi mọi ký tự trong đó đều ổn",
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
@@ -655,7 +655,7 @@
   "@errors.listing.ioSerious.explanation": {
     "sourceHash": "6c3b625"
   },
-  "errors.listing.ioSerious.suggestion": "Đây là những cách để thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối không\n- Thử lại\n- Nếu việc này cứ tiếp diễn, thử chạy **Disk Utility > First Aid** trên ổ đĩa này",
+  "errors.listing.ioSerious.suggestion": "Bạn có thể thử:\n- Kiểm tra xem đĩa hoặc thiết bị có còn kết nối không\n- Thử lại\n- Nếu việc này cứ tiếp diễn, thử chạy **Disk Utility > First Aid** trên ổ đĩa này",
   "@errors.listing.ioSerious.suggestion": {
     "sourceHash": "6c5be6d"
   },
@@ -703,7 +703,7 @@
   "@errors.listing.emptyRootICloud.explanation": {
     "sourceHash": "d095f83"
   },
-  "errors.listing.emptyRootICloud.suggestion": "Đây là những cách để thử:\n- Mở [**{system_settings} > {privacy_and_security}**](x-apple.systempreferences:com.apple.preference.security?Privacy) và chọn **{full_disk_access}**\n- Thêm Cmdr (dùng nút **+**) rồi bật nó lên\n- Thoát rồi mở lại Cmdr\n- Quay lại đây để thử lại",
+  "errors.listing.emptyRootICloud.suggestion": "Bạn có thể thử:\n- Mở [**{system_settings} > {privacy_and_security}**](x-apple.systempreferences:com.apple.preference.security?Privacy) và chọn **{full_disk_access}**\n- Thêm Cmdr (dùng nút **+**) rồi bật nó lên\n- Thoát rồi mở lại Cmdr\n- Quay lại đây để thử lại",
   "@errors.listing.emptyRootICloud.suggestion": {
     "sourceHash": "25cac98"
   },
@@ -985,91 +985,91 @@
   "@errors.provider.genericCloudStorage.displayName": {
     "sourceHash": "1066349"
   },
-  "errors.provider.macDroid.transient": "Thư mục này do **MacDroid** quản lý. Đây là những cách để thử:\n- Mở MacDroid và kiểm tra xem điện thoại của bạn đã kết nối chưa\n- Đảm bảo điện thoại đã mở khóa và đang ở chế độ truyền tệp\n- Rút rồi cắm lại cáp USB, rồi mở lại nơi này",
+  "errors.provider.macDroid.transient": "Thư mục này do **MacDroid** quản lý. Bạn có thể thử:\n- Mở MacDroid và kiểm tra xem điện thoại của bạn đã kết nối chưa\n- Đảm bảo điện thoại đã mở khóa và đang ở chế độ truyền tệp\n- Rút rồi cắm lại cáp USB, rồi mở lại nơi này",
   "@errors.provider.macDroid.transient": {
     "sourceHash": "994b8b8"
   },
-  "errors.provider.macDroid.needsAction": "Thư mục này do **MacDroid** quản lý. Đây là những cách để thử:\n- Mở MacDroid và kiểm tra xem điện thoại của bạn đã kết nối chưa\n- Đảm bảo điện thoại đã mở khóa với màn hình đang bật\n- Kiểm tra xem chế độ truyền tệp qua USB đã được bật trên điện thoại chưa",
+  "errors.provider.macDroid.needsAction": "Thư mục này do **MacDroid** quản lý. Bạn có thể thử:\n- Mở MacDroid và kiểm tra xem điện thoại của bạn đã kết nối chưa\n- Đảm bảo điện thoại đã mở khóa với màn hình đang bật\n- Kiểm tra xem chế độ truyền tệp qua USB đã được bật trên điện thoại chưa",
   "@errors.provider.macDroid.needsAction": {
     "sourceHash": "a2c4d13"
   },
-  "errors.provider.macDroid.serious": "Thư mục này do **MacDroid** quản lý. Đây là những cách để thử:\n- Rút rồi cắm lại cáp USB\n- Khởi động lại MacDroid\n- Thử một cổng USB hoặc cáp khác",
+  "errors.provider.macDroid.serious": "Thư mục này do **MacDroid** quản lý. Bạn có thể thử:\n- Rút rồi cắm lại cáp USB\n- Khởi động lại MacDroid\n- Thử một cổng USB hoặc cáp khác",
   "@errors.provider.macDroid.serious": {
     "sourceHash": "a4ab4fe"
   },
-  "errors.provider.iCloud.transient": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Kiểm tra kết nối internet của bạn\n- Đảm bảo bạn đã đăng nhập vào iCloud trong {system_settings}\n- Mở lại nơi này để thử lại",
+  "errors.provider.iCloud.transient": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Kiểm tra kết nối internet của bạn\n- Đảm bảo bạn đã đăng nhập vào iCloud trong {system_settings}\n- Mở lại nơi này để thử lại",
   "@errors.provider.iCloud.transient": {
     "sourceHash": "7c0600f"
   },
-  "errors.provider.iCloud.needsAction": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Kiểm tra xem iCloud Drive đã được bật trong **{system_settings} > Tài khoản Apple > iCloud** chưa\n- Đảm bảo bạn đã đăng nhập đúng tài khoản Apple\n- Kiểm tra xem dung lượng iCloud của bạn có đầy không",
+  "errors.provider.iCloud.needsAction": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Kiểm tra xem iCloud Drive đã được bật trong **{system_settings} > Tài khoản Apple > iCloud** chưa\n- Đảm bảo bạn đã đăng nhập đúng tài khoản Apple\n- Kiểm tra xem dung lượng iCloud của bạn có đầy không",
   "@errors.provider.iCloud.needsAction": {
     "sourceHash": "1c6dab0"
   },
-  "errors.provider.iCloud.serious": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Đăng xuất rồi đăng nhập lại iCloud trong {system_settings}\n- Xem [trang trạng thái hệ thống](https://www.apple.com/support/systemstatus/) của Apple",
+  "errors.provider.iCloud.serious": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Đăng xuất rồi đăng nhập lại iCloud trong {system_settings}\n- Xem [trang trạng thái hệ thống](https://www.apple.com/support/systemstatus/) của Apple",
   "@errors.provider.iCloud.serious": {
     "sourceHash": "3276e42"
   },
-  "errors.provider.macFuse.transient": "Đây là một mục gắn kết **macFUSE**. Máy chủ từ xa có thể chậm hoặc không tới được. Đây là những cách để thử:\n- Kiểm tra kết nối mạng của bạn\n- Kiểm tra xem máy chủ từ xa có đang chạy không\n- Mở lại nơi này để thử lại",
+  "errors.provider.macFuse.transient": "Đây là một mục gắn kết **macFUSE**. Máy chủ từ xa có thể chậm hoặc không tới được. Bạn có thể thử:\n- Kiểm tra kết nối mạng của bạn\n- Kiểm tra xem máy chủ từ xa có đang chạy không\n- Mở lại nơi này để thử lại",
   "@errors.provider.macFuse.transient": {
     "sourceHash": "06d9019"
   },
-  "errors.provider.macFuse.needsAction": "Đây là một mục gắn kết **macFUSE**. Đây là những cách để thử:\n- Kiểm tra xem tiến trình FUSE đứng sau mục gắn kết này có còn chạy không\n- Buộc bỏ gắn kết rồi gắn kết lại ổ đĩa nếu cần\n- Đảm bảo macFUSE đã được cập nhật trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
+  "errors.provider.macFuse.needsAction": "Đây là một mục gắn kết **macFUSE**. Bạn có thể thử:\n- Kiểm tra xem tiến trình FUSE đứng sau mục gắn kết này có còn chạy không\n- Buộc bỏ gắn kết rồi gắn kết lại ổ đĩa nếu cần\n- Đảm bảo macFUSE đã được cập nhật trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
   "@errors.provider.macFuse.needsAction": {
     "sourceHash": "60e836a"
   },
-  "errors.provider.macFuse.serious": "Đây là một mục gắn kết **macFUSE**. Tiến trình FUSE đứng sau nó có khả năng đã sập hoặc ngắt kết nối. Đây là những cách để thử:\n- Buộc bỏ gắn kết ổ đĩa: chạy `umount -f /Volumes/<name>` trong Terminal\n- Gắn kết lại bằng lệnh gắn kết ban đầu\n- Nếu việc này cứ tiếp diễn, hãy kiểm tra xem macFUSE đã được cập nhật chưa",
+  "errors.provider.macFuse.serious": "Đây là một mục gắn kết **macFUSE**. Tiến trình FUSE đứng sau nó có khả năng đã sập hoặc ngắt kết nối. Bạn có thể thử:\n- Buộc bỏ gắn kết ổ đĩa: chạy `umount -f /Volumes/<name>` trong Terminal\n- Gắn kết lại bằng lệnh gắn kết ban đầu\n- Nếu việc này cứ tiếp diễn, hãy kiểm tra xem macFUSE đã được cập nhật chưa",
   "@errors.provider.macFuse.serious": {
     "sourceHash": "71d42da"
   },
-  "errors.provider.pCloudFuse.transient": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Đây là những cách để thử:\n- Kiểm tra kết nối internet của bạn\n- Đảm bảo ứng dụng pCloud đang chạy\n- Mở lại nơi này để thử lại",
+  "errors.provider.pCloudFuse.transient": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Bạn có thể thử:\n- Kiểm tra kết nối internet của bạn\n- Đảm bảo ứng dụng pCloud đang chạy\n- Mở lại nơi này để thử lại",
   "@errors.provider.pCloudFuse.transient": {
     "sourceHash": "1afbd51"
   },
-  "errors.provider.pCloudFuse.needsAction": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Đây là những cách để thử:\n- Đảm bảo ứng dụng pCloud đang chạy và bạn đã đăng nhập\n- Kiểm tra kết nối internet của bạn\n- Sau khi cập nhật macOS, hãy phê duyệt lại phần mở rộng hệ thống của pCloud trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
+  "errors.provider.pCloudFuse.needsAction": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Bạn có thể thử:\n- Đảm bảo ứng dụng pCloud đang chạy và bạn đã đăng nhập\n- Kiểm tra kết nối internet của bạn\n- Sau khi cập nhật macOS, hãy phê duyệt lại phần mở rộng hệ thống của pCloud trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
   "@errors.provider.pCloudFuse.needsAction": {
     "sourceHash": "2753abb"
   },
-  "errors.provider.pCloudFuse.serious": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Tiến trình FUSE của pCloud có thể đã sập. Đây là những cách để thử:\n- Thoát rồi mở lại ứng dụng pCloud\n- Nếu ổ đĩa không xuất hiện lại, hãy buộc bỏ gắn kết: chạy `umount -f /Volumes/pCloudDrive` trong Terminal\n- Sau khi cập nhật macOS, hãy phê duyệt lại phần mở rộng hệ thống của pCloud trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
+  "errors.provider.pCloudFuse.serious": "Thư mục này nằm trên ổ đĩa ảo của **pCloud**. Tiến trình FUSE của pCloud có thể đã sập. Bạn có thể thử:\n- Thoát rồi mở lại ứng dụng pCloud\n- Nếu ổ đĩa không xuất hiện lại, hãy buộc bỏ gắn kết: chạy `umount -f /Volumes/pCloudDrive` trong Terminal\n- Sau khi cập nhật macOS, hãy phê duyệt lại phần mở rộng hệ thống của pCloud trong **{system_settings} > Cài đặt chung > Mục đăng nhập & Phần mở rộng**",
   "@errors.provider.pCloudFuse.serious": {
     "sourceHash": "cba0026"
   },
-  "errors.provider.veraCrypt.transient": "Đây là một ổ đĩa được mã hóa **{name}**. Đây là những cách để thử:\n- Kiểm tra xem ổ đĩa VeraCrypt có còn được gắn kết không\n- Mở lại nơi này để thử lại",
+  "errors.provider.veraCrypt.transient": "Đây là một ổ đĩa được mã hóa **{name}**. Bạn có thể thử:\n- Kiểm tra xem ổ đĩa VeraCrypt có còn được gắn kết không\n- Mở lại nơi này để thử lại",
   "@errors.provider.veraCrypt.transient": {
     "sourceHash": "fe408ae"
   },
-  "errors.provider.veraCrypt.needsAction": "Đây là một ổ đĩa được mã hóa **{name}**. Đây là những cách để thử:\n- Mở VeraCrypt và kiểm tra xem ổ đĩa này đã được gắn kết chưa\n- Bỏ gắn kết rồi gắn kết lại ổ đĩa nếu cần",
+  "errors.provider.veraCrypt.needsAction": "Đây là một ổ đĩa được mã hóa **{name}**. Bạn có thể thử:\n- Mở VeraCrypt và kiểm tra xem ổ đĩa này đã được gắn kết chưa\n- Bỏ gắn kết rồi gắn kết lại ổ đĩa nếu cần",
   "@errors.provider.veraCrypt.needsAction": {
     "sourceHash": "08dec65"
   },
-  "errors.provider.veraCrypt.serious": "Đây là một ổ đĩa được mã hóa **{name}**. Đây là những cách để thử:\n- Bỏ gắn kết rồi gắn kết lại ổ đĩa trong VeraCrypt\n- Nếu ổ đĩa cứ gặp trục trặc, hãy kiểm tra nó bằng các công cụ sửa chữa của VeraCrypt",
+  "errors.provider.veraCrypt.serious": "Đây là một ổ đĩa được mã hóa **{name}**. Bạn có thể thử:\n- Bỏ gắn kết rồi gắn kết lại ổ đĩa trong VeraCrypt\n- Nếu ổ đĩa cứ gặp trục trặc, hãy kiểm tra nó bằng các công cụ sửa chữa của VeraCrypt",
   "@errors.provider.veraCrypt.serious": {
     "sourceHash": "a5c41a1"
   },
-  "errors.provider.cmVolumes.transient": "Đây là một mục gắn kết đám mây. Đây là những cách để thử:\n- Kiểm tra kết nối internet của bạn\n- Kiểm tra xem phần mềm gắn kết (CloudMounter, Mountain Duck, v.v.) có đang chạy không\n- Mở lại nơi này để thử lại",
+  "errors.provider.cmVolumes.transient": "Đây là một mục gắn kết đám mây. Bạn có thể thử:\n- Kiểm tra kết nối internet của bạn\n- Kiểm tra xem phần mềm gắn kết (CloudMounter, Mountain Duck, v.v.) có đang chạy không\n- Mở lại nơi này để thử lại",
   "@errors.provider.cmVolumes.transient": {
     "sourceHash": "f0165b3"
   },
-  "errors.provider.cmVolumes.nonTransient": "Đây là một mục gắn kết đám mây. Đây là những cách để thử:\n- Kiểm tra xem phần mềm gắn kết (CloudMounter, Mountain Duck, v.v.) có đang chạy không\n- Ngắt kết nối rồi kết nối lại mục gắn kết\n- Kiểm tra xem thông tin đăng nhập của bạn có hết hạn không",
+  "errors.provider.cmVolumes.nonTransient": "Đây là một mục gắn kết đám mây. Bạn có thể thử:\n- Kiểm tra xem phần mềm gắn kết (CloudMounter, Mountain Duck, v.v.) có đang chạy không\n- Ngắt kết nối rồi kết nối lại mục gắn kết\n- Kiểm tra xem thông tin đăng nhập của bạn có hết hạn không",
   "@errors.provider.cmVolumes.nonTransient": {
     "sourceHash": "752c7e4"
   },
-  "errors.provider.genericCloudStorage.transient": "Thư mục này do một nhà cung cấp đám mây quản lý. Đây là những cách để thử:\n- Kiểm tra kết nối internet của bạn\n- Kiểm tra xem ứng dụng đồng bộ có đang chạy không\n- Mở lại nơi này để thử lại",
+  "errors.provider.genericCloudStorage.transient": "Thư mục này do một nhà cung cấp đám mây quản lý. Bạn có thể thử:\n- Kiểm tra kết nối internet của bạn\n- Kiểm tra xem ứng dụng đồng bộ có đang chạy không\n- Mở lại nơi này để thử lại",
   "@errors.provider.genericCloudStorage.transient": {
     "sourceHash": "9398792"
   },
-  "errors.provider.genericCloudStorage.nonTransient": "Thư mục này do một nhà cung cấp đám mây quản lý. Đây là những cách để thử:\n- Kiểm tra xem ứng dụng đồng bộ có đang chạy không\n- Đăng xuất rồi đăng nhập lại vào ứng dụng đám mây\n- Kiểm tra kết nối internet của bạn",
+  "errors.provider.genericCloudStorage.nonTransient": "Thư mục này do một nhà cung cấp đám mây quản lý. Bạn có thể thử:\n- Kiểm tra xem ứng dụng đồng bộ có đang chạy không\n- Đăng xuất rồi đăng nhập lại vào ứng dụng đám mây\n- Kiểm tra kết nối internet của bạn",
   "@errors.provider.genericCloudStorage.nonTransient": {
     "sourceHash": "ce8a112"
   },
-  "errors.provider.appBased.transient": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Kiểm tra kết nối internet của bạn\n- Mở {app} và đảm bảo nó đang chạy và đã đồng bộ\n- Mở lại nơi này để thử lại",
+  "errors.provider.appBased.transient": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Kiểm tra kết nối internet của bạn\n- Mở {app} và đảm bảo nó đang chạy và đã đồng bộ\n- Mở lại nơi này để thử lại",
   "@errors.provider.appBased.transient": {
     "sourceHash": "e3ef8b8"
   },
-  "errors.provider.appBased.needsAction": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Mở {app} và kiểm tra trạng thái đồng bộ của bạn\n- Đảm bảo bạn đã đăng nhập vào {app}\n- Kiểm tra xem bạn có quyền truy cập thư mục này trong {name} không",
+  "errors.provider.appBased.needsAction": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Mở {app} và kiểm tra trạng thái đồng bộ của bạn\n- Đảm bảo bạn đã đăng nhập vào {app}\n- Kiểm tra xem bạn có quyền truy cập thư mục này trong {name} không",
   "@errors.provider.appBased.needsAction": {
     "sourceHash": "88009fd"
   },
-  "errors.provider.appBased.serious": "Thư mục này do **{name}** quản lý. Đây là những cách để thử:\n- Thoát rồi mở lại {app}\n- Đăng xuất rồi đăng nhập lại vào {app}\n- Xem trang trạng thái của {name} để biết về sự cố",
+  "errors.provider.appBased.serious": "Thư mục này do **{name}** quản lý. Bạn có thể thử:\n- Thoát rồi mở lại {app}\n- Đăng xuất rồi đăng nhập lại vào {app}\n- Xem trang trạng thái của {name} để biết về sự cố",
   "@errors.provider.appBased.serious": {
     "sourceHash": "64baea5"
   },

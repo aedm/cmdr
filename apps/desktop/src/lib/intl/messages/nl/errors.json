@@ -631,7 +631,7 @@
   "@errors.listing.invalidName.explanation": {
     "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Dit kun je proberen:\n- Geef het item een kortere, eenvoudigere naam\n- Sommige bestemmingen weigeren gereserveerde namen zoals `CON`, `NUL` of `LPT1`\n- Een heel lange naam kan over de eigen limiet van de bestemming heen gaan, ook als elk teken erin prima is",
+  "errors.listing.invalidName.suggestion": "Dit kun je proberen:\n- Geef het onderdeel een kortere, eenvoudigere naam\n- Sommige bestemmingen weigeren gereserveerde namen zoals `CON`, `NUL` of `LPT1`\n- Een heel lange naam kan over de eigen limiet van de bestemming heen gaan, ook als elk teken erin prima is",
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },

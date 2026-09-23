@@ -3420,6 +3420,7 @@ so với chữ thường). Bốn khóa phải kể cùng một câu chuyện b�
 - **"Choose it from its folder instead" → `Hãy mở thư mục chứa nó rồi chọn ở đó.`** · ở đây `thư mục chứa nó` là cụm mô
   tả ("thư mục đang chứa nó"), không phải thuật ngữ parent folder; bản gợi ý dài vẫn dùng `thư mục cha` như catalog ·
   `high`.
-- **Lời dẫn "Here's what to try" là `Bạn có thể thử:`** (60 khóa trong `errors.json`); ba khóa còn viết
-  `Đây là những cách để thử:` là trôi thuật ngữ. `errors.listing.ambiguousName.suggestion` đã sửa; hai khóa
-  `errors.listing.notFound.suggestion` và `errors.listing.pathNotFoundErrno.suggestion` vẫn chờ một đợt rà soát.
+- **Lời dẫn "Here's what to try" là `Bạn có thể thử:`**, đúng như mục đầu glossary, ở cả 60 khóa `errors.json` có lời
+  dẫn này (kể cả khi nó đứng sau một câu mở, như `errors.provider.*`). ❌ Không `Đây là những cách để thử:`: dịch sát
+  từng chữ và dài hơn. Trong `errors.listing.notFound.suggestion` / `…pathNotFoundErrno.suggestion`, "the share" là
+  `mục chia sẻ` như catalog đã chốt, không phải `thư mục chia sẻ` (shared folder).

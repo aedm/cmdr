@@ -3771,8 +3771,12 @@ Een server kan twee namen bewaren die op het scherm identiek zijn (een `é` als 
 alleen een verschil in hoofdletters). De eerdere Nederlandse versie van de `ambiguousName`-sleutels kwam van een
 programmeeragent die deze gids niet had gelezen; deze pas trekt ze recht.
 
-- **item → `onderdeel`, ook hier** · de gewone glossary-rij (macOS Finder `items` → `onderdelen`) · high. `item` in
-  `errors.json` is drift; `errors.listing.invalidName.suggestion` draagt het nog en is buiten deze pas gelaten.
+- **item → `onderdeel`, ook hier** · de gewone glossary-rij (macOS Finder `items` → `onderdelen`) · high. Geldt voor de
+  hele catalogus, ook voor een onderdeel in Sleutelhangertoegang (`ai.secretError.keychainBody`): Keychain Access `nl`
+  zegt `Nieuw wachtwoordonderdeel…`, `Alle onderdelen`, `Dit onderdeel is onbeperkt toegankelijk.` (`MainMenu.loctable`
+  / `Localizable.loctable`, macOS 27, 2026-09-23) · high. `item` blijft alleen staan waar het geen bestand of map is:
+  `menu-item`, `stash-item` (een git-stash, `fileExplorer.git.size.stashEntries`), en de geschiedenisregels in
+  `settings.*.recent*.maxCount.description` ("entries" van een lijst zoekopdrachten of selecties).
 - **"look the same" → `zien er hetzelfde uit`** · gewone Nederlandse wending, geen bron nodig · high.
 - **"the server spells them differently" / "stores them spelled differently" → `de server slaat ze anders op`** · de
   `@key`-beschrijving vraagt om gewone woorden voor "andere tekenreeks"; `spellen` voor een server leest vreemd en

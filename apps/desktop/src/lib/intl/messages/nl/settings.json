@@ -291,7 +291,7 @@
   "@settings.listing.showHiddenFiles.label": {
     "sourceHash": "b5ede7f"
   },
-  "settings.listing.showHiddenFiles.description": "Toon bestanden die met een punt beginnen (zoals .zshrc) en items die het systeem als verborgen markeert. Geldt voor beide panelen.",
+  "settings.listing.showHiddenFiles.description": "Toon bestanden die met een punt beginnen (zoals .zshrc) en onderdelen die het systeem als verborgen markeert. Geldt voor beide panelen.",
   "@settings.listing.showHiddenFiles.description": {
     "sourceHash": "8e77c67"
   },

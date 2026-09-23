@@ -92,7 +92,7 @@
   "@queryUi.empty.tipAi": {
     "sourceHash": "e83a0d6"
   },
-  "queryUi.empty.indexReady": "Index gereed · {countText} {count, plural, one {item} other {items}}",
+  "queryUi.empty.indexReady": "Index gereed · {countText} {count, plural, one {onderdeel} other {onderdelen}}",
   "@queryUi.empty.indexReady": {
     "sourceHash": "838fcf8"
   },
@@ -175,7 +175,7 @@
   "@queryUi.results.listboxAria": {
     "sourceHash": "e978b00"
   },
-  "queryUi.results.scanningWithCount": "Bezig met scannen ({countText} items)...",
+  "queryUi.results.scanningWithCount": "Bezig met scannen ({countText} onderdelen)...",
   "@queryUi.results.scanningWithCount": {
     "sourceHash": "0c05667"
   },
@@ -187,7 +187,7 @@
   "@queryUi.results.indexUnavailable": {
     "sourceHash": "80e98d0"
   },
-  "queryUi.results.indexReadyStatus": "Index gereed ({countText} items)",
+  "queryUi.results.indexReadyStatus": "Index gereed ({countText} onderdelen)",
   "@queryUi.results.indexReadyStatus": {
     "sourceHash": "b8febe6"
   },
@@ -227,7 +227,7 @@
   "@queryUi.results.indexNotReady": {
     "sourceHash": "9efe161"
   },
-  "queryUi.results.scanProgressWithCount": "Bezig met scannen ({countText} items)...",
+  "queryUi.results.scanProgressWithCount": "Bezig met scannen ({countText} onderdelen)...",
   "@queryUi.results.scanProgressWithCount": {
     "sourceHash": "3c5b987"
   },

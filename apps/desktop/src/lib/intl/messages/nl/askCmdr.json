@@ -736,19 +736,19 @@
   "@askCmdr.wakeDigest.summary": {
     "sourceHash": "07a2ce7"
   },
-  "askCmdr.wakeDigest.created": "{countText} {count, plural, one {nieuw item} other {nieuwe items}}",
+  "askCmdr.wakeDigest.created": "{countText} {count, plural, one {nieuw onderdeel} other {nieuwe onderdelen}}",
   "@askCmdr.wakeDigest.created": {
     "sourceHash": "2d0353f"
   },
-  "askCmdr.wakeDigest.modified": "{countText} {count, plural, one {gewijzigd item} other {gewijzigde items}}",
+  "askCmdr.wakeDigest.modified": "{countText} {count, plural, one {gewijzigd onderdeel} other {gewijzigde onderdelen}}",
   "@askCmdr.wakeDigest.modified": {
     "sourceHash": "6aa21c5"
   },
-  "askCmdr.wakeDigest.removed": "{countText} {count, plural, one {verwijderd item} other {verwijderde items}}",
+  "askCmdr.wakeDigest.removed": "{countText} {count, plural, one {verwijderd onderdeel} other {verwijderde onderdelen}}",
   "@askCmdr.wakeDigest.removed": {
     "sourceHash": "9711102"
   },
-  "askCmdr.wakeDigest.renamed": "{countText} {count, plural, one {hernoemd item} other {hernoemde items}}",
+  "askCmdr.wakeDigest.renamed": "{countText} {count, plural, one {hernoemd onderdeel} other {hernoemde onderdelen}}",
   "@askCmdr.wakeDigest.renamed": {
     "sourceHash": "2cf9f0f"
   },
@@ -776,11 +776,11 @@
   "@askCmdr.wakeToast.openThread": {
     "sourceHash": "0a641f8"
   },
-  "askCmdr.decision.rejected": "Je hebt het {verbName} van {countText} {count, plural, one {item} other {items}} afgewezen",
+  "askCmdr.decision.rejected": "Je hebt het {verbName} van {countText} {count, plural, one {onderdeel} other {onderdelen}} afgewezen",
   "@askCmdr.decision.rejected": {
     "sourceHash": "19d12c1"
   },
-  "askCmdr.decision.approved": "Je hebt het {verbName} van {countText} {count, plural, one {item} other {items}} goedgekeurd",
+  "askCmdr.decision.approved": "Je hebt het {verbName} van {countText} {count, plural, one {onderdeel} other {onderdelen}} goedgekeurd",
   "@askCmdr.decision.approved": {
     "sourceHash": "aa911e6"
   },
