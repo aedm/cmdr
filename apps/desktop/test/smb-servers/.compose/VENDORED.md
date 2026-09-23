@@ -5,8 +5,8 @@ be lost the next time we re-vendor.**
 
 ## Source of truth
 
-`~/projects-git/vdavid/smb2/src/testing/fixtures/consumer/` (GitHub:
-https://github.com/vdavid/smb2/tree/main/src/testing/fixtures/consumer)
+`~/projects-git/vdavid/smb2/crates/smb2/src/testing/fixtures/consumer/` (GitHub:
+https://github.com/vdavid/smb2/tree/main/crates/smb2/src/testing/fixtures/consumer)
 
 ## Why vendored?
 
@@ -22,10 +22,10 @@ the Docker container where those deps aren't installed. Vendoring sidesteps the 
    override):
    ```bash
    rsync -a --delete --exclude=VENDORED.md --exclude=docker-compose.override.yml \
-       ~/projects-git/vdavid/smb2/src/testing/fixtures/consumer/ \
+       ~/projects-git/vdavid/smb2/crates/smb2/src/testing/fixtures/consumer/ \
        apps/desktop/test/smb-servers/.compose/
    ```
-   (Or the equivalent from a checkout of the new rev. The smb2 consumer containers live at `src/testing/fixtures/consumer/`
+   (Or the equivalent from a checkout of the new rev. The smb2 consumer containers live at `crates/smb2/src/testing/fixtures/consumer/`
    in the smb2 repo — they moved there from `tests/docker/consumer/` in 0.11.4 so the published package excludes `tests/`.)
 3. Force-rebuild the changed containers so they pick up the new configs:
    ```bash
