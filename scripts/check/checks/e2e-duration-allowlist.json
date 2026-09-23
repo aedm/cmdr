@@ -222,28 +222,32 @@
       "reason": "David approved (2026-09-12): 3.5s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
     "server-ops-sftp.spec.ts::SFTP server through the UI::NFC and NFD names survive the trip both ways, byte for byte": {
-      "maxMs": 3500,
-      "reason": "David approved (2026-09-23): 3.2s on the full Linux Docker lane; two real SFTP round trips (up and back) per name form against the fixture server; cap is that rounded up to the next 0.5s"
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-23): 3.2s and 4.0s on two full Linux Docker lane runs; two real SFTP round trips (up and back) per name form against the fixture server; cap is the slower rounded up to the next 0.5s"
     },
     "server-ops-sftp.spec.ts::SFTP server through the UI::a copy onto a name the server already has replaces it only when Overwrite is picked": {
-      "maxMs": 2500,
-      "reason": "David approved (2026-09-23): 2.0s on the full Linux Docker lane; a real SFTP transfer plus the conflict prompt; cap is that rounded up to the next 0.5s"
+      "maxMs": 3500,
+      "reason": "David approved (2026-09-23): 2.04s and 3.2s on two full Linux Docker lane runs; a real SFTP transfer plus the conflict prompt; cap is the slower rounded up to the next 0.5s"
     },
     "server-ops-sftp.spec.ts::SFTP server through the UI::copies a file to the server and back, byte for byte": {
-      "maxMs": 3500,
-      "reason": "David approved (2026-09-23): 3.3s on the full Linux Docker lane; two real SFTP transfers (up and back) against the fixture server; cap is that rounded up to the next 0.5s"
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-23): 3.3s and 4.0s on two full Linux Docker lane runs; two real SFTP transfers (up and back) against the fixture server; cap is the slower rounded up to the next 0.5s"
     },
     "server-ops-sftp.spec.ts::SFTP server through the UI::deletes a file on the server, and only that file": {
-      "maxMs": 2500,
-      "reason": "David approved (2026-09-23): 2.5s on the full Linux Docker lane; seeds, deletes, and re-lists over real SFTP; cap is that rounded up to the next 0.5s"
+      "maxMs": 3000,
+      "reason": "David approved (2026-09-23): 2.46s and 3.0s on two full Linux Docker lane runs; seeds, deletes, and re-lists over real SFTP; cap is the slower rounded up to the next 0.5s"
     },
     "server-ops-sftp.spec.ts::SFTP server through the UI::moves a file to the server and back, leaving no copy behind": {
-      "maxMs": 3500,
-      "reason": "David approved (2026-09-23): 3.3s on the full Linux Docker lane; two real SFTP moves (up and back) against the fixture server; cap is that rounded up to the next 0.5s"
+      "maxMs": 6000,
+      "reason": "David approved (2026-09-23): 3.3s and 5.6s on two full Linux Docker lane runs; two real SFTP moves (up and back) against the fixture server; cap is the slower rounded up to the next 0.5s"
     },
     "server-ops-webdav.spec.ts::WebDAV server through the UI::NFC and NFD names survive the trip both ways, byte for byte": {
       "maxMs": 3500,
       "reason": "David approved (2026-09-23): 3.1s on the full Linux Docker lane; two real WebDAV round trips (up and back) per name form against the fixture server; cap is that rounded up to the next 0.5s"
+    },
+    "server-ops-webdav.spec.ts::WebDAV server through the UI::a copy onto a name the server already has replaces it only when Overwrite is picked": {
+      "maxMs": 3500,
+      "reason": "David approved (2026-09-23): 3.1s on the full Linux Docker lane; a real WebDAV transfer plus the conflict prompt; cap is that rounded up to the next 0.5s"
     },
     "server-ops-webdav.spec.ts::WebDAV server through the UI::copies a file to the server and back, byte for byte": {
       "maxMs": 3500,
