@@ -24,8 +24,8 @@ use super::super::super::types::{
     WriteSourceItemDoneEvent,
 };
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, PostLoopIntent, ResolveFut, TransferContext,
-    TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, PostLoopIntent, ResolveFut, TransferContext, TransferFut,
+    TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
 use super::conflict::resolve_volume_conflict;
 use super::displaced_destination::{DisplacedDestination, displace_destination};
