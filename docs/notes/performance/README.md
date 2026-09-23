@@ -79,6 +79,8 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
 - **Idle frontend**: seven fixes (scanning tooltips, Size-column width hold, disk-space emits, backend routing of folder
   sizes, refresh only on a shown change, the hourglass delay, free-space precision):
   `webcontent-idle-fixes-2026-09-23.md`.
+- **Hidden-entry diffs**: a change to entries a pane doesn't show (dotfiles in `~` with hidden files off) no longer
+  reaches it, and diff indices are the pane's rows: `hidden-entry-diffs-2026-09-23.md`.
 - **Rust heap**: the score cache, the MCP search arena's 30 s drop, the wake inbox paged to `main.db`, and the heap
   census: `rust-heap-attribution-2026-09-23.md`.
 - **SMB sockets**: fixed in `smb2` 0.24.1 (Cmdr ships 0.25.0): `smb2-socket-lifetime-2026-09-23.md`.
@@ -140,8 +142,6 @@ expected payoff over effort.
 
 Smaller or already filed, unranked:
 
-- **Hidden-entry diffs**: a pane with hidden files off still refetches when only dotfiles in `~` change. In progress
-  (`webcontent-idle-fixes-2026-09-23.md` § "The next lead").
 - **Take a fresh idle baseline on a quiet machine**, issue #231: largely answered by the two baselines above; what's
   left is re-ranking the CLIP items against them.
 - **CLIP**: should an idle tower unload itself (#233), the ~400 MB non-GPU compute-unit path (#232), and an fp16 text
@@ -175,6 +175,7 @@ Smaller or already filed, unranked:
 
 Newest first.
 
+- `hidden-entry-diffs-2026-09-23.md`: diffs skip rows the pane doesn't show; natural and controlled-churn A/B numbers.
 - `webcontent-idle-fixes-2026-09-23.md`: the seven frontend idle fixes and their interleaved before/after numbers.
 - `webcontent-idle-cost-2026-09-23.md`: where WebContent and the GPU helper spend idle CPU, why window state barely
   matters, and the frontend memory picture (including the eager translation catalogs).
