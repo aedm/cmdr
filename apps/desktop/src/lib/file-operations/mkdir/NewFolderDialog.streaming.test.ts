@@ -7,9 +7,10 @@
  *  - The trailing pulsing chip is present while streaming, gone after `done`.
  *  - `cancelled` and `failed` end streaming the same way as `done` (visually).
  *  - Dialog unmount cancels in-flight streams.
+ *  - On Cloud without "Allow cloud AI", no stream opens and no suggestion strip shows.
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, unmount, tick } from 'svelte'
 import NewFolderDialog from './NewFolderDialog.svelte'
 
@@ -23,8 +24,23 @@ interface FakeStream {
 // `vi.hoisted` runs before `vi.mock` so the factory can reference these symbols.
 const hoisted = vi.hoisted(() => {
   const state: { active: FakeStream | undefined } = { active: undefined }
-  return { state }
+  // Local by default, so the streaming cases below never meet the cloud gate.
+  const ai: { provider: string; cloudBlocked: boolean } = { provider: 'local', cloudBlocked: false }
+  return { state, ai }
 })
+
+vi.mock('$lib/settings', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  const getSetting = actual.getSetting as (id: string) => unknown
+  return {
+    ...actual,
+    getSetting: (id: string): unknown => (id === 'ai.provider' ? hoisted.ai.provider : getSetting(id)),
+  }
+})
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  refreshCloudConsent: vi.fn(() => Promise.resolve()),
+  cloudAiBlocked: (provider: string) => provider === 'cloud' && hoisted.ai.cloudBlocked,
+}))
 
 vi.mock('$lib/tauri-commands', () => ({
   notifyDialogOpened: vi.fn(() => Promise.resolve()),
@@ -91,6 +107,11 @@ function pulsingChipPresent(target: HTMLElement): boolean {
   return target.querySelector('.suggestion-pending') !== null
 }
 
+beforeEach(() => {
+  hoisted.ai.provider = 'local'
+  hoisted.ai.cloudBlocked = false
+})
+
 describe('NewFolderDialog streaming', () => {
   it('renders suggestions incrementally as they stream in, hides pulse on done', async () => {
     const { target } = mountDialog()
@@ -155,5 +176,29 @@ describe('NewFolderDialog streaming', () => {
     await tick()
 
     expect(stream.cancel).toHaveBeenCalled()
+  })
+})
+
+describe('NewFolderDialog without cloud AI consent', () => {
+  it('sends nothing and shows no suggestions on Cloud until the user allows cloud AI', async () => {
+    const { streamFolderSuggestions } = await import('$lib/tauri-commands')
+    vi.mocked(streamFolderSuggestions).mockClear()
+    hoisted.ai.provider = 'cloud'
+    hoisted.ai.cloudBlocked = true
+    const { target } = mountDialog()
+    for (let i = 0; i < 10; i++) await tick()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(streamFolderSuggestions).not.toHaveBeenCalled()
+    expect(target.querySelector('.suggestion-pending')).toBeNull()
+    expect(chipTexts(target)).toEqual([])
+    target.remove()
+  })
+
+  it('streams as usual on Cloud once cloud AI is allowed', async () => {
+    hoisted.ai.provider = 'cloud'
+    const { target } = mountDialog()
+    await waitForActiveStream()
+    target.remove()
   })
 })

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount, tick } from 'svelte'
+
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({ openCloudConsentSettings: vi.fn() }))
+
 import EmptyState from './EmptyState.svelte'
+import { openCloudConsentSettings } from '$lib/ai/cloud-consent.svelte'
 
 describe('EmptyState', () => {
   it('shows three AI prompts when AI is enabled', async () => {
@@ -136,6 +140,63 @@ describe('EmptyState', () => {
     const picked = onPick.mock.calls[0]?.[0] as { mode: string; query: string }
     expect(picked.mode).toBe('ai')
     expect(picked.query).toBe('large files modified this week')
+    target.remove()
+  })
+})
+
+describe('EmptyState while cloud AI is off', () => {
+  it('trades the AI prompts for the reason and a way into the switch', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(EmptyState, {
+      target,
+      props: { aiEnabled: true, aiBlocked: true, indexEntryCount: 100, onPick: () => {} },
+    })
+    await tick()
+    expect(target.querySelector('.cloud-off')?.textContent).toContain(
+      'Cloud AI is off. Allow it in Settings > AI to use this.',
+    )
+    const labels = Array.from(target.querySelectorAll('.example-chip')).map((c) => c.textContent.trim())
+    // Filename patterns still work, so they stay; AI prompts would only be refused.
+    expect(labels.some((l) => l.includes('large files modified this week'))).toBe(false)
+    expect(labels.some((l) => l.includes('*.pdf'))).toBe(true)
+
+    target.querySelector<HTMLButtonElement>('.cloud-off button')?.click()
+    expect(openCloudConsentSettings).toHaveBeenCalledWith('query-ai-cloud-off')
+    target.remove()
+  })
+
+  it("drops a consumer's AI examples but keeps its other ones", async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(EmptyState, {
+      target,
+      props: {
+        aiEnabled: true,
+        aiBlocked: true,
+        indexEntryCount: 0,
+        examples: [
+          { label: 'all image files', mode: 'ai', query: 'all image files' },
+          { label: '*.jpg', mode: 'filename', query: '*.jpg' },
+        ],
+        onPick: () => {},
+      },
+    })
+    await tick()
+    const labels = Array.from(target.querySelectorAll('.example-chip')).map((c) => c.textContent.trim())
+    expect(labels).toEqual(['Aa *.jpg'])
+    target.remove()
+  })
+
+  it('says nothing about cloud AI while it is allowed', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(EmptyState, {
+      target,
+      props: { aiEnabled: true, indexEntryCount: 100, onPick: () => {} },
+    })
+    await tick()
+    expect(target.querySelector('.cloud-off')).toBeNull()
     target.remove()
   })
 })

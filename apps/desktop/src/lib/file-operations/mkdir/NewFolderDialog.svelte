@@ -16,6 +16,8 @@
     import Button from '$lib/ui/Button.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { tString } from '$lib/intl/messages.svelte'
+    import { getSetting } from '$lib/settings'
+    import { cloudAiBlocked, refreshCloudConsent } from '$lib/ai/cloud-consent.svelte'
 
     interface Props {
         /** The directory in which to create the new folder */
@@ -70,6 +72,16 @@
             if (status !== 'available') {
                 aiAvailable = false
                 return
+            }
+            // On Cloud without "Allow cloud AI", stay quiet: no suggestions, no copy. The backend
+            // refuses anyway (an empty `done`); skipping the call spares the round trip.
+            const provider = getSetting('ai.provider')
+            if (provider === 'cloud') {
+                await refreshCloudConsent()
+                if (cloudAiBlocked(provider)) {
+                    aiAvailable = false
+                    return
+                }
             }
             aiAvailable = true
             aiSuggestions = []

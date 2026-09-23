@@ -138,10 +138,10 @@ function seedSettingsIfNew(): void {
 /**
  * Settings the app must launch with on every run, merged over whatever the instance holds.
  *
- * - `askCmdr.proactive` off. The chat test accepts Ask Cmdr's consent, and with consent,
- *   disk access, and the `CMDR_E2E_ASK_CMDR_FAKE` provider in place, every wake gate is
- *   open: a wake could start a thread of its own mid-run, or put its spinner in the status
- *   corner of a master.
+ * - `askCmdr.enabled` on, so the chat shot's rail opens past its "Ask Cmdr is off" gate.
+ * - `askCmdr.proactive` off. With Ask Cmdr on, disk access, and the `CMDR_E2E_ASK_CMDR_FAKE`
+ *   provider in place, every wake gate is open: a wake could start a thread of its own
+ *   mid-run, or put its spinner in the status corner of a master.
  *
  * Applied on every run because the instance persists: a suppression added to
  * `seedSettingsIfNew` would never reach an instance that already exists.
@@ -152,6 +152,7 @@ function pinRunSettings(): void {
     ? (JSON.parse(readFileSync(settingsPath, 'utf8')) as Record<string, unknown>)
     : {}
   settings['askCmdr.proactive'] = false
+  settings['askCmdr.enabled'] = true
   writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`)
 }
 

@@ -130,8 +130,8 @@ test.describe('marketing masters', () => {
     const page = tauriPage as TauriPage
     await stageMainWindow(page)
 
-    // Consent, then the thread, then the rail: `acceptAskCmdrConsent` explains the order.
-    await acceptAskCmdrConsent(page)
+    // The store, then the thread, then the rail: `waitForAgentStore` explains the order.
+    await waitForAgentStore(page)
     seedChatThread(shotsDataDir())
     await openRail(page)
     // The seeded thread, not a live answer: `marketing-shots-thread.ts` explains why.
@@ -414,25 +414,21 @@ async function pinVolatileChrome(page: TauriPage): Promise<void> {
 }
 
 /**
- * Accepts Ask Cmdr's consent through the app's own command, and proves it took.
+ * Waits until the agent store is open on this launch, which `seedChatThread` needs next: it
+ * writes into `main.db`, and only an open store has run this launch's migrations.
  *
- * ❗ Through the app, so the rail gets whatever `CONSENT_COPY_VERSION` it requires today. A
- * version written from here goes stale on the next consent-copy bump, and the master then
- * photographs the consent screen. Read back, because the accept command answers `Ok`
- * without writing when the agent store never started. An `accepted` answer also means
- * the store is open on this launch's migrated schema, which `seedChatThread` needs next.
- *
- * Proactive wakes stay off for this instance (`pinRunSettings` in `marketing-shots.ts`),
- * so the accepted consent can't start threads of its own mid-run.
+ * The one-time Ask Cmdr opt-in probe is the cheapest honest read: it answers
+ * `storeUnavailable` exactly when the store can't be read. The rail itself opens past its
+ * gate because `pinRunSettings` (`scripts/marketing-shots.ts`) turns `askCmdr.enabled` on,
+ * and proactive wakes stay off for this instance, so nothing starts threads mid-run.
  */
-async function acceptAskCmdrConsent(page: TauriPage): Promise<void> {
-  await page.evaluate(`window.__TAURI_INTERNALS__.invoke('ask_cmdr_accept_consent')`)
-  const status = await page.evaluate<{ accepted: boolean }>(
-    `window.__TAURI_INTERNALS__.invoke('ask_cmdr_consent_status')`,
-  )
-  expect(status.accepted, 'the app never recorded Ask Cmdr consent, so the rail would show the consent screen').toBe(
-    true,
-  )
+async function waitForAgentStore(page: TauriPage): Promise<void> {
+  await expect
+    .poll(() => page.evaluate<string>(`window.__TAURI_INTERNALS__.invoke('ask_cmdr_legacy_opt_in')`), {
+      message: 'the agent store never opened, so the seeded thread has nowhere to go',
+      timeout: waitBudget(15000),
+    })
+    .not.toBe('storeUnavailable')
 }
 
 async function railOpen(page: TauriPage): Promise<boolean> {

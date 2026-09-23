@@ -18,6 +18,7 @@ vi.mock('$lib/ui/toast/toast-store.svelte', () => ({
   },
 }))
 
+import CloudAiOffToastContent from './CloudAiOffToastContent.svelte'
 import {
   aiTranslateErrorToast,
   isAiTranslateError,
@@ -27,6 +28,7 @@ import {
 
 const ALL_KINDS: AiTranslateErrorKind[] = [
   'off',
+  'noCloudConsent',
   'notConfigured',
   'authFailed',
   'rateLimited',
@@ -61,6 +63,13 @@ describe('aiTranslateErrorToast', () => {
     }
   })
 
+  it("says cloud AI is off, as a warning, when the user hasn't allowed it", () => {
+    const copy = aiTranslateErrorToast('noCloudConsent')
+    expect(copy.title).toBe('Cloud AI is off')
+    expect(copy.body).toBe('Allow it in Settings > AI, then try again.')
+    expect(copy.level).toBe('warn')
+  })
+
   it('points the quota case at the plan/billing and the empty case at a smaller model', () => {
     expect(aiTranslateErrorToast('rateLimited').body.toLowerCase()).toContain('billing')
     expect(aiTranslateErrorToast('emptyResponse').body).toContain('gpt-4.1-mini')
@@ -70,6 +79,7 @@ describe('aiTranslateErrorToast', () => {
 describe('isAiTranslateError', () => {
   it('accepts a thrown error carrying a known kind', () => {
     expect(isAiTranslateError(makeThrown('rateLimited'))).toBe(true)
+    expect(isAiTranslateError(makeThrown('noCloudConsent'))).toBe(true)
   })
 
   it('rejects a plain Error, a string, a kindless object, and an unknown kind', () => {
@@ -91,6 +101,14 @@ describe('showAiTranslateErrorToast', () => {
     const [content, options] = addToastMock.mock.calls[0] as [string, { level: string; id: string }]
     expect(content).toContain('API key')
     expect(options.level).toBe('error')
+    expect(options.id).toBe('ai-translate-error')
+  })
+
+  it('gives "cloud AI is off" a way into the switch, not only a sentence', () => {
+    expect(showAiTranslateErrorToast(makeThrown('noCloudConsent'))).toBe(true)
+    const [content, options] = addToastMock.mock.calls[0] as [unknown, { level: string; id: string }]
+    expect(content).toBe(CloudAiOffToastContent)
+    expect(options.level).toBe('warn')
     expect(options.id).toBe('ai-translate-error')
   })
 

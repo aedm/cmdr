@@ -18,10 +18,13 @@
  * - The missing-API-key confirm-once gate: cloud with no stored key warns on the first
  *   Next and goes through on the second, so nothing is ever hard-blocked (the
  *   no-key-blocks-advance rule) but nobody sails past a half-configured AI setup either.
- * - "Thanks but no thanks" lands on all three pieces of state: `ai.provider = 'off'`,
- *   Ask Cmdr consent revoked, `askCmdr.proactive = false`. Picking a provider touches
- *   NEITHER of the last two (the consent-bypass guard), and a failing revoke still lets
- *   the user move on.
+ * - Cloud shows the Allow cloud AI switch above a locked setup, and the first Next with the
+ *   switch off shows a confirm-once note instead of the missing-key one.
+ * - "Thanks but no thanks" lands on all four pieces of state: `ai.provider = 'off'`,
+ *   cloud consent declined, `askCmdr.proactive = false`, `askCmdr.enabled = false`. Picking
+ *   a provider never grants consent and never touches `askCmdr.proactive` (the
+ *   consent-bypass guard); it turns `askCmdr.enabled` on only when nobody set it yet. A
+ *   failing decline still lets the user move on.
  *
  * Axe coverage lives in `StepAi.a11y.test.ts`.
  */
@@ -94,10 +97,13 @@ vi.mock('$lib/tauri-commands', () => ({
 // Settings store mock: in-memory key-value, mirroring what `$lib/settings` exposes.
 // We reset it per test so previous picks don't leak.
 const settingsMap: Record<string, unknown> = {}
+/** Ids "explicitly set", as the real store's sparse-persistence ledger tracks them. */
+const explicitlySet = new Set<string>()
 function resetSettings(): void {
   for (const k of Object.keys(settingsMap)) {
     delete settingsMap[k]
   }
+  explicitlySet.clear()
   settingsMap['ai.provider'] = 'off'
   settingsMap['ai.cloudProvider'] = 'openai'
   settingsMap['ai.cloudProviderConfigs'] = '{}'
@@ -114,7 +120,9 @@ vi.mock('$lib/settings', async (importOriginal) => {
     getSetting: (id: string) => settingsMap[id] ?? '',
     setSetting: (id: string, value: unknown) => {
       settingsMap[id] = value
+      explicitlySet.add(id)
     },
+    isExplicitlySet: (id: string) => explicitlySet.has(id),
     onSpecificSettingChange: () => () => {},
   }
 })
@@ -128,11 +136,22 @@ vi.mock('$lib/settings/ai-config', () => ({
 // module. The wizard's own code may only ever REVOKE (see the consent-bypass guard below);
 // granting is the switch's click alone. `declineCloudConsent` is the one "no" path (retry,
 // then hold); its legs are pinned in `cloud-consent.svelte.test.ts`, so here it's the seam.
+// Consent reads "allowed" unless a test says otherwise, so the older Cloud cases below meet
+// only the gates they're about. A plain object: these tests read it once per action.
 const declineConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
 const acceptConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
+const cloudConsent = vi.hoisted(() => {
+  // An annotation, not an `as`: the lint auto-fix strips an assertion it thinks is unnecessary.
+  const state: { accepted: boolean | null; acceptedAt: number | null } = { accepted: true, acceptedAt: null }
+  return state
+})
 vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  cloudConsentState: cloudConsent,
+  refreshCloudConsent: () => Promise.resolve(),
+  cloudAiBlocked: (provider: string) => provider === 'cloud' && cloudConsent.accepted !== true,
   declineCloudConsent: () => declineConsent(),
   acceptCloudConsent: () => acceptConsent(),
+  CLOUD_CONSENT_ANCHOR: 'settings-ai-cloud-consent',
 }))
 
 // The step's logger, so a test can tell a logged failure from a logged cancel. Lazy
@@ -227,6 +246,7 @@ describe('StepAi', () => {
     declineConsent.mockReset()
     declineConsent.mockResolvedValue('done')
     acceptConsent.mockClear()
+    cloudConsent.accepted = true
     settingsMap['onboarding.fullDiskAccessChoice'] = 'allow'
     settingsMap['onboarding.completed'] = false
     getAiRuntimeStatus.mockReset()
@@ -424,7 +444,7 @@ describe('StepAi', () => {
     expect(getOnboardingState().finishRequestTick).toBe(initialTick)
   })
 
-  it('"Thanks but no thanks" revokes Ask Cmdr consent and disarms askCmdr.proactive', async () => {
+  it('"Thanks but no thanks" turns cloud AI and Ask Cmdr off and disarms askCmdr.proactive', async () => {
     mounted = mountStep()
     await waitForAsync()
     // Start from cloud so the pick to 'off' is a real choice change, not the default.
@@ -437,6 +457,7 @@ describe('StepAi', () => {
     expect(settingsMap['ai.provider']).toBe('off')
     expect(declineConsent).toHaveBeenCalledTimes(1)
     expect(settingsMap['askCmdr.proactive']).toBe(false)
+    expect(settingsMap['askCmdr.enabled']).toBe(false)
     expect(getOnboardingState().currentStep).toBe(3)
   })
 
@@ -497,6 +518,72 @@ describe('StepAi', () => {
     // The rest of the persist still runs: a hiccup in `main.db` doesn't cost the user
     // their provider choice.
     expect(pushConfigToBackend).toHaveBeenCalled()
+  })
+
+  it('Cloud shows the Allow cloud AI switch above a setup that stays locked until it is on', async () => {
+    cloudConsent.accepted = false
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    const setupColumn = mounted.target.querySelector('.cloud-grid-setup')
+    expect(setupColumn?.querySelector('input[data-test="cloud-ai-consent"]')).not.toBeNull()
+    expect(setupColumn?.querySelector('.setup-lock')?.hasAttribute('inert')).toBe(true)
+    // The locked setup never probes the service.
+    expect(checkAiConnection).not.toHaveBeenCalled()
+  })
+
+  it('Cloud with cloud AI allowed shows the setup unlocked', async () => {
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    expect(mounted.target.querySelector('.cloud-grid-setup .setup-lock')?.hasAttribute('inert')).toBe(false)
+  })
+
+  it('Cloud with the switch off: the first Next says cloud AI stays off, the second goes through', async () => {
+    cloudConsent.accepted = false
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(getOnboardingState().footerNote?.textContent).toContain('Cloud AI stays off until you allow it.')
+    // The locked setup can't take a key, so the missing-key note isn't the one shown.
+    expect(getOnboardingState().footerNote?.textContent).not.toContain('API key')
+    expect(getOnboardingState().currentStep).toBe(2)
+
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(settingsMap['ai.provider']).toBe('cloud')
+    expect(getOnboardingState().currentStep).toBe(3)
+    expect(acceptConsent).not.toHaveBeenCalled()
+  })
+
+  it('Cloud or Local turns Ask Cmdr on for a fresh profile, but never over an answer already given', async () => {
+    getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'abc' })
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(settingsMap['askCmdr.enabled']).toBe(true)
+    await unmount(mounted.instance)
+    mounted.target.remove()
+
+    // A re-run of the wizard by someone who switched Ask Cmdr off keeps it off.
+    setCurrentStep(2)
+    settingsMap['askCmdr.enabled'] = false
+    explicitlySet.add('askCmdr.enabled')
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(settingsMap['askCmdr.enabled']).toBe(false)
   })
 
   it('cloud with no stored key: the first Next warns instead of advancing', async () => {

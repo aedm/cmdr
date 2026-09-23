@@ -12,7 +12,13 @@
 
 import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
-import { dispatchMenuCommand, ensureAppReady, CTRL_OR_META } from './helpers.js'
+import {
+  closeScopedWindow,
+  dispatchMenuCommand,
+  ensureAppReady,
+  openSettingsWindowViaProd,
+  CTRL_OR_META,
+} from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 
 /** The rail is open once its root element is in the DOM. */
@@ -72,33 +78,74 @@ async function closeRailIfOpen(page: TauriPage): Promise<void> {
   await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
 }
 
-/** The opt-in consent screen is showing (the rail is open but not yet unlocked). */
-function consentShown(page: TauriPage): Promise<boolean> {
-  return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail .consent') !== null`)
+/** The rail's "Ask Cmdr is off" gate is showing (the rail is open, the chat isn't). */
+function offGateShown(page: TauriPage): Promise<boolean> {
+  return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail .ask-cmdr-gate[data-gate="off"]') !== null`)
 }
 
-/** The composer is present (the rail is unlocked past consent). */
+/** The composer is present (the rail is past its gates). */
 function composerPresent(page: TauriPage): Promise<boolean> {
   return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail textarea') !== null`)
 }
 
-/** Get the rail ready for a chat test: accept the consent opt-in if the gate is showing
- * (consent is recorded in `main.db` and persists for the run, so it's a no-op once granted),
- * then wait for the composer to render. Consent resolves asynchronously on open, so the
- * composer isn't present on the first tick even when already consented — always wait. */
+/** Get the rail ready for a chat test: turn Ask Cmdr on from the rail's gate if it's showing
+ * (the switch persists in `settings.json` for the run, so it's a no-op once on), then wait for
+ * the composer to render. The gate resolves asynchronously on open, so the composer isn't
+ * present on the first tick even when already on — always wait. The E2E fake keeps
+ * `ai.provider` off, so the cloud gate never shows here. */
 async function ensureChatReady(page: TauriPage): Promise<void> {
   await expect
     .poll(
       async () => {
         if (await composerPresent(page)) return true
-        if (await consentShown(page)) {
-          await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-accept')?.click()`)
+        if (await offGateShown(page)) {
+          await page.evaluate(
+            `document.querySelector('.ask-cmdr-rail .ask-cmdr-gate[data-gate="off"] button')?.click()`,
+          )
         }
         return composerPresent(page)
       },
       { timeout: waitBudget(5000) },
     )
     .toBe(true)
+}
+
+/** The Ask Cmdr switch in Settings > AI > Ask Cmdr: its hidden input carries the label. */
+const ASK_CMDR_SWITCH = '[aria-label="Turn on Ask Cmdr"]'
+
+/** The switch's state as Ark draws it (`checked` / `unchecked`), or `missing`. */
+function askCmdrSwitchStateJs(): string {
+  return `(function() {
+    var input = document.querySelector('${ASK_CMDR_SWITCH}');
+    if (!input) return 'missing';
+    var root = input.closest('[data-scope="switch"][data-part="root"]');
+    var control = root ? root.querySelector('.switch-control') : null;
+    return (control || input).getAttribute('data-state') || 'unknown';
+  })()`
+}
+
+/** Sets Ask Cmdr's switch through the Settings window, the way a user does, and closes it. */
+async function setAskCmdrEnabledInSettings(main: TauriPage, on: boolean): Promise<void> {
+  const settings = await openSettingsWindowViaProd(main)
+  try {
+    await settings.waitForSelector('.settings-sidebar', waitBudget(3000))
+    await settings.evaluate(`(function() {
+      var items = document.querySelectorAll('.section-item');
+      for (var i = 0; i < items.length; i++) {
+        if ((items[i].textContent || '').trim() === 'Ask Cmdr') { items[i].click(); return; }
+      }
+    })()`)
+    await settings.waitForSelector(ASK_CMDR_SWITCH, waitBudget(3000))
+    const wanted = on ? 'checked' : 'unchecked'
+    if ((await settings.evaluate<string>(askCmdrSwitchStateJs())) !== wanted) {
+      await settings.evaluate(`document.querySelector('${ASK_CMDR_SWITCH}')?.click()`)
+    }
+    await expect
+      .poll(() => settings.evaluate<string>(askCmdrSwitchStateJs()), { timeout: waitBudget(3000) })
+      .toBe(wanted)
+  } finally {
+    await closeScopedWindow(main, settings, 'settings')
+  }
 }
 
 /** Count of completed fake assistant replies currently in the thread. */
@@ -140,34 +187,25 @@ test.describe('Ask Cmdr rail', () => {
     await closeRailIfOpen(tauriPage as TauriPage)
   })
 
-  // The rail opens to the opt-in gate for someone who hasn't opted in, "Not now" closes it
-  // recording nothing, and accepting unlocks the chat.
+  // The rail opens to its "Ask Cmdr is off" gate while the switch is off, and the gate's
+  // button turns it on and unlocks the chat.
   //
-  // ⚠️ It CLEARS consent first rather than assuming a fresh profile. Consent lives in
-  // `main.db` and outlives every test in the shard, so this used to lean on being the first
-  // spec in the file AND the file being first in the shard — and `ask-cmdr-wake.spec.ts`
-  // sorts ahead of this one (`-` before `.`) and consents to run a wake at all. Clearing is
-  // what the settings "Turn off" button does, so the test starts from a state a user reaches.
-  test('gates on consent, and accepting unlocks the chat', async ({ tauriPage }) => {
+  // ⚠️ It turns the switch OFF first (through Settings, the way a user does) rather than
+  // assuming a fresh profile: `settings.json` outlives every test in the shard, and
+  // `ask-cmdr-wake.spec.ts` sorts ahead of this one (`-` before `.`) and turns Ask Cmdr on to
+  // run a wake at all. MCP `set_setting` can't reach `askCmdr.enabled` (`mcpSettable: false`).
+  test('gates on Ask Cmdr being off, and turning it on unlocks the chat', async ({ tauriPage }) => {
     const page = tauriPage as TauriPage
-    await page.evaluate(`(async function(){ await window.__TAURI_INTERNALS__.invoke('ask_cmdr_revoke_consent'); })()`)
+    await setAskCmdrEnabledInSettings(page, false)
     await openRailViaMenu(page)
     // The gate is shown; the composer is not reachable yet.
-    await expect.poll(() => consentShown(page), { timeout: waitBudget(3000) }).toBe(true)
+    await expect.poll(() => offGateShown(page), { timeout: waitBudget(3000) }).toBe(true)
     expect(await composerPresent(page)).toBe(false)
 
-    // "Not now" closes the rail without opting in.
-    await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-decline')?.click()`)
-    await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
-
-    // Reopen: consent is still required (decline recorded nothing).
-    await openRailViaMenu(page)
-    await expect.poll(() => consentShown(page), { timeout: waitBudget(3000) }).toBe(true)
-
-    // Accepting records consent and unlocks the composer.
-    await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-accept')?.click()`)
+    // The gate's button turns Ask Cmdr on and unlocks the composer.
+    await page.evaluate(`document.querySelector('.ask-cmdr-rail .ask-cmdr-gate[data-gate="off"] button')?.click()`)
     await expect.poll(() => composerPresent(page), { timeout: waitBudget(3000) }).toBe(true)
-    expect(await consentShown(page)).toBe(false)
+    expect(await offGateShown(page)).toBe(false)
   })
 
   test('opens from the View menu item with the ALPHA badge', async ({ tauriPage }) => {

@@ -32,17 +32,17 @@ const { triggerState, flags, costMock, consentState, railSettings } = vi.hoisted
   const consentState: { accepted: boolean | null; acceptedAt: number | null } = { accepted: true, acceptedAt: null }
   const railSettings: Record<string, unknown> = { 'askCmdr.enabled': true, 'ai.provider': 'off' }
   return {
-  consentState,
-  railSettings,
-  triggerState: {
-    streaming: false,
-    width: 340,
-    conversationId: null as number | null,
-    messages: [] as unknown[],
-    attachments: [] as unknown[],
-  },
-  flags: { overSoftCap: false },
-  costMock: vi.fn<(id: number) => Promise<unknown>>(),
+    consentState,
+    railSettings,
+    triggerState: {
+      streaming: false,
+      width: 340,
+      conversationId: null as number | null,
+      messages: [] as unknown[],
+      attachments: [] as unknown[],
+    },
+    flags: { overSoftCap: false },
+    costMock: vi.fn<(id: number) => Promise<unknown>>(),
   }
 })
 

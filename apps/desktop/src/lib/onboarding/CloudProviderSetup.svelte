@@ -3,6 +3,7 @@
     import ProviderSetupSteps from '$lib/ai-provider-setup/ProviderSetupSteps.svelte'
     import { ProviderSetupController } from '$lib/ai-provider-setup/provider-setup.svelte'
     import { tString } from '$lib/intl/messages.svelte'
+    import { getCloudProvider } from '$lib/settings'
 
     /**
      * Per-provider tutorial in the onboarding wizard's step 2 right column: a provider
@@ -17,12 +18,18 @@
      * Provider switching is owned by the parent (`StepAi.svelte`); on a `providerId` change
      * the controller reloads from the store and the secret keychain. Keys typed for earlier
      * providers stay in the secret store, so hopping back doesn't mean re-entering them.
+     *
+     * `locked` while "Allow cloud AI" (the switch above this panel) is off: the panel is
+     * `inert` and dimmed, and the controller isn't pointed at the provider until the lock
+     * lifts, since that alone can start a connection check (Settings does the same,
+     * `AiCloudSection.svelte`). The header still names the picked provider from its preset.
      */
     interface Props {
         providerId: string
+        locked?: boolean
     }
 
-    const { providerId }: Props = $props()
+    const { providerId, locked = false }: Props = $props()
 
     const controller = new ProviderSetupController({ logScope: 'onboarding-ai-setup' })
 
@@ -32,14 +39,19 @@
     // reset the state it just produced.
     $effect(() => {
         const id = providerId
-        untrack(() => { controller.setProvider(id); })
+        if (locked) return
+        untrack(() => { if (controller.providerId !== id) controller.setProvider(id) })
     })
 
     onDestroy(() => { controller.destroy(); })
 
-    const preset = $derived(controller.preset)
+    const preset = $derived(controller.preset ?? (locked ? getCloudProvider(providerId) : undefined))
 </script>
 
+{#if locked}
+    <p class="locked-hint">{tString('settings.ai.cloudConsent.lockedHint')}</p>
+{/if}
+<div class="setup-lock" class:locked inert={locked}>
 <div class="setup-panel" data-provider-id={controller.providerId}>
     {#if preset}
         <header class="provider-header">
@@ -72,8 +84,20 @@
         {/if}
     {/if}
 </div>
+</div>
 
 <style>
+    .locked-hint {
+        margin: 0 0 var(--spacing-sm);
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    }
+
+    /* Dimmed and `inert` until the user allows cloud AI. */
+    .setup-lock.locked {
+        opacity: 0.5;
+    }
+
     .setup-panel {
         display: flex;
         flex-direction: column;

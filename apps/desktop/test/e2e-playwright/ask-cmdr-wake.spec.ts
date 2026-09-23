@@ -13,8 +13,10 @@
  * agent opened apart from one the user did, and it's why `ask-cmdr.spec.ts`'s "test assistant"
  * matching keeps working untouched.
  *
- * ⚠️ Consent gates everything here: without it the pipeline stores nothing and runs nothing.
- * The rail's opt-in screen is the only way to grant it, so the test opens the rail first.
+ * ⚠️ Ask Cmdr's switch (`askCmdr.enabled`) gates everything here: while it's off the pipeline
+ * stores nothing and runs nothing. MCP can't set it, so the test opens the rail first and
+ * turns it on from the rail's own gate. The fake provider keeps `ai.provider` off, so no cloud
+ * consent is involved.
  */
 
 import { waitBudget } from './wait-budget.js'
@@ -35,14 +37,14 @@ function railText(page: TauriPage): Promise<string> {
   return page.evaluate<string>(`document.querySelector('.ask-cmdr-rail')?.textContent || ''`)
 }
 
-/** The composer is present, which means the rail is unlocked past consent. */
+/** The composer is present, which means the rail is past its gates. */
 function composerPresent(page: TauriPage): Promise<boolean> {
   return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail textarea') !== null`)
 }
 
-/** The opt-in consent screen is showing. */
-function consentShown(page: TauriPage): Promise<boolean> {
-  return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail .consent') !== null`)
+/** The rail's "Ask Cmdr is off" gate is showing. */
+function offGateShown(page: TauriPage): Promise<boolean> {
+  return page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail .ask-cmdr-gate[data-gate="off"]') !== null`)
 }
 
 /** The thread titles the sessions panel is currently listing. */
@@ -155,16 +157,18 @@ async function closeRailIfOpen(page: TauriPage): Promise<void> {
   await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
 }
 
-/** Grants consent if the gate is showing (it persists in `main.db` for the run), then waits
- * for the composer. Consent resolves asynchronously on open, so the composer isn't there on
- * the first tick even when already granted — always wait. */
-async function ensureConsented(page: TauriPage): Promise<void> {
+/** Turns Ask Cmdr on from the rail's gate if it's showing (the switch persists in
+ * `settings.json` for the run), then waits for the composer. The gate resolves asynchronously
+ * on open, so the composer isn't there on the first tick even when already on — always wait. */
+async function ensureAskCmdrOn(page: TauriPage): Promise<void> {
   await expect
     .poll(
       async () => {
         if (await composerPresent(page)) return true
-        if (await consentShown(page)) {
-          await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-accept')?.click()`)
+        if (await offGateShown(page)) {
+          await page.evaluate(
+            `document.querySelector('.ask-cmdr-rail .ask-cmdr-gate[data-gate="off"] button')?.click()`,
+          )
         }
         return composerPresent(page)
       },
@@ -192,7 +196,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
     const folderName = `wake-check-${String(Date.now())}`
 
     await openRail(page)
-    await ensureConsented(page)
+    await ensureAskCmdrOn(page)
 
     await watchForWake(page)
     await stageInboxNoise(page)
@@ -251,7 +255,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
     const loudFolder = `wake-loud-${String(Date.now())}`
 
     await openRail(page)
-    await ensureConsented(page)
+    await ensureAskCmdrOn(page)
 
     await watchForWake(page)
     await stageInboxNoise(page)
@@ -286,7 +290,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
     const folderName = `wake-staged-${String(Date.now())}`
 
     await openRail(page)
-    await ensureConsented(page)
+    await ensureAskCmdrOn(page)
 
     // Both watches armed BEFORE the wake: the toast dismisses itself after four seconds and
     // the whole turn takes milliseconds against the fake.

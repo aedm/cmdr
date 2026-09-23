@@ -20,9 +20,10 @@
         openPrivacySettings,
     } from '$lib/tauri-commands'
     import { systemStrings } from '$lib/system-strings.svelte'
-    import { getCloudProvider, getSetting, setSetting, type AiProvider } from '$lib/settings'
+    import { getCloudProvider, getSetting, isExplicitlySet, setSetting, type AiProvider } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
-    import { declineCloudConsent } from '$lib/ai/cloud-consent.svelte'
+    import { cloudAiBlocked, declineCloudConsent } from '$lib/ai/cloud-consent.svelte'
+    import AiCloudConsentToggle from '$lib/ai/AiCloudConsentToggle.svelte'
     import InfoTip from '$lib/ui/InfoTip.svelte'
     import RadioGroup from '$lib/ui/RadioGroup.svelte'
     import LinkButton from '$lib/ui/LinkButton.svelte'
@@ -54,9 +55,14 @@
      *   - `ai.provider` (always)
      *   - `ai.cloudProvider` + `ai.cloudProviderConfigs` (when cloud is picked; the API
      *     key is already persisted live by `CloudProviderSetup`)
-     *   - on 'off' only: Ask Cmdr consent revoked + `askCmdr.proactive = false`, so the
-     *     answer lands on all three pieces of state that say AI is on (see `persist()`
-     *     and DETAILS § "What 'off' turns off")
+     *   - on 'off' only: cloud AI consent declined, `askCmdr.proactive = false`, and
+     *     `askCmdr.enabled = false`, so the answer lands on every piece of state that says
+     *     AI is on (see `persist()` and DETAILS § "What 'off' turns off")
+     *   - on 'cloud' / 'local': `askCmdr.enabled = true`, only when nobody set it yet
+     *
+     * Cloud shows the Allow cloud AI switch at the top of the right column, above a setup
+     * that stays locked until it's on. The switch's own click is the only thing that grants
+     * cloud consent; this step never does.
      *   - `pushConfigToBackend()` (belt + braces; the applier listener also fires on the
      *     same setting changes, but we await this here so backend state is fresh by the
      *     time the user lands in the app)
@@ -125,25 +131,29 @@
         // Clear the footer override so the wizard's default buttons render on other steps
         // (and so a teardown-then-remount doesn't leak stale closures).
         setFooterOverride(null)
-        dismissKeyWarning()
+        dismissWarning()
     })
 
     /**
-     * The missing-API-key warning is a CONFIRM-ONCE gate, not a block: the first Next
-     * with cloud picked and no key stored stops and says so, the second one goes through.
-     * That keeps the no-key-blocks-advance rule (a user who wants to paste the key later
-     * still gets out of the step) while making sure nobody sails past a half-configured
-     * AI setup without being told.
+     * The footer warnings are CONFIRM-ONCE gates, not blocks: the first Next shows one and
+     * stops, the second one goes through. Two can apply, and at most one shows:
      *
-     * `true` means the warning is up and the next press is the confirmation.
+     * - Cloud with "Allow cloud AI" off: cloud AI stays off until the user allows it. The
+     *   setup is locked then, so a missing key is beside the point and its note stays away.
+     * - Cloud with no key stored: keeps the no-key-blocks-advance rule (a user who wants to
+     *   paste the key later still gets out of the step) while making sure nobody sails past
+     *   a half-configured AI setup without being told.
+     *
+     * `true` means a warning is up and the next press is the confirmation.
      */
-    let keyWarningShown = $state(false)
-    let dismissKeyWarning: () => void = () => undefined
-    /** The warning's rendered body, handed to the wizard so it can show it on the button. */
+    let warningShown = $state(false)
+    let dismissWarning: () => void = () => undefined
+    /** The warnings' rendered bodies, handed to the wizard so it can show them on the button. */
     let keyWarningEl = $state<HTMLDivElement>()
+    let consentNoteEl = $state<HTMLDivElement>()
 
     /**
-     * Show the warning and arm the "anything the user does next clears it" listeners.
+     * Show a warning and arm the "anything the user does next clears it" listeners.
      *
      * Events inside the wizard FOOTER are exempt, and that exemption is what makes the
      * confirm-once flow work at all: pressing Next again (pointer or keyboard) has to
@@ -155,23 +165,23 @@
      * Capture phase, on `document`: a step control that stops propagation (the provider
      * listbox does) still counts as the user moving on.
      */
-    function showKeyWarning(): void {
-        keyWarningShown = true
-        if (keyWarningEl) setFooterNote(keyWarningEl)
+    function showWarning(note: HTMLDivElement | undefined): void {
+        warningShown = true
+        if (note) setFooterNote(note)
 
         const clear = (event: Event): void => {
             const target = event.target
             if (target instanceof Element && target.closest('.wizard-footer') !== null) return
-            dismissKeyWarning()
+            dismissWarning()
         }
         document.addEventListener('click', clear, true)
         document.addEventListener('keydown', clear, true)
 
-        dismissKeyWarning = () => {
+        dismissWarning = () => {
             document.removeEventListener('click', clear, true)
             document.removeEventListener('keydown', clear, true)
-            dismissKeyWarning = () => undefined
-            keyWarningShown = false
+            dismissWarning = () => undefined
+            warningShown = false
             setFooterNote(null)
         }
     }
@@ -277,15 +287,17 @@
 
     /**
      * Commit the user's pick. "Thanks but no thanks" is the clearest answer a user can
-     * give, so it lands on all THREE pieces of state that say AI is on, not only the
-     * provider row: `ai.provider`, the Ask Cmdr consent record in `main.db`, and the
-     * `askCmdr.proactive` setting (which ships ON).
+     * give, so it lands on every piece of state that says AI is on, not only the provider
+     * row: `ai.provider`, cloud AI consent in `main.db`, the `askCmdr.proactive` setting
+     * (which ships ON), and Ask Cmdr's own `askCmdr.enabled` switch.
      *
-     * ❌ The reverse never happens: picking cloud or local ACCEPTS nothing. Consent is a
-     * separate, explicit act behind the disclosure copy, and the backend enforces it in
-     * the send path. Switching back off 'off' also leaves `askCmdr.proactive` off:
-     * turning AI on again shouldn't silently re-arm an agent that starts conversations
-     * on its own.
+     * ❌ The reverse never happens: picking cloud or local GRANTS nothing. Cloud consent is a
+     * separate, explicit act (the Allow cloud AI switch, behind its disclosure), and the
+     * backend enforces it on every cloud call. Picking cloud or local turns `askCmdr.enabled`
+     * on only when it was never set explicitly, so a re-run of the wizard can't re-arm a switch
+     * the user turned off; on Cloud it still waits for cloud consent. Switching back off 'off'
+     * also leaves `askCmdr.proactive` off: turning AI on again shouldn't silently re-arm an
+     * agent that starts conversations on its own.
      */
     async function persist(): Promise<void> {
         const provider: AiProvider = choice
@@ -295,17 +307,17 @@
         }
         if (provider === 'off') {
             setSetting('askCmdr.proactive', false)
-            // Revoking also purges the proactive pipeline's stored rows in the backend,
-            // which is the intent of an explicit "no". It's a no-op for someone who never
-            // consented (the store just deletes two absent rows). A refused revoke gets one
-            // more try, since a consent left recorded would greet a later "AI on" with Ask
-            // Cmdr already consented. Never fatal: a wizard that traps the user because
-            // `main.db` hiccuped is worse than a logged warning.
-            // `declineConsent` is the one "no" path, shared with Settings' Turn off: it retries a
-            // refusal once, then holds the "no" in `settings.json`, which every consent gate reads.
+            setSetting('askCmdr.enabled', false)
+            // `declineCloudConsent` is the one "no" path, shared with the switch: it revokes
+            // (a no-op for someone who never allowed cloud AI), retries a refusal once, then
+            // holds the "no" in `settings.json`, which every cloud gate reads. Never fatal: a
+            // wizard that traps the user because `main.db` hiccuped is worse than a logged
+            // warning.
             if ((await declineCloudConsent()) === 'notSaved') {
-                log.warn("Couldn't turn Ask Cmdr off for a 'no AI' pick, and couldn't hold the 'no' either; consent stays recorded")
+                log.warn("Couldn't turn cloud AI off for a 'no AI' pick, and couldn't hold the 'no' either; consent stays recorded")
             }
+        } else if (!isExplicitlySet('askCmdr.enabled')) {
+            setSetting('askCmdr.enabled', true)
         }
         // Belt-and-braces: the applier listener fires on each setSetting above, but we
         // await this explicitly so the backend is reconfigured before the user lands in
@@ -337,9 +349,15 @@
         if (advanceBusy) return
         advanceBusy = true
         try {
-            if (!keyWarningShown && (await isMissingCloudApiKey())) {
-                showKeyWarning()
-                return
+            if (!warningShown) {
+                if (choice === 'cloud' && cloudAiBlocked(choice)) {
+                    showWarning(consentNoteEl)
+                    return
+                }
+                if (await isMissingCloudApiKey()) {
+                    showWarning(keyWarningEl)
+                    return
+                }
             }
             await persist()
         } catch (error) {
@@ -350,7 +368,7 @@
         } finally {
             advanceBusy = false
         }
-        dismissKeyWarning()
+        dismissWarning()
         nextStep()
     }
 
@@ -568,7 +586,8 @@
                         />
                     </div>
                     <div class="cloud-grid-setup">
-                        <CloudProviderSetup providerId={cloudProviderId} />
+                        <AiCloudConsentToggle />
+                        <CloudProviderSetup providerId={cloudProviderId} locked={cloudAiBlocked(choice)} />
                     </div>
                 </div>
             {/if}
@@ -582,6 +601,11 @@
         <div bind:this={keyWarningEl} class="key-warning">
             <span class="key-warning-icon"><Icon name="triangle-alert" size={16} aria-hidden="true" /></span>
             <p><Trans key="onboarding.stepAi.missingKeyWarning" snippets={{ strong }} params={{ nextLabel }} /></p>
+        </div>
+        <!-- Cloud picked with Allow cloud AI off: informational, the pick itself is fine. -->
+        <div bind:this={consentNoteEl} class="key-warning">
+            <span class="key-warning-icon"><Icon name="info" size={16} aria-hidden="true" /></span>
+            <p>{tString('onboarding.stepAi.cloudConsentOffNote')}</p>
         </div>
     </div>
 </OnboardingStepShell>

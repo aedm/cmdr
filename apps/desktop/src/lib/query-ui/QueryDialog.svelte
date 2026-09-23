@@ -704,6 +704,7 @@
             onStopLive={config.streamingSource ? stopLiveRun : undefined}
             iconCacheVersion={iconVersion}
             aiEnabled={config.aiEnabled}
+            aiBlocked={config.aiBlocked ?? false}
             showPathColumn={config.showPathColumn}
             onResultClick={(index: number) => {
                 activateResultAt(config, index)

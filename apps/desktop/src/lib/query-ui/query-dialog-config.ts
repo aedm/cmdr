@@ -230,6 +230,11 @@ export interface QueryDialogConfig<E = unknown> {
 
   /** Whether the AI mode chip is available + AI-mode workflows are wired. */
   aiEnabled: boolean
+  /**
+   * The AI mode is Cloud and the user hasn't turned on "Allow cloud AI": the chip stays, the
+   * empty state says why AI prompts won't run and links to the switch. Omit when not Cloud.
+   */
+  aiBlocked?: boolean
   /** True when inputs/filters should render disabled (e.g. Search's index not ready). */
   inputsDisabled: boolean
 

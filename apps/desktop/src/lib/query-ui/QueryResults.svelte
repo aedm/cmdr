@@ -104,6 +104,8 @@
         iconCacheVersion: number
         /** True when AI mode is available (provider on + index ready). Drives the empty-state chip set. */
         aiEnabled: boolean
+        /** Cloud without "Allow cloud AI": the empty state trades its AI prompts for the reason. */
+        aiBlocked?: boolean
         /**
          * Whether to render the Path column (header + cell). Search renders it `true` so the
          * cross-folder results table can show each row's parent folder; Selection renders it
@@ -152,6 +154,7 @@
         onStopLive,
         iconCacheVersion: iconVersionProp,
         aiEnabled,
+        aiBlocked = false,
         showPathColumn = true,
         onResultClick,
         onHover,
@@ -575,7 +578,7 @@
                 {/if}
             </div>
         {:else if !hasSearched && !query.trim() && isIndexReady && sizeFilter === 'any' && dateFilter === 'any'}
-            <EmptyState {aiEnabled} {indexEntryCount} examples={emptyExamples} onPick={onPickExample} />
+            <EmptyState {aiEnabled} {aiBlocked} {indexEntryCount} examples={emptyExamples} onPick={onPickExample} />
         {:else}
             {#each results as entry, index (entry.path)}
                 <div

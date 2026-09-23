@@ -149,10 +149,10 @@ export const MAIN_PASS_STEPS: readonly MainPassStep[] = [
     },
   },
 
-  // The Ask Cmdr rail (consent → empty → one exchange → threads). Also a
-  // main-window panel, and early for one reason: the consent gate is a one-time
-  // screen recorded in `main.db`, so the only chance to photograph it is before
-  // anything in this run accepts it.
+  // The Ask Cmdr rail (off gate → empty → one exchange → threads). Also a
+  // main-window panel, and early for one reason: the off gate shows only until
+  // Ask Cmdr is switched on, which persists in `settings.json`, so the only chance
+  // to photograph it is before anything in this run turns it on.
   {
     name: 'ask-cmdr',
     run: async (main, { report, failed, skipped }) => {

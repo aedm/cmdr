@@ -12,11 +12,17 @@
      *
      * Hidden whenever the index isn't ready: `SearchResults.svelte` owns the "Drive index
      * not ready" surface and we don't want to compete with it.
+     *
+     * `aiBlocked` (the AI mode is Cloud and "Allow cloud AI" is off): the AI prompts would only
+     * be refused, so they give way to one line saying why and a button to the switch. The
+     * non-AI examples stay, and the AI mode chip stays visible so the feature stays findable.
      */
     import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
     import { tString } from '$lib/intl/messages.svelte'
     import Trans from '$lib/intl/Trans.svelte'
     import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
+    import Button from '$lib/ui/Button.svelte'
+    import { openCloudConsentSettings } from '$lib/ai/cloud-consent.svelte'
     import type { SearchMode } from './query-filter-state.svelte'
 
     interface ExampleChip {
@@ -28,6 +34,8 @@
     interface Props {
         /** True when AI mode is available (provider set and index ready). */
         aiEnabled: boolean
+        /** True when the AI mode is Cloud and the user hasn't allowed cloud AI yet. */
+        aiBlocked?: boolean
         /** Total entries in the loaded search index (status line). 0 hides the line (Selection). */
         indexEntryCount: number
         /**
@@ -42,7 +50,7 @@
         onPick: (chip: ExampleChip) => void
     }
 
-    const { aiEnabled, indexEntryCount, examples: providedExamples, onPick }: Props = $props()
+    const { aiEnabled, aiBlocked = false, indexEntryCount, examples: providedExamples, onPick }: Props = $props()
 
     /**
      * Search-flavoured fallback examples. Locked in `docs/notes/ai-search-eval-history.md`
@@ -61,13 +69,14 @@
         { label: 'screenshot*', mode: 'filename', query: 'screenshot*' },
     ]
 
-    const examples = $derived(
+    const baseExamples = $derived(
         providedExamples && providedExamples.length > 0
             ? providedExamples
-            : aiEnabled
+            : aiEnabled && !aiBlocked
               ? AI_EXAMPLES
               : FILENAME_EXAMPLES,
     )
+    const examples = $derived(aiBlocked ? baseExamples.filter((chip) => chip.mode !== 'ai') : baseExamples)
     const formattedCount = $derived(formatNumber(indexEntryCount))
 </script>
 
@@ -82,6 +91,14 @@
 {#snippet aiChip()}<ShortcutChip key="⌘Enter" />{/snippet}
 
 <div class="empty-state">
+    {#if aiBlocked}
+        <div class="cloud-off" role="note">
+            <p>{tString('queryUi.ai.cloudOff.body')}</p>
+            <Button size="mini" variant="secondary" onclick={() => { openCloudConsentSettings('query-ai-cloud-off'); }}>
+                {tString('queryUi.ai.openSettings')}
+            </Button>
+        </div>
+    {/if}
     <p class="try-line">{tString('queryUi.empty.tryLine')}</p>
     <div class="example-row">
         {#each examples as chip (chip.label)}
@@ -103,7 +120,7 @@
         </p>
     {/if}
     <p class="tip">
-        {#if aiEnabled}
+        {#if aiEnabled && !aiBlocked}
             <Trans
                 key="queryUi.empty.tipAi"
                 snippets={{ newKey: newChip, historyKey: historyChip, aiKey: aiChip }}
@@ -125,6 +142,19 @@
         color: var(--color-text-secondary);
         text-align: center;
         min-height: 240px;
+    }
+
+    .cloud-off {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-xs);
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    }
+
+    .cloud-off p {
+        margin: 0;
     }
 
     .try-line {

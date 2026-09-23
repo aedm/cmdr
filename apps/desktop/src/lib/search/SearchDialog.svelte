@@ -22,6 +22,7 @@
      *   - `snapshot-promotion.ts`: "Show all in main window", and the recent-search writes.
      *   - `recent-search-adapter.ts`: how a history entry renders, and pick / remove.
      */
+    import { cloudConsentState, refreshCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import { onMount, onDestroy } from 'svelte'
     import { getSetting, onSpecificSettingChange } from '$lib/settings'
     import { showFileContextMenu, type HistoryEntry, type SearchResultEntry } from '$lib/tauri-commands'
@@ -189,6 +190,9 @@
     const indexLoadHint = createIndexLoadHint()
 
     const aiEnabled = $derived(aiProvider !== 'off' && lifecycle.isIndexAvailable)
+    // Cloud without "Allow cloud AI": the chip stays, and the empty state says why and links to
+    // the switch. The backend refuses the call anyway; this only keeps the dialog honest.
+    const aiBlocked = $derived(aiEnabled && aiProvider === 'cloud' && cloudConsentState.accepted !== true)
     const inputsDisabled = $derived(!lifecycle.isIndexAvailable)
 
     /**
@@ -261,6 +265,7 @@
     onMount(() => {
         // Live-mirror `ai.provider` so the AI chip appears / disappears in real time when
         // the user changes the provider in the settings window.
+        void refreshCloudConsent()
         unlistenAiProvider = onSpecificSettingChange('ai.provider', (value: unknown) => {
             aiProvider = typeof value === 'string' ? value : 'off'
         })
@@ -312,6 +317,7 @@
         state: searchQueryState,
 
         aiEnabled,
+        aiBlocked,
         inputsDisabled,
 
         visibleChips: { size: true, date: true, scope: true, pattern: true },

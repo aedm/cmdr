@@ -14,6 +14,7 @@
 import type { AiTranslateErrorKind } from '$lib/ipc/bindings'
 import { addToast, type ToastLevel } from '$lib/ui/toast/toast-store.svelte'
 import { tString } from '$lib/intl/messages.svelte'
+import CloudAiOffToastContent from './CloudAiOffToastContent.svelte'
 
 /** A thrown AI-translation failure: a real `Error` that also carries the typed `kind`. */
 export type AiTranslateThrown = Error & { kind: AiTranslateErrorKind }
@@ -65,9 +66,12 @@ export function aiTranslateErrorToast(kind: AiTranslateErrorKind): AiTranslateTo
         body: tString('ai.translateError.off.body'),
         level: 'warn',
       }
-    // TODO(cloud-consent milestone 4): `noCloudConsent` gets its own copy and an "Open AI settings"
-    // action. Until then it reads as the not-set-up case, which points at the same settings page.
     case 'noCloudConsent':
+      return {
+        title: tString('ai.translateError.noCloudConsent.title'),
+        body: tString('ai.translateError.noCloudConsent.body'),
+        level: 'warn',
+      }
     case 'notConfigured':
       return {
         title: tString('ai.translateError.notConfigured.title'),
@@ -137,7 +141,10 @@ const AI_TRANSLATE_TOAST_ID = 'ai-translate-error'
 export function showAiTranslateErrorToast(err: unknown): boolean {
   if (!isAiTranslateError(err)) return false
   const copy = aiTranslateErrorToast(err.kind)
-  addToast(`${copy.title}\n${copy.body}`, {
+  // "Cloud AI is off" carries a button into the switch (same copy, rendered by the component),
+  // since the fix is one click away and a sentence alone would send the user hunting.
+  const content = err.kind === 'noCloudConsent' ? CloudAiOffToastContent : `${copy.title}\n${copy.body}`
+  addToast(content, {
     level: copy.level,
     dismissal: 'transient',
     timeoutMs: 8000,

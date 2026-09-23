@@ -1,6 +1,7 @@
 /**
  * Tier 3 a11y tests for `AiCloudConsentToggle.svelte`, the Allow cloud AI switch and its
- * "what Cmdr sends" disclosure, plus the promises that disclosure has to keep. It's what a
+ * "what Cmdr sends" disclosure, plus the promises that disclosure has to keep, and for
+ * `CloudAiOffToastContent.svelte`, the toast pointing back at that switch. It's what a
  * person reads before the one click that lets anything reach a cloud AI service, for every
  * feature, so each claim below is one the copy must make (or must never make again).
  */
@@ -21,9 +22,12 @@ vi.mock('./cloud-consent.svelte', () => ({
   acceptCloudConsent: vi.fn(() => Promise.resolve('done')),
   declineCloudConsent: vi.fn(() => Promise.resolve('done')),
   CLOUD_CONSENT_ANCHOR: 'settings-ai-cloud-consent',
+  openCloudConsentSettings: vi.fn(),
 }))
 
 import AiCloudConsentToggle from './AiCloudConsentToggle.svelte'
+import CloudAiOffToastContent from './CloudAiOffToastContent.svelte'
+import { openCloudConsentSettings } from './cloud-consent.svelte'
 
 async function mountToggle(): Promise<HTMLElement> {
   const target = document.createElement('div')
@@ -96,6 +100,19 @@ describe('what the disclosure promises', () => {
   it('says where the data goes, including self-hosted and custom endpoints', async () => {
     const target = await mountToggle()
     expect(target.textContent).toContain(getMessage('ai.cloudConsent.whereItGoes'))
+    target.remove()
+  })
+})
+
+describe('CloudAiOffToastContent a11y', () => {
+  it('has no a11y violations, and its button opens the switch', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(CloudAiOffToastContent, { target, props: {} })
+    await tick()
+    await expectNoA11yViolations(target)
+    target.querySelector<HTMLButtonElement>('button')?.click()
+    expect(openCloudConsentSettings).toHaveBeenCalledWith('ai-translate-toast')
     target.remove()
   })
 })

@@ -192,7 +192,7 @@ describe('the webview half', () => {
     await expect(assertAppAlive(hungPage(), 'Archive browsing › extracts it', 50)).rejects.toThrow(/STOPPED ANSWERING/)
 
     const later = hungPage()
-    await expect(assertAppAlive(later, 'Ask Cmdr › gates on consent', 50)).rejects.toThrow(
+    await expect(assertAppAlive(later, 'Ask Cmdr › gates on Ask Cmdr being off', 50)).rejects.toThrow(
       /Archive browsing › extracts it/,
     )
     expect(later.calls()).toBe(0)

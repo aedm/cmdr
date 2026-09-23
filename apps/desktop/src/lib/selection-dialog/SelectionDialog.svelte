@@ -21,6 +21,7 @@
      * mutate the focused pane's selection while the user is previewing — apply happens
      * only on commit, matching Total Commander's "+" / "-" behaviour.
      */
+    import { cloudConsentState, refreshCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import { onMount, onDestroy } from 'svelte'
     import { SvelteSet } from 'svelte/reactivity'
     import type { FileEntry } from '$lib/file-explorer/types'
@@ -101,6 +102,9 @@
     let aiProvider = $state<string>(getSetting('ai.provider'))
     let unlistenAiProvider: (() => void) | undefined
     const aiEnabled = $derived(aiProvider === 'cloud')
+    // Cloud without "Allow cloud AI": the chip stays, and the empty state says why and links to
+    // the switch. The backend refuses the call anyway; this only keeps the dialog honest.
+    const aiBlocked = $derived(aiEnabled && aiProvider === 'cloud' && cloudConsentState.accepted !== true)
 
     // Snapshot of the folder names at dialog open. Used by the AI context callback;
     // doesn't refresh on focused-pane change (G15).
@@ -462,6 +466,7 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     onMount(() => {
+        void refreshCloudConsent()
         unlistenAiProvider = onSpecificSettingChange('ai.provider', (value: unknown) => {
             aiProvider = typeof value === 'string' ? value : 'off'
         })
@@ -528,6 +533,7 @@
         state: selectionQueryState,
 
         aiEnabled,
+        aiBlocked,
         inputsDisabled: false,
 
         visibleChips: { size: true, date: true, scope: false, pattern: true },
