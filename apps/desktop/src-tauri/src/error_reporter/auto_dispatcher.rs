@@ -153,7 +153,7 @@ pub fn set_app_handle(handle: AppHandle<Wry>) {
 static LAST_STATE_SNAPSHOT_AT: Mutex<Option<Instant>> = Mutex::new(None);
 const STATE_SNAPSHOT_THROTTLE: Duration = Duration::from_secs(30);
 
-/// Spawn a background task that reads `cmdr://state` and writes it to the log file as
+/// Spawn a background task that builds the name-redacted `cmdr://state` and writes it to the log file as
 /// a debug-level record. Always runs (regardless of the Flow B opt-in) so that
 /// user-initiated bundles built minutes after a failure still have a state snapshot
 /// to read. File-only because of the dispatch tree: stdout's Info default drops debug
@@ -177,11 +177,14 @@ fn emit_state_snapshot() {
         return;
     };
     tauri::async_runtime::spawn(async move {
-        match crate::mcp::resources::read_resource(&app, "cmdr://state").await {
-            Ok(content) => log::debug!(
+        // ❗ The redacted build, never a plain `cmdr://state` read: that resource is
+        // for local agents and lists every file name in both panes, and this text
+        // ships in every bundle. The bundle's line pass can't catch a bare name.
+        match crate::mcp::resources::read_state_for_error_report(&app).await {
+            Ok(text) => log::debug!(
                 target: "cmdr_lib::error_reporter::state_snapshot",
                 "State at error time:\n{}",
-                content.text,
+                text,
             ),
             Err(e) => log::debug!(
                 target: "cmdr_lib::error_reporter::state_snapshot",

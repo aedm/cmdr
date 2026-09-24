@@ -115,6 +115,13 @@ pub(crate) struct StateOptions {
     /// noise. The per-pane summary fields (`path`, `volumeId`, `cursor.index`,
     /// `totalFiles`, etc.) are still rendered.
     pub(crate) compact: bool,
+    /// Replace every file, folder, and favorite NAME with a redaction token
+    /// (`<file>.pdf`, `<dir>`), for a snapshot that leaves the machine. Paths
+    /// stay as they are: the bundle's own salted pass redacts those, and keeps
+    /// them correlatable with the log lines around them, which a name never
+    /// could be (nothing in a bare name says it's a name). No URI sets this;
+    /// [`read_state_for_error_report`] does.
+    pub(crate) redact_names: bool,
 }
 
 /// Parses `?k=v&k=v` query string into a flat map. Returns an empty map for
@@ -161,7 +168,11 @@ pub(crate) fn parse_state_options(query: Option<&str>) -> StateOptions {
             .collect::<std::collections::HashSet<String>>()
     });
     let compact = q.get("compact").map(|v| v == "true" || v == "1").unwrap_or(false);
-    StateOptions { include, compact }
+    StateOptions {
+        include,
+        compact,
+        redact_names: false,
+    }
 }
 
 impl StateOptions {
@@ -328,20 +339,53 @@ fn tag_color_name(color: u8) -> Option<&'static str> {
     })
 }
 
+/// A copy of the pane with every name a person gave something replaced by a
+/// token: file entries (and with them the cursor's `name:`), type-to-jump's
+/// buffer and match, and the mount error's message. What's left is shape:
+/// counts, sizes, dates, indices, markers, and paths for the bundle to redact.
+fn with_names_redacted(state: &PaneState) -> PaneState {
+    let mut state = state.clone();
+    for file in &mut state.files {
+        file.name = crate::redact::redact_name(&file.name, file.is_directory);
+    }
+    if let Some(ttj) = state.type_to_jump.as_mut() {
+        // What someone typed is a prefix of a name; its length is all that's safe.
+        if !ttj.buffer.is_empty() {
+            ttj.buffer = format!("<{} chars>", ttj.buffer.chars().count());
+        }
+        if let Some(name) = ttj.last_matched_name.as_mut() {
+            *name = crate::redact::redact_name(name, false);
+        }
+    }
+    if let Some(err) = state.mount_error.as_mut() {
+        err.message = crate::redact::redact_line(&err.message).into_owned();
+    }
+    state
+}
+
 /// Build YAML for a single pane.
 ///
-/// When `compact` is true, omits the `files:` list (the largest source of YAML
-/// volume in the default state read) while keeping every summary field. The
-/// per-pane `cursor`, `totalFiles`, and `loadedRange` still show, so callers
-/// can still tell where the cursor is without paying for 100 file lines.
-pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, compact: bool) -> String {
+/// When `opts.compact` is true, omits the `files:` list (the largest source of
+/// YAML volume in the default state read) while keeping every summary field.
+/// The per-pane `cursor`, `totalFiles`, and `loadedRange` still show, so
+/// callers can still tell where the cursor is without paying for 100 file
+/// lines. `opts.redact_names` swaps names for tokens (see [`StateOptions`]).
+pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, opts: &StateOptions) -> String {
+    let compact = opts.compact;
+    let redacted;
+    let state = if opts.redact_names {
+        redacted = with_names_redacted(state);
+        &redacted
+    } else {
+        state
+    };
     let mut lines = Vec::new();
 
     // Tabs (first, gives context for which tab is active before showing its content)
     if !state.tabs.is_empty() {
         lines.push(format!("{}tabs:", indent));
         for (idx, tab) in state.tabs.iter().enumerate() {
-            let formatted = format_tab_compact(tab, idx);
+            let formatted = format_tab_compact(tab, idx, opts.redact_names);
             lines.push(format!("{}  - {}", indent, formatted));
         }
     }
@@ -457,8 +501,19 @@ pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, comp
 
 /// Format a tab entry in compact format.
 /// Format: `i:INDEX id:TAB_ID [active] [pinned] FolderName (/full/path)`
-pub(crate) fn format_tab_compact(tab: &TabInfo, index: usize) -> String {
+///
+/// `redact_name` swaps the folder name for a token. The path stays, for the
+/// error bundle's salted pass to redact alongside every other path.
+pub(crate) fn format_tab_compact(tab: &TabInfo, index: usize, redact_name: bool) -> String {
     let folder_name = tab.path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(&tab.path);
+    let redacted;
+    // `/` has no component to name, and nothing to hide.
+    let folder_name = if redact_name && folder_name != "/" {
+        redacted = crate::redact::redact_name(folder_name, true);
+        redacted.as_str()
+    } else {
+        folder_name
+    };
 
     let mut markers = Vec::new();
     if tab.active {
@@ -656,6 +711,17 @@ pub async fn read_resource<R: Runtime>(app: &tauri::AppHandle<R>, uri: &str) -> 
     })
 }
 
+/// The full `cmdr://state` YAML with every name redacted, for the error
+/// reporter's snapshot. A bundle leaves the machine, and this resource is built
+/// for local agents that need real names, so it can't ship as-is.
+pub(crate) async fn read_state_for_error_report<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<String, String> {
+    let opts = StateOptions {
+        redact_names: true,
+        ..StateOptions::default()
+    };
+    build_state_yaml(app, &opts).await
+}
+
 /// Build the `cmdr://state` YAML, respecting `include` / `compact` options.
 async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOptions) -> Result<String, String> {
     let store = app.try_state::<PaneStateStore>().ok_or("Pane state not available")?;
@@ -673,16 +739,25 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
 
     if opts.includes("panes") {
         yaml.push_str("left:\n");
-        yaml.push_str(&build_pane_yaml_with_options(&left, "  ", opts.compact));
+        yaml.push_str(&build_pane_yaml_with_options(&left, "  ", opts));
         yaml.push('\n');
 
         yaml.push_str("right:\n");
-        yaml.push_str(&build_pane_yaml_with_options(&right, "  ", opts.compact));
+        yaml.push_str(&build_pane_yaml_with_options(&right, "  ", opts));
         yaml.push('\n');
     }
 
     if opts.includes("volumes") {
-        yaml.push_str(&volumes::build_volumes_yaml(&volumes::snapshot_volumes().await));
+        let mut snapshot = volumes::snapshot_volumes().await;
+        if opts.redact_names {
+            // A favorite's row is named after its folder, which for the home
+            // folder is the account name. Drive and share names stay, as they do
+            // in every log line (`redact/DETAILS.md` § account names).
+            for v in snapshot.iter_mut().filter(|v| v.id.starts_with("fav-")) {
+                v.name = crate::redact::redact_name(&v.name, true);
+            }
+        }
+        yaml.push_str(&volumes::build_volumes_yaml(&snapshot));
     }
 
     if opts.includes("dialogs") {
@@ -710,7 +785,11 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
                 if dialog_type == "archive-password"
                     && let Some(prompt) = prompt.as_ref()
                 {
-                    dialog_entries.push(format_archive_password_dialog(prompt));
+                    let mut prompt = prompt.clone();
+                    if opts.redact_names {
+                        prompt.archive_name = crate::redact::redact_name(&prompt.archive_name, false);
+                    }
+                    dialog_entries.push(format_archive_password_dialog(&prompt));
                 } else {
                     dialog_entries.push(format!("  - type: {}", dialog_type));
                 }
@@ -753,9 +832,14 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
         } else {
             yaml.push_str("favorites:\n");
             for fav in &favorites {
+                let name = if opts.redact_names {
+                    crate::redact::redact_name(&fav.name, true)
+                } else {
+                    fav.name.clone()
+                };
                 yaml.push_str(&format!(
                     "  - id: {}\n    name: {:?}\n    path: {:?}\n",
-                    fav.id, fav.name, fav.path
+                    fav.id, name, fav.path
                 ));
             }
         }

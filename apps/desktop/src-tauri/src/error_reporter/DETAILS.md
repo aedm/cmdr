@@ -385,12 +385,23 @@ need stack context regardless of the user's env.
 
 ### State snapshot at error time
 
-`auto_dispatcher::on_error_logged` (called from every `log_error!`) also reads the
-`cmdr://state` MCP resource and emits the YAML as a debug-level record under
+`auto_dispatcher::on_error_logged` (called from every `log_error!`) also builds the
+`cmdr://state` YAML and emits it as a debug-level record under
 `cmdr_lib::error_reporter::state_snapshot`. Throttled to one per 30 s so an error storm
 doesn't fill the file. **Always runs** (regardless of the Flow B opt-in) so manual
 "Send error report" bundles built minutes after a failure still have a snapshot.
 File-only via the same per-output filtering as the backtrace.
+
+**Decision: redacted at emit time, kept in bundles.** It's the best triage artifact a
+bundle has, but the resource lists every file name in both panes, the tab titles, and
+the favorites, and the bundle's line pass can't tell a bare name from any other word:
+one bundle shipped a whole NAS folder's names that way. So the dispatcher calls
+`mcp::resources::read_state_for_error_report`, which swaps every name for a
+`redact::redact_name` token (`<file>.jpg`, `<dir>`) and leaves paths for the bundle's
+salted pass, so they still correlate with the log lines around them. The tokens are
+unsalted (the salt doesn't exist until a bundle is built), so a name in the snapshot
+can't be matched to the same name in a log line. ❌ Never log a plain `cmdr://state`
+read here.
 
 ### AppHandle wiring
 
