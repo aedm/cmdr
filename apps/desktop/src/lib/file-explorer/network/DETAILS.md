@@ -187,8 +187,8 @@ another share on the same host.
 retires it (`retireAutoMount`, which also clears the pane's copy through `onAutoMountConsumed`) whenever that visit
 ends: a mount went through, the person went back, or another host was picked. Opening a host from the servers list only
 ever lists its shares. The bug this closes (cmdr-reports#7, "Cmdr tried to open the share on that server"): the value
-outlived its visit, every new `PlacesBrowser` instance fired it again, and a host row the person meant to browse
-mounted a share they never picked.
+outlived its visit, every new `PlacesBrowser` instance fired it again, and a host row the person meant to browse mounted
+a share they never picked.
 
 ## `smb-sign-in.ts`
 

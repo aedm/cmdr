@@ -14,6 +14,9 @@ Read this before adding, wiping, or reorganizing a spec.
 
 ## The specs
 
+- `saved-smb-shares.md`: **A saved SMB server holds only a host, not the user and share the person wants.** A share row
+  under its server, recorded at mount time, pinnable and openable like an SFTP place. Issue:
+  [cmdr-reports#7](https://github.com/vdavid/cmdr-reports/issues/7).
 - `elevated-file-operations.md`: **A user couldn't move root-owned files out of a folder their macOS user can't change,
   and had to finish with `sudo`.** An out-of-process native alert, a 24-hour Cmdr admin right, and a tiny on-demand root
   helper. Issues: [#107](https://github.com/vdavid/cmdr/issues/107), [#280](https://github.com/vdavid/cmdr/issues/280).
