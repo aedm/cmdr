@@ -15,6 +15,7 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
 | `url_userinfo` | `scheme://user[:pass]@host/...` | `scheme://<userinfo>@host/...` (host kept) |
 | `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | `//<userinfo>@host/...` (host kept) |
+| `path_field` | `path=`, `smb_path=`, `from=`, `to=`, `file=`, `dir=`, `src=`, `dest=`, `selectName=`, `new_name=`, … | relative value walked in place; absolute value handed to the branches above |
 | `email` | `local@domain.tld` | `<email>` |
 | `account` | `user=`/`username:` fields | `user=<user>`, `None` untouched |
 | `mdns` | `<label>.local` | `<host>.local` |
@@ -85,7 +86,12 @@ The boundary rules, in order, each earning its place against one of those:
    `<dir>`/`<file>` decision. `01.13.03` in a timestamp otherwise reads as an extension and halves the name. A digit-led
    real extension (`.7z`) just doesn't end the scan, which costs a word of prose, never a leak.
 4. **Backward trim of a lowercase extension-less run**, floored at the first segment after the last `/`. That floor is
-   what leaves `/Volumes/naspi and then it failed` as `naspi` rather than nothing.
+   what leaves `/Volumes/naspi and then it failed` as `naspi` rather than nothing. It is skipped when the path runs
+   right up to the seam, since the seam already marked the end: `/Volumes/x/summer trip: failed` used to ship `trip`. A
+   word with an inner dot or a `{:?}` escape (`me\u{301}retek.jpg.cmdr-tmp-…`) also stops it: prose has neither, and
+   trimming one shipped the tail of a temp name.
+5. **A `\u{…}` escape is part of a name.** Its closing `}` neither ends a sentence nor gets trimmed as punctuation, so
+   `cafe\u{301} menu.pdf` stays whole.
 
 ### Why the scan resumes mid-match
 
@@ -120,3 +126,35 @@ and filename-shaped to be worth matching. Pinned by `trash_refusal_line_redacts_
   `[A-Za-z]` is fine but `[ A-Za-z ]` would match a space.
 - Paths with embedded spaces (`/Volumes/My Backup Drive/...`) match by allowing single spaces between path components.
   Multi-space gaps stop the match. Where the match then actually ends: § "Finding the end of a path".
+
+## Keyed path fields (`path_field`)
+
+A path with no mount prefix (`docs/a b.pdf` on an SMB share, `/docs` relative to a volume root, a bare `name.jpg`)
+looks like any other word, so the only thing that can mark it is the key it's logged under. `path_field` claims a
+fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare one:
+
+- **Quoted** is exact: the value is unescaped (so `e\u{301}` is one character again and a `\` inside an escape isn't
+  read as a separator), walked, and re-quoted.
+- **Bare** (`smb2`'s own `tree: renamed from=a\b c.jpg to=…`) over-matches to the end of the line, and
+  `end_of_bare_value` cuts at the first `: ` seam, `, `, or ` key=`, then drops an unbalanced `)`. A comma-space inside
+  a bare name ends it early and leaks the rest; `{:?}` values can't hit that, which is why our own sites use it.
+- **An absolute value** that a path branch claims from its first byte is handed back (`key=` consumed, value
+  re-scanned), so `$HOME` and `/Volumes/<volume>` keep working. Anything else is walked here by
+  `redact_relative_path`: same leaf and allowlist rules, the first segment of an absolute value kept if it's a
+  system root (`/private`, `/Applications`), and already-redacted segments left alone, which keeps it idempotent.
+- The key set is deliberately narrow: `name=` stays out because it names hosts and settings too (`Host …: name=NAS`),
+  and `target=` because the file viewer uses it for a seek target. A name-bearing site logs under `new_name=` instead.
+
+## Hashing a name, not its bytes
+
+Salted tokens are for spotting "same file, 12 mentions", so the hash has to see through how a name was printed. The
+same file used to come out as three tokens in one bundle: `Display` of an NFD name, `{:?}` of it (`me\u{301}retek`),
+and the NFC form a NAS lists. `short_hash` undoes `{:?}` escapes and NFC-normalizes before hashing. Cmdr's own
+`.cmdr-tmp-` / `.cmdr-temp-` / `.cmdr-staging-` suffix is split off first (`split_cmdr_suffix`): the name part hashes
+like the final file and the suffix ships as-is, since its UUID says nothing about anyone.
+
+## Known gap: a lowercase last word before prose
+
+`/Volumes/x/summer trip failed to open` still reads `trip failed to open` as prose, because nothing local tells a
+folder's lowercase word from the sentence after it. The seam rule covers the common `{path}: {message}` shape; logging
+the path as a quoted field covers the rest.

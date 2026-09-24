@@ -241,7 +241,7 @@ impl MtpConnectionManager {
         let _fg = self.foreground_guard(device_id).await;
 
         debug!(
-            "MTP create_folder: device={}, storage={}, parent={}, name={}",
+            "MTP create_folder: device={}, storage={}, parent={:?}, new_name={:?}",
             device_id, storage_id, parent_path, folder_name
         );
 

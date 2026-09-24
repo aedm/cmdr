@@ -8,9 +8,11 @@ dispatch calling the matched group's rewriter. `Cow::Borrowed` for no-match line
 `<dir:HHHHHH>` / `<file:HHHHHH>` (`sha256(salt || segment)[..3]`), so equal segments correlate within one bundle only.
 The builder mints a fresh 16-byte random salt per build; the salt never ships.
 
-Fifteen named groups, one per pattern class: four path shapes (`unix_home`, `win_home`, `unix_system`, `volumes` /
-`media`), three share shapes (`smb_uri`, `unc`, `url_userinfo` / `bare_userinfo`), and the scalar ones (`email`,
-`account`, `mdns`, `ipv4`, `ipv6`, `mtp_owner`). What each matches and rewrites to: `DETAILS.md` § Pattern table.
+Sixteen named groups, one per pattern class: four path shapes (`unix_home`, `win_home`, `unix_system`, `volumes` /
+`media`), three share shapes (`smb_uri`, `unc`, `url_userinfo` / `bare_userinfo`), the keyed `path_field`, and the scalar
+ones (`email`, `account`, `mdns`, `ipv4`, `ipv6`, `mtp_owner`). What each matches and rewrites to: `DETAILS.md` §
+Pattern table. `redact_name` is the one entry point for a bare name with no line around it (the error reporter's
+state snapshot).
 
 ## Must-knows
 
@@ -29,6 +31,12 @@ Fifteen named groups, one per pattern class: four path shapes (`unix_home`, `win
   AND filenames, so the boundary is recovered after the match. ❌ Never anchor continuation words to `[A-Z0-9]` (that
   shipped ` at 01.13.03 PM-2.jpeg` verbatim), ❌ never use the looser `has_extension_like_suffix` for its forward scan
   (`.03` in a timestamp halves the name). `DETAILS.md` § "Finding the end of a path".
+- **A relative path is only found by its key.** `path_field` claims `path=`, `smb_path=`, `from=`, `to=`, `file=`, …
+  (`{:?}`-quoted or bare) because nothing else marks `docs/a b.pdf` as a path; an absolute value goes back to the path
+  branches. So ❗ **log a file path or name as `key={:?}` with a key from that list**, never as bare prose
+  (`against /docs on volume …`): prose is invisible to the redactor.
+- **Hashes key on the name, not its bytes.** `short_hash` undoes `{:?}` escapes and NFC-normalizes first, and a
+  `.cmdr-tmp-<uuid>` leaf hashes as the name it becomes (suffix kept verbatim), so one file is one token per bundle.
 - **`redact_with` resumes at `match.start() + consumed`, ❌ never `replace_all`.** A handed-back tail must face the
   scanner again or nothing else can claim it: one match ate `smb:` and shipped the share and filename. A new branch
   that hands text back owes `dispatch` a consumed length.

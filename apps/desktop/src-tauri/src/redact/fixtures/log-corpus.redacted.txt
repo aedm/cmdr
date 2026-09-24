@@ -153,3 +153,13 @@
 00:00:00.014 INFO  long  Quoted path "$HOME/Documents/<file>.pdf" with surrounding quotes
 00:00:00.015 INFO  long  Backtick path `$HOME/Documents/<file>.pdf` with surrounding ticks
 00:00:00.016 INFO  done  finished
+23:33:22.817 DEBUG cmdr_smb::volume::query  SmbVolume::get_metadata: share=media, input="/Volumes/<volume>/<dir>/<dir>/<dir>/<file>.jpg", smb_path="<dir>/<dir>/<dir>/<file>.jpg"
+23:33:22.822 DEBUG cmdr_smb::volume::streams  SmbVolume::write_from_stream: share=media, path="<dir>/<dir>/<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f", size=3887758
+23:33:23.131 DEBUG cmdr_smb::volume::query  SmbVolume::get_metadata: share=media, input="/Volumes/<volume>/<dir>/<dir>/<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f", smb_path="<dir>/<dir>/<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f"
+23:33:23.135 DEBUG cmdr_smb::volume::mutation  SmbVolume::rename: share=media, from="<dir>/<dir>/<dir>/<file>.jpg.cmdr-tmp-66381a4a", to="<dir>/<dir>/<dir>/<file>.jpg", force=false
+23:33:23.149 DEBUG smb2::client::tree  tree: renamed from=<dir>\<dir>\<dir>\<file>.jpg.cmdr-tmp-66381a4a to=<dir>\<dir>\<dir>\<file>.jpg
+23:33:52.870 DEBUG smb2::client::tree  tree: deleted file=<dir>\<dir>\<dir>\<file>.jpg
+23:24:40.121 DEBUG smb2::client::tree  tree: created directory=<dir>\<dir>\<dir>
+23:33:21.604 DEBUG conflict_scan  checking 1 item(s) against path="/<dir>/<dir>/<dir>" on volume smb-100-127-48-122-445-media-cca75cc9c09a6fb5
+23:33:23.156 DEBUG indexing::writer  MoveEntryV2: id=3092084 from="<file>.jpg.cmdr-tmp-66381a4a" to="<file>.jpg" (parent_id 11280 → 11280)
+23:22:14.398 DEBUG FE:fileExplorer  [FilePane] loadDirectory called: paneId=right, volumeId=root, path=/private/<dir>/<dir>, selectName=<dir>, currentLoading=false

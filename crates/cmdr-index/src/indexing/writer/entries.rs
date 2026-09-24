@@ -490,7 +490,7 @@ pub(super) fn handle_move_entry_v2(
     {
         log::debug!(
             target: "indexing::writer",
-            "MoveEntryV2: id={entry_id} already at target (parent_id={new_parent_id}, name={new_name}), no-op",
+            "MoveEntryV2: id={entry_id} already at target (parent_id={new_parent_id}, new_name={new_name:?}), no-op",
         );
         return;
     }
@@ -505,7 +505,7 @@ pub(super) fn handle_move_entry_v2(
         Ok(Some(conflicting_id)) if conflicting_id != entry_id => {
             log::debug!(
                 target: "indexing::writer",
-                "MoveEntryV2: id={conflicting_id} already at destination (parent_id={new_parent_id}, name={new_name}), replacing it with id={entry_id}",
+                "MoveEntryV2: id={conflicting_id} already at destination (parent_id={new_parent_id}, new_name={new_name:?}), replacing it with id={entry_id}",
             );
             let conflicting_is_dir = IndexStore::get_entry_by_id(conn, conflicting_id)
                 .ok()
@@ -539,7 +539,7 @@ pub(super) fn handle_move_entry_v2(
 
     log::debug!(
         target: "indexing::writer",
-        "MoveEntryV2: id={entry_id} \"{}\" → \"{}\" (parent_id {} → {})",
+        "MoveEntryV2: id={entry_id} from={:?} to={:?} (parent_id {} → {})",
         old_entry.name,
         new_name,
         old_entry.parent_id,

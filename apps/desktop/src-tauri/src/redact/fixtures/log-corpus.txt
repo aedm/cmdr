@@ -153,3 +153,13 @@
 00:00:00.014 INFO  long  Quoted path "/Users/foo/Documents/budget.pdf" with surrounding quotes
 00:00:00.015 INFO  long  Backtick path `/Users/foo/Documents/budget.pdf` with surrounding ticks
 00:00:00.016 INFO  done  finished
+23:33:22.817 DEBUG cmdr_smb::volume::query  SmbVolume::get_metadata: share=media, input="/Volumes/media/trips/2023/summer trip/kapu méretek.jpg", smb_path="trips/2023/summer trip/kapu méretek.jpg"
+23:33:22.822 DEBUG cmdr_smb::volume::streams  SmbVolume::write_from_stream: share=media, path="trips/2023/summer trip/kapu méretek.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f", size=3887758
+23:33:23.131 DEBUG cmdr_smb::volume::query  SmbVolume::get_metadata: share=media, input="/Volumes/media/trips/2023/summer trip/kapu me\u{301}retek.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f", smb_path="trips/2023/summer trip/kapu méretek.jpg.cmdr-tmp-66381a4a-7bff-45c7-95fd-d8bd43289c5f"
+23:33:23.135 DEBUG cmdr_smb::volume::mutation  SmbVolume::rename: share=media, from="trips/2023/summer trip/kapu méretek.jpg.cmdr-tmp-66381a4a", to="trips/2023/summer trip/kapu méretek.jpg", force=false
+23:33:23.149 DEBUG smb2::client::tree  tree: renamed from=trips\2023\summer trip\kapu méretek.jpg.cmdr-tmp-66381a4a to=trips\2023\summer trip\kapu méretek.jpg
+23:33:52.870 DEBUG smb2::client::tree  tree: deleted file=trips\2023\summer trip\kapu méretek.jpg
+23:24:40.121 DEBUG smb2::client::tree  tree: created directory=trips\2021\rotate script
+23:33:21.604 DEBUG conflict_scan  checking 1 item(s) against path="/trips/2023/summer trip" on volume smb-100-127-48-122-445-media-cca75cc9c09a6fb5
+23:33:23.156 DEBUG indexing::writer  MoveEntryV2: id=3092084 from="kapu méretek.jpg.cmdr-tmp-66381a4a" to="kapu méretek.jpg" (parent_id 11280 → 11280)
+23:22:14.398 DEBUG FE:fileExplorer  [FilePane] loadDirectory called: paneId=right, volumeId=root, path=/private/var/folders, selectName=-Users-alice-projects-git-cmdr, currentLoading=false

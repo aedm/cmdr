@@ -133,9 +133,11 @@ pub(crate) async fn scan_volume_for_conflicts_within(
     let dest_path = PathBuf::from(dest_path);
     log::debug!(
         target: CONFLICT_LOG_TARGET,
-        "checking {} item(s) against {} on volume {}",
+        // Keyed so the redactor can find it: for a network volume this is a
+        // volume-relative path, which no mount-prefix pattern recognizes.
+        "checking {} item(s) against path={:?} on volume {}",
         source_items.len(),
-        dest_path.display(),
+        dest_path,
         volume_id
     );
 

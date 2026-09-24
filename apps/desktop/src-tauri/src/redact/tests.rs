@@ -163,6 +163,12 @@ fn multi_word_filenames_are_redacted_whole() {
             "/Users/kajotac/Pics/Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg: the Trash refused it",
             "$HOME/<dir>/<file>.jpeg: the Trash refused it",
         ),
+        // A folder whose last word is lowercase, right up to the seam. The seam says where the
+        // path ends, so `trip` is part of the name, not prose.
+        (
+            "/Users/jo/Pics/summer trip: it timed out",
+            "$HOME/<dir>/<dir>: it timed out",
+        ),
         // A lowercase word mid-filename, nothing after it.
         ("/Users/jo/Docs/my secret notes.txt", "$HOME/<dir>/<file>.txt"),
         // The shape with real exposure in it.
@@ -204,6 +210,134 @@ fn trash_refusal_line_redacts_its_path() {
         "filename fragments survived: {out}"
     );
     assert!(out.ends_with(": the Trash refused it"), "message lost: {out}");
+}
+
+/// A share-relative path in a `key=value` log field is redacted like any other path.
+///
+/// Real incident: every SMB log line printed its share-relative path in full (30 lines in one
+/// bundle), because no path branch matches a path with no mount prefix in front of it. The
+/// `smb2` crate's own lines print it unquoted and backslash-separated, with spaces in it.
+#[test]
+fn share_relative_paths_in_fields() {
+    let cases = [
+        // `cmdr-smb`'s Debug-quoted shape.
+        (
+            r#"SmbVolume::delete: share=media, path="trips/2023/summer trip/kapu méretek.jpg""#,
+            r#"SmbVolume::delete: share=media, path="<dir>/<dir>/<dir>/<file>.jpg""#,
+        ),
+        (
+            r#"SmbVolume::rename: share=media, from="trips/a b.jpg.cmdr-tmp-66381a4a-7bff", to="trips/a b.jpg", force=false"#,
+            // Cmdr's own temp suffix carries no PII and survives, so the temp and the final
+            // name visibly belong together.
+            r#"SmbVolume::rename: share=media, from="<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff", to="<dir>/<file>.jpg", force=false"#,
+        ),
+        // Both fields on one line: the absolute one goes to the `/Volumes/` branch.
+        (
+            r#"SmbVolume::get_metadata: share=media, input="/Volumes/media/trips/x y.jpg", smb_path="trips/x y.jpg""#,
+            r#"SmbVolume::get_metadata: share=media, input="/Volumes/<volume>/<dir>/<file>.jpg", smb_path="<dir>/<file>.jpg""#,
+        ),
+        // `smb2`'s unquoted, backslash-separated shapes. The value ends at the next field.
+        (
+            r"tree: renamed from=trips\2023\summer trip\kapu méretek.jpg.cmdr-tmp-6638 to=trips\2023\summer trip\kapu méretek.jpg",
+            r"tree: renamed from=<dir>\<dir>\<dir>\<file>.jpg.cmdr-tmp-6638 to=<dir>\<dir>\<dir>\<file>.jpg",
+        ),
+        (
+            r"tree: deleted file=trips\2023\summer trip\kapu méretek.jpg",
+            r"tree: deleted file=<dir>\<dir>\<dir>\<file>.jpg",
+        ),
+        (
+            r"tree: created directory=trips\2021\rotate script",
+            r"tree: created directory=<dir>\<dir>\<dir>",
+        ),
+        (
+            r"tree: watch path=trips\2021, recursive=false, tree_id=5",
+            r"tree: watch path=<dir>\<dir>, recursive=false, tree_id=5",
+        ),
+        // The `{path}: {message}` seam and a closing paren end an unquoted value too.
+        (
+            "SmbVolume::download(share=media, path=trips/a b.jpg): cancelled after 5 bytes",
+            "SmbVolume::download(share=media, path=<dir>/<file>.jpg): cancelled after 5 bytes",
+        ),
+        // A bare name, and a volume-relative path with a leading slash.
+        (
+            "loadDirectory called: paneId=right, path=/private, selectName=-Users-alice-projects-cmdr, currentLoading=false",
+            "loadDirectory called: paneId=right, path=/private, selectName=<dir>, currentLoading=false",
+        ),
+        (
+            r#"checking 1 item(s) against path="/trips/2023/summer trip" on volume smb-1"#,
+            r#"checking 1 item(s) against path="/<dir>/<dir>/<dir>" on volume smb-1"#,
+        ),
+        // Allowlisted parents survive, like in every other path shape.
+        (
+            r#"write_from_stream: share=media, path="Documents/report.pdf", size=12"#,
+            r#"write_from_stream: share=media, path="Documents/<file>.pdf", size=12"#,
+        ),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(r(input), expected, "input: {input:?}");
+    }
+}
+
+/// Keys that merely end in a path key, and values that aren't paths, stay put.
+#[test]
+fn path_fields_leave_non_paths_alone() {
+    let unchanged = [
+        "enrich parent_id=12 new_parent_id=13",
+        "path=None",
+        "ByteSeekBackend::get_lines: target=Line(5) -> byte 0",
+        "refresh_listing: path=/Volumes/<volume>/<dir:dae7a7>/<dir:ee4032>",
+        "list_directory_core: path=$HOME/<dir:b36d39>/<dir:7e85ce>, entries=1",
+    ];
+    for input in unchanged {
+        assert_eq!(r(input), input, "should be unchanged: {input:?}");
+    }
+}
+
+/// A temp-suffixed filename with a space in it must be redacted whole.
+///
+/// Real incident: `…/boldogságkapu me\u{301}retek.jpg.cmdr-tmp-<uuid>` (a `{:?}`-printed NFD
+/// name) was split at the space. The tail carries no extension the backward trim recognizes
+/// (`cmdr-tmp-…` has dashes), so it read as prose and shipped verbatim.
+#[test]
+fn temp_suffixed_filename_with_a_space_is_redacted_whole() {
+    let cases = [
+        (
+            r#"input="/Volumes/media/trips/2023/kapu me\u{301}retek.jpg.cmdr-tmp-66381a4a-7bff-45c7", smb_path="x""#,
+            r#"input="/Volumes/<volume>/<dir>/<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff-45c7", smb_path="<dir>""#,
+        ),
+        (
+            "/Users/jo/Pics/kapu méretek.jpg.cmdr-tmp-66381a4a-7bff-45c7",
+            "$HOME/<dir>/<file>.jpg.cmdr-tmp-66381a4a-7bff-45c7",
+        ),
+        // A Debug escape closing a word is not the end of a sentence.
+        (
+            r#"path="/Volumes/media/cafe\u{301} menu.pdf""#,
+            r#"path="/Volumes/<volume>/<file>.pdf""#,
+        ),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(r(input), expected, "input: {input:?}");
+    }
+}
+
+/// The same name must hash to the same token however it was printed.
+///
+/// Real incident: one jpg came out as three different `<file:…>` tokens in one bundle, because
+/// it was logged via `Display` (raw NFD), via `{:?}` (`e\u{301}` escaped), and from the NAS
+/// listing (NFC). Salted correlation is the whole point of `redact_line_salted`.
+#[test]
+fn a_name_hashes_the_same_whatever_printed_it() {
+    let salt = b"0123456789abcdef";
+    let display_nfd = redact_line_salted("/Users/jo/Pics/kapu me\u{301}retek.jpg", salt).into_owned();
+    let debug_nfd = redact_line_salted(r#"path="/Users/jo/Pics/kapu me\u{301}retek.jpg""#, salt).into_owned();
+    let display_nfc = redact_line_salted("/Users/jo/Pics/kapu m\u{e9}retek.jpg", salt).into_owned();
+    let token = |s: &str| s.split("<file:").nth(1).map(|t| t[..6].to_string());
+    let t1 = token(&display_nfd).expect("display token");
+    assert_eq!(token(&debug_nfd), Some(t1.clone()), "{display_nfd} vs {debug_nfd}");
+    assert_eq!(token(&display_nfc), Some(t1.clone()), "{display_nfd} vs {display_nfc}");
+    // The temp a transfer writes first correlates with the name it's renamed to.
+    let temp = redact_line_salted(r#"path="Pics/kapu méretek.jpg.cmdr-tmp-66381a4a""#, salt).into_owned();
+    assert_eq!(token(&temp), Some(t1), "{display_nfd} vs {temp}");
 }
 
 #[test]
@@ -568,6 +702,11 @@ fn idempotency() {
         "homer.local",
         "Reconciler: switched to live mode",
         "indexing::manager  Replay: watcher started (since_event_id=888910657)",
+        r#"SmbVolume::delete: share=media, path="trips/summer trip/a b.jpg""#,
+        r"tree: renamed from=trips\summer trip\a b.jpg.cmdr-tmp-1 to=trips\summer trip\a b.jpg",
+        "loadDirectory: path=/private, selectName=projects",
+        r#"checking 1 item(s) against path="/trips/summer trip" on volume smb-1"#,
+        "/Volumes/media/cafe\\u{301} menu.pdf",
     ];
     for input in corpus {
         let once = r(input);

@@ -78,6 +78,16 @@ pub fn redact_line_salted<'a>(line: &'a str, salt: &[u8]) -> Cow<'a, str> {
     redact_with(line, Some(salt))
 }
 
+/// Redact a bare file or folder NAME, one with no path around it for a pattern to find:
+/// `budget.pdf` → `<file>.pdf`, `Wedding` → `<dir>`, `Downloads` → `Downloads` (allowlisted).
+/// Same leaf rules as a path's last segment, unsalted.
+///
+/// For structured output that names things on its own (the error reporter's state snapshot),
+/// where a line-level pass can't tell a name from any other word.
+pub fn redact_name(name: &str, is_dir: bool) -> String {
+    redact_leaf(name, !is_dir, None)
+}
+
 /// One left-to-right pass, resuming at whatever the rewriter actually consumed.
 ///
 /// ❗ **Not `replace_all`, and the difference is load-bearing.** The path branches
@@ -207,7 +217,26 @@ fn redactor_regex() -> &'static Regex {
                                   @
                                   (?P<bare_host_rest>[^\s"'<>|`]*)
             )
-            | (?P<email>          [A-Za-z0-9][A-Za-z0-9._%+-]* @ [A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,} )
+            # A path in a `key=value` log field, which may be RELATIVE: SMB logs name a file by
+            # its share-relative path (`smb_path="docs/a b.pdf"`, and `smb2`'s own unquoted
+            # `from=docs\a b.pdf to=…`), and no branch above can recognize a path with no mount
+            # prefix in front of it. The key is what says "this is a path".
+            #
+            # Quoted values are `{:?}` output, escapes included. An unquoted value over-matches
+            # to the end of the line and `end_of_bare_value` finds where it really stops. An
+            # absolute value goes back to the branches above (see `redact_path_field`).
+            | (?P<path_field>
+                \b (?P<pf_key>
+                    smb_path | path | input | from | to | file | directory | dir | parent
+                  | src | dest | dst | destination | selectName | new_name | old_name
+                )
+                =
+                (?P<pf_value>
+                    " (?: [^"\\\n] | \\ . )* "
+                  | [^\s"'<>|`\[\](){},;] [^"|`\n]*
+                )
+            )
+            | (?P<email>         [A-Za-z0-9][A-Za-z0-9._%+-]* @ [A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,} )
             # Account name in a `key=value` / `key: value` log field. Our SMB paths log the
             # account someone signs in to a share with (`user=david`, `user=Some("david")`,
             # `username: "david"` in a debug struct); nothing else redacts it, and an account
@@ -319,6 +348,9 @@ fn dispatch(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
         let host_rest = caps.name("bare_host_rest").map(|m| m.as_str()).unwrap_or("");
         return (format!("{lead}//<userinfo>@{host_rest}"), whole_len(caps));
     }
+    if caps.name("path_field").is_some() {
+        return redact_path_field(caps, salt);
+    }
     if caps.name("email").is_some() {
         return ("<email>".to_string(), whole_len(caps));
     }
@@ -392,6 +424,252 @@ fn redact_mtp_owner(s: &str) -> String {
     }
 }
 
+/// Path-branch groups: a value one of these claims from its first byte is an absolute path
+/// they already know how to redact.
+const PATH_BRANCHES: &[&str] = &[
+    "win_home",
+    "unix_home",
+    "unix_system",
+    "volumes",
+    "media",
+    "smb_uri",
+    "unc",
+    "url_userinfo",
+];
+
+/// Top-level directory names that say where a path lives without saying anything about
+/// who owns it. Kept as the first segment of an absolute field value (`path=/private`).
+const SYSTEM_ROOTS: &[&str] = &[
+    "Applications",
+    "Library",
+    "System",
+    "Users",
+    "Volumes",
+    "bin",
+    "cores",
+    "dev",
+    "etc",
+    "home",
+    "media",
+    "mnt",
+    "opt",
+    "private",
+    "sbin",
+    "tmp",
+    "usr",
+    "var",
+];
+
+/// Rewrite a `key=value` path field. Returns (replacement, bytes consumed).
+///
+/// An absolute value one of the path branches recognizes is handed back: the replacement is
+/// just `key=` (plus the opening quote), and [`redact_with`] resumes at the value, where that
+/// branch claims it with its own prefix rules (`$HOME`, `/Volumes/<volume>`, …). Everything
+/// else is walked here segment by segment, which is what reaches a share-relative path.
+fn redact_path_field(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
+    let key = caps.name("pf_key").map_or("", |m| m.as_str());
+    let raw = caps.name("pf_value").map_or("", |m| m.as_str());
+    let quoted = raw.len() >= 2 && raw.starts_with('"') && raw.ends_with('"');
+    let quote = if quoted { "\"" } else { "" };
+    let head = format!("{key}={quote}");
+
+    let value = if quoted {
+        &raw[1..raw.len() - 1]
+    } else {
+        end_of_bare_value(raw)
+    };
+    if value.is_empty() || value == "None" || claimed_by_path_branch(value) {
+        return (head.clone(), head.len());
+    }
+
+    // A quoted value is `{:?}` output: unescape it so `e\u{301}` is one character again (and
+    // so a lone `\` in an escape isn't mistaken for a Windows separator).
+    let unescaped = if quoted {
+        unescape_debug(value)
+    } else {
+        Cow::Borrowed(value)
+    };
+    let redacted = redact_relative_path(&unescaped, salt);
+    let consumed = head.len() + value.len() + quote.len();
+    (format!("{head}{redacted}{quote}"), consumed)
+}
+
+/// Where an unquoted field value really ends. The regex takes the rest of the line; the value
+/// stops at the first of: the `{path}: {message}` seam, a `, ` (the next field), or a
+/// ` key=` (the next field in `smb2`'s space-separated `from=… to=…`). A `)` left over from
+/// `fn(share=…, path=…)` goes too, unless the name opened it (`photo (1).jpg`).
+///
+/// ⚠️ A comma-space inside an unquoted name ends it early and the rest is handed back
+/// unredacted. Only `{}`-printed values can hit that, which is why path fields in our own
+/// code are printed with `{:?}`.
+fn end_of_bare_value(raw: &str) -> &str {
+    let mut end = raw.len();
+    if let Some(seam) = raw.find(": ") {
+        end = seam;
+    }
+    if let Some(comma) = raw[..end].find(", ") {
+        end = comma;
+    }
+    if let Some((space, _)) = raw[..end]
+        .match_indices(' ')
+        .find(|(i, _)| starts_with_field_key(&raw[i + 1..end]))
+    {
+        end = space;
+    }
+    let mut value = &raw[..end];
+    while value.ends_with(')') && value.matches(')').count() > value.matches('(').count() {
+        value = &value[..value.len() - 1];
+    }
+    value.trim_end()
+}
+
+/// `ident=` at the start of `s`.
+fn starts_with_field_key(s: &str) -> bool {
+    let ident_len = s
+        .char_indices()
+        .take_while(|&(i, c)| c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit()))
+        .count();
+    ident_len > 0 && s[ident_len..].starts_with('=')
+}
+
+/// Whether a path branch matches `value` from its very first byte.
+fn claimed_by_path_branch(value: &str) -> bool {
+    redactor_regex().captures(value).is_some_and(|caps| {
+        caps.get(0).is_some_and(|m| m.start() == 0) && PATH_BRANCHES.iter().any(|g| caps.name(g).is_some())
+    })
+}
+
+/// Redact a path no branch has a prefix rule for: share-relative (`docs/a b.pdf`,
+/// `docs\a b.pdf`), volume-relative (`/docs/a b.pdf`), or a bare name. Same shape rules as
+/// every other path: the leaf keeps its extension, an allowlisted parent keeps its name, the
+/// rest collapse. Segments that are already tokens pass through, which keeps it idempotent.
+fn redact_relative_path(value: &str, salt: Option<&[u8]>) -> String {
+    let sep = if value.contains('/') || !value.contains('\\') {
+        '/'
+    } else {
+        '\\'
+    };
+    let segments: Vec<&str> = value.split(sep).collect();
+    let absolute = value.starts_with(sep);
+    let Some(leaf_idx) = segments.iter().rposition(|s| !s.is_empty()) else {
+        return value.to_string();
+    };
+    let mut out = String::with_capacity(value.len());
+    for (i, seg) in segments.iter().enumerate() {
+        if i > 0 {
+            out.push(sep);
+        }
+        let keep = seg.is_empty() || is_redacted_segment(seg) || (absolute && i == 1 && SYSTEM_ROOTS.contains(seg));
+        if keep {
+            out.push_str(seg);
+        } else if i == leaf_idx {
+            out.push_str(&redact_leaf(seg, has_extension_like_suffix(seg), salt));
+        } else if i + 1 == leaf_idx && is_safe_parent_dir(seg) {
+            out.push_str(seg);
+        } else {
+            out.push_str(&dir_token(seg, salt));
+        }
+    }
+    out
+}
+
+/// Whether a path segment is already redacted (`<dir>`, `<file:ab12cd>.pdf`, `$HOME`) or
+/// carries nothing to redact (`.`, `..`).
+fn is_redacted_segment(seg: &str) -> bool {
+    if matches!(seg, "$HOME" | "~" | "." | "..") {
+        return true;
+    }
+    let (seg, _) = split_cmdr_suffix(seg);
+    let Some(rest) = seg.strip_prefix('<') else {
+        return false;
+    };
+    let Some(close) = rest.find('>') else { return false };
+    let (label, tail) = (&rest[..close], &rest[close + 1..]);
+    let (kind, hash) = label.split_once(':').unwrap_or((label, ""));
+    let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_lowercase() || c == '-');
+    let hash_ok = hash.is_empty() || (hash.len() == 6 && hash.chars().all(|c| c.is_ascii_hexdigit()));
+    let tail_ok = tail.is_empty()
+        || tail
+            .strip_prefix('.')
+            .is_some_and(|ext| !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric()));
+    kind_ok && hash_ok && tail_ok
+}
+
+/// The staging suffixes Cmdr puts on names it's still writing. Their UUID tail carries no
+/// PII, and keeping it lets a triager see which temp became which file.
+const CMDR_TEMP_SUFFIXES: &[&str] = &[".cmdr-tmp-", ".cmdr-temp-", ".cmdr-staging-"];
+
+/// Split `photo.jpg.cmdr-tmp-3f2a…` into (`photo.jpg`, `.cmdr-tmp-3f2a…`). The tail must be
+/// hex and dashes, so a user's own `notes.cmdr-tmp-plan.txt` doesn't qualify.
+fn split_cmdr_suffix(seg: &str) -> (&str, &str) {
+    for marker in CMDR_TEMP_SUFFIXES {
+        if let Some(at) = seg.find(marker)
+            && at > 0
+        {
+            let id = &seg[at + marker.len()..];
+            if !id.is_empty() && id.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+                return (&seg[..at], &seg[at..]);
+            }
+        }
+    }
+    (seg, "")
+}
+
+/// Undo Rust's `{:?}` string escapes (`\u{301}`, `\\`, `\"`, `\n`, …). Anything that isn't
+/// a well-formed escape stays as written.
+fn unescape_debug(s: &str) -> Cow<'_, str> {
+    if !s.contains('\\') {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(at) = rest.find('\\') {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + 1..];
+        let (decoded, used) = match after.chars().next() {
+            Some('\\') => (Some('\\'), 1),
+            Some('"') => (Some('"'), 1),
+            Some('\'') => (Some('\''), 1),
+            Some('n') => (Some('\n'), 1),
+            Some('t') => (Some('\t'), 1),
+            Some('r') => (Some('\r'), 1),
+            Some('0') => (Some('\0'), 1),
+            Some('u') => match after.strip_prefix("u{").and_then(|t| t.split_once('}')) {
+                Some((hex, _)) if (1..=6).contains(&hex.len()) => {
+                    match u32::from_str_radix(hex, 16).ok().and_then(char::from_u32) {
+                        Some(c) => (Some(c), hex.len() + 3),
+                        None => (None, 0),
+                    }
+                }
+                _ => (None, 0),
+            },
+            _ => (None, 0),
+        };
+        match decoded {
+            Some(c) => {
+                out.push(c);
+                rest = &after[used..];
+            }
+            None => {
+                out.push('\\');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    Cow::Owned(out)
+}
+
+/// Whether `s` ends with the `}` of a `\u{…}` escape, which is part of a name, not the end
+/// of a sentence.
+fn ends_with_unicode_escape(s: &str) -> bool {
+    let Some(body) = s.strip_suffix('}') else { return false };
+    body.rfind("\\u{").is_some_and(|at| {
+        let hex = &body[at + 3..];
+        (1..=6).contains(&hex.len()) && hex.chars().all(|c| c.is_ascii_hexdigit())
+    })
+}
+
 /// Split a greedy path capture into (path, trailing_noise). The regex matches spaces inside
 /// paths so both multi-word labels (`/Volumes/My Backup Drive/...`) and multi-word filenames
 /// (`Invoice for Acme Corp.pdf`) land whole; that also sweeps up trailing English text like
@@ -413,13 +691,15 @@ fn redact_mtp_owner(s: &str) -> String {
 /// - trailing `:<digits>` groups (line/column markers like `:42:5`)
 /// - a trailing RUN of space-separated words that are lowercase-initial AND carry no
 ///   extension (` failed to open`). The run never eats into the first segment after the
-///   last `/`, which is what keeps `/Volumes/naspi and then it failed` down to `naspi`.
+///   last `/`, which is what keeps `/Volumes/naspi and then it failed` down to `naspi`. It
+///   never runs when the path reaches the seam: the seam already said where it ends.
 fn split_trailing_noise(s: &str) -> (&str, &str) {
     let bytes = s.as_bytes();
     let mut end = bytes.len();
 
     // The `{path}: {message}` seam. Everything from it belongs to the message.
-    if let Some(seam) = s.find(": ") {
+    let seam = s.find(": ");
+    if let Some(seam) = seam {
         end = seam;
     }
 
@@ -442,14 +722,7 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
     }
 
     // First: trim sentence-ending punctuation, one at a time.
-    while end > 0 {
-        let b = bytes[end - 1];
-        if matches!(b, b',' | b';' | b'!' | b'?' | b')' | b']' | b'}') {
-            end -= 1;
-        } else {
-            break;
-        }
-    }
+    end = trim_closing_punctuation(s, end);
 
     // Repeatedly strip `:<digits>` suffixes (e.g. `:42`, `:42:5`).
     loop {
@@ -467,11 +740,15 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
 
     // Trim a RUN of trailing lowercase, extension-less words (a sentence continuation).
     //
+    // Not when the path runs right up to the seam: then the seam already marks its end, and
+    // a lowercase last word is part of a name (`/Volumes/x/summer trip: failed`). Trimming it
+    // there shipped `trip` verbatim.
+    //
     // The floor is the first word after the last `/`: that word is a real path segment
     // however lowercase it looks, so `/Volumes/naspi and then it failed` keeps `naspi`.
     // An extension ends the run on the spot, because a word carrying one is part of the
     // filename, not prose — that is what holds `my secret notes.txt` together.
-    {
+    if seam != Some(end) {
         let floor = s[..end].rfind('/').map_or(0, |i| i + 1);
         loop {
             let mut i = end;
@@ -485,7 +762,7 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
             }
             let word = &s[i..end];
             let starts_lower = word.chars().next().is_some_and(|c| c.is_ascii_lowercase());
-            if !starts_lower || has_extension_like_suffix(word) {
+            if !starts_lower || has_extension_like_suffix(word) || looks_like_name_fragment(word) {
                 break;
             }
             end = i - 1;
@@ -496,17 +773,35 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
     }
 
     // Finally, strip a trailing `.` or `,` that was exposed by the above steps.
+    end = trim_closing_punctuation(s, end);
+
+    // SAFETY: we only advance `end` on ASCII byte boundaries.
+    (&s[..end], &s[end..])
+}
+
+/// Step `end` back over closing punctuation (`,` `;` `!` `?` `)` `]` `}`), one at a time.
+/// The `}` closing a `\u{301}` escape stays: it's the middle of a `{:?}`-printed name.
+fn trim_closing_punctuation(s: &str, mut end: usize) -> usize {
+    let bytes = s.as_bytes();
     while end > 0 {
         let b = bytes[end - 1];
+        if b == b'}' && ends_with_unicode_escape(&s[..end]) {
+            break;
+        }
         if matches!(b, b',' | b';' | b'!' | b'?' | b')' | b']' | b'}') {
             end -= 1;
         } else {
             break;
         }
     }
+    end
+}
 
-    // SAFETY: we only advance `end` on ASCII byte boundaries.
-    (&s[..end], &s[end..])
+/// A word prose doesn't produce: an inner dot (`me\u{301}retek.jpg.cmdr-tmp-…`, whose
+/// extension is too odd for [`has_extension_like_suffix`]) or a `{:?}` escape. Such a word
+/// is the tail of a filename, and trimming it as prose ships it verbatim.
+fn looks_like_name_fragment(word: &str) -> bool {
+    word.contains('\\') || word.find('.').is_some_and(|i| i > 0 && i + 1 < word.len())
 }
 
 // --- Path rewriters ---
@@ -690,6 +985,15 @@ fn redact_leaf(seg: &str, is_file: bool, salt: Option<&[u8]>) -> String {
     if seg.is_empty() {
         return String::new();
     }
+    // `photo.jpg.cmdr-tmp-3f2a…` is `photo.jpg` on its way in: redact the name the temp will
+    // become (so both hash alike) and keep Cmdr's own suffix.
+    let (name, temp_suffix) = split_cmdr_suffix(seg);
+    if !temp_suffix.is_empty() {
+        return format!(
+            "{}{temp_suffix}",
+            redact_leaf(name, has_extension_like_suffix(name), salt)
+        );
+    }
     if !is_file {
         return if is_safe_parent_dir(seg) {
             seg.to_string()
@@ -732,11 +1036,18 @@ fn file_token(seg: &str, salt: Option<&[u8]>) -> String {
 /// pulling in a second hash crate just for this. The hash is overkill for what we
 /// need: we only consume the first 3 bytes, but the cost is one allocation per
 /// distinct path segment per bundle build, negligible.
+///
+/// The segment is hashed as the NAME it spells, not the bytes that printed it: `{:?}` escapes
+/// are undone and the result NFC-normalized, so `me\u{301}retek` (Debug), `méretek` (NFD,
+/// Display), and `méretek` (NFC, what a NAS lists) are one token. Without that, one file
+/// showed up as three unrelated tokens in a single bundle.
 fn short_hash(salt: &[u8], segment: &str) -> String {
     use sha2::{Digest, Sha256};
+    use unicode_normalization::UnicodeNormalization;
+    let name: String = unescape_debug(segment).nfc().collect();
     let mut hasher = Sha256::new();
     hasher.update(salt);
-    hasher.update(segment.as_bytes());
+    hasher.update(name.as_bytes());
     let bytes = hasher.finalize();
     format!("{:02x}{:02x}{:02x}", bytes[0], bytes[1], bytes[2])
 }
@@ -772,7 +1083,7 @@ fn ends_sentence(token: &str) -> bool {
     matches!(
         token.as_bytes().last(),
         Some(b')' | b';' | b',' | b'.' | b'!' | b'?' | b']' | b'}')
-    )
+    ) && !ends_with_unicode_escape(token)
 }
 
 fn has_extension_like_suffix(seg: &str) -> bool {
