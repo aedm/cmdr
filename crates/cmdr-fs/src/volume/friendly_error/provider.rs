@@ -142,14 +142,17 @@ fn get_fs_type_for_path(path: &Path) -> Option<String> {
 }
 
 /// Detects the provider from the path: its name patterns first, then, for a
-/// path none of them match, the fs type a `statfs` reads.
+/// path none of them match, the fs type a `statfs` reads (macOS only).
+#[cfg(target_os = "macos")]
 fn detect_provider(path: &Path) -> Option<Provider> {
-    provider_by_path(path).or_else(|| {
-        #[cfg(target_os = "macos")]
-        return get_fs_type_for_path(path).and_then(|fs_type| provider_by_fs_type(&fs_type));
-        #[cfg(not(target_os = "macos"))]
-        None
-    })
+    provider_by_path(path).or_else(|| get_fs_type_for_path(path).and_then(|fs_type| provider_by_fs_type(&fs_type)))
+}
+
+/// Detects the provider from the path's name patterns. There's no `statfs` fs-type
+/// fallback off macOS.
+#[cfg(not(target_os = "macos"))]
+fn detect_provider(path: &Path) -> Option<Provider> {
+    provider_by_path(path)
 }
 
 /// The provider a FUSE-style filesystem type names, for mounts no path pattern
