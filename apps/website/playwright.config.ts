@@ -25,7 +25,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm exec serve dist -l 18473',
+    // ❗ The bin shim, never `pnpm exec serve`: pnpm 11.27 starts an exec'd child in its own process
+    // group, so Playwright's stop signal misses `serve`, which keeps the output pipe open and hangs
+    // the run after the last test until CI's timeout (verified on pnpm 11.27.1, macOS and the CI
+    // container, 2026-09-24). The shim `exec`s node, so `serve` stays the process Playwright started.
+    command: './node_modules/.bin/serve dist -l 18473',
     url: 'http://localhost:18473',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
