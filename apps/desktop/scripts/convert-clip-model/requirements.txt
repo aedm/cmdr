@@ -9,7 +9,9 @@
 # re-runs `convert.py`, re-uploads, and re-pins the hashes, at which point every
 # user re-downloads the towers. So a routine version bump here is pure drift
 # between what this file claims and what actually built the shipped model.
-# Renovate is disabled on this path for that reason (`renovate.json`).
+# Renovate ignores this directory for that reason (`ignorePaths` in `renovate.json`).
+# It's `ignorePaths`, not a `packageRules` `enabled: false`, because vulnerability-fix
+# PRs bypass package rules: they bumped torch, pillow, and transformers here anyway.
 #
 # Do NOT assume the resolver validates anything. coremltools 9.0 declares no
 # torch/transformers bound at all (only numpy/protobuf/sympy/tqdm/packaging/attrs/

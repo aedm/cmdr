@@ -6,6 +6,17 @@
   "automerge": true,
   "platformAutomerge": true,
   "minimumReleaseAge": "3 days",
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**",
+    "apps/desktop/scripts/convert-clip-model/**"
+  ],
   "customManagers": [
     {
       "description": "The Go analyzers the check runner shells out to are pinned as `@vX.Y.Z` string literals inside `EnsureGoTool(...)` calls, so no manager sees them. They went stale silently until a Go 1.27 bump broke CI: staticcheck 2026.1 can't decode Go 1.27 export data, and the toolchain PR had no way to know the pin needed to move with it. `packageName` captures the module root (`honnef.co/go/tools`) because the goproxy 404s on a package path (`honnef.co/go/tools/cmd/staticcheck`), while `depName` keeps the full install path so `autoReplaceStringTemplate` can write the line back verbatim.",
@@ -101,11 +112,6 @@
     {
       "description": "The SMB benchmark harness pins sspi and smb-rpc in lockstep with smb 0.11's internal pins; independent bumps can never resolve, so leave the whole harness alone.",
       "matchFileNames": ["benchmarks/smb/**"],
-      "enabled": false
-    },
-    {
-      "description": "The CLIP → Core ML conversion pins record which versions built the SHA-256-pinned model artifacts on Hugging Face, so they're provenance, not a dependency set. coremltools declares no torch/transformers bound, meaning the resolver validates nothing; the only real check is re-running convert.py and comparing fidelity cosines. A bot bump would be drift at best and a silently broken script at worst. See the file's header.",
-      "matchFileNames": ["apps/desktop/scripts/convert-clip-model/requirements.txt"],
       "enabled": false
     }
   ],
