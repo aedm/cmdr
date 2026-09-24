@@ -212,10 +212,11 @@ that repeated the typed address left it as the sheet's only URL-shaped field, an
 (`apps/desktop/src-tauri/src/network/DETAILS.md` § "An unnamed server's label, and names that only repeat the address").
 
 **The root folder is a ceiling, the start folder is a landing.** Both sit in Advanced, which edit mode opens because
-most of the settings someone came to change live there (the name sits above, under the address). The start folder must be the root or under it, by whole components:
-`server-form.ts::isStartFolderUnderRoot` mirrors the backend's `start_folder_under_root` (`.` and `..` resolved, a
-relative path read from `/`), so the sentence arrives before a round-trip, once the field has lost focus and again on
-Save or Connect. The backend stays authoritative. A pasted address's path fills the root folder.
+most of the settings someone came to change live there (the name sits above, under the address). The start folder must
+be the root or under it, by whole components: `server-form.ts::isStartFolderUnderRoot` mirrors the backend's
+`start_folder_under_root` (`.` and `..` resolved, a relative path read from `/`), so the sentence arrives before a
+round-trip, once the field has lost focus and again on Save or Connect. The backend stays authoritative. A pasted
+address's path fills the root folder.
 
 **Saving answers a typed outcome** (`server-outcomes.ts::readSavedServerOutcome`). `saved` writes the Remember flip and
 the typed password, then closes. ❗ Every refusal writes NOTHING, the password included, keeps the sheet open, and puts

@@ -195,21 +195,22 @@ server's text (`Refused`) is a log diagnostic; ❌ branching on it is what `erro
 
 **The device's errno is the classifier.** `STA2` and `DNT2` carry a Linux errno, and `errors::volume_error_from_errno`
 maps it to the `Volume` vocabulary for an operation on `path` in one place: `ENOENT` → `NotFound(path)`,
-`EACCES`/`EPERM` → `PermissionDenied { path, raw_os_error: None }` (❗ `None`: the errno is the device's, and carrying it would earn macOS-only "unlock it in Finder" advice), `EEXIST` → `AlreadyExists(path)`, `EISDIR` → `IsADirectory(path)`,
-`ENAMETOOLONG` → `InvalidName(path)`, `ENOTEMPTY` → an `IoError` carrying the HOST's `ENOTEMPTY` number (the device
-numbers it 39, macOS 66; the app's classifier re-dispatches on `raw_os_error`, so the translation happens here, as
-`cmdr-sftp` does it), `EROFS` → `ReadOnly(path)`, `ENOSPC` → `StorageFull`. Anything else is an `IoError` with the raw
-number. `volume_error_from_adb` maps the transport's shapes (`DeviceGone` → `DeviceDisconnected`, `Timeout` →
-`ConnectionTimeout`, `Cancelled` → `Cancelled`); a `FAIL` text from the sync service lands as an unclassified `IoError`
-with the text in `message` for the log.
+`EACCES`/`EPERM` → `PermissionDenied { path, raw_os_error: None }` (❗ `None`: the errno is the device's, and carrying
+it would earn macOS-only "unlock it in Finder" advice), `EEXIST` → `AlreadyExists(path)`, `EISDIR` →
+`IsADirectory(path)`, `ENAMETOOLONG` → `InvalidName(path)`, `ENOTEMPTY` → an `IoError` carrying the HOST's `ENOTEMPTY`
+number (the device numbers it 39, macOS 66; the app's classifier re-dispatches on `raw_os_error`, so the translation
+happens here, as `cmdr-sftp` does it), `EROFS` → `ReadOnly(path)`, `ENOSPC` → `StorageFull`. Anything else is an
+`IoError` with the raw number. `volume_error_from_adb` maps the transport's shapes (`DeviceGone` → `DeviceDisconnected`,
+`Timeout` → `ConnectionTimeout`, `Cancelled` → `Cancelled`); a `FAIL` text from the sync service lands as an
+unclassified `IoError` with the text in `message` for the log.
 
 **A shell failure is classified by a follow-up probe, never by stderr.** `shell,v2` gives an exit code, which says "no"
 and nothing else; `mkdir`, `rm`, and `mv` print their reason to stderr in `toybox`'s wording, which is for people and
 may be localized. So a non-zero exit is read through what the sync service says is at the path and its parent
 (`AdbVolume::classify_failed_verb` in `writes.rs`): parent missing → `NotFound(parent)`; parent there but not writable
-(`test -w`) → `PermissionDenied { path, .. }`; anything else → an `IoError` carrying stderr for the technical-details panel.
-The probe classifies, ❌ never guards: asked before, it is a TOCTOU window (the two the backend accepts on purpose are
-listed under the `Volume` answers).
+(`test -w`) → `PermissionDenied { path, .. }`; anything else → an `IoError` carrying stderr for the technical-details
+panel. The probe classifies, ❌ never guards: asked before, it is a TOCTOU window (the two the backend accepts on
+purpose are listed under the `Volume` answers).
 
 **What a variant carries.** `VolumeError::NotFound` and `PermissionDenied` are defined to carry the PATH
 (`crates/cmdr-fs/src/volume/types.rs`), and the transfer layer forwards it straight into what the frontend renders as
