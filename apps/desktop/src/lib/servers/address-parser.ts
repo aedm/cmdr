@@ -1,21 +1,23 @@
 /**
- * One pasted string into a protocol and an endpoint, for add mode's address
- * field.
+ * One pasted string into an endpoint, for add mode's address field, plus the
+ * protocol the string itself spells out, if any.
  *
- * ❗ **Address first, protocol second.** People have an address, not a protocol:
- * an `ssh` line off a wiki, a `user@host` from a colleague, a Nextcloud URL out
- * of a browser bar, an `smb://` off a Finder dialog. The sheet flips its
- * protocol `ToggleGroup` to whatever this answers and leaves it editable, so a
- * wrong read costs one click and a demand that the user classify their own NAS
- * costs the whole feature.
+ * ❗ **The protocol toggle decides, ❌ never the address.** People paste what
+ * they have: an `ssh` line off a wiki, a `user@host` from a colleague, a
+ * Nextcloud URL out of a browser bar, an `smb://` off a Finder dialog. This
+ * reads the endpoint out of all of them, and the sheet dials whatever protocol
+ * the person selected. What the address names only feeds `addressLooksLike`,
+ * a warning under the field. Typing into the address once flipped the toggle:
+ * `sven@192.168.0.153`, meant for an SMB NAS, read as SFTP and dialed SSH
+ * without anyone clicking SFTP (cmdr-reports#8).
  *
  * ❗ **Pure, and the example table in `address-parser.test.ts` IS the contract**:
  * there is no property-testing library on the frontend, so a shape that reaches
  * the field and isn't in that table is a shape nobody decided.
  *
- * ❌ **Never guesses past what the string says.** An unrecognized shape answers
- * `unparsed` and the sheet leaves the toggle where it is; inventing a protocol
- * for `not a server!!` is how a password reaches the wrong port.
+ * ❌ **Never guesses past what the string says.** No scheme means no protocol,
+ * and an unrecognized shape answers `unparsed`; inventing a protocol for
+ * `not a server!!` is how a password reaches the wrong port.
  */
 
 import type { ServerProtocol } from '$lib/ipc/bindings'
@@ -24,11 +26,16 @@ import type { ServerProtocol } from '$lib/ipc/bindings'
 export type ParsedAddress =
   | {
       kind: 'parsed'
-      protocol: ServerProtocol
+      /**
+       * The protocol the address SPELLS OUT: its scheme, or `sftp` for a pasted
+       * `ssh` line. Absent when it names none (`user@host`, a bare host), which
+       * is most of what people type.
+       */
+      protocol?: ServerProtocol
       /** Folded to lowercase, the way `cmdr_fs::volume::ids` folds it. */
       host: string
-      /** What the address named, or the protocol's default. */
-      port: number
+      /** What the address named, else its scheme's default. Absent when it names neither. */
+      port?: number
       /** ❗ NOT case-folded: a POSIX account may be case-sensitive. */
       username?: string
       /** The path the address named, leading slash kept, trailing slashes dropped. Absent at the root. */
@@ -91,10 +98,41 @@ export function parseServerAddress(input: string): ParsedAddress {
     return readEndpoint(scheme[2], known.protocol, known.secure)
   }
 
-  // No scheme. `user@host` names an ACCOUNT, and an account is what SFTP has;
-  // a bare host names a machine, and SMB is the one protocol that browses one
-  // with no account at all, so a wrong guess there asks the user for nothing.
-  return readEndpoint(trimmed, trimmed.includes('@') ? 'sftp' : 'smb', undefined)
+  // No scheme, so no protocol. ❌ Not even for `user@host`: an account is as
+  // much SMB's as SFTP's, and a NAS share that needs a user is the commonest
+  // thing typed here.
+  return readEndpoint(trimmed, undefined, undefined)
+}
+
+/**
+ * Well-known ports worth a warning on an address with no scheme. `nas:22` with
+ * SMB selected is almost certainly a mix-up; a port nobody owns says nothing.
+ */
+const WELL_KNOWN_PORTS: Partial<Record<number, ServerProtocol>> = {
+  22: 'sftp',
+  139: 'smb',
+  445: 'smb',
+  80: 'webdav',
+  443: 'webdav',
+}
+
+/**
+ * The protocol `input` looks like, when that isn't `selected`; `null` when it
+ * fits, or says too little to tell.
+ *
+ * ❗ Feeds the warning under the address field and NOTHING else. ❌ Never let it
+ * move the toggle or pick what gets dialed: the person reads it and decides.
+ *
+ * Two things count as evidence. A scheme (or an `ssh` line) is the address
+ * saying which protocol it is, so it wins over any port it names. A well-known
+ * port on an address with no scheme is the other. ❌ An account, a path, or a
+ * bare host is not: `user@host` fits all three protocols.
+ */
+export function addressLooksLike(input: string, selected: ServerProtocol): ServerProtocol | null {
+  const parsed = parseServerAddress(input)
+  if (parsed.kind === 'unparsed') return null
+  const named = parsed.protocol ?? (parsed.port === undefined ? undefined : WELL_KNOWN_PORTS[parsed.port])
+  return named !== undefined && named !== selected ? named : null
 }
 
 /**
@@ -149,13 +187,13 @@ function readAccount(authority: string): { username?: string; hostPort: string }
 }
 
 /**
- * `[user@]host[:port][/path]`, once the protocol is known.
+ * `[user@]host[:port][/path]`, with the protocol its scheme named, if any.
  *
  * The path is split off at the FIRST `/`, so everything before it is the
  * authority however many slashes follow. `host:` with nothing after it is scp's
  * spelling of "the path starts here" and carries no port.
  */
-function readEndpoint(rest: string, protocol: ServerProtocol, secure: boolean | undefined): ParsedAddress {
+function readEndpoint(rest: string, protocol: ServerProtocol | undefined, secure: boolean | undefined): ParsedAddress {
   const slash = rest.indexOf('/')
   const authority = slash === -1 ? rest : rest.slice(0, slash)
   const rawPath = slash === -1 ? '' : rest.slice(slash)
@@ -178,11 +216,12 @@ function readEndpoint(rest: string, protocol: ServerProtocol, secure: boolean | 
   }
 
   const path = normalizePath(rawPath)
+  const resolvedPort = port ?? defaultPort(protocol, secure)
   return {
     kind: 'parsed',
-    protocol,
+    ...(protocol === undefined ? {} : { protocol }),
     host: host.toLowerCase(),
-    port: port ?? defaultPort(protocol, secure),
+    ...(resolvedPort === undefined ? {} : { port: resolvedPort }),
     ...(username === undefined ? {} : { username }),
     ...(path === undefined ? {} : { path }),
     ...(secure === undefined ? {} : { secure }),
@@ -196,8 +235,9 @@ function readPort(text: string): number | undefined {
   return port >= 1 && port <= 65535 ? port : undefined
 }
 
-/** The protocol's own default, and WebDAV's two. */
-function defaultPort(protocol: ServerProtocol, secure: boolean | undefined): number {
+/** The protocol's own default, and WebDAV's two. An address that names no protocol has no default. */
+function defaultPort(protocol: ServerProtocol | undefined, secure: boolean | undefined): number | undefined {
+  if (protocol === undefined) return undefined
   if (protocol === 'sftp') return DEFAULT_PORTS.sftp
   if (protocol === 'smb') return DEFAULT_PORTS.smb
   return secure === false ? DEFAULT_PORTS.webdavPlain : DEFAULT_PORTS.webdavSecure

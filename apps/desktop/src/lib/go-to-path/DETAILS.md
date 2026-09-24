@@ -115,7 +115,8 @@ over a tilde-expanded, base-dir-joined path). A scheme input joins onto the pane
   The navigation side refuses the same shape in `../file-explorer/pane/navigate-refusals.ts`.
 - `sftp://`, `webdav://` matching a saved place's app root: navigates, showing the place's name. Matching is by whole
   components, per the grammar in `apps/desktop/src/lib/servers/DETAILS.md` § The path grammar.
-- Any other input carrying a scheme `address-parser.ts` parses: opens the sign-in sheet in add mode, prefilled. ❗ A
+- Any other input carrying a scheme `address-parser.ts` parses: opens the sign-in sheet in add mode, prefilled, with
+  the protocol toggle on what the scheme spells out (`server-form.ts::formFromPrefill`). ❗ A
   server path nothing saved is an ADDRESS, not a dead end: someone pasted a link to a server they haven't added yet. The
   accepted scheme set is `address-parser.ts`'s alone; don't restate it here.
 - Everything else, including a bare hostname: `null`, and the local resolver owns it. A bare hostname is a legal

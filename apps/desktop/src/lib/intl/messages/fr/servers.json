@@ -232,9 +232,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "A literal example hostname, not prose: `nas` is the same abbreviation in French (the shipped `servers.hub.emptyMessage` writes \"un Mac ou un NAS\") and `.local` is the reserved mDNS suffix macOS itself shows (Finder `ConnectToWindow.strings` fr placeholder \"Adresse du serveur\" takes the same form). Translating it would print an address that does not resolve."
   },
-  "servers.sheet.addressHelp": "Un nom d’hôte, une adresse que vous avez copiée ou toute une ligne ssh. Cmdr choisit le protocole.",
+  "servers.sheet.addressHelp": "Un nom d’hôte, une adresse que vous avez copiée ou toute une ligne ssh.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Cela ressemble à une adresse SMB. Choisissez SMB ci-dessus si c’est ce que vous vouliez.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Cela ressemble à une adresse SFTP. Choisissez SFTP ci-dessus si c’est ce que vous vouliez.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Cela ressemble à une adresse WebDAV. Choisissez WebDAV ci-dessus si c’est ce que vous vouliez.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "L’adresse et le compte identifient ce serveur. Pour les modifier, oubliez ce serveur puis ajoutez-le à nouveau.",
   "@servers.sheet.identityLocked": {

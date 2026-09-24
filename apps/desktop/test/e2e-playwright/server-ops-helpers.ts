@@ -40,6 +40,24 @@ export async function openAddServerSheet(tauriPage: PageLike): Promise<void> {
   await expect.poll(async () => tauriPage.isVisible(SHEET), { timeout: waitBudget(5000) }).toBeTruthy()
 }
 
+/** The sheet's protocol tabs, in `ServerFormFields.svelte`'s order, so a pick doesn't hang on the label's language. */
+const PROTOCOL_TABS = ['smb', 'sftp', 'webdav'] as const
+
+/**
+ * Picks the add form's protocol the way a person would. ❗ Typing an address
+ * never moves the toggle (cmdr-reports#8), so every add that isn't SMB starts
+ * here.
+ */
+export async function pickSheetProtocol(tauriPage: PageLike, protocol: (typeof PROTOCOL_TABS)[number]): Promise<void> {
+  const tab = `document.querySelectorAll('${SHEET} [role="tab"]')[${String(PROTOCOL_TABS.indexOf(protocol))}]`
+  expect(await pointerClick(tauriPage, tab), `the ${protocol} tab is live`).toBe('clicked')
+  await expect
+    .poll(async () => tauriPage.evaluate<string | null>(`${tab}.getAttribute('aria-selected')`), {
+      timeout: waitBudget(2000),
+    })
+    .toBe('true')
+}
+
 /** Replaces one of the sheet's text fields, the way a person retyping it would. */
 export async function setSheetField(tauriPage: PageLike, id: string, value: string): Promise<void> {
   await tauriPage.evaluate(`(function () {
@@ -81,8 +99,9 @@ export async function addServerThroughSheet(
   password: string,
 ): Promise<SheetRound> {
   await openAddServerSheet(tauriPage)
+  await pickSheetProtocol(tauriPage, fixture.protocol)
   await setSheetField(tauriPage, 'server-address', fixture.addressFor(dir))
-  // The account fields appear once the address reads as SFTP or WebDAV.
+  // The account fields belong to SFTP and WebDAV, which the pick above selected.
   await expect
     .poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: waitBudget(5000) })
     .toBeTruthy()

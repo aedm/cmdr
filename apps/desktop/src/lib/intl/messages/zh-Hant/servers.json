@@ -231,9 +231,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "“nas.local” is a sample hostname shown inside the address field, not prose. A hostname is Latin text the user would type verbatim, so a Traditional Chinese rendering would be a worse hint; Apple keeps example hosts Latin in its zh-TW bundles too (Finder `ConnectToWindow.strings` ships the field with a bare `伺服器位址` label and no localized sample). `.local` is the mDNS suffix and is not translatable."
   },
-  "servers.sheet.addressHelp": "主機名稱、你複製來的位址，或一整行 ssh 指令都可以。Cmdr 會自己選通訊協定。",
+  "servers.sheet.addressHelp": "主機名稱、你複製來的位址，或一整行 ssh 指令都可以。",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "這看起來像是 SMB 位址。如果你本來就是這個意思，請在上方選擇 SMB。",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "這看起來像是 SFTP 位址。如果你本來就是這個意思，請在上方選擇 SFTP。",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "這看起來像是 WebDAV 位址。如果你本來就是這個意思，請在上方選擇 WebDAV。",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "位址和帳號決定了這是哪個伺服器。要改這兩項，先忘記這個伺服器，再重新加入。",
   "@servers.sheet.identityLocked": {

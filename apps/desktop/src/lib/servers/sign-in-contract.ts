@@ -108,7 +108,7 @@ export type SignInAttempt = (submission: SignInSubmission) => Promise<SignInAtte
 
 /** What the sheet was opened to do. */
 export type SignInSheetRequest =
-  /** Type a new server. Address first, protocol second (`address-parser.ts`). */
+  /** Type a new server. The person picks the protocol; the address never does (`address-parser.ts`). */
   | {
       mode: 'add'
       attempt: SignInAttempt

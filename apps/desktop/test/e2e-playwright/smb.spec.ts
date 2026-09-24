@@ -236,7 +236,7 @@ describeSmb('Adding an SMB host through the sign-in sheet', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`)
 
-    // ❗ A bare host reads as SMB, whose connect is a share MOUNT rather than a
+    // ❗ SMB is the default protocol, whose connect is a share MOUNT rather than a
     // session: nothing is asked until a listing or a mount refuses, so there is
     // no password field to put in front of anyone.
     expect(await tauriPage.isVisible(`${sheet} #server-secret`)).toBe(false)

@@ -6,7 +6,8 @@ the words for a connect that stopped.
 ## Module map
 
 - `server-path-utils.ts` reads and writes `<protocol>://<user>@<host>:<port>/<server path>`; `address-parser.ts` turns a
-  pasted string into a protocol and an endpoint; `server-form.ts` is the add form's model.
+  pasted string into an endpoint (plus the protocol it spells out, for a warning only); `server-form.ts` is the add
+  form's model.
 - `connect-flow.ts` picks the move by the volume's standing (via `server-outcomes.ts`); `open-sign-in.ts` picks the
   command it needs and opens `SignInSheet.svelte`, over `sign-in-contract.ts` + `sign-in-sheet-state.svelte.ts`.
 - `connect-refusals.ts`: a sentence per reason and the field it goes under. `server-command-target.ts`: which server a
@@ -17,6 +18,9 @@ the words for a connect that stopped.
 - **`connect-flow.ts` is the ONE caller of `connectSavedPlace` and of the reconnect manager's lazy start**;
   `open-sign-in.ts` alone picks between mending a REGISTERED volume and dialing an absent one. Getting that wrong is
   silent: dialing a registered volume registers a SECOND one under a second id. DETAILS § The three arms.
+- **The protocol toggle is the person's, ❌ never the address's.** Typing never moves it, and it alone picks what gets
+  dialed; what the address looks like only shows as a warning. `user@host` once flipped it to SFTP and dialed SSH at an
+  SMB NAS (cmdr-reports#8). DETAILS § Add mode, protocol first.
 - **The sheet never dials, and stays open across rounds**, calling the caller's `attempt` as often as the user retries:
   a first connect is three round-trips, and closing between them would lose what was typed.
 - **Username editability is the SHAPE VARIANT's property, ❌ never the sheet's mode.** Read it as a mode rule and you

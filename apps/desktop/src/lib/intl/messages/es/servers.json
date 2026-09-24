@@ -231,9 +231,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "Nombre de host de ejemplo dentro del campo, no texto traducible: `nas` es la sigla internacional que el catálogo ya deja igual (`servers.hub.emptyMessage`, «un Mac o un NAS») y `.local` es el sufijo de mDNS que define el RFC 6762. Un ejemplo en español sería igual de largo y menos reconocible."
   },
-  "servers.sheet.addressHelp": "Un nombre de host, una dirección que hayas copiado o una línea ssh entera. Cmdr elige el protocolo.",
+  "servers.sheet.addressHelp": "Un nombre de host, una dirección que hayas copiado o una línea ssh entera.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Parece una dirección SMB. Elige SMB arriba si es lo que querías.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Parece una dirección SFTP. Elige SFTP arriba si es lo que querías.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Parece una dirección WebDAV. Elige WebDAV arriba si es lo que querías.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "La dirección y la cuenta son las que identifican este servidor. Para cambiarlas, olvida el servidor y vuelve a añadirlo.",
   "@servers.sheet.identityLocked": {

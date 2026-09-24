@@ -232,9 +232,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "A sample hostname, not prose: 'nas' plus the .local mDNS suffix macOS itself uses for Bonjour names, which is the same in Swedish. The @key says to leave it as-is or pick an equally short one, and no shorter Swedish-flavoured example exists. Deliberately identical."
   },
-  "servers.sheet.addressHelp": "Ett värdnamn, en adress du har kopierat eller en hel ssh-rad. Cmdr väljer protokollet.",
+  "servers.sheet.addressHelp": "Ett värdnamn, en adress du har kopierat eller en hel ssh-rad.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Det här ser ut som en SMB-adress. Välj SMB ovan om det var det du menade.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Det här ser ut som en SFTP-adress. Välj SFTP ovan om det var det du menade.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Det här ser ut som en WebDAV-adress. Välj WebDAV ovan om det var det du menade.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "Adressen och kontot är det som identifierar den här servern. Glöm servern och lägg till den igen om du vill ändra dem.",
   "@servers.sheet.identityLocked": {

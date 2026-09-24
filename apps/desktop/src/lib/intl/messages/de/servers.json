@@ -233,9 +233,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "Beispiel-Hostname im Eingabefeld, kein Fließtext: `nas.local` ist ein mDNS-Name und in jeder Sprache derselbe. Der Katalog nutzt denselben Beispielnamen schon in `servers.refusal.timedOut`."
   },
-  "servers.sheet.addressHelp": "Ein Hostname, eine kopierte Adresse oder eine ganze ssh-Zeile. Cmdr wählt das Protokoll.",
+  "servers.sheet.addressHelp": "Ein Hostname, eine kopierte Adresse oder eine ganze ssh-Zeile.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Das sieht nach einer SMB-Adresse aus. Wähle oben SMB, falls du das gemeint hast.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Das sieht nach einer SFTP-Adresse aus. Wähle oben SFTP, falls du das gemeint hast.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Das sieht nach einer WebDAV-Adresse aus. Wähle oben WebDAV, falls du das gemeint hast.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "Adresse und Konto machen diesen Server aus. Vergiss ihn und füge ihn erneut hinzu, um sie zu ändern.",
   "@servers.sheet.identityLocked": {

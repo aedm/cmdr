@@ -1,13 +1,19 @@
 <script lang="ts">
     /**
-     * The add form: an address, whatever that protocol signs in with, and an
-     * Advanced disclosure for the rest.
+     * The add form: the protocol, an address, a name, whatever that protocol
+     * signs in with, and an Advanced disclosure for the rest.
      *
-     * ❗ **Address first, protocol second.** People have an address, not a
-     * protocol, so the field comes first and the toggle follows what they typed
-     * (`address-parser.ts`). The toggle stays editable: a wrong read costs one
-     * click, and asking someone to classify their own NAS before typing it costs
-     * the feature.
+     * ❗ **Protocol first, and only the person moves it.** The toggle sits on
+     * top and typing never changes it: an address that read as SFTP once
+     * flipped it under someone typing `sven@192.168.0.153` for their SMB NAS,
+     * and SSH got dialed without them ever clicking SFTP (cmdr-reports#8). What
+     * the address looks like shows as a warning under the field
+     * (`addressLooksLike`), and the person decides.
+     *
+     * ❗ **The name is not an advanced setting**, so it sits under the address.
+     * SMB's add has nowhere to keep one (`connect_to_server` takes an address
+     * and nothing else), so SMB shows no name field rather than one that
+     * silently goes nowhere.
      *
      * ❗ **SMB asks for nothing here.** Its connect is a share mount, and the
      * credential question comes from the listing or the mount when one refuses.
@@ -48,6 +54,8 @@
         identityHint?: string
         /** The sentence under the address field, when the last attempt was refused. */
         addressRefusal?: string
+        /** The sentence under the address field when it looks like another protocol than the selected one. */
+        addressWarning?: string
         /** Offered on `not_a_webdav_server`: appends the Nextcloud collection path. Nobody knows that path. */
         onTryNextcloudAddress?: () => void
         /** The sentence under the secret field. */
@@ -84,6 +92,7 @@
         identityEditable,
         identityHint,
         addressRefusal,
+        addressWarning,
         onTryNextcloudAddress,
         secretRefusal,
         rootRefusal,
@@ -107,8 +116,14 @@
         { value: 'webdav', label: tString('servers.sheet.protocolWebdav') },
     ])
 
-    /** SMB signs in from the mount, not from here. */
+    /** SMB signs in from the mount, not from here, and keeps no name or folders here either. */
     const asksForCredentials = $derived(form.protocol !== 'smb')
+    /** Which sentence sits under the address: a refusal outranks a warning, which outranks the help line. */
+    const addressDescribedBy = $derived.by(() => {
+        if (addressRefusal) return 'server-address-refusal'
+        if (addressWarning) return 'server-address-warning'
+        return identityEditable ? 'server-address-help' : undefined
+    })
     const isSftp = $derived(form.protocol === 'sftp')
     /** An empty start folder opens the root, so the root is what the empty field shows. */
     const startFolderPlaceholder = $derived(form.remoteRoot.trim() === '' ? '/' : form.remoteRoot.trim())
@@ -126,6 +141,20 @@
 </script>
 
 <div class="field">
+    <ToggleGroup
+        semantics="tabs"
+        value={form.protocol}
+        options={protocolOptions}
+        onChange={(value: string) => {
+            onChange({ protocol: value as ServerProtocol })
+        }}
+        disabled={disabled || !protocolEditable}
+        ariaLabel={tString('servers.sheet.protocolLegend')}
+        fullWidth
+    />
+</div>
+
+<div class="field">
     <label for="server-address" class="field-label">{tString('servers.sheet.address')}</label>
     <TextInput
         id="server-address"
@@ -136,7 +165,7 @@
         }}
         disabled={disabled || !identityEditable}
         invalid={addressRefusal !== undefined}
-        aria-describedby={addressRefusal ? 'server-address-refusal' : 'server-address-help'}
+        aria-describedby={addressDescribedBy}
         placeholder={tString('servers.sheet.addressPlaceholder')}
         autocapitalize="off"
         autocomplete="off"
@@ -151,6 +180,10 @@
                 </Button>
             </div>
         {/if}
+    {:else if addressWarning}
+        <!-- `status`, ❌ not `alert`: it arrives while someone is typing, and it
+             asks for a look, not an interruption. -->
+        <p id="server-address-warning" class="field-warning" role="status">{addressWarning}</p>
     {:else if identityEditable}
         <p id="server-address-help" class="field-help">{tString('servers.sheet.addressHelp')}</p>
     {/if}
@@ -159,21 +192,22 @@
          it covers all three of address, protocol, and account. -->
 </div>
 
-<div class="field">
-    <ToggleGroup
-        semantics="tabs"
-        value={form.protocol}
-        options={protocolOptions}
-        onChange={(value: string) => {
-            onChange({ protocol: value as ServerProtocol })
-        }}
-        disabled={disabled || !protocolEditable}
-        ariaLabel={tString('servers.sheet.protocolLegend')}
-        fullWidth
-    />
-</div>
-
 {#if asksForCredentials}
+    <div class="field">
+        <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
+        <TextInput
+            id="server-name"
+            value={form.displayName}
+            oninput={(e: Event) => {
+                onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
+            }}
+            {disabled}
+            placeholder={namePlaceholder}
+            aria-describedby="server-name-help"
+        />
+        <p id="server-name-help" class="field-help">{tString('servers.sheet.nameHelp')}</p>
+    </div>
+
     <div class="field">
         <label for="server-username" class="field-label">{tString('servers.sheet.username')}</label>
         <TextInput
@@ -230,25 +264,11 @@
     {/if}
 {/if}
 
-<details class="advanced" bind:open={advancedOpen}>
-    <summary>{tString('servers.sheet.advanced')}</summary>
-    <div class="advanced-body">
-        <div class="field">
-            <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
-            <TextInput
-                id="server-name"
-                value={form.displayName}
-                oninput={(e: Event) => {
-                    onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
-                }}
-                {disabled}
-                placeholder={namePlaceholder}
-                aria-describedby="server-name-help"
-            />
-            <p id="server-name-help" class="field-help">{tString('servers.sheet.nameHelp')}</p>
-        </div>
-
-        {#if asksForCredentials}
+<!-- SMB keeps nothing Advanced would hold, so it gets no disclosure that opens onto nothing. -->
+{#if asksForCredentials}
+    <details class="advanced" bind:open={advancedOpen}>
+        <summary>{tString('servers.sheet.advanced')}</summary>
+        <div class="advanced-body">
             <div class="field">
                 <label for="server-remote-root" class="field-label">{tString('servers.sheet.rootFolder')}</label>
                 <TextInput
@@ -295,42 +315,40 @@
                     <p id="server-start-folder-help" class="field-help">{tString('servers.sheet.startFolderHelp')}</p>
                 {/if}
             </div>
-        {/if}
 
-        {#if isSftp}
-            <div class="field">
-                <label for="server-key-file" class="field-label">{tString('servers.sheet.keyFile')}</label>
-                <div class="path-row">
-                    <TextInput
-                        id="server-key-file"
-                        value={form.keyFile}
-                        oninput={(e: Event) => {
-                            onChange({ keyFile: (e.currentTarget as HTMLInputElement).value })
+            {#if isSftp}
+                <div class="field">
+                    <label for="server-key-file" class="field-label">{tString('servers.sheet.keyFile')}</label>
+                    <div class="path-row">
+                        <TextInput
+                            id="server-key-file"
+                            value={form.keyFile}
+                            oninput={(e: Event) => {
+                                onChange({ keyFile: (e.currentTarget as HTMLInputElement).value })
+                            }}
+                            {disabled}
+                            autocapitalize="off"
+                            spellcheck={false}
+                        />
+                        <Button onclick={() => void browseForKeyFile()} {disabled}>
+                            {tString('servers.sheet.browse')}
+                        </Button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <Checkbox
+                        checked={form.useAgent}
+                        onCheckedChange={(checked: boolean) => {
+                            onChange({ useAgent: checked })
                         }}
                         {disabled}
-                        autocapitalize="off"
-                        spellcheck={false}
-                    />
-                    <Button onclick={() => void browseForKeyFile()} {disabled}>
-                        {tString('servers.sheet.browse')}
-                    </Button>
+                    >
+                        {tString('servers.sheet.useAgent')}
+                    </Checkbox>
                 </div>
-            </div>
+            {/if}
 
-            <div class="field">
-                <Checkbox
-                    checked={form.useAgent}
-                    onCheckedChange={(checked: boolean) => {
-                        onChange({ useAgent: checked })
-                    }}
-                    {disabled}
-                >
-                    {tString('servers.sheet.useAgent')}
-                </Checkbox>
-            </div>
-        {/if}
-
-        {#if asksForCredentials}
             <div class="field">
                 <Checkbox
                     checked={form.autoReconnect}
@@ -348,9 +366,9 @@
                     text={tString('servers.sheet.autoReconnectHelp')}
                 />
             </div>
-        {/if}
-    </div>
-</details>
+        </div>
+    </details>
+{/if}
 
 <style>
     .field {
@@ -375,6 +393,12 @@
         margin: var(--spacing-xs) 0 0;
         font-size: var(--font-size-sm);
         color: var(--color-error-text);
+    }
+
+    .field-warning {
+        margin: var(--spacing-xs) 0 0;
+        font-size: var(--font-size-sm);
+        color: var(--color-warning-text);
     }
 
     .remedy-row {

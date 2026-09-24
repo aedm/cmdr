@@ -235,9 +235,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "A sample hostname, not prose: \"nas\" is the ordinary Dutch abbreviation too (the catalog already writes \"de meeste NAS-hardware thuis\" in settings.network.smbConcurrency.description), and \".local\" is the mDNS suffix macOS shows unchanged in every locale."
   },
-  "servers.sheet.addressHelp": "Een hostnaam, een adres dat je hebt gekopieerd, of een hele ssh-regel. Cmdr kiest het protocol.",
+  "servers.sheet.addressHelp": "Een hostnaam, een adres dat je hebt gekopieerd, of een hele ssh-regel.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Dit lijkt op een SMB-adres. Kies hierboven SMB als je dat bedoelde.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Dit lijkt op een SFTP-adres. Kies hierboven SFTP als je dat bedoelde.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Dit lijkt op een WebDAV-adres. Kies hierboven WebDAV als je dat bedoelde.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "Het adres en het account bepalen welke server dit is. Vergeet deze server en voeg hem opnieuw toe om ze te wijzigen.",
   "@servers.sheet.identityLocked": {

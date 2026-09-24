@@ -28,6 +28,7 @@ import os from 'node:os'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, escapeOverlayUntilGone } from './helpers.js'
+import { pickSheetProtocol } from './server-ops-helpers.js'
 import {
   publishSyntheticVolumes,
   restoreRealVolumes as dropSyntheticVolumes,
@@ -179,7 +180,7 @@ test.describe('Adding a server through the sheet', () => {
     await mcpCall('select_volume', { pane: 'left', name: LOCAL_VOLUME_NAME })
   })
 
-  test("the hub's Add row opens the one sheet, and the address picks the protocol", async ({ tauriPage }) => {
+  test("the hub's Add row opens the one sheet, and only the person picks the protocol", async ({ tauriPage }) => {
     await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
     await expect
       .poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: waitBudget(15000) })
@@ -187,17 +188,25 @@ test.describe('Adding a server through the sheet', () => {
 
     await activateAddRow(tauriPage)
 
-    // A bare hostname reads as SMB, which asks for no credentials at all.
+    // SMB is the default, and it asks for no credentials at all.
     await typeIntoAddress(tauriPage, 'naspolya')
     expect(await tauriPage.isVisible(`${SHEET} #server-secret`)).toBe(false)
 
-    // `user@host` names an ACCOUNT, so the toggle flips to SFTP and the account
-    // fields appear, prefilled with what the address carried.
+    // ❗ `user@host` fits SMB too, so typing it moves nothing (cmdr-reports#8).
+    // SSH's port is what makes it look off, and the sheet says so and waits.
     await typeIntoAddress(tauriPage, 'ada@e2e-nothing-here.invalid:22')
+    await expect
+      .poll(async () => tauriPage.isVisible(`${SHEET} #server-address-warning`), { timeout: waitBudget(5000) })
+      .toBeTruthy()
+    expect(await tauriPage.isVisible(`${SHEET} #server-secret`)).toBe(false)
+
+    // Picking SFTP brings the account fields, prefilled with what the address carried.
+    await pickSheetProtocol(tauriPage, 'sftp')
     await expect
       .poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: waitBudget(5000) })
       .toBeTruthy()
     expect(await tauriPage.evaluate<string>(`document.querySelector('${SHEET} #server-username').value`)).toBe('ada')
+    expect(await tauriPage.isVisible(`${SHEET} #server-address-warning`)).toBe(false)
   })
 
   test('a server that cannot be reached says so under the address, and the sheet stays open', async ({ tauriPage }) => {
@@ -209,6 +218,7 @@ test.describe('Adding a server through the sheet', () => {
 
     // `.invalid` is reserved by RFC 2606 and never resolves, so the dial is
     // guaranteed to come back with something to say.
+    await pickSheetProtocol(tauriPage, 'sftp')
     await typeIntoAddress(tauriPage, 'ada@e2e-nothing-here.invalid:22')
     await expect
       .poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: waitBudget(5000) })

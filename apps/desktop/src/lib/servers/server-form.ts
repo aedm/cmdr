@@ -31,8 +31,8 @@ export interface ServerForm {
 /** A blank form, on add mode's defaults. */
 export function emptyServerForm(): ServerForm {
   return {
-    // Until an address says otherwise. SMB is the one a bare hostname means, and
-    // a bare hostname is what someone types first.
+    // Until the person picks another. SMB is what a NAS on the home network
+    // speaks, and it asks for nothing up front, so a wrong default costs nothing.
     protocol: 'smb',
     address: '',
     username: '',
@@ -51,30 +51,53 @@ export function emptyServerForm(): ServerForm {
 }
 
 /**
- * Folds what an address turned out to say into the form: the protocol toggle,
- * the account, and the remote folder.
+ * Folds what an address turned out to say into the form: the account, and the
+ * SFTP root folder.
  *
- * ❗ An `unparsed` address changes nothing. The toggle stays where the user left
- * it, and what they typed stays in the field, because a half-typed address is
- * the normal state of a field someone is typing into.
+ * ❗ **It never touches the protocol.** The toggle is the person's; what the
+ * address names only feeds the warning under the field (`addressLooksLike`).
+ * The sheet re-runs this when the toggle moves too, so a path typed before
+ * picking SFTP still lands in the root folder.
+ *
+ * ❗ An `unparsed` address changes nothing, because a half-typed address is the
+ * normal state of a field someone is typing into.
  */
 export function applyParsedAddress(form: ServerForm, parsed: ParsedAddress): ServerForm {
   if (parsed.kind === 'unparsed') return form
+  // A path is a folder only on SFTP (an SMB path is a share, and a WebDAV one
+  // stays in the base URL), and only when the address doesn't name another
+  // protocol, whose path means something else.
+  const pathIsRoot = form.protocol === 'sftp' && speaksOrNamesNone(parsed, 'sftp')
   return {
     ...form,
-    protocol: parsed.protocol,
     // ❗ Only when the address carried one. Typing a host after a username would
     // otherwise wipe the username the same keystroke put there.
     username: parsed.username ?? form.username,
-    remoteRoot: parsed.protocol === 'sftp' ? (parsed.path ?? form.remoteRoot) : form.remoteRoot,
+    remoteRoot: pathIsRoot ? (parsed.path ?? form.remoteRoot) : form.remoteRoot,
   }
+}
+
+/**
+ * The form a prefilled add sheet opens on: `address`, with the toggle on the
+ * protocol it SPELLS OUT, if it spells one.
+ *
+ * ❗ Not the typing rule, on purpose. A prefill arrives from Go to path or ⌘K
+ * as a whole URL the person asked to open (`sftp://…`, `https://…`), so its
+ * scheme is their choice already, and the sheet opens with the toggle in view
+ * before anything is dialed. An address with no scheme leaves the default.
+ */
+export function formFromPrefill(address: string): ServerForm {
+  const parsed = parseServerAddress(address)
+  const protocol = parsed.kind === 'parsed' && parsed.protocol !== undefined ? parsed.protocol : 'smb'
+  return applyParsedAddress({ ...emptyServerForm(), protocol, address }, parsed)
 }
 
 /**
  * The dial target this form names, or `null` when it names none.
  *
  * `null` covers both an address that doesn't parse and SMB, whose connect is a
- * share mount rather than a session and goes through `connectToServer` instead.
+ * share mount rather than a session and goes through `connectToServer` with
+ * `smbAddressFrom` instead.
  */
 export function serverTargetFrom(form: ServerForm): ServerTarget | null {
   const parsed = parseServerAddress(form.address)
@@ -86,16 +109,16 @@ export function serverTargetFrom(form: ServerForm): ServerTarget | null {
   // name that looked like the address, which sent a person to edit the wrong field.
   const displayName = form.displayName.trim()
 
-  // ❗ The TOGGLE decides which target this is, not the address: it stays
-  // editable exactly so someone can type a bare host and say "that one is SFTP".
-  // The address only supplies the endpoint, and a port it named for a different
-  // protocol is not this protocol's port.
+  // ❗ The TOGGLE decides which target this is, ❌ never the address: this is
+  // the one place a protocol is chosen for a dial, and it is the person's pick
+  // (cmdr-reports#8). The address only supplies the endpoint, and a port its
+  // scheme named for a different protocol is not this protocol's port.
   if (form.protocol === 'sftp') {
     return {
       protocol: 'sftp',
       displayName,
       host: parsed.host,
-      port: parsed.protocol === 'sftp' ? parsed.port : 22,
+      port: speaksOrNamesNone(parsed, 'sftp') ? (parsed.port ?? 22) : 22,
       username,
       remoteRoot: normalizeRoot(form.remoteRoot),
       startFolder: startFolderOf(form),
@@ -120,6 +143,30 @@ export function serverTargetFrom(form: ServerForm): ServerTarget | null {
   // SMB: its connect is a share mount rather than a session, so it goes through
   // `connectToServer` and has no target here.
   return null
+}
+
+/**
+ * The address SMB's add hands `connect_to_server`, which reads a bare host,
+ * `host:port`, or an `smb://` URL and refuses anything else.
+ *
+ * ❗ An address with no scheme travels as the SMB URL it means, because the
+ * backend's bare-host reader refuses an `@` or a `/`: `sven@192.168.0.153` is
+ * SMB's natural spelling for a NAS share that needs a user. One that names
+ * ANOTHER protocol keeps only its host, since SMB is what's selected and that
+ * scheme's port and path mean nothing here. One this side can't read goes as
+ * typed, so the backend says what is wrong with it.
+ */
+export function smbAddressFrom(address: string): string {
+  const trimmed = address.trim()
+  const parsed = parseServerAddress(trimmed)
+  if (parsed.kind === 'unparsed' || parsed.protocol === 'smb') return trimmed
+  if (parsed.protocol === undefined) return `smb://${trimmed}`
+  return `smb://${parsed.host}`
+}
+
+/** Whether the address means `protocol` or names no protocol at all, so its port and path are this protocol's. */
+function speaksOrNamesNone(parsed: Extract<ParsedAddress, { kind: 'parsed' }>, protocol: ServerProtocol): boolean {
+  return parsed.protocol === undefined || parsed.protocol === protocol
 }
 
 /** The saved SFTP server, as the edit form holds it. */
@@ -171,17 +218,19 @@ export function nextcloudAddress(address: string, username: string): string {
 
 /**
  * The base URL a WebDAV form dials, port included only when it isn't the
- * scheme's own.
+ * scheme's own. An address with no scheme reads as TLS, because defaulting the
+ * other way would send a password in the clear.
  *
- * ❗ A port and a path the address named for ANOTHER protocol are dropped: `445`
- * off a bare hostname is SMB's default, not a WebDAV port, and carrying it over
- * would dial a port nothing listens for HTTP on.
+ * ❗ A port and a path the address's scheme named for ANOTHER protocol are
+ * dropped: `sftp://nas:2222/srv` names an SSH port and a server folder, and
+ * carrying either over would dial something nothing answers HTTP on.
  */
 function webdavBaseUrl(parsed: Extract<ParsedAddress, { kind: 'parsed' }>): string {
-  if (parsed.protocol !== 'webdav') return `https://${parsed.host}`
+  if (!speaksOrNamesNone(parsed, 'webdav')) return `https://${parsed.host}`
   const scheme = parsed.secure === false ? 'http' : 'https'
-  const isDefaultPort = (scheme === 'https' && parsed.port === 443) || (scheme === 'http' && parsed.port === 80)
-  const authority = isDefaultPort ? parsed.host : `${parsed.host}:${String(parsed.port)}`
+  const port = parsed.port ?? (scheme === 'https' ? 443 : 80)
+  const isDefaultPort = (scheme === 'https' && port === 443) || (scheme === 'http' && port === 80)
+  const authority = isDefaultPort ? parsed.host : `${parsed.host}:${String(port)}`
   return `${scheme}://${authority}${parsed.path ?? ''}`
 }
 

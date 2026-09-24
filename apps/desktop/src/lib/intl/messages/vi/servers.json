@@ -231,9 +231,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "An example hostname (`nas.local`), not prose: `nas` is the storage acronym the catalog keeps verbatim and `.local` is the mDNS suffix. Nothing here is translatable."
   },
-  "servers.sheet.addressHelp": "Một tên máy chủ, một địa chỉ bạn đã sao chép, hoặc cả một dòng lệnh ssh. Cmdr tự chọn giao thức.",
+  "servers.sheet.addressHelp": "Một tên máy chủ, một địa chỉ bạn đã sao chép, hoặc cả một dòng lệnh ssh.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Địa chỉ này có vẻ là địa chỉ SMB. Hãy chọn SMB ở trên nếu đó là ý bạn.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Địa chỉ này có vẻ là địa chỉ SFTP. Hãy chọn SFTP ở trên nếu đó là ý bạn.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Địa chỉ này có vẻ là địa chỉ WebDAV. Hãy chọn WebDAV ở trên nếu đó là ý bạn.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "Địa chỉ và tài khoản là những gì xác định máy chủ này. Để thay đổi chúng, hãy quên máy chủ này rồi thêm lại.",
   "@servers.sheet.identityLocked": {

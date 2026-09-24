@@ -232,9 +232,21 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "An example hostname, not prose: `nas.local` is a literal mDNS name and stays identical in every locale. The `.local` suffix belongs to the protocol, and `nas` is the same three letters the catalog already publishes as the NAS acronym (settings.network.smbConcurrency.description)."
   },
-  "servers.sheet.addressHelp": "Um nome de host, um endereço que você copiou ou uma linha ssh inteira. O Cmdr escolhe o protocolo.",
+  "servers.sheet.addressHelp": "Um nome de host, um endereço que você copiou ou uma linha ssh inteira.",
   "@servers.sheet.addressHelp": {
-    "sourceHash": "f91dc8a"
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Isto parece um endereço SMB. Escolha SMB acima se era isso que você queria.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "89ab389"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Isto parece um endereço SFTP. Escolha SFTP acima se era isso que você queria.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "5942840"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Isto parece um endereço WebDAV. Escolha WebDAV acima se era isso que você queria.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "7741119"
   },
   "servers.sheet.identityLocked": "O endereço e a conta identificam este servidor. Para mudá-los, esqueça este servidor e adicione-o de novo.",
   "@servers.sheet.identityLocked": {

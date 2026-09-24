@@ -86,6 +86,20 @@ function buttonSaying(text: string): HTMLButtonElement {
   return match
 }
 
+/** The protocol tab labelled `label`, which only the person ever moves. */
+function protocolTab(label: string): HTMLButtonElement {
+  const match = [...document.body.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+    (b) => b.textContent.trim() === label,
+  )
+  if (!match) throw new Error(`no protocol tab saying ${label}`)
+  return match
+}
+
+async function pickProtocol(label: string) {
+  protocolTab(label).click()
+  await tick()
+}
+
 describe('SignInSheet: a refusal', () => {
   it('renders the sentence under the password field and leaves the focus there', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
@@ -251,19 +265,83 @@ describe('SignInSheet: the keyboard', () => {
 })
 
 describe('SignInSheet: add mode', () => {
-  it('flips the protocol to what the address says, and sends the target that names', async () => {
+  it('puts the protocol first, then the address, then the name, with the name outside Advanced', async () => {
+    await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
+    await pickProtocol('SFTP')
+
+    const tablist = document.body.querySelector('[role="tablist"]') as Element
+    const address = document.body.querySelector('#server-address') as Element
+    const name = document.body.querySelector('#server-name') as Element
+    expect(tablist.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(address.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // ❗ Not an advanced setting, so a closed disclosure must not hide it.
+    expect(name.closest('details')).toBeNull()
+  })
+
+  it('shows SMB no name field, since its add has nowhere to keep one', async () => {
+    await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
+    expect(document.body.querySelector('#server-name')).toBeNull()
+    expect(document.body.querySelector('details')).toBeNull()
+  })
+
+  /**
+   * ❗ cmdr-reports#8: `sven@192.168.0.153`, typed for an SMB NAS, flipped the
+   * toggle to SFTP and dialed SSH without anyone clicking SFTP.
+   */
+  it('never moves the protocol while someone types, and dials the one they picked', async () => {
+    const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
+      submissions.push(submission)
+      return Promise.resolve({ kind: 'handed_off' })
+    }
+    await renderSheet({ mode: 'add', attempt })
+
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'sven@192.168.0.153')
+    await tick()
+    expect(protocolTab('SMB').getAttribute('aria-selected')).toBe('true')
+    // SMB asks for nothing here, so no account field appeared either.
+    expect(document.body.querySelector('#server-secret')).toBeNull()
+    // `user@host` is a fine SMB address, so nothing warns about it.
+    expect(document.body.querySelector('#server-address-warning')).toBeNull()
+
+    buttonSaying('Connect').click()
+    await flush()
+
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153' }])
+  })
+
+  it('warns when the address looks like another protocol, and leaves the toggle and the dial alone', async () => {
+    const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
+      submissions.push(submission)
+      return Promise.resolve({ kind: 'handed_off' })
+    }
+    await renderSheet({ mode: 'add', attempt })
+
+    const address = document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement
+    typeInto(address, 'sftp://ada@nas.local')
+    await tick()
+
+    const warning = document.body.querySelector('#server-address-warning')
+    expect(warning?.textContent).toBe("This looks like an SFTP address. Pick SFTP above if that's what you meant.")
+    expect(address.getAttribute('aria-describedby')).toBe('server-address-warning')
+    expect(protocolTab('SMB').getAttribute('aria-selected')).toBe('true')
+
+    // Picking what it says retires the warning.
+    await pickProtocol('SFTP')
+    expect(document.body.querySelector('#server-address-warning')).toBeNull()
+    expect(document.body.querySelector<HTMLInputElement>('#server-username')?.value).toBe('ada')
+  })
+
+  it('sends an SFTP target once SFTP is picked, with the port and account the address carried', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
       submissions.push(submission)
       return Promise.resolve({ kind: 'refused', refusal: 'unreachable' })
     }
     await renderSheet({ mode: 'add', attempt })
+    await pickProtocol('SFTP')
 
     typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'ada@nas.local:2222')
     await tick()
-    // The username field only exists once the address stopped reading as SMB,
-    // which is the toggle having flipped.
-    const username = document.body.querySelector<HTMLInputElement>('#server-username')
-    expect(username?.value).toBe('ada')
+    expect(document.body.querySelector<HTMLInputElement>('#server-username')?.value).toBe('ada')
 
     buttonSaying('Connect').click()
     await flush()
@@ -272,6 +350,16 @@ describe('SignInSheet: add mode', () => {
     const only = submissions[0]
     if (only.mode !== 'add') throw new Error('expected an add submission')
     expect(only.target).toMatchObject({ protocol: 'sftp', host: 'nas.local', port: 2222, username: 'ada' })
+  })
+
+  it('opens a prefilled URL on the protocol its scheme spells out', async () => {
+    await renderSheet({
+      mode: 'add',
+      prefill: 'https://cloud.example.com',
+      attempt: () => Promise.resolve({ kind: 'cancelled' }),
+    })
+    expect(protocolTab('WebDAV').getAttribute('aria-selected')).toBe('true')
+    expect(document.body.querySelector('#server-address-warning')).toBeNull()
   })
 
   it('hands an SMB address off rather than dialing it, and asks for no password', async () => {
@@ -290,7 +378,7 @@ describe('SignInSheet: add mode', () => {
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'naspolya' }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya' }])
     expect(done).toEqual([{ kind: 'handed_off' }])
   })
 
@@ -300,6 +388,7 @@ describe('SignInSheet: add mode', () => {
       return Promise.resolve({ kind: 'connected', volumeId: 'v' })
     }
     await renderSheet({ mode: 'add', attempt })
+    await pickProtocol('SFTP')
 
     typeInto(
       document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement,
@@ -325,6 +414,7 @@ describe('SignInSheet: add mode', () => {
     const attempt = (): Promise<SignInAttemptOutcome> =>
       Promise.resolve({ kind: 'refused', refusal: 'start_folder_outside_root' })
     await renderSheet({ mode: 'add', attempt })
+    await pickProtocol('SFTP')
 
     typeInto(
       document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement,
@@ -592,6 +682,7 @@ describe('SignInSheet: a refusal and the address that earned it', () => {
       return Promise.resolve({ kind: 'refused', refusal: 'unreachable' })
     }
     await renderSheet({ mode: 'add', attempt })
+    await pickProtocol('SFTP')
 
     const address = document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement
     typeInto(address, 'ada@typo.local:22')

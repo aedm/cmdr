@@ -211,8 +211,8 @@ title uses the label. `serverTargetFrom` sends an empty name as empty and ❌ ne
 that repeated the typed address left it as the sheet's only URL-shaped field, and a root got "widened" through the name
 (`apps/desktop/src-tauri/src/network/DETAILS.md` § "An unnamed server's label, and names that only repeat the address").
 
-**The root folder is a ceiling, the start folder is a landing.** Both sit in Advanced, which edit mode opens because the
-settings someone came to change live there. The start folder must be the root or under it, by whole components:
+**The root folder is a ceiling, the start folder is a landing.** Both sit in Advanced, which edit mode opens because
+most of the settings someone came to change live there (the name sits above, under the address). The start folder must be the root or under it, by whole components:
 `server-form.ts::isStartFolderUnderRoot` mirrors the backend's `start_folder_under_root` (`.` and `..` resolved, a
 relative path read from `/`), so the sentence arrives before a round-trip, once the field has lost focus and again on
 Save or Connect. The backend stays authoritative. A pasted address's path fills the root folder.
@@ -323,12 +323,36 @@ same words above the address are a puzzle. ❗ Sign-in mode renders only the pas
 isn't `secret` reads in the form slot, ❌ never under a field that isn't on screen: a sign-in round refused as
 `unreachable` once showed no word at all.
 
-## Add mode, address first
+## Add mode, protocol first
 
-People have an address, not a protocol, so the field comes first and the toggle follows what `address-parser.ts` read.
-The toggle stays editable, and ❗ **it is what decides which target `serverTargetFrom` builds**, not the address:
-someone can type a bare host and say "that one is SFTP". A port the address named for a DIFFERENT protocol is dropped,
-because `445` off a bare hostname is SMB's default and dialing it for HTTP opens a socket nothing answers on.
+The form reads top to bottom: the SMB / SFTP / WebDAV toggle, the address, the name, then the protocol's own fields and
+Advanced. ❗ **Only the person moves the toggle, and it alone decides what gets dialed** (`serverTargetFrom` for SFTP
+and WebDAV, `smbAddressFrom` for SMB's hand-off). Typing into the address used to flip it: `sven@192.168.0.153`, typed
+for an SMB NAS, read as SFTP and dialed SSH on port 22 without anyone clicking SFTP, and the host key the Mac already
+trusted turned that into a quiet SSH session the user objected to (cmdr-reports#8).
+
+What the address says still earns a sentence: `addressLooksLike` answers which protocol it looks like when that isn't
+the selected one, and the sheet shows it under the field (`servers.sheet.addressLooksLike*`, `role="status"`). Two
+things count as evidence, and nothing else: a scheme or a pasted `ssh` line (it wins over any port it names), and a
+well-known port on an address with no scheme (22, 139, 445, 80, 443). ❌ An account, a path, or a bare host is not
+evidence: `user@host` fits all three protocols. The warning never blocks Connect.
+
+A port or path the address's scheme named for a DIFFERENT protocol is dropped (`sftp://nas:2222/srv` with WebDAV
+selected dials `https://nas`), while one typed with no scheme belongs to whichever protocol is selected. The account the
+address carried fills the username either way; the path fills the SFTP root only when SFTP is selected, and the sheet
+re-applies the address when the toggle moves, so typing first and picking second lands in the same place.
+
+❗ **A prefill is the one place a scheme sets the toggle** (`formFromPrefill`). Go to path and ⌘K hand over a whole URL
+the person asked to open, so its scheme is already their choice, and the sheet opens with the toggle in view before
+anything is dialed. Go to path only hands over addresses WITH a scheme, so a bare `user@host` never takes this path.
+
+❗ **SMB's hand-off spells a scheme-less address as `smb://…`.** `connect_to_server`'s bare-host reader refuses an `@`
+or a `/`, so `sven@192.168.0.153` has to travel as the SMB URL it means; its URL reader drops the account. An address
+naming another scheme keeps only its host.
+
+❗ **The name sits under the address, and only for SFTP and WebDAV.** It isn't an advanced setting, and SMB's add has
+nowhere to keep one (`connect_to_server` takes an address and nothing else), so SMB shows no name field and no Advanced
+disclosure rather than inputs that go nowhere.
 
 ❗ **A connected add lands a pane on the new place**, through `openAddServerSheet`'s `onConnected` (the place's volume
 id and app root, read off `list_saved_servers` rather than the volume store, which can still hold the previous
@@ -336,9 +360,8 @@ id and app root, read off `list_saved_servers` rather than the volume store, whi
 live server with every pane where it was, which reads as a Connect that did nothing. SMB's add is a share mount, so it
 hands off to the hub's places list instead (`onSmbHandOff`).
 
-❗ **A bare hostname reads as SMB**, the one guess that costs nothing: SMB browses with no account, so a wrong guess
-asks the user for nothing, while guessing SFTP would put an account field in front of someone who typed a NAS name off a
-sticker. `user@host` reads as SFTP, because an account is what `user@` means.
+❗ **SMB is the default**, the one that costs nothing when it's wrong: SMB browses with no account, so it asks the user
+for nothing, while defaulting to SFTP would put an account field in front of someone who typed a NAS name off a sticker.
 
 ❗ **A Nextcloud URL stays whole, path and all.** Nobody can tell where the base URL ends and the collection begins, and
 the backend resolves the remote root relative to the base anyway. `not_a_webdav_server` is the one refusal with a remedy
@@ -401,7 +424,7 @@ whichever doc owns the item now; ❌ nothing here restates a mechanism.
 - **Certificate trust-on-first-use**, which is why a self-signed NAS lands on the honest `certificate_untrusted` wording
   with no button that could work: GitHub [#173](https://github.com/vdavid/cmdr/issues/173), backend work.
 - **A property-testing library on the frontend.** `proptest` stays Rust-only, and `address-parser.test.ts`'s example
-  table is the contract instead (§ "Add mode, address first").
+  table is the contract instead (§ "Add mode, protocol first").
 - **A fourth pane tint for the two new protocols.** `appearance.tintSmb` covers all three ("Tint server panes (SMB,
   SFTP, WebDAV)"). A separate setting would be three definition sites, a section row, and two parity tests for a color
   nobody asked to set apart.

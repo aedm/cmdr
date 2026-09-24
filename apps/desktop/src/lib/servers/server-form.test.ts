@@ -6,27 +6,51 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import type { ServerProtocol } from '$lib/ipc/bindings'
 import { parseServerAddress } from './address-parser'
 import {
   applyParsedAddress,
   emptyServerForm,
+  formFromPrefill,
   formFromSftpServer,
   isStartFolderUnderRoot,
   nextcloudAddress,
   serverTargetFrom,
+  smbAddressFrom,
 } from './server-form'
 
-/** A form as the sheet would hold it after someone typed `address`. */
-function typed(address: string) {
-  const form = { ...emptyServerForm(), address }
+/** A form as the sheet would hold it after someone picked `protocol` and typed `address`. */
+function typed(address: string, protocol: ServerProtocol = 'smb') {
+  const form = { ...emptyServerForm(), protocol, address }
   return applyParsedAddress(form, parseServerAddress(address))
 }
 
 describe('applyParsedAddress', () => {
-  it('flips the protocol and picks up the account the address carried', () => {
-    expect(typed('ada@nas.local:2222')).toMatchObject({ protocol: 'sftp', username: 'ada' })
-    expect(typed('https://cloud.example.com')).toMatchObject({ protocol: 'webdav' })
-    expect(typed('naspolya')).toMatchObject({ protocol: 'smb' })
+  /**
+   * ❗ The toggle is the person's, and typing never moves it. `user@host` once
+   * flipped it to SFTP under someone typing their SMB NAS's address, and the
+   * sheet dialed SSH without them clicking SFTP (cmdr-reports#8).
+   */
+  it('never moves the protocol toggle, whatever the address says', () => {
+    expect(typed('sven@192.168.0.153')).toMatchObject({ protocol: 'smb' })
+    expect(typed('sftp://ada@nas.local')).toMatchObject({ protocol: 'smb' })
+    expect(typed('https://cloud.example.com', 'sftp')).toMatchObject({ protocol: 'sftp' })
+    expect(typed('smb://naspolya', 'webdav')).toMatchObject({ protocol: 'webdav' })
+  })
+
+  it('picks up the account the address carried', () => {
+    expect(typed('ada@nas.local:2222', 'sftp')).toMatchObject({ username: 'ada' })
+    // Kept on SMB too, where the field is hidden, so switching the toggle later
+    // shows what was typed.
+    expect(typed('ada@nas.local:2222')).toMatchObject({ username: 'ada' })
+  })
+
+  it('fills the SFTP root folder from a path, and only when the address means SFTP too', () => {
+    expect(typed('ada@nas.local:/srv/data', 'sftp')).toMatchObject({ remoteRoot: '/srv/data' })
+    expect(typed('sftp://ada@nas.local/srv/data', 'sftp')).toMatchObject({ remoteRoot: '/srv/data' })
+    // An SMB path is a share, and another protocol's path is not this one's folder.
+    expect(typed('ada@nas.local/media')).toMatchObject({ remoteRoot: '' })
+    expect(typed('smb://nas.local/media', 'sftp')).toMatchObject({ remoteRoot: '' })
   })
 
   it('leaves everything alone when the address says nothing yet', () => {
@@ -52,9 +76,41 @@ describe('emptyServerForm', () => {
   })
 })
 
+describe('formFromPrefill', () => {
+  it('opens on the protocol a pasted URL spells out, since that is what the person asked to open', () => {
+    // Go to path hands over only addresses with a scheme, and opening a sheet on
+    // `sftp://…` with SMB selected would make the person say it twice.
+    expect(formFromPrefill('sftp://ada@nas.local/srv')).toMatchObject({
+      protocol: 'sftp',
+      address: 'sftp://ada@nas.local/srv',
+      username: 'ada',
+      remoteRoot: '/srv',
+    })
+    expect(formFromPrefill('https://cloud.example.com')).toMatchObject({ protocol: 'webdav' })
+  })
+
+  it('stays on the default for an address that names no protocol', () => {
+    expect(formFromPrefill('ada@nas.local')).toMatchObject({ protocol: 'smb', username: 'ada' })
+  })
+})
+
 describe('serverTargetFrom', () => {
+  /** ❗ cmdr-reports#8: what gets dialed is the toggle's protocol, and the toggle is the person's. */
+  it('never dials a protocol the person did not select', () => {
+    // SMB is the default and has no target here (its connect is a share mount),
+    // so an address that looks like SFTP still dials nothing over SSH.
+    expect(serverTargetFrom(typed('sven@192.168.0.153'))).toBeNull()
+    expect(serverTargetFrom(typed('sftp://ada@nas.local'))).toBeNull()
+    expect(serverTargetFrom(typed('ssh ada@nas.local'))).toBeNull()
+    expect(serverTargetFrom(typed('https://cloud.example.com', 'sftp'))).toMatchObject({ protocol: 'sftp' })
+  })
+
   it('builds an SFTP target from the address and the advanced fields', () => {
-    const form = { ...typed('ada@nas.local:2222/srv/data'), keyFile: ' ~/.ssh/id_ed25519 ', useAgent: false }
+    const form = {
+      ...typed('ada@nas.local:2222/srv/data', 'sftp'),
+      keyFile: ' ~/.ssh/id_ed25519 ',
+      useAgent: false,
+    }
     expect(serverTargetFrom(form)).toEqual({
       protocol: 'sftp',
       displayName: '',
@@ -70,40 +126,46 @@ describe('serverTargetFrom', () => {
   })
 
   it('builds a WebDAV target whose URL keeps the pasted path and drops a default port', () => {
-    const form = { ...typed('https://cloud.example.com/remote.php/dav/files/ada/'), username: 'ada' }
+    const form = { ...typed('https://cloud.example.com/remote.php/dav/files/ada/', 'webdav'), username: 'ada' }
     expect(serverTargetFrom(form)).toMatchObject({
       protocol: 'webdav',
       url: 'https://cloud.example.com/remote.php/dav/files/ada',
       username: 'ada',
       remoteRoot: '/',
     })
-    expect(serverTargetFrom({ ...typed('http://nas:8080/dav'), username: 'ada' })).toMatchObject({
+    expect(serverTargetFrom({ ...typed('http://nas:8080/dav', 'webdav'), username: 'ada' })).toMatchObject({
       url: 'http://nas:8080/dav',
     })
   })
 
-  it('lets the toggle win over the address, without carrying the other protocol’s port over', () => {
-    // ❗ The toggle stays editable exactly so someone can type a bare host and
-    // say "that one is SFTP". Carrying SMB's 445 into an SFTP dial would open a
+  it('dials a port the address named with no scheme on whichever protocol is selected', () => {
+    expect(serverTargetFrom(typed('ada@nas.local:2222', 'sftp'))).toMatchObject({ port: 2222 })
+    expect(serverTargetFrom(typed('nas:5006/dav', 'webdav'))).toMatchObject({ url: 'https://nas:5006/dav' })
+  })
+
+  it('falls back to the protocol’s own port, and never carries another protocol’s over', () => {
+    // ❗ A scheme's port belongs to that scheme: SMB's 445 in an SFTP dial opens a
     // socket nothing answers SSH on.
-    expect(serverTargetFrom({ ...typed('naspolya'), protocol: 'sftp' })).toMatchObject({
+    expect(serverTargetFrom(typed('naspolya', 'sftp'))).toMatchObject({
       protocol: 'sftp',
       host: 'naspolya',
       port: 22,
     })
-    expect(serverTargetFrom({ ...typed('naspolya'), protocol: 'webdav' })).toMatchObject({
-      url: 'https://naspolya',
-    })
+    expect(serverTargetFrom(typed('smb://naspolya:1445/media', 'sftp'))).toMatchObject({ port: 22 })
+    expect(serverTargetFrom(typed('naspolya', 'webdav'))).toMatchObject({ url: 'https://naspolya' })
+    expect(serverTargetFrom(typed('sftp://naspolya:2222/srv', 'webdav'))).toMatchObject({ url: 'https://naspolya' })
   })
 
   it('names no target for SMB or for an address that says nothing', () => {
     expect(serverTargetFrom(typed('naspolya'))).toBeNull()
-    expect(serverTargetFrom(typed('not a server!!'))).toBeNull()
+    expect(serverTargetFrom(typed('not a server!!', 'sftp'))).toBeNull()
   })
 
   it('reads all three root spellings as the volume root', () => {
     for (const remoteRoot of ['', ' ', '.']) {
-      expect(serverTargetFrom({ ...typed('ada@nas.local'), remoteRoot })).toMatchObject({ remoteRoot: '/' })
+      expect(serverTargetFrom({ ...typed('ada@nas.local', 'sftp'), remoteRoot })).toMatchObject({
+        remoteRoot: '/',
+      })
     }
   })
 
@@ -111,26 +173,56 @@ describe('serverTargetFrom', () => {
     // ❗ Pre-fix an empty name fell back to the whole typed address, path and
     // all, which left the edit sheet with a name that looked exactly like the
     // address and sent a person to widen the root through the wrong field.
-    expect(serverTargetFrom(typed('sftp://david@192.168.1.111:22/share/naspi/tmp'))).toMatchObject({ displayName: '' })
-    expect(serverTargetFrom({ ...typed('https://cloud.example.com/dav'), username: 'ada' })).toMatchObject({
+    expect(serverTargetFrom(typed('sftp://david@192.168.1.111:22/share/naspi/tmp', 'sftp'))).toMatchObject({
+      displayName: '',
+    })
+    expect(serverTargetFrom({ ...typed('https://cloud.example.com/dav', 'webdav'), username: 'ada' })).toMatchObject({
       displayName: '',
     })
   })
 
   it('trims a typed name', () => {
-    expect(serverTargetFrom({ ...typed('ada@nas.local'), displayName: '  Naspolya ' })).toMatchObject({
+    expect(serverTargetFrom({ ...typed('ada@nas.local', 'sftp'), displayName: '  Naspolya ' })).toMatchObject({
       displayName: 'Naspolya',
     })
   })
 
   it('carries a typed start folder trimmed, and none when the field is empty', () => {
-    expect(serverTargetFrom({ ...typed('ada@nas.local/srv/data'), startFolder: ' /srv/data/photos ' })).toMatchObject({
+    const form = typed('ada@nas.local/srv/data', 'sftp')
+    expect(serverTargetFrom({ ...form, startFolder: ' /srv/data/photos ' })).toMatchObject({
       remoteRoot: '/srv/data',
       startFolder: '/srv/data/photos',
     })
-    expect(serverTargetFrom({ ...typed('ada@nas.local/srv/data'), startFolder: '  ' })).toMatchObject({
-      startFolder: null,
-    })
+    expect(serverTargetFrom({ ...form, startFolder: '  ' })).toMatchObject({ startFolder: null })
+  })
+})
+
+/**
+ * What SMB's add hands `connect_to_server`. The backend reads a bare host,
+ * `host:port`, or an `smb://` URL, and refuses everything else.
+ */
+describe('smbAddressFrom', () => {
+  it('spells an address with no scheme as an SMB URL, so `user@host` and a share path reach the backend', () => {
+    // ❗ cmdr-reports#8's shape: the backend's bare-host reader refuses the `@`,
+    // so `sven@192.168.0.153` has to travel as the SMB URL it means.
+    expect(smbAddressFrom('sven@192.168.0.153')).toBe('smb://sven@192.168.0.153')
+    expect(smbAddressFrom('  naspolya:1445/media ')).toBe('smb://naspolya:1445/media')
+  })
+
+  it('passes an SMB URL through as typed', () => {
+    expect(smbAddressFrom('smb://Ada@NAS/media')).toBe('smb://Ada@NAS/media')
+  })
+
+  it('keeps only the host of an address that names another protocol', () => {
+    // SMB is selected, so SMB is what gets dialed; another scheme's port and
+    // path mean nothing to it.
+    expect(smbAddressFrom('sftp://ada@nas.local:2222/srv')).toBe('smb://nas.local')
+    expect(smbAddressFrom('ssh -p 2222 ada@nas.local')).toBe('smb://nas.local')
+  })
+
+  it('leaves an address it can’t read to the backend, which says what is wrong with it', () => {
+    expect(smbAddressFrom('not a server!!')).toBe('not a server!!')
+    expect(smbAddressFrom('[2001:db8::1]')).toBe('[2001:db8::1]')
   })
 })
 

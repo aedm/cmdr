@@ -26,21 +26,18 @@
     import HostKeyStep from './HostKeyStep.svelte'
     import ServerFormFields from './ServerFormFields.svelte'
     import SignInCredentialFields from './SignInCredentialFields.svelte'
-    import { parseServerAddress } from './address-parser'
-    import {
-        refusalField,
-        wordConnectRefusal,
-        type ConnectRefusalKind,
-        type RefusalField,
-    } from './connect-refusals'
+    import { addressLooksLike, parseServerAddress } from './address-parser'
+    import { refusalField, wordConnectRefusal, type ConnectRefusalKind, type RefusalField } from './connect-refusals'
     import {
         applyParsedAddress,
         emptyServerForm,
+        formFromPrefill,
         formFromSftpServer,
         formFromWebdavServer,
         isStartFolderUnderRoot,
         nextcloudAddress,
         serverTargetFrom,
+        smbAddressFrom,
         type ServerForm,
     } from './server-form'
     import { readSavedServerOutcome, type SaveOutcome } from './server-outcomes'
@@ -106,8 +103,8 @@
     /** The submission to repeat once a host key is trusted. */
     let pendingSubmission: SignInSubmission | null = null
     /**
-     * Edit mode opens Advanced: the name, the root folder, and the start folder,
-     * the settings someone came to change, all live there.
+     * Edit mode opens Advanced: the root folder and the start folder, the
+     * settings someone came to change beside the name, live there.
      */
     let advancedOpen = $state(request.mode === 'edit')
     /**
@@ -171,6 +168,21 @@
         return { host, username: form.username || host }
     })
 
+    /**
+     * The sentence under the address when it looks like another protocol than
+     * the one selected. ❗ A warning and nothing more: the toggle stays where the
+     * person put it, and Connect dials what it says (cmdr-reports#8). Add mode
+     * only, since edit mode locks both.
+     */
+    const addressWarning = $derived.by(() => {
+        if (request.mode !== 'add') return undefined
+        const looksLike = addressLooksLike(form.address, form.protocol)
+        if (looksLike === 'smb') return tString('servers.sheet.addressLooksLikeSmb')
+        if (looksLike === 'sftp') return tString('servers.sheet.addressLooksLikeSftp')
+        if (looksLike === 'webdav') return tString('servers.sheet.addressLooksLikeWebdav')
+        return undefined
+    })
+
     const refusalText = $derived(refusal ? wordConnectRefusal(refusal, refusalSubject) : undefined)
     const refusalWhere = $derived(refusal ? refusalField(refusal) : null)
 
@@ -180,7 +192,9 @@
      * round-trip. The backend stays authoritative.
      */
     const startFolderOutsideRoot = $derived(
-        request.mode !== 'sign-in' && form.protocol !== 'smb' && !isStartFolderUnderRoot(form.remoteRoot, form.startFolder),
+        request.mode !== 'sign-in' &&
+            form.protocol !== 'smb' &&
+            !isStartFolderUnderRoot(form.remoteRoot, form.startFolder),
     )
 
     /** The sentence under the start folder: the last refusal about it, else the inline check once it has spoken. */
@@ -213,10 +227,9 @@
     /** What the sheet has to ask the backend before it can render honestly. */
     async function seed() {
         if (request.mode === 'add') {
-            if (request.prefill !== undefined) {
-                form.address = request.prefill
-                form = applyParsedAddress(form, parseServerAddress(request.prefill))
-            }
+            // A URL handed over from Go to path or ⌘K opens on the protocol its
+            // scheme spells out: the person already said it (`formFromPrefill`).
+            if (request.prefill !== undefined) form = formFromPrefill(request.prefill)
             await tick()
             addressInput?.focus()
             return
@@ -323,7 +336,7 @@
                     shape?.kind === 'username_password' && !credentials.guest ? credentials.username.trim() : null,
             }
         }
-        if (form.protocol === 'smb') return { mode: 'add_smb', address: form.address.trim() }
+        if (form.protocol === 'smb') return { mode: 'add_smb', address: smbAddressFrom(form.address) }
         const target = serverTargetFrom(form)
         if (!target) return null
         return {
@@ -582,6 +595,7 @@
                 identityEditable={!isEdit}
                 identityHint={isEdit ? tString('servers.sheet.identityLocked') : undefined}
                 addressRefusal={refusalWhere === 'address' ? refusalText : undefined}
+                {addressWarning}
                 onTryNextcloudAddress={offersNextcloudRemedy
                     ? () => {
                           form.address = nextcloudAddress(form.address, form.username)
@@ -609,9 +623,12 @@
                     // would otherwise leave that sentence on screen accusing a
                     // host Cmdr never contacted, so the edit retires it.
                     refusal = null
-                    // Address first, protocol second: what was typed decides the
-                    // toggle, and the toggle stays editable afterwards.
-                    if (patch.address !== undefined) form = applyParsedAddress(form, parseServerAddress(patch.address))
+                    // The account and the SFTP root follow the address, and follow
+                    // the toggle too, since whether a path is a root depends on it.
+                    // ❌ The toggle itself never follows the address.
+                    if (patch.address !== undefined || patch.protocol !== undefined) {
+                        form = applyParsedAddress(form, parseServerAddress(form.address))
+                    }
                 }}
             />
             {#if refusalWhere === 'form' && refusalText}
