@@ -106,7 +106,7 @@ entered an invalid username or password...") on top of Cmdr, blocks the mount ca
 ### `smb2` for SMB share enumeration (not `pavao`/libsmbclient, `smb-rs`, or `smbutil`)
 
 MIT license (compatible with BSL, allows dual-licensing for enterprise), pure Rust (no C dependencies), async-native
-(built on tokio), cross-platform, and typed errors (`smb2::Error` variants vs string pattern matching). David's own
+(we run it on tokio, its default runtime; it also runs on smol), cross-platform, and typed errors (`smb2::Error` variants vs string pattern matching). David's own
 crate, a single dependency replacing the old `smb` + `smb-rpc` pair. `smb2::list_shares()` returns pre-filtered disk
 shares with clean `String` fields (no NDR parsing needed). Fallback to `smbutil`/`smbclient` is available for older
 Samba servers where smb2's RPC fails.
