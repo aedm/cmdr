@@ -180,10 +180,16 @@ export async function updateSavedServer(server: ServerTarget): Promise<SavedServ
 }
 
 /**
- * Names a saved SMB host; an empty name unnames it. Answers whether there was a
- * host to name. `address` is the listing's own: a host only the share history
- * knew gets saved under it. The address itself never changes here.
+ * Names a saved SMB host and sets the account it's used with; an empty name
+ * unnames it and a `null` account clears it. Answers whether there was a host to
+ * name. `address` is the listing's own: a host only the share history knew gets
+ * saved under it. The address itself never changes here.
  */
-export async function updateSavedSmbHost(id: string, address: string, name: string): Promise<boolean> {
-  return await commands.updateSavedSmbHost(id, address, name)
+export async function updateSavedSmbHost(
+  id: string,
+  address: string,
+  name: string,
+  username: string | null,
+): Promise<boolean> {
+  return await commands.updateSavedSmbHost(id, address, name, username)
 }

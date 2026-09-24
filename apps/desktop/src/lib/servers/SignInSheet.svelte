@@ -349,7 +349,12 @@
             }
         }
         if (form.protocol === 'smb') {
-            return { mode: 'add_smb', address: smbAddressFrom(form.address), name: form.displayName.trim() }
+            return {
+                mode: 'add_smb',
+                address: smbAddressFrom(form.address),
+                name: form.displayName.trim(),
+                username: typedAccount(form.username),
+            }
         }
         const target = serverTargetFrom(form)
         if (!target) return null
@@ -358,6 +363,12 @@
             target,
             secret: form.secret === '' ? null : { secret: form.secret, remember: form.remember },
         }
+    }
+
+    /** An account field's value, or `null` when nothing was typed. */
+    function typedAccount(username: string): string | null {
+        const trimmed = username.trim()
+        return trimmed === '' ? null : trimmed
     }
 
     /** One round-trip, with the refusal put where the reader can act on it. */
@@ -524,9 +535,9 @@
     }
 
     /**
-     * Edit mode on an SMB host: a rename. ❗ Nothing else is written, since the
-     * address is the entry's identity and SMB keeps its password per share
-     * mount, not here. A host that went away meanwhile (a Forget in another
+     * Edit mode on an SMB host: its name and the account it's used with. ❗
+     * Nothing else is written, since the address is the entry's identity and SMB
+     * keeps its password per share mount, not here. A host that went away meanwhile (a Forget in another
      * pane) reads as the save nobody could confirm.
      */
     async function saveSmbHost(id: string) {
@@ -534,7 +545,7 @@
         refusal = null
         let found = false
         try {
-            found = await updateSavedSmbHost(id, form.address, form.displayName.trim())
+            found = await updateSavedSmbHost(id, form.address, form.displayName.trim(), typedAccount(form.username))
         } catch (e) {
             log.warn('Saving the edited SMB host broke down: {error}', { error: String(e) })
         }

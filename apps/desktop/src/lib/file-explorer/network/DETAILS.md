@@ -194,9 +194,10 @@ generic submission. ❗ `username: null` IS guest: all three SMB commands take a
 so a separate flag could only disagree with it.
 
 - **The username** is resolved in one order everywhere: what an earlier attempt tried, then `getKnownShareByName()`'s
-  last username for this share, then `getUsernameHint()`. ❗ Both lookups take the server BY NAME and match on its
-  stable identity in Rust, so a hint saved under one spelling (`Naspolya`) is found when the sheet opens under another
-  (`Naspolya._smb._tcp.local`). ❌ Don't rebuild the key in TypeScript: that is what made the two sides disagree once.
+  last username for this share, then `getUsernameHint()` (the account typed in the add or edit sheet, else the host's
+  share history). ❗ Both lookups take the server BY NAME and match on its stable identity in Rust, so a hint saved
+  under one spelling (`Naspolya`) is found when the sheet opens under another (`Naspolya._smb._tcp.local`). ❌ Don't
+  rebuild the key in TypeScript: that is what made the two sides disagree once.
 - **Remember starts ON, and is ❌ never probed**, because `has_smb_credentials` is `get_credentials(…).is_ok()` and
   asking costs the same Keychain prompt as reading. Why the other protocols seed the box differently:
   `../../servers/DETAILS.md` § "The sheet contract".

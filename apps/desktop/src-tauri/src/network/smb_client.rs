@@ -25,32 +25,56 @@ use super::smb_smbutil::list_shares_smbutil_with_auth;
 use cmdr_smb::classify_authenticated_error;
 use cmdr_smb::{classify_error, convert_shares, is_auth_error};
 
+/// Whether a listing may try guest access first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GuestAttempt {
+    /// Guest first, then credentials: the usual flow, since most home NAS
+    /// shares let anyone list them.
+    Try,
+    /// ❗ Never as guest. The person typed an account for this host
+    /// (`manual_servers::typed_username`), so a guest listing would answer a
+    /// question they didn't ask: on a `map to guest = bad user` Samba a guest
+    /// "succeeds" with an almost-empty list. Without credentials the answer is
+    /// `AuthRequired`, which the frontend takes to the Keychain and then the
+    /// sign-in sheet.
+    Skip,
+}
+
 /// Lists shares on a network host.
 ///
-/// Attempts guest access first, then uses provided credentials if guest fails.
-/// Results are cached for the specified TTL.
+/// Attempts guest access first (unless `guest` says not to), then uses provided
+/// credentials if guest fails. Results are cached for the specified TTL.
 ///
 /// # Arguments
 /// * `host_id` - Unique identifier for the host (used for caching)
 /// * `hostname` - Hostname to connect to (for example, "TEST_SERVER.local")
 /// * `ip_address` - Optional resolved IP address (preferred over hostname)
 /// * `credentials` - Optional (username, password) tuple for authenticated access
+/// * `guest` - Whether guest access may be tried at all
 /// * `timeout_ms` - Timeout in milliseconds for the operation (default: 15000)
 /// * `cache_ttl_ms` - Cache TTL in milliseconds (default: 30000)
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Mirrors the Tauri commands' top-level parameters, which call it one to one"
+)]
 pub async fn list_shares(
     host_id: &str,
     hostname: &str,
     ip_address: Option<&str>,
     port: u16,
     credentials: Option<(&str, &str)>,
+    guest: GuestAttempt,
     timeout_ms: Option<u64>,
     cache_ttl_ms: Option<u64>,
 ) -> Result<ShareListResult, ShareListError> {
     // Only use cache for non-authenticated requests.
     // When credentials are provided, the user is explicitly authenticating
     // and expects fresh results (not cached guest attempt results).
+    // ❗ A host that wants an account takes no GUEST listing from the cache
+    // either: one cached before the account was typed is the answer it refuses.
     if credentials.is_none()
         && let Some(cached) = get_cached_shares(host_id)
+        && (guest == GuestAttempt::Try || cached.auth_mode != AuthMode::GuestAllowed)
     {
         return Ok(cached);
     }
@@ -59,7 +83,7 @@ pub async fn list_shares(
     let timeout = Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_LIST_SHARES_TIMEOUT_MS));
 
     // Try to list shares
-    let result = list_shares_uncached(hostname, ip_address, port, credentials, timeout).await?;
+    let result = list_shares_uncached(hostname, ip_address, port, credentials, guest, timeout).await?;
 
     // Cache successful result with configurable TTL
     let ttl = cache_ttl_ms.unwrap_or(DEFAULT_CACHE_TTL_MS);
@@ -76,20 +100,24 @@ async fn list_shares_uncached(
     ip_address: Option<&str>,
     port: u16,
     credentials: Option<(&str, &str)>,
+    guest: GuestAttempt,
     timeout: Duration,
 ) -> Result<ShareListResult, ShareListError> {
     debug!(
-        "list_shares_uncached: hostname={:?}, ip_address={:?}, port={}, has_creds={}",
+        "list_shares_uncached: hostname={:?}, ip_address={:?}, port={}, has_creds={}, guest={:?}",
         hostname,
         ip_address,
         port,
-        credentials.is_some()
+        credentials.is_some(),
+        guest
     );
 
     // Try smb2 first
-    match list_shares_smb2(hostname, ip_address, port, credentials, timeout).await {
+    match list_shares_smb2(hostname, ip_address, port, credentials, guest, timeout).await {
         Ok(result) => Ok(result),
-        Err(ShareListError::ProtocolError { ref message }) => {
+        // ❗ The CLI fallback lists as GUEST (`smbutil view -G`), so a host that
+        // wants an account never reaches it: the protocol error is the answer.
+        Err(ShareListError::ProtocolError { ref message }) if guest == GuestAttempt::Try => {
             // Protocol error (likely RPC incompatibility with Samba). Try the
             // platform fallback: smbutil (macOS) / smbclient (Linux).
             // Logged at warn! so it's visible in the default E2E log without
@@ -115,6 +143,7 @@ async fn list_shares_smb2(
     ip_address: Option<&str>,
     port: u16,
     credentials: Option<(&str, &str)>,
+    guest: GuestAttempt,
     timeout: Duration,
 ) -> Result<ShareListResult, ShareListError> {
     debug!(
@@ -129,6 +158,20 @@ async fn list_shares_smb2(
     let outer_timeout = timeout;
     // smb2's config timeout: slightly shorter so its typed Error::Timeout fires first
     let connect_timeout = timeout.saturating_sub(Duration::from_secs(2));
+
+    if guest == GuestAttempt::Skip {
+        return match credentials {
+            Some((user, pass)) => {
+                list_authenticated(hostname, ip_address, port, user, pass, outer_timeout, connect_timeout).await
+            }
+            None => {
+                debug!("{hostname}:{port} wants an account and none was offered; not listing as guest");
+                Err(ShareListError::AuthRequired {
+                    message: "An account was set up for this server, so it isn't listed as guest".to_string(),
+                })
+            }
+        };
+    }
 
     // Try guest access first, then authenticated. BOTH attempts take the outer
     // timeout: smb2's config timeout covers the TCP connect only, so a server that
@@ -145,80 +188,20 @@ async fn list_shares_smb2(
         warn!("Guest share listing on {hostname}:{port} gave up after {outer_timeout:?}");
         Err(smb2::Error::Timeout)
     });
-    let (shares, auth_mode) = match guest_attempt {
+    match guest_attempt {
         Ok(shares) => {
             debug!("Guest access succeeded, got {} shares", shares.len());
-            (shares, AuthMode::GuestAllowed)
+            Ok(converted(shares, AuthMode::GuestAllowed))
         }
         Err(e) if is_auth_error(&e) => {
             debug!("Guest failed with auth error: {}", e);
             // Guest failed with auth error - try with credentials if provided
             if let Some((user, pass)) = credentials {
-                debug!("Trying authenticated access with user: {}", user);
-
-                match tokio::time::timeout(
-                    outer_timeout,
-                    try_list_shares_authenticated(hostname, ip_address, port, user, pass, connect_timeout),
-                )
-                .await
-                {
-                    Ok(Ok(shares)) if !shares.is_empty() => {
-                        debug!("Authenticated access succeeded, got {} shares", shares.len());
-                        (shares, AuthMode::CredsRequired)
-                    }
-                    Ok(inner) => {
-                        // smb2 returned 0 shares or failed with creds.
-                        //
-                        // Linux: fall back to `smbclient -L -A <authfile>`. The password
-                        // rides in a 0o600 temp file, never argv, so the fallback is safe.
-                        //
-                        // macOS: there's NO argv-free way to pass an explicit password to
-                        // `smbutil view` (the URL is the only channel, which leaks the
-                        // cleartext password into `ps`-readable argv). We don't shell out
-                        // with credentials here. Surface the underlying smb2 failure instead;
-                        // the user can still mount via the secure NetFS path.
-                        #[cfg(target_os = "macos")]
-                        {
-                            let _ = &user; // keep bindings used across cfgs
-                            let _ = &pass;
-                            return match inner {
-                                Ok(_) => Err(ShareListError::AuthFailed {
-                                    message: "Invalid username or password".to_string(),
-                                }),
-                                Err(e) => {
-                                    debug!("smb2 authenticated list failed: {}", e);
-                                    // Authenticated context: a rejected session means
-                                    // wrong credentials, not "authentication required".
-                                    Err(classify_authenticated_error(&e))
-                                }
-                            };
-                        }
-                        #[cfg(not(target_os = "macos"))]
-                        {
-                            let _ = inner;
-                            debug!("smb2 auth returned empty or failed, trying smbclient with credentials");
-                            return match list_shares_smbutil_with_auth(hostname, ip_address, port, user, pass).await {
-                                Ok(result) => {
-                                    debug!("smbclient with auth succeeded, got {} shares", result.shares.len());
-                                    Ok(result)
-                                }
-                                Err(e) => {
-                                    debug!("smbclient with auth also failed: {:?}", e);
-                                    Err(e)
-                                }
-                            };
-                        }
-                    }
-                    Err(_timeout) => {
-                        return Err(ShareListError::Timeout {
-                            message: format!("Timeout after {}s", outer_timeout.as_secs()),
-                        });
-                    }
-                }
+                list_authenticated(hostname, ip_address, port, user, pass, outer_timeout, connect_timeout).await
             } else {
                 // No explicit credentials provided - try smbutil which uses macOS Keychain
                 debug!("No explicit credentials, trying smbutil with Keychain...");
-                return match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
+                match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
                     Ok(result) => {
                         debug!("smbutil with Keychain succeeded, got {} shares", result.shares.len());
                         Ok(result)
@@ -229,25 +212,101 @@ async fn list_shares_smb2(
                             message: "This server requires authentication to list shares".to_string(),
                         })
                     }
-                };
+                }
             }
         }
         Err(e) => {
             debug!("Guest failed with non-auth error: {}", e);
-            return Err(classify_error(&e));
+            Err(classify_error(&e))
         }
-    };
+    }
+}
 
-    // Convert smb2 shares to Cmdr's ShareInfo type
+/// The authenticated listing, with the platform's fallback when smb2 comes back
+/// empty or refused.
+async fn list_authenticated(
+    hostname: &str,
+    ip_address: Option<&str>,
+    port: u16,
+    user: &str,
+    pass: &str,
+    outer_timeout: Duration,
+    connect_timeout: Duration,
+) -> Result<ShareListResult, ShareListError> {
+    debug!("Trying authenticated access with user: {}", user);
+
+    match tokio::time::timeout(
+        outer_timeout,
+        try_list_shares_authenticated(hostname, ip_address, port, user, pass, connect_timeout),
+    )
+    .await
+    {
+        Ok(Ok(shares)) if !shares.is_empty() => {
+            debug!("Authenticated access succeeded, got {} shares", shares.len());
+            Ok(converted(shares, AuthMode::CredsRequired))
+        }
+        Ok(inner) => {
+            // smb2 returned 0 shares or failed with creds.
+            //
+            // Linux: fall back to `smbclient -L -A <authfile>`. The password
+            // rides in a 0o600 temp file, never argv, so the fallback is safe.
+            //
+            // macOS: there's NO argv-free way to pass an explicit password to
+            // `smbutil view` (the URL is the only channel, which leaks the
+            // cleartext password into `ps`-readable argv). We don't shell out
+            // with credentials here. Surface the underlying smb2 failure instead;
+            // the user can still mount via the secure NetFS path.
+            #[cfg(target_os = "macos")]
+            {
+                let _ = (hostname, ip_address, port, user, pass); // keep bindings used across cfgs
+                match inner {
+                    Ok(_) => Err(ShareListError::AuthFailed {
+                        message: "Invalid username or password".to_string(),
+                    }),
+                    Err(e) => {
+                        debug!("smb2 authenticated list failed: {}", e);
+                        // Authenticated context: a rejected session means
+                        // wrong credentials, not "authentication required".
+                        Err(classify_authenticated_error(&e))
+                    }
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = inner;
+                debug!("smb2 auth returned empty or failed, trying smbclient with credentials");
+                match list_shares_smbutil_with_auth(hostname, ip_address, port, user, pass).await {
+                    Ok(result) => {
+                        debug!("smbclient with auth succeeded, got {} shares", result.shares.len());
+                        Ok(result)
+                    }
+                    Err(e) => {
+                        debug!("smbclient with auth also failed: {:?}", e);
+                        Err(e)
+                    }
+                }
+            }
+        }
+        Err(_timeout) => Err(ShareListError::Timeout {
+            message: format!("Timeout after {}s", outer_timeout.as_secs()),
+        }),
+    }
+}
+
+/// smb2's shares in Cmdr's `ShareInfo` shape, as a fresh listing.
+fn converted(shares: Vec<smb2::ShareInfo>, auth_mode: AuthMode) -> ShareListResult {
     let converted_shares = convert_shares(shares);
     debug!("Converted {} shares", converted_shares.len());
-
-    Ok(ShareListResult {
+    ShareListResult {
         shares: converted_shares,
         auth_mode,
         from_cache: false,
-    })
+    }
 }
+
+#[cfg(test)]
+#[path = "smb_client_test.rs"]
+mod tests;
 
 #[cfg(test)]
 mod integration_tests {
@@ -287,7 +346,8 @@ mod integration_tests {
             host,
             None,
             port,
-            None,    // guest
+            None, // guest
+            GuestAttempt::Try,
             None,    // default timeout
             Some(0), // no caching: force a live round-trip
         )

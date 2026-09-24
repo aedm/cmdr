@@ -143,6 +143,15 @@ Always pass the resolved IP from mDNS discovery when one is available; fall back
 3. If no stored creds → prompt user
 4. Never assume "guest only"; always offer "Sign in for more access" when guest succeeds (can't distinguish guest-only from guest-or-creds at probe time)
 
+❗ **Except for a host someone typed an account for** (`manual_servers::typed_username`, set by the add or edit
+sheet or an `smb://user@host` address). The listing commands pass `smb_client::GuestAttempt::Skip` for it: no guest
+attempt, no guest listing from the cache, and no CLI fallback (which lists as guest). Without credentials the answer is
+`AuthRequired`, so the frontend goes to the Keychain and then the sheet, prefilled with that account
+(`get_username_hint`, where the typed account wins over the share history). The reason: on a `map to guest = bad user`
+Samba, guest "succeeds" with an almost-empty list, and the person already said they want to sign in (cmdr-reports#7).
+The match is `same_server` against the entry's address and its label, so a Bonjour-named twin of a typed IP counts once
+discovery has paired the two.
+
 ### smbutil / smbclient fallback
 
 `smb2` crate may fail on older Samba servers with RPC incompatibility. Classify error as `ProtocolError`, then try a platform-specific CLI fallback. Two error classes are NOT protocol errors and must not trigger the fallback (both kept the fallback warn crying wolf when they misclassified):

@@ -54,6 +54,7 @@ fn manual_entry(address: &str) -> ManualServerEntry {
         address: address.to_string(),
         port: 445,
         added_at: "2026-09-03T00:00:00Z".to_string(),
+        username: None,
     }
 }
 
@@ -131,6 +132,21 @@ fn a_named_smb_host_is_listed_by_its_name_as_the_users_own() {
     let smb = find(&servers, "Sven's NAS");
     assert_eq!(smb.name_source, ServerNameSource::User);
     assert_eq!(smb.address, smb_host, "the address stays what was typed");
+}
+
+/// ❗ **An SMB host carries the account the person typed for it**, which is what
+/// the edit sheet opens on.
+#[test]
+fn an_smb_host_carries_the_account_typed_for_it() {
+    let smb_host = "192.0.2.45";
+    let entry = ManualServerEntry {
+        username: Some("sven".to_string()),
+        ..manual_entry(smb_host)
+    };
+
+    let servers = saved_servers(vec![entry]);
+
+    assert_eq!(find(&servers, smb_host).username.as_deref(), Some("sven"));
 }
 
 /// ❗ **A manual entry wins over a share-history row for the same host**, so a

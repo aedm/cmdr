@@ -503,11 +503,16 @@ export async function disconnectSmbVolume(volumeId: string): Promise<void> {
  * persists the entry, and injects a synthetic host into the discovery state.
  * @param address Hostname, IP, IP:port, or smb:// URL
  * @param name What the Add form's Name field held; empty leaves the server unnamed
+ * @param username The account the person means to sign in as, or `null` for none
  * @returns The injected host and optional share path
  * @throws Plain string error on parse failure or unreachable host
  */
-export async function connectToServer(address: string, name = ''): Promise<ManualConnectResult> {
-  const res = await commands.connectToServer(address, name === '' ? null : name)
+export async function connectToServer(
+  address: string,
+  name = '',
+  username: string | null = null,
+): Promise<ManualConnectResult> {
+  const res = await commands.connectToServer(address, name === '' ? null : name, username)
   if (res.status === 'error') throwIpcError(res.error)
   return res.data as ManualConnectResult
 }

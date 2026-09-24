@@ -2824,6 +2824,8 @@ export type MessageKey =
   | 'servers.sheet.signIn'
   | 'servers.sheet.signInTitle'
   | 'servers.sheet.signInWithCredentials'
+  | 'servers.sheet.smbUsernameHelp'
+  | 'servers.sheet.smbUsernamePlaceholder'
   | 'servers.sheet.startFolder'
   | 'servers.sheet.startFolderHelp'
   | 'servers.sheet.tryNextcloudAddress'

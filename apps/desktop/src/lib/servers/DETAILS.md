@@ -350,6 +350,13 @@ re-applies the address when the toggle moves, so typing first and picking second
 the person asked to open, so its scheme is already their choice, and the sheet opens with the toggle in view before
 anything is dialed. Go to path only hands over addresses WITH a scheme, so a bare `user@host` never takes this path.
 
+❗ **SMB takes an optional username, and nothing else of the account.** It fills from a `user@host` address and stays
+editable in edit mode, because for SMB the account is a preference, not the identity (the address is). It travels as
+`add_smb.username` (`null` when empty, ❌ never `''`) and does two things backend-side: it prefills the first sign-in,
+and the share listing stops answering as guest (`src-tauri/src/network/DETAILS.md` § "Guest-first auth flow"). The add
+also drops the frontend's cached share lists for that machine (`forgetShareListsOfMachine`), since one fetched before
+the add may be the guest list the account now refuses. No password here: the listing or the mount asks.
+
 ❗ **SMB's hand-off spells a scheme-less address as `smb://…`.** `connect_to_server`'s bare-host reader refuses an `@`
 or a `/`, so `sven@192.168.0.153` has to travel as the SMB URL it means; its URL reader drops the account. An address
 naming another scheme keeps only its host.

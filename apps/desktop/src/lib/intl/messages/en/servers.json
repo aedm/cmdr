@@ -333,6 +333,14 @@
     "description": "Label of the password field. One word, NOUN.",
     "screenshot": "server-sign-in-add-prefilled.png"
   },
+  "servers.sheet.smbUsernamePlaceholder": "Optional",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "description": "Placeholder inside the optional Username field of the Add server sheet when SMB is selected. One word saying the field may stay empty."
+  },
+  "servers.sheet.smbUsernameHelp": "Fill this in if your NAS needs an account. Cmdr asks for the password when you open a share.",
+  "@servers.sheet.smbUsernameHelp": {
+    "description": "One line under the optional Username field of the Add and Edit server sheets for an SMB server. With a username, Cmdr signs in as that account instead of browsing the server as a guest, and asks for the password only when the person opens a share. Friendly and short."
+  },
   "servers.sheet.passphrase": "Key passphrase",
   "@servers.sheet.passphrase": {
     "description": "Label of the field for the passphrase that unlocks an SSH key FILE, which is not the account's password. Two words."

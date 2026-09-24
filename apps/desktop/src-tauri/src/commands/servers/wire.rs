@@ -108,8 +108,8 @@ pub struct SavedServer {
     /// What the user typed, near enough to paste back: `host:port` for SFTP, the
     /// base URL for WebDAV, the host for SMB.
     pub address: String,
-    /// The account, where the protocol has one. `None` for an SMB host, which is
-    /// not an account yet.
+    /// The account, where the protocol has one. For an SMB host, the account the
+    /// person typed for it (a preference, not its identity), or `None`.
     pub username: Option<String>,
     /// Whether this account's place belongs in the switcher. Always `false` for
     /// SMB, per the type's own note.

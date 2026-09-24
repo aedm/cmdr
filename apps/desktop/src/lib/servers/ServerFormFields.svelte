@@ -13,10 +13,11 @@
      * ❗ **The name is not an advanced setting**, so it sits under the address,
      * for every protocol. Its placeholder says what an empty one falls back to.
      *
-     * ❗ **SMB asks for nothing here.** Its connect is a share mount, and the
+     * ❗ **SMB asks for no password here.** Its connect is a share mount, and the
      * credential question comes from the listing or the mount when one refuses.
      * Putting a password field in front of a NAS that lets guests in would ask
-     * for something nobody needs.
+     * for something nobody needs. An optional username is the one thing it takes:
+     * it says the person means to sign in rather than browse as guest.
      *
      * ❗ **The root folder is a CEILING, the start folder is a LANDING.** Nothing
      * navigates above the root; opening the place lands on the start folder, which
@@ -203,6 +204,30 @@
         placeholder={namePlaceholder}
     />
 </div>
+
+{#if form.protocol === 'smb'}
+    <!-- ❗ Optional, and editable in edit mode too: for SMB the account is a
+         preference (it prefills the first sign-in and keeps the share list from
+         answering as guest), not the server's identity. No password here: the
+         share listing or the mount asks when one is needed. -->
+    <div class="field">
+        <label for="server-username" class="field-label">{tString('servers.sheet.username')}</label>
+        <TextInput
+            id="server-username"
+            value={form.username}
+            oninput={(e: Event) => {
+                onChange({ username: (e.currentTarget as HTMLInputElement).value })
+            }}
+            {disabled}
+            placeholder={tString('servers.sheet.smbUsernamePlaceholder')}
+            aria-describedby="server-smb-username-help"
+            autocomplete="username"
+            autocapitalize="off"
+            spellcheck={false}
+        />
+        <p id="server-smb-username-help" class="field-help">{tString('servers.sheet.smbUsernameHelp')}</p>
+    </div>
+{/if}
 
 {#if asksForCredentials}
     <div class="field">

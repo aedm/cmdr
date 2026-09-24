@@ -301,6 +301,25 @@ export function clearShareState(hostId: string): void {
 }
 
 /**
+ * Drops the share lists of every host that is the same machine as `host`: the
+ * manual host an add just injected, plus a discovered twin at the same IP or
+ * hostname.
+ *
+ * ❗ After an add that typed an account, a guest listing fetched earlier for the
+ * discovered twin would otherwise still open, which is the listing the person
+ * just said they don't want. The backend skips guest from then on; this is the
+ * frontend's copy of the same answer.
+ */
+export function forgetShareListsOfMachine(host: NetworkHost): void {
+  for (const other of hosts) {
+    const sameIp = host.ipAddress !== undefined && other.ipAddress === host.ipAddress
+    const sameHostname = host.hostname !== undefined && other.hostname === host.hostname
+    if (other.id === host.id || sameIp || sameHostname) shareStates.delete(other.id)
+  }
+  shareStates.delete(host.id)
+}
+
+/**
  * Set share state for a host directly.
  * Use this when you have the result from a successful connection.
  */

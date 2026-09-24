@@ -75,6 +75,10 @@ pub async fn resolve_host(host_id: String) -> Option<NetworkHost> {
 /// * `cache_ttl_ms` - Optional cache TTL in milliseconds (default: 30000)
 #[tauri::command]
 #[specta::specta]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Tauri command requires all parameters to be top-level"
+)]
 pub async fn list_shares_on_host(
     host_id: String,
     hostname: String,
@@ -82,6 +86,7 @@ pub async fn list_shares_on_host(
     port: u16,
     timeout_ms: Option<u64>,
     cache_ttl_ms: Option<u64>,
+    app_handle: tauri::AppHandle,
 ) -> Result<ShareListResult, ShareListError> {
     smb_client::list_shares(
         &host_id,
@@ -89,10 +94,23 @@ pub async fn list_shares_on_host(
         ip_address.as_deref(),
         port,
         None,
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
         timeout_ms,
         cache_ttl_ms,
     )
     .await
+}
+
+/// Whether a listing of this host may try guest: not when the person typed an
+/// account for it (`manual_servers::typed_username`), by either name it goes by.
+fn guest_attempt_for(app: &tauri::AppHandle, hostname: &str, ip_address: Option<&str>) -> smb_client::GuestAttempt {
+    let typed = manual_servers::typed_username(app, hostname)
+        .or_else(|| ip_address.and_then(|ip| manual_servers::typed_username(app, ip)));
+    if typed.is_some() {
+        smb_client::GuestAttempt::Skip
+    } else {
+        smb_client::GuestAttempt::Try
+    }
 }
 
 /// Prefetches shares for a host (for example, on hover).
@@ -100,6 +118,10 @@ pub async fn list_shares_on_host(
 /// Returns immediately if shares are already cached.
 #[tauri::command]
 #[specta::specta]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Tauri command requires all parameters to be top-level"
+)]
 pub async fn prefetch_shares(
     host_id: String,
     hostname: String,
@@ -107,6 +129,7 @@ pub async fn prefetch_shares(
     port: u16,
     timeout_ms: Option<u64>,
     cache_ttl_ms: Option<u64>,
+    app_handle: tauri::AppHandle,
 ) {
     // Fire and forget - we don't care about the result for prefetching
     let _ = smb_client::list_shares(
@@ -115,6 +138,7 @@ pub async fn prefetch_shares(
         ip_address.as_deref(),
         port,
         None,
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
         timeout_ms,
         cache_ttl_ms,
     )
@@ -181,10 +205,14 @@ pub fn update_known_share(
 /// Takes the server by name and answers for that one server, rather than handing back a
 /// map the caller has to key into: the identity rule lives in `known_shares`, not in the
 /// IPC contract. See `known_shares::get_username_hint`.
+///
+/// ❗ The account the person TYPED for this host (the add or edit sheet) wins over the
+/// share history: it is a stated preference, where the history is only who signed in
+/// last, and Edit is where it changes.
 #[tauri::command]
 #[specta::specta]
-pub fn get_username_hint(server_name: String) -> Option<String> {
-    known_shares::get_username_hint(&server_name)
+pub fn get_username_hint(server_name: String, app_handle: tauri::AppHandle) -> Option<String> {
+    manual_servers::typed_username(&app_handle, &server_name).or_else(|| known_shares::get_username_hint(&server_name))
 }
 
 // --- Keychain Commands ---
@@ -262,6 +290,7 @@ pub async fn list_shares_with_credentials(
     password: Option<String>,
     timeout_ms: Option<u64>,
     cache_ttl_ms: Option<u64>,
+    app_handle: tauri::AppHandle,
 ) -> Result<ShareListResult, ShareListError> {
     let credentials = match (username, password) {
         (Some(u), Some(p)) => Some((u, p)),
@@ -274,6 +303,7 @@ pub async fn list_shares_with_credentials(
         ip_address.as_deref(),
         port,
         credentials.as_ref().map(|(u, p)| (u.as_str(), p.as_str())),
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
         timeout_ms,
         cache_ttl_ms,
     )
@@ -585,15 +615,22 @@ use crate::network::manual_servers::{self, ManualConnectResult};
 /// Connects to a manually-specified server: parses, checks reachability, persists, and injects.
 ///
 /// `name` is the Add form's Name field; `None` or empty leaves the server unnamed, so
-/// the UI calls it by its address.
+/// the UI calls it by its address. `username` is the account the person means to sign
+/// in as (else the one an `smb://user@host` address names): it prefills the first
+/// sign-in, and a host with one is never listed as guest.
 #[tauri::command]
 #[specta::specta]
 pub async fn connect_to_server(
     address: String,
     name: Option<String>,
+    username: Option<String>,
     app_handle: tauri::AppHandle,
 ) -> Result<ManualConnectResult, String> {
-    manual_servers::add_manual_server(&address, name.as_deref().unwrap_or_default(), &app_handle).await
+    let details = manual_servers::HostEdit {
+        name: name.unwrap_or_default(),
+        username,
+    };
+    manual_servers::add_manual_server(&address, &details, &app_handle).await
 }
 
 /// Removes a manually-added server by ID.

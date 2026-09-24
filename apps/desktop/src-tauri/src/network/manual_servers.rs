@@ -35,6 +35,9 @@ pub struct ParsedAddress {
     pub host: String,
     pub port: u16,
     pub share_path: Option<String>,
+    /// The account an `smb://user@host` address names. ❗ Never its password: a
+    /// `user:password@` spelling keeps only the user.
+    pub username: Option<String>,
 }
 
 /// Error from parsing a server address.
@@ -79,6 +82,21 @@ pub struct ManualServerEntry {
     pub address: String,
     pub port: u16,
     pub added_at: String,
+    /// The account the person typed for this host, in the add or edit sheet or
+    /// as `smb://user@host`. ❗ A preference, ❌ not identity (the address is):
+    /// it prefills the first sign-in and keeps the share listing from answering
+    /// as guest (`typed_username`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+}
+
+/// What an add or an edit sets on a host besides its address.
+#[derive(Debug, Clone, Default)]
+pub struct HostEdit {
+    /// The Name field; empty leaves the host unnamed.
+    pub name: String,
+    /// The account to sign in as, or `None` for no preference.
+    pub username: Option<String>,
 }
 
 impl ManualServerEntry {
@@ -173,6 +191,7 @@ pub fn parse_server_address(input: &str) -> Result<ParsedAddress, ParseError> {
             host,
             port,
             share_path: None,
+            username: None,
         })
     } else {
         let host = trimmed.to_string();
@@ -181,6 +200,7 @@ pub fn parse_server_address(input: &str) -> Result<ParsedAddress, ParseError> {
             host,
             port: DEFAULT_SMB_PORT,
             share_path: None,
+            username: None,
         })
     }
 }
@@ -214,17 +234,18 @@ fn parse_smb_url(input: &str) -> Result<ParsedAddress, ParseError> {
         ));
     }
 
-    // Strip user info (user@ or user:pass@)
-    let after_userinfo = if let Some(at_idx) = after_scheme.find('@') {
+    // Split off user info (user@ or user:pass@), keeping only the user
+    let slash_idx = after_scheme.find('/').unwrap_or(after_scheme.len());
+    let (username, after_userinfo) = match after_scheme.find('@') {
         // Only treat @ as userinfo separator if it's before the first /
-        let slash_idx = after_scheme.find('/').unwrap_or(after_scheme.len());
-        if at_idx < slash_idx {
-            &after_scheme[at_idx + 1..]
-        } else {
-            after_scheme
+        Some(at_idx) if at_idx < slash_idx => {
+            let user = after_scheme[..at_idx].split(':').next().unwrap_or_default().trim();
+            (
+                (!user.is_empty()).then(|| user.to_string()),
+                &after_scheme[at_idx + 1..],
+            )
         }
-    } else {
-        after_scheme
+        _ => (None, after_scheme),
     };
 
     // Split host:port from path
@@ -265,6 +286,7 @@ fn parse_smb_url(input: &str) -> Result<ParsedAddress, ParseError> {
         host,
         port,
         share_path: path,
+        username,
     })
 }
 
@@ -470,7 +492,7 @@ fn read_store<R: Runtime>(app: &AppHandle<R>) -> ManualServersStore {
 /// Adds a server entry to the store file at the given path, protected by `STORE_LOCK`.
 /// Extracted so it can be tested without an `AppHandle`.
 ///
-/// ❗ Re-adding a host keeps the name it had when the new add brings none: adding
+/// ❗ Re-adding a host keeps the name and account it had when the new add brings none: adding
 /// an address someone saved earlier is an ordinary move, and it must not unname
 /// their server behind their back. Renaming is [`rename_server_entry_at_path`]'s.
 fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
@@ -479,6 +501,9 @@ fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
     if let Some(existing) = store.servers.iter_mut().find(|s| s.id == entry.id) {
         if !entry.is_named() && existing.is_named() {
             entry.display_name = existing.display_name.clone();
+        }
+        if entry.username.is_none() {
+            entry.username = existing.username.clone();
         }
         *existing = entry;
     } else {
@@ -492,10 +517,12 @@ fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
 // ---------------------------------------------------------------------------
 
 /// Adds a manual server: parses input, checks reachability, persists, and injects into discovery
-/// state. `name` is what the person typed into the Name field; empty leaves it unnamed.
+/// state. `details` is what the person typed beside the address: a name (empty
+/// leaves it unnamed) and an account, which falls back to the one an
+/// `smb://user@host` address names.
 pub async fn add_manual_server<R: Runtime>(
     input: &str,
-    name: &str,
+    details: &HostEdit,
     app_handle: &AppHandle<R>,
 ) -> Result<ManualConnectResult, String> {
     let parsed = parse_server_address(input).map_err(|e| e.to_string())?;
@@ -510,10 +537,11 @@ pub async fn add_manual_server<R: Runtime>(
     if let Some(path) = get_store_path(app_handle) {
         let entry = ManualServerEntry {
             id: host.id.clone(),
-            display_name: name.trim().to_string(),
+            display_name: details.name.trim().to_string(),
             address: parsed.host.clone(),
             port: parsed.port,
             added_at: chrono::Utc::now().to_rfc3339(),
+            username: typed_account(details.username.as_deref()).or_else(|| parsed.username.clone()),
         };
         add_server_entry_to_path(&path, entry);
     }
@@ -529,8 +557,9 @@ pub async fn add_manual_server<R: Runtime>(
     })
 }
 
-/// Names the host `server_id` names, protected by `STORE_LOCK`, and answers the
-/// entry as stored. An empty name unnames it.
+/// Names the host `server_id` names and sets its account, protected by
+/// `STORE_LOCK`, and answers the entry as stored. An empty name unnames it; no
+/// account clears the preference.
 ///
 /// A host the share history knows but nobody typed in has no entry yet, and
 /// naming it SAVES it: the manual store is the one place a name can live, and a
@@ -539,29 +568,73 @@ pub async fn add_manual_server<R: Runtime>(
 /// `address` mints on any port, since such a pair would disagree about which
 /// host it is.
 ///
-/// ❗ The name only, on an entry that exists: the address and port are its
+/// ❗ The name and account only, on an entry that exists: the address and port are its
 /// identity (they mint the id and the host the discovery list carries), so an
 /// edit that wants another address is a Forget and an Add.
-fn name_server_entry_at_path(path: &Path, server_id: &str, address: &str, name: &str) -> Option<ManualServerEntry> {
+fn name_server_entry_at_path(
+    path: &Path,
+    server_id: &str,
+    address: &str,
+    edit: &HostEdit,
+) -> Option<ManualServerEntry> {
     let _guard = get_store_lock().lock().unwrap_or_else(|e| e.into_inner());
     let mut store = read_store_from_path(path);
     let entry = if let Some(existing) = store.servers.iter_mut().find(|s| s.id == server_id) {
-        existing.display_name = name.trim().to_string();
+        existing.display_name = edit.name.trim().to_string();
+        existing.username = typed_account(edit.username.as_deref());
         existing.clone()
     } else {
         let port = port_of_id(server_id, address)?;
         let entry = ManualServerEntry {
             id: server_id.to_string(),
-            display_name: name.trim().to_string(),
+            display_name: edit.name.trim().to_string(),
             address: address.to_string(),
             port,
             added_at: chrono::Utc::now().to_rfc3339(),
+            username: typed_account(edit.username.as_deref()),
         };
         store.servers.push(entry.clone());
         entry
     };
     write_store_to_path(path, &store);
     Some(entry)
+}
+
+/// A typed account, trimmed, or `None` when nothing was typed.
+fn typed_account(username: Option<&str>) -> Option<String> {
+    username.map(str::trim).filter(|u| !u.is_empty()).map(str::to_string)
+}
+
+/// The account typed for the host `server_name` names, among `entries`.
+///
+/// Matched by [`same_server`](crate::network::server_identity::same_server)
+/// against the entry's address and its label (the name the discovery list gives
+/// a manual host, `host:port` off 445), so the Bonjour name of the same machine
+/// finds it too once discovery has paired the two.
+fn typed_username_in(entries: &[ManualServerEntry], server_name: &str, hosts: &[NetworkHost]) -> Option<String> {
+    use crate::network::server_identity::same_server;
+
+    entries
+        .iter()
+        .filter(|entry| entry.username.is_some())
+        .find(|entry| {
+            display_name(&entry.address, entry.port).eq_ignore_ascii_case(server_name)
+                || same_server(&entry.address, server_name, hosts)
+        })
+        .and_then(|entry| entry.username.clone())
+}
+
+/// The account the person typed for the host `server_name` names, if any.
+///
+/// ❗ Two jobs, one answer: it is the first sign-in's prefill (`get_username_hint`),
+/// and a host that has one is never listed as guest (`smb_client::GuestAttempt`).
+/// Reads the store file, like [`all`].
+pub fn typed_username<R: Runtime>(app: &AppHandle<R>, server_name: &str) -> Option<String> {
+    let entries = all(app);
+    if entries.iter().all(|entry| entry.username.is_none()) {
+        return None;
+    }
+    typed_username_in(&entries, server_name, &crate::network::get_discovered_hosts())
 }
 
 /// The port `server_id` was minted with from `address`, or `None` when `address`
@@ -576,12 +649,17 @@ fn port_of_id(server_id: &str, address: &str) -> Option<u16> {
 ///
 /// A host saved this way joins the discovery list the way a typed one does, so
 /// it stays reachable when mDNS goes quiet.
-pub fn name_manual_server<R: Runtime>(server_id: &str, address: &str, name: &str, app_handle: &AppHandle<R>) -> bool {
+pub fn name_manual_server<R: Runtime>(
+    server_id: &str,
+    address: &str,
+    edit: &HostEdit,
+    app_handle: &AppHandle<R>,
+) -> bool {
     let Some(path) = get_store_path(app_handle) else {
         return false;
     };
     let was_saved = read_store_from_path(&path).servers.iter().any(|s| s.id == server_id);
-    let Some(entry) = name_server_entry_at_path(&path, server_id, address, name) else {
+    let Some(entry) = name_server_entry_at_path(&path, server_id, address, edit) else {
         return false;
     };
     if !was_saved {

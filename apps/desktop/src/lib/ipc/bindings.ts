@@ -3658,10 +3658,12 @@ export const commands = {
    *  Connects to a manually-specified server: parses, checks reachability, persists, and injects.
    *
    *  `name` is the Add form's Name field; `None` or empty leaves the server unnamed, so
-   *  the UI calls it by its address.
+   *  the UI calls it by its address. `username` is the account the person means to sign
+   *  in as (else the one an `smb://user@host` address names): it prefills the first
+   *  sign-in, and a host with one is never listed as guest.
    */
-  connectToServer: (address: string, name: string | null) =>
-    typedError<ManualConnectResult, string>(__TAURI_INVOKE('connect_to_server', { address, name })),
+  connectToServer: (address: string, name: string | null, username: string | null) =>
+    typedError<ManualConnectResult, string>(__TAURI_INVOKE('connect_to_server', { address, name, username })),
   // Gets the current discovery state.
   getNetworkDiscoveryState: () => __TAURI_INVOKE<DiscoveryState>('get_network_discovery_state'),
   /**
@@ -3741,6 +3743,10 @@ export const commands = {
    *  Takes the server by name and answers for that one server, rather than handing back a
    *  map the caller has to key into: the identity rule lives in `known_shares`, not in the
    *  IPC contract. See `known_shares::get_username_hint`.
+   *
+   *  ❗ The account the person TYPED for this host (the add or edit sheet) wins over the
+   *  share history: it is a stated preference, where the history is only who signed in
+   *  last, and Edit is where it changes.
    */
   getUsernameHint: (serverName: string) => __TAURI_INVOKE<string | null>('get_username_hint', { serverName }),
   /**
@@ -4420,8 +4426,9 @@ export const commands = {
    */
   updateSavedServer: (server: ServerTarget) => __TAURI_INVOKE<SavedServerOutcome>('update_saved_server', { server }),
   /**
-   *  Names a saved SMB host, answering whether there was one to name. An empty
-   *  name unnames it, so the UI calls it by its address again.
+   *  Names a saved SMB host and sets the account it's used with, answering whether
+   *  there was one to name. An empty name unnames it, so the UI calls it by its
+   *  address again; no `username` clears the account.
    *
    *  `address` is the listing's own, which is what a host only the share history
    *  knew gets saved under (naming it is what saves it: `manual_servers` §
@@ -4434,8 +4441,8 @@ export const commands = {
    *  ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
    *  the saved list.
    */
-  updateSavedSmbHost: (id: string, address: string, name: string) =>
-    __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, address, name }),
+  updateSavedSmbHost: (id: string, address: string, name: string, username: string | null) =>
+    __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, address, name, username }),
   /**
    *  Tauri command: returns the current macOS accent color as a hex string.
    *
@@ -12138,8 +12145,8 @@ export type SavedServer = {
    */
   address: string
   /**
-   *  The account, where the protocol has one. `None` for an SMB host, which is
-   *  not an account yet.
+   *  The account, where the protocol has one. For an SMB host, the account the
+   *  person typed for it (a preference, not its identity), or `None`.
    */
   username: string | null
   /**
@@ -13056,9 +13063,9 @@ export type ServerConnectOutcome =
  *  enum publishes, ❌ never a guess at the string's shape. Only the store that
  *  wrote the label knows where it came from.
  *
- *  ❗ Every SMB row is [`Fallback`](Self::Fallback) today because SMB has no name
- *  field to fill in yet; adding one changes what a store answers here and nothing
- *  else.
+ *  ❗ An SMB host is [`User`](Self::User) only when a person named it in the add
+ *  or edit sheet (`manual_servers::ManualServerEntry::is_named`); a host only the
+ *  share history knows is always a stand-in.
  */
 export type ServerNameSource =
   // A person typed the NAME itself, in the sign-in sheet's Name field.
@@ -13067,8 +13074,8 @@ export type ServerNameSource =
    *  A stand-in the app derived, because nothing better existed: an SFTP or
    *  WebDAV account's `username@host`, the SMB mount's `server_name` (which
    *  `statfs` spells as the server answered, `smb-consumer-guest` rather than
-   *  `SMB Test (Guest)`), or the address typed into "Add server", which is all
-   *  an SMB host is ever given.
+   *  `SMB Test (Guest)`), or the address typed into "Add server" when the Name
+   *  field stayed empty.
    */
   | 'fallback'
 

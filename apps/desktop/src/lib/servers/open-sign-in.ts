@@ -32,6 +32,7 @@ import {
   type ServerConnectOutcome,
 } from '$lib/tauri-commands'
 import { asReconnectError } from '$lib/file-explorer/network/reconnect-error'
+import { forgetShareListsOfMachine } from '$lib/file-explorer/network/network-store.svelte'
 import type { NetworkHost } from '$lib/file-explorer/types'
 import { getAppLogger } from '$lib/logging/logger'
 import type { SignInSeamRequest, SignInSeamResult } from './connect-flow'
@@ -240,7 +241,10 @@ async function attemptAdd(
 ): Promise<SignInAttemptOutcome> {
   if (submission.mode === 'add_smb') {
     try {
-      const result = await connectToServer(submission.address, submission.name)
+      const result = await connectToServer(submission.address, submission.name, submission.username)
+      // A list fetched before this add may be the guest one a typed account now
+      // refuses, so the places list asks again.
+      forgetShareListsOfMachine(result.host)
       onSmbHandOff({ host: result.host, sharePath: result.sharePath })
       return { kind: 'handed_off' }
     } catch (e) {

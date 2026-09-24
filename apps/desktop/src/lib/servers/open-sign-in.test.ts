@@ -351,12 +351,28 @@ describe('add mode', () => {
     })
     const request = await parkedRequest()
 
-    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'naspolya', name: '' })
+    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'naspolya', name: '', username: null })
     expect(outcome).toEqual({ kind: 'handed_off' })
     expect(handOffs).toEqual([{ host: { id: 'h1', name: 'naspolya' }, sharePath: null }])
     // ❗ SMB's connect is a share MOUNT, not a session: no server command runs.
     expect(ipc.callCount('connect_server')).toBe(0)
 
+    closeSignInSheet({ kind: 'handed_off' })
+    await sheet
+  })
+
+  it('sends the name and the account typed beside an SMB address', async () => {
+    ipc.mock('connect_to_server', () => ({ host: { id: 'h1', name: '192.168.0.153' }, sharePath: null }))
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    await attemptOf(request)({ mode: 'add_smb', address: 'smb://192.168.0.153', name: "Sven's NAS", username: 'sven' })
+
+    expect(ipc.lastCall('connect_to_server')?.payload).toEqual({
+      address: 'smb://192.168.0.153',
+      name: "Sven's NAS",
+      username: 'sven',
+    })
     closeSignInSheet({ kind: 'handed_off' })
     await sheet
   })
@@ -374,6 +390,7 @@ describe('add mode', () => {
       mode: 'add_smb',
       address: 'smb://ada:hunter2@naspolya/photos',
       name: '',
+      username: null,
     })
     expect(outcome).toEqual({ kind: 'refused', refusal: 'unreachable' })
     expect(warn).toHaveBeenCalledOnce()

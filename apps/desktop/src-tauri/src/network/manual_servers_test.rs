@@ -195,6 +195,101 @@ fn id_format_hostname_with_local() {
 
 // -- Names and accounts --
 
+/// ❗ **The account an `smb://` address names is what the person means to sign
+/// in as**, so the add records it. A password in the address is never kept.
+#[test]
+fn an_smb_url_names_its_account_and_never_its_password() {
+    assert_eq!(
+        parse_server_address("smb://sven@192.168.0.153/Container")
+            .unwrap()
+            .username
+            .as_deref(),
+        Some("sven")
+    );
+    assert_eq!(
+        parse_server_address("smb://sven:hunter2@naspolya")
+            .unwrap()
+            .username
+            .as_deref(),
+        Some("sven")
+    );
+    assert_eq!(parse_server_address("smb://naspolya").unwrap().username, None);
+    assert_eq!(parse_server_address("naspolya").unwrap().username, None);
+}
+
+/// An entry written before accounts existed reads as having none.
+#[test]
+fn an_entry_without_an_account_reads_as_none() {
+    let json =
+        r#"{"id":"manual-nas-445","displayName":"","address":"nas","port":445,"addedAt":"2026-09-17T10:00:00Z"}"#;
+    let entry: ManualServerEntry = serde_json::from_str(json).unwrap();
+    assert_eq!(entry.username, None);
+}
+
+/// ❗ **The typed account is found under any name the host goes by**: the
+/// sign-in sheet opens on whatever the discovery list calls the machine, which
+/// for a host typed as an IP can be its Bonjour name.
+#[test]
+fn the_typed_account_is_found_under_the_address_the_label_and_the_bonjour_name() {
+    let mut entry = test_entry(21);
+    entry.username = Some("sven".to_string());
+    entry.port = 9445;
+    let entries = vec![entry];
+    let bonjour = NetworkHost {
+        id: "mars".to_string(),
+        name: "Mars".to_string(),
+        hostname: Some("mars.local".to_string()),
+        ip_address: Some("10.0.0.21".to_string()),
+        port: 445,
+        source: HostSource::Discovered,
+    };
+
+    assert_eq!(typed_username_in(&entries, "10.0.0.21", &[]).as_deref(), Some("sven"));
+    assert_eq!(
+        typed_username_in(&entries, "10.0.0.21:9445", &[]).as_deref(),
+        Some("sven")
+    );
+    assert_eq!(typed_username_in(&entries, "Mars", &[bonjour]).as_deref(), Some("sven"));
+    assert_eq!(typed_username_in(&entries, "10.0.0.22", &[]), None);
+}
+
+/// ❗ **An edit can change the account an SMB host is used with**: for SMB it
+/// is a preference, not the entry's identity (the address is).
+#[test]
+fn naming_a_host_can_set_and_clear_its_account() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    add_server_entry_to_path(&path, test_entry(22));
+
+    let edit = HostEdit {
+        name: "Attic".to_string(),
+        username: Some("sven".to_string()),
+    };
+    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", &edit).unwrap();
+    assert_eq!(stored.username.as_deref(), Some("sven"));
+
+    let cleared = HostEdit {
+        name: "Attic".to_string(),
+        username: None,
+    };
+    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", &cleared).unwrap();
+    assert_eq!(stored.username, None);
+}
+
+/// Re-adding a host without an account keeps the one it had, the way it keeps
+/// a name.
+#[test]
+fn re_adding_a_host_without_an_account_keeps_the_one_it_had() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    let mut first = test_entry(23);
+    first.username = Some("sven".to_string());
+    add_server_entry_to_path(&path, first);
+    add_server_entry_to_path(&path, test_entry(23));
+
+    assert_eq!(read_store_from_path(&path).servers[0].username.as_deref(), Some("sven"));
+}
+
 /// ❗ **An entry written before names existed reads as unnamed.** Its
 /// `displayName` holds the derived address, which no person chose, so the hub
 /// must keep ranking a Bonjour name above it.
@@ -232,7 +327,7 @@ fn renaming_an_entry_rewrites_only_its_name() {
     add_server_entry_to_path(&path, test_entry(1));
     add_server_entry_to_path(&path, test_entry(2));
 
-    assert!(name_server_entry_at_path(&path, &test_entry(1).id, "10.0.0.1", "Attic NAS").is_some());
+    assert!(name_server_entry_at_path(&path, &test_entry(1).id, "10.0.0.1", &named("Attic NAS")).is_some());
 
     let store = read_store_from_path(&path);
     let renamed = store.servers.iter().find(|s| s.id == test_entry(1).id).unwrap();
@@ -251,7 +346,8 @@ fn naming_a_host_nobody_typed_in_saves_it_under_its_own_id() {
     let path = dir.path().join(MANUAL_SERVERS_FILENAME);
     let id = generate_server_id("naspolya.local", 445);
 
-    let entry = name_server_entry_at_path(&path, &id, "naspolya.local", "Naspolya").expect("a host with that id");
+    let entry =
+        name_server_entry_at_path(&path, &id, "naspolya.local", &named("Naspolya")).expect("a host with that id");
 
     assert_eq!(entry.port, 445);
     let store = read_store_from_path(&path);
@@ -266,7 +362,7 @@ fn naming_a_host_nobody_typed_in_saves_it_under_its_own_id() {
 fn naming_refuses_an_id_the_address_does_not_mint() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let path = dir.path().join(MANUAL_SERVERS_FILENAME);
-    assert!(name_server_entry_at_path(&path, "manual-elsewhere-445", "naspolya.local", "Naspolya").is_none());
+    assert!(name_server_entry_at_path(&path, "manual-elsewhere-445", "naspolya.local", &named("Naspolya")).is_none());
     assert!(read_store_from_path(&path).servers.is_empty());
 }
 
@@ -290,6 +386,14 @@ fn re_adding_a_host_without_a_name_keeps_the_one_it_had() {
     assert_eq!(store.servers[0].label(), "Garage");
 }
 
+/// An edit that names a host and leaves its account empty.
+fn named(name: &str) -> HostEdit {
+    HostEdit {
+        name: name.to_string(),
+        username: None,
+    }
+}
+
 // -- Serialization round-trip --
 
 #[test]
@@ -300,6 +404,7 @@ fn server_entry_serialization_round_trip() {
         address: "192.168.1.100".to_string(),
         port: 9445,
         added_at: "2026-04-02T10:00:00Z".to_string(),
+        username: None,
     };
 
     let json = serde_json::to_string_pretty(&entry).unwrap();
@@ -321,6 +426,7 @@ fn store_serialization_round_trip() {
             address: "mynas".to_string(),
             port: 445,
             added_at: "2026-04-02T10:00:00Z".to_string(),
+            username: None,
         }],
     };
 
@@ -417,6 +523,7 @@ fn test_entry(index: usize) -> ManualServerEntry {
         address,
         port: 445,
         added_at: "2026-01-01T00:00:00Z".to_string(),
+        username: None,
     }
 }
 

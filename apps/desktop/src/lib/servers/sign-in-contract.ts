@@ -60,6 +60,12 @@ export type SignInSubmission =
       address: string
       /** The Name field, trimmed. ❗ Empty means unnamed: the backend then calls the host by its address. */
       name: string
+      /**
+       * The account the person means to sign in as, or `null` for none. ❗ It
+       * prefills the first sign-in AND keeps the share listing from answering
+       * as guest, so an empty field must stay `null`, ❌ never `''`.
+       */
+      username: string | null
     }
   | {
       mode: 'sign-in'

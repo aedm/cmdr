@@ -304,6 +304,22 @@ describe('SignInSheet: add mode', () => {
     )
   })
 
+  it('lets an SMB add name an account without putting it in the address', async () => {
+    const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
+      submissions.push(submission)
+      return Promise.resolve({ kind: 'handed_off' })
+    }
+    await renderSheet({ mode: 'add', attempt })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-username') as HTMLInputElement, ' sven ')
+    await tick()
+
+    buttonSaying('Connect').click()
+    await flush()
+
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '', username: 'sven' }])
+  })
+
   it('hands the typed name over with an SMB address', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
       submissions.push(submission)
@@ -317,7 +333,7 @@ describe('SignInSheet: add mode', () => {
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: "Sven's NAS" }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: "Sven's NAS", username: null }])
   })
 
   /**
@@ -334,15 +350,16 @@ describe('SignInSheet: add mode', () => {
     typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'sven@192.168.0.153')
     await tick()
     expect(protocolTab('SMB').getAttribute('aria-selected')).toBe('true')
-    // SMB asks for nothing here, so no account field appeared either.
+    // SMB asks for no password here; the account the address named is kept.
     expect(document.body.querySelector('#server-secret')).toBeNull()
+    expect(document.body.querySelector<HTMLInputElement>('#server-username')?.value).toBe('sven')
     // `user@host` is a fine SMB address, so nothing warns about it.
     expect(document.body.querySelector('#server-address-warning')).toBeNull()
 
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153', name: '' }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153', name: '', username: 'sven' }])
   })
 
   it('warns when the address looks like another protocol, and leaves the toggle and the dial alone', async () => {
@@ -414,7 +431,7 @@ describe('SignInSheet: add mode', () => {
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '' }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '', username: null }])
     expect(done).toEqual([{ kind: 'handed_off' }])
   })
 
@@ -718,16 +735,26 @@ describe('SignInSheet: editing an SMB host', () => {
     expect(name?.placeholder).toBe('Leave empty to use 192.168.0.153')
   })
 
-  it('saves a rename through the SMB host writer and closes', async () => {
+  it('saves a rename and a changed account through the SMB host writer and closes', async () => {
     const commands = await import('$lib/tauri-commands')
-    const { done } = await renderSheet({ mode: 'edit', server: SMB_HOST })
+    const { done } = await renderSheet({ mode: 'edit', server: { ...SMB_HOST, username: 'sven' } })
+    const username = document.body.querySelector<HTMLInputElement>('#server-username') as HTMLInputElement
+    // ❗ Editable: for SMB the account is a preference, not the server's identity.
+    expect(username.value).toBe('sven')
+    expect(username.disabled).toBe(false)
     typeInto(document.body.querySelector<HTMLInputElement>('#server-name') as HTMLInputElement, 'Attic NAS')
+    typeInto(username, 'bob')
     await tick()
 
     buttonSaying('Save').click()
     await flush()
 
-    expect(commands.updateSavedSmbHost).toHaveBeenCalledWith('manual-192-168-0-153-445', '192.168.0.153', 'Attic NAS')
+    expect(commands.updateSavedSmbHost).toHaveBeenCalledWith(
+      'manual-192-168-0-153-445',
+      '192.168.0.153',
+      'Attic NAS',
+      'bob',
+    )
     expect(commands.updateSavedServer).not.toHaveBeenCalled()
     expect(done).toEqual([{ kind: 'saved' }])
   })

@@ -151,7 +151,9 @@ fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer>
             protocol: ServerProtocol::Smb,
             display_name: label,
             address: entry.address,
-            username: None,
+            // The account the person typed for it, a preference rather than an
+            // identity: the first sign-in prefills it, and the listing skips guest.
+            username: entry.username,
             pinned: false,
             // `added_at` is when it was typed, ❌ not when it last answered.
             last_connected_at: None,
@@ -599,8 +601,9 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
     }
 }
 
-/// Names a saved SMB host, answering whether there was one to name. An empty
-/// name unnames it, so the UI calls it by its address again.
+/// Names a saved SMB host and sets the account it's used with, answering whether
+/// there was one to name. An empty name unnames it, so the UI calls it by its
+/// address again; no `username` clears the account.
 ///
 /// `address` is the listing's own, which is what a host only the share history
 /// knew gets saved under (naming it is what saves it: `manual_servers` §
@@ -614,8 +617,15 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
 /// the saved list.
 #[tauri::command]
 #[specta::specta]
-pub fn update_saved_smb_host(id: String, address: String, name: String, app: tauri::AppHandle) -> bool {
-    let named = manual_servers::name_manual_server(&id, &address, &name, &app);
+pub fn update_saved_smb_host(
+    id: String,
+    address: String,
+    name: String,
+    username: Option<String>,
+    app: tauri::AppHandle,
+) -> bool {
+    let edit = manual_servers::HostEdit { name, username };
+    let named = manual_servers::name_manual_server(&id, &address, &edit, &app);
     if named {
         crate::volume_broadcast::emit_volumes_changed();
     }
