@@ -174,6 +174,16 @@ pub(in crate::file_system::write_operations) fn name_the_vanished_drive(
         return error;
     }
     let Some(sides) = sides else { return error };
+    // The copy landed, and that stays the headline whatever stopped the
+    // original's removal: a vanished source drive is named inside `cause`, never
+    // in place of the whole outcome.
+    if let WriteOperationError::SourceNotRemoved { path, landed_at, cause } = error {
+        return WriteOperationError::SourceNotRemoved {
+            path,
+            landed_at,
+            cause: Box::new(name_the_vanished_drive(*cause, Some(sides))),
+        };
+    }
     let path = failing_path(&error);
     let Some(role) = sides
         .vanished_side(path)

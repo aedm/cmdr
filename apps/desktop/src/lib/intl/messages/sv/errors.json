@@ -1485,6 +1485,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "Du har inte behörighet att läsa det här objektet, så det går inte att kopiera.",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "Du har inte behörighet att flytta det här objektet ur mappen det ligger i.",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "Kontrollera att du har åtkomst till det här objektet och till mappen det ligger i.",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "Inte tillräckligt med utrymme",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1640,6 +1652,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "Detaljerna nedan visar var varje fil ligger. När du har flyttat undan mapparna kan du byta tillbaka deras namn.",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "Kopian kom fram, men originalet ligger kvar",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "Allt kom fram till {landedAt}, men Cmdr kunde inte ta bort originalet på {path}, så det finns på båda ställena nu. Ingenting gick förlorat.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "Radera originalet själv för att slutföra flytten.",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "Det gick inte att kopiera",
   "@errors.write.fallback.title.copy": {

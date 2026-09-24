@@ -43,6 +43,7 @@ describe('getUserFriendlyMessage', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       }
       const result = getUserFriendlyMessage(error)
 
@@ -115,6 +116,7 @@ describe('getUserFriendlyMessage', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       }
       const result = getUserFriendlyMessage(error, 'move')
 
@@ -516,6 +518,7 @@ describe('getTechnicalDetails', () => {
       errno: 13,
       refusal: 'folderPermissions',
       refusedFolder: '/Applications/Thing/Toolbox',
+      side: null,
     }
     const result = getTechnicalDetails(error)
 
@@ -531,6 +534,7 @@ describe('getTechnicalDetails', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
     const result = getTechnicalDetails(error)
 
@@ -658,6 +662,7 @@ describe('getUserFriendlyMessage: delete operation', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
     const result = getUserFriendlyMessage(error, 'delete')
 
@@ -674,6 +679,7 @@ describe('getUserFriendlyMessage: delete operation', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
     const result = getUserFriendlyMessage(error, 'delete')
 
@@ -725,6 +731,7 @@ describe('getUserFriendlyMessage: trash operation', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
     const result = getUserFriendlyMessage(error, 'trash')
 
@@ -741,6 +748,7 @@ describe('getUserFriendlyMessage: trash operation', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
     const result = getUserFriendlyMessage(error, 'trash')
 
@@ -775,6 +783,7 @@ describe('error messages are volume-agnostic', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       },
       { type: 'device_disconnected', path: '/mtp-device/file.txt', side: null },
       { type: 'read_only_device', path: '/mtp-device', deviceName: null, side: 'destination' },
@@ -797,6 +806,7 @@ describe('error messages are volume-agnostic', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       },
       { type: 'connection_interrupted', path: '//server/share/file.txt' },
     ]
@@ -823,6 +833,7 @@ describe('getErrorDisplayMeta', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       },
       category: 'needs_action',
       retryHint: false,

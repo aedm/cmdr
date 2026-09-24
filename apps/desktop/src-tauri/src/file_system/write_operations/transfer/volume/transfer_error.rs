@@ -8,7 +8,9 @@
 
 use std::path::{Path, PathBuf};
 
-use super::super::super::types::{ReadOnlySide, WriteErrorEvent, WriteOperationError, WriteOperationType};
+use super::super::super::types::{
+    PermissionSide, ReadOnlySide, WriteErrorEvent, WriteOperationError, WriteOperationType,
+};
 use super::super::recovered_name::FinalizeFailure;
 use crate::file_system::volume::VolumeError;
 
@@ -275,7 +277,16 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
                 None if path != context_path => path,
                 None => "Permission denied".to_string(),
             };
-            WriteOperationError::permission_denied(context_path.to_string(), message, raw_os_error, None)
+            WriteOperationError::permission_denied(
+                context_path.to_string(),
+                message,
+                raw_os_error,
+                None,
+                Some(match role {
+                    PathRole::Source => PermissionSide::Source,
+                    PathRole::Destination => PermissionSide::Destination,
+                }),
+            )
         }
         VolumeError::AlreadyExists(path) => WriteOperationError::DestinationExists { path },
         // ❗ Name the ROLE. The bare wording said only "this volume type", so a

@@ -1485,6 +1485,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "Vous n'avez pas l'autorisation de lire cet élément, il ne peut donc pas être copié.",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "Vous n'avez pas l'autorisation de déplacer cet élément hors de son dossier.",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "Vérifiez que vous avez accès à cet élément et au dossier qui le contient.",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "Espace insuffisant",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1640,6 +1652,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "Les détails ci-dessous indiquent où se trouve chaque fichier. Une fois les dossiers écartés, vous pourrez leur redonner leurs noms.",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "La copie est arrivée, mais l'original est toujours là",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "Tout est arrivé dans {landedAt}, mais Cmdr n'a pas pu supprimer l'original dans {path}, il se trouve donc maintenant aux deux endroits. Rien n'a été perdu.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "Pour terminer le déplacement, supprimez vous-même l'original.",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "Copie impossible",
   "@errors.write.fallback.title.copy": {

@@ -1485,6 +1485,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "Bạn không có quyền đọc mục này, nên không thể sao chép nó.",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "Bạn không có quyền di chuyển mục này ra khỏi thư mục chứa nó.",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "Kiểm tra xem bạn có quyền truy cập mục này và thư mục chứa nó không.",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "Không đủ dung lượng",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1640,6 +1652,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "Phần chi tiết bên dưới cho biết từng tệp đang ở đâu. Khi bạn đã dọn các thư mục đi chỗ khác, bạn có thể đổi tên chúng về như cũ.",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "Bản sao đã tới đích, nhưng bản gốc vẫn ở chỗ cũ",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "Mọi thứ đã tới {landedAt}, nhưng Cmdr không thể xóa bản gốc ở {path}, nên giờ nó có ở cả hai nơi. Không mất gì cả.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "Để hoàn tất việc di chuyển, hãy tự xóa bản gốc.",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "Không thể sao chép",
   "@errors.write.fallback.title.copy": {

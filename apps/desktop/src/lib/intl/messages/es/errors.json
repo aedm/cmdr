@@ -1485,6 +1485,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "No tienes permiso para leer este ítem, así que no se puede copiar.",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "No tienes permiso para mover este ítem fuera de su carpeta.",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "Comprueba que tengas acceso a este ítem y a la carpeta en la que está.",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "No hay suficiente espacio",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1640,6 +1652,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "Mira los detalles de abajo para ver dónde está cada archivo. Cuando apartes las carpetas, puedes volver a ponerles sus nombres.",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "La copia llegó, pero el original sigue ahí",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "Todo llegó a {landedAt}, pero Cmdr no pudo eliminar el original en {path}, así que ahora está en los dos sitios. No se perdió nada.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "Para completar el movimiento, elimina tú el original.",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "No se ha podido copiar",
   "@errors.write.fallback.title.copy": {

@@ -29,6 +29,7 @@ describe('FallbackErrorContent', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     })
     await tick()
 

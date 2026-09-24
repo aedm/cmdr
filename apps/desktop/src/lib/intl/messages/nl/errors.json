@@ -1485,6 +1485,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "Je hebt geen bevoegdheid om dit onderdeel te lezen, dus het kan niet worden gekopieerd.",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "Je hebt geen bevoegdheid om dit onderdeel uit zijn map te verplaatsen.",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "Controleer of je toegang hebt tot dit onderdeel en tot de map waarin het staat.",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "Onvoldoende ruimte",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1640,6 +1652,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "In de details hieronder staat waar elk bestand is. Zodra je de mappen opzij hebt gezet, kun je ze weer hun eigen naam geven.",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "De kopie is aangekomen, maar het origineel staat er nog",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "Alles is aangekomen op {landedAt}, maar Cmdr kon het origineel op {path} niet verwijderen, dus het staat nu op beide plekken. Er is niets verloren gegaan.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "Verwijder het origineel zelf om het verplaatsen af te ronden.",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "Kopiëren lukte niet",
   "@errors.write.fallback.title.copy": {

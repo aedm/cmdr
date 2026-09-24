@@ -74,6 +74,7 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
   },
   insufficient_space: {
@@ -247,6 +248,26 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
           keptAt: '/Volumes/naspi/papers/finances/2026-tax-return (recovered)',
         },
       ],
+    },
+  },
+  // cmdr-reports#17's shape: the copy landed on the NAS and a Finder-locked original
+  // refused to go, so the item is in both places. The cause's advice (uncheck Locked)
+  // rides in the suggestion.
+  source_not_removed: {
+    operationType: 'move',
+    error: {
+      type: 'source_not_removed',
+      path: '/Users/david/Pictures/gate-measurements.jpg',
+      landedAt: '/Volumes/naspi/projects-archive/2023/gate-measurements.jpg',
+      cause: {
+        type: 'permission_denied',
+        path: '/Users/david/Pictures/gate-measurements.jpg',
+        message: 'Operation not permitted (os error 1)',
+        errno: 1,
+        refusal: 'systemProtected',
+        refusedFolder: null,
+        side: 'source',
+      },
     },
   },
   // The shape a real report arrived as: several screenshots in a cloud folder that

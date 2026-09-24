@@ -11145,6 +11145,24 @@ export type PermissionRefusal =
   | 'unclassified'
 
 /**
+ *  Which half of a transfer refused on permission grounds, for
+ *  [`WriteOperationError::PermissionDenied`].
+ *
+ *  Copying OUT of a folder that refuses reads and copying INTO one that refuses
+ *  writes are different fixes, and without this they read identically. Filled
+ *  by the site that knows which volume it asked (`map_volume_error`'s
+ *  `PathRole`, the destination probes); `None` where nothing says, such as a
+ *  `rename(2)` whose errno can't tell its two parents apart.
+ *
+ *  ❌ Never decide this by inspecting a path or a message.
+ */
+export type PermissionSide =
+  // The item being read, or the original a move removes.
+  | 'source'
+  // Where the item was being written.
+  | 'destination'
+
+/**
  *  `persist-restricted-setting`: the viewer (a restricted-capability window with
  *  no store access) forwards an allowlisted setting write to the main window,
  *  which persists it through the normal store pipeline. Emitted to the main
@@ -15799,6 +15817,8 @@ export type WriteOperationError =
        *  the destination when it was the source folder that said no.
        */
       refusedFolder: string | null
+      // Which half of the transfer refused, when the refusing site knows.
+      side: PermissionSide | null
     }
   /**
    *  The destination has no room for the transfer, MEASURED before anything was
@@ -15944,6 +15964,31 @@ export type WriteOperationError =
    *  failure into one sentence.
    */
   | { type: 'originals_kept_aside'; cause: WriteOperationError; recovered: RecoveredOriginal[] }
+  /**
+   *  A cross-volume move whose copy landed COMPLETELY and whose original could
+   *  not be removed. Nothing is lost and nothing is broken: the item now exists
+   *  at both ends.
+   *
+   *  ❗ Its own variant, never a flag on the refusal, because the fact the user
+   *  needs is different in kind: "the move failed" makes them conclude nothing
+   *  happened, and the next attempt then walks into a conflict with the copy
+   *  that did land (cmdr-reports#17). The way out is theirs: remove the
+   *  original, or fix what refused and remove it. `cause` is what refused the
+   *  delete (a locked file, a busy one, a read-only source, an SMB
+   *  `DeletePending`), so its own advice survives, the same shape as
+   *  [`OriginalsKeptAside`](Self::OriginalsKeptAside).
+   */
+  | {
+      type: 'source_not_removed'
+      /**
+       *  The original that stayed. For a folder, the item inside it that
+       *  refused to go.
+       */
+      path: string
+      // Where the complete copy is.
+      landedAt: string
+      cause: WriteOperationError
+    }
   /**
    *  The OS refused to move items to the Trash.
    *

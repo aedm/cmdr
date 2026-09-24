@@ -335,6 +335,7 @@ describe('QueueRow', () => {
           errno: null,
           refusal: 'unclassified',
           refusedFolder: null,
+          side: null,
         },
         'delete',
       ),

@@ -1484,6 +1484,18 @@
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "sourceHash": "a4856dc"
   },
+  "errors.write.permissionDenied.message.sourceCopy": "你没有权限读取这个项目，所以无法拷贝它。",
+  "@errors.write.permissionDenied.message.sourceCopy": {
+    "sourceHash": "a815b07"
+  },
+  "errors.write.permissionDenied.message.sourceMove": "你没有权限把这个项目移出它所在的文件夹。",
+  "@errors.write.permissionDenied.message.sourceMove": {
+    "sourceHash": "c9fd25f"
+  },
+  "errors.write.permissionDenied.suggestion.sourceRead": "确认你有权限访问这个项目以及它所在的文件夹。",
+  "@errors.write.permissionDenied.suggestion.sourceRead": {
+    "sourceHash": "22eb5f4"
+  },
   "errors.write.insufficientSpace.title": "空间不足",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
@@ -1639,6 +1651,18 @@
   "errors.write.originalsKeptAside.suggestion.many": "下面的详情里写了每个文件在哪儿。等你把那些文件夹挪开，就可以把名字都改回来。",
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
+  },
+  "errors.write.sourceNotRemoved.title": "副本已经到了，但原文件还在原处",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "ac5a888"
+  },
+  "errors.write.sourceNotRemoved.message": "所有内容都已到达 {landedAt}，但 Cmdr 无法移除位于 {path} 的原文件，所以现在两个地方都有它。什么都没丢失。",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "c28d499"
+  },
+  "errors.write.sourceNotRemoved.suggestion": "要完成这次移动，请自己删除原文件。",
+  "@errors.write.sourceNotRemoved.suggestion": {
+    "sourceHash": "8d2fc8b"
   },
   "errors.write.fallback.title.copy": "无法拷贝",
   "@errors.write.fallback.title.copy": {

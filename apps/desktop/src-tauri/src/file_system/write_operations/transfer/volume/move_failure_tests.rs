@@ -16,7 +16,7 @@ use super::test_support::{MoveRenameFailsDestVolume, config_default, make_state}
 use super::*;
 use crate::file_system::volume::{InMemoryVolume, VolumeError};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
-use crate::file_system::write_operations::types::ConflictResolution;
+use crate::file_system::write_operations::types::{ConflictResolution, PermissionRefusal, PermissionSide};
 
 /// Cross-volume MOVE, file→file Overwrite, streaming write SUCCEEDS but the
 /// finalize rename FAILS. The move path has no dest partial-cleanup, so the
@@ -183,9 +183,12 @@ async fn cross_volume_move_delete_error_names_the_child_that_failed_not_the_sele
     .await;
 
     let failure = result.expect_err("the source delete can't finish, so the move must fail");
-    let WriteOperationError::IoError { path, .. } = &failure.error else {
-        panic!("expected an IoError, got {:?}", failure.error);
+    // The copy landed, so it's the "original stayed" outcome, and the leaf that
+    // refused is what it names.
+    let WriteOperationError::SourceNotRemoved { path, cause, .. } = &failure.error else {
+        panic!("expected SourceNotRemoved, got {:?}", failure.error);
     };
+    assert!(matches!(**cause, WriteOperationError::IoError { .. }), "{cause:?}");
     assert_eq!(
         path, "/tree/nested/doomed.txt",
         "the error must name the file that wouldn't delete, not the selected folder: {:?}",
@@ -261,4 +264,57 @@ async fn a_cross_type_move_that_fails_halfway_keeps_the_file_it_was_replacing() 
         source.inner().exists(Path::new("/clash/a.txt")).await,
         "and the source never left"
     );
+}
+
+/// cmdr-reports#17: a cross-volume move whose copy LANDED and whose source delete
+/// was refused (`EPERM`, a Finder-locked file) reported a flat "you don't have
+/// permission to move files here". The file was complete at the destination, so
+/// the user was told nothing happened while it now existed in both places.
+///
+/// It must say exactly that: the copy landed (and where), the original stayed,
+/// and why, with the refusal's own advice kept in `cause`.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cross_volume_move_that_cannot_remove_the_original_says_the_copy_landed() {
+    let src = UndeletableSource::new(
+        "locked.jpg",
+        VolumeError::from_io_at(&std::io::Error::from_raw_os_error(libc::EPERM), "/locked.jpg"),
+    );
+    let source: Arc<dyn Volume> = Arc::clone(&src) as Arc<dyn Volume>;
+    source.create_file(Path::new("/locked.jpg"), b"photo").await.unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Dest").with_space_info(10_000_000, 10_000_000));
+
+    let result = move_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "op-move-source-not-removed",
+        &make_state(),
+        Arc::clone(&source),
+        &[PathBuf::from("/locked.jpg")],
+        Arc::clone(&dest),
+        Path::new("/photos"),
+        &config_default(),
+    )
+    .await;
+
+    let failure = result.expect_err("the original couldn't be removed, so the move didn't finish");
+    let WriteOperationError::SourceNotRemoved { path, landed_at, cause } = &failure.error else {
+        panic!("expected SourceNotRemoved, got {:?}", failure.error);
+    };
+    assert_eq!(path, "/locked.jpg");
+    assert_eq!(landed_at, "/photos/locked.jpg");
+    assert!(
+        matches!(
+            **cause,
+            WriteOperationError::PermissionDenied {
+                side: Some(PermissionSide::Source),
+                refusal: PermissionRefusal::SystemProtected,
+                ..
+            }
+        ),
+        "the cause keeps its own advice: {cause:?}"
+    );
+
+    // Both copies are real: nothing was lost, and nothing was rolled back.
+    assert!(dest.exists(Path::new("/photos/locked.jpg")).await);
+    assert!(source.exists(Path::new("/locked.jpg")).await);
 }

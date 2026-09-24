@@ -15,7 +15,7 @@
  * (`<field>.${operationType}`), so each language phrases each operation
  * naturally. See `$lib/intl`'s docs.
  */
-import type { WriteOperationError, TransferOperationType, FriendlyError } from '$lib/file-explorer/types'
+import type { WriteOperationError, TransferOperationType, FriendlyError, PermissionRefusal } from '$lib/file-explorer/types'
 import type { TrashRefusalKind } from '$lib/ipc/bindings'
 import { fdaIsMissing } from '$lib/onboarding/fda-status.svelte'
 import type { ProgressAtStop } from '$lib/tauri-commands'
@@ -233,6 +233,10 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // on the folder that's already there. The move left is the user's, once
   // they've decided what to do with the folder.
   originals_kept_aside: { category: 'needs_action', retryHint: false },
+  // No Retry: the copy already landed, so running the same move again walks
+  // straight into a conflict with it. Nothing is broken; the one move left is
+  // the user's (free the original and delete it), which the suggestion says.
+  source_not_removed: { category: 'needs_action', retryHint: false },
   // A password-protected archive source. The FE prompts for a password and
   // retries, so this classification is only the fallback if the prompt is
   // bypassed; retryHint stays on so the generic dialog still offers a retry.
@@ -314,33 +318,34 @@ function readOnlyMessage(error: Extract<WriteOperationError, { type: 'read_only_
  * The `unclassified` arm keeps the older split, which is per-operation and
  * platform: a refused delete sends a macOS user to a locked file, everyone else to
  * permissions, and a refused copy to the destination.
+ *
+ * `side` is the third fact, also the backend's: a copy or move whose SOURCE refused
+ * gets its own sentence, since "you don't have permission to copy files here"
+ * points at the destination, the half that was fine. A move's source refusal is a
+ * delete in all but name, so it takes the delete advice.
  */
 function permissionDeniedMessage(
   error: Extract<WriteOperationError, { type: 'permission_denied' }>,
   op: TransferOperationType,
 ): FriendlyErrorMessage {
-  const mac = isMacOS()
-  const suggestionKey =
-    error.refusal === 'folderPermissions'
-      ? mac
-        ? 'needsAdminMac'
-        : 'needsAdminOther'
-      : error.refusal === 'systemProtected'
-        ? mac
-          ? 'systemProtectedMac'
-          : 'systemProtectedOther'
-        : op === 'delete' || op === 'trash'
-          ? mac
-            ? 'deleteMac'
-            : 'deleteOther'
-          : 'default'
+  const sourceSide = error.side === 'source' && (op === 'copy' || op === 'move')
+  const unnamedMessageKey = sourceSide ? (op === 'move' ? 'sourceMove' : 'sourceCopy') : op
   return {
     title: w('permissionDenied.title'),
     message: error.refusedFolder
       ? w('permissionDenied.message.named', { folder: escapeHtml(error.refusedFolder) })
-      : w(`permissionDenied.message.${op}`),
-    suggestion: w(`permissionDenied.suggestion.${suggestionKey}`),
+      : w(`permissionDenied.message.${unnamedMessageKey}`),
+    suggestion: w(`permissionDenied.suggestion.${permissionSuggestionKey(error.refusal, op, sourceSide)}`),
   }
+}
+
+/** The advice half of `permissionDeniedMessage`: the errno's answer first, then the operation's. */
+function permissionSuggestionKey(refusal: PermissionRefusal, op: TransferOperationType, sourceSide: boolean): string {
+  const mac = isMacOS()
+  if (refusal === 'folderPermissions') return mac ? 'needsAdminMac' : 'needsAdminOther'
+  if (refusal === 'systemProtected') return mac ? 'systemProtectedMac' : 'systemProtectedOther'
+  if (op === 'delete' || op === 'trash' || (sourceSide && op === 'move')) return mac ? 'deleteMac' : 'deleteOther'
+  return sourceSide ? 'sourceRead' : 'default'
 }
 
 /**
@@ -386,6 +391,29 @@ function originalsKeptAsideMessage(
     title: w('originalsKeptAside.title'),
     message: `${moved} ${cause.message}`,
     suggestion: `${next} ${cause.suggestion}`,
+  }
+}
+
+/**
+ * Builds the message for a move whose copy landed and whose original couldn't be
+ * removed.
+ *
+ * The headline is the good news, because it's the part a reader would otherwise
+ * get wrong: everything arrived, the original is still where it was, nothing is
+ * lost. What refused the delete speaks through its own SUGGESTION (a locked file
+ * still says "uncheck Locked"), and ❌ never its message: that one is worded for a
+ * failed move ("you don't have permission to move files here"), which is exactly
+ * the misreading this variant exists to prevent (cmdr-reports#17).
+ */
+function sourceNotRemovedMessage(
+  error: Extract<WriteOperationError, { type: 'source_not_removed' }>,
+  operationType: TransferOperationType,
+): FriendlyErrorMessage {
+  const cause = getUserFriendlyMessage(error.cause, operationType)
+  return {
+    title: w('sourceNotRemoved.title'),
+    message: w('sourceNotRemoved.message', { landedAt: escapeHtml(error.landedAt), path: escapeHtml(error.path) }),
+    suggestion: `${cause.suggestion} ${w('sourceNotRemoved.suggestion')}`,
   }
 }
 
@@ -505,6 +533,25 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
 }
 
 /**
+ * The two outcomes that WRAP another error as `cause` and word themselves around
+ * that cause's own advice. Split out of `getUserFriendlyMessage` to keep its
+ * switch inside the complexity limit. `null` means "not one of mine".
+ */
+function causeWrappingMessage(
+  error: WriteOperationError,
+  operationType: TransferOperationType,
+): FriendlyErrorMessage | null {
+  switch (error.type) {
+    case 'originals_kept_aside':
+      return originalsKeptAsideMessage(error, operationType)
+    case 'source_not_removed':
+      return sourceNotRemovedMessage(error, operationType)
+    default:
+      return null
+  }
+}
+
+/**
  * Returns a user-friendly message for a transfer operation error.
  * Volume-agnostic: doesn't mention MTP, SMB, etc. directly.
  *
@@ -522,6 +569,9 @@ export function getUserFriendlyMessage(
 
   const fieldDriven = fieldDrivenMessage(error)
   if (fieldDriven) return fieldDriven
+
+  const wrapping = causeWrappingMessage(error, operationType)
+  if (wrapping) return wrapping
 
   switch (error.type) {
     case 'permission_denied':
@@ -585,8 +635,6 @@ export function getUserFriendlyMessage(
         }),
         suggestion: w('newDataKeptAt.suggestion', { keptAt: escapeHtml(error.keptAt) }),
       }
-    case 'originals_kept_aside':
-      return originalsKeptAsideMessage(error, operationType)
     case 'files_too_large_for_filesystem':
       return tooLargeForFilesystemMessage(error)
     default:
@@ -684,6 +732,14 @@ function variantDetailLines(error: WriteOperationError): string[] {
   if (error.type === 'originals_kept_aside') {
     return [
       ...error.recovered.map((entry) => `Kept ${entry.path} at: ${entry.keptAt}`),
+      ...getTechnicalDetails(error.cause).split('\n'),
+    ]
+  }
+  // Both ends, since the item is at both, then what refused the delete.
+  if (error.type === 'source_not_removed') {
+    return [
+      `Original kept at: ${error.path}`,
+      `Copy landed at: ${error.landedAt}`,
       ...getTechnicalDetails(error.cause).split('\n'),
     ]
   }

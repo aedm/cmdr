@@ -235,6 +235,7 @@ describe('a completed duplicate the trigger asked to name', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       },
       null,
     )

@@ -635,6 +635,15 @@ export interface RecoveredOriginal {
 export type ReadOnlySide = 'source' | 'destination'
 
 /**
+ * Which half of a transfer refused on permission grounds, for `permission_denied`.
+ *
+ * Copying OUT of a folder that refuses reads and copying INTO one that refuses
+ * writes are different fixes. `null` when the refusing site couldn't tell (a
+ * rename, whose errno names neither parent), and the copy stays per-operation.
+ */
+export type PermissionSide = 'source' | 'destination'
+
+/**
  * Which half of a transfer a volume was, for `device_disconnected`.
  *
  * The backend is handed both volumes when the transfer starts and says which one
@@ -695,6 +704,7 @@ export type WriteOperationError =
       errno: number | null
       refusal: PermissionRefusal
       refusedFolder: string | null
+      side: PermissionSide | null
     }
   // Measured before anything was written, so both sizes are real.
   | { type: 'insufficient_space'; required: number; available: number; volumeName: string | null }
@@ -740,6 +750,11 @@ export type WriteOperationError =
   // the list is never empty. `cause` is what actually stopped the copy, so its
   // own advice survives.
   | { type: 'originals_kept_aside'; cause: WriteOperationError; recovered: RecoveredOriginal[] }
+  // A cross-volume move whose copy LANDED completely and whose original couldn't be
+  // removed, so the item is now in both places and nothing is lost. `path` is the
+  // original that stayed (for a folder, the item inside it that refused), `landedAt`
+  // the complete copy, and `cause` what refused the delete, so its own advice survives.
+  | { type: 'source_not_removed'; path: string; landedAt: string; cause: WriteOperationError }
   // The OS wouldn't take items to the Trash. Separate from `io_error` because the
   // REASON decides what the dialog can offer: as an `io_error` it arrived as one
   // sentence macOS had written, leaving nothing to say but "try again", which a

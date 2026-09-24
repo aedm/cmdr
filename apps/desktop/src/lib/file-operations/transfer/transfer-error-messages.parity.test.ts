@@ -318,6 +318,7 @@ const cases: Case[] = [
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
     expected: {
       title: 'Couldn’t access this location',
@@ -335,6 +336,7 @@ const cases: Case[] = [
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
     op: 'delete',
     mac: true,
@@ -354,6 +356,7 @@ const cases: Case[] = [
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
     op: 'delete',
     mac: false,
@@ -376,6 +379,7 @@ const cases: Case[] = [
       errno: 13,
       refusal: 'folderPermissions',
       refusedFolder: '/Applications/PixInsight/src/scripts/Toolbox',
+      side: null,
     },
     op: 'move',
     mac: true,
@@ -395,6 +399,7 @@ const cases: Case[] = [
       errno: 13,
       refusal: 'folderPermissions',
       refusedFolder: '/srv/locked',
+      side: null,
     },
     op: 'copy',
     mac: false,
@@ -416,6 +421,7 @@ const cases: Case[] = [
       errno: 1,
       refusal: 'systemProtected',
       refusedFolder: null,
+      side: null,
     },
     op: 'delete',
     mac: true,
@@ -435,6 +441,7 @@ const cases: Case[] = [
       errno: 1,
       refusal: 'systemProtected',
       refusedFolder: null,
+      side: null,
     },
     op: 'delete',
     mac: false,
@@ -682,6 +689,7 @@ const cases: Case[] = [
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
     op: 'move',
     expected: {
@@ -700,6 +708,7 @@ const cases: Case[] = [
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     },
     op: 'trash',
     mac: true,
@@ -766,6 +775,74 @@ const cases: Case[] = [
       title: 'File too large for this drive',
       message: `movie.mkv is ${bigFileSize}, but this drive is formatted as FAT32, which can’t store files larger than ${fatMaxSize}.`,
       suggestion: 'To store files this large, use a drive formatted as exFAT, which has no such limit.',
+    },
+  },
+  // The SOURCE refused, so "you don't have permission to copy files here" (which
+  // points at the destination) would send the user to fix the half that was fine.
+  {
+    name: 'permission_denied (the source refused a copy)',
+    error: {
+      type: 'permission_denied',
+      path: '/Volumes/share/private/a.txt',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+      side: 'source',
+    },
+    op: 'copy',
+    expected: {
+      title: "Couldn't access this location",
+      message: "You don't have permission to read this item, so it can't be copied.",
+      suggestion: "Check that you have access to this item and to the folder it's in.",
+    },
+  },
+  {
+    name: 'permission_denied (the source refused a move, macOS)',
+    error: {
+      type: 'permission_denied',
+      path: '/Volumes/share/a.txt',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+      side: 'source',
+    },
+    op: 'move',
+    mac: true,
+    expected: {
+      title: "Couldn't access this location",
+      message: "You don't have permission to move this item out of its folder.",
+      suggestion:
+        'Check that you have write access to the parent folder. The file may be locked. Unlock it in Finder (Get Info > uncheck Locked) and try again.',
+    },
+  },
+  // cmdr-reports#17: the copy landed and a Finder-locked original refused to go.
+  // The headline is that nothing was lost; the cause keeps its own advice.
+  {
+    name: 'source_not_removed (a locked original, macOS)',
+    error: {
+      type: 'source_not_removed',
+      path: '/Users/me/a.jpg',
+      landedAt: '/Volumes/naspi/photos/a.jpg',
+      cause: {
+        type: 'permission_denied',
+        path: '/Users/me/a.jpg',
+        message: 'Operation not permitted (os error 1)',
+        errno: 1,
+        refusal: 'systemProtected',
+        refusedFolder: null,
+        side: 'source',
+      },
+    },
+    op: 'move',
+    mac: true,
+    expected: {
+      title: 'The copy arrived, but the original stayed',
+      message:
+        "Everything arrived at /Volumes/naspi/photos/a.jpg, but Cmdr couldn't remove the original at /Users/me/a.jpg, so it's in both places now. Nothing was lost.",
+      suggestion:
+        "macOS protects this one itself, so administrator rights won't change it. The item may be locked: select it in Finder, choose Get Info, and uncheck Locked. To finish the move, delete the original yourself.",
     },
   },
   {

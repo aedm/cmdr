@@ -552,6 +552,7 @@ describe('TransferErrorDialog a11y', () => {
           errno: null,
           refusal: 'unclassified',
           refusedFolder: null,
+          side: null,
         },
         onClose: () => {},
       },

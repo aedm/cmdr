@@ -798,6 +798,16 @@ The `remove_tree` caller (discarding a cross-type Overwrite's aside in `displace
 log `e.path` alongside the root they asked for, so the log names the leaf too. Rollback and partial cleanup don't reach
 this walker at all — they delete one node each, so their failure already names the only path they asked about.
 
+**A refused source delete is `SourceNotRemoved`, never a plain failure.** By the time `move_cross.rs` deletes the
+source, the copy has LANDED, so the item is in both places and nothing is lost. Reporting the refusal flat (a
+Finder-locked original's `EPERM` read "you don't have permission to move files here", cmdr-reports#17) tells the
+user nothing happened, and their retry then collides with the copy that did. So the refusal becomes
+`WriteOperationError::SourceNotRemoved { path, landed_at, cause }`: `path` is the leaf that refused (the sweep's rule
+above), `landed_at` the destination root, and `cause` the mapped refusal, whose own advice the dialog keeps. No Retry
+(`errorDisplayMetaMap`), for the same collision reason. `transfer_sides.rs::name_the_vanished_drive` names a departed
+source drive INSIDE `cause` and never replaces the outcome. Pinned by
+`move_failure_tests.rs::cross_volume_move_that_cannot_remove_the_original_says_the_copy_landed`.
+
 **That `Ok` rests entirely on `Volume::delete` REFUSING a non-empty directory**, which is the trait's contract but was
 not what SMB did until smb2 0.18.0: `delete_directory` used `FILE_DELETE_ON_CLOSE`, and Samba answers that with
 `STATUS_SUCCESS` on a non-empty directory and then deletes nothing. Under the old behavior this sweep would have

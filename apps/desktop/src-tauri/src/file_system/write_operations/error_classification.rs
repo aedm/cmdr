@@ -57,7 +57,9 @@ pub(super) fn classify_io_error(e: &std::io::Error, path: String) -> WriteOperat
         // said no rather than letting the copy guess from the operation's shape.
         std::io::ErrorKind::PermissionDenied => {
             let refused_folder = super::validation::refusing_folder(Path::new(&path));
-            WriteOperationError::permission_denied(path, e.to_string(), e.raw_os_error(), refused_folder)
+            // No side: a `rename(2)` needs both parents, and its errno can't say which
+            // one refused.
+            WriteOperationError::permission_denied(path, e.to_string(), e.raw_os_error(), refused_folder, None)
         }
         std::io::ErrorKind::AlreadyExists => WriteOperationError::DestinationExists { path },
         _ => WriteOperationError::IoError {
@@ -167,7 +169,7 @@ mod tests {
                 message: "boom".to_string(),
             },
             WriteOperationError::SourceNotFound { path: "/x".to_string() },
-            WriteOperationError::permission_denied("/x".to_string(), "denied".to_string(), None, None),
+            WriteOperationError::permission_denied("/x".to_string(), "denied".to_string(), None, None, None),
         ];
         for err in failures {
             assert!(

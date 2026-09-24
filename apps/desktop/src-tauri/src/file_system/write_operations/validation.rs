@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::types::WriteOperationError;
+use super::types::{PermissionSide, WriteOperationError};
 
 pub(crate) fn validate_sources(sources: &[PathBuf]) -> Result<(), WriteOperationError> {
     for source in sources {
@@ -77,6 +77,7 @@ pub(crate) fn ensure_destination_dir(destination: &Path) -> Result<(), WriteOper
                     "Couldn't create the destination folder. Check folder permissions in Finder.".to_string(),
                     e.raw_os_error(),
                     refusing_folder(destination),
+                    Some(PermissionSide::Destination),
                 ),
                 _ => WriteOperationError::IoError {
                     path: destination.display().to_string(),
@@ -244,6 +245,7 @@ pub(crate) fn validate_destination_writable(destination: &Path) -> Result<(), Wr
         "Destination folder is not writable. Check folder permissions in Finder.".to_string(),
         Some(errno),
         Some(destination.display().to_string()),
+        Some(PermissionSide::Destination),
     ))
 }
 

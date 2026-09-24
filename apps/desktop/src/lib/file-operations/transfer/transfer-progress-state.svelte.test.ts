@@ -245,6 +245,7 @@ describe('createTransferProgressState: birth', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     } satisfies WriteOperationError)
     vi.mocked(copyBetweenVolumes).mockImplementationOnce(() => Promise.reject(structured))
     const config = makeConfig()

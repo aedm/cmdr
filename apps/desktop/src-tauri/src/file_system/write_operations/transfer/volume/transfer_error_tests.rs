@@ -116,7 +116,7 @@ fn test_map_volume_error_permission_denied() {
         },
     );
     assert!(
-        matches!(err, WriteOperationError::PermissionDenied { path, message, errno: None, refusal: PermissionRefusal::Unclassified, refused_folder: None } if message == "Access denied" && path == "/ctx")
+        matches!(err, WriteOperationError::PermissionDenied { path, message, errno: None, refusal: PermissionRefusal::Unclassified, refused_folder: None, side: Some(PermissionSide::Source) } if message == "Access denied" && path == "/ctx")
     );
 }
 

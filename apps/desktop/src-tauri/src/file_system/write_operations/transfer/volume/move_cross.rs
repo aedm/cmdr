@@ -613,7 +613,20 @@ pub(crate) async fn move_volumes_with_progress(
                             source_path.display(),
                             e.error
                         );
-                        return Err(map_volume_error(&e.path.display().to_string(), PathRole::Source, e.error));
+                        // ❗ The copy LANDED, so this is not a failed move: the
+                        // item is now in both places, and "you don't have
+                        // permission to move files here" made a user conclude
+                        // nothing had happened (cmdr-reports#17). The refusal
+                        // rides along as `cause` for its own advice.
+                        return Err(WriteOperationError::SourceNotRemoved {
+                            path: e.path.display().to_string(),
+                            landed_at: landed_dest.display().to_string(),
+                            cause: Box::new(map_volume_error(
+                                &e.path.display().to_string(),
+                                PathRole::Source,
+                                e.error,
+                            )),
+                        });
                     }
                     // Moved in full, so whatever it set aside is replaced.
                     displaced.landed_under(&landed_dest);

@@ -31,6 +31,25 @@ pub enum ReadOnlySide {
     Destination,
 }
 
+/// Which half of a transfer refused on permission grounds, for
+/// [`WriteOperationError::PermissionDenied`].
+///
+/// Copying OUT of a folder that refuses reads and copying INTO one that refuses
+/// writes are different fixes, and without this they read identically. Filled
+/// by the site that knows which volume it asked (`map_volume_error`'s
+/// `PathRole`, the destination probes); `None` where nothing says, such as a
+/// `rename(2)` whose errno can't tell its two parents apart.
+///
+/// ❌ Never decide this by inspecting a path or a message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum PermissionSide {
+    /// The item being read, or the original a move removes.
+    Source,
+    /// Where the item was being written.
+    Destination,
+}
+
 /// Which half of a transfer a volume is, for the copy that names it.
 ///
 /// ❌ Never decided by comparing paths after the fact: the engine is handed both
@@ -163,6 +182,8 @@ pub enum WriteOperationError {
         /// one refused, which is how a refused move came to tell a user to check
         /// the destination when it was the source folder that said no.
         refused_folder: Option<String>,
+        /// Which half of the transfer refused, when the refusing site knows.
+        side: Option<PermissionSide>,
     },
     /// The destination has no room for the transfer, MEASURED before anything was
     /// written, so both numbers are real.
@@ -338,6 +359,26 @@ pub enum WriteOperationError {
         cause: Box<WriteOperationError>,
         recovered: Vec<RecoveredOriginal>,
     },
+    /// A cross-volume move whose copy landed COMPLETELY and whose original could
+    /// not be removed. Nothing is lost and nothing is broken: the item now exists
+    /// at both ends.
+    ///
+    /// ❗ Its own variant, never a flag on the refusal, because the fact the user
+    /// needs is different in kind: "the move failed" makes them conclude nothing
+    /// happened, and the next attempt then walks into a conflict with the copy
+    /// that did land (cmdr-reports#17). The way out is theirs: remove the
+    /// original, or fix what refused and remove it. `cause` is what refused the
+    /// delete (a locked file, a busy one, a read-only source, an SMB
+    /// `DeletePending`), so its own advice survives, the same shape as
+    /// [`OriginalsKeptAside`](Self::OriginalsKeptAside).
+    SourceNotRemoved {
+        /// The original that stayed. For a folder, the item inside it that
+        /// refused to go.
+        path: String,
+        /// Where the complete copy is.
+        landed_at: String,
+        cause: Box<WriteOperationError>,
+    },
     /// The OS refused to move items to the Trash.
     ///
     /// Separate from [`IoError`](Self::IoError) because the REASON decides what the
@@ -382,6 +423,7 @@ impl WriteOperationError {
         message: String,
         errno: Option<i32>,
         refused_folder: Option<String>,
+        side: Option<PermissionSide>,
     ) -> Self {
         Self::PermissionDenied {
             path,
@@ -389,6 +431,7 @@ impl WriteOperationError {
             errno,
             refusal: PermissionRefusal::from_errno(errno),
             refused_folder,
+            side,
         }
     }
 }

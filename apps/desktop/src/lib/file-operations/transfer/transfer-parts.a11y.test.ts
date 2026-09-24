@@ -206,6 +206,7 @@ describe('FallbackErrorContent a11y', () => {
         errno: null,
         refusal: 'unclassified',
         refusedFolder: null,
+        side: null,
       },
       'copy',
     )

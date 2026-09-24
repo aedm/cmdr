@@ -36,6 +36,7 @@ describe('failureReasonFor', () => {
       errno: null,
       refusal: 'unclassified',
       refusedFolder: null,
+      side: null,
     }
 
     const copying = failureReasonFor(snapshot(error))
