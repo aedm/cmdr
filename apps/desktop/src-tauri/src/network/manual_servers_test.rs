@@ -1,0 +1,522 @@
+//! Tests for `manual_servers.rs`: address parsing, ids, the store, and its concurrency.
+
+use super::*;
+
+// -- parse_server_address: all input formats --
+
+#[test]
+fn parse_bare_ip() {
+    let r = parse_server_address("192.168.1.100").unwrap();
+    assert_eq!(r.host, "192.168.1.100");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_ip_with_port() {
+    let r = parse_server_address("192.168.1.100:9445").unwrap();
+    assert_eq!(r.host, "192.168.1.100");
+    assert_eq!(r.port, 9445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_bare_hostname() {
+    let r = parse_server_address("mynas").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_hostname_with_underscore() {
+    let r = parse_server_address("my_nas").unwrap();
+    assert_eq!(r.host, "my_nas");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_hostname_with_domain() {
+    let r = parse_server_address("mynas.local").unwrap();
+    assert_eq!(r.host, "mynas.local");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_smb_url_basic() {
+    let r = parse_server_address("smb://mynas").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_smb_url_with_port() {
+    let r = parse_server_address("smb://mynas:9445").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 9445);
+    assert_eq!(r.share_path, None);
+}
+
+#[test]
+fn parse_smb_url_with_share() {
+    let r = parse_server_address("smb://mynas/docs").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, Some("docs".to_string()));
+}
+
+#[test]
+fn parse_smb_url_with_user() {
+    let r = parse_server_address("smb://user@mynas/docs").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 445);
+    assert_eq!(r.share_path, Some("docs".to_string()));
+}
+
+#[test]
+fn parse_smb_url_with_port_and_share() {
+    let r = parse_server_address("smb://mynas:9445/docs").unwrap();
+    assert_eq!(r.host, "mynas");
+    assert_eq!(r.port, 9445);
+    assert_eq!(r.share_path, Some("docs".to_string()));
+}
+
+#[test]
+fn parse_smb_url_trailing_slash() {
+    let r = parse_server_address("smb://mynas/docs/").unwrap();
+    assert_eq!(r.share_path, Some("docs".to_string()));
+}
+
+#[test]
+fn parse_with_whitespace() {
+    let r = parse_server_address("  192.168.1.100  ").unwrap();
+    assert_eq!(r.host, "192.168.1.100");
+}
+
+#[test]
+fn parse_uppercase_smb() {
+    let r = parse_server_address("SMB://MyNas").unwrap();
+    assert_eq!(r.host, "MyNas");
+    assert_eq!(r.port, 445);
+}
+
+// -- parse_server_address: error cases --
+
+#[test]
+fn parse_empty() {
+    assert_eq!(parse_server_address(""), Err(ParseError::Empty));
+    assert_eq!(parse_server_address("  "), Err(ParseError::Empty));
+}
+
+#[test]
+fn parse_unsupported_protocols() {
+    assert!(matches!(parse_server_address("afp://mynas"), Err(ParseError::UnsupportedProtocol(p)) if p == "afp"));
+    assert!(matches!(parse_server_address("nfs://mynas"), Err(ParseError::UnsupportedProtocol(p)) if p == "nfs"));
+    assert!(matches!(parse_server_address("ftp://mynas"), Err(ParseError::UnsupportedProtocol(p)) if p == "ftp"));
+    assert!(matches!(parse_server_address("vnc://mynas"), Err(ParseError::UnsupportedProtocol(p)) if p == "vnc"));
+}
+
+#[test]
+fn parse_ipv6_rejected() {
+    assert_eq!(parse_server_address("[::1]:9445"), Err(ParseError::Ipv6NotSupported));
+    assert_eq!(parse_server_address("fe80::1"), Err(ParseError::Ipv6NotSupported));
+    assert_eq!(parse_server_address("::1"), Err(ParseError::Ipv6NotSupported));
+}
+
+#[test]
+fn parse_port_out_of_range() {
+    assert!(matches!(
+        parse_server_address("mynas:0"),
+        Err(ParseError::InvalidPort(_))
+    ));
+    assert!(matches!(
+        parse_server_address("mynas:65536"),
+        Err(ParseError::InvalidPort(_))
+    ));
+    assert!(matches!(
+        parse_server_address("mynas:99999"),
+        Err(ParseError::InvalidPort(_))
+    ));
+}
+
+#[test]
+fn parse_port_not_a_number() {
+    assert!(matches!(
+        parse_server_address("mynas:abc"),
+        Err(ParseError::InvalidPort(_))
+    ));
+}
+
+#[test]
+fn parse_malformed_smb_url() {
+    assert!(matches!(parse_server_address("smb://"), Err(ParseError::Malformed(_))));
+}
+
+#[test]
+fn parse_invalid_characters() {
+    assert!(matches!(parse_server_address("my nas"), Err(ParseError::Malformed(_))));
+    assert!(matches!(parse_server_address("my@nas"), Err(ParseError::Malformed(_))));
+}
+
+// -- ID generation --
+
+#[test]
+fn id_deterministic() {
+    let id1 = generate_server_id("192.168.1.100", 9445);
+    let id2 = generate_server_id("192.168.1.100", 9445);
+    assert_eq!(id1, id2);
+    assert_eq!(id1, "manual-192-168-1-100-9445");
+}
+
+#[test]
+fn id_different_ports() {
+    let id1 = generate_server_id("mynas", 445);
+    let id2 = generate_server_id("mynas", 9445);
+    assert_ne!(id1, id2);
+}
+
+#[test]
+fn id_format_ip() {
+    assert_eq!(generate_server_id("192.168.1.100", 445), "manual-192-168-1-100-445");
+}
+
+#[test]
+fn id_format_hostname() {
+    assert_eq!(generate_server_id("mynas", 445), "manual-mynas-445");
+}
+
+#[test]
+fn id_format_hostname_with_local() {
+    assert_eq!(generate_server_id("mynas.local", 445), "manual-mynas-local-445");
+}
+
+// -- Serialization round-trip --
+
+#[test]
+fn server_entry_serialization_round_trip() {
+    let entry = ManualServerEntry {
+        id: "manual-192-168-1-100-9445".to_string(),
+        display_name: "192.168.1.100:9445".to_string(),
+        address: "192.168.1.100".to_string(),
+        port: 9445,
+        added_at: "2026-04-02T10:00:00Z".to_string(),
+    };
+
+    let json = serde_json::to_string_pretty(&entry).unwrap();
+    assert!(json.contains("\"displayName\""));
+    assert!(json.contains("\"addedAt\""));
+
+    let parsed: ManualServerEntry = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.id, entry.id);
+    assert_eq!(parsed.address, entry.address);
+    assert_eq!(parsed.port, entry.port);
+}
+
+#[test]
+fn store_serialization_round_trip() {
+    let store = ManualServersStore {
+        servers: vec![ManualServerEntry {
+            id: "manual-mynas-445".to_string(),
+            display_name: "mynas".to_string(),
+            address: "mynas".to_string(),
+            port: 445,
+            added_at: "2026-04-02T10:00:00Z".to_string(),
+        }],
+    };
+
+    let json = serde_json::to_string_pretty(&store).unwrap();
+    let parsed: ManualServersStore = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.servers.len(), 1);
+    assert_eq!(parsed.servers[0].id, "manual-mynas-445");
+}
+
+#[test]
+fn store_deserialize_empty() {
+    let store: ManualServersStore = serde_json::from_str("{}").unwrap();
+    assert!(store.servers.is_empty());
+}
+
+// -- NetworkHost field mapping --
+
+#[test]
+fn host_mapping_bare_ip() {
+    let host = create_network_host("192.168.1.100", 445);
+    assert_eq!(host.name, "192.168.1.100");
+    assert_eq!(host.hostname, Some("192.168.1.100".to_string()));
+    assert_eq!(host.ip_address, Some("192.168.1.100".to_string()));
+    assert_eq!(host.port, 445);
+    assert_eq!(host.source, HostSource::Manual);
+}
+
+#[test]
+fn host_mapping_ip_with_port() {
+    let host = create_network_host("192.168.1.100", 9445);
+    assert_eq!(host.name, "192.168.1.100:9445");
+    assert_eq!(host.hostname, Some("192.168.1.100".to_string()));
+    assert_eq!(host.ip_address, Some("192.168.1.100".to_string()));
+    assert_eq!(host.port, 9445);
+}
+
+#[test]
+fn host_mapping_hostname() {
+    let host = create_network_host("mynas", 445);
+    assert_eq!(host.name, "mynas");
+    assert_eq!(host.hostname, Some("mynas".to_string()));
+    assert_eq!(host.ip_address, None);
+    assert_eq!(host.port, 445);
+}
+
+#[test]
+fn host_mapping_hostname_with_local() {
+    let host = create_network_host("mynas.local", 445);
+    assert_eq!(host.name, "mynas.local");
+    assert_eq!(host.hostname, Some("mynas.local".to_string()));
+    assert_eq!(host.ip_address, None);
+    assert_eq!(host.port, 445);
+}
+
+// -- Display name --
+
+#[test]
+fn display_name_default_port() {
+    assert_eq!(display_name("192.168.1.100", 445), "192.168.1.100");
+    assert_eq!(display_name("mynas", 445), "mynas");
+}
+
+#[test]
+fn display_name_custom_port() {
+    assert_eq!(display_name("192.168.1.100", 9445), "192.168.1.100:9445");
+    assert_eq!(display_name("mynas", 9445), "mynas:9445");
+}
+
+// -- ManualConnectResult serialization --
+
+#[test]
+fn connect_result_serialization() {
+    let result = ManualConnectResult {
+        host: create_network_host("192.168.1.100", 9445),
+        share_path: Some("docs".to_string()),
+    };
+
+    let json = serde_json::to_string(&result).unwrap();
+    assert!(json.contains("\"sharePath\""));
+    assert!(json.contains("\"docs\""));
+    // ManualConnectResult and NetworkHost are output-only (Rust → frontend), no Deserialize.
+    // Verify the expected shape from the JSON string directly.
+    assert!(json.contains("\"manual-192-168-1-100-9445\""));
+}
+
+// -- Concurrency tests for file-backed persistence --
+
+/// Helper: creates a `ManualServerEntry` with a unique address.
+fn test_entry(index: usize) -> ManualServerEntry {
+    let address = format!("10.0.0.{}", index);
+    ManualServerEntry {
+        id: generate_server_id(&address, 445),
+        display_name: address.clone(),
+        address,
+        port: 445,
+        added_at: "2026-01-01T00:00:00Z".to_string(),
+    }
+}
+
+/// Concurrent `add_server_entry_to_path` calls must not lose any writes.
+/// Before the `STORE_LOCK` fix, this would fail because two threads could
+/// read the same on-disk state and one write would clobber the other.
+#[test]
+fn concurrent_add_server_no_lost_writes() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+
+    let thread_count = 20;
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(thread_count));
+    let mut handles = Vec::new();
+
+    for i in 0..thread_count {
+        let barrier = barrier.clone();
+        let path = path.clone();
+        handles.push(std::thread::spawn(move || {
+            barrier.wait();
+            add_server_entry_to_path(&path, test_entry(i));
+        }));
+    }
+
+    for h in handles {
+        h.join().expect("thread panicked");
+    }
+
+    let store = read_store_from_path(&path);
+    assert_eq!(
+        store.servers.len(),
+        thread_count,
+        "Expected {} servers but got {} (a concurrent write was lost)",
+        thread_count,
+        store.servers.len()
+    );
+}
+
+/// Concurrent adds and removes must not corrupt the store.
+#[test]
+fn concurrent_add_and_remove() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+
+    // Pre-populate with servers 0..10 that will be removed
+    for i in 0..10 {
+        add_server_entry_to_path(&path, test_entry(i));
+    }
+    assert_eq!(read_store_from_path(&path).servers.len(), 10);
+
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(20));
+    let mut handles = Vec::new();
+
+    // 10 threads remove servers 0..10
+    for i in 0..10 {
+        let barrier = barrier.clone();
+        let path = path.clone();
+        let id = test_entry(i).id;
+        handles.push(std::thread::spawn(move || {
+            barrier.wait();
+            remove_server_entry_from_path(&path, &id);
+        }));
+    }
+
+    // 10 threads add servers 100..110
+    for i in 100..110 {
+        let barrier = barrier.clone();
+        let path = path.clone();
+        handles.push(std::thread::spawn(move || {
+            barrier.wait();
+            add_server_entry_to_path(&path, test_entry(i));
+        }));
+    }
+
+    for h in handles {
+        h.join().expect("thread panicked");
+    }
+
+    let store = read_store_from_path(&path);
+    // All old servers removed, all new servers added
+    assert_eq!(
+        store.servers.len(),
+        10,
+        "Expected 10 servers (old removed, new added) but got {}",
+        store.servers.len()
+    );
+    // Verify none of the old servers remain
+    for i in 0..10 {
+        assert!(
+            !store.servers.iter().any(|s| s.id == test_entry(i).id),
+            "Server {} should have been removed",
+            i
+        );
+    }
+    // Verify all new servers are present
+    for i in 100..110 {
+        assert!(
+            store.servers.iter().any(|s| s.id == test_entry(i).id),
+            "Server {} should have been added",
+            i
+        );
+    }
+}
+
+/// Rapid sequential adds of distinct servers should all be persisted.
+#[test]
+fn rapid_sequential_adds() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+
+    let count = 50;
+    for i in 0..count {
+        add_server_entry_to_path(&path, test_entry(i));
+    }
+
+    let store = read_store_from_path(&path);
+    assert_eq!(store.servers.len(), count);
+}
+
+/// Upserts to the same server entry should not create duplicates.
+#[test]
+fn concurrent_upserts_same_server() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+
+    let thread_count = 20;
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(thread_count));
+    let mut handles = Vec::new();
+
+    for _ in 0..thread_count {
+        let barrier = barrier.clone();
+        let path = path.clone();
+        handles.push(std::thread::spawn(move || {
+            barrier.wait();
+            // All threads upsert the same server (same ID)
+            add_server_entry_to_path(&path, test_entry(42));
+        }));
+    }
+
+    for h in handles {
+        h.join().expect("thread panicked");
+    }
+
+    let store = read_store_from_path(&path);
+    assert_eq!(
+        store.servers.len(),
+        1,
+        "Concurrent upserts to the same server created {} duplicates",
+        store.servers.len() - 1
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Integration tests (require Docker SMB containers)
+// ---------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "smb-e2e"))]
+mod integration_tests {
+    use super::*;
+
+    /// Verifies TCP reachability against a Docker SMB container.
+    ///
+    /// Requires: `./test/smb-servers/start.sh minimal`
+    #[tokio::test]
+    async fn reachability_docker_smb_guest() {
+        let port = smb2::testing::guest_port();
+        let result = check_reachability("localhost", port).await;
+        assert!(
+            result.is_ok(),
+            "Docker SMB container should be reachable on port {port}. Start it with: ./test/smb-servers/start.sh minimal"
+        );
+    }
+
+    /// Verifies that an unreachable port returns an error.
+    #[tokio::test]
+    async fn reachability_unreachable_port() {
+        let result = check_reachability("localhost", 19999).await;
+        assert!(result.is_err(), "Nothing should be listening on port 19999");
+    }
+
+    /// Exercises the full manual server pipeline: parse → create host → generate ID.
+    #[test]
+    fn manual_server_pipeline() {
+        let parsed = parse_server_address("localhost:9445").unwrap();
+        assert_eq!(parsed.host, "localhost");
+        assert_eq!(parsed.port, 9445);
+
+        let host = create_network_host(&parsed.host, parsed.port);
+        assert_eq!(host.source, HostSource::Manual);
+        assert_eq!(host.id, "manual-localhost-9445");
+        assert_eq!(host.name, "localhost:9445");
+        assert_eq!(host.hostname, Some("localhost".to_string()));
+        assert_eq!(host.ip_address, None);
+        assert_eq!(host.port, 9445);
+
+        // ID is deterministic: same inputs produce same ID
+        let id = generate_server_id(&parsed.host, parsed.port);
+        assert_eq!(id, host.id);
+    }
+}
