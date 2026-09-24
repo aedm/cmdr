@@ -112,7 +112,7 @@ describe('sectionOf', () => {
 })
 
 describe('menuKeyAction', () => {
-  const plain = { hasSubmenu: false, submenuOpen: false, reorderable: false }
+  const plain = { hasSubmenu: false, submenu: 'closed', reorderable: false } as const
 
   it('maps the bare navigation keys', () => {
     expect(menuKeyAction(key('ArrowDown'), plain)).toEqual({ kind: 'move', delta: 1 })
@@ -136,7 +136,7 @@ describe('menuKeyAction', () => {
   })
 
   it('closes an open submenu with ArrowLeft or Escape, and walks it with the arrows', () => {
-    const open = { hasSubmenu: true, submenuOpen: true, reorderable: false }
+    const open = { hasSubmenu: true, submenu: 'entered', reorderable: false } as const
     expect(menuKeyAction(key('ArrowLeft'), open)).toEqual({ kind: 'closeSubmenu' })
     expect(menuKeyAction(key('Escape'), open)).toEqual({ kind: 'closeSubmenu' })
     expect(menuKeyAction(key('Enter'), open)).toEqual({ kind: 'activate' })
@@ -145,6 +145,17 @@ describe('menuKeyAction', () => {
     expect(menuKeyAction(key('ArrowUp'), open)).toEqual({ kind: 'moveSubmenu', delta: -1 })
     // Nothing further right (one level), so it's swallowed rather than moving the parent's cursor.
     expect(menuKeyAction(key('ArrowRight'), open)).toEqual({ kind: 'absorb' })
+  })
+
+  it('leaves the arrows to the list while a hovered submenu shows no cursor', () => {
+    const shown = { hasSubmenu: true, submenu: 'shown', reorderable: false } as const
+    expect(menuKeyAction(key('ArrowDown'), shown)).toEqual({ kind: 'move', delta: 1 })
+    expect(menuKeyAction(key('ArrowUp'), shown)).toEqual({ kind: 'move', delta: -1 })
+    expect(menuKeyAction(key('Home'), shown)).toEqual({ kind: 'edge', edge: 'first' })
+    expect(menuKeyAction(key('ArrowRight'), shown)).toEqual({ kind: 'openSubmenu' })
+    expect(menuKeyAction(key('ArrowLeft'), shown)).toEqual({ kind: 'closeSubmenu' })
+    expect(menuKeyAction(key('Escape'), shown)).toEqual({ kind: 'closeSubmenu' })
+    expect(menuKeyAction(key('Enter'), shown)).toEqual({ kind: 'activate' })
   })
 
   it('reorders on exactly ⌥↑ / ⌥↓ inside a reorderable section', () => {
@@ -188,7 +199,7 @@ describe('menuKeyAction', () => {
   })
 
   it('reads a digit as an accelerator even with a submenu open', () => {
-    const open = { hasSubmenu: true, submenuOpen: true, reorderable: false }
+    const open = { hasSubmenu: true, submenu: 'entered', reorderable: false } as const
     expect(menuKeyAction(physical('Digit1', '1'), open)).toEqual({ kind: 'accelerator', char: '1' })
   })
 })

@@ -564,6 +564,39 @@ describe('submenus', () => {
     expect(menu.highlightedValue).toBe('fav-a')
   })
 
+  // Pre-fix a hover-opened submenu took the arrows the moment it appeared, so ↓ after a hover
+  // jumped the cursor into the submenu instead of moving down the list.
+  it('moves the parent cursor with the arrows while a hovered submenu shows no cursor', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.hover('vol-3')
+    menu.handleKey(keydown('ArrowUp'))
+    expect(menu.highlightedValue).toBe('vol-1')
+    expect(menu.openSubmenuValue).toBeNull()
+    expect(menu.submenuHighlightedValue).toBeNull()
+  })
+
+  it('enters a hovered submenu on ArrowRight, onto its first row', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.hover('vol-3')
+    menu.handleKey(keydown('ArrowRight'))
+    expect(menu.submenuHighlightedValue).toBe('connect')
+    menu.handleKey(keydown('ArrowDown'))
+    expect(menu.submenuHighlightedValue).toBe('forget')
+    expect(menu.highlightedValue).toBe('vol-3')
+  })
+
+  it('hands the arrows to a hovered submenu once the pointer reaches in', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.hover('vol-3')
+    menu.surface.hoverSubmenu('connect')
+    menu.handleKey(keydown('ArrowDown'))
+    expect(menu.submenuHighlightedValue).toBe('forget')
+    expect(menu.highlightedValue).toBe('vol-3')
+  })
+
   it('still activates the first row when Enter lands on a hover-opened submenu', () => {
     const onSelect = vi.fn()
     const menu = build({ onSelect })

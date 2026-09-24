@@ -31,7 +31,12 @@ export type MenuAction =
 export interface MenuKeyContext {
   /** The highlighted row has a submenu, so ArrowRight opens it. */
   hasSubmenu: boolean
-  submenuOpen: boolean
+  /**
+   * Where the submenu stands. `shown` is open with no cursor of its own (a hover opened it), so
+   * the parent list still owns the arrows; `entered` has its own cursor (`→`, or the pointer
+   * reached in), so the arrows walk its rows.
+   */
+  submenu: 'closed' | 'shown' | 'entered'
   /** The highlighted row sits in a `reorderable` section, so ⌥↑/⌥↓ move it. */
   reorderable: boolean
 }
@@ -129,7 +134,7 @@ function isReorderCombo(event: KeyboardEvent): boolean {
   return event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey
 }
 
-/** An open submenu owns the cursor keys: it has its own cursor, and its own rows to walk. */
+/** An entered submenu owns the cursor keys: it has its own cursor, and its own rows to walk. */
 function submenuKeyAction(key: string): MenuAction {
   switch (key) {
     case 'ArrowLeft':
@@ -174,6 +179,20 @@ function rowKeyAction(key: string, hasSubmenu: boolean): MenuAction {
   }
 }
 
+/**
+ * A submenu a hover opened, still cursorless: the parent list keeps the arrows, `→` enters the
+ * submenu, and `←` / Escape close it.
+ */
+function shownSubmenuKeyAction(key: string): MenuAction {
+  switch (key) {
+    case 'ArrowLeft':
+    case 'Escape':
+      return { kind: 'closeSubmenu' }
+    default:
+      return rowKeyAction(key, true)
+  }
+}
+
 /** What one keystroke means to an open menu, given what the cursor is sitting on. */
 export function menuKeyAction(event: KeyboardEvent, context: MenuKeyContext): MenuAction {
   if (context.reorderable && isReorderCombo(event)) {
@@ -185,5 +204,12 @@ export function menuKeyAction(event: KeyboardEvent, context: MenuKeyContext): Me
   // is a digit, so nothing competes, and an accelerator works with a submenu open too.
   const char = acceleratorChar(event)
   if (char !== null) return { kind: 'accelerator', char }
-  return context.submenuOpen ? submenuKeyAction(event.key) : rowKeyAction(event.key, context.hasSubmenu)
+  switch (context.submenu) {
+    case 'entered':
+      return submenuKeyAction(event.key)
+    case 'shown':
+      return shownSubmenuKeyAction(event.key)
+    case 'closed':
+      return rowKeyAction(event.key, context.hasSubmenu)
+  }
 }

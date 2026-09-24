@@ -385,13 +385,17 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     const found = value === null ? null : sectionOf(sections(), value)
     return {
       hasSubmenu: (item?.submenu?.length ?? 0) > 0,
-      submenuOpen: openSubmenuValue !== null,
+      submenu: openSubmenuValue === null ? 'closed' : submenuHighlightedValue === null ? 'shown' : 'entered',
       reorderable: found?.section.reorderable ?? false,
     }
   }
 
-  /** Move the parent list's cursor: one step from where it is, or to an end. */
+  /**
+   * Move the parent list's cursor: one step from where it is, or to an end. A hover-opened
+   * submenu belongs to the row the cursor leaves, so it closes.
+   */
   function applyCursorMove(action: Extract<MenuAction, { kind: 'move' } | { kind: 'edge' }>): void {
+    closeSubmenu()
     const values = navigableValues(sections())
     if (action.kind === 'move') {
       setHighlight(nextValue(values, highlightedValue, action.delta))
