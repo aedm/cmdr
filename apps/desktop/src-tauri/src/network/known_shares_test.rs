@@ -148,6 +148,11 @@ fn test_known_share_serialization() {
         last_connection_mode: ConnectionMode::Credentials,
         last_known_auth_options: AuthOptions::GuestOrCredentials,
         username: Some("david".to_string()),
+        address: None,
+        port: None,
+        volume_id: None,
+        mount_path: None,
+        pinned: false,
     };
 
     let json = serde_json::to_string_pretty(&share).unwrap();
@@ -176,6 +181,11 @@ fn test_store_serialization() {
                 last_connection_mode: ConnectionMode::Credentials,
                 last_known_auth_options: AuthOptions::GuestOrCredentials,
                 username: Some("david".to_string()),
+                address: None,
+                port: None,
+                volume_id: None,
+                mount_path: None,
+                pinned: false,
             },
             KnownNetworkShare {
                 server_name: "Bravo".to_string(),
@@ -185,6 +195,11 @@ fn test_store_serialization() {
                 last_connection_mode: ConnectionMode::Guest,
                 last_known_auth_options: AuthOptions::GuestOnly,
                 username: None,
+                address: None,
+                port: None,
+                volume_id: None,
+                mount_path: None,
+                pinned: false,
             },
         ],
         direct_connection_opt_outs: Vec::new(),
@@ -223,6 +238,11 @@ fn test_in_memory_operations() {
             last_connection_mode: ConnectionMode::Guest,
             last_known_auth_options: AuthOptions::GuestOnly,
             username: None,
+            address: None,
+            port: None,
+            volume_id: None,
+            mount_path: None,
+            pinned: false,
         });
     }
 
@@ -257,6 +277,11 @@ fn test_username_hints() {
             last_connection_mode: ConnectionMode::Credentials,
             last_known_auth_options: AuthOptions::CredentialsOnly,
             username: Some("alice".to_string()),
+            address: None,
+            port: None,
+            volume_id: None,
+            mount_path: None,
+            pinned: false,
         });
         c.known_network_shares.push(KnownNetworkShare {
             server_name: "Server2".to_string(),
@@ -266,6 +291,11 @@ fn test_username_hints() {
             last_connection_mode: ConnectionMode::Guest,
             last_known_auth_options: AuthOptions::GuestOnly,
             username: None,
+            address: None,
+            port: None,
+            volume_id: None,
+            mount_path: None,
+            pinned: false,
         });
     }
 
@@ -298,6 +328,11 @@ fn a_username_hint_is_found_under_every_name_form_of_its_server() {
             last_connection_mode: ConnectionMode::Credentials,
             last_known_auth_options: AuthOptions::CredentialsOnly,
             username: Some("david".to_string()),
+            address: None,
+            port: None,
+            volume_id: None,
+            mount_path: None,
+            pinned: false,
         });
     }
 
@@ -340,6 +375,11 @@ fn the_newest_username_on_a_server_wins() {
                 last_connection_mode: ConnectionMode::Credentials,
                 last_known_auth_options: AuthOptions::CredentialsOnly,
                 username: user.map(str::to_string),
+                address: None,
+                port: None,
+                volume_id: None,
+                mount_path: None,
+                pinned: false,
             });
         }
     }
@@ -380,6 +420,11 @@ fn concurrent_in_memory_updates_no_lost_writes() {
                     last_connection_mode: ConnectionMode::Guest,
                     last_known_auth_options: AuthOptions::GuestOnly,
                     username: None,
+                    address: None,
+                    port: None,
+                    volume_id: None,
+                    mount_path: None,
+                    pinned: false,
                 });
             }
         }));
@@ -421,6 +466,11 @@ fn concurrent_read_during_write() {
             last_connection_mode: ConnectionMode::Guest,
             last_known_auth_options: AuthOptions::GuestOnly,
             username: None,
+            address: None,
+            port: None,
+            volume_id: None,
+            mount_path: None,
+            pinned: false,
         });
     }
 
@@ -441,6 +491,11 @@ fn concurrent_read_during_write() {
                     last_connection_mode: ConnectionMode::Guest,
                     last_known_auth_options: AuthOptions::GuestOnly,
                     username: None,
+                    address: None,
+                    port: None,
+                    volume_id: None,
+                    mount_path: None,
+                    pinned: false,
                 });
             }
         }
@@ -500,6 +555,11 @@ fn rapid_sequential_updates_same_share() {
                     last_connection_mode: ConnectionMode::Credentials,
                     last_known_auth_options: AuthOptions::GuestOrCredentials,
                     username: Some(format!("user-{}", i)),
+                    address: None,
+                    port: None,
+                    volume_id: None,
+                    mount_path: None,
+                    pinned: false,
                 });
             }
         }
@@ -517,4 +577,155 @@ fn rapid_sequential_updates_same_share() {
     if let Ok(mut c) = cache.lock() {
         c.known_network_shares.clear();
     }
+}
+
+// -- Saved share rows --
+
+/// A share row as a mount through Cmdr files it.
+fn mounted(
+    server_name: &str,
+    address: &str,
+    share: &str,
+    username: Option<&str>,
+    volume_id: &str,
+) -> KnownNetworkShare {
+    KnownNetworkShare {
+        server_name: server_name.to_string(),
+        share_name: share.to_string(),
+        protocol: "smb".to_string(),
+        last_connected_at: "2026-09-24T10:00:00Z".to_string(),
+        last_connection_mode: if username.is_some() {
+            ConnectionMode::Credentials
+        } else {
+            ConnectionMode::Guest
+        },
+        last_known_auth_options: AuthOptions::GuestOrCredentials,
+        username: username.map(str::to_string),
+        address: Some(address.to_string()),
+        port: None,
+        volume_id: Some(volume_id.to_string()),
+        mount_path: Some(format!("/Volumes/{share}")),
+        pinned: false,
+    }
+}
+
+/// A share row as Add files it: named in `smb://user@host/share`, never mounted.
+fn added(server_name: &str, share: &str, username: Option<&str>) -> KnownNetworkShare {
+    KnownNetworkShare {
+        address: None,
+        volume_id: None,
+        mount_path: None,
+        ..mounted(server_name, server_name, share, username, "unused")
+    }
+}
+
+/// ❗ **One row per share, whatever account opened it and whichever name the
+/// server went by.** An SMB volume id carries no username, so two rows for one
+/// share would be two saved places over one volume id.
+#[test]
+fn a_share_is_one_row_under_every_account_and_every_name_of_its_server() {
+    let hosts = [naspolya()];
+    let mut rows = Vec::new();
+
+    upsert_share_row(
+        &mut rows,
+        mounted("Naspolya", "192.168.1.111", "naspi", Some("david"), "smb-a"),
+        &hosts,
+    );
+    upsert_share_row(
+        &mut rows,
+        mounted("192.168.1.111", "192.168.1.111", "NASPI", None, "smb-a"),
+        &hosts,
+    );
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].username, None, "the row remembers who opened it LAST");
+}
+
+/// ❗ **A share's first mount pins it** (rule 1 of the servers model); later
+/// mounts leave the pin where the person put it.
+#[test]
+fn the_first_mount_pins_a_share_and_later_ones_keep_the_persons_pin() {
+    let mut rows = Vec::new();
+
+    upsert_share_row(&mut rows, added("192.168.0.153", "Container", Some("sven")), &[]);
+    assert!(!rows[0].pinned, "an add alone mounted nothing");
+
+    upsert_share_row(
+        &mut rows,
+        mounted("192.168.0.153", "192.168.0.153", "Container", Some("sven"), "smb-c"),
+        &[],
+    );
+    assert!(rows[0].pinned, "the first mount pins it");
+
+    rows[0].pinned = false; // the person unpinned it
+    upsert_share_row(
+        &mut rows,
+        mounted("192.168.0.153", "192.168.0.153", "Container", Some("sven"), "smb-c"),
+        &[],
+    );
+    assert!(!rows[0].pinned, "an unpin survives the next mount");
+}
+
+/// An add of a share that was mounted before keeps what the mount learned: the
+/// add names no volume id, mount path, or address.
+#[test]
+fn re_adding_a_mounted_share_keeps_its_place() {
+    let mut rows = Vec::new();
+    upsert_share_row(&mut rows, mounted("nas", "10.0.0.2", "photos", None, "smb-p"), &[]);
+
+    upsert_share_row(&mut rows, added("nas", "photos", Some("ada")), &[]);
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].volume_id.as_deref(), Some("smb-p"));
+    assert_eq!(rows[0].mount_path.as_deref(), Some("/Volumes/photos"));
+    assert_eq!(rows[0].address.as_deref(), Some("10.0.0.2"));
+    assert_eq!(rows[0].username.as_deref(), Some("ada"));
+}
+
+/// A share row never replaces the host's sign-in history, and the history never
+/// replaces a share.
+#[test]
+fn a_share_row_and_the_hosts_history_are_separate_rows() {
+    let mut rows = vec![KnownNetworkShare {
+        share_name: String::new(),
+        address: None,
+        volume_id: None,
+        mount_path: None,
+        ..mounted("nas", "nas", "x", Some("ada"), "unused")
+    }];
+
+    upsert_share_row(&mut rows, mounted("nas", "10.0.0.2", "photos", None, "smb-p"), &[]);
+
+    assert_eq!(rows.len(), 2);
+    assert!(!rows[0].is_share());
+    assert!(rows[1].is_share());
+}
+
+/// ❗ **Forgetting a host takes its history and every share under it**, found
+/// under any name the server goes by, and nothing of another host.
+#[test]
+fn forgetting_a_host_takes_its_history_and_its_shares_and_nothing_else() {
+    let hosts = [naspolya()];
+    let mut rows = vec![
+        mounted("Naspolya", "192.168.1.111", "naspi", None, "smb-a"),
+        mounted("192.168.1.111", "192.168.1.111", "photos", None, "smb-b"),
+        mounted("other-nas", "10.9.9.9", "naspi", None, "smb-c"),
+    ];
+
+    let removed = forget_host_rows(&mut rows, &["Naspolya._smb._tcp.local"], &hosts);
+
+    assert_eq!(removed, 2);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].server_name, "other-nas");
+}
+
+/// An old store row reads with no place fields and unpinned.
+#[test]
+fn a_row_saved_before_share_places_reads_as_the_hosts_history() {
+    let old = r#"{"serverName":"Naspolya","shareName":"","protocol":"smb","lastConnectedAt":"2026-01-06T12:00:00Z","lastConnectionMode":"guest","lastKnownAuthOptions":"guest_only","username":null}"#;
+    let row: KnownNetworkShare = serde_json::from_str(old).unwrap();
+    assert!(!row.is_share());
+    assert_eq!(row.volume_id, None);
+    assert!(!row.pinned);
 }

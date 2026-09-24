@@ -76,19 +76,22 @@ pub struct SavedPlace {
     /// ❗ Read from `server_volumes::server_places()`, the one place that mints
     /// the spelling, ❌ never re-derived here: a second spelling of the prefix
     /// misses the volume its own id names.
+    ///
+    /// An SMB share's is where its last mount sat (`/Volumes/Container`), or
+    /// `smb://<host>/<share>` for one no mount went through yet, which has no
+    /// place in the volume list to land on.
     pub app_root: String,
+    /// The account this place is opened as: the SFTP or WebDAV account, or the one
+    /// an SMB share was last mounted with (`None` for guest).
+    pub username: Option<String>,
 }
 
 /// An endpoint plus an identity, as the hub lists it.
 ///
-/// ❗ **An SMB host lists NO places and cannot be pinned here.**
-/// `known_shares.rs` stores no share rows (its only writer leaves `share_name`
-/// empty), carries no port, and a mounted share's id comes from `statfs`, which
-/// normalizes an mDNS name to an IP — so no id derivable from the store would
-/// match the mounted volume, and a pin would point at nothing. SMB places keep
-/// reaching the switcher as mounted volumes, and the hub opens an SMB host into
-/// its live places list. A share-level writer at mount time is what pinnable SMB
-/// shares need, and that is recorded as later work rather than half-built here.
+/// ❗ **An SMB host's places are its SAVED shares** (`known_shares.rs` share rows,
+/// `docs/specs/saved-smb-shares.md`): each carries the volume id its last mount
+/// had, read off `statfs`, so a pin points at the id the mounted volume really
+/// has. The host row itself is never pinned; its shares are.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedServer {
@@ -111,8 +114,8 @@ pub struct SavedServer {
     /// The account, where the protocol has one. For an SMB host, the account the
     /// person typed for it (a preference, not its identity), or `None`.
     pub username: Option<String>,
-    /// Whether this account's place belongs in the switcher. Always `false` for
-    /// SMB, per the type's own note.
+    /// Whether this account's place belongs in the switcher. Always `false` for an
+    /// SMB host: its SHARES carry their own pins.
     pub pinned: bool,
     /// ISO 8601, so a hub can sort by recency. `None` when nothing recorded one.
     pub last_connected_at: Option<String>,
@@ -123,7 +126,8 @@ pub struct SavedServer {
     ///
     /// [`set_place_auto_reconnect`]: crate::commands::servers::set_place_auto_reconnect
     pub auto_reconnect: Option<bool>,
-    /// The mountable things under it. One for SFTP and WebDAV, none for SMB.
+    /// The mountable things under it. One for SFTP and WebDAV; for SMB, the
+    /// host's saved shares, possibly none.
     pub places: Vec<SavedPlace>,
 }
 

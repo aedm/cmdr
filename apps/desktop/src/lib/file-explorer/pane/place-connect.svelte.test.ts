@@ -78,7 +78,8 @@ describe('createPlaceConnect', () => {
   it('reloads the pane once the place is live, and drops the view', async () => {
     const { sub, onConnected } = create()
     await vi.waitFor(() => {
-      expect(onConnected).toHaveBeenCalledWith(savedPlace.id)
+      // No landing of its own: a server place's root never moves on a connect.
+      expect(onConnected).toHaveBeenCalledWith({ volumeId: savedPlace.id, landing: undefined })
     })
     expect(sub.state).toBeNull()
   })
@@ -178,5 +179,47 @@ describe('createPlaceConnect', () => {
       expect(connectPlace).toHaveBeenCalled()
     })
     expect(sub.state?.kind).toBe('connecting')
+  })
+})
+
+/**
+ * ❗ A saved SMB share comes back wherever its NEXT mount sat (`/Volumes/naspi-1`
+ * when another server's `naspi` took the plain name), so the pane reloads there
+ * rather than at the path the saved row remembered.
+ */
+describe('createPlaceConnect: a saved SMB share', () => {
+  const savedShare: VolumeInfo = {
+    id: 'smb-naspolya-445-naspi',
+    name: 'naspi on Naspolya',
+    path: '/Volumes/naspi',
+    category: 'network',
+    fsType: 'smbfs',
+    isEjectable: false,
+    connectionState: 'saved',
+  }
+  let dispose: (() => void) | undefined
+
+  afterEach(() => {
+    dispose?.()
+  })
+
+  it('reloads the pane where the mount landed when that moved', async () => {
+    vi.clearAllMocks()
+    connectPlace.mockResolvedValue({ kind: 'connected', volumeId: savedShare.id })
+    const onConnected = vi.fn()
+    const landingOf = vi.fn(() => Promise.resolve('/Volumes/naspi-1'))
+    dispose = $effect.root(() => {
+      createPlaceConnect({
+        getVolumeId: () => savedShare.id,
+        getCurrentVolumeInfo: () => savedShare,
+        onConnected,
+        landingOf,
+      })
+    })
+    flushSync()
+
+    await vi.waitFor(() => {
+      expect(onConnected).toHaveBeenCalledWith({ volumeId: savedShare.id, landing: '/Volumes/naspi-1' })
+    })
   })
 })

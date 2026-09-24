@@ -235,6 +235,26 @@ describe('volumeRowMenu: an SMB share’s direct connection', () => {
   })
 })
 
+/**
+ * A SAVED share (`docs/specs/saved-smb-shares.md`) is pinnable like an SFTP
+ * place: Unpin sits in its switcher row's menu, and a share nobody saved (a
+ * Finder mount) offers no pin at all.
+ */
+describe('volumeRowMenu: a saved SMB share’s pin', () => {
+  it('offers Pin after Eject on a mounted saved share', () => {
+    expect(shape(volumeRowMenu(share, { ...idle, isSaved: true }))).toEqual({ actions: ['eject', 'pin'] })
+  })
+
+  it('offers Unpin on a pinned one, greyed out of the switcher or not', () => {
+    const saved: VolumeInfo = { ...share, connectionState: 'saved', isEjectable: false, pinned: true }
+    expect(shape(volumeRowMenu(saved, { ...idle, isSaved: true }))).toEqual({ actions: ['unpin'] })
+  })
+
+  it('offers no pin on a share nothing saved', () => {
+    expect(shape(volumeRowMenu(share, idle))).toEqual({ actions: ['eject'] })
+  })
+})
+
 describe('favoriteRowMenu', () => {
   it('offers Rename, Set shortcut, and Remove, all keeping the menu up', () => {
     const menu = favoriteRowMenu()

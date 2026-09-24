@@ -41,7 +41,7 @@ of the app build.
 - **Auth** (platform-agnostic):
   - `keychain.rs`: SMB credential management. Delegates storage to `crate::secrets::store()` (see `secrets/CLAUDE.md` for backend details)
 - **Events**: `events.rs`: every `tauri_specta::Event` payload the module emits (discovery, the host context menu, `volume-connection-changed`, the OS-mount fallback notice) plus the wire enums only they carry, re-exported from `mod.rs`. Always compiled, because `ipc.rs`'s `collect_events!` can't cfg-gate inline and names each one on every platform.
-- **State**: `known_shares.rs`: Connection history in `known-shares.json` (usernames, last auth mode, timestamps), plus the shares switched off Cmdr's direct connection (`direct_connection_opt_outs`).
+- **State**: `known_shares.rs`: Connection history in `known-shares.json` (usernames, last auth mode, timestamps), the saved SMB share places (rows with a share name, § "Saved SMB shares"), plus the shares switched off Cmdr's direct connection (`direct_connection_opt_outs`). `smb_saved_shares.rs` is the wiring around the share rows.
 
 ## Platform strategy
 
@@ -537,6 +537,29 @@ Level follows what happens to the user, since that decides whether anything else
 silently stays on the kernel mount is a WARN even for a refusal (nobody will be asked anything), while the manual
 "Connect directly" path's refusal is an INFO (the sign-in sheet follows immediately).
 
+## Saved SMB shares
+
+`known-shares.json` rows with a share name are saved share PLACES (`docs/specs/saved-smb-shares.md` holds the model,
+the migration, and what Forget does). What the code has to defend:
+
+- **❗ Only Cmdr's own mounts write one**: `mount_network_share` and `connect_saved_place`'s SMB arm, both through
+  `smb_saved_shares::remember_mount`, plus Add naming a share (`remember_named_share`, no place yet). ❌ Never the
+  mount watcher, the adopter pass, the pane-open upgrade, or "Connect directly": they see mounts nobody asked Cmdr to
+  save, and a row for one would invent history. That split is also why nothing dedupes by hand: every path keys the
+  volume by the same `statfs` id (`smb_upgrade::mounted_volume_id`), so a saved row and a live mount meet on the id.
+- **One row per share, keyed by server identity + folded share name, ❌ never by account**: an SMB volume id carries no
+  username (`known_shares::upsert_share_row`). A replace keeps the pin, except that the FIRST mount pins it (rule 1 of
+  the servers model).
+- **The volume id is stored as the mount reported it, ❌ never re-derived** from `server_name`: only the mount knows
+  which spelling of the server it got. `commands/servers.rs::saved_by_id` looks SMB ids up in the store for that reason.
+- **The volume list** (`server_volumes::fold_saved_smb_shares`) gives an unmounted share a `saved` row at its last
+  mount path and annotates a mounted, PINNED one with `pinned: Some(true)`. ❌ Never `Some(false)` on a mount row: a
+  Linux mount row has no connection state, and the switcher's "live or pinned" rule would drop it.
+- **Opening a saved share** (`smb_saved_shares::connect_saved_share`) mounts as the row's account with the Keychain's
+  password for the host, and answers `NeedsCredentials` rather than trying guest when there is none. Cancel stops the
+  wait; a kernel mount under way may still finish. A password the sheet offered is stored only after the mount went
+  through.
+
 ## Telling the user about a kernel-mount fallback
 
 The log above answers "why is this share slow" for whoever reads logs. `os_mount_notice.rs` answers it for the person
@@ -636,8 +659,9 @@ fallback-notice ledger is per SERVER instead, because a stale password or a slee
 different question, different grain.)
 
 **Stored as an opt-out list, `KnownSharesStore::direct_connection_opt_outs`**, ❌ not a flag on `KnownNetworkShare`. That
-type records Cmdr's own connects, and its one writer files server-level rows only, so a share macOS mounted has no row;
-minting one would invent a connection history that then shows up in the servers hub. Absence means on, so a
+type records Cmdr's own connects (server-level sign-in history, and the shares Cmdr itself mounted, § "Saved SMB
+shares"), so a share macOS mounted has no row; minting one would invent a connection history that then shows up in the
+servers hub. Absence means on, so a
 `known-shares.json` written before the setting existed keeps every share on the fast connection. The store writes
 without an `AppHandle` (the path is stashed at load), because "Connect directly" records consent from code the MCP
 executor calls too.

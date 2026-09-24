@@ -14,6 +14,10 @@
  * `known_shares` files a host under the server name statfs reported while mDNS
  * files the same machine under its Bonjour name. It claims EVERY host that
  * matches, since one machine can be in the discovery list under both spellings.
+ *
+ * An SMB server's saved SHARES (`SavedServer.places`, `docs/specs/saved-smb-shares.md`)
+ * are rows of their own, right under their server: the list says "user + server +
+ * share", which is what a person means to save (cmdr-reports#7).
  */
 
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
@@ -34,8 +38,19 @@ export type HubRowStatus =
 
 /** One line in the hub's table. */
 export interface HubRow {
-  /** Stable across rebuilds: the saved server's id, else the host's. */
+  /** Stable across rebuilds: the saved server's id, else the host's; `share:<volume id>` for a share. */
   id: string
+  /**
+   * A SERVER (an account, or a host mDNS sees) or one of an SMB server's saved
+   * SHARES, which sits right under it.
+   */
+  kind: 'server' | 'share'
+  /** A share's server row, `null` for a server. */
+  parentId: string | null
+  /** The account a share opens as, `null` for a guest share and for every server row. */
+  account: string | null
+  /** A share's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
+  place: SavedPlace | null
   /** What the Name column shows. */
   name: string
   /** Which protocol the row speaks, for the Type column. */
@@ -46,14 +61,13 @@ export interface HubRow {
   /** ISO 8601, or `null` when nothing ever recorded one. */
   lastConnectedAt: string | null
   /**
-   * The place's volume id, for the protocols that have exactly one place.
+   * The place's volume id: a one-place server's, or a saved share's.
    *
-   * ❗ `null` for an SMB host: its places are mounted shares with ids `statfs`
-   * mints, so a host row has nothing a place command could act on. Enter on one
-   * opens its places list instead.
+   * ❗ `null` for an SMB HOST row: its places are its shares, each a row of its
+   * own. Enter on a host opens its places list instead.
    */
   volumeId: string | null
-  /** Whether the place is pinned to the switcher. Always `false` for SMB. */
+  /** Whether the place is pinned to the switcher. Always `false` for an SMB host. */
   pinned: boolean
   /** The saved entry behind the row, when the user saved one. */
   saved: SavedServer | null
@@ -117,7 +131,50 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
     add(nearbyRow(host))
   }
 
-  return rows.sort(compareRows)
+  // Servers in rank order, each followed by its shares in name order. ❗ Shares
+  // are placed AFTER the sort, so a share never drifts away from its server.
+  const ordered: HubRow[] = []
+  for (const row of rows.sort(compareRows)) {
+    ordered.push(row)
+    if (!row.saved || row.protocol !== 'smb') continue
+    const shares = [...row.saved.places].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+    )
+    for (const place of shares) {
+      const share = shareRow(row, place, states)
+      if (taken.has(share.id)) continue
+      taken.add(share.id)
+      ordered.push(share)
+    }
+  }
+  return ordered
+}
+
+/**
+ * A saved SMB share, as the row under its server.
+ *
+ * Its status is off the VOLUME LIST like every other place's: connected while
+ * its volume is mounted (through the kernel or directly), saved otherwise.
+ */
+function shareRow(server: HubRow, place: SavedPlace, states: Map<string, ConnectionState | null>): HubRow {
+  const state = states.get(place.volumeId) ?? null
+  const live = state === 'direct' || state === 'os_mount'
+  return {
+    id: `share:${place.volumeId}`,
+    kind: 'share',
+    parentId: server.id,
+    account: place.username,
+    place,
+    name: place.name,
+    protocol: 'smb',
+    address: server.address,
+    status: live ? 'connected' : 'saved',
+    lastConnectedAt: null,
+    volumeId: place.volumeId,
+    pinned: place.pinned,
+    saved: server.saved,
+    host: server.host,
+  }
 }
 
 /**
@@ -155,18 +212,23 @@ function primaryHost(hosts: NetworkHost[]): NetworkHost | null {
 }
 
 function savedRow(server: SavedServer, host: NetworkHost | null, states: Map<string, ConnectionState | null>): HubRow {
-  // ❗ Length-checked, not `[0] ?? null`: an SMB server carries no places at
-  // all, and the index signature would otherwise type the gap away.
+  // ❗ Length-checked, not `[0] ?? null`: an SMB server may carry no places,
+  // and the index signature would otherwise type the gap away.
   const place: SavedPlace | null = server.places.length > 0 ? server.places[0] : null
   return {
     id: server.id,
+    kind: 'server',
+    parentId: null,
+    account: null,
+    place: null,
     name: displayName(server, host),
     protocol: server.protocol,
     address: hostAddress(host) ?? server.address,
     status: savedStatus(server, host, place ? (states.get(place.volumeId) ?? null) : null),
     lastConnectedAt: server.lastConnectedAt,
-    volumeId: place?.volumeId ?? null,
-    pinned: place?.pinned ?? false,
+    // An SMB host's places are its shares, each a row of its own.
+    volumeId: server.protocol === 'smb' ? null : (place?.volumeId ?? null),
+    pinned: server.protocol === 'smb' ? false : (place?.pinned ?? false),
     saved: server,
     host,
   }
@@ -192,6 +254,10 @@ function displayName(server: SavedServer, host: NetworkHost | null): string {
 function nearbyRow(host: NetworkHost): HubRow {
   return {
     id: host.id,
+    kind: 'server',
+    parentId: null,
+    account: null,
+    place: null,
     name: host.name,
     protocol: 'smb',
     address: hostAddress(host) ?? host.name,
@@ -233,6 +299,45 @@ function savedStatus(server: SavedServer, host: NetworkHost | null, state: Conne
     case null:
       return 'saved'
   }
+}
+
+/** Where Enter on a row leads. */
+export type HubOpenMove =
+  /** A host's share list. */
+  | { kind: 'host'; host: NetworkHost }
+  /** The pane lands on the row's place: a one-place server's, or a saved share's. */
+  | { kind: 'place'; row: HubRow }
+  /** A saved share no mount went through yet: its host's share list, mounting that share. */
+  | { kind: 'share_via_host'; host: NetworkHost; share: string }
+
+/**
+ * What Enter does to `row`: the hub's ONE decision about where a row leads.
+ *
+ * ❗ A host opens its share list and ❌ never mounts a share on its own (the
+ * person picked a HOST, cmdr-reports#7). A saved share with a place in the volume
+ * list lands the pane on it the way an SFTP place does, and a place that isn't
+ * mounted is mounted right there, in the pane. One nothing mounted yet (a share
+ * Add named) goes through its host's share list: its first mount is what gives
+ * it a place. `null` when a share has no host to go through, which shouldn't
+ * happen and is logged by the caller.
+ */
+export function openMoveFor(row: HubRow, rows: HubRow[], volumes: VolumeInfo[]): HubOpenMove | null {
+  if (row.kind === 'share') {
+    if (row.volumeId && volumes.some((volume) => volume.id === row.volumeId)) return { kind: 'place', row }
+    const server = rows.find((candidate) => candidate.id === row.parentId)
+    const host = row.host ?? (server ? savedHostFor(server) : null)
+    return host && row.place ? { kind: 'share_via_host', host, share: row.place.name } : null
+  }
+  if (row.protocol === 'smb') return { kind: 'host', host: row.host ?? savedHostFor(row) }
+  return { kind: 'place', row }
+}
+
+/**
+ * A saved SMB host mDNS isn't seeing right now, as a host the places list can
+ * take. Its address is the only spelling anything has for it.
+ */
+export function savedHostFor(row: HubRow): NetworkHost {
+  return { id: row.id, name: row.name, hostname: row.address, port: 445, source: 'manual' }
 }
 
 /** The most useful spelling of where a discovered host lives. */

@@ -24,11 +24,13 @@ use crate::network::one_shot_credentials::SecretOffer;
 use crate::network::saved_server_fields::{self, SavedServerOutcome};
 use crate::network::sftp_volume_wiring::{self, SftpConnection};
 use crate::network::webdav_volume_wiring::{self, WebdavConnection};
-use crate::network::{known_shares, manual_servers, sftp_known_servers, webdav_known_servers};
+use crate::network::{known_shares, manual_servers, sftp_known_servers, smb_saved_shares, webdav_known_servers};
 use cmdr_sftp::SftpConnectionParams;
 use cmdr_webdav::WebdavConnectionParams;
 
+mod smb_hosts;
 mod wire;
+use smb_hosts::smb_hosts;
 pub use wire::{
     SavedPlace, SavedPlaceRefusal, SavedServer, ServerConnectOutcome, ServerNameSource, ServerProtocol, ServerTarget,
 };
@@ -45,14 +47,24 @@ pub use wire::{
 #[tauri::command]
 #[specta::specta]
 pub fn list_saved_servers(app: tauri::AppHandle) -> Vec<SavedServer> {
-    saved_servers(manual_servers::all(&app))
+    saved_servers(
+        manual_servers::all(&app),
+        known_shares::get_all_known_shares(),
+        &crate::network::get_discovered_hosts(),
+    )
 }
 
 /// The listing, over a manual-server list the caller supplies.
 ///
 /// Split out because the manual SMB store reads a FILE through an `AppHandle`,
-/// and the union itself is a pure fold that a cell can drive.
-fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer> {
+/// and the union itself is a pure fold that a cell can drive: the share store and
+/// the discovery list come in as arguments too, so a cell never races another
+/// over the process-global copies.
+fn saved_servers(
+    manual: Vec<manual_servers::ManualServerEntry>,
+    known: Vec<known_shares::KnownNetworkShare>,
+    hosts: &[crate::network::NetworkHost],
+) -> Vec<SavedServer> {
     let manager = crate::file_system::volume::manager::get_volume_manager();
     // The app roots, from the module that mints them for the volume listing, so
     // the hub's rows and the switcher's rows spell one prefix.
@@ -76,6 +88,7 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
                 name: label.clone(),
                 pinned: entry.pinned,
                 app_root,
+                username: Some(entry.username.clone()),
             }],
             id: volume_id,
             protocol: ServerProtocol::Sftp,
@@ -107,6 +120,7 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
                 name: label.clone(),
                 pinned: entry.pinned,
                 app_root,
+                username: Some(entry.username.clone()),
             }],
             id: volume_id,
             protocol: ServerProtocol::Webdav,
@@ -120,76 +134,8 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
         });
     }
 
-    servers.extend(smb_hosts(manual));
+    servers.extend(smb_hosts(manual, known, hosts));
     servers
-}
-
-/// The SMB hosts, from the manually-typed list and the share store, deduped.
-///
-/// One row per HOST: `known_shares.rs` is server-level in practice (its only
-/// writer stores an empty `share_name`), and a host the user typed by hand is
-/// the same host it has a share row for.
-///
-/// ❗ **Manual entries go first**, because the dedup keeps the first row it sees
-/// and only a manual entry can carry a name a person typed. A share-history row
-/// for the same host then only lends it the time it was last used.
-fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer> {
-    let mut hosts: Vec<SavedServer> = Vec::new();
-
-    for entry in manual {
-        let label = entry.label();
-        hosts.push(SavedServer {
-            // ❗ `User` only for a name a person typed. An unnamed entry's label
-            // is the ADDRESS they typed (`host` or `host:port`), worn as a
-            // stand-in, so a Bonjour name outranks it, the same as a mount's.
-            name_source: if entry.is_named() {
-                ServerNameSource::User
-            } else {
-                ServerNameSource::Fallback
-            },
-            id: entry.id,
-            protocol: ServerProtocol::Smb,
-            display_name: label,
-            address: entry.address,
-            // The account the person typed for it, a preference rather than an
-            // identity: the first sign-in prefills it, and the listing skips guest.
-            username: entry.username,
-            pinned: false,
-            // `added_at` is when it was typed, ❌ not when it last answered.
-            last_connected_at: None,
-            auto_reconnect: None,
-            places: Vec::new(),
-        });
-    }
-
-    for share in known_shares::get_all_known_shares() {
-        if let Some(existing) = hosts
-            .iter_mut()
-            .find(|existing| existing.address.eq_ignore_ascii_case(&share.server_name))
-        {
-            if existing.last_connected_at.as_deref() < Some(share.last_connected_at.as_str()) {
-                existing.last_connected_at = Some(share.last_connected_at);
-            }
-            continue;
-        }
-        hosts.push(SavedServer {
-            id: manual_servers::generate_server_id(&share.server_name, 445),
-            protocol: ServerProtocol::Smb,
-            display_name: share.server_name.clone(),
-            // ❗ The mount's spelling, which nobody chose: the hub lets a
-            // discovered Bonjour name outrank it.
-            name_source: ServerNameSource::Fallback,
-            address: share.server_name,
-            // ❗ Not the share's username: that is per-share, and this row is the
-            // HOST. A share's own account is asked for when it is mounted.
-            username: None,
-            pinned: false,
-            last_connected_at: Some(share.last_connected_at),
-            auto_reconnect: None,
-            places: Vec::new(),
-        });
-    }
-    hosts
 }
 
 // ============================================================================
@@ -205,12 +151,18 @@ fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer>
 /// `attempt_id` is the CALLER's own name for this attempt, made before the call
 /// so a cancel button is armed from the first millisecond;
 /// [`cancel_server_connect`] takes the same one.
+///
+/// `username` is what a sign-in sheet's account field held, which only an SMB
+/// share has (its `SignInShape` is `UsernamePassword`): the share is the place and
+/// the account a field on it. SFTP and WebDAV ignore it, since their volume id IS
+/// the account.
 #[tauri::command]
 #[specta::specta]
 pub async fn connect_saved_place(
     volume_id: String,
     attempt_id: String,
     secret: Option<SecretOffer>,
+    username: Option<String>,
 ) -> Result<ServerConnectOutcome, SavedPlaceRefusal> {
     if crate::file_system::volume::manager::get_volume_manager()
         .get(&volume_id)
@@ -254,6 +206,8 @@ pub async fn connect_saved_place(
                 .await,
             )
         }
+        // A saved SMB share: mounted as its account, then connected the usual way.
+        SavedEntry::Smb(row) => smb_saved_shares::connect_saved_share(row, &attempt_id, secret, username).await,
     })
 }
 
@@ -328,7 +282,8 @@ pub async fn connect_server(
 pub fn cancel_server_connect(attempt_id: String) -> bool {
     let sftp = sftp_volume_wiring::cancel_connect(&attempt_id);
     let webdav = webdav_volume_wiring::cancel_connect(&attempt_id);
-    sftp || webdav
+    let smb = smb_saved_shares::cancel_connect(&attempt_id);
+    sftp || webdav || smb
 }
 
 /// Drops a place's session and takes it out of the registry, answering whether
@@ -387,6 +342,7 @@ fn set_place_pinned_inner(volume_id: &str, pinned: bool) -> bool {
     let moved = match saved {
         SavedEntry::Sftp(entry) => sftp_known_servers::set_pinned(&entry.host, entry.port, &entry.username, pinned),
         SavedEntry::Webdav(entry) => webdav_known_servers::set_pinned(&entry.url, &entry.username, pinned),
+        SavedEntry::Smb(_) => known_shares::set_share_pinned(volume_id, pinned),
     };
     if moved {
         crate::volume_broadcast::emit_volumes_changed();
@@ -423,6 +379,8 @@ fn set_place_auto_reconnect_inner(volume_id: &str, on: bool) -> bool {
             sftp_volume_wiring::apply_auto_reconnect(&entry.host, entry.port, &entry.username, on)
         }
         SavedEntry::Webdav(entry) => webdav_volume_wiring::apply_auto_reconnect(&entry.url, &entry.username, on),
+        // A share has no such switch: the kernel mount's own reconnect is macOS's.
+        SavedEntry::Smb(_) => false,
     };
     if moved {
         crate::volume_broadcast::emit_volumes_changed();
@@ -458,6 +416,15 @@ pub async fn forget_server(id: String) -> bool {
     let forgotten = match saved {
         SavedEntry::Sftp(entry) => sftp_known_servers::forget(&entry.host, entry.port, &entry.username),
         SavedEntry::Webdav(entry) => webdav_known_servers::forget(&entry.url, &entry.username),
+        SavedEntry::Smb(row) => {
+            // ❗ The row and its pin, and nothing else: a mounted share stays
+            // mounted, so there's no pane to send home and no session to drop.
+            let forgotten = known_shares::forget_share(&row.server_name, &row.share_name);
+            if forgotten {
+                crate::volume_broadcast::emit_volumes_changed();
+            }
+            return forgotten;
+        }
     };
     if !forgotten {
         return false;
@@ -491,6 +458,12 @@ pub async fn has_server_secret(id: String) -> bool {
     match saved {
         SavedEntry::Sftp(entry) => super::sftp::has_sftp_credentials(entry.host, entry.port, entry.username).await,
         SavedEntry::Webdav(entry) => super::webdav::has_webdav_credentials(entry.url, entry.username).await,
+        SavedEntry::Smb(row) => {
+            crate::deadline::blocking_with_timeout(std::time::Duration::from_secs(15), false, move || {
+                crate::network::keychain::has_credentials(&row.server_name, None)
+            })
+            .await
+        }
     }
 }
 
@@ -512,6 +485,13 @@ pub async fn forget_server_secret(id: String) -> bool {
         SavedEntry::Webdav(entry) => super::webdav::delete_webdav_credentials(entry.url, entry.username)
             .await
             .is_ok(),
+        // SMB keeps one password per HOST, which is what a share's sign-in wrote.
+        SavedEntry::Smb(row) => {
+            crate::deadline::blocking_with_timeout(std::time::Duration::from_secs(15), false, move || {
+                crate::network::keychain::delete_credentials(&row.server_name, None).is_ok()
+            })
+            .await
+        }
     }
 }
 
@@ -632,6 +612,27 @@ pub fn update_saved_smb_host(
     named
 }
 
+/// Forgets a saved SMB host: its manual entry, its sign-in history, and every
+/// share saved under it. Answers whether anything was there.
+///
+/// ❗ Rows only: nothing is unmounted and no password is touched ("Forget saved
+/// password" is its own request). `address` is the listing's own; history and
+/// share rows are matched against it by server identity, so rows filed under the
+/// host's Bonjour name go too once discovery has paired the two.
+///
+/// ❗ Emits `volumes-changed`: a pinned share of the host leaves the switcher.
+#[tauri::command]
+#[specta::specta]
+pub fn forget_saved_smb_host(id: String, address: String, app: tauri::AppHandle) -> bool {
+    let manual = manual_servers::remove_manual_server(&id, &app).is_ok();
+    let rows = known_shares::forget_host(&[&address]);
+    let forgotten = manual || rows > 0;
+    if forgotten {
+        crate::volume_broadcast::emit_volumes_changed();
+    }
+    forgotten
+}
+
 // ============================================================================
 // Shared plumbing
 // ============================================================================
@@ -640,6 +641,8 @@ pub fn update_saved_smb_host(
 enum SavedEntry {
     Sftp(sftp_known_servers::KnownSftpServer),
     Webdav(webdav_known_servers::KnownWebdavServer),
+    /// A saved SMB share whose last mount had that id.
+    Smb(known_shares::KnownNetworkShare),
 }
 
 /// The saved entry whose derived volume id is `volume_id`.
@@ -654,14 +657,17 @@ fn saved_by_id(volume_id: &str) -> Option<SavedEntry> {
     if let Some(entry) = sftp {
         return Some(SavedEntry::Sftp(entry));
     }
-    webdav_known_servers::all()
-        .into_iter()
-        .find(|entry| {
-            webdav_params(&entry.url, &entry.username, "/").is_some_and(|params| {
-                cmdr_fs::volume::webdav_volume_id(params.host(), params.port(), &entry.username) == volume_id
-            })
+    let webdav = webdav_known_servers::all().into_iter().find(|entry| {
+        webdav_params(&entry.url, &entry.username, "/").is_some_and(|params| {
+            cmdr_fs::volume::webdav_volume_id(params.host(), params.port(), &entry.username) == volume_id
         })
-        .map(SavedEntry::Webdav)
+    });
+    if let Some(entry) = webdav {
+        return Some(SavedEntry::Webdav(entry));
+    }
+    // ❗ Stored, ❌ not derived, unlike the two above: an SMB id comes off the
+    // mount's `statfs`, and only the row knows which spelling the mount got.
+    known_shares::share_by_volume_id(volume_id).map(SavedEntry::Smb)
 }
 
 /// Connection params for a saved WebDAV entry, or `None` when its address isn't

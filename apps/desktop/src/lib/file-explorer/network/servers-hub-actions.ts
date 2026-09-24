@@ -5,18 +5,25 @@
  * table, the cursor, and the keys. These are the parts that ask a question,
  * write to a store, and toast — the parts worth reading on their own.
  *
- * ❗ **A one-place row and an SMB host take different paths at every branch**, and
- * that is the whole reason this module exists as a unit. A one-place row is a
- * PLACE the servers family speaks for (`forgetSavedServer`, `row-menu.ts`);
- * an SMB host is a manual-server entry whose "disconnect" unmounts shares rather
- * than dropping a session. Mixing the two is how a Forget removes the wrong
- * thing.
+ * ❗ **A one-place row, an SMB host, and a saved share take different paths at
+ * every branch**, and that is the whole reason this module exists as a unit. A
+ * one-place row is a PLACE the servers family speaks for (`forgetSavedServer`,
+ * `row-menu.ts`); an SMB host is a manual-server entry plus its share history,
+ * whose "disconnect" unmounts shares rather than dropping a session; a saved
+ * share is a row under its host, whose Forget drops the row and never the
+ * mount. Mixing them is how a Forget removes the wrong thing.
  */
 
-import { disconnectNetworkHost, removeManualServer, showNetworkHostContextMenu } from '$lib/tauri-commands'
+import {
+  disconnectNetworkHost,
+  forgetSavedSmbHost,
+  forgetServer,
+  showNetworkHostContextMenu,
+} from '$lib/tauri-commands'
 import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
 import { forgetSavedServer, setServerAutoReconnect } from '../navigation/server-row-actions'
 import {
+  EMPTY_ROW_MENU,
   runRowFix,
   runVolumeRowAction,
   volumeRowMenu,
@@ -43,8 +50,8 @@ export interface HubActionDeps {
   getVolumes: () => VolumeInfo[]
   /** Re-read the saved list after a write the volume list won't announce. */
   refreshSaved: () => Promise<void>
-  /** Take the pane onto a one-place server, the way Enter on its row does. */
-  openServer: (row: HubRow) => void
+  /** Do what Enter on the row does: a server's place or share list, a share's place. */
+  openRow: (row: HubRow) => void
 }
 
 /** The payload the native SMB-host menu answers with. */
@@ -89,6 +96,10 @@ export function createHubActions(deps: HubActionDeps): HubActions {
    * has nothing to forget, and says so.
    */
   async function forget(row: HubRow): Promise<void> {
+    if (row.kind === 'share') {
+      await forgetShare(row)
+      return
+    }
     if (!row.saved) {
       addToast(tString('fileExplorer.network.browser.cannotRemoveDiscovered'), { level: 'warn' })
       return
@@ -102,7 +113,10 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     await removeSavedSmbHost(row)
   }
 
-  /** Forgets a saved SMB host, which is a manual-server entry rather than a place. */
+  /**
+   * Forgets a saved SMB host: its manual entry, its sign-in history, and the
+   * shares saved under it. ❗ Nothing is unmounted and no password is touched.
+   */
   async function removeSavedSmbHost(row: HubRow): Promise<void> {
     const confirmed = await confirmDialog(
       tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name }),
@@ -110,12 +124,31 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     )
     if (!confirmed) return
     try {
-      await removeManualServer(row.id)
+      const forgotten = await forgetSavedSmbHost(row.id, row.saved?.address ?? row.address)
+      if (!forgotten) throw new Error('nothing saved under that host')
       addToast(tString('fileExplorer.network.browser.hostRemoved', { hostName: row.name }), { level: 'success' })
-      // The manual store is not the volume list, so nothing broadcasts this.
       await deps.refreshSaved()
     } catch {
       addToast(tString('fileExplorer.network.browser.hostRemoveFailed', { hostName: row.name }), { level: 'error' })
+    }
+  }
+
+  /**
+   * Forgets a saved share, after asking: its row and its pin. ❗ A mounted share
+   * stays mounted and no password is touched, which the question says. The row
+   * leaves with the `volumes-changed` the command emits.
+   */
+  async function forgetShare(row: HubRow): Promise<void> {
+    if (!row.volumeId) return
+    const confirmed = await confirmDialog(
+      tString('servers.hub.forgetShareConfirm', { name: row.name }),
+      tString('servers.hub.forgetShareConfirmTitle'),
+    )
+    if (!confirmed) return
+    try {
+      await forgetServer(row.volumeId)
+    } catch {
+      addToast(tString('fileExplorer.navigation.forgetServerRefusedToast', { name: row.name }), { level: 'error' })
     }
   }
 
@@ -127,6 +160,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
    * ([`openHostMenu`]).
    */
   function rowMenu(row: HubRow): RowMenu | null {
+    if (row.kind === 'share') return shareMenu(row)
     if (!row.volumeId) return null
     const volume = volumeForRow(row)
     return volumeRowMenu(volume, {
@@ -136,6 +170,35 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       directConnection: undefined,
       autoReconnect: row.saved?.autoReconnect ?? undefined,
     })
+  }
+
+  /**
+   * A saved share's menu: Open, the pin, and Forget share. ❗ No Disconnect: a
+   * share's session is a mount, and its row in the switcher is where Eject is.
+   */
+  function shareMenu(row: HubRow): RowMenu {
+    return {
+      ...EMPTY_ROW_MENU,
+      actions: [
+        { type: 'action', action: 'open', label: tString('menu.network.open'), icon: 'arrow-right' },
+        row.pinned
+          ? {
+              type: 'action',
+              action: 'unpin',
+              label: tString('menu.network.unpin'),
+              icon: 'pin-off',
+              keepsMenuOpen: true,
+            }
+          : {
+              type: 'action',
+              action: 'pin',
+              label: tString('menu.network.pinToSwitcher'),
+              icon: 'pin',
+              keepsMenuOpen: true,
+            },
+        { type: 'action', action: 'forget-server', label: tString('servers.hub.forgetShare'), icon: 'trash-2' },
+      ],
+    }
   }
 
   /**
@@ -152,7 +215,11 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       return
     }
     if (entry.action === 'open') {
-      deps.openServer(row)
+      deps.openRow(row)
+      return
+    }
+    if (row.kind === 'share' && entry.action === 'forget-server') {
+      await forgetShare(row)
       return
     }
     await runVolumeRowAction({ volume: volumeForRow(row), action: entry.action })
@@ -201,7 +268,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     return {
       id: row.volumeId ?? row.id,
       name: row.name,
-      path: row.saved?.places[0]?.appRoot ?? '',
+      path: row.place?.appRoot ?? row.saved?.places[0]?.appRoot ?? '',
       category: 'network',
       isEjectable: false,
       fsType: row.protocol,

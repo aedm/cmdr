@@ -15,7 +15,7 @@ import { connectPlace, cancelPlaceConnect } from '$lib/servers/connect-flow'
 import { openSignInForPlace } from '$lib/servers/open-sign-in'
 import type { ConnectRefusalKind } from '$lib/servers/connect-refusals'
 import { wordConnectRefusal } from '$lib/servers/connect-refusals'
-import { parseServerPath } from '$lib/servers/server-path-utils'
+import { isSmbVolumeId, parseServerPath } from '$lib/servers/server-path-utils'
 import { getAppLogger } from '$lib/logging/logger'
 import type { RemoteConnectState } from './remote-connect-state'
 import type { VolumeInfo } from '../types'
@@ -29,9 +29,17 @@ export interface PlaceConnectDeps {
   getCurrentVolumeInfo: () => VolumeInfo | null
   /**
    * The place is live now. The pane re-runs its listing, which is what turns the
-   * connecting view back into a directory.
+   * connecting view back into a directory: at `landing` when the place came back
+   * somewhere other than where the pane stands, else where it is.
    */
-  onConnected: (volumeId: string) => void
+  onConnected: (connected: { volumeId: string; landing?: string }) => void
+  /**
+   * Where a place sits once live, off the saved list. Asked only for an SMB
+   * share, whose next mount can land on another path (`/Volumes/naspi-1`) than
+   * the one its saved row remembered; a server place's root never moves on a
+   * connect.
+   */
+  landingOf?: (volumeId: string) => Promise<string | null>
 }
 
 export interface PlaceConnect {
@@ -81,12 +89,14 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     attemptId = null
     switch (result.kind) {
       case 'connected':
-      case 'already_live':
+      case 'already_live': {
         // The row flips to `direct` on the next `volumes-changed`; reloading now
         // is what makes the pane feel like it opened rather than waited.
+        const landing = isSmbVolumeId(volumeId) ? await deps.landingOf?.(volumeId) : null
         state = null
-        deps.onConnected(volumeId)
+        deps.onConnected({ volumeId, landing: landing && landing !== info.path ? landing : undefined })
         return
+      }
       case 'reconnecting':
         // The backoff loop owns it; its own view takes over once the row moves
         // to `disconnected`. Keep the spinner until it does.
@@ -104,7 +114,10 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
 
   function refusedState(volumeId: string, info: VolumeInfo, refusal: ConnectRefusalKind): RemoteConnectState {
     const parsed = parseServerPath(info.path)
-    if (!parsed) log.warn('A place refused a dial but its path names no server: {path}', { path: info.path })
+    // An SMB share's path is its mount point, which names no server by design.
+    if (!parsed && !isSmbVolumeId(volumeId)) {
+      log.warn('A place refused a dial but its path names no server: {path}', { path: info.path })
+    }
     return {
       kind: 'refused',
       refusal: wordConnectRefusal(refusal, {

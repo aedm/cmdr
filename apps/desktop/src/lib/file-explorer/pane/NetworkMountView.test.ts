@@ -211,7 +211,8 @@ describe('NetworkMountView mount-failure auth loop', () => {
 
     expect(outcome).toEqual({ kind: 'handed_off' })
     expect(h.mountNetworkShare).toHaveBeenCalledTimes(2)
-    expect(h.mountNetworkShare).toHaveBeenLastCalledWith(ADDRESS, 'naspi', 'david', 'hunter2', 445, 15000)
+    // The host's own name rides along, which is what the saved share is filed under.
+    expect(h.mountNetworkShare).toHaveBeenLastCalledWith(ADDRESS, 'naspi', 'david', 'hunter2', 445, 15000, 'Naspolya')
     // Remembered only once the mount actually went through.
     await vi.waitFor(() => {
       expect(h.saveSmbCredentials).toHaveBeenCalledWith('Naspolya', null, 'david', 'hunter2')

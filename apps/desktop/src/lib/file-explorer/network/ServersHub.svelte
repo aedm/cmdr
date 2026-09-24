@@ -23,7 +23,7 @@
         refreshAllStaleShares,
     } from './network-store.svelte'
     import { getStatusTooltip } from './host-status'
-    import { buildHubRows, type HubRow, type HubRowStatus } from './servers-hub-rows'
+    import { buildHubRows, openMoveFor, type HubRow, type HubRowStatus } from './servers-hub-rows'
     import { hubMcpEntries } from './servers-hub-mcp'
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
@@ -72,13 +72,19 @@
         isFocused?: boolean
         /** Enter on an SMB host: open its places list. */
         onHostSelect?: (host: NetworkHost) => void
-        /** Enter on a one-place server: take the pane there. */
+        /** Enter on a one-place server, or on a saved share the volume list has a place for: take the pane there. */
         onServerSelect?: (row: HubRow) => void
+        /**
+         * Enter on a saved share no mount went through yet: open its host's
+         * share list and mount that one share, as the host's account.
+         */
+        onShareViaHost?: (host: NetworkHost, share: string) => void
         /** Enter on the "Add server…" row. */
         onConnectToServer?: () => void
     }
 
-    const { paneId, isFocused = false, onHostSelect, onServerSelect, onConnectToServer }: Props = $props()
+    const { paneId, isFocused = false, onHostSelect, onServerSelect, onShareViaHost, onConnectToServer }: Props =
+        $props()
 
     /** `listSavedServers()`, refreshed whenever the volume list is. */
     let savedServers = $state<SavedServer[]>([])
@@ -98,8 +104,8 @@
         getHosts: () => hosts,
         getVolumes: () => volumes,
         refreshSaved: refreshSavedServers,
-        openServer: (row) => {
-            onServerSelect?.(row)
+        openRow: (row) => {
+            openRow(row)
         },
     })
 
@@ -265,7 +271,10 @@
      */
     // noinspection JSUnusedGlobalSymbols -- used dynamically by NetworkMountView
     export function getHostUnderCursor(): NetworkHost | null {
-        return rowUnderCursor()?.host ?? null
+        // A share row reaches the palette as a `server` row instead: its host is
+        // the row above it, and mirroring the host would drop the share.
+        const row = rowUnderCursor()
+        return row?.kind === 'server' ? row.host : null
     }
 
     /**
@@ -292,26 +301,16 @@
         if (row) openRow(row)
     }
 
-    /**
-     * What Enter does to a row.
-     *
-     * An SMB host opens its places list; a one-place server takes the pane to its
-     * place, where the pane's own connect view does the dialing.
-     */
+    /** What Enter does to a row: `openMoveFor` decides, this carries it out. */
     function openRow(row: HubRow): void {
-        if (row.protocol === 'smb') {
-            onHostSelect?.(row.host ?? savedHostFor(row))
+        const move = openMoveFor(row, rows, volumes)
+        if (!move) {
+            log.warn('The hub row {name} has nowhere to open', { name: row.name })
             return
         }
-        onServerSelect?.(row)
-    }
-
-    /**
-     * A saved SMB host mDNS isn't seeing right now, as a host the places list can
-     * take. Its address is the only spelling anything has for it.
-     */
-    function savedHostFor(row: HubRow): NetworkHost {
-        return { id: row.id, name: row.name, hostname: row.address, port: 445, source: 'manual' }
+        if (move.kind === 'host') onHostSelect?.(move.host)
+        else if (move.kind === 'place') onServerSelect?.(move.row)
+        else onShareViaHost?.(move.host, move.share)
     }
 
     /** Arrow keys and Enter. */
@@ -413,6 +412,12 @@
         cursorIndex = rows.length
     }
 
+    /** A share is a folder under its server; a server is a machine, or a service on one. */
+    function rowIcon(row: HubRow): 'folder' | 'monitor' | 'server' {
+        if (row.kind === 'share') return 'folder'
+        return row.protocol === 'smb' ? 'monitor' : 'server'
+    }
+
     /** The protocol name, from the same map the volume switcher's slot reads. */
     function typeLabel(row: HubRow): string {
         return protocolLabel(row.protocol) ?? row.protocol.toUpperCase()
@@ -489,11 +494,16 @@
                 }}
                 onkeydown={() => {}}
             >
-                <span class="col-name" use:tooltip={{ text: row.name, overflowOnly: true }}>
-                    <span class="row-icon"
-                        ><Icon name={row.protocol === 'smb' ? 'monitor' : 'server'} size={16} aria-hidden="true" /></span
-                    >
+                <span
+                    class="col-name"
+                    class:is-share={row.kind === 'share'}
+                    use:tooltip={{ text: row.name, overflowOnly: true }}
+                >
+                    <span class="row-icon"><Icon name={rowIcon(row)} size={16} aria-hidden="true" /></span>
                     {row.name}
+                    {#if row.account !== null}
+                        <span class="share-account">{tString('servers.hub.shareAccount', { username: row.account })}</span>
+                    {/if}
                 </span>
                 <span class="col-type">{typeLabel(row)}</span>
                 <span class="col-address" use:tooltip={{ text: row.address, overflowOnly: true }}>{row.address}</span>
@@ -501,12 +511,14 @@
                     class="col-status"
                     class:needs-you={row.status === 'signed_out' || row.status === 'waiting_for_key'}
                     class:is-live={row.status === 'connected'}
-                    use:tooltip={row.host ? getStatusTooltip(row.host) : ''}
+                    use:tooltip={row.kind === 'server' && row.host ? getStatusTooltip(row.host) : ''}
                 >
                     {tString(STATUS_TEXT_KEY[row.status])}
                 </span>
                 <span class="col-last-used">
-                    {#if lastUsedSeconds(row) === null}
+                    {#if row.kind === 'share'}
+                        <!-- The server row above says when it was last used. -->
+                    {:else if lastUsedSeconds(row) === null}
                         <span class="never-used">{tString('servers.hub.neverUsed')}</span>
                     {:else}
                         <DateLabel modifiedAt={lastUsedSeconds(row)} />
@@ -673,6 +685,15 @@
     }
 
     .never-used {
+        color: var(--color-text-tertiary);
+    }
+
+    /* A share sits under its server, one icon's width in. */
+    .col-name.is-share {
+        padding-left: calc(16px + var(--spacing-sm));
+    }
+
+    .share-account {
         color: var(--color-text-tertiary);
     }
 

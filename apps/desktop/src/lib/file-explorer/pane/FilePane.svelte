@@ -54,6 +54,7 @@
     import MtpConnectionView from './MtpConnectionView.svelte'
     import RemoteConnectView from './RemoteConnectView.svelte'
     import { createPlaceConnect } from './place-connect.svelte'
+    import { placeRootOf } from '$lib/servers/open-sign-in'
     import { createDeviceConnect } from './device-connect.svelte'
     import AdbHint from '$lib/adb/AdbHint.svelte'
     import { createSelectionState } from './selection-state.svelte'
@@ -612,7 +613,8 @@
     const placeConnect = createPlaceConnect({
         getVolumeId: () => volumeId,
         getCurrentVolumeInfo: () => currentVolumeInfo,
-        onConnected: () => { void loader.loadDirectory({ path: currentPath }) },
+        onConnected: ({ landing }) => { void loader.loadDirectory({ path: landing ?? currentPath }) },
+        landingOf: placeRootOf,
     })
 
     // A pane standing on a PHONE dials it the same way, gated on the device's

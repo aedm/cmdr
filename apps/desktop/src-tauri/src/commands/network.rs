@@ -195,6 +195,11 @@ pub fn update_known_share(
         last_connection_mode,
         last_known_auth_options,
         username,
+        address: None,
+        port: None,
+        volume_id: None,
+        mount_path: None,
+        pinned: false,
     };
 
     known_shares::update_known_share(share);
@@ -333,6 +338,14 @@ use crate::network::mount::{self, MountError, MountResult};
 /// * `password` - Optional password for authentication
 /// * `port` - SMB port (default 445)
 /// * `timeout_ms` - Optional timeout in milliseconds (default: 20000)
+/// * `host_name` - The name the person knows the server by (the discovery list's
+///   `name`), which a saved share row is filed under. `None` files it under
+///   `server`.
+///
+/// ❗ A mount that went through is SAVED as a share place, with the account it
+/// signed in as (`network::smb_saved_shares`, `docs/specs/saved-smb-shares.md`):
+/// this is Cmdr's own mount, which is someone's intent, unlike the mounts the
+/// watcher and the upgrade paths see.
 ///
 /// # Returns
 /// * `Ok(MountResult)` - Mount successful, with path to mount point
@@ -350,6 +363,7 @@ pub async fn mount_network_share(
     password: Option<String>,
     port: Option<u16>,
     timeout_ms: Option<u64>,
+    host_name: Option<String>,
 ) -> Result<MountResult, MountError> {
     let actual_port = port.unwrap_or(445);
     let result = crate::network::mount_share(
@@ -375,6 +389,16 @@ pub async fn mount_network_share(
         actual_port,
         FallbackNotice::Announce,
     )
+    .await;
+
+    crate::network::smb_saved_shares::remember_mount(crate::network::smb_saved_shares::MountedShare {
+        host_name: host_name.as_deref().unwrap_or(&server),
+        address: &server,
+        port: actual_port,
+        share: &share,
+        username: username.as_deref(),
+        mount_path: &result.mount_path,
+    })
     .await;
 
     Ok(result)
@@ -530,9 +554,16 @@ pub async fn disconnect_network_host(
 pub async fn get_volume_sign_in_state(volume_id: String) -> cmdr_fs::volume::SignInShape {
     use crate::file_system::volume::manager::get_volume_manager;
 
-    get_volume_manager()
-        .get(&volume_id)
-        .map_or(cmdr_fs::volume::SignInShape::Password, |volume| volume.sign_in_prompt())
+    match get_volume_manager().get(&volume_id) {
+        Some(volume) => volume.sign_in_prompt(),
+        // ❗ A saved SMB share not mounted right now: the share is the place, and
+        // the account is a field on it (`docs/specs/saved-smb-shares.md`). No
+        // guest, since an unauthenticated mount is what asking follows from.
+        None if known_shares::share_by_volume_id(&volume_id).is_some() => {
+            cmdr_fs::volume::SignInShape::UsernamePassword { guest_allowed: false }
+        }
+        None => cmdr_fs::volume::SignInShape::Password,
+    }
 }
 
 /// Tries to rebuild a Disconnected volume's session in place.

@@ -338,6 +338,8 @@ export async function listSharesWithCredentials(
  * @param username Optional username for authentication
  * @param password Optional password for authentication
  * @param timeoutMs Optional timeout in milliseconds (default: 20000)
+ * @param hostName The name the person knows the server by; a mount that goes through is
+ *   saved as a share place under it (`docs/specs/saved-smb-shares.md`)
  * @returns MountResult with mount path on success
  * @throws MountFailure carrying the typed `MountError`; `asMountError` gets it back, and
  *   `renderMountError` words it
@@ -349,8 +351,17 @@ export async function mountNetworkShare(
   password: string | null,
   port?: number,
   timeoutMs?: number,
+  hostName?: string,
 ): Promise<MountResult> {
-  const res = await commands.mountNetworkShare(server, share, username, password, port ?? null, timeoutMs ?? null)
+  const res = await commands.mountNetworkShare(
+    server,
+    share,
+    username,
+    password,
+    port ?? null,
+    timeoutMs ?? null,
+    hostName ?? null,
+  )
   if (res.status === 'error') throwMountError(res.error)
   return res.data
 }

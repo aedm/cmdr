@@ -577,3 +577,66 @@ describe('the Remember box in sign-in mode', () => {
     await seam
   })
 })
+
+/**
+ * A saved SMB share is its account (`docs/specs/saved-smb-shares.md`): the sheet
+ * asks for THAT account's password, and SMB's Keychain is never probed to seed
+ * the box, since each read can raise a system prompt.
+ */
+describe('openSignInForPlace: a saved SMB share', () => {
+  const SHARE_ID = 'smb-192-168-0-153-445-container'
+  const SMB_HOST = {
+    id: 'manual-192-168-0-153-445',
+    protocol: 'smb',
+    displayName: "Sven's NAS",
+    nameSource: 'user',
+    address: '192.168.0.153',
+    username: 'sven',
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [
+      {
+        volumeId: SHARE_ID,
+        name: 'Container',
+        pinned: true,
+        connected: false,
+        appRoot: '/Volumes/Container',
+        username: 'sven',
+      },
+    ],
+  }
+
+  it('asks for the share account’s password, remembering by default, without asking the Keychain', async () => {
+    ipc.mock('list_saved_servers', () => [SMB_HOST])
+    ipc.mock('connect_saved_place', () => ({ outcome: 'connected', volumeId: SHARE_ID }))
+    const sheet = openSignInForPlace({ volumeId: SHARE_ID, registered: false })
+    const request = await parkedRequest()
+    if (request.mode !== 'sign-in') throw new Error('expected the sign-in sheet')
+
+    expect(request.endpoint).toMatchObject({
+      protocol: 'smb',
+      displayName: 'Container',
+      address: 'smb://192.168.0.153/Container',
+      host: '192.168.0.153',
+      username: 'sven',
+    })
+    expect(request.remembered).toBe(true)
+    expect(ipc.callCount('has_server_secret')).toBe(0)
+
+    const outcome = await attemptOf(request)({
+      mode: 'sign-in',
+      secret: { secret: 'pw', remember: true },
+      username: 'sven',
+    })
+    expect(outcome).toEqual({ kind: 'connected', volumeId: SHARE_ID })
+    expect(ipc.lastCall('connect_saved_place')?.payload).toMatchObject({
+      volumeId: SHARE_ID,
+      secret: { secret: 'pw', remember: true },
+      username: 'sven',
+    })
+
+    closeSignInSheet({ kind: 'connected', volumeId: SHARE_ID })
+    await sheet
+  })
+})

@@ -208,6 +208,67 @@ pub(crate) fn location_from_place(place: ServerPlace) -> LocationInfo {
 /// `navigation/volume-grouping.ts` is where the user's cap is applied.
 pub(crate) fn append_server_volumes(volumes: &mut Vec<LocationInfo>) {
     volumes.extend(server_places().into_iter().map(location_from_place));
+    fold_saved_smb_shares(volumes, crate::network::known_shares::saved_shares(), |id| {
+        crate::file_system::volume::manager::get_volume_manager()
+            .get(id)
+            .is_some()
+    });
+}
+
+/// Folds the saved SMB shares (`docs/specs/saved-smb-shares.md`) into the list.
+///
+/// - A share that is mounted keeps its mount row, which is the live truth; a
+///   PINNED one gets `pinned: Some(true)` on it, so the switcher's menu offers
+///   Unpin. ❗ An unpinned one is left `None`, ❌ never `Some(false)`: on Linux a
+///   mount row carries no connection state, and the switcher's "live or pinned"
+///   rule would drop it (`navigation/volume-grouping.ts`).
+/// - One that isn't gets a `saved` row at its last mount path, carrying its own
+///   pin, the way an SFTP place does, so a pin, a tab, and a hub Enter all have
+///   an id to land on. ❗ Not while its volume is REGISTERED: a mount the local
+///   listing hasn't caught up with (a `discoveryPending` payload) must not read
+///   as a place to dial.
+/// - One no mount went through has no id and no path, so it has no row.
+fn fold_saved_smb_shares(
+    volumes: &mut Vec<LocationInfo>,
+    shares: Vec<crate::network::known_shares::KnownNetworkShare>,
+    is_registered: impl Fn(&str) -> bool,
+) {
+    for share in shares {
+        let (Some(id), Some(mount_path)) = (share.volume_id, share.mount_path) else {
+            continue;
+        };
+        if let Some(mounted) = volumes.iter_mut().find(|volume| volume.id == id) {
+            if share.pinned {
+                mounted.pinned = Some(true);
+            }
+            continue;
+        }
+        if is_registered(&id) {
+            continue;
+        }
+        volumes.push(LocationInfo {
+            // The mount row's own spelling (`volumes/mounts.rs::network_name`),
+            // so a share reads the same greyed as it does mounted.
+            name: format!("{} on {}", share.share_name, share.server_name),
+            id,
+            path: mount_path,
+            category: LocationCategory::Network,
+            icon: None,
+            is_ejectable: false,
+            mount_is_read_only: false,
+            is_disk_image: false,
+            is_cloud_mount: false,
+            fs_type: Some("smbfs".to_string()),
+            supports_trash: false,
+            connection_state: Some(ConnectionState::Saved),
+            pinned: Some(share.pinned),
+            landing_path: None,
+            device_readiness: None,
+            usb_speed: None,
+            capabilities: None,
+            favorite_shortcut: None,
+        });
+    }
 }
 
 /// The app-facing root of the place `volume_id` names, for an event payload that

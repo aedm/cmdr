@@ -77,6 +77,16 @@ export function isServerVolumeId(volumeId: string): boolean {
 }
 
 /**
+ * Whether a volume id names an SMB share (`smb-…`, `cmdr_fs::volume::smb_volume_id`),
+ * mounted or saved. ❗ Not a server PLACE in `isServerVolumeId`'s sense: a share's
+ * session is a mount, which `disconnectPlace` doesn't speak, but a saved one is
+ * dialed through the same `connectSavedPlace` and pinned through the same writer.
+ */
+export function isSmbVolumeId(volumeId: string): boolean {
+  return volumeId.startsWith('smb-')
+}
+
+/**
  * Which protocol a server volume id names, or `null` when it names no server.
  *
  * ❗ The id's own prefix is the ONLY thing a caller with nothing but an id can

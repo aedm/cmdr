@@ -79,13 +79,17 @@ export function newServerAttemptId(): string {
  * is mended by `reconnectVolumeWithCredentials`, and re-dialing it would register
  * a second volume. `servers/connect-flow.ts` is what picks between them; a stale
  * pick throws a {@link SavedPlaceFailure}, which a user should never see.
+ *
+ * `username` is the sheet's account field, which only an SMB share's sheet has;
+ * SFTP and WebDAV ignore it.
  */
 export async function connectSavedPlace(
   volumeId: string,
   attemptId: string,
   secret: SecretOffer | null = null,
+  username: string | null = null,
 ): Promise<ServerConnectOutcome> {
-  const result = await commands.connectSavedPlace(volumeId, attemptId, secret)
+  const result = await commands.connectSavedPlace(volumeId, attemptId, secret, username)
   if (result.status === 'error') throw new SavedPlaceFailure(result.error)
   return result.data
 }
@@ -177,6 +181,15 @@ export async function forgetServerSecret(id: string): Promise<boolean> {
  */
 export async function updateSavedServer(server: ServerTarget): Promise<SavedServerOutcome> {
   return await commands.updateSavedServer(server)
+}
+
+/**
+ * Forgets a saved SMB host: its manual entry, its sign-in history, and every
+ * share saved under it. Nothing is unmounted and no password is touched. Answers
+ * whether anything was there.
+ */
+export async function forgetSavedSmbHost(id: string, address: string): Promise<boolean> {
+  return await commands.forgetSavedSmbHost(id, address)
 }
 
 /**

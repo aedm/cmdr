@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildHubRows } from './servers-hub-rows'
+import { buildHubRows, openMoveFor } from './servers-hub-rows'
 import type { SavedServer } from '$lib/tauri-commands'
 import type { NetworkHost, VolumeInfo } from '../types'
 
@@ -23,7 +23,16 @@ function sftpServer(overrides: Partial<SavedServer> = {}): SavedServer {
     pinned: true,
     lastConnectedAt: '2026-09-01T10:00:00Z',
     autoReconnect: true,
-    places: [{ volumeId: id, name: 'Naspolya', pinned: true, connected: false, appRoot: `sftp://ada@nas.local:22` }],
+    places: [
+      {
+        volumeId: id,
+        name: 'Naspolya',
+        pinned: true,
+        connected: false,
+        appRoot: `sftp://ada@nas.local:22`,
+        username: 'ada',
+      },
+    ],
     ...overrides,
   }
 }
@@ -259,6 +268,7 @@ describe('buildHubRows: status', () => {
           name: 'n',
           pinned: true,
           connected: true,
+          username: 'ada',
           appRoot: 'sftp://ada@nas.local:22',
         },
       ],
@@ -319,5 +329,134 @@ describe('buildHubRows: what a row carries', () => {
       volumes: [],
     })
     expect(rows[0].address).toBe('10.0.0.4')
+  })
+})
+
+/**
+ * ❗ cmdr-reports#7: a saved SMB share is "user + server + share", a row of its
+ * own right under its server, so the list says what opening it will do.
+ */
+describe('saved SMB shares', () => {
+  const withShares = smbServer({
+    displayName: "Sven's NAS",
+    nameSource: 'user',
+    places: [
+      {
+        volumeId: 'smb-scans',
+        name: 'Scans',
+        pinned: false,
+        connected: false,
+        appRoot: 'smb://10.0.0.4/Scans',
+        username: null,
+      },
+      {
+        volumeId: 'smb-container',
+        name: 'Container',
+        pinned: true,
+        connected: false,
+        appRoot: '/Volumes/Container',
+        username: 'sven',
+      },
+    ],
+  })
+
+  it('lists each share right under its server, by name, with the account it opens as', () => {
+    const rows = buildHubRows({ saved: [withShares], hosts: [], volumes: [] })
+
+    expect(rows.map((row) => [row.kind, row.name, row.account])).toEqual([
+      ['server', "Sven's NAS", null],
+      ['share', 'Container', 'sven'],
+      ['share', 'Scans', null],
+    ])
+    const container = rows[1]
+    expect(container.volumeId).toBe('smb-container')
+    expect(container.pinned).toBe(true)
+    expect(container.parentId).toBe(rows[0].id)
+    expect(container.place?.appRoot).toBe('/Volumes/Container')
+    // ❗ The host itself still has no place to act on: its shares do.
+    expect(rows[0].volumeId).toBeNull()
+  })
+
+  it('says a share is connected while its volume is mounted, and saved otherwise', () => {
+    const mounted: VolumeInfo = {
+      id: 'smb-container',
+      name: 'Container on Sven',
+      path: '/Volumes/Container',
+      category: 'network',
+      isEjectable: false,
+      connectionState: 'os_mount',
+    }
+    const rows = buildHubRows({ saved: [withShares], hosts: [], volumes: [mounted] })
+
+    expect(rows.find((row) => row.name === 'Container')?.status).toBe('connected')
+    expect(rows.find((row) => row.name === 'Scans')?.status).toBe('saved')
+  })
+
+  it('keeps shares under their own server when the servers sort around them', () => {
+    const rows = buildHubRows({
+      saved: [withShares, sftpServer({ lastConnectedAt: '2026-09-20T00:00:00Z' })],
+      hosts: [],
+      volumes: [],
+    })
+
+    const names = rows.map((row) => row.name)
+    expect(names.indexOf('Container')).toBe(names.indexOf("Sven's NAS") + 1)
+    expect(names.indexOf('Scans')).toBe(names.indexOf("Sven's NAS") + 2)
+  })
+})
+
+/** What Enter does, per row kind: the hub's one decision about where a row leads. */
+describe('openMoveFor', () => {
+  const withShares = smbServer({
+    places: [
+      {
+        volumeId: 'smb-scans',
+        name: 'Scans',
+        pinned: false,
+        connected: false,
+        appRoot: 'smb://10.0.0.4/Scans',
+        username: null,
+      },
+      {
+        volumeId: 'smb-container',
+        name: 'Container',
+        pinned: true,
+        connected: false,
+        appRoot: '/Volumes/Container',
+        username: 'sven',
+      },
+    ],
+  })
+  const saved: VolumeInfo = {
+    id: 'smb-container',
+    name: 'Container on Attic NAS',
+    path: '/Volumes/Container',
+    category: 'network',
+    isEjectable: false,
+    connectionState: 'saved',
+  }
+
+  it('opens a server host into its share list, never a share', () => {
+    const rows = buildHubRows({ saved: [withShares], hosts: [], volumes: [] })
+    const move = openMoveFor(rows[0], rows, [])
+    expect(move?.kind).toBe('host')
+  })
+
+  it('takes the pane to a share the volume list has a place for', () => {
+    const rows = buildHubRows({ saved: [withShares], hosts: [], volumes: [saved] })
+    const container = rows.find((row) => row.name === 'Container')
+    if (!container) throw new Error('no Container row')
+    expect(openMoveFor(container, rows, [saved])).toEqual({ kind: 'place', row: container })
+  })
+
+  it('opens a share no mount went through via its host, naming the share', () => {
+    const rows = buildHubRows({ saved: [withShares], hosts: [], volumes: [] })
+    const scans = rows.find((row) => row.name === 'Scans')
+    if (!scans) throw new Error('no Scans row')
+    expect(openMoveFor(scans, rows, [])).toMatchObject({
+      kind: 'share_via_host',
+      share: 'Scans',
+      host: { id: 'manual-10-0-0-4-445', hostname: '10.0.0.4' },
+    })
   })
 })

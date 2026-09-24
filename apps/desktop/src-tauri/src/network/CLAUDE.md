@@ -44,6 +44,9 @@ shared seams (`connect_wiring.rs`, `server_list_file.rs`, `saved_server_fields.r
 - **Read a refusal by status AND step (`RefusedAt::of`), ❌ never off `is_auth_error` alone**: access denied at
   TreeConnect is the share turning an account away, not a wrong password.
 - **❌ A `network` type must not be constructible from a backend type**: a `From` impl welds a module cycle.
+- **Only Cmdr's own mounts save an SMB share** (`smb_saved_shares.rs`), keyed by server + share, ❌ never by account,
+  with the id the mount reported. An upgrade or watcher path that wrote one would invent history (`DETAILS.md` § "Saved
+  SMB shares").
 
 Architecture, flows, decisions, the per-server switches, and the smaller gotchas (ports, loopback addresses, the mDNS
 trailing dot): `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

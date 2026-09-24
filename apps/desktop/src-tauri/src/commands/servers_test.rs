@@ -66,6 +66,13 @@ fn named_manual_entry(address: &str, name: &str) -> ManualServerEntry {
     }
 }
 
+/// The listing over manual entries alone, with no share history and nothing
+/// discovered: the stores come in as arguments, so no cell races another over
+/// the process-global copies.
+fn saved_servers_of(manual: Vec<ManualServerEntry>) -> Vec<SavedServer> {
+    saved_servers(manual, Vec::new(), &[])
+}
+
 fn find<'a>(servers: &'a [SavedServer], display_name: &str) -> &'a SavedServer {
     servers
         .iter()
@@ -83,7 +90,7 @@ fn the_listing_unions_the_sftp_the_webdav_and_the_smb_stores() {
     sftp_known_servers::remember(sftp_entry(sftp_host, true));
     webdav_known_servers::remember(webdav_entry(webdav_host, false));
 
-    let servers = saved_servers(vec![manual_entry(smb_host)]);
+    let servers = saved_servers_of(vec![manual_entry(smb_host)]);
 
     let sftp = find(&servers, &format!("{sftp_host} over ssh"));
     assert_eq!(sftp.protocol, ServerProtocol::Sftp);
@@ -112,7 +119,7 @@ fn an_account_label_is_the_users_name_and_an_smb_hosts_address_is_a_stand_in() {
     let smb_host = "192.0.2.42";
     sftp_known_servers::remember(sftp_entry(sftp_host, false));
 
-    let servers = saved_servers(vec![manual_entry(smb_host)]);
+    let servers = saved_servers_of(vec![manual_entry(smb_host)]);
 
     assert_eq!(
         find(&servers, &format!("{sftp_host} over ssh")).name_source,
@@ -127,7 +134,7 @@ fn an_account_label_is_the_users_name_and_an_smb_hosts_address_is_a_stand_in() {
 fn a_named_smb_host_is_listed_by_its_name_as_the_users_own() {
     let smb_host = "192.0.2.43";
 
-    let servers = saved_servers(vec![named_manual_entry(smb_host, "Sven's NAS")]);
+    let servers = saved_servers_of(vec![named_manual_entry(smb_host, "Sven's NAS")]);
 
     let smb = find(&servers, "Sven's NAS");
     assert_eq!(smb.name_source, ServerNameSource::User);
@@ -144,7 +151,7 @@ fn an_smb_host_carries_the_account_typed_for_it() {
         ..manual_entry(smb_host)
     };
 
-    let servers = saved_servers(vec![entry]);
+    let servers = saved_servers_of(vec![entry]);
 
     assert_eq!(find(&servers, smb_host).username.as_deref(), Some("sven"));
 }
@@ -156,7 +163,7 @@ fn an_smb_host_carries_the_account_typed_for_it() {
 #[test]
 fn a_named_smb_host_keeps_its_name_once_its_shares_were_listed() {
     let smb_host = "192.0.2.44";
-    known_shares::update_known_share(known_shares::KnownNetworkShare {
+    let history = known_shares::KnownNetworkShare {
         server_name: smb_host.to_string(),
         share_name: String::new(),
         protocol: "smb".to_string(),
@@ -164,9 +171,14 @@ fn a_named_smb_host_keeps_its_name_once_its_shares_were_listed() {
         last_connection_mode: known_shares::ConnectionMode::Guest,
         last_known_auth_options: known_shares::AuthOptions::GuestOrCredentials,
         username: None,
-    });
+        address: None,
+        port: None,
+        volume_id: None,
+        mount_path: None,
+        pinned: false,
+    };
 
-    let servers = saved_servers(vec![named_manual_entry(smb_host, "Office NAS")]);
+    let servers = saved_servers(vec![named_manual_entry(smb_host, "Office NAS")], vec![history], &[]);
 
     let rows: Vec<_> = servers.iter().filter(|s| s.address == smb_host).collect();
     assert_eq!(rows.len(), 1, "one host, one row");
@@ -186,7 +198,7 @@ fn an_sftp_account_has_one_place_carrying_the_volume_id() {
     let host = "192.0.2.34";
     sftp_known_servers::remember(sftp_entry(host, true));
 
-    let servers = saved_servers(Vec::new());
+    let servers = saved_servers_of(Vec::new());
     let sftp = find(&servers, &format!("{host} over ssh"));
 
     assert_eq!(sftp.places.len(), 1, "one account, one place");
@@ -211,7 +223,7 @@ fn an_sftp_account_has_one_place_carrying_the_volume_id() {
 fn an_smb_host_lists_no_places_and_is_never_pinned() {
     let smb_host = "192.0.2.35";
 
-    let servers = saved_servers(vec![manual_entry(smb_host)]);
+    let servers = saved_servers_of(vec![manual_entry(smb_host)]);
     let smb = find(&servers, smb_host);
 
     assert!(smb.places.is_empty());
@@ -236,7 +248,7 @@ fn an_unnamed_account_is_listed_by_its_derived_label_as_a_stand_in() {
     unnamed_webdav.display_name = String::new();
     webdav_known_servers::remember(unnamed_webdav);
 
-    let servers = saved_servers(Vec::new());
+    let servers = saved_servers_of(Vec::new());
 
     for label in [format!("ada@{sftp_host}"), format!("ada@{webdav_host}")] {
         let server = find(&servers, &label);
@@ -388,7 +400,7 @@ fn switching_reconnect_automatically_on_an_sftp_place_round_trips_through_the_li
     let host = "192.0.2.71";
     sftp_known_servers::remember(sftp_entry(host, false));
     let volume_id = cmdr_fs::volume::sftp_volume_id(host, 2222, "ada");
-    let listed = || find(&saved_servers(Vec::new()), &format!("{host} over ssh")).clone();
+    let listed = || find(&saved_servers_of(Vec::new()), &format!("{host} over ssh")).clone();
     assert_eq!(listed().auto_reconnect, Some(true));
 
     let before = crate::volume_broadcast::volumes_changed_requests();
@@ -411,7 +423,7 @@ fn switching_reconnect_automatically_on_a_webdav_place_round_trips_through_the_l
     let host = "192.0.2.72";
     webdav_known_servers::remember(webdav_entry(host, true));
     let volume_id = cmdr_fs::volume::webdav_volume_id(host, 8080, "ada");
-    let listed = || find(&saved_servers(Vec::new()), &format!("{host} over dav")).clone();
+    let listed = || find(&saved_servers_of(Vec::new()), &format!("{host} over dav")).clone();
 
     assert!(set_place_auto_reconnect_inner(&volume_id, false));
     assert_eq!(listed().auto_reconnect, Some(false));
@@ -436,6 +448,7 @@ async fn connecting_a_place_nothing_saved_is_a_typed_refusal() {
         "sftp-nothing-was-ever-saved-here".to_string(),
         "attempt".to_string(),
         None,
+        None,
     )
     .await
     .expect_err("an unsaved id has nothing to dial");
@@ -458,7 +471,7 @@ async fn connecting_a_place_that_is_already_registered_is_refused() {
         std::sync::Arc::new(cmdr_fs::volume::InMemoryVolume::new("stand-in")),
     );
 
-    let refusal = connect_saved_place(volume_id.clone(), "attempt".to_string(), None)
+    let refusal = connect_saved_place(volume_id.clone(), "attempt".to_string(), None, None)
         .await
         .expect_err("a registered volume is mended, never re-dialed");
     assert!(matches!(refusal, SavedPlaceRefusal::AlreadyConnected { .. }));
@@ -725,4 +738,80 @@ async fn connecting_a_webdav_target_with_a_non_http_url_answers_invalid_url_with
 #[tokio::test]
 async fn an_unsaved_id_has_no_remembered_secret() {
     assert!(!has_server_secret("sftp-nothing-was-ever-saved-here".to_string()).await);
+}
+
+/// A saved share row, as a mount through Cmdr files it.
+fn share_row(
+    server_name: &str,
+    share: &str,
+    username: Option<&str>,
+    volume_id: Option<&str>,
+) -> known_shares::KnownNetworkShare {
+    known_shares::KnownNetworkShare {
+        server_name: server_name.to_string(),
+        share_name: share.to_string(),
+        protocol: "smb".to_string(),
+        last_connected_at: "2026-09-24T10:00:00Z".to_string(),
+        last_connection_mode: known_shares::ConnectionMode::Credentials,
+        last_known_auth_options: known_shares::AuthOptions::GuestOrCredentials,
+        username: username.map(str::to_string),
+        address: volume_id.map(|_| server_name.to_string()),
+        port: None,
+        volume_id: volume_id.map(str::to_string),
+        mount_path: volume_id.map(|_| format!("/Volumes/{share}")),
+        pinned: volume_id.is_some(),
+    }
+}
+
+/// ❗ **A saved share is a place under its host** (cmdr-reports#7: "user +
+/// server + share"), carrying the account it opens as and the id its last mount
+/// had, so the hub can open it and a pin points at the real volume.
+#[test]
+fn a_saved_share_is_a_place_under_its_host_with_its_account() {
+    let smb_host = "192.0.2.46";
+    let servers = saved_servers(
+        vec![named_manual_entry(smb_host, "Sven's NAS")],
+        vec![share_row(smb_host, "Container", Some("sven"), Some("smb-container"))],
+        &[],
+    );
+
+    let host = find(&servers, "Sven's NAS");
+    assert_eq!(host.places.len(), 1);
+    let place = &host.places[0];
+    assert_eq!(place.volume_id, "smb-container");
+    assert_eq!(place.name, "Container");
+    assert_eq!(place.username.as_deref(), Some("sven"));
+    assert_eq!(place.app_root, "/Volumes/Container");
+    assert!(place.pinned);
+    assert_eq!(host.last_connected_at.as_deref(), Some("2026-09-24T10:00:00Z"));
+}
+
+/// A share on a host nobody typed in still gets a host row to hang under.
+#[test]
+fn a_saved_share_on_a_host_nobody_typed_in_brings_its_host() {
+    let servers = saved_servers(
+        Vec::new(),
+        vec![share_row("192.0.2.47", "photos", None, Some("smb-photos"))],
+        &[],
+    );
+
+    let host = find(&servers, "192.0.2.47");
+    assert_eq!(host.protocol, ServerProtocol::Smb);
+    assert_eq!(host.places.len(), 1);
+    assert_eq!(host.places[0].username, None, "a guest share has no account");
+}
+
+/// A share an Add named but nothing mounted yet is listed with a stand-in id and
+/// its `smb://` address, which is how the hub knows to open it through the host.
+#[test]
+fn a_share_no_mount_went_through_is_listed_by_its_address() {
+    let servers = saved_servers(
+        vec![named_manual_entry("192.0.2.48", "Office")],
+        vec![share_row("192.0.2.48", "Scans", Some("ada"), None)],
+        &[],
+    );
+
+    let place = &find(&servers, "Office").places[0];
+    assert_eq!(place.app_root, "smb://192.0.2.48/Scans");
+    assert!(!place.pinned);
 }

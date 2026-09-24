@@ -213,6 +213,10 @@ describe('PlacesBrowser a11y', () => {
 describe('ServersHubRowMenu a11y', () => {
   const row: HubRow = {
     id: 'sftp-nas-local-22-ada',
+    kind: 'server',
+    parentId: null,
+    account: null,
+    place: null,
     name: 'Naspolya',
     protocol: 'sftp',
     address: 'nas.local:22',

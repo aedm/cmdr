@@ -28,9 +28,17 @@ pub enum AuthOptions {
 }
 
 /// Information about a known network share.
+///
+/// Two kinds of row share this type. An empty `share_name` is the HOST's sign-in
+/// history (what the share list last signed in as). A non-empty one is a saved
+/// SHARE place (`docs/specs/saved-smb-shares.md`): one row per share, keyed by
+/// server identity + share name, never by account, since an SMB volume id carries
+/// no username. The place fields below are only ever set on share rows.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct KnownNetworkShare {
+    /// The name the person knows the server by (the discovery list's `name`):
+    /// what the hub groups a share under, and what the Keychain keys it by.
     pub server_name: String,
     pub share_name: String,
     /// Currently only "smb".
@@ -41,6 +49,33 @@ pub struct KnownNetworkShare {
     pub last_known_auth_options: AuthOptions,
     /// None for guest.
     pub username: Option<String>,
+    /// Share rows: what the mount dialed (an IP or a hostname), which may not be
+    /// `server_name`. `None` for a share no mount went through yet.
+    #[serde(default)]
+    pub address: Option<String>,
+    /// Share rows: the SMB port, `None` for 445.
+    #[serde(default)]
+    pub port: Option<u16>,
+    /// Share rows: the volume id the last mount had, read off `statfs` like every
+    /// SMB id. ❗ Never re-derived from `server_name`: only the mount knows which
+    /// spelling of the server it got. `None` until a mount through Cmdr went
+    /// through.
+    #[serde(default)]
+    pub volume_id: Option<String>,
+    /// Share rows: where the last mount sat, the path a `saved` row lands on.
+    #[serde(default)]
+    pub mount_path: Option<String>,
+    /// Share rows: whether the share's place shows in the volume switcher. Set on
+    /// its first mount through Cmdr, moved by `set_share_pinned`.
+    #[serde(default)]
+    pub pinned: bool,
+}
+
+impl KnownNetworkShare {
+    /// Whether this row is a saved share rather than the host's sign-in history.
+    pub fn is_share(&self) -> bool {
+        !self.share_name.is_empty()
+    }
 }
 
 /// One share on one server, named the way the mount reported it. Private, like the
@@ -62,8 +97,8 @@ pub struct KnownSharesStore {
     /// The shares the user turned "Use Cmdr's fast direct connection" off for.
     ///
     /// An opt-out list rather than a flag on [`KnownNetworkShare`], because that type
-    /// records Cmdr's OWN connects (its one writer files server-level rows): a share
-    /// macOS mounted has no row, and minting one would invent a connection history
+    /// records Cmdr's OWN connects (server-level history, and the shares Cmdr itself
+    /// mounted): a share macOS mounted has no row, and minting one would invent a connection history
     /// that then shows up in the servers hub. Absence means on, so a store saved
     /// before the setting existed keeps every share on the fast connection. See
     /// [`direct_connection_enabled`].
@@ -226,6 +261,160 @@ pub fn get_username_hint(server_name: &str) -> Option<String> {
         .filter(|s| credential_key(&s.server_name) == key)
         .filter_map(|s| s.username.clone())
         .next_back()
+}
+
+/// Whether `a` and `b` are the same share: the name folded, the server by
+/// identity under either the name it's known by or the address a mount dialed.
+fn same_share_row(a: &KnownNetworkShare, b: &KnownNetworkShare, hosts: &[NetworkHost]) -> bool {
+    use crate::network::server_identity::same_server;
+
+    let names = |row: &KnownNetworkShare| {
+        std::iter::once(row.server_name.clone())
+            .chain(row.address.clone())
+            .collect::<Vec<_>>()
+    };
+    fold_name(&a.share_name) == fold_name(&b.share_name)
+        && names(a)
+            .iter()
+            .any(|x| names(b).iter().any(|y| same_server(x, y, hosts)))
+}
+
+/// Files `row` (a share row) in `rows`, replacing the one for the same share.
+///
+/// What a replace keeps: the pin (only `set_share_pinned` moves one, except that
+/// a share's FIRST mount pins it, rule 1 of the servers model), and a volume id,
+/// mount path, address, and port the new row doesn't bring (an add names none of
+/// them). The account is the new row's: the row remembers who opened it last.
+fn upsert_share_row(rows: &mut Vec<KnownNetworkShare>, mut row: KnownNetworkShare, hosts: &[NetworkHost]) {
+    match rows
+        .iter_mut()
+        .find(|existing| existing.is_share() && same_share_row(existing, &row, hosts))
+    {
+        Some(existing) => {
+            let first_mount = existing.volume_id.is_none() && row.volume_id.is_some();
+            row.pinned = existing.pinned || first_mount;
+            row.volume_id = row.volume_id.or(existing.volume_id.take());
+            row.mount_path = row.mount_path.or(existing.mount_path.take());
+            row.address = row.address.or(existing.address.take());
+            row.port = row.port.or(existing.port);
+            *existing = row;
+        }
+        None => {
+            row.pinned = row.volume_id.is_some();
+            rows.push(row);
+        }
+    }
+}
+
+/// Records a saved share, or refreshes the one it already is. See
+/// [`upsert_share_row`], and `docs/specs/saved-smb-shares.md` for who may call it.
+pub fn remember_share(row: KnownNetworkShare) {
+    debug_assert!(row.is_share(), "a share row names its share");
+    let hosts = crate::network::get_discovered_hosts();
+    {
+        let mut store = get_known_shares_mutex().lock_ignore_poison();
+        upsert_share_row(&mut store.known_network_shares, row, &hosts);
+    }
+    save_known_shares();
+}
+
+/// Every saved share row.
+pub fn saved_shares() -> Vec<KnownNetworkShare> {
+    get_all_known_shares()
+        .into_iter()
+        .filter(KnownNetworkShare::is_share)
+        .collect()
+}
+
+/// The saved share whose place `volume_id` names.
+pub fn share_by_volume_id(volume_id: &str) -> Option<KnownNetworkShare> {
+    saved_shares()
+        .into_iter()
+        .find(|row| row.volume_id.as_deref() == Some(volume_id))
+}
+
+/// Moves a saved share's pin, in place under the lock, answering whether a share
+/// row holds that volume id.
+pub fn set_share_pinned(volume_id: &str, pinned: bool) -> bool {
+    let moved = {
+        let mut store = get_known_shares_mutex().lock_ignore_poison();
+        match store
+            .known_network_shares
+            .iter_mut()
+            .find(|row| row.is_share() && row.volume_id.as_deref() == Some(volume_id))
+        {
+            Some(row) => {
+                row.pinned = pinned;
+                true
+            }
+            None => false,
+        }
+    };
+    if moved {
+        save_known_shares();
+    }
+    moved
+}
+
+/// Drops the saved share `server_name` + `share_name` names, answering whether one
+/// was there. ❗ The share row only: a mount stays up and no password is touched.
+pub fn forget_share(server_name: &str, share_name: &str) -> bool {
+    let probe = KnownNetworkShare {
+        server_name: server_name.to_string(),
+        share_name: share_name.to_string(),
+        protocol: "smb".to_string(),
+        last_connected_at: String::new(),
+        last_connection_mode: ConnectionMode::Guest,
+        last_known_auth_options: AuthOptions::GuestOnly,
+        username: None,
+        address: None,
+        port: None,
+        volume_id: None,
+        mount_path: None,
+        pinned: false,
+    };
+    let hosts = crate::network::get_discovered_hosts();
+    let removed = {
+        let mut store = get_known_shares_mutex().lock_ignore_poison();
+        let before = store.known_network_shares.len();
+        store
+            .known_network_shares
+            .retain(|row| !(row.is_share() && same_share_row(row, &probe, &hosts)));
+        before != store.known_network_shares.len()
+    };
+    if removed {
+        save_known_shares();
+    }
+    removed
+}
+
+/// Drops every row, history and shares alike, of the host any of `server_names`
+/// names, answering how many went. ❗ Rows only: mounts and passwords stay.
+fn forget_host_rows(rows: &mut Vec<KnownNetworkShare>, server_names: &[&str], hosts: &[NetworkHost]) -> usize {
+    use crate::network::server_identity::same_server;
+
+    let before = rows.len();
+    rows.retain(|row| {
+        let mine = std::iter::once(row.server_name.as_str()).chain(row.address.as_deref());
+        !mine
+            .into_iter()
+            .any(|name| server_names.iter().any(|other| same_server(name, other, hosts)))
+    });
+    before - rows.len()
+}
+
+/// Forgets the host `server_names` names: its sign-in history and every share row
+/// under it. See [`forget_host_rows`].
+pub fn forget_host(server_names: &[&str]) -> usize {
+    let hosts = crate::network::get_discovered_hosts();
+    let removed = {
+        let mut store = get_known_shares_mutex().lock_ignore_poison();
+        forget_host_rows(&mut store.known_network_shares, server_names, &hosts)
+    };
+    if removed > 0 {
+        save_known_shares();
+    }
+    removed
 }
 
 /// Case- and NFC-folds one half of a share's name, the fold [`share_key`] applies.

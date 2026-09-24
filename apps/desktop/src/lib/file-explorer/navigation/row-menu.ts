@@ -42,6 +42,7 @@ import { showsDisconnect } from './connection-state'
 import { detachControlFor } from './detach-control'
 import { runDetach } from './detach-volume'
 import { isServerPlaceRow, runServerRowAction } from './server-row-actions'
+import { isSmbVolumeId } from '$lib/servers/server-path-utils'
 import type { VolumeInfo } from '../types'
 
 /** A per-row switch the submenu carries as a checkbox row. */
@@ -159,11 +160,7 @@ function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowActionEntr
       }),
     )
   }
-  entries.push(
-    volume.pinned === true
-      ? action('unpin', 'menu.network.unpin', 'pin-off', { keepsMenuOpen: true })
-      : action('pin', 'menu.network.pinToSwitcher', 'pin', { keepsMenuOpen: true }),
-  )
+  entries.push(pinAction(volume))
   entries.push(
     action('forget-secret', busy ? 'menu.volume.forgetSavedPasswordBusy' : 'menu.network.forgetSavedPassword', 'key', {
       disabled: busy,
@@ -177,6 +174,13 @@ function serverActions(volume: VolumeInfo, facts: VolumeRowFacts): RowActionEntr
     )
   }
   return entries
+}
+
+/** Pin to switcher, or Unpin. Never greyed: moving a pin breaks nothing. */
+function pinAction(volume: VolumeInfo): RowActionEntry {
+  return volume.pinned === true
+    ? action('unpin', 'menu.network.unpin', 'pin-off', { keepsMenuOpen: true })
+    : action('pin', 'menu.network.pinToSwitcher', 'pin', { keepsMenuOpen: true })
 }
 
 /**
@@ -250,6 +254,9 @@ export function volumeRowMenu(volume: VolumeInfo, facts: VolumeRowFacts): RowMen
   } else {
     const detach = detachAction(volume, facts)
     if (detach) actions.push(detach)
+    // A SAVED SMB share is pinnable like a server place (`docs/specs/saved-smb-shares.md`);
+    // a mount nothing saved (Finder's) has no pin to move.
+    if (volume.category === 'network' && isSmbVolumeId(volume.id) && facts.isSaved) actions.push(pinAction(volume))
   }
   return { actions, fixes: rowFixes(volume, facts), settings: rowToggles(facts) }
 }

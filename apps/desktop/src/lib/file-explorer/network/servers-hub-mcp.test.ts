@@ -13,6 +13,10 @@ import type { HubRow } from './servers-hub-rows'
 function row(overrides: Partial<HubRow> = {}): HubRow {
   return {
     id: 'sftp-nas.local-22-ada',
+    kind: 'server',
+    parentId: null,
+    account: null,
+    place: null,
     name: 'Naspolya',
     protocol: 'sftp',
     address: 'nas.local:22',

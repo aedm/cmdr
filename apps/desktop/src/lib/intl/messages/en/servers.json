@@ -75,6 +75,28 @@
     "description": "Shown in the servers hub’s \"Last used\" column for a server the user has never connected to. One word.",
     "screenshot": "servers-hub.png"
   },
+  "servers.hub.shareAccount": "as {username}",
+  "@servers.hub.shareAccount": {
+    "description": "Shown after a saved SMB share's name in the Servers list, in a quieter color, saying which account opening the share signs in as: \"Container as sven\". {username} is the account name, never translated.",
+    "placeholders": {
+      "username": "the account name, like sven"
+    }
+  },
+  "servers.hub.forgetShare": "Forget share",
+  "@servers.hub.forgetShare": {
+    "description": "VERB phrase. Item in a saved SMB share's right-click menu in the Servers list: drops the saved share from the list and the volume switcher. Match the wording of menu.network.forgetServer, with share in place of server."
+  },
+  "servers.hub.forgetShareConfirmTitle": "Forget share",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "description": "Title of the confirmation dialog that asks before a saved SMB share leaves the Servers list."
+  },
+  "servers.hub.forgetShareConfirm": "Forget {name}? Cmdr stops listing it. If it''s mounted, it stays mounted, and your files stay on the server.",
+  "@servers.hub.forgetShareConfirm": {
+    "description": "Body of the confirmation dialog before a saved SMB share leaves the Servers list and the volume switcher. {name} is the share's name. Reassures that nothing is unmounted or deleted.",
+    "placeholders": {
+      "name": "the share name, like Container"
+    }
+  },
   "servers.hub.discoveryOff": "Local network discovery is off.",
   "@servers.hub.discoveryOff": {
     "description": "One line in the servers hub, in place of the list of servers found nearby, when the user has turned local network discovery off in Settings. Saved servers still work and are still listed; this line is only about the nearby ones."

@@ -61,8 +61,14 @@ either way.
   `onVolumeChange` with the place's `appRoot`). ❗ The PANE does the dialing, not the hub: landing on a `saved` volume
   is what `../pane/place-connect.svelte.ts` watches for, so the connecting view and its Cancel render where every other
   wait does.
+- **A saved SMB share** (a row right under its host, `docs/specs/saved-smb-shares.md`) takes the pane to its place when
+  the volume list has one, exactly like a one-place server, so an unmounted one is mounted IN THE PANE. One no mount
+  went through yet (Add named it) opens its host's places list and mounts that share for the visit (`onShareViaHost`).
 - **The add row** opens the one sign-in sheet in add mode (`../../servers/open-sign-in.ts`). An SMB address comes back
   as a hand-off, and `NetworkMountView` opens the injected host's places.
+
+`servers-hub-rows.ts::openMoveFor` is the one place that decides which of these a row gets; the component only carries
+it out.
 
 ### The three pure modules beside it
 
@@ -78,6 +84,10 @@ unit-tested:
   disagreeing about whether a server is up is worse than either being briefly stale. Order: live sessions, then the ones
   asking something of the user (`signed_out`, `waiting_for_key`), then the rest of what they saved by recency, then what
   is merely nearby.
+
+  ❗ **A saved SMB share is a row right under its host** (`kind: 'share'`, id `share:<volume id>`, the account it opens
+  as in `account`), placed AFTER the sort so it never drifts from its server. Its status comes off the volume list by
+  its id like every place's. The host row keeps `volumeId: null`: its places are the share rows.
 
   ❗ **The merge also guarantees every row id is UNIQUE**, first writer wins. The hub keys its `{#each}` on `row.id`,
   and Svelte throws `each_key_duplicate` on a repeat, so a duplicate crashes the whole pane rather than showing a row
@@ -126,8 +136,10 @@ regression guard.
 ### Context menu and F8
 
 F8 forgets the SAVED server under the cursor: a one-place row through `forgetSavedServer` (so the hub asks exactly what
-the switcher's menu asks), an SMB host through `removeManualServer`, and a host only mDNS knows about gets the "Can't
-remove discovered hosts" toast. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same
+the switcher's menu asks), an SMB host through `forgetSavedSmbHost` (its manual entry, its sign-in history, and its
+saved shares; nothing unmounted), a saved share through `forgetServer` on its id (the row and its pin only), and a host
+only mDNS knows about gets the "Can't remove discovered hosts" toast. A share row's right-click is an in-app menu too:
+Open, the pin, and Forget share. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same
 list the switcher row's → submenu shows (`../navigation/row-menu.ts`; Open moves THIS pane, like Enter); an SMB host
 keeps its own native host menu (`show_network_host_context_menu`: Disconnect, Forget server for a manual one, Forget
 saved password when creds are stored), whose actions arrive on the `network-host-context-action` event. Cursor

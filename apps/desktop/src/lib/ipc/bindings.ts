@@ -3711,6 +3711,10 @@ export const commands = {
   // Gets a specific known share by server and share name.
   getKnownShareByName: (serverName: string, shareName: string) =>
     __TAURI_INVOKE<{
+      /**
+       *  The name the person knows the server by (the discovery list's `name`):
+       *  what the hub groups a share under, and what the Keychain keys it by.
+       */
       serverName: string
       shareName: string
       // Currently only "smb".
@@ -3721,6 +3725,27 @@ export const commands = {
       lastKnownAuthOptions: AuthOptions
       // None for guest.
       username: string | null
+      /**
+       *  Share rows: what the mount dialed (an IP or a hostname), which may not be
+       *  `server_name`. `None` for a share no mount went through yet.
+       */
+      address?: string | null
+      // Share rows: the SMB port, `None` for 445.
+      port?: number | null
+      /**
+       *  Share rows: the volume id the last mount had, read off `statfs` like every
+       *  SMB id. ❗ Never re-derived from `server_name`: only the mount knows which
+       *  spelling of the server it got. `None` until a mount through Cmdr went
+       *  through.
+       */
+      volumeId?: string | null
+      // Share rows: where the last mount sat, the path a `saved` row lands on.
+      mountPath?: string | null
+      /**
+       *  Share rows: whether the share's place shows in the volume switcher. Set on
+       *  its first mount through Cmdr, moved by `set_share_pinned`.
+       */
+      pinned?: boolean
     } | null>('get_known_share_by_name', { serverName, shareName }),
   // Updates or adds a known network share after successful connection.
   updateKnownShare: (
@@ -3829,6 +3854,14 @@ export const commands = {
    *  * `password` - Optional password for authentication
    *  * `port` - SMB port (default 445)
    *  * `timeout_ms` - Optional timeout in milliseconds (default: 20000)
+   *  * `host_name` - The name the person knows the server by (the discovery list's
+   *    `name`), which a saved share row is filed under. `None` files it under
+   *    `server`.
+   *
+   *  ❗ A mount that went through is SAVED as a share place, with the account it
+   *  signed in as (`network::smb_saved_shares`, `docs/specs/saved-smb-shares.md`):
+   *  this is Cmdr's own mount, which is someone's intent, unlike the mounts the
+   *  watcher and the upgrade paths see.
    *
    *  # Returns
    *  * `Ok(MountResult)` - Mount successful, with path to mount point
@@ -3841,9 +3874,10 @@ export const commands = {
     password: string | null,
     port: number | null,
     timeoutMs: number | null,
+    hostName: string | null,
   ) =>
     typedError<MountResult, MountError>(
-      __TAURI_INVOKE('mount_network_share', { server, share, username, password, port, timeoutMs }),
+      __TAURI_INVOKE('mount_network_share', { server, share, username, password, port, timeoutMs, hostName }),
     ),
   /**
    *  Upgrades an existing OS-mounted SMB volume to use a direct smb2 connection, with
@@ -4270,6 +4304,11 @@ export const commands = {
    *  `attempt_id` is the CALLER's own name for this attempt, made before the call
    *  so a cancel button is armed from the first millisecond;
    *  [`cancel_server_connect`] takes the same one.
+   *
+   *  `username` is what a sign-in sheet's account field held, which only an SMB
+   *  share has (its `SignInShape` is `UsernamePassword`): the share is the place and
+   *  the account a field on it. SFTP and WebDAV ignore it, since their volume id IS
+   *  the account.
    */
   connectSavedPlace: (
     volumeId: string,
@@ -4287,9 +4326,10 @@ export const commands = {
        */
       remember: boolean
     } | null,
+    username: string | null,
   ) =>
     typedError<ServerConnectOutcome, SavedPlaceRefusal>(
-      __TAURI_INVOKE('connect_saved_place', { volumeId, attemptId, secret }),
+      __TAURI_INVOKE('connect_saved_place', { volumeId, attemptId, secret, username }),
     ),
   /**
    *  Dials a server the user just typed, in add mode.
@@ -4443,6 +4483,19 @@ export const commands = {
    */
   updateSavedSmbHost: (id: string, address: string, name: string, username: string | null) =>
     __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, address, name, username }),
+  /**
+   *  Forgets a saved SMB host: its manual entry, its sign-in history, and every
+   *  share saved under it. Answers whether anything was there.
+   *
+   *  ❗ Rows only: nothing is unmounted and no password is touched ("Forget saved
+   *  password" is its own request). `address` is the listing's own; history and
+   *  share rows are matched against it by server identity, so rows filed under the
+   *  host's Bonjour name go too once discovery has paired the two.
+   *
+   *  ❗ Emits `volumes-changed`: a pinned share of the host leaves the switcher.
+   */
+  forgetSavedSmbHost: (id: string, address: string) =>
+    __TAURI_INVOKE<boolean>('forget_saved_smb_host', { id, address }),
   /**
    *  Tauri command: returns the current macOS accent color as a hex string.
    *
@@ -8476,8 +8529,20 @@ export type KnownDialog = {
   blocksOperations: boolean
 }
 
-// Information about a known network share.
+/**
+ *  Information about a known network share.
+ *
+ *  Two kinds of row share this type. An empty `share_name` is the HOST's sign-in
+ *  history (what the share list last signed in as). A non-empty one is a saved
+ *  SHARE place (`docs/specs/saved-smb-shares.md`): one row per share, keyed by
+ *  server identity + share name, never by account, since an SMB volume id carries
+ *  no username. The place fields below are only ever set on share rows.
+ */
 export type KnownNetworkShare = {
+  /**
+   *  The name the person knows the server by (the discovery list's `name`):
+   *  what the hub groups a share under, and what the Keychain keys it by.
+   */
   serverName: string
   shareName: string
   // Currently only "smb".
@@ -8488,6 +8553,27 @@ export type KnownNetworkShare = {
   lastKnownAuthOptions: AuthOptions
   // None for guest.
   username: string | null
+  /**
+   *  Share rows: what the mount dialed (an IP or a hostname), which may not be
+   *  `server_name`. `None` for a share no mount went through yet.
+   */
+  address?: string | null
+  // Share rows: the SMB port, `None` for 445.
+  port?: number | null
+  /**
+   *  Share rows: the volume id the last mount had, read off `statfs` like every
+   *  SMB id. ❗ Never re-derived from `server_name`: only the mount knows which
+   *  spelling of the server it got. `None` until a mount through Cmdr went
+   *  through.
+   */
+  volumeId?: string | null
+  // Share rows: where the last mount sat, the path a `saved` row lands on.
+  mountPath?: string | null
+  /**
+   *  Share rows: whether the share's place shows in the volume switcher. Set on
+   *  its first mount through Cmdr, moved by `set_share_pinned`.
+   */
+  pinned?: boolean
 }
 
 // One SFTP server the user has connected to, and how to reach it again.
@@ -12074,8 +12160,17 @@ export type SavedPlace = {
    *  ❗ Read from `server_volumes::server_places()`, the one place that mints
    *  the spelling, ❌ never re-derived here: a second spelling of the prefix
    *  misses the volume its own id names.
+   *
+   *  An SMB share's is where its last mount sat (`/Volumes/Container`), or
+   *  `smb://<host>/<share>` for one no mount went through yet, which has no
+   *  place in the volume list to land on.
    */
   appRoot: string
+  /**
+   *  The account this place is opened as: the SFTP or WebDAV account, or the one
+   *  an SMB share was last mounted with (`None` for guest).
+   */
+  username: string | null
 }
 
 /**
@@ -12108,14 +12203,10 @@ export type SavedPlaceRefusal =
 /**
  *  An endpoint plus an identity, as the hub lists it.
  *
- *  ❗ **An SMB host lists NO places and cannot be pinned here.**
- *  `known_shares.rs` stores no share rows (its only writer leaves `share_name`
- *  empty), carries no port, and a mounted share's id comes from `statfs`, which
- *  normalizes an mDNS name to an IP — so no id derivable from the store would
- *  match the mounted volume, and a pin would point at nothing. SMB places keep
- *  reaching the switcher as mounted volumes, and the hub opens an SMB host into
- *  its live places list. A share-level writer at mount time is what pinnable SMB
- *  shares need, and that is recorded as later work rather than half-built here.
+ *  ❗ **An SMB host's places are its SAVED shares** (`known_shares.rs` share rows,
+ *  `docs/specs/saved-smb-shares.md`): each carries the volume id its last mount
+ *  had, read off `statfs`, so a pin points at the id the mounted volume really
+ *  has. The host row itself is never pinned; its shares are.
  */
 export type SavedServer = {
   /**
@@ -12150,8 +12241,8 @@ export type SavedServer = {
    */
   username: string | null
   /**
-   *  Whether this account's place belongs in the switcher. Always `false` for
-   *  SMB, per the type's own note.
+   *  Whether this account's place belongs in the switcher. Always `false` for an
+   *  SMB host: its SHARES carry their own pins.
    */
   pinned: boolean
   // ISO 8601, so a hub can sort by recency. `None` when nothing recorded one.
@@ -12165,7 +12256,10 @@ export type SavedServer = {
    *  [`set_place_auto_reconnect`]: crate::commands::servers::set_place_auto_reconnect
    */
   autoReconnect: boolean | null
-  // The mountable things under it. One for SFTP and WebDAV, none for SMB.
+  /**
+   *  The mountable things under it. One for SFTP and WebDAV; for SMB, the
+   *  host's saved shares, possibly none.
+   */
   places: SavedPlace[]
 }
 

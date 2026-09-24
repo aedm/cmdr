@@ -215,7 +215,7 @@
      */
     function handleServerSelect(row: HubRow) {
         const volume = getVolumes().find((v) => v.id === row.volumeId)
-        const root = volume?.path ?? row.saved?.places[0]?.appRoot
+        const root = volume?.path ?? row.place?.appRoot ?? row.saved?.places[0]?.appRoot
         if (!row.volumeId || !root) {
             log.warn('The hub row {name} has no place to open', { name: row.name })
             return
@@ -247,6 +247,16 @@
         await tick()
         // Focus goes back to the explorer container so keyboard navigation resumes.
         document.querySelector<HTMLElement>('.dual-pane-explorer')?.focus()
+    }
+
+    /**
+     * A saved share no mount went through yet: its host's share list, mounting
+     * that one share for this visit (the account comes from the host's typed
+     * one, which keeps the listing from answering as guest).
+     */
+    function handleShareViaHost(host: NetworkHost, share: string) {
+        handleNetworkHostSelect(host)
+        autoMountShare = share
     }
 
     function handleNetworkBack() {
@@ -290,6 +300,8 @@
 
         try {
             // Use provided credentials if available
+            // The host's own name rides along: a mount that goes through is saved
+            // as a share place under the host the person knows (the Servers list).
             const result = await mountNetworkShare(
                 server,
                 share.name,
@@ -297,6 +309,7 @@
                 credentials?.password ?? null,
                 currentNetworkHost.port,
                 getMountTimeoutMs(),
+                currentNetworkHost.name,
             )
 
             // Navigate to the mounted share
@@ -548,6 +561,7 @@
         {isFocused}
         onHostSelect={handleNetworkHostSelect}
         onServerSelect={handleServerSelect}
+        onShareViaHost={handleShareViaHost}
         onConnectToServer={() => void openAddServer()}
     />
 {/if}

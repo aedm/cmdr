@@ -533,6 +533,8 @@ pub async fn add_manual_server<R: Runtime>(
     // Build the network host
     let host = create_network_host(&parsed.host, parsed.port);
 
+    let username = typed_account(details.username.as_deref()).or_else(|| parsed.username.clone());
+
     // Persist to disk
     if let Some(path) = get_store_path(app_handle) {
         let entry = ManualServerEntry {
@@ -541,9 +543,16 @@ pub async fn add_manual_server<R: Runtime>(
             address: parsed.host.clone(),
             port: parsed.port,
             added_at: chrono::Utc::now().to_rfc3339(),
-            username: typed_account(details.username.as_deref()).or_else(|| parsed.username.clone()),
+            username: username.clone(),
         };
         add_server_entry_to_path(&path, entry);
+    }
+
+    // A share the address named (`smb://sven@host/Container`) is the place the
+    // person meant to save, so it becomes a row under the host now, before any
+    // mount: `docs/specs/saved-smb-shares.md`.
+    if let Some(share) = parsed.share_path.as_deref().and_then(|path| path.split('/').next()) {
+        crate::network::smb_saved_shares::remember_named_share(&host.name, share, username.as_deref());
     }
 
     info!("Added manual server: {} (id={})", host.name, host.id);

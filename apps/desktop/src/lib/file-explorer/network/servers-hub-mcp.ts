@@ -44,8 +44,14 @@ export function hubMcpEntries(rows: HubRow[], lookups: HubMcpLookups): PaneFileE
 
 function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {
   const tokens = [`protocol=${row.protocol}`, `status="${row.status}"`, `address=${row.address}`]
-  const shares = lookups.shareCountOf?.(row)
-  if (shares !== undefined) tokens.push(`shares=${String(shares)}`)
+  if (row.kind === 'share') {
+    // A saved share under the row above it, and the account it opens as.
+    tokens.push('kind=share')
+    if (row.account !== null) tokens.push(`account=${row.account}`)
+  } else {
+    const shares = lookups.shareCountOf?.(row)
+    if (shares !== undefined) tokens.push(`shares=${String(shares)}`)
+  }
   return emptyEntry(`${row.name}  ${tokens.join('  ')}`, pathFor(row, lookups), true)
 }
 
@@ -53,10 +59,12 @@ function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {
  * Where the row leads.
  *
  * An SMB host keeps the `smb://<address>` spelling the host list has always
- * published; a one-place row publishes its app root, which `nav_to_path` can
- * actually take.
+ * published; a one-place row and a saved share publish their app root, which
+ * `nav_to_path` can actually take.
  */
 function pathFor(row: HubRow, lookups: HubMcpLookups): string {
+  // A share's place: its last mount path, or `smb://<host>/<share>` before one.
+  if (row.kind === 'share' && row.place) return row.place.appRoot
   if (row.protocol === 'smb') return `smb://${row.address}`
   return lookups.appRootOf(row) ?? `${row.protocol}://${row.address}`
 }

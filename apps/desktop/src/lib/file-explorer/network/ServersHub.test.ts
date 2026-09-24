@@ -56,6 +56,7 @@ const savedSftp: SavedServer = {
       pinned: true,
       connected: false,
       appRoot: 'sftp://ada@jump.local:22',
+      username: 'ada',
     },
   ],
 }

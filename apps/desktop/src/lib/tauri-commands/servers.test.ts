@@ -66,14 +66,15 @@ describe('dialing', () => {
     })
     const offer = { secret: 'hunter2', remember: false }
     const outcome = await connectSavedPlace('sftp-nas-local-22-ada', 'attempt-1', offer)
-    expect(commands.connectSavedPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'attempt-1', offer)
+    // No account beside the secret: only an SMB share's sheet has one to send.
+    expect(commands.connectSavedPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'attempt-1', offer, null)
     expect(outcome).toEqual({ outcome: 'connected', volumeId: 'sftp-nas-local-22-ada' })
   })
 
   it('offers no secret by default: the dial reads the store', async () => {
     vi.mocked(commands.connectSavedPlace).mockResolvedValueOnce({ status: 'ok', data: { outcome: 'timed_out' } })
     await connectSavedPlace('sftp-nas-local-22-ada', 'attempt-2')
-    expect(commands.connectSavedPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'attempt-2', null)
+    expect(commands.connectSavedPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'attempt-2', null, null)
   })
 
   it('throws a saved-place refusal instead of handing back a result nobody switches on', async () => {

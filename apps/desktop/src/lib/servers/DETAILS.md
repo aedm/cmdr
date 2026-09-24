@@ -384,6 +384,22 @@ a certificate happens in Keychain Access.
 There is no property-testing library on the frontend, so `address-parser.test.ts`'s example table IS the contract: a
 shape that reaches the field and isn't in it is a shape nobody decided.
 
+## Saved SMB shares
+
+A share Cmdr mounts is saved as a place under its host, with the account it signed in as (cmdr-reports#7): a row under
+the host in the hub, pinnable like an SFTP place, and brought back to life in the pane through the same `connect-flow`
+arm 3. Model, store, writers, and what Forget does: `docs/specs/saved-smb-shares.md`. What differs from an SFTP place on
+this side:
+
+- **The sign-in sheet asks for the account too** (`SignInShape::UsernamePassword`, no guest), prefilled with the account
+  the share was saved with: for SMB the share is the place and the account a field on it. The attempt sends the typed
+  username beside the secret (`connectSavedPlace`'s `username`), and the row remembers the new account on success.
+- **`remembered` starts on and the Keychain is ❌ never probed** (`open-sign-in.ts`), SMB's rule everywhere; the backend
+  writes the password only once the mount went through, so there is no secret writer here.
+- **A share's next mount may land elsewhere** (`/Volumes/naspi-1`), so `place-connect` asks `placeRootOf` for its
+  landing after a connect and the pane reloads there.
+- **The header names the share on its host** (`smb://192.168.0.153/Container`), since that is the place.
+
 ## The device dial, beside the place dial
 
 A phone is dialed by the same seam and rendered by the same `RemoteConnectView`, but it does NOT come through
@@ -410,9 +426,11 @@ nothing but shape.
 
 Two details are load-bearing:
 
-- **An SMB host row stops the search** rather than falling through to reading 2. Its places are mounted shares whose ids
-  `statfs` mints, so there is nothing for `disconnectPlace` or `setPlacePinned` to act on, and quietly acting on the
-  pane's volume instead would move a server the user isn't pointing at.
+- **An SMB host row stops the search** rather than falling through to reading 2. Its places are its saved shares, each a
+  row of its own, so the host itself has nothing for `disconnectPlace` or `setPlacePinned` to act on, and quietly acting
+  on the pane's volume instead would move a server the user isn't pointing at. A saved SHARE row has a `volumeId`, so it
+  wins like a one-place row: the pin moves, and Disconnect answers `false` (a share's session is a mount, which
+  `disconnectPlace` doesn't speak; Eject in the switcher is its detach).
 - **A target resolved from the pane's volume reports `pinned: null`**, because a `VolumeInfo` carries no pin (the pin is
   the switcher's cap, decided in Rust, and deliberately off the wire). `servers.togglePin` reads `listSavedServers()`
   for that case; a store that doesn't answer reads as unpinned, which makes the command a pin rather than a no-op.
@@ -426,9 +444,6 @@ lands in, so a menu item and a palette command can't drift on a confirmation or 
 Each of these was decided against with a reason, and a reason nobody can find gets re-derived. The pointer is to
 whichever doc owns the item now; ❌ nothing here restates a mechanism.
 
-- **Pinnable SMB shares**: GitHub [#195](https://github.com/vdavid/cmdr/issues/195). `known_shares.rs` holds no share
-  rows and no port, and a mounted share's id comes from `statfs`, so a pin keyed on a stored row would never match the
-  mounted volume. SMB places keep reaching the switcher as mounted volumes instead.
 - **`~/.ssh/config` host aliases as address-field completions**: GitHub
   [#194](https://github.com/vdavid/cmdr/issues/194). It is a backend parser with its own edge cases, and the add form is
   usable without it.

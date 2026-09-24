@@ -494,3 +494,91 @@ fn a_registered_volume_nothing_saved_still_gets_a_row() {
 
     manager.unregister(&volume_id);
 }
+
+// -- Saved SMB shares --
+
+fn saved_share(share: &str, volume_id: Option<&str>, pinned: bool) -> crate::network::known_shares::KnownNetworkShare {
+    use crate::network::known_shares::{AuthOptions, ConnectionMode, KnownNetworkShare};
+    KnownNetworkShare {
+        server_name: "Naspolya".to_string(),
+        share_name: share.to_string(),
+        protocol: "smb".to_string(),
+        last_connected_at: "2026-09-24T10:00:00Z".to_string(),
+        last_connection_mode: ConnectionMode::Credentials,
+        last_known_auth_options: AuthOptions::GuestOrCredentials,
+        username: Some("sven".to_string()),
+        address: Some("198.51.100.90".to_string()),
+        port: None,
+        volume_id: volume_id.map(str::to_string),
+        mount_path: volume_id.map(|_| format!("/Volumes/{share}")),
+        pinned,
+    }
+}
+
+/// A mounted SMB share's row, as the mount table lists it.
+fn mount_row(id: &str) -> LocationInfo {
+    let mut row = location_from_place(ServerPlace {
+        id: id.to_string(),
+        name: "naspi on Naspolya".to_string(),
+        app_root: "/Volumes/naspi".to_string(),
+        landing_path: None,
+        fs_type: "sftp",
+        pinned: false,
+        state: ConnectionState::OsMount,
+    });
+    row.fs_type = Some("smbfs".to_string());
+    row.pinned = None;
+    row
+}
+
+/// ❗ **A saved share that isn't mounted is a `saved` row at its last mount path**,
+/// carrying its own pin, so the switcher, a tab, and the hub can all reach it.
+#[test]
+fn an_unmounted_saved_share_is_a_saved_row_carrying_its_pin() {
+    let mut volumes = Vec::new();
+    fold_saved_smb_shares(&mut volumes, vec![saved_share("naspi", Some("smb-n"), true)], |_| false);
+
+    assert_eq!(volumes.len(), 1);
+    assert_eq!(volumes[0].id, "smb-n");
+    assert_eq!(volumes[0].path, "/Volumes/naspi");
+    assert_eq!(volumes[0].name, "naspi on Naspolya");
+    assert_eq!(volumes[0].connection_state, Some(ConnectionState::Saved));
+    assert_eq!(volumes[0].pinned, Some(true));
+}
+
+/// ❗ **A mounted share keeps its mount row**, one row per id, and only a PIN
+/// shows on it: an unpinned one stays `None`, since a Linux mount row has no
+/// connection state and the switcher's "live or pinned" rule would drop it.
+#[test]
+fn a_mounted_saved_share_keeps_its_mount_row_and_only_a_pin_is_added() {
+    let mut volumes = vec![mount_row("smb-n"), mount_row("smb-m")];
+    fold_saved_smb_shares(
+        &mut volumes,
+        vec![
+            saved_share("naspi", Some("smb-n"), true),
+            saved_share("media", Some("smb-m"), false),
+        ],
+        |_| true,
+    );
+
+    assert_eq!(volumes.len(), 2, "no second row for a mounted share");
+    assert_eq!(volumes[0].pinned, Some(true));
+    assert_eq!(volumes[1].pinned, None);
+}
+
+/// A share whose volume is registered but not yet in the local listing is left
+/// to its mount row, ❌ never offered as a place to dial.
+#[test]
+fn a_registered_share_the_listing_has_not_caught_up_with_gets_no_saved_row() {
+    let mut volumes = Vec::new();
+    fold_saved_smb_shares(&mut volumes, vec![saved_share("naspi", Some("smb-n"), true)], |_| true);
+    assert!(volumes.is_empty());
+}
+
+/// A share no mount went through has no id and no path, so no row.
+#[test]
+fn a_share_no_mount_went_through_has_no_row() {
+    let mut volumes = Vec::new();
+    fold_saved_smb_shares(&mut volumes, vec![saved_share("naspi", None, false)], |_| false);
+    assert!(volumes.is_empty());
+}

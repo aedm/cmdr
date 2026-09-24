@@ -106,6 +106,19 @@ async fn read_identity_within(
     .await
 }
 
+/// The volume id of the SMB mount at `mount_path`, read off the mount under
+/// [`MOUNT_READ_LIMIT`], or `None` when it isn't an SMB mount or didn't answer.
+///
+/// The same id `register_smb_volume` keys the volume by, so a saved share place
+/// (`smb_saved_shares`) and the live mount can't disagree about which volume is
+/// which.
+pub(crate) async fn mounted_volume_id(mount_path: &str) -> Option<String> {
+    match read_identity_within(mount_path, MOUNT_READ_LIMIT, identity_from_statfs).await {
+        IdentityRead::Answered(identity) => identity.map(|identity| identity.volume_id),
+        IdentityRead::NotResponding => None,
+    }
+}
+
 /// Delays between direct-connect attempts.
 ///
 /// The first connect to a private LAN address shortly after launch routinely

@@ -84,6 +84,8 @@ pub(crate) mod smb_connect_directly;
 // The per-share "Use Cmdr's fast direct connection" switch, and the pane-open upgrade.
 pub(crate) mod smb_direct_switch;
 pub(crate) mod smb_pane_upgrade;
+// Saved SMB share places: recorded when Cmdr mounts a share, brought back by `connect_saved_place`.
+pub(crate) mod smb_saved_shares;
 
 // The "we're stuck on the kernel mount" notice's once-per-server ledger. Lives
 // beside `smb_upgrade` (its only caller) rather than inside it, so the ledger is

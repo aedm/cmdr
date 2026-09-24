@@ -105,7 +105,7 @@ export async function openAddServerSheet(options: {
  * mount discovery), so the store can still hold nothing for it, or a row from an
  * earlier registration with an old root.
  */
-async function placeRootOf(volumeId: string): Promise<string | null> {
+export async function placeRootOf(volumeId: string): Promise<string | null> {
   const servers = await listSavedServers()
   for (const server of servers) {
     const place = server.places.find((p) => p.volumeId === volumeId)
@@ -144,8 +144,10 @@ export async function openSignInForPlace(request: SignInSeamRequest): Promise<Si
   const { endpoint } = identity
   // ❗ Seeded from what is STORED, ❌ never defaulted on: an attended sign-in
   // REFRESHES a remembered secret and never seeds one, so a default-on box would
-  // seed one the user already declined.
-  const remembered = await hasServerSecret(volumeId)
+  // seed one the user already declined. SMB is the exception, and asks nothing:
+  // every read of its Keychain can raise a system prompt, and the backend writes
+  // a password only once a mount went through (`sign-in-contract.ts`).
+  const remembered = endpoint.protocol === 'smb' ? true : await hasServerSecret(volumeId)
 
   const result = await openSignInSheet({
     mode: 'sign-in',
@@ -270,7 +272,7 @@ function dialSavedPlaceAttempt(volumeId: string): SignInAttempt {
     if (submission.mode !== 'sign-in') return { kind: 'refused', refusal: 'needs_credentials' }
     const attemptId = newServerAttemptId()
     try {
-      return readConnectOutcome(await connectSavedPlace(volumeId, attemptId, submission.secret))
+      return readConnectOutcome(await connectSavedPlace(volumeId, attemptId, submission.secret, submission.username))
     } catch (e) {
       // ❗ A typed refusal means the place's standing moved while the sheet was
       // open (`volumes-changed` is debounced). Another dial registered it, so the
@@ -359,9 +361,11 @@ async function identityFor(volumeId: string): Promise<PlaceIdentity> {
   const endpoint: SignInEndpoint = {
     protocol: owner.protocol,
     displayName: place?.name ?? owner.displayName,
-    address: owner.address,
+    // An SMB share's header names the share on its host: the place IS that share.
+    address: owner.protocol === 'smb' && place ? `smb://${owner.address}/${place.name}` : owner.address,
     host: parsed?.host ?? owner.address,
-    username: parsed?.username ?? owner.username ?? undefined,
+    // ❗ The PLACE's account first: an SMB host's shares each remember their own.
+    username: parsed?.username ?? place?.username ?? owner.username ?? undefined,
   }
   return { endpoint, saveSecret: secretWriterFor(owner, parsed) }
 }
@@ -369,6 +373,8 @@ async function identityFor(volumeId: string): Promise<PlaceIdentity> {
 /**
  * How each protocol files a secret: SFTP keys on `(host, port, username)`, the
  * same tuple its volume id hashes; WebDAV keys on the base URL and the account.
+ * An SMB share has none here: `connect_saved_place` writes the password itself,
+ * once the mount went through.
  *
  * A path that didn't parse leaves SFTP without a port, and a made-up one would
  * write an entry nothing reads, so it answers `null` instead.
