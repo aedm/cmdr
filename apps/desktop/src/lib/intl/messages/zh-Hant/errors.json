@@ -1657,7 +1657,7 @@
   "@errors.write.sourceNotRemoved.title": {
     "sourceHash": "ac5a888"
   },
-  "errors.write.sourceNotRemoved.message": "所有內容都已經抵達 {landedAt}，但 Cmdr 無法移除 {path} 這個原本的檔案，所以現在兩個地方都有它。什麼都沒被丟掉。",
+  "errors.write.sourceNotRemoved.message": "所有內容都已經抵達 {landedAt}，但 Cmdr 無法移除 {path} 這個原本的檔案，所以現在兩個位置都有它。什麼都沒被丟掉。",
   "@errors.write.sourceNotRemoved.message": {
     "sourceHash": "c28d499"
   },

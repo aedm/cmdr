@@ -2308,9 +2308,6 @@
     "chosen": "server",
     "confidence": "high",
     "decision": "Server hub: table and statuses",
-    "exceptions": {
-      "servers.sheet.nameHelp": "The sheet is about this server already; the help line names what Cmdr uses instead (kontot och värden)."
-    },
     "forms": "plural servrar",
     "sources": "macOS Finder (Anslut till server, Anslutna servrar)"
   },

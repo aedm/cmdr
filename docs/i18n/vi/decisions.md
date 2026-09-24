@@ -509,7 +509,7 @@ source is Apple's own Connect to Server dialog (`NetAuthAgent.app`).
   `staleDialog.*` sibling. Two subjects are in play, so the body repeats `chỉ mục của điện thoại` over an ambiguous
   `nó`.
 
-## Thư mục gốc và thư mục bắt đầu của máy chủ đã lưu (`servers.sheet.rootFolder*`, `servers.sheet.startFolder*`, `servers.sheet.nameHelp`, `servers.refusal.startFolderOutsideRoot`, `.rootNotFound`, `.startFolderNotFound`, `.saveUnconfirmed`)
+## Thư mục gốc và thư mục bắt đầu của máy chủ đã lưu (`servers.sheet.rootFolder*`, `servers.sheet.startFolder*`, `servers.refusal.startFolderOutsideRoot`, `.rootNotFound`, `.startFolderNotFound`, `.saveUnconfirmed`)
 
 - start folder → `thư mục bắt đầu` (Shortcuts' `Vị trí bắt đầu`, `tentative`), over `thư mục khởi động` (macOS keeps
   `khởi động` for startup) and `thư mục mặc định` (another sense).

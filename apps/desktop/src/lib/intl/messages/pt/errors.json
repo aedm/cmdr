@@ -1657,7 +1657,7 @@
   "@errors.write.sourceNotRemoved.title": {
     "sourceHash": "ac5a888"
   },
-  "errors.write.sourceNotRemoved.message": "Tudo chegou em {landedAt}, mas o Cmdr não conseguiu remover o original em {path}, então agora ele está nos dois lugares. Nada se perdeu.",
+  "errors.write.sourceNotRemoved.message": "Tudo chegou em {landedAt}, mas o Cmdr não conseguiu remover o original em {path}, então agora ele está nos dois locais. Nada se perdeu.",
   "@errors.write.sourceNotRemoved.message": {
     "sourceHash": "c28d499"
   },

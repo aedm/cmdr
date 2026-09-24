@@ -629,14 +629,14 @@ Un movimiento entre volúmenes copió todo completo pero no pudo eliminar el ori
 en Finder). El diálogo tiene que dejar claro que la copia está completa, que el original sigue ahí y que no se perdió
 nada. Familia raw: sin ICU, apóstrofos normales, `{landedAt}` y `{path}` literales.
 
-- **"You don't have permission to read this item" → `No tienes permiso para leer este ítem`** · molde de
+- **"You don't have permission to read this item" → `No tienes permiso para leer este elemento`** · molde de
   `errors.write.permissionDenied.message.copy` ("No tienes permiso para copiar archivos aquí."); leer como causa: Finder
-  `PE99`/`PE22` ("porque no dispones de permiso de lectura") · high. `ítem` como en los vecinos
-  `permissionDenied.suggestion.systemProtectedMac` y Finder.
-- **"move this item out of its folder" → `mover este ítem fuera de su carpeta`** · `mover` (glosario) · high.
+  `PE99`/`PE22` ("porque no dispones de permiso de lectura") · high. `elemento` es la regla de item en `terms.json`.
+- **"move this item out of its folder" → `mover este elemento fuera de su carpeta`** · `mover` (glosario) · high.
 - **"the copy" (el duplicado que llegó) → `la copia`; "arrived" → `llegó`** · `copia` es el sustantivo fijado para copy;
   pretérito según la nota de estilo · high.
-- **"in both places" → `en los dos sitios`** · sin concordancia con el ítem (archivo o carpeta) · high.
+- **"in both places" → `en las dos ubicaciones`** · `ubicación` es la regla de location en `terms.json`, y no concuerda
+  con el elemento (archivo o carpeta) · high.
 - **"delete the original yourself" → `elimina tú el original`** · la regla de estilo contra el `tú mismo` con género
   ("Elige tú las carpetas"); `eliminar` es el verbo de delete · high.
 - **`deletePending.message` ahora nombra el archivo: `El archivo en {path}`** · el resto queda igual, `identificador`
