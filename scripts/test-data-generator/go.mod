@@ -1,3 +1,3 @@
 module cmdr/scripts/test-data-generator
 
-go 1.25
+go 1.26.0
