@@ -5,6 +5,112 @@ This file holds all notable changes to Cmdr over time.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [0.47.0] - 2026-09-24
+
+Tons of fixes, especially around networking and the file viewer. The highlights:
+
+- Faster and more reliable networking: SMB operations no longer freeze browsing; accented names from a NAS work well
+  (this one is super tricky and even Finder doesn't get it right, but Cmdr now does!), plus a few SFTP or WebDAV wins.
+- Privacy improvements: clear cloud AI opt-in; no PostHog calls; less network chatter.
+- You can now set letter shortcuts for favorites, contributed by [Gábor Gyebnár](https://github.com/aedm). Thank you!
+
+### Added
+
+- Open files with one huge line, like minified JSON, without the viewer hanging: reading, searching, copying, and saving
+  stay fast (8649c8d46, 1cd336da0, 748bc8535, 2eebb38fa, 817ab7fa3, d021cde50, 61089af5d)
+- Mark where the viewer split a very long line when you copy or save it (8a864e68c, 6e337483c, daefa7c44)
+- Assign a letter shortcut to any favorite from its right-click menu, contributed by Gábor Gyebnár (1dad2adfa,
+  0d54b09e5, bb068d2b4)
+- Add an `Allow cloud AI` switch covering every AI feature that sends data out, and make Ask Cmdr a plain on/off switch
+  (7b7f3cc6c, ac85c8dbc, d6291f847, e7f1d56ec, b0c71c9fb, d7e9e9b8e, fac6ebc05, 473b6ae4e)
+- Add a per-share `Use Cmdr's fast direct connection` switch, plus a one-click `Connect directly now` (f7a8e0b19,
+  cdff92804, f1187c76a, 3804023d8)
+- Switch tabs with `⌘⌥←` and `⌘⌥→` too, like in browsers (6196c880a)
+- Name the folder that refused a move or delete, and say whether admin rights would help (5c7ffcee8, 1374f6a00)
+- Say when a search is waiting for its drive's index to load (19f537d90)
+- Explain a name clash that's really two spellings of one accented name on the server (2fac2e906)
+- Toggle `Reconnect automatically` for an SFTP or WebDAV server right in its row menu, with a tip on what it does
+  (177815376, 294d212d8)
+- Let an agent read a breakdown of Cmdr's memory use over MCP (a6dcd04ed, 104a089e1)
+
+### Changed
+
+- Stop Cmdr talking to PostHog: usage stats and update checks go through Cmdr's own server, every three hours
+  (27400bfa1, ed2d39383, cb72a37ce, d7d7d3f97, 4661ff10f, fcc890951, 253f9429f)
+- Keep an SMB share browsable while you copy to it, with listings waiting less behind the transfer (f82b951ed,
+  96b5e7da8, 13ea08744, 9ed14ce63, 33d56cfa7)
+- Move a volume row's actions (eject, disconnect, rename, pin, forget) into its own submenu, opened with `→` or a hover
+  (bb0b67d65, 98602ac6f)
+- Move `Connect to server…` and `Show servers` to the Go menu, like Finder (faec77eb4, eeb8117dc)
+- Try the fast direct connection in the background when you open a share that's still on the macOS mount (562ca4a8a)
+- Open the search dialog much faster on large drives (ea7c73a5c, dee2d20ec, 9cad84838)
+- Cut idle CPU and memory use: a steadier Size column, fewer folder-size refreshes, calmer disk-space readouts, and
+  lighter photo scoring (c6694952d, 67d486826, 00f74f84c, 548e6bea3, d17ce3f1f, 8138aa22b, 08e67f535, f607a050f,
+  f44663c82, a83b6a647, c1b3e82d6, de235afc7)
+- Make WebDAV uploads faster, with one write and one rename per file (a24c0a2dc)
+- Announce checkbox menu rows as checked or unchecked in VoiceOver (2ff7702fe)
+
+### Fixed
+
+- Fix accented file names on a NAS's SMB share listing fine but refusing to open, copy, rename, or delete (6d45eda82,
+  7eef71cb2, e23cfb466)
+- Fix copies to some NAS and Samba setups failing or hanging (eb17dd937, 46cec4c80)
+- Fix a 1–8 MB download from an SMB share showing no progress and blocking browsing on that share (345efd14f, 122a3e30e,
+  292e41f95, f06c892b0)
+- Fix a failed copy deleting a file someone else had just saved under the destination name (0c31acb25)
+- Fix a small file copied to an SMB share overwriting a file that appeared under the same name mid-copy (c5697ec36)
+- Fix a rare error on an SMB share or FUSE mount making a rename or overwrite destroy the wrong file (68a058034,
+  0a39a22e6)
+- Fix a refused overwrite or copy leaving a temporary file in your folder for up to an hour (cf64883ee)
+- Fix `⌘A` and copy in the viewer dropping the last line of a file you hadn't scrolled through (7e3def092)
+- Fix viewer copies coming back empty or with a duplicated line, and search finding nothing in UTF-16 files (3baefed69)
+- Fix Enter opening a file or share twice, and Page Up, Page Down, Home, and End jumping twice as far (c47a748b7,
+  3edba1728, 730d7702b)
+- Fix every menu icon going blank on macOS 27 (649878c47)
+- Fix `↑` and `↓` jumping into a volume switcher submenu you had only hovered (e66d0a91f)
+- Fix Escape on a dialog also taking the window out of full screen (dbd67788c, d7dcf3f2d, 49f902d76, 64d45c6c1)
+- Fix a silent SFTP or WebDAV server hanging operations instead of showing the disconnect (0fb4f607f, 33fe462a8)
+- Fix an SFTP handshake failure leaving the network session open in the background (be0156bec)
+- Fix disconnected SMB shares keeping their network sockets open (18a20ed75)
+- Fix a transfer's progress bar jumping backward on a network share (3a008f261)
+- Fix a slow first file showing a frozen progress bar instead of saying it's waiting on the source (12806aa24,
+  f5bc871fd, dd1eeadef)
+- Fix a copy that failed while scanning showing a blank error instead of naming the missing file (ebf054395, 00af65fd8)
+- Fix a false "can't reach your server" notice at launch, and a share mounted at login missing the fast connection
+  (7523bd350, 99e144c29)
+- Fix accented names Cmdr created on an SFTP or WebDAV server breaking links and scripts there (4a50381af)
+- Fix the clipboard message on SFTP, WebDAV, and Android volumes blaming "MTP devices" (de39366bf, 898be9dac)
+- Fix the folder-size hourglass blinking during ordinary background activity (26cc400dd)
+- Fix the cursor slipping a row when hidden files change above it (8038548f8)
+- Fix re-adding a server with a new folder briefly opening the old one (d399b016f)
+- Fix the volume list stalling on a hung SMB or NFS share (2c12c3bb2)
+- Fix a phantom "Devices" drive from Xcode showing up in the volume switcher (cb1dda7f0)
+- Fix network discovery flooding the log on Macs running Docker Desktop, OrbStack, or UTM (1bfed2f96, f80b16e88)
+- Fix a few Dutch and Vietnamese translations using stiff or wrong terms (8e24f6600)
+
+### Security
+
+- Drop a code-signing exception that could have let another program load code into Cmdr (46146d662)
+- Always keep server passwords and AI keys in the Keychain in release builds (d9a162f5e)
+- Keep natural-language search queries out of the log and error reports (7000d2651)
+- Update `faster-hex` to close a published advisory (8a11946ed)
+
+### Non-app
+
+- Gate every release on a full, green CI run of the exact commit being released (71e857c89)
+- Sign SLSA build provenance and CycloneDX SBOMs for every release (5a97ad1da, 0a2233b9f)
+- Publish a security policy and `/trust` pages that answer security reviewers straight, gaps included (ed72122cf,
+  8b7147279, 74e388546, 2f8b9acf6, 1c355feb5, a0fc2941b)
+- Scan dependencies for security advisories daily instead of every six days (8aacb49ba)
+- Run one shared set of data-safety scenarios against real SMB, SFTP, and WebDAV servers (dcbe04f5d, 8e53e4aaf,
+  8f8c0e704, 57606fc63, c6065ab5b, bcea5a910)
+- Stop recording video of passing E2E tests, and tell a starved machine from a broken test (8a615b4d5, aa0d96987,
+  f5198da43)
+- Pin the release runner image, so a GitHub image bump can't change the macOS SDK Cmdr links against (952e64fc5)
+- Expire error-report download links after 24 hours instead of seven days (096232d39)
+- Get notes added to already-sent reports onto the triage board, where every one had been missing (4cb5d786f)
+- Scrub a reporter's details from public test fixtures (990fcb2e3, 050f3d434)
+
 ## [0.46.1] - 2026-09-19
 
 Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, search UI improvements.
