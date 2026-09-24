@@ -907,8 +907,8 @@ surface (the menu, or the open submenu) has an `icon`, the rows without one get 
   Space activate; ArrowRight opens a submenu and ArrowLeft closes it, and once the submenu has its own cursor (`→`, or
   the pointer hovered one of its rows) the arrows walk ITS rows and Enter takes the row they landed on; ⌥↑/⌥↓ reorder
   inside a `reorderable` section. ❗ A submenu a HOVER opened is cursorless and leaves ↑/↓ to the parent list (which
-  closes it as the cursor leaves its row); `→` enters it. Otherwise ↓ after a hover jumps into the submenu. A bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓
-  belong to somebody else and pass through.
+  closes it as the cursor leaves its row); `→` enters it. Otherwise ↓ after a hover jumps into the submenu. A bare
+  cursor key only: ⌘↓ / ⌃↓ / ⌥↓ belong to somebody else and pass through.
 - **Accelerators**: a row carrying `accelerator: '1'` opens when that digit is typed, from anywhere in the open menu
   (with a submenu up too), matched across every section. `acceleratorChar` reads `event.code` (`Digit0`–`Digit9` /
   `Numpad0`–`Numpad9`), so the PHYSICAL key decides and an AZERTY layout, where a digit needs Shift, still works: Shift
