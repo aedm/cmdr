@@ -50,7 +50,16 @@ compile.
 ## Release gates that abort before tagging
 
 `scripts/release.sh` runs a few hard gates locally before it commits and tags, so a release that can't ship is never
-tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, three are worth knowing:
+tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, four are worth knowing:
+
+- **Only a commit with a fully green CI run ships.** `scripts/release-ci-gate.sh` requires HEAD to be `origin/main` (CI
+  never saw an unpushed commit) and a successful `CI` run on that exact commit, started via `workflow_dispatch` with
+  `run_all`. ❗ A push run doesn't count: CI's change detection skips unchanged lanes, so a docs-only HEAD reads green
+  while the commit before it broke Rust. The gate reuses a full run already on the commit, starts one otherwise, and
+  waits (~25 min), so `/release` pushes and starts it early to overlap it with changelog drafting. A flaky red run:
+  `gh run rerun <id> --failed`, then re-run the release. Emergency bypass for a hotfix while CI is red for reasons
+  outside the repo: `RELEASE_SKIP_CI_GATE=1`. The release commit itself (version bumps, CHANGELOG) lands after the gate;
+  the `oxfmt --ci` gate and the post-tag CI run cover it.
 
 - **Changelog refs must survive the script's own rebase.** The script's `git pull --rebase` rewrites every unpushed hash
   whenever `origin/main` moved, so right after it, `pnpm check changelog-links --fresh` fails the release on any ref no
@@ -473,7 +482,7 @@ runs. `2` is fine. `0` blocks every DMG build until it's cleared, and clearing i
 After a reset, start a build with the user at the keyboard: the prompt lands within a second or two of
 `Running bundle_dmg.sh`, and one Allow authorizes that runner-node path until the runner auto-updates again.
 
-Prevention: step 3 of `.claude/commands/release.md` reads the resolved path's `auth_value` right after the CHANGELOG
+Prevention: step 4 of `.claude/commands/release.md` reads the resolved path's `auth_value` right after the CHANGELOG
 draft, so a denial is found before anything is tagged rather than after three jobs burn.
 
 ### `bundle_dmg.sh` fails fast (~3 s) on the universal/aarch64/x86_64 build

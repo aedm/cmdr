@@ -2,7 +2,13 @@ Prepare a release based on docs/guides/releasing.md.
 
 1. Prerequisite: Run `gh secret list` and verify that `TAURI_SIGNING_PRIVATE_KEY` and
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` both exist. If either is missing, warn the user and stop.
-2. Update @CHANGELOG.md based on git commits since last release.
+2. **Push `main` and start the CI gate now**: `git pull --rebase origin main && git push origin main`, then run
+   `./scripts/release-ci-gate.sh` in the background. It starts a full (`run_all`) CI run on the pushed commit and waits
+   for it (~25 min), overlapping it with the drafting below; `release.sh` re-runs it before tagging and aborts unless
+   it's green. If it goes red, fix on `main` (a worktree as usual), push, and restart the gate: the new commit needs its
+   own run, and the changelog hashes stay valid since nothing got rebased. Details: `docs/guides/releasing.md` § Release
+   gates that abort before tagging.
+3. Update @CHANGELOG.md based on git commits since last release.
    - **Run `git pull --rebase origin main` before reading a single hash.** `release.sh` pulls too, and when
      `origin/main` has moved (the release workflow's `latest.json` commit moves it after every release), that rebase
      rewrites every unpushed commit's hash, stranding the refs you cite. Pulling first makes the script's pull a no-op.
@@ -142,7 +148,7 @@ Prepare a release based on docs/guides/releasing.md.
      draft had a Fixed entry whose SHAs were a strict subset of an Added entry's.)
    - Strip internal symbol names, file paths, and enum variants that survived the first pass.
 
-3. **Only if `release.yml`'s `build.runs-on` is the self-hosted runner** (it is `macos-latest` today, so normally SKIP
+4. **Only if `release.yml`'s `build.runs-on` is the self-hosted runner** (it is `macos-latest` today, so normally SKIP
    this step): check the runner's Finder Automation permission so `bundle_dmg.sh` doesn't hang for ~2 minutes per matrix
    job. Run it AFTER presenting the CHANGELOG draft for review (the user is at the keyboard anyway). See
    `docs/guides/releasing.md` § "Which runner builds the release" and § "`bundle_dmg.sh` hangs ~2 minutes then fails on
@@ -170,7 +176,7 @@ Prepare a release based on docs/guides/releasing.md.
    attributed to that shell's already-granted responsible process, so it succeeds without asking about node and writes
    nothing useful. Only the runner's own launchd session (`SessionCreate=true`) makes node the responsible process.
 
-4. Apply the roadmap and feature-status updates (edit the files, don't just advise; the user reviews before committing).
+5. Apply the roadmap and feature-status updates (edit the files, don't just advise; the user reviews before committing).
    - **Roadmap** (@apps/website/src/pages/roadmap.astro): add a dated milestone (with a date!) for each major
      development this release, and tick off / remove any "coming soon" item that just shipped. Match the existing
      curation: milestones only, not every release. Group under the right month heading (add a new `<h3>` when the month
@@ -181,11 +187,11 @@ Prepare a release based on docs/guides/releasing.md.
      notes to one honest line, website voice (no "I"/"we"). Schema and consumers: @docs/feature-status.md. Graduating
      `search` or `select-files` out of `alpha` also means updating the pinned assertion in
      `apps/desktop/src/lib/feature-status.test.ts`. Present the diff for review.
-5. Based on the changes, advise what the next version should be (patch: bug fixes, minor: new features, major: major
+6. Based on the changes, advise what the next version should be (patch: bug fixes, minor: new features, major: major
    launches), and give the user the `./scripts/release.sh x.x.x` command to run.
-6. **Offer to run the release script** for the user. Wait for confirmation before running.
-7. **Push immediately** with `git push origin main --tags` IFF the release script completed cleanly. Else: stop and ask.
-8. **After pushing**, confirm the build started. Wait ~30 seconds, then run `gh run view <release-run-id> --json jobs`
+7. **Offer to run the release script** for the user. Wait for confirmation before running.
+8. **Push immediately** with `git push origin main --tags` IFF the release script completed cleanly. Else: stop and ask.
+9. **After pushing**, confirm the build started. Wait ~30 seconds, then run `gh run view <release-run-id> --json jobs`
    and check the `Build (...)` jobs. On GitHub-hosted runners (the current setup) all three should be `in_progress`
    together, because they run in parallel.
    - **Self-hosted only**: exactly one goes `in_progress` and the other two stay `queued`, which is normal (one machine,
@@ -194,13 +200,13 @@ Prepare a release based on docs/guides/releasing.md.
      `cd ~/actions-runner && ./svc.sh start` (fall back to `launchctl bootout` + `bootstrap` if `svc.sh` errors with
      "Load failed: 5: Input/output error"). Queued jobs pick up automatically once the runner reports in; no re-trigger
      or re-tag needed.
-9. **Self-hosted only, so normally SKIP: arm `caffeinate`** so the Mac can't sleep mid-build (a display or system sleep
-   drops the self-hosted runner connection and fails every in-flight matrix job). While the build runs on GitHub's
-   hardware nothing local matters, so don't arm it. Follow the check/arm/disarm procedure in `docs/guides/releasing.md`
-   § "Keep the Mac awake during the build": check `pgrep -lf 'caffeinate -dimsu'` first, arm a background
-   `caffeinate -dimsu` only if none is running, disarm it once the workflow reports `completed` (and only if you armed
-   it), and re-arm before a re-run of failed jobs if none is running.
-10. **Monitor the CI build**:
+10. **Self-hosted only, so normally SKIP: arm `caffeinate`** so the Mac can't sleep mid-build (a display or system sleep
+    drops the self-hosted runner connection and fails every in-flight matrix job). While the build runs on GitHub's
+    hardware nothing local matters, so don't arm it. Follow the check/arm/disarm procedure in `docs/guides/releasing.md`
+    § "Keep the Mac awake during the build": check `pgrep -lf 'caffeinate -dimsu'` first, arm a background
+    `caffeinate -dimsu` only if none is running, disarm it once the workflow reports `completed` (and only if you armed
+    it), and re-arm before a re-run of failed jobs if none is running.
+11. **Monitor the CI build**:
 
 - On GitHub-hosted runners, tell the user their laptop is free: they can close it or sleep the Mac, the build is
   elsewhere. **Self-hosted only**: remind them NOT to close the laptop for ~15 minutes.
@@ -210,7 +216,7 @@ Prepare a release based on docs/guides/releasing.md.
 - Report when all jobs complete (success or failure). If a job fails, show the failure details, and advise how to fix.
 - Suggest the user to also track the build at https://github.com/vdavid/cmdr/actions.
 
-11. **Make the standalone CI run happen, then watch it** (the non-release `CI` workflow):
+12. **Make the standalone CI run happen, then watch it** (the non-release `CI` workflow):
     - **First, check whether CI is disabled.** David sometimes disables it to save GHA minutes; `gh workflow list --all`
       then shows `CI` as `disabled_manually` (a `push` to main won't fire it). CI matters for a release: its
       `deploy-website` job is what publishes the roadmap, feature-status, and landing-page changes (the release workflow
@@ -218,10 +224,11 @@ Prepare a release based on docs/guides/releasing.md.
       disabled, re-enable and trigger it on the release commit: `gh workflow enable CI` then
       `gh workflow run CI --ref main` (`run_all` defaults to true). Tell the user you re-enabled it, and ask whether
       they want it left enabled or disabled again after the run.
-    - It's not a blocker for the release. If it goes red, fix it in the background while the release builds. Small
-      things like lint regressions are common.
+    - The pre-tag gate already proved every lane green on the commit before the release commit, so a red run here points
+      at the release commit itself (version bumps, CHANGELOG, visual baselines). It doesn't block the shipped release:
+      fix it in the background while the release builds.
     - Surface the failure to the user when convenient; don't interrupt release-build progress reporting for it.
-12. **After the release run succeeds, verify the public surface**:
+13. **After the release run succeeds, verify the public surface**:
     - `gh release view vX.Y.Z --json assets,tagName,publishedAt`: confirm the expected DMGs are attached
       (`Cmdr_X.Y.Z_aarch64.dmg`, `_x64.dmg`, `_universal.dmg`) and sizes look reasonable.
     - Wait ~30 seconds for the website auto-deploy (the release workflow commits an updated `latest.json` and fires a
@@ -238,7 +245,7 @@ Prepare a release based on docs/guides/releasing.md.
       the user; the manual fix is to re-trigger the website-deploy workflow via `workflow_dispatch` from the Actions
       tab. Don't block release success on this. The GitHub Release is what users actually download.
 
-13. **Minor or major release? Offer to refresh the app-directory listings** (skip entirely for patches). Update
+14. **Minor or major release? Offer to refresh the app-directory listings** (skip entirely for patches). Update
     @brand/listings/macupdate.md in place: the version number, the "Version changes" HTML rewritten from the new
     CHANGELOG section into their `<h5>` + `<ul>` format, and only the description lines the release actually made stale.
     That file is the source of truth; never retype a listing at the form. Then give David the link

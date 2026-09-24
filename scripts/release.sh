@@ -67,6 +67,11 @@ fi
 # `--fresh`: its cache keys on CHANGELOG.md alone, which a rebase doesn't touch.
 pnpm check changelog-links -m --fresh
 
+# Release gate: only a commit with a fully green CI run ships (a `run_all` run, since push runs
+# skip unchanged lanes). It also refuses unpushed commits, which CI never saw. Starts the run if
+# `/release` didn't already, and waits for it. See docs/guides/releasing.md.
+./scripts/release-ci-gate.sh
+
 echo "Releasing version $VERSION..."
 
 # Update version in package.json
