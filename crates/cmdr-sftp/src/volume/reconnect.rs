@@ -359,7 +359,10 @@ impl SftpVolumeInner {
             }
             Stalled::NeedsUser => {
                 self.emit_if_changed(ConnectionState::NeedsCredentials);
-                VolumeError::PermissionDenied(self.volume_id.clone())
+                VolumeError::PermissionDenied {
+                    path: self.volume_id.clone(),
+                    raw_os_error: None,
+                }
             }
             Stalled::HostKeyNeedsApproval => {
                 // ❗ Its own state rather than `NeedsCredentials`: the frontend
@@ -373,7 +376,10 @@ impl SftpVolumeInner {
                     "sftp volume '{}' presented a host key that isn't the trusted one; not reconnecting",
                     self.volume_id
                 );
-                VolumeError::PermissionDenied(self.volume_id.clone())
+                VolumeError::PermissionDenied {
+                    path: self.volume_id.clone(),
+                    raw_os_error: None,
+                }
             }
             Stalled::Transient(error) => {
                 self.emit_if_changed(ConnectionState::Disconnected);

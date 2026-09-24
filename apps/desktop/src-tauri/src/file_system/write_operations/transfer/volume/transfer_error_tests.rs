@@ -74,12 +74,46 @@ fn a_not_found_from_the_destination_is_not_a_missing_source() {
     );
 }
 
+/// cmdr-reports#17: a move whose source delete hit `EPERM` (a Finder-locked
+/// file) told the user "you don't have permission to move files here". The
+/// errno died inside `VolumeError::PermissionDenied`, so the refusal read as
+/// `Unclassified`, the macOS-protection advice that already existed was
+/// unreachable, and the details block printed the path twice.
+#[cfg(unix)]
+#[test]
+fn a_refusal_keeps_its_errno_through_the_volume_layer() {
+    let eperm = VolumeError::from_io_at(&std::io::Error::from_raw_os_error(libc::EPERM), "/Users/me/locked.jpg");
+    let err = map_volume_error("/Users/me/locked.jpg", PathRole::Source, eperm);
+
+    let WriteOperationError::PermissionDenied {
+        errno,
+        refusal,
+        message,
+        ..
+    } = &err
+    else {
+        panic!("expected PermissionDenied, got {err:?}");
+    };
+    assert_eq!(*errno, Some(libc::EPERM));
+    assert_eq!(*refusal, PermissionRefusal::SystemProtected);
+    // The OS's own sentence, not the path a second time.
+    assert_eq!(message, &std::io::Error::from_raw_os_error(libc::EPERM).to_string());
+
+    // And that's what the frontend receives.
+    let json = serde_json::to_value(&err).expect("serializes");
+    assert_eq!(json["refusal"], "systemProtected");
+    assert_eq!(json["errno"], libc::EPERM);
+}
+
 #[test]
 fn test_map_volume_error_permission_denied() {
     let err = map_volume_error(
         "/ctx",
         PathRole::Source,
-        VolumeError::PermissionDenied("Access denied".to_string()),
+        VolumeError::PermissionDenied {
+            path: "Access denied".to_string(),
+            raw_os_error: None,
+        },
     );
     assert!(
         matches!(err, WriteOperationError::PermissionDenied { path, message, errno: None, refusal: PermissionRefusal::Unclassified, refused_folder: None } if message == "Access denied" && path == "/ctx")

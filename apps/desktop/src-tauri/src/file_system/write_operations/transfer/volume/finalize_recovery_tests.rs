@@ -221,7 +221,10 @@ impl Volume for DeleteRefusesOne {
             if self.goes_through {
                 self.inner.delete(path).await?;
             }
-            Err(VolumeError::PermissionDenied(path.display().to_string()))
+            Err(VolumeError::PermissionDenied {
+                path: path.display().to_string(),
+                raw_os_error: None,
+            })
         })
     }
 }
@@ -255,7 +258,7 @@ async fn a_refused_delete_keeps_the_original_and_takes_its_own_temp_away() {
         .expect_err("the delete is rigged to be refused");
 
     assert!(
-        matches!(failure.error, VolumeError::PermissionDenied(_)),
+        matches!(failure.error, VolumeError::PermissionDenied { .. }),
         "the refusal must arrive typed, got {:?}",
         failure.error
     );
@@ -305,7 +308,7 @@ async fn a_refused_delete_nobody_can_confirm_keeps_the_temp() {
         .await
         .expect_err("the delete is rigged to be refused");
 
-    assert!(matches!(failure.error, VolumeError::PermissionDenied(_)));
+    assert!(matches!(failure.error, VolumeError::PermissionDenied { .. }));
     assert_eq!(contents(&inner, &temp).await.as_deref(), Some(&b"NEW"[..]));
 }
 

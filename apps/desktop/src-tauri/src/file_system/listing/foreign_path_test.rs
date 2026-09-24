@@ -254,12 +254,15 @@ async fn a_listing_read_while_the_backend_is_replaced_lands_on_the_stored_spelli
 async fn a_refusal_other_than_a_miss_is_not_resolved() {
     let volume = SpelledVolume::new(album().await)
         .resolving(FOREIGN, Ok(Some(STORED)))
-        .listings_refused_with(VolumeError::PermissionDenied(FOREIGN.to_string()));
+        .listings_refused_with(VolumeError::PermissionDenied {
+            path: FOREIGN.to_string(),
+            raw_os_error: None,
+        });
 
     let result = list_as_stored(&volume, Path::new(FOREIGN), None, None).await;
 
     assert!(
-        matches!(result, Err(VolumeError::PermissionDenied(_))),
+        matches!(result, Err(VolumeError::PermissionDenied { .. })),
         "got {:?}",
         result.err()
     );

@@ -81,7 +81,7 @@ pub fn listing_error_from_volume_error(err: &VolumeError, path: &Path) -> Listin
             }
         }
         VolumeError::NotFound(_) => kinds::not_found(&path_display, raw),
-        VolumeError::PermissionDenied(_) => {
+        VolumeError::PermissionDenied { .. } => {
             // Three different fixes hide behind one errno, so the branch has to be
             // narrow. TCC gates a whole volume or folder tree rather than individual
             // subfolders, so it only explains the denial when the gate itself is shut

@@ -197,7 +197,12 @@ const ENOTEMPTY_HOST: i32 = 66;
 pub fn volume_error_from_errno(errno: i32, path: &str) -> VolumeError {
     match errno {
         ENOENT => VolumeError::NotFound(path.to_string()),
-        EACCES | EPERM => VolumeError::PermissionDenied(path.to_string()),
+        // ❗ No errno: it's the DEVICE's, and carrying it would earn macOS-only advice
+        // ("unlock it in Finder") for a file on a phone.
+        EACCES | EPERM => VolumeError::PermissionDenied {
+            path: path.to_string(),
+            raw_os_error: None,
+        },
         EEXIST => VolumeError::AlreadyExists(path.to_string()),
         EROFS => VolumeError::ReadOnly(path.to_string()),
         ENOSPC => VolumeError::StorageFull {

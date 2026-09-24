@@ -448,7 +448,12 @@ impl Volume for RefusesToList {
         on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
     ) -> Fut<'a, Result<Vec<FileEntry>, VolumeError>> {
         if self.refused.lock_ignore_poison().iter().any(|refused| refused == path) {
-            return Box::pin(async { Err(VolumeError::PermissionDenied("test: listing refused".into())) });
+            return Box::pin(async {
+                Err(VolumeError::PermissionDenied {
+                    path: "test: listing refused".into(),
+                    raw_os_error: None,
+                })
+            });
         }
         let gated = self.gate.lock_ignore_poison().as_deref() == Some(path);
         Box::pin(async move {

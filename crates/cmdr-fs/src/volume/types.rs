@@ -522,8 +522,18 @@ pub enum ConnectionLiveness {
 pub enum VolumeError {
     /// No such path. Carries the path.
     NotFound(String),
-    /// The OS refused access. Carries the path.
-    PermissionDenied(String),
+    /// The OS or the backend refused access.
+    PermissionDenied {
+        /// The path that was refused. A backend with no path in hand carries
+        /// what it has (the volume id, its own message).
+        path: String,
+        /// The errno behind the refusal, when there was one. It is what tells
+        /// `EACCES` (the folder's permissions: an administrator could) from
+        /// `EPERM` (macOS itself: a locked file, SIP), which the transfer layer
+        /// turns into different advice. `None` for a backend that words its own
+        /// refusals (SMB, MTP), which keeps the generic advice.
+        raw_os_error: Option<i32>,
+    },
     /// The destination already exists. Carries the path.
     AlreadyExists(String),
     /// Not supported by this volume type.
@@ -634,7 +644,7 @@ impl std::fmt::Display for VolumeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound(path) => write!(f, "Path not found: {}", path),
-            Self::PermissionDenied(path) => write!(f, "Permission denied: {}", path),
+            Self::PermissionDenied { path, .. } => write!(f, "Permission denied: {}", path),
             Self::AlreadyExists(path) => write!(f, "Already exists: {}", path),
             Self::NotSupported => write!(f, "Operation not supported"),
             Self::DeviceDisconnected(msg) => write!(f, "Device disconnected: {}", msg),
@@ -697,7 +707,10 @@ impl VolumeError {
         let located = || path.as_ref().to_string_lossy().into_owned();
         match err.kind() {
             ErrorKind::NotFound => Self::NotFound(located()),
-            ErrorKind::PermissionDenied => Self::PermissionDenied(located()),
+            ErrorKind::PermissionDenied => Self::PermissionDenied {
+                path: located(),
+                raw_os_error: err.raw_os_error(),
+            },
             ErrorKind::AlreadyExists => Self::AlreadyExists(located()),
             ErrorKind::ReadOnlyFilesystem => Self::ReadOnly(located()),
             ErrorKind::IsADirectory => Self::IsADirectory(located()),

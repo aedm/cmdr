@@ -69,7 +69,10 @@ pub(super) fn map_smb_error(err: smb2::Error, path: &str) -> VolumeError {
         ErrorKind::AlreadyExists => VolumeError::AlreadyExists(path.to_string()),
         ErrorKind::IsADirectory => VolumeError::IsADirectory(path.to_string()),
         ErrorKind::AccessDenied | ErrorKind::AuthRequired | ErrorKind::SigningRequired => {
-            VolumeError::PermissionDenied(path.to_string())
+            VolumeError::PermissionDenied {
+                path: path.to_string(),
+                raw_os_error: None,
+            }
         }
         ErrorKind::ConnectionLost | ErrorKind::SessionExpired => VolumeError::DeviceDisconnected(err.to_string()),
         ErrorKind::TimedOut => VolumeError::ConnectionTimeout(err.to_string()),

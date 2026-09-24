@@ -14966,8 +14966,25 @@ export type VolumeCopyScanResult = {
 export type VolumeError =
   // No such path. Carries the path.
   | { type: 'notFound'; data: string }
-  // The OS refused access. Carries the path.
-  | { type: 'permissionDenied'; data: string }
+  // The OS or the backend refused access.
+  | {
+      type: 'permissionDenied'
+      data: {
+        /**
+         *  The path that was refused. A backend with no path in hand carries
+         *  what it has (the volume id, its own message).
+         */
+        path: string
+        /**
+         *  The errno behind the refusal, when there was one. It is what tells
+         *  `EACCES` (the folder's permissions: an administrator could) from
+         *  `EPERM` (macOS itself: a locked file, SIP), which the transfer layer
+         *  turns into different advice. `None` for a backend that words its own
+         *  refusals (SMB, MTP), which keeps the generic advice.
+         */
+        rawOsError: number | null
+      }
+    }
   // The destination already exists. Carries the path.
   | { type: 'alreadyExists'; data: string }
   // Not supported by this volume type.

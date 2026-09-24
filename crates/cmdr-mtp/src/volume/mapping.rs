@@ -25,7 +25,10 @@ pub(super) fn map_mtp_error(e: MtpConnectionError) -> VolumeError {
         MtpConnectionError::ObjectNotFound { path, .. } => VolumeError::NotFound(path),
         MtpConnectionError::StaleParentHandle { dest_folder, .. } => VolumeError::StaleDestinationHandle(dest_folder),
         MtpConnectionError::ExclusiveAccess { .. } | MtpConnectionError::PermissionDenied { .. } => {
-            VolumeError::PermissionDenied(e.to_string())
+            VolumeError::PermissionDenied {
+                path: e.to_string(),
+                raw_os_error: None,
+            }
         }
         MtpConnectionError::Cancelled { .. } => VolumeError::Cancelled(e.to_string()),
         MtpConnectionError::Disconnected { .. } => VolumeError::DeviceDisconnected(e.to_string()),

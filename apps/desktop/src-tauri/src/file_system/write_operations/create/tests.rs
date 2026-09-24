@@ -334,14 +334,24 @@ impl Volume for DeniedVolume {
         &'a self,
         path: &'a Path,
     ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
-        Box::pin(async move { Err(VolumeError::PermissionDenied(path.display().to_string())) })
+        Box::pin(async move {
+            Err(VolumeError::PermissionDenied {
+                path: path.display().to_string(),
+                raw_os_error: None,
+            })
+        })
     }
     fn create_file<'a>(
         &'a self,
         path: &'a Path,
         _content: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
-        Box::pin(async move { Err(VolumeError::PermissionDenied(path.display().to_string())) })
+        Box::pin(async move {
+            Err(VolumeError::PermissionDenied {
+                path: path.display().to_string(),
+                raw_os_error: None,
+            })
+        })
     }
 }
 
@@ -361,7 +371,7 @@ async fn create_directory_core_maps_permission_denied_to_friendly_message() {
     // frontend words it from the variant instead of parsing a sentence.
     let err = result.unwrap_err();
     assert!(
-        matches!(&err, MutationError::Volume { error: VolumeError::PermissionDenied(path) } if path.contains("/somewhere")),
+        matches!(&err, MutationError::Volume { error: VolumeError::PermissionDenied { path, .. } } if path.contains("/somewhere")),
         "got: {err:?}",
     );
 }
@@ -380,7 +390,7 @@ async fn create_file_core_maps_permission_denied_to_friendly_message() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        matches!(&err, MutationError::Volume { error: VolumeError::PermissionDenied(path) } if path.contains("/somewhere")),
+        matches!(&err, MutationError::Volume { error: VolumeError::PermissionDenied { path, .. } } if path.contains("/somewhere")),
         "got: {err:?}",
     );
 }

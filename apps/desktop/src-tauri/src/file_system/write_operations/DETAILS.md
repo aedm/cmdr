@@ -540,6 +540,13 @@ itself (SIP, an immutable flag, a privacy protection), where administrator right
 chase permissions for the second is a wrong answer they'd act on. `PermissionRefusal` is that distinction as a value,
 and it's what `docs/specs/elevated-file-operations.md` decision 12 branches on when the root helper lands.
 
+The errno survives the volume layer too: `VolumeError::PermissionDenied { path, raw_os_error }` carries it from
+`VolumeError::from_io_at`, and `map_volume_error` hands it to the constructor, so a volume-routed refusal (a
+cross-volume move's source delete hitting a Finder-locked file, cmdr-reports#17) gets the same advice as a local one
+and the details block shows the OS's sentence rather than the path twice. A backend that words its own refusals
+(SMB, MTP, and ADB, whose errno is the DEVICE's and would earn macOS advice for an Android file) carries `None` and
+stays `Unclassified`.
+
 **Why the folder is PROVED, never inferred.** A `rename(2)` needs write access to both parent folders, a `unlink(2)` to
 the one it removes from, and a `create_dir_all` to the deepest ancestor that exists; no errno says which refused. So
 `validation::refusing_folder` asks the OS on the refusal path: the entry's parent first (its write bit is what governs

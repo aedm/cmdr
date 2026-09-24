@@ -195,7 +195,11 @@ fn terminal_disconnect_classification() {
         "a timeout is discarded, not kept"
     );
     assert!(
-        !VolumeScanError::Volume(VolumeError::PermissionDenied("root".into())).is_terminal_disconnect(),
+        !VolumeScanError::Volume(VolumeError::PermissionDenied {
+            path: "root".into(),
+            raw_os_error: None
+        })
+        .is_terminal_disconnect(),
         "a non-disconnect volume error (root-fatal) is discarded"
     );
     assert!(

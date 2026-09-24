@@ -68,7 +68,12 @@ impl Volume for FailingListVolume {
         on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
     ) -> ListFut<'a, Vec<FileEntry>> {
         if path == self.fail_path {
-            return Box::pin(async { Err(VolumeError::PermissionDenied("test: subdir listing failed".into())) });
+            return Box::pin(async {
+                Err(VolumeError::PermissionDenied {
+                    path: "test: subdir listing failed".into(),
+                    raw_os_error: None,
+                })
+            });
         }
         self.inner.list_directory(path, on_progress)
     }
@@ -220,7 +225,12 @@ impl Volume for RootFailsVolume {
         on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
     ) -> ListFut<'a, Vec<FileEntry>> {
         if path == Path::new("/") {
-            return Box::pin(async { Err(VolumeError::PermissionDenied("test: root listing denied".into())) });
+            return Box::pin(async {
+                Err(VolumeError::PermissionDenied {
+                    path: "test: root listing denied".into(),
+                    raw_os_error: None,
+                })
+            });
         }
         self.inner.list_directory(path, on_progress)
     }

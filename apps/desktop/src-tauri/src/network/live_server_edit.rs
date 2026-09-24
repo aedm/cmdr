@@ -140,7 +140,7 @@ async fn confirm_folder(
     let stat = tokio::spawn(async move { volume.is_directory(&path).await });
     match tokio::time::timeout_at(deadline, stat).await {
         Ok(Ok(Ok(true))) => Ok(()),
-        Ok(Ok(Ok(false) | Err(VolumeError::NotFound(_) | VolumeError::PermissionDenied(_)))) => Err(missing),
+        Ok(Ok(Ok(false) | Err(VolumeError::NotFound(_) | VolumeError::PermissionDenied { .. }))) => Err(missing),
         Ok(Ok(Err(error))) => {
             log::info!(target: "volume", "an edited place's folder couldn't be confirmed: {error:?}");
             Err(SavedServerOutcome::Unreachable)

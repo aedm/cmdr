@@ -192,7 +192,10 @@ impl AdbVolume {
             .await
             .map(|o| o.succeeded());
         if matches!(writable, Ok(false)) {
-            return VolumeError::PermissionDenied(path.to_string());
+            return VolumeError::PermissionDenied {
+                path: path.to_string(),
+                raw_os_error: None,
+            };
         }
         let message = String::from_utf8_lossy(stderr).trim().to_string();
         debug!("AdbVolume: a shell verb on {path} failed: {message}");

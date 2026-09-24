@@ -95,7 +95,10 @@ pub fn preview_friendly_error(
     } else if let Some(ref name) = variant {
         match name.as_str() {
             "NotFound" => VolumeError::NotFound(path_str.clone()),
-            "PermissionDenied" => VolumeError::PermissionDenied(path_str.clone()),
+            "PermissionDenied" => VolumeError::PermissionDenied {
+                path: path_str.clone(),
+                raw_os_error: None,
+            },
             "AlreadyExists" => VolumeError::AlreadyExists(path_str.clone()),
             "NotSupported" => VolumeError::NotSupported,
             "DeviceDisconnected" => VolumeError::DeviceDisconnected("device went away".into()),

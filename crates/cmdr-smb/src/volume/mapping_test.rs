@@ -145,7 +145,7 @@ fn map_smb_error_access_denied() {
     };
     let ve = map_smb_error(err, "/Volumes/share/holiday.raw");
     assert!(
-        matches!(&ve, VolumeError::PermissionDenied(path) if path == "/Volumes/share/holiday.raw"),
+        matches!(&ve, VolumeError::PermissionDenied { path, .. } if path == "/Volumes/share/holiday.raw"),
         "PermissionDenied must carry the path, got: {ve:?}",
     );
 }
@@ -188,7 +188,7 @@ fn map_smb_error_auth_required() {
     };
     let ve = map_smb_error(err, "/Volumes/share/holiday.raw");
     assert!(
-        matches!(&ve, VolumeError::PermissionDenied(path) if path == "/Volumes/share/holiday.raw"),
+        matches!(&ve, VolumeError::PermissionDenied { path, .. } if path == "/Volumes/share/holiday.raw"),
         "PermissionDenied must carry the path, got: {ve:?}",
     );
 }
@@ -244,7 +244,7 @@ fn map_smb_error_access_denied_is_not_misclassified() {
     };
     let ve = map_smb_error(err, "/Volumes/share/holiday.raw");
     assert!(
-        matches!(&ve, VolumeError::PermissionDenied(path) if path == "/Volumes/share/holiday.raw"),
+        matches!(&ve, VolumeError::PermissionDenied { path, .. } if path == "/Volumes/share/holiday.raw"),
         "PermissionDenied must carry the path, got: {ve:?}",
     );
 }

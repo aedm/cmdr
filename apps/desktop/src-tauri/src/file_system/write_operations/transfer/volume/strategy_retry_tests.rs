@@ -118,14 +118,20 @@ async fn a_destination_that_never_recovers_gives_up_at_the_attempt_cap() {
 async fn a_refusal_is_reported_at_once_and_never_retried() {
     let guard = TestOperationGuard::register_state("retry-refusal", make_state());
     let source = source_with_payload().await;
-    let flaky = FlakyDest::new(usize::MAX, VolumeError::PermissionDenied("/a.txt".into()));
+    let flaky = FlakyDest::new(
+        usize::MAX,
+        VolumeError::PermissionDenied {
+            path: "/a.txt".into(),
+            raw_os_error: None,
+        },
+    );
     let dest: Arc<dyn Volume> = Arc::clone(&flaky) as Arc<dyn Volume>;
 
     let err = copy_one(&source, &dest, guard.state(), WriteStaging::Stage, "/a.txt")
         .await
         .expect_err("a refusal must surface");
 
-    assert!(matches!(err, VolumeError::PermissionDenied(_)), "got {err:?}");
+    assert!(matches!(err, VolumeError::PermissionDenied { .. }), "got {err:?}");
     assert_eq!(flaky.write_calls(), 1, "a refusal must be reported on the first try");
 }
 

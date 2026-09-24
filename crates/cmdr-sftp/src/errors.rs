@@ -189,7 +189,10 @@ fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
         }
         SftpErrorKind::PermDenied => {
             debug!("SFTP {path}: the server refused access ({message})");
-            VolumeError::PermissionDenied(path.to_string())
+            VolumeError::PermissionDenied {
+                path: path.to_string(),
+                raw_os_error: None,
+            }
         }
         SftpErrorKind::OpUnsupported => VolumeError::NotSupported,
         _ => VolumeError::IoError {

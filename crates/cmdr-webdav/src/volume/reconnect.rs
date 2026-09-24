@@ -261,7 +261,10 @@ impl WebdavVolumeInner {
             }
             Stalled::NeedsUser => {
                 self.emit_if_changed(ConnectionState::NeedsCredentials);
-                VolumeError::PermissionDenied(self.volume_id.clone())
+                VolumeError::PermissionDenied {
+                    path: self.volume_id.clone(),
+                    raw_os_error: None,
+                }
             }
             Stalled::Transient(error) => {
                 self.emit_if_changed(ConnectionState::Disconnected);

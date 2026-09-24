@@ -553,7 +553,10 @@ mod tests {
             FetchError::NotFound
         ));
         for per_file in [
-            VolumeError::PermissionDenied("locked".into()),
+            VolumeError::PermissionDenied {
+                path: "locked".into(),
+                raw_os_error: None,
+            },
             VolumeError::IsADirectory("dir".into()),
             VolumeError::IoError {
                 message: "bad sector".into(),

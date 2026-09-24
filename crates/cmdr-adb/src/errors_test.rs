@@ -8,8 +8,10 @@ use super::*;
 fn errno_maps_to_the_volume_vocabulary_carrying_the_path() {
     let path = "/sdcard/DCIM/missing.jpg";
     assert!(matches!(volume_error_from_errno(ENOENT, path), VolumeError::NotFound(p) if p == path));
-    assert!(matches!(volume_error_from_errno(EACCES, path), VolumeError::PermissionDenied(p) if p == path));
-    assert!(matches!(volume_error_from_errno(EPERM, path), VolumeError::PermissionDenied(p) if p == path));
+    assert!(
+        matches!(volume_error_from_errno(EACCES, path), VolumeError::PermissionDenied { path: p, .. } if p == path)
+    );
+    assert!(matches!(volume_error_from_errno(EPERM, path), VolumeError::PermissionDenied { path: p, .. } if p == path));
     assert!(matches!(volume_error_from_errno(EEXIST, path), VolumeError::AlreadyExists(p) if p == path));
     assert!(matches!(volume_error_from_errno(EROFS, path), VolumeError::ReadOnly(p) if p == path));
     assert!(matches!(

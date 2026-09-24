@@ -206,7 +206,10 @@ fn volume_error_variants_map_correctly() {
         (
             // A plain (non-TCC, non-network) path falls through to the
             // generic permission-denied reason.
-            VolumeError::PermissionDenied("x".into()),
+            VolumeError::PermissionDenied {
+                path: "x".into(),
+                raw_os_error: None,
+            },
             ErrorCategory::NeedsAction,
             false,
             |r| matches!(r, ListingErrorReason::PermissionDenied { .. }),
@@ -407,7 +410,13 @@ fn permission_denied_on_a_tcc_gate_uses_tcc_restricted_reason() {
         crate::tcc_paths::tcc_anchor(&gate).as_deref() == Some(gate.as_path()),
         "~/Downloads must be its own TCC anchor for this test to be meaningful"
     );
-    let listing = listing_error_from_volume_error(&VolumeError::PermissionDenied("x".into()), &gate);
+    let listing = listing_error_from_volume_error(
+        &VolumeError::PermissionDenied {
+            path: "x".into(),
+            raw_os_error: None,
+        },
+        &gate,
+    );
     assert!(
         matches!(listing.reason, ListingErrorReason::TccRestricted { .. }),
         "a denied TCC gate should use TccRestricted, got {:?}",
@@ -423,7 +432,13 @@ fn permission_denied_on_a_tcc_gate_uses_tcc_restricted_reason() {
         !crate::tcc_paths::is_potentially_tcc_restricted(plain_path),
         "the plain path must NOT be TCC-classified"
     );
-    let listing = listing_error_from_volume_error(&VolumeError::PermissionDenied("x".into()), plain_path);
+    let listing = listing_error_from_volume_error(
+        &VolumeError::PermissionDenied {
+            path: "x".into(),
+            raw_os_error: None,
+        },
+        plain_path,
+    );
     assert!(
         matches!(listing.reason, ListingErrorReason::PermissionDenied { .. }),
         "plain path should use the generic PermissionDenied, got {:?}",
@@ -448,7 +463,13 @@ fn permission_denied_below_an_open_tcc_gate_is_not_tcc_restricted() {
         crate::tcc_paths::is_potentially_tcc_restricted(&path),
         "the path must be TCC-classified, so the denial reaches the TCC branch"
     );
-    let listing = listing_error_from_volume_error(&VolumeError::PermissionDenied("x".into()), &path);
+    let listing = listing_error_from_volume_error(
+        &VolumeError::PermissionDenied {
+            path: "x".into(),
+            raw_os_error: None,
+        },
+        &path,
+    );
     assert!(
         matches!(listing.reason, ListingErrorReason::PermissionDenied { .. }),
         "an open gate should fall through to the generic PermissionDenied, got {:?}",
@@ -482,7 +503,13 @@ fn remote_permission_denied_offers_no_privacy_settings_action() {
 #[test]
 fn permission_denied_volume_error_has_open_privacy_settings() {
     let path = Path::new("/test/path");
-    let listing = listing_error_from_volume_error(&VolumeError::PermissionDenied("denied".into()), path);
+    let listing = listing_error_from_volume_error(
+        &VolumeError::PermissionDenied {
+            path: "denied".into(),
+            raw_os_error: None,
+        },
+        path,
+    );
     assert_eq!(
         listing.action_kind,
         Some(ErrorActionKind::OpenPrivacySettings),

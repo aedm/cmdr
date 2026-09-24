@@ -315,7 +315,7 @@ async fn failed_root_listing_does_not_complete() {
     .await;
 
     match result {
-        Err(VolumeScanError::Volume(VolumeError::PermissionDenied(_))) => {}
+        Err(VolumeScanError::Volume(VolumeError::PermissionDenied { .. })) => {}
         other => panic!("expected the root-fatal Volume error (no completion), got {other:?}"),
     }
 

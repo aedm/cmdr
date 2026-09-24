@@ -54,7 +54,7 @@ async fn the_switch_back_on_lets_the_probe_through_again() {
 
     let refusal = volume.attempt_reconnect().await;
     assert!(
-        matches!(refusal, Err(VolumeError::PermissionDenied(_))),
+        matches!(refusal, Err(VolumeError::PermissionDenied { .. })),
         "past the gate, an empty store is what answers; got {refusal:?}"
     );
 }

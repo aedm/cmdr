@@ -15,7 +15,9 @@ fn at(kind: io::ErrorKind) -> VolumeError {
 #[test]
 fn the_three_path_carrying_variants_carry_the_path() {
     assert!(matches!(at(io::ErrorKind::NotFound), VolumeError::NotFound(path) if path == AT));
-    assert!(matches!(at(io::ErrorKind::PermissionDenied), VolumeError::PermissionDenied(path) if path == AT));
+    assert!(
+        matches!(at(io::ErrorKind::PermissionDenied), VolumeError::PermissionDenied { path, .. } if path == AT)
+    );
     assert!(matches!(at(io::ErrorKind::AlreadyExists), VolumeError::AlreadyExists(path) if path == AT));
 }
 

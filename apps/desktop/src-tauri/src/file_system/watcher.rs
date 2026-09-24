@@ -528,7 +528,7 @@ pub async fn handle_directory_change(listing_id: &str) {
                 stop_watching(listing_id);
                 return;
             }
-            Err(crate::file_system::VolumeError::PermissionDenied(_)) => return,
+            Err(crate::file_system::VolumeError::PermissionDenied { .. }) => return,
             Err(e) => {
                 log::warn!("Watcher: Failed to re-read directory: {}", e);
                 return;

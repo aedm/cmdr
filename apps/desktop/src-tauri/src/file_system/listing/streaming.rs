@@ -370,7 +370,7 @@ pub async fn list_directory_start_streaming(
                     enrich_with_provider(&mut generic, &path_for_error);
                     generic
                 };
-                if matches!(&e, VolumeError::PermissionDenied(_)) {
+                if matches!(&e, VolumeError::PermissionDenied { .. }) {
                     crate::restricted_paths::record_denial(&path_for_error);
                 }
                 // A stale-mount errno here is the only evidence we ever get that

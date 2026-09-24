@@ -313,7 +313,7 @@ const WATCHER_DEATH_RECONNECT_BACKOFF: [Duration; 6] = [
 /// locking the account. Everything else (network down, timeout, server rebooting)
 /// is transient.
 fn reconnect_backoff_should_give_up(err: &VolumeError) -> bool {
-    matches!(err, VolumeError::PermissionDenied(_))
+    matches!(err, VolumeError::PermissionDenied { .. })
 }
 
 /// Drive backend-autonomous reconnection after the live SMB watcher's session
@@ -445,9 +445,10 @@ mod reconnect_backoff_tests {
     /// transient and keeps the loop backing off.
     #[test]
     fn only_auth_failure_stops_the_backoff() {
-        assert!(reconnect_backoff_should_give_up(&VolumeError::PermissionDenied(
-            "bad creds".into()
-        )));
+        assert!(reconnect_backoff_should_give_up(&VolumeError::PermissionDenied {
+            path: "bad creds".into(),
+            raw_os_error: None
+        }));
         assert!(!reconnect_backoff_should_give_up(&VolumeError::DeviceDisconnected(
             "server down".into()
         )));

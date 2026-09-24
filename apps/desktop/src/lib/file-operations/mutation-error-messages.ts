@@ -53,7 +53,7 @@ function raw(key: string, params?: Record<string, string>): string {
  */
 const VOLUME_MESSAGE: { [K in VolumeError['type']]: (error: Extract<VolumeError, { type: K }>) => string } = {
   notFound: (e) => raw('errors.volume.notFound', { path: e.data }),
-  permissionDenied: (e) => raw('errors.volume.permissionDenied', { path: e.data }),
+  permissionDenied: (e) => raw('errors.volume.permissionDenied', { path: e.data.path }),
   alreadyExists: (e) => raw('errors.volume.alreadyExists', { path: e.data }),
   notSupported: () => raw('errors.volume.notSupported'),
   deviceDisconnected: () => raw('errors.volume.deviceDisconnected'),

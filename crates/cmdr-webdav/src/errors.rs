@@ -73,7 +73,10 @@ pub(crate) fn map_status(status: StatusCode, path: &str, attempted: Attempted) -
     match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
             debug!("WebDAV {path}: the server refused access ({status})");
-            VolumeError::PermissionDenied(path.to_string())
+            VolumeError::PermissionDenied {
+                path: path.to_string(),
+                raw_os_error: None,
+            }
         }
         StatusCode::NOT_FOUND => {
             debug!("WebDAV {path}: the server reports nothing there");

@@ -147,10 +147,13 @@ async fn a_level_someone_else_created_mid_walk_does_not_stop_it() {
 async fn a_refusal_that_is_not_about_a_missing_ancestor_stops_the_walk() {
     // ❗ A read-only export or a quota fails the same way at every level, so
     // walking would only spend round trips to arrive at the same answer.
-    let server = FakeServer::new(&["/parent"]).refusing("/parent/new", VolumeError::PermissionDenied);
+    let server = FakeServer::new(&["/parent"]).refusing("/parent/new", |path| VolumeError::PermissionDenied {
+        path,
+        raw_os_error: None,
+    });
 
     let outcome = create_directory_all(&server, Path::new("/parent/new")).await;
 
-    assert!(matches!(outcome, Err(VolumeError::PermissionDenied(_))));
+    assert!(matches!(outcome, Err(VolumeError::PermissionDenied { .. })));
     assert_eq!(server.requests(), vec!["/parent/new"], "it never walked");
 }

@@ -16,7 +16,7 @@ import { MutationFailure } from '$lib/file-operations/mutation-error'
 const volumeGone: ReconnectError = { type: 'volumeNotFound', volumeId: 'smb-nas-backup' }
 const volumeRefused: ReconnectError = {
   type: 'volume',
-  error: { type: 'permissionDenied', data: '/Volumes/backup' },
+  error: { type: 'permissionDenied', data: { path: '/Volumes/backup', rawOsError: null } },
 }
 
 describe('ReconnectFailure', () => {

@@ -183,7 +183,7 @@ async fn keyboard_interactive_never_reconnects_unattended() {
 
     assert!(matches!(
         refusal,
-        Err(cmdr_fs::volume::VolumeError::PermissionDenied(_))
+        Err(cmdr_fs::volume::VolumeError::PermissionDenied { .. })
     ));
     assert_eq!(reported(&events), vec![VolumeConnection::NeedsCredentials]);
     assert_eq!(credentials.reads(), 0);
@@ -399,7 +399,7 @@ async fn sftp_integration_a_changed_host_key_stops_the_loop_without_asking_for_a
     let refusal = volume.attempt_reconnect().await;
 
     assert!(
-        matches!(refusal, Err(cmdr_fs::volume::VolumeError::PermissionDenied(_))),
+        matches!(refusal, Err(cmdr_fs::volume::VolumeError::PermissionDenied { .. })),
         "only a person moves this forward, got {refusal:?}"
     );
     assert_eq!(
@@ -438,7 +438,7 @@ async fn sftp_integration_a_refused_password_is_offered_exactly_once() {
 
     let first = volume.attempt_reconnect().await;
     assert!(
-        matches!(first, Err(cmdr_fs::volume::VolumeError::PermissionDenied(_))),
+        matches!(first, Err(cmdr_fs::volume::VolumeError::PermissionDenied { .. })),
         "the server turned the new password down, which only a person fixes: {first:?}"
     );
     assert_eq!(
@@ -450,7 +450,7 @@ async fn sftp_integration_a_refused_password_is_offered_exactly_once() {
     for _ in 0..3 {
         assert!(matches!(
             volume.attempt_reconnect().await,
-            Err(cmdr_fs::volume::VolumeError::PermissionDenied(_))
+            Err(cmdr_fs::volume::VolumeError::PermissionDenied { .. })
         ));
     }
 
@@ -640,7 +640,7 @@ async fn sftp_integration_an_encrypted_key_with_nothing_remembered_asks_and_stay
     assert!(
         matches!(
             volume.attempt_reconnect().await,
-            Err(cmdr_fs::volume::VolumeError::PermissionDenied(_))
+            Err(cmdr_fs::volume::VolumeError::PermissionDenied { .. })
         ),
         "nothing was offered, so only a person moves this forward"
     );

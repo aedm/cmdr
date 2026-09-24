@@ -22,7 +22,7 @@ afterAll(() => {
 /** One value per `VolumeError` variant. Adding a variant makes this list fail to typecheck. */
 const VOLUME_CASES: VolumeError[] = [
   { type: 'notFound', data: '/Volumes/share/holiday.raw' },
-  { type: 'permissionDenied', data: '/Volumes/share/private' },
+  { type: 'permissionDenied', data: { path: '/Volumes/share/private', rawOsError: null } },
   { type: 'alreadyExists', data: '/Volumes/share/notes.txt' },
   { type: 'notSupported' },
   { type: 'deviceDisconnected', data: 'the phone went away' },

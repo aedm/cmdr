@@ -95,7 +95,7 @@ pub(super) fn is_retryable(err: &VolumeError) -> bool {
         // Re-running the write would fail the same way and only delay the report.
         VolumeError::Cancelled(_) // the user asked us to stop; ❌ never retry
         | VolumeError::NotFound(_)
-        | VolumeError::PermissionDenied(_)
+        | VolumeError::PermissionDenied { .. }
         | VolumeError::AlreadyExists(_)
         | VolumeError::NotSupported
         | VolumeError::NotConnected(_) // nothing is dialing it; only opening it connects
@@ -188,7 +188,10 @@ mod tests {
     /// way and only delays the report the user needs.
     #[test]
     fn refusals_and_data_facts_are_not_retryable() {
-        assert!(!is_retryable(&VolumeError::PermissionDenied("/x".into())));
+        assert!(!is_retryable(&VolumeError::PermissionDenied {
+            path: "/x".into(),
+            raw_os_error: None
+        }));
         assert!(!is_retryable(&VolumeError::NotFound("/x".into())));
         assert!(!is_retryable(&VolumeError::AlreadyExists("/x".into())));
         assert!(!is_retryable(&VolumeError::ReadOnly("/x".into())));

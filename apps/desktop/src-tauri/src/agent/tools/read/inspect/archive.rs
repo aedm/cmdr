@@ -236,7 +236,7 @@ impl Drop for TempCleanup {
 pub(super) fn status_for_volume(path: String, err: VolumeError) -> FileRow {
     let reason = match err {
         VolumeError::NotFound(_) => return FileRow::Missing { path },
-        VolumeError::PermissionDenied(_) => UnreadableReason::Permission,
+        VolumeError::PermissionDenied { .. } => UnreadableReason::Permission,
         VolumeError::NeedsPassword { .. } => UnreadableReason::Encrypted,
         VolumeError::IoError { .. } => UnreadableReason::Corrupt,
         VolumeError::NotSupported => UnreadableReason::Unsupported,

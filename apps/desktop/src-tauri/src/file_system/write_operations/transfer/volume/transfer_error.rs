@@ -261,11 +261,21 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
             PathRole::Source => WriteOperationError::SourceNotFound { path },
             PathRole::Destination => WriteOperationError::DestinationNotFound { path },
         },
-        // No errno and no folder: a backend words its own refusals, and ❌ naming a
-        // folder we didn't prove with `access(W_OK)` is what the local path exists to
-        // avoid. The user gets the generic sentence, which is the honest one here.
-        VolumeError::PermissionDenied(msg) => {
-            WriteOperationError::permission_denied(context_path.to_string(), msg, None, None)
+        // The errno rides through, so `EPERM` (a locked file, macOS itself) and
+        // `EACCES` (the folder's permissions) get their own advice; a backend that
+        // words its own refusals has none and keeps the generic sentence. `message`
+        // is for the details block, which already shows the path: the OS's
+        // sentence when there's an errno, else whatever the backend carried if
+        // it isn't that same path (MTP carries its own words). No folder: ❌
+        // naming one we didn't prove with `access(W_OK)` is what the local path
+        // exists to avoid.
+        VolumeError::PermissionDenied { path, raw_os_error } => {
+            let message = match raw_os_error {
+                Some(errno) => std::io::Error::from_raw_os_error(errno).to_string(),
+                None if path != context_path => path,
+                None => "Permission denied".to_string(),
+            };
+            WriteOperationError::permission_denied(context_path.to_string(), message, raw_os_error, None)
         }
         VolumeError::AlreadyExists(path) => WriteOperationError::DestinationExists { path },
         // ❗ Name the ROLE. The bare wording said only "this volume type", so a

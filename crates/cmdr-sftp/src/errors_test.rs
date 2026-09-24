@@ -16,7 +16,7 @@ fn the_codes_the_protocol_distinguishes_map_to_typed_variants() {
             (|e: &VolumeError| matches!(e, VolumeError::NotFound(_))) as fn(&VolumeError) -> bool,
         ),
         (SftpErrorKind::PermDenied, |e| {
-            matches!(e, VolumeError::PermissionDenied(_))
+            matches!(e, VolumeError::PermissionDenied { .. })
         }),
         (SftpErrorKind::OpUnsupported, |e| matches!(e, VolumeError::NotSupported)),
     ] {
@@ -151,7 +151,9 @@ fn the_two_path_carrying_variants_carry_the_path_and_not_the_servers_wording() {
     };
     assert_eq!(carried, PATH, "NotFound must carry the path");
 
-    let VolumeError::PermissionDenied(carried) = classify(SftpErrorKind::PermDenied, "Permission denied", PATH) else {
+    let VolumeError::PermissionDenied { path: carried, .. } =
+        classify(SftpErrorKind::PermDenied, "Permission denied", PATH)
+    else {
         panic!("PermDenied must map to PermissionDenied");
     };
     assert_eq!(carried, PATH, "PermissionDenied must carry the path");

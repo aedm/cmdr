@@ -10,7 +10,9 @@ const PATH: &str = "/Photos/a.jpg";
 #[test]
 fn a_refusal_carries_the_path() {
     for status in [StatusCode::UNAUTHORIZED, StatusCode::FORBIDDEN] {
-        assert!(matches!(map_status(status, PATH, Attempted::Reaching), VolumeError::PermissionDenied(p) if p == PATH));
+        assert!(
+            matches!(map_status(status, PATH, Attempted::Reaching), VolumeError::PermissionDenied { path: p, .. } if p == PATH)
+        );
     }
 }
 
