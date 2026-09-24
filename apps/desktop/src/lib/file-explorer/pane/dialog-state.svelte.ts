@@ -65,6 +65,20 @@ import { formatByteSize } from '$lib/units'
 
 const log = getAppLogger('fileExplorer')
 
+/**
+ * The birth context a Retry dispatches: the same sources, destination, and
+ * conflict policy, as a NEW operation.
+ *
+ * Three fields can't carry over. `previewId`: the backend refuses a second claim
+ * on one preview. `preKnownConflicts`: the failed run may have landed files, so
+ * the old pre-flight's list is stale, and the backend finds conflicts itself
+ * without one. `mcpRequestId` and `initiator`: the click is the user's, and an
+ * MCP round-trip that already got its answer mustn't get a second one.
+ */
+export function retryPropsFrom(props: TransferProgressPropsData): TransferProgressPropsData {
+  return { ...props, previewId: null, preKnownConflicts: undefined, mcpRequestId: undefined, initiator: 'user' }
+}
+
 export function createDialogState(deps: DialogStateDeps) {
   // Transfer dialog state (copy/move)
   let showTransferDialog = $state(false)
@@ -205,10 +219,33 @@ export function createDialogState(deps: DialogStateDeps) {
     error: WriteOperationError,
     failedOperationId: string | null,
     progressAtStop: ProgressAtStop | null,
+    retry: TransferProgressPropsData | null = null,
   ): void {
     setForegroundFailureId(failedOperationId)
-    transferErrorProps = { operationType, error, progressAtStop }
+    transferErrorProps = { operationType, error, progressAtStop, retry }
     showTransferErrorDialog = true
+  }
+
+  /** Hides the error dialog and drops its retained failure from the queue: the
+   *  user has read it, whether they then close it or retry. */
+  function settleTransferError(): void {
+    // The backend retains every failure unconditionally (it can't know a dialog
+    // was up), and this is the only place that knows one was. Everything else
+    // waits for an explicit Dismiss.
+    const failedOperationId = getForegroundFailureId()
+    if (failedOperationId !== null) {
+      setForegroundFailureId(null)
+      void dismissFailedOperation(failedOperationId).catch((err: unknown) => {
+        // Nothing to recover: the row simply stays in the queue window, which
+        // is a safe place for it to be.
+        log.warn('Failed to dismiss the failed operation {operationId}: {error}', {
+          operationId: failedOperationId,
+          error: err,
+        })
+      })
+    }
+    showTransferErrorDialog = false
+    transferErrorProps = null
   }
 
   const archivePassword = createArchivePasswordFlow({
@@ -613,10 +650,11 @@ export function createDialogState(deps: DialogStateDeps) {
       paneEffects.refreshPanesAfterTransfer()
       paneEffects.clearSourcePaneAfterTransfer()
 
+      const retry = transferProgressProps ? retryPropsFrom(transferProgressProps) : null
       showTransferProgressDialog = false
       transferProgressProps = null
 
-      openTransferError(op, error, failedOperationId, progressAtStop)
+      openTransferError(op, error, failedOperationId, progressAtStop, retry)
     },
 
     handleArchivePasswordSubmit(password: string) {
@@ -629,24 +667,27 @@ export function createDialogState(deps: DialogStateDeps) {
 
     handleTransferErrorClose() {
       // The user has read this one, so the copy in the operation queue has done
-      // its job: drop it. The backend retains every failure unconditionally (it
-      // can't know a dialog was up), and this is the only place that knows one
-      // was. Everything else waits for an explicit Dismiss.
-      const failedOperationId = getForegroundFailureId()
-      if (failedOperationId !== null) {
-        setForegroundFailureId(null)
-        void dismissFailedOperation(failedOperationId).catch((err: unknown) => {
-          // Nothing to recover: the row simply stays in the queue window, which
-          // is a safe place for it to be.
-          log.warn('Failed to dismiss the failed operation {operationId}: {error}', {
-            operationId: failedOperationId,
-            error: err,
-          })
-        })
-      }
-      showTransferErrorDialog = false
-      transferErrorProps = null
+      // its job: drop it.
+      settleTransferError()
       deps.onRefocus()
+    },
+
+    /** The error dialog's Retry: the same operation again, through the same start
+     *  every new operation takes. A new operation, so the failed one is settled
+     *  like a close. */
+    handleTransferErrorRetry() {
+      const retry = transferErrorProps?.retry ?? null
+      settleTransferError()
+      if (retry === null) {
+        deps.onRefocus()
+        return
+      }
+      const op = retry.operationType
+      if (startBirthOperation(retry) === 'started') {
+        log.info('{op} retried from the error dialog', { op: transferOpLabel(op) })
+      } else {
+        deps.onRefocus()
+      }
     },
 
     handleNewFolderCreated(folderName: string) {

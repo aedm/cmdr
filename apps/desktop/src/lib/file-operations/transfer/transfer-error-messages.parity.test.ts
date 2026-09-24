@@ -535,12 +535,14 @@ const cases: Case[] = [
     },
   },
   {
+    // Names the file: a move involves two, and "this file" left a reader guessing
+    // between the one being moved and the one at the destination (cmdr-reports#17).
     name: 'delete_pending',
-    error: { type: 'delete_pending', path: '/p' },
+    error: { type: 'delete_pending', path: '/Volumes/naspi/photos/a.jpg' },
     expected: {
       title: 'File is being removed',
       message:
-        'This file is on its way out. The server marked it for deletion, but another open handle is keeping it around until that handle closes.',
+        'The file at /Volumes/naspi/photos/a.jpg is on its way out. The server marked it for deletion, but another open handle is keeping it around until that handle closes.',
       suggestion:
         'Wait a moment and try again. Once the last handle closes, the file disappears. If it sticks around, close any other apps that might have it open.',
     },

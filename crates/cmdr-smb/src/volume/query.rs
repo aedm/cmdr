@@ -14,6 +14,12 @@ use log::{debug, trace};
 use std::path::Path;
 use std::time::Duration;
 
+/// The waits between `get_metadata` attempts that answered `STATUS_DELETE_PENDING`:
+/// three tries across 0.8 s. Long enough for the common case (another client's
+/// handle closing right after the delete), short enough that a move's destination
+/// probe never stalls noticeably when the handle stays.
+const DELETE_PENDING_BACKOFF: [Duration; 2] = [Duration::from_millis(200), Duration::from_millis(600)];
+
 /// Rate limit for the per-poll `get_space_info` debug line, keyed by share so a
 /// busy share can't swallow another's first line. The POLLS are untouched; only
 /// the logging is.
@@ -106,12 +112,30 @@ impl SmbVolume {
             ));
         }
 
-        let info = {
+        // A `STATUS_DELETE_PENDING` is waited out briefly before it's reported: a
+        // delete succeeds while another open keeps the file alive, and the name
+        // answers that status until the last handle closes, usually within a
+        // moment. As an error it ended a move at its destination probe for a
+        // state that clears on its own (cmdr-reports#17). A handle that outlives
+        // the retries still surfaces, and the dialog's Retry covers the rest.
+        let mut backoff = DELETE_PENDING_BACKOFF.iter();
+        let info = loop {
             let start = std::time::Instant::now();
             let (tree, mut conn) = self.clone_session().await?;
             let r = tree.stat(&mut conn, &smb_path).await;
             slow_calls::note(&self.inner.share_name, "get_metadata", start.elapsed());
-            self.handle_smb_result("get_metadata", &smb_path, r)?
+            if let Err(e) = &r
+                && e.status() == Some(smb2::types::status::NtStatus::DELETE_PENDING)
+                && let Some(delay) = backoff.next()
+            {
+                debug!(
+                    "SmbVolume::get_metadata(share={}): {e}; asking again in {delay:?}",
+                    self.inner.share_name
+                );
+                tokio::time::sleep(*delay).await;
+                continue;
+            }
+            break self.handle_smb_result("get_metadata", &smb_path, r)?;
         };
 
         let name = Path::new(&smb_path)

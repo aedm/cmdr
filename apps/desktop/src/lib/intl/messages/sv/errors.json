@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Den här filen är på väg bort. Servern markerade den för radering, men ett annat öppet handtag håller kvar den tills handtaget stängs.",
+  "errors.write.deletePending.message": "Filen på {path} är på väg bort. Servern markerade den för radering, men ett annat öppet handtag håller kvar den tills handtaget stängs.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Vänta en stund och försök igen. När det sista handtaget stängs försvinner filen. Om den blir kvar, stäng eventuella andra appar som kan ha den öppen.",
   "@errors.write.deletePending.suggestion": {

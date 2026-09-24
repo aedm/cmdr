@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Este archivo está de salida. El servidor lo ha marcado para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
+  "errors.write.deletePending.message": "El archivo en {path} está de salida. El servidor lo marcó para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Espera un momento y vuelve a intentarlo. En cuanto se cierre el último identificador, el archivo desaparece. Si sigue ahí, cierra cualquier otra app que pueda tenerlo abierto.",
   "@errors.write.deletePending.suggestion": {

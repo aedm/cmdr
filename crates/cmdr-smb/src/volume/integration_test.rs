@@ -630,3 +630,70 @@ async fn smb_integration_an_anchored_delete_stays_inside_the_anchor() {
     let _ = share.delete(Path::new(&decoy)).await;
     ensure_clean(&share, &dir).await;
 }
+
+/// cmdr-reports#17: a delete succeeds while another open handle keeps the file
+/// alive, and every new CREATE on that name answers `STATUS_DELETE_PENDING` until
+/// the handle closes. A move's destination probe (`get_metadata`) hit that and
+/// ended the whole move, for a status that clears on its own.
+///
+/// A handle released a moment later must read as "nothing there".
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_get_metadata_waits_out_a_brief_delete_pending() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+    let file_path = format!("{dir}/pending.jpg");
+    vol.create_file(Path::new(&file_path), b"photo").await.unwrap();
+
+    // Someone else holds it open (sharing delete, as SMB clients do), so the
+    // delete only marks it.
+    let smb_path = vol.to_smb_path(Path::new(&file_path)).unwrap();
+    let (tree, mut conn) = vol.clone_session().await.unwrap();
+    let (file_id, _) = tree.open_file(&mut conn, &smb_path).await.unwrap();
+    vol.delete(Path::new(&file_path)).await.unwrap();
+
+    let release = tokio::spawn(async move {
+        // allowed-test-sleep: the delay IS the subject, a handle released while the probe is retrying.
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        tree.close_handle(&mut conn, file_id).await.unwrap();
+    });
+
+    let probed = vol.get_metadata(Path::new(&file_path)).await;
+    release.await.unwrap();
+    assert!(
+        matches!(probed, Err(VolumeError::NotFound(_))),
+        "a delete-pending that clears within the retry window reads as gone, got {probed:?}"
+    );
+
+    vol.delete(Path::new(&dir)).await.unwrap();
+}
+
+/// The other half: a handle that outlives the retries still surfaces as
+/// `DeletePending`, so the user gets the transient message and a Retry, never a
+/// hang.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_get_metadata_reports_a_delete_pending_that_persists() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+    let file_path = format!("{dir}/held.jpg");
+    vol.create_file(Path::new(&file_path), b"photo").await.unwrap();
+
+    let smb_path = vol.to_smb_path(Path::new(&file_path)).unwrap();
+    let (tree, mut conn) = vol.clone_session().await.unwrap();
+    let (file_id, _) = tree.open_file(&mut conn, &smb_path).await.unwrap();
+    vol.delete(Path::new(&file_path)).await.unwrap();
+
+    let probed = vol.get_metadata(Path::new(&file_path)).await;
+    assert!(
+        matches!(probed, Err(VolumeError::DeletePending(_))),
+        "a handle that outlives the retries still reads as DeletePending, got {probed:?}"
+    );
+
+    tree.close_handle(&mut conn, file_id).await.unwrap();
+    vol.delete(Path::new(&dir)).await.unwrap();
+}

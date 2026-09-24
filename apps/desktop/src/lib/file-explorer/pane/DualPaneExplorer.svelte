@@ -1378,6 +1378,9 @@
     onTransferErrorClose={() => {
         dialogs.handleTransferErrorClose()
     }}
+    onTransferErrorRetry={() => {
+        dialogs.handleTransferErrorRetry()
+    }}
     onArchivePasswordSubmit={(password: string) => {
         dialogs.handleArchivePasswordSubmit(password)
     }}

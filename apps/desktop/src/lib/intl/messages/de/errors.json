@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Diese Datei ist auf dem Weg hinaus. Der Server hat sie zum Löschen markiert, aber ein anderer offener Handle hält sie noch, bis dieser Handle schließt.",
+  "errors.write.deletePending.message": "Die Datei unter {path} ist auf dem Weg hinaus. Der Server hat sie zum Löschen markiert, aber ein anderer offener Handle hält sie noch, bis dieser Handle schließt.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Warte einen Moment und versuche es erneut. Sobald der letzte Handle schließt, verschwindet die Datei. Wenn sie bleibt, schließe alle anderen Apps, die sie geöffnet haben könnten.",
   "@errors.write.deletePending.suggestion": {

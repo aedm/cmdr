@@ -2330,14 +2330,19 @@
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.deletePending.title": "File is being removed",
-  "errors.write.deletePending.message": "This file is on its way out. The server marked it for deletion, but another open handle is keeping it around until that handle closes.",
+  "errors.write.deletePending.message": "The file at {path} is on its way out. The server marked it for deletion, but another open handle is keeping it around until that handle closes.",
   "errors.write.deletePending.suggestion": "Wait a moment and try again. Once the last handle closes, the file disappears. If it sticks around, close any other apps that might have it open.",
   "@errors.write.deletePending.title": {
     "description": "Title of the delete error dialog when a file is marked for deletion on the server but still held open. Plain text.",
     "screenshot": "transfer-error-delete_pending.png"
   },
   "@errors.write.deletePending.message": {
-    "description": "Body of the delete error dialog when a file is marked for deletion but a handle is keeping it alive. Plain text.",
+    "description": "Body of the copy/move/delete error dialog when a file on a network share is marked for deletion but a handle is keeping it alive. Plain text. Names the file, because a move involves two (the one being moved and the one at the destination) and the reader has to know which one this is.",
+    "placeholders": {
+      "path": {
+        "description": "The full path of the file that is marked for deletion, inserted verbatim. Do not translate or reformat it."
+      }
+    },
     "screenshot": "transfer-error-delete_pending.png"
   },
   "@errors.write.deletePending.suggestion": {

@@ -26,6 +26,14 @@ vi.mock('../../file-operations/transfer/TransferProgressDialog.svelte', async ()
   default: (await import('../../../../test/fixtures/dialog-marker-fixture.svelte')).default,
 }))
 
+// The error dialog is REAL in the Retry suite below, and its `ModalDialog` tells
+// the backend it opened. There's no backend here.
+vi.mock('$lib/tauri-commands', async (orig) => ({
+  ...(await orig<typeof import('$lib/tauri-commands')>()),
+  notifyDialogOpened: vi.fn(() => Promise.resolve()),
+  notifyDialogClosed: vi.fn(() => Promise.resolve()),
+}))
+
 import DialogManager from './DialogManager.svelte'
 import type { AdoptedOperationData, TransferProgressPropsData } from './dialog-props'
 
@@ -214,5 +222,90 @@ describe('DialogManager progress dialog', () => {
 
     expect(markers()).toHaveLength(1)
     expect(markers()[0].getAttribute('data-adopted')).toBe('op-1')
+  })
+})
+
+/**
+ * The transfer error dialog's Retry button.
+ *
+ * cmdr-reports#17: a `delete_pending` error told the user to try again and offered
+ * no Retry. `errorDisplayMetaMap` has classified nine variants as retryable since
+ * it was written, and the dialog gates its button on an `onRetry` that production
+ * never passed, so the table promised a button nobody ever saw.
+ */
+describe('DialogManager transfer error Retry', () => {
+  let host: HTMLDivElement
+  let component: Record<string, unknown> | null = null
+
+  beforeEach(() => {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+  })
+
+  afterEach(() => {
+    if (component) {
+      void unmount(component)
+      component = null
+    }
+    host.remove()
+  })
+
+  const failedMove: TransferProgressPropsData = {
+    operationType: 'move',
+    sourcePaths: ['/Users/me/a.jpg'],
+    sourceFolderPath: '/Users/me',
+    sourcePaneSide: 'right',
+    destinationPath: '/Volumes/naspi/photos',
+    sortColumn: 'name',
+    sortOrder: 'ascending',
+    previewId: null,
+    sourceVolumeId: 'root',
+    duplicateFollowUp: 'nothing',
+  }
+
+  function render(props: Partial<DialogManagerProps>) {
+    component = mount(DialogManager, {
+      target: host,
+      props: { ...baseProps(vi.fn()), ...props },
+    }) as Record<string, unknown>
+    flushSync()
+  }
+
+  function retryButton(): HTMLButtonElement | undefined {
+    return [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Retry')
+  }
+
+  it('offers Retry for a delete_pending error and hands the click to the retry handler', () => {
+    const onTransferErrorRetry = vi.fn()
+    render({
+      showTransferErrorDialog: true,
+      transferErrorProps: {
+        operationType: 'move',
+        error: { type: 'delete_pending', path: '/Volumes/naspi/photos/a.jpg' },
+        progressAtStop: null,
+        retry: failedMove,
+      },
+      onTransferErrorRetry,
+    })
+
+    const button = retryButton()
+    expect(button, 'a retryable error with something to retry shows Retry').toBeDefined()
+    button?.click()
+    expect(onTransferErrorRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers no Retry when there is nothing this window could start again', () => {
+    render({
+      showTransferErrorDialog: true,
+      transferErrorProps: {
+        operationType: 'move',
+        error: { type: 'delete_pending', path: '/Volumes/naspi/photos/a.jpg' },
+        progressAtStop: null,
+        retry: null,
+      },
+      onTransferErrorRetry: vi.fn(),
+    })
+
+    expect(retryButton()).toBeUndefined()
   })
 })

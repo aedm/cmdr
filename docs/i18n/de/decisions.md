@@ -838,3 +838,29 @@ Apple's Dock menu (`Dock.app/Contents/Resources/de.lproj/DockMenus.strings`) sup
 ## Platzhalterzeilen in „Öffnen mit“ und „Teilen“ (`menu.context.openWithLoading`, `.shareLoading`, `.shareNone`)
 
 - `Optionen zum Teilen`: `Freigabe` is the network share, and `Teilen-Optionen` reads clumsily.
+
+## Das Original blieb stehen: die Quelle verweigert (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
+
+Ein Bewegen über Volumes hinweg hat alles vollständig kopiert, konnte das Original danach aber nicht entfernen (etwa
+eine im Finder geschützte Datei). Der Dialog muss sagen: die Kopie ist ganz, das Original ist noch da, nichts ist
+verloren. Rohfamilie: kein ICU, einfache Apostrophe, `{landedAt}` und `{path}` zeichengleich.
+
+- **„You don't have permission to read this item“ → `Du hast keine Berechtigung, dieses Objekt zu lesen`** · Satzbau der
+  Geschwister `errors.write.permissionDenied.message.copy` („Du hast keine Berechtigung, hier Dateien zu kopieren.“);
+  das Lesen als Grund belegt Finder `PE99`/`PE22` („… da du nicht die erforderlichen Leserechte hast“) · `high`.
+  `Objekt` ist die Glossarzeile für „item“.
+- **„access to this item and to the folder it's in“ →
+  `Zugriff auf dieses Objekt und auf den Ordner …, in dem es liegt`** · analytisches `Zugriff auf` wie macOS TCC
+  (Glossarzeile file access), `liegen` wie in der ganzen `errors.write.*`-Familie · `high`.
+- **„the copy“ (das angekommene Duplikat) → `die Kopie`; „arrived“ → `ist am Ziel`** · `am Ziel` ist gesetzt (§ A move
+  that could not be confirmed); `Kopie` ist das Katalogwort (`fileOperations.cancelRollback.stagedLeftover.named`
+  „unvollständige Kopie“) · `high`.
+- **„in both places“ → `an beiden Orten`** · `Ort` ist das allgemeine Wort für eine Stelle im Dateisystem (Glossarzeile
+  location, Finder `FI12`) · `high`.
+- **„Nothing was lost.“ → `Es ist nichts verloren gegangen.`** · `verloren gehen` wie macOS `de` und
+  `errors.write.deviceDisconnected.sided.destination.copy` · `high`.
+- **„To finish the move“ → `Um das Bewegen abzuschließen`** · substantivierter Infinitiv wie „bevor Cmdr das Bewegen
+  abschließen konnte“ (§ A drive pulled mid-transfer) · `high`.
+- **`deletePending.message` nennt jetzt die Datei: `Die Datei unter {path}`** · `unter {path}` ist die Katalogform für
+  einen vollen Pfad (`errors.write.newDataKeptAt.message` „unter {keptAt}“); der Rest bleibt wortgleich, `Handle` wie
+  bisher · `high`.

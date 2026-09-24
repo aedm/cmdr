@@ -223,10 +223,16 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
 3. **TransferErrorDialog** (error display)
    - Renders entirely from the typed `WriteOperationError` (`WriteErrorEvent` carries no prose): title, message, and
      suggestion via `getUserFriendlyMessage` / `FallbackErrorContent`; category + retry classification via
-     `getErrorDisplayMeta` (both in `transfer-error-messages.ts`). All words live on the FE.
+     `getErrorDisplayMeta` (both in `transfer-error-messages.ts`; the details block in `transfer-error-details.ts`). All
+     words live on the FE.
    - Container colors and icon vary by category: error-bg + CircleAlert (`serious`), warning-bg + TriangleAlert
      (`transient`), neutral secondary-bg + Info (`needs_action`).
-   - "Retry" button shows when `category === 'transient'` or the variant's `retryHint` is true.
+   - "Retry" button shows when `category === 'transient'` or the variant's `retryHint` is true, AND there's something to
+     retry: `DialogManager` passes `onRetry` only when `TransferErrorPropsData.retry` holds the failed operation's birth
+     context. Retry settles the failure like Close, then starts that context again through `startBirthOperation` as a
+     NEW operation (`retryPropsFrom`: fresh preview, no stale pre-known conflicts, no MCP round-trip, initiated by the
+     user). An adopted failure has no birth context, so no Retry. ❌ Don't drop the `onRetry` wiring: without it the
+     whole meta table is decoration (it was, until cmdr-reports#17). Pinned by `DialogManager.svelte.test.ts`.
    - `getErrorDisplayMeta` mirrors the category/retryHint the Rust write-error mapper assigned per variant; keep the two
      in step if a `WriteOperationError` variant is added.
    - **A refused trash words itself from its typed `TrashRefusalKind`, and never says "try again".** `trash_refused`

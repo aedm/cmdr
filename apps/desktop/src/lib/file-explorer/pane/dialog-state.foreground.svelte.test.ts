@@ -339,7 +339,8 @@ describe("an adopted view's outcomes touch no pane", () => {
     dialogs.handleAdoptedError(error, null)
 
     expect(dialogs.showTransferErrorDialog).toBe(true)
-    expect(dialogs.transferErrorProps).toEqual({ operationType: 'copy', error, progressAtStop: null })
+    // No Retry: this window didn't start it, so there's nothing it could start again.
+    expect(dialogs.transferErrorProps).toEqual({ operationType: 'copy', error, progressAtStop: null, retry: null })
     expect(rightPane.spies.clearSelection).not.toHaveBeenCalled()
     expect(refreshListing).not.toHaveBeenCalled()
   })

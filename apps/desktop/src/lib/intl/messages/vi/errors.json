@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Tệp này sắp bị gỡ bỏ. Máy chủ đã đánh dấu nó để xóa, nhưng một handle đang mở khác giữ nó lại cho đến khi handle đó đóng.",
+  "errors.write.deletePending.message": "Tệp ở {path} sắp bị gỡ bỏ. Máy chủ đã đánh dấu nó để xóa, nhưng một handle đang mở khác giữ nó lại cho đến khi handle đó đóng.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Đợi một chút rồi thử lại. Khi handle cuối cùng đóng, tệp sẽ biến mất. Nếu nó vẫn còn đó, hãy đóng bất kỳ ứng dụng nào khác có thể đang mở nó.",
   "@errors.write.deletePending.suggestion": {

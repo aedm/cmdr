@@ -931,6 +931,13 @@ NFC normalization; a struct literal filled from a raw `statfs` mount name carrie
 server, which answers `STATUS_BAD_NETWORK_NAME` for a share whose name has any composed character in it. The failure is
 loud and immediate, which is the only reason this doesn't sit in `CLAUDE.md`.
 
+**Gotcha**: a successful delete doesn't mean the name is free **Why**: smb2 deletes by opening with `FILE_SHARE_DELETE`
+and setting the delete disposition, which succeeds while ANOTHER open still holds the file (another client, or macOS's
+own mount of the same share). Until that handle closes, every CREATE on the name answers `STATUS_DELETE_PENDING`.
+`get_metadata` waits that out across three tries (`DELETE_PENDING_BACKOFF`, 0.8 s) before reporting `DeletePending`,
+because a move's destination probe used to end the whole move on it (cmdr-reports#17). Pinned by
+`smb_integration_get_metadata_{waits_out_a_brief,reports_a}_delete_pending*`.
+
 **Gotcha**: `specta` is pinned to the app's exact version, and a bump has to move both **Why**: `tauri-specta` collects
 the app's commands transitively, so the `Type` impls this crate derives have to come from the SAME `specta` crate the
 app links. Two `specta` nodes in one graph make them different traits, and the collection stops compiling.

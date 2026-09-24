@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Ez a fájl épp távozóban van. A szerver törlésre jelölte, de egy másik nyitott leíró addig életben tartja, amíg az a leíró be nem zárul.",
+  "errors.write.deletePending.message": "A fájl épp távozóban van: {path}. A szerver törlésre jelölte, de egy másik nyitott leíró addig életben tartja, amíg az a leíró be nem zárul.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Várj egy kicsit, majd próbáld újra. Amint az utolsó leíró bezárul, a fájl eltűnik. Ha továbbra is megmarad, zárj be minden más appot, ami nyitva tarthatja.",
   "@errors.write.deletePending.suggestion": {

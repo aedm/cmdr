@@ -183,6 +183,10 @@ export interface TransferErrorPropsData {
   /** How far the operation got when it stopped, from the `write-error` event.
    *  Null for a failure adopted from a snapshot, which carries only the error. */
   progressAtStop: ProgressAtStop | null
+  /** What the dialog's Retry starts: the failed operation's birth context, ready
+   *  to dispatch again (`dialog-state.svelte.ts::retryPropsFrom`). Null when this
+   *  window didn't start it (an adopted operation), and then there's no Retry. */
+  retry: TransferProgressPropsData | null
 }
 
 export interface ArchivePasswordPropsData {

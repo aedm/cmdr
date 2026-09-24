@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Dit bestand is op weg naar buiten. De server markeerde het voor verwijdering, maar een andere open verwijzing houdt het in stand totdat die verwijzing sluit.",
+  "errors.write.deletePending.message": "Het bestand op {path} is op weg naar buiten. De server markeerde het voor verwijdering, maar een andere open verwijzing houdt het in stand totdat die verwijzing sluit.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Wacht even en probeer het opnieuw. Zodra de laatste verwijzing sluit, verdwijnt het bestand. Als het blijft hangen, sluit dan andere apps die het mogelijk open hebben.",
   "@errors.write.deletePending.suggestion": {

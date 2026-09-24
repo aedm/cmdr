@@ -1612,9 +1612,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "这个文件正在退场。服务器已标记它待删除，但另一个打开的句柄一直占着它，直到那个句柄关闭。",
+  "errors.write.deletePending.message": "位于 {path} 的文件正在退场。服务器已标记它待删除，但另一个打开的句柄一直占着它，直到那个句柄关闭。",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "稍等片刻再重试。最后一个句柄一关闭，文件就会消失。如果它一直在，关掉其他可能打开着它的 App。",
   "@errors.write.deletePending.suggestion": {

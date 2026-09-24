@@ -629,3 +629,23 @@ source is Apple's own Connect to Server dialog (`NetAuthAgent.app`).
 
 - Loading rows follow macOS's `Đang …` pattern; the empty row is sentence-cased, over macOS's title-cased
   `Không có Dịch vụ Áp dụng`.
+
+## Di chuyển xong nhưng bản gốc vẫn còn (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`, 2026-09-24)
+
+Một lần di chuyển giữa hai ổ đĩa đã sao chép xong mọi thứ nhưng không xóa được bản gốc (ví dụ một tệp bị khóa trong
+Finder). Hộp thoại phải nói rõ bản sao đã đầy đủ, bản gốc vẫn còn, và không có gì bị mất.
+
+- **original (bản ở phía nguồn khi di chuyển): `bản gốc`** · macOS Finder (`N6`, `N177.1`: "không thể tìm thấy mục gốc";
+  AppKit "Tài liệu gốc"), catalog (`transferProgress.titleRemovingOriginals` "Đang xóa các bản gốc…",
+  `moveNotConfirmed.*`) · `high`.
+- **remove the original (bước Cmdr không làm được) và delete the original yourself: đều là `xóa bản gốc`** · catalog đã
+  dùng `xóa các bản gốc` cho đúng bước này (`cancelRollback.moveAlreadyLanded`); ở đây bản gốc thật sự bị xóa khỏi ổ
+  đĩa, nên theo luật `xóa` / `gỡ bỏ` của style.md là `xóa` · `high`.
+- **permission to read → `quyền đọc`** · macOS Finder `PE99`, `PE22` ("vì bạn không có quyền đọc chúng") · `high`.
+- **the folder it's in → `thư mục chứa nó`** · macOS Finder "Enclosing Folder" = `Thư mục chứa` (`N162`, `FV9`) ·
+  `high`.
+- **arrived → `đã tới đích` (tiêu đề) / `đã tới {landedAt}` (thân)** · `đích` là từ đã chốt cho destination · `high`.
+- **Nothing was lost → `Không mất gì cả`** · dùng lại đúng câu kết của `deviceDisconnected.sided.destination.copy`
+  (tiếng Anh "nothing is lost"), không phải `Không có gì bị bỏ đi cả` của `originalsKeptAside` ("thrown away") · `high`.
+- **`deletePending.message` giờ nêu tên tệp: `Tệp ở {path} sắp bị gỡ bỏ.`**, phần còn lại giữ nguyên, kể cả `handle` ·
+  `high`.

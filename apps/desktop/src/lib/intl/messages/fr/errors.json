@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Ce fichier est en train de disparaître. Le serveur l’a marqué pour suppression, mais un autre handle ouvert le maintient en place jusqu’à ce que ce handle se ferme.",
+  "errors.write.deletePending.message": "Le fichier {path} est en train de disparaître. Le serveur l'a marqué pour suppression, mais un autre handle ouvert le maintient en place jusqu'à ce que ce handle se ferme.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Patientez un instant et réessayez. Une fois le dernier handle fermé, le fichier disparaît. S’il persiste, fermez toute autre app qui pourrait l’avoir ouvert.",
   "@errors.write.deletePending.suggestion": {

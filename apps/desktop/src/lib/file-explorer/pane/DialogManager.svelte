@@ -53,6 +53,7 @@
         onAdoptedError,
         onAdoptedQueue,
         onTransferErrorClose,
+        onTransferErrorRetry,
         onArchivePasswordSubmit,
         onArchivePasswordCancel,
         onNewFolderCreated,
@@ -100,6 +101,8 @@
         onAdoptedError: (error: WriteOperationError, progressAtStop: ProgressAtStop | null) => void
         onAdoptedQueue: () => void
         onTransferErrorClose: () => void
+        /** The error dialog's Retry. Offered only when `transferErrorProps.retry` holds something to start. */
+        onTransferErrorRetry?: () => void
         onArchivePasswordSubmit: (password: string) => void
         onArchivePasswordCancel: () => void
         onNewFolderCreated: (folderName: string) => void
@@ -294,6 +297,7 @@
             error={transferErrorProps.error}
             progressAtStop={transferErrorProps.progressAtStop}
             onClose={onTransferErrorClose}
+            onRetry={transferErrorProps.retry ? onTransferErrorRetry : undefined}
         />
     {/if}
 

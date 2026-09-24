@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "這個檔案正在離場。伺服器已經把它標成待刪除，但還有另一個開著的檔案控制代碼佔著它，要等那個控制代碼關閉才行。",
+  "errors.write.deletePending.message": "位於 {path} 的檔案正在離場。伺服器已經把它標成待刪除，但還有另一個開著的檔案控制代碼佔著它，要等那個控制代碼關閉才行。",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "稍等一下再試一次。最後一個控制代碼一關閉，檔案就會消失。如果它一直都在，關掉其他可能開著它的 App。",
   "@errors.write.deletePending.suggestion": {

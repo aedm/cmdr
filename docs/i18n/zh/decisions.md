@@ -654,3 +654,20 @@ in prose.
 - `存储` survives only for storing data on a drive (`无法存储大于…的文件`); saving a file is `保存`.
 - Restart buttons `重新启动` (Apple), and a sentence quoting one matches it; running prose may say `重启`.
 - A search's scanned-folder count `已扫描`, the scan verb, not `已查看`.
+
+## 移动完成但原文件还在（`errors.write.sourceNotRemoved.*`、`errors.write.permissionDenied.*.source*`、`errors.write.deletePending.message`，2026-09-24）
+
+跨宗卷移动把所有内容都拷贝过去了，却没能移除原文件（比如一个在 Finder 里被锁定的文件）。对话框要说清楚：副本是完整的，原文件还在，什么都没丢。
+
+- **original（移动时源一侧的那一份）** · `原文件` · 目录里这一步已经这么叫（`transferProgress.titleRemovingOriginals`
+  `正在移除原文件…`、`moveNotConfirmed.*`、`readOnlyDevice.source.suggestion`）· `high`
+- **remove the original（Cmdr 没做成的那一步）→ `移除`；delete the original yourself（用户要做的）→ `删除`** · 前者沿用
+  `正在移除原文件…`，后者是 settled 的 `删除` · `high`
+- **permission to read** · `权限读取` · macOS Finder `PE99`（`因为你没有权限读取它们`）· `high`
+- **the folder it's in** · `它所在的文件夹` · 目录已有 `它们所在的驱动器`（`fileOperations.trash.undoUnavailable`）·
+  `high`
+- **the copy（名词，标题里）** · `副本` · macOS Finder `PE107`（`保留部分副本`），目录 `本地副本` · `high`
+- **Nothing was lost** · `什么都没丢失` · 逐字沿用 `deviceDisconnected.sided.destination.copy` 的句尾（英文 "nothing is
+  lost"），不用 `originalsKeptAside` 的 `什么都没被扔掉`（那里英文是 "thrown away"）· `high`
+- **"at {path}" / "arrived at {landedAt}"** · `位于 {path} 的…` / `已到达 {landedAt}` · `位于` 见上面的 "in
+  {folder}" 条目；`deletePending.message` 现在点名文件：`位于 {path} 的文件正在退场。` · `high`

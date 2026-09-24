@@ -767,3 +767,23 @@ Allow cloud AI → `Felhő-AI engedélyezése` (quoted when named); as a verb `e
 
 Finding apps… → `Appok keresése…`; share options → `megosztási lehetőségek` (tentative), over `beállítás` (settings); No
 share options → `Nincs megosztási lehetőség`.
+
+## Az áthelyezés, amelynek eredetije a helyén maradt (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`, 2026-09-24)
+
+Egy kötetek közötti áthelyezés mindent átmásolt, de az eredetit nem tudta törölni (például egy zárolt fájlt). A
+párbeszédnek azt kell mondania, hogy a másolat teljes, az eredeti megvan, és semmi nem veszett el.
+
+- **original (a mozgatott elem forrásoldali példánya) → `eredeti`** · mac (Finder `N6`, `N177.1`: „az eredeti elem nem
+  található”; AppKit „Az eredeti dokumentum”), a katalógus (`moveNotConfirmed.*`, `readOnlyDevice.source.suggestion`:
+  „Az eredetiek a helyükön maradnak”) · high.
+- **permission to read (a forrás olvasása) → `olvasni`, a szomszédos kulcsok `Nincs engedélyed …` keretében** · mac
+  (Finder `PE99`, `PE22`: „nincs jogosultsága az olvasásukra”); a `jogosultság` helyett `engedély`, mert a
+  `permissionDenied.message.*` család tegező mondatai azt használják · high.
+- **the folder it's in → `a mappához, amelyben van`** · a Finder `befoglaló mappa`/`tartalmazó mappa` alakjai
+  menücímkék; mondatban a vonatkozói szerkezet természetesebb · high.
+- **„Everything arrived at {landedAt}” → `Minden megérkezett ide: {landedAt}`; „the original at {path}” →
+  `az eredetit innen: {path}`** · a helyőrző ragozatlanul, deiktikus kettőspontos keretben áll (style.md) · high.
+- **Nothing was lost → `Semmi sem veszett el.`** · szó szerint a `deviceDisconnected.sided.destination.copy` zárása
+  (angolul "nothing is lost") · high.
+- **`deletePending.message` most megnevezi a fájlt → `A fájl épp távozóban van: {path}.`**, a korábbi mondat többi része
+  változatlan · high.

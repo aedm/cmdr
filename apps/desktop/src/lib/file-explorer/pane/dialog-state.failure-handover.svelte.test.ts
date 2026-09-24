@@ -192,3 +192,48 @@ describe('foreground failure handover', () => {
     expect(dismissFailedOperation).toHaveBeenCalledWith('op-8')
   })
 })
+
+/**
+ * The error dialog's Retry (cmdr-reports#17: a retryable error that offered no
+ * Retry). It starts the SAME operation again as a new one, and settles the failed
+ * one exactly as Close would.
+ */
+describe('retry from the error dialog', () => {
+  it('starts the failed operation again, as a new one with a fresh preview', () => {
+    const dialogs = makeState()
+    failInForeground(dialogs, 'op-7')
+    expect(dialogs.transferErrorProps?.retry?.sourcePaths).toEqual(copyProps().sourcePaths)
+
+    dialogs.handleTransferErrorRetry()
+
+    expect(dialogs.showTransferErrorDialog).toBe(false)
+    expect(dialogs.showTransferProgressDialog).toBe(true)
+    const again = dialogs.transferProgressProps
+    expect(again?.sourcePaths).toEqual(copyProps().sourcePaths)
+    expect(again?.destinationPath).toBe(copyProps().destinationPath)
+    expect(again?.conflictResolution).toBe('stop')
+    // The backend refuses a second claim on one preview.
+    expect(again?.previewId).toBeNull()
+  })
+
+  it('settles the failed operation like a close', () => {
+    const dialogs = makeState()
+    failInForeground(dialogs, 'op-7')
+
+    dialogs.handleTransferErrorRetry()
+
+    expect(dismissFailedOperation).toHaveBeenCalledWith('op-7')
+    expect(getForegroundFailureId()).toBeNull()
+  })
+
+  it('never answers an MCP round-trip twice', () => {
+    const dialogs = makeState()
+    dialogs.startTransferProgress({ ...copyProps(), mcpRequestId: 'mcp-1', initiator: 'aiClient' })
+    dialogs.handleTransferError(ioError, null)
+
+    dialogs.handleTransferErrorRetry()
+
+    expect(dialogs.transferProgressProps?.mcpRequestId).toBeUndefined()
+    expect(dialogs.transferProgressProps?.initiator).toBe('user')
+  })
+})

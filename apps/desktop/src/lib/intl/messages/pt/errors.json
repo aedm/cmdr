@@ -1613,9 +1613,9 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "Este arquivo está a caminho da saída. O servidor o marcou para ser apagado, mas outro identificador aberto o mantém por aqui até que esse identificador feche.",
+  "errors.write.deletePending.message": "O arquivo em {path} está a caminho da saída. O servidor o marcou para ser apagado, mas outro identificador aberto o mantém por aqui até que esse identificador feche.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "e580e20"
+    "sourceHash": "7e73fd6"
   },
   "errors.write.deletePending.suggestion": "Espere um momento e tente de novo. Assim que o último identificador fechar, o arquivo desaparece. Se ele continuar por aqui, feche quaisquer outros apps que possam estar com ele aberto.",
   "@errors.write.deletePending.suggestion": {
