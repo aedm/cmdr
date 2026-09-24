@@ -28,11 +28,14 @@ pub(super) const ASSUMED_MAX_READ: u64 = 65536;
 
 /// THE condition for `open_read_stream_with_hint`'s compound CREATE+READ+CLOSE
 /// fast path: the file fits the connection's `quick_read_limit()`, what the
-/// link moves in 250 ms at the rate a recent download measured. That's one
+/// link moves in 250 ms at the capacity a recent download measured (timed from
+/// READ answers that queued behind each other, so it errs low). That's one
 /// streaming-download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`, 512 KiB) on a cold
 /// connection, never more than the server's `max_read`, and never more than
 /// half the credit window funds once smb2 has seen the server's ceiling; smb2
-/// owns that arithmetic. The scan pool's prefetch deliberately doesn't use it
+/// owns that arithmetic. The 250 ms is a fixed budget for how long a listing
+/// may wait behind one frame, apart from the read-ahead window's learned
+/// headroom. The scan pool's prefetch deliberately doesn't use it
 /// (`scan_pool.rs` says why).
 ///
 /// The compound saves the round trip a stream spends on its own CREATE, but
@@ -45,8 +48,11 @@ pub(super) const ASSUMED_MAX_READ: u64 = 65536;
 /// (`benchmarks/read-ahead/results/close-and-quick-read.md` in the smb2 repo,
 /// smb2 0.24.2, warm connection, last chunk in ms, 2026-09-23): at +60 ms a
 /// 4 MiB file took 139 compounded against 203 streamed; at +200 ms 1 MiB took
-/// 212 against 422. The rate errs low, so a borderline file streams: at +200 ms,
-/// 4 MiB still streams (619 against 427 compounded).
+/// 212 against 422. The rate errs low, so a borderline file streams. Because
+/// it measures the link rather than the last download's pace, it lets fast,
+/// distant links compound more: at +200 ms on 30 MB/s, 4 MiB compounds and
+/// lands in 673 ms, where streaming it took 919
+/// (`benchmarks/read-ahead/results/self-tuning.md`, smb2 0.25.2, 2026-09-24).
 pub(super) fn fits_one_compound_read(quick_read_limit: u64, size: u64) -> bool {
     size > 0 && size <= quick_read_limit
 }
@@ -67,12 +73,14 @@ pub(super) const ASSUMED_MAX_WRITE: u64 = 65536;
 /// would leave a truncated file at the user's real filename — the 2026-07-31
 /// wedge over again (`docs/notes/incidents/2026-07-31-transfer-wedge/README.md`).
 ///
-/// The limit is what the uplink moves in about 250 ms, the headroom smb2's
-/// adaptive write-behind window allows: one upload chunk (`smb2::UPLOAD_CHUNK_SIZE`,
-/// 512 KiB) on a connection that hasn't measured its uplink, then `rate × 250 ms`,
-/// capped at `compound_write_limit` (`max_write`, lowered to what half the credit
-/// window funds). A bigger frame carries the whole file with no progress, queued
-/// ahead of every listing on the connection: at 375 KB/s a `stat` waited 23 s
+/// The limit is what the uplink moves in 250 ms, a fixed budget for how long a
+/// listing may wait behind one frame (apart from the headroom smb2's adaptive
+/// write-behind window learns): one upload chunk (`smb2::UPLOAD_CHUNK_SIZE`,
+/// 512 KiB) on a connection that hasn't measured its uplink, then `rate × 250 ms`
+/// at the uplink's measured capacity, capped at `compound_write_limit`
+/// (`max_write`, lowered to what half the credit window funds). A bigger frame
+/// carries the whole file with no progress, queued ahead of every listing on
+/// the connection: at 375 KB/s a `stat` waited 23 s
 /// behind an 8 MiB upload, 1.5 s behind a streamed one (smb2's
 /// `benchmarks/read-ahead/results/adaptive-uploads.md`, smb2 0.25.0, 2026-09-23).
 /// smb2 owns that arithmetic.

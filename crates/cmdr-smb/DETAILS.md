@@ -820,27 +820,33 @@ temp's streamed fallback, a too-big write) honors the mode (why the mode matters
 `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "The single-shot exemption"). The
 copy pipeline feeds per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take
 the compound path. The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk
-until a download of two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate
+until a download of two or more chunks has measured the link, then `rate × 250 ms`, capped at `max_read_size`; the rate
 expires after 30 s and a reconnect clears it), because a bigger compound READ carries the whole file with no progress,
 queued ahead of every listing on the connection (cmdr-reports#15: 23 s for 8 MiB at 375 KB/s), while `Tree::download`
-streams it through an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The
-arithmetic stays in smb2 so the window and the cut-off share one headroom constant. The numbers sit on
+streams it through an adaptive read-ahead. Under the limit, the compound saves the stream's CREATE round trip. The rate
+is the link's capacity (timed from READ answers that queued behind each other), not the last download's pace, so on a
+fast link the limit rises well past what a small window's pace would give; it still errs low. The 250 ms is a fixed
+budget for how long a listing may wait behind one frame, deliberately apart from the read-ahead window's own headroom,
+which smb2 learns per connection (30–500 ms) and which shrinks to tens of milliseconds on a quiet LAN, where a cut-off
+tied to it would stream small files at an extra round trip or two each. The arithmetic stays in smb2. The numbers sit on
 `fits_one_compound_read`. The scan pool's prefetch keeps `max_read_size` on purpose (§ "SMB scan-connection pool", the
 reads bullet). Falls back cleanly to the streaming reader/writer when the hint is missing or the file is too big. Small
 compound reads return a `Vec<u8>` wrapped as a single-chunk `InlineReadStream` so the consumer API stays shaped the
 same. See `docs/notes/phase4-rtt-investigation.md` for the measurement. The write side stops at the same 250 ms, the
 other way round: smb2's `quick_write_limit` (one 512 KiB upload chunk until an upload of two or more WRITEs has measured
-the uplink, then `rate × 250 ms`, capped at `compound_write_limit`, the upload rate kept apart from the download one
-because home links are asymmetric), since one compound WRITE carries the whole file up the link with nothing else
-moving: at 375 KB/s a `stat` waited 23 s behind an 8 MiB upload and 1.5 s behind a streamed one
+the uplink's capacity, then `rate × 250 ms`, capped at `compound_write_limit`, the upload rate kept apart from the
+download one because home links are asymmetric), since one compound WRITE carries the whole file up the link with
+nothing else moving: at 375 KB/s a `stat` waited 23 s behind an 8 MiB upload and 1.5 s behind a streamed one
 ([smb2's upload benchmark](https://github.com/vdavid/smb2/blob/main/benchmarks/read-ahead/results/adaptive-uploads.md),
-smb2 0.25.0, 2026-09-23). The numbers sit on `fits_one_compound_write`. The WRITE side's condition is also a DATA-SAFETY
-contract: `write_is_single_shot` answers with `fits_one_compound_write` on that limit, the fast path takes the frame for
-every size such a promise could cover (`one_frame_write_limit`: a staging temp takes today's limit, the real name keeps
-`max_write`, because the limit moves with every upload and expires after 30 s), and the transfer layer skips its
-`.cmdr-tmp-*` staging on the strength of that answer. What the backend owes in return (short sources stay on the
-compound path, a post-CREATE failure cleans up after itself): `write_operations/transfer/DETAILS.md` § "The single-shot
-exemption".
+smb2 0.25.0, 2026-09-23). The numbers sit on `fits_one_compound_write`. On a Windows server the compound write is two
+round trips: Windows refuses a FLUSH that isn't last in its chain, so smb2 ends the chain on the FLUSH and closes
+separately (from the first refusal on, per connection). The data is flushed when the call returns either way. The WRITE
+side's condition is also a DATA-SAFETY contract: `write_is_single_shot` answers with `fits_one_compound_write` on that
+limit, the fast path takes the frame for every size such a promise could cover (`one_frame_write_limit`: a staging temp
+takes today's limit, the real name keeps `max_write`, because the limit moves with every upload and expires after 30 s),
+and the transfer layer skips its `.cmdr-tmp-*` staging on the strength of that answer. What the backend owes in return
+(short sources stay on the compound path, a post-CREATE failure cleans up after itself):
+`write_operations/transfer/DETAILS.md` § "The single-shot exemption".
 
 **Decision**: a streamed read (`open_smb_download_stream`) ends the consumer's stream at its last byte, before the
 CLOSE's answer **Why**: smb2's `FileDownload::next_chunk` puts the CLOSE on the wire before it hands out the last chunk,
@@ -909,7 +915,8 @@ directories and constructing display paths.
 servers accept the named `Guest` login but refuse an anonymous one (Windows with anonymous access restricted, some NAS
 configurations), so switching would break guest access for real users, and nothing here can verify it against real
 hardware. smb2 0.25.0 refused a guest session to any named login, `Guest` included, which failed every guest volume;
-0.25.1 treats `Guest` (any ASCII case) as a guest login on purpose, like an empty name. ❌ So don't pin smb2 to 0.25.0.
+0.25.1 and later treat `Guest` (any ASCII case) as a guest login on purpose, like an empty name. ❌ So don't pin smb2 to
+0.25.0.
 
 **Gotcha**: a share name reaches the wire NFC, so `SmbConnectionParams` must be built with `new` **Why**: `new` runs the
 NFC normalization; a struct literal filled from a raw `statfs` mount name carries macOS's NFD spelling straight to the
@@ -958,32 +965,32 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
 - **The byte path is three files split by contract**, all declared from `volume/mod.rs`. A new byte-path cell adds
   itself to the matching contract rather than growing one file; a cell that straddles goes where its ASSERTION lives,
   not where its setup does.
-  - `read_stream_integration_test.rs` — what `open_read_stream` / `open_read_stream_with_hint` hand back: a plain read,
-    a multi-MB read across chunk boundaries, cancel-by-drop, and both size-drift arms of the hinted fast path (a file
-    that grew, a file that shrank) serving the file as it is now.
-  - `write_stream_integration_test.rs` — what `write_from_stream` does with a source: the bytes that land, progress
-    shape (server-confirmed, never queued), cancel and mid-write cancel, multi-chunk sources, and the error /
-    partial-cleanup path with the `ErroringReadStream` double. The cross-volume streaming copy is here because every
-    assertion it makes is about what arrived on the share, even though its source is an `InMemoryVolume`.
-  - `wire_shape_integration_test.rs` — what a byte-path op COSTS, which neither of the above asks: the hinted read's ONE
-    compound frame and the `quick_read_limit` boundary where it gives way to streaming (on a cold connection `(1, 3)` at
-    512 KiB, `(0, 4)` one byte over, in two chunks; after a measuring download, `(1, 3)` for 2 MiB), the streamed read
-    ending at its last byte rather than at the CLOSE's answer (timed on the `slow` fixture, where that answer is 200 ms
-    away), the single-shot write promise the transfer layer skips `.cmdr-tmp-*` staging on (the wire proof and the
-    `write_is_single_shot` predicate behind it, kept together, and where that promise stops: one upload chunk on a cold
-    connection, what a measured uplink moves in 250 ms after, with a staged write over it streaming and a promised one
-    still `(2, 8)`), and the copy-slot clamp. It owns `request_counts`, the diagnostics-metric reader those frame
-    assertions run on. **Every cell here asserts on the PAIR `(compound_requests_sent, requests_sent)`, because
-    `requests_sent` alone reads like a frame count and is not one**: smb2 ticks it once per sub-op of a chain
-    (`allocate_msg_id` is the funnel every send path goes through), while `compound_requests_sent` counts the chain, and
-    `execute_compound` hands the whole chain to one `send_and_count`. So a hinted read is `(1, 3)` for one frame
-    carrying CREATE+READ+CLOSE, and the single-shot write is `(2, 8)` for two frames of four ops each (verified against
-    Samba in the `smb-consumer` container on smb2 0.21.0, 2026-09-02). Reading the second number as round trips costs an
-    afternoon: it makes `requests == 1` look like the fast path's proof, and that assertion is unsatisfiable by
-    construction. The pair also asserts more than either half: a streaming open reads as `(0, 3)`, a loose round trip
-    beside the compound as `(1, 4)`. The copy-concurrency cell exercises neither byte path; it sits here because its
-    subject is the credit window of § "Copy concurrency and the credit window", which the sized read and the slot clamp
-    are the two halves of.
+    - `read_stream_integration_test.rs` — what `open_read_stream` / `open_read_stream_with_hint` hand back: a plain
+      read, a multi-MB read across chunk boundaries, cancel-by-drop, and both size-drift arms of the hinted fast path (a
+      file that grew, a file that shrank) serving the file as it is now.
+    - `write_stream_integration_test.rs` — what `write_from_stream` does with a source: the bytes that land, progress
+      shape (server-confirmed, never queued), cancel and mid-write cancel, multi-chunk sources, and the error /
+      partial-cleanup path with the `ErroringReadStream` double. The cross-volume streaming copy is here because every
+      assertion it makes is about what arrived on the share, even though its source is an `InMemoryVolume`.
+    - `wire_shape_integration_test.rs` — what a byte-path op COSTS, which neither of the above asks: the hinted read's
+      ONE compound frame and the `quick_read_limit` boundary where it gives way to streaming (on a cold connection
+      `(1, 3)` at 512 KiB, `(0, 4)` one byte over, in two chunks; after a measuring download, `(1, 3)` for 2 MiB), the
+      streamed read ending at its last byte rather than at the CLOSE's answer (timed on the `slow` fixture, where that
+      answer is 200 ms away), the single-shot write promise the transfer layer skips `.cmdr-tmp-*` staging on (the wire
+      proof and the `write_is_single_shot` predicate behind it, kept together, and where that promise stops: one upload
+      chunk on a cold connection, what a measured uplink moves in 250 ms after, with a staged write over it streaming
+      and a promised one still `(2, 8)`), and the copy-slot clamp. It owns `request_counts`, the diagnostics-metric
+      reader those frame assertions run on. **Every cell here asserts on the PAIR
+      `(compound_requests_sent, requests_sent)`, because `requests_sent` alone reads like a frame count and is not
+      one**: smb2 ticks it once per sub-op of a chain (`allocate_msg_id` is the funnel every send path goes through),
+      while `compound_requests_sent` counts the chain, and `execute_compound` hands the whole chain to one
+      `send_and_count`. So a hinted read is `(1, 3)` for one frame carrying CREATE+READ+CLOSE, and the single-shot write
+      is `(2, 8)` for two frames of four ops each (verified against Samba in the `smb-consumer` container on smb2
+      0.21.0, 2026-09-02). Reading the second number as round trips costs an afternoon: it makes `requests == 1` look
+      like the fast path's proof, and that assertion is unsatisfiable by construction. The pair also asserts more than
+      either half: a streaming open reads as `(0, 3)`, a loose round trip beside the compound as `(1, 4)`. The
+      copy-concurrency cell exercises neither byte path; it sits here because its subject is the credit window of §
+      "Copy concurrency and the credit window", which the sized read and the slot clamp are the two halves of.
 - `conformance_test.rs` — the `cmdr_fs::volume::conformance` promises, answered by a real server rather than an
   in-process double (SMB has none): `STATUS_DIRECTORY_NOT_EMPTY`, `STATUS_OBJECT_NAME_COLLISION`,
   `STATUS_OBJECT_NAME_NOT_FOUND`. That last one is the conflict scan's: `scan_for_conflicts_impl` keeps its own
