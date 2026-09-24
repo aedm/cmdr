@@ -131,6 +131,37 @@ struct ManualServersStore {
     servers: Vec<ManualServerEntry>,
 }
 
+/// Why adding a manual server didn't go through.
+///
+/// ❗ Two answers, because only one of them can be added anyway: a server that
+/// didn't answer may be asleep or off-network right now, while an address that
+/// doesn't parse is a typo, and saving it on purpose helps nobody.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum AddServerError {
+    /// The address isn't one this reads (`ParseError`), with why, for the log.
+    InvalidAddress { message: String },
+    /// Nothing answered on the address's SMB port within the probe's budget.
+    Unreachable { message: String },
+}
+
+impl std::fmt::Display for AddServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidAddress { message } | Self::Unreachable { message } => f.write_str(message),
+        }
+    }
+}
+
+/// Whether an add probes the server before saving it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reachability {
+    /// TCP-connect to the SMB port first; a server that doesn't answer isn't saved.
+    Check,
+    /// Save without asking: the person pressed "Add anyway" after the check failed.
+    Skip,
+}
+
 /// Result of successfully adding a manual server.
 ///
 /// Only serialized (Rust → frontend); no `Deserialize` needed.
@@ -523,12 +554,10 @@ fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
 pub async fn add_manual_server<R: Runtime>(
     input: &str,
     details: &HostEdit,
+    reachability: Reachability,
     app_handle: &AppHandle<R>,
-) -> Result<ManualConnectResult, String> {
-    let parsed = parse_server_address(input).map_err(|e| e.to_string())?;
-
-    // Check TCP reachability
-    check_reachability(&parsed.host, parsed.port).await?;
+) -> Result<ManualConnectResult, AddServerError> {
+    let parsed = checked_parse(input, reachability).await?;
 
     // Build the network host
     let host = create_network_host(&parsed.host, parsed.port);
@@ -675,6 +704,17 @@ pub fn name_manual_server<R: Runtime>(
         on_host_found(create_network_host(&entry.address, entry.port), app_handle);
     }
     true
+}
+
+/// Reads `input` and, unless the add skips it, probes the server's SMB port.
+async fn checked_parse(input: &str, reachability: Reachability) -> Result<ParsedAddress, AddServerError> {
+    let parsed = parse_server_address(input).map_err(|e| AddServerError::InvalidAddress { message: e.to_string() })?;
+    if reachability == Reachability::Check {
+        check_reachability(&parsed.host, parsed.port)
+            .await
+            .map_err(|message| AddServerError::Unreachable { message })?;
+    }
+    Ok(parsed)
 }
 
 /// Removes a server entry by ID from the store file at the given path, protected by `STORE_LOCK`.

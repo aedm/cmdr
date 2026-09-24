@@ -12,7 +12,7 @@
  * silently. The words a person reads come from `servers.hub.status.*`.
  */
 
-import type { PaneFileEntry } from '$lib/tauri-commands'
+import type { PaneFileEntry, PaneState } from '$lib/tauri-commands'
 import type { HubRow } from './servers-hub-rows'
 
 /** The add row's name, as an agent sees it. */
@@ -33,6 +33,27 @@ export interface HubMcpLookups {
   appRootOf: (row: HubRow) => string | null
   /** How many shares an SMB host has, when a listing answered. */
   shareCountOf?: (row: HubRow) => number | undefined
+}
+
+/** The hub as the pane state MCP mirrors: its rows, then the add row, and the cursor. */
+export function hubPaneState(
+  rows: HubRow[],
+  cursorIndex: number,
+  volumeName: string,
+  lookups: HubMcpLookups,
+): PaneState {
+  return {
+    path: 'smb://',
+    volumeId: 'network',
+    volumeName,
+    files: hubMcpEntries(rows, lookups),
+    cursorIndex,
+    viewMode: 'full',
+    selectedIndices: [],
+    totalFiles: rows.length,
+    loadedStart: 0,
+    loadedEnd: rows.length,
+  }
 }
 
 /** One entry per row, then the add row. */

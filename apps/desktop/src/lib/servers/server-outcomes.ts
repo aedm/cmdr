@@ -17,7 +17,7 @@ import type { ConnectRefusalKind } from './connect-refusals'
 import type { SignInAttemptOutcome } from './sign-in-contract'
 
 /** How one dial ended. Everything a dial can answer, minus the caller-only hand-off. */
-export type ServerDialOutcome = Exclude<SignInAttemptOutcome, { kind: 'handed_off' }>
+export type ServerDialOutcome = Exclude<SignInAttemptOutcome, { kind: 'handed_off' } | { kind: 'added' }>
 
 /** One dial's answer, in the app's own vocabulary. */
 export function readConnectOutcome(outcome: ServerConnectOutcome): ServerDialOutcome {

@@ -270,10 +270,28 @@
     },
     "screenshot": "server-sign-in-edit.png"
   },
-  "servers.sheet.connect": "Connect",
-  "@servers.sheet.connect": {
-    "description": "The sheet's main button in add mode: it dials the server the user typed. VERB, imperative.",
-    "screenshot": "server-sign-in-add.png"
+  "servers.sheet.addAndOpen": "Add and open",
+  "@servers.sheet.addAndOpen": {
+    "description": "Primary button of the Add server sheet, and what Enter does: checks the server, saves it, and opens it in the pane. VERB phrase. Pairs with servers.sheet.add, which only saves."
+  },
+  "servers.sheet.add": "Add",
+  "@servers.sheet.add": {
+    "description": "Secondary button of the Add server sheet: checks the server and saves it to the Servers list without opening it. VERB, one word. Pairs with servers.sheet.addAndOpen."
+  },
+  "servers.sheet.addAnyway": "Add anyway",
+  "@servers.sheet.addAnyway": {
+    "description": "Small button under the address in the Add server sheet, shown only after Cmdr couldn't reach the server: saves it as typed without checking anything. VERB phrase."
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr couldn''t check this server, so Add anyway saves it as you typed it.",
+  "@servers.sheet.addAnywayHelp": {
+    "description": "One line beside the Add anyway button: nothing about the server was checked, so a typo would be saved too. \"Add anyway\" must match servers.sheet.addAnyway word for word."
+  },
+  "servers.sheet.addedToast": "{name} is saved in your Servers list.",
+  "@servers.sheet.addedToast": {
+    "description": "Success notification after the Add button saved a server without opening it, shown when the Servers list isn't on screen to show the new row. {name} is the server's name as the list shows it.",
+    "placeholders": {
+      "name": "the server's name, like Sven's NAS or 192.168.0.153"
+    }
   },
   "servers.sheet.signIn": "Sign in",
   "@servers.sheet.signIn": {

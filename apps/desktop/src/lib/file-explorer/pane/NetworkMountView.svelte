@@ -243,6 +243,10 @@
             onConnected: ({ volumeId, root }) => {
                 onVolumeChange?.({ volumeId, volumePath: root, targetPath: root })
             },
+            // "Add" saved it without opening: the new row, selected, is the proof.
+            onAdded: ({ serverId }) => {
+                serversHubRef?.selectServer(serverId)
+            },
         })
         await tick()
         // Focus goes back to the explorer container so keyboard navigation resumes.

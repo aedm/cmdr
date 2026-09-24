@@ -183,10 +183,6 @@
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
   },
-  "servers.sheet.connect": "連線",
-  "@servers.sheet.connect": {
-    "sourceHash": "1a2303e"
-  },
   "servers.sheet.signIn": "登入",
   "@servers.sheet.signIn": {
     "sourceHash": "bfd402b"

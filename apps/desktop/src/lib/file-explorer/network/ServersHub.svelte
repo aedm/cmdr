@@ -23,8 +23,15 @@
         refreshAllStaleShares,
     } from './network-store.svelte'
     import { getStatusTooltip } from './host-status'
-    import { buildHubRows, openMoveFor, type HubRow, type HubRowStatus } from './servers-hub-rows'
-    import { hubMcpEntries } from './servers-hub-mcp'
+    import {
+        buildHubRows,
+        hubRowIcon,
+        lastUsedSeconds,
+        openMoveFor,
+        type HubRow,
+        type HubRowStatus,
+    } from './servers-hub-rows'
+    import { hubPaneState } from './servers-hub-mcp'
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
@@ -34,7 +41,6 @@
         updateRightPaneState,
         onNetworkHostContextAction,
         listSavedServers,
-        type PaneState,
         type SavedServer,
     } from '$lib/tauri-commands'
     import { getVolumes } from '$lib/stores/volume-store.svelte'
@@ -208,21 +214,10 @@
     async function syncPaneStateToMcp() {
         if (!paneId) return
         try {
-            const state: PaneState = {
-                path: 'smb://',
-                volumeId: 'network',
-                volumeName: tString('fileExplorer.navigation.networkVolume'),
-                files: hubMcpEntries(rows, {
-                    appRootOf: (row) => row.saved?.places[0]?.appRoot ?? null,
-                    shareCountOf: (row) => (row.host ? getShareCount(row.host.id) : undefined),
-                }),
-                cursorIndex,
-                viewMode: 'full',
-                selectedIndices: [],
-                totalFiles: rows.length,
-                loadedStart: 0,
-                loadedEnd: rows.length,
-            }
+            const state = hubPaneState(rows, cursorIndex, tString('fileExplorer.navigation.networkVolume'), {
+                appRootOf: (row) => row.saved?.places[0]?.appRoot ?? null,
+                shareCountOf: (row) => (row.host ? getShareCount(row.host.id) : undefined),
+            })
             await (paneId === 'left' ? updateLeftPaneState(state) : updateRightPaneState(state))
         } catch {
             // MCP mirroring is optional; a failed push must not touch the UI.
@@ -257,6 +252,25 @@
     /** Refresh everything the hub shows (⌘R). */
     export function refresh() {
         handleRefreshClick()
+    }
+
+    /** The server an "Add" just saved: the list learns of it a moment later, so this waits for the row. */
+    let pendingSelection = $state<string | null>(null)
+
+    $effect(() => {
+        const id = pendingSelection
+        if (id === null) return
+        const index = rows.findIndex((row) => row.id === id || row.host?.id === id)
+        if (index < 0) return
+        pendingSelection = null
+        setCursorIndex(index)
+    })
+
+    /** Selects the server `id` names (saved or discovery id), now or once listed: "Add"'s proof (cmdr-reports#6). */
+    // noinspection JSUnusedGlobalSymbols -- used by NetworkMountView after an Add
+    export function selectServer(id: string) {
+        pendingSelection = id
+        void refreshSavedServers()
     }
 
     /** Find a row by name, returns its index or -1. */
@@ -304,10 +318,7 @@
     /** What Enter does to a row: `openMoveFor` decides, this carries it out. */
     function openRow(row: HubRow): void {
         const move = openMoveFor(row, rows, volumes)
-        if (!move) {
-            log.warn('The hub row {name} has nowhere to open', { name: row.name })
-            return
-        }
+        if (!move) { log.warn('The hub row {name} has nowhere to open', { name: row.name }); return; }
         if (move.kind === 'host') onHostSelect?.(move.host)
         else if (move.kind === 'place') onServerSelect?.(move.row)
         else onShareViaHost?.(move.host, move.share)
@@ -412,22 +423,9 @@
         cursorIndex = rows.length
     }
 
-    /** A share is a folder under its server; a server is a machine, or a service on one. */
-    function rowIcon(row: HubRow): 'folder' | 'monitor' | 'server' {
-        if (row.kind === 'share') return 'folder'
-        return row.protocol === 'smb' ? 'monitor' : 'server'
-    }
-
     /** The protocol name, from the same map the volume switcher's slot reads. */
     function typeLabel(row: HubRow): string {
         return protocolLabel(row.protocol) ?? row.protocol.toUpperCase()
-    }
-
-    /** `Last used`, as the seconds-based `DateLabel` takes it. */
-    function lastUsedSeconds(row: HubRow): number | null {
-        if (!row.lastConnectedAt) return null
-        const parsed = Date.parse(row.lastConnectedAt)
-        return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000)
     }
 
     /** Re-read the saved list and re-fetch every host's shares (user-initiated). */
@@ -499,7 +497,7 @@
                     class:is-share={row.kind === 'share'}
                     use:tooltip={{ text: row.name, overflowOnly: true }}
                 >
-                    <span class="row-icon"><Icon name={rowIcon(row)} size={16} aria-hidden="true" /></span>
+                    <span class="row-icon"><Icon name={hubRowIcon(row)} size={16} aria-hidden="true" /></span>
                     {row.name}
                     {#if row.account !== null}
                         <span class="share-account">{tString('servers.hub.shareAccount', { username: row.account })}</span>

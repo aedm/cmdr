@@ -724,3 +724,42 @@ mod integration_tests {
         assert_eq!(id, host.id);
     }
 }
+
+// -- Why an add didn't go through --
+
+/// ❗ **An address that doesn't parse and a server that didn't answer are two
+/// answers**, because only the second can be added anyway: saving an address
+/// nothing can read would be saving a typo on purpose.
+#[test]
+fn a_refused_add_says_whether_it_was_the_address_or_the_server() {
+    let invalid = serde_json::to_value(AddServerError::InvalidAddress {
+        message: "Enter a server address".to_string(),
+    })
+    .unwrap();
+    assert_eq!(invalid["type"], "invalid_address");
+
+    let unreachable = serde_json::to_value(AddServerError::Unreachable {
+        message: "Couldn't reach nas:445".to_string(),
+    })
+    .unwrap();
+    assert_eq!(unreachable["type"], "unreachable");
+}
+
+/// The unchecked add parses exactly like a checked one: only the TCP probe is
+/// skipped, never the reading of the address.
+#[tokio::test]
+async fn an_unchecked_add_still_refuses_an_address_that_does_not_parse() {
+    let refusal = checked_parse("not a server!!", Reachability::Skip).await;
+    assert!(
+        matches!(refusal, Err(AddServerError::InvalidAddress { .. })),
+        "got {refusal:?}"
+    );
+}
+
+/// ❗ Skipping the probe dials nothing: `host.invalid` would be an unreachable
+/// server if anything tried it.
+#[tokio::test]
+async fn an_unchecked_add_dials_nothing() {
+    let parsed = checked_parse("host.invalid", Reachability::Skip).await.expect("parses");
+    assert_eq!(parsed.host, "host.invalid");
+}

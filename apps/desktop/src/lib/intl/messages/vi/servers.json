@@ -183,10 +183,6 @@
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
   },
-  "servers.sheet.connect": "Kết nối",
-  "@servers.sheet.connect": {
-    "sourceHash": "1a2303e"
-  },
   "servers.sheet.signIn": "Đăng nhập",
   "@servers.sheet.signIn": {
     "sourceHash": "bfd402b"

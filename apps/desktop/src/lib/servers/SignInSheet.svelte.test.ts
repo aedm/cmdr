@@ -87,6 +87,13 @@ function buttonSaying(text: string): HTMLButtonElement {
   return match
 }
 
+/** The button whose whole label is `text`, for a label another button's contains. */
+function exactButton(text: string): HTMLButtonElement {
+  const match = [...document.body.querySelectorAll('button')].find((b) => b.textContent.trim() === text)
+  if (!match) throw new Error(`no button saying exactly ${text}`)
+  return match
+}
+
 /** The protocol tab labelled `label`, which only the person ever moves. */
 function protocolTab(label: string): HTMLButtonElement {
   const match = [...document.body.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
@@ -265,6 +272,74 @@ describe('SignInSheet: the keyboard', () => {
   })
 })
 
+/**
+ * cmdr-reports#6: the title says "Add server" and the buttons say what each one
+ * does. Both verify before saving; only "Add and open" moves a pane.
+ */
+describe('SignInSheet: Add and Add and open', () => {
+  const recording = (outcome: SignInAttemptOutcome) => (submission: SignInSubmission) => {
+    submissions.push(submission)
+    return Promise.resolve(outcome)
+  }
+
+  it('offers Add beside the primary Add and open, and Enter means Add and open', async () => {
+    await renderSheet({ mode: 'add', attempt: recording({ kind: 'handed_off' }) })
+    const address = document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement
+    typeInto(address, 'naspolya')
+    await tick()
+
+    expect(buttonSaying('Add and open').className).toContain('primary')
+    expect(buttonSaying('Add').textContent.trim()).toBe('Add')
+
+    address.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flush()
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://naspolya', name: '', username: null, intent: 'open' },
+    ])
+  })
+
+  it('saves without opening on Add, and closes as added', async () => {
+    const { done } = await renderSheet({
+      mode: 'add',
+      attempt: recording({ kind: 'added', serverId: 'manual-naspolya-445' }),
+    })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')
+    await tick()
+
+    exactButton('Add').click()
+    await flush()
+
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://naspolya', name: '', username: null, intent: 'save' },
+    ])
+    expect(done).toEqual([{ kind: 'added', serverId: 'manual-naspolya-445' }])
+  })
+
+  it('offers Add anyway once the server could not be reached, saying nothing was checked', async () => {
+    await renderSheet({ mode: 'add', attempt: recording({ kind: 'refused', refusal: 'unreachable' }) })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')
+    await tick()
+    expect(document.body.querySelector('#server-add-anyway-help')).toBeNull()
+
+    buttonSaying('Add and open').click()
+    await flush()
+    expect(document.body.querySelector('#server-add-anyway-help')?.textContent).toContain("couldn't check")
+
+    buttonSaying('Add anyway').click()
+    await flush()
+    expect(submissions.at(-1)).toMatchObject({ mode: 'add_smb', intent: 'save_unchecked' })
+  })
+
+  it('offers no Add anyway for an address that does not parse: that is a typo, not a sleeping server', async () => {
+    await renderSheet({ mode: 'add', attempt: recording({ kind: 'refused', refusal: 'invalid_url' }) })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')
+    await tick()
+    buttonSaying('Add and open').click()
+    await flush()
+    expect(document.body.querySelector('#server-add-anyway-help')).toBeNull()
+  })
+})
+
 describe('SignInSheet: add mode', () => {
   it('puts the protocol first, then the address, then the name, with the name outside Advanced', async () => {
     await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
@@ -314,10 +389,12 @@ describe('SignInSheet: add mode', () => {
     typeInto(document.body.querySelector<HTMLInputElement>('#server-username') as HTMLInputElement, ' sven ')
     await tick()
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '', username: 'sven' }])
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://naspolya', name: '', username: 'sven', intent: 'open' },
+    ])
   })
 
   it('hands the typed name over with an SMB address', async () => {
@@ -330,10 +407,12 @@ describe('SignInSheet: add mode', () => {
     typeInto(document.body.querySelector<HTMLInputElement>('#server-name') as HTMLInputElement, "  Sven's NAS ")
     await tick()
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: "Sven's NAS", username: null }])
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://naspolya', name: "Sven's NAS", username: null, intent: 'open' },
+    ])
   })
 
   /**
@@ -356,10 +435,12 @@ describe('SignInSheet: add mode', () => {
     // `user@host` is a fine SMB address, so nothing warns about it.
     expect(document.body.querySelector('#server-address-warning')).toBeNull()
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153', name: '', username: 'sven' }])
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://sven@192.168.0.153', name: '', username: 'sven', intent: 'open' },
+    ])
   })
 
   it('warns when the address looks like another protocol, and leaves the toggle and the dial alone', async () => {
@@ -396,7 +477,7 @@ describe('SignInSheet: add mode', () => {
     await tick()
     expect(document.body.querySelector<HTMLInputElement>('#server-username')?.value).toBe('ada')
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
     expect(submissions).toHaveLength(1)
@@ -428,10 +509,12 @@ describe('SignInSheet: add mode', () => {
     // mount refuses, so there is no password field to put in front of anyone.
     expect(document.body.querySelector('#server-secret')).toBeNull()
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '', username: null }])
+    expect(submissions).toEqual([
+      { mode: 'add_smb', address: 'smb://naspolya', name: '', username: null, intent: 'open' },
+    ])
     expect(done).toEqual([{ kind: 'handed_off' }])
   })
 
@@ -452,7 +535,7 @@ describe('SignInSheet: add mode', () => {
     typeInto(startFolder, '/srv/data-1')
     await tick()
 
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
     // ❗ By whole components: `/srv/data-1` is a sibling of `/srv/data`, and the
@@ -474,7 +557,7 @@ describe('SignInSheet: add mode', () => {
       'ada@nas.local/srv/data',
     )
     await tick()
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
     expect(document.body.querySelector('#server-start-folder-refusal')).not.toBeNull()
@@ -806,7 +889,7 @@ describe('SignInSheet: a refusal and the address that earned it', () => {
     const address = document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement
     typeInto(address, 'ada@typo.local:22')
     await tick()
-    buttonSaying('Connect').click()
+    buttonSaying('Add and open').click()
     await flush()
 
     // The refusal names the host that was actually dialed.

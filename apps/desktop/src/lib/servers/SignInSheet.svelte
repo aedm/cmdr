@@ -44,6 +44,7 @@
     } from './server-form'
     import { readSavedServerOutcome, type SaveOutcome } from './server-outcomes'
     import type {
+        AddIntent,
         SignInAttemptOutcome,
         SignInSheetRequest,
         SignInSheetResult,
@@ -154,9 +155,16 @@
 
     const submitLabel = $derived.by(() => {
         if (request.mode === 'edit') return tString('servers.sheet.save')
-        if (request.mode === 'add') return tString('servers.sheet.connect')
+        if (request.mode === 'add') return tString('servers.sheet.addAndOpen')
         return tString('servers.sheet.signIn')
     })
+
+    /**
+     * "Add anyway", offered once the check couldn't reach the server, and only
+     * then (cmdr-reports#6). ❌ Never for `invalid_url`: an address nothing can
+     * read is a typo, and saving it on purpose helps nobody.
+     */
+    const offersAddAnyway = $derived(request.mode === 'add' && (refusal === 'unreachable' || refusal === 'timed_out'))
 
     /** The subject a refusal's sentence names: the server, and the account on it. */
     const refusalSubject = $derived.by(() => {
@@ -313,7 +321,11 @@
         onDone(result)
     }
 
-    async function submit() {
+    /**
+     * Runs the form's round. `intent` is add mode's: "Add and open" (the
+     * default, and Enter), "Add", or "Add anyway". The other modes ignore it.
+     */
+    async function submit(intent: AddIntent = 'open') {
         if (!canSubmit) return
         if (startFolderOutsideRoot) {
             // The backend would refuse the same thing, and says nothing a person
@@ -326,7 +338,7 @@
             await save()
             return
         }
-        const submission = buildSubmission()
+        const submission = buildSubmission(intent)
         if (!submission) {
             refusal = 'invalid_url'
             return
@@ -335,7 +347,7 @@
     }
 
     /** What this mode is asking the caller to try. */
-    function buildSubmission(): SignInSubmission | null {
+    function buildSubmission(intent: AddIntent = 'open'): SignInSubmission | null {
         if (request.mode === 'sign-in') {
             return {
                 mode: 'sign-in',
@@ -354,6 +366,7 @@
                 address: smbAddressFrom(form.address),
                 name: form.displayName.trim(),
                 username: typedAccount(form.username),
+                intent,
             }
         }
         const target = serverTargetFrom(form)
@@ -362,6 +375,7 @@
             mode: 'add',
             target,
             secret: form.secret === '' ? null : { secret: form.secret, remember: form.remember },
+            intent,
         }
     }
 
@@ -398,6 +412,9 @@
                 return
             case 'handed_off':
                 close({ kind: 'handed_off' })
+                return
+            case 'added':
+                close({ kind: 'added', serverId: outcome.serverId })
                 return
             case 'cancelled':
                 close({ kind: 'cancelled' })
@@ -645,6 +662,7 @@
                 identityHint={isEdit ? tString('servers.sheet.identityLocked') : undefined}
                 addressRefusal={refusalWhere === 'address' ? refusalText : undefined}
                 {addressWarning}
+                onAddAnyway={offersAddAnyway ? () => void submit('save_unchecked') : undefined}
                 onTryNextcloudAddress={offersNextcloudRemedy
                     ? () => {
                           form.address = nextcloudAddress(form.address, form.username)
@@ -695,6 +713,14 @@
         >
             {tString('servers.sheet.cancel')}
         </Button>
+        {#if step === 'form' && request.mode === 'add'}
+            <!-- ❗ Both check the server before saving; only the primary moves a pane
+                 (cmdr-reports#6: the dialog said "Add server" and its one button
+                 connected). -->
+            <Button variant="secondary" onclick={() => void submit('save')} disabled={!canSubmit}>
+                {tString('servers.sheet.add')}
+            </Button>
+        {/if}
         {#if step === 'form'}
             <Button variant="primary" onclick={() => void submit()} disabled={!canSubmit}>
                 {#if busy}

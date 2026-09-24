@@ -649,19 +649,29 @@ use crate::network::manual_servers::{self, ManualConnectResult};
 /// the UI calls it by its address. `username` is the account the person means to sign
 /// in as (else the one an `smb://user@host` address names): it prefills the first
 /// sign-in, and a host with one is never listed as guest.
+///
+/// `check_reachability: false` is the sheet's "Add anyway", offered only after a check
+/// answered `Unreachable`: it saves without probing. An address that doesn't parse is
+/// refused either way.
 #[tauri::command]
 #[specta::specta]
 pub async fn connect_to_server(
     address: String,
     name: Option<String>,
     username: Option<String>,
+    check_reachability: bool,
     app_handle: tauri::AppHandle,
-) -> Result<ManualConnectResult, String> {
+) -> Result<ManualConnectResult, manual_servers::AddServerError> {
     let details = manual_servers::HostEdit {
         name: name.unwrap_or_default(),
         username,
     };
-    manual_servers::add_manual_server(&address, &details, &app_handle).await
+    let reachability = if check_reachability {
+        manual_servers::Reachability::Check
+    } else {
+        manual_servers::Reachability::Skip
+    };
+    manual_servers::add_manual_server(&address, &details, reachability, &app_handle).await
 }
 
 /// Removes a manually-added server by ID.

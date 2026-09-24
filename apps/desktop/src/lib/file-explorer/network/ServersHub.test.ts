@@ -124,6 +124,7 @@ interface ServersHubApi {
   findItemIndex: (name: string) => number
   openCursorItem: () => void
   getRowUnderCursor: () => HubRow | null
+  selectServer: (id: string) => void
 }
 
 interface MountedHub {
@@ -290,6 +291,34 @@ describe('ServersHub rows', () => {
     await tick()
     api.setCursorIndex(api.getItemCount() - 1)
     expect(api.getRowUnderCursor()).toBeNull()
+    await cleanup()
+  })
+})
+
+/**
+ * cmdr-reports#6: after "Add", the new server shows up SELECTED, so it is
+ * visibly saved, even though the saved list only learns of it a moment later.
+ */
+describe('ServersHub selectServer', () => {
+  it('puts the cursor on a server that joins the list after the call', async () => {
+    const { api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    h.listSavedServers.mockResolvedValue([savedSftp])
+
+    api.selectServer('sftp-jump.local-22-ada')
+    await vi.waitFor(() => {
+      expect(api.getRowUnderCursor()?.id).toBe('sftp-jump.local-22-ada')
+    })
+    await cleanup()
+  })
+
+  it('finds an added SMB host by its discovery id too', async () => {
+    const { api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    api.selectServer('h2')
+    await vi.waitFor(() => {
+      expect(api.getRowUnderCursor()?.name).toBe('Attic')
+    })
     await cleanup()
   })
 })

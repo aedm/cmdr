@@ -186,10 +186,6 @@
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
   },
-  "servers.sheet.connect": "Verbind",
-  "@servers.sheet.connect": {
-    "sourceHash": "1a2303e"
-  },
   "servers.sheet.signIn": "Log in",
   "@servers.sheet.signIn": {
     "sourceHash": "bfd402b"

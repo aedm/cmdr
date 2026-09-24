@@ -184,10 +184,6 @@
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
   },
-  "servers.sheet.connect": "Conectar",
-  "@servers.sheet.connect": {
-    "sourceHash": "1a2303e"
-  },
   "servers.sheet.signIn": "Iniciar sessão",
   "@servers.sheet.signIn": {
     "sourceHash": "bfd402b"

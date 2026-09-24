@@ -35,26 +35,27 @@ describe('commands.connectToServer', () => {
     }
     ipc.mock('connect_to_server', () => result)
 
-    const out = await commands.connectToServer('smb://storage.local/share', null, null)
+    const out = await commands.connectToServer('smb://storage.local/share', null, null, true)
 
     expect(out).toEqual({ status: 'ok', data: result })
     expect(ipc.lastCall('connect_to_server')?.payload).toEqual({
       address: 'smb://storage.local/share',
       name: null,
       username: null,
+      checkReachability: true,
     })
   })
 
-  it('surfaces a string error on unreachable hosts', async () => {
+  it('surfaces a typed refusal on unreachable hosts', async () => {
     const ipc = installIpcMock()
     ipc.mock('connect_to_server', () => {
-      throw 'host unreachable'
+      throw { type: 'unreachable', message: 'host unreachable' }
     })
 
-    const out = await commands.connectToServer('smb://nonexistent.invalid', null, null)
+    const out = await commands.connectToServer('smb://nonexistent.invalid', null, null, true)
 
     expect(out.status).toBe('error')
-    if (out.status === 'error') expect(out.error).toBe('host unreachable')
+    if (out.status === 'error') expect(out.error).toEqual({ type: 'unreachable', message: 'host unreachable' })
   })
 })
 

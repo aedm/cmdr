@@ -57,6 +57,11 @@
         addressWarning?: string
         /** Offered on `not_a_webdav_server`: appends the Nextcloud collection path. Nobody knows that path. */
         onTryNextcloudAddress?: () => void
+        /**
+         * Offered once an add couldn't reach the server: saves it as typed,
+         * checking nothing, which the line beside it says.
+         */
+        onAddAnyway?: () => void
         /** The sentence under the secret field. */
         secretRefusal?: string
         /** The sentence under the root folder. */
@@ -93,6 +98,7 @@
         addressRefusal,
         addressWarning,
         onTryNextcloudAddress,
+        onAddAnyway,
         secretRefusal,
         rootRefusal,
         startFolderRefusal,
@@ -177,6 +183,14 @@
                 <Button size="mini" onclick={onTryNextcloudAddress} {disabled}>
                     {tString('servers.sheet.tryNextcloudAddress')}
                 </Button>
+            </div>
+        {/if}
+        {#if onAddAnyway}
+            <div class="remedy-row">
+                <Button size="mini" onclick={onAddAnyway} {disabled} aria-describedby="server-add-anyway-help">
+                    {tString('servers.sheet.addAnyway')}
+                </Button>
+                <p id="server-add-anyway-help" class="field-help">{tString('servers.sheet.addAnywayHelp')}</p>
             </div>
         {/if}
     {:else if addressWarning}

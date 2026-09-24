@@ -354,6 +354,8 @@ export interface ServersHubAPI extends BrowserAPI {
    * row rather than the server the cursor is on.
    */
   getRowUnderCursor(): HubRow | null
+  /** Selects a server by its saved id (or a host's discovery id), now or once it's listed. */
+  selectServer(id: string): void
 }
 
 /** Typed interface for PlacesBrowser. */

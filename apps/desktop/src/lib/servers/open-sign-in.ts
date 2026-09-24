@@ -28,8 +28,11 @@ import {
   reconnectVolumeWithCredentials,
   saveSftpCredentials,
   saveWebdavCredentials,
+  updateSavedServer,
   type SavedServer,
+  type SecretOffer,
   type ServerConnectOutcome,
+  type ServerTarget,
 } from '$lib/tauri-commands'
 import { asReconnectError } from '$lib/file-explorer/network/reconnect-error'
 import { forgetShareListsOfMachine } from '$lib/file-explorer/network/network-store.svelte'
@@ -46,8 +49,11 @@ import type {
   SignInSheetResult,
   SignInSubmission,
 } from './sign-in-contract'
-import { readConnectOutcome } from './server-outcomes'
+import { readConnectOutcome, readSavedServerOutcome } from './server-outcomes'
 import { openSignInSheet } from './sign-in-sheet-state.svelte'
+import { asAddServerError } from './add-server-error'
+import { addToast } from '$lib/ui/toast'
+import { tString } from '$lib/intl/messages.svelte'
 
 const log = getAppLogger('servers')
 
@@ -57,6 +63,14 @@ export interface SmbHandOff {
   host: NetworkHost
   /** The share the address named, when it named one. */
   sharePath: string | null
+}
+
+/** A server an add saved without opening ("Add", "Add anyway"). */
+export interface AddedServer {
+  /** Its saved id: the id its row in the Servers list carries. */
+  serverId: string
+  /** What the list calls it. */
+  name: string
 }
 
 /** The place an add just connected to, for the caller to put a pane on. */
@@ -74,15 +88,20 @@ export interface ConnectedPlace {
  * rather than a session, so `connectToServer` injects a manual host and the
  * caller opens its places list.
  *
- * `onConnected` is where an SFTP or WebDAV add lands: the place it just
- * connected to. ❗ Every door calls it, ❌ never leaves it out: a sheet that
+ * `onConnected` is where an SFTP or WebDAV "Add and open" lands: the place it
+ * just connected to. ❗ Every door calls it, ❌ never leaves it out: a sheet that
  * closes on a live server while every pane stays put reads as a Connect that did
  * nothing. The caller picks the pane (the focused one, or the hub's own).
+ *
+ * `onAdded` is where an "Add" (or "Add anyway") lands: saved, with no pane moved.
+ * The hub selects the new row; a door with no list on screen leaves it out, and
+ * a toast says where the server went instead, so the add is never invisible.
  */
 export async function openAddServerSheet(options: {
   prefill?: string
   onSmbHandOff: (handOff: SmbHandOff) => void
   onConnected: (place: ConnectedPlace) => void
+  onAdded?: (server: AddedServer) => void
 }): Promise<SignInSheetResult> {
   const result = await openSignInSheet({
     mode: 'add',
@@ -94,7 +113,22 @@ export async function openAddServerSheet(options: {
     if (root) options.onConnected({ volumeId: result.volumeId, root })
     else log.warn('The place {volumeId} connected, but no saved server lists it', { volumeId: result.volumeId })
   }
+  if (result.kind === 'added') {
+    const added = { serverId: result.serverId, name: await savedNameOf(result.serverId) }
+    if (options.onAdded) options.onAdded(added)
+    else addToast(tString('servers.sheet.addedToast', { name: added.name }), { level: 'success' })
+  }
   return result
+}
+
+/** What the Servers list calls the saved server `serverId`, or the id when nothing lists it. */
+async function savedNameOf(serverId: string): Promise<string> {
+  try {
+    const servers = await listSavedServers()
+    return servers.find((server) => server.id === serverId)?.displayName ?? serverId
+  } catch {
+    return serverId
+  }
 }
 
 /**
@@ -236,34 +270,108 @@ function refusalFrom(outcome: ServerConnectOutcome | undefined): ConnectRefusalK
   return read.kind === 'refused' ? read.refusal : undefined
 }
 
-/** Add mode's attempt: a brand-new server, or SMB's hand-off. */
+/**
+ * Add mode's attempt: a brand-new server, or SMB's hand-off.
+ *
+ * ❗ Every intent but "Add anyway" checks the server before anything is saved
+ * (cmdr-reports#6): a TCP probe for SMB, the real connect for SFTP and WebDAV,
+ * because a typo saved silently is found only later, somewhere else. Only
+ * "Add and open" moves a pane.
+ */
 async function attemptAdd(
   submission: SignInSubmission,
   onSmbHandOff: (handOff: SmbHandOff) => void,
 ): Promise<SignInAttemptOutcome> {
-  if (submission.mode === 'add_smb') {
-    try {
-      const result = await connectToServer(submission.address, submission.name, submission.username)
-      // A list fetched before this add may be the guest one a typed account now
-      // refuses, so the places list asks again.
-      forgetShareListsOfMachine(result.host)
-      onSmbHandOff({ host: result.host, sharePath: result.sharePath })
-      return { kind: 'handed_off' }
-    } catch (e) {
-      // The host, ❌ never the typed address: `smb://user:password@host` is a
-      // spelling people paste, and this line reaches error-report bundles.
-      const parsed = parseServerAddress(submission.address)
-      log.warn('Adding the SMB host {host} broke down: {error}', {
-        host: parsed.kind === 'parsed' ? parsed.host : 'an address that does not parse',
-        error: String(e),
-      })
-      return { kind: 'refused', refusal: 'unreachable' }
-    }
-  }
+  if (submission.mode === 'add_smb') return await attemptAddSmb(submission, onSmbHandOff)
   if (submission.mode !== 'add') return { kind: 'refused', refusal: 'needs_credentials' }
 
+  if (submission.intent === 'save_unchecked') return await saveUnchecked(submission.target, submission.secret)
   const attemptId = newServerAttemptId()
-  return readConnectOutcome(await connectServer(submission.target, attemptId, submission.secret))
+  const outcome = readConnectOutcome(await connectServer(submission.target, attemptId, submission.secret))
+  // "Add": the connect proved the server and saved it; the session stays up,
+  // and the pane stays where it is.
+  if (outcome.kind === 'connected' && submission.intent === 'save') {
+    return { kind: 'added', serverId: outcome.volumeId }
+  }
+  return outcome
+}
+
+/** SMB's add: a TCP probe (unless "Add anyway"), then a hand-off or just the save. */
+async function attemptAddSmb(
+  submission: Extract<SignInSubmission, { mode: 'add_smb' }>,
+  onSmbHandOff: (handOff: SmbHandOff) => void,
+): Promise<SignInAttemptOutcome> {
+  try {
+    const result = await connectToServer(
+      submission.address,
+      submission.name,
+      submission.username,
+      submission.intent !== 'save_unchecked',
+    )
+    // A list fetched before this add may be the guest one a typed account now
+    // refuses, so the places list asks again.
+    forgetShareListsOfMachine(result.host)
+    if (submission.intent !== 'open') return { kind: 'added', serverId: result.host.id }
+    onSmbHandOff({ host: result.host, sharePath: result.sharePath })
+    return { kind: 'handed_off' }
+  } catch (e) {
+    // ❗ Two answers, and only one can be added anyway: an address that doesn't
+    // parse is a typo, not a server that's asleep.
+    const typed = asAddServerError(e)
+    if (typed?.type === 'invalid_address') return { kind: 'refused', refusal: 'invalid_url' }
+    if (typed) return { kind: 'refused', refusal: 'unreachable' }
+    // The host, ❌ never the typed address: `smb://user:password@host` is a
+    // spelling people paste, and this line reaches error-report bundles.
+    const parsed = parseServerAddress(submission.address)
+    log.warn('Adding the SMB host {host} broke down: {error}', {
+      host: parsed.kind === 'parsed' ? parsed.host : 'an address that does not parse',
+      error: String(e),
+    })
+    return { kind: 'refused', refusal: 'unreachable' }
+  }
+}
+
+/**
+ * "Add anyway" for SFTP and WebDAV: saves the server as typed, connecting to
+ * nothing, and files a typed password when Remember is on.
+ */
+async function saveUnchecked(target: ServerTarget, secret: SecretOffer | null): Promise<SignInAttemptOutcome> {
+  let saved
+  try {
+    saved = readSavedServerOutcome(await updateSavedServer(target))
+  } catch (e) {
+    log.warn('Saving the unchecked server broke down: {error}', { error: String(e) })
+    return { kind: 'refused', refusal: 'save_unconfirmed' }
+  }
+  if (saved.kind === 'refused') return saved
+  if (secret?.remember) {
+    try {
+      if (target.protocol === 'sftp') {
+        await saveSftpCredentials(target.host, target.port, target.username, secret.secret)
+      } else {
+        await saveWebdavCredentials(target.url, target.username, secret.secret)
+      }
+    } catch (e) {
+      log.warn('The server saved, but its password did not: {error}', { error: String(e) })
+      return { kind: 'refused', refusal: 'saved_secret_not_updated' }
+    }
+  }
+  const serverId = await savedIdOf(target)
+  return serverId ? { kind: 'added', serverId } : { kind: 'refused', refusal: 'save_unconfirmed' }
+}
+
+/**
+ * The saved id of the server `target` names, off the listing, which is the only
+ * side that mints one (a volume id is a Rust-side hash of the account's tuple).
+ */
+async function savedIdOf(target: ServerTarget): Promise<string | null> {
+  const address = target.protocol === 'sftp' ? `${target.host}:${String(target.port)}` : target.url
+  const servers = await listSavedServers()
+  const match = servers.find(
+    (server) =>
+      server.protocol === target.protocol && server.username === target.username && server.address === address,
+  )
+  return match?.id ?? null
 }
 
 /** An absent place: the first dial, now carrying whatever the user typed. */

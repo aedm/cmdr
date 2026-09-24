@@ -340,6 +340,19 @@ export function savedHostFor(row: HubRow): NetworkHost {
   return { id: row.id, name: row.name, hostname: row.address, port: 445, source: 'manual' }
 }
 
+/** A share is a folder under its server; a server is a machine, or a service on one. */
+export function hubRowIcon(row: HubRow): 'folder' | 'monitor' | 'server' {
+  if (row.kind === 'share') return 'folder'
+  return row.protocol === 'smb' ? 'monitor' : 'server'
+}
+
+/** `Last used`, as the seconds-based `DateLabel` takes it, or `null` for never. */
+export function lastUsedSeconds(row: HubRow): number | null {
+  if (!row.lastConnectedAt) return null
+  const parsed = Date.parse(row.lastConnectedAt)
+  return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000)
+}
+
 /** The most useful spelling of where a discovered host lives. */
 function hostAddress(host: NetworkHost | null): string | null {
   return host?.ipAddress ?? host?.hostname ?? null

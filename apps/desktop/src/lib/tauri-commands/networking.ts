@@ -17,6 +17,7 @@ import type {
   UpgradeResult,
 } from '$lib/ipc/bindings'
 import { throwIpcError } from './ipc-types'
+import { throwAddServerError } from '$lib/servers/add-server-error'
 import type {
   AuthOptions,
   ConnectionMode,
@@ -515,16 +516,18 @@ export async function disconnectSmbVolume(volumeId: string): Promise<void> {
  * @param address Hostname, IP, IP:port, or smb:// URL
  * @param name What the Add form's Name field held; empty leaves the server unnamed
  * @param username The account the person means to sign in as, or `null` for none
+ * @param checkReachability `false` for the sheet's "Add anyway": saves without probing
  * @returns The injected host and optional share path
- * @throws Plain string error on parse failure or unreachable host
+ * @throws AddServerFailure carrying the typed `AddServerError` (`asAddServerError`)
  */
 export async function connectToServer(
   address: string,
   name = '',
   username: string | null = null,
+  checkReachability = true,
 ): Promise<ManualConnectResult> {
-  const res = await commands.connectToServer(address, name === '' ? null : name, username)
-  if (res.status === 'error') throwIpcError(res.error)
+  const res = await commands.connectToServer(address, name === '' ? null : name, username, checkReachability)
+  if (res.status === 'error') throwAddServerError(res.error)
   return res.data as ManualConnectResult
 }
 

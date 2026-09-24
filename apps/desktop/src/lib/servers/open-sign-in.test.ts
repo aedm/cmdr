@@ -305,7 +305,7 @@ describe('add mode', () => {
       useAgent: true,
       autoReconnect: true,
     }
-    const outcome = await attemptOf(request)({ mode: 'add', target, secret: null })
+    const outcome = await attemptOf(request)({ mode: 'add', target, secret: null, intent: 'open' })
     expect(outcome).toEqual({ kind: 'connected', volumeId: VOLUME_ID })
     expect(ipc.lastCall('connect_server')?.payload).toMatchObject({ target, secret: null })
 
@@ -351,7 +351,13 @@ describe('add mode', () => {
     })
     const request = await parkedRequest()
 
-    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'naspolya', name: '', username: null })
+    const outcome = await attemptOf(request)({
+      mode: 'add_smb',
+      address: 'naspolya',
+      name: '',
+      username: null,
+      intent: 'open',
+    })
     expect(outcome).toEqual({ kind: 'handed_off' })
     expect(handOffs).toEqual([{ host: { id: 'h1', name: 'naspolya' }, sharePath: null }])
     // ❗ SMB's connect is a share MOUNT, not a session: no server command runs.
@@ -366,12 +372,19 @@ describe('add mode', () => {
     const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
     const request = await parkedRequest()
 
-    await attemptOf(request)({ mode: 'add_smb', address: 'smb://192.168.0.153', name: "Sven's NAS", username: 'sven' })
+    await attemptOf(request)({
+      mode: 'add_smb',
+      address: 'smb://192.168.0.153',
+      name: "Sven's NAS",
+      username: 'sven',
+      intent: 'open',
+    })
 
     expect(ipc.lastCall('connect_to_server')?.payload).toEqual({
       address: 'smb://192.168.0.153',
       name: "Sven's NAS",
       username: 'sven',
+      checkReachability: true,
     })
     closeSignInSheet({ kind: 'handed_off' })
     await sheet
@@ -391,6 +404,7 @@ describe('add mode', () => {
       address: 'smb://ada:hunter2@naspolya/photos',
       name: '',
       username: null,
+      intent: 'open',
     })
     expect(outcome).toEqual({ kind: 'refused', refusal: 'unreachable' })
     expect(warn).toHaveBeenCalledOnce()
@@ -637,6 +651,123 @@ describe('openSignInForPlace: a saved SMB share', () => {
     })
 
     closeSignInSheet({ kind: 'connected', volumeId: SHARE_ID })
+    await sheet
+  })
+})
+
+/**
+ * cmdr-reports#6: the add sheet says what it does. "Add and open" takes the pane
+ * to the new server; "Add" only saves it, after the same check; "Add anyway"
+ * saves a server the check couldn't reach, and says nothing was checked.
+ */
+describe('add mode: Add, Add and open, and Add anyway', () => {
+  const SFTP_TARGET = {
+    protocol: 'sftp' as const,
+    displayName: '',
+    host: 'nas.local',
+    port: 22,
+    username: 'ada',
+    remoteRoot: '/',
+    startFolder: null,
+    keyFile: null,
+    useAgent: true,
+    autoReconnect: true,
+  }
+
+  it('saves an SMB host after the reachability check and opens nothing', async () => {
+    ipc.mock('connect_to_server', () => ({ host: { id: 'manual-nas-445', name: 'nas' }, sharePath: null }))
+    const handOffs: unknown[] = []
+    const sheet = openAddServerSheet({ onSmbHandOff: (h) => handOffs.push(h), onConnected: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'add_smb',
+      address: 'smb://nas',
+      name: '',
+      username: null,
+      intent: 'save',
+    })
+
+    expect(outcome).toEqual({ kind: 'added', serverId: 'manual-nas-445' })
+    expect(ipc.lastCall('connect_to_server')?.payload).toMatchObject({ checkReachability: true })
+    expect(handOffs).toEqual([])
+    closeSignInSheet({ kind: 'added', serverId: 'manual-nas-445' })
+    await sheet
+  })
+
+  it('saves an SMB host without probing it when the person said Add anyway', async () => {
+    ipc.mock('connect_to_server', () => ({ host: { id: 'manual-nas-445', name: 'nas' }, sharePath: null }))
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    await attemptOf(request)({
+      mode: 'add_smb',
+      address: 'smb://nas',
+      name: '',
+      username: null,
+      intent: 'save_unchecked',
+    })
+
+    expect(ipc.lastCall('connect_to_server')?.payload).toMatchObject({ checkReachability: false })
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+  })
+
+  it('tells a server that did not answer from an address that does not parse', async () => {
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+    const smb = { mode: 'add_smb' as const, address: 'smb://nas', name: '', username: null, intent: 'open' as const }
+
+    ipc.mock('connect_to_server', () => {
+      throw { type: 'unreachable', message: "Couldn't reach nas:445" }
+    })
+    expect(await attemptOf(request)(smb)).toEqual({ kind: 'refused', refusal: 'unreachable' })
+
+    ipc.mock('connect_to_server', () => {
+      throw { type: 'invalid_address', message: 'Enter a server address' }
+    })
+    expect(await attemptOf(request)(smb)).toEqual({ kind: 'refused', refusal: 'invalid_url' })
+
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+  })
+
+  it('connects an SFTP server to check it, then only saves it: no pane moves', async () => {
+    ipc.mock('connect_server', () => ({ outcome: 'connected', volumeId: VOLUME_ID }))
+    const landed: unknown[] = []
+    const added: unknown[] = []
+    const sheet = openAddServerSheet({
+      onSmbHandOff: () => {},
+      onConnected: (place) => landed.push(place),
+      onAdded: (server) => added.push(server),
+    })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({ mode: 'add', target: SFTP_TARGET, secret: null, intent: 'save' })
+    expect(outcome).toEqual({ kind: 'added', serverId: VOLUME_ID })
+
+    closeSignInSheet({ kind: 'added', serverId: VOLUME_ID })
+    await sheet
+    expect(landed).toEqual([])
+    expect(added).toEqual([{ serverId: VOLUME_ID, name: 'Naspolya' }])
+  })
+
+  it('saves an unreachable SFTP server without connecting when the person said Add anyway', async () => {
+    ipc.mock('update_saved_server', () => ({ outcome: 'saved' }))
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'add',
+      target: { ...SFTP_TARGET, host: 'nas.local' },
+      secret: null,
+      intent: 'save_unchecked',
+    })
+
+    expect(ipc.callCount('connect_server')).toBe(0)
+    expect(ipc.lastCall('update_saved_server')?.payload).toMatchObject({ server: { host: 'nas.local' } })
+    expect(outcome).toEqual({ kind: 'added', serverId: VOLUME_ID })
+    closeSignInSheet({ kind: 'cancelled' })
     await sheet
   })
 })

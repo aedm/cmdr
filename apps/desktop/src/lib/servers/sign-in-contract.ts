@@ -43,13 +43,23 @@ export interface SignInEndpoint {
 }
 
 /**
+ * What an add does once the server checks out (cmdr-reports#6).
+ *
+ * - `open`: "Add and open", the default. Check, save, and take the pane there.
+ * - `save`: "Add". The same check, then save, and no pane moves.
+ * - `save_unchecked`: "Add anyway", offered only after the check couldn't reach
+ *   the server. Saves without checking anything.
+ */
+export type AddIntent = 'open' | 'save' | 'save_unchecked'
+
+/**
  * What the sheet collected, handed to the caller's attempt.
  *
  * Two arms because the two modes collect different things: add mode types a
  * whole server, sign-in mode answers a question about one that exists.
  */
 export type SignInSubmission =
-  | { mode: 'add'; target: ServerTarget; secret: SecretOffer | null }
+  | { mode: 'add'; target: ServerTarget; secret: SecretOffer | null; intent: AddIntent }
   /**
    * ❗ SMB's add path has no target: its connect is a share MOUNT rather than a
    * session, so the caller injects a manual host and opens its places, and no
@@ -66,6 +76,7 @@ export type SignInSubmission =
        * as guest, so an empty field must stay `null`, ❌ never `''`.
        */
       username: string | null
+      intent: AddIntent
     }
   | {
       mode: 'sign-in'
@@ -103,6 +114,8 @@ export type SignInAttemptOutcome =
    * with its own retry.
    */
   | { kind: 'handed_off' }
+  /** An add that only saved ("Add", "Add anyway"): the new server's id, for the hub to select it. */
+  | { kind: 'added'; serverId: string }
   | { kind: 'needs_host_key'; prompt: HostKeyPrompt }
   | { kind: 'host_key_revoked'; key: SftpHostKeyIdentity }
   | { kind: 'refused'; refusal: ConnectRefusalKind }
@@ -166,6 +179,8 @@ export type SignInSheetResult =
   | { kind: 'connected'; volumeId: string }
   /** The caller took over (SMB's add path opens a places list, not a volume). */
   | { kind: 'handed_off' }
+  /** Add mode: saved and not opened. The new server's saved id. */
+  | { kind: 'added'; serverId: string }
   /** Edit mode: the changes are written. */
   | { kind: 'saved' }
   /** Escape, Cancel, or the × . ❗ Says nothing. */

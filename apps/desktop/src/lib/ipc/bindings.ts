@@ -3661,9 +3661,15 @@ export const commands = {
    *  the UI calls it by its address. `username` is the account the person means to sign
    *  in as (else the one an `smb://user@host` address names): it prefills the first
    *  sign-in, and a host with one is never listed as guest.
+   *
+   *  `check_reachability: false` is the sheet's "Add anyway", offered only after a check
+   *  answered `Unreachable`: it saves without probing. An address that doesn't parse is
+   *  refused either way.
    */
-  connectToServer: (address: string, name: string | null, username: string | null) =>
-    typedError<ManualConnectResult, string>(__TAURI_INVOKE('connect_to_server', { address, name, username })),
+  connectToServer: (address: string, name: string | null, username: string | null, checkReachability: boolean) =>
+    typedError<ManualConnectResult, AddServerError>(
+      __TAURI_INVOKE('connect_to_server', { address, name, username, checkReachability }),
+    ),
   // Gets the current discovery state.
   getNetworkDiscoveryState: () => __TAURI_INVOKE<DiscoveryState>('get_network_discovery_state'),
   /**
@@ -5060,6 +5066,19 @@ export type AddFavoriteError =
       // What the runtime reported, for the log.
       detail: string
     }
+
+/**
+ *  Why adding a manual server didn't go through.
+ *
+ *  ❗ Two answers, because only one of them can be added anyway: a server that
+ *  didn't answer may be asleep or off-network right now, while an address that
+ *  doesn't parse is a typo, and saving it on purpose helps nobody.
+ */
+export type AddServerError =
+  // The address isn't one this reads (`ParseError`), with why, for the log.
+  | { type: 'invalid_address'; message: string }
+  // Nothing answered on the address's SMB port within the probe's budget.
+  | { type: 'unreachable'; message: string }
 
 // The wire form of [`AgentErrorKind`] — the frontend renders each honestly.
 export type AgentErrorKindView =

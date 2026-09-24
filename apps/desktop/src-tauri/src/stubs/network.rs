@@ -489,6 +489,7 @@ pub async fn connect_to_server(
     _address: String,
     _name: Option<String>,
     _username: Option<String>,
+    _check_reachability: bool,
     _app_handle: tauri::AppHandle,
 ) -> Result<ManualConnectResult, String> {
     Err("Manual server connection not supported on this platform".to_string())
