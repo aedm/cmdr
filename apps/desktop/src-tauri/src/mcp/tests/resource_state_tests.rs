@@ -3,10 +3,10 @@
 //! `resource_tests.rs`.
 
 use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo, TypeToJumpInfo};
-use crate::mcp::resources::{
-    StateOptions, build_pane_yaml_with_options, format_file_compact, format_tab_compact, parse_state_options,
-    split_uri, tags_marker,
+use crate::mcp::resources::panes::{
+    build_pane_yaml_with_options, format_file_compact, format_tab_compact, tags_marker,
 };
+use crate::mcp::resources::{StateOptions, parse_state_options, split_uri};
 use crate::search::format_size;
 
 #[test]

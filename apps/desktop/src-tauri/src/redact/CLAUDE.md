@@ -31,12 +31,9 @@ state snapshot).
   AND filenames, so the boundary is recovered after the match. ❌ Never anchor continuation words to `[A-Z0-9]` (that
   shipped ` at 01.13.03 PM-2.jpeg` verbatim), ❌ never use the looser `has_extension_like_suffix` for its forward scan
   (`.03` in a timestamp halves the name). `DETAILS.md` § "Finding the end of a path".
-- **A relative path is only found by its key.** `path_field` claims `path=`, `smb_path=`, `from=`, `to=`, `file=`, …
-  (`{:?}`-quoted or bare) because nothing else marks `docs/a b.pdf` as a path; an absolute value goes back to the path
-  branches. So ❗ **log a file path or name as `key={:?}` with a key from that list**, never as bare prose
-  (`against /docs on volume …`): prose is invisible to the redactor.
-- **Hashes key on the name, not its bytes.** `short_hash` undoes `{:?}` escapes and NFC-normalizes first, and a
-  `.cmdr-tmp-<uuid>` leaf hashes as the name it becomes (suffix kept verbatim), so one file is one token per bundle.
+- **A relative path is only found by its key** (`path_field`: `path=`, `smb_path=`, `from=`, …). ❗ Log a file path or
+  name as `key={:?}` with a key from that list, never as bare prose, which is invisible to the redactor.
+- **Hashes key on the name, not its bytes** (escapes undone, NFC, Cmdr temp suffix split off): one file, one token.
 - **`redact_with` resumes at `match.start() + consumed`, ❌ never `replace_all`.** A handed-back tail must face the
   scanner again or nothing else can claim it: one match ate `smb:` and shipped the share and filename. A new branch
   that hands text back owes `dispatch` a consumed length.
@@ -46,19 +43,13 @@ state snapshot).
 - **A filename repeated in PROSE is still not redacted.** macOS names the file again inside its own error text
   (`the Trash refused it: “Screenshot ….jpeg”`), with no path around it, and no pattern claims a bare name. Known gap,
   pinned by `trash_refusal_line_redacts_its_path`.
-- **Dispatch order mirrors the regex alternation order.** `smb://user@host/...` matches `smb_uri` first (listed
-  earlier), so it does NOT fall through to `url_userinfo`; the userinfo is dropped with the host. Don't reorder without
-  re-checking these overlaps.
-- **`bare_userinfo` captures a leading delimiter (`^` or one whitespace) into `bare_lead` and re-emits it.** The regex
-  crate has no lookbehind, so this anchoring is how the scheme-less `//user:pass@host` shape (built by the macOS
-  `smbutil` / Linux `smbclient` fallbacks) avoids grabbing the `//user@host` tail inside a scheme'd `http://user@host`
-  (handled by the earlier `url_userinfo`). Don't drop the lead capture.
-- **`url_userinfo` preserves the host on purpose** (assumed to be a well-known service URL the dev needs). Revisit if we
-  ever store private hosts in URLs.
+- **Dispatch order mirrors the regex alternation order**, and the userinfo branches depend on it: `DETAILS.md` §
+  "Pattern overlaps".
 
 ## Files
 
-`mod.rs` (public API + composed regex + rewriters), `tests.rs` (per-pattern, idempotency, golden corpus, histogram),
+`mod.rs` (public API, composed regex, dispatch, `split_trailing_noise`), `paths.rs` (path-shape rewriters),
+`fields.rs` (keyed fields), `names.rs` (temp suffixes, `{:?}` escapes), `tests.rs` (per-pattern, idempotency, golden corpus, histogram),
 `fixtures/log-corpus.txt` + `.redacted.txt` (golden snapshot).
 
 Full details (decision rationale, how to add a pattern, regex verbose-mode notes): `DETAILS.md`.

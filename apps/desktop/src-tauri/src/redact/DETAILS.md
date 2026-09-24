@@ -15,7 +15,7 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
 | `url_userinfo` | `scheme://user[:pass]@host/...` | `scheme://<userinfo>@host/...` (host kept) |
 | `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | `//<userinfo>@host/...` (host kept) |
-| `path_field` | `path=`, `smb_path=`, `from=`, `to=`, `file=`, `dir=`, `src=`, `dest=`, `selectName=`, `new_name=`, … | relative value walked in place; absolute value handed to the branches above |
+| `path_field` | a keyed field: `path=`, `smb_path=`, `from=`, `to=`, `file=`, … (see the regex) | relative value walked in place; absolute value handed to the branches above |
 | `email` | `local@domain.tld` | `<email>` |
 | `account` | `user=`/`username:` fields | `user=<user>`, `None` untouched |
 | `mdns` | `<label>.local` | `<host>.local` |
@@ -26,6 +26,18 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 `mtp_owner` needs a known model word (`iPhone | iPad | Pixel | Galaxy | OnePlus | …`) right after the `'s `, which is
 what keeps contractions and module paths out of it. `SAFE_PARENT_DIR_NAMES` is the parent-dir allowlist: `Documents`,
 `Downloads`, `Desktop`, `Library`, `src`, `Pictures`, `Movies`, `Music`, `Public`, `AppData`, `Application Support`.
+
+## Pattern overlaps
+
+- **Dispatch order mirrors the regex alternation order.** `smb://user@host/...` matches `smb_uri` first (listed
+  earlier), so it does NOT fall through to `url_userinfo`; the userinfo is dropped with the host. Don't reorder without
+  re-checking these overlaps.
+- **`bare_userinfo` captures a leading delimiter (`^` or one whitespace) into `bare_lead` and re-emits it.** The regex
+  crate has no lookbehind, so this anchoring is how the scheme-less `//user:pass@host` shape (built by the macOS
+  `smbutil` / Linux `smbclient` fallbacks) avoids grabbing the `//user@host` tail inside a scheme'd `http://user@host`
+  (handled by the earlier `url_userinfo`). Don't drop the lead capture.
+- **`url_userinfo` preserves the host on purpose** (assumed to be a well-known service URL the dev needs). Revisit if we
+  ever store private hosts in URLs.
 
 ## Decision: path-shape preservation + allowlist
 
