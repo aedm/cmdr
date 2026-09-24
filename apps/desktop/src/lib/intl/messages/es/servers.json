@@ -287,10 +287,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "Déjalo vacío y Cmdr usará la cuenta y el host como nombre del servidor.",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "Carpeta raíz",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

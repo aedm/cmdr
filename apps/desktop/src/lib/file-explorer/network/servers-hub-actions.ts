@@ -26,6 +26,7 @@ import {
 } from '../navigation/row-menu'
 import { isVolumeBusy } from '$lib/stores/volume-busy-store.svelte'
 import { confirmDialog } from '$lib/utils/confirm-dialog'
+import { openEditServerSheet } from '$lib/servers/open-sign-in'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import type { HubRow } from './servers-hub-rows'
@@ -181,6 +182,8 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       host.id,
       host.name,
       host.source === 'manual',
+      // A SAVED host has a name to edit; one mDNS merely sees does not.
+      row.saved !== null,
       getCredentialStatus(host.name) === 'has_creds',
     )
   }
@@ -218,6 +221,11 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       case 'forget-secret':
         await forgetHostSecret(payload.hostName)
         return
+      case 'edit': {
+        const row = deps.getRows().find((r) => r.host?.id === payload.hostId || r.id === payload.hostId)
+        if (row?.saved) await openEditServerSheet(row.saved)
+        return
+      }
       case 'disconnect':
         await disconnectHost(payload)
         return

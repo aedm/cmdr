@@ -394,7 +394,7 @@ pub async fn execute_connect_to_server<R: Runtime>(app: &AppHandle<R>, params: &
         .and_then(|v| v.as_str())
         .ok_or_else(|| ToolError::invalid_params("Missing 'address' parameter"))?;
 
-    match crate::network::manual_servers::add_manual_server(address, app).await {
+    match crate::network::manual_servers::add_manual_server(address, "", app).await {
         Ok(result) => Ok(json!(format!(
             "OK: Connected to {} (host ID: {})",
             result.host.name, result.host.id

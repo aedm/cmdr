@@ -287,10 +287,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "留空的話，就用帳號和主機來稱呼這個伺服器。",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "根資料夾",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

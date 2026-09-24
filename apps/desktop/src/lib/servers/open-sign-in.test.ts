@@ -351,7 +351,7 @@ describe('add mode', () => {
     })
     const request = await parkedRequest()
 
-    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'naspolya' })
+    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'naspolya', name: '' })
     expect(outcome).toEqual({ kind: 'handed_off' })
     expect(handOffs).toEqual([{ host: { id: 'h1', name: 'naspolya' }, sharePath: null }])
     // ❗ SMB's connect is a share MOUNT, not a session: no server command runs.
@@ -370,7 +370,11 @@ describe('add mode', () => {
     const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
     const request = await parkedRequest()
 
-    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'smb://ada:hunter2@naspolya/photos' })
+    const outcome = await attemptOf(request)({
+      mode: 'add_smb',
+      address: 'smb://ada:hunter2@naspolya/photos',
+      name: '',
+    })
     expect(outcome).toEqual({ kind: 'refused', refusal: 'unreachable' })
     expect(warn).toHaveBeenCalledOnce()
     expect(JSON.stringify(warn.mock.calls)).not.toContain('hunter2')

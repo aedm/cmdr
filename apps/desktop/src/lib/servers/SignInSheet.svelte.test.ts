@@ -24,6 +24,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   getWebdavUnattendedReconnect: vi.fn(() => Promise.resolve('possible')),
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
   updateSavedServer: vi.fn(() => Promise.resolve({ outcome: 'saved' })),
+  updateSavedSmbHost: vi.fn(() => Promise.resolve(true)),
   saveSftpCredentials: vi.fn(() => Promise.resolve()),
   saveWebdavCredentials: vi.fn(() => Promise.resolve()),
   approveSftpHostKey: vi.fn(() => Promise.resolve({ outcome: 'recorded' })),
@@ -278,10 +279,45 @@ describe('SignInSheet: add mode', () => {
     expect(name.closest('details')).toBeNull()
   })
 
-  it('shows SMB no name field, since its add has nowhere to keep one', async () => {
+  it('gives SMB a name field right under the address, saying what an empty one falls back to', async () => {
     await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
-    expect(document.body.querySelector('#server-name')).toBeNull()
+
+    const address = document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement
+    const name = document.body.querySelector<HTMLInputElement>('#server-name') as HTMLInputElement
+    expect(address.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // SMB keeps nothing Advanced would hold, so there's still no disclosure.
     expect(document.body.querySelector('details')).toBeNull()
+
+    typeInto(address, 'sven@192.168.0.153')
+    await tick()
+    // ❗ The stand-in the hub would show, which for SMB is the host alone.
+    expect(name.placeholder).toBe('Leave empty to use 192.168.0.153')
+  })
+
+  it('says an SFTP add falls back to the account and host', async () => {
+    await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
+    await pickProtocol('SFTP')
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'ada@nas.local:2222')
+    await tick()
+    expect(document.body.querySelector<HTMLInputElement>('#server-name')?.placeholder).toBe(
+      'Leave empty to use ada@nas.local',
+    )
+  })
+
+  it('hands the typed name over with an SMB address', async () => {
+    const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
+      submissions.push(submission)
+      return Promise.resolve({ kind: 'handed_off' })
+    }
+    await renderSheet({ mode: 'add', attempt })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-name') as HTMLInputElement, "  Sven's NAS ")
+    await tick()
+
+    buttonSaying('Connect').click()
+    await flush()
+
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: "Sven's NAS" }])
   })
 
   /**
@@ -306,7 +342,7 @@ describe('SignInSheet: add mode', () => {
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153' }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://sven@192.168.0.153', name: '' }])
   })
 
   it('warns when the address looks like another protocol, and leaves the toggle and the dial alone', async () => {
@@ -378,7 +414,7 @@ describe('SignInSheet: add mode', () => {
     buttonSaying('Connect').click()
     await flush()
 
-    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya' }])
+    expect(submissions).toEqual([{ mode: 'add_smb', address: 'smb://naspolya', name: '' }])
     expect(done).toEqual([{ kind: 'handed_off' }])
   })
 
@@ -482,7 +518,7 @@ describe('SignInSheet: edit mode', () => {
     // widen the root through the wrong field.
     const name = document.body.querySelector<HTMLInputElement>('#server-name')
     expect(name?.value).toBe('')
-    expect(name?.placeholder).toBe('ada@nas.local')
+    expect(name?.placeholder).toBe('Leave empty to use ada@nas.local')
     expect(document.body.textContent).toContain('Edit ada@nas.local')
   })
 
@@ -638,6 +674,62 @@ describe('SignInSheet: edit mode', () => {
     // "store an empty one".
     expect(vi.mocked(commands.saveSftpCredentials)).not.toHaveBeenCalled()
     expect(vi.mocked(commands.forgetServerSecret)).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * An SMB host is a manual-server entry, not an account with a place: its edit
+ * renames it, and its address stays (it mints the entry's id).
+ */
+describe('SignInSheet: editing an SMB host', () => {
+  const SMB_HOST = {
+    id: 'manual-192-168-0-153-445',
+    protocol: 'smb' as const,
+    displayName: "Sven's NAS",
+    nameSource: 'user' as const,
+    address: '192.168.0.153',
+    username: null,
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [],
+  }
+
+  beforeEach(async () => {
+    const commands = await import('$lib/tauri-commands')
+    vi.mocked(commands.updateSavedSmbHost).mockClear()
+    vi.mocked(commands.updateSavedServer).mockClear()
+  })
+
+  it('opens on the name a person typed, with the address locked', async () => {
+    await renderSheet({ mode: 'edit', server: SMB_HOST })
+
+    expect(document.body.querySelector<HTMLInputElement>('#server-name')?.value).toBe("Sven's NAS")
+    const address = document.body.querySelector<HTMLInputElement>('#server-address')
+    expect(address?.value).toBe('192.168.0.153')
+    expect(address?.disabled).toBe(true)
+    expect(document.body.querySelector('#server-secret')).toBeNull()
+  })
+
+  it('opens an unnamed host with an empty name and the address as its placeholder', async () => {
+    await renderSheet({ mode: 'edit', server: { ...SMB_HOST, displayName: '192.168.0.153', nameSource: 'fallback' } })
+    const name = document.body.querySelector<HTMLInputElement>('#server-name')
+    expect(name?.value).toBe('')
+    expect(name?.placeholder).toBe('Leave empty to use 192.168.0.153')
+  })
+
+  it('saves a rename through the SMB host writer and closes', async () => {
+    const commands = await import('$lib/tauri-commands')
+    const { done } = await renderSheet({ mode: 'edit', server: SMB_HOST })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-name') as HTMLInputElement, 'Attic NAS')
+    await tick()
+
+    buttonSaying('Save').click()
+    await flush()
+
+    expect(commands.updateSavedSmbHost).toHaveBeenCalledWith('manual-192-168-0-153-445', '192.168.0.153', 'Attic NAS')
+    expect(commands.updateSavedServer).not.toHaveBeenCalled()
+    expect(done).toEqual([{ kind: 'saved' }])
   })
 })
 

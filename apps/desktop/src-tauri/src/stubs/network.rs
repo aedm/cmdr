@@ -485,7 +485,11 @@ pub async fn disconnect_smb_volume(_volume_id: String) -> Result<(), String> {
 /// Connects to a manual server (stub: returns error).
 #[tauri::command]
 #[specta::specta]
-pub async fn connect_to_server(_address: String, _app_handle: tauri::AppHandle) -> Result<ManualConnectResult, String> {
+pub async fn connect_to_server(
+    _address: String,
+    _name: Option<String>,
+    _app_handle: tauri::AppHandle,
+) -> Result<ManualConnectResult, String> {
     Err("Manual server connection not supported on this platform".to_string())
 }
 

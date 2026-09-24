@@ -55,7 +55,12 @@ export type SignInSubmission =
    * session, so the caller injects a manual host and opens its places, and no
    * credential is asked until a listing or a mount refuses.
    */
-  | { mode: 'add_smb'; address: string }
+  | {
+      mode: 'add_smb'
+      address: string
+      /** The Name field, trimmed. ❗ Empty means unnamed: the backend then calls the host by its address. */
+      name: string
+    }
   | {
       mode: 'sign-in'
       /**

@@ -233,7 +233,7 @@ describe('actOnSchemeInput: what the jump does', () => {
     const request = currentSignInRequest()
     if (request?.mode !== 'add') throw new Error('expected the add sheet')
 
-    expect(await request.attempt({ mode: 'add_smb', address: 'naspolya' })).toEqual({ kind: 'handed_off' })
+    expect(await request.attempt({ mode: 'add_smb', address: 'naspolya', name: '' })).toEqual({ kind: 'handed_off' })
     expect(handedOver).toBe(1)
 
     closeSignInSheet({ kind: 'handed_off' })

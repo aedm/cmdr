@@ -439,11 +439,13 @@ pub fn show_network_host_context_menu(
     host_id: String,
     host_name: String,
     is_manual: bool,
+    is_saved: bool,
     has_credentials: bool,
 ) -> Result<(), String> {
     let app = window.app_handle().clone();
 
-    let menu = build_network_host_context_menu(&app, is_manual, has_credentials).map_err(|e| e.to_string())?;
+    let menu =
+        build_network_host_context_menu(&app, is_manual, is_saved, has_credentials).map_err(|e| e.to_string())?;
 
     // Store context so on_menu_event can include host info in the emitted event
     {

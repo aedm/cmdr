@@ -124,25 +124,53 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
     servers
 }
 
-/// The SMB hosts, from the share store and the manually-typed list, deduped.
+/// The SMB hosts, from the manually-typed list and the share store, deduped.
 ///
 /// One row per HOST: `known_shares.rs` is server-level in practice (its only
 /// writer stores an empty `share_name`), and a host the user typed by hand is
 /// the same host it has a share row for.
+///
+/// ❗ **Manual entries go first**, because the dedup keeps the first row it sees
+/// and only a manual entry can carry a name a person typed. A share-history row
+/// for the same host then only lends it the time it was last used.
 fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer> {
     let mut hosts: Vec<SavedServer> = Vec::new();
-    let mut push = |host: SavedServer| {
-        if hosts
-            .iter()
-            .any(|existing| existing.address.eq_ignore_ascii_case(&host.address))
-        {
-            return;
-        }
-        hosts.push(host);
-    };
+
+    for entry in manual {
+        let label = entry.label();
+        hosts.push(SavedServer {
+            // ❗ `User` only for a name a person typed. An unnamed entry's label
+            // is the ADDRESS they typed (`host` or `host:port`), worn as a
+            // stand-in, so a Bonjour name outranks it, the same as a mount's.
+            name_source: if entry.is_named() {
+                ServerNameSource::User
+            } else {
+                ServerNameSource::Fallback
+            },
+            id: entry.id,
+            protocol: ServerProtocol::Smb,
+            display_name: label,
+            address: entry.address,
+            username: None,
+            pinned: false,
+            // `added_at` is when it was typed, ❌ not when it last answered.
+            last_connected_at: None,
+            auto_reconnect: None,
+            places: Vec::new(),
+        });
+    }
 
     for share in known_shares::get_all_known_shares() {
-        push(SavedServer {
+        if let Some(existing) = hosts
+            .iter_mut()
+            .find(|existing| existing.address.eq_ignore_ascii_case(&share.server_name))
+        {
+            if existing.last_connected_at.as_deref() < Some(share.last_connected_at.as_str()) {
+                existing.last_connected_at = Some(share.last_connected_at);
+            }
+            continue;
+        }
+        hosts.push(SavedServer {
             id: manual_servers::generate_server_id(&share.server_name, 445),
             protocol: ServerProtocol::Smb,
             display_name: share.server_name.clone(),
@@ -155,24 +183,6 @@ fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer>
             username: None,
             pinned: false,
             last_connected_at: Some(share.last_connected_at),
-            auto_reconnect: None,
-            places: Vec::new(),
-        });
-    }
-    for entry in manual {
-        push(SavedServer {
-            id: entry.id,
-            protocol: ServerProtocol::Smb,
-            display_name: entry.display_name,
-            // ❗ The ADDRESS they typed, worn as a label: `manual_servers` derives
-            // it (`host` or `host:port`) because SMB's add flow asks for nothing
-            // else. So a Bonjour name outranks it, the same as a mount's.
-            name_source: ServerNameSource::Fallback,
-            address: entry.address,
-            username: None,
-            pinned: false,
-            // `added_at` is when it was typed, ❌ not when it last answered.
-            last_connected_at: None,
             auto_reconnect: None,
             places: Vec::new(),
         });
@@ -587,6 +597,29 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
             .await
         }
     }
+}
+
+/// Names a saved SMB host, answering whether there was one to name. An empty
+/// name unnames it, so the UI calls it by its address again.
+///
+/// `address` is the listing's own, which is what a host only the share history
+/// knew gets saved under (naming it is what saves it: `manual_servers` §
+/// `name_server_entry_at_path`).
+///
+/// ❗ Its own command rather than a [`ServerTarget`] arm: an SMB host is a
+/// manual-server entry, not an account with a place to dial, and the address
+/// stays put (it mints the entry's id and the host the discovery list carries).
+///
+/// ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+/// the saved list.
+#[tauri::command]
+#[specta::specta]
+pub fn update_saved_smb_host(id: String, address: String, name: String, app: tauri::AppHandle) -> bool {
+    let named = manual_servers::name_manual_server(&id, &address, &name, &app);
+    if named {
+        crate::volume_broadcast::emit_volumes_changed();
+    }
+    named
 }
 
 // ============================================================================

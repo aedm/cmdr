@@ -288,10 +288,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "Deixe em branco para usar a conta e o host como nome deste servidor.",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "Pasta raiz",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

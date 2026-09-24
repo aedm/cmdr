@@ -22,6 +22,7 @@ const openServer = vi.fn()
 const forgetCredentials = vi.fn(() => Promise.resolve())
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
+const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
 
 vi.mock('$lib/tauri-commands', () => ({
   removeManualServer: (...args: unknown[]) => removeManualServer(...(args as [])),
@@ -47,6 +48,9 @@ vi.mock('$lib/ui/toast', () => ({
   addToast: (...args: unknown[]) => {
     addToast(...(args as []))
   },
+}))
+vi.mock('$lib/servers/open-sign-in', () => ({
+  openEditServerSheet: (server: unknown) => openEditServerSheet(server),
 }))
 vi.mock('$lib/utils/confirm-dialog', () => ({ confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])) }))
 
@@ -263,7 +267,12 @@ describe('runRowEntry', () => {
 describe('openHostMenu', () => {
   it('raises the SMB host menu for a host row, with what it knows about its password', async () => {
     await actions().openHostMenu(savedHostRow)
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h1', 'Attic NAS', true, true)
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h1', 'Attic NAS', true, true, true)
+  })
+
+  it('offers no Edit for a host only mDNS knows about, which has nowhere to keep a name', async () => {
+    await actions().openHostMenu(nearbyOnlyRow)
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h2', 'Attic NAS', false, false, true)
   })
 })
 
@@ -275,6 +284,11 @@ describe('runHostAction', () => {
   it('routes the host menu’s Forget back through the same branch F8 takes', async () => {
     await actions().runHostAction(payload('forget-server'))
     expect(removeManualServer).toHaveBeenCalledWith('manual-10-0-0-4-445')
+  })
+
+  it('opens the edit sheet on the saved host the menu was raised for', async () => {
+    await actions().runHostAction(payload('edit'))
+    expect(openEditServerSheet).toHaveBeenCalledWith(savedHostRow.saved)
   })
 
   it('forgets the host’s stored password without touching the host itself', async () => {

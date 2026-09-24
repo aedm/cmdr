@@ -28,9 +28,9 @@ pub enum ServerProtocol {
 /// enum publishes, ❌ never a guess at the string's shape. Only the store that
 /// wrote the label knows where it came from.
 ///
-/// ❗ Every SMB row is [`Fallback`](Self::Fallback) today because SMB has no name
-/// field to fill in yet; adding one changes what a store answers here and nothing
-/// else.
+/// ❗ An SMB host is [`User`](Self::User) only when a person named it in the add
+/// or edit sheet (`manual_servers::ManualServerEntry::is_named`); a host only the
+/// share history knows is always a stand-in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerNameSource {
@@ -39,8 +39,8 @@ pub enum ServerNameSource {
     /// A stand-in the app derived, because nothing better existed: an SFTP or
     /// WebDAV account's `username@host`, the SMB mount's `server_name` (which
     /// `statfs` spells as the server answered, `smb-consumer-guest` rather than
-    /// `SMB Test (Guest)`), or the address typed into "Add server", which is all
-    /// an SMB host is ever given.
+    /// `SMB Test (Guest)`), or the address typed into "Add server" when the Name
+    /// field stayed empty.
     Fallback,
 }
 

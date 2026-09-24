@@ -240,7 +240,7 @@ async function attemptAdd(
 ): Promise<SignInAttemptOutcome> {
   if (submission.mode === 'add_smb') {
     try {
-      const result = await connectToServer(submission.address)
+      const result = await connectToServer(submission.address, submission.name)
       onSmbHandOff({ host: result.host, sharePath: result.sharePath })
       return { kind: 'handed_off' }
     } catch (e) {

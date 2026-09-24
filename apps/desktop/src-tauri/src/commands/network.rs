@@ -583,10 +583,17 @@ pub async fn disconnect_smb_volume(volume_id: String) -> Result<(), crate::file_
 use crate::network::manual_servers::{self, ManualConnectResult};
 
 /// Connects to a manually-specified server: parses, checks reachability, persists, and injects.
+///
+/// `name` is the Add form's Name field; `None` or empty leaves the server unnamed, so
+/// the UI calls it by its address.
 #[tauri::command]
 #[specta::specta]
-pub async fn connect_to_server(address: String, app_handle: tauri::AppHandle) -> Result<ManualConnectResult, String> {
-    manual_servers::add_manual_server(&address, &app_handle).await
+pub async fn connect_to_server(
+    address: String,
+    name: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<ManualConnectResult, String> {
+    manual_servers::add_manual_server(&address, name.as_deref().unwrap_or_default(), &app_handle).await
 }
 
 /// Removes a manually-added server by ID.

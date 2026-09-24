@@ -73,7 +73,7 @@ describe('the sign-in sheet fixtures answer what their rows advertise', () => {
     const request = serverSignInFixtures[stateId]?.request
     expect(request, `no fixture for ${stateId}`).toBeDefined()
     if (!request || request.mode === 'edit') throw new Error(`${stateId} has no attempt`)
-    const outcome = await request.attempt({ mode: 'add_smb', address: 'naspolya' })
+    const outcome = await request.attempt({ mode: 'add_smb', address: 'naspolya', name: '' })
     expect(outcome.kind).toBe(kind)
   })
 

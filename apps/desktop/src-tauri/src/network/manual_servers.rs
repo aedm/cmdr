@@ -71,10 +71,38 @@ impl std::fmt::Display for ParseError {
 #[serde(rename_all = "camelCase")]
 pub struct ManualServerEntry {
     pub id: String,
+    /// A name a person typed, or empty for a server nobody named. ❗ Read it
+    /// through [`label`](Self::label) and [`is_named`](Self::is_named), ❌ never
+    /// raw: entries written before names existed hold the derived address here.
+    #[serde(default)]
     pub display_name: String,
     pub address: String,
     pub port: u16,
     pub added_at: String,
+}
+
+impl ManualServerEntry {
+    /// Whether a person named this server.
+    ///
+    /// ❗ A stored name that spells the entry's own derived label (`host`, or
+    /// `host:port`) is NOT a name: that is what every entry held before the add
+    /// form had a name field, and reading it as chosen would let the address
+    /// outrank the Bonjour name a person recognizes. Rewriting the file isn't
+    /// needed, because this reading and [`label`](Self::label) agree on it.
+    pub fn is_named(&self) -> bool {
+        let name = self.display_name.trim();
+        !name.is_empty() && name != display_name(&self.address, self.port)
+    }
+
+    /// What the UI calls this server: the name a person typed, else the
+    /// address (with the port when it isn't 445).
+    pub fn label(&self) -> String {
+        if self.is_named() {
+            self.display_name.trim().to_string()
+        } else {
+            display_name(&self.address, self.port)
+        }
+    }
 }
 
 /// The on-disk store.
@@ -441,10 +469,17 @@ fn read_store<R: Runtime>(app: &AppHandle<R>) -> ManualServersStore {
 
 /// Adds a server entry to the store file at the given path, protected by `STORE_LOCK`.
 /// Extracted so it can be tested without an `AppHandle`.
-fn add_server_entry_to_path(path: &Path, entry: ManualServerEntry) {
+///
+/// ❗ Re-adding a host keeps the name it had when the new add brings none: adding
+/// an address someone saved earlier is an ordinary move, and it must not unname
+/// their server behind their back. Renaming is [`rename_server_entry_at_path`]'s.
+fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
     let _guard = get_store_lock().lock().unwrap_or_else(|e| e.into_inner());
     let mut store = read_store_from_path(path);
     if let Some(existing) = store.servers.iter_mut().find(|s| s.id == entry.id) {
+        if !entry.is_named() && existing.is_named() {
+            entry.display_name = existing.display_name.clone();
+        }
         *existing = entry;
     } else {
         store.servers.push(entry);
@@ -457,9 +492,10 @@ fn add_server_entry_to_path(path: &Path, entry: ManualServerEntry) {
 // ---------------------------------------------------------------------------
 
 /// Adds a manual server: parses input, checks reachability, persists, and injects into discovery
-/// state.
+/// state. `name` is what the person typed into the Name field; empty leaves it unnamed.
 pub async fn add_manual_server<R: Runtime>(
     input: &str,
+    name: &str,
     app_handle: &AppHandle<R>,
 ) -> Result<ManualConnectResult, String> {
     let parsed = parse_server_address(input).map_err(|e| e.to_string())?;
@@ -474,7 +510,7 @@ pub async fn add_manual_server<R: Runtime>(
     if let Some(path) = get_store_path(app_handle) {
         let entry = ManualServerEntry {
             id: host.id.clone(),
-            display_name: host.name.clone(),
+            display_name: name.trim().to_string(),
             address: parsed.host.clone(),
             port: parsed.port,
             added_at: chrono::Utc::now().to_rfc3339(),
@@ -491,6 +527,67 @@ pub async fn add_manual_server<R: Runtime>(
         host,
         share_path: parsed.share_path,
     })
+}
+
+/// Names the host `server_id` names, protected by `STORE_LOCK`, and answers the
+/// entry as stored. An empty name unnames it.
+///
+/// A host the share history knows but nobody typed in has no entry yet, and
+/// naming it SAVES it: the manual store is the one place a name can live, and a
+/// NAS someone only ever opened from the discovery list is still theirs to name.
+/// `address` is what that new entry dials; `None` when the id isn't one
+/// `address` mints on any port, since such a pair would disagree about which
+/// host it is.
+///
+/// ❗ The name only, on an entry that exists: the address and port are its
+/// identity (they mint the id and the host the discovery list carries), so an
+/// edit that wants another address is a Forget and an Add.
+fn name_server_entry_at_path(path: &Path, server_id: &str, address: &str, name: &str) -> Option<ManualServerEntry> {
+    let _guard = get_store_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let mut store = read_store_from_path(path);
+    let entry = if let Some(existing) = store.servers.iter_mut().find(|s| s.id == server_id) {
+        existing.display_name = name.trim().to_string();
+        existing.clone()
+    } else {
+        let port = port_of_id(server_id, address)?;
+        let entry = ManualServerEntry {
+            id: server_id.to_string(),
+            display_name: name.trim().to_string(),
+            address: address.to_string(),
+            port,
+            added_at: chrono::Utc::now().to_rfc3339(),
+        };
+        store.servers.push(entry.clone());
+        entry
+    };
+    write_store_to_path(path, &store);
+    Some(entry)
+}
+
+/// The port `server_id` was minted with from `address`, or `None` when `address`
+/// mints no such id.
+fn port_of_id(server_id: &str, address: &str) -> Option<u16> {
+    let port: u16 = server_id.rsplit_once('-')?.1.parse().ok()?;
+    (generate_server_id(address, port) == server_id).then_some(port)
+}
+
+/// Names a saved SMB host, saving it first when only the share history knew it.
+/// See [`name_server_entry_at_path`]. Answers whether there was a host to name.
+///
+/// A host saved this way joins the discovery list the way a typed one does, so
+/// it stays reachable when mDNS goes quiet.
+pub fn name_manual_server<R: Runtime>(server_id: &str, address: &str, name: &str, app_handle: &AppHandle<R>) -> bool {
+    let Some(path) = get_store_path(app_handle) else {
+        return false;
+    };
+    let was_saved = read_store_from_path(&path).servers.iter().any(|s| s.id == server_id);
+    let Some(entry) = name_server_entry_at_path(&path, server_id, address, name) else {
+        return false;
+    };
+    if !was_saved {
+        on_host_found(create_network_host(&entry.address, entry.port), app_handle);
+    }
+    true
 }
 
 /// Removes a server entry by ID from the store file at the given path, protected by `STORE_LOCK`.

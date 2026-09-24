@@ -288,10 +288,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "Lämna fältet tomt, så använder Cmdr kontot och värden som namn.",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "Rotmapp",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

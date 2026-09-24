@@ -17,7 +17,7 @@ of the app build.
 ## Architecture
 
 - **Discovery**: `mdns_discovery.rs`: Pure Rust mDNS using `mdns-sd` crate. Cross-platform.
-- **Manual servers**: `manual_servers.rs`: User-added servers via "Connect to server..." dialog. Parses addresses, checks TCP reachability, persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into `DISCOVERY_STATE`. Loaded at startup.
+- **Manual servers**: `manual_servers.rs`: User-added servers via the "Add server" sheet. Parses addresses, checks TCP reachability, persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into `DISCOVERY_STATE`. Loaded at startup. An entry's `displayName` is a name a person typed, read through `label()` / `is_named()` (§ "A manual server's name").
 - **E2E testing**: `virtual_smb_hosts.rs`: Injects 14 synthetic `NetworkHost` entries for smb2's consumer Docker containers. Hosts come from `SMB_E2E_{SVC}_HOST` (default `localhost`). Ports come from `SMB_E2E_{SVC}_PORT` when set, else `smb2::testing::*_port()` (which reads `SMB_CONSUMER_*_PORT`, default 10480+). `SMB_E2E_*_PORT` is the test-suite contract (same var the frontend fixture reads), so backend and fixture agree on which port to connect to. This matters inside Docker where containers listen on `:445` internally but `SMB_CONSUMER_*_PORT` would point at the host-side mapping. Gated behind `smb-e2e` Cargo feature. Never enabled in production.
 - **Share listing**: Split across multiple files:
   - `smb_client.rs`: Top-level share-listing entry point; orchestrates guest -> keychain -> prompt auth flow; tries smb2 first, falls back to smbutil (macOS only)
@@ -218,6 +218,20 @@ and one write clobbers the other.
 ### Manual server ID convention
 
 Manual server IDs use the format `manual-{address}-{port}` with dots/colons replaced by dashes. This is deterministic (same address+port always produces the same ID), preventing duplicates. The `manual-` prefix avoids collision with mDNS-derived IDs.
+
+### A manual server's name
+
+`ManualServerEntry::display_name` holds a name a person typed, or nothing. ❗ Entries written before the add form had a
+Name field hold the derived address there (`host`, or `host:port`), so `is_named()` reads a name that spells the entry's
+own derived label as UNNAMED, and `label()` agrees; no file rewrite is needed. The listing publishes `nameSource: user`
+only for a named entry, so a Bonjour name still outranks an address nobody chose.
+
+- **Re-adding keeps a name.** `add_server_entry_to_path` carries the stored name over an add that brings none: Add and
+  open on an address someone saved earlier must not unname it.
+- **Naming saves.** `name_server_entry_at_path` renames an entry, or creates one for a host only the share history knew
+  (keyed by the id the listing published, which has to be one the address mints), so any saved SMB host can be named.
+- **The host's own `name` never changes.** The injected `NetworkHost` keeps the address as its name, because that name
+  keys the Keychain (`credential_key`) and the share cache; the hub reads the label off the saved list instead.
 
 ### TCP reachability check runs in the dialog, before the host is added
 

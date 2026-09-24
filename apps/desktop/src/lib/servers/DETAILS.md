@@ -205,10 +205,13 @@ Save pressed stores that password. A flip or a write that breaks down after the 
 `saved_secret_not_updated` under the password field, ❌ never the dial's `unreachable`: the edit landed and no server
 was contacted, and Save again re-saves the same edit and retries the write.
 
-**Edit mode's name field holds what the user TYPED.** The store row's raw name opens it, empty for a server nobody
-named, with the listing's label (`username@host`, published as `nameSource: 'fallback'`) as its placeholder; the sheet's
-title uses the label. `serverTargetFrom` sends an empty name as empty and ❌ never falls back to the address. ❗ A name
-that repeated the typed address left it as the sheet's only URL-shaped field, and a root got "widened" through the name
+**Edit mode's name field holds what the user TYPED.** The store row's raw name opens it, empty for a server nobody named
+(`nameSource: 'fallback'`), with the same "Leave empty to use …" placeholder add mode shows; the sheet's title uses the
+listing's label. An SMB host's edit is a RENAME and nothing else (`update_saved_smb_host`, reached from the host row's
+native menu, "Edit server…"): the address is its identity and stays locked, and there is no secret to write. Naming a
+host only the share history knew saves it as a manual entry (`network/manual_servers.rs` § `name_server_entry_at_path`).
+`serverTargetFrom` sends an empty name as empty and ❌ never falls back to the address. ❗ A name that repeated the
+typed address left it as the sheet's only URL-shaped field, and a root got "widened" through the name
 (`apps/desktop/src-tauri/src/network/DETAILS.md` § "An unnamed server's label, and names that only repeat the address").
 
 **The root folder is a ceiling, the start folder is a landing.** Both sit in Advanced, which edit mode opens because
@@ -351,9 +354,11 @@ anything is dialed. Go to path only hands over addresses WITH a scheme, so a bar
 or a `/`, so `sven@192.168.0.153` has to travel as the SMB URL it means; its URL reader drops the account. An address
 naming another scheme keeps only its host.
 
-❗ **The name sits under the address, and only for SFTP and WebDAV.** It isn't an advanced setting, and SMB's add has
-nowhere to keep one (`connect_to_server` takes an address and nothing else), so SMB shows no name field and no Advanced
-disclosure rather than inputs that go nowhere.
+❗ **The name sits under the address, for every protocol.** It isn't an advanced setting. Its placeholder says what an
+empty one falls back to ("Leave empty to use 192.168.0.153"), through `server-form.ts::nameFallbackOf`, which mirrors
+the backend's stand-in labels: an SMB host's address (plus a port that isn't 445), an account's `username@host`. SMB's
+add carries the name in `add_smb` to `connect_to_server`; SMB still shows no Advanced disclosure, since it keeps no
+folders.
 
 ❗ **A connected add lands a pane on the new place**, through `openAddServerSheet`'s `onConnected` (the place's volume
 id and app root, read off `list_saved_servers` rather than the volume store, which can still hold the previous

@@ -1484,9 +1484,15 @@ export const commands = {
    *  The selected action is delivered asynchronously via a `network-host-context-action` Tauri event
    *  from `on_menu_event`.
    */
-  showNetworkHostContextMenu: (hostId: string, hostName: string, isManual: boolean, hasCredentials: boolean) =>
+  showNetworkHostContextMenu: (
+    hostId: string,
+    hostName: string,
+    isManual: boolean,
+    isSaved: boolean,
+    hasCredentials: boolean,
+  ) =>
     typedError<null, string>(
-      __TAURI_INVOKE('show_network_host_context_menu', { hostId, hostName, isManual, hasCredentials }),
+      __TAURI_INVOKE('show_network_host_context_menu', { hostId, hostName, isManual, isSaved, hasCredentials }),
     ),
   /**
    *  Shows the function key bar's context menu (fire-and-forget): a single "Hide
@@ -3648,9 +3654,14 @@ export const commands = {
       // How this host was added to the list.
       source?: HostSource
     } | null>('resolve_host', { hostId }),
-  // Connects to a manually-specified server: parses, checks reachability, persists, and injects.
-  connectToServer: (address: string) =>
-    typedError<ManualConnectResult, string>(__TAURI_INVOKE('connect_to_server', { address })),
+  /**
+   *  Connects to a manually-specified server: parses, checks reachability, persists, and injects.
+   *
+   *  `name` is the Add form's Name field; `None` or empty leaves the server unnamed, so
+   *  the UI calls it by its address.
+   */
+  connectToServer: (address: string, name: string | null) =>
+    typedError<ManualConnectResult, string>(__TAURI_INVOKE('connect_to_server', { address, name })),
   // Gets the current discovery state.
   getNetworkDiscoveryState: () => __TAURI_INVOKE<DiscoveryState>('get_network_discovery_state'),
   /**
@@ -4408,6 +4419,23 @@ export const commands = {
    *  request beside the live install's own coalesces in the debounce.
    */
   updateSavedServer: (server: ServerTarget) => __TAURI_INVOKE<SavedServerOutcome>('update_saved_server', { server }),
+  /**
+   *  Names a saved SMB host, answering whether there was one to name. An empty
+   *  name unnames it, so the UI calls it by its address again.
+   *
+   *  `address` is the listing's own, which is what a host only the share history
+   *  knew gets saved under (naming it is what saves it: `manual_servers` §
+   *  `name_server_entry_at_path`).
+   *
+   *  ❗ Its own command rather than a [`ServerTarget`] arm: an SMB host is a
+   *  manual-server entry, not an account with a place to dial, and the address
+   *  stays put (it mints the entry's id and the host the discovery list carries).
+   *
+   *  ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+   *  the saved list.
+   */
+  updateSavedSmbHost: (id: string, address: string, name: string) =>
+    __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, address, name }),
   /**
    *  Tauri command: returns the current macOS accent color as a hex string.
    *
@@ -10498,6 +10526,8 @@ export type NetworkHostContextActionKind =
   | 'forget-secret'
   // Unmount every share mounted from this host.
   | 'disconnect'
+  // Open the edit sheet on a SAVED host (its name, for now).
+  | 'edit'
 
 /**
  *  Typed `network-host-found` Tauri event. The payload is the bare `NetworkHost`

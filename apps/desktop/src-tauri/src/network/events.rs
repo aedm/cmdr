@@ -65,6 +65,8 @@ pub enum NetworkHostContextActionKind {
     ForgetSecret,
     /// Unmount every share mounted from this host.
     Disconnect,
+    /// Open the edit sheet on a SAVED host (its name, for now).
+    Edit,
 }
 
 /// Typed `network-host-context-action` Tauri event. Emitted to the `main` window

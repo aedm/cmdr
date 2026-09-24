@@ -33,8 +33,10 @@
         emptyServerForm,
         formFromPrefill,
         formFromSftpServer,
+        formFromSmbHost,
         formFromWebdavServer,
         isStartFolderUnderRoot,
+        nameFallbackOf,
         nextcloudAddress,
         serverTargetFrom,
         smbAddressFrom,
@@ -58,6 +60,7 @@
         saveSftpCredentials,
         saveWebdavCredentials,
         updateSavedServer,
+        updateSavedSmbHost,
     } from '$lib/tauri-commands'
     import { tString } from '$lib/intl/messages.svelte'
     import { getAppLogger } from '$lib/logging/logger'
@@ -140,13 +143,14 @@
     })
 
     /**
-     * What an empty name field turns into: the derived label, shown only for a
-     * server nobody named. A named server's label is its name, so clearing the
-     * field has no stand-in to preview.
+     * What an empty name field turns into, as a sentence: the stand-in the
+     * backend would label the server with (`nameFallbackOf`), so the placeholder
+     * reads as a promise rather than as a value someone already typed.
      */
-    const namePlaceholder = $derived(
-        request.mode === 'edit' && request.server.nameSource === 'fallback' ? request.server.displayName : undefined,
-    )
+    const namePlaceholder = $derived.by(() => {
+        const fallback = nameFallbackOf(form)
+        return fallback === null ? undefined : tString('servers.sheet.namePlaceholder', { label: fallback })
+    })
 
     const submitLabel = $derived.by(() => {
         if (request.mode === 'edit') return tString('servers.sheet.save')
@@ -260,12 +264,20 @@
      * spelling of an identity that must have exactly one.
      */
     async function seedEditForm(server: SavedServer) {
+        if (server.protocol === 'smb') {
+            // An SMB host keeps no secret here and has no store row beyond what the
+            // listing already carries, so there is nothing more to ask.
+            form = formFromSmbHost(server)
+            await tick()
+            addressInput?.focus()
+            return
+        }
         if (server.protocol === 'sftp') {
             const saved = (await getKnownSftpServers()).find(
                 (s) => `${s.host}:${String(s.port)}` === server.address && s.username === server.username,
             )
             if (saved) form = formFromSftpServer(saved)
-        } else if (server.protocol === 'webdav') {
+        } else {
             const saved = (await getKnownWebdavServers()).find(
                 (s) => s.url === server.address && s.username === server.username,
             )
@@ -336,7 +348,9 @@
                     shape?.kind === 'username_password' && !credentials.guest ? credentials.username.trim() : null,
             }
         }
-        if (form.protocol === 'smb') return { mode: 'add_smb', address: smbAddressFrom(form.address) }
+        if (form.protocol === 'smb') {
+            return { mode: 'add_smb', address: smbAddressFrom(form.address), name: form.displayName.trim() }
+        }
         const target = serverTargetFrom(form)
         if (!target) return null
         return {
@@ -468,6 +482,10 @@
      */
     async function save() {
         if (!editedServer) return
+        if (editedServer.protocol === 'smb') {
+            await saveSmbHost(editedServer.id)
+            return
+        }
         const target = serverTargetFrom(form)
         if (!target) {
             refusal = 'invalid_url'
@@ -503,6 +521,26 @@
         } finally {
             busy = false
         }
+    }
+
+    /**
+     * Edit mode on an SMB host: a rename. ❗ Nothing else is written, since the
+     * address is the entry's identity and SMB keeps its password per share
+     * mount, not here. A host that went away meanwhile (a Forget in another
+     * pane) reads as the save nobody could confirm.
+     */
+    async function saveSmbHost(id: string) {
+        busy = true
+        refusal = null
+        let found = false
+        try {
+            found = await updateSavedSmbHost(id, form.address, form.displayName.trim())
+        } catch (e) {
+            log.warn('Saving the edited SMB host broke down: {error}', { error: String(e) })
+        }
+        busy = false
+        if (found) close({ kind: 'saved' })
+        else await refuse('save_unconfirmed')
     }
 
     /**

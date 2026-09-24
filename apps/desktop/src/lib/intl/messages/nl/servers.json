@@ -291,10 +291,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "Laat dit leeg, dan noemt Cmdr deze server naar het account en de host.",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "Hoofdmap",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

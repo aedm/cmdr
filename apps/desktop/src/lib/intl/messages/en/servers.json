@@ -367,10 +367,12 @@
     "description": "Label of the field for what to call this server in the app. One word, NOUN.",
     "screenshot": "server-sign-in-add.png"
   },
-  "servers.sheet.nameHelp": "Leave it empty to call this server by its account and host.",
-  "@servers.sheet.nameHelp": {
-    "description": "One line under the Name field in the add and edit server sheets. An empty name makes Cmdr call the server by its account name and host, like ada@nas.local.",
-    "screenshot": "server-sign-in-add.png"
+  "servers.sheet.namePlaceholder": "Leave empty to use {label}",
+  "@servers.sheet.namePlaceholder": {
+    "description": "Placeholder inside the Name field of the add and edit server sheets. {label} is what Cmdr calls the server when the field stays empty: its address for an SMB server (192.168.0.153), or the account and host for SFTP and WebDAV (ada@nas.local). Short: it has to fit inside a text field.",
+    "placeholders": {
+      "label": "what Cmdr calls the server by default, like 192.168.0.153 or ada@nas.local; never translated"
+    }
   },
   "servers.sheet.rootFolder": "Root folder",
   "@servers.sheet.rootFolder": {

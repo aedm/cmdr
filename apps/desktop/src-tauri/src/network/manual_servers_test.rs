@@ -193,6 +193,103 @@ fn id_format_hostname_with_local() {
     assert_eq!(generate_server_id("mynas.local", 445), "manual-mynas-local-445");
 }
 
+// -- Names and accounts --
+
+/// ❗ **An entry written before names existed reads as unnamed.** Its
+/// `displayName` holds the derived address, which no person chose, so the hub
+/// must keep ranking a Bonjour name above it.
+#[test]
+fn an_entry_whose_name_is_its_own_address_is_unnamed() {
+    let json = r#"{"id":"manual-192-168-0-153-445","displayName":"192.168.0.153","address":"192.168.0.153","port":445,"addedAt":"2026-09-17T10:00:00Z"}"#;
+    let entry: ManualServerEntry = serde_json::from_str(json).unwrap();
+    assert!(!entry.is_named());
+    assert_eq!(entry.label(), "192.168.0.153");
+}
+
+#[test]
+fn an_entry_with_a_typed_name_is_labelled_by_it() {
+    let mut entry = test_entry(7);
+    entry.display_name = "  Sven's NAS ".to_string();
+    assert!(entry.is_named());
+    assert_eq!(entry.label(), "Sven's NAS");
+}
+
+#[test]
+fn an_empty_name_falls_back_to_the_address_and_port() {
+    let mut entry = test_entry(8);
+    entry.display_name = String::new();
+    entry.port = 9445;
+    assert!(!entry.is_named());
+    assert_eq!(entry.label(), "10.0.0.8:9445");
+}
+
+/// Renaming writes the one entry it names and nothing else, and says whether it
+/// found one.
+#[test]
+fn renaming_an_entry_rewrites_only_its_name() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    add_server_entry_to_path(&path, test_entry(1));
+    add_server_entry_to_path(&path, test_entry(2));
+
+    assert!(name_server_entry_at_path(&path, &test_entry(1).id, "10.0.0.1", "Attic NAS").is_some());
+
+    let store = read_store_from_path(&path);
+    let renamed = store.servers.iter().find(|s| s.id == test_entry(1).id).unwrap();
+    assert_eq!(renamed.label(), "Attic NAS");
+    assert_eq!(renamed.address, "10.0.0.1", "the address is identity and stays");
+    let other = store.servers.iter().find(|s| s.id == test_entry(2).id).unwrap();
+    assert!(!other.is_named());
+}
+
+/// ❗ **Naming a host the share history knows, but nobody typed in, saves it.**
+/// A NAS someone only ever opened from the discovery list is still theirs to
+/// name, and the manual store is the one place a name can live.
+#[test]
+fn naming_a_host_nobody_typed_in_saves_it_under_its_own_id() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    let id = generate_server_id("naspolya.local", 445);
+
+    let entry = name_server_entry_at_path(&path, &id, "naspolya.local", "Naspolya").expect("a host with that id");
+
+    assert_eq!(entry.port, 445);
+    let store = read_store_from_path(&path);
+    assert_eq!(store.servers.len(), 1);
+    assert_eq!(store.servers[0].id, id);
+    assert_eq!(store.servers[0].label(), "Naspolya");
+}
+
+/// An id that doesn't belong to the address can't be named: the pair would mint
+/// an entry whose id and host disagree.
+#[test]
+fn naming_refuses_an_id_the_address_does_not_mint() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    assert!(name_server_entry_at_path(&path, "manual-elsewhere-445", "naspolya.local", "Naspolya").is_none());
+    assert!(read_store_from_path(&path).servers.is_empty());
+}
+
+/// ❗ **Adding a host again keeps a name the new add didn't give.** Add and
+/// open on an address someone saved earlier is an ordinary move, and it must
+/// not quietly unname their server.
+#[test]
+fn re_adding_a_host_without_a_name_keeps_the_one_it_had() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    let mut named = test_entry(3);
+    named.display_name = "Garage".to_string();
+    add_server_entry_to_path(&path, named);
+
+    let mut again = test_entry(3);
+    again.display_name = String::new();
+    add_server_entry_to_path(&path, again);
+
+    let store = read_store_from_path(&path);
+    assert_eq!(store.servers.len(), 1);
+    assert_eq!(store.servers[0].label(), "Garage");
+}
+
 // -- Serialization round-trip --
 
 #[test]

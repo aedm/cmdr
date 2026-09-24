@@ -290,10 +290,6 @@
     "sourceHash": "dcd1d52",
     "sameAsSourceJustification": "„Name“ ist im Deutschen dasselbe Wort; macOS Finder beschriftet dasselbe Feld genauso (NetAuthAgent `AuthDialog.loctable` `SV8-VX-EVJ.title` „Name:“, macOS 26.6.2, 2026-09-07)."
   },
-  "servers.sheet.nameHelp": "Leer lassen, um diesen Server nach seinem Konto und Host zu benennen.",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "Stammordner",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

@@ -20,8 +20,9 @@ use super::menu_items::APP_MENU_TITLE;
 use super::menu_items::{DetachWord, detach_label, pin_tab_label};
 use super::{
     COPY_CURRENT_DIR_PATH_ID, EDIT_MENU_ID, EJECT_VOLUME_ID, FAVORITES_ADD_CONTEXT_ID, FUNCTION_KEY_BAR_HIDE_ID,
-    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID, TAB_CLOSE_ID,
-    TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_EDIT_COPY_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewerMenuItems,
+    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_EDIT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID,
+    TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_EDIT_COPY_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID,
+    ViewerMenuItems,
 };
 #[cfg(target_os = "macos")]
 use super::{VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID};
@@ -366,9 +367,23 @@ pub fn build_tab_context_menu(
 pub fn build_network_host_context_menu(
     app: &AppHandle<Wry>,
     is_manual: bool,
+    is_saved: bool,
     has_credentials: bool,
 ) -> tauri::Result<Menu<Wry>> {
     let menu = Menu::new(app)?;
+
+    // A SAVED host can be renamed; one mDNS merely sees has nothing to keep a name in.
+    if is_saved {
+        let edit = MenuItem::with_id(
+            app,
+            NETWORK_HOST_EDIT_ID,
+            menu_t("menu.network.edit"),
+            true,
+            None::<&str>,
+        )?;
+        menu.append(&edit)?;
+        menu.append(&PredefinedMenuItem::separator(app)?)?;
+    }
 
     // "Disconnect" is always shown. If nothing is mounted, the backend handles it gracefully.
     let disconnect = MenuItem::with_id(

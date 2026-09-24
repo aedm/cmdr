@@ -35,11 +35,12 @@ describe('commands.connectToServer', () => {
     }
     ipc.mock('connect_to_server', () => result)
 
-    const out = await commands.connectToServer('smb://storage.local/share')
+    const out = await commands.connectToServer('smb://storage.local/share', null)
 
     expect(out).toEqual({ status: 'ok', data: result })
     expect(ipc.lastCall('connect_to_server')?.payload).toEqual({
       address: 'smb://storage.local/share',
+      name: null,
     })
   })
 
@@ -49,7 +50,7 @@ describe('commands.connectToServer', () => {
       throw 'host unreachable'
     })
 
-    const out = await commands.connectToServer('smb://nonexistent.invalid')
+    const out = await commands.connectToServer('smb://nonexistent.invalid', null)
 
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.error).toBe('host unreachable')

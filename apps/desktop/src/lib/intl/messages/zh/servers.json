@@ -287,10 +287,6 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
   },
-  "servers.sheet.nameHelp": "留空则用账户和主机作为这台服务器的名称。",
-  "@servers.sheet.nameHelp": {
-    "sourceHash": "7b0a53f"
-  },
   "servers.sheet.rootFolder": "根文件夹",
   "@servers.sheet.rootFolder": {
     "sourceHash": "6d92528"

@@ -2809,7 +2809,7 @@ export type MessageKey =
   | 'servers.sheet.identityLocked'
   | 'servers.sheet.keyFile'
   | 'servers.sheet.name'
-  | 'servers.sheet.nameHelp'
+  | 'servers.sheet.namePlaceholder'
   | 'servers.sheet.needsStoredSecret'
   | 'servers.sheet.passphrase'
   | 'servers.sheet.password'

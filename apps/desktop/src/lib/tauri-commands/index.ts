@@ -953,6 +953,7 @@ export {
   hasServerSecret,
   forgetServerSecret,
   updateSavedServer,
+  updateSavedSmbHost,
 } from './servers'
 export type {
   SavedPlace,

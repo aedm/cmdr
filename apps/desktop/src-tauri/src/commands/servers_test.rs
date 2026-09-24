@@ -57,6 +57,14 @@ fn manual_entry(address: &str) -> ManualServerEntry {
     }
 }
 
+/// A manual SMB host a person gave a name of their own.
+fn named_manual_entry(address: &str, name: &str) -> ManualServerEntry {
+    ManualServerEntry {
+        display_name: name.to_string(),
+        ..manual_entry(address)
+    }
+}
+
 fn find<'a>(servers: &'a [SavedServer], display_name: &str) -> &'a SavedServer {
     servers
         .iter()
@@ -110,6 +118,48 @@ fn an_account_label_is_the_users_name_and_an_smb_hosts_address_is_a_stand_in() {
         ServerNameSource::User
     );
     assert_eq!(find(&servers, smb_host).name_source, ServerNameSource::Fallback);
+}
+
+/// ❗ **An SMB host a person named is listed by that name, as theirs**, so the
+/// hub keeps it over a Bonjour name the way it keeps a named SFTP account.
+#[test]
+fn a_named_smb_host_is_listed_by_its_name_as_the_users_own() {
+    let smb_host = "192.0.2.43";
+
+    let servers = saved_servers(vec![named_manual_entry(smb_host, "Sven's NAS")]);
+
+    let smb = find(&servers, "Sven's NAS");
+    assert_eq!(smb.name_source, ServerNameSource::User);
+    assert_eq!(smb.address, smb_host, "the address stays what was typed");
+}
+
+/// ❗ **A manual entry wins over a share-history row for the same host**, so a
+/// name typed at add time survives the host being opened once: the share list
+/// writes a server-level row under the same address, and the dedup keeps the
+/// first row it sees.
+#[test]
+fn a_named_smb_host_keeps_its_name_once_its_shares_were_listed() {
+    let smb_host = "192.0.2.44";
+    known_shares::update_known_share(known_shares::KnownNetworkShare {
+        server_name: smb_host.to_string(),
+        share_name: String::new(),
+        protocol: "smb".to_string(),
+        last_connected_at: "2026-09-05T00:00:00Z".to_string(),
+        last_connection_mode: known_shares::ConnectionMode::Guest,
+        last_known_auth_options: known_shares::AuthOptions::GuestOrCredentials,
+        username: None,
+    });
+
+    let servers = saved_servers(vec![named_manual_entry(smb_host, "Office NAS")]);
+
+    let rows: Vec<_> = servers.iter().filter(|s| s.address == smb_host).collect();
+    assert_eq!(rows.len(), 1, "one host, one row");
+    assert_eq!(rows[0].display_name, "Office NAS");
+    assert_eq!(
+        rows[0].last_connected_at.as_deref(),
+        Some("2026-09-05T00:00:00Z"),
+        "the share history still says when it was last used"
+    );
 }
 
 /// ❗ **An SFTP or WebDAV account has exactly ONE place, and its id is the volume

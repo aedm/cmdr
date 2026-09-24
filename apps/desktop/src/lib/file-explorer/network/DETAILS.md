@@ -90,11 +90,12 @@ unit-tested:
   WebDAV account someone named), then the DISCOVERED Bonjour name, and last a stand-in nobody chose (an unnamed
   account's derived `username@host`, which keeps its place because only SMB rows match a discovered host). The rank
   comes off `SavedServer.nameSource` (`commands/servers.rs`'s `ServerNameSource`), a fact the store that wrote the label
-  publishes, ❌ never a guess at the string's shape. Without it a person's NAS renames itself the moment they use it:
-  every SMB label is a stand-in, either the way `statfs` spells the server (written to `known_shares` on the first share
-  listing, `smb-consumer-guest`) or the address typed into "Add server" (`manual_servers` derives `host` or `host:port`;
-  SMB's add flow asks for nothing else), and the friendly name they recognize (`SMB Test (Guest)`, `Naspolya`) would
-  drop out of the column. Four `smb.spec.ts` specs poll on the Bonjour name and are the regression guard.
+  publishes, ❌ never a guess at the string's shape. Without it a person's NAS renames itself the moment they use it: an
+  unnamed SMB label is a stand-in, either the way `statfs` spells the server (written to `known_shares` on the first
+  share listing, `smb-consumer-guest`) or the address typed into "Add server" with the Name field left empty
+  (`manual_servers` derives `host` or `host:port`), and the friendly name they recognize (`SMB Test (Guest)`,
+  `Naspolya`) would drop out of the column. A name typed into the add or edit sheet is `user` and wins. Four
+  `smb.spec.ts` specs poll on the Bonjour name and are the regression guard.
 
   ❗ **A saved SMB server claims EVERY host that matches it, not the first.** One machine sits in the discovery list
   twice once a person types a host mDNS already found: the manual entry injects a `manual` host beside the `discovered`
@@ -225,7 +226,7 @@ User activates a one-place server → onVolumeChange → the pane lands on a `sa
 
 User activates the "Add server…" row → the sign-in sheet opens in add mode
        ├─ SFTP / WebDAV → connectServer(target) → the pane lands on the volume
-       └─ SMB → connectToServer(address) → TCP check → inject host
+       └─ SMB → connectToServer(address, name) → TCP check → save + inject host
             └─ the sheet answers `handed_off`
                  ├─ PlacesBrowser mounts (host set)
                  └─ if sharePath → autoMountShare triggers mount

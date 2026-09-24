@@ -502,11 +502,12 @@ export async function disconnectSmbVolume(volumeId: string): Promise<void> {
  * Connects to a manually-specified server: parses address, checks TCP reachability,
  * persists the entry, and injects a synthetic host into the discovery state.
  * @param address Hostname, IP, IP:port, or smb:// URL
+ * @param name What the Add form's Name field held; empty leaves the server unnamed
  * @returns The injected host and optional share path
  * @throws Plain string error on parse failure or unreachable host
  */
-export async function connectToServer(address: string): Promise<ManualConnectResult> {
-  const res = await commands.connectToServer(address)
+export async function connectToServer(address: string, name = ''): Promise<ManualConnectResult> {
+  const res = await commands.connectToServer(address, name === '' ? null : name)
   if (res.status === 'error') throwIpcError(res.error)
   return res.data as ManualConnectResult
 }
@@ -558,16 +559,18 @@ export async function setNetworkEnabled(enabled: boolean): Promise<void> {
 
 /**
  * Shows a native context menu for a network host (fire-and-forget).
- * The menu always includes "Disconnect", plus "Forget server" for manual hosts
- * and "Forget saved password" for hosts with stored credentials.
+ * The menu always includes "Disconnect", plus "Edit server…" for saved hosts,
+ * "Forget server" for manual hosts, and "Forget saved password" for hosts with
+ * stored credentials.
  */
 export async function showNetworkHostContextMenu(
   hostId: string,
   hostName: string,
   isManual: boolean,
+  isSaved: boolean,
   hasCredentials: boolean,
 ): Promise<void> {
-  const res = await commands.showNetworkHostContextMenu(hostId, hostName, isManual, hasCredentials)
+  const res = await commands.showNetworkHostContextMenu(hostId, hostName, isManual, isSaved, hasCredentials)
   if (res.status === 'error') throwIpcError(res.error)
 }
 

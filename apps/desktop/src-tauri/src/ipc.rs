@@ -693,6 +693,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::servers::has_server_secret,
                     crate::commands::servers::forget_server_secret,
                     crate::commands::servers::update_saved_server,
+                    crate::commands::servers::update_saved_smb_host,
                 ]
                 dispatch_only: []
             }

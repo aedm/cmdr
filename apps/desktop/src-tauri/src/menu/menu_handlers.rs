@@ -21,12 +21,13 @@ use super::{
     CLOSE_TAB_ID, CommandScope, EDIT_COPY_ID, EDIT_CUT_ID, EDIT_PASTE_ID, EJECT_VOLUME_ID, FAVORITES_ADD_CONTEXT_ID,
     FUNCTION_KEY_BAR_HIDE_ID, MEDIA_INDEX_ADD_FOLDER_ID, MEDIA_INDEX_EXCLUDE_FOLDER_ID, MEDIA_INDEX_INCLUDE_FOLDER_ID,
     MEDIA_INDEX_REMOVE_FOLDER_ID, MediaIndexFolderChoice, MediaIndexFolderExclusion, MenuSort, MenuState,
-    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID, SELECT_ALL_ID,
-    SHOW_HIDDEN_FILES_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID,
-    SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID,
-    TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID,
-    VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID,
-    VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
+    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_EDIT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID,
+    SELECT_ALL_ID, SHOW_HIDDEN_FILES_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID,
+    SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID,
+    TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID,
+    VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID,
+    VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged,
+    menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -464,7 +465,11 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     }
 
     // === Network host context menu actions ===
-    if id == NETWORK_HOST_FORGET_SERVER_ID || id == NETWORK_HOST_FORGET_SECRET_ID || id == NETWORK_HOST_DISCONNECT_ID {
+    if id == NETWORK_HOST_FORGET_SERVER_ID
+        || id == NETWORK_HOST_FORGET_SECRET_ID
+        || id == NETWORK_HOST_DISCONNECT_ID
+        || id == NETWORK_HOST_EDIT_ID
+    {
         use crate::network::NetworkHostContextActionKind;
         let menu_state = app.state::<MenuState<tauri::Wry>>();
         let ctx = menu_state.network_host_context.lock_ignore_poison();
@@ -472,6 +477,8 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
             NetworkHostContextActionKind::ForgetServer
         } else if id == NETWORK_HOST_FORGET_SECRET_ID {
             NetworkHostContextActionKind::ForgetSecret
+        } else if id == NETWORK_HOST_EDIT_ID {
+            NetworkHostContextActionKind::Edit
         } else {
             NetworkHostContextActionKind::Disconnect
         };

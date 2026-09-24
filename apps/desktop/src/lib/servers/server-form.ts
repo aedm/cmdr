@@ -6,7 +6,7 @@
  * address MEANS are testable without mounting anything.
  */
 
-import type { ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
+import type { SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 import type { SavedSftpServer, SavedWebdavServer } from '$lib/tauri-commands'
 import { parseServerAddress, type ParsedAddress } from './address-parser'
 
@@ -162,6 +162,43 @@ export function smbAddressFrom(address: string): string {
   if (parsed.kind === 'unparsed' || parsed.protocol === 'smb') return trimmed
   if (parsed.protocol === undefined) return `smb://${trimmed}`
   return `smb://${parsed.host}`
+}
+
+/**
+ * What the server is called when the Name field stays empty, for its
+ * placeholder, or `null` while the address doesn't parse yet.
+ *
+ * ❗ The MIRROR of the backend's stand-in labels, so the placeholder promises
+ * what the hub will show: an SMB host goes by its address (with the port when it
+ * isn't 445, `manual_servers::display_name`), an account by `username@host`
+ * (`saved_server_fields::server_label`). The backend stays the one that decides.
+ */
+export function nameFallbackOf(form: ServerForm): string | null {
+  const parsed = parseServerAddress(form.address)
+  if (parsed.kind === 'unparsed') return null
+  if (form.protocol === 'smb') {
+    const port = speaksOrNamesNone(parsed, 'smb') ? parsed.port : undefined
+    return port !== undefined && port !== 445 ? `${parsed.host}:${String(port)}` : parsed.host
+  }
+  const username = form.username.trim()
+  return username === '' ? parsed.host : `${username}@${parsed.host}`
+}
+
+/**
+ * A saved SMB host, as the edit form holds it.
+ *
+ * ❗ The name field opens on what a person TYPED: the listing's label is that
+ * name only when `nameSource` says so, and otherwise a stand-in nobody chose.
+ */
+export function formFromSmbHost(server: SavedServer): ServerForm {
+  return {
+    ...emptyServerForm(),
+    protocol: 'smb',
+    address: server.address,
+    username: server.username ?? '',
+    displayName: server.nameSource === 'user' ? server.displayName : '',
+    remember: false,
+  }
 }
 
 /** Whether the address means `protocol` or names no protocol at all, so its port and path are this protocol's. */

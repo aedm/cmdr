@@ -10,10 +10,8 @@
      * the address looks like shows as a warning under the field
      * (`addressLooksLike`), and the person decides.
      *
-     * ❗ **The name is not an advanced setting**, so it sits under the address.
-     * SMB's add has nowhere to keep one (`connect_to_server` takes an address
-     * and nothing else), so SMB shows no name field rather than one that
-     * silently goes nowhere.
+     * ❗ **The name is not an advanced setting**, so it sits under the address,
+     * for every protocol. Its placeholder says what an empty one falls back to.
      *
      * ❗ **SMB asks for nothing here.** Its connect is a share mount, and the
      * credential question comes from the listing or the mount when one refuses.
@@ -67,9 +65,9 @@
         /** Shown in edit mode when the backend says unattended reconnect can't work as things stand. */
         storedSecretWarning?: string
         /**
-         * What an empty name turns into, as the name field's placeholder: the
-         * backend's derived label, in edit mode. ❌ Never an address, which is what
-         * sent a person to edit the wrong field.
+         * The name field's placeholder: the sentence saying what an empty name
+         * falls back to. ❌ Never a bare address, which read as a value and sent
+         * a person to edit the wrong field.
          */
         namePlaceholder?: string
         /** Whether the Advanced disclosure is open. The sheet opens it to show a refusal under a field inside. */
@@ -116,7 +114,7 @@
         { value: 'webdav', label: tString('servers.sheet.protocolWebdav') },
     ])
 
-    /** SMB signs in from the mount, not from here, and keeps no name or folders here either. */
+    /** SMB signs in from the mount, not from here, and keeps no folders here either. */
     const asksForCredentials = $derived(form.protocol !== 'smb')
     /** Which sentence sits under the address: a refusal outranks a warning, which outranks the help line. */
     const addressDescribedBy = $derived.by(() => {
@@ -192,22 +190,21 @@
          it covers all three of address, protocol, and account. -->
 </div>
 
-{#if asksForCredentials}
-    <div class="field">
-        <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
-        <TextInput
-            id="server-name"
-            value={form.displayName}
-            oninput={(e: Event) => {
-                onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
-            }}
-            {disabled}
-            placeholder={namePlaceholder}
-            aria-describedby="server-name-help"
-        />
-        <p id="server-name-help" class="field-help">{tString('servers.sheet.nameHelp')}</p>
-    </div>
+<!-- Every protocol has a name, SMB included: it's what the Servers list shows. -->
+<div class="field">
+    <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
+    <TextInput
+        id="server-name"
+        value={form.displayName}
+        oninput={(e: Event) => {
+            onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
+        }}
+        {disabled}
+        placeholder={namePlaceholder}
+    />
+</div>
 
+{#if asksForCredentials}
     <div class="field">
         <label for="server-username" class="field-label">{tString('servers.sheet.username')}</label>
         <TextInput

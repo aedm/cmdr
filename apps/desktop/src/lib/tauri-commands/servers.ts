@@ -178,3 +178,12 @@ export async function forgetServerSecret(id: string): Promise<boolean> {
 export async function updateSavedServer(server: ServerTarget): Promise<SavedServerOutcome> {
   return await commands.updateSavedServer(server)
 }
+
+/**
+ * Names a saved SMB host; an empty name unnames it. Answers whether there was a
+ * host to name. `address` is the listing's own: a host only the share history
+ * knew gets saved under it. The address itself never changes here.
+ */
+export async function updateSavedSmbHost(id: string, address: string, name: string): Promise<boolean> {
+  return await commands.updateSavedSmbHost(id, address, name)
+}
