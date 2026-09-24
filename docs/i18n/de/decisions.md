@@ -676,7 +676,7 @@ Apple's Dock menu (`Dock.app/Contents/Resources/de.lproj/DockMenus.strings`) sup
 - `{doneText} bisher geladen` when the total is unknown.
 - `Von dieser Datei kommen keine Daten mehr an.`, not the stall line: the viewer shows no operation.
 
-## Stamm- und Startordner eines gespeicherten Servers (`servers.sheet.rootFolder`/`.startFolder` samt `…Help`, `servers.sheet.nameHelp`, `servers.refusal.startFolderOutsideRoot`/`.rootNotFound`/`.startFolderNotFound`/`.saveUnconfirmed`)
+## Stamm- und Startordner eines gespeicherten Servers (`servers.sheet.rootFolder`/`.startFolder` samt `…Help`, `servers.refusal.startFolderOutsideRoot`/`.rootNotFound`/`.startFolderNotFound`/`.saveUnconfirmed`)
 
 - `Stammordner` (MS) names this field; „a volume's top folder“ elsewhere stays `der oberste Ordner`, as it's not a field
   name. `Startordner` (Dolphin).
