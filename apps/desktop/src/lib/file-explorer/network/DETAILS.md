@@ -183,6 +183,13 @@ The `autoMountShare` prop fires once per distinct value (tracked via `lastAutoMo
 "Copy path between panes" can auto-mount a different share without forcing a remount when the source cursor moves to
 another share on the same host.
 
+❗ **A queued share is a one-shot for the visit it was queued with.** `../pane/NetworkMountView.svelte` owns it and
+retires it (`retireAutoMount`, which also clears the pane's copy through `onAutoMountConsumed`) whenever that visit
+ends: a mount went through, the person went back, or another host was picked. Opening a host from the servers list only
+ever lists its shares. The bug this closes (cmdr-reports#7, "Cmdr tried to open the share on that server"): the value
+outlived its visit, every new `PlacesBrowser` instance fired it again, and a host row the person meant to browse
+mounted a share they never picked.
+
 ## `smb-sign-in.ts`
 
 SMB's side of the one sign-in sheet. The sheet contract, the three SMB sites and what each `attempt` runs, and the

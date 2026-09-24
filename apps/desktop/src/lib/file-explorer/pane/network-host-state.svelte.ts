@@ -22,7 +22,11 @@ export interface NetworkHostStateDeps {
 export interface NetworkHostState {
   /** The host whose shares the pane is showing, or null for the host list. */
   readonly host: NetworkHost | null
-  /** A share to mount as soon as the share browser is ready, or undefined. */
+  /**
+   * A share to mount as soon as the share browser is ready, or undefined. ❗ A
+   * one-shot: `NetworkMountView` hands it back through `onAutoMountConsumed`
+   * the moment the visit it was queued with ends.
+   */
   readonly autoMountShare: string | undefined
   /** Set the host without bubbling (the pane API's `setNetworkHost`). */
   setHost: (host: NetworkHost | null) => void

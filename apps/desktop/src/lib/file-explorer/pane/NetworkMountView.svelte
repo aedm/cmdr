@@ -53,6 +53,12 @@
          * a new non-empty value re-arms the auto-mount gate.
          */
         initialAutoMountShare?: string | undefined
+        /**
+         * The queued share is spent: the visit it was queued with ended (a mount
+         * went through, or the person left the host). The parent clears its copy,
+         * so the same share name can be queued again later.
+         */
+        onAutoMountConsumed?: () => void
         onVolumeChange?: (change: VolumeChangePayload) => void
         onNetworkHostChange?: (host: NetworkHost | null) => void
     }
@@ -62,6 +68,7 @@
         isFocused = false,
         initialNetworkHost = null,
         initialAutoMountShare,
+        onAutoMountConsumed,
         onVolumeChange,
         onNetworkHostChange,
     }: Props = $props()
@@ -76,8 +83,19 @@
         currentNetworkHost ? { protocol: 'smb', host: currentNetworkHost } : null,
     )
 
-    // Connect-to-server dialog
+    /**
+     * The share to mount as soon as this visit's share list is ready.
+     *
+     * ❗ **A one-shot for the host it was queued with**, ❌ never a standing
+     * wish. `PlacesBrowser` fires it once per INSTANCE, and a new instance
+     * mounts on every host visit, so a value that outlived its visit mounted a
+     * share nobody picked each time the person opened that host again, and
+     * toasted "not found" on every other host (cmdr-reports#7: "Cmdr tried to
+     * open the share on that server"). `retireAutoMount` ends it on every exit.
+     */
     let autoMountShare = $state<string | undefined>(initialAutoMountShare)
+    /** The parent's value this view last adopted, so the same one isn't adopted twice. */
+    let adoptedAutoMount: string | undefined = initialAutoMountShare
 
     // Mounting state
     let isMounting = $state(false)
@@ -157,15 +175,32 @@
     })
 
     // Push a new auto-mount target down into PlacesBrowser. Used by "Copy path
-    // between panes" with cursor on a share. PlacesBrowser dedupes repeat values,
-    // so re-passing the same name is harmless.
+    // between panes" with cursor on a share. ❗ Compared with what was last
+    // ADOPTED, ❌ not with the local value: a retired target is `undefined` here
+    // while the parent may still hold the name, and re-adopting it is the
+    // stale auto-mount this exists to prevent.
     $effect(() => {
-        if (initialAutoMountShare && initialAutoMountShare !== autoMountShare) {
+        if (initialAutoMountShare && initialAutoMountShare !== adoptedAutoMount) {
+            adoptedAutoMount = initialAutoMountShare
             autoMountShare = initialAutoMountShare
+        } else if (!initialAutoMountShare) {
+            adoptedAutoMount = undefined
         }
     })
 
+    /** Ends the queued auto-mount, here and in the parent. See `autoMountShare`. */
+    function retireAutoMount() {
+        if (autoMountShare === undefined && adoptedAutoMount === undefined) return
+        autoMountShare = undefined
+        onAutoMountConsumed?.()
+    }
+
+    /**
+     * A host picked from the servers list: its shares, ❌ never a share mounted
+     * on the person's behalf. They picked a HOST.
+     */
     function handleNetworkHostSelect(host: NetworkHost) {
+        retireAutoMount()
         currentNetworkHost = host
         onNetworkHostChange?.(host)
     }
@@ -197,8 +232,10 @@
     async function openAddServer() {
         await openAddServerSheet({
             onSmbHandOff: (handOff) => {
+                retireAutoMount()
                 currentNetworkHost = handOff.host
                 onNetworkHostChange?.(handOff.host)
+                // The one share the ADDRESS named, for this visit only.
                 if (handOff.sharePath) autoMountShare = handOff.sharePath
             },
             // The hub's own pane goes to the place it just added, the way picking
@@ -213,6 +250,7 @@
     }
 
     function handleNetworkBack() {
+        retireAutoMount()
         currentNetworkHost = null
         mountError = null
         lastMountAttempt = null
@@ -268,6 +306,7 @@
             // host would render instead of the ServersHub list).
             currentNetworkHost = null
             lastMountAttempt = null
+            retireAutoMount()
             onNetworkHostChange?.(null)
 
             // The mount path is typically /Volumes/<ShareName>
@@ -466,6 +505,7 @@
     }
 
     export function setNetworkHost(host: NetworkHost | null) {
+        if (host?.id !== currentNetworkHost?.id) retireAutoMount()
         currentNetworkHost = host
         mountError = null
         lastMountAttempt = null

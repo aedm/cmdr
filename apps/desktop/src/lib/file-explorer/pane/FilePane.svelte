@@ -1927,6 +1927,7 @@
                 {isFocused}
                 initialNetworkHost={networkHost.host}
                 initialAutoMountShare={networkHost.autoMountShare}
+                onAutoMountConsumed={() => { networkHost.setAutoMountShare(undefined) }}
                 {onVolumeChange}
                 onNetworkHostChange={networkHost.handleHostChange}
             />

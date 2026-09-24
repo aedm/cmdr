@@ -27,6 +27,7 @@ const h = vi.hoisted(() => ({
   resolvePathVolume: vi.fn(),
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
   openSignInSheet: vi.fn(),
+  hosts: [] as NetworkHost[],
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -46,6 +47,7 @@ vi.mock('$lib/tauri-commands', () => ({
   onNetworkHostContextAction: vi.fn(() => Promise.resolve(() => {})),
   disconnectNetworkHost: vi.fn(() => Promise.resolve()),
   connectToServer: vi.fn(() => Promise.resolve()),
+  listSavedServers: vi.fn(() => Promise.resolve([])),
   notifyDialogOpened: vi.fn(() => Promise.resolve()),
   notifyDialogClosed: vi.fn(() => Promise.resolve()),
 }))
@@ -63,7 +65,7 @@ vi.mock('$lib/logging/logger', () => ({
 }))
 
 vi.mock('../network/network-store.svelte', () => ({
-  getNetworkHosts: () => [],
+  getNetworkHosts: () => h.hosts,
   getDiscoveryState: () => 'idle',
   isHostResolving: () => false,
   getShareState: () => undefined,
@@ -517,6 +519,61 @@ describe('NetworkMountView mount-failure auth loop', () => {
     })
     expect(h.openSignInSheet, 'a non-auth failure asks for no credential').not.toHaveBeenCalled()
 
+    await unmount(component)
+  })
+})
+
+/**
+ * ❗ cmdr-reports#7: "Cmdr tried to open the share on that server." A share queued
+ * to auto-mount (an `smb://host/share` address, "Copy path between panes") is a
+ * one-shot for the visit it was queued with. It used to survive every later
+ * visit, and each fresh share list fired it again, so opening a host row the
+ * person meant to browse mounted a share they never picked.
+ */
+describe('NetworkMountView auto-mount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    h.hosts = [host]
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.getSmbCredentials.mockRejectedValue(new Error('not found'))
+    h.resolvePathVolume.mockResolvedValue({ volume: null })
+    h.mountNetworkShare.mockResolvedValue({ mountPath: '/Volumes/naspi', alreadyMounted: false })
+  })
+
+  it('mounts a queued share once, and opening the host again later only lists its shares', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const consumed = vi.fn()
+    const component = mount(NetworkMountView, {
+      target,
+      props: {
+        paneId: 'left',
+        isFocused: true,
+        initialNetworkHost: host,
+        initialAutoMountShare: 'naspi',
+        onAutoMountConsumed: consumed,
+      },
+    })
+    const api = component as unknown as NetworkMountViewApi
+
+    await vi.waitFor(() => {
+      expect(h.mountNetworkShare).toHaveBeenCalledTimes(1)
+    })
+    // The mount went through, so the pane is back on the servers list.
+    await vi.waitFor(() => {
+      expect(target.querySelector('.server-row')).toBeTruthy()
+    })
+    expect(consumed).toHaveBeenCalled()
+
+    // The person opens the same host from the list, to browse it.
+    api.openCursorItem()
+    await vi.waitFor(() => {
+      expect(target.querySelector('.share-row')).toBeTruthy()
+    })
+    await tick()
+
+    expect(h.mountNetworkShare, 'no second mount nobody asked for').toHaveBeenCalledTimes(1)
     await unmount(component)
   })
 })
