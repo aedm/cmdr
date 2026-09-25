@@ -357,7 +357,8 @@
             log.warn('Mount of {share} on {host} did not go through: {error}', {
                 share: share.name,
                 host: currentNetworkHost?.name ?? 'unknown host',
-                error: mountError,
+                // Pre-stringified: the log bridge renders a property with `String()`.
+                error: JSON.stringify(mountError),
             })
             return mountError
         } finally {

@@ -27,6 +27,7 @@ const h = vi.hoisted(() => ({
   resolvePathVolume: vi.fn(),
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
   openSignInSheet: vi.fn(),
+  warn: vi.fn(),
   hosts: [] as NetworkHost[],
 }))
 
@@ -61,7 +62,7 @@ vi.mock('$lib/settings/network-settings', () => ({
 }))
 
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: h.warn, error: vi.fn() }),
 }))
 
 vi.mock('../network/network-store.svelte', () => ({
@@ -334,6 +335,21 @@ describe('NetworkMountView mount-failure auth loop', () => {
     expect(message).toBe(renderMountError(notFound, 'Naspolya'))
     expect(message).toContain('“Naspolya”')
     expect(message).not.toContain(ADDRESS)
+
+    await unmount(component)
+  })
+
+  it('logs a refusal as readable text, not "[object Object]"', async () => {
+    // The log bridge renders each property with `String()`, so an object logged as-is
+    // reached the log file as `did not go through: [object Object]` (QA round 3).
+    const notFound: MountError = { type: 'share_not_found', server: ADDRESS, share: 'naspi' }
+    h.mountNetworkShare.mockRejectedValue(refused(notFound))
+    const { target, component } = await mountViewAndActivateShare()
+
+    await vi.waitFor(() => must(target.querySelector('.mount-error-state'), 'the error pane'))
+    const [template, properties] = h.warn.mock.calls[0] as [string, Record<string, unknown>]
+    expect(template).toContain('{error}')
+    expect(String(properties.error)).toContain('share_not_found')
 
     await unmount(component)
   })
