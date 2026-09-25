@@ -23,6 +23,9 @@
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
 import type { ConnectionState, NetworkHost, VolumeInfo } from '../types'
 
+/** SMB's own port, which an address leaves unsaid. */
+const SMB_PORT = 445
+
 /** What the Status column says about a row. */
 export type HubRowStatus =
   /** A live session Cmdr owns, or an SMB share mounted through the OS. */
@@ -279,10 +282,13 @@ function nearbyRow(host: NetworkHost): HubRow {
  * whether a server is up is worse than either being briefly stale.
  *
  * An SMB host has no place to ask about, so mDNS seeing it is the whole answer:
- * a mounted share is its own volume row, not this host.
+ * a mounted share is its own volume row, not this host. ❗ A DISCOVERED host,
+ * ❌ never the host's own manual entry: Cmdr injects every typed-in host into the
+ * discovery list at startup, reachable or not, so that entry says nothing about
+ * the network. `primaryHost` puts a discovered one first when there is one.
  */
 function savedStatus(server: SavedServer, host: NetworkHost | null, state: ConnectionState | null): HubRowStatus {
-  if (server.protocol === 'smb') return host ? 'found_nearby' : 'saved'
+  if (server.protocol === 'smb') return host?.source === 'discovered' ? 'found_nearby' : 'saved'
   switch (state) {
     case 'direct':
     case 'os_mount':
@@ -334,10 +340,13 @@ export function openMoveFor(row: HubRow, rows: HubRow[], volumes: VolumeInfo[]):
 
 /**
  * A saved SMB host mDNS isn't seeing right now, as a host the places list can
- * take. Its address is the only spelling anything has for it.
+ * take. Its address is the only spelling anything has for it: `host`, or
+ * `host:port` off 445 (the listing's `SavedServer.address`).
  */
 export function savedHostFor(row: HubRow): NetworkHost {
-  return { id: row.id, name: row.name, hostname: row.address, port: 445, source: 'manual' }
+  const withPort = /^(.+):(\d+)$/.exec(row.address)
+  const [hostname, port] = withPort ? [withPort[1], Number(withPort[2])] : [row.address, SMB_PORT]
+  return { id: row.id, name: row.name, hostname, port, source: 'manual' }
 }
 
 /** A share is a folder under its server; a server is a machine, or a service on one. */
@@ -353,9 +362,14 @@ export function lastUsedSeconds(row: HubRow): number | null {
   return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000)
 }
 
-/** The most useful spelling of where a discovered host lives. */
+/**
+ * The most useful spelling of where a discovered host lives, with its port when
+ * it isn't 445: `localhost` alone would name another server on the same machine.
+ */
 function hostAddress(host: NetworkHost | null): string | null {
-  return host?.ipAddress ?? host?.hostname ?? null
+  const address = host?.ipAddress ?? host?.hostname ?? null
+  if (!host || address === null || host.port === SMB_PORT) return address
+  return address.includes(':') ? `[${address}]:${String(host.port)}` : `${address}:${String(host.port)}`
 }
 
 /** Live first, then what's asking for you, then saved, then nearby. */

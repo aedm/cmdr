@@ -249,13 +249,28 @@ describe('buildHubRows: status', () => {
     expect(rows[0].status).toBe('found_nearby')
   })
 
-  it('calls a saved SMB host that is answering right now Found nearby, not Saved', () => {
+  it('calls a saved SMB host Found nearby while mDNS sees it', () => {
+    const rows = buildHubRows({
+      saved: [smbServer()],
+      hosts: [host({ id: 'manual-10-0-0-4-445', source: 'manual' }), host({ id: 'attic-smb-tcp-local' })],
+      volumes: [],
+    })
+    expect(rows[0].status).toBe('found_nearby')
+  })
+
+  /**
+   * ❗ A typed-in host is in the discovery list because Cmdr put it there
+   * (`load_manual_servers` injects every saved one at startup, reachable or not),
+   * so its own entry says nothing about the network. Reading it as "found nearby"
+   * called `localhost:11482` nearby the moment it was added (QA 2026-09-25).
+   */
+  it('calls a saved SMB host Saved when the only host behind it is its own manual entry', () => {
     const rows = buildHubRows({
       saved: [smbServer()],
       hosts: [host({ id: 'manual-10-0-0-4-445', source: 'manual' })],
       volumes: [],
     })
-    expect(rows[0].status).toBe('found_nearby')
+    expect(rows[0].status).toBe('saved')
   })
 
   it('reads the place’s standing off the volume list, not the saved entry’s stale flag', () => {
@@ -320,6 +335,23 @@ describe('buildHubRows: what a row carries', () => {
     const rows = buildHubRows({ saved: [smbServer()], hosts: [], volumes: [] })
     expect(rows[0].volumeId).toBeNull()
     expect(rows[0].pinned).toBe(false)
+  })
+
+  it('shows a host’s port in the Address column when it isn’t 445', () => {
+    const rows = buildHubRows({
+      saved: [smbServer({ id: 'manual-localhost-11482', address: 'localhost:11482' })],
+      hosts: [
+        host({
+          id: 'manual-localhost-11482',
+          name: 'localhost:11482',
+          hostname: 'localhost',
+          port: 11482,
+          source: 'manual',
+        }),
+      ],
+      volumes: [],
+    })
+    expect(rows[0].address).toBe('localhost:11482')
   })
 
   it('prefers the discovered host’s resolved address over the saved spelling', () => {
@@ -457,6 +489,15 @@ describe('openMoveFor', () => {
       kind: 'share_via_host',
       share: 'Scans',
       host: { id: 'manual-10-0-0-4-445', hostname: '10.0.0.4' },
+    })
+  })
+
+  it('opens a saved host mDNS isn’t seeing on the port its address names', () => {
+    const offPort = smbServer({ id: 'manual-localhost-11482', displayName: 'Both box', address: 'localhost:11482' })
+    const rows = buildHubRows({ saved: [offPort], hosts: [], volumes: [] })
+    expect(openMoveFor(rows[0], rows, [])).toMatchObject({
+      kind: 'host',
+      host: { id: 'manual-localhost-11482', hostname: 'localhost', port: 11482 },
     })
   })
 })

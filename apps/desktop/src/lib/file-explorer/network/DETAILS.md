@@ -83,7 +83,9 @@ unit-tested:
   which is a snapshot from when the listing was built; the switcher's dot reads the same field, and two surfaces
   disagreeing about whether a server is up is worse than either being briefly stale. Order: live sessions, then the ones
   asking something of the user (`signed_out`, `waiting_for_key`), then the rest of what they saved by recency, then what
-  is merely nearby.
+  is merely nearby. ❗ A saved SMB host is "Found nearby" only when a DISCOVERED host matches it, ❌ never because of
+  its own manual entry in the discovery list: Cmdr injects every typed-in host there at startup, reachable or not. The
+  Address column carries the port off 445 (`localhost:11482`), and `savedHostFor` reads it back when mDNS sees nothing.
 
   ❗ **A saved SMB share is a row right under its host** (`kind: 'share'`, id `share:<volume id>`, the account it opens
   as in `account`), placed AFTER the sort so it never drifts from its server. Its status comes off the volume list by
