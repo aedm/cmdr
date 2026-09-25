@@ -80,6 +80,42 @@ function getTabbables(node: HTMLElement): HTMLElement[] {
   )
 }
 
+/**
+ * A field a person can type into: text-like `<input>`s and `<textarea>`s that are
+ * enabled, writable, and in the tab order. ❌ Not buttons, checkboxes, or radios:
+ * Enter on a focused button activates THAT button instead of the dialog's default
+ * action (`ModalDialog`'s Enter handling), which a dialog that opened on one would
+ * turn into a trap.
+ */
+const TYPEABLE_SELECTOR = [
+  'input:not([type]):not([disabled]):not([readonly])',
+  ...['text', 'search', 'password', 'email', 'url', 'tel', 'number'].map(
+    (type) => `input[type="${type}"]:not([disabled]):not([readonly])`,
+  ),
+  'textarea:not([disabled]):not([readonly])',
+]
+  .map((clause) => `${clause}:not([tabindex="-1"])`)
+  .join(', ')
+
+/**
+ * Focuses the first field in `container` a person can type into, answering
+ * whether there was one.
+ *
+ * ❗ How a dialog opens ready to type, whatever opened it (a context menu, a pane
+ * shortcut, a button): `ModalDialog` calls it when nothing inside claimed focus,
+ * and a dialog that knows which field it wants calls it on the part of itself it
+ * means. ❌ Don't `.focus()` a field that may be locked instead: focusing a
+ * disabled input is a silent no-op, and the dialog then opens with no field taking
+ * keys ("Edit server…" did, with Address locked).
+ */
+export function focusFirstField(container: HTMLElement): boolean {
+  const field = Array.from(container.querySelectorAll<HTMLElement>(TYPEABLE_SELECTOR)).find(
+    (el) => el.closest('[hidden]') === null,
+  )
+  field?.focus()
+  return field !== undefined
+}
+
 /** Last-focused element inside the trap, falling back to the first tabbable, then the container. */
 function restoreFocus(entry: TrapEntry): void {
   const { node, lastFocusedInside } = entry

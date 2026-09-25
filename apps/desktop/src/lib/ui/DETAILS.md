@@ -215,10 +215,15 @@ The drop shadow is `--shadow-dialog`, three stacked layers (wide soft cast, mid 
 offset down only. It's separate from `--shadow-lg`, which is tuned for popovers and menus, and it goes much deeper in
 dark mode where a light-mode-strength shadow would be invisible against the canvas.
 
-The overlay element receives `tabindex="-1"` and is focused on mount so Escape/keydown events are captured. It also
-carries `use:trapFocus={{ onEscape: onclose }}` (see § "Focus trapping" below), so every `ModalDialog` consumer gets Tab
-containment and the Escape fallback for free. `trapFocus` deliberately doesn't move focus on mount, so the scrim KEEPS
-focus for the dialog's whole life unless a control takes it.
+On mount, once a tick has passed and nothing inside claimed focus, the dialog focuses the first field a person can type
+into (`focus-trap.ts::focusFirstField`: an enabled, writable text `<input>` or `<textarea>`), else the overlay, which
+carries `tabindex="-1"` so Escape/keydown events are captured either way. ❗ Never a button, checkbox, or radio: Enter
+on a focused button activates that button instead of the dialog's default action. So a dialog opened from a context menu
+or a shortcut takes keys at once, and one with fields never opens on a field it has locked ("Edit server…" opened on the
+scrim because its sheet focused the disabled Address). A dialog that wants a specific field focuses it itself, or calls
+`focusFirstField` on the part it means. The overlay also carries `use:trapFocus={{ onEscape: onclose }}` (see § "Focus
+trapping" below), so every `ModalDialog` consumer gets Tab containment and the Escape fallback for free. `trapFocus`
+deliberately doesn't move focus on mount.
 
 ### Scrim clicks
 

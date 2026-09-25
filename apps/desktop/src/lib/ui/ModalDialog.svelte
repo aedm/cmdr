@@ -2,7 +2,7 @@
     import { onMount, onDestroy, tick } from 'svelte'
     import type { Snippet } from 'svelte'
     import { notifyDialogOpened, notifyDialogClosed } from '$lib/tauri-commands'
-    import { trapFocus } from './focus-trap'
+    import { focusFirstField, trapFocus } from './focus-trap'
     import type { SoftDialogId } from './dialog-registry'
     import { registerDialogClose, unregisterDialogClose } from './dialog-close-registry'
     import { markDialogOpen, markDialogClosed } from './open-dialogs.svelte'
@@ -445,8 +445,12 @@
         // name box in the New folder / New file dialogs) mounts BEFORE this component,
         // so its post-`tick()` `.focus()` resolves first; focusing the scrim
         // unconditionally would take it straight back and force the user to click the
-        // field before typing (#84).
-        if (overlayElement && !overlayElement.contains(document.activeElement)) overlayElement.focus()
+        // field before typing (#84). Otherwise the first field a person can type in,
+        // so a dialog opened from a context menu or a shortcut takes keys at once, and
+        // the scrim only when there is no such field (Escape and Enter still land).
+        if (overlayElement && !overlayElement.contains(document.activeElement)) {
+            if (!dialogElement || !focusFirstField(dialogElement)) overlayElement.focus()
+        }
 
         if (!growDownward || !dialogElement) return
         anchorToCurrentCenter()

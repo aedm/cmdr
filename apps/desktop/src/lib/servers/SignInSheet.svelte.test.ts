@@ -811,6 +811,16 @@ describe('SignInSheet: editing an SMB host', () => {
     expect(document.body.querySelector('#server-secret')).toBeNull()
   })
 
+  /**
+   * ❗ "Edit server…" from a row menu has to be typeable at once. The sheet used to
+   * focus Address, which Edit locks, so focus fell to the scrim and nothing took keys
+   * (QA 2026-09-25). The first field a person can type in is Name.
+   */
+  it('opens with the keyboard on Name, the first field Edit lets a person change', async () => {
+    await renderSheet({ mode: 'edit', server: SMB_HOST })
+    expect(document.activeElement).toBe(document.body.querySelector('#server-name'))
+  })
+
   it('opens an unnamed host with an empty name and the address as its placeholder', async () => {
     await renderSheet({ mode: 'edit', server: { ...SMB_HOST, displayName: '192.168.0.153', nameSource: 'fallback' } })
     const name = document.body.querySelector<HTMLInputElement>('#server-name')

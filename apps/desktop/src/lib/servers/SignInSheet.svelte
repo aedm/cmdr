@@ -21,6 +21,7 @@
      */
     import { onMount, tick } from 'svelte'
     import ModalDialog from '$lib/ui/ModalDialog.svelte'
+    import { focusFirstField } from '$lib/ui/focus-trap'
     import Button from '$lib/ui/Button.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
     import HostKeyStep from './HostKeyStep.svelte'
@@ -120,6 +121,7 @@
     /** The account the last round sent, which is who that round's refusal is about. */
     let roundUsername = $state<string | null>(null)
 
+    let sheetBody = $state<HTMLDivElement | undefined>()
     let addressInput = $state<HTMLInputElement | undefined>()
     let secretInput = $state<HTMLInputElement | undefined>()
     let rootInput = $state<HTMLInputElement | undefined>()
@@ -277,7 +279,7 @@
             // listing already carries, so there is nothing more to ask.
             form = formFromSmbHost(server)
             await tick()
-            addressInput?.focus()
+            focusFirstEditableField()
             return
         }
         if (server.protocol === 'sftp') {
@@ -295,7 +297,17 @@
         rememberWhenOpened = form.remember
         storedSecretWarning = await readStoredSecretWarning(server.id, server.protocol)
         await tick()
-        addressInput?.focus()
+        focusFirstEditableField()
+    }
+
+    /**
+     * Edit locks the fields that identify a server (Address, and an account's
+     * username), so it opens on the first field it lets a person change. ❌ Not
+     * `addressInput.focus()`: focusing a disabled field is a silent no-op, and the
+     * sheet then opened with nothing taking keys (QA 2026-09-25).
+     */
+    function focusFirstEditableField() {
+        if (sheetBody) focusFirstField(sheetBody)
     }
 
     /**
@@ -627,7 +639,7 @@
 >
     {#snippet title()}{sheetTitle}{/snippet}
 
-    <div class="sheet-body">
+    <div class="sheet-body" bind:this={sheetBody}>
         {#if step === 'host_key' && hostKeyPrompt}
             <HostKeyStep prompt={hostKeyPrompt} onTrust={() => void trustHostKey()} {busy} />
         {:else if step === 'revoked'}

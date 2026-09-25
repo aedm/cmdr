@@ -125,6 +125,29 @@ describe('ModalDialog mount focus', () => {
     target.remove()
   })
 
+  /**
+   * ❗ A dialog opened from a context menu or a pane shortcut has to be typeable at once:
+   * "Edit server…" opened with focus on the scrim, because the only field its sheet asked
+   * for was the locked Address (QA 2026-09-25). The first field a person CAN type in wins.
+   */
+  it('focuses the first enabled text field when nothing inside claims focus', async () => {
+    const lockedThenFree = createRawSnippet(() => ({
+      render: () =>
+        `<div><label><input type="checkbox" class="toggle" /></label><input class="locked" disabled /><input class="read" readonly /><input class="name" /><input class="later" /></div>`,
+    }))
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(ModalDialog, {
+      target,
+      props: { titleId: 't', title: titleSnippet, children: lockedThenFree },
+    })
+    await tick()
+    await tick()
+
+    expect(document.activeElement).toBe(target.querySelector('input.name'))
+    target.remove()
+  })
+
   it('leaves focus alone when a child claimed it first', async () => {
     // Children mount before this component, so an autofocusing field (the New folder
     // name box) focuses first; the scrim must not take it back.
