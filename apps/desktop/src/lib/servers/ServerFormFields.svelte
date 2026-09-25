@@ -266,6 +266,7 @@
             }}
             disabled={disabled || !identityEditable}
             aria-describedby={identityHint ? 'server-identity-hint' : undefined}
+            placeholder={tString('servers.sheet.usernamePlaceholder')}
             autocomplete="username"
             autocapitalize="off"
             spellcheck={false}

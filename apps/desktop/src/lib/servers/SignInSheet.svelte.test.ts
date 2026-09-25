@@ -385,6 +385,15 @@ describe('SignInSheet: add mode', () => {
     expect(help()).toBe('A web address you copied, like https://nas.local/dav, or a hostname.')
   })
 
+  /** Every protocol's Username field says what goes there, as SMB's "Optional" does (QA round 2). */
+  it('gives SFTP and WebDAV usernames an example placeholder', async () => {
+    await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
+    for (const protocol of ['SFTP', 'WebDAV']) {
+      await pickProtocol(protocol)
+      expect(document.body.querySelector<HTMLInputElement>('#server-username')?.placeholder).toBe('Example: barry')
+    }
+  })
+
   it('says an SFTP add falls back to the account and host', async () => {
     await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
     await pickProtocol('SFTP')
