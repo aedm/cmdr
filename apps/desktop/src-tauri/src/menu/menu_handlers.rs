@@ -485,6 +485,7 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         use tauri_specta::Event as _;
         let payload = crate::network::NetworkHostContextAction {
             action,
+            row_id: ctx.row_id.clone(),
             host_id: ctx.host_id.clone(),
             host_name: ctx.host_name.clone(),
         };

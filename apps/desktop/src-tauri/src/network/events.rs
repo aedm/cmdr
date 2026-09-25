@@ -77,6 +77,12 @@ pub enum NetworkHostContextActionKind {
 pub struct NetworkHostContextAction {
     /// Which item was picked.
     pub action: NetworkHostContextActionKind,
+    /// The servers hub row the menu was opened on, exactly as the hub keys it.
+    /// ❗ What every answer acts on: two rows can share one discovered host (a
+    /// saved host and the share history of the same machine), so the host id
+    /// alone can't say which row was right-clicked.
+    pub row_id: String,
+    /// The discovered host behind that row, which Disconnect unmounts from.
     pub host_id: String,
     pub host_name: String,
 }

@@ -145,6 +145,12 @@ keeps its own native host menu (`show_network_host_context_menu`: Disconnect, Fo
 saved password when creds are stored), whose actions arrive on the `network-host-context-action` event. Cursor
 auto-clamps when a row disappears.
 
+❗ **Every row action carries the row's own id, end to end.** The native menu sends `rowId` out and gets it back on the
+answer, `runHostAction` finds the row by that exact id (a row gone meanwhile gets nothing), and the backend's
+`forgetSavedSmbHost` / `updateSavedSmbHost` take that id alone and find the host in the same listing. ❌ Never resolve
+"which row" from a host id, name, or address at action time: two rows can stand on one discovered host, and a lookup by
+host picked the first, so "Edit server…" on the second row saved into the first (QA 2026-09-25).
+
 Exports for parent: `setCursorIndex(index)`, `findItemIndex(name)`, `handleKeyDown(e)`, `refresh()`,
 `getHostUnderCursor()`, `getRowUnderCursor()`, `getItemCount()`, `openCursorItem()`. `refresh()` is `pane.refresh`'s
 entry point from the command layer and is the same body ⌘R runs locally, which is why the local branch stops propagation

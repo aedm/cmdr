@@ -109,7 +109,7 @@ impl ManualServerEntry {
     /// needed, because this reading and [`label`](Self::label) agree on it.
     pub fn is_named(&self) -> bool {
         let name = self.display_name.trim();
-        !name.is_empty() && name != display_name(&self.address, self.port)
+        !name.is_empty() && name != discovery_name(&self.address, self.port)
     }
 
     /// What the UI calls this server: the name a person typed, else the
@@ -118,7 +118,7 @@ impl ManualServerEntry {
         if self.is_named() {
             self.display_name.trim().to_string()
         } else {
-            display_name(&self.address, self.port)
+            discovery_name(&self.address, self.port)
         }
     }
 }
@@ -369,10 +369,10 @@ pub fn generate_server_id(address: &str, port: u16) -> String {
 // Display name
 // ---------------------------------------------------------------------------
 
-/// Generates a display name for a manual server.
-///
-/// Bare address for default port, address:port for non-default.
-fn display_name(address: &str, port: u16) -> String {
+/// The name a manual server goes by in the discovery list, and so the name its
+/// share history is filed under: the bare address on 445, `address:port` off it.
+/// Also how the servers listing spells an SMB host's address.
+pub fn discovery_name(address: &str, port: u16) -> String {
     if port == DEFAULT_SMB_PORT {
         address.to_string()
     } else {
@@ -392,7 +392,7 @@ fn is_ip_address(host: &str) -> bool {
 /// Creates a `NetworkHost` from parsed address info.
 pub fn create_network_host(address: &str, port: u16) -> NetworkHost {
     let id = generate_server_id(address, port);
-    let name = display_name(address, port);
+    let name = discovery_name(address, port);
     let is_ip = is_ip_address(address);
 
     NetworkHost {
@@ -602,9 +602,8 @@ pub async fn add_manual_server<R: Runtime>(
 /// A host the share history knows but nobody typed in has no entry yet, and
 /// naming it SAVES it: the manual store is the one place a name can live, and a
 /// NAS someone only ever opened from the discovery list is still theirs to name.
-/// `address` is what that new entry dials; `None` when the id isn't one
-/// `address` mints on any port, since such a pair would disagree about which
-/// host it is.
+/// `address` and `port` are what that new entry dials; `None` when they don't mint
+/// `server_id`, since such a pair would disagree about which host it is.
 ///
 /// ❗ The name and account only, on an entry that exists: the address and port are its
 /// identity (they mint the id and the host the discovery list carries), so an
@@ -613,6 +612,7 @@ fn name_server_entry_at_path(
     path: &Path,
     server_id: &str,
     address: &str,
+    port: u16,
     edit: &HostEdit,
 ) -> Option<ManualServerEntry> {
     let _guard = get_store_lock().lock().unwrap_or_else(|e| e.into_inner());
@@ -622,7 +622,9 @@ fn name_server_entry_at_path(
         existing.username = typed_account(edit.username.as_deref());
         existing.clone()
     } else {
-        let port = port_of_id(server_id, address)?;
+        if generate_server_id(address, port) != server_id {
+            return None;
+        }
         let entry = ManualServerEntry {
             id: server_id.to_string(),
             display_name: edit.name.trim().to_string(),
@@ -656,7 +658,7 @@ fn typed_username_in(entries: &[ManualServerEntry], server_name: &str, hosts: &[
         .iter()
         .filter(|entry| entry.username.is_some())
         .find(|entry| {
-            display_name(&entry.address, entry.port).eq_ignore_ascii_case(server_name)
+            discovery_name(&entry.address, entry.port).eq_ignore_ascii_case(server_name)
                 || same_server(&entry.address, server_name, hosts)
         })
         .and_then(|entry| entry.username.clone())
@@ -675,13 +677,6 @@ pub fn typed_username<R: Runtime>(app: &AppHandle<R>, server_name: &str) -> Opti
     typed_username_in(&entries, server_name, &crate::network::get_discovered_hosts())
 }
 
-/// The port `server_id` was minted with from `address`, or `None` when `address`
-/// mints no such id.
-fn port_of_id(server_id: &str, address: &str) -> Option<u16> {
-    let port: u16 = server_id.rsplit_once('-')?.1.parse().ok()?;
-    (generate_server_id(address, port) == server_id).then_some(port)
-}
-
 /// Names a saved SMB host, saving it first when only the share history knew it.
 /// See [`name_server_entry_at_path`]. Answers whether there was a host to name.
 ///
@@ -690,6 +685,7 @@ fn port_of_id(server_id: &str, address: &str) -> Option<u16> {
 pub fn name_manual_server<R: Runtime>(
     server_id: &str,
     address: &str,
+    port: u16,
     edit: &HostEdit,
     app_handle: &AppHandle<R>,
 ) -> bool {
@@ -697,7 +693,7 @@ pub fn name_manual_server<R: Runtime>(
         return false;
     };
     let was_saved = read_store_from_path(&path).servers.iter().any(|s| s.id == server_id);
-    let Some(entry) = name_server_entry_at_path(&path, server_id, address, edit) else {
+    let Some(entry) = name_server_entry_at_path(&path, server_id, address, port, edit) else {
         return false;
     };
     if !was_saved {

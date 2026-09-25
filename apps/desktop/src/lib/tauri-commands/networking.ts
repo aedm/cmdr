@@ -17,6 +17,7 @@ import type {
   UpgradeResult,
 } from '$lib/ipc/bindings'
 import { throwIpcError } from './ipc-types'
+import type { MenuAnchor } from './file-actions'
 import { throwAddServerError } from '$lib/servers/add-server-error'
 import type {
   AuthOptions,
@@ -577,19 +578,33 @@ export async function setNetworkEnabled(enabled: boolean): Promise<void> {
 // ============================================================================
 
 /**
- * Shows a native context menu for a network host (fire-and-forget).
+ * Shows a native context menu for a servers hub row's SMB host (fire-and-forget).
  * The menu always includes "Disconnect", plus "Edit server…" for saved hosts,
  * "Forget server" for manual hosts, and "Forget saved password" for hosts with
  * stored credentials.
+ *
+ * ❗ `rowId` is the hub row it was raised on, and the answer carries it back
+ * (`NetworkHostContextAction.rowId`): the row, not the host, is what the answer
+ * acts on. `anchor` places a keyboard-opened menu; `null` uses the pointer.
  */
 export async function showNetworkHostContextMenu(
+  rowId: string,
   hostId: string,
   hostName: string,
   isManual: boolean,
   isSaved: boolean,
   hasCredentials: boolean,
+  anchor: MenuAnchor | null = null,
 ): Promise<void> {
-  const res = await commands.showNetworkHostContextMenu(hostId, hostName, isManual, isSaved, hasCredentials)
+  const res = await commands.showNetworkHostContextMenu(
+    rowId,
+    hostId,
+    hostName,
+    isManual,
+    isSaved,
+    hasCredentials,
+    anchor,
+  )
   if (res.status === 'error') throwIpcError(res.error)
 }
 

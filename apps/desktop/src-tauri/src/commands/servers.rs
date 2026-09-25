@@ -419,7 +419,7 @@ pub async fn forget_server(id: String) -> bool {
         SavedEntry::Smb(row) => {
             // ❗ The row and its pin, and nothing else: a mounted share stays
             // mounted, so there's no pane to send home and no session to drop.
-            let forgotten = known_shares::forget_share(&row.server_name, &row.share_name);
+            let forgotten = known_shares::forget_rows(std::slice::from_ref(&row)) > 0;
             if forgotten {
                 crate::volume_broadcast::emit_volumes_changed();
             }
@@ -581,12 +581,14 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
     }
 }
 
-/// Names a saved SMB host and sets the account it's used with, answering whether
-/// there was one to name. An empty name unnames it, so the UI calls it by its
-/// address again; no `username` clears the account.
+/// Names the saved SMB host the listing calls `id` and sets the account it's used
+/// with, answering whether there was one to name. An empty name unnames it, so
+/// the UI calls it by its address again; no `username` clears the account.
 ///
-/// `address` is the listing's own, which is what a host only the share history
-/// knew gets saved under (naming it is what saves it: `manual_servers` §
+/// ❗ By the listing's id ALONE: the host's address and port come from the same
+/// listing the row was drawn from ([`smb_hosts::smb_host_group`]), so an edit can
+/// only land on the host it was opened on. A host only the share history knew is
+/// saved where its mount dialed (naming it is what saves it: `manual_servers` §
 /// `name_server_entry_at_path`).
 ///
 /// ❗ Its own command rather than a [`ServerTarget`] arm: an SMB host is a
@@ -597,35 +599,37 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
 /// the saved list.
 #[tauri::command]
 #[specta::specta]
-pub fn update_saved_smb_host(
-    id: String,
-    address: String,
-    name: String,
-    username: Option<String>,
-    app: tauri::AppHandle,
-) -> bool {
+pub fn update_saved_smb_host(id: String, name: String, username: Option<String>, app: tauri::AppHandle) -> bool {
+    let Some(group) = smb_hosts::smb_host_group(&id, manual_servers::all(&app)) else {
+        return false;
+    };
     let edit = manual_servers::HostEdit { name, username };
-    let named = manual_servers::name_manual_server(&id, &address, &edit, &app);
+    let named = manual_servers::name_manual_server(&id, &group.host, group.port, &edit, &app);
     if named {
         crate::volume_broadcast::emit_volumes_changed();
     }
     named
 }
 
-/// Forgets a saved SMB host: its manual entry, its sign-in history, and every
-/// share saved under it. Answers whether anything was there.
+/// Forgets the saved SMB host the listing calls `id`: its manual entry, its
+/// sign-in history, and every share saved under it. Answers whether anything was
+/// there.
 ///
-/// ❗ Rows only: nothing is unmounted and no password is touched ("Forget saved
-/// password" is its own request). `address` is the listing's own; history and
-/// share rows are matched against it by server identity, so rows filed under the
-/// host's Bonjour name go too once discovery has paired the two.
+/// ❗ Exactly the store rows the listing filed under that host
+/// ([`smb_hosts::smb_host_group`]), found by the listing's id alone: nothing
+/// another host filed goes with it, not even a server on another port of the
+/// same machine. Rows only: nothing is unmounted and no password is touched
+/// ("Forget saved password" is its own request).
 ///
 /// ❗ Emits `volumes-changed`: a pinned share of the host leaves the switcher.
 #[tauri::command]
 #[specta::specta]
-pub fn forget_saved_smb_host(id: String, address: String, app: tauri::AppHandle) -> bool {
-    let manual = manual_servers::remove_manual_server(&id, &app).is_ok();
-    let rows = known_shares::forget_host(&[&address]);
+pub fn forget_saved_smb_host(id: String, app: tauri::AppHandle) -> bool {
+    let Some(group) = smb_hosts::smb_host_group(&id, manual_servers::all(&app)) else {
+        return false;
+    };
+    let manual = group.manual && manual_servers::remove_manual_server(&id, &app).is_ok();
+    let rows = known_shares::forget_rows(&group.rows);
     let forgotten = manual || rows > 0;
     if forgotten {
         crate::volume_broadcast::emit_volumes_changed();

@@ -93,10 +93,17 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
     never-seeds rule. Neither refusal is something a person did, which is why they are an `Err` rather than an outcome:
     the frontend reads either as a `saved` row that went stale and moves on (reload or close), ❌ never a sentence
     (`apps/desktop/src/lib/servers/DETAILS.md` § The three arms).
-  - ❗ **An SMB host lists NO places and cannot be pinned here.** `known_shares.rs` stores no share rows, carries no
-    port, and a mounted share's id comes from `statfs` (an IP where the store holds an mDNS name), so no id derivable
-    from the store would match the mounted volume. SMB places keep reaching the switcher as mounted volumes. Pinnable SMB
-    shares: GitHub [#195](https://github.com/vdavid/cmdr/issues/195).
+  - ❗ **An SMB host's identity is where it dials, address AND port** (`servers/smb_hosts.rs`), ❌ never the name a
+    person gave it and never the address alone: one machine can run several servers (the Docker fixtures are ten on
+    `localhost`). Its sign-in history and shares are filed under its discovery name (`localhost:11482`), so the listing
+    matches store rows by that name, or by the address and port a mount dialed. Matching by the typed name once split a
+    named host in two, and the made-up second row then took edits meant for the first. Its `address` carries the port
+    off 445. Its saved shares are its places (`docs/specs/saved-smb-shares.md`).
+  - ❗ **`update_saved_smb_host` and `forget_saved_smb_host` take the listing's id and nothing else**: they rebuild the
+    same host groups (`smb_hosts::smb_host_group`) and act on the one with that id, so an edit or a Forget can only
+    land on the row it was raised on, and Forget drops exactly the store rows that row showed
+    (`known_shares::forget_rows`). ❌ Don't add an address or name parameter "for convenience": a second key is how a
+    lookup ends up resolving to a different host than the row.
   - ❗ **`forget_server` drops the SESSION too**, unregisters the volume, and emits `VolumeUnmounted` BEFORE
     `volumes-changed`. A forgotten server is gone: leaving its session up would keep a switcher row no store knows about
     and no second "Forget" can reach, and the pane consumer needs the redirect to land ahead of the row's removal, or it

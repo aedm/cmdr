@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vites
 import { _setLocaleForTests } from '$lib/intl/locale'
 import type { NetworkHost, VolumeInfo } from '../types'
 
-const forgetSavedSmbHost = vi.fn((_id: string, _address: string) => Promise.resolve(true))
+const forgetSavedSmbHost = vi.fn((_id: string) => Promise.resolve(true))
 const forgetServer = vi.fn((_volumeId: string) => Promise.resolve(true))
 const disconnectNetworkHost = vi.fn(() => Promise.resolve(['/Volumes/Public']))
 const showNetworkHostContextMenu = vi.fn(() => Promise.resolve())
@@ -26,7 +26,7 @@ const confirmDialog = vi.fn(() => Promise.resolve(true))
 const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
 
 vi.mock('$lib/tauri-commands', () => ({
-  forgetSavedSmbHost: (id: string, address: string) => forgetSavedSmbHost(id, address),
+  forgetSavedSmbHost: (id: string) => forgetSavedSmbHost(id),
   forgetServer: (volumeId: string) => forgetServer(volumeId),
   disconnectNetworkHost: (...args: unknown[]) => disconnectNetworkHost(...(args as [])),
   showNetworkHostContextMenu: (...args: unknown[]) => showNetworkHostContextMenu(...(args as [])),
@@ -173,7 +173,6 @@ const refreshSaved = vi.fn(() => Promise.resolve())
 function actions(volumes: VolumeInfo[] = []) {
   return createHubActions({
     getRows: () => [placeRow, savedHostRow, nearbyOnlyRow],
-    getHosts: () => [host],
     getVolumes: () => volumes,
     refreshSaved,
     openRow,
@@ -201,7 +200,7 @@ describe('forget', () => {
   it('removes a saved SMB host from the manual store instead, after asking', async () => {
     await actions().forget(savedHostRow)
     expect(confirmDialog).toHaveBeenCalledOnce()
-    expect(forgetSavedSmbHost).toHaveBeenCalledWith('manual-10-0-0-4-445', '10.0.0.4')
+    expect(forgetSavedSmbHost).toHaveBeenCalledWith('manual-10-0-0-4-445')
     expect(forgetSavedServer).not.toHaveBeenCalled()
   })
 
@@ -297,25 +296,51 @@ describe('runRowEntry', () => {
 })
 
 describe('openHostMenu', () => {
-  it('raises the SMB host menu for a host row, with what it knows about its password', async () => {
+  it('raises the SMB host menu for a host row, naming the row it was raised on', async () => {
     await actions().openHostMenu(savedHostRow)
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h1', 'Attic NAS', true, true, true)
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith(
+      'manual-10-0-0-4-445',
+      'h1',
+      'Attic NAS',
+      true,
+      true,
+      true,
+      null,
+    )
   })
 
   it('offers no Edit for a host only mDNS knows about, which has nowhere to keep a name', async () => {
     await actions().openHostMenu(nearbyOnlyRow)
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h2', 'Attic NAS', false, false, true)
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h2', 'h2', 'Attic NAS', false, false, true, null)
+  })
+
+  it('opens where the keyboard says when there is no pointer to use', async () => {
+    await actions().openHostMenu(savedHostRow, { x: 40, y: 120 })
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith(
+      'manual-10-0-0-4-445',
+      'h1',
+      'Attic NAS',
+      true,
+      true,
+      true,
+      { x: 40, y: 120 },
+    )
   })
 })
 
 describe('runHostAction', () => {
   // ❗ Typed, so a spelling that drifts from the Rust enum is a compile error
   // rather than a silently-dead menu item.
-  const payload = (action: NetworkHostContextActionKind) => ({ action, hostId: 'h1', hostName: 'Attic NAS' })
+  const payload = (action: NetworkHostContextActionKind, rowId = savedHostRow.id) => ({
+    action,
+    rowId,
+    hostId: 'h1',
+    hostName: 'Attic NAS',
+  })
 
   it('routes the host menu’s Forget back through the same branch F8 takes', async () => {
     await actions().runHostAction(payload('forget-server'))
-    expect(forgetSavedSmbHost).toHaveBeenCalledWith('manual-10-0-0-4-445', '10.0.0.4')
+    expect(forgetSavedSmbHost).toHaveBeenCalledWith('manual-10-0-0-4-445')
   })
 
   it('opens the edit sheet on the saved host the menu was raised for', async () => {
@@ -341,9 +366,46 @@ describe('runHostAction', () => {
     expect(addToast).toHaveBeenCalledWith('No mounted shares from Attic NAS')
   })
 
-  it('ignores an action for a host the discovery store no longer has', async () => {
-    await actions().runHostAction({ action: 'disconnect', hostId: 'gone', hostName: 'Gone' })
+  it('does nothing for a row that is gone by the time the menu answers', async () => {
+    for (const action of ['disconnect', 'edit', 'forget-server', 'forget-secret'] as const) {
+      await actions().runHostAction(payload(action, 'gone'))
+    }
     expect(disconnectNetworkHost).not.toHaveBeenCalled()
+    expect(openEditServerSheet).not.toHaveBeenCalled()
+    expect(forgetSavedSmbHost).not.toHaveBeenCalled()
+    expect(forgetCredentials).not.toHaveBeenCalled()
+  })
+
+  /**
+   * ❗ **Two rows can stand on one discovered host**: a saved host and a second
+   * saved row for the same machine (QA 2026-09-25: "Edit server…" on the SECOND
+   * row saved its name into the FIRST). The answer names the row, so it lands on
+   * the row it was raised on, whichever row comes first in the list.
+   */
+  describe('when two rows share one host', () => {
+    const twinRow: HubRow = {
+      ...savedHostRow,
+      id: 'manual-localhost-11482-445',
+      name: 'localhost:11482',
+      saved: { ...(savedHostRow.saved as NonNullable<HubRow['saved']>), id: 'manual-localhost-11482-445' },
+    }
+    const withTwin = () =>
+      createHubActions({
+        getRows: () => [savedHostRow, twinRow],
+        getVolumes: () => [],
+        refreshSaved,
+        openRow,
+      })
+
+    it('edits the row the menu was raised on', async () => {
+      await withTwin().runHostAction(payload('edit', twinRow.id))
+      expect(openEditServerSheet).toHaveBeenCalledWith(twinRow.saved)
+    })
+
+    it('forgets the row the menu was raised on, and never its twin', async () => {
+      await withTwin().runHostAction(payload('forget-server', twinRow.id))
+      expect(forgetSavedSmbHost).toHaveBeenCalledExactlyOnceWith(twinRow.id)
+    })
   })
 })
 

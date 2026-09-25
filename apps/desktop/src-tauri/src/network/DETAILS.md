@@ -549,7 +549,14 @@ the migration, and what Forget does). What the code has to defend:
   volume by the same `statfs` id (`smb_upgrade::mounted_volume_id`), so a saved row and a live mount meet on the id.
 - **One row per share, keyed by server identity + folded share name, ❌ never by account**: an SMB volume id carries no
   username (`known_shares::upsert_share_row`). A replace keeps the pin, except that the FIRST mount pins it (rule 1 of
-  the servers model).
+  the servers model). ❗ Two rows that both know their port (a mount filed each) are one share only on the same port:
+  an address names a machine, and `public` on `localhost:11480` and on `localhost:11482` are two shares.
+- **A share's place id comes from `known_shares::place_id`**, for the listing and for every lookup by it
+  (`share_by_volume_id`, `set_share_pinned`): the stored mount id, else the one a mount by the row's name would mint.
+  A lookup that read only the stored id couldn't find a share an Add named, so Forget share and Pin missed it.
+- **Forget drops EXACT rows** (`known_shares::forget_rows`), the ones the caller read: the listing's host group for
+  Forget server, the one row a place id found for Forget share. ❌ Never "whatever this name matches", which reached
+  rows on other ports of the same machine.
 - **The volume id is stored as the mount reported it, ❌ never re-derived** from `server_name`: only the mount knows
   which spelling of the server it got. `commands/servers.rs::saved_by_id` looks SMB ids up in the store for that reason.
 - **The volume list** (`server_volumes::fold_saved_smb_shares`) gives an unmounted share a `saved` row at its last

@@ -184,25 +184,24 @@ export async function updateSavedServer(server: ServerTarget): Promise<SavedServ
 }
 
 /**
- * Forgets a saved SMB host: its manual entry, its sign-in history, and every
- * share saved under it. Nothing is unmounted and no password is touched. Answers
+ * Forgets the saved SMB host the listing calls `id`: its manual entry, its
+ * sign-in history, and every share saved under it, exactly the rows the listing
+ * showed under it. Nothing is unmounted and no password is touched. Answers
  * whether anything was there.
+ *
+ * ❗ The id alone, never an address: the backend finds the host in the same
+ * listing the row came from, so a Forget can't reach a host the row didn't show.
  */
-export async function forgetSavedSmbHost(id: string, address: string): Promise<boolean> {
-  return await commands.forgetSavedSmbHost(id, address)
+export async function forgetSavedSmbHost(id: string): Promise<boolean> {
+  return await commands.forgetSavedSmbHost(id)
 }
 
 /**
- * Names a saved SMB host and sets the account it's used with; an empty name
- * unnames it and a `null` account clears it. Answers whether there was a host to
- * name. `address` is the listing's own: a host only the share history knew gets
- * saved under it. The address itself never changes here.
+ * Names the saved SMB host the listing calls `id` and sets the account it's used
+ * with; an empty name unnames it and a `null` account clears it. Answers whether
+ * there was a host to name. The address never changes here, and it isn't passed:
+ * the backend reads it off the same listing the row came from.
  */
-export async function updateSavedSmbHost(
-  id: string,
-  address: string,
-  name: string,
-  username: string | null,
-): Promise<boolean> {
-  return await commands.updateSavedSmbHost(id, address, name, username)
+export async function updateSavedSmbHost(id: string, name: string, username: string | null): Promise<boolean> {
+  return await commands.updateSavedSmbHost(id, name, username)
 }

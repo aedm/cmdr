@@ -562,7 +562,7 @@
         refusal = null
         let found = false
         try {
-            found = await updateSavedSmbHost(id, form.address, form.displayName.trim(), typedAccount(form.username))
+            found = await updateSavedSmbHost(id, form.displayName.trim(), typedAccount(form.username))
         } catch (e) {
             log.warn('Saving the edited SMB host broke down: {error}', { error: String(e) })
         }

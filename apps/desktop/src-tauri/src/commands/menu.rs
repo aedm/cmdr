@@ -58,7 +58,7 @@ fn focus_for_context_menu<R: Runtime>(window: &Window<R>) {
 ///
 /// Only the keyboard paths send one. A right-click passes `None` and macOS uses the
 /// mouse, which is why the pointer path is untouched by all of this.
-#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MenuAnchor {
     pub x: f64,
@@ -429,34 +429,40 @@ pub fn show_function_key_bar_context_menu(window: Window<tauri::Wry>) -> Result<
     Ok(())
 }
 
-/// Shows a native context menu for a network host (fire-and-forget).
+/// Shows a native context menu for a servers hub row's SMB host (fire-and-forget).
 /// The selected action is delivered asynchronously via a `network-host-context-action` Tauri event
-/// from `on_menu_event`.
+/// from `on_menu_event`, carrying `row_id` back so the answer acts on the row it was opened on.
+///
+/// `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up; `None` uses the pointer.
 #[tauri::command]
 #[specta::specta]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one flat IPC call, each argument a fact the menu reads"
+)]
 pub fn show_network_host_context_menu(
     window: Window<tauri::Wry>,
+    row_id: String,
     host_id: String,
     host_name: String,
     is_manual: bool,
     is_saved: bool,
     has_credentials: bool,
+    anchor: Option<MenuAnchor>,
 ) -> Result<(), String> {
     let app = window.app_handle().clone();
 
     let menu =
         build_network_host_context_menu(&app, is_manual, is_saved, has_credentials).map_err(|e| e.to_string())?;
 
-    // Store context so on_menu_event can include host info in the emitted event
+    // Store context so on_menu_event can include the row and host in the emitted event
     {
         let state = app.state::<MenuState<tauri::Wry>>();
         let mut ctx = state.network_host_context.lock_ignore_poison();
+        ctx.row_id = row_id;
         ctx.host_id = host_id;
         ctx.host_name = host_name;
     }
 
-    focus_for_context_menu(&window);
-    menu.popup(window).map_err(|e| e.to_string())?;
-
-    Ok(())
+    popup_context_menu(&menu, window, anchor)
 }

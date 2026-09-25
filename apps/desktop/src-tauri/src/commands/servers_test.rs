@@ -815,3 +815,148 @@ fn a_share_no_mount_went_through_is_listed_by_its_address() {
     assert_eq!(place.app_root, "smb://192.0.2.48/Scans");
     assert!(!place.pinned);
 }
+
+/// A manual SMB host on `port`, the way "Add server" files one.
+fn manual_entry_on_port(address: &str, port: u16, name: &str) -> ManualServerEntry {
+    ManualServerEntry {
+        id: manual_servers::generate_server_id(address, port),
+        display_name: name.to_string(),
+        address: address.to_string(),
+        port,
+        added_at: "2026-09-03T00:00:00Z".to_string(),
+        username: None,
+    }
+}
+
+/// A share a mount through Cmdr filed: under the host's discovery name, with the
+/// address and port it dialed.
+fn mounted_share(
+    server_name: &str,
+    address: &str,
+    port: u16,
+    share: &str,
+    volume_id: &str,
+) -> known_shares::KnownNetworkShare {
+    known_shares::KnownNetworkShare {
+        address: Some(address.to_string()),
+        port: (port != 445).then_some(port),
+        ..share_row(server_name, share, None, Some(volume_id))
+    }
+}
+
+/// The host-level row the share list files when a person signs in to it, under
+/// the host's discovery name and nothing else.
+fn signed_in_history(server_name: &str) -> known_shares::KnownNetworkShare {
+    known_shares::KnownNetworkShare {
+        share_name: String::new(),
+        ..share_row(server_name, "unused", Some("testuser"), None)
+    }
+}
+
+/// ❗ **Naming a host never splits it in two.** A manual host off port 445 is
+/// listed by its discovery name (`localhost:11482`) until someone names it; its
+/// sign-in history and shares are filed under that discovery name. Matching them by the name a person
+/// typed gave the named host's history a second, made-up host row, and
+/// "Edit server…" on that second row then saved into the first (QA 2026-09-25).
+#[test]
+fn a_named_host_off_port_445_keeps_its_shares_under_it() {
+    let servers = saved_servers(
+        vec![manual_entry_on_port("localhost", 11482, "Both box")],
+        vec![
+            signed_in_history("localhost:11482"),
+            mounted_share("localhost:11482", "localhost", 11482, "public", "smb-public"),
+        ],
+        &[],
+    );
+
+    let smb: Vec<_> = servers.iter().filter(|s| s.protocol == ServerProtocol::Smb).collect();
+    assert_eq!(smb.len(), 1, "one host, one row: {smb:?}");
+    assert_eq!(smb[0].display_name, "Both box");
+    assert_eq!(smb[0].places.len(), 1, "its share stays under it");
+    assert_eq!(smb[0].places[0].name, "public");
+}
+
+/// ❗ **A share belongs to the host on ITS port.** Two SMB servers on one machine
+/// are two hosts (the Docker fixtures are ten on `localhost`), so a share mounted
+/// from one never lands under the other, whichever was typed in first.
+#[test]
+fn a_share_belongs_to_the_host_on_its_own_port() {
+    let servers = saved_servers(
+        vec![
+            manual_entry_on_port("localhost", 11480, ""),
+            manual_entry_on_port("localhost", 11482, ""),
+        ],
+        vec![mounted_share(
+            "localhost",
+            "localhost",
+            11482,
+            "public",
+            "smb-public-11482",
+        )],
+        &[],
+    );
+
+    let on = |port: u16| {
+        servers
+            .iter()
+            .find(|s| s.id == manual_servers::generate_server_id("localhost", port))
+            .unwrap_or_else(|| panic!("the host on {port} must be listed"))
+    };
+    assert!(on(11480).places.is_empty(), "not a share of the host on 11480");
+    assert_eq!(on(11482).places.len(), 1);
+}
+
+/// An SMB host's address says its port when it isn't 445: `localhost` alone names
+/// a different server, and the Address column is where a person tells them apart.
+#[test]
+fn an_smb_hosts_address_carries_its_port_off_445() {
+    let servers = saved_servers_of(vec![manual_entry_on_port("localhost", 11482, "")]);
+
+    let smb = servers.iter().find(|s| s.protocol == ServerProtocol::Smb).unwrap();
+    assert_eq!(smb.address, "localhost:11482");
+}
+
+/// ❗ **What Forget server takes is exactly what the row showed**: the store rows
+/// the listing filed under that host, and none of another host's, even one on
+/// the same machine.
+#[test]
+fn a_hosts_group_holds_its_own_rows_and_no_other_hosts() {
+    let groups = smb_hosts::smb_host_groups(
+        vec![
+            manual_entry_on_port("localhost", 11480, ""),
+            manual_entry_on_port("localhost", 11482, "Both box"),
+        ],
+        vec![
+            mounted_share("localhost:11480", "localhost", 11480, "public", "smb-a"),
+            mounted_share("localhost:11482", "localhost", 11482, "public", "smb-b"),
+            mounted_share("localhost:11482", "localhost", 11482, "private", "smb-c"),
+        ],
+        &[],
+    );
+
+    let id = manual_servers::generate_server_id("localhost", 11482);
+    let group = groups.iter().find(|g| g.server.id == id).expect("the named host");
+    let volume_ids: Vec<_> = group.rows.iter().filter_map(|r| r.volume_id.as_deref()).collect();
+    assert_eq!(volume_ids, ["smb-b", "smb-c"]);
+}
+
+/// A host only the share history knows is dialed where its mount went, port
+/// included: naming it saves a manual entry, and one filed under the discovery
+/// name (`localhost:11482`) on 445 would dial nothing.
+#[test]
+fn a_host_only_the_share_history_knows_dials_where_its_mount_went() {
+    let groups = smb_hosts::smb_host_groups(
+        Vec::new(),
+        vec![mounted_share("localhost:11482", "localhost", 11482, "public", "smb-b")],
+        &[],
+    );
+
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].host, "localhost");
+    assert_eq!(groups[0].port, 11482);
+    assert_eq!(
+        groups[0].server.id,
+        manual_servers::generate_server_id("localhost", 11482)
+    );
+    assert!(!groups[0].manual);
+}

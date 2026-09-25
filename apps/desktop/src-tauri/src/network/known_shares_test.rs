@@ -702,22 +702,55 @@ fn a_share_row_and_the_hosts_history_are_separate_rows() {
     assert!(rows[1].is_share());
 }
 
-/// ❗ **Forgetting a host takes its history and every share under it**, found
-/// under any name the server goes by, and nothing of another host.
+/// ❗ **Forget takes exactly the rows it was handed**, and nothing that merely
+/// shares a name with them: here the same share name on the same machine, but
+/// another server (port).
 #[test]
-fn forgetting_a_host_takes_its_history_and_its_shares_and_nothing_else() {
-    let hosts = [naspolya()];
-    let mut rows = vec![
-        mounted("Naspolya", "192.168.1.111", "naspi", None, "smb-a"),
-        mounted("192.168.1.111", "192.168.1.111", "photos", None, "smb-b"),
-        mounted("other-nas", "10.9.9.9", "naspi", None, "smb-c"),
-    ];
+fn forgetting_rows_takes_exactly_those_rows() {
+    let other_port = KnownNetworkShare {
+        port: Some(11480),
+        ..mounted("localhost", "localhost", "public", None, "smb-a")
+    };
+    let mine = KnownNetworkShare {
+        port: Some(11482),
+        ..mounted("localhost", "localhost", "public", None, "smb-b")
+    };
+    let mut rows = vec![other_port.clone(), mine.clone()];
 
-    let removed = forget_host_rows(&mut rows, &["Naspolya._smb._tcp.local"], &hosts);
+    let removed = forget_rows_in(&mut rows, &[mine]);
 
-    assert_eq!(removed, 2);
+    assert_eq!(removed, 1);
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].server_name, "other-nas");
+    assert_eq!(rows[0].volume_id.as_deref(), Some("smb-a"));
+}
+
+/// ❗ **Two servers on one machine hold two rows for a share of the same name.**
+/// The Docker fixtures all share `public` on `localhost`, one port each; folding
+/// them into one row handed the second mount the first one's place.
+#[test]
+fn a_share_on_another_port_of_the_same_machine_is_another_row() {
+    let mut rows = Vec::new();
+    let on = |port: u16, volume_id: &str| KnownNetworkShare {
+        port: Some(port),
+        ..mounted("localhost", "localhost", "public", None, volume_id)
+    };
+
+    upsert_share_row(&mut rows, on(11480, "smb-a"), &[]);
+    upsert_share_row(&mut rows, on(11482, "smb-b"), &[]);
+
+    assert_eq!(rows.len(), 2);
+}
+
+/// ❗ **A share an Add named is found by the id the servers listing shows for
+/// it**, so Forget share and Pin work on it before any mount went through.
+#[test]
+fn a_share_no_mount_went_through_is_found_by_its_listed_id() {
+    let row = added("192.168.0.153", "Container", Some("sven"));
+
+    assert_eq!(
+        place_id(&row),
+        cmdr_fs::volume::smb_volume_id("192.168.0.153", 445, "Container")
+    );
 }
 
 /// An old store row reads with no place fields and unpinned.

@@ -832,12 +832,7 @@ describe('SignInSheet: editing an SMB host', () => {
     buttonSaying('Save').click()
     await flush()
 
-    expect(commands.updateSavedSmbHost).toHaveBeenCalledWith(
-      'manual-192-168-0-153-445',
-      '192.168.0.153',
-      'Attic NAS',
-      'bob',
-    )
+    expect(commands.updateSavedSmbHost).toHaveBeenCalledWith('manual-192-168-0-153-445', 'Attic NAS', 'bob')
     expect(commands.updateSavedServer).not.toHaveBeenCalled()
     expect(done).toEqual([{ kind: 'saved' }])
   })

@@ -265,14 +265,14 @@ fn naming_a_host_can_set_and_clear_its_account() {
         name: "Attic".to_string(),
         username: Some("sven".to_string()),
     };
-    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", &edit).unwrap();
+    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", 445, &edit).unwrap();
     assert_eq!(stored.username.as_deref(), Some("sven"));
 
     let cleared = HostEdit {
         name: "Attic".to_string(),
         username: None,
     };
-    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", &cleared).unwrap();
+    let stored = name_server_entry_at_path(&path, &test_entry(22).id, "10.0.0.22", 445, &cleared).unwrap();
     assert_eq!(stored.username, None);
 }
 
@@ -327,7 +327,7 @@ fn renaming_an_entry_rewrites_only_its_name() {
     add_server_entry_to_path(&path, test_entry(1));
     add_server_entry_to_path(&path, test_entry(2));
 
-    assert!(name_server_entry_at_path(&path, &test_entry(1).id, "10.0.0.1", &named("Attic NAS")).is_some());
+    assert!(name_server_entry_at_path(&path, &test_entry(1).id, "10.0.0.1", 445, &named("Attic NAS")).is_some());
 
     let store = read_store_from_path(&path);
     let renamed = store.servers.iter().find(|s| s.id == test_entry(1).id).unwrap();
@@ -347,7 +347,7 @@ fn naming_a_host_nobody_typed_in_saves_it_under_its_own_id() {
     let id = generate_server_id("naspolya.local", 445);
 
     let entry =
-        name_server_entry_at_path(&path, &id, "naspolya.local", &named("Naspolya")).expect("a host with that id");
+        name_server_entry_at_path(&path, &id, "naspolya.local", 445, &named("Naspolya")).expect("a host with that id");
 
     assert_eq!(entry.port, 445);
     let store = read_store_from_path(&path);
@@ -362,7 +362,9 @@ fn naming_a_host_nobody_typed_in_saves_it_under_its_own_id() {
 fn naming_refuses_an_id_the_address_does_not_mint() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let path = dir.path().join(MANUAL_SERVERS_FILENAME);
-    assert!(name_server_entry_at_path(&path, "manual-elsewhere-445", "naspolya.local", &named("Naspolya")).is_none());
+    assert!(
+        name_server_entry_at_path(&path, "manual-elsewhere-445", "naspolya.local", 445, &named("Naspolya")).is_none()
+    );
     assert!(read_store_from_path(&path).servers.is_empty());
 }
 
@@ -484,15 +486,15 @@ fn host_mapping_hostname_with_local() {
 // -- Display name --
 
 #[test]
-fn display_name_default_port() {
-    assert_eq!(display_name("192.168.1.100", 445), "192.168.1.100");
-    assert_eq!(display_name("mynas", 445), "mynas");
+fn discovery_name_default_port() {
+    assert_eq!(discovery_name("192.168.1.100", 445), "192.168.1.100");
+    assert_eq!(discovery_name("mynas", 445), "mynas");
 }
 
 #[test]
-fn display_name_custom_port() {
-    assert_eq!(display_name("192.168.1.100", 9445), "192.168.1.100:9445");
-    assert_eq!(display_name("mynas", 9445), "mynas:9445");
+fn discovery_name_custom_port() {
+    assert_eq!(discovery_name("192.168.1.100", 9445), "192.168.1.100:9445");
+    assert_eq!(discovery_name("mynas", 9445), "mynas:9445");
 }
 
 // -- ManualConnectResult serialization --
@@ -762,4 +764,24 @@ async fn an_unchecked_add_still_refuses_an_address_that_does_not_parse() {
 async fn an_unchecked_add_dials_nothing() {
     let parsed = checked_parse("host.invalid", Reachability::Skip).await.expect("parses");
     assert_eq!(parsed.host, "host.invalid");
+}
+
+/// ❗ **Naming a host nobody typed in saves it where it dials, port included.**
+/// A host off 445 is filed in the share history under `host:port`, and an entry
+/// minted from that spelling on 445 would dial nothing.
+#[test]
+fn naming_a_host_off_445_saves_it_on_its_own_port() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    let id = generate_server_id("localhost", 11482);
+
+    let stored =
+        name_server_entry_at_path(&path, &id, "localhost", 11482, &named("Both box")).expect("a host with that id");
+
+    assert_eq!(stored.address, "localhost");
+    assert_eq!(stored.port, 11482);
+    assert_eq!(
+        create_network_host(&stored.address, stored.port).name,
+        "localhost:11482"
+    );
 }

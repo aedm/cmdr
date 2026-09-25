@@ -291,6 +291,8 @@ pub struct MenuContext {
 /// Context for the network host context menu (stored so on_menu_event can emit it).
 #[derive(Clone, Default)]
 pub struct NetworkHostMenuContext {
+    /// The servers hub row the menu was opened on. See [`crate::network::NetworkHostContextAction::row_id`].
+    pub row_id: String,
     pub host_id: String,
     pub host_name: String,
 }

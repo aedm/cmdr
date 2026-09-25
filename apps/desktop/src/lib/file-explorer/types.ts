@@ -527,15 +527,11 @@ export interface KnownNetworkShare {
   lastKnownAuthOptions: AuthOptions
   /** Username used (null for guest) */
   username: string | null
-  /** Share rows only: what the mount dialed (an IP or a hostname), which may not be `serverName` */
+  // Share rows only, what their last mount had (`docs/specs/saved-smb-shares.md`); `port` is null for 445.
   address?: string | null
-  /** Share rows only: the SMB port, null for 445 */
   port?: number | null
-  /** Share rows only: the volume id the last mount had, read off `statfs` */
   volumeId?: string | null
-  /** Share rows only: where the last mount sat */
   mountPath?: string | null
-  /** Share rows only: whether the share shows in the volume switcher */
   pinned?: boolean
 }
 

@@ -107,7 +107,6 @@
      */
     const actions = createHubActions({
         getRows: () => rows,
-        getHosts: () => hosts,
         getVolumes: () => volumes,
         refreshSaved: refreshSavedServers,
         openRow: (row) => {

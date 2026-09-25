@@ -11,7 +11,8 @@ the account, and each SHARE is a place under it. What changes is that a share pl
 
 - **One row per share, keyed by server identity + share name.** ❗ Not by account: an SMB volume id is
   `smb_volume_id(server, port, share)` and carries no username, so two rows for one share under two accounts would be
-  two saved places pointing at one volume id. The row remembers the account the share was last opened with.
+  two saved places pointing at one volume id. The row remembers the account the share was last opened with. Server
+  identity includes the PORT: `public` on two servers of one machine is two shares.
 - **The row's volume id is the one the mount had** (read off `statfs`, like every other SMB id), ❌ never re-derived
   from the stored name. A share mounted by IP and one mounted by Bonjour name get different ids, and only the mount
   knows which one it got. Each mount through Cmdr refreshes it.
@@ -76,6 +77,8 @@ mount already under way may still finish, and then the share simply shows up mou
   touched.
 - **Forget server** (a server row): drops the manual entry, the host's sign-in history, and every share row under it.
   Nothing is unmounted and no password is touched; "Forget saved password" is its own item.
+- ❗ Both act on the row they were raised on, by its id alone, and take exactly the store rows that row showed. A host's
+  identity is its address AND port, so a Forget never reaches another server on the same machine.
 
 ## Known limits
 

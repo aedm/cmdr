@@ -265,18 +265,31 @@ pub fn get_username_hint(server_name: &str) -> Option<String> {
 
 /// Whether `a` and `b` are the same share: the name folded, the server by
 /// identity under either the name it's known by or the address a mount dialed.
+///
+/// ❗ When both rows know their port (a mount filed each), the ports must agree:
+/// an address names a MACHINE, and one machine can run several servers with a
+/// `public` share each. A row an Add filed knows no port; its server name is the
+/// host's discovery name, which carries the port off 445, so it still pairs.
 fn same_share_row(a: &KnownNetworkShare, b: &KnownNetworkShare, hosts: &[NetworkHost]) -> bool {
     use crate::network::server_identity::same_server;
 
+    if fold_name(&a.share_name) != fold_name(&b.share_name) {
+        return false;
+    }
+    let port = |row: &KnownNetworkShare| row.address.as_ref().map(|_| row.port.unwrap_or(445));
+    if let (Some(pa), Some(pb)) = (port(a), port(b))
+        && pa != pb
+    {
+        return false;
+    }
     let names = |row: &KnownNetworkShare| {
         std::iter::once(row.server_name.clone())
             .chain(row.address.clone())
             .collect::<Vec<_>>()
     };
-    fold_name(&a.share_name) == fold_name(&b.share_name)
-        && names(a)
-            .iter()
-            .any(|x| names(b).iter().any(|y| same_server(x, y, hosts)))
+    names(a)
+        .iter()
+        .any(|x| names(b).iter().any(|y| same_server(x, y, hosts)))
 }
 
 /// Files `row` (a share row) in `rows`, replacing the one for the same share.
@@ -326,11 +339,25 @@ pub fn saved_shares() -> Vec<KnownNetworkShare> {
         .collect()
 }
 
-/// The saved share whose place `volume_id` names.
+/// The id a share row's place goes by: the one its last mount had, else the id a
+/// mount by the name the row knows would mint.
+///
+/// ❗ The ONE place that id is decided, for the servers listing and for every
+/// lookup by it. A share an Add named has no mount yet, and a lookup that only
+/// read the stored id couldn't find the row the hub was showing for it.
+pub fn place_id(row: &KnownNetworkShare) -> String {
+    row.volume_id.clone().unwrap_or_else(|| {
+        cmdr_fs::volume::smb_volume_id(
+            row.address.as_deref().unwrap_or(&row.server_name),
+            row.port.unwrap_or(445),
+            &row.share_name,
+        )
+    })
+}
+
+/// The saved share whose place the listing calls `volume_id`.
 pub fn share_by_volume_id(volume_id: &str) -> Option<KnownNetworkShare> {
-    saved_shares()
-        .into_iter()
-        .find(|row| row.volume_id.as_deref() == Some(volume_id))
+    saved_shares().into_iter().find(|row| place_id(row) == volume_id)
 }
 
 /// Moves a saved share's pin, in place under the lock, answering whether a share
@@ -341,7 +368,7 @@ pub fn set_share_pinned(volume_id: &str, pinned: bool) -> bool {
         match store
             .known_network_shares
             .iter_mut()
-            .find(|row| row.is_share() && row.volume_id.as_deref() == Some(volume_id))
+            .find(|row| row.is_share() && place_id(row) == volume_id)
         {
             Some(row) => {
                 row.pinned = pinned;
@@ -356,60 +383,30 @@ pub fn set_share_pinned(volume_id: &str, pinned: bool) -> bool {
     moved
 }
 
-/// Drops the saved share `server_name` + `share_name` names, answering whether one
-/// was there. ❗ The share row only: a mount stays up and no password is touched.
-pub fn forget_share(server_name: &str, share_name: &str) -> bool {
-    let probe = KnownNetworkShare {
-        server_name: server_name.to_string(),
-        share_name: share_name.to_string(),
-        protocol: "smb".to_string(),
-        last_connected_at: String::new(),
-        last_connection_mode: ConnectionMode::Guest,
-        last_known_auth_options: AuthOptions::GuestOnly,
-        username: None,
-        address: None,
-        port: None,
-        volume_id: None,
-        mount_path: None,
-        pinned: false,
-    };
-    let hosts = crate::network::get_discovered_hosts();
-    let removed = {
-        let mut store = get_known_shares_mutex().lock_ignore_poison();
-        let before = store.known_network_shares.len();
-        store
-            .known_network_shares
-            .retain(|row| !(row.is_share() && same_share_row(row, &probe, &hosts)));
-        before != store.known_network_shares.len()
-    };
-    if removed {
-        save_known_shares();
-    }
-    removed
+/// Whether `a` and `b` are the same stored row, field for field on what makes a
+/// row the one it is (never on when it was last used or how it's pinned).
+fn is_same_row(a: &KnownNetworkShare, b: &KnownNetworkShare) -> bool {
+    a.server_name == b.server_name && a.share_name == b.share_name && a.address == b.address && a.port == b.port
 }
 
-/// Drops every row, history and shares alike, of the host any of `server_names`
-/// names, answering how many went. ❗ Rows only: mounts and passwords stay.
-fn forget_host_rows(rows: &mut Vec<KnownNetworkShare>, server_names: &[&str], hosts: &[NetworkHost]) -> usize {
-    use crate::network::server_identity::same_server;
-
+/// Drops `gone` from `rows`, answering how many went. See [`forget_rows`].
+fn forget_rows_in(rows: &mut Vec<KnownNetworkShare>, gone: &[KnownNetworkShare]) -> usize {
     let before = rows.len();
-    rows.retain(|row| {
-        let mine = std::iter::once(row.server_name.as_str()).chain(row.address.as_deref());
-        !mine
-            .into_iter()
-            .any(|name| server_names.iter().any(|other| same_server(name, other, hosts)))
-    });
+    rows.retain(|row| !gone.iter().any(|other| is_same_row(row, other)));
     before - rows.len()
 }
 
-/// Forgets the host `server_names` names: its sign-in history and every share row
-/// under it. See [`forget_host_rows`].
-pub fn forget_host(server_names: &[&str]) -> usize {
-    let hosts = crate::network::get_discovered_hosts();
+/// Drops exactly the rows `gone` holds, as a caller read them from this store,
+/// answering how many went. ❗ Rows only: mounts and passwords stay.
+///
+/// ❗ Exact rows, ❌ never "whatever this name matches": a Forget acts on what a
+/// row SHOWED, so the caller hands back the rows it drew the row from (the servers
+/// listing's host group, or the one share row a place id found), and a name match
+/// here would reach rows that row never showed (another port of the same machine).
+pub fn forget_rows(gone: &[KnownNetworkShare]) -> usize {
     let removed = {
         let mut store = get_known_shares_mutex().lock_ignore_poison();
-        forget_host_rows(&mut store.known_network_shares, server_names, &hosts)
+        forget_rows_in(&mut store.known_network_shares, gone)
     };
     if removed > 0 {
         save_known_shares();

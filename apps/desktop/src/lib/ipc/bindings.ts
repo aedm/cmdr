@@ -1480,19 +1480,34 @@ export const commands = {
   showTabContextMenu: (isPinned: boolean, canClose: boolean, hasOtherUnpinnedTabs: boolean) =>
     typedError<null, string>(__TAURI_INVOKE('show_tab_context_menu', { isPinned, canClose, hasOtherUnpinnedTabs })),
   /**
-   *  Shows a native context menu for a network host (fire-and-forget).
+   *  Shows a native context menu for a servers hub row's SMB host (fire-and-forget).
    *  The selected action is delivered asynchronously via a `network-host-context-action` Tauri event
-   *  from `on_menu_event`.
+   *  from `on_menu_event`, carrying `row_id` back so the answer acts on the row it was opened on.
+   *
+   *  `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up; `None` uses the pointer.
    */
   showNetworkHostContextMenu: (
+    rowId: string,
     hostId: string,
     hostName: string,
     isManual: boolean,
     isSaved: boolean,
     hasCredentials: boolean,
+    anchor: {
+      x: number
+      y: number
+    } | null,
   ) =>
     typedError<null, string>(
-      __TAURI_INVOKE('show_network_host_context_menu', { hostId, hostName, isManual, isSaved, hasCredentials }),
+      __TAURI_INVOKE('show_network_host_context_menu', {
+        rowId,
+        hostId,
+        hostName,
+        isManual,
+        isSaved,
+        hasCredentials,
+        anchor,
+      }),
     ),
   /**
    *  Shows the function key bar's context menu (fire-and-forget): a single "Hide
@@ -4472,12 +4487,14 @@ export const commands = {
    */
   updateSavedServer: (server: ServerTarget) => __TAURI_INVOKE<SavedServerOutcome>('update_saved_server', { server }),
   /**
-   *  Names a saved SMB host and sets the account it's used with, answering whether
-   *  there was one to name. An empty name unnames it, so the UI calls it by its
-   *  address again; no `username` clears the account.
+   *  Names the saved SMB host the listing calls `id` and sets the account it's used
+   *  with, answering whether there was one to name. An empty name unnames it, so
+   *  the UI calls it by its address again; no `username` clears the account.
    *
-   *  `address` is the listing's own, which is what a host only the share history
-   *  knew gets saved under (naming it is what saves it: `manual_servers` §
+   *  ❗ By the listing's id ALONE: the host's address and port come from the same
+   *  listing the row was drawn from ([`smb_hosts::smb_host_group`]), so an edit can
+   *  only land on the host it was opened on. A host only the share history knew is
+   *  saved where its mount dialed (naming it is what saves it: `manual_servers` §
    *  `name_server_entry_at_path`).
    *
    *  ❗ Its own command rather than a [`ServerTarget`] arm: an SMB host is a
@@ -4487,21 +4504,22 @@ export const commands = {
    *  ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
    *  the saved list.
    */
-  updateSavedSmbHost: (id: string, address: string, name: string, username: string | null) =>
-    __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, address, name, username }),
+  updateSavedSmbHost: (id: string, name: string, username: string | null) =>
+    __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, name, username }),
   /**
-   *  Forgets a saved SMB host: its manual entry, its sign-in history, and every
-   *  share saved under it. Answers whether anything was there.
+   *  Forgets the saved SMB host the listing calls `id`: its manual entry, its
+   *  sign-in history, and every share saved under it. Answers whether anything was
+   *  there.
    *
-   *  ❗ Rows only: nothing is unmounted and no password is touched ("Forget saved
-   *  password" is its own request). `address` is the listing's own; history and
-   *  share rows are matched against it by server identity, so rows filed under the
-   *  host's Bonjour name go too once discovery has paired the two.
+   *  ❗ Exactly the store rows the listing filed under that host
+   *  ([`smb_hosts::smb_host_group`]), found by the listing's id alone: nothing
+   *  another host filed goes with it, not even a server on another port of the
+   *  same machine. Rows only: nothing is unmounted and no password is touched
+   *  ("Forget saved password" is its own request).
    *
    *  ❗ Emits `volumes-changed`: a pinned share of the host leaves the switcher.
    */
-  forgetSavedSmbHost: (id: string, address: string) =>
-    __TAURI_INVOKE<boolean>('forget_saved_smb_host', { id, address }),
+  forgetSavedSmbHost: (id: string) => __TAURI_INVOKE<boolean>('forget_saved_smb_host', { id }),
   /**
    *  Tauri command: returns the current macOS accent color as a hex string.
    *
@@ -9816,6 +9834,19 @@ export type MemoryWatchdogAction =
   | 'stillGrowingAfterStop'
 
 /**
+ *  Where a context menu opens, when the caller names a point instead of letting the
+ *  OS use the pointer. In the WEBVIEW's own coordinates, in CSS pixels: the same
+ *  numbers `getBoundingClientRect()` gave the frontend.
+ *
+ *  Only the keyboard paths send one. A right-click passes `None` and macOS uses the
+ *  mouse, which is why the pointer path is untouched by all of this.
+ */
+export type MenuAnchor = {
+  x: number
+  y: number
+}
+
+/**
  *  `menu-bar-rebuilt`: the native menu bar was thrown away and built again in a
  *  new language, so every item is a NEW object.
  *
@@ -10615,6 +10646,14 @@ export type NetworkHost = {
 export type NetworkHostContextAction = {
   // Which item was picked.
   action: NetworkHostContextActionKind
+  /**
+   *  The servers hub row the menu was opened on, exactly as the hub keys it.
+   *  ❗ What every answer acts on: two rows can share one discovered host (a
+   *  saved host and the share history of the same machine), so the host id
+   *  alone can't say which row was right-clicked.
+   */
+  rowId: string
+  // The discovered host behind that row, which Disconnect unmounts from.
   hostId: string
   hostName: string
 }
