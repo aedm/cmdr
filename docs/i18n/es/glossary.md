@@ -3549,3 +3549,13 @@ términos ya documentados en este glosario y en el catálogo.
   único …”) · `high`.
 - **“You'll only see this once.” → `Solo verás este aviso una vez.`** · nombra el aviso en lugar de un `esto` ambiguo;
   sin adjetivos que marquen género · `high`.
+
+## Originales que cambiaron durante el movimiento (`transfer.changedDuringMove`, 2026-09-25)
+
+- **"changed during the move" → `cambió/cambiaron mientras se movían los archivos`** · pretérito como
+  `fileOperations.cancelRollback.reason.drift.counted` ("cambiaron") y la regla del pretérito de `style.md`; Finder
+  `PE56` dice "se han modificado durante la grabación" (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle,
+  2026-09-25), pero el catálogo ya fijó `cambiar` para esta idea. `mientras se movían los archivos` y
+  `carpetas de origen` salen tal cual del hermano `transfer.appearedDuringMove`, porque las dos frases aparecen en el
+  mismo aviso · `high`.
+- La oración entera va dentro de las ramas (`cambió … y se queda`), como pide `style.md` § Plurals.

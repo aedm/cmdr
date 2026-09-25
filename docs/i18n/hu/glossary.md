@@ -3817,3 +3817,11 @@ képernyős módjából, és a hozzá tartozó kapcsoló a Speciális beállít�
 - **„You'll only see this once.” → `Ezt csak egyszer látod.`** · tegező, rövid · high.
 - **`…HintShown` belső kulcsok** a `settings.advanced.oldMacosNoticeShown.*` mintáját követik (`… megjelent`,
   `Belső: követi, hogy …`, `Rejtve a felülettől.`) · high.
+
+## Az áthelyezés közben módosult eredetik (`transfer.changedDuringMove`, 2026-09-25)
+
+- **„changed during the move” → `módosult az áthelyezés közben`** · Finder `PE56` „egy vagy több elem az írás közben
+  módosult” (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25), és a fenti
+  `it changed → módosult` sor · `high`. A számnévi alany mellett egyes számú állítmány (style.md § Plurals). Az
+  `áthelyezés közben` és a `forrásmappákban` betű szerint a testvér `transfer.appearedDuringMove` alakja, mert a két
+  mondat ugyanabban az értesítésben áll.

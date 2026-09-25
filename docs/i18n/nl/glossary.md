@@ -3840,3 +3840,11 @@ schakelaar bij Instellingen > Geavanceerd. Gemijnd in `_ignored/i18n/nl/macOS/`,
 - **took Cmdr out of full screen → `heeft Cmdr uit de schermvullende weergave gehaald`**; in de hulptekst
   `haalt Escape het daaruit` · gemunt, geen precedent in de stapel · `tentative`.
 - **You'll only see this once → `Je ziet dit maar één keer.`** · `tentative`.
+
+## Originelen die tijdens het verplaatsen wijzigden (`transfer.changedDuringMove`, 2026-09-25)
+
+- **"changed during the move" → `is/zijn tijdens het verplaatsen gewijzigd`** · Finder `PE56` "omdat tijdens het branden
+  een of meer onderdelen zijn gewijzigd" (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25) ·
+  `high`. `tijdens het verplaatsen`, `bronmappen` en de losse `is`/`zijn`- en `blijft`/`blijven`-blokken volgen de
+  buurman `transfer.appearedDuringMove`, die in dezelfde melding staat. `blijft in {folderName} staan`: het partikel
+  achteraan, zoals `blijft daar staan`.

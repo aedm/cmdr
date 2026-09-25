@@ -3407,3 +3407,12 @@ de `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
 - Settings > Advanced · **Ajustes > Avançado** · nomes já fixados acima (§ seções de Ajustes) · high
 - You''ll only see this once · **Este aviso só aparece uma vez** · o aviso vira o sujeito, o que dispensa o `você` e o
   futuro; `aviso` é a palavra que o catálogo já usa para notificações curtas · high
+
+## Originais que mudaram durante a movimentação (`transfer.changedDuringMove`, 2026-09-25)
+
+- **"changed during the move" → `mudou/mudaram durante a movimentação`** · o verbo de
+  `fileOperations.cancelRollback.reason.drift.counted` (`mudaram`); o Finder `PE56` diz "foram alterados durante a
+  gravação" (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25), mas o catálogo já fixou `mudar`
+  para essa ideia · `high`. `durante a movimentação`, `continua/continuam` e `pastas de origem` vêm do irmão
+  `transfer.appearedDuringMove`, que aparece no mesmo aviso. A oração inteira fica dentro dos ramos (style.md §
+  Plurals).

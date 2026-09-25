@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{count, plural, one {{countText} item apareceu} many {{countText} itens apareceram} other {{countText} itens apareceram}} em {scope, select, manyFolders {{folderName} e em outras pastas de origem} other {{folderName}}} durante a movimentação e {count, plural, one {continua} many {continuam} other {continuam}} lá.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{count, plural, one {{countText} item mudou durante a movimentação e continua} many {{countText} itens mudaram durante a movimentação e continuam} other {{countText} itens mudaram durante a movimentação e continuam}} em {scope, select, manyFolders {{folderName} e em outras pastas de origem} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

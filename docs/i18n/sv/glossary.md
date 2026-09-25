@@ -3376,3 +3376,9 @@ aldrig lova mer än Cmdr gör. Belägg från det installerade macOS (referenssam
 - Etiketten `Lämna helskärmsläge med Escape` delas ordagrant av `main.escapeFullScreenHint.switchLabel` och
   `settings.advanced.exitFullScreenOnEscape.label`: skriv om båda eller ingen.
 - Settings > Advanced · **Inställningar > Avancerat**, med `>` som `fileExplorer.quickLookHint.configurable`.
+
+## Original som ändrades under flytten (`transfer.changedDuringMove`, 2026-09-25)
+
+- **”changed during the move” → `ändrades under flytten`** · Finder `PE56` ”ett eller flera objekt ändrades under
+  bränningen” (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25) · `high`. `under flytten`,
+  `blir kvar` och `källmappar` tas ordagrant från syskonet `transfer.appearedDuringMove`, som står i samma meddelande.

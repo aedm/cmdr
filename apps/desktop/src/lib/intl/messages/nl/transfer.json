@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{countText} {count, plural, one {onderdeel} other {onderdelen}} {count, plural, one {is} other {zijn}} tijdens het verplaatsen in {scope, select, manyFolders {{folderName} en andere bronmappen} other {{folderName}}} verschenen en {count, plural, one {blijft} other {blijven}} daar staan.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{countText} {count, plural, one {onderdeel} other {onderdelen}} {count, plural, one {is} other {zijn}} tijdens het verplaatsen gewijzigd en {count, plural, one {blijft} other {blijven}} in {scope, select, manyFolders {{folderName} en andere bronmappen} other {{folderName}}} staan.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

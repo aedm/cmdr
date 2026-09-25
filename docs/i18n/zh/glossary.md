@@ -2993,3 +2993,12 @@ replacement target. Four rules bind this whole group:
   `自然语言`）、 `按描述选择` · `high`
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`，与英文相同，带 `sameAsSourceJustification`（产品名，同
   `settings.section.askCmdr`）。
+
+## 移动过程中被改动的原文件（`transfer.changedDuringMove`，2026-09-25）
+
+- **changed during the move → `移动过程中有 … 发生了改动`** · Finder `PE56` 「在刻录时一个或多个项目发生更改」(Finder
+  `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25)； `改动`
+  是本目录已定的词（`fileOperations.cancelRollback.reason.drift.counted` 的 `有改动`）· `high`。句首的 `移动过程中有` 和
+  `等源文件夹` 照搬同一条提示里的 `transfer.appearedDuringMove`。
+- **占位符两侧加空格**：`留在 {scope…} 中`（style.md § Numerals, punctuation, and spacing）。顺手把
+  `transfer.appearedDuringMove` 原来的 `出现在{scope…}中` 也改成加空格的写法，两句同框时才一致。

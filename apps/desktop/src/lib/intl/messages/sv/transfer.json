@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{countText} {count, plural, one {objekt} other {objekt}} dök upp i {scope, select, manyFolders {{folderName} och andra källmappar} other {{folderName}}} under flytten och blir kvar där.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{countText} {count, plural, one {objekt} other {objekt}} ändrades under flytten och blir kvar i {scope, select, manyFolders {{folderName} och andra källmappar} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }
