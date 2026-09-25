@@ -77,6 +77,7 @@ vi.mock('../network/network-store.svelte', () => ({
   clearShareState: vi.fn(),
   setShareState: vi.fn(),
   setCredentialStatus: vi.fn(),
+  noteCachedCredentials: vi.fn(() => Promise.resolve()),
   fetchShares: h.fetchShares,
   getCredentialStatus: () => 'unknown',
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
