@@ -1128,6 +1128,13 @@ pub(crate) async fn copy_volumes_with_progress(
         journal::record_created_dirs_on(operation_id, dst_vol, &created_dirs);
     }
 
+    // Every ` (N)` placeholder a `Rename` reserved that no write landed on: a
+    // leaf the driver abandoned at its drain deadline, or a solid-archive extract
+    // that reserved up front and stopped partway. Whatever the ending, and
+    // before the partial cleanup and rollback below, which would otherwise meet
+    // an empty file nothing claims.
+    super::naming::take_back_unfilled_reservations(&dest_volume, &state.claimed_names).await;
+
     // Post-loop: handle success, cancellation, or error
     let intent = load_intent(&state.intent);
 

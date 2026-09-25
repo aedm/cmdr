@@ -40,14 +40,41 @@ use super::validation::path_exists_or_is_symlink;
 // DEFAULT-OK: an empty ledger is the truth about a fresh operation, which has
 // handed out no names yet.
 #[derive(Debug, Default)]
-pub(crate) struct ClaimedNames(Mutex<HashSet<PathBuf>>);
+pub(crate) struct ClaimedNames {
+    names: Mutex<HashSet<PathBuf>>,
+    /// The subset whose claim PUT SOMETHING ON DISK: the volume namer's zero-byte
+    /// `O_EXCL` placeholders, held until a write lands on them. What's still here
+    /// when the operation ends is a reservation nothing filled, which the volume
+    /// engine's post-loop takes back
+    /// (`transfer/volume/naming.rs::take_back_unfilled_reservations`). Kept on the
+    /// op rather than beside the write that would fill it, because that write can
+    /// be ABANDONED at the cancel-drain deadline, or (a solid-archive extract)
+    /// not have started yet.
+    placeholders: Mutex<HashSet<PathBuf>>,
+}
 
 impl ClaimedNames {
     /// Records `path` as spoken for, answering whether it was still free. The
     /// test and the record are one step, so two tasks racing on one name can't
     /// both be told yes.
     pub(crate) fn claim(&self, path: &Path) -> bool {
-        self.0.lock_ignore_poison().insert(path.to_path_buf())
+        self.names.lock_ignore_poison().insert(path.to_path_buf())
+    }
+
+    /// Records that claiming `path` left a zero-byte placeholder on disk.
+    pub(crate) fn hold_placeholder(&self, path: &Path) {
+        self.placeholders.lock_ignore_poison().insert(path.to_path_buf());
+    }
+
+    /// The placeholder at `path` is no longer ours to take back: a write landed on
+    /// it, or it's already been taken back. A no-op for a path that never had one.
+    pub(crate) fn release_placeholder(&self, path: &Path) {
+        self.placeholders.lock_ignore_poison().remove(path);
+    }
+
+    /// Every placeholder no write has landed on, handed over for taking back.
+    pub(crate) fn take_unfilled_placeholders(&self) -> Vec<PathBuf> {
+        self.placeholders.lock_ignore_poison().drain().collect()
     }
 }
 

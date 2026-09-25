@@ -678,6 +678,9 @@ pub(crate) async fn move_volumes_with_progress(
     // below, so a cancel that left scratch behind never reports a clear
     // destination.
     let staged_leftovers = super::cleanup::clean_abandoned_staged_writes(&dest_volume, state).await;
+    // Every ` (N)` placeholder a `Rename` reserved that no write landed on
+    // (`naming.rs::take_back_unfilled_reservations`).
+    super::naming::take_back_unfilled_reservations(&dest_volume, &state.claimed_names).await;
 
     // Every replacement is in on success, so what they replaced goes. Otherwise
     // what a finished source replaced goes too, and the rest come home (or stay

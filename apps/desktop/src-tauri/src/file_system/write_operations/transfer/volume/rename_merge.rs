@@ -465,6 +465,8 @@ async fn apply_child_decision(
             (write_path, aside)
         }
         None => {
+            // Ours to clear, so no longer the post-loop's to take back.
+            ctx.state.claimed_names.release_placeholder(&write_path);
             if ctx.volume.exists(&write_path).await {
                 match ctx.volume.delete(&write_path).await {
                     Ok(()) | Err(VolumeError::NotFound(_)) => {}

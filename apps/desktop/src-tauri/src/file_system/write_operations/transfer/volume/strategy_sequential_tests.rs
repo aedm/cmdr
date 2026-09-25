@@ -497,3 +497,65 @@ async fn sequential_extract_pauses_between_members_and_resumes() {
     assert_eq!(read_dest(&dest, "/out/b.txt").await.unwrap(), b"bravo");
     assert_eq!(read_dest(&dest, "/out/c.txt").await.unwrap(), b"charlie");
 }
+
+/// Extracting from a solid archive reserves every clashing ` (N)` name in the
+/// PLAN pass, then streams in one decode pass. A write that fails partway leaves
+/// every reservation it hadn't filled yet, and none of them may stay behind as
+/// an empty file the user never asked for.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_failed_sequential_extract_takes_back_every_unfilled_reservation() {
+    use super::super::faulty_volume::{FaultyOp, FaultyVolume};
+    use crate::file_system::volume::LocalPosixVolume;
+    use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+    use crate::file_system::write_operations::types::{ConflictResolution, VolumeCopyConfig};
+
+    let fixture = TarGzFixture::new(&[("album/a.txt", b"incoming a"), ("album/b.txt", b"incoming b")]);
+    let source = fixture.volume();
+    let dest_dir = TestDir::new("seq-extract-reservations");
+    std::fs::create_dir(dest_dir.join("album")).unwrap();
+    std::fs::write(dest_dir.join("album/a.txt"), b"the user's a").unwrap();
+    std::fs::write(dest_dir.join("album/b.txt"), b"the user's b").unwrap();
+    let dest = FaultyVolume::wrapping(Arc::new(LocalPosixVolume::new(
+        "Dest",
+        dest_dir.to_str().expect("dest path"),
+    )))
+    .failing_call(
+        FaultyOp::WriteFromStream,
+        1,
+        VolumeError::IoError {
+            message: "simulated write failure".to_string(),
+            raw_os_error: None,
+        },
+    )
+    .arc();
+
+    let result = super::super::copy::copy_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "op-seq-extract-reservations",
+        &make_state(),
+        source,
+        &[fixture.inner("album")],
+        Arc::clone(&dest) as Arc<dyn Volume>,
+        Path::new("/"),
+        &VolumeCopyConfig {
+            // Rename is what reserves the ` (N)` placeholders.
+            conflict_resolution: ConflictResolution::Rename,
+            progress_interval_ms: 0,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await;
+
+    assert!(dest.fault_fired(FaultyOp::WriteFromStream));
+    assert!(result.is_err(), "the failed write fails the extract: {result:?}");
+    let mut names: Vec<String> = std::fs::read_dir(dest_dir.join("album"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+        .collect();
+    names.sort();
+    assert_eq!(
+        names,
+        vec!["a.txt".to_string(), "b.txt".to_string()],
+        "no reservation may outlive the extract that never filled it"
+    );
+}

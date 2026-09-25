@@ -256,11 +256,11 @@ async fn copy_leaf<'a>(
     )
     .await;
     // This child gave up (a read failure, a cancel between chunks), so the name
-    // it reserved has to go back. Nothing else knows about the reservation:
-    // `created` is written on SUCCESS below, so a leftover placeholder is an
-    // empty file no rollback claims and no sweep can find.
+    // it reserved goes back now, rather than waiting for the post-loop sweep of
+    // unfilled reservations (`naming.rs::take_back_unfilled_reservations`), which
+    // is there for the leaf whose future is dropped before it gets here.
     if streamed.is_err() && reserved_placeholder {
-        take_back_reservation(dest_volume, &write_dest).await;
+        take_back_reservation(dest_volume, &write_dest, &state.claimed_names).await;
     }
     let bytes = streamed.map_err(|f| PathedVolumeError::at_source_or_rescued_dest(f, &child_source, &write_dest))?;
     // Safe-replace finalize for a file→file Overwrite: the temp now holds the

@@ -191,7 +191,9 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   together (`photo.jpg` and `photo (1).jpg`, which continues its series at exactly the name the first one took) can't
   both arrive at `photo (2).jpg` and turn two requested copies into one. It lives on `state::WriteOperationState`, so
   the ledger's lifetime is the operation's and both engines read the same one; interior-mutable because the volume
-  engine's concurrent driver resolves several top-level sources at once.
+  engine's concurrent driver resolves several top-level sources at once. It also holds which of those picks left a
+  zero-byte `O_EXCL` placeholder on disk and no write has filled yet, for the volume engine's post-loop to take back
+  (`transfer/DETAILS.md`, the volume-side Rename reservation).
 - **`create.rs` co-locates the synthetic listing-cache diff** (`should_emit_synthetic_diff` /
   `emit_synthetic_entry_diff`, both `pub(super)`) that lands a brand-new entry in the pane on local-FS-backed volumes.
   `paste_clipboard.rs` reuses both so a pasted file cursor-lands exactly like mkfile.

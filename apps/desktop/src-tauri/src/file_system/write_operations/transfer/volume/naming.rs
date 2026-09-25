@@ -112,6 +112,9 @@ pub(super) async fn find_unique_volume_name(
                 .open(&local_path)
             {
                 Ok(_) => {
+                    // On the op's ledger until a write lands on it, so a write
+                    // that never does can't leave it behind.
+                    claimed.hold_placeholder(&new_path);
                     return ClaimedName {
                         path: new_path,
                         reserved_on_disk: true,
@@ -180,8 +183,8 @@ fn resolve_local_path(root: &Path, path: &Path) -> PathBuf {
     cmdr_fs::volume::root_anchored(root, path)
 }
 
-/// Removes the `O_EXCL` placeholder a `Rename` resolution reserved for a child
-/// that never landed.
+/// Removes the `O_EXCL` placeholder a `Rename` resolution reserved for a write
+/// that never landed, and stops holding it on the op's ledger.
 ///
 /// ❗ **Only while it is still EMPTY.** The placeholder is zero bytes by
 /// construction, so a size means somebody else wrote there between the
@@ -189,7 +192,10 @@ fn resolve_local_path(root: &Path, path: &Path) -> PathBuf {
 /// reservation is a worse bug than the litter. Best-effort otherwise: a
 /// destination that won't answer keeps the empty file, which is the same
 /// outcome as before and no worse.
-pub(super) async fn take_back_reservation(dest_volume: &Arc<dyn Volume>, path: &Path) {
+pub(super) async fn take_back_reservation(dest_volume: &Arc<dyn Volume>, path: &Path, claimed: &ClaimedNames) {
+    // Released FIRST: once we've looked, a later sweep has no business looking
+    // again, and the name may be someone else's by then.
+    claimed.release_placeholder(path);
     match dest_volume.get_metadata(path).await {
         Ok(entry) if !entry.is_directory && entry.size.unwrap_or(0) == 0 => {
             if let Err(e) = dest_volume.delete(path).await {
@@ -202,6 +208,32 @@ pub(super) async fn take_back_reservation(dest_volume: &Arc<dyn Volume>, path: &
             path.display()
         ),
         Err(_) => {}
+    }
+}
+
+/// Takes back every placeholder this operation reserved that no write landed
+/// on: a leaf the driver abandoned at its cancel-drain deadline (its future,
+/// and the cleanup in it, just stops), a solid-archive extract that reserved
+/// every clashing name up front and then failed or was cancelled partway, or
+/// a leaf a failing sibling kept from ever starting.
+///
+/// Every copy and cross-volume move post-loop runs it, whatever the ending.
+/// Safe on success too: every landed write released its placeholder
+/// (`strategy.rs::stream_pipe_file`, `sequential_extract.rs`), so what's left
+/// is only ever ours and empty, and [`take_back_reservation`]'s size check
+/// still spares anything someone wrote into.
+pub(super) async fn take_back_unfilled_reservations(dest_volume: &Arc<dyn Volume>, claimed: &ClaimedNames) {
+    let unfilled = claimed.take_unfilled_placeholders();
+    if unfilled.is_empty() {
+        return;
+    }
+    log::info!(
+        target: "copy",
+        "taking back {} ` (N)` reservation(s) no write landed on",
+        unfilled.len()
+    );
+    for path in unfilled {
+        take_back_reservation(dest_volume, &path, claimed).await;
     }
 }
 

@@ -603,6 +603,8 @@ pub(super) async fn stream_pipe_file(
     )
     .await?
     {
+        // Landed, so a ` (N)` placeholder at the name is filled, not ours to take back.
+        state.claimed_names.release_placeholder(dest_path);
         return Ok(bytes);
     }
 
@@ -812,7 +814,12 @@ pub(super) async fn stream_pipe_file(
 
         // Past the last byte: give the file its final name.
         match staged.commit(dest_volume).await {
-            Ok(()) => return Ok(bytes),
+            Ok(()) => {
+                // Landed, so a ` (N)` placeholder at the name is filled, not ours
+                // to take back (`naming.rs::take_back_unfilled_reservations`).
+                state.claimed_names.release_placeholder(dest_path);
+                return Ok(bytes);
+            }
             Err(FinalizeFailure {
                 error: VolumeError::NotSupported,
                 ..

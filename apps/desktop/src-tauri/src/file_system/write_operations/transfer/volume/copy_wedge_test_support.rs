@@ -396,7 +396,18 @@ pub(super) fn fixture_with_wedged_landing(size: u64) -> (Fixture, Arc<AtomicU64>
     (assemble(size, dest, dest_inner, written), renames)
 }
 
-fn assemble(size: u64, dest: Arc<dyn Volume>, dest_inner: Arc<InMemoryVolume>, written: Arc<AtomicU64>) -> Fixture {
+/// Just the gated source half, for a suite that brings a destination of its
+/// own (a real local-FS one, say): the source, the in-memory volume its content
+/// lives in, the chunk gate, and the streams-opened counter.
+pub(super) struct GatedParts {
+    pub(super) source: Arc<dyn Volume>,
+    pub(super) source_inner: Arc<InMemoryVolume>,
+    pub(super) gate: Arc<tokio::sync::Semaphore>,
+    pub(super) opened: Arc<AtomicU64>,
+}
+
+/// A gated source whose non-empty files stream `size` bytes.
+pub(super) fn gated_source(size: u64) -> GatedParts {
     let source_inner = Arc::new(InMemoryVolume::new("Source").with_space_info(10_000_000, 10_000_000));
     let gate = Arc::new(tokio::sync::Semaphore::new(0));
     let opened = Arc::new(AtomicU64::new(0));
@@ -406,6 +417,21 @@ fn assemble(size: u64, dest: Arc<dyn Volume>, dest_inner: Arc<InMemoryVolume>, w
         file_size: size,
         opened: Arc::clone(&opened),
     });
+    GatedParts {
+        source,
+        source_inner,
+        gate,
+        opened,
+    }
+}
+
+fn assemble(size: u64, dest: Arc<dyn Volume>, dest_inner: Arc<InMemoryVolume>, written: Arc<AtomicU64>) -> Fixture {
+    let GatedParts {
+        source,
+        source_inner,
+        gate,
+        opened,
+    } = gated_source(size);
     Fixture {
         source,
         source_inner,
