@@ -28,7 +28,7 @@ use std::sync::Arc;
 
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 
 /// What a source entry looked like to the move: its size, its mtime, and its
 /// inode where the backend has one. Compared field by field, so a field a backend
@@ -75,6 +75,11 @@ impl SourceLedger {
 
     pub(super) fn record_carried_file(&mut self, file: PathBuf, stamp: SourceStamp) {
         self.files.insert(file, stamp);
+    }
+
+    /// Whether the move carried this path, as a file or as a folder it walked.
+    fn carried(&self, path: &Path) -> bool {
+        self.files.contains_key(path) || self.walked_dirs.contains(path)
     }
 }
 
@@ -127,24 +132,31 @@ async fn sweep_level(
         let path = PathBuf::from(&entry.path);
         let outcome = if skipped.contains(&path) {
             Ok(true)
-        } else if entry.is_directory {
-            if ledger.walked_dirs.contains(&path) {
-                Box::pin(sweep_level(volume, &path, ledger, skipped, left)).await
-            } else {
-                left.appeared += 1;
-                Ok(true)
-            }
         } else {
-            match ledger.files.get(&path) {
-                None => {
+            match kind_of(volume, entry, &path).await {
+                Err(e) => Err(e),
+                Ok(EntryKind::Directory) if ledger.walked_dirs.contains(&path) => {
+                    Box::pin(sweep_level(volume, &path, ledger, skipped, left)).await
+                }
+                // A link the move carried goes as the link, ❌ never through it:
+                // on a backend whose listing follows links the walk copied what
+                // it points at, and that target is not the user's selection.
+                Ok(EntryKind::Symlink) if ledger.carried(&path) => volume.delete(&path).await.at(&path).map(|()| false),
+                Ok(EntryKind::Directory | EntryKind::Symlink) => {
                     left.appeared += 1;
                     Ok(true)
                 }
-                Some(stamp) if *stamp != SourceStamp::of(entry) => {
-                    left.changed += 1;
-                    Ok(true)
-                }
-                Some(_) => volume.delete(&path).await.at(&path).map(|()| false),
+                Ok(EntryKind::File) => match ledger.files.get(&path) {
+                    None => {
+                        left.appeared += 1;
+                        Ok(true)
+                    }
+                    Some(stamp) if *stamp != SourceStamp::of(entry) => {
+                        left.changed += 1;
+                        Ok(true)
+                    }
+                    Some(_) => volume.delete(&path).await.at(&path).map(|()| false),
+                },
             }
         };
         match outcome {
@@ -194,7 +206,7 @@ pub(in crate::file_system::write_operations) async fn stamp_source(
     volume: &Arc<dyn Volume>,
     source: &Path,
 ) -> Result<CarriedSource, PathedVolumeError> {
-    if !volume.is_directory(source).await.at(source)? {
+    if volume.entry_kind(source).await.at(source)? != EntryKind::Directory {
         return Ok(CarriedSource::File(stamp_file(volume, source).await));
     }
     let mut ledger = SourceLedger::default();
@@ -202,15 +214,12 @@ pub(in crate::file_system::write_operations) async fn stamp_source(
     while let Some(dir) = pending.pop() {
         for entry in volume.list_directory(&dir, None).await.at(&dir)? {
             let path = PathBuf::from(&entry.path);
-            // A link is never walked through (it could loop, and a move
-            // carries a link as itself); unrecorded, it stays in the source.
-            if entry.is_symlink {
-                continue;
-            }
-            if entry.is_directory {
-                pending.push(path);
-            } else {
-                ledger.record_carried_file(path, SourceStamp::of(&entry));
+            match kind_of(volume, &entry, &path).await? {
+                EntryKind::Directory => pending.push(path),
+                EntryKind::File => ledger.record_carried_file(path, SourceStamp::of(&entry)),
+                // A link is never walked through (it could loop, and a move
+                // carries a link as itself); unrecorded, it stays in the source.
+                EntryKind::Symlink => {}
             }
         }
         ledger.record_walked_dir(dir);
@@ -228,7 +237,15 @@ pub(in crate::file_system::write_operations) async fn sweep_carried_source(
     skipped: &HashSet<PathBuf>,
 ) -> Result<FolderLeftovers, PathedVolumeError> {
     match carried {
-        CarriedSource::Folder(ledger) => sweep_moved_folder(volume, source, ledger, skipped).await,
+        CarriedSource::Folder(ledger) => match volume.entry_kind(source).await {
+            // A selected link the walk followed: the link goes, its target stays.
+            Ok(EntryKind::Symlink) => {
+                volume.delete(source).await.at(source)?;
+                Ok(FolderLeftovers::default())
+            }
+            Ok(_) | Err(VolumeError::NotFound(_)) => sweep_moved_folder(volume, source, ledger, skipped).await,
+            Err(e) => Err(e).at(source),
+        },
         CarriedSource::File(before) => {
             if file_is_unchanged(volume, source, *before).await? {
                 volume.delete(source).await.at(source)?;
@@ -265,5 +282,17 @@ async fn file_is_unchanged(
         Ok(now) => Ok(before == Some(SourceStamp::of(&now))),
         Err(VolumeError::NotFound(_)) => Ok(true),
         Err(e) => Err(e).at(file),
+    }
+}
+
+/// What a listed entry is. A plain file is taken at the listing's word; anything
+/// that might be a directory or a link asks `Volume::entry_kind`, because on some
+/// backends a listing's `is_directory` is true for a link to a folder
+/// (`../DETAILS.md` § "Symlinks are opaque to a move").
+async fn kind_of(volume: &Arc<dyn Volume>, entry: &FileEntry, path: &Path) -> Result<EntryKind, PathedVolumeError> {
+    if entry.is_directory || entry.is_symlink {
+        volume.entry_kind(path).await.at(path)
+    } else {
+        Ok(EntryKind::File)
     }
 }
