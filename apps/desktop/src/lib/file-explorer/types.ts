@@ -463,9 +463,9 @@ export interface NetworkHost {
  * different lister, and the tag is what makes the second one a compile-checked
  * addition rather than a second component. The hub builds one of these for a
  * discovered host and for a saved SMB host alike, which is why the browser takes
- * an account rather than the raw `NetworkHost` it used to.
+ * an account rather than the raw `NetworkHost` it used to. `label` is what the person calls it (`host.name` if absent).
  */
-export type PlacesAccount = { protocol: 'smb'; host: NetworkHost }
+export type PlacesAccount = { protocol: 'smb'; host: NetworkHost; label?: string }
 
 // ============================================================================
 // SMB share types

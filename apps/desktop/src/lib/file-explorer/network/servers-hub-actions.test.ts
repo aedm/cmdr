@@ -423,6 +423,11 @@ describe('runHostAction', () => {
       expect(openEditServerSheet).toHaveBeenCalledWith(twinRow.saved)
     })
 
+    it('names the host in its toasts the way its row does', async () => {
+      await withTwin().runHostAction(payload('disconnect', twinRow.id))
+      expect(addToast).toHaveBeenCalledWith('Disconnected from localhost:11482', { level: 'success' })
+    })
+
     it('forgets the row the menu was raised on, and never its twin', async () => {
       await withTwin().runHostAction(payload('forget-server', twinRow.id))
       expect(forgetSavedSmbHost).toHaveBeenCalledExactlyOnceWith(twinRow.id)

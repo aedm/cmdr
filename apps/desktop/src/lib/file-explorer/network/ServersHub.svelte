@@ -79,14 +79,14 @@
         paneId?: 'left' | 'right'
         isFocused?: boolean
         /** Enter on an SMB host: open its places list. */
-        onHostSelect?: (host: NetworkHost) => void
+        onHostSelect?: (host: NetworkHost, label?: string) => void
         /** Enter on a one-place server, or on a saved share the volume list has a place for: take the pane there. */
         onServerSelect?: (row: HubRow) => void
         /**
          * Enter on a saved share no mount went through yet: open its host's
          * share list and mount that one share, as the host's account.
          */
-        onShareViaHost?: (host: NetworkHost, share: string) => void
+        onShareViaHost?: (host: NetworkHost, via: { share: string; label: string }) => void
         /** Enter on the "Add server…" row. */
         onConnectToServer?: () => void
     }
@@ -327,9 +327,9 @@
     function openRow(row: HubRow): void {
         const move = openMoveFor(row, rows, volumes)
         if (!move) { log.warn('The hub row {name} has nowhere to open', { name: row.name }); return; }
-        if (move.kind === 'host') onHostSelect?.(move.host)
+        if (move.kind === 'host') onHostSelect?.(move.host, move.label)
         else if (move.kind === 'place') onServerSelect?.(move.row)
-        else onShareViaHost?.(move.host, move.share)
+        else onShareViaHost?.(move.host, { share: move.share, label: move.label })
     }
 
     /** Arrow keys and Enter. */

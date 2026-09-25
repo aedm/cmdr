@@ -435,3 +435,23 @@ describe('PlacesBrowser listing sign-in', () => {
     await unmount(component)
   })
 })
+
+/**
+ * ❗ The share list says the name the person knows the server by: after renaming
+ * `localhost:11482` to "My NAS" its header still read the address (QA round 2).
+ */
+describe('PlacesBrowser header', () => {
+  it('names the server by the label it was opened with', async () => {
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const component = mount(PlacesBrowser, {
+      target,
+      props: { account: { protocol: 'smb', host, label: 'My NAS' }, onShareSelect: vi.fn() },
+    })
+    await vi.waitFor(() => {
+      expect(target.querySelector('.host-name')?.textContent.trim()).toBe('My NAS')
+    })
+    await unmount(component)
+  })
+})

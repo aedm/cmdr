@@ -77,10 +77,12 @@
     // child drives it locally (host selection, mount success, back). Can't be $derived.
     // eslint-disable-next-line svelte/prefer-writable-derived -- bidirectional sync with local overrides
     let currentNetworkHost = $state<NetworkHost | null>(initialNetworkHost)
+    /** What the hub called the open host (a name the person gave it), for the share list's words. */
+    let currentHostLabel = $state<string | undefined>(undefined)
 
     /** The open host as an account, which is what `PlacesBrowser` takes. */
     const currentAccount = $derived<PlacesAccount | null>(
-        currentNetworkHost ? { protocol: 'smb', host: currentNetworkHost } : null,
+        currentNetworkHost ? { protocol: 'smb', host: currentNetworkHost, label: currentHostLabel } : null,
     )
 
     /**
@@ -199,8 +201,9 @@
      * A host picked from the servers list: its shares, ❌ never a share mounted
      * on the person's behalf. They picked a HOST.
      */
-    function handleNetworkHostSelect(host: NetworkHost) {
+    function handleNetworkHostSelect(host: NetworkHost, label?: string) {
         retireAutoMount()
+        currentHostLabel = label
         currentNetworkHost = host
         onNetworkHostChange?.(host)
     }
@@ -258,8 +261,8 @@
      * that one share for this visit (the account comes from the host's typed
      * one, which keeps the listing from answering as guest).
      */
-    function handleShareViaHost(host: NetworkHost, share: string) {
-        handleNetworkHostSelect(host)
+    function handleShareViaHost(host: NetworkHost, { share, label }: { share: string; label: string }) {
+        handleNetworkHostSelect(host, label)
         autoMountShare = share
     }
 
@@ -529,7 +532,10 @@
     }
 
     export function setNetworkHost(host: NetworkHost | null) {
-        if (host?.id !== currentNetworkHost?.id) retireAutoMount()
+        if (host?.id !== currentNetworkHost?.id) {
+            retireAutoMount()
+            currentHostLabel = undefined
+        }
         currentNetworkHost = host
         mountError = null
         lastMountAttempt = null

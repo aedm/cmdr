@@ -72,6 +72,9 @@
     // The SMB host behind the account. Everything below still speaks SMB; the
     // account is the seam a second protocol arrives through, not a rewrite.
     const host = $derived(account.host)
+    // ❗ What to CALL it in headers and toasts (a name the person gave it); `host.name`
+    // stays the identity every key and lookup below uses.
+    const hostLabel = $derived(account.label ?? account.host.name)
 
     // Local state
     let shares = $state<ShareInfo[]>([])
@@ -128,7 +131,7 @@
         if (match) {
             void activateShare(match)
         } else {
-            addToast(tString('fileExplorer.network.share.notFound', { shareName, hostName: host.name }), {
+            addToast(tString('fileExplorer.network.share.notFound', { shareName, hostName: hostLabel }), {
                 level: 'warn',
             })
         }
@@ -541,7 +544,7 @@
         try {
             await forgetCredentials(host.name)
             authenticatedCredentials = null
-            addToast(tString('fileExplorer.network.forgotPassword', { hostName: host.name }), { level: 'success' })
+            addToast(tString('fileExplorer.network.forgotPassword', { hostName: hostLabel }), { level: 'success' })
         } catch {
             addToast(tString('fileExplorer.network.deletePasswordFailed'), { level: 'error' })
         }
@@ -558,15 +561,15 @@
     {#if loading}
         <div class="loading-state">
             <Spinner size="md" />
-            {tString('fileExplorer.network.share.connecting', { hostName: host.name })}
+            {tString('fileExplorer.network.share.connecting', { hostName: hostLabel })}
         </div>
     {:else if error}
         <div class="error-state">
             <div class="error-icon"><Icon name="circle-alert" size={32} aria-hidden="true" /></div>
             <div class="error-title">
-                {tString('fileExplorer.network.share.connectFailedTitle', { hostName: host.name })}
+                {tString('fileExplorer.network.share.connectFailedTitle', { hostName: hostLabel })}
             </div>
-            <div class="error-message">{renderShareListError(error, host.name)}</div>
+            <div class="error-message">{renderShareListError(error, hostLabel)}</div>
             {#if error.type === 'missing_dependency' && error.installCommand}
                 <CopyBox text={error.installCommand} />
                 <div class="error-actions">
@@ -603,7 +606,7 @@
                     {tString('fileExplorer.network.share.backArrow')}
                 </span>
             </Button>
-            <span class="host-name">{host.name}</span>
+            <span class="host-name">{hostLabel}</span>
             {#if authenticatedCredentials}
                 <button
                     class="forget-password-btn"

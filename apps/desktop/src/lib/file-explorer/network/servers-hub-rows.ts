@@ -309,12 +309,12 @@ function savedStatus(server: SavedServer, host: NetworkHost | null, state: Conne
 
 /** Where Enter on a row leads. */
 export type HubOpenMove =
-  /** A host's share list. */
-  | { kind: 'host'; host: NetworkHost }
+  /** A host's share list. `label` is what the row calls it, for the list's words. */
+  | { kind: 'host'; host: NetworkHost; label: string }
   /** The pane lands on the row's place: a one-place server's, or a saved share's. */
   | { kind: 'place'; row: HubRow }
   /** A saved share no mount went through yet: its host's share list, mounting that share. */
-  | { kind: 'share_via_host'; host: NetworkHost; share: string }
+  | { kind: 'share_via_host'; host: NetworkHost; share: string; label: string }
 
 /**
  * What Enter does to `row`: the hub's ONE decision about where a row leads.
@@ -332,9 +332,11 @@ export function openMoveFor(row: HubRow, rows: HubRow[], volumes: VolumeInfo[]):
     if (row.volumeId && volumes.some((volume) => volume.id === row.volumeId)) return { kind: 'place', row }
     const server = rows.find((candidate) => candidate.id === row.parentId)
     const host = row.host ?? (server ? savedHostFor(server) : null)
-    return host && row.place ? { kind: 'share_via_host', host, share: row.place.name } : null
+    return host && row.place
+      ? { kind: 'share_via_host', host, share: row.place.name, label: server?.name ?? host.name }
+      : null
   }
-  if (row.protocol === 'smb') return { kind: 'host', host: row.host ?? savedHostFor(row) }
+  if (row.protocol === 'smb') return { kind: 'host', host: row.host ?? savedHostFor(row), label: row.name }
   return { kind: 'place', row }
 }
 

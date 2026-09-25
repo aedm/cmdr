@@ -310,21 +310,22 @@ export function createHubActions(deps: HubActionDeps): HubActions {
         await forget(row)
         return
       case 'forget-secret':
-        if (row.host) await forgetHostSecret(row.host.name)
+        if (row.host) await forgetHostSecret(row.host.name, row.name)
         return
       case 'edit':
         if (row.saved) await openEditServerSheet(row.saved)
         return
       case 'disconnect':
-        if (row.host) await disconnectHost(row.host)
+        if (row.host) await disconnectHost(row.host, row.name)
         return
     }
   }
 
-  async function forgetHostSecret(hostName: string): Promise<void> {
+  /** `hostName` keys the Keychain; `label` is what the row calls the host, for the toast. */
+  async function forgetHostSecret(hostName: string, label: string): Promise<void> {
     try {
       await forgetCredentials(hostName)
-      addToast(tString('fileExplorer.network.forgotPassword', { hostName }), { level: 'success' })
+      addToast(tString('fileExplorer.network.forgotPassword', { hostName: label }), { level: 'success' })
     } catch {
       addToast(tString('fileExplorer.network.deletePasswordFailed'), { level: 'error' })
     }
@@ -334,15 +335,15 @@ export function createHubActions(deps: HubActionDeps): HubActions {
    * An SMB host's Disconnect UNMOUNTS its shares; it does not drop a session the
    * way a place's does. Zero unmounted is a normal answer, not a fault.
    */
-  async function disconnectHost(host: NetworkHost): Promise<void> {
+  async function disconnectHost(host: NetworkHost, label: string): Promise<void> {
     try {
       const unmounted = await disconnectNetworkHost(host)
       if (unmounted.length > 0) {
-        addToast(tString('fileExplorer.network.browser.disconnected', { hostName: host.name }), {
+        addToast(tString('fileExplorer.network.browser.disconnected', { hostName: label }), {
           level: 'success',
         })
       } else {
-        addToast(tString('fileExplorer.network.browser.noMountedShares', { hostName: host.name }))
+        addToast(tString('fileExplorer.network.browser.noMountedShares', { hostName: label }))
       }
     } catch (e) {
       addToast(tString('fileExplorer.network.browser.disconnectFailed', { message: String(e) }), { level: 'error' })
