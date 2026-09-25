@@ -586,7 +586,8 @@ describe('ServersHub row text', () => {
     await tick()
     await tick()
     const share = [...target.querySelectorAll('.server-row')].find((row) => row.textContent.includes('public'))
-    expect(share?.querySelector('.col-name .name-text')?.textContent).toMatch(/public\s*as testuser/)
+    // ❗ With a space: "privateas testuser" ran the two together (QA round 3).
+    expect(share?.querySelector('.col-name .name-text')?.textContent).toBe('public as testuser')
     await cleanup()
   })
 })

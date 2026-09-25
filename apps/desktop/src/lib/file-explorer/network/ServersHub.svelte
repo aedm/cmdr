@@ -417,6 +417,10 @@
         cursorIndex = rows.length
     }
 
+    /** " as testuser", space first: a Svelte block trims the whitespace it opens with. */
+    const accountSuffix = (row: HubRow) =>
+        row.account === null ? '' : ` ${tString('servers.hub.shareAccount', { username: row.account })}`
+
     /** The protocol name, from the same map the volume switcher's slot reads. */
     function typeLabel(row: HubRow): string {
         return protocolLabel(row.protocol) ?? row.protocol.toUpperCase()
@@ -484,15 +488,11 @@
                 }}
                 onkeydown={() => {}}
             >
-                <span
-                    class="col-name"
-                    class:is-share={row.kind === 'share'}
-                    use:tooltip={{ text: row.name, overflowOnly: true }}
-                >
+                <span class="col-name" class:is-share={row.kind === 'share'}>
                     <span class="row-icon"><Icon name={hubRowIcon(row)} size={16} aria-hidden="true" /></span>
-                    <span class="name-text"
-                        >{row.name}{#if row.account !== null}
-                            <span class="share-account">{tString('servers.hub.shareAccount', { username: row.account })}</span
+                    <!-- The tooltip sits on the span that clips: an overflow check on the cell never fires. -->
+                    <span class="name-text" use:tooltip={{ text: row.name + accountSuffix(row), overflowOnly: true }}
+                        >{row.name}{#if row.account !== null}<span class="share-account">{accountSuffix(row)}</span
                             >{/if}</span
                     >
                 </span>
