@@ -227,8 +227,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "Példa gépnév egy beviteli mező helyőrzőjében, nem lefordítandó szöveg; a `.local` végződés a Bonjour-nevek formája, a `nas` pedig nemzetközileg érthető rövidítés (a katalógus `onboarding.stepOptional.networking.desc` kulcsa is `NAS`-ként hozza)."
   },
-  "servers.sheet.addressHelp": "Egy gépnév, egy másolt cím vagy egy teljes ssh-sor.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Egy gépnév, egy másolt cím vagy egy teljes ssh-sor.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Ez SMB-címnek tűnik. Ha erre gondoltál, fent válaszd az SMB-t.",

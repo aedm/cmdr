@@ -33,6 +33,18 @@
     import { getAppLogger } from '$lib/logging/logger'
     import type { ServerProtocol } from '$lib/ipc/bindings'
     import type { ServerForm } from './server-form'
+    import type { MessageKey } from '$lib/intl/keys.gen'
+
+    /**
+     * What the address field takes, per selected protocol. ❗ Keyed by the TOGGLE, like
+     * everything else the sheet decides: an SMB user told to paste "a whole ssh line"
+     * would paste the wrong thing.
+     */
+    const ADDRESS_HELP_KEY: Record<ServerProtocol, MessageKey> = {
+        smb: 'servers.sheet.addressHelpSmb',
+        sftp: 'servers.sheet.addressHelpSftp',
+        webdav: 'servers.sheet.addressHelpWebdav',
+    }
 
     interface Props {
         form: ServerForm
@@ -198,7 +210,7 @@
              asks for a look, not an interruption. -->
         <p id="server-address-warning" class="field-warning" role="status">{addressWarning}</p>
     {:else if identityEditable}
-        <p id="server-address-help" class="field-help">{tString('servers.sheet.addressHelp')}</p>
+        <p id="server-address-help" class="field-help">{tString(ADDRESS_HELP_KEY[form.protocol])}</p>
     {/if}
     <!-- ❗ No "paste whatever you have" line under a field nobody can type in.
          The locked group's own sentence sits under the username instead, where

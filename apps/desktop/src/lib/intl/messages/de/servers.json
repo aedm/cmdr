@@ -229,8 +229,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "Beispiel-Hostname im Eingabefeld, kein Fließtext: `nas.local` ist ein mDNS-Name und in jeder Sprache derselbe. Der Katalog nutzt denselben Beispielnamen schon in `servers.refusal.timedOut`."
   },
-  "servers.sheet.addressHelp": "Ein Hostname, eine kopierte Adresse oder eine ganze ssh-Zeile.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Ein Hostname, eine kopierte Adresse oder eine ganze ssh-Zeile.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Das sieht nach einer SMB-Adresse aus. Wähle oben SMB, falls du das gemeint hast.",

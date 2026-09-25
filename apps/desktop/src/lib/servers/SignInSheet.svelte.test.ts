@@ -369,6 +369,22 @@ describe('SignInSheet: add mode', () => {
     expect(name.placeholder).toBe('Leave empty to use 192.168.0.153')
   })
 
+  /**
+   * ❗ The help line speaks for the protocol that's selected. It read "…or a whole
+   * ssh line" with SMB selected, sending an SMB user to paste the wrong thing
+   * (QA 2026-09-25).
+   */
+  it('says what the address field takes for the protocol that is selected', async () => {
+    await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
+    const help = () => document.body.querySelector('#server-address-help')?.textContent.trim()
+
+    expect(help()).toBe('A hostname, an IP address, or an smb:// address you copied.')
+    await pickProtocol('SFTP')
+    expect(help()).toBe('A hostname, an address you copied, or a whole ssh line.')
+    await pickProtocol('WebDAV')
+    expect(help()).toBe('A web address you copied, like https://nas.local/dav, or a hostname.')
+  })
+
   it('says an SFTP add falls back to the account and host', async () => {
     await renderSheet({ mode: 'add', attempt: () => Promise.resolve({ kind: 'cancelled' }) })
     await pickProtocol('SFTP')

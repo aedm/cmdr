@@ -231,8 +231,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "A sample hostname, not prose: \"nas\" is the ordinary Dutch abbreviation too (the catalog already writes \"de meeste NAS-hardware thuis\" in settings.network.smbConcurrency.description), and \".local\" is the mDNS suffix macOS shows unchanged in every locale."
   },
-  "servers.sheet.addressHelp": "Een hostnaam, een adres dat je hebt gekopieerd, of een hele ssh-regel.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Een hostnaam, een adres dat je hebt gekopieerd, of een hele ssh-regel.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Dit lijkt op een SMB-adres. Kies hierboven SMB als je dat bedoelde.",

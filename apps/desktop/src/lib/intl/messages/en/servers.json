@@ -342,10 +342,18 @@
     "description": "Placeholder inside the address field. A short example hostname; leave it as-is or use an equally short one.",
     "screenshot": "server-sign-in-add.png"
   },
-  "servers.sheet.addressHelp": "A hostname, an address you copied, or a whole ssh line.",
-  "@servers.sheet.addressHelp": {
-    "description": "One line under the address field, telling the user they can paste whatever they have. “ssh” is a command name, keep it lowercase and untranslated.",
+  "servers.sheet.addressHelpSftp": "A hostname, an address you copied, or a whole ssh line.",
+  "@servers.sheet.addressHelpSftp": {
+    "description": "One line under the address field while SFTP is the selected protocol, telling the user they can paste whatever they have. “ssh” is a command name, keep it lowercase and untranslated.",
     "screenshot": "server-sign-in-add.png"
+  },
+  "servers.sheet.addressHelpSmb": "A hostname, an IP address, or an smb:// address you copied.",
+  "@servers.sheet.addressHelpSmb": {
+    "description": "One line under the address field while SMB is the selected protocol, telling the user what they can type or paste. “smb://” is a URL scheme, keep it as-is."
+  },
+  "servers.sheet.addressHelpWebdav": "A web address you copied, like https://nas.local/dav, or a hostname.",
+  "@servers.sheet.addressHelpWebdav": {
+    "description": "One line under the address field while WebDAV is the selected protocol, telling the user what they can type or paste. Keep the example URL as-is."
   },
   "servers.sheet.addressLooksLikeSmb": "This looks like an SMB address. Pick SMB above if that''s what you meant.",
   "@servers.sheet.addressLooksLikeSmb": {

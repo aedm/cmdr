@@ -227,8 +227,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "Nombre de host de ejemplo dentro del campo, no texto traducible: `nas` es la sigla internacional que el catálogo ya deja igual (`servers.hub.emptyMessage`, «un Mac o un NAS») y `.local` es el sufijo de mDNS que define el RFC 6762. Un ejemplo en español sería igual de largo y menos reconocible."
   },
-  "servers.sheet.addressHelp": "Un nombre de host, una dirección que hayas copiado o una línea ssh entera.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Un nombre de host, una dirección que hayas copiado o una línea ssh entera.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Parece una dirección SMB. Elige SMB arriba si es lo que querías.",

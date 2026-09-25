@@ -227,8 +227,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "An example hostname (`nas.local`), not prose: `nas` is the storage acronym the catalog keeps verbatim and `.local` is the mDNS suffix. Nothing here is translatable."
   },
-  "servers.sheet.addressHelp": "Một tên máy chủ, một địa chỉ bạn đã sao chép, hoặc cả một dòng lệnh ssh.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Một tên máy chủ, một địa chỉ bạn đã sao chép, hoặc cả một dòng lệnh ssh.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Địa chỉ này có vẻ là địa chỉ SMB. Hãy chọn SMB ở trên nếu đó là ý bạn.",

@@ -228,8 +228,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "A sample hostname, not prose: 'nas' plus the .local mDNS suffix macOS itself uses for Bonjour names, which is the same in Swedish. The @key says to leave it as-is or pick an equally short one, and no shorter Swedish-flavoured example exists. Deliberately identical."
   },
-  "servers.sheet.addressHelp": "Ett värdnamn, en adress du har kopierat eller en hel ssh-rad.",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "Ett värdnamn, en adress du har kopierat eller en hel ssh-rad.",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "Det här ser ut som en SMB-adress. Välj SMB ovan om det var det du menade.",

@@ -227,8 +227,8 @@
     "sourceHash": "5e0ec1d",
     "sameAsSourceJustification": "An example hostname (`nas.local`), not prose: `.local` is the mDNS suffix a real Bonjour name carries, so translating it would make the hint wrong. The zh catalog keeps sample values Latin elsewhere too (`fileExplorer.network.login.usernamePlaceholderDefault` = `示例：barry`, `goToPath.dialog.inputPlaceholder` keeps `~/Documents`)."
   },
-  "servers.sheet.addressHelp": "主机名、你拷贝来的地址，或者一整行 ssh 命令都行。",
-  "@servers.sheet.addressHelp": {
+  "servers.sheet.addressHelpSftp": "主机名、你拷贝来的地址，或者一整行 ssh 命令都行。",
+  "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
   "servers.sheet.addressLooksLikeSmb": "这看起来像是 SMB 地址。如果你本来就是这个意思，请在上方选择 SMB。",
