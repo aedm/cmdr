@@ -685,9 +685,14 @@
         color: var(--color-text-tertiary);
     }
 
-    /* A share sits under its server, one icon's width in. */
-    .col-name.is-share {
-        padding-left: calc(16px + var(--spacing-sm));
+    /*
+     * A share sits under its server, one icon (16px) plus the name gap in. ❗ On the
+     * ICON, ❌ never as padding on the cell: a flex item's padding adds to its base
+     * size, so the whole cell grew and pushed Type, Address, and Status right on
+     * every share row.
+     */
+    .col-name.is-share .row-icon {
+        margin-left: var(--spacing-xl);
     }
 
     .share-account {
