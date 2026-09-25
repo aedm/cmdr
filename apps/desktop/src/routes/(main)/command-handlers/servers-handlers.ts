@@ -93,11 +93,10 @@ export const serversHandlers = {
     // rather than through `serverCommandTarget`: adding a server is about no
     // server in particular, so what the pane is pointing at is irrelevant.
     void openAddServerSheet({
-      // An SMB address lands in the hub rather than on a volume: its connect is
-      // a share MOUNT, and the host is now a saved manual server the hub lists,
-      // one Enter from its shares.
-      onSmbHandOff: () => {
-        explorerRef?.showServersInFocusedPane()
+      // An SMB address opens the host it saved, as its share list, mounting the
+      // share the address named: its connect is a share MOUNT, not a session.
+      onSmbHandOff: (handOff) => {
+        explorerRef?.openSmbHandOffInFocusedPane(handOff)
       },
       // An SFTP or WebDAV server is a place, so the focused pane goes there: a sheet
       // that closed on a live server with every pane where it was reads as a Connect

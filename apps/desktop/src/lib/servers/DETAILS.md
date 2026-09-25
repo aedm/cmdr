@@ -376,7 +376,9 @@ somewhere else. Only "Add and open" moves a pane:
 - **"Add and open" lands a pane on the new place**, through `openAddServerSheet`'s `onConnected` (the place's volume id
   and app root, read off `list_saved_servers` rather than the volume store, which can still hold the previous
   `volumes-changed`). ⌘K and Go to path land the focused pane; the hub lands its own. SMB's add is a share mount, so it
-  hands off to the hub's places list instead (`onSmbHandOff`).
+  hands off instead (`onSmbHandOff`): the saved host's places list, mounting the share the address named. ⌘K and Go to
+  path both go through `ExplorerAPI.openSmbHandOffInFocusedPane` (one destination, ❌ never a bare Servers list); the
+  hub does the same to its own pane.
 - **"Add" closes as `added`** with the server's saved id, and `onAdded` shows it: the hub selects the new row
   (`ServersHub.selectServer`, which waits for the row to be listed), and a door with no list on screen raises a toast
   saying where it went. An SFTP or WebDAV "Add" leaves the session the check opened connected, which the row's status

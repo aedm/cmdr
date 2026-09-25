@@ -32,6 +32,8 @@ export interface PaneMirrorDeps {
 
 export interface PaneMirror {
   copyPathBetweenPanes: (args: CopyPathBetweenPanesArgs) => void
+  /** Takes `target` to the network view on `host`'s share list, mounting `autoMountShare` when named. */
+  showNetworkState: (target: 'left' | 'right', host: NetworkHost | null, autoMountShare: string | undefined) => void
 }
 
 export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
@@ -125,5 +127,5 @@ export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
     mirrorNetworkStateToPane(target, destHost, destAutoMountShare)
   }
 
-  return { copyPathBetweenPanes }
+  return { copyPathBetweenPanes, showNetworkState: mirrorNetworkStateToPane }
 }

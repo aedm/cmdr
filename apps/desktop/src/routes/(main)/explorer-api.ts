@@ -18,6 +18,7 @@ import type {
 } from '$lib/file-explorer/pane/types'
 import type { Initiator } from '$lib/tauri-commands'
 import type { HubRow } from '$lib/file-explorer/network/servers-hub-rows'
+import type { SmbHandOff } from '$lib/servers/open-sign-in'
 
 /**
  * Closed action set for `handleSelectionAction` (the selection sub-dispatcher).
@@ -231,6 +232,8 @@ export interface ExplorerAPI {
   refreshNetworkHosts: () => void
   /** Takes the focused pane to the servers hub (the `servers.show` command). */
   showServersInFocusedPane: () => void
+  /** An SMB add's hand-off: the saved host's share list in the focused pane, mounting the share it named. */
+  openSmbHandOffInFocusedPane: (handOff: SmbHandOff) => void
   /**
    * The hub row under the focused pane's cursor, or `null` when that pane isn't
    * on the hub. What the servers commands aim at before they fall back to the

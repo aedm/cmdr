@@ -105,6 +105,7 @@ export function makeExplorerSpy(): Record<string, ReturnType<typeof vi.fn>> {
     'scrollTo',
     'refreshNetworkHosts',
     'showServersInFocusedPane',
+    'openSmbHandOffInFocusedPane',
     'getFocusedPaneServerRow',
     'selectVolumeByName',
     'setSortColumn',

@@ -65,11 +65,11 @@ export async function goToPath(explorer: ExplorerAPI | undefined, input: string)
   const intent = await readSchemeInput(input)
   if (intent) {
     const outcome = await actOnSchemeInput(intent, {
-      // ❗ The SAME destination ⌘K's hand-off uses. An SMB connect is a share
-      // MOUNT, so there is no volume to navigate to, and a navigation command
-      // that leaves the pane where it was has not navigated.
-      onSmbHandOff: () => {
-        explorer.showServersInFocusedPane()
+      // ❗ The SAME destination ⌘K's hand-off uses: the saved host's share list,
+      // mounting the share the address named. An SMB connect is a share MOUNT, so
+      // there is no volume to navigate to until that mount lands.
+      onSmbHandOff: (handOff) => {
+        explorer.openSmbHandOffInFocusedPane(handOff)
       },
       // An SFTP or WebDAV address connects a place, and the jump lands on it.
       onConnected: ({ volumeId, root }) => {

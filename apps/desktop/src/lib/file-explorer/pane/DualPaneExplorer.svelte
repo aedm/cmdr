@@ -76,6 +76,7 @@
     import { createVolumeSelection, type VolumeSelectOutcome } from './volume-selection'
     import { createEdgeFlowHandlers } from './edge-flow-handlers'
     import { createPaneMirror } from './pane-mirror'
+    import type { SmbHandOff } from '$lib/servers/open-sign-in'
     import { createKeyDispatch } from './key-dispatch'
     import { createMcpTabAction } from './mcp-tab-action'
     import {
@@ -1072,6 +1073,17 @@
     export function showServersInFocusedPane(): void {
         const pane = explorerState.getFocusedPane()
         navigateIntent({ pane, to: { selectVolume: { volumeId: 'network', path: 'smb://' } }, source: 'user' })
+    }
+
+    /**
+     * An SMB add's hand-off, in the focused pane: the host it saved, opened as its
+     * share list, mounting the share the address named. ❗ The ONE place an add that
+     * wasn't raised from the hub lands (Go to path, ⌘K): the hub's own Add does the
+     * same thing to its own pane (`NetworkMountView.openAddServer`). A bare Servers
+     * list there showed no mount, no share list, and no selection.
+     */
+    export function openSmbHandOffInFocusedPane(handOff: SmbHandOff): void {
+        paneMirror.showNetworkState(explorerState.getFocusedPane(), handOff.host, handOff.sharePath ?? undefined)
     }
 
     /**

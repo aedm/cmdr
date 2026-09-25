@@ -20,7 +20,7 @@
 import { isSnapshotPath } from '$lib/file-explorer/navigation/real-folder-history'
 import { parseServerAddress } from '$lib/servers/address-parser'
 import { isServerPath, parseServerPath } from '$lib/servers/server-path-utils'
-import { openAddServerSheet, type ConnectedPlace } from '$lib/servers/open-sign-in'
+import { openAddServerSheet, type ConnectedPlace, type SmbHandOff } from '$lib/servers/open-sign-in'
 import { listSavedServers } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 import { tString } from '$lib/intl/messages.svelte'
@@ -110,12 +110,12 @@ export async function actOnSchemeInput(
     /**
      * Where an SMB address lands. ❗ Go to path is a NAVIGATION command, so it
      * has to put the person somewhere: an SMB connect is a share MOUNT rather
-     * than a session, so there is no volume to go to and the host's places list
-     * is the destination. That is where ⌘K's own hand-off goes
+     * than a session, so there is no volume to go to: the saved host's places list,
+     * mounting the share the address named, is the destination. That is where ⌘K's own hand-off goes
      * (`command-handlers/servers-handlers.ts`), and two entry points into one
      * sheet ending differently for one input is what this exists to prevent.
      */
-    onSmbHandOff: () => void
+    onSmbHandOff: (handOff: SmbHandOff) => void
     /** Where an SFTP or WebDAV address lands once the sheet connected it: the place itself. */
     onConnected: (place: ConnectedPlace) => void
   },

@@ -125,6 +125,28 @@ describe('goToPath handler', () => {
       expect(resolveGoToPathMock).not.toHaveBeenCalled()
     })
 
+    /**
+     * ❗ An SMB "Add and open" opens the host it saved and mounts the share the
+     * address named, the same thing the hub's own Add does. It used to land on the
+     * bare Servers list with no share list and no mount (QA round 2, M2).
+     */
+    it('opens an SMB hand-off as the host and its share, in the focused pane', async () => {
+      const openSmbHandOffInFocusedPane = vi.fn()
+      const handOff = {
+        host: { id: 'manual-localhost-11482', name: 'localhost:11482', port: 11482 },
+        sharePath: 'public',
+      }
+      readSchemeInputMock.mockResolvedValue({ kind: 'add', address: 'smb://localhost:11482/public' })
+      actOnSchemeInputMock.mockImplementation((...args: unknown[]) => {
+        ;(args[1] as { onSmbHandOff: (h: unknown) => void }).onSmbHandOff(handOff)
+        return Promise.resolve({ kind: 'handed_off' })
+      })
+
+      await goToPath({ ...makeExplorerStub(), openSmbHandOffInFocusedPane }, 'smb://x')
+
+      expect(openSmbHandOffInFocusedPane).toHaveBeenCalledWith(handOff)
+    })
+
     it('hands an unsaved address to the sheet, and navigates nowhere', async () => {
       readSchemeInputMock.mockResolvedValue({ kind: 'add', address: 'smb://naspolya' })
       actOnSchemeInputMock.mockResolvedValue({ kind: 'handed_off' })
