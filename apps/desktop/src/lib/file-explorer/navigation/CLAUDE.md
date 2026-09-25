@@ -22,8 +22,7 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
   which says "gone" for a phone's folders. Who passes it: `DETAILS.md` § `path-resolution.ts`.
 - **A volume-switch correction has two gates**: ONE global `correctionGen` (❌ not one per pane), plus its pane's token
   and position, so it never moves a pane off a later navigation.
-- **`containingVolumeId` comes from `resolvePathVolume(currentPath)`, ❌ not the `volumeId` prop** (a favorite's is
-  virtual), so the checkmark tracks the real one.
+- **The pane's volume is `pane-volume.ts::paneVolumeOf`** (DETAILS § The switcher). ❌ Never the path alone for a share.
 - **Read `connectionState` through `connection-state.ts`'s predicates, ❌ never `!= null`**: four backends carry one,
   plus a `saved` row. `showsDisconnect` means REGISTERED, so both sign-in states are IN and only `saved` isn't.
 - **`detachControlFor` decides EVERY detach control**: whether there is one, its word, its glyph, and the action it runs

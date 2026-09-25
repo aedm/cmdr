@@ -277,9 +277,12 @@ to the `--spacing-sm` that `.file-entry` puts between icon and name. The margin 
 `gap`, so the chevron, read-only badge, and connection indicators after the label keep their tighter spacing. Nothing
 enforces this: if the pane gutter, the row padding, or the header inset changes, re-derive it here.
 
-`containingVolumeId` is resolved in the chip via `resolvePathVolume(currentPath)` and handed to the menu, where
-`volume-checkmark.ts` decides per row: the checkmark tracks the real containing volume, not the `volumeId` prop (which
-may be a favorite's virtual ID).
+`containingVolumeId` is resolved in the chip via `resolvePathVolume(currentPath)`, re-asked when the path OR the volume
+list changes. What the header, the checkmark (`volume-checkmark.ts`), and the first-connect index prompt use is
+`pane-volume.ts::paneVolumeOf`: the pane's own `volumeId` when it names a share, server place, or phone the pane stands
+in, else the containing volume (a favorite's id is virtual, and a local pane can walk into another drive). ❗ A share
+goes by id because its mount path is a plain boot-disk folder while it comes back, and a LIVE share is listed as an
+`attached_volume`, not `network`: a path-only or `network`-only lookup named "Macintosh HD" until the pane moved.
 
 Volumes (including MTP) come from the shared `volume-store` which is pushed by the backend via a single
 `volumes-changed` event. MTP volume space is fetched via `getVolumeSpace()` like any other volume.

@@ -460,6 +460,45 @@ describe('VolumeBreadcrumb chip control', () => {
     void target
   })
 
+  /**
+   * ❗ The same once the share is LIVE, which is the row that matters: a mounted
+   * share is listed under VOLUMES (`attached_volume`), not `network`, so a lookup
+   * that took the pane's volume by id only for `network` rows missed it and
+   * named "Macintosh HD" for as long as the pane stayed (QA round 4, N1).
+   */
+  it('names a LIVE share the pane is on even while its path resolves to the boot disk', async () => {
+    const share = {
+      id: 'smb-localhost-11482-private-x',
+      name: 'private on localhost:11482',
+      path: '/Volumes/private',
+      category: 'attached_volume',
+      fsType: 'smbfs',
+      isEjectable: false,
+      connectionState: 'direct',
+    }
+    stubs.volumes = [
+      share,
+      { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+    ]
+    stubs.containingVolumeId = 'root'
+    mountBreadcrumb({ volumeId: share.id, currentPath: '/Volumes/private/reports' })
+    await tick()
+    await tick()
+    flushSync()
+    expect(document.querySelector('.volume-name')?.textContent).toContain('private on localhost:11482')
+  })
+
+  it('still names the drive a local pane has walked into, by its path', async () => {
+    const usb = { id: 'usb-1', name: 'USB', path: '/Volumes/USB', category: 'attached_volume', isEjectable: true }
+    stubs.volumes = [usb, { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false }]
+    stubs.containingVolumeId = 'usb-1'
+    mountBreadcrumb({ volumeId: 'root', currentPath: '/Volumes/USB/photos' })
+    await tick()
+    await tick()
+    flushSync()
+    expect(document.querySelector('.volume-name')?.textContent).toContain('USB')
+  })
+
   it('offers nothing on a saved place, which has no session to close', async () => {
     await mountOn({ ...place, connectionState: 'saved' })
     expect(chipControl()).toBeNull()

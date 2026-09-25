@@ -41,6 +41,7 @@
     import { filesystemLabel } from './filesystem-label'
     import { getIconForVolume } from './volume-grouping'
     import { createBreadcrumbPopupController } from './volume-breadcrumb-handlers.svelte'
+    import { paneVolumeOf } from './pane-volume'
 
     interface Props {
         /** Which pane the chip belongs to, so the favorites menu knows whose switcher ⌥F1 / ⌥F2 means. */
@@ -90,13 +91,8 @@
     const breadcrumbPopup = createBreadcrumbPopupController()
     let breadcrumbPopupRef: HTMLSpanElement | undefined = $state()
 
-    // Current volume info derived from the volume list (the actual containing volume).
-    // Special case: 'network' is a virtual volume, not from the backend. A phone and a
-    // server place (an SMB share, SFTP, WebDAV) are looked up by `volumeId` directly: the
-    // pane IS on them. ❗ A share's path resolving elsewhere doesn't change that: while an
-    // ejected share comes back, `/Volumes/<share>` is a plain folder on the boot disk, and
-    // asking the path named "Macintosh HD" until the pane moved (QA round 3, N1). Everything
-    // else (a favorite, a local folder) uses `containingVolumeId`.
+    // The volume the pane is on: `pane-volume.ts` says which of its two answers wins.
+    // Special case: 'network' is a virtual volume, not from the backend.
     const currentVolume = $derived(
         volumeId === 'network'
             ? { id: 'network', name: tString('fileExplorer.navigation.networkVolume'), path: 'smb://', category: 'network' as const, isEjectable: false }
@@ -112,10 +108,7 @@
                     category: 'network' as const,
                     isEjectable: false,
                 }
-              : volumes.find(
-                    (v) => v.id === volumeId && (v.category === 'mobile_device' || v.category === 'network'),
-                )
-                ?? volumes.find((v) => v.id === containingVolumeId),
+              : paneVolumeOf(volumes, volumeId, currentPath, containingVolumeId),
     )
 
     /**
@@ -177,8 +170,10 @@
         favoritesMenu?.open(trigger)
     }
 
-    // Update containing volume when the current path changes.
+    // Re-ask when the path changes, and when the volume list does: a share that mounts back
+    // at the same path turns that folder from the boot disk's into its own.
     $effect(() => {
+        dependOn(volumes)
         void updateContainingVolume(currentPath)
     })
 
@@ -317,7 +312,7 @@
 
     <VolumeChooserMenu
         bind:this={chooser}
-        {containingVolumeId}
+        containingVolumeId={currentVolume?.id ?? containingVolumeId}
         {badges}
         {onVolumeChange}
         getAnchor={() => chipEl}
