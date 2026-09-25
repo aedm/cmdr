@@ -303,3 +303,69 @@ async fn an_abort_shortens_the_drain_window_a_cancel_already_armed() {
         started.elapsed()
     );
 }
+
+/// A FOLDER source whose task is abandoned at the drain deadline still owes the
+/// rollback what it already landed.
+///
+/// The folder's first child lands at once, its second wedges, and so do two
+/// sibling sources. A Rollback then waits out the deadline and drops the folder's
+/// task, and the child that landed is only in that task's own per-source ledger.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn rollback_undoes_what_an_abandoned_folder_task_already_landed() {
+    let _drain = CancelDrainGuard::set(TEST_DRAIN);
+    let fx = fixture(CHUNK as u64 * 4);
+    fx.source_inner.create_directory(Path::new("/folder")).await.unwrap();
+    // Empty ⇒ lands without a permit.
+    fx.source_inner
+        .create_file(Path::new("/folder/landed.txt"), b"")
+        .await
+        .unwrap();
+    for name in ["/folder/wedge.bin", "/wedge-b.bin", "/wedge-c.bin"] {
+        fx.source_inner
+            .create_file(Path::new(name), &vec![0xAB; CHUNK * 4])
+            .await
+            .unwrap();
+    }
+    let sources = vec![
+        PathBuf::from("/folder"),
+        PathBuf::from("/wedge-b.bin"),
+        PathBuf::from("/wedge-c.bin"),
+    ];
+    let events = Arc::new(CollectorEventSink::new());
+    let op = TestOperationGuard::register_state("rollback-abandoned-folder-task", make_state());
+    let config = VolumeCopyConfig::default();
+
+    let copy = copy_volumes_with_progress(
+        events.clone(),
+        op.id(),
+        op.state(),
+        Arc::clone(&fx.source),
+        &sources,
+        Arc::clone(&fx.dest),
+        Path::new("/"),
+        &config,
+    );
+    tokio::pin!(copy);
+
+    let dest_inner = Arc::clone(&fx.dest_inner);
+    tokio::select! {
+        r = &mut copy => panic!("the copy must still be running: {r:?}"),
+        () = wait_until_async(WAIT, "the folder's first child to land and every stream to open", || {
+            // The in-memory volume answers without awaiting anything.
+            use futures_util::FutureExt;
+            fx.opened.load(Ordering::SeqCst) >= 4
+                && dest_inner.exists(Path::new("/folder/landed.txt")).now_or_never() == Some(true)
+        }) => {}
+    }
+    cancel_write_operation(op.id(), true);
+    tokio::time::timeout(RETURN_WITHIN, &mut copy)
+        .await
+        .expect("the driver must abandon the wedged tasks")
+        .expect_err("a rollback ends the operation as cancelled");
+
+    assert!(
+        !fx.dest_inner.exists(Path::new("/folder/landed.txt")).await,
+        "rollback must remove what the abandoned folder task landed; dest holds {:?}",
+        dest_names(&fx.dest_inner).await
+    );
+}

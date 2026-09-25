@@ -150,6 +150,11 @@ pub(super) struct CopyTask {
     /// The operation's ledger of cross-type asides, which a deep clash inside
     /// this source adds to.
     pub(super) displaced: Arc<DisplacedLedger>,
+    /// This source's rollback ledger: the files it streams and the dirs it newly
+    /// creates. Shared with the driver, which keeps a handle so a task it
+    /// ABANDONS at the cancel-drain deadline still hands over what it landed
+    /// (`copy_concurrent.rs::ConcurrentDriver::finish`).
+    pub(super) created: Arc<CreatedPaths>,
     /// The in-flight table plus this source's row, so every leaf of a directory
     /// source's subtree opens a row numbered under it.
     pub(super) merge_probe: Option<MergeProbe>,
@@ -184,6 +189,7 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         file_name,
         window,
         displaced,
+        created,
         merge_probe,
         // Held for the task's whole life; dropping it (completion, abort, panic)
         // removes the row from the in-flight table.
@@ -200,9 +206,6 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
     // clock is the operation's, shared with every sibling task, so the event
     // rate the user sees is the operation's and not each task's.
     let source_progress = leaf_ledger.for_source(file_name, Arc::clone(&last_progress));
-    // Per-source rollback ledger: the files this task streams and the dirs it
-    // newly creates inside a directory source.
-    let created = CreatedPaths::default();
     // Deep merge children are never top-level sources, so the resolver never
     // keys into per-source hints for them — an empty map is correct.
     let merge_hints: HashMap<PathBuf, SourceHint> = HashMap::new();

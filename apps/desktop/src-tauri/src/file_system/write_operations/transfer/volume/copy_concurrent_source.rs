@@ -213,6 +213,7 @@ impl ConcurrentCopy<'_> {
             file_name,
             window: self.file_window.clone(),
             displaced: Arc::clone(&self.displaced),
+            created: Arc::new(super::strategy::CreatedPaths::default()),
             // Every leaf of a directory source's subtree numbers itself under
             // this source's own row.
             merge_probe: self.op_probe.as_ref().map(|probe| MergeProbe {
