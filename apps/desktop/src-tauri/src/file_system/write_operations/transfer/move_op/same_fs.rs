@@ -194,7 +194,10 @@ pub(super) fn move_with_rename(
                 // No conflict, so just rename
                 crate::downloads::note_pending_write_for_cmdr(source);
                 crate::downloads::note_pending_write_for_cmdr(&dest_path);
-                rename_onto_free_name(source, &dest_path).with_path(source)?;
+                // A locked source is the one refusal `rename(2)`'s errno can't side on its own.
+                rename_onto_free_name(source, &dest_path)
+                    .with_path(source)
+                    .map_err(|e| e.sided_by_locked_source(source))?;
                 move_tx.record(
                     source.clone(),
                     WrittenFile::local_stat(dest_path.clone(), source_meta.as_ref()),

@@ -119,7 +119,10 @@ central buffer keyed by unclaimed ids is therefore unbounded unless it is given 
   rather than the number of events.
 - Keep at most one of each terminal event, because a session registering after its operation ended must resolve rather
   than hang.
-- Drop an id's whole buffer the moment it is claimed.
+- Drop an id's whole buffer the moment it is claimed. ❗ So a terminal event reaches only the FIRST session to claim an
+  id; a later, fresh session (the first one's view let go) never sees it. For a failure that isn't a hole: the backend
+  retains a `failed` row carrying the error, and a session reads that row as its outcome (`applySnapshot`). A move that
+  failed before its start command returned was claimed first by an ambient view and left its progress dialog spinning.
 - Age the rest out at `UNCLAIMED_BUFFER_TTL_MS` (300 s), swept on the next insert. Both the number and the trigger come
   from the backend's own precedent for scan results (`SCAN_RESULT_TTL` in `write_operations/scan_cache.rs`), and the
   insert-triggered sweep is what keeps an idle window at zero cost.

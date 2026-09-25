@@ -152,6 +152,36 @@ describe('createTransferProgressState: progress + complete', () => {
     expect(config.onError).toHaveBeenCalledWith(error, null)
   })
 
+  /**
+   * ❗ A move that fails in the backend BEFORE its start command even returns (a
+   * same-volume rename of a locked file refuses at once) still reaches the dialog:
+   * the failure is emitted before anything here knows the id. It spun on
+   * "Verifying before move… 0 files" forever (QA round 2, M5).
+   */
+  it('fires onError for a failure that arrived before the operation id did', async () => {
+    const error = {
+      type: 'permission_denied' as const,
+      path: '/a/locked.txt',
+      message: 'EPERM',
+      errno: 1,
+      refusal: 'systemProtected' as const,
+      refusedFolder: null,
+      side: 'source' as const,
+    }
+    const { copyBetweenVolumes } = await import('$lib/tauri-commands')
+    vi.mocked(copyBetweenVolumes).mockImplementationOnce(() => {
+      listeners.error?.({ operationId: 'op-1', operationType: 'copy', error, progressAtStop: null })
+      return Promise.resolve({ operationId: 'op-1', operationType: 'copy' })
+    })
+    // The backend retains the failure as a `failed` row, which is what the registry snapshot shows.
+    vi.mocked(listOperations).mockResolvedValue([{ ...snapshot('op-1', 'failed'), error }])
+
+    const { config } = await startedState()
+    flushSync()
+
+    expect(config.onError).toHaveBeenCalledWith(error, null)
+  })
+
   it('ignores events for a different operation id', async () => {
     const { state } = await startedState()
     if (!listeners.progress) throw new Error('progress subscriber never registered')

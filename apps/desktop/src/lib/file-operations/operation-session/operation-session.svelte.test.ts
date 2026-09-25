@@ -261,6 +261,34 @@ describe('seeding', () => {
 })
 
 describe('derived read state', () => {
+  /**
+   * ❗ **A retained `failed` row is an ending the session can read on its own.** A
+   * move that failed before its start command returned was claimed first by
+   * another view (its failure row appeared in the registry), which drained the
+   * buffered `write-error`; the progress dialog then got a FRESH session with only
+   * the row, and spun on "Verifying before move… 0 files" forever (QA round 2, M5).
+   */
+  it('resolves as the error a retained failed row carries, with no event to go on', () => {
+    const error = {
+      type: 'permission_denied' as const,
+      path: '/a/locked.txt',
+      message: 'EPERM',
+      errno: 1,
+      refusal: 'systemProtected' as const,
+      refusedFolder: null,
+      side: 'source' as const,
+    }
+    const { session, dispose } = harness((fanout) => {
+      fanout._testEmit({ kind: 'snapshot', operations: [snapshot('a', 'failed', { operationType: 'move', error })] })
+    })
+
+    expect(session.outcome).toEqual({
+      kind: 'error',
+      event: { operationId: 'a', operationType: 'move', error, progressAtStop: null },
+    })
+    dispose()
+  })
+
   it('settles on a terminal event, never on leaving the snapshot', () => {
     const { fanout, session, dispose } = harness()
 

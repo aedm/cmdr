@@ -228,13 +228,31 @@ export function createOperationSession(operationId: string, fanout: OperationEve
     if (outcome === null) outcome = next
   }
 
+  /**
+   * A registry row. ❗ A retained failure row IS an ending, and may be the only one
+   * this session ever hears: the buffered `write-error` goes to whichever view
+   * claims the id first, and a fresh session after that one let go gets only the
+   * row. Without this, a move that failed before its start command returned left
+   * its progress dialog spinning forever. The event, when it comes, loses to this
+   * (first outcome wins) and says the same.
+   */
+  function applySnapshot(row: OperationSnapshot): void {
+    snapshot = row
+    leftRegistry = false
+    if (row.status === 'failed' && row.error) {
+      settle({
+        kind: 'error',
+        event: { operationId, operationType: row.operationType, error: row.error, progressAtStop: null },
+      })
+    }
+  }
+
   function apply(delivery: OperationDelivery): void {
     if (disposed) return
     receivedDelivery = true
     switch (delivery.kind) {
       case 'snapshot':
-        snapshot = delivery.snapshot
-        leftRegistry = false
+        applySnapshot(delivery.snapshot)
         break
       case 'absent':
         // Only a session that has HELD a row can read an absence as "it left".

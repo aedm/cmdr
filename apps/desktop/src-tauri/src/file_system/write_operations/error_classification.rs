@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use super::types::{ReadOnlySide, WriteOperationError};
+use super::types::{PermissionSide, ReadOnlySide, WriteOperationError};
 
 /// Classifies a raw `std::io::Error` into a specific `WriteOperationError` variant.
 ///
@@ -108,6 +108,45 @@ impl From<std::io::Error> for WriteOperationError {
     }
 }
 
+/// Whether `path` itself carries a lock flag (Finder's Locked, `chflags uchg`, or the
+/// system and append-only kinds): a fact about the item, read with `lstat`, never a
+/// guess from a path or a message.
+#[cfg(target_os = "macos")]
+fn is_locked_item(path: &Path) -> bool {
+    use std::os::macos::fs::MetadataExt;
+
+    const LOCKS: u32 = libc::UF_IMMUTABLE | libc::UF_APPEND | libc::SF_IMMUTABLE | libc::SF_APPEND;
+    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.st_flags() & LOCKS != 0)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_locked_item(_path: &Path) -> bool {
+    false
+}
+
+impl WriteOperationError {
+    /// A `rename(2)` of `source` refused with no side named, answered for the one
+    /// case the errno can't say but the item can: `source` is itself locked, so it's
+    /// the source that refused, and the dialog gives the "uncheck Locked" advice
+    /// instead of "no permission to move files here". Any other error passes through
+    /// untouched.
+    pub(crate) fn sided_by_locked_source(self, source: &Path) -> Self {
+        match self {
+            Self::PermissionDenied {
+                path,
+                message,
+                errno,
+                refused_folder,
+                side: None,
+                ..
+            } if is_locked_item(source) => {
+                Self::permission_denied(path, message, errno, refused_folder, Some(PermissionSide::Source))
+            }
+            other => other,
+        }
+    }
+}
+
 impl WriteOperationError {
     /// Whether this outcome is expected, recoverable control flow rather than a
     /// genuine failure.
@@ -159,6 +198,37 @@ mod tests {
                 "needs-password must stay below the auto-report threshold (wrong_attempt={wrong_attempt})"
             );
         }
+    }
+
+    /// ❗ A same-volume move of a Finder-locked file refuses with `EPERM` from
+    /// `rename(2)`, whose errno can't say which side refused; the item's own lock
+    /// flag can, and it's the source. Without it the dialog said "You don't have
+    /// permission to move files here" (QA round 2, M5).
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_rename_refused_over_a_locked_source_names_the_source() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let locked = dir.path().join("locked.txt");
+        std::fs::write(&locked, "hi").expect("write");
+        let chflags = |flags: &str| {
+            let done = std::process::Command::new("chflags").arg(flags).arg(&locked).status();
+            assert!(done.is_ok_and(|status| status.success()), "chflags {flags}");
+        };
+        chflags("uchg");
+        let refused = std::fs::rename(&locked, dir.path().join("moved.txt")).expect_err("a locked file won't rename");
+        let error = classify_io_error(&refused, locked.display().to_string()).sided_by_locked_source(&locked);
+        chflags("nouchg");
+
+        assert!(
+            matches!(
+                error,
+                WriteOperationError::PermissionDenied {
+                    side: Some(PermissionSide::Source),
+                    ..
+                }
+            ),
+            "got {error:?}"
+        );
     }
 
     #[test]
