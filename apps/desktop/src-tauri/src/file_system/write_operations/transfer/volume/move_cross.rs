@@ -36,7 +36,7 @@ use super::conflict::resolve_volume_conflict;
 use super::preflight::SourceFileFacts;
 use super::preflight::{SourceHint, scan_volume_sources};
 use super::strategy::{copy_single_path, resolve_source_is_directory};
-use super::transfer_error::{AtPath, PathRole, WriteFailure, map_volume_error};
+use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
 
@@ -567,30 +567,24 @@ pub(crate) async fn move_volumes_with_progress(
                     // file, so "Overwrite all smaller / older" hits this
                     // constantly), an item that appeared while the folder
                     // copied, or an original saved over after the copy read it.
-                    let delete_result = if source_is_dir {
-                        let skipped = created.skipped_source_paths();
-                        deep_skipped_files.fetch_add(skipped.len(), Ordering::Relaxed);
-                        let ledger = created.take_source_ledger();
-                        super::source_sweep::sweep_moved_folder(&source_volume, &source_path, &ledger, &skipped)
+                    let skipped = created.skipped_source_paths();
+                    deep_skipped_files.fetch_add(skipped.len(), Ordering::Relaxed);
+                    let carried = if source_is_dir {
+                        super::source_sweep::CarriedSource::Folder(created.take_source_ledger())
+                    } else {
+                        super::source_sweep::CarriedSource::File(stamp_before)
+                    };
+                    let delete_result =
+                        super::source_sweep::sweep_carried_source(&source_volume, &source_path, &carried, &skipped)
                             .await
                             .map(|kept| {
                                 left_in_source.lock_ignore_poison().note(
                                     &source_path,
-                                    true,
+                                    source_is_dir,
                                     kept.appeared,
                                     kept.changed,
                                 );
-                            })
-                    } else {
-                        match super::source_sweep::file_is_unchanged(&source_volume, &source_path, stamp_before).await {
-                            Ok(true) => source_volume.delete(&source_path).await.at(&source_path),
-                            Ok(false) => {
-                                left_in_source.lock_ignore_poison().note(&source_path, false, 0, 1);
-                                Ok(())
-                            }
-                            Err(e) => Err(e),
-                        }
-                    };
+                            });
                     if let Err(e) = delete_result {
                         // Same rule as the copy phase: name the file that
                         // actually refused to go, which for a directory source

@@ -475,18 +475,15 @@ async fn prune_created_dir_if_empty(volume: &Arc<dyn Volume>, dir: &Path) -> Ite
 /// delete is the one thing in this directory that can remove data the user
 /// never named, so every call site writes down which authorization it holds.
 /// The variants are the complete list; a new sweep has to justify itself by
-/// adding one. A move's SOURCE is never one of them: it goes from the ledger its
-/// copy kept (`source_sweep.rs`, and `move_op/source_sweep.rs` locally), because a
-/// tree removal acts on what is on disk NOW.
+/// adding one. A move's SOURCE is never one of them, into a zip included: it goes
+/// from the ledger its copy kept (`source_sweep.rs`, and `move_op/source_sweep.rs`
+/// locally), because a tree removal acts on what is on disk NOW.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::file_system::write_operations) enum TreeRemoval {
+pub(super) enum TreeRemoval {
     /// A cross-type clash (a file landing on a folder) the user resolved with
     /// Overwrite: the destination's type is wrong, so it goes before the source
     /// materializes. `conflict.rs::apply_volume_conflict_resolution`.
     UserChoseOverwriteAcrossTypes,
-    /// An into-archive move removing the remote originals it pulled, after the
-    /// rewrite durably commits. `archive_edit/copy_into.rs`.
-    ArchiveMoveSourceAfterCommit,
 }
 
 /// Recursively removes a file or directory tree, reporting the path that
@@ -515,7 +512,7 @@ pub(in crate::file_system::write_operations) enum TreeRemoval {
 /// `Volume::is_directory` and a listing's `is_directory` both answer yes for a
 /// link to a folder on some backends, and recursing through one deletes a
 /// folder the user never selected.
-pub(in crate::file_system::write_operations) async fn remove_tree(
+pub(super) async fn remove_tree(
     volume: &Arc<dyn Volume>,
     path: &Path,
     why: TreeRemoval,

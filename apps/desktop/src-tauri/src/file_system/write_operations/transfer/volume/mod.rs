@@ -54,9 +54,6 @@ mod transfer_error;
 pub use copy::{copy_between_volumes, scan_for_volume_copy};
 pub use r#move::move_between_volumes;
 
-/// The recursive source sweep a zip copy-into needs after pulling a subtree,
-/// plus the enum every caller names its authorization with.
-pub(in crate::file_system::write_operations) use cleanup::{TreeRemoval, remove_tree};
 pub(crate) use copy::copy_volumes_with_progress;
 /// The cross-volume copy body, reused as the extract phase of an out-of-zip
 /// move (`archive_edit`).
@@ -64,6 +61,9 @@ pub(crate) use item_identity::is_the_same_item;
 /// Move ONE file across two volumes, staged and mid-file cancelable, with no
 /// driver above it (the operation-log rollback's cross-volume restore).
 pub(in crate::file_system::write_operations) use move_file::move_file_across_volumes;
+/// A move's source sweep, for an into-zip move: stamp what it carries before
+/// reading it, then remove exactly that once the archive commits.
+pub(in crate::file_system::write_operations) use source_sweep::{CarriedSource, stamp_source, sweep_carried_source};
 /// Pull a remote path down to a local scratch copy (remote zip edits).
 pub(in crate::file_system::write_operations) use strategy::pull_path_to_local;
 /// The refusal for a volume id the registry had nothing for, shared by the

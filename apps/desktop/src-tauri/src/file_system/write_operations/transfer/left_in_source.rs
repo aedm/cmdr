@@ -18,7 +18,7 @@ use crate::file_system::write_operations::types::AppearedDuringMove;
 // which is exactly true of a sweep that hasn't run yet and stays true of one
 // that took every source it was given.
 #[derive(Default)]
-pub(super) struct LeftInSource {
+pub(in crate::file_system::write_operations) struct LeftInSource {
     /// Items the move never saw, counted once per unknown subtree.
     appeared: u32,
     /// Originals saved over after their copy started, each counted once.
@@ -31,7 +31,13 @@ pub(super) struct LeftInSource {
 impl LeftInSource {
     /// Records what the sweep left under one top-level source. A source that
     /// kept nothing adds nothing, so the folder list only names ones that did.
-    pub(super) fn note(&mut self, source: &Path, source_is_dir: bool, appeared: u32, changed: u32) {
+    pub(in crate::file_system::write_operations) fn note(
+        &mut self,
+        source: &Path,
+        source_is_dir: bool,
+        appeared: u32,
+        changed: u32,
+    ) {
         if appeared == 0 && changed == 0 {
             return;
         }
@@ -42,7 +48,7 @@ impl LeftInSource {
 
     /// The completion event's typed field, or `None` when the move took
     /// everything it was asked to take (the ordinary case).
-    pub(super) fn appeared_during_move(&self) -> Option<AppearedDuringMove> {
+    pub(in crate::file_system::write_operations) fn appeared_during_move(&self) -> Option<AppearedDuringMove> {
         let folder_name = self.folders.first()?.clone();
         Some(AppearedDuringMove {
             item_count: self.appeared,

@@ -68,6 +68,8 @@ mod compress_remote_tests;
 #[cfg(test)]
 mod compress_tests;
 #[cfg(test)]
+mod copy_into_drift_tests;
+#[cfg(test)]
 mod copy_into_interactive_tests;
 #[cfg(test)]
 mod copy_into_remote_tests;

@@ -30,7 +30,6 @@ async fn a_successful_edit_rewrites_the_archive_and_emits_complete_then_settled(
             ..Default::default()
         },
         summary: OperationSummaryText::default(),
-        move_sources_to_delete: vec![],
         skipped_count: 0,
         preview_id: None,
     };
@@ -155,7 +154,6 @@ async fn a_missing_archive_emits_a_write_error_not_a_panic() {
             ..Default::default()
         },
         summary: OperationSummaryText::default(),
-        move_sources_to_delete: vec![],
         skipped_count: 0,
         preview_id: None,
     };

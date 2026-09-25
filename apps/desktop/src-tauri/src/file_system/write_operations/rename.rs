@@ -386,7 +386,6 @@ async fn route_archive_rename(from: &Path, to: &Path, volume_id: &str) -> Result
             ..Default::default()
         },
         summary,
-        move_sources_to_delete: Vec::new(),
         skipped_count: 0,
         // No scan preview: nothing walked a tree to plan this edit.
         preview_id: None,

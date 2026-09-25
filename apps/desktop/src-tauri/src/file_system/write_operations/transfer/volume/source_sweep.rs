@@ -42,7 +42,7 @@ use crate::file_system::volume::{Volume, VolumeError};
 /// inside one tick (the listing's clock is whole seconds); a local source's
 /// inode covers the save-by-rename case.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct SourceStamp {
+pub(in crate::file_system::write_operations) struct SourceStamp {
     size: Option<u64>,
     modified_at: Option<u64>,
     inode: Option<u64>,
@@ -63,7 +63,7 @@ impl SourceStamp {
 // DEFAULT-OK: an empty ledger is a walk that has carried nothing yet, and a sweep
 // over it removes nothing.
 #[derive(Default)]
-pub(super) struct SourceLedger {
+pub(in crate::file_system::write_operations) struct SourceLedger {
     files: HashMap<PathBuf, SourceStamp>,
     walked_dirs: HashSet<PathBuf>,
 }
@@ -82,9 +82,9 @@ impl SourceLedger {
 // DEFAULT-OK: zero is "the sweep has left nothing here yet", true of a sweep
 // that hasn't run and of one that took everything.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub(super) struct FolderLeftovers {
-    pub(super) appeared: u32,
-    pub(super) changed: u32,
+pub(in crate::file_system::write_operations) struct FolderLeftovers {
+    pub(in crate::file_system::write_operations) appeared: u32,
+    pub(in crate::file_system::write_operations) changed: u32,
 }
 
 /// Removes a moved source folder from the ledger its copy walk kept, sparing
@@ -94,7 +94,7 @@ pub(super) struct FolderLeftovers {
 /// comes out with the child's own path: the leaf is the diagnosis, the folder's
 /// `ENOTEMPTY` would only be its symptom. The sweep keeps going past a failure,
 /// so it clears what it can.
-pub(super) async fn sweep_moved_folder(
+async fn sweep_moved_folder(
     volume: &Arc<dyn Volume>,
     folder: &Path,
     ledger: &SourceLedger,
@@ -171,9 +171,80 @@ async fn sweep_level(
     volume.delete(dir).await.at(dir).map(|()| false)
 }
 
+/// What a move carried out of one top-level source, for the sweep that removes
+/// it once the destination is safe.
+pub(in crate::file_system::write_operations) enum CarriedSource {
+    /// A file, with its stamp from before its bytes were read. `None` when that
+    /// stat failed, which proves nothing, so the sweep keeps the file.
+    File(Option<SourceStamp>),
+    /// A folder, with the ledger of what its walk listed and carried.
+    Folder(SourceLedger),
+}
+
+/// Stamps one top-level source BEFORE a move reads it, for a caller whose copy
+/// doesn't run through the merge walk (which records its own ledger as it
+/// lists): an into-zip move reads its sources straight off the disk or through a
+/// scratch pull. A folder is walked the way the sweep will list it, one
+/// `list_directory` per folder.
+///
+/// Anything that turns up between this walk and the read goes into the move but
+/// not into the ledger, so it stays in the source too: a duplicate, never a
+/// loss.
+pub(in crate::file_system::write_operations) async fn stamp_source(
+    volume: &Arc<dyn Volume>,
+    source: &Path,
+) -> Result<CarriedSource, PathedVolumeError> {
+    if !volume.is_directory(source).await.at(source)? {
+        return Ok(CarriedSource::File(stamp_file(volume, source).await));
+    }
+    let mut ledger = SourceLedger::default();
+    let mut pending = vec![source.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        for entry in volume.list_directory(&dir, None).await.at(&dir)? {
+            let path = PathBuf::from(&entry.path);
+            // A link is never walked through (it could loop, and a move
+            // carries a link as itself); unrecorded, it stays in the source.
+            if entry.is_symlink {
+                continue;
+            }
+            if entry.is_directory {
+                pending.push(path);
+            } else {
+                ledger.record_carried_file(path, SourceStamp::of(&entry));
+            }
+        }
+        ledger.record_walked_dir(dir);
+    }
+    Ok(CarriedSource::Folder(ledger))
+}
+
+/// Removes one moved top-level source from what the move carried, sparing
+/// `skipped` (a merge's Skips) and whatever appeared or changed since. Answers
+/// what stayed.
+pub(in crate::file_system::write_operations) async fn sweep_carried_source(
+    volume: &Arc<dyn Volume>,
+    source: &Path,
+    carried: &CarriedSource,
+    skipped: &HashSet<PathBuf>,
+) -> Result<FolderLeftovers, PathedVolumeError> {
+    match carried {
+        CarriedSource::Folder(ledger) => sweep_moved_folder(volume, source, ledger, skipped).await,
+        CarriedSource::File(before) => {
+            if file_is_unchanged(volume, source, *before).await? {
+                volume.delete(source).await.at(source)?;
+                Ok(FolderLeftovers::default())
+            } else {
+                Ok(FolderLeftovers {
+                    appeared: 0,
+                    changed: 1,
+                })
+            }
+        }
+    }
+}
+
 /// The stamp of one top-level source FILE, read right before its copy so a save
-/// during the copy counts as a change too. `None` when the stat fails, which
-/// the check below reads as unprovable.
+/// during the copy counts as a change too. `None` when the stat fails.
 pub(super) async fn stamp_file(volume: &Arc<dyn Volume>, file: &Path) -> Option<SourceStamp> {
     volume
         .get_metadata(file)
@@ -182,11 +253,10 @@ pub(super) async fn stamp_file(volume: &Arc<dyn Volume>, file: &Path) -> Option<
         .map(|entry| SourceStamp::of(&entry))
 }
 
-/// Whether a top-level source file still looks the way it did before its copy,
-/// so the move may delete it. A stamp that couldn't be taken proves nothing and
-/// keeps the file. A file already gone answers `true` and leaves the verdict to
-/// the delete.
-pub(super) async fn file_is_unchanged(
+/// Whether a top-level source file still looks the way it did before its copy.
+/// A stamp that couldn't be taken proves nothing and keeps the file. A file
+/// already gone answers `true` and leaves the verdict to the delete.
+async fn file_is_unchanged(
     volume: &Arc<dyn Volume>,
     file: &Path,
     before: Option<SourceStamp>,
