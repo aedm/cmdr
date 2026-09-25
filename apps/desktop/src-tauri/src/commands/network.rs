@@ -94,7 +94,7 @@ pub async fn list_shares_on_host(
         ip_address.as_deref(),
         port,
         None,
-        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
         timeout_ms,
         cache_ttl_ms,
     )
@@ -103,9 +103,16 @@ pub async fn list_shares_on_host(
 
 /// Whether a listing of this host may try guest: not when the person typed an
 /// account for it (`manual_servers::typed_username`), by either name it goes by.
-fn guest_attempt_for(app: &tauri::AppHandle, hostname: &str, ip_address: Option<&str>) -> smb_client::GuestAttempt {
-    let typed = manual_servers::typed_username(app, hostname)
-        .or_else(|| ip_address.and_then(|ip| manual_servers::typed_username(app, ip)));
+fn guest_attempt_for(
+    app: &tauri::AppHandle,
+    hostname: &str,
+    ip_address: Option<&str>,
+    port: u16,
+) -> smb_client::GuestAttempt {
+    use crate::network::server_identity::SmbServer;
+
+    let typed = manual_servers::typed_username(app, &SmbServer::new(hostname, port))
+        .or_else(|| ip_address.and_then(|ip| manual_servers::typed_username(app, &SmbServer::new(ip, port))));
     if typed.is_some() {
         smb_client::GuestAttempt::Skip
     } else {
@@ -138,7 +145,7 @@ pub async fn prefetch_shares(
         ip_address.as_deref(),
         port,
         None,
-        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
         timeout_ms,
         cache_ttl_ms,
     )
@@ -217,7 +224,9 @@ pub fn update_known_share(
 #[tauri::command]
 #[specta::specta]
 pub fn get_username_hint(server_name: String, app_handle: tauri::AppHandle) -> Option<String> {
-    manual_servers::typed_username(&app_handle, &server_name).or_else(|| known_shares::get_username_hint(&server_name))
+    // `server_name` is the discovery name, which spells the port off 445 (`localhost:11482`).
+    let server = crate::network::server_identity::SmbServer::from_name(&server_name);
+    manual_servers::typed_username(&app_handle, &server).or_else(|| known_shares::get_username_hint(&server_name))
 }
 
 // --- Keychain Commands ---
@@ -308,7 +317,7 @@ pub async fn list_shares_with_credentials(
         ip_address.as_deref(),
         port,
         credentials.as_ref().map(|(u, p)| (u.as_str(), p.as_str())),
-        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref()),
+        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
         timeout_ms,
         cache_ttl_ms,
     )
@@ -498,27 +507,37 @@ pub async fn upgrade_to_smb_volume_using_saved_password(
 
 // --- Disconnect Command ---
 
-/// Unmounts all SMB shares mounted from a given server.
-/// Returns the list of mount paths that were unmounted.
+/// Unmounts all SMB shares mounted from `host`, answering the mount paths that went.
 /// Uses a 15s timeout because `statfs` on hung mounts can block indefinitely
 /// and `diskutil unmount` may wait for the OS to release the mount.
+///
+/// ❗ Takes the whole host, because what identifies its mounts is where it dials:
+/// every name it goes by (hostname, IP, the discovery name's host half), each on
+/// ITS port. A display label matched nothing `statfs` says, and a name without the
+/// port would take another server's mounts on the same machine.
 #[tauri::command]
 #[specta::specta]
-pub async fn disconnect_network_host(
-    host_id: String,
-    host_name: String,
-    ip_address: Option<String>,
-) -> Result<Vec<String>, String> {
+pub async fn disconnect_network_host(host: NetworkHost) -> Result<Vec<String>, String> {
     use crate::deadline::blocking_with_timeout;
+    use crate::network::server_identity::SmbServer;
     use std::time::Duration;
 
     // Drop the cached share list so a later browse re-fetches fresh shares and
     // auth mode rather than serving a stale (up to 30 s TTL) entry for a host
     // the user just disconnected from.
-    smb_client::invalidate_cache(&host_id);
+    smb_client::invalidate_cache(&host.id);
 
+    let named = SmbServer::from_name(&host.name);
+    let targets: Vec<SmbServer> = host
+        .hostname
+        .iter()
+        .chain(host.ip_address.iter())
+        .map(String::as_str)
+        .chain(std::iter::once(named.host()))
+        .map(|name| SmbServer::new(name, host.port))
+        .collect();
     let result = blocking_with_timeout(Duration::from_secs(15), vec![], move || {
-        mount::unmount_smb_shares_from_host(&host_name, ip_address.as_deref())
+        mount::unmount_smb_shares_from_host(&targets)
     })
     .await;
 

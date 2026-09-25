@@ -686,8 +686,42 @@ fn a_netfs_failure_code_keeps_its_own_answer() {
 /// decomposed, so a byte compare walks past an accented server's shares and leaves
 /// them mounted with their sessions torn down. Same fold as `same_share_name`.
 #[test]
-fn same_server_name_folds_normalization_and_case() {
-    assert!(same_server_name("Zu\u{308}rich.local", "Zürich.local"));
-    assert!(same_server_name("CAFÉ-NAS", "cafe\u{301}-nas"));
-    assert!(!same_server_name("naspolya", "raspberrypi"));
+fn a_host_disconnect_folds_normalization_and_case() {
+    use crate::network::server_identity::SmbServer;
+
+    let on = |host: &str| SmbServer::new(host, 445);
+    assert!(mount_is_from(
+        &smb_mount("Zu\u{308}rich.local", "s", 445).unwrap(),
+        &[on("Zürich.local")],
+        &[]
+    ));
+    assert!(mount_is_from(
+        &smb_mount("CAFÉ-NAS", "s", 445).unwrap(),
+        &[on("cafe\u{301}-nas")],
+        &[]
+    ));
+    assert!(!mount_is_from(
+        &smb_mount("naspolya", "s", 445).unwrap(),
+        &[on("raspberrypi")],
+        &[]
+    ));
+}
+
+/// ❗ **Disconnect takes the host's own mounts: its port, under any name the machine
+/// goes by, and nothing from another server on the same machine.** It compared the
+/// hub's label (`localhost:11482`) with `statfs`'s `localhost`, found nothing, and
+/// said "No mounted shares" while two were mounted (QA 2026-09-25).
+#[test]
+fn a_host_disconnect_takes_its_own_ports_mounts_only() {
+    use crate::network::server_identity::SmbServer;
+
+    let host = [SmbServer::new("localhost", 11482)];
+    let ours = smb_mount("localhost", "public", 11482).unwrap();
+    let also_ours = smb_mount("127.0.0.1", "private", 11482).unwrap();
+    let other_port = smb_mount("localhost", "public", 11480).unwrap();
+
+    assert!(mount_is_from(&ours, &host, &[]));
+    assert!(!mount_is_from(&other_port, &host, &[]));
+    // Another spelling of the machine counts only when discovery pairs the two.
+    assert!(!mount_is_from(&also_ours, &host, &[]));
 }

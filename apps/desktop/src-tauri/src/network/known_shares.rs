@@ -271,7 +271,7 @@ pub fn get_username_hint(server_name: &str) -> Option<String> {
 /// `public` share each. A row an Add filed knows no port; its server name is the
 /// host's discovery name, which carries the port off 445, so it still pairs.
 fn same_share_row(a: &KnownNetworkShare, b: &KnownNetworkShare, hosts: &[NetworkHost]) -> bool {
-    use crate::network::server_identity::same_server;
+    use crate::network::server_identity::same_machine;
 
     if fold_name(&a.share_name) != fold_name(&b.share_name) {
         return false;
@@ -289,7 +289,7 @@ fn same_share_row(a: &KnownNetworkShare, b: &KnownNetworkShare, hosts: &[Network
     };
     names(a)
         .iter()
-        .any(|x| names(b).iter().any(|y| same_server(x, y, hosts)))
+        .any(|x| names(b).iter().any(|y| same_machine(x, y, hosts)))
 }
 
 /// Files `row` (a share row) in `rows`, replacing the one for the same share.
@@ -423,18 +423,18 @@ fn fold_name(name: &str) -> String {
 
 /// Whether `entry` names the share `share` on the server any of `server_names` names.
 ///
-/// The server half asks [`same_server`](crate::network::server_identity::same_server)
+/// The server half asks [`same_machine`](crate::network::server_identity::same_machine)
 /// rather than comparing keys, because `statfs` echoes whichever name form each mount
 /// used: one NAS is `192.168.1.111` on one mount and `Naspolya._smb._tcp.local` on the
 /// next, and a choice the other spelling can't see looks like the switch resetting
 /// itself.
 fn names_share(entry: &ShareRef, server_names: &[&str], share: &str, hosts: &[NetworkHost]) -> bool {
-    use crate::network::server_identity::same_server;
+    use crate::network::server_identity::same_machine;
 
     fold_name(&entry.share_name) == fold_name(share)
         && server_names
             .iter()
-            .any(|server| same_server(&entry.server_name, server, hosts))
+            .any(|server| same_machine(&entry.server_name, server, hosts))
 }
 
 /// Whether `opt_outs` holds the share, under any name form of its server.

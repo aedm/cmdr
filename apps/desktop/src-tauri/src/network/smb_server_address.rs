@@ -174,11 +174,11 @@ pub(crate) fn system_keychain_aliases(server: &str) -> Vec<String> {
 // `test` keeps the pure helper compiling for its unit tests, which run on Linux too.
 #[cfg(any(target_os = "macos", test))]
 fn system_keychain_aliases_from(server: &str, hosts: &[crate::network::NetworkHost]) -> Vec<String> {
-    use crate::network::server_identity::same_server;
+    use crate::network::server_identity::same_machine;
     let mut out = Vec::new();
     for h in hosts {
-        let matches = same_server(&h.name, server, hosts)
-            || h.hostname.as_deref().is_some_and(|hn| same_server(hn, server, hosts))
+        let matches = same_machine(&h.name, server, hosts)
+            || h.hostname.as_deref().is_some_and(|hn| same_machine(hn, server, hosts))
             || h.ip_address.as_deref() == Some(server);
         if matches {
             out.push(h.name.clone());

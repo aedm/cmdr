@@ -3,6 +3,7 @@
 //! Handles user-added SMB servers: address parsing, TCP reachability checks,
 //! persistence to `manual-servers.json`, and injection into the discovery state.
 
+use crate::network::server_identity::SmbServer;
 use crate::network::{HostSource, NetworkHost, on_host_found, on_host_lost};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
@@ -645,22 +646,17 @@ fn typed_account(username: Option<&str>) -> Option<String> {
     username.map(str::trim).filter(|u| !u.is_empty()).map(str::to_string)
 }
 
-/// The account typed for the host `server_name` names, among `entries`.
+/// The account typed for `server`, among `entries`.
 ///
-/// Matched by [`same_server`](crate::network::server_identity::same_server)
-/// against the entry's address and its label (the name the discovery list gives
-/// a manual host, `host:port` off 445), so the Bonjour name of the same machine
-/// finds it too once discovery has paired the two.
-fn typed_username_in(entries: &[ManualServerEntry], server_name: &str, hosts: &[NetworkHost]) -> Option<String> {
-    use crate::network::server_identity::same_server;
-
+/// ❗ By [`SmbServer::is`]: the same port, and the same machine under any name it
+/// goes by (so the Bonjour name finds a host typed as an IP once discovery paired the
+/// two). An account typed for `localhost:11482` once reached the guest-only
+/// `localhost:11480` and made it demand a password.
+fn typed_username_in(entries: &[ManualServerEntry], server: &SmbServer, hosts: &[NetworkHost]) -> Option<String> {
     entries
         .iter()
         .filter(|entry| entry.username.is_some())
-        .find(|entry| {
-            discovery_name(&entry.address, entry.port).eq_ignore_ascii_case(server_name)
-                || same_server(&entry.address, server_name, hosts)
-        })
+        .find(|entry| SmbServer::new(&entry.address, entry.port).is(server, hosts))
         .and_then(|entry| entry.username.clone())
 }
 
@@ -669,12 +665,12 @@ fn typed_username_in(entries: &[ManualServerEntry], server_name: &str, hosts: &[
 /// ❗ Two jobs, one answer: it is the first sign-in's prefill (`get_username_hint`),
 /// and a host that has one is never listed as guest (`smb_client::GuestAttempt`).
 /// Reads the store file, like [`all`].
-pub fn typed_username<R: Runtime>(app: &AppHandle<R>, server_name: &str) -> Option<String> {
+pub fn typed_username<R: Runtime>(app: &AppHandle<R>, server: &SmbServer) -> Option<String> {
     let entries = all(app);
     if entries.iter().all(|entry| entry.username.is_none()) {
         return None;
     }
-    typed_username_in(&entries, server_name, &crate::network::get_discovered_hosts())
+    typed_username_in(&entries, server, &crate::network::get_discovered_hosts())
 }
 
 /// Names a saved SMB host, saving it first when only the share history knew it.

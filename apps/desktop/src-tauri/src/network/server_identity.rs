@@ -7,7 +7,7 @@
 //! `disambiguated_mount_path` mount a second copy of an already-mounted share with
 //! `ForceNewSession` (fresh auth, guest, dead end) instead of reusing the existing one.
 //!
-//! `same_server` derives an identifier set for each input (normalized name forms plus
+//! `same_machine` derives an identifier set for each input (normalized name forms plus
 //! IP, enriched from the mDNS discovery state) and calls two inputs the same server when
 //! the sets intersect. When discovery knows nothing, two different-looking strings stay
 //! different: that's the safe direction (worst case is a disambiguated mount path, the
@@ -17,11 +17,56 @@ use super::NetworkHost;
 use std::collections::HashSet;
 use std::net::IpAddr;
 
-/// Returns true when `a` and `b` refer to the same server, with `hosts` (the discovery
+/// Returns true when `a` and `b` name the same MACHINE, with `hosts` (the discovery
 /// state, `super::get_discovered_hosts()`, for a live caller) supplying name ↔ IP
 /// equivalence.
-pub fn same_server(a: &str, b: &str, hosts: &[NetworkHost]) -> bool {
+///
+/// ❗ A machine, ❌ not an SMB server: one machine can run several (the Docker fixtures
+/// are ten on `localhost`), so "is this the same server" is [`SmbServer::is`], which
+/// also compares the port. Reach for this only where no port exists to compare (a
+/// Finder keychain item, a store row written before rows carried one).
+pub fn same_machine(a: &str, b: &str, hosts: &[NetworkHost]) -> bool {
     !identifiers(a, hosts).is_disjoint(&identifiers(b, hosts))
+}
+
+/// An SMB server: the host it dials and the port. The one thing "which server is
+/// this" compares, so a port-blind answer can't be written by accident.
+///
+/// ❗ Never a display name: a name a person typed is a label, and matching on it split
+/// a renamed host in two (QA 2026-09-25). A discovery name (`localhost:11482`) is fine
+/// to read one from ([`SmbServer::from_name`]): it IS the host and port, spelled.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SmbServer {
+    host: String,
+    port: u16,
+}
+
+impl SmbServer {
+    pub fn new(host: &str, port: u16) -> Self {
+        Self {
+            host: host.to_string(),
+            port,
+        }
+    }
+
+    /// Reads a discovery name or label: `host` is on 445, `host:port` and `[v6]:port`
+    /// carry their port. A bare IPv6 literal is on 445.
+    pub fn from_name(name: &str) -> Self {
+        match split_port(name) {
+            Some((host, port)) => Self::new(host, port),
+            None => Self::new(name, SMB_PORT),
+        }
+    }
+
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    /// Whether `other` is this server: the same port, and the same machine under any
+    /// name it goes by.
+    pub fn is(&self, other: &SmbServer, hosts: &[NetworkHost]) -> bool {
+        self.port == other.port && same_machine(&self.host, &other.host, hosts)
+    }
 }
 
 /// Lowercases, NFC-folds, and strips the trailing dot of a fully qualified name.
@@ -184,27 +229,27 @@ mod tests {
     #[test]
     fn test_ip_matches_mdns_service_name_via_discovery() {
         let hosts = [naspolya(), raspberrypi()];
-        assert!(same_server("192.168.1.111", "Naspolya._smb._tcp.local", &hosts));
-        assert!(same_server("Naspolya._smb._tcp.local", "192.168.1.111", &hosts));
-        assert!(same_server("192.168.1.111", "naspolya.local", &hosts));
-        assert!(same_server("192.168.1.111", "Naspolya", &hosts));
+        assert!(same_machine("192.168.1.111", "Naspolya._smb._tcp.local", &hosts));
+        assert!(same_machine("Naspolya._smb._tcp.local", "192.168.1.111", &hosts));
+        assert!(same_machine("192.168.1.111", "naspolya.local", &hosts));
+        assert!(same_machine("192.168.1.111", "Naspolya", &hosts));
     }
 
     #[test]
     fn test_different_servers_stay_different() {
         let hosts = [naspolya(), raspberrypi()];
-        assert!(!same_server("192.168.1.150", "Naspolya._smb._tcp.local", &hosts));
-        assert!(!same_server("192.168.1.111", "192.168.1.150", &hosts));
-        assert!(!same_server("raspberrypi.local", "naspolya.local", &hosts));
+        assert!(!same_machine("192.168.1.150", "Naspolya._smb._tcp.local", &hosts));
+        assert!(!same_machine("192.168.1.111", "192.168.1.150", &hosts));
+        assert!(!same_machine("raspberrypi.local", "naspolya.local", &hosts));
     }
 
     /// Name-form equivalence needs no discovery data: all name shapes of the same
     /// instance normalize to the same bare name.
     #[test]
     fn test_name_forms_match_without_discovery() {
-        assert!(same_server("NASPOLYA.local", "naspolya._smb._tcp.local", &[]));
-        assert!(same_server("Naspolya", "naspolya.local.", &[]));
-        assert!(same_server("localhost", "LOCALHOST", &[]));
+        assert!(same_machine("NASPOLYA.local", "naspolya._smb._tcp.local", &[]));
+        assert!(same_machine("Naspolya", "naspolya.local.", &[]));
+        assert!(same_machine("localhost", "LOCALHOST", &[]));
     }
 
     /// Without discovery data, an IP and a name can't be proven equivalent. Treating
@@ -212,13 +257,13 @@ mod tests {
     /// mount path, which is the pre-existing behavior).
     #[test]
     fn test_ip_vs_name_unknown_without_discovery() {
-        assert!(!same_server("192.168.1.111", "naspolya._smb._tcp.local", &[]));
+        assert!(!same_machine("192.168.1.111", "naspolya._smb._tcp.local", &[]));
     }
 
     #[test]
     fn test_exact_strings_always_match() {
-        assert!(same_server("192.168.1.111", "192.168.1.111", &[]));
-        assert!(same_server("some-nas", "some-nas", &[]));
+        assert!(same_machine("192.168.1.111", "192.168.1.111", &[]));
+        assert!(same_machine("some-nas", "some-nas", &[]));
     }
 
     /// Every name form of one server must produce the SAME credential key, so a password

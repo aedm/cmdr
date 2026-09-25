@@ -4045,13 +4045,17 @@ export const commands = {
   removeManualServer: (serverId: string) =>
     typedError<null, string>(__TAURI_INVOKE('remove_manual_server', { serverId })),
   /**
-   *  Unmounts all SMB shares mounted from a given server.
-   *  Returns the list of mount paths that were unmounted.
+   *  Unmounts all SMB shares mounted from `host`, answering the mount paths that went.
    *  Uses a 15s timeout because `statfs` on hung mounts can block indefinitely
    *  and `diskutil unmount` may wait for the OS to release the mount.
+   *
+   *  ❗ Takes the whole host, because what identifies its mounts is where it dials:
+   *  every name it goes by (hostname, IP, the discovery name's host half), each on
+   *  ITS port. A display label matched nothing `statfs` says, and a name without the
+   *  port would take another server's mounts on the same machine.
    */
-  disconnectNetworkHost: (hostId: string, hostName: string, ipAddress: string | null) =>
-    typedError<string[], string>(__TAURI_INVOKE('disconnect_network_host', { hostId, hostName, ipAddress })),
+  disconnectNetworkHost: (host: NetworkHost) =>
+    typedError<string[], string>(__TAURI_INVOKE('disconnect_network_host', { host })),
   /**
    *  Idempotently starts mDNS discovery if it isn't running. Triggered by the frontend the first
    *  time the user takes a network action (clicks "Network", opens "Connect to server…", or

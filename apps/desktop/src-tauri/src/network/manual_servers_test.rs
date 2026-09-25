@@ -228,7 +228,7 @@ fn an_entry_without_an_account_reads_as_none() {
 
 /// ❗ **The typed account is found under any name the host goes by**: the
 /// sign-in sheet opens on whatever the discovery list calls the machine, which
-/// for a host typed as an IP can be its Bonjour name.
+/// for a host typed as an IP can be its Bonjour name. On the entry's own port only.
 #[test]
 fn the_typed_account_is_found_under_the_address_the_label_and_the_bonjour_name() {
     let mut entry = test_entry(21);
@@ -244,13 +244,20 @@ fn the_typed_account_is_found_under_the_address_the_label_and_the_bonjour_name()
         source: HostSource::Discovered,
     };
 
-    assert_eq!(typed_username_in(&entries, "10.0.0.21", &[]).as_deref(), Some("sven"));
+    let on = |host: &str, port: u16| SmbServer::new(host, port);
     assert_eq!(
-        typed_username_in(&entries, "10.0.0.21:9445", &[]).as_deref(),
+        typed_username_in(&entries, &on("10.0.0.21", 9445), &[]).as_deref(),
         Some("sven")
     );
-    assert_eq!(typed_username_in(&entries, "Mars", &[bonjour]).as_deref(), Some("sven"));
-    assert_eq!(typed_username_in(&entries, "10.0.0.22", &[]), None);
+    assert_eq!(
+        typed_username_in(&entries, &SmbServer::from_name("10.0.0.21:9445"), &[]).as_deref(),
+        Some("sven")
+    );
+    assert_eq!(
+        typed_username_in(&entries, &on("Mars", 9445), &[bonjour]).as_deref(),
+        Some("sven")
+    );
+    assert_eq!(typed_username_in(&entries, &on("10.0.0.22", 9445), &[]), None);
 }
 
 /// ❗ **An edit can change the account an SMB host is used with**: for SMB it
@@ -783,5 +790,29 @@ fn naming_a_host_off_445_saves_it_on_its_own_port() {
     assert_eq!(
         create_network_host(&stored.address, stored.port).name,
         "localhost:11482"
+    );
+}
+
+/// ❗ **An account typed for one server never reaches another server on the same
+/// machine.** A typed `testuser` on `localhost:11482` made the guest-only
+/// `localhost:11480` skip guest and demand a password (QA 2026-09-25).
+#[test]
+fn a_typed_account_belongs_to_its_own_port_only() {
+    let mut entry = test_entry(23);
+    entry.username = Some("testuser".to_string());
+    entry.port = 11482;
+    let entries = vec![entry];
+
+    assert_eq!(
+        typed_username_in(&entries, &SmbServer::new("10.0.0.23", 11480), &[]),
+        None
+    );
+    assert_eq!(
+        typed_username_in(&entries, &SmbServer::new("10.0.0.23", 445), &[]),
+        None
+    );
+    assert_eq!(
+        typed_username_in(&entries, &SmbServer::new("10.0.0.23", 11482), &[]).as_deref(),
+        Some("testuser")
     );
 }

@@ -31,7 +31,7 @@
 //! its own login flow. See `open_option_entries`.
 
 use crate::network::NetworkHost;
-use crate::network::server_identity::same_server;
+use crate::network::server_identity::SmbServer;
 use crate::volumes::SmbMountInfo;
 use core_foundation::base::TCFType;
 use core_foundation::string::CFString;
@@ -220,7 +220,8 @@ impl MountTarget<'_> {
     /// since `statfs` may name it `Naspolya._smb._tcp.local` where we mount
     /// `192.168.1.111`.
     fn is_mounted_as(&self, info: &SmbMountInfo, hosts: &[NetworkHost]) -> bool {
-        self.same_share_and_port(info) && same_server(&info.server, self.server, hosts)
+        same_share_name(&info.share, self.share)
+            && SmbServer::new(self.server, self.port).is(&SmbServer::new(&info.server, info.port), hosts)
     }
 }
 
@@ -318,16 +319,6 @@ fn build_smb_mount_url(server: &str, share: &str, port: u16) -> String {
 /// case too): a mount of `Data` is the `data` the user picked, and missing that turns
 /// a working mount into `MountMissing`.
 fn same_share_name(a: &str, b: &str) -> bool {
-    folded(a) == folded(b)
-}
-
-/// Whether two spellings name the same server.
-///
-/// Case-insensitive because DNS is, and NFC-folded for the same cross-pipe reason
-/// as [`same_share_name`]: one side is the name the caller was given (discovered or
-/// typed), the other comes back from `statfs`, and macOS spells an accented name
-/// decomposed there. A byte compare walks past that server's mounts.
-fn same_server_name(a: &str, b: &str) -> bool {
     folded(a) == folded(b)
 }
 
@@ -654,9 +645,25 @@ fn find_mount_path_for_share(target: MountTarget<'_>, hosts: &[NetworkHost]) -> 
 /// Iterates `/Volumes/`, uses `statfs` to find SMB mounts whose server matches
 /// the given `server_name` or `server_ip`. Unmounts each via `diskutil unmount`.
 /// Returns the list of mount paths that were successfully unmounted.
-pub fn unmount_smb_shares_from_host(server_name: &str, server_ip: Option<&str>) -> Vec<String> {
+/// Whether the mount `info` is from one of `targets`: the same server by
+/// [`SmbServer::is`], so the port has to match and the machine may go by any name
+/// discovery pairs it with.
+fn mount_is_from(info: &SmbMountInfo, targets: &[SmbServer], hosts: &[NetworkHost]) -> bool {
+    let mounted = SmbServer::new(&info.server, info.port);
+    targets.iter().any(|target| target.is(&mounted, hosts))
+}
+
+/// Unmounts every SMB share mounted from one of `targets` (the names one host goes
+/// by, each with the host's port), answering the mount paths that went.
+///
+/// ❗ By server identity, host AND port ([`mount_is_from`]): a name alone would take
+/// every server's mounts on a machine that runs several, and a display name matches
+/// nothing `statfs` says.
+pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
     use crate::volumes::get_smb_mount_info;
     use std::fs;
+
+    let hosts = crate::network::get_discovered_hosts();
 
     let mut unmounted = Vec::new();
 
@@ -670,10 +677,7 @@ pub fn unmount_smb_shares_from_host(server_name: &str, server_ip: Option<&str>) 
             continue;
         };
 
-        let matches = same_server_name(&info.server, server_name)
-            || server_ip.is_some_and(|ip| same_server_name(&info.server, ip));
-
-        if !matches {
+        if !mount_is_from(&info, targets, &hosts) {
             continue;
         }
 

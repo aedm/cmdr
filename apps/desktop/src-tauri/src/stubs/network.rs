@@ -505,11 +505,7 @@ pub fn remove_manual_server(_server_id: String, _app_handle: tauri::AppHandle) -
 /// Unmounts all SMB shares from a host (stub: returns empty).
 #[tauri::command]
 #[specta::specta]
-pub async fn disconnect_network_host(
-    _host_id: String,
-    _host_name: String,
-    _ip_address: Option<String>,
-) -> Result<Vec<String>, String> {
+pub async fn disconnect_network_host(_host: NetworkHost) -> Result<Vec<String>, String> {
     Ok(vec![])
 }
 

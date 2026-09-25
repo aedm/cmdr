@@ -37,7 +37,7 @@ of the app build.
   - `mount_linux.rs`: Linux `gio mount` for GVFS-based user-space mounts, confirmed the same way
   - `share_access.rs`: both platforms' second opinion on a mount's "not found", asked of the server itself through
     `mod.rs::mount_share`, the one async mount entry point both platforms share (§ "A share that says not found")
-- **Server identity**: `server_identity.rs`: `same_server` equivalence over the names a server goes by (mDNS service name, `.local` hostname, IP), enriched from the discovery state. Used by the mount-path disambiguation and the already-mounted short-circuit so string-shape differences can't split one server into two.
+- **Server identity**: `server_identity.rs`: `SmbServer` (host + port, compared with `SmbServer::is`) is the one answer to "which SMB server is this"; `same_machine` is the name equivalence under it (mDNS service name, `.local` hostname, IP, enriched from the discovery state) and only answers "which MACHINE": one machine can run several servers, so a port-blind caller is a bug. Callers that still compare machines alone, because no port exists there: the Finder system-keychain aliases, the direct-connection opt-out list (`ShareRef` has no port), the OS-mount notice ledger, and the Linux GVFS mount check. Used by the mount-path disambiguation and the already-mounted short-circuit so string-shape differences can't split one server into two.
 - **Auth** (platform-agnostic):
   - `keychain.rs`: SMB credential management. Delegates storage to `crate::secrets::store()` (see `secrets/CLAUDE.md` for backend details)
 - **Events**: `events.rs`: every `tauri_specta::Event` payload the module emits (discovery, the host context menu, `volume-connection-changed`, the OS-mount fallback notice) plus the wire enums only they carry, re-exported from `mod.rs`. Always compiled, because `ipc.rs`'s `collect_events!` can't cfg-gate inline and names each one on every platform.
@@ -149,7 +149,7 @@ attempt, no guest listing from the cache, and no CLI fallback (which lists as gu
 `AuthRequired`, so the frontend goes to the Keychain and then the sheet, prefilled with that account
 (`get_username_hint`, where the typed account wins over the share history). The reason: on a `map to guest = bad user`
 Samba, guest "succeeds" with an almost-empty list, and the person already said they want to sign in (cmdr-reports#7).
-The match is `same_server` against the entry's address and its label, so a Bonjour-named twin of a typed IP counts once
+The match is `SmbServer::is` (the entry's port, and its machine under any name), so a Bonjour-named twin of a typed IP counts once
 discovery has paired the two.
 
 ### smbutil / smbclient fallback
@@ -209,7 +209,7 @@ Every `NSWorkspaceDidMountNotification` on an SMB share triggers a fresh `regist
 
 `gio mount` is used for user-space SMB mounting on Linux. It requires the `gvfs-smb` package. If `gio` is not available, a helpful error message is returned. Mounts appear under `/run/user/<uid>/gvfs/`.
 
-The password is fed to `gio mount` through the child's **stdin** (`run_gio_mount` spawns `gio` directly with a piped stdin), never via a shell command line. An earlier `sh -c "echo 'PASS' | gio mount …"` shape leaked the cleartext password into the process argument list (`ps` / `/proc/<pid>/cmdline`), the same argv exposure the macOS smbutil path is careful to avoid. The already-mounted check (`find_existing_mount` → `match_existing_smb_mount`) parses `gio mount -l` and compares servers by identity (`server_identity::same_server`), so a share mounted under one name (for example by Nautilus using the hostname) is recognized when we look it up by another (the IP).
+The password is fed to `gio mount` through the child's **stdin** (`run_gio_mount` spawns `gio` directly with a piped stdin), never via a shell command line. An earlier `sh -c "echo 'PASS' | gio mount …"` shape leaked the cleartext password into the process argument list (`ps` / `/proc/<pid>/cmdline`), the same argv exposure the macOS smbutil path is careful to avoid. The already-mounted check (`find_existing_mount` → `match_existing_smb_mount`) parses `gio mount -l` and compares servers by identity (`server_identity::same_machine`), so a share mounted under one name (for example by Nautilus using the hostname) is recognized when we look it up by another (the IP).
 
 ### `HostSource` enum on `NetworkHost`
 
@@ -254,7 +254,7 @@ already taken by a different server (via `statfs`), and if so picks `/Volumes/{s
 convention) and passes it as an explicit mount point to `NetFSMountURLSync`. The volume switcher shows
 `{share} on {server}` for SMB mounts so the user knows which server each volume belongs to.
 
-"Different server" is an identity comparison (`server_identity::same_server`), never a string compare: `statfs`
+"Different server" is an identity comparison (`server_identity::same_machine`), never a string compare: `statfs`
 may report the existing mount as `Naspolya._smb._tcp.local` while we mount by `192.168.1.111`, and a string mismatch
 would treat one NAS as two, force a second mount with `ForceNewSession`, and break session reuse. For the same reason,
 `mount_share_sync` returns early with `already_mounted: true` when `find_mount_path_for_share` finds the same
@@ -270,7 +270,7 @@ becomes a `MountResult`, and a success (`0` or `EEXIST`) lands on the first sigh
 - **Where it looks, in order**: NetFS's own `mountpoints` answer, the disambiguation guess (`public-1`, which NetFS
   isn't told about and may not have used), then every `/Volumes` entry named like the share.
 - **What counts**: an SMB mount of the share on the port, the share compared folded (NFC, case-insensitive, like
-  `smb_volume_id`). A path worked out here also needs the server by identity (`same_server`), since it could hold
+  `smb_volume_id`). A path worked out here also needs the server by identity (`SmbServer::is`), since it could hold
   another server's same-named share. NetFS's own path doesn't: NetFS resolved our URL to it, and demanding identity
   there would fail a working mount whenever discovery hasn't yet paired an IP with an mDNS name.
 - **Nothing found is `MountMissing`**, ❌ never a path made up from the share name. The made-up `/Volumes/{share}` is
@@ -367,8 +367,8 @@ Every one of these folds NFC, and a new use of a name has to join them:
 - **Identity.** `cmdr_fs::volume::ids::smb_volume_id` folds both halves before it case-folds, so a share gets one
   `index-{id}.db`, one set of `lastUsedPaths`, and one `volumeId` however it was registered.
 - **Credentials.** `keychain::make_account_name` folds the share half; `server_identity::normalize` folds the server
-  half for every `credential_key` / `same_server` answer.
-- **Stores and comparisons.** `known_shares::share_key`, `mount::same_share_name`, `mount::same_server_name`.
+  half for every `credential_key` / `same_machine` answer.
+- **Stores and comparisons.** `known_shares::share_key`, `mount::same_share_name`, `mount::mount_is_from`.
 - **Never the password.** It's bytes the user typed; folding it would change the secret.
 
 Two places deliberately stay byte-exact: `path_volume_id` (the kernel is self-consistent about how it spells a mount
@@ -614,10 +614,10 @@ what failed is a property of the connection to the server: a stale password or a
 it identically. A NAS whose shares all remount at login would raise one notice per share, which is worse than the
 silence it replaces.
 
-**The ledger asks `server_identity::same_server`, not a string key.** `statfs` echoes back whichever name form each
+**The ledger asks `server_identity::same_machine`, not a string key.** `statfs` echoes back whichever name form each
 mount used, so one NAS arrives as `192.168.1.111` on one mount and `Naspolya._smb._tcp.local` on the next. That's also
 why the ledger is a `Vec` rather than a `HashSet`: identity here is an equivalence relation over the live mDNS state,
-not a value to hash. Its one weak spot is the same one `same_server` documents: before discovery warms, an IP and a
+not a value to hash. Its one weak spot is the same one `same_machine` documents: before discovery warms, an IP and a
 name look like two servers, so the worst case is two notices rather than one, never a missed one.
 
 **An E2E run never gets here at all.** The notice's one trigger is the auto-upgrade of a mount the app didn't make, and
@@ -673,7 +673,7 @@ servers hub. Absence means on, so a
 without an `AppHandle` (the path is stashed at load), because "Connect directly" records consent from code the MCP
 executor calls too.
 
-**Matched by `server_identity::same_server`, never a key.** `statfs` spells one NAS `192.168.1.111` on one mount and
+**Matched by `server_identity::same_machine`, never a key.** `statfs` spells one NAS `192.168.1.111` on one mount and
 `Naspolya._smb._tcp.local` on the next, and a choice the other spelling can't see looks like the switch resetting
 itself. Setting it clears every entry naming the share first, so one share keeps one entry. The auto path passes both
 the `statfs` name and the address it resolved, so discovery that has just resolved the name is what pairs them.

@@ -356,7 +356,8 @@ describe('runHostAction', () => {
 
   it('unmounts an SMB host’s shares, which is what its Disconnect means', async () => {
     await actions().runHostAction(payload('disconnect'))
-    expect(disconnectNetworkHost).toHaveBeenCalledWith('h1', 'Attic NAS', '10.0.0.4')
+    // ❗ The whole host: its mounts are found by where it dials, every name on ITS port.
+    expect(disconnectNetworkHost).toHaveBeenCalledWith(host)
     expect(addToast).toHaveBeenCalledWith('Disconnected from Attic NAS', { level: 'success' })
   })
 

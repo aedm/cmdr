@@ -22,7 +22,7 @@
 
 use crate::ignore_poison::IgnorePoison;
 use crate::network::NetworkHost;
-use crate::network::server_identity::same_server;
+use crate::network::server_identity::same_machine;
 use crate::network::smb_connect_failure::UpgradeFailure;
 use std::sync::{LazyLock, Mutex, OnceLock};
 use tauri::AppHandle;
@@ -88,7 +88,7 @@ struct Told {
 /// The servers the user has already been told are on the slow path this run.
 ///
 /// A `Vec` rather than a `HashSet` because membership is an identity question,
-/// not a string question: `same_server` pairs the name forms one server arrives
+/// not a string question: `same_machine` pairs the name forms one server arrives
 /// under (`Naspolya._smb._tcp.local`, `naspolya.local`, `192.168.1.111`) using the
 /// live mDNS state, so there's no single key to hash. The list holds one entry per
 /// server that ever fell back in a session, so the scan is over a handful.
@@ -101,7 +101,7 @@ impl OsMountNotices {
     /// Records `server` as told by a notice naming `volume_id`, returning `true`
     /// only the first time. The caller speaks on `true` and stays quiet on `false`.
     fn claim(&mut self, server: &str, volume_id: &str, hosts: &[NetworkHost]) -> bool {
-        if self.told.iter().any(|told| same_server(&told.server, server, hosts)) {
+        if self.told.iter().any(|told| same_machine(&told.server, server, hosts)) {
             return false;
         }
         self.told.push(Told {
@@ -122,7 +122,7 @@ impl OsMountNotices {
 
     /// Forgets `server`, so a later fallback on it earns a fresh notice.
     fn forget(&mut self, server: &str, hosts: &[NetworkHost]) {
-        self.told.retain(|told| !same_server(&told.server, server, hosts));
+        self.told.retain(|told| !same_machine(&told.server, server, hosts));
     }
 
     /// Forgets the server whose notice named `volume_id`. Another of that server's
@@ -211,7 +211,7 @@ pub(crate) fn server_is_told(server: &str) -> bool {
         .lock_ignore_poison()
         .told
         .iter()
-        .any(|told| same_server(&told.server, server, &[]))
+        .any(|told| same_machine(&told.server, server, &[]))
 }
 
 #[cfg(test)]

@@ -332,7 +332,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
    */
   async function disconnectHost(host: NetworkHost): Promise<void> {
     try {
-      const unmounted = await disconnectNetworkHost(host.id, host.name, host.ipAddress)
+      const unmounted = await disconnectNetworkHost(host)
       if (unmounted.length > 0) {
         addToast(tString('fileExplorer.network.browser.disconnected', { hostName: host.name }), {
           level: 'success',

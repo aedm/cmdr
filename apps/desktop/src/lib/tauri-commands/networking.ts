@@ -647,15 +647,19 @@ export function onSmbOsMountNoticeWithdrawn(
 }
 
 /**
- * Unmounts all SMB shares mounted from a given server.
- * Returns the list of mount paths that were unmounted.
+ * Unmounts all SMB shares mounted from `host`, answering the mount paths that went.
+ * ❗ The whole host: its mounts are found by where it dials (hostname, IP, each on
+ * its port), never by a display name.
  */
-export async function disconnectNetworkHost(
-  hostId: string,
-  hostName: string,
-  ipAddress: string | undefined,
-): Promise<string[]> {
-  const res = await commands.disconnectNetworkHost(hostId, hostName, ipAddress ?? null)
+export async function disconnectNetworkHost(host: NetworkHost): Promise<string[]> {
+  const res = await commands.disconnectNetworkHost({
+    id: host.id,
+    name: host.name,
+    hostname: host.hostname ?? null,
+    ipAddress: host.ipAddress ?? null,
+    port: host.port,
+    source: host.source,
+  })
   if (res.status === 'error') throwIpcError(res.error)
   return res.data
 }

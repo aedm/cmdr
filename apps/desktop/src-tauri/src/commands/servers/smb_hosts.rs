@@ -175,17 +175,15 @@ fn unlisted_host(row: &KnownNetworkShare) -> SmbHostGroup {
 /// - A row with no address (history, or a share an Add named) knows no port, so
 ///   its server name only matches a host on 445, by identity under any spelling.
 fn is_host_of(group: &SmbHostGroup, row: &KnownNetworkShare, hosts: &[NetworkHost]) -> bool {
-    use crate::network::server_identity::same_server;
+    use crate::network::server_identity::SmbServer;
 
     if row.server_name.eq_ignore_ascii_case(&group.discovery_name) {
         return true;
     }
+    let host = SmbServer::new(&group.host, group.port);
     match row.address.as_deref() {
-        Some(address) => {
-            row.port.unwrap_or(DEFAULT_SMB_PORT) == group.port
-                && (address.eq_ignore_ascii_case(&group.host) || same_server(address, &group.host, hosts))
-        }
-        None => group.port == DEFAULT_SMB_PORT && same_server(&row.server_name, &group.host, hosts),
+        Some(address) => host.is(&SmbServer::new(address, row.port.unwrap_or(DEFAULT_SMB_PORT)), hosts),
+        None => host.is(&SmbServer::new(&row.server_name, DEFAULT_SMB_PORT), hosts),
     }
 }
 

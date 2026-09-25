@@ -107,7 +107,7 @@ fn match_existing_smb_mount(
     for line in stdout.lines() {
         if let Some((mount_server, mount_share)) = parse_smb_mount(line)
             && mount_share.eq_ignore_ascii_case(share)
-            && crate::network::server_identity::same_server(&mount_server, server, hosts)
+            && crate::network::server_identity::same_machine(&mount_server, server, hosts)
         {
             return Some(mount_server);
         }
@@ -355,7 +355,7 @@ fn classify_mount_error(stderr: &str, server: &str, share: &str, username: Optio
 /// Unmounts all SMB shares from a given host.
 ///
 /// Linux GVFS unmount via `gio mount -u` is not wired up yet; returns empty.
-pub fn unmount_smb_shares_from_host(_server_name: &str, _server_ip: Option<&str>) -> Vec<String> {
+pub fn unmount_smb_shares_from_host(_targets: &[crate::network::server_identity::SmbServer]) -> Vec<String> {
     log::debug!("unmount_smb_shares_from_host not yet implemented on Linux");
     Vec::new()
 }
