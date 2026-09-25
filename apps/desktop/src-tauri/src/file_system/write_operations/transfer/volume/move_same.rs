@@ -539,10 +539,8 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                             }
                                         }
                                     }
-                                    // A cross-type Overwrite: the resolver already
-                                    // set the entry at the name aside, and the
-                                    // rename in the closure answers for it the
-                                    // same way.
+                                    // A cross-type Overwrite's aside: the rename
+                                    // in the closure answers for it too.
                                     if let Some(displaced) = rc.displaced {
                                         overwritten_sources
                                             .lock_ignore_poison()

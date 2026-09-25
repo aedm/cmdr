@@ -333,7 +333,7 @@ pub(crate) async fn move_volumes_with_progress(
             // is the same single-source shape a folder copy is: without a window
             // its whole subtree streams one file at a time. Same width as the
             // copy driver's, and the same number the in-flight table declares.
-            let file_window = super::strategy::FileWindow::new(concurrency);
+            let file_window = super::merge_ctx::FileWindow::new(concurrency);
             let last_progress_time: Arc<std::sync::Mutex<Instant>> = Arc::new(std::sync::Mutex::new(Instant::now()));
             // ONE ledger for the whole move, so the leaves a folder streams at
             // once each hold their own share of the in-flight byte total.
@@ -427,7 +427,7 @@ pub(crate) async fn move_volumes_with_progress(
                     // the operation-log capture harvests it below for the per-leaf
                     // journal rows. It also keeps the SOURCE ledger the sweep
                     // below removes from.
-                    let created = super::strategy::CreatedPaths::recording_sources();
+                    let created = super::merge_ctx::CreatedPaths::recording_sources();
                     // This source's row in the in-flight table, and the number
                     // every leaf row below it hangs off. Sources run one at a
                     // time here, so the counter labels the source rows in order.
@@ -439,7 +439,7 @@ pub(crate) async fn move_volumes_with_progress(
                     // dest folder, deep file clashes inside honor the file policy
                     // (Stop-wait, latch, conditional reduce, type mismatches) —
                     // the same granularity the top-level move already has.
-                    let merge_ctx = super::strategy::MergeCtx {
+                    let merge_ctx = super::merge_ctx::MergeCtx {
                         events: &*events,
                         operation_id: &operation_id,
                         config: &config_for_merge,
@@ -458,7 +458,7 @@ pub(crate) async fn move_volumes_with_progress(
                         // below, so concurrent writes would clobber one row's
                         // stall-abort token and byte count and the dump would
                         // name the folder instead of the file that wedged.
-                        probe: Some(super::strategy::MergeProbe {
+                        probe: Some(super::merge_ctx::MergeProbe {
                             operation: Arc::clone(&op_probe),
                             source_row,
                         }),

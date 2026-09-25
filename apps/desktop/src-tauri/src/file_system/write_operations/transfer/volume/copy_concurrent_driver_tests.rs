@@ -195,7 +195,7 @@ impl Harness {
             dest_path: Path::new("/"),
             config: &self.config,
             concurrency,
-            file_window: super::super::strategy::FileWindow::new(concurrency),
+            file_window: super::super::merge_ctx::FileWindow::new(concurrency),
             dest_dir_is_ours: false,
             dest_index: &self.dest_index,
             pre_skip_paths: &self.pre_skip_paths,

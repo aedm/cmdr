@@ -27,11 +27,9 @@ use super::super::super::types::VolumeCopyConfig;
 use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskProbeHandle};
 use super::displaced_destination::DisplacedLedger;
+use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::preflight::{SourceFileFacts, SourceHint};
-use super::strategy::{
-    CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, copy_single_path, failed_write_leaves_ours_at,
-    staging_for,
-};
+use super::strategy::{LandingName, copy_single_path, failed_write_leaves_ours_at, staging_for};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 

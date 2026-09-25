@@ -48,8 +48,8 @@ use super::super::transfer_probe::OperationProbe;
 use super::copy::drain_deadline as drain_deadline_for;
 use super::copy_concurrent_task::{CopyTaskFailure, CopyTaskSuccess, run_copy_task};
 use super::displaced_destination::DisplacedLedger;
+use super::merge_ctx::CreatedPaths;
 use super::preflight::SourceHint;
-use super::strategy::CreatedPaths;
 use super::transfer_error::{PathedVolumeError, WriteFailure};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
@@ -76,7 +76,7 @@ pub(super) struct ConcurrentCopy<'a> {
     /// the operation never has more than `concurrency` files in flight no matter
     /// how the batch is shaped. ❌ Never a second, per-walker width: `W` sources
     /// × `W` leaves is `W²` files on one connection.
-    pub(super) file_window: super::strategy::FileWindow,
+    pub(super) file_window: super::merge_ctx::FileWindow,
     /// The destination directory was created by THIS operation (Phase 0.5), so
     /// nothing the user already had can be inside it and every pre-check is a
     /// guaranteed miss.

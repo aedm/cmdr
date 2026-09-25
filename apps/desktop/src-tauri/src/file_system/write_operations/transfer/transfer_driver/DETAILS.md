@@ -30,7 +30,7 @@ Two things that number must survive:
   holds its HIGH-WATER mark, so the bar doesn't, and `complete` adds the leaf's exact size once however many attempts
   it took. ❌ Never lower the mark on a restart: the re-streamed prefix would be credited twice, a silent over-count
   and a Size bar that reaches 100% before the copy does.
-- **Leaves that overlap.** A directory source streams many files at once through `volume/strategy.rs::FileWindow`, all
+- **Leaves that overlap.** A directory source streams many files at once through `volume/merge_ctx.rs::FileWindow`, all
   reporting into the same ledger. ❌ Never give them one shared high-water slot: the bar then shows whichever leaf is
   furthest along, and the next leaf to finish — any leaf, however small — resets the slot and takes the big one's
   progress off the bar. On a 664 MB folder whose largest file was 259 MB that read as the Size bar falling from

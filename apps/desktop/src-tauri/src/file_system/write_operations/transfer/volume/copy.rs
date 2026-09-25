@@ -580,7 +580,7 @@ const MAX_TRANSFER_CONCURRENCY: usize = 32;
 /// `concurrency > 1`).
 ///
 /// This ONE number sizes both windows the operation has: the driver's top-level
-/// source window and the `strategy.rs::FileWindow` every merge walker copies
+/// source window and the `merge_ctx.rs::FileWindow` every merge walker copies
 /// through. ❌ Don't give the subtree walk a width of its own — the two would
 /// multiply on the same connection.
 pub(super) fn transfer_concurrency(source: &dyn Volume, dest: &dyn Volume) -> usize {
@@ -710,7 +710,7 @@ pub(crate) async fn copy_volumes_with_progress(
     // either driver. It is what makes `network.smbConcurrency` mean something
     // for the commonest copy there is — one folder, selected in a pane, which
     // is a single source and therefore takes the SERIAL driver.
-    let file_window = super::strategy::FileWindow::new(concurrency);
+    let file_window = super::merge_ctx::FileWindow::new(concurrency);
     // Phase 0.5 created `dest_path` rather than finding it, so nothing the user
     // already had can be inside it and the concurrent loop's per-file conflict
     // probe below has nothing to find. See the comment at its call site for what
@@ -998,7 +998,7 @@ pub(crate) async fn copy_volumes_with_progress(
         operation_id,
         // Both drivers can hold `concurrency` file writes at once: the
         // concurrent one across top-level sources, the serial one across the
-        // leaves of the subtree it is walking (`strategy.rs::FileWindow`). So
+        // leaves of the subtree it is walking (`merge_ctx.rs::FileWindow`). So
         // the declared width is the same number either way.
         concurrency,
         total_files,

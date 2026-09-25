@@ -7,13 +7,14 @@
 //! cancel tiers) — and the two call into each other: a directory child comes
 //! back here, a file child goes there.
 //!
-//! Shared vocabulary (`MergeCtx`, `CreatedPaths`, `copy_single_path`) lives in
-//! `strategy.rs` because both halves and `sequential_extract.rs` speak it.
+//! Shared vocabulary (`MergeCtx`, `CreatedPaths`, `FileWindow`) lives in
+//! `merge_ctx.rs` because both halves, both drivers, and `sequential_extract.rs`
+//! speak it.
 //!
 //! The walk DISCOVERS serially and COPIES concurrently: one walker descends the
 //! tree in listing order and resolves every conflict on itself, exactly as it
 //! always did, while each file's byte copy joins the operation-wide
-//! `strategy.rs::FileWindow` and overlaps its siblings. `DETAILS.md`
+//! `merge_ctx.rs::FileWindow` and overlaps its siblings. `DETAILS.md`
 //! § "One window for the whole operation".
 //!
 //! The merge invariant this file has to keep: a merge never deletes or
@@ -38,12 +39,10 @@ use super::super::transfer_driver::SourceProgress;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskPhase, TaskProbeHandle, TaskRole, set_task_phase};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::landing::{DestFolder, NewName, where_it_lands};
+use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::naming::take_back_reservation;
 use super::preflight::SourceFileFacts;
-use super::strategy::{
-    CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, WriteStaging, note_pending_for_local_dest,
-    staging_for, stream_pipe_file,
-};
+use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{Volume, VolumeError};

@@ -18,7 +18,7 @@
 //! ## Why a leaf needs a handle of its own
 //!
 //! A directory source's subtree streams many files at once through the
-//! operation-wide `volume/strategy.rs::FileWindow`, and they all report into the
+//! operation-wide `volume/merge_ctx.rs::FileWindow`, and they all report into the
 //! same accounting. One shared high-water slot cannot hold that: the biggest
 //! leaf's offset is what the bar shows, and the next leaf to finish — any leaf,
 //! however small — resets the slot and drops the reported total by everything
@@ -527,7 +527,7 @@ mod tests {
     }
 
     /// A DIRECTORY source streams many leaves at once through the
-    /// operation-wide `volume/strategy.rs::FileWindow`, all reporting into this
+    /// operation-wide `volume/merge_ctx.rs::FileWindow`, all reporting into this
     /// accounting. A single shared high-water slot could not hold that: the big
     /// leaf's mark was what the bar showed, and the next small leaf to finish
     /// wiped it, dropping the reported total by everything the big one had

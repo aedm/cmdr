@@ -23,8 +23,9 @@ use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::copy_concurrent::ConcurrentCopy;
 use super::copy_concurrent_task::CopyTask;
 use super::landing::{DestFolder, Landing, NewName, where_it_lands};
+use super::merge_ctx::MergeProbe;
 use super::preflight::SourceFileFacts;
-use super::strategy::{LandingName, MergeProbe, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
+use super::strategy::{LandingName, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::VolumeError;
 use crate::ignore_poison::IgnorePoison;
@@ -213,7 +214,7 @@ impl ConcurrentCopy<'_> {
             file_name,
             window: self.file_window.clone(),
             displaced: Arc::clone(&self.displaced),
-            created: Arc::new(super::strategy::CreatedPaths::default()),
+            created: Arc::new(super::merge_ctx::CreatedPaths::default()),
             // Every leaf of a directory source's subtree numbers itself under
             // this source's own row.
             merge_probe: self.op_probe.as_ref().map(|probe| MergeProbe {

@@ -29,6 +29,7 @@ mod item_identity;
 mod landed_mode;
 mod landing;
 mod merge;
+mod merge_ctx;
 /// `move` is a Rust keyword, so the module is `r#move`. Nothing outside this
 /// facade names it: the move entry points are re-exported below.
 mod r#move;

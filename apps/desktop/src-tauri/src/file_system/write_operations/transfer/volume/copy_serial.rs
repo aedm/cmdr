@@ -58,7 +58,7 @@ pub(super) struct SerialCopy<'a> {
     /// DIRECTORY source's subtree streams up to `transfer_concurrency` files at
     /// once through it — which is what makes `network.smbConcurrency` matter for
     /// the single-folder copy that lands on this driver.
-    pub(super) file_window: super::strategy::FileWindow,
+    pub(super) file_window: super::merge_ctx::FileWindow,
     pub(super) total_files: usize,
     pub(super) total_bytes: u64,
     /// What the bulk pre-skip pass already credited, so the driver's prelude
@@ -406,7 +406,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                     // Per-source rollback ledger: the files this transfer
                     // streams and the dirs it newly creates inside a
                     // directory source.
-                    let created = super::strategy::CreatedPaths::default();
+                    let created = super::merge_ctx::CreatedPaths::default();
 
                     // This source's row in the in-flight table, and the number
                     // every row below it hangs off.
@@ -416,7 +416,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                     // directory honor the file policy via the resolver,
                     // sharing the op-wide apply-to-all latch with the
                     // top-level dispatch.
-                    let merge_ctx = super::strategy::MergeCtx {
+                    let merge_ctx = super::merge_ctx::MergeCtx {
                         events: &*events,
                         operation_id: &operation_id,
                         config: &config_for_merge,
@@ -432,7 +432,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         displaced: &displaced,
                         // Every leaf of this source's subtree numbers itself
                         // under the source's own row, below.
-                        probe: op_probe_serial.as_ref().map(|probe| super::strategy::MergeProbe {
+                        probe: op_probe_serial.as_ref().map(|probe| super::merge_ctx::MergeProbe {
                             operation: Arc::clone(probe),
                             source_row,
                         }),

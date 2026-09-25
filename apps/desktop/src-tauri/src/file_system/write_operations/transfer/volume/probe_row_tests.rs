@@ -238,7 +238,7 @@ fn assert_table_names_every_leaf(dumps: &[String], width: usize) {
         "the folder's own row names the walk, and stays in a phase the watchdog never acts on, got:\n{dump}"
     );
 
-    // The walker holds no window slot (`strategy.rs::FileWindow`), so the header
+    // The walker holds no window slot (`merge_ctx.rs::FileWindow`), so the header
     // must not measure it against one. Counted in, a perfectly healthy transfer
     // renders as `in_flight=5/4` and reads as a broken limiter — which is time
     // spent chasing the wrong thing in the middle of an incident.
