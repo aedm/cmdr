@@ -450,6 +450,12 @@ async fn apply_child_decision(
             }
             (orig, displaced)
         }
+        // A cross-type Overwrite: the resolver already set the FOLDER at the
+        // name aside, so the name is free and the aside answers to the rename.
+        None if aside.is_some() => {
+            ctx.overwrote.store(true, std::sync::atomic::Ordering::Relaxed);
+            (write_path, aside)
+        }
         // Rename / fresh: `write_path` is the resolved (unique) name. On a
         // local-FS dest the resolver RESERVED it with an O_CREAT|O_EXCL
         // placeholder (the TOCTOU guard the streaming writer would truncate),
@@ -458,12 +464,6 @@ async fn apply_child_decision(
         // the source there. A plain delete is right here and only here: that
         // zero-byte file is OURS, not the user's. On non-local dests no
         // placeholder exists and the delete is a benign `NotFound`.
-        // A cross-type Overwrite: the resolver already set the FOLDER at the
-        // name aside, so the name is free and the aside answers to the rename.
-        None if aside.is_some() => {
-            ctx.overwrote.store(true, std::sync::atomic::Ordering::Relaxed);
-            (write_path, aside)
-        }
         None => {
             // Ours to clear, so no longer the post-loop's to take back.
             ctx.state.claimed_names.release_placeholder(&write_path);

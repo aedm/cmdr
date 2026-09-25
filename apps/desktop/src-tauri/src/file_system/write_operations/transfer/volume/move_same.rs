@@ -526,6 +526,8 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                     // would refuse. It's this op's own file, so it
                                     // goes; the rename lands on the freed name.
                                     if rc.reserved_placeholder {
+                                        // Cleared here, so not the op's to take back.
+                                        state.claimed_names.release_placeholder(&rc.write_path);
                                         match volume.delete(&rc.write_path).await {
                                             Ok(()) | Err(VolumeError::NotFound(_)) => {}
                                             Err(e) => {

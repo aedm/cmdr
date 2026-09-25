@@ -319,3 +319,56 @@ async fn a_replacement_that_lands_leaves_no_aside_behind() {
     assert_eq!(read_all(&dest, "/folder_in/inside.txt").await, b"incoming");
     assert_eq!(read_all(&dest, "/file_in").await, b"incoming file");
 }
+
+/// A LINK at the destination is a leaf, never a folder, whatever it points at:
+/// a folder answered Overwrite over it sets the LINK aside, and dropping that
+/// aside after the folder lands removes the link alone. The folder it pointed at
+/// keeps every file.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_folder_replacing_a_dir_link_drops_the_link_and_never_its_target() {
+    use crate::file_system::volume::LocalPosixVolume;
+
+    let dest_dir = tempfile::tempdir().expect("tempdir");
+    let root = dest_dir.path().to_path_buf();
+    std::fs::create_dir(root.join("target")).unwrap();
+    std::fs::write(root.join("target/precious.txt"), b"the user's data").unwrap();
+    std::os::unix::fs::symlink(root.join("target"), root.join("clash")).unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", root.clone()));
+
+    let source = in_memory_source();
+    source.create_directory(Path::new("/clash")).await.unwrap();
+    source
+        .create_file(Path::new("/clash/inside.txt"), b"incoming")
+        .await
+        .unwrap();
+
+    let state = make_state();
+    let events = OverwriteThenMaybeRollback::new(&state, false);
+    copy_volumes_with_progress(
+        events.clone(),
+        "op-folder-over-dir-link",
+        &state,
+        source,
+        &[PathBuf::from("/clash")],
+        Arc::clone(&dest),
+        Path::new("/"),
+        &stop_config(),
+    )
+    .await
+    .expect("the folder lands");
+
+    let clash = std::fs::symlink_metadata(root.join("clash")).unwrap();
+    assert!(clash.is_dir(), "a real folder now holds the name, not the link");
+    assert_eq!(std::fs::read(root.join("clash/inside.txt")).unwrap(), b"incoming");
+    assert_eq!(
+        std::fs::read(root.join("target/precious.txt")).unwrap(),
+        b"the user's data",
+        "the link's target is untouched"
+    );
+    let mut names: Vec<String> = std::fs::read_dir(&root)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+        .collect();
+    names.sort();
+    assert_eq!(names, vec!["clash", "target"], "and the link's aside is gone");
+}
