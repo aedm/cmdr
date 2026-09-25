@@ -136,8 +136,8 @@ impl DisplacedDestination {
     pub(super) async fn discard(self, volume: &Arc<dyn Volume>) {
         let removed = if self.is_directory {
             remove_tree(volume, self.aside.path(), TreeRemoval::UserChoseOverwriteAcrossTypes)
-            .await
-            .map_err(|e| e.error)
+                .await
+                .map_err(|e| e.error)
         } else {
             volume.delete(self.aside.path()).await
         };
