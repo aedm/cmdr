@@ -24,6 +24,7 @@
         listSharesWithCredentials,
         saveSmbCredentials,
         getSmbCredentials,
+        hasSmbCredentials,
         isUsingCredentialFileFallback,
         updateKnownShare,
     } from '$lib/tauri-commands'
@@ -97,6 +98,8 @@
 
     // Track authenticated credentials for mounting
     let authenticatedCredentials = $state<{ username: string; password: string } | null>(null)
+    /** A password stored for this server, so Forget shows even after a guest listing. */
+    let hasStoredPassword = $state(false)
 
     // Auto-mount tracking: track the last share we tried so the same prop value
     // doesn't re-fire, but a new value (for example via "Copy path between panes"
@@ -220,6 +223,7 @@
     async function loadShares() {
         loading = true
         error = null
+        void hasSmbCredentials(host.name, null).then((stored) => (hasStoredPassword = stored), () => {})
 
         // Check if we have cached share state
         const cachedState = getShareState(host.id)
@@ -544,6 +548,7 @@
         try {
             await forgetCredentials(host.name)
             authenticatedCredentials = null
+            hasStoredPassword = false
             addToast(tString('fileExplorer.network.forgotPassword', { hostName: hostLabel }), { level: 'success' })
         } catch {
             addToast(tString('fileExplorer.network.deletePasswordFailed'), { level: 'error' })
@@ -607,7 +612,7 @@
                 </span>
             </Button>
             <span class="host-name">{hostLabel}</span>
-            {#if authenticatedCredentials}
+            {#if authenticatedCredentials || hasStoredPassword}
                 <button
                     class="forget-password-btn"
                     onclick={handleForgetPassword}

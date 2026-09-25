@@ -281,6 +281,14 @@ export async function getSmbCredentials(server: string, share: string | null): P
 }
 
 /**
+ * Whether SMB credentials are stored for a server (or a share on it). Answered from
+ * the backend's credential cache when a listing or mount already read them.
+ */
+export async function hasSmbCredentials(server: string, share: string | null): Promise<boolean> {
+  return commands.hasSmbCredentials(server, share)
+}
+
+/**
  * Deletes SMB credentials from the Keychain.
  * @param server Server hostname or IP
  * @param share Optional share name

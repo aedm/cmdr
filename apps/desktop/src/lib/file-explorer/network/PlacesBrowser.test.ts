@@ -27,6 +27,7 @@ const h = vi.hoisted(() => ({
   fetchShares: vi.fn(),
   listSharesWithCredentials: vi.fn(),
   getSmbCredentials: vi.fn(),
+  hasSmbCredentials: vi.fn(() => Promise.resolve(false)),
   saveSmbCredentials: vi.fn(),
   openSignInSheet: vi.fn(),
 }))
@@ -35,6 +36,7 @@ vi.mock('$lib/tauri-commands', () => ({
   listSharesWithCredentials: h.listSharesWithCredentials,
   saveSmbCredentials: h.saveSmbCredentials,
   getSmbCredentials: h.getSmbCredentials,
+  hasSmbCredentials: h.hasSmbCredentials,
   isUsingCredentialFileFallback: vi.fn(() => Promise.resolve(false)),
   updateKnownShare: vi.fn(() => Promise.resolve()),
   getUsernameHint: vi.fn(() => Promise.resolve(null)),
@@ -205,6 +207,33 @@ describe('PlacesBrowser credential gate', () => {
     })
     expect(h.openSignInSheet, 'must not prompt when stored creds exist').not.toHaveBeenCalled()
 
+    await unmount(component)
+  })
+
+  /**
+   * ❗ "Forget saved password" shows whenever a password is stored for the server,
+   * whichever way the listing went: a guest listing of a host with a stored
+   * server-level password showed no button (QA round 5).
+   */
+  it('offers Forget saved password after a guest listing when a password is stored', async () => {
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.hasSmbCredentials.mockResolvedValue(true)
+    const { target, component } = mountBrowser(vi.fn())
+    await waitForShareList(target)
+    await vi.waitFor(() => {
+      expect(target.querySelector('.forget-password-btn')).toBeTruthy()
+    })
+    expect(h.hasSmbCredentials).toHaveBeenCalledWith('Naspolya', null)
+    await unmount(component)
+  })
+
+  it('offers no Forget button when nothing is stored', async () => {
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.hasSmbCredentials.mockResolvedValue(false)
+    const { target, component } = mountBrowser(vi.fn())
+    await waitForShareList(target)
+    await tick()
+    expect(target.querySelector('.forget-password-btn')).toBeNull()
     await unmount(component)
   })
 
