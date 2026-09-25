@@ -607,7 +607,16 @@ describe('ServersHub row menu after a pin', () => {
     pinned: false,
     lastConnectedAt: null,
     autoReconnect: null,
-    places: [{ volumeId: 'smb-box-public', name: 'public', pinned, connected: false, appRoot: '/Volumes/public', username: null }],
+    places: [
+      {
+        volumeId: 'smb-box-public',
+        name: 'public',
+        pinned,
+        connected: false,
+        appRoot: '/Volumes/public',
+        username: null,
+      },
+    ],
   })
 
   it('shows the pin as it stands now, not as it stood when the menu opened', async () => {
@@ -619,7 +628,8 @@ describe('ServersHub row menu after a pin', () => {
     row?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 60 }))
     await tick()
     await tick()
-    const labels = () => [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
+    const labels = () =>
+      [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
     expect(labels()).toContain('Unpin from switcher')
 
     h.listSavedServers.mockResolvedValue([share(false)])

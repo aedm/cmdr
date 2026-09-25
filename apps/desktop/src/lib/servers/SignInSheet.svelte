@@ -696,7 +696,8 @@
                 bind:rootInput
                 bind:startFolderInput
                 onChange={(patch: Partial<ServerForm>) => {
-                    form = { ...form, ...patch }
+                    // A username the person types is theirs: the address stops steering it.
+                    form = { ...form, ...patch, ...(patch.username !== undefined ? { usernameFromAddress: false } : {}) }
                     // A refusal describes the attempt that earned it, and its
                     // sentence names the host off the LIVE form. Editing the form
                     // would otherwise leave that sentence on screen accusing a

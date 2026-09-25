@@ -60,6 +60,17 @@ describe('applyParsedAddress', () => {
     expect(applyParsedAddress(form, parseServerAddress('ada@'))).toEqual(form)
   })
 
+  /**
+   * ❗ A username the ADDRESS filled follows the address: `smb://x@nas/share` changed
+   * to `nas.local:2222` kept "x" (QA round 2, m6). One the person typed stays.
+   */
+  it('drops a username the address filled once the address stops naming it', () => {
+    const filled = typed('smb://x@nas/share')
+    expect(filled.username).toBe('x')
+    const next = applyParsedAddress({ ...filled, address: 'nas.local:2222' }, parseServerAddress('nas.local:2222'))
+    expect(next.username).toBe('')
+  })
+
   it('keeps a username the address did not carry', () => {
     const form = { ...emptyServerForm(), username: 'ada' }
     expect(applyParsedAddress(form, parseServerAddress('nas.local')).username).toBe('ada')

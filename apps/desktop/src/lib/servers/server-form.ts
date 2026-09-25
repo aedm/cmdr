@@ -16,6 +16,12 @@ export interface ServerForm {
   /** What the user typed, kept verbatim so their own spelling survives an edit. */
   address: string
   username: string
+  /**
+   * Whether `username` is the one the ADDRESS carried (`smb://x@nas/…`) rather than one
+   * the person typed: an address-filled one follows the address, and goes when the
+   * address stops naming it. Typing into the field makes it the person's.
+   */
+  usernameFromAddress: boolean
   /** ❗ Lives here only while the sheet is open. Nothing persists it; the backend's store does. */
   secret: string
   remember: boolean
@@ -36,6 +42,7 @@ export function emptyServerForm(): ServerForm {
     protocol: 'smb',
     address: '',
     username: '',
+    usernameFromAddress: false,
     secret: '',
     // ❗ Add mode ONLY. A person typing a password into a new server means to
     // come back to it; sign-in mode seeds this from what is already stored, so a
@@ -70,9 +77,13 @@ export function applyParsedAddress(form: ServerForm, parsed: ParsedAddress): Ser
   const pathIsRoot = form.protocol === 'sftp' && speaksOrNamesNone(parsed, 'sftp')
   return {
     ...form,
-    // ❗ Only when the address carried one. Typing a host after a username would
-    // otherwise wipe the username the same keystroke put there.
-    username: parsed.username ?? form.username,
+    // ❗ The address's account when it carries one. When it doesn't, a username
+    // the address had filled goes with it, and one the person typed stays.
+    ...(parsed.username !== undefined
+      ? { username: parsed.username, usernameFromAddress: true }
+      : form.usernameFromAddress
+        ? { username: '', usernameFromAddress: false }
+        : {}),
     remoteRoot: pathIsRoot ? (parsed.path ?? form.remoteRoot) : form.remoteRoot,
   }
 }
