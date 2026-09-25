@@ -846,6 +846,18 @@ describe('SignInSheet: editing an SMB host', () => {
     expect(document.activeElement).toBe(document.body.querySelector('#server-name'))
   })
 
+  /** A locked field says why it's locked: the Edit sheet greyed the address out with no word (QA round 2). */
+  it('says under the locked address why it can’t change here', async () => {
+    await renderSheet({ mode: 'edit', server: SMB_HOST })
+    const why = document.body.querySelector('#server-address-locked')
+    expect(why?.textContent.trim()).toBe(
+      'The address is what identifies this server. To use another one, forget this server and add it again.',
+    )
+    expect(document.body.querySelector('#server-address')?.getAttribute('aria-describedby')).toBe(
+      'server-address-locked',
+    )
+  })
+
   it('opens an unnamed host with an empty name and the address as its placeholder', async () => {
     await renderSheet({ mode: 'edit', server: { ...SMB_HOST, displayName: '192.168.0.153', nameSource: 'fallback' } })
     const name = document.body.querySelector<HTMLInputElement>('#server-name')

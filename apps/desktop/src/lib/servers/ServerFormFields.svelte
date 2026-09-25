@@ -139,7 +139,8 @@
     const addressDescribedBy = $derived.by(() => {
         if (addressRefusal) return 'server-address-refusal'
         if (addressWarning) return 'server-address-warning'
-        return identityEditable ? 'server-address-help' : undefined
+        if (identityEditable) return 'server-address-help'
+        return asksForCredentials ? undefined : 'server-address-locked'
     })
     const isSftp = $derived(form.protocol === 'sftp')
     /** An empty start folder opens the root, so the root is what the empty field shows. */
@@ -211,10 +212,13 @@
         <p id="server-address-warning" class="field-warning" role="status">{addressWarning}</p>
     {:else if identityEditable}
         <p id="server-address-help" class="field-help">{tString(ADDRESS_HELP_KEY[form.protocol])}</p>
+    {:else if !asksForCredentials}
+        <!-- SMB: the account stays editable, so the address is the one locked field and says why here. -->
+        <p id="server-address-locked" class="field-help">{tString('servers.sheet.addressLocked')}</p>
     {/if}
-    <!-- ❗ No "paste whatever you have" line under a field nobody can type in.
-         The locked group's own sentence sits under the username instead, where
-         it covers all three of address, protocol, and account. -->
+    <!-- ❗ No "paste whatever you have" line under a field nobody can type in. SFTP and
+         WebDAV lock the account too, so their sentence sits under the username instead,
+         where it covers all three of address, protocol, and account. -->
 </div>
 
 <!-- Every protocol has a name, SMB included: it's what the Servers list shows. -->

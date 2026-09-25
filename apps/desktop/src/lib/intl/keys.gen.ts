@@ -2803,6 +2803,7 @@ export type MessageKey =
   | 'servers.sheet.addressHelpSftp'
   | 'servers.sheet.addressHelpSmb'
   | 'servers.sheet.addressHelpWebdav'
+  | 'servers.sheet.addressLocked'
   | 'servers.sheet.addressLooksLikeSftp'
   | 'servers.sheet.addressLooksLikeSmb'
   | 'servers.sheet.addressLooksLikeWebdav'
