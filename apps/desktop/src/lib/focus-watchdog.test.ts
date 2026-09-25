@@ -91,6 +91,22 @@ describe('focus watchdog', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
+  /** An open in-app menu (a Servers row menu) holds focus on purpose: it warned every time (QA round 2). */
+  it('does not warn when focus is inside an open in-app menu', () => {
+    const menu = document.createElement('div')
+    menu.className = 'menu-surface'
+    menu.setAttribute('data-menu', '')
+    menu.setAttribute('role', 'menu')
+    menu.tabIndex = -1
+    document.body.appendChild(menu)
+    menu.focus()
+
+    initFocusWatchdog()
+    vi.advanceTimersByTime(2000)
+
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
   it('warns when the rail is open but focus falls to body (the bug it must still catch)', () => {
     // Rail being open is NOT a suppressor: if focus lands on <body> while the
     // rail is open, that is still the restore-focus bug the watchdog exists to

@@ -28,12 +28,13 @@ let installed = false
 
 /**
  * Selectors for every region that is a legitimate keyboard home: the dual-pane
- * explorer (the keyboard event sink for both file panes) and the Ask Cmdr rail
- * (composer, sessions list, and its other focusable chrome). The rail only
- * mounts while open (`{#if askCmdrState.open}`), so a closed rail matches
- * nothing here without any extra guard.
+ * explorer (the keyboard event sink for both file panes), the Ask Cmdr rail
+ * (composer, sessions list, and its other focusable chrome), and an open in-app
+ * menu (`ui/Menu.svelte`'s `[data-menu]` surface, which takes focus while it's up:
+ * a Servers row menu). The rail and a menu only mount while open, so a closed
+ * one matches nothing here without any extra guard.
  */
-const KEYBOARD_HOME_SELECTOR = '.dual-pane-explorer, .ask-cmdr-rail'
+const KEYBOARD_HOME_SELECTOR = '.dual-pane-explorer, .ask-cmdr-rail, [data-menu]'
 
 /**
  * Returns true when `document.activeElement` lives inside a keyboard home. This
