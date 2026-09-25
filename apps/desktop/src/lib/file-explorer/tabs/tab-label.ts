@@ -1,5 +1,7 @@
 import { getFolderName } from '$lib/file-operations/transfer/transfer-dialog-utils'
 import { getDeviceDisplayPath, isDeviceScheme } from '$lib/adb/adb-path-utils'
+import { NETWORK_VOLUME_PATH } from '../pane/navigate-refusals'
+import { tString } from '$lib/intl/messages.svelte'
 
 /**
  * Derives the user-facing label for a tab from its path.
@@ -20,6 +22,9 @@ import { getDeviceDisplayPath, isDeviceScheme } from '$lib/adb/adb-path-utils'
  * through `getFolderName` unchanged.
  */
 export function deriveTabLabel(path: string): string {
+  // The Servers view has no folder: its path is the `smb://` sentinel, whose
+  // "basename" would read "/". It's called what the switcher calls it.
+  if (path === NETWORK_VOLUME_PATH) return tString('fileExplorer.navigation.networkVolume')
   if (isDeviceScheme(path)) {
     // `getDeviceDisplayPath` returns "/" at the storage or device root and
     // `/DCIM/Camera` for a subfolder; its basename is the tab label.

@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { deriveTabLabel } from './tab-label'
 
 describe('deriveTabLabel', () => {
+  /** ❗ The Servers view's path is the `smb://` sentinel, whose "basename" read "/" (QA round 2). */
+  it('names the Servers view "Servers"', () => {
+    expect(deriveTabLabel('smb://')).toBe('Servers')
+  })
+
   it('shows "/" at an MTP storage root instead of the raw storage id', () => {
     // At the MTP storage root the last path segment is the raw storage id
     // (here 65537 = 0x10001 for Internal Storage), which used to surface as
