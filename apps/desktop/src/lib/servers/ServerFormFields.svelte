@@ -474,6 +474,13 @@
         margin-top: var(--spacing-md);
     }
 
+    /* Fill the row by being a block, ❌ not by `width: 100%`: inside `<details>`,
+       WebKit resolves that percentage against a wider box, and Root and Start folder
+       stuck out ~18px past every other field (QA round 2). */
+    .advanced-body :global(.text-field) {
+        width: auto;
+    }
+
     .path-row {
         display: flex;
         align-items: center;
