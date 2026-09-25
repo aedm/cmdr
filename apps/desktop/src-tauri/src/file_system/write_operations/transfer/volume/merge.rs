@@ -497,6 +497,9 @@ async fn merge_level<'a>(
     };
     let dest_index = dest_index.at(source_path)?;
     let entries = entries.at(source_path)?;
+    // A move sweeps exactly the folders this walk listed; anything else it
+    // finds in the source afterwards arrived later and stays.
+    created.record_walked_source_dir(source_path);
 
     for entry in &entries {
         // The cooperative boundary, per entry. The walk's own work (listings,
@@ -615,6 +618,11 @@ async fn merge_level<'a>(
             .await?;
             continue;
         }
+
+        // Past every Skip, so this child is one the move carries. Recording it
+        // here rather than when its bytes land is safe: a leaf that fails fails
+        // the whole source, and a failed source is never swept.
+        created.record_carried_source(&child_source, entry);
 
         // PLAN MODE (one-pass sequential extract): the destination + conflict are
         // resolved; record the write and let the caller's single decode pass

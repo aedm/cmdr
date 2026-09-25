@@ -34,6 +34,7 @@ use super::super::transfer_probe::{
 };
 use super::merge::copy_directory_streaming;
 use super::preflight::{SourceFileFacts, SourceHint};
+use super::source_sweep::{SourceLedger, SourceStamp};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::volume::{Volume, VolumeError, VolumeReadStream};
 use crate::ignore_poison::IgnorePoison;
@@ -263,9 +264,48 @@ pub(super) struct CreatedPaths {
     // subtree overwrote anything finalizes `not_rollbackable` — deleting the
     // copies can't bring the overwritten originals back.
     pub overwrote_files: std::sync::atomic::AtomicUsize,
+    // What a MOVE's copy walk carried out of the SOURCE: every file it copied,
+    // with what the listing said about it, and every folder it listed. The
+    // move's source sweep removes exactly this and nothing else
+    // (`source_sweep.rs`). `None` on a copy, which never sweeps.
+    pub source_ledger: Option<Mutex<SourceLedger>>,
 }
 
 impl CreatedPaths {
+    /// A ledger that also keeps the [`SourceLedger`] a move's source sweep reads.
+    pub(super) fn recording_sources() -> Self {
+        Self {
+            source_ledger: Some(Mutex::new(SourceLedger::default())),
+            ..Self::default()
+        }
+    }
+
+    /// Notes a source folder the copy walk listed. A no-op on a copy.
+    pub(super) fn record_walked_source_dir(&self, dir: &Path) {
+        if let Some(ledger) = &self.source_ledger {
+            ledger.lock_ignore_poison().record_walked_dir(dir.to_path_buf());
+        }
+    }
+
+    /// Notes a source file the copy walk is carrying, stamped from the listing
+    /// that found it. The walk reads that listing BEFORE the copy, so a save
+    /// during the copy counts as a change too. A no-op on a copy.
+    pub(super) fn record_carried_source(&self, file: &Path, listed: &crate::file_system::listing::FileEntry) {
+        if let Some(ledger) = &self.source_ledger {
+            ledger
+                .lock_ignore_poison()
+                .record_carried_file(file.to_path_buf(), SourceStamp::of(listed));
+        }
+    }
+
+    /// The source ledger a move's sweep reads, handed over whole. Empty on a
+    /// copy.
+    pub(super) fn take_source_ledger(&self) -> SourceLedger {
+        self.source_ledger
+            .as_ref()
+            .map(|ledger| std::mem::take(&mut *ledger.lock_ignore_poison()))
+            .unwrap_or_default()
+    }
     pub(super) fn record_file(&self, path: PathBuf, size: u64) {
         self.files.lock_ignore_poison().push(WrittenFile::volume(path, size));
     }

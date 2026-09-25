@@ -184,16 +184,8 @@ impl MaterializedSources {
         match &self.origin {
             SourceOrigin::Local => delete_move_sources(&self.absolute).await,
             SourceOrigin::Remote { volume, paths } => {
-                let nothing_to_spare = HashSet::new();
                 for path in paths {
-                    if let Err(e) = remove_tree(
-                        volume,
-                        path,
-                        &nothing_to_spare,
-                        TreeRemoval::ArchiveMoveSourceAfterCommit,
-                    )
-                    .await
-                    {
+                    if let Err(e) = remove_tree(volume, path, TreeRemoval::ArchiveMoveSourceAfterCommit).await {
                         // `e.path` is the item that actually refused (a leaf
                         // inside `path` when the source is a tree).
                         log::warn!(

@@ -16,8 +16,8 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
   "Symlinks are opaque to a move".
 - **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
   ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`).
-- **A MOVE's source sweep spares every child the merge skipped** (`remove_tree`'s `preserve` set): that source is the
-  ONLY copy.
+- **A MOVE's source sweep deletes the walk's LEDGER, ❌ never the tree** (`source_sweep.rs`): Skips, newcomers, and
+  changed files stay.
 - **❌ Never fabricate a destination size for the conflict dialog**; report `None` (a fabricated `0` makes "Overwrite all
   smaller" unconditional).
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
@@ -39,8 +39,7 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
 - **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry means UNKNOWN, ❌ never
   "file"; `strategy.rs::resolve_source_is_directory`'s answer drives the cleanup/ledger branch.
   ❌ No `.unwrap_or(false)`, ❌ no `Default` on `SourceHint`, ❌ no probing where a hint EXISTS.
-- **Cross-FS move deletes sources AFTER `flush_created_destinations`, preserving Skipped ones.** Same-volume move is a
-  rename-merge with top-level hints only, ❌ never a subtree walk.
+- **Same-volume move is a rename-merge with top-level hints only**, ❌ never a subtree walk.
 
 ## Concurrency and failures
 

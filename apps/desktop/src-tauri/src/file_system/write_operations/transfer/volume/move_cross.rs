@@ -27,11 +27,11 @@ use super::super::super::types::{
     CancelRollback, VolumeCopyConfig, WriteCancelledEvent, WriteCompleteEvent, WriteOperationError,
     WriteOperationPhase, WriteOperationType,
 };
+use super::super::left_in_source::LeftInSource;
 use super::super::transfer_driver::{
     ConflictDecision, ConflictDecisionInput, DriverConfig, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
-use super::cleanup::{TreeRemoval, remove_tree};
 use super::conflict::resolve_volume_conflict;
 use super::preflight::SourceFileFacts;
 use super::preflight::{SourceHint, scan_volume_sources};
@@ -168,6 +168,10 @@ pub(crate) async fn move_volumes_with_progress(
     // report "0 skipped" — and the completion toast would read as if everything
     // moved. Mirrors `volume/copy_serial.rs`'s `deep_skipped_files`.
     let deep_skipped_files = Arc::new(AtomicUsize::new(0));
+
+    // What the source sweeps left in place, across every top-level source, for
+    // the completion event (`AppearedDuringMove`).
+    let left_in_source: Arc<std::sync::Mutex<LeftInSource>> = Arc::default();
 
     // Live in-flight table + stall watchdog, the same registration
     // `volume/copy.rs` makes for both of its paths. Without it
@@ -335,6 +339,7 @@ pub(crate) async fn move_volumes_with_progress(
                 progress_interval,
             );
             let deep_skipped_files = Arc::clone(&deep_skipped_files);
+            let left_in_source = Arc::clone(&left_in_source);
             let journal_volumes = journal_volumes.clone();
             // The move keeps an in-flight table like the copy driver's, so a
             // frozen bar during a folder move gets the same "waiting on the
@@ -359,6 +364,7 @@ pub(crate) async fn move_volumes_with_progress(
                 let leaf_ledger = Arc::clone(&leaf_ledger);
                 let last_progress_time = Arc::clone(&last_progress_time);
                 let deep_skipped_files = Arc::clone(&deep_skipped_files);
+                let left_in_source = Arc::clone(&left_in_source);
                 let journal_volumes = journal_volumes.clone();
                 let source_path = ctx.source_path.to_path_buf();
                 let dest_item_path = ctx
@@ -404,8 +410,9 @@ pub(crate) async fn move_volumes_with_progress(
                     // The copy phase's per-file ledger. Cross-volume move's own
                     // rollback reverses renames / cleans staging separately, but
                     // the operation-log capture harvests it below for the per-leaf
-                    // journal rows.
-                    let created = super::strategy::CreatedPaths::default();
+                    // journal rows. It also keeps the SOURCE ledger the sweep
+                    // below removes from.
+                    let created = super::strategy::CreatedPaths::recording_sources();
                     // This source's row in the in-flight table, and the number
                     // every leaf row below it hangs off. Sources run one at a
                     // time here, so the counter labels the source rows in order.
@@ -465,6 +472,13 @@ pub(crate) async fn move_volumes_with_progress(
                         &dest_item_path.display().to_string(),
                     );
                     let probe = task_probe.probe();
+                    // A FILE source's stamp, taken before a byte is read. A
+                    // folder's children are stamped by the walk's own listing.
+                    let stamp_before = if source_is_dir {
+                        None
+                    } else {
+                        super::source_sweep::stamp_file(&source_volume, &source_path).await
+                    };
                     let copy_fut = copy_single_path(
                         &source_volume,
                         &source_path,
@@ -546,31 +560,36 @@ pub(crate) async fn move_volumes_with_progress(
                             return Err(super::transfer_error::map_finalize_failure(&orig, e));
                         }
 
-                    // Delete source. `Volume::delete` is contractually for
-                    // files or *empty* directories (LocalPosix uses
-                    // `std::fs::remove_dir`, which fails ENOTEMPTY), so
-                    // directory sources need a recursive sweep. Cross-volume
-                    // copy doesn't touch the source, so its tree is intact.
-                    //
-                    // ❗ The sweep SPARES every child the merge skipped. A
-                    // skipped child never landed at the destination, so its
-                    // source is the only copy in existence and deleting it
-                    // destroys exactly the data the user declined to move — and
-                    // the conditional policies reduce to Skip per file, so
-                    // "Overwrite all smaller / older" hits this constantly.
-                    // Their ancestor directories survive with them.
+                    // Remove the source, from the LEDGER the copy kept, ❌ never
+                    // by walking what's on disk now (`source_sweep.rs`). What
+                    // stays is the user's only copy of something: a child the
+                    // merge skipped (the conditional policies reduce to Skip per
+                    // file, so "Overwrite all smaller / older" hits this
+                    // constantly), an item that appeared while the folder
+                    // copied, or an original saved over after the copy read it.
                     let delete_result = if source_is_dir {
                         let skipped = created.skipped_source_paths();
                         deep_skipped_files.fetch_add(skipped.len(), Ordering::Relaxed);
-                        remove_tree(
-                            &source_volume,
-                            &source_path,
-                            &skipped,
-                            TreeRemoval::MoveSourceAfterDestinationLanded,
-                        )
-                        .await
+                        let ledger = created.take_source_ledger();
+                        super::source_sweep::sweep_moved_folder(&source_volume, &source_path, &ledger, &skipped)
+                            .await
+                            .map(|kept| {
+                                left_in_source.lock_ignore_poison().note(
+                                    &source_path,
+                                    true,
+                                    kept.appeared,
+                                    kept.changed,
+                                );
+                            })
                     } else {
-                        source_volume.delete(&source_path).await.at(&source_path)
+                        match super::source_sweep::file_is_unchanged(&source_volume, &source_path, stamp_before).await {
+                            Ok(true) => source_volume.delete(&source_path).await.at(&source_path),
+                            Ok(false) => {
+                                left_in_source.lock_ignore_poison().note(&source_path, false, 0, 1);
+                                Ok(())
+                            }
+                            Err(e) => Err(e),
+                        }
                     };
                     if let Err(e) = delete_result {
                         // Same rule as the copy phase: name the file that
@@ -662,7 +681,7 @@ pub(crate) async fn move_volumes_with_progress(
                 files_processed: files_done,
                 files_skipped,
                 bytes_processed: bytes_done,
-                appeared_during_move: None,
+                appeared_during_move: left_in_source.lock_ignore_poison().appeared_during_move(),
                 top_level_skipped: None,
                 refused: None,
             });
@@ -729,6 +748,11 @@ mod same_overwrite_tests;
 #[cfg(test)]
 #[path = "move_same_tests.rs"]
 mod same_tests;
+/// What the source sweep does with an original saved over, or an item that
+/// appeared, while its folder copied.
+#[cfg(test)]
+#[path = "move_source_drift_tests.rs"]
+mod source_drift_tests;
 #[cfg(test)]
 #[path = "move_test_support.rs"]
 mod test_support;

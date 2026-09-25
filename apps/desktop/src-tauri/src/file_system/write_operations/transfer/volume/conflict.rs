@@ -15,7 +15,6 @@
 //!   `../../conflict.rs::resolution_for_clash` holds the rule.
 //! - Rename: Find unique name like "file (1).txt"
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -577,11 +576,9 @@ async fn apply_volume_conflict_resolution(
                     // The one recursive delete this file is allowed, and it says
                     // so in the type: the user picked Overwrite on a clash whose
                     // types differ.
-                    let nothing_to_spare = HashSet::new();
                     if let Err(e) = super::cleanup::remove_tree(
                         dest_volume,
                         dest_path,
-                        &nothing_to_spare,
                         super::cleanup::TreeRemoval::UserChoseOverwriteAcrossTypes,
                     )
                     .await

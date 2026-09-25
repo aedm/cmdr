@@ -10,7 +10,6 @@
 //! from reaching a recursive delete: on the cleanup path there isn't one in
 //! scope. `DETAILS.md` § "Three ways to delete, and who may use each".
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -475,45 +474,30 @@ async fn prune_created_dir_if_empty(volume: &Arc<dyn Volume>, dir: &Path) -> Ite
 /// Fieldless on purpose, with **no `Default` and no `From<bool>`**: a recursive
 /// delete is the one thing in this directory that can remove data the user
 /// never named, so every call site writes down which authorization it holds.
-/// The three variants are the complete list; a fourth sweep has to justify
-/// itself by adding one.
+/// The variants are the complete list; a new sweep has to justify itself by
+/// adding one. A move's SOURCE is never one of them: it goes from the ledger its
+/// copy kept (`source_sweep.rs`, and `move_op/source_sweep.rs` locally), because a
+/// tree removal acts on what is on disk NOW.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::file_system::write_operations) enum TreeRemoval {
     /// A cross-type clash (a file landing on a folder) the user resolved with
     /// Overwrite: the destination's type is wrong, so it goes before the source
     /// materializes. `conflict.rs::apply_volume_conflict_resolution`.
     UserChoseOverwriteAcrossTypes,
-    /// A cross-volume move sweeping its source, once the destination is
-    /// established as landed: on the same-host cross-filesystem path by
-    /// `flush_created_destinations` returning `Ok` plus a destination still in
-    /// the mount table (`move_op/cross_fs.rs`), and on the cross-BACKEND path by
-    /// the stream copy and any safe-replace finalize having completed, there
-    /// being no local directory to fsync (`move_cross.rs`).
-    /// Carries the merge's skipped children in `preserve`.
-    MoveSourceAfterDestinationLanded,
     /// An into-archive move removing the remote originals it pulled, after the
     /// rewrite durably commits. `archive_edit/copy_into.rs`.
     ArchiveMoveSourceAfterCommit,
 }
 
-/// Recursively removes a file or directory tree, sparing every path in
-/// `preserve` and every ancestor directory still holding one, and reporting the
-/// path that actually refused to go.
+/// Recursively removes a file or directory tree, reporting the path that
+/// actually refused to go.
 ///
 /// **The only recursive delete in this directory.** `why` names the
 /// authorization and rides into the log, so a tree removal says who asked for
 /// it; ❌ don't add a call site without adding the variant that describes it.
 ///
-/// The `preserve` set is what a MOVE's source sweep rests on. A merge can
-/// resolve deep children to Skip (the user chose it, or a conditional policy
-/// reduced to it), and a skipped child never landed at the destination: the
-/// source copy is the ONLY copy, so an unconditional sweep destroys exactly the
-/// data the user declined to move. Pinned by
-/// `volume/move_merge_tests.rs::move_folder_merge_never_loses_a_byte_under_every_policy`.
-/// A directory goes only once its whole subtree is gone, so preserving one leaf
-/// keeps its entire ancestor spine. A child that FAILS to delete counts as
-/// preserved too — its parent still holds content, so attempting the parent
-/// would only add a misleading `ENOTEMPTY` on top of the real leaf error.
+/// A child that FAILS to delete keeps its parent: attempting the parent would
+/// only add a misleading `ENOTEMPTY` on top of the real leaf error.
 ///
 /// For directories: lists contents, deletes children (recursing into subdirs),
 /// then deletes the directory itself. The sweep keeps going after a child fails
@@ -523,36 +507,26 @@ pub(in crate::file_system::write_operations) enum TreeRemoval {
 /// `ENOTEMPTY`: the surviving child is the diagnosis and the parent's refusal is
 /// only its symptom, named after the folder the user selected. A directory that
 /// DID go leaves nothing behind to tell anyone about, so a child failure that
-/// raced with another deleter stays `Ok` rather than turning a finished move
+/// raced with another deleter stays `Ok` rather than turning a finished removal
 /// into a reported failure.
 ///
 /// **A symlink is a leaf, and the link goes, ❌ never its target's contents.**
 /// Every "is this a directory?" here asks `Volume::entry_kind`:
 /// `Volume::is_directory` and a listing's `is_directory` both answer yes for a
 /// link to a folder on some backends, and recursing through one deletes a
-/// folder the user never selected. A link with a preserved path under it
-/// stays, so the path the skip was about keeps its way in.
+/// folder the user never selected.
 pub(in crate::file_system::write_operations) async fn remove_tree(
     volume: &Arc<dyn Volume>,
     path: &Path,
-    preserve: &HashSet<PathBuf>,
     why: TreeRemoval,
 ) -> Result<(), PathedVolumeError> {
     log::debug!(target: "delete", "remove_tree: {} ({why:?})", path.display());
-    delete_preserving_inner(volume, path, preserve).await.map(|_| ())
+    remove_tree_inner(volume, path).await.map(|_| ())
 }
 
 /// Recursion body. `Ok(true)` means "content remains under here", so the caller
 /// must keep this directory.
-async fn delete_preserving_inner(
-    volume: &Arc<dyn Volume>,
-    path: &Path,
-    preserve: &HashSet<PathBuf>,
-) -> Result<bool, PathedVolumeError> {
-    if preserve.contains(path) {
-        return Ok(true);
-    }
-
+async fn remove_tree_inner(volume: &Arc<dyn Volume>, path: &Path) -> Result<bool, PathedVolumeError> {
     let kind = match volume.entry_kind(path).await {
         Ok(kind) => kind,
         Err(_) => {
@@ -561,9 +535,6 @@ async fn delete_preserving_inner(
         }
     };
 
-    if kind == EntryKind::Symlink && preserve.iter().any(|kept| kept.starts_with(path)) {
-        return Ok(true);
-    }
     if kind != EntryKind::Directory {
         volume.delete(path).await.at(path)?;
         return Ok(false);
@@ -580,10 +551,8 @@ async fn delete_preserving_inner(
         // every leaf failure would answer with this directory's name instead.
         let outcome = if child.is_directory || child.is_symlink {
             // A link re-asks `entry_kind` one frame down, which deletes it as the
-            // leaf it is (or keeps it for a preserved path under it).
-            Box::pin(delete_preserving_inner(volume, &child_path, preserve)).await
-        } else if preserve.contains(&child_path) {
-            Ok(true)
+            // leaf it is.
+            Box::pin(remove_tree_inner(volume, &child_path)).await
         } else {
             volume.delete(&child_path).await.at(&child_path).map(|()| false)
         };
@@ -603,8 +572,8 @@ async fn delete_preserving_inner(
         }
     }
 
-    // Something under here survives on purpose (or refused to go): keep this
-    // directory, and report the leaf that refused if there was one.
+    // Something under here refused to go: keep this directory, and report the
+    // leaf that refused.
     if content_remains {
         return match first_child_failure {
             Some(child) => Err(child),

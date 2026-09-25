@@ -14,6 +14,7 @@ pub(super) mod chunked_copy;
 pub(super) mod copy;
 pub(super) mod copy_strategy;
 pub(super) mod dest_name_index;
+pub(super) mod left_in_source;
 #[cfg(target_os = "linux")]
 pub(super) mod linux_copy;
 #[cfg(target_os = "macos")]

@@ -31,10 +31,12 @@ use crate::file_system::write_operations::state::ScanResult;
 use crate::file_system::write_operations::state::{WriteOperationState, update_operation_status};
 use crate::file_system::write_operations::transfer_sides::{MoveSourceCounts, TransferSide};
 use crate::file_system::write_operations::types::{
-    AppearedDuringMove, CancelRollback, SourceItemOutcome, WriteCancelledEvent, WriteOperationError,
-    WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
+    CancelRollback, SourceItemOutcome, WriteCancelledEvent, WriteOperationError, WriteOperationPhase,
+    WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
 };
 use crate::file_system::write_operations::validation::is_real_directory;
+
+use super::super::left_in_source::LeftInSource;
 
 /// What a source file looked like right before its copy began: size,
 /// modification time, and node. The sweep stats the original again before it
@@ -161,37 +163,6 @@ impl SourceSweep {
     }
 }
 
-/// What the sweep left in the source because this move never carried it there,
-/// or carried an older version of it.
-///
-// DEFAULT-OK: the zero value is the claim "the sweep has found nothing left
-// behind", which is exactly true of a sweep that hasn't run yet and stays true
-// of one that took every source it was given.
-#[derive(Default)]
-pub(super) struct SweepLeftovers {
-    /// Items the scan never saw, counted once per unknown subtree.
-    item_count: u32,
-    /// Originals saved over after their copy started, each counted once.
-    changed_count: u32,
-    /// The names of the folders holding either kind, one per top-level source
-    /// that kept something, in sweep order.
-    folders: Vec<String>,
-}
-
-impl SweepLeftovers {
-    /// The completion event's typed field, or `None` when the move took
-    /// everything it was asked to take (the ordinary case).
-    pub(super) fn appeared_during_move(&self) -> Option<AppearedDuringMove> {
-        let folder_name = self.folders.first()?.clone();
-        Some(AppearedDuringMove {
-            item_count: self.item_count,
-            changed_count: self.changed_count,
-            folder_name,
-            folder_count: self.folders.len() as u32,
-        })
-    }
-}
-
 /// Why the sweep stopped, and how many originals it had removed by then.
 ///
 /// The counts ride out with the error because nobody upstream can work them out
@@ -285,7 +256,7 @@ pub(super) fn delete_sources_after_move(
     sources: &[PathBuf],
     files_done: usize,
     sweep: &SourceSweep,
-) -> Result<SweepLeftovers, SweepStopped> {
+) -> Result<LeftInSource, SweepStopped> {
     let drive = SourceDrive {
         side: state.sides.as_ref().map(|sides| &sides.source),
     };
@@ -298,7 +269,7 @@ pub(super) fn delete_sources_after_move(
     // A stop has to count these alongside the ones it never reached: both are
     // still sitting in the user's source folder.
     let mut originals_spared = 0usize;
-    let mut leftovers = SweepLeftovers::default();
+    let mut leftovers = LeftInSource::default();
     let mut last_progress_time = Instant::now();
 
     // The opening tick, unthrottled: it's what flips the frontend off the copy's
@@ -378,11 +349,7 @@ pub(super) fn delete_sources_after_move(
             }
             if !source_removed {
                 let appeared = count_unscanned_entries(source, &sweep.scanned_paths);
-                if appeared > 0 || changed > 0 {
-                    leftovers.item_count += appeared;
-                    leftovers.changed_count += changed;
-                    leftovers.folders.push(folder_holding(source));
-                }
+                leftovers.note(source, is_real_directory(source), appeared, changed);
             }
             events.emit_source_item_done(WriteSourceItemDoneEvent {
                 operation_id: operation_id.to_string(),
@@ -446,21 +413,6 @@ fn changed_since_copy(original: &LandedOriginal) -> Result<bool, WriteOperationE
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(e) => Err(e).with_path(&original.path),
     }
-}
-
-/// The name of the folder a source's leftovers sit in, for the completion
-/// sentence: the source itself when it's a folder, the folder holding it when
-/// it's a file.
-fn folder_holding(source: &Path) -> String {
-    let folder = if is_real_directory(source) {
-        source
-    } else {
-        source.parent().unwrap_or(source)
-    };
-    folder
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| folder.display().to_string())
 }
 
 /// Unlinks one landed source file. `remove_file` acts on a symlink itself, so a
