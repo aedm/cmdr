@@ -238,7 +238,9 @@
      */
     function clampAnchorIntoView() {
         if (anchoredTop === null || !overlayElement || !dialogElement) return
-        anchoredTop = anchoredTopFor(homeTop, overlayElement.clientHeight, dialogElement.offsetHeight)
+        // The margin the `.grow-downward` height cap leaves on each side.
+        const margin = parseFloat(getComputedStyle(dialogElement).getPropertyValue('--spacing-xl')) || 0
+        anchoredTop = anchoredTopFor(homeTop, overlayElement.clientHeight, dialogElement.offsetHeight, margin)
     }
 
     function handleTitleMouseDown(event: MouseEvent) {
