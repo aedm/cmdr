@@ -525,7 +525,7 @@ fn read_store<R: Runtime>(app: &AppHandle<R>) -> ManualServersStore {
 ///
 /// ❗ Re-adding a host keeps the name and account it had when the new add brings none: adding
 /// an address someone saved earlier is an ordinary move, and it must not unname
-/// their server behind their back. Renaming is [`rename_server_entry_at_path`]'s.
+/// their server behind their back. Renaming is [`name_server_entry_at_path`]'s.
 fn add_server_entry_to_path(path: &Path, mut entry: ManualServerEntry) {
     let _guard = get_store_lock().lock().unwrap_or_else(|e| e.into_inner());
     let mut store = read_store_from_path(path);
