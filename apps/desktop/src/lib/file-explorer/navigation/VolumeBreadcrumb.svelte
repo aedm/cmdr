@@ -91,8 +91,12 @@
     let breadcrumbPopupRef: HTMLSpanElement | undefined = $state()
 
     // Current volume info derived from the volume list (the actual containing volume).
-    // Special case: 'network' is a virtual volume, not from the backend. For MTP volumes,
-    // look up by `volumeId` directly; for filesystem volumes, use `containingVolumeId`.
+    // Special case: 'network' is a virtual volume, not from the backend. A phone and a
+    // server place (an SMB share, SFTP, WebDAV) are looked up by `volumeId` directly: the
+    // pane IS on them. ❗ A share's path resolving elsewhere doesn't change that: while an
+    // ejected share comes back, `/Volumes/<share>` is a plain folder on the boot disk, and
+    // asking the path named "Macintosh HD" until the pane moved (QA round 3, N1). Everything
+    // else (a favorite, a local folder) uses `containingVolumeId`.
     const currentVolume = $derived(
         volumeId === 'network'
             ? { id: 'network', name: tString('fileExplorer.navigation.networkVolume'), path: 'smb://', category: 'network' as const, isEjectable: false }
@@ -108,7 +112,9 @@
                     category: 'network' as const,
                     isEjectable: false,
                 }
-              : volumes.find((v) => v.id === volumeId && v.category === 'mobile_device')
+              : volumes.find(
+                    (v) => v.id === volumeId && (v.category === 'mobile_device' || v.category === 'network'),
+                )
                 ?? volumes.find((v) => v.id === containingVolumeId),
     )
 

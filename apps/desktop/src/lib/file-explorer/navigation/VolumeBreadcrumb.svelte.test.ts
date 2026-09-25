@@ -431,6 +431,35 @@ describe('VolumeBreadcrumb chip control', () => {
     expect(disconnectPlace).not.toHaveBeenCalled()
   })
 
+  /**
+   * ❗ A pane on a share names the share, whatever the path resolves to right now.
+   * While an ejected share comes back its mount path is a plain folder on the boot
+   * disk, so the lookup answered "Macintosh HD" and nothing re-asked once the mount
+   * landed at the same path (QA round 3, N1).
+   */
+  it('names a share the pane is on even while its path resolves to the boot disk', async () => {
+    const share = {
+      id: 'smb-localhost-11482-private-x',
+      name: 'private on localhost:11482',
+      path: '/Volumes/private',
+      category: 'network',
+      fsType: 'smbfs',
+      isEjectable: false,
+      connectionState: 'saved',
+    }
+    stubs.volumes = [
+      share,
+      { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+    ]
+    stubs.containingVolumeId = 'root'
+    const target = mountBreadcrumb({ volumeId: share.id, currentPath: '/Volumes/private' })
+    await tick()
+    await tick()
+    flushSync()
+    expect(document.querySelector('.volume-name')?.textContent).toContain('private on localhost:11482')
+    void target
+  })
+
   it('offers nothing on a saved place, which has no session to close', async () => {
     await mountOn({ ...place, connectionState: 'saved' })
     expect(chipControl()).toBeNull()
