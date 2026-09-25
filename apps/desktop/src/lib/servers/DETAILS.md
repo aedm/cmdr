@@ -370,8 +370,10 @@ naming another scheme keeps only its host.
 empty one falls back to ("Leave empty to use 192.168.0.153"), through `server-form.ts::nameFallbackOf`, which mirrors
 the backend's stand-in labels: an SMB host's address (plus a port that isn't 445), an account's `username@host`. An SMB
 address already saved under a name someone gave it reads as that name ("Leave empty to use My NAS"), since Go to path
-and ⌘K open this sheet on any `smb://`; the sheet fetches the saved list on open for it. SMB's add carries the name in
-`add_smb` to `connect_to_server`; SMB still shows no Advanced disclosure, since it keeps no folders.
+and ⌘K open this sheet on any `smb://`; the sheet fetches the saved list on open for it. The account it was saved with
+fills Username the same way (`withSavedAccount`), as an address-supplied one, so it goes if the address moves on. SMB's
+add carries the name in `add_smb` to `connect_to_server`; SMB still shows no Advanced disclosure, since it keeps no
+folders.
 
 ❗ **Two honest buttons, and both check before saving** (cmdr-reports#6: the sheet said "Add server" and its one button
 connected). The title stays "Add server". The primary, and Enter, is **"Add and open"**; beside it is **"Add"**. Each

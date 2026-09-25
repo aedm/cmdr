@@ -15,6 +15,7 @@ import {
   formFromSftpServer,
   isStartFolderUnderRoot,
   nameFallbackOf,
+  withSavedAccount,
   nextcloudAddress,
   serverTargetFrom,
   smbAddressFrom,
@@ -376,3 +377,41 @@ describe('nameFallbackOf, for an address already saved', () => {
     expect(nameFallbackOf({ ...emptyServerForm(), address: 'localhost:11482' }, [unnamed])).toBe('localhost:11482')
   })
 })
+
+/**
+ * ❗ The account follows the name: an Add sheet opened on an address saved "as
+ * testuser" showed the saved name but an empty Username (QA round 5).
+ */
+describe('withSavedAccount', () => {
+  const saved: SavedServer = {
+    id: 'manual-localhost-11481',
+    protocol: 'smb',
+    displayName: 'localhost:11481',
+    nameSource: 'fallback',
+    address: 'localhost:11481',
+    username: 'testuser',
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [],
+  }
+
+  it('fills the account the address is saved with, as one the address supplied', () => {
+    const form = withSavedAccount({ ...emptyServerForm(), address: 'smb://localhost:11481/private' }, [saved])
+    expect(form.username).toBe('testuser')
+    // It follows the address: another server's address takes it away again.
+    const moved = applyParsedAddress({ ...form, address: 'localhost:11480' }, parseServerAddress('localhost:11480'))
+    expect(moved.username).toBe('')
+  })
+
+  it('leaves an account the person or the address already named', () => {
+    const typed = { ...emptyServerForm(), address: 'localhost:11481', username: 'ada' }
+    expect(withSavedAccount(typed, [saved]).username).toBe('ada')
+    const inAddress = typed_('smb://sven@localhost:11481/private')
+    expect(withSavedAccount(inAddress, [saved]).username).toBe('sven')
+  })
+})
+
+function typed_(address: string) {
+  return applyParsedAddress({ ...emptyServerForm(), address }, parseServerAddress(address))
+}

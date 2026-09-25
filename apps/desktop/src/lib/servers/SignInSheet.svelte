@@ -38,6 +38,7 @@
         formFromWebdavServer,
         isStartFolderUnderRoot,
         nameFallbackOf,
+        withSavedAccount,
         nextcloudAddress,
         serverTargetFrom,
         smbAddressFrom,
@@ -146,7 +147,7 @@
         return tString('servers.sheet.signInTitle', { name: request.endpoint.displayName })
     })
 
-    /** The saved servers, so an address already saved under a name reads as that name. Add mode only. */
+    /** The saved servers, so an already-saved address reads as its name and brings its account. Add mode only. */
     let savedServers = $state<SavedServer[]>([])
 
     /**
@@ -251,6 +252,7 @@
             void listSavedServers()
                 .then((servers) => {
                     savedServers = servers
+                    form = withSavedAccount(form, servers)
                 })
                 .catch(() => {})
             await tick()
@@ -716,7 +718,8 @@
                     // the toggle too, since whether a path is a root depends on it.
                     // ❌ The toggle itself never follows the address.
                     if (patch.address !== undefined || patch.protocol !== undefined) {
-                        form = applyParsedAddress(form, parseServerAddress(form.address))
+                        // An address already saved with an account brings that account.
+                        form = withSavedAccount(applyParsedAddress(form, parseServerAddress(form.address)), savedServers)
                     }
                 }}
             />

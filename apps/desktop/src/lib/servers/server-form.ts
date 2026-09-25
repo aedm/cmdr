@@ -208,17 +208,39 @@ export function nameFallbackOf(form: ServerForm, saved: readonly SavedServer[] =
   const parsed = parseServerAddress(form.address)
   if (parsed.kind === 'unparsed') return null
   if (form.protocol === 'smb') {
-    const port = speaksOrNamesNone(parsed, 'smb') ? parsed.port : undefined
-    const label = port !== undefined && port !== 445 ? `${parsed.host}:${String(port)}` : parsed.host
     // An address already saved under a name the person gave it is called that,
     // as the hub calls it (Go to path and ⌘K open this sheet on any `smb://`).
-    const named = saved.find(
-      (server) => server.protocol === 'smb' && server.nameSource === 'user' && server.address.toLowerCase() === label,
-    )
-    return named?.displayName ?? label
+    const named = savedSmbHostOf(form, saved)
+    return named?.nameSource === 'user' ? named.displayName : smbLabelOf(parsed)
   }
   const username = form.username.trim()
   return username === '' ? parsed.host : `${username}@${parsed.host}`
+}
+
+/**
+ * The form with the account an already-saved SMB address was saved with, when
+ * neither the person nor the address named one. Filled as the address's own, so
+ * it goes again once the address names another server.
+ */
+export function withSavedAccount(form: ServerForm, saved: readonly SavedServer[]): ServerForm {
+  if (form.protocol !== 'smb' || form.username.trim() !== '') return form
+  const username = savedSmbHostOf(form, saved)?.username
+  if (!username) return form
+  return { ...form, username, usernameFromAddress: true, typedUsername: form.username }
+}
+
+/** The saved SMB host this form's address names (host, plus a port that isn't 445), if any. */
+function savedSmbHostOf(form: ServerForm, saved: readonly SavedServer[]): SavedServer | undefined {
+  const parsed = parseServerAddress(form.address)
+  if (parsed.kind === 'unparsed') return undefined
+  const label = smbLabelOf(parsed)
+  return saved.find((server) => server.protocol === 'smb' && server.address.toLowerCase() === label)
+}
+
+/** An SMB address as the backend labels its host: the host, plus a port that isn't 445. */
+function smbLabelOf(parsed: Extract<ParsedAddress, { kind: 'parsed' }>): string {
+  const port = speaksOrNamesNone(parsed, 'smb') ? parsed.port : undefined
+  return port !== undefined && port !== 445 ? `${parsed.host}:${String(port)}` : parsed.host
 }
 
 /**
