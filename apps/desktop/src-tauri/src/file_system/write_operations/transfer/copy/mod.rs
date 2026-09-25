@@ -113,6 +113,24 @@ fn commit_journaling_created_dirs(transaction: CopyTransaction, operation_id: &s
     transaction.commit();
 }
 
+/// The STOPPED terminal path's close-out (a Cancel that keeps what landed): the
+/// same journaling, and the folder→file asides are kept the way a failure keeps
+/// them. A stop halfway through a folder that's replacing one of the user's files
+/// leaves that folder at the name with part of its subtree, so discarding the
+/// aside would delete the user's only copy for a folder they stopped. Nothing on
+/// the cancel event carries where it went yet, so it's logged.
+fn stop_keeping_displaced_aside(transaction: CopyTransaction, operation_id: &str) {
+    crate::file_system::write_operations::journal::record_created_dirs(operation_id, &transaction.created_dirs);
+    for kept in transaction.commit_keeping_displaced_aside() {
+        log::warn!(
+            "copy_files_with_progress: op={} stopped, so the original at {} is kept at {}",
+            operation_id,
+            kept.path,
+            kept.kept_at
+        );
+    }
+}
+
 /// The FAILING terminal path's close-out: same journaling, but the folder→file
 /// asides are kept for the user instead of discarded, and whatever failed is
 /// re-labelled so the dialog can name where each file went.
@@ -606,7 +624,7 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 &dir_remap,
             ) {
                 if matches!(e, WriteOperationError::Cancelled { .. }) {
-                    commit_journaling_created_dirs(transaction, operation_id);
+                    stop_keeping_displaced_aside(transaction, operation_id);
                     events.emit_cancelled(WriteCancelledEvent {
                         operation_id: operation_id.to_string(),
                         operation_type: WriteOperationType::Copy,
@@ -705,15 +723,15 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                     });
                 }
                 _ => {
-                    // Stopped (or unknown): keep partial files. `transaction.commit()`
-                    // prevents the `Drop` safety-net from rolling back what the user
-                    // chose to keep.
+                    // Stopped (or unknown): keep partial files, and every original a
+                    // folder→file Overwrite displaced. Committing prevents the `Drop`
+                    // safety-net from rolling back what the user chose to keep.
                     log::info!(
                         "copy_files_with_progress: cancelled op={}, keeping {} partial files",
                         operation_id,
                         transaction.created_files().len()
                     );
-                    commit_journaling_created_dirs(transaction, operation_id);
+                    stop_keeping_displaced_aside(transaction, operation_id);
                     events.emit_cancelled(WriteCancelledEvent {
                         operation_id: operation_id.to_string(),
                         operation_type: WriteOperationType::Copy,

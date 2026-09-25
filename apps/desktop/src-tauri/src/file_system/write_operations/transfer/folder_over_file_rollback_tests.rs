@@ -26,13 +26,14 @@ use super::copy::copy_files_with_progress_inner;
 use crate::test_support::TestDir;
 
 /// Answers the folder→file clash with Overwrite (the explicit consent a blanket
-/// policy doesn't have), then asks for a rollback as soon as the first leaf has
-/// landed — the shape of a person clicking Cancel and choosing "put it back"
-/// one file into a folder that's replacing their file.
+/// policy doesn't have), then asks for `then` as soon as the first leaf has
+/// landed — the shape of a person clicking Cancel (and choosing "put it back",
+/// for a rollback) one file into a folder that's replacing their file.
 struct AnswerThenRollBack {
     inner: CollectorEventSink,
     state: Arc<WriteOperationState>,
     asked: AtomicBool,
+    then: OperationIntent,
 }
 
 impl OperationEventSink for AnswerThenRollBack {
@@ -52,9 +53,7 @@ impl OperationEventSink for AnswerThenRollBack {
         // its own progress with a rising `files_done`, and flipping there would
         // cancel the operation before it ever reached the clash.
         if e.phase == WriteOperationPhase::Copying && e.files_done >= 1 && !self.asked.swap(true, Ordering::SeqCst) {
-            self.state
-                .intent
-                .store(OperationIntent::RollingBack as u8, Ordering::SeqCst);
+            self.state.intent.store(self.then as u8, Ordering::SeqCst);
         }
         self.inner.emit_progress(e);
     }
@@ -96,6 +95,7 @@ fn a_rollback_mid_folder_over_file_overwrite_puts_the_file_back() {
         inner: CollectorEventSink::new(),
         state: Arc::clone(&state),
         asked: AtomicBool::new(false),
+        then: OperationIntent::RollingBack,
     };
     let config = WriteOperationConfig {
         conflict_resolution: ConflictResolution::Stop,
@@ -196,5 +196,58 @@ fn a_completed_folder_over_file_overwrite_replaces_the_file_and_drops_the_aside(
         names,
         vec!["thing".to_string()],
         "the aside must be gone once the operation commits"
+    );
+}
+
+/// A plain Stop (keep what landed) one file into a folder that's replacing the
+/// user's file. The half-built folder keeps the name, so the file it displaced
+/// has nowhere to go back to, and throwing it away with the aside would cost the
+/// user their only copy for a folder they stopped halfway. It stays beside the
+/// folder under a ` (recovered)` name, the same as a failure.
+#[test]
+fn a_stopped_folder_over_file_overwrite_keeps_the_users_file_beside_the_folder() {
+    let temp_dir = TestDir::new(&format!("folder_over_file_stop_{}", uuid::Uuid::new_v4()));
+    let src_root = temp_dir.join("src");
+    let dst_root = temp_dir.join("dst");
+    fs::create_dir_all(src_root.join("thing")).unwrap();
+    fs::create_dir_all(&dst_root).unwrap();
+    fs::write(src_root.join("thing/a.txt"), "source-a").unwrap();
+    fs::write(src_root.join("thing/b.txt"), "source-b").unwrap();
+    fs::write(dst_root.join("thing"), "the user's only copy").unwrap();
+
+    let state = Arc::new(WriteOperationState::new(Duration::from_millis(0)));
+    let events = AnswerThenRollBack {
+        inner: CollectorEventSink::new(),
+        state: Arc::clone(&state),
+        asked: AtomicBool::new(false),
+        then: OperationIntent::Stopped,
+    };
+    let config = WriteOperationConfig {
+        conflict_resolution: ConflictResolution::Stop,
+        ..Default::default()
+    };
+
+    let result = copy_files_with_progress_inner(
+        &events,
+        "op-folder-over-file-stop",
+        &state,
+        &[src_root.join("thing")],
+        &dst_root,
+        &config,
+    );
+    assert!(result.is_err(), "a stopped copy doesn't complete: {result:?}");
+
+    assert!(
+        fs::symlink_metadata(dst_root.join("thing")).unwrap().is_dir(),
+        "the half-built folder keeps what landed"
+    );
+    assert_eq!(
+        fs::read_to_string(dst_root.join("thing (recovered)")).ok().as_deref(),
+        Some("the user's only copy"),
+        "the displaced file must survive beside it; dst holds {:?}",
+        fs::read_dir(&dst_root)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect::<Vec<_>>()
     );
 }
