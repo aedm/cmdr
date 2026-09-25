@@ -24,7 +24,11 @@
 
 import { getMainWindowOperationRows } from '$lib/file-operations/queue/main-window-operations.svelte'
 import type { OperationRow } from '$lib/file-operations/queue/operations-store.svelte'
-import { getForegroundFailureId, getForegroundOperationId } from '$lib/file-operations/foreground-operation.svelte'
+import {
+  getForegroundFailureId,
+  getForegroundOperationId,
+  isForegroundClaimPending,
+} from '$lib/file-operations/foreground-operation.svelte'
 import { addToast, dismissToast, getToasts } from '$lib/ui/toast'
 import OperationFailedToastContent from './OperationFailedToastContent.svelte'
 import OperationFailuresToastContent from './OperationFailuresToastContent.svelte'
@@ -117,9 +121,17 @@ export function announceFailures(rows: OperationRow[]): void {
     if (!present.has(id)) announced.delete(id)
   }
 
+  // ❗ While a progress dialog waits to learn its id, a new failure may be ITS:
+  // a move of a locked file fails inside its start command, so the row lands
+  // before the slot is claimed, and the toast rode alongside the error dialog.
+  // Hold every unannounced failure until the claim settles; reading the claim
+  // here re-runs the effect when it does, and the slots then decide.
+  const claimPending = isForegroundClaimPending()
+
   for (const row of failures) {
     const id = row.snapshot.operationId
     if (announced.has(id)) continue
+    if (claimPending) continue
     announced.add(id)
     // The backend retains unconditionally (it can't know a modal is up), so
     // this is where a foreground failure stops being reported twice. The row

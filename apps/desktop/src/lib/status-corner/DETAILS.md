@@ -251,6 +251,12 @@ the id to `setForegroundFailureId`. Both the chip and the toast check both slots
 second slot AND calls `dismissFailedOperation(id)`, so the common case — a foreground failure the user read and closed —
 leaves nothing behind in the queue.
 
+A failure can also beat the FIRST slot: a same-volume move of a locked file fails inside its start command, so the
+failure row reaches the snapshot while the progress dialog is still waiting to learn the id, and both slots are empty.
+So the watch holds every unannounced failure while `isForegroundClaimPending()`, and decides once the claim settles
+(reading the claim is what re-runs the effect then). A backgrounded failure that lands in that window is only delayed,
+never lost.
+
 ## Decisions
 
 - **Why the watch lives outside a component.** A toast isn't part of the status row, so tying its lifetime to

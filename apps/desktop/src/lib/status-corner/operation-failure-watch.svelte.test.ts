@@ -15,9 +15,11 @@ import { clearAllToasts, getToasts } from '$lib/ui/toast'
 
 let foregroundOperationId: string | null = null
 let foregroundFailureId: string | null = null
+let claimPending = false
 vi.mock('$lib/file-operations/foreground-operation.svelte', () => ({
   getForegroundOperationId: () => foregroundOperationId,
   getForegroundFailureId: () => foregroundFailureId,
+  isForegroundClaimPending: () => claimPending,
 }))
 
 // The queue-window opener drags in `@tauri-apps/api/webviewWindow`; the toast
@@ -66,6 +68,7 @@ beforeEach(() => {
   resetAnnouncedFailures()
   foregroundOperationId = null
   foregroundFailureId = null
+  claimPending = false
 })
 
 afterEach(() => {
@@ -102,6 +105,32 @@ describe('announceFailures', () => {
     foregroundFailureId = 'a'
     announceFailures([failedRow('a')])
     expect(failureToasts()).toHaveLength(0)
+  })
+
+  /**
+   * ❗ A move of a locked file fails inside its start command, so the failure row
+   * lands while the progress dialog is still waiting to learn the id. The slot was
+   * empty, and the toast rode alongside the error dialog (QA round 3).
+   */
+  it('holds a failure while a progress dialog is still waiting to learn its id', () => {
+    claimPending = true
+    announceFailures([failedRow('a')])
+    expect(failureToasts(), 'nothing can say yet whose failure this is').toHaveLength(0)
+
+    // The claim settles on the id, and the dialog's own error dialog takes it.
+    claimPending = false
+    foregroundOperationId = 'a'
+    announceFailures([failedRow('a')])
+    expect(failureToasts()).toHaveLength(0)
+  })
+
+  it('announces a held failure once the pending claim turns out to be another operation', () => {
+    claimPending = true
+    announceFailures([failedRow('a')])
+    claimPending = false
+    foregroundOperationId = 'b'
+    announceFailures([failedRow('a')])
+    expect(failureToasts()).toHaveLength(1)
   })
 
   it('never re-announces a suppressed failure once the dialog closes', () => {
