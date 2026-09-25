@@ -33,6 +33,7 @@
     } from './servers-hub-rows'
     import { hubPaneState } from './servers-hub-mcp'
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
+    import { cursorAfterArrow } from './servers-hub-keys'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { rowAnchorIn } from '../pane/context-menu-anchor'
@@ -195,6 +196,9 @@
         }
     }
 
+    /** Servers, for the status bar: a share row is a place under one, not a server. */
+    const serverCount = $derived(rows.filter((row) => row.kind === 'server').length)
+
     /** Every row plus the "Add server…" row. */
     const totalNavigableItems = $derived(rows.length + 1)
 
@@ -328,29 +332,15 @@
 
     /** Arrow keys and Enter. */
     function handleArrowAndEnter(key: string): boolean {
-        switch (key) {
-            case 'ArrowDown':
-                cursorIndex = Math.min(cursorIndex + 1, totalNavigableItems - 1)
-                scrollToIndex(cursorIndex)
-                return true
-            case 'ArrowUp':
-                cursorIndex = Math.max(cursorIndex - 1, 0)
-                scrollToIndex(cursorIndex)
-                return true
-            case 'ArrowLeft':
-                cursorIndex = 0
-                scrollToIndex(cursorIndex)
-                return true
-            case 'ArrowRight':
-                cursorIndex = totalNavigableItems - 1
-                scrollToIndex(cursorIndex)
-                return true
-            case 'Enter':
-                openCursorItem()
-                return true
-            default:
-                return false
+        if (key === 'Enter') {
+            openCursorItem()
+            return true
         }
+        const next = cursorAfterArrow(key, cursorIndex, totalNavigableItems)
+        if (next === null) return false
+        cursorIndex = next
+        scrollToIndex(cursorIndex)
+        return true
     }
 
     /**
@@ -501,10 +491,11 @@
                     use:tooltip={{ text: row.name, overflowOnly: true }}
                 >
                     <span class="row-icon"><Icon name={hubRowIcon(row)} size={16} aria-hidden="true" /></span>
-                    {row.name}
-                    {#if row.account !== null}
-                        <span class="share-account">{tString('servers.hub.shareAccount', { username: row.account })}</span>
-                    {/if}
+                    <span class="name-text"
+                        >{row.name}{#if row.account !== null}
+                            <span class="share-account">{tString('servers.hub.shareAccount', { username: row.account })}</span
+                            >{/if}</span
+                    >
                 </span>
                 <span class="col-type">{typeLabel(row)}</span>
                 <span class="col-address" use:tooltip={{ text: row.address, overflowOnly: true }}>{row.address}</span>
@@ -586,8 +577,8 @@
         >
             <span class="status-text"
                 >{tString('servers.hub.rowCount', {
-                    count: rows.length,
-                    countText: formatInteger(rows.length),
+                    count: serverCount,
+                    countText: formatInteger(serverCount),
                 })}</span
             >
             <span class="refresh-hint"><Trans key="fileExplorer.network.browser.refreshHint" {snippets} /></span>
@@ -693,6 +684,15 @@
        its base size and pushed Type, Address, and Status right on every share row. */
     .col-name.is-share .row-icon {
         margin-left: var(--spacing-xl);
+    }
+
+    /* The name and its account clip as one, with an ellipsis, short of the Type column. */
+    .name-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-right: var(--spacing-sm);
     }
 
     .share-account {

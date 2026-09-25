@@ -494,3 +494,53 @@ describe('ServersHub keyboard context menu', () => {
     await cleanup()
   })
 })
+
+describe('ServersHub row text', () => {
+  const withShare: SavedServer = {
+    id: 'manual-10-0-0-9-445',
+    protocol: 'smb',
+    displayName: 'Box',
+    nameSource: 'user',
+    address: '10.0.0.9',
+    username: null,
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [
+      {
+        volumeId: 'smb-box-public',
+        name: 'public',
+        pinned: true,
+        connected: false,
+        appRoot: '/Volumes/public',
+        username: 'testuser',
+      },
+    ],
+  }
+
+  /** ❗ Shares are rows, not servers: "7 servers" for 5 hosts and 2 shares (QA round 2, m4). */
+  it('counts servers in the status bar, not the share rows under them', async () => {
+    h.listSavedServers.mockResolvedValue([withShare])
+    const { target, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    // Two discovered hosts plus the saved one; its share row doesn't count.
+    expect(target.querySelector('.status-text')?.textContent.trim()).toBe('3 servers')
+    await cleanup()
+  })
+
+  /**
+   * ❗ The name and its "as testuser" sit in ONE text span that clips with an
+   * ellipsis. As bare text in the flex cell they ran into the Type column with
+   * no ellipsis (QA round 2, m1).
+   */
+  it('puts a row`s name and account in one clipping text span', async () => {
+    h.listSavedServers.mockResolvedValue([withShare])
+    const { target, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    const share = [...target.querySelectorAll('.server-row')].find((row) => row.textContent.includes('public'))
+    expect(share?.querySelector('.col-name .name-text')?.textContent).toMatch(/public\s*as testuser/)
+    await cleanup()
+  })
+})
