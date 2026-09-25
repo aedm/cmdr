@@ -34,8 +34,8 @@ import { createVolumeSpace, type SpaceVolume, type VolumeSpace } from './volume-
 const bootDisk: SpaceInfo = { kind: 'bounded', totalBytes: 926, availableBytes: 253, usedBytes: 673 }
 const share: SpaceInfo = { kind: 'bounded', totalBytes: 328, availableBytes: 232, usedBytes: 96 }
 
-const root: SpaceVolume = { id: 'root', path: '/', isDiskImage: false }
-const smb: SpaceVolume = { id: 'smb-p', path: '/Volumes/private', isDiskImage: false }
+const root: SpaceVolume = { id: 'root', path: '/', isDiskImage: false, isLive: true }
+const smb: SpaceVolume = { id: 'smb-p', path: '/Volumes/private', isDiskImage: false, isLive: true }
 
 describe('createVolumeSpace', () => {
   let dispose: (() => void) | undefined
@@ -106,6 +106,26 @@ describe('createVolumeSpace', () => {
     expect(ipc.getVolumeSpace).toHaveBeenCalledTimes(1)
   })
 
+  /**
+   * ❗ A saved share and the live share it becomes are ONE volume id at one path:
+   * keyed on those alone, the change from placeholder to live was no change, and
+   * the readout stayed blank until the poller happened to emit (QA round 6, R5-1).
+   */
+  it('shows nothing for a saved placeholder, and fetches the moment the same volume goes live', async () => {
+    volume = { ...smb, isLive: false }
+    const ctl = setup()
+    expect(ctl.volumeSpace).toBeNull()
+    expect(ipc.getVolumeSpace, 'an unmounted share’s path is a boot-disk folder').not.toHaveBeenCalled()
+    expect(ipc.watchVolumeSpace).not.toHaveBeenCalled()
+
+    volume = { ...smb, isLive: true }
+    flushSync()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(share)
+    })
+    expect(ipc.watchVolumeSpace).toHaveBeenCalledWith('left', 'smb-p', '/Volumes/private')
+  })
+
   it('drops an answer for a volume the pane has since left', async () => {
     let answerShare!: (value: { data: SpaceInfo }) => void
     ipc.getVolumeSpace.mockImplementationOnce(
@@ -125,7 +145,7 @@ describe('createVolumeSpace', () => {
   })
 
   it('shows nothing, and watches nothing, on a disk image or a view with no volume', () => {
-    volume = { id: 'dmg', path: '/Volumes/Installer', isDiskImage: true }
+    volume = { id: 'dmg', path: '/Volumes/Installer', isDiskImage: true, isLive: true }
     const ctl = setup()
     expect(ctl.volumeSpace).toBeNull()
     expect(ipc.getVolumeSpace).not.toHaveBeenCalled()

@@ -55,6 +55,7 @@
     import RemoteConnectView from './RemoteConnectView.svelte'
     import { createPlaceConnect } from './place-connect.svelte'
     import { createPaneVolumeState } from '../navigation/pane-volume-state.svelte'
+    import { answersNow } from '../navigation/connection-state'
     import { placeRootOf } from '$lib/servers/open-sign-in'
     import { createDeviceConnect } from './device-connect.svelte'
     import AdbHint from '$lib/adb/AdbHint.svelte'
@@ -645,7 +646,9 @@
         paneId,
         getSpaceVolume: () => {
             const volume = paneVolume.volume
-            return volume ? { id: volume.id, path: volume.path, isDiskImage: volume.isDiskImage === true } : null
+            if (!volume) return null
+            const isLive = answersNow(volume.connectionState)
+            return { id: volume.id, path: volume.path, isDiskImage: volume.isDiskImage === true, isLive }
         },
     })
 

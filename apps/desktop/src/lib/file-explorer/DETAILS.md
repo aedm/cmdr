@@ -377,16 +377,19 @@ The status bar and usage bar below each pane show live disk space for the volume
 index prompt read too. `pane/volume-space.svelte.ts` follows that volume by ANY route (a switcher pick, a walk-up after
 an eject, a navigation into another drive): on a change it clears the readout at once, moves the watch
 (`watchVolumeSpace(paneId, volumeId, volumePath)`), and fetches for the volume's OWN path, dropping an answer for a
-volume the pane has since left. ❗ Never the pane's path: it can be dead (an ejected share's mount point, the moment the
-pane resolves to the boot disk) or inside an archive, and one fetch for a dead path left the readout blank. Driving it
-from the volume switch alone left a pane that an eject walked to the boot disk showing the share's figure on every
-folder after. It listens for `volume-space-changed` events for that volume only. The watcher key is the pane ID, so two
-panes on the same volume have independent registrations (one pane navigating away doesn't affect the other). The backend
-deduplicates by volume_id, polls each volume at its own cadence (`Volume::space_poll_interval()`: 2 s local, 5 s
-network/MTP), and emits only when the readout would draw a different figure AND the change passes the Settings >
-Advanced threshold (`space_poller/readout.rs`). While the main window is hidden it polls only the boot volume's
-low-space check, then catches up the moment the window shows. The volume dropdown (`volume-space-manager.svelte.ts`)
-uses a separate on-demand fetch and is unaffected.
+volume the pane has since left. The key includes whether the volume answers now (`connection-state.ts::answersNow`): a
+saved share and the live share it becomes are one id at one path, and keyed on those alone the change from placeholder
+to live was no change, so the readout stayed blank until the poller happened to emit. A placeholder shows nothing and is
+never asked (its mount point is a boot-disk folder). ❗ Never the pane's path: it can be dead (an ejected share's mount
+point, the moment the pane resolves to the boot disk) or inside an archive, and one fetch for a dead path left the
+readout blank. Driving it from the volume switch alone left a pane that an eject walked to the boot disk showing the
+share's figure on every folder after. It listens for `volume-space-changed` events for that volume only. The watcher key
+is the pane ID, so two panes on the same volume have independent registrations (one pane navigating away doesn't affect
+the other). The backend deduplicates by volume_id, polls each volume at its own cadence
+(`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the readout would draw a different
+figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). While the main window is
+hidden it polls only the boot volume's low-space check, then catches up the moment the window shows. The volume dropdown
+(`volume-space-manager.svelte.ts`) uses a separate on-demand fetch and is unaffected.
 
 The wording lives in `disk-space-utils.ts`, catalog-backed functions over one `SpaceInfo` plus the user's binary/SI
 format.

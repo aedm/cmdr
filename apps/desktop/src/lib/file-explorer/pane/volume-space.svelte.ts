@@ -33,6 +33,12 @@ export interface SpaceVolume {
   path: string
   /** Disk images report no meaningful space. */
   isDiskImage: boolean
+  /**
+   * Whether the volume answers right now: a local one always, a session-backed one
+   * while its session is live. ❗ Part of the key: a saved share and the live share it
+   * becomes are one id at one path, and only this says the space is there to read.
+   */
+  isLive: boolean
 }
 
 export interface VolumeSpaceDeps {
@@ -63,7 +69,7 @@ export function createVolumeSpace(deps: VolumeSpaceDeps): VolumeSpace {
   async function refresh(): Promise<void> {
     const volume = current
     const asked = generation
-    if (!volume || volume.isDiskImage) {
+    if (!volume || volume.isDiskImage || !volume.isLive) {
       volumeSpace = null
       return
     }
@@ -78,14 +84,18 @@ export function createVolumeSpace(deps: VolumeSpaceDeps): VolumeSpace {
 
   $effect(() => {
     const volume = deps.getSpaceVolume()
-    if (volume?.id === current?.id && volume?.path === current?.path && volume?.isDiskImage === current?.isDiskImage)
-      return
+    const same =
+      volume?.id === current?.id &&
+      volume?.path === current?.path &&
+      volume?.isDiskImage === current?.isDiskImage &&
+      volume?.isLive === current?.isLive
+    if (same) return
     current = volume
     generation++
     volumeSpace = null
     untrack(() => {
       void unwatchVolumeSpace(deps.paneId)
-      if (!volume || volume.isDiskImage) return
+      if (!volume || volume.isDiskImage || !volume.isLive) return
       void refresh()
       void watchVolumeSpace(deps.paneId, volume.id, volume.path)
     })
@@ -95,7 +105,7 @@ export function createVolumeSpace(deps: VolumeSpaceDeps): VolumeSpace {
     // Live disk-space updates from the backend poller (typed event), for the
     // volume the pane is on and no other.
     void onVolumeSpaceChanged((payload) => {
-      if (current && payload.volumeId === current.id && !current.isDiskImage) {
+      if (current && payload.volumeId === current.id && !current.isDiskImage && current.isLive) {
         volumeSpace = payload.space
       }
     }).then((fn) => {

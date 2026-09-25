@@ -46,6 +46,15 @@ export function isLiveSession(state: MaybeState): boolean {
 }
 
 /**
+ * Whether the volume answers right now: a local one (no session at all) always, a
+ * session-backed one while its session is live. What a readout of the volume (its
+ * free space, an offer to index it) waits for.
+ */
+export function answersNow(state: MaybeState): boolean {
+  return state === undefined || state === null || isLiveSession(state)
+}
+
+/**
  * Whether the row's eject slot shows Disconnect rather than Eject.
  *
  * The real question is "is a volume REGISTERED under this id", because that is

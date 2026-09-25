@@ -18,7 +18,7 @@ import { getVolumeIndexStatusById } from '$lib/tauri-commands'
 import { getSetting } from '$lib/settings'
 import { getAppLogger } from '$lib/logging/logger'
 import type { ConnectionState } from '$lib/ipc/bindings'
-import { isLiveSession } from '$lib/file-explorer/navigation/connection-state'
+import { answersNow } from '$lib/file-explorer/navigation/connection-state'
 import { isDriveSilenced } from './drive-index-prefs'
 import FirstConnectIndexToastContent from './FirstConnectIndexToastContent.svelte'
 
@@ -89,6 +89,5 @@ export function isReadyForFirstConnectPrompt(
   volume: { id: string; connectionState?: ConnectionState | null },
   containingVolumeId: string | null,
 ): boolean {
-  const hasNoSession = volume.connectionState === undefined || volume.connectionState === null
-  return (hasNoSession || isLiveSession(volume.connectionState)) && containingVolumeId === volume.id
+  return answersNow(volume.connectionState) && containingVolumeId === volume.id
 }
