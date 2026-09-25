@@ -7,7 +7,7 @@
      * (`servers-hub-rows.ts`, `servers-hub-mcp.ts`); this file is the table, the
      * cursor, and the keys.
      */
-    import { onMount, onDestroy } from 'svelte'
+    import { onMount, onDestroy, untrack } from 'svelte'
     import { dependOn } from '$lib/utils/reactivity'
     import Button from '$lib/ui/Button.svelte'
     import Icon from '$lib/ui/Icon.svelte'
@@ -33,7 +33,7 @@
     } from './servers-hub-rows'
     import { hubPaneState } from './servers-hub-mcp'
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
-    import { cursorAfterArrow } from './servers-hub-keys'
+    import { cursorAcrossRebuild, cursorAfterArrow } from './servers-hub-keys'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { rowAnchorIn } from '../pane/context-menu-anchor'
@@ -166,12 +166,14 @@
         void syncPaneStateToMcp()
     })
 
-    // Clamp the cursor when a row disappears (a host went quiet, a server was forgotten).
-    $effect(() => {
-        const maxIndex = totalNavigableItems - 1
-        if (cursorIndex > maxIndex) {
-            cursorIndex = Math.max(0, maxIndex)
-        }
+    /** The rows the cursor last sat over: a rebuild keeps it on the same row, clamped if it left. */
+    let rowsBefore: HubRow[] = []
+    $effect.pre(() => {
+        const after = rows
+        untrack(() => {
+            cursorIndex = cursorAcrossRebuild(rowsBefore, after, cursorIndex)
+            rowsBefore = after
+        })
     })
 
     /** Retried on every `volumes-changed`, so a store that stays broken logs once until a read works. */
@@ -442,11 +444,8 @@
         )
     }
 
-    // The keyboard-shortcut chip rendered inline in the refresh hint (`<key>` tag).
-    // It reads the live `pane.refresh` binding, so a rebind moves the hint with it.
-    // Non-clickable: the whole status bar is already a refresh button, and a nested
-    // click target would double-activate. The snippet ignores the (empty) inner
-    // content and renders the chip itself.
+    // The refresh hint's `<key>` chip: the live `pane.refresh` binding, non-clickable because
+    // the whole status bar already refreshes (a nested target would double-activate).
     const snippets = { key: refreshKeyChip }
 </script>
 

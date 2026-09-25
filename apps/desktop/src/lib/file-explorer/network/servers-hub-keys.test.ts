@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cursorAfterArrow } from './servers-hub-keys'
+import { cursorAcrossRebuild, cursorAfterArrow } from './servers-hub-keys'
 
 describe('cursorAfterArrow', () => {
   it('steps one row, clamped to the list', () => {
@@ -15,5 +15,21 @@ describe('cursorAfterArrow', () => {
 
   it('leaves every other key alone', () => {
     expect(cursorAfterArrow('Enter', 1, 5)).toBeNull()
+  })
+})
+
+describe('cursorAcrossRebuild', () => {
+  const rows = (...ids: string[]) => ids.map((id) => ({ id }))
+
+  it('follows the row it was on when the list re-sorts', () => {
+    expect(cursorAcrossRebuild(rows('a', 'b', 'c'), rows('x', 'a', 'b', 'c'), 1)).toBe(2)
+  })
+
+  it('keeps the add row the add row', () => {
+    expect(cursorAcrossRebuild(rows('a', 'b'), rows('a', 'b', 'c'), 2)).toBe(3)
+  })
+
+  it('clamps when its row left', () => {
+    expect(cursorAcrossRebuild(rows('a', 'b', 'c'), rows('a'), 2)).toBe(1)
   })
 })

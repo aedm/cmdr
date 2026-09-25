@@ -320,6 +320,31 @@ describe('ServersHub selectServer', () => {
     await cleanup()
   })
 
+  /**
+   * ❗ The cursor stays on the ROW it was put on when the list reorders under it.
+   * After a plain Add the new row was selected, then the list re-sorted as more
+   * came in and the cursor sat on a neighbour (QA round 2, m5).
+   */
+  it('keeps the cursor on the selected row when the list reorders around it', async () => {
+    const { api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    api.selectServer('h2')
+    await vi.waitFor(() => {
+      expect(api.getRowUnderCursor()?.name).toBe('Attic')
+    })
+
+    // A saved server arrives and sorts above the nearby hosts.
+    h.listSavedServers.mockResolvedValue([savedSftp])
+    api.refresh()
+    await vi.waitFor(() => {
+      expect(api.getItemCount()).toBe(mockHosts.length + 2)
+    })
+    await tick()
+
+    expect(api.getRowUnderCursor()?.name).toBe('Attic')
+    await cleanup()
+  })
+
   it('finds an added SMB host by its discovery id too', async () => {
     const { api, cleanup } = mountBehindBothHandlers()
     await tick()
