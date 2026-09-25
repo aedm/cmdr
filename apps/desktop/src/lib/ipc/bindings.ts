@@ -4491,6 +4491,17 @@ export const commands = {
    */
   updateSavedServer: (server: ServerTarget) => __TAURI_INVOKE<SavedServerOutcome>('update_saved_server', { server }),
   /**
+   *  The id the servers listing gives the account `server` names, through the same
+   *  id funnel the listing uses (`cmdr_fs::volume::ids`), or `None` for a WebDAV
+   *  address that isn't an `http`/`https` URL.
+   *
+   *  ❗ How a caller finds the row a save just made. ❌ Never by comparing the
+   *  address it typed with the listed one: the stores normalize (a WebDAV URL gains
+   *  its trailing slash), so the typed spelling missed a row that was there, and
+   *  "Add anyway" reported a saved server as not saved.
+   */
+  savedServerId: (server: ServerTarget) => __TAURI_INVOKE<string | null>('saved_server_id', { server }),
+  /**
    *  Names the saved SMB host the listing calls `id` and sets the account it's used
    *  with, answering whether there was one to name. An empty name unnames it, so
    *  the UI calls it by its address again; no `username` clears the account.

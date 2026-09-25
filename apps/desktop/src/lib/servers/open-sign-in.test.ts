@@ -754,6 +754,7 @@ describe('add mode: Add, Add and open, and Add anyway', () => {
 
   it('saves an unreachable SFTP server without connecting when the person said Add anyway', async () => {
     ipc.mock('update_saved_server', () => ({ outcome: 'saved' }))
+    ipc.mock('saved_server_id', () => VOLUME_ID)
     const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
     const request = await parkedRequest()
 
@@ -767,6 +768,74 @@ describe('add mode: Add, Add and open, and Add anyway', () => {
     expect(ipc.callCount('connect_server')).toBe(0)
     expect(ipc.lastCall('update_saved_server')?.payload).toMatchObject({ server: { host: 'nas.local' } })
     expect(outcome).toEqual({ kind: 'added', serverId: VOLUME_ID })
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+  })
+
+  /**
+   * ❗ **Add anyway on a WebDAV URL closes on the server it saved.** The store
+   * normalizes the URL (`…/dav` → `…/dav/`), so finding the new row by comparing
+   * the typed URL with the listed one missed it, and the sheet stayed open saying
+   * "didn't answer in time, so nothing was saved" over a saved, pinned row (QA
+   * round 2, M6). The id comes from the backend's own id funnel instead.
+   */
+  it('finds the WebDAV server Add anyway saved, whatever spelling the store keeps', async () => {
+    const id = 'webdav-10-255-255-1-443-ada'
+    ipc.mock('update_saved_server', () => ({ outcome: 'saved' }))
+    ipc.mock('saved_server_id', () => id)
+    ipc.mock('list_saved_servers', () => [
+      { ...SAVED_SERVER, id, protocol: 'webdav', address: 'https://10.255.255.1/dav/', places: [] },
+    ])
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'add',
+      target: {
+        protocol: 'webdav' as const,
+        displayName: '',
+        url: 'https://10.255.255.1/dav',
+        username: 'ada',
+        remoteRoot: '/',
+        startFolder: null,
+        autoReconnect: true,
+      },
+      secret: null,
+      intent: 'save_unchecked',
+    })
+
+    expect(outcome).toEqual({ kind: 'added', serverId: id })
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+  })
+
+  /**
+   * An empty password on a WebDAV add is caught before any server is asked (the
+   * store has none for the account either), so it's worded as the field it is,
+   * ❌ never "This server asks for a password", which reads as a server's answer
+   * (QA round 2, M6).
+   */
+  it('words a WebDAV add with no password as the empty field, not as a server answer', async () => {
+    ipc.mock('connect_server', () => ({ outcome: 'needs_credentials' }))
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'add',
+      target: {
+        protocol: 'webdav' as const,
+        displayName: '',
+        url: 'https://nas.local/dav',
+        username: 'ada',
+        remoteRoot: '/',
+        startFolder: null,
+        autoReconnect: true,
+      },
+      secret: null,
+      intent: 'open',
+    })
+
+    expect(outcome).toEqual({ kind: 'refused', refusal: 'password_missing' })
     closeSignInSheet({ kind: 'cancelled' })
     await sheet
   })

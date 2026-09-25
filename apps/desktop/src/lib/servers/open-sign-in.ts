@@ -28,6 +28,7 @@ import {
   reconnectVolumeWithCredentials,
   saveSftpCredentials,
   saveWebdavCredentials,
+  savedServerId,
   updateSavedServer,
   type SavedServer,
   type SecretOffer,
@@ -288,6 +289,16 @@ async function attemptAdd(
   if (submission.intent === 'save_unchecked') return await saveUnchecked(submission.target, submission.secret)
   const attemptId = newServerAttemptId()
   const outcome = readConnectOutcome(await connectServer(submission.target, attemptId, submission.secret))
+  // A WebDAV connect asks the store before it dials, so "needs credentials" with
+  // an empty field is the field, not the server: word it as such.
+  if (
+    outcome.kind === 'refused' &&
+    outcome.refusal === 'needs_credentials' &&
+    submission.target.protocol === 'webdav' &&
+    !submission.secret?.secret
+  ) {
+    return { kind: 'refused', refusal: 'password_missing' }
+  }
   // "Add": the connect proved the server and saved it; the session stays up,
   // and the pane stays where it is.
   if (outcome.kind === 'connected' && submission.intent === 'save') {
@@ -361,17 +372,19 @@ async function saveUnchecked(target: ServerTarget, secret: SecretOffer | null): 
 }
 
 /**
- * The saved id of the server `target` names, off the listing, which is the only
- * side that mints one (a volume id is a Rust-side hash of the account's tuple).
+ * The saved id of the server `target` names, once the listing has it.
+ *
+ * ❗ The id comes from the backend, which is the only side that mints one (a
+ * Rust-side hash of the account's tuple), and the listing only confirms it's
+ * there. ❌ Never matched on the typed address: the stores normalize it (a WebDAV
+ * URL gains its trailing slash), so "Add anyway" reported a saved server as not
+ * saved and the sheet stayed open over it.
  */
 async function savedIdOf(target: ServerTarget): Promise<string | null> {
-  const address = target.protocol === 'sftp' ? `${target.host}:${String(target.port)}` : target.url
+  const id = await savedServerId(target)
+  if (id === null) return null
   const servers = await listSavedServers()
-  const match = servers.find(
-    (server) =>
-      server.protocol === target.protocol && server.username === target.username && server.address === address,
-  )
-  return match?.id ?? null
+  return servers.some((server) => server.id === id) ? id : null
 }
 
 /** An absent place: the first dial, now carrying whatever the user typed. */

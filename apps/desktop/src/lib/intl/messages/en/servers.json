@@ -234,6 +234,13 @@
       "host": "the server’s hostname or address, like \"nas.local\""
     }
   },
+  "servers.refusal.passwordMissing": "Enter the password for {username}.",
+  "@servers.refusal.passwordMissing": {
+    "description": "Under the password field of the Add server sheet, when the field is empty and Cmdr has no saved password for this account, so nothing was sent to the server yet. {username} is the account name, never translated.",
+    "placeholders": {
+      "username": "the account name, like ada"
+    }
+  },
   "servers.refusal.saveUnconfirmed": "{host} didn’t answer in time, so nothing was saved. Try again in a moment.",
   "@servers.refusal.saveUnconfirmed": {
     "description": "Shown above the buttons of the edit server sheet when saving needed the connected server to confirm a folder and it did not answer within a few seconds. Nothing was saved, and trying again is safe.",

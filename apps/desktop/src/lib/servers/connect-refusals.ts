@@ -62,6 +62,11 @@ export type ConnectRefusalKind =
    * ❗ Not `unreachable`: the edit landed and no server was contacted.
    */
   | 'saved_secret_not_updated'
+  /**
+   * Add mode: the password field was empty and the store holds none for the account, so nothing was dialed
+   * (WebDAV asks the store before it dials). ❗ Not `needs_credentials`, whose sentence reads as a server's answer.
+   */
+  | 'password_missing'
 
 const REFUSAL_KEYS: Record<ConnectRefusalKind, MessageKey> = {
   authentication_rejected: 'servers.refusal.authenticationRejected',
@@ -81,6 +86,7 @@ const REFUSAL_KEYS: Record<ConnectRefusalKind, MessageKey> = {
   save_unconfirmed: 'servers.refusal.saveUnconfirmed',
   secret_not_stored: 'servers.refusal.secretNotStored',
   saved_secret_not_updated: 'servers.refusal.savedSecretNotUpdated',
+  password_missing: 'servers.refusal.passwordMissing',
 }
 
 /** What the place is called in a refusal: its host where there is one, else its name. */
@@ -119,6 +125,7 @@ export type RefusalField =
 const REFUSAL_FIELDS: Record<ConnectRefusalKind, RefusalField> = {
   authentication_rejected: 'secret',
   needs_credentials: 'secret',
+  password_missing: 'secret',
   // ❗ The password WORKED, so marking its field invalid would point at the one
   // thing that isn't wrong. The fix is another account.
   account_not_permitted: 'form',

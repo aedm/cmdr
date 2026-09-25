@@ -520,6 +520,32 @@ pub async fn update_saved_server(server: ServerTarget) -> SavedServerOutcome {
     outcome
 }
 
+/// The id the servers listing gives the account `server` names, through the same
+/// id funnel the listing uses (`cmdr_fs::volume::ids`), or `None` for a WebDAV
+/// address that isn't an `http`/`https` URL.
+///
+/// ❗ How a caller finds the row a save just made. ❌ Never by comparing the
+/// address it typed with the listed one: the stores normalize (a WebDAV URL gains
+/// its trailing slash), so the typed spelling missed a row that was there, and
+/// "Add anyway" reported a saved server as not saved.
+#[tauri::command]
+#[specta::specta]
+pub fn saved_server_id(server: ServerTarget) -> Option<String> {
+    match server {
+        ServerTarget::Sftp {
+            host, port, username, ..
+        } => Some(cmdr_fs::volume::sftp_volume_id(&host, port, &username)),
+        ServerTarget::Webdav { url, username, .. } => {
+            let params = webdav_params(&url, &username, "/")?;
+            Some(cmdr_fs::volume::webdav_volume_id(
+                params.host(),
+                params.port(),
+                &username,
+            ))
+        }
+    }
+}
+
 /// The per-protocol save behind [`update_saved_server`].
 ///
 /// ❗ Calls each wiring's `save_without_connecting` directly: there is no

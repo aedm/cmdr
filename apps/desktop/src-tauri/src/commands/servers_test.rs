@@ -960,3 +960,33 @@ fn a_host_only_the_share_history_knows_dials_where_its_mount_went() {
     );
     assert!(!groups[0].manual);
 }
+
+/// ❗ **The id a save is found by is the listing's own**, whatever spelling the
+/// store keeps: a WebDAV URL gains its trailing slash when saved, and finding the
+/// row by the typed URL missed it, so "Add anyway" said nothing was saved.
+#[test]
+fn a_saved_servers_id_is_the_listings_own_whatever_the_url_spelling() {
+    let host = "192.0.2.51";
+    webdav_known_servers::remember(webdav_entry(host, false));
+    let typed = |url: &str| ServerTarget::Webdav {
+        display_name: String::new(),
+        url: url.to_string(),
+        username: "ada".to_string(),
+        remote_root: "/".to_string(),
+        start_folder: None,
+        auto_reconnect: true,
+    };
+
+    let listed = find(&saved_servers_of(Vec::new()), &format!("{host} over dav"))
+        .id
+        .clone();
+    assert_eq!(
+        saved_server_id(typed(&format!("http://{host}:8080/dav"))),
+        Some(listed.clone())
+    );
+    assert_eq!(
+        saved_server_id(typed(&format!("http://{host}:8080/dav/"))),
+        Some(listed)
+    );
+    assert_eq!(saved_server_id(typed("not a url")), None);
+}

@@ -184,6 +184,16 @@ export async function updateSavedServer(server: ServerTarget): Promise<SavedServ
 }
 
 /**
+ * The id the servers listing gives the account `server` names, minted by the
+ * backend's own id funnel, or `null` for a WebDAV address that isn't a URL.
+ * ❗ How to find the row a save made: the stores normalize addresses, so a typed
+ * spelling can miss it.
+ */
+export async function savedServerId(server: ServerTarget): Promise<string | null> {
+  return await commands.savedServerId(server)
+}
+
+/**
  * Forgets the saved SMB host the listing calls `id`: its manual entry, its
  * sign-in history, and every share saved under it, exactly the rows the listing
  * showed under it. Nothing is unmounted and no password is touched. Answers

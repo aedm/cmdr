@@ -2784,6 +2784,7 @@ export type MessageKey =
   | 'servers.refusal.invalidUrl'
   | 'servers.refusal.needsCredentials'
   | 'servers.refusal.notAWebdavServer'
+  | 'servers.refusal.passwordMissing'
   | 'servers.refusal.rootNotFound'
   | 'servers.refusal.saveUnconfirmed'
   | 'servers.refusal.savedSecretNotUpdated'

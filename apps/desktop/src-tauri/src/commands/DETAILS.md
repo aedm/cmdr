@@ -76,7 +76,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   surface they call: `list_saved_servers` (the union of the two saved-server stores plus SMB hosts from
   `known_shares.rs` and `manual_servers.rs`), `connect_saved_place`, `connect_server`, `cancel_server_connect`,
   `disconnect_place`, `set_place_pinned`, `set_place_auto_reconnect`, `forget_server`, `forget_server_secret`,
-  `update_saved_server`. The wire
+  `update_saved_server`, and `saved_server_id` (the id a save is found by, from the same id funnel the listing uses:
+  ❌ never by comparing a typed address with the listed one, which the stores normalize). The wire
   vocabulary (`ServerTarget`, `ServerConnectOutcome`, `SavedPlaceRefusal`, `SavedServer`, `SavedPlace`,
   `ServerProtocol`, `ServerNameSource`) lives in the sibling `servers/wire.rs`, re-exported at the same path so nothing
   outside this file has to know it moved.

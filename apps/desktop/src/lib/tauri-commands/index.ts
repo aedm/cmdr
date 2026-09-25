@@ -953,6 +953,7 @@ export {
   hasServerSecret,
   forgetServerSecret,
   updateSavedServer,
+  savedServerId,
   updateSavedSmbHost,
   forgetSavedSmbHost,
 } from './servers'
