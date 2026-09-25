@@ -579,9 +579,10 @@ export async function setNetworkEnabled(enabled: boolean): Promise<void> {
 
 /**
  * Shows a native context menu for a servers hub row's SMB host (fire-and-forget).
- * The menu always includes "Disconnect", plus "Edit server…" for saved hosts,
- * "Forget server" for manual hosts, and "Forget saved password" for hosts with
- * stored credentials.
+ * It offers only what does something: "Edit server…" for a saved host, "Disconnect"
+ * while a share from it is mounted, "Forget saved password" when one is stored, and
+ * "Forget server" for a typed-in host. The host goes whole: its mounts are found by
+ * where it dials.
  *
  * ❗ `rowId` is the hub row it was raised on, and the answer carries it back
  * (`NetworkHostContextAction.rowId`): the row, not the host, is what the answer
@@ -589,8 +590,7 @@ export async function setNetworkEnabled(enabled: boolean): Promise<void> {
  */
 export async function showNetworkHostContextMenu(
   rowId: string,
-  hostId: string,
-  hostName: string,
+  host: NetworkHost,
   isManual: boolean,
   isSaved: boolean,
   hasCredentials: boolean,
@@ -598,8 +598,14 @@ export async function showNetworkHostContextMenu(
 ): Promise<void> {
   const res = await commands.showNetworkHostContextMenu(
     rowId,
-    hostId,
-    hostName,
+    {
+      id: host.id,
+      name: host.name,
+      hostname: host.hostname ?? null,
+      ipAddress: host.ipAddress ?? null,
+      port: host.port,
+      source: host.source,
+    },
     isManual,
     isSaved,
     hasCredentials,

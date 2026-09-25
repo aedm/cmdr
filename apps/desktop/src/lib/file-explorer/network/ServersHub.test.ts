@@ -486,7 +486,7 @@ describe('ServersHub keyboard context menu', () => {
     const args = h.showNetworkHostContextMenu.mock.calls[0] as unknown[]
     expect(args[0]).toBe('h2')
     // An anchor, not `null`: a keypress has no pointer for macOS to use.
-    const anchor = args[6] as { x: unknown; y: unknown } | null
+    const anchor = args[5] as { x: unknown; y: unknown } | null
     expect(typeof anchor?.x).toBe('number')
     expect(typeof anchor?.y).toBe('number')
     await cleanup()

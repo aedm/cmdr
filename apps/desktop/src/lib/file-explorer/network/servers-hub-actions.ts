@@ -258,8 +258,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     }
     await showNetworkHostContextMenu(
       row.id,
-      host.id,
-      host.name,
+      host,
       host.source === 'manual',
       // A SAVED host has a name to edit; one mDNS merely sees does not.
       row.saved !== null,

@@ -143,8 +143,9 @@ saved shares; nothing unmounted), a saved share through `forgetServer` on its id
 only mDNS knows about gets the "Can't remove discovered hosts" toast. A share row's right-click is an in-app menu too:
 Open, the pin, and Forget share. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same
 list the switcher row's → submenu shows (`../navigation/row-menu.ts`; Open moves THIS pane, like Enter); an SMB host
-keeps its own native host menu (`show_network_host_context_menu`: Disconnect, Forget server for a manual one, Forget
-saved password when creds are stored), whose actions arrive on the `network-host-context-action` event. Cursor
+keeps its own native host menu (`show_network_host_context_menu`, one group, only what does something: Edit for a
+saved host, Disconnect while a share from it is mounted, Forget saved password when one is stored, Forget server for a
+typed-in one), whose actions arrive on the `network-host-context-action` event. Cursor
 auto-clamps when a row disappears.
 
 `⌃⏎` (`file.contextMenu`) opens the cursor row's menu from the keyboard, the same menu a right-click opens, placed just

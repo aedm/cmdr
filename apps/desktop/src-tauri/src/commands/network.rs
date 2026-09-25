@@ -519,7 +519,6 @@ pub async fn upgrade_to_smb_volume_using_saved_password(
 #[specta::specta]
 pub async fn disconnect_network_host(host: NetworkHost) -> Result<Vec<String>, String> {
     use crate::deadline::blocking_with_timeout;
-    use crate::network::server_identity::SmbServer;
     use std::time::Duration;
 
     // Drop the cached share list so a later browse re-fetches fresh shares and
@@ -527,15 +526,7 @@ pub async fn disconnect_network_host(host: NetworkHost) -> Result<Vec<String>, S
     // the user just disconnected from.
     smb_client::invalidate_cache(&host.id);
 
-    let named = SmbServer::from_name(&host.name);
-    let targets: Vec<SmbServer> = host
-        .hostname
-        .iter()
-        .chain(host.ip_address.iter())
-        .map(String::as_str)
-        .chain(std::iter::once(named.host()))
-        .map(|name| SmbServer::new(name, host.port))
-        .collect();
+    let targets = crate::network::server_identity::smb_servers_of(&host);
     let result = blocking_with_timeout(Duration::from_secs(15), vec![], move || {
         mount::unmount_smb_shares_from_host(&targets)
     })

@@ -361,72 +361,75 @@ pub fn build_tab_context_menu(
     Ok(menu)
 }
 
-/// Builds a context menu for a network host.
-/// Always includes "Disconnect". Conditionally adds "Forget server" (manual hosts)
-/// and "Forget saved password" (hosts with stored credentials).
+/// Which items an SMB host's context menu offers, in order, as menu ids.
+///
+/// ❗ Only what does something: Disconnect only while a share from this host is
+/// mounted (an item that answers "no mounted shares" is an inert affordance), Edit
+/// only for a saved host, Forget server only for a typed-in one, Forget saved
+/// password only when one is stored. One group, in the order the switcher row's
+/// menu uses (edit, disconnect, forget the password, forget the server): three
+/// items used to sit in three separator groups.
+pub fn network_host_menu_items(
+    is_manual: bool,
+    is_saved: bool,
+    has_credentials: bool,
+    has_mounts: bool,
+) -> Vec<&'static str> {
+    [
+        (is_saved, NETWORK_HOST_EDIT_ID),
+        (has_mounts, NETWORK_HOST_DISCONNECT_ID),
+        (has_credentials, NETWORK_HOST_FORGET_SECRET_ID),
+        (is_manual, NETWORK_HOST_FORGET_SERVER_ID),
+    ]
+    .into_iter()
+    .filter_map(|(offered, id)| offered.then_some(id))
+    .collect()
+}
+
+/// Builds a context menu for a network host from [`network_host_menu_items`].
 pub fn build_network_host_context_menu(
     app: &AppHandle<Wry>,
     is_manual: bool,
     is_saved: bool,
     has_credentials: bool,
+    has_mounts: bool,
 ) -> tauri::Result<Menu<Wry>> {
     let menu = Menu::new(app)?;
-
-    // A SAVED host can be renamed; one mDNS merely sees has nothing to keep a name in.
-    if is_saved {
-        let edit = MenuItem::with_id(
-            app,
-            NETWORK_HOST_EDIT_ID,
-            menu_t("menu.network.edit"),
-            true,
-            None::<&str>,
-        )?;
-        menu.append(&edit)?;
-        menu.append(&PredefinedMenuItem::separator(app)?)?;
+    for id in network_host_menu_items(is_manual, is_saved, has_credentials, has_mounts) {
+        let label = match id {
+            NETWORK_HOST_EDIT_ID => "menu.network.edit",
+            NETWORK_HOST_DISCONNECT_ID => "menu.network.disconnect",
+            NETWORK_HOST_FORGET_SECRET_ID => "menu.network.forgetSavedPassword",
+            _ => "menu.network.forgetServer",
+        };
+        menu.append(&MenuItem::with_id(app, id, menu_t(label), true, None::<&str>)?)?;
     }
-
-    // "Disconnect" is always shown. If nothing is mounted, the backend handles it gracefully.
-    let disconnect = MenuItem::with_id(
-        app,
-        NETWORK_HOST_DISCONNECT_ID,
-        menu_t("menu.network.disconnect"),
-        true,
-        None::<&str>,
-    )?;
-    menu.append(&disconnect)?;
-
-    if is_manual {
-        menu.append(&PredefinedMenuItem::separator(app)?)?;
-        let forget_server = MenuItem::with_id(
-            app,
-            NETWORK_HOST_FORGET_SERVER_ID,
-            menu_t("menu.network.forgetServer"),
-            true,
-            None::<&str>,
-        )?;
-        menu.append(&forget_server)?;
-    }
-
-    if has_credentials {
-        if !is_manual {
-            menu.append(&PredefinedMenuItem::separator(app)?)?;
-        }
-        let forget_secret = MenuItem::with_id(
-            app,
-            NETWORK_HOST_FORGET_SECRET_ID,
-            menu_t("menu.network.forgetSavedPassword"),
-            true,
-            None::<&str>,
-        )?;
-        menu.append(&forget_secret)?;
-    }
-
     Ok(menu)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ❗ An SMB host's menu offers only what does something, in one group: no
+    /// Disconnect with nothing mounted (QA round 2).
+    #[test]
+    fn a_host_menu_offers_only_what_does_something() {
+        assert_eq!(
+            network_host_menu_items(true, true, false, false),
+            [NETWORK_HOST_EDIT_ID, NETWORK_HOST_FORGET_SERVER_ID]
+        );
+        assert_eq!(
+            network_host_menu_items(true, true, true, true),
+            [
+                NETWORK_HOST_EDIT_ID,
+                NETWORK_HOST_DISCONNECT_ID,
+                NETWORK_HOST_FORGET_SECRET_ID,
+                NETWORK_HOST_FORGET_SERVER_ID
+            ]
+        );
+        assert!(network_host_menu_items(false, false, false, false).is_empty());
+    }
     use crate::menu::{FAVORITES_ADD_CONTEXT_ID, FILE_COPY_ID, FILE_VIEW_ID, TOGGLE_SELECTION_ID};
 
     fn shortcuts(pairs: &[(&str, &str)]) -> ContextMenuShortcuts {

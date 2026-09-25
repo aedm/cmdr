@@ -640,47 +640,16 @@ fn find_mount_path_for_share(target: MountTarget<'_>, hosts: &[NetworkHost]) -> 
         .find(|path| crate::volumes::get_smb_mount_info(path).is_some_and(|info| target.is_mounted_as(&info, hosts)))
 }
 
-/// Unmounts all SMB shares mounted from a given server.
-///
-/// Iterates `/Volumes/`, uses `statfs` to find SMB mounts whose server matches
-/// the given `server_name` or `server_ip`. Unmounts each via `diskutil unmount`.
-/// Returns the list of mount paths that were successfully unmounted.
-/// Whether the mount `info` is from one of `targets`: the same server by
-/// [`SmbServer::is`], so the port has to match and the machine may go by any name
-/// discovery pairs it with.
-fn mount_is_from(info: &SmbMountInfo, targets: &[SmbServer], hosts: &[NetworkHost]) -> bool {
-    let mounted = SmbServer::new(&info.server, info.port);
-    targets.iter().any(|target| target.is(&mounted, hosts))
-}
-
 /// Unmounts every SMB share mounted from one of `targets` (the names one host goes
 /// by, each with the host's port), answering the mount paths that went.
 ///
-/// ❗ By server identity, host AND port ([`mount_is_from`]): a name alone would take
-/// every server's mounts on a machine that runs several, and a display name matches
-/// nothing `statfs` says.
+/// ❗ By server identity, host AND port (`server_identity::mount_is_from`): a name
+/// alone would take every server's mounts on a machine that runs several, and a
+/// display name matches nothing `statfs` says. The mounts come off the kernel's
+/// table snapshot (`server_identity::smb_mounts_from`), so a hung one can't stall it.
 pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
-    use crate::volumes::get_smb_mount_info;
-    use std::fs;
-
-    let hosts = crate::network::get_discovered_hosts();
-
     let mut unmounted = Vec::new();
-
-    let Ok(entries) = fs::read_dir("/Volumes") else {
-        return unmounted;
-    };
-
-    for entry in entries.flatten() {
-        let mount_path = entry.path().to_string_lossy().to_string();
-        let Some(info) = get_smb_mount_info(&mount_path) else {
-            continue;
-        };
-
-        if !mount_is_from(&info, targets, &hosts) {
-            continue;
-        }
-
+    for mount_path in crate::network::server_identity::smb_mounts_from(targets) {
         log::info!("Unmounting SMB share at {}", mount_path);
         let output = std::process::Command::new("diskutil")
             .args(["unmount", &mount_path])
@@ -700,7 +669,6 @@ pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
             }
         }
     }
-
     unmounted
 }
 

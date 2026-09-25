@@ -1484,12 +1484,15 @@ export const commands = {
    *  The selected action is delivered asynchronously via a `network-host-context-action` Tauri event
    *  from `on_menu_event`, carrying `row_id` back so the answer acts on the row it was opened on.
    *
-   *  `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up; `None` uses the pointer.
+   *  Takes the whole `host`, because Disconnect is offered only while a share from it
+   *  is mounted, which is a question about where it dials (every name, on its port):
+   *  `server_identity::smb_mounts_from` over the kernel's mount table snapshot, which
+   *  can't stall the menu. `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up;
+   *  `None` uses the pointer.
    */
   showNetworkHostContextMenu: (
     rowId: string,
-    hostId: string,
-    hostName: string,
+    host: NetworkHost,
     isManual: boolean,
     isSaved: boolean,
     hasCredentials: boolean,
@@ -1499,15 +1502,7 @@ export const commands = {
     } | null,
   ) =>
     typedError<null, string>(
-      __TAURI_INVOKE('show_network_host_context_menu', {
-        rowId,
-        hostId,
-        hostName,
-        isManual,
-        isSaved,
-        hasCredentials,
-        anchor,
-      }),
+      __TAURI_INVOKE('show_network_host_context_menu', { rowId, host, isManual, isSaved, hasCredentials, anchor }),
     ),
   /**
    *  Shows the function key bar's context menu (fire-and-forget): a single "Hide

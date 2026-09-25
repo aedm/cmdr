@@ -69,6 +69,40 @@ impl SmbServer {
     }
 }
 
+/// Every name `host` goes by (its hostname, its IP, the host half of its discovery
+/// name), each on ITS port: what a mount from it can be recognized by.
+pub fn smb_servers_of(host: &NetworkHost) -> Vec<SmbServer> {
+    let named = SmbServer::from_name(&host.name);
+    host.hostname
+        .iter()
+        .chain(host.ip_address.iter())
+        .map(String::as_str)
+        .chain(std::iter::once(named.host()))
+        .map(|name| SmbServer::new(name, host.port))
+        .collect()
+}
+
+/// Whether the SMB mount `info` is from one of `targets`: the same server by
+/// [`SmbServer::is`], so the port has to match and the machine may go by any name
+/// discovery pairs it with.
+pub fn mount_is_from(info: &crate::volumes::SmbMountInfo, targets: &[SmbServer], hosts: &[NetworkHost]) -> bool {
+    let mounted = SmbServer::new(&info.server, info.port);
+    targets.iter().any(|target| target.is(&mounted, hosts))
+}
+
+/// The mount points of every SMB mount from one of `targets`, read off the kernel's
+/// mount table snapshot (`volumes::smb_mounts`): no call per mount, so a hung share
+/// can't stall it, and it answers in time to decide what a menu offers.
+pub fn smb_mounts_from(targets: &[SmbServer]) -> Vec<String> {
+    let hosts = super::get_discovered_hosts();
+    crate::volumes::smb_mounts()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(_, info)| mount_is_from(info, targets, &hosts))
+        .map(|(mount_point, _)| mount_point)
+        .collect()
+}
+
 /// Lowercases, NFC-folds, and strips the trailing dot of a fully qualified name.
 ///
 /// The NFC fold pairs the spellings one accented server name arrives in: composed

@@ -318,33 +318,20 @@ describe('runRowEntry', () => {
 describe('openHostMenu', () => {
   it('raises the SMB host menu for a host row, naming the row it was raised on', async () => {
     await actions().openHostMenu(savedHostRow)
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith(
-      'manual-10-0-0-4-445',
-      'h1',
-      'Attic NAS',
-      true,
-      true,
-      true,
-      null,
-    )
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('manual-10-0-0-4-445', host, true, true, true, null)
   })
 
   it('offers no Edit for a host only mDNS knows about, which has nowhere to keep a name', async () => {
     await actions().openHostMenu(nearbyOnlyRow)
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h2', 'h2', 'Attic NAS', false, false, true, null)
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h2', nearbyOnlyRow.host, false, false, true, null)
   })
 
   it('opens where the keyboard says when there is no pointer to use', async () => {
     await actions().openHostMenu(savedHostRow, { x: 40, y: 120 })
-    expect(showNetworkHostContextMenu).toHaveBeenCalledWith(
-      'manual-10-0-0-4-445',
-      'h1',
-      'Attic NAS',
-      true,
-      true,
-      true,
-      { x: 40, y: 120 },
-    )
+    expect(showNetworkHostContextMenu).toHaveBeenCalledWith('manual-10-0-0-4-445', host, true, true, true, {
+      x: 40,
+      y: 120,
+    })
   })
 })
 

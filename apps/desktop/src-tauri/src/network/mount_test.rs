@@ -690,17 +690,17 @@ fn a_host_disconnect_folds_normalization_and_case() {
     use crate::network::server_identity::SmbServer;
 
     let on = |host: &str| SmbServer::new(host, 445);
-    assert!(mount_is_from(
+    assert!(crate::network::server_identity::mount_is_from(
         &smb_mount("Zu\u{308}rich.local", "s", 445).unwrap(),
         &[on("Zürich.local")],
         &[]
     ));
-    assert!(mount_is_from(
+    assert!(crate::network::server_identity::mount_is_from(
         &smb_mount("CAFÉ-NAS", "s", 445).unwrap(),
         &[on("cafe\u{301}-nas")],
         &[]
     ));
-    assert!(!mount_is_from(
+    assert!(!crate::network::server_identity::mount_is_from(
         &smb_mount("naspolya", "s", 445).unwrap(),
         &[on("raspberrypi")],
         &[]
@@ -720,8 +720,8 @@ fn a_host_disconnect_takes_its_own_ports_mounts_only() {
     let also_ours = smb_mount("127.0.0.1", "private", 11482).unwrap();
     let other_port = smb_mount("localhost", "public", 11480).unwrap();
 
-    assert!(mount_is_from(&ours, &host, &[]));
-    assert!(!mount_is_from(&other_port, &host, &[]));
+    assert!(crate::network::server_identity::mount_is_from(&ours, &host, &[]));
+    assert!(!crate::network::server_identity::mount_is_from(&other_port, &host, &[]));
     // Another spelling of the machine counts only when discovery pairs the two.
-    assert!(!mount_is_from(&also_ours, &host, &[]));
+    assert!(!crate::network::server_identity::mount_is_from(&also_ours, &host, &[]));
 }

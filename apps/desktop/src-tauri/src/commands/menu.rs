@@ -433,7 +433,11 @@ pub fn show_function_key_bar_context_menu(window: Window<tauri::Wry>) -> Result<
 /// The selected action is delivered asynchronously via a `network-host-context-action` Tauri event
 /// from `on_menu_event`, carrying `row_id` back so the answer acts on the row it was opened on.
 ///
-/// `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up; `None` uses the pointer.
+/// Takes the whole `host`, because Disconnect is offered only while a share from it
+/// is mounted, which is a question about where it dials (every name, on its port):
+/// `server_identity::smb_mounts_from` over the kernel's mount table snapshot, which
+/// can't stall the menu. `anchor` is where a KEYBOARD-opened menu (`⌃⏎`) pops up;
+/// `None` uses the pointer.
 #[tauri::command]
 #[specta::specta]
 #[allow(
@@ -443,25 +447,26 @@ pub fn show_function_key_bar_context_menu(window: Window<tauri::Wry>) -> Result<
 pub fn show_network_host_context_menu(
     window: Window<tauri::Wry>,
     row_id: String,
-    host_id: String,
-    host_name: String,
+    host: crate::network::NetworkHost,
     is_manual: bool,
     is_saved: bool,
     has_credentials: bool,
     anchor: Option<MenuAnchor>,
 ) -> Result<(), String> {
-    let app = window.app_handle().clone();
+    use crate::network::server_identity::{smb_mounts_from, smb_servers_of};
 
-    let menu =
-        build_network_host_context_menu(&app, is_manual, is_saved, has_credentials).map_err(|e| e.to_string())?;
+    let app = window.app_handle().clone();
+    let has_mounts = !smb_mounts_from(&smb_servers_of(&host)).is_empty();
+    let menu = build_network_host_context_menu(&app, is_manual, is_saved, has_credentials, has_mounts)
+        .map_err(|e| e.to_string())?;
 
     // Store context so on_menu_event can include the row and host in the emitted event
     {
         let state = app.state::<MenuState<tauri::Wry>>();
         let mut ctx = state.network_host_context.lock_ignore_poison();
         ctx.row_id = row_id;
-        ctx.host_id = host_id;
-        ctx.host_name = host_name;
+        ctx.host_id = host.id;
+        ctx.host_name = host.name;
     }
 
     popup_context_menu(&menu, window, anchor)
