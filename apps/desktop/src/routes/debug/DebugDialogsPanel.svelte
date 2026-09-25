@@ -47,11 +47,12 @@
         return result.data
     }
 
-    async function openDialog(dialogId: SoftDialogId, stateId: string, usesFixtureDir: boolean) {
+    /** `needsFixtures`: the disk-backed rows, and the real-operation one, whose copy runs in the conflict fixture tree. */
+    async function openDialog(dialogId: SoftDialogId, stateId: string, needsFixtures: boolean) {
         preparing = true
         try {
-            const fixtures = usesFixtureDir ? await prepareFixtureDir() : null
-            if (usesFixtureDir && !fixtures) return
+            const fixtures = needsFixtures ? await prepareFixtureDir() : null
+            if (needsFixtures && !fixtures) return
             const { emitTo } = await import('@tauri-apps/api/event')
             await emitTo('main', 'debug-open-gallery-dialog', { dialogId, stateId, fixtures })
         } catch (error) {
@@ -110,6 +111,13 @@
                         runs.
                     </p>
                 {/if}
+                {#if entry.openedBy === 'real-operation'}
+                    <p class="dialog-note">
+                        Raised by a real operation, so the gallery starts one in a throwaway conflict folder
+                        in the app data dir, and the app's own conflict host shows the dialog. Your answer
+                        really happens there.
+                    </p>
+                {/if}
                 {#if entry.openedBy === 'app-command'}
                     <p class="dialog-note">
                         Opened through the app's own command, not by the gallery: its open flag lives in the
@@ -124,7 +132,11 @@
                                     class="index-button"
                                     disabled={preparing}
                                     onclick={() =>
-                                        void openDialog(entry.dialogId, state.id, entry.usesFixtureDir === true)}
+                                        void openDialog(
+                                            entry.dialogId,
+                                            state.id,
+                                            entry.usesFixtureDir === true || entry.openedBy === 'real-operation',
+                                        )}
                                 >
                                     {state.label}
                                 </button>

@@ -14,7 +14,8 @@ translators.
 - `disk-fixture.ts`: the real fixture directory (debug-only Rust `dev_fixtures`) plus the focused pane's live listing,
   for the five that do real work on mount.
 - `store-seeding.ts` + `fixtures/store-seeded.ts`: patch a real app store and undo it, for the five the app mounts
-  itself. `onboarding-preview.ts` / `stale-drive-preview.ts`: the two an app command or a real event opens.
+  itself. `onboarding-preview.ts` / `stale-drive-preview.ts` / `operation-conflict-preview.ts`: the three an app
+  command, a real event, or a real operation opens.
 
 ## Must-knows
 

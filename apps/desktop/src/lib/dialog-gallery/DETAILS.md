@@ -128,7 +128,7 @@ command name nor `dialog-gallery-fixtures` (while shipping command names like `n
 renders, and no dialog it pulls in, reaches the main window's bundle. Excluding the Debug route from production builds
 would be a separate change, and it would take the rest of the Debug window with it.
 
-## The three ways a dialog gets opened
+## The ways a dialog gets opened
 
 Which mechanism applies is a **property of how the dialog is already built**. Verify per dialog; don't assume from the
 name.
@@ -142,6 +142,8 @@ name.
   the section below.
 - **Event-seeded**: the component self-mounts off a backend event (`StaleDriveDialog`). The gallery arranges the
   preconditions and emits the real event. See the section below.
+- **Real-operation**: the dialog shows only what a live operation is parked on (`OperationConflictDialog`). The gallery
+  starts a real operation in a throwaway tree, and that operation raises it. See the section below.
 
 A row whose mechanism isn't "the harness renders it" says so in `openedBy`, which the Debug panel discloses and the
 harness's mount sweep reads (those rows render nothing of their own, so the sweep would otherwise fail on them).
@@ -229,6 +231,27 @@ afterwards: the dialog writes both itself ("Never show again" turns the setting 
 restore would fight the component. The row discloses them instead. The freshness badge doesn't move either — replaying
 the event changes no backend state, and `drive-index-manager` reacts by refetching the volume's real status.
 
+## `operation-conflict` is real-operation
+
+`OperationConflictDialog` takes no props: it renders the clash the main window's conflict host
+(`file-operations/operation-conflict.svelte.ts`) is holding, and its "Copying to …" line, its Cancel / Rollback row, and
+every answer read the live operation behind it. A fake event would render a prompt missing that line and that row, and
+leave answers aimed at nothing. So `operation-conflict-preview.ts` starts a REAL copy through the app's own
+`dispatchTransferOperation`, under "Ask for each", of a fixture item onto a same-named entry of the kind the state
+names. It claims no progress dialog, which is the shape of a copy sent to the queue, so the host owns the clash, pauses
+what's running, raises the main window, and asks. `listener-setup.ts` routes the row before the harness sees it.
+
+**The clashes live in their own tree**, `dialog-gallery-conflict-fixtures/` beside the main one (so the disk-backed
+dialogs' listing never shows it), created by the same `createDialogGalleryFixtures` call and ferried as
+`conflictPreview`; the Debug panel fetches it for this row too. **Answers really happen there**, and the fixture call
+puts `To/` back on every trigger: an Overwrite swapped a blocker's kind and a Rename left a ` (1)` sibling
+(`dev_fixtures.rs::ensure_conflict_preview_fixtures`, the one place the fixture code deletes). `From/` is only ever
+completed, so the drive index can learn the incoming folder's size; until it has, that size reads "(unknown)", which is
+the honest rendering.
+
+**The E2E sweeps skip it** (`dialog-inset.spec.ts`, `i18n-capture-gallery.ts`): both close a preview with Escape, and
+this prompt has none by design, so it would sit over every later dialog.
+
 ## The disk-backed dialogs
 
 `delete-confirmation`, `transfer-confirmation`, `mkdir-confirmation`, `new-file-confirmation`, and `go-to-path` do real
@@ -289,12 +312,13 @@ the fixture directory actually protects.
    `openedBy: 'store-seeded'`, holds PATCHES in `fixtures/store-seeded.ts`, and adds its store binding to
    `buildStoreSeed`; it needs no template branch, since the app renders it. An event-seeded one sets
    `openedBy: 'event-seeded'`, holds the event payload in its fixture record, and gets a preview module plus a branch in
-   `listener-setup.ts` (`stale-drive-preview.ts` is the worked example); it renders nothing here either. A dialog that
-   does real work on mount sets `usesFixtureDir: true` on its row and holds BUILDERS in `fixtures/disk.ts` instead of
-   literals (see "The disk-backed dialogs"). Two tests cover the seams: `fixtures.test.ts` walks `fixtureRecords`
-   against the registry (a state id with no fixture, or a fixture with no row), and `DialogGallery.svelte.test.ts`
-   mounts EVERY advertised state and asserts the dialog reported its own id to the tracker. A dead button fails there
-   rather than mid-review.
+   `listener-setup.ts` (`stale-drive-preview.ts` is the worked example); it renders nothing here either. A
+   real-operation one (`openedBy: 'real-operation'`) works the same way, with a fixture record that picks what the
+   operation walks into (`operation-conflict-preview.ts`). A dialog that does real work on mount sets
+   `usesFixtureDir: true` on its row and holds BUILDERS in `fixtures/disk.ts` instead of literals (see "The disk-backed
+   dialogs"). Two tests cover the seams: `fixtures.test.ts` walks `fixtureRecords` against the registry (a state id with
+   no fixture, or a fixture with no row), and `DialogGallery.svelte.test.ts` mounts EVERY advertised state and asserts
+   the dialog reported its own id to the tracker. A dead button fails there rather than mid-review.
 5. **Fixture data is part of the design review.** Include the cases that break layouts: a very long filename, a
    deeply-nested path, a large file count with thousands separators, a multi-line error. A gallery of tidy 12-character
    names hides exactly the problems this exists to surface.

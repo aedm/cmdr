@@ -57,6 +57,7 @@ import { openGalleryDialog } from '$lib/dialog-gallery/gallery-state.svelte'
 import { resolveDiskFixture, type FixtureDirPayload } from '$lib/dialog-gallery/disk-fixture'
 import { openOnboardingPreview } from '$lib/dialog-gallery/onboarding-preview'
 import { openStaleDrivePreview } from '$lib/dialog-gallery/stale-drive-preview'
+import { openOperationConflictPreview } from '$lib/dialog-gallery/operation-conflict-preview'
 import { isE2eRun } from '$lib/app-mode'
 import type { ExplorerAPI } from './explorer-api'
 import type { FriendlyError, TransferOperationType } from '$lib/file-explorer/types'
@@ -528,6 +529,14 @@ export async function setupDialogListeners(ctx: ListenerSetupContext): Promise<v
         if (dialogId === 'drive-index-stale') {
           await openStaleDrivePreview(stateId)
           await focusMainWindow()
+          return
+        }
+        // `operation-conflict` shows only a clash a live operation is parked on, so
+        // its preview starts a real copy into the conflict fixture tree and the
+        // main window's conflict host raises the prompt (which also brings the
+        // window forward). See `dialog-gallery/operation-conflict-preview.ts`.
+        if (dialogId === 'operation-conflict') {
+          await openOperationConflictPreview(stateId, fixtures)
           return
         }
         // A disk-backed dialog needs the focused pane pointed at the fixture

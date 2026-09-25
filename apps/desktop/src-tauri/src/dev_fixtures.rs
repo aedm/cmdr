@@ -15,7 +15,15 @@
 //! Idempotent by construction: a file is (re)written only when it's missing or
 //! its length differs, so triggering a dialog twice creates nothing new and
 //! never deletes anything a reviewer left behind.
+//!
+//! One sibling tree breaks that last rule on purpose: the conflict preview's
+//! (`CONFLICT_FIXTURE_DIR_NAME`). The `operation-conflict` row starts a REAL
+//! copy into it that parks on a real clash, and whatever the reviewer answers
+//! really happens, so every trigger puts the destination side back the way the
+//! clash needs it. It's a sibling, not a subfolder, so the disk-backed dialogs'
+//! listing never shows it.
 
+use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -41,7 +49,53 @@ pub struct DialogGalleryFixtures {
     pub existing_file_name: String,
     /// A deep path inside `root`, for the "Go to path" preview.
     pub nested_path: String,
+    /// The conflict preview's clash pairs, in their own sibling tree.
+    pub conflict_preview: ConflictPreviewFixtures,
 }
+
+/// Where the `operation-conflict` preview copies from and to. Every name below
+/// exists in BOTH folders, as the kinds its field names, so copying `from_dir/<name>`
+/// into `to_dir` parks on exactly that clash.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictPreviewFixtures {
+    /// Absolute path of the folder holding the incoming side of every clash.
+    pub from_dir: String,
+    /// Absolute path of the folder the preview copies into.
+    pub to_dir: String,
+    /// Name of a folder in `from_dir` that is a FILE in `to_dir`.
+    pub folder_over_file: String,
+    /// Name of a file in `from_dir` that is a FOLDER in `to_dir`.
+    pub file_over_folder: String,
+    /// Name of a file in both.
+    pub file_over_file: String,
+}
+
+/// The conflict preview's own directory name under the app data dir.
+pub const CONFLICT_FIXTURE_DIR_NAME: &str = "dialog-gallery-conflict-fixtures";
+
+const CONFLICT_FOLDER_OVER_FILE: &str = "Website redesign";
+const CONFLICT_FILE_OVER_FOLDER: &str = "Quarterly report.pdf";
+const CONFLICT_FILE_OVER_FILE: &str = "Budget 2026.xlsx";
+
+/// The incoming side, under `From/`. Same shape as `FILES`.
+const CONFLICT_SOURCES: &[(&str, u64)] = &[
+    ("Website redesign/index.html", 18_432),
+    ("Website redesign/styles/site.css", 9_216),
+    ("Website redesign/images/hero.jpg", 1_482_752),
+    ("Website redesign/images/team.jpg", 964_608),
+    (CONFLICT_FILE_OVER_FOLDER, 2_359_296),
+    (CONFLICT_FILE_OVER_FILE, 48_128),
+];
+
+/// What stands in the way, under `To/`: each top-level name is the other kind
+/// (or, for the plain clash, a same-named file of another size).
+const CONFLICT_BLOCKERS: &[(&str, u64)] = &[
+    (CONFLICT_FOLDER_OVER_FILE, 7_340),
+    ("Quarterly report.pdf/draft-1.pdf", 1_048_576),
+    ("Quarterly report.pdf/draft-2.pdf", 1_310_720),
+    (CONFLICT_FILE_OVER_FILE, 52_224),
+];
 
 /// Name of the folder the transfer states copy / move into.
 const DESTINATION_DIR: &str = "Backup destination";
@@ -109,11 +163,14 @@ const FILES: &[(&str, u64)] = &[
     ("Backup destination/Photos/exported/preview-01.webp", 96_256),
 ];
 
-/// Creates (or completes) the fixture tree at `root` and returns its landmarks.
+/// Creates (or completes) both fixture trees under `data_dir` and returns their
+/// landmarks.
 ///
-/// Safe to call repeatedly: existing files of the right length are left alone,
-/// and nothing is ever deleted.
-pub fn ensure_dialog_gallery_fixtures(root: &Path) -> Result<DialogGalleryFixtures, String> {
+/// Safe to call repeatedly: in the main tree, existing files of the right length
+/// are left alone and nothing is ever deleted. The conflict preview's
+/// destination is the one exception (`ensure_conflict_preview_fixtures`).
+pub fn ensure_dialog_gallery_fixtures(data_dir: &Path) -> Result<DialogGalleryFixtures, String> {
+    let root = &data_dir.join(FIXTURE_DIR_NAME);
     fs::create_dir_all(root).map_err(|e| format!("Failed to create {}: {e}", root.display()))?;
 
     for (relative, size) in FILES {
@@ -136,7 +193,83 @@ pub fn ensure_dialog_gallery_fixtures(root: &Path) -> Result<DialogGalleryFixtur
         existing_folder_name: EXISTING_FOLDER.to_string(),
         existing_file_name: EXISTING_FILE.to_string(),
         nested_path: path_string(root, NESTED_DIR),
+        conflict_preview: ensure_conflict_preview_fixtures(&data_dir.join(CONFLICT_FIXTURE_DIR_NAME))?,
     })
+}
+
+/// Creates the conflict preview's two folders, and puts `To/` back to exactly
+/// the blockers the clashes need.
+///
+/// The previous preview's answer really happened: an Overwrite left the other
+/// KIND of entry at a blocker's name, and a Rename left a ` (1)` sibling. So in
+/// `To/` (and only there) anything that isn't a blocker is removed, and a
+/// blocker of the wrong kind is replaced. `From/` is only ever completed, like
+/// the main tree, so the drive index keeps knowing its folder's size.
+fn ensure_conflict_preview_fixtures(root: &Path) -> Result<ConflictPreviewFixtures, String> {
+    let from = root.join("From");
+    let to = root.join("To");
+
+    for (relative, size) in CONFLICT_SOURCES {
+        let path = from.join(relative);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create {}: {e}", parent.display()))?;
+        }
+        write_file(&path, *size)?;
+    }
+
+    fs::create_dir_all(&to).map_err(|e| format!("Failed to create {}: {e}", to.display()))?;
+    let blocker_names: HashSet<&str> = CONFLICT_BLOCKERS
+        .iter()
+        .filter_map(|(relative, _)| relative.split('/').next())
+        .collect();
+    for entry in fs::read_dir(&to).map_err(|e| format!("Failed to read {}: {e}", to.display()))? {
+        let path = entry
+            .map_err(|e| format!("Failed to read {}: {e}", to.display()))?
+            .path();
+        let is_blocker = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| blocker_names.contains(name));
+        if !is_blocker {
+            remove_entry(&path)?;
+        }
+    }
+    for (relative, size) in CONFLICT_BLOCKERS {
+        let path = to.join(relative);
+        // Every level above the file has to be a folder, and the file itself a
+        // file: an answered Overwrite swaps exactly one of them.
+        for ancestor in path.ancestors().skip(1).take_while(|a| a.starts_with(&to) && *a != to) {
+            if fs::symlink_metadata(ancestor).is_ok_and(|m| !m.is_dir()) {
+                remove_entry(ancestor)?;
+            }
+        }
+        if fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir()) {
+            remove_entry(&path)?;
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create {}: {e}", parent.display()))?;
+        }
+        write_file(&path, *size)?;
+    }
+
+    Ok(ConflictPreviewFixtures {
+        from_dir: from.to_string_lossy().into_owned(),
+        to_dir: to.to_string_lossy().into_owned(),
+        folder_over_file: CONFLICT_FOLDER_OVER_FILE.to_string(),
+        file_over_folder: CONFLICT_FILE_OVER_FOLDER.to_string(),
+        file_over_file: CONFLICT_FILE_OVER_FILE.to_string(),
+    })
+}
+
+/// Removes one entry of the conflict preview's destination, whatever kind it is.
+fn remove_entry(path: &Path) -> Result<(), String> {
+    let is_dir = fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());
+    let removed = if is_dir {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    };
+    removed.map_err(|e| format!("Failed to remove {}: {e}", path.display()))
 }
 
 fn path_string(root: &Path, relative: &str) -> String {
@@ -199,7 +332,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("temp dir");
         let root = temp.path().join(FIXTURE_DIR_NAME);
 
-        let landmarks = ensure_dialog_gallery_fixtures(&root).expect("first run should succeed");
+        let landmarks = ensure_dialog_gallery_fixtures(temp.path()).expect("first run should succeed");
 
         assert_tree_matches(&root);
         assert_eq!(landmarks.root, root.to_string_lossy());
@@ -216,12 +349,12 @@ mod tests {
         let temp = tempfile::tempdir().expect("temp dir");
         let root = temp.path().join(FIXTURE_DIR_NAME);
 
-        let first = ensure_dialog_gallery_fixtures(&root).expect("first run should succeed");
+        let first = ensure_dialog_gallery_fixtures(temp.path()).expect("first run should succeed");
         let entries_after_first = count_entries(&root);
         let sample = root.join("README.txt");
         let created_at = fs::metadata(&sample).expect("sample file").modified().ok();
 
-        let second = ensure_dialog_gallery_fixtures(&root).expect("second run should succeed");
+        let second = ensure_dialog_gallery_fixtures(temp.path()).expect("second run should succeed");
 
         assert_eq!(
             count_entries(&root),
@@ -244,17 +377,81 @@ mod tests {
     fn leaves_foreign_entries_alone() {
         let temp = tempfile::tempdir().expect("temp dir");
         let root = temp.path().join(FIXTURE_DIR_NAME);
-        ensure_dialog_gallery_fixtures(&root).expect("first run should succeed");
+        ensure_dialog_gallery_fixtures(temp.path()).expect("first run should succeed");
 
         let reviewer_folder = root.join("Folder the reviewer made");
         fs::create_dir(&reviewer_folder).expect("create reviewer folder");
         let reviewer_file = root.join("Photos/reviewer.txt");
         fs::write(&reviewer_file, b"kept").expect("write reviewer file");
 
-        ensure_dialog_gallery_fixtures(&root).expect("second run should succeed");
+        ensure_dialog_gallery_fixtures(temp.path()).expect("second run should succeed");
 
         assert!(reviewer_folder.is_dir(), "a reviewer-created folder was removed");
         assert_eq!(fs::read(&reviewer_file).expect("reviewer file"), b"kept");
+    }
+
+    /// Each conflict-preview name really clashes, as the kind the field names.
+    #[test]
+    fn the_conflict_preview_names_real_clashes() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let conflict = ensure_dialog_gallery_fixtures(temp.path())
+            .expect("first run should succeed")
+            .conflict_preview;
+        let (from, to) = (Path::new(&conflict.from_dir), Path::new(&conflict.to_dir));
+
+        assert!(from.join(&conflict.folder_over_file).is_dir());
+        assert!(to.join(&conflict.folder_over_file).is_file());
+        assert!(from.join(&conflict.file_over_folder).is_file());
+        assert!(to.join(&conflict.file_over_folder).is_dir());
+        assert!(from.join(&conflict.file_over_file).is_file());
+        assert!(to.join(&conflict.file_over_file).is_file());
+        assert!(
+            !temp.path().join(FIXTURE_DIR_NAME).join("To").exists(),
+            "the preview lives beside the main tree, so its listing never shows it"
+        );
+    }
+
+    /// Whatever the last preview's answer did to the destination, the next
+    /// trigger puts the clashes back: an Overwrite swapped a blocker's kind, and a
+    /// Rename left a ` (1)` sibling.
+    #[test]
+    fn the_conflict_preview_destination_is_restored_after_an_answer() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let conflict = ensure_dialog_gallery_fixtures(temp.path())
+            .expect("first run should succeed")
+            .conflict_preview;
+        let to = Path::new(&conflict.to_dir);
+        // Overwrite answered on both cross-type clashes, and a Rename on the plain one.
+        let folder_over_file = to.join(&conflict.folder_over_file);
+        fs::remove_file(&folder_over_file).unwrap();
+        fs::create_dir_all(folder_over_file.join("images")).unwrap();
+        let file_over_folder = to.join(&conflict.file_over_folder);
+        fs::remove_dir_all(&file_over_folder).unwrap();
+        fs::write(&file_over_folder, b"the incoming file").unwrap();
+        fs::write(to.join("Budget 2026 (1).xlsx"), b"renamed aside").unwrap();
+
+        ensure_dialog_gallery_fixtures(temp.path()).expect("second run should succeed");
+
+        for (relative, size) in CONFLICT_BLOCKERS {
+            let path = to.join(relative);
+            let metadata = fs::symlink_metadata(&path).unwrap_or_else(|e| panic!("{} missing: {e}", path.display()));
+            assert!(metadata.is_file(), "{} should be a file again", path.display());
+            assert_eq!(metadata.len(), *size);
+        }
+        let mut names: Vec<String> = fs::read_dir(to)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(
+            names,
+            [
+                CONFLICT_FILE_OVER_FILE,
+                CONFLICT_FILE_OVER_FOLDER,
+                CONFLICT_FOLDER_OVER_FILE
+            ],
+            "only the blockers are left"
+        );
     }
 
     /// A truncated (interrupted) fixture file is repaired rather than left short.
@@ -262,12 +459,12 @@ mod tests {
     fn repairs_a_file_with_the_wrong_length() {
         let temp = tempfile::tempdir().expect("temp dir");
         let root = temp.path().join(FIXTURE_DIR_NAME);
-        ensure_dialog_gallery_fixtures(&root).expect("first run should succeed");
+        ensure_dialog_gallery_fixtures(temp.path()).expect("first run should succeed");
 
         let damaged = root.join("Photos/2026-06 Stockholm/IMG_2201.jpg");
         fs::write(&damaged, b"truncated").expect("truncate fixture file");
 
-        ensure_dialog_gallery_fixtures(&root).expect("second run should succeed");
+        ensure_dialog_gallery_fixtures(temp.path()).expect("second run should succeed");
 
         assert_tree_matches(&root);
     }

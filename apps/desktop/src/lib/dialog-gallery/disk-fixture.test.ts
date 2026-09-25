@@ -50,6 +50,13 @@ const fixtures: FixtureDirPayload = {
   existingFolderName: 'Photos',
   existingFileName: 'Invoice 2026-07.pdf',
   nestedPath: '/fixtures/Projects/cmdr',
+  conflictPreview: {
+    fromDir: '/conflict-fixtures/From',
+    toDir: '/conflict-fixtures/To',
+    folderOverFile: 'Website redesign',
+    fileOverFolder: 'Quarterly report.pdf',
+    fileOverFile: 'Budget 2026.xlsx',
+  },
 }
 
 function makeExplorer(listingId: string | null): ExplorerAPI {

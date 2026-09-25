@@ -16,8 +16,9 @@
  * numbers those dialogs display are the ones on disk.
  *
  * The store-seeded records (`./store-seeded`) hold PATCHES for a real app store
- * rather than props, `onboarding` holds a wizard step, and `drive-index-stale`
- * (`./indexing`) holds the payload of the event that opens it: those dialogs
+ * rather than props, `onboarding` holds a wizard step, `drive-index-stale`
+ * (`./indexing`) holds the payload of the event that opens it, and
+ * `operation-conflict` picks the clash its real copy walks into: those dialogs
  * aren't rendered by the harness at all (see `gallery-registry.ts` § `openedBy`).
  * They live here anyway so the same test proves their state ids resolve.
  */
@@ -32,6 +33,7 @@ import { ptpcameradFixtures } from './devices'
 import { staleDriveFixtures } from './indexing'
 import { expirationFixtures } from './licensing'
 import { onboardingFixtures } from './onboarding'
+import { operationConflictFixtures } from './operation-conflict'
 import { quitFixtures } from './quit'
 import { extensionChangeFixtures, renameConflictFixtures } from './rename'
 import { rollbackConfirmFixtures } from './rollback'
@@ -66,6 +68,7 @@ export const fixtureRecords = {
   'move-to-applications': moveToApplicationsFixtures,
   'new-file-confirmation': newFileFixtures,
   onboarding: onboardingFixtures,
+  'operation-conflict': operationConflictFixtures,
   'operation-log': operationLogFixtures,
   ptpcamerad: ptpcameradFixtures,
   'quit-confirmation': quitFixtures,

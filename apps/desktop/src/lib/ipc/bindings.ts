@@ -5901,6 +5901,24 @@ export type ConflictInfo = {
   isDirectory: boolean
 }
 
+/**
+ *  Where the `operation-conflict` preview copies from and to. Every name below
+ *  exists in BOTH folders, as the kinds its field names, so copying `from_dir/<name>`
+ *  into `to_dir` parks on exactly that clash.
+ */
+export type ConflictPreviewFixtures = {
+  // Absolute path of the folder holding the incoming side of every clash.
+  fromDir: string
+  // Absolute path of the folder the preview copies into.
+  toDir: string
+  // Name of a folder in `from_dir` that is a FILE in `to_dir`.
+  folderOverFile: string
+  // Name of a file in `from_dir` that is a FOLDER in `to_dir`.
+  fileOverFolder: string
+  // Name of a file in both.
+  fileOverFile: string
+}
+
 // How to handle conflicts when destination files already exist.
 export type ConflictResolution =
   // Stop operation on first conflict (default behavior)
@@ -6476,6 +6494,8 @@ export type DialogGalleryFixtures = {
   existingFileName: string
   // A deep path inside `root`, for the "Go to path" preview.
   nestedPath: string
+  // The conflict preview's clash pairs, in their own sibling tree.
+  conflictPreview: ConflictPreviewFixtures
 }
 
 // A single directory diff change
