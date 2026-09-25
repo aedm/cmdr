@@ -33,6 +33,8 @@ export class NewEntryNameCheck {
 
   readonly #options: NewEntryNameCheckOptions
   #timer: ReturnType<typeof setTimeout> | undefined
+  /** Bumped per validate, so only the latest lookup's answer is shown. */
+  #asked = 0
   #unlistenDiff: UnlistenFn | undefined
 
   constructor(options: NewEntryNameCheckOptions) {
@@ -40,6 +42,11 @@ export class NewEntryNameCheck {
   }
 
   async validate(name: string): Promise<void> {
+    // ❗ Only the latest answer counts: a validate on open and one from a directory
+    // diff overlap, and the older landing last flashed "already exists" for a free name.
+    const asked = ++this.#asked
+    // A sync answer below supersedes any lookup still in flight, so it ends the wait too.
+    this.isChecking = false
     const trimmed = name.trim()
     if (trimmed === '') {
       this.errorMessage = ''
@@ -67,25 +74,22 @@ export class NewEntryNameCheck {
     this.errorMessage = ''
 
     this.isChecking = true
+    let message = ''
     try {
       const { listingId, showHiddenFiles } = this.#options
       const index = await findFileIndex(listingId, trimmed, showHiddenFiles)
       if (index !== null) {
         const entry = await getFileAt(listingId, index, showHiddenFiles)
-        if (entry?.isDirectory) {
-          this.errorMessage = tString('fileOperations.shared.conflictExistsFolder')
-        } else {
-          this.errorMessage = tString('fileOperations.shared.conflictExistsFile')
-        }
-      } else {
-        this.errorMessage = ''
+        message = entry?.isDirectory
+          ? tString('fileOperations.shared.conflictExistsFolder')
+          : tString('fileOperations.shared.conflictExistsFile')
       }
     } catch {
       // If the lookup fails (listing gone), clear the error and let the backend decide
-      this.errorMessage = ''
-    } finally {
-      this.isChecking = false
     }
+    if (asked !== this.#asked) return
+    this.errorMessage = message
+    this.isChecking = false
   }
 
   /** Debounced `validate` of whatever the field holds when the timer fires. */

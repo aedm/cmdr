@@ -65,7 +65,7 @@
     {#snippet title()}{tString('fileOperations.mkfile.title')}{/snippet}
 
     <div class="dialog-body">
-        <NewEntryNameField kind="file" {currentPath} {check} bind:value={fileName} onSubmit={() => void handleConfirm()} />
+        <NewEntryNameField kind="file" {currentPath} {volumeId} {check} bind:value={fileName} onSubmit={() => void handleConfirm()} />
     </div>
 
     {#snippet footer()}

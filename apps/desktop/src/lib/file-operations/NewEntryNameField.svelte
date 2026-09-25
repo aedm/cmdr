@@ -5,6 +5,8 @@
     import { tString } from '$lib/intl/messages.svelte'
     import type { NamedKind } from './mutation-error-messages'
     import type { NewEntryNameCheck } from './new-entry-name-check.svelte'
+    import { deriveTabLabel } from '$lib/file-explorer/tabs/tab-label'
+    import { getVolumes } from '$lib/stores/volume-store.svelte'
 
     /**
      * The "Create <kind> in <dir>" subtitle plus the name field the New folder and
@@ -14,8 +16,10 @@
     interface Props {
         /** Picks the copy (subtitle, aria label, placeholder) and the error element's id. */
         kind: NamedKind
-        /** The directory the entry lands in; its last segment names it in the subtitle. */
+        /** The directory the entry lands in, named in the subtitle the way its tab names it. */
         currentPath: string
+        /** The pane's volume, so a share's root reads as the share (`deriveTabLabel`), not its mount dir. */
+        volumeId?: string
         /** The validation state this field shows and drives. */
         check: NewEntryNameCheck
         /** The name being typed. Optional like every other bindable in the house set
@@ -29,7 +33,7 @@
     }
 
     /* eslint-disable prefer-const -- the two `$bindable()` props need `let` */
-    let { kind, currentPath, check, value = $bindable(''), inputElement = $bindable(), onSubmit }: Props = $props()
+    let { kind, currentPath, volumeId, check, value = $bindable(''), inputElement = $bindable(), onSubmit }: Props = $props()
     /* eslint-enable prefer-const */
 
     const COPY = {
@@ -46,7 +50,12 @@
     } as const
 
     const copy = $derived(COPY[kind])
-    const currentDirName = $derived(currentPath.split('/').pop() || currentPath)
+    const currentDirName = $derived(
+        deriveTabLabel(
+            currentPath,
+            getVolumes().find((v) => v.id === volumeId),
+        ),
+    )
 
     onMount(async () => {
         await tick()

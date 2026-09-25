@@ -168,6 +168,7 @@
         <NewEntryNameField
             kind="folder"
             {currentPath}
+            {volumeId}
             {check}
             bind:value={folderName}
             bind:inputElement={nameInputRef}
