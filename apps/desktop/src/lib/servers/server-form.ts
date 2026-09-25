@@ -8,7 +8,7 @@
 
 import type { SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 import type { SavedSftpServer, SavedWebdavServer } from '$lib/tauri-commands'
-import { parseServerAddress, type ParsedAddress } from './address-parser'
+import { parseServerAddress, uncAsSmbUrl, type ParsedAddress } from './address-parser'
 
 /** Every field the add and edit forms hold, across all three protocols. */
 export interface ServerForm {
@@ -169,6 +169,9 @@ export function serverTargetFrom(form: ServerForm): ServerTarget | null {
  */
 export function smbAddressFrom(address: string): string {
   const trimmed = address.trim()
+  // The backend reads `smb://`, not Windows' backslashes.
+  const unc = uncAsSmbUrl(trimmed)
+  if (unc) return unc
   const parsed = parseServerAddress(trimmed)
   if (parsed.kind === 'unparsed' || parsed.protocol === 'smb') return trimmed
   if (parsed.protocol === undefined) return `smb://${trimmed}`

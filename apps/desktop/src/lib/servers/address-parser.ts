@@ -89,6 +89,10 @@ export function parseServerAddress(input: string): ParsedAddress {
   const sshLine = /^ssh\s+(.+)$/i.exec(trimmed)
   if (sshLine) return parseSshCommandLine(sshLine[1])
 
+  // A UNC path (`\\nas\share`) is SMB spelled Windows' way: backslashes for slashes.
+  const unc = uncAsSmbUrl(trimmed)
+  if (unc) return readEndpoint(unc.slice('smb://'.length), 'smb', undefined)
+
   const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):\/\/(.*)$/.exec(trimmed)
   if (scheme) {
     const known = SCHEMES[scheme[1].toLowerCase()]
@@ -102,6 +106,15 @@ export function parseServerAddress(input: string): ParsedAddress {
   // much SMB's as SFTP's, and a NAS share that needs a user is the commonest
   // thing typed here.
   return readEndpoint(trimmed, undefined, undefined)
+}
+
+/**
+ * A UNC path (`\\nas\share\docs`) as the `smb://` address it means
+ * (`smb://nas/share/docs`), or `null` for anything that isn't one.
+ */
+export function uncAsSmbUrl(input: string): string | null {
+  const match = /^\\\\([^\\/]+)((?:\\[^\\]*)*)\\?$/.exec(input.trim())
+  return match ? `smb://${match[1]}${match[2].replaceAll('\\', '/')}` : null
 }
 
 /**

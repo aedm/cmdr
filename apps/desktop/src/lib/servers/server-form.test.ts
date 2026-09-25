@@ -213,6 +213,10 @@ describe('serverTargetFrom', () => {
  * `host:port`, or an `smb://` URL, and refuses everything else.
  */
 describe('smbAddressFrom', () => {
+  it('turns a UNC path into the smb:// address the backend reads', () => {
+    expect(smbAddressFrom('\\\\nas\\share')).toBe('smb://nas/share')
+  })
+
   it('spells an address with no scheme as an SMB URL, so `user@host` and a share path reach the backend', () => {
     // ❗ cmdr-reports#8's shape: the backend's bare-host reader refuses the `@`,
     // so `sven@192.168.0.153` has to travel as the SMB URL it means.

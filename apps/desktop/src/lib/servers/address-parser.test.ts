@@ -178,6 +178,18 @@ describe('parseServerAddress: the SMB shapes', () => {
     })
     expect(parseServerAddress('cifs://naspolya')).toMatchObject({ protocol: 'smb', port: 445 })
   })
+
+  /** A UNC path off Windows or a colleague's email is SMB spelled with backslashes (QA round 2). */
+  it('reads a UNC path as SMB, share and all', () => {
+    expect(parseServerAddress('\\\\nas\\share\\docs')).toMatchObject({
+      kind: 'parsed',
+      protocol: 'smb',
+      host: 'nas',
+      port: 445,
+      path: '/share/docs',
+    })
+    expect(parseServerAddress('\\\\nas')).toMatchObject({ protocol: 'smb', host: 'nas' })
+  })
 })
 
 describe('parseServerAddress: folding and refusing', () => {
