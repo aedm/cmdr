@@ -48,7 +48,7 @@ vi.mock('$lib/ipc/bindings', () => ({
   },
 }))
 
-import { maybePromptFirstConnect } from './first-connect-trigger'
+import { isReadyForFirstConnectPrompt, maybePromptFirstConnect } from './first-connect-trigger'
 
 const actions = { onEnable: vi.fn(), onSilenceDrive: vi.fn(), onSilenceAll: vi.fn() }
 
@@ -133,5 +133,26 @@ describe('maybePromptFirstConnect gating', () => {
     await maybePromptFirstConnect('smb-f', 'Share F', actions)
     await maybePromptFirstConnect('smb-f', 'Share F', actions)
     expect(addToast).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * ❗ "Index private on localhost:11482?" popped up while the share was still
+ * connecting, behind its sign-in sheet (QA round 3): the offer waits until the
+ * drive is live and the pane has landed on it.
+ */
+describe('isReadyForFirstConnectPrompt', () => {
+  it('waits for a network share to be live', () => {
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'saved' }, 'smb-p')).toBe(false)
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'needs_sign_in' }, 'smb-p')).toBe(false)
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'disconnected' }, 'smb-p')).toBe(false)
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'direct' }, 'smb-p')).toBe(true)
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'os_mount' }, 'smb-p')).toBe(true)
+  })
+
+  it('waits for the pane to land on the drive', () => {
+    expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'direct' }, 'root')).toBe(false)
+    expect(isReadyForFirstConnectPrompt({ id: 'usb-1', connectionState: null }, 'root')).toBe(false)
+    expect(isReadyForFirstConnectPrompt({ id: 'usb-1', connectionState: null }, 'usb-1')).toBe(true)
   })
 })

@@ -29,7 +29,7 @@
     import type { MenuIcon, MenuItem, MenuRowContext, MenuSection } from '$lib/ui/menu-types'
     import { deviceVolumeLabel } from '$lib/adb/adb-volume-label'
     import { deviceRowState } from '$lib/adb/device-readiness'
-    import { maybePromptFirstConnect } from '$lib/indexing/first-connect-trigger'
+    import { isReadyForFirstConnectPrompt, maybePromptFirstConnect } from '$lib/indexing/first-connect-trigger'
     import { silenceDrive } from '$lib/indexing/drive-index-prefs'
     import { setSetting } from '$lib/settings'
     import { getUsageBar, formatDiskSpaceShort } from '../disk-space-utils'
@@ -324,16 +324,23 @@
     function openVolume(volume: VolumeInfo): void {
         // A saved server place opens on its start folder; anything else at its root.
         onVolumeChange?.({ volumeId: volume.id, volumePath: volume.path, targetPath: pathForPickedVolume(volume) })
-        // First-connect indexing prompt (D6): self-gates on settings, per-drive silence, and
-        // whether the drive is already indexed.
-        if (isDriveRow(volume)) {
-            void maybePromptFirstConnect(volume.id, volume.name, {
-                onEnable: (vid) => { badges.runAction(vid, 'enable') },
-                onSilenceDrive: (vid) => { silenceDrive(vid) },
-                onSilenceAll: () => { setSetting('indexing.askForEachDrive', false) },
-            })
-        }
+        // The first-connect indexing prompt (D6) waits for the drive below.
+        if (isDriveRow(volume)) awaitingFirstConnect = volume.id
     }
+
+    /** A drive picked here whose indexing prompt waits for it to be live and the pane on it. */
+    let awaitingFirstConnect = $state<string | null>(null)
+    $effect(() => {
+        const volume = volumes.find((v) => v.id === awaitingFirstConnect)
+        if (!volume || !isReadyForFirstConnectPrompt(volume, containingVolumeId)) return
+        awaitingFirstConnect = null
+        // Self-gates on settings, per-drive silence, and whether the drive is already indexed.
+        void maybePromptFirstConnect(volume.id, volume.name, {
+            onEnable: (vid) => { badges.runAction(vid, 'enable') },
+            onSilenceDrive: (vid) => { silenceDrive(vid) },
+            onSilenceAll: () => { setSetting('indexing.askForEachDrive', false) },
+        })
+    })
 
     // Clear cached space info when the volume list changes (mount/unmount/MTP connect) and
     // re-fetch if the menu is open.

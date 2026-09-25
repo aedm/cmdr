@@ -17,6 +17,8 @@ import { addToast } from '$lib/ui/toast'
 import { getVolumeIndexStatusById } from '$lib/tauri-commands'
 import { getSetting } from '$lib/settings'
 import { getAppLogger } from '$lib/logging/logger'
+import type { ConnectionState } from '$lib/ipc/bindings'
+import { isLiveSession } from '$lib/file-explorer/navigation/connection-state'
 import { isDriveSilenced } from './drive-index-prefs'
 import FirstConnectIndexToastContent from './FirstConnectIndexToastContent.svelte'
 
@@ -73,4 +75,20 @@ export async function maybePromptFirstConnect(
       onSilenceAll: actions.onSilenceAll,
     },
   })
+}
+
+/**
+ * Whether a picked drive is ready for the prompt: its session is live (a local
+ * drive has none to wait for) and the pane has landed on it.
+ *
+ * ❗ Picking a saved share only starts its connect, and a sign-in may stand in
+ * between, so asking at the pick put "Index private?" over a share that was
+ * still connecting, behind its sign-in sheet (QA round 3).
+ */
+export function isReadyForFirstConnectPrompt(
+  volume: { id: string; connectionState?: ConnectionState | null },
+  containingVolumeId: string | null,
+): boolean {
+  const hasNoSession = volume.connectionState === undefined || volume.connectionState === null
+  return (hasNoSession || isLiveSession(volume.connectionState)) && containingVolumeId === volume.id
 }
