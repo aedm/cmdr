@@ -771,7 +771,7 @@
   "@menu.network.pinToSwitcher": {
     "description": "VERB phrase (imperative). Right-click item on a server row in the volume dropdown: keeps the server in the volume switcher so it is one keystroke away. \"Switcher\" is the list of disks and servers the dropdown shows. Very short label in a narrow dropdown."
   },
-  "menu.network.unpin": "Unpin",
+  "menu.network.unpin": "Unpin from switcher",
   "@menu.network.unpin": {
     "description": "VERB (imperative). Right-click item on a server row in the volume dropdown: takes the server back out of the volume switcher. The server stays saved and stays in the Servers list, so avoid a word that sounds like deleting. Very short label in a narrow dropdown."
   },

@@ -249,6 +249,7 @@ describe('ServersHubRowMenu a11y', () => {
     runRowEntry: () => Promise.resolve(),
     openHostMenu: () => Promise.resolve(),
     runHostAction: () => Promise.resolve(),
+    rowById: () => row,
   }
 
   it('the open menu has no a11y violations', async () => {

@@ -590,3 +590,43 @@ describe('ServersHub row text', () => {
     await cleanup()
   })
 })
+
+/**
+ * ❗ A Pin or Unpin leaves the row menu up (like the switcher's), so the menu has to
+ * read the row as it is NOW: it held the row it opened on and kept offering the
+ * pin it had just flipped (QA round 2, m2).
+ */
+describe('ServersHub row menu after a pin', () => {
+  const share = (pinned: boolean): SavedServer => ({
+    id: 'manual-10-0-0-9-445',
+    protocol: 'smb',
+    displayName: 'Box',
+    nameSource: 'user',
+    address: '10.0.0.9',
+    username: null,
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [{ volumeId: 'smb-box-public', name: 'public', pinned, connected: false, appRoot: '/Volumes/public', username: null }],
+  })
+
+  it('shows the pin as it stands now, not as it stood when the menu opened', async () => {
+    h.listSavedServers.mockResolvedValue([share(true)])
+    const { target, api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    const row = [...target.querySelectorAll<HTMLElement>('.server-row')].find((el) => el.textContent.includes('public'))
+    row?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 60 }))
+    await tick()
+    await tick()
+    const labels = () => [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
+    expect(labels()).toContain('Unpin from switcher')
+
+    h.listSavedServers.mockResolvedValue([share(false)])
+    api.refresh()
+    await vi.waitFor(() => {
+      expect(labels()).toContain('Pin to switcher')
+    })
+    await cleanup()
+  })
+})

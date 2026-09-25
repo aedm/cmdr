@@ -82,6 +82,8 @@ export interface HubActions {
   openHostMenu: (row: HubRow, anchor?: MenuAnchor | null) => Promise<void>
   /** What the native SMB-host menu answered. */
   runHostAction: (payload: HostContextActionPayload) => Promise<void>
+  /** The row with this id as the list holds it NOW, or `null` once it left. */
+  rowById: (id: string) => HubRow | null
 }
 
 /**
@@ -345,5 +347,9 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     }
   }
 
-  return { forget, rowMenu, runRowEntry, openHostMenu, runHostAction }
+  function rowById(id: string): HubRow | null {
+    return deps.getRows().find((row) => row.id === id) ?? null
+  }
+
+  return { forget, rowMenu, runRowEntry, openHostMenu, runHostAction, rowById }
 }

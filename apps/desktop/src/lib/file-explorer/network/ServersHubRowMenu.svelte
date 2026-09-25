@@ -19,9 +19,14 @@
 
     const { actions }: Props = $props()
 
-    /** The row whose menu is up, and where focus was when it opened. */
-    let menuRow = $state<HubRow | null>(null)
+    /**
+     * The id of the row whose menu is up, and where focus was when it opened. ❗ The
+     * id, ❌ never the row object: a Pin leaves the menu up, and a held row kept
+     * offering the pin it had just flipped. The row is read live by id.
+     */
+    let menuRowId = $state<string | null>(null)
     let focusBeforeOpen: HTMLElement | null = null
+    const menuRow = $derived(menuRowId === null ? null : actions.rowById(menuRowId))
 
     // Read live, so a transfer starting under the open menu greys its Disconnect.
     const menu = createMenu<RowMenuEntry>({
@@ -50,7 +55,7 @@
             await actions.openHostMenu(row, anchor)
             return
         }
-        menuRow = row
+        menuRowId = row.id
         focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
         menu.openAt(point)
     }
