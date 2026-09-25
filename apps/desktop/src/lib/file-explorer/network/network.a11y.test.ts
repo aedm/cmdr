@@ -256,7 +256,7 @@ describe('ServersHubRowMenu a11y', () => {
     document.body.appendChild(target)
     const instance = mount(ServersHubRowMenu, { target, props: { actions } }) as unknown as HubRowMenuAPI
     flushSync()
-    instance.openAt(row, new MouseEvent('contextmenu', { clientX: 10, clientY: 10 }))
+    void instance.open(row, { x: 10, y: 10 }, null)
     // The surface portals itself into `document.body`, which lands a beat after the open.
     await vi.waitFor(() => {
       expect(document.querySelector('[data-menu]')).not.toBeNull()

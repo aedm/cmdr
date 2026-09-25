@@ -35,8 +35,7 @@
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
-    import { contextMenuAnchor } from '../pane/context-menu-anchor'
-    import type { MenuAnchor } from '$lib/tauri-commands/file-actions'
+    import { rowAnchorIn } from '../pane/context-menu-anchor'
     import type { NetworkHost } from '../types'
     import {
         updateLeftPaneState,
@@ -118,34 +117,12 @@
 
     let rowMenu: HubRowMenuAPI | undefined = $state()
 
-    /**
-     * A row's menu: a one-place row or a share gets the in-app row menu, an SMB host its
-     * native host menu. `anchor` is where a keyboard-opened one goes (⌃⏎); a right-click
-     * passes the pointer for the in-app menu and `null` for the native one, which then
-     * uses the pointer itself.
-     */
-    function openRowMenu(row: HubRow, pointer: MenuAnchor, anchor: MenuAnchor | null): void {
-        if (rowMenu?.openAt(row, pointer)) return
-        void actions.openHostMenu(row, anchor)
-    }
-
-    /**
-     * ⌃⏎ (`file.contextMenu`): the cursor row's menu, from the keyboard, just under the
-     * row the way a file row's opens (`../pane/context-menu-anchor.ts`). Nothing on the
-     * "Add server…" row, which has no actions.
-     */
+    /** ⌃⏎ (`file.contextMenu`): the cursor row's menu, just under the row as a file row's opens. None on "Add server…". */
     // noinspection JSUnusedGlobalSymbols -- used dynamically by NetworkMountView
     export async function openContextMenuAtCursor(): Promise<void> {
         const row = rowUnderCursor()
-        if (!row) return
-        const rowEl = listContainer?.querySelector(`[data-hub-row="${String(cursorIndex)}"]`) ?? null
-        const anchor = contextMenuAnchor(
-            rowEl ? rowEl.getBoundingClientRect() : null,
-            listContainer ? listContainer.getBoundingClientRect() : null,
-        )
-        const point = anchor ?? { x: 0, y: 0 }
-        if (rowMenu?.openAt(row, point)) return
-        await actions.openHostMenu(row, anchor)
+        const anchor = rowAnchorIn(listContainer ?? null, `[data-hub-row="${String(cursorIndex)}"]`)
+        if (row) await rowMenu?.open(row, anchor ?? { x: 0, y: 0 }, anchor)
     }
 
     let cursorIndex = $state(0)
@@ -514,7 +491,7 @@
                 }}
                 oncontextmenu={(e: MouseEvent) => {
                     e.preventDefault()
-                    openRowMenu(row, { x: e.clientX, y: e.clientY }, null)
+                    void rowMenu?.open(row, { x: e.clientX, y: e.clientY }, null)
                 }}
                 onkeydown={() => {}}
             >
@@ -712,12 +689,8 @@
         color: var(--color-text-tertiary);
     }
 
-    /*
-     * A share sits under its server, one icon (16px) plus the name gap in. ❗ On the
-     * ICON, ❌ never as padding on the cell: a flex item's padding adds to its base
-     * size, so the whole cell grew and pushed Type, Address, and Status right on
-     * every share row.
-     */
+    /* A share sits one icon plus the gap in. ❗ On the ICON: padding on the flex cell grew
+       its base size and pushed Type, Address, and Status right on every share row. */
     .col-name.is-share .row-icon {
         margin-left: var(--spacing-xl);
     }

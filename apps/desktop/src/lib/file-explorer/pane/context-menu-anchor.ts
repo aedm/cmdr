@@ -66,8 +66,21 @@ export function cursorRowAnchor(
   measure: (el: Element) => AnchorRect = (el) => el.getBoundingClientRect(),
 ): AnchorPoint | null {
   if (!paneEl) return null
-  const row = paneEl.querySelector(`#file-${String(cursorIndex)}`)
-  if (row) return contextMenuAnchor(measure(row), null)
   const surface = paneEl.querySelector('[data-file-list-surface]')
+  return rowAnchorIn(paneEl, `#file-${String(cursorIndex)}`, surface, measure)
+}
+
+/**
+ * {@link contextMenuAnchor} for the row `rowSelector` finds inside `container`, else
+ * `surface`: the same rule for any list that isn't a file list (the servers hub).
+ */
+export function rowAnchorIn(
+  container: HTMLElement | null,
+  rowSelector: string,
+  surface: Element | null = container,
+  measure: (el: Element) => AnchorRect = (el) => el.getBoundingClientRect(),
+): AnchorPoint | null {
+  const row = container?.querySelector(rowSelector) ?? null
+  if (row) return contextMenuAnchor(measure(row), null)
   return contextMenuAnchor(null, surface ? measure(surface) : null)
 }

@@ -11,6 +11,7 @@
     import { rowMenuSections, type RowMenuEntry } from '../navigation/row-menu'
     import type { HubActions } from './servers-hub-actions'
     import type { HubRow } from './servers-hub-rows'
+    import type { MenuAnchor } from '$lib/tauri-commands/file-actions'
 
     interface Props {
         actions: HubActions
@@ -39,16 +40,19 @@
     })
 
     /**
-     * Opens `row`'s menu at `point` (the pointer, or under the row for ⌃⏎). Answers false for
-     * a row with no in-app menu (an SMB host, which keeps its native one), so the caller
-     * raises that instead.
+     * Opens `row`'s menu: the in-app one at `point` for a one-place row or a share, else
+     * (an SMB host) its native host menu at `anchor`. A right-click passes the pointer as
+     * `point` and `null` as `anchor`, so macOS places the native one at the pointer; ⌃⏎
+     * passes the spot under the row as both.
      */
-    export function openAt(row: HubRow, point: { x: number; y: number }): boolean {
-        if (!actions.rowMenu(row)) return false
+    export async function open(row: HubRow, point: MenuAnchor, anchor: MenuAnchor | null): Promise<void> {
+        if (!actions.rowMenu(row)) {
+            await actions.openHostMenu(row, anchor)
+            return
+        }
         menuRow = row
         focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
         menu.openAt(point)
-        return true
     }
 
     onDestroy(() => {
