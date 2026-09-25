@@ -343,6 +343,8 @@ fn build_attached_location(
         usb_speed: None,
         capabilities: None,
         favorite_shortcut: None,
+        // An SMB share is called by its own name, whatever `/Volumes` dir it got.
+        root_label: smb_info(mount).map(|info| info.share),
     })
 }
 
@@ -550,6 +552,12 @@ mod tests {
         );
         assert!(loc.name.contains("naspi"), "name shows the share: {}", loc.name);
         assert!(loc.name.contains(" on "), "name shows 'share on server': {}", loc.name);
+        // ❗ A disambiguated mount (`/Volumes/naspi-1`) named its tab after the mount dir.
+        assert_eq!(
+            loc.root_label.as_deref(),
+            Some("naspi"),
+            "a tab at its root says the share"
+        );
         assert_eq!(loc.fs_type.as_deref(), Some("smbfs"));
         assert_eq!(loc.category, LocationCategory::AttachedVolume);
         assert!(!loc.is_ejectable, "network mounts take the safe non-blocking default");

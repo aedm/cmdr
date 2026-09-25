@@ -289,9 +289,8 @@ export interface VolumeInfo {
    */
   connectionState?: ConnectionState | null
   /**
-   * Whether this place belongs in the volume SWITCHER: the user's own cap on how
-   * many saved things crowd their disks. Set only on a server place, which is
-   * the only row the cap applies to; absent on a local disk, a favorite, and a
+   * Whether this place belongs in the volume SWITCHER: the user's own cap on how many saved things crowd their disks.
+   * Set only on a server place, which is the only row the cap applies to; absent on a local disk, a favorite, and a
    * mounted SMB share, all of which show unconditionally.
    *
    * ❗ The listing publishes every saved place whatever this says, because a
@@ -307,11 +306,12 @@ export interface VolumeInfo {
    * switcher and the pane read one spelling of it.
    */
   landingPath?: string | null
+  /** An SMB share's own name, for a tab at its root: its mount dir may be `public-1`. Minted in Rust. */
+  rootLabel?: string | null
   /**
-   * Whether the DEVICE behind this row is reachable, which is a different
-   * question from how live a session is. Set by the device providers only: a
-   * phone waiting for its "Allow USB debugging?" tap is present, and must never
-   * start a reconnect backoff.
+   * Whether the DEVICE behind this row is reachable, a different question from how live a session is. Set by the
+   * device providers only: a phone waiting for its "Allow USB debugging?" tap is present, and must never start a
+   * reconnect backoff.
    */
   deviceReadiness?: DeviceReadiness | null
   /** Negotiated USB link speed. Only set for MTP/mobile volumes. */

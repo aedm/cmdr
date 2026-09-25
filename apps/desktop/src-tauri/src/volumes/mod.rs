@@ -145,6 +145,14 @@ pub struct LocationInfo {
     pub capabilities: Option<cmdr_fs::volume::VolumeCapabilities>,
     /// Single-letter menu shortcut, present only on favorite rows.
     pub favorite_shortcut: Option<String>,
+    /// What a tab at this volume's root is called, when the mount directory's
+    /// name isn't it: an SMB share's own name. `None` everywhere else, where the
+    /// root folder's name is the label.
+    ///
+    /// ❗ A share whose name another server's mount already holds is mounted at a
+    /// disambiguated path (`/Volumes/public-1`), and its tab read "public-1" while
+    /// the header said "public on localhost:11482".
+    pub root_label: Option<String>,
 }
 
 /// Lets discovery collapse a doubly-mounted filesystem down to one published
@@ -262,6 +270,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
             usb_speed: None,
             capabilities: None,
             favorite_shortcut: None,
+            root_label: None,
         })
     })
 }
@@ -354,6 +363,7 @@ fn get_favorites() -> Vec<LocationInfo> {
                 usb_speed: None,
                 capabilities: None,
                 favorite_shortcut: favorite.shortcut,
+                root_label: None,
             }
         })
         .collect()
@@ -395,6 +405,7 @@ fn get_main_volume() -> Option<LocationInfo> {
             usb_speed: None,
             capabilities: None,
             favorite_shortcut: None,
+            root_label: None,
         })
     })
 }

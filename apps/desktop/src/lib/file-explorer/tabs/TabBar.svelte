@@ -43,7 +43,7 @@
     // Settings updates the hint without a reload. Same pattern as the sort headers.
     const newTabShortcut = $derived(getFirstShortcutReactive('tab.new'))
 
-    const volumeNameById = $derived(new Map(getVolumes().map((v) => [v.id, v.name])))
+    const volumeById = $derived(new Map(getVolumes().map((v) => [v.id, v])))
 
     /** Content-box width at or below which a tab drops its close button, in px. */
     const NARROW_TAB_WIDTH = 80
@@ -72,7 +72,7 @@
     })
 
     function tabTooltipText(tab: TabState): string {
-        const volumeName = volumeNameById.get(tab.volumeId)
+        const volumeName = volumeById.get(tab.volumeId)?.name
         return volumeName ? `${volumeName} · ${tab.path}` : tab.path
     }
 
@@ -174,7 +174,7 @@
                     </span>
                 {/if}
                 <span class="tab-label">
-                    {deriveTabLabel(tab.path)}
+                    {deriveTabLabel(tab.path, volumeById.get(tab.volumeId))}
                 </span>
                 {#if !isSingleTab}
                     <span

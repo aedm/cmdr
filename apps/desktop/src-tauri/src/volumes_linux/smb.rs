@@ -156,7 +156,7 @@ pub(super) fn get_network_mounts() -> Vec<LocationInfo> {
             }
             mounts.push(LocationInfo {
                 id: volume_id_for_mount(&path),
-                name: share,
+                name: share.clone(),
                 path,
                 category: LocationCategory::Network,
                 icon: None,
@@ -173,6 +173,7 @@ pub(super) fn get_network_mounts() -> Vec<LocationInfo> {
                 usb_speed: None,
                 capabilities: None,
                 favorite_shortcut: None,
+                root_label: Some(share),
             });
         }
     }
@@ -222,6 +223,7 @@ mod enrichment_tests {
             usb_speed: None,
             capabilities: None,
             favorite_shortcut: None,
+            root_label: None,
         }];
         enrich_from_volume_registry(&mut locations);
 

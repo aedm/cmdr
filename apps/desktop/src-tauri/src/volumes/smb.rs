@@ -336,6 +336,7 @@ mod enrichment_tests {
             usb_speed: None,
             capabilities: None,
             favorite_shortcut: None,
+            root_label: None,
         }
     }
 

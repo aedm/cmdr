@@ -9,7 +9,7 @@ tabs.
 - **`tab-state-manager.svelte.ts`**: Reactive `$state()` manager; all tab ops (add, close, switch, cycle, pin) + the
   closed-tab stack
 - **`TabBar.svelte`**: Tab bar UI (always visible, Chrome-style shrinking tabs, pins, close buttons, context menu)
-- **`tab-label.ts`**: `deriveTabLabel(path)`, the tab title
+- **`tab-label.ts`**: `deriveTabLabel(path, volume)`, the tab title
 - **`tab-analytics.ts`**: the event vocabulary. Emitted from `pane/tab-operations.ts`, ❌ never from the pure state
   manager (unit tests drive it directly).
 

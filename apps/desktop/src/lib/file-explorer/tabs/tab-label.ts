@@ -20,11 +20,16 @@ import { tString } from '$lib/intl/messages.svelte'
  * We special-case ONLY the two device schemes. Every other path (including mounted
  * volume roots like `/Volumes/USB`, which keep their basename "USB") flows
  * through `getFolderName` unchanged.
+ *
+ * The one exception is a volume's root whose `rootLabel` names it (an SMB
+ * share, minted in Rust): a share mounted at a disambiguated path
+ * (`/Volumes/public-1`) is still called `public`, the name the header shows it by.
  */
-export function deriveTabLabel(path: string): string {
+export function deriveTabLabel(path: string, volume?: { path: string; rootLabel?: string | null }): string {
   // The Servers view has no folder: its path is the `smb://` sentinel, whose
   // "basename" would read "/". It's called what the switcher calls it.
   if (path === NETWORK_VOLUME_PATH) return tString('fileExplorer.navigation.networkVolume')
+  if (volume?.rootLabel && path === volume.path) return volume.rootLabel
   if (isDeviceScheme(path)) {
     // `getDeviceDisplayPath` returns "/" at the storage or device root and
     // `/DCIM/Camera` for a subfolder; its basename is the tab label.

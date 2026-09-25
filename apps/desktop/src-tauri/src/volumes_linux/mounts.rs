@@ -97,6 +97,7 @@ fn get_mounted_volumes_with(mounts: &[MountEntry], volume_id: impl Fn(&str) -> S
             usb_speed: None,
             capabilities: None,
             favorite_shortcut: None,
+            root_label: None,
         });
     }
 

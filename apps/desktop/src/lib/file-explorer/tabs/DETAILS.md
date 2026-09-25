@@ -9,7 +9,9 @@ here.
 - `tab-state-manager.svelte.ts`: reactive state manager (`$state()`); all tab operations + the closed-tab stack. Max 10
   tabs per pane
 - `TabBar.svelte`: tab bar UI (always visible, Chrome-style shrinking tabs, pin icons, close buttons, context menu)
-- `tab-label.ts`: `deriveTabLabel(path)` (see `tab-label.test.ts`)
+- `tab-label.ts`: `deriveTabLabel(path, volume)` (see `tab-label.test.ts`). At a volume root carrying a `rootLabel` (an
+  SMB share, whose mount dir may be a disambiguated `/Volumes/public-1`) the label is that name, the one the header
+  shows
 - `tab-state-manager.test.ts`: unit tests for the state manager
 
 ## Key decisions

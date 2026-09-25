@@ -40,4 +40,13 @@ describe('deriveTabLabel', () => {
     // storage root, not every volume root.
     expect(deriveTabLabel('/Volumes/USB')).toBe('USB')
   })
+
+  /** ❗ `public` mounted at `/Volumes/public-1` (another server held `public`) named its tab "public-1" (QA round 3). */
+  it('names an SMB share`s root after the share, whatever mount dir it got', () => {
+    const share = { path: '/Volumes/public-1', rootLabel: 'public' }
+    expect(deriveTabLabel('/Volumes/public-1', share)).toBe('public')
+    // Below the root, the folder is the label as anywhere else.
+    expect(deriveTabLabel('/Volumes/public-1/photos', share)).toBe('photos')
+    expect(deriveTabLabel('/Volumes/USB', { path: '/Volumes/USB', rootLabel: null })).toBe('USB')
+  })
 })

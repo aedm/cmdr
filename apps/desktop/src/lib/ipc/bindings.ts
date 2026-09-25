@@ -9522,6 +9522,16 @@ export type LocationInfo = {
   capabilities: VolumeCapabilities | null
   // Single-letter menu shortcut, present only on favorite rows.
   favoriteShortcut: string | null
+  /**
+   *  What a tab at this volume's root is called, when the mount directory's
+   *  name isn't it: an SMB share's own name. `None` everywhere else, where the
+   *  root folder's name is the label.
+   *
+   *  ❗ A share whose name another server's mount already holds is mounted at a
+   *  disambiguated path (`/Volumes/public-1`), and its tab read "public-1" while
+   *  the header said "public on localhost:11482".
+   */
+  rootLabel: string | null
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'warning' | 'error'

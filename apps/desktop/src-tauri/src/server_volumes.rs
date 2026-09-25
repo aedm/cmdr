@@ -189,6 +189,7 @@ pub(crate) fn location_from_place(place: ServerPlace) -> LocationInfo {
         usb_speed: None,
         capabilities: None,
         favorite_shortcut: None,
+        root_label: None,
     }
 }
 
@@ -250,6 +251,7 @@ fn fold_saved_smb_shares(
             // The mount row's own spelling (`volumes/mounts.rs::network_name`),
             // so a share reads the same greyed as it does mounted.
             name: format!("{} on {}", share.share_name, share.server_name),
+            root_label: Some(share.share_name.clone()),
             id,
             path: mount_path,
             category: LocationCategory::Network,

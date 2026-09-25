@@ -542,6 +542,11 @@ fn an_unmounted_saved_share_is_a_saved_row_carrying_its_pin() {
     assert_eq!(volumes[0].id, "smb-n");
     assert_eq!(volumes[0].path, "/Volumes/naspi");
     assert_eq!(volumes[0].name, "naspi on Naspolya");
+    assert_eq!(
+        volumes[0].root_label.as_deref(),
+        Some("naspi"),
+        "a tab at its root says the share"
+    );
     assert_eq!(volumes[0].connection_state, Some(ConnectionState::Saved));
     assert_eq!(volumes[0].pinned, Some(true));
 }
