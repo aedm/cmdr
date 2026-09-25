@@ -169,13 +169,28 @@ describe('createPlaceConnect', () => {
     expect(sub.state.refusal).toBe('unreachable for ada@example.com at cloud.example.com')
   })
 
-  it('says nothing when the user cancels: the view just goes', async () => {
-    connectPlace.mockResolvedValue({ kind: 'cancelled' })
+  /**
+   * ❗ A cancelled sign-in leaves the pane on the place, saying what it is and
+   * offering to connect again. It fell through to the listing's generic "Cmdr
+   * hasn't connected to the phone or server holding /Volumes/private-1" with only
+   * Go back / Go to home (QA round 6).
+   */
+  it('names the place and offers to connect again when the user cancels', async () => {
+    connectPlace.mockResolvedValueOnce({ kind: 'cancelled' })
     const { sub, enter } = create()
     await vi.waitFor(() => {
-      expect(sub.state).toBeNull()
+      expect(sub.state?.kind).toBe('not_connected')
     })
     expect(enter).not.toHaveBeenCalled()
+
+    connectPlace.mockResolvedValueOnce({ kind: 'connected', volumeId: savedPlace.id })
+    const state = sub.state
+    if (state?.kind !== 'not_connected') throw new Error('expected not_connected')
+    state.connect()
+    await vi.waitFor(() => {
+      expect(enter).toHaveBeenCalled()
+    })
+    expect(connectPlace).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the spinner while the reconnect manager owns the recovery', async () => {

@@ -74,6 +74,13 @@ export type RemoteConnectState =
    */
   | { kind: 'signed_out'; signIn: (() => void) | null }
   /**
+   * A saved place the person chose not to connect (Cancel on its sign-in sheet or
+   * its spinner). The view names the place and offers to connect again, and the way
+   * back. ❗ Not the listing's generic "not connected" error: that one talks about "the
+   * phone or server holding" a raw mount path, and offers only the way out.
+   */
+  | { kind: 'not_connected'; connect: () => void; goBack: (() => void) | null }
+  /**
    * SFTP only: the server presents a different host key than the one this Mac
    * trusts, so the backend stopped.
    *

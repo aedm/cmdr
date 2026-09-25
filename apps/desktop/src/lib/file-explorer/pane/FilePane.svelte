@@ -619,6 +619,8 @@
         getCurrentPath: () => currentPath,
         enter: (change) => { breadcrumb.handleVolumeChange(change) },
         landingOf: placeRootOf,
+        goBack: () => onGoBack?.(),
+        canGoBack: () => canGoBack,
     })
 
     // A pane standing on a PHONE dials it the same way, gated on the device's

@@ -549,6 +549,21 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
   },
+  "servers.paneState.notConnected": "{name} isn't connected",
+  "@servers.paneState.notConnected": {
+    "description": "Heading of the pane view shown when the user cancelled connecting to a saved server or share (for example, closed its sign-in form). A plain statement, NOT an error: nothing failed, the person chose not to connect yet.",
+    "placeholders": {
+      "name": "the place''s display name, like “private on localhost:11481”"
+    },
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
+  },
+  "servers.paneState.goBack": "Go back",
+  "@servers.paneState.goBack": {
+    "description": "Button that takes the pane back to where it was before it opened this server or share. VERB phrase, imperative.",
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
+  },
   "servers.paneState.signIn": "Sign in…",
   "@servers.paneState.signIn": {
     "description": "Button that opens the form for signing in to the server again. VERB phrase, imperative. The ellipsis is the single character … (U+2026) and means “this opens something”; keep it.",

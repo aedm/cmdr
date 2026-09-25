@@ -157,6 +157,19 @@
                      person could type that would bring this session back. -->
                 <p class="hint">{tString('servers.paneState.signedOutNothingToAsk')}</p>
             {/if}
+        {:else if connectState.kind === 'not_connected'}
+            <span class="refusal-icon"><Icon name="circle-dashed" size={32} aria-hidden="true" /></span>
+            <h2 class="title">{tString('servers.paneState.notConnected', { name })}</h2>
+            <div class="actions">
+                <Button variant="primary" size="mini" onclick={connectState.connect}>
+                    {tString('servers.paneState.tryAgain')}
+                </Button>
+                {#if connectState.goBack}
+                    <Button variant="secondary" size="mini" onclick={connectState.goBack}>
+                        {tString('servers.paneState.goBack')}
+                    </Button>
+                {/if}
+            </div>
         {:else if connectState.kind === 'host_key_changed'}
             <span class="refusal-icon danger"><Icon name="triangle-alert" size={32} aria-hidden="true" /></span>
             <h2 class="title">{tString('servers.paneState.hostKeyChanged', { name })}</h2>

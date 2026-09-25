@@ -46,6 +46,10 @@ export interface PlaceConnectDeps {
    * connect.
    */
   landingOf?: (volumeId: string) => Promise<string | null>
+  /** Back to where the pane was before the place, for the view a cancel leaves. */
+  goBack?: () => void
+  /** Whether there is a back to go to; without one the view offers none. */
+  canGoBack?: () => boolean
 }
 
 export interface PlaceConnect {
@@ -133,9 +137,15 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         // to `disconnected`. Keep the spinner until it does.
         return
       case 'cancelled':
-        // ❗ Says nothing: the user pressed the button. The pane leaves the
-        // place through the switcher, the same way it arrived.
-        state = null
+        // ❗ Says nothing about WHY (the user pressed the button), but stays on the
+        // place: its name, a way to connect again, and the way back.
+        state = {
+          kind: 'not_connected',
+          connect: () => {
+            void dial(volumeId, deps.getCurrentVolumeInfo() ?? info)
+          },
+          goBack: deps.goBack && deps.canGoBack?.() !== false ? deps.goBack : null,
+        }
         return
       case 'refused':
         state = refusedState(volumeId, info, result.refusal)
