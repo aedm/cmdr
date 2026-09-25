@@ -3,6 +3,7 @@
     import type { Snippet } from 'svelte'
     import { notifyDialogOpened, notifyDialogClosed } from '$lib/tauri-commands'
     import { focusFirstField, trapFocus } from './focus-trap'
+    import { anchoredTopFor } from './modal-anchor'
     import type { SoftDialogId } from './dialog-registry'
     import { registerDialogClose, unregisterDialogClose } from './dialog-close-registry'
     import { markDialogOpen, markDialogClosed } from './open-dialogs.svelte'
@@ -139,6 +140,8 @@
     let isDragging = $state(false)
     /** Distance from the overlay's top to the dialog's top, once `growDownward` pins it. */
     let anchoredTop = $state<number | null>(null)
+    /** Where centering put the `growDownward` dialog's top: the spot it returns to. Plain: nothing renders it. */
+    let homeTop = 0
     /**
      * Element that had focus when the dialog opened. Restored on destroy so
      * keyboard input flows back to wherever it came from (typically a file
@@ -223,18 +226,19 @@
      */
     function anchorToCurrentCenter() {
         if (!growDownward) return
-        anchoredTop = centeredTop()
+        homeTop = centeredTop()
+        anchoredTop = homeTop
     }
 
     /**
-     * Keeps a grown dialog on screen. The pin is a top edge, so a body that grows
-     * past the overlay's bottom would be clipped; pull it up by exactly the
-     * overflow, never past the top.
+     * Keeps a grown dialog on screen, and brings a shrunk one back: the top goes
+     * where it opened, pulled up only by the overflow (`modal-anchor.ts`). A dialog
+     * taller than the window stops at the top and its body scrolls (the
+     * `.grow-downward` cap below).
      */
     function clampAnchorIntoView() {
         if (anchoredTop === null || !overlayElement || !dialogElement) return
-        const maxTop = Math.max(0, overlayElement.clientHeight - dialogElement.offsetHeight)
-        if (anchoredTop > maxTop) anchoredTop = maxTop
+        anchoredTop = anchoredTopFor(homeTop, overlayElement.clientHeight, dialogElement.offsetHeight)
     }
 
     function handleTitleMouseDown(event: MouseEvent) {
@@ -502,6 +506,7 @@
         class:dragging={isDragging}
         class:resizable={resizable !== false}
         class:fill-body={fillBody}
+        class:grow-downward={growDownward}
         style={containerStyle}
     >
         {#if onclose}
@@ -635,6 +640,27 @@
         min-width: 360px;
         max-width: calc(100vw - 2 * var(--spacing-xl));
         max-height: calc(100vh - var(--titlebar-height) - 2 * var(--spacing-xl));
+    }
+
+    /* A `growDownward` dialog grows with its body up to the window's height, then its
+       body scrolls: an Add sheet with Advanced open hid its buttons below the window. */
+    .modal-dialog.grow-downward {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - var(--titlebar-height) - 2 * var(--spacing-xl));
+    }
+
+    .modal-dialog.grow-downward > .modal-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .modal-dialog.grow-downward .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
     }
 
     /* The clipping layer, one level below the panel so the bands can hang over the
