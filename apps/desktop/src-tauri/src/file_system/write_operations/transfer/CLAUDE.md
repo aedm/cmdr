@@ -26,7 +26,7 @@ File map: `DETAILS.md` § Files.
   source. Only the `Drop` net is unconditional, sweeping from `../ledger.rs`; ❌ don't route it through `reversal.rs`
   (module cycle). § "What a reversal does with that identity".
 - **A move's source delete removes the LEDGER of what it copied, ❌ never the tree** (`move_op/`, `volume/`
-  `source_sweep.rs`; locally only after the flush and a listed destination, DETAILS § Durability): what arrived mid-move
+  `source_sweep.rs`; locally after the flush, DETAILS § Durability): what arrived mid-move
   keeps its original (`AppearedDuringMove`), as does one saved over after copying (`SourceStamp`).
 - **A MERGED move is NOT rollbackable, and a cross-FS move journals FINAL paths, never staging ones**
   (`note_not_rollbackable`; `JournalDestUnder` rebases, created-dir rows included).
