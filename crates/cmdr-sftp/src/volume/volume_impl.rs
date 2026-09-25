@@ -16,7 +16,7 @@ use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::patching;
 use cmdr_fs::volume::scan_walk;
 use cmdr_fs::volume::{
-    BatchScanResult, CopyScanResult, DirectoryCreation, LaneKey, ListingProgress, MutationEvent, Retirement,
+    BatchScanResult, CopyScanResult, DirectoryCreation, EntryKind, LaneKey, ListingProgress, MutationEvent, Retirement,
     ScanBoundary, ScanConflict, SignInShape, SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream,
     WatchCoverage, WriteMode,
 };
@@ -124,6 +124,13 @@ impl Volume for SftpVolume {
     /// reconnect. An `exists` question stays a question.
     fn exists<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
         Box::pin(self.exists_impl(path))
+    }
+
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<EntryKind, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.entry_kind_impl(path)))
     }
 
     // ── The byte path ────────────────────────────────────────────────

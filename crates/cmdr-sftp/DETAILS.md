@@ -884,6 +884,10 @@ Beyond the four required methods, `volume_impl.rs` states these deliberately:
   small-file copy. `cmdr-smb` has the same shape and it costs ~1 ms on a LAN. The fix is either building the temp's
   entry locally (nothing shows it — `file_system::staging::is_hidden_from_listings` filters staging temps out of every
   pane) or skipping the temp's patch entirely, and both need the app's listing-mutation contract read first.
+- **`entry_kind` is overridden with one `lstat` (`symlink_metadata`).** `get_metadata` asks `stat`, which follows a
+  link, so the trait default would report a link to a folder as the folder, and a move's source sweep would recurse into
+  the target and delete it (`apps/desktop/src-tauri/src/file_system/write_operations/transfer/DETAILS.md` § "Symlinks
+  are opaque to a move").
 - **`paths_are_os_visible` → false, `local_path` → `None`.** Answering otherwise would let a drag hand Finder a path
   that resolves to nothing, or worse to a local file of the same name.
 - **`scan_for_copy`, `scan_for_copy_batch_with_boundary`, and `scan_for_conflicts` are all answered** (§ "Scanning,
