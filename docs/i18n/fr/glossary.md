@@ -3881,3 +3881,12 @@ Avancé > Saisie.
   modifiés au cours de la gravure » (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25), mais le
   catalogue préfère l'actif. `pendant le déplacement` et `dossiers source` repris mot pour mot du voisin
   `transfer.appearedDuringMove`, affiché dans la même notification · `high`.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binaire`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadécimal`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

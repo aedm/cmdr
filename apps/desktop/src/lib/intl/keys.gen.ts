@@ -3694,6 +3694,8 @@ export type MessageKey =
   | 'viewer.toolbar.tail.label'
   | 'viewer.toolbar.tail.tooltip'
   | 'viewer.toolbar.viewMode.ariaLabel'
+  | 'viewer.toolbar.viewMode.binary'
+  | 'viewer.toolbar.viewMode.hex'
   | 'viewer.toolbar.viewMode.text'
   | 'viewer.toolbar.viewMode.viewAsImage'
   | 'viewer.toolbar.viewMode.viewAsPdf'

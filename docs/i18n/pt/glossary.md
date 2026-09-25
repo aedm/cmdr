@@ -3416,3 +3416,12 @@ de `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   para essa ideia · `high`. `durante a movimentação`, `continua/continuam` e `pastas de origem` vêm do irmão
   `transfer.appearedDuringMove`, que aparece no mesmo aviso. A oração inteira fica dentro dos ramos (style.md §
   Plurals).
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binário`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadecimal`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

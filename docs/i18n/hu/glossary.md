@@ -3825,3 +3825,12 @@ képernyős módjából, és a hozzá tartozó kapcsoló a Speciális beállít�
   `it changed → módosult` sor · `high`. A számnévi alany mellett egyes számú állítmány (style.md § Plurals). Az
   `áthelyezés közben` és a `forrásmappákban` betű szerint a testvér `transfer.appearedDuringMove` alakja, mert a két
   mondat ugyanabban az értesítésben áll.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Bináris`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadecimális`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

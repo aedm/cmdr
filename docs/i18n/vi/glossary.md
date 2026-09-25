@@ -3475,3 +3475,12 @@ theo `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   trong khi đang ghi" (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25) · `high`.
   `trong khi di chuyển`, `vẫn ở lại` và `thư mục nguồn` lấy nguyên từ chuỗi chị em `transfer.appearedDuringMove`, hiện
   cùng một toast.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Nhị phân`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Thập lục phân`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

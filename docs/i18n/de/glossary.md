@@ -3371,3 +3371,12 @@ Schalter unter Einstellungen > Erweitert > Eingabe.
   beide Sätze im selben Toast stehen · `high`.
 - **„stays in {folderName}“ → `bleibt/bleiben in {folderName}`** · Verb in eigenem Plural-Block wie beim Geschwister ·
   `high`.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binär`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadezimal`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

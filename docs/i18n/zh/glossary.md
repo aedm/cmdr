@@ -3002,3 +3002,12 @@ replacement target. Four rules bind this whole group:
   `等源文件夹` 照搬同一条提示里的 `transfer.appearedDuringMove`。
 - **占位符两侧加空格**：`留在 {scope…} 中`（style.md § Numerals, punctuation, and spacing）。顺手把
   `transfer.appearedDuringMove` 原来的 `出现在{scope…}中` 也改成加空格的写法，两句同框时才一致。
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `二进制`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `十六进制`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

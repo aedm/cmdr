@@ -3848,3 +3848,12 @@ schakelaar bij Instellingen > Geavanceerd. Gemijnd in `_ignored/i18n/nl/macOS/`,
   `high`. `tijdens het verplaatsen`, `bronmappen` en de losse `is`/`zijn`- en `blijft`/`blijven`-blokken volgen de
   buurman `transfer.appearedDuringMove`, die in dezelfde melding staat. `blijft in {folderName} staan`: het partikel
   achteraan, zoals `blijft daar staan`.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binair`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadecimaal`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

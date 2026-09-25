@@ -3382,3 +3382,12 @@ aldrig lova mer än Cmdr gör. Belägg från det installerade macOS (referenssam
 - **”changed during the move” → `ändrades under flytten`** · Finder `PE56` ”ett eller flera objekt ändrades under
   bränningen” (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25) · `high`. `under flytten`,
   `blir kvar` och `källmappar` tas ordagrant från syskonet `transfer.appearedDuringMove`, som står i samma meddelande.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binärt`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadecimalt`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.

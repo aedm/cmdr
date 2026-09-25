@@ -3559,3 +3559,12 @@ términos ya documentados en este glosario y en el catálogo.
   `carpetas de origen` salen tal cual del hermano `transfer.appearedDuringMove`, porque las dos frases aparecen en el
   mismo aviso · `high`.
 - La oración entera va dentro de las ramas (`cambió … y se queda`), como pide `style.md` § Plurals.
+
+## File viewer byte modes
+
+- **Binary (viewer mode) → `Binario`** · Matches the existing binary terminology in
+  `settings.appearance.fileSizeFormat.opt.binary` and `settings.fileViewer.suppressBinaryWarning.description`; this mode
+  lays out original bytes as character rows, not base-two digits · `high` for the term.
+- **Hex (viewer mode) → `Hexadecimal`** · Names the hexadecimal byte-pair display described by Total Commander Lister
+  (https://www.ghisler.com/lister/); the locale-specific form remains `tentative` pending a check against localized
+  file-manager sources.
