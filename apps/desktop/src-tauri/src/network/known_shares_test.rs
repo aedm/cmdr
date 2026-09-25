@@ -683,6 +683,27 @@ fn re_adding_a_mounted_share_keeps_its_place() {
     assert_eq!(rows[0].username.as_deref(), Some("ada"));
 }
 
+/// ❗ **An Add never erases a known account.** A plain re-Add of
+/// `smb://localhost:11481/private` filed the share "as nobody", and its next open
+/// asked for a password that was stored all along (QA round 6). An account the Add
+/// names still replaces it; a MOUNT still records who opened it last.
+#[test]
+fn a_plain_re_add_keeps_the_account_the_share_is_saved_with() {
+    let mut rows = Vec::new();
+    upsert_share_row(
+        &mut rows,
+        mounted("nas", "10.0.0.2", "private", Some("testuser"), "smb-p"),
+        &[],
+    );
+
+    upsert_share_row(&mut rows, added("nas", "private", None), &[]);
+    assert_eq!(rows[0].username.as_deref(), Some("testuser"));
+    assert_eq!(rows[0].last_connection_mode, ConnectionMode::Credentials);
+
+    upsert_share_row(&mut rows, added("nas", "private", Some("ada")), &[]);
+    assert_eq!(rows[0].username.as_deref(), Some("ada"), "a named account replaces it");
+}
+
 /// A share row never replaces the host's sign-in history, and the history never
 /// replaces a share.
 #[test]

@@ -298,6 +298,11 @@ fn same_share_row(a: &KnownNetworkShare, b: &KnownNetworkShare, hosts: &[Network
 /// a share's FIRST mount pins it, rule 1 of the servers model), and a volume id,
 /// mount path, address, and port the new row doesn't bring (an add names none of
 /// them). The account is the new row's: the row remembers who opened it last.
+///
+/// ❗ Except that an ADD naming no account keeps the one the share is saved with. An
+/// add is the row with no address (every mount records the address it dialed), and
+/// `smb://host/share` typed with no user says nothing about who opens it: filing it
+/// "as nobody" made the next open ask for a password that was stored all along.
 fn upsert_share_row(rows: &mut Vec<KnownNetworkShare>, mut row: KnownNetworkShare, hosts: &[NetworkHost]) {
     match rows
         .iter_mut()
@@ -308,8 +313,13 @@ fn upsert_share_row(rows: &mut Vec<KnownNetworkShare>, mut row: KnownNetworkShar
             row.pinned = existing.pinned || first_mount;
             row.volume_id = row.volume_id.or(existing.volume_id.take());
             row.mount_path = row.mount_path.or(existing.mount_path.take());
-            row.address = row.address.or(existing.address.take());
             row.port = row.port.or(existing.port);
+            let is_add = row.address.is_none();
+            if is_add && row.username.is_none() && existing.username.is_some() {
+                row.username = existing.username.take();
+                row.last_connection_mode = existing.last_connection_mode;
+            }
+            row.address = row.address.or(existing.address.take());
             *existing = row;
         }
         None => {

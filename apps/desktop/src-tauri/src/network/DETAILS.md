@@ -560,6 +560,9 @@ the migration, and what Forget does). What the code has to defend:
   username (`known_shares::upsert_share_row`). A replace keeps the pin, except that the FIRST mount pins it (rule 1 of
   the servers model). ❗ Two rows that both know their port (a mount filed each) are one share only on the same port:
   an address names a machine, and `public` on `localhost:11480` and on `localhost:11482` are two shares.
+- **A mount records who opened the share last; an Add never erases a known account.** An Add (the row with no address)
+  that names no user keeps the row's account: a plain re-Add of `smb://localhost:11481/private` filed it "as nobody",
+  and the next open asked for a password that was stored all along. An Add that names a user replaces it.
 - **A share's place id comes from `known_shares::place_id`**, for the listing and for every lookup by it
   (`share_by_volume_id`, `set_share_pinned`): the stored mount id, else the one a mount by the row's name would mint.
   A lookup that read only the stored id couldn't find a share an Add named, so Forget share and Pin missed it.
