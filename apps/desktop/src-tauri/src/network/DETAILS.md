@@ -260,6 +260,15 @@ would treat one NAS as two, force a second mount with `ForceNewSession`, and bre
 `mount_share_sync` returns early with `already_mounted: true` when `find_mount_path_for_share` finds the same
 server+share+port already mounted, skipping NetFS entirely.
 
+### A mount gets its own session unless it shares server and account
+
+NetFS reuses an existing SMB session to the same HOSTNAME whatever the port, and a guest mount names no user to tell it
+otherwise. So `mount.rs::needs_own_session` also sets `ForceNewSession` when another SMB mount is up on the same machine
+at a different port (another server), or on this server under a different account (guest counts as its own account).
+Without it, with 11482's `public` mounted at `public-1`, mounting 11480's `public` got NetFS's OK and nothing mounted
+(it rode 11482's session), and a guest mount of 11480's `public` next to 11482's `testuser` mount came up as
+`//testuser@localhost:11480/public`. The same account on the same server still shares a session.
+
 ## A reported mount counts once it's there
 
 NetFS has answered `0` for a share that never got mounted. In ERR-SHUSC, `observermch/data` came back OK, yet no FSEvents

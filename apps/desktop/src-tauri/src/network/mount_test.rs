@@ -725,3 +725,46 @@ fn a_host_disconnect_takes_its_own_ports_mounts_only() {
     // Another spelling of the machine counts only when discovery pairs the two.
     assert!(!crate::network::server_identity::mount_is_from(&also_ours, &host, &[]));
 }
+
+// ── Whose session a mount rides ────────────────────────────────────
+
+fn mounted_as(server: &str, share: &str, port: u16, username: Option<&str>) -> SmbMountInfo {
+    SmbMountInfo {
+        username: username.map(str::to_string),
+        ..smb_mount(server, share, port).expect("a mount")
+    }
+}
+
+/// ❗ **A mount never rides another server's session, or another account's.** NetFS
+/// reuses an existing SMB session to the same HOSTNAME whatever the port, and a guest
+/// mount names no user to tell it otherwise: with `//GUEST@localhost:11482/public`
+/// up, mounting `public` on 11480 failed ("no share called public"), and once it
+/// went through it was `//testuser@localhost:11480/public`, 11482's account, though
+/// Cmdr asked for guest (QA round 3, N2).
+#[test]
+fn a_mount_gets_its_own_session_when_the_machine_has_another_servers_or_accounts() {
+    let target = MountTarget {
+        server: "localhost",
+        share: "public",
+        port: 11480,
+    };
+    let other_port = [mounted_as("localhost", "public", 11482, Some("GUEST"))];
+    let same_server_other_account = [mounted_as("localhost", "private", 11480, Some("testuser"))];
+    let same_server_same_guest = [mounted_as("localhost", "private", 11480, Some("GUEST"))];
+    let elsewhere = [mounted_as("nas.example", "public", 445, None)];
+
+    assert!(needs_own_session(target, None, &other_port, &[]));
+    assert!(needs_own_session(target, None, &same_server_other_account, &[]));
+    assert!(needs_own_session(target, Some("ada"), &same_server_same_guest, &[]));
+    assert!(
+        !needs_own_session(target, None, &same_server_same_guest, &[]),
+        "the same guest session is fine to share"
+    );
+    assert!(!needs_own_session(target, None, &elsewhere, &[]));
+    assert!(!needs_own_session(
+        target,
+        Some("testuser"),
+        &same_server_other_account,
+        &[]
+    ));
+}

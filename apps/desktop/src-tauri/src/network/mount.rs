@@ -421,10 +421,16 @@ pub fn mount_share_sync(
     //   - `Guest = true` for guest mounts (no credentials): NetFS authenticates as guest
     //     without consulting the Keychain.
     //   - `ForceNewSession = true` when disambiguating against an existing same-name
-    //     mount: macOS opens a fresh SMB session instead of reusing the existing one
-    //     (different server, so the existing session would be wrong).
+    //     mount, or when another server on this machine or another account on this
+    //     server is mounted (`needs_own_session`): NetFS would otherwise ride that
+    //     session, which belongs to a different server or account.
     let want_guest = cf_user.is_none() && cf_pass.is_none();
-    let want_force_new_session = explicit_mount_path.is_some();
+    let mounted: Vec<SmbMountInfo> = crate::volumes::smb_mounts()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(_, info)| info)
+        .collect();
+    let want_force_new_session = explicit_mount_path.is_some() || needs_own_session(target, username, &mounted, &hosts);
     let entries = open_option_entries(want_guest, want_force_new_session);
     // SAFETY: `CFDictionaryCreateMutable` with the null allocator and the kCFType key/value
     // callbacks returns an owning (+1) dictionary whose callbacks retain every key and value
@@ -584,6 +590,33 @@ fn extract_mount_path(mountpoints: *const c_void) -> Option<String> {
         core_foundation::base::CFRelease(mountpoints);
         result
     }
+}
+
+/// Whether mounting `target` as `username` (`None`: guest) needs a session of its own
+/// (NetFS `ForceNewSession`), given the SMB mounts already up.
+///
+/// ❗ NetFS reuses an existing SMB session to the same HOSTNAME whatever the port, and a
+/// guest mount names no user to tell it otherwise. So a mount would ride another
+/// server's session when another server on the same machine is mounted (the Docker
+/// fixtures are ten on `localhost`), or another account's when this server is mounted
+/// under a different one. Both happened: `public` on 11480 was refused while 11482's
+/// `public` was up as GUEST, and once it went through it was testuser's session from
+/// 11482, though Cmdr asked for guest. The same account on the same server shares.
+fn needs_own_session(
+    target: MountTarget<'_>,
+    username: Option<&str>,
+    mounts: &[SmbMountInfo],
+    hosts: &[NetworkHost],
+) -> bool {
+    let this_server = SmbServer::new(target.server, target.port);
+    let account = |user: Option<&str>| user.filter(|u| !u.eq_ignore_ascii_case("guest")).map(str::to_lowercase);
+    mounts.iter().any(|mount| {
+        if !crate::network::server_identity::same_machine(&mount.server, target.server, hosts) {
+            return false;
+        }
+        let same_server = this_server.is(&SmbServer::new(&mount.server, mount.port), hosts);
+        !same_server || account(mount.username.as_deref()) != account(username)
+    })
 }
 
 /// Returns a disambiguated mount path if `/Volumes/{share}` is already taken by a
