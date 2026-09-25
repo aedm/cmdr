@@ -163,6 +163,7 @@ async fn resolve_path_to_volume(path: String, fs_timeout: Duration) -> (Option<V
                 capabilities: None,
                 favorite_shortcut: None,
                 root_label: None,
+                mount_account: None,
             }),
             false,
         );

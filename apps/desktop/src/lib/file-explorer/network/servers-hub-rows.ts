@@ -50,7 +50,10 @@ export interface HubRow {
   kind: 'server' | 'share'
   /** A share's server row, `null` for a server. */
   parentId: string | null
-  /** The account a share opens as, `null` for a guest share and for every server row. */
+  /**
+   * A share's account, `null` for guest and for every server row: the live mount's while it's connected,
+   * else the saved one the next connect uses.
+   */
   account: string | null
   /** A share's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
   place: SavedPlace | null
@@ -113,6 +116,7 @@ const STATUS_RANK: Record<HubRowStatus, number> = {
  */
 export function buildHubRows(sources: HubRowSources): HubRow[] {
   const states = new Map(sources.volumes.map((volume) => [volume.id, volume.connectionState ?? null]))
+  const mountAccounts = new Map(sources.volumes.map((volume) => [volume.id, volume.mountAccount ?? null]))
   const claimed = new Set<string>()
   const taken = new Set<string>()
   const rows: HubRow[] = []
@@ -144,7 +148,7 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     )
     for (const place of shares) {
-      const share = shareRow(row, place, states)
+      const share = shareRow(row, place, states, mountAccounts.get(place.volumeId) ?? null)
       if (taken.has(share.id)) continue
       taken.add(share.id)
       ordered.push(share)
@@ -158,15 +162,25 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
  *
  * Its status is off the VOLUME LIST like every other place's: connected while
  * its volume is mounted (through the kernel or directly), saved otherwise.
+ *
+ * ❗ While connected it names the account the LIVE mount signed in as (`mountAccount`,
+ * off the mount table; `GUEST` is nobody). The saved account is for the next connect:
+ * an Add as otheruser over a mount signed in as testuser read "Connected … as otheruser".
  */
-function shareRow(server: HubRow, place: SavedPlace, states: Map<string, ConnectionState | null>): HubRow {
+function shareRow(
+  server: HubRow,
+  place: SavedPlace,
+  states: Map<string, ConnectionState | null>,
+  mountAccount: string | null,
+): HubRow {
   const state = states.get(place.volumeId) ?? null
   const live = state === 'direct' || state === 'os_mount'
+  const liveAccount = mountAccount === null ? undefined : mountAccount.toLowerCase() === 'guest' ? null : mountAccount
   return {
     id: `share:${place.volumeId}`,
     kind: 'share',
     parentId: server.id,
-    account: place.username,
+    account: live && liveAccount !== undefined ? liveAccount : place.username,
     place,
     name: place.name,
     protocol: 'smb',

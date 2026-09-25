@@ -139,6 +139,7 @@ fn location_from_entry(entry: DeviceVolumeEntry) -> LocationInfo {
         capabilities: None,
         favorite_shortcut: None,
         root_label: None,
+        mount_account: None,
     }
 }
 

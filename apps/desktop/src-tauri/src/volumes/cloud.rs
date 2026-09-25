@@ -80,6 +80,7 @@ fn cloud_volume_info(id: String, name: String, root: &Path) -> LocationInfo {
         capabilities: None,
         favorite_shortcut: None,
         root_label: None,
+        mount_account: None,
     }
 }
 

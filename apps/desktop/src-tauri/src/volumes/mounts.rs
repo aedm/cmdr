@@ -345,6 +345,7 @@ fn build_attached_location(
         favorite_shortcut: None,
         // An SMB share is called by its own name, whatever `/Volumes` dir it got.
         root_label: smb_info(mount).map(|info| info.share),
+        mount_account: smb_info(mount).and_then(|info| info.username),
     })
 }
 
@@ -558,6 +559,8 @@ mod tests {
             Some("naspi"),
             "a tab at its root says the share"
         );
+        // ❗ The account the mount signed in as, which the hub shows while it's connected.
+        assert_eq!(loc.mount_account.as_deref(), Some("david"));
         assert_eq!(loc.fs_type.as_deref(), Some("smbfs"));
         assert_eq!(loc.category, LocationCategory::AttachedVolume);
         assert!(!loc.is_ejectable, "network mounts take the safe non-blocking default");

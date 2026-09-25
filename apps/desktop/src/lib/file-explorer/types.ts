@@ -299,15 +299,15 @@ export interface VolumeInfo {
    */
   pinned?: boolean | null
   /**
-   * Where opening this place lands when that isn't `path`: a server place's saved
-   * start folder, as an app path. Absent or `null` lands at `path`.
-   *
-   * ❗ Minted in Rust (`server_volumes.rs`), ❌ never derived here, so the
-   * switcher and the pane read one spelling of it.
+   * Where opening this place lands when that isn't `path`: a server place's saved start folder, as an app path.
+   * Absent or `null` lands at `path`. ❗ Minted in Rust (`server_volumes.rs`), ❌ never derived here, so the switcher
+   * and the pane read one spelling of it.
    */
   landingPath?: string | null
   /** An SMB share's own name, for a tab at its root: its mount dir may be `public-1`. Minted in Rust. */
   rootLabel?: string | null
+  /** The account a mounted SMB share is signed in as NOW (`GUEST` for guest), off the mount table. */
+  mountAccount?: string | null
   /**
    * Whether the DEVICE behind this row is reachable, a different question from how live a session is. Set by the
    * device providers only: a phone waiting for its "Allow USB debugging?" tap is present, and must never start a

@@ -153,6 +153,13 @@ pub struct LocationInfo {
     /// disambiguated path (`/Volumes/public-1`), and its tab read "public-1" while
     /// the header said "public on localhost:11482".
     pub root_label: Option<String>,
+    /// The account a mounted SMB share is signed in as right now, as the mount
+    /// table records it (`GUEST` for a guest mount). `None` for everything else.
+    ///
+    /// ❗ The LIVE account, which the hub shows while a share is connected: the saved
+    /// row's account is for the next connect, and showing it read "Connected … as
+    /// otheruser" over a mount signed in as testuser.
+    pub mount_account: Option<String>,
 }
 
 /// Lets discovery collapse a doubly-mounted filesystem down to one published
@@ -271,6 +278,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
             capabilities: None,
             favorite_shortcut: None,
             root_label: None,
+            mount_account: None,
         })
     })
 }
@@ -364,6 +372,7 @@ fn get_favorites() -> Vec<LocationInfo> {
                 capabilities: None,
                 favorite_shortcut: favorite.shortcut,
                 root_label: None,
+                mount_account: None,
             }
         })
         .collect()
@@ -406,6 +415,7 @@ fn get_main_volume() -> Option<LocationInfo> {
             capabilities: None,
             favorite_shortcut: None,
             root_label: None,
+            mount_account: None,
         })
     })
 }

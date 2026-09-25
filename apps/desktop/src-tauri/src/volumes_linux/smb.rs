@@ -174,6 +174,7 @@ pub(super) fn get_network_mounts() -> Vec<LocationInfo> {
                 capabilities: None,
                 favorite_shortcut: None,
                 root_label: Some(share),
+                mount_account: None,
             });
         }
     }
@@ -224,6 +225,7 @@ mod enrichment_tests {
             capabilities: None,
             favorite_shortcut: None,
             root_label: None,
+            mount_account: None,
         }];
         enrich_from_volume_registry(&mut locations);
 

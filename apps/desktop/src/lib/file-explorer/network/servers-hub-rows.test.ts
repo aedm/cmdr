@@ -424,6 +424,30 @@ describe('saved SMB shares', () => {
     expect(rows.find((row) => row.name === 'Scans')?.status).toBe('saved')
   })
 
+  /**
+   * ❗ While a share is connected its row names the account the live mount signed in
+   * as. The saved account is for the NEXT connect: after an Add as otheruser over a
+   * mount signed in as testuser, the row read "Connected … as otheruser" (QA round 7).
+   */
+  it('names the live mount’s account while connected, and the saved one otherwise', () => {
+    const live = (mountAccount: string | null): VolumeInfo => ({
+      id: 'smb-container',
+      name: 'Container on Sven',
+      path: '/Volumes/Container',
+      category: 'attached_volume',
+      isEjectable: false,
+      connectionState: 'direct',
+      mountAccount,
+    })
+    const account = (volumes: VolumeInfo[]) =>
+      buildHubRows({ saved: [withShares], hosts: [], volumes }).find((row) => row.name === 'Container')?.account
+
+    expect(account([live('testuser')])).toBe('testuser')
+    expect(account([live('GUEST')]), 'a guest mount opens as nobody').toBeNull()
+    expect(account([live(null)]), 'a mount that says nothing leaves the saved one').toBe('sven')
+    expect(account([]), 'not connected: the account the next connect uses').toBe('sven')
+  })
+
   it('keeps shares under their own server when the servers sort around them', () => {
     const rows = buildHubRows({
       saved: [withShares, sftpServer({ lastConnectedAt: '2026-09-20T00:00:00Z' })],

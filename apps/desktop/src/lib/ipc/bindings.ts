@@ -9538,6 +9538,15 @@ export type LocationInfo = {
    *  the header said "public on localhost:11482".
    */
   rootLabel: string | null
+  /**
+   *  The account a mounted SMB share is signed in as right now, as the mount
+   *  table records it (`GUEST` for a guest mount). `None` for everything else.
+   *
+   *  ❗ The LIVE account, which the hub shows while a share is connected: the saved
+   *  row's account is for the next connect, and showing it read "Connected … as
+   *  otheruser" over a mount signed in as testuser.
+   */
+  mountAccount: string | null
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'warning' | 'error'

@@ -48,7 +48,8 @@ its name and account fields in the two steps before this one.
 ## The hub
 
 - A share row sits right under its server, indented: its name, "as sven" when it has an account, status Connected while
-  it's mounted (off the volume list by id), else Saved.
+  it's mounted (off the volume list by id), else Saved. While it's connected, "as …" names the account the live mount
+  signed in as (the mount table's user, `LocationInfo::mount_account`); the saved account is for the next connect.
 - **Enter on a share row opens that share with that account.** With a volume id it goes the way an SFTP place does: the
   pane lands on the place, and a place that isn't mounted is brought to life in the pane (below). Without one, the
   host's share list opens and mounts it.

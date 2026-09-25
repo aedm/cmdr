@@ -114,6 +114,8 @@ pub struct LocationInfo {
     /// What a tab at this volume's root is called, when the mount directory's
     /// name isn't it: an SMB share's own name. The macOS twin says why.
     pub root_label: Option<String>,
+    /// The account a mounted SMB share is signed in as. The macOS twin says why.
+    pub mount_account: Option<String>,
 }
 
 /// Lets discovery collapse a filesystem mounted at several paths down to one
@@ -221,6 +223,7 @@ fn get_favorites(mounts: &[MountEntry]) -> Vec<LocationInfo> {
                 capabilities: None,
                 favorite_shortcut: favorite.shortcut,
                 root_label: None,
+                mount_account: None,
             }
         })
         .collect()
@@ -250,6 +253,7 @@ fn get_main_volume(mounts: &[MountEntry]) -> Option<LocationInfo> {
         capabilities: None,
         favorite_shortcut: None,
         root_label: None,
+        mount_account: None,
     })
 }
 
@@ -286,6 +290,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         capabilities: None,
         favorite_shortcut: None,
         root_label: None,
+        mount_account: None,
     })
 }
 
