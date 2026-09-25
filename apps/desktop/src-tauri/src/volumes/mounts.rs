@@ -262,7 +262,10 @@ fn smb_info(mount: &MountEntry) -> Option<SmbMountInfo> {
 fn network_name(mount: &MountEntry) -> String {
     match smb_info(mount) {
         Some(info) => {
-            let display = crate::network::smb_server_address::friendly_server_name(&info.server);
+            // With the port off 445, as the saved row names it: two servers on one
+            // machine would otherwise read identically.
+            let server = crate::network::smb_server_address::friendly_server_name(&info.server);
+            let display = crate::network::server_identity::smb_server(&server, info.port);
             format!("{} on {}", info.share, display)
         }
         None => volume_name_from_path(&mount.mount_point),
@@ -401,6 +404,21 @@ mod tests {
             is_browsable: true,
             fsid: 0,
         }
+    }
+
+    /// ❗ A live SMB mount off port 445 is named with its port, as its saved row is:
+    /// two servers on one machine each exporting `private` read identically as
+    /// "private on localhost" (QA round 2).
+    #[test]
+    fn a_live_smb_mount_off_445_names_its_port() {
+        assert_eq!(
+            network_name(&mount("/Volumes/private", "smbfs", "//localhost:11482/private", false)),
+            "private on localhost:11482"
+        );
+        assert_eq!(
+            network_name(&mount("/Volumes/naspi", "smbfs", "//david@192.0.2.9/naspi", false)),
+            "naspi on 192.0.2.9"
+        );
     }
 
     /// A mount macOS marks `MNT_DONTBROWSE`: the plumbing, Xcode's `DeviceFS`,
