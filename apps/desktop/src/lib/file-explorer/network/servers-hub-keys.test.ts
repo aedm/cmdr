@@ -29,6 +29,10 @@ describe('cursorAcrossRebuild', () => {
     expect(cursorAcrossRebuild(rows('a', 'b'), rows('a', 'b', 'c'), 2)).toBe(3)
   })
 
+  it('lands on the first row when the list fills, not on the add row an empty list had', () => {
+    expect(cursorAcrossRebuild(rows(), rows('a', 'b'), 0)).toBe(0)
+  })
+
   it('clamps when its row left', () => {
     expect(cursorAcrossRebuild(rows('a', 'b', 'c'), rows('a'), 2)).toBe(1)
   })
