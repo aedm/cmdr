@@ -34,6 +34,7 @@ use super::super::transfer_driver::{
 };
 use super::super::transfer_probe::{DriverPhase, OperationProbe, TaskRole, TaskRow};
 use super::conflict::resolve_volume_conflict;
+use super::displaced_destination::DisplacedLedger;
 use super::preflight::SourceFileFacts;
 use super::preflight::SourceHint;
 use super::strategy::copy_single_path;
@@ -76,6 +77,8 @@ pub(super) struct SerialCopy<'a> {
     pub(super) apply_to_all_cell: Arc<std::sync::Mutex<ApplyToAll>>,
     pub(super) copied_paths: Arc<std::sync::Mutex<Vec<WrittenFile>>>,
     pub(super) created_dirs: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    /// What cross-type Overwrites set aside, for the post-loop to settle.
+    pub(super) displaced: Arc<DisplacedLedger>,
     pub(super) deep_skipped_files: Arc<AtomicUsize>,
     pub(super) deep_skipped_bytes: Arc<AtomicU64>,
 }
@@ -116,6 +119,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
         apply_to_all_cell,
         copied_paths,
         created_dirs,
+        displaced,
         deep_skipped_files,
         deep_skipped_bytes,
     } = ctx;
@@ -181,7 +185,9 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
             let config = config_owned.clone();
             let operation_id = operation_id_owned.clone();
             let op_probe_conflict = op_probe.clone();
+            let displaced = Arc::clone(&displaced);
             move |input: ConflictDecisionInput<'_>| -> ResolveFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let source_volume = Arc::clone(&source_volume);
                 let dest_volume = Arc::clone(&dest_volume);
                 let state = Arc::clone(&state);
@@ -260,10 +266,17 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                             let bytes_accounted = source_hint.map(|h| h.size).unwrap_or(0);
                             ConflictDecision::Skip { bytes_accounted }
                         }
-                        Some(rc) => ConflictDecision::Proceed {
-                            dest_path: rc.write_path,
-                            replace_after_write: rc.replace_after_write,
-                        },
+                        Some(rc) => {
+                            // The operation settles a cross-type aside when it
+                            // ends; the item's own ending can't tell.
+                            if let Some(aside) = rc.displaced {
+                                displaced.hold(aside);
+                            }
+                            ConflictDecision::Proceed {
+                                dest_path: rc.write_path,
+                                replace_after_write: rc.replace_after_write,
+                            }
+                        }
                     })
                 })
             }
@@ -305,7 +318,9 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
             let op_probe_serial = op_probe.clone();
             let serial_source_index = Arc::new(AtomicUsize::new(0));
             let file_window = file_window.clone();
+            let displaced = Arc::clone(&displaced);
             move |ctx: TransferContext<'_>| -> TransferFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let op_probe_serial = op_probe_serial.clone();
                 let file_window = file_window.clone();
                 let serial_source_index = Arc::clone(&serial_source_index);
@@ -414,6 +429,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         // folder is one source, so without this the commonest
                         // copy there is stays strictly one file at a time.
                         window: file_window.clone(),
+                        displaced: &displaced,
                         // Every leaf of this source's subtree numbers itself
                         // under the source's own row, below.
                         probe: op_probe_serial.as_ref().map(|probe| super::strategy::MergeProbe {
@@ -522,6 +538,8 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                                 }
                                 None => dest_item_path,
                             };
+                            // Whatever this source set aside is now fully replaced.
+                            displaced.landed_under(&landed_path);
                             // For a DIRECTORY source, record the individual
                             // files and newly-created subdirs the op wrote —
                             // never the directory root — so rollback can't

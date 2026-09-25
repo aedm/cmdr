@@ -33,6 +33,7 @@ use super::super::transfer_driver::{
     TransferContext, TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
 use super::conflict::resolve_volume_conflict;
+use super::displaced_destination::DisplacedLedger;
 use super::preflight::SourceFileFacts;
 use super::preflight::{SourceHint, scan_volume_sources};
 use super::strategy::{copy_single_path, resolve_source_is_directory};
@@ -173,6 +174,11 @@ pub(crate) async fn move_volumes_with_progress(
     // the completion event (`AppearedDuringMove`).
     let left_in_source: Arc<std::sync::Mutex<LeftInSource>> = Arc::default();
 
+    // What a cross-type Overwrite renamed aside to free a name, at any depth.
+    // Settled after the loop, once the move knows how it ended
+    // (`displaced_destination.rs`).
+    let displaced = Arc::new(DisplacedLedger::default());
+
     // Live in-flight table + stall watchdog, the same registration
     // `volume/copy.rs` makes for both of its paths. Without it
     // `state.rs::enrich_progress` misses the lookup, every `write-progress`
@@ -234,7 +240,9 @@ pub(crate) async fn move_volumes_with_progress(
             let config = config_owned.clone();
             let operation_id = operation_id_owned.clone();
             let op_probe_conflict = Arc::clone(&op_probe);
+            let displaced = Arc::clone(&displaced);
             move |input: ConflictDecisionInput<'_>| -> ResolveFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let source_volume = Arc::clone(&source_volume);
                 let dest_volume = Arc::clone(&dest_volume);
                 let state = Arc::clone(&state);
@@ -298,10 +306,15 @@ pub(crate) async fn move_volumes_with_progress(
                             let bytes_accounted = source_hint.map(|h| h.size).unwrap_or(0);
                             ConflictDecision::Skip { bytes_accounted }
                         }
-                        Some(rc) => ConflictDecision::Proceed {
-                            dest_path: rc.write_path,
-                            replace_after_write: rc.replace_after_write,
-                        },
+                        Some(rc) => {
+                            if let Some(aside) = rc.displaced {
+                                displaced.hold(aside);
+                            }
+                            ConflictDecision::Proceed {
+                                dest_path: rc.write_path,
+                                replace_after_write: rc.replace_after_write,
+                            }
+                        }
                     })
                 })
             }
@@ -349,7 +362,9 @@ pub(crate) async fn move_volumes_with_progress(
             // a time here.
             let op_probe = Arc::clone(&op_probe);
             let source_index = Arc::new(AtomicUsize::new(0));
+            let displaced = Arc::clone(&displaced);
             move |ctx: TransferContext<'_>| -> TransferFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let op_probe = Arc::clone(&op_probe);
                 let source_index = Arc::clone(&source_index);
                 let source_volume = Arc::clone(&source_volume);
@@ -432,6 +447,7 @@ pub(crate) async fn move_volumes_with_progress(
                         apply_to_all: &merge_apply_to_all,
                         source_hints: &source_hints,
                         window: file_window,
+                        displaced: &displaced,
                         // ❗ Every leaf the window holds opens a row of its OWN
                         // through this, numbered under `source_row`, and that is
                         // the invariant every `TaskProbe` field is built on:
@@ -599,6 +615,8 @@ pub(crate) async fn move_volumes_with_progress(
                         );
                         return Err(map_volume_error(&e.path.display().to_string(), PathRole::Source, e.error));
                     }
+                    // Moved in full, so whatever it set aside is replaced.
+                    displaced.landed_under(&landed_dest);
 
                     // Journal the moved leaves under the REAL volume ids: a file
                     // source → one leaf (source on the source volume, dest on the
@@ -661,6 +679,17 @@ pub(crate) async fn move_volumes_with_progress(
     // destination.
     let staged_leftovers = super::cleanup::clean_abandoned_staged_writes(&dest_volume, state).await;
 
+    // Every replacement is in on success, so what they replaced goes. Otherwise
+    // what a finished source replaced goes too, and the rest come home (or stay
+    // beside a half-moved folder under a ` (recovered)` name).
+    let recovered = match outcome.intent {
+        PostLoopIntent::Completed => {
+            displaced.discard_all(&dest_volume).await;
+            Vec::new()
+        }
+        PostLoopIntent::Cancelled | PostLoopIntent::Failed(_) => displaced.settle_interrupted(&dest_volume).await,
+    };
+
     match outcome.intent {
         PostLoopIntent::Completed => {
             log::info!(
@@ -701,8 +730,15 @@ pub(crate) async fn move_volumes_with_progress(
             }))
         }
         PostLoopIntent::Failed(err) => {
-            // `err` is already the typed `WriteOperationError` the FE renders from.
-            Err(WriteFailure::synthetic(err))
+            // `err` is already the typed `WriteOperationError` the FE renders
+            // from. It also has to say where any entry kept aside went.
+            if recovered.is_empty() {
+                return Err(WriteFailure::synthetic(err));
+            }
+            Err(WriteFailure::synthetic(WriteOperationError::OriginalsKeptAside {
+                cause: Box::new(err),
+                recovered,
+            }))
         }
     }
 }

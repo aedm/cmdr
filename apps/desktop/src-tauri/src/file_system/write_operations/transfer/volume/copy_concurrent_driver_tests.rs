@@ -214,6 +214,7 @@ impl Harness {
             copied_paths: Arc::clone(&self.copied_paths),
             created_dirs: Arc::clone(&self.created_dirs),
             in_flight_partials: Arc::clone(&self.in_flight_partials),
+            displaced: Arc::new(DisplacedLedger::default()),
             deep_skipped_files: Arc::new(AtomicUsize::new(0)),
             deep_skipped_bytes: Arc::new(AtomicU64::new(0)),
         }

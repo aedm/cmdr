@@ -207,9 +207,9 @@ pub(super) async fn rename_merge_directory(
 
         if let Some(_hit) = dest_hit {
             // File or cross-type clash: consult the file policy.
-            let decision = resolve_child(ctx, &child_source, entry, &child_dest).await?;
+            let (decision, aside) = resolve_child(ctx, &child_source, entry, &child_dest).await?;
             resolved_children.insert(entry.name.clone(), decision.clone());
-            apply_child_decision(ctx, entry, &child_source, decision, note_both_halves).await?;
+            apply_child_decision(ctx, entry, &child_source, decision, aside, note_both_halves).await?;
             continue;
         }
 
@@ -270,8 +270,9 @@ async fn late_detected_collision(
 ) -> Result<(), WriteOperationError> {
     if let Some(stored) = resolved_children.get(&entry.name).cloned() {
         // We already prompted/decided for this child; its rename collided on the
-        // case-folded name. Finalize the stored decision — NEVER re-prompt.
-        return apply_child_decision(ctx, entry, child_source, stored, note_both_halves).await;
+        // case-folded name. Finalize the stored decision — NEVER re-prompt. Its
+        // aside, if it had one, went with the first attempt.
+        return apply_child_decision(ctx, entry, child_source, stored, None, note_both_halves).await;
     }
 
     // A genuinely new collision the exact-match map missed. Re-list the dest to
@@ -306,20 +307,21 @@ async fn late_detected_collision(
         .as_ref()
         .map(|d| dest_parent.join(&d.name))
         .unwrap_or_else(|| child_dest.to_path_buf());
-    let decision = resolve_child(ctx, child_source, entry, &actual_dest).await?;
+    let (decision, aside) = resolve_child(ctx, child_source, entry, &actual_dest).await?;
     resolved_children.insert(entry.name.clone(), decision.clone());
-    apply_child_decision(ctx, entry, child_source, decision, note_both_halves).await
+    apply_child_decision(ctx, entry, child_source, decision, aside, note_both_halves).await
 }
 
 /// Runs the shared conflict resolver for one clashing child and maps its outcome
-/// onto a `MergeChildResolution`. Dir-vs-dir never reaches here — the caller
-/// recurses for that.
+/// onto a `MergeChildResolution`, plus the entry a cross-type Overwrite set aside
+/// to free the name. Dir-vs-dir never reaches here — the caller recurses for
+/// that.
 async fn resolve_child(
     ctx: &RenameMergeCtx<'_>,
     child_source: &Path,
     entry: &FileEntry,
     child_dest: &Path,
-) -> Result<MergeChildResolution, WriteOperationError> {
+) -> Result<(MergeChildResolution, Option<DisplacedDestination>), WriteOperationError> {
     // The source listing entry already tells us the type and size, saving the
     // resolver a redundant `is_directory` probe. Deep children aren't top-level
     // sources, so there's no preflight hint to reuse. A symlink is a LEAF here
@@ -347,7 +349,7 @@ async fn resolve_child(
     *ctx.apply_to_all.lock_ignore_poison() = latched;
 
     match resolved? {
-        None => Ok(MergeChildResolution::Skip),
+        None => Ok((MergeChildResolution::Skip, None)),
         Some(ResolvedConflict {
             write_path,
             replace_after_write,
@@ -355,10 +357,14 @@ async fn resolve_child(
             // (its rename can't replace), so the reservation needs no separate
             // answer here.
             reserved_placeholder: _,
-        }) => Ok(MergeChildResolution::Proceed {
-            write_path,
-            replace: replace_after_write,
-        }),
+            displaced,
+        }) => Ok((
+            MergeChildResolution::Proceed {
+                write_path,
+                replace: replace_after_write,
+            },
+            displaced,
+        )),
     }
 }
 
@@ -374,6 +380,9 @@ async fn apply_child_decision(
     entry: &FileEntry,
     child_source: &Path,
     decision: MergeChildResolution,
+    // What the resolver set aside for a cross-type Overwrite, which the rename
+    // below answers for like any other displaced entry.
+    aside: Option<DisplacedDestination>,
     note_both_halves: &(dyn Fn(&Path, &Path) + Sync),
 ) -> Result<(), WriteOperationError> {
     let (write_path, replace) = match decision {
@@ -407,8 +416,13 @@ async fn apply_child_decision(
         }
         // Replacing a dest FILE with this dir subtree destroys it: an overwrite.
         // ❗ It goes ASIDE, never straight to a delete — the rename that replaces
-        // it is a separate call the backend can refuse.
-        let displaced = displace_destination(ctx.state, ctx.volume, &write_path).await?;
+        // it is a separate call the backend can refuse. The resolver has usually
+        // done that already; anything that appeared at the name since goes the
+        // same way.
+        let displaced = match aside {
+            Some(aside) => Some(aside),
+            None => displace_destination(ctx.state, ctx.volume, &write_path, false).await?,
+        };
         if displaced.is_some() {
             ctx.overwrote.store(true, std::sync::atomic::Ordering::Relaxed);
         }
@@ -428,7 +442,7 @@ async fn apply_child_decision(
         // replacing rename is a separate call, and a backend that refuses it
         // after a delete leaves the user with neither copy.
         Some(orig) => {
-            let displaced = displace_destination(ctx.state, ctx.volume, &orig).await?;
+            let displaced = displace_destination(ctx.state, ctx.volume, &orig, false).await?;
             // A file→file safe-replace: mark the op as having overwritten (not
             // rollbackable).
             if displaced.is_some() {
@@ -444,6 +458,12 @@ async fn apply_child_decision(
         // the source there. A plain delete is right here and only here: that
         // zero-byte file is OURS, not the user's. On non-local dests no
         // placeholder exists and the delete is a benign `NotFound`.
+        // A cross-type Overwrite: the resolver already set the FOLDER at the
+        // name aside, so the name is free and the aside answers to the rename.
+        None if aside.is_some() => {
+            ctx.overwrote.store(true, std::sync::atomic::Ordering::Relaxed);
+            (write_path, aside)
+        }
         None => {
             if ctx.volume.exists(&write_path).await {
                 match ctx.volume.delete(&write_path).await {

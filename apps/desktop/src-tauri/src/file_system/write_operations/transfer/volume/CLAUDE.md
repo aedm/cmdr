@@ -1,7 +1,7 @@
 # Cross-volume transfer (copy + move)
 
-Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase runner (`copy.rs`), the cross-, same-volume, and single-file moves, and the merge/staging engine (`strategy.rs`,
-`merge.rs`). File map: `DETAILS.md` § Files. Shared scaffolding: `../CLAUDE.md`.
+Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase runner (`copy.rs`), the moves, and the
+merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § Files. Shared scaffolding: `../CLAUDE.md`.
 
 - **A facade: outside code reaches it only as `transfer::volume::<item>`**; a new caller re-exports from `mod.rs`,
   ❌ never widens a submodule.
@@ -15,7 +15,8 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
   or `Volume::entry_kind` (a path), ❌ never `Volume::is_directory` (may follow links). `transfer/DETAILS.md` §
   "Symlinks are opaque to a move".
 - **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
-  ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`).
+  ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`); an
+  answered one sets the dest ASIDE (`ResolvedConflict::displaced`).
 - **A MOVE's source sweep deletes the walk's LEDGER, ❌ never the tree** (`source_sweep.rs`): Skips, newcomers, and
   changed files stay.
 - **❌ Never fabricate a destination size for the conflict dialog**; report `None` (a fabricated `0` makes "Overwrite all
@@ -34,7 +35,7 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
   single-shot. Anything short of success streams, ❌ except a cancel.
 - **A staged temp the destination won't release is REPORTED**: the sweep RETURNS it on
   `CancelRollback::staged_leftovers`, ❌ never `skips`, ❌ never only a log.
-- **Only `cleanup.rs::remove_tree` recurses, and its `TreeRemoval` argument names who authorized it.** Cleanup and
+- **Only `cleanup.rs::remove_tree` recurses, its `TreeRemoval` naming who authorized it.** Cleanup and
   rollback go through `delete_written_file` / `prune_created_dir_if_empty`, listing before deleting.
 - **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry means UNKNOWN, ❌ never
   "file"; `strategy.rs::resolve_source_is_directory`'s answer drives the cleanup/ledger branch.
@@ -53,4 +54,4 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
 - **Two test traps**: a `*_tests.rs` here is a `#[path]` CHILD (`super::` is one level shallower), and a
   `FaultyVolume` cell must **assert `fault_fired(op)`**.
 
-Semantics, flows, decisions, and the rollback ledger: `DETAILS.md`; read it before non-trivial work.
+Semantics, flows, and the rollback ledger: `DETAILS.md`, read first for non-trivial work.

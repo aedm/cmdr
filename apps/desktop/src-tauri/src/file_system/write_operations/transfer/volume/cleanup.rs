@@ -481,8 +481,8 @@ async fn prune_created_dir_if_empty(volume: &Arc<dyn Volume>, dir: &Path) -> Ite
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TreeRemoval {
     /// A cross-type clash (a file landing on a folder) the user resolved with
-    /// Overwrite: the destination's type is wrong, so it goes before the source
-    /// materializes. `conflict.rs::apply_volume_conflict_resolution`.
+    /// Overwrite: the folder was set aside to free the name, and goes once what
+    /// replaced it has landed. `displaced_destination.rs::DisplacedDestination::discard`.
     UserChoseOverwriteAcrossTypes,
 }
 

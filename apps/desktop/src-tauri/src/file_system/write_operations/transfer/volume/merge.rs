@@ -760,11 +760,19 @@ async fn resolve_merge_child(
             write_path,
             replace_after_write,
             reserved_placeholder,
-        })) => Ok(MergeChildDecision::Proceed {
-            write_path,
-            replace: replace_after_write,
-            reserved_placeholder,
-        }),
+            displaced,
+        })) => {
+            // A cross-type Overwrite's aside is the operation's to settle, once
+            // it knows how it ended.
+            if let Some(displaced) = displaced {
+                ctx.displaced.hold(displaced);
+            }
+            Ok(MergeChildDecision::Proceed {
+                write_path,
+                replace: replace_after_write,
+                reserved_placeholder,
+            })
+        }
         // The resolver returns a typed `WriteOperationError`; map cancellation
         // back to the `VolumeError::Cancelled` this function's callers expect so
         // the post-loop reclassifies it as a cancel, not a transport error.

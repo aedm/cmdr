@@ -45,6 +45,7 @@ use crate::operation_log::types::OpKind;
 
 use super::super::super::ledger::WrittenFile;
 use super::cleanup::{clean_partial_writes, volume_rollback_with_progress};
+use super::displaced_destination::DisplacedLedger;
 use super::item_identity::is_the_same_item;
 use super::transfer_error::{PathRole, WriteFailure, write_error_event_from};
 
@@ -973,6 +974,11 @@ pub(crate) async fn copy_volumes_with_progress(
     // destination path so a cancel/error can delete all of them. Sequential
     // mode keeps the legacy single-slot behavior via a 1-element vec.
     let in_flight_partials: Arc<std::sync::Mutex<Vec<PathBuf>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+    // What a cross-type Overwrite renamed aside to free a name, at any depth
+    // and from either driver. Settled below, once the operation knows how it
+    // ended: dropped on success, put back by a rollback, and by a stop or a
+    // failure put back or kept beside the name (`displaced_destination.rs`).
+    let displaced = Arc::new(DisplacedLedger::default());
     let mut last_dest_path: Option<PathBuf>;
     // Deep-merge skips (children a merge resolved to Skip) are invisible to the
     // driver's top-level skip accounting, so both paths fold each source's
@@ -1041,6 +1047,7 @@ pub(crate) async fn copy_volumes_with_progress(
             copied_paths: Arc::clone(&copied_paths),
             created_dirs: Arc::clone(&created_dirs),
             in_flight_partials: Arc::clone(&in_flight_partials),
+            displaced: Arc::clone(&displaced),
             deep_skipped_files: Arc::clone(&deep_skipped_files),
             deep_skipped_bytes: Arc::clone(&deep_skipped_bytes),
         })
@@ -1077,6 +1084,7 @@ pub(crate) async fn copy_volumes_with_progress(
             apply_to_all_cell: Arc::clone(&apply_to_all_cell),
             copied_paths: Arc::clone(&copied_paths),
             created_dirs: Arc::clone(&created_dirs),
+            displaced: Arc::clone(&displaced),
             deep_skipped_files: Arc::clone(&deep_skipped_files),
             deep_skipped_bytes: Arc::clone(&deep_skipped_bytes),
         })
@@ -1148,6 +1156,8 @@ pub(crate) async fn copy_volumes_with_progress(
             bytes_done,
             format_skipped_suffix(files_skipped, bytes_skipped),
         );
+        // Every replacement is in, so what they replaced goes.
+        displaced.discard_all(&dest_volume).await;
 
         events.emit_complete(WriteCompleteEvent {
             operation_id: operation_id.to_string(),
@@ -1197,6 +1207,8 @@ pub(crate) async fn copy_volumes_with_progress(
             total_bytes,
         )
         .await;
+        // After the reversal, which is what frees the names they come home to.
+        displaced.restore_all(&dest_volume).await;
 
         events.emit_cancelled(WriteCancelledEvent {
             operation_id: operation_id.to_string(),
@@ -1219,6 +1231,18 @@ pub(crate) async fn copy_volumes_with_progress(
             }
         }
         clean_partial_writes(&dest_volume, &partials_to_clean, operation_id).await;
+        // After the partial cleanup, so a name a partial held is free again.
+        let recovered = displaced.settle_interrupted(&dest_volume).await;
+        if !recovered.is_empty()
+            && let Some(failure) = copy_error.take()
+        {
+            // The failure has to say where the user's entries went: nothing
+            // else in the app tells them one changed its name.
+            copy_error = Some(WriteFailure::synthetic(WriteOperationError::OriginalsKeptAside {
+                cause: Box::new(failure.error),
+                recovered,
+            }));
+        }
 
         if copy_error.is_none() {
             // Pure cancellation (Stopped)
@@ -1271,6 +1295,10 @@ mod concurrent_tests;
 #[cfg(test)]
 #[path = "copy_crashsafe_tests.rs"]
 mod crashsafe_tests;
+/// A cross-type Overwrite sets the destination aside until the operation ends.
+#[cfg(test)]
+#[path = "cross_type_aside_tests.rs"]
+mod cross_type_aside_tests;
 #[cfg(test)]
 #[path = "copy_extract_out_tests.rs"]
 mod extract_out_tests;

@@ -387,14 +387,14 @@ that choice through `resolve_staging`, the single place a staged write can becom
 **Landing** (`staged_write::land`) renames FIRST and only clears the final name if that rename said something is in the
 way. `finalize_safe_replace` is the other way round because there the original is known to be in the way; here it
 usually isn't, and a speculative delete would burn one extra round trip per file. The name can still be taken (a
-`Rename` resolution's `O_EXCL` placeholder, a cross-type Overwrite whose dest delete failed, a file that arrived after
+`Rename` resolution's `O_EXCL` placeholder, a file that arrived after
 the caller last looked), which the second attempt covers.
 
 ❗ **A cleared way plus a refused second rename strands committed data**, and the landing gets it out of temp space on the spot. The bytes are complete by then (the landing deregistered the temp just before clearing the way, so no sweep protects it and none should delete it), the destination name is now EMPTY, and the temp wears a `.cmdr-tmp-*` name that `cleanup.rs::reap_stale_transfer_temps` matches on age at the start of the next transfer into that folder — so the user's only copy of the new file would be deleted an hour later. `recovered_name.rs::rescue_out_of_temp_space` renames it to `<name> (recovered)<.ext>` and the failure carries that path as `FinalizeFailure::new_data_at`, exactly as `finalize::finalize_safe_replace` does; `stream_pipe_file` and `sequential_extract` label it with the DESTINATION (`at_source_or_rescued_dest`), since a rescued file is one the user can't find on their own. `recovered_name.rs` sits at `transfer/` level because both landings reach it. A failure whose `delete` didn't succeed rescues nothing and reports nothing: the destination still holds whatever was in the way (§ "A landing that fails with nothing cleared takes its temp away" below). Pinned by `staged_write.rs::a_landing_that_cleared_the_way_and_then_could_not_rename_rescues_the_new_bytes`.
 
 ❗ **And only for a name the CALLER claimed** (`LandingName`). `AlreadyExists` says something is in the way; only the
 caller knows whose it is, because only the caller knows whether a conflict resolution put this write at this name. A
-`Rename` pick reserved its name with a placeholder and a cross-type Overwrite already cleared its destination, so both
+`Rename` pick reserved its name with a placeholder and a cross-type Overwrite already set its destination aside, so both
 answer `ClaimedByTheCaller` and the delete-then-rename stands. A write nothing resolved answers `ExpectedFree`, and its
 landing REPORTS the clash instead: the file in the way is the user's, under a policy (Skip, an unanswered Stop) that
 never touched it, and our temp is taken away (below). Where each caller's answer
@@ -805,8 +805,8 @@ which is what makes the retry safe by construction rather than by care:
   into a destination the walk already resolved. A retry can never turn a merge into a replace.
 - **Overwrite** is untouched, and a retry can only improve it. A safe-replace's `finalize_safe_replace` runs after
   `copy_single_path` returns, so the ORIGINAL is intact through every attempt — including a file that fails all three.
-  A cross-type Overwrite's delete-first already happened in `apply_volume_conflict_resolution`; the retry re-runs only
-  the write, which is the half that can still rescue the data.
+  A cross-type Overwrite's destination sits aside until the operation ends (`volume/displaced_destination.rs`), so a
+  retry re-runs only the write and every ending still finds the original to put back.
 
 **Staging across an attempt boundary.** Each attempt re-derives its staging and mints its own `.cmdr-tmp-<uuid>`, so
 nothing partial survives an attempt and no byte is written twice. `StagedWrite::abandon_attempt` clears the previous
@@ -1143,8 +1143,8 @@ Our chunked copy (1 MB read/write chunks) provides: identical speed for non-clon
 **Gotcha**: In `copy_volumes_with_progress`, a per-task `VolumeError::Cancelled` populates `copy_error` and would otherwise skip the `write-cancelled` emit.
 **Why**: Both the concurrent path (`Some(Err((failed_dest, e)))` arm) and the serial path (`PostLoopIntent::Failed`) feed any per-task error into `copy_error` via `map_volume_error`. `VolumeError::Cancelled` → `WriteOperationError::Cancelled`, so a mid-flight cancel that surfaces through a streaming reader lands in `copy_error` as a Cancelled-shaped `WriteFailure`. The post-loop gate `if copy_error.is_none() { emit_cancelled }` then silently swallows it, the outer `copy_between_volumes` wrapper's `matches!(Cancelled)` arm assumes the inner already emitted, and the FE never sees a terminal event — Copy dialog hangs until restart. The post-loop reclassifies a Cancelled-shaped `copy_error` as cancellation (`copy_error = None`) whenever `is_cancelled(&state.intent)` is true, so the emit gate fires; the synthetic `Err(Cancelled)` at the bottom of the function still propagates so the outer wrapper continues to skip `write-error`. Repro: copy 13 SMB files concurrent path, cancel mid-stream → no `write-cancelled` on the wire pre-fix.
 
-**Gotcha**: Cross-type Overwrite (file↔folder) is delete-first, NOT a merge or safe-replace.
-**Why**: A type swap can't temp-rename across backends, so `apply_volume_conflict_resolution` deletes the dest first (`remove_tree(…, UserChoseOverwriteAcrossTypes)` for a folder dest, `Volume::delete` for a file dest) before the source materializes. These are rare and lower-stakes (a type mismatch already means wholesale content replacement). Same-type dir-vs-dir never reaches `apply_volume_conflict_resolution` for the folder — it short-circuits to merge in `resolve_volume_conflict` before any policy dispatch.
+**Gotcha**: Cross-type Overwrite (file↔folder) is neither a merge nor a safe-replace: the destination goes ASIDE for the rest of the operation.
+**Why**: A type swap can't stage the new side (a folder lands leaf by leaf), so `apply_volume_conflict_resolution` renames the dest to a `.cmdr-temp-<uuid>` sibling and the operation settles it when it ends. `volume/DETAILS.md` § "A cross-type Overwrite renames the destination ASIDE". Same-type dir-vs-dir never reaches `apply_volume_conflict_resolution` for the folder — it short-circuits to merge in `resolve_volume_conflict` before any policy dispatch.
 
 **Test harness: the conflict responder is an event sink, prompt counts come from the sink.** The folder-merge suites (`volume/merge_tests.rs`, `volume/rename_merge_tests.rs`) drive Stop-mode prompts with `ConflictResponderSink` (`conflict_responder_test_support.rs`): it wraps a `CollectorEventSink`, forwards every event, and the instant it observes a `write-conflict` it answers `state.conflict_slot` with the scripted response. This works because the Stop branch arms the slot BEFORE emitting the event (`volume/conflict.rs`), so the answer can't miss. Assertions derive the prompt count from the recorded conflicts via the shared counters in `conflict_responder_test_support.rs` — `file_conflict_count`, plus `folder_conflict_count_both_dirs` (source AND dest are dirs; pins the copy-side "dirs never prompt" contract) and `folder_conflict_count_any_dir` (source OR dest is a dir; pins the rename-merge contract) — race-free once the op future returns, never from a side-channel counter. The pattern is order-independent by design, so there's no polling loop and no answer-accounting race to defend.
 

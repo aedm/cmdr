@@ -47,6 +47,7 @@ use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::OperationProbe;
 use super::copy::drain_deadline as drain_deadline_for;
 use super::copy_concurrent_task::{CopyTaskFailure, CopyTaskSuccess, run_copy_task};
+use super::displaced_destination::DisplacedLedger;
 use super::preflight::SourceHint;
 use super::transfer_error::{PathedVolumeError, WriteFailure};
 use crate::file_system::volume::Volume;
@@ -100,6 +101,8 @@ pub(super) struct ConcurrentCopy<'a> {
     pub(super) copied_paths: Arc<std::sync::Mutex<Vec<WrittenFile>>>,
     pub(super) created_dirs: Arc<std::sync::Mutex<Vec<PathBuf>>>,
     pub(super) in_flight_partials: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    /// What cross-type Overwrites set aside, for the post-loop to settle.
+    pub(super) displaced: Arc<DisplacedLedger>,
     pub(super) deep_skipped_files: Arc<AtomicUsize>,
     pub(super) deep_skipped_bytes: Arc<AtomicU64>,
 }
@@ -366,6 +369,8 @@ impl<'a> ConcurrentDriver<'a> {
         // Remove the in-flight partial (the temp under safe-replace, else the
         // dest) and record what the op wrote for rollback.
         ctx.forget_in_flight_partial(&partial_path);
+        // Whatever this source set aside is now fully replaced.
+        ctx.displaced.landed_under(&recorded_path);
         let file_name_done = recorded_path.file_name().map(|n| n.to_string_lossy().to_string());
         // Journal the per-leaf `rollback_unit` rows under the REAL volume ids (a
         // file source → one leaf at `recorded_path`; a dir source → one leaf per

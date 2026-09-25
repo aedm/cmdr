@@ -32,6 +32,7 @@ use super::super::transfer_driver::{LeafProgressLedger, SourceProgress};
 use super::super::transfer_probe::{
     OperationProbe, TaskPhase, TaskRow, arm_current_task_stall_abort, note_task_retry, set_task_bytes, set_task_phase,
 };
+use super::displaced_destination::DisplacedLedger;
 use super::merge::copy_directory_streaming;
 use super::preflight::{SourceFileFacts, SourceHint};
 use super::source_sweep::{SourceLedger, SourceStamp};
@@ -202,6 +203,10 @@ pub(super) struct MergeCtx<'a> {
     /// The operation-wide file-copy window, shared by every walker. See
     /// [`FileWindow`] for why there is exactly one of these per operation.
     pub window: FileWindow,
+    /// The operation's ledger of what cross-type Overwrites set aside. A deep
+    /// clash hands its aside here, and the operation settles them all when it
+    /// ends (`displaced_destination.rs::DisplacedLedger`).
+    pub displaced: &'a DisplacedLedger,
     /// The operation's live in-flight table plus the row of the source whose
     /// subtree this walk is, so each leaf a walker overlaps gets its OWN row
     /// (and its own stall-abort token), numbered under that source. `None` in
