@@ -14,6 +14,10 @@
 //! pre-existing behavior).
 
 use super::NetworkHost;
+#[cfg(target_os = "macos")]
+use crate::volumes::{SmbMountInfo, smb_mounts};
+#[cfg(target_os = "linux")]
+use crate::volumes_linux::{SmbMountInfo, smb_mounts};
 use std::collections::HashSet;
 use std::net::IpAddr;
 
@@ -85,7 +89,7 @@ pub fn smb_servers_of(host: &NetworkHost) -> Vec<SmbServer> {
 /// Whether the SMB mount `info` is from one of `targets`: the same server by
 /// [`SmbServer::is`], so the port has to match and the machine may go by any name
 /// discovery pairs it with.
-pub fn mount_is_from(info: &crate::volumes::SmbMountInfo, targets: &[SmbServer], hosts: &[NetworkHost]) -> bool {
+pub fn mount_is_from(info: &SmbMountInfo, targets: &[SmbServer], hosts: &[NetworkHost]) -> bool {
     let mounted = SmbServer::new(&info.server, info.port);
     targets.iter().any(|target| target.is(&mounted, hosts))
 }
@@ -95,7 +99,7 @@ pub fn mount_is_from(info: &crate::volumes::SmbMountInfo, targets: &[SmbServer],
 /// can't stall it, and it answers in time to decide what a menu offers.
 pub fn smb_mounts_from(targets: &[SmbServer]) -> Vec<String> {
     let hosts = super::get_discovered_hosts();
-    crate::volumes::smb_mounts()
+    smb_mounts()
         .unwrap_or_default()
         .into_iter()
         .filter(|(_, info)| mount_is_from(info, targets, &hosts))
