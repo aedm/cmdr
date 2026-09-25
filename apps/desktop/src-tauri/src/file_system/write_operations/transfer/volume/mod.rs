@@ -18,8 +18,6 @@ mod copy_concurrent;
 mod copy_concurrent_source;
 mod copy_concurrent_task;
 mod copy_serial;
-/// The destination a same-volume Overwrite is replacing, held aside until the
-/// rename that replaces it lands.
 mod displaced_destination;
 // Both carry their own `//!` headers. ❌ No outer `///` here: rustdoc
 // concatenates it with the child's header and resolves the merged doc in THIS
