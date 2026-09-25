@@ -1221,7 +1221,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   taken as `(remote: Arc<dyn Volume>, dir: PathBuf)` (a live volume plus a scratch dir it owns and removes), so a claim
   proved against one backend is proved in the same words against the others and the suites can't drift. Each backend
   file connects its own fixture (`sftp_test_support::fixture`, `smb_test_support::fixture`, `webdav_test_support::fixture`) and
-  delegates. Five files, by what they prove:
+  delegates. Six files, by what they prove:
   - `network_transfer_test_support.rs`: the byte path (below).
   - `network_semantics_test_support.rs`: merges under Skip / Overwrite / Rename / OverwriteSmaller, a move-merge that
     spares what it skipped, whole-folder moves both ways, same-server move-merge, move, and copy, a missing nested
@@ -1240,11 +1240,18 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   - `network_archive_test_support.rs`: a zip on the server browsed and extracted through the copy engine, the routing
     predicate, a remote edit and its cancel before the swap, files copied into a remote zip, a compress, and a
     compress onto a look-alike name.
-- **Which backend drives what.** SFTP, SMB, and WebDAV drive all five; ADB drives `network_transfer_test_support.rs`.
+  - `network_move_drift_test_support.rs`: a folder moved off the server while a file in it is saved over or a new one
+    appears (#139). A local destination that edits the server as the first file lands opens the window; the edit
+    stays with its new bytes, the rest goes, and `AppearedDuringMove` counts it. The saved-over file changes SIZE,
+    since a server's whole-second mtime can't tell a same-size save apart.
+- **Which backend drives what.** SFTP, SMB, and WebDAV drive all six; ADB drives `network_transfer_test_support.rs`.
   SFTP also points the same-server move and copy, the inline rename, and the remote zip edit at
   `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace. WebDAV points
   the zip browse at `webdav-fixture-norange`, whose whole-file answer to every ranged GET is what a zip reader's many
-  small windows have to be cut out of locally. The dialog-addressed destination cells are SFTP's and SMB's own: the
+  small windows have to be cut out of locally. SFTP alone holds a link, so its cell for a moved folder holding a link
+  to a folder outside the selection (#140) is its own, made through the test-only `SftpVolume::create_symlink`. It pins
+  that the target keeps its files; the move itself fails on the link today (SFTP lists a link with lstat attributes,
+  so the walk streams a folder link as a file). The dialog-addressed destination cells are SFTP's and SMB's own: the
   WebDAV fixture's remote root is `/`, where a volume-relative and a server-absolute path are spelled alike, so a
   doubled root can't be told from a right one there (`cmdr-webdav`'s `paths_test.rs` pins the refusal instead).
 - **A server that says no mid-operation: `webdav_refusal_test.rs`.** 507 on an upload (answered after the body, and

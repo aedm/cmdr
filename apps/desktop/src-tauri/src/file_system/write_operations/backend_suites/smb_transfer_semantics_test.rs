@@ -12,6 +12,9 @@
 //! The data-SAFETY cells are `smb_transfer_safety_test.rs`; the archive and
 //! compress cells `smb_archive_integration_test.rs`.
 
+use super::network_move_drift_test_support::{
+    a_file_added_mid_move_off_the_server_stays, a_file_saved_over_mid_move_off_the_server_stays,
+};
 use super::network_semantics_test_support::{
     a_copy_into_a_missing_nested_destination_makes_every_level,
     a_deep_clash_merge_under_overwrite_replaces_only_the_clash,
@@ -73,6 +76,20 @@ async fn smb_integration_a_folder_moved_onto_the_share_leaves_no_source() {
 async fn smb_integration_a_folder_moved_off_the_share_leaves_no_source() {
     let (remote, dir) = fixture().await;
     a_folder_moved_off_the_server_leaves_no_source(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_file_saved_over_mid_move_off_the_share_stays() {
+    let (remote, dir) = fixture().await;
+    a_file_saved_over_mid_move_off_the_server_stays(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_file_added_mid_move_off_the_share_stays() {
+    let (remote, dir) = fixture().await;
+    a_file_added_mid_move_off_the_server_stays(remote, dir).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

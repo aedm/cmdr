@@ -23,9 +23,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use cmdr_fs::volume::Volume;
-use cmdr_sftp::volume::testing::FIXTURE_ROOT;
+use cmdr_fs::volume::{EntryKind, Volume};
+use cmdr_sftp::volume::testing::{FIXTURE_ROOT, scratch_dir};
 
+use super::network_move_drift_test_support::{
+    a_file_added_mid_move_off_the_server_stays, a_file_saved_over_mid_move_off_the_server_stays,
+};
 use super::network_semantics_test_support::{
     a_copy_into_a_missing_nested_destination_makes_every_level,
     a_deep_clash_merge_under_overwrite_replaces_only_the_clash,
@@ -33,10 +36,12 @@ use super::network_semantics_test_support::{
     a_folder_moved_onto_the_server_leaves_no_source, a_move_merge_onto_the_server_spares_what_it_skipped,
     a_multi_megabyte_file_round_trips_byte_exact, a_rename_policy_lands_the_clash_beside_the_users_file,
     a_same_server_copy_duplicates_a_tree, a_same_server_move_merges_without_a_folder_prompt,
-    a_same_server_move_without_a_clash_moves_the_folder_whole, many_files_at_full_concurrency_land_intact,
-    overwrite_smaller_replaces_only_the_smaller_destination,
+    a_same_server_move_without_a_clash_moves_the_folder_whole, local_volume,
+    many_files_at_full_concurrency_land_intact, overwrite_smaller_replaces_only_the_smaller_destination, seed,
+    try_read,
 };
-use super::sftp_test_support::{SftpFixture, fixture, fixture_on};
+use super::network_transfer_test_support::clean_deep;
+use super::sftp_test_support::{SftpFixture, connect, fixture, fixture_on};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::file_system::write_operations::{
     CollectorEventSink, VolumeCopyConfig, WriteOperationState, move_volumes_with_progress,
@@ -94,6 +99,72 @@ async fn sftp_integration_a_folder_moved_onto_the_server_leaves_no_source() {
 async fn sftp_integration_a_folder_moved_off_the_server_leaves_no_source() {
     let (remote, dir) = fixture("move-off").await;
     a_folder_moved_off_the_server_leaves_no_source(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_file_saved_over_mid_move_off_the_server_stays() {
+    let (remote, dir) = fixture("drift-saved-over").await;
+    a_file_saved_over_mid_move_off_the_server_stays(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_file_added_mid_move_off_the_server_stays() {
+    let (remote, dir) = fixture("drift-added").await;
+    a_file_added_mid_move_off_the_server_stays(remote, dir).await;
+}
+
+/// A link inside a folder moved off the server is the link, never its target
+/// (#140): the folder it points at sits OUTSIDE the selection, and keeps every
+/// file. SFTP only: SMB and WebDAV can't hold a link.
+///
+/// ❗ The move itself FAILS today, on the link: SFTP lists a link with its own
+/// (lstat) attributes, so a link to a folder reads as a file, the copy walk
+/// streams it, and the server refuses to open a folder. Losing nothing is what
+/// this cell pins, so it holds whichever way the move ends.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_link_in_a_folder_moved_off_the_server_leaves_its_target() {
+    let sftp = connect(SftpFixture::Stock).await;
+    let dir = PathBuf::from(scratch_dir("move-off-link"));
+    seed(
+        &sftp,
+        &dir,
+        &[("outside/keep.txt", b"outside the selection"), ("tree/a.txt", b"alpha")],
+    )
+    .await;
+    sftp.create_symlink(&dir.join("tree/ln"), &dir.join("outside"))
+        .await
+        .expect("the fixture makes links");
+    let remote: Arc<dyn Volume> = Arc::new(sftp);
+    assert!(
+        matches!(remote.entry_kind(&dir.join("tree/ln")).await, Ok(EntryKind::Symlink)),
+        "precondition: the server holds a link, not a copy"
+    );
+    let (_local_dir, local) = local_volume("move-off-link");
+
+    let outcome = move_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "move-off-link",
+        &Arc::new(WriteOperationState::new(Duration::from_millis(200))),
+        Arc::clone(&remote),
+        &[dir.join("tree")],
+        local,
+        Path::new(""),
+        &VolumeCopyConfig::default(),
+    )
+    .await;
+
+    assert_eq!(
+        try_read(remote.as_ref(), &dir.join("outside/keep.txt"))
+            .await
+            .as_deref(),
+        Some(&b"outside the selection"[..]),
+        "the move went through the link and took its target's file (move ended {outcome:?})"
+    );
+
+    clean_deep(remote.as_ref(), &dir).await;
 }
 
 // ── Staying on the server ────────────────────────────────────────────
