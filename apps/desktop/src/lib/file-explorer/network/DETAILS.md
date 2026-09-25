@@ -202,10 +202,12 @@ catch reads the value back through `shareListErrorOf`. ❌ Never `e as ShareList
 the catch (a runtime exception, an IPC call that broke) had no `type`, and the renderer threw on it; it reads as
 `protocol_error` now, its text kept for the log. Pinned by `PlacesBrowser.test.ts`.
 
-A "Forget saved password" button appears in the header whenever a password is stored for the server
-(`authenticatedCredentials`, or `hasSmbCredentials` asked once per opening), whichever way the listing went: a guest
-listing of a host with a saved server-level password offered no way to forget it. Clicking it calls `forgetCredentials`
-and clears both. Shares sort case-insensitively. Escape/Backspace go back.
+A "Forget saved password" button appears in the header once this session has READ a password for the server
+(`authenticatedCredentials`, or the host's `has_creds` status), whichever way the listing went: a guest listing of a
+host whose server-level password was in use offered no way to forget it. `noteCachedCredentials` sets that status from
+the backend's in-memory credential cache (`has_cached_smb_credentials`), filled by the listing's own lookup or a mount.
+❗ It never touches the Keychain, so an unread password shows no button until something reads it. Clicking it calls
+`forgetCredentials`, which clears both. Shares sort case-insensitively. Escape/Backspace go back.
 
 The `autoMountShare` prop fires once per distinct value (tracked via `lastAutoMountAttempt`), not once per instance, so
 "Copy path between panes" can auto-mount a different share without forcing a remount when the source cursor moves to

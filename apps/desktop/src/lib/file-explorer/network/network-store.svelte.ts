@@ -15,6 +15,7 @@ import {
   listSharesOnHost,
   prefetchShares as prefetchSharesCmd,
   getSmbCredentials,
+  hasCachedSmbCredentials,
   deleteSmbCredentials,
 } from '$lib/tauri-commands'
 import { getNetworkTimeoutMs, getShareCacheTtlMs } from '$lib/settings/network-settings'
@@ -386,6 +387,18 @@ export async function checkCredentialsForHost(serverName: string): Promise<void>
   } catch {
     credentialStatuses.set(key, 'no_creds')
   }
+}
+
+/**
+ * Marks a host `has_creds` when this session already READ its server-level password (a
+ * listing's own lookup, a mount), from the backend's in-memory cache.
+ *
+ * ❗ Never a Keychain access: each can raise a system prompt, and the question (should
+ * the share list offer "Forget saved password"?) is not worth one. So an unread
+ * password leaves the status as it was, and the button waits for something to read it.
+ */
+export async function noteCachedCredentials(serverName: string): Promise<void> {
+  if (await hasCachedSmbCredentials(serverName)) credentialStatuses.set(serverName.toLowerCase(), 'has_creds')
 }
 
 /**

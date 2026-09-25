@@ -178,6 +178,17 @@ pub fn delete_credentials(server: &str, share: Option<&str>) -> Result<(), Keych
     Ok(())
 }
 
+/// Whether a server-level password was already read this session (a listing or a
+/// mount found it), from the in-memory cache ONLY.
+///
+/// ❗ Never touches the secret store: each Keychain access can raise a system
+/// prompt, so a question nothing needed answered (should the share list offer
+/// "Forget saved password"?) must not cost one. Unread means `false`.
+pub fn has_cached_credentials(server: &str) -> bool {
+    let account = make_account_name(server, None);
+    CREDENTIAL_CACHE.read().is_ok_and(|cache| cache.contains_key(&account))
+}
+
 /// Checks if credentials exist without retrieving them.
 pub fn has_credentials(server: &str, share: Option<&str>) -> bool {
     get_credentials(server, share).is_ok()
@@ -186,6 +197,30 @@ pub fn has_credentials(server: &str, share: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ❗ Answers from what a listing or mount already read, and NEVER touches the
+    /// store: opening a share list must not cost a Keychain access (each can raise a
+    /// system prompt) just to decide whether to show "Forget saved password".
+    #[test]
+    fn a_cache_only_check_sees_what_was_read_and_nothing_else() {
+        let server = "cache-only-test-host:11482";
+        assert!(
+            !has_cached_credentials(server),
+            "nothing read yet, and the store is never asked"
+        );
+        CREDENTIAL_CACHE.write().expect("cache").insert(
+            make_account_name(server, None),
+            SmbCredentials {
+                username: "testuser".to_string(),
+                password: "x".to_string(),
+            },
+        );
+        assert!(has_cached_credentials(server));
+        assert!(
+            has_cached_credentials("CACHE-ONLY-TEST-HOST:11482"),
+            "keyed like every read"
+        );
+    }
 
     #[test]
     fn test_make_account_name_server_only() {

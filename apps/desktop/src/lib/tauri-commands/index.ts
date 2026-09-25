@@ -242,7 +242,7 @@ export {
   getUsernameHint,
   saveSmbCredentials,
   getSmbCredentials,
-  hasSmbCredentials,
+  hasCachedSmbCredentials,
   deleteSmbCredentials,
   isUsingCredentialFileFallback,
   listSharesWithCredentials,

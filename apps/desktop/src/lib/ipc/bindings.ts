@@ -3805,6 +3805,12 @@ export const commands = {
   // Checks if credentials exist in the Keychain for a server/share.
   hasSmbCredentials: (server: string, share: string | null) =>
     __TAURI_INVOKE<boolean>('has_smb_credentials', { server, share }),
+  /**
+   *  Whether a server-level password was already read this session, from the
+   *  in-memory cache only. ❗ Never touches the Keychain (`keychain::has_cached_credentials`):
+   *  the share list uses it to offer "Forget saved password" without costing a prompt.
+   */
+  hasCachedSmbCredentials: (server: string) => __TAURI_INVOKE<boolean>('has_cached_smb_credentials', { server }),
   // Deletes SMB credentials from the Keychain.
   deleteSmbCredentials: (server: string, share: string | null) =>
     typedError<null, KeychainError>(__TAURI_INVOKE('delete_smb_credentials', { server, share })),

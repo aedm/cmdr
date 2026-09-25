@@ -330,6 +330,13 @@ pub fn has_smb_credentials(_server: String, _share: Option<String>) -> bool {
     false
 }
 
+/// Whether a password was already read this session (stub: false).
+#[tauri::command]
+#[specta::specta]
+pub fn has_cached_smb_credentials(_server: String) -> bool {
+    false
+}
+
 /// Deletes SMB credentials (stub: returns error).
 #[tauri::command]
 #[specta::specta]

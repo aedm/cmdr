@@ -281,11 +281,11 @@ export async function getSmbCredentials(server: string, share: string | null): P
 }
 
 /**
- * Whether SMB credentials are stored for a server (or a share on it). Answered from
- * the backend's credential cache when a listing or mount already read them.
+ * Whether a server-level password was already read this session (a listing or a
+ * mount found it). ❗ Cache only: never touches the Keychain, so it costs no prompt.
  */
-export async function hasSmbCredentials(server: string, share: string | null): Promise<boolean> {
-  return commands.hasSmbCredentials(server, share)
+export async function hasCachedSmbCredentials(server: string): Promise<boolean> {
+  return commands.hasCachedSmbCredentials(server)
 }
 
 /**

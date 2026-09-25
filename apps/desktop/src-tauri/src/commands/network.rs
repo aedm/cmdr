@@ -261,6 +261,15 @@ pub fn has_smb_credentials(server: String, share: Option<String>) -> bool {
     keychain::has_credentials(&server, share.as_deref())
 }
 
+/// Whether a server-level password was already read this session, from the
+/// in-memory cache only. ❗ Never touches the Keychain (`keychain::has_cached_credentials`):
+/// the share list uses it to offer "Forget saved password" without costing a prompt.
+#[tauri::command]
+#[specta::specta]
+pub fn has_cached_smb_credentials(server: String) -> bool {
+    keychain::has_cached_credentials(&server)
+}
+
 /// Deletes SMB credentials from the Keychain.
 #[tauri::command]
 #[specta::specta]
