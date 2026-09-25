@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use super::nav::{nav_result, select_volume_result};
+use super::nav::{nav_result, pane_keeps_the_selected_name, select_volume_result};
 use super::search::parse_human_size;
 use super::*;
 
@@ -509,6 +509,18 @@ fn select_volume_result_leaves_out_the_folder_when_the_reply_names_none() {
     let ok = select_volume_result("left", "Macintosh HD", NavAck::Navigated { path: String::new() })
         .expect("still a success");
     assert_eq!(ok, json!("OK: Switched left pane to volume Macintosh HD"));
+}
+
+/// ❗ A favorite isn't a volume: selecting "Documents" opens that folder on the
+/// volume holding it, so the pane reports "Macintosh HD", and waiting for it to say
+/// "Documents" failed a select that had landed right (QA round 5).
+#[test]
+fn a_selected_favorite_leaves_the_pane_on_another_volumes_name() {
+    let rows = [("Documents", true), ("Macintosh HD", false)];
+    assert!(!pane_keeps_the_selected_name(rows, "Documents"));
+    assert!(pane_keeps_the_selected_name(rows, "Macintosh HD"));
+    // A name no row carries (the servers hub, a phone): the pane reports what was asked.
+    assert!(pane_keeps_the_selected_name(rows, "Servers"));
 }
 
 #[test]

@@ -69,6 +69,36 @@ pub(super) fn select_volume_result(pane: &str, volume_name: &str, ack: NavAck) -
     }
 }
 
+/// Whether a pane that selected `name` reports that same name once it's there.
+///
+/// ❗ Not for a favorite: it's a folder on some volume, and the pane reports the
+/// volume ("Macintosh HD"), which `paneVolumeOf` and `cmdr://state` agree on. The
+/// switch picks the FIRST row by that name, as the frontend's `selectVolumeByName`
+/// does, and the listing puts favorites first.
+/// `rows` is each listed name with whether it's a favorite.
+pub(super) fn pane_keeps_the_selected_name<'a>(rows: impl IntoIterator<Item = (&'a str, bool)>, name: &str) -> bool {
+    rows.into_iter()
+        .find(|(row, _)| *row == name)
+        .is_none_or(|(_, is_favorite)| !is_favorite)
+}
+
+/// [`pane_keeps_the_selected_name`] against the live listing.
+fn listing_keeps_the_selected_name(name: &str) -> bool {
+    #[cfg(target_os = "macos")]
+    let rows: Vec<(String, bool)> = crate::volumes::list_locations()
+        .into_iter()
+        .map(|l| (l.name, l.category == crate::volumes::LocationCategory::Favorite))
+        .collect();
+    #[cfg(target_os = "linux")]
+    let rows: Vec<(String, bool)> = crate::volumes_linux::list_locations()
+        .into_iter()
+        .map(|l| (l.name, l.category == crate::volumes_linux::LocationCategory::Favorite))
+        .collect();
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let rows: Vec<(String, bool)> = Vec::new();
+    pane_keeps_the_selected_name(rows.iter().map(|(n, f)| (n.as_str(), *f)), name)
+}
+
 /// Wait for the pane's pushed `volume_name` to equal the one selected, so a `cmdr://state`
 /// read right after the tool returns names it.
 ///
@@ -277,7 +307,9 @@ pub async fn execute_nav_command_with_params<R: Runtime>(app: &AppHandle<R>, nam
                 SELECT_VOLUME_TIMEOUT_SECS,
             )
             .await?;
-            if matches!(ack, NavAck::Navigated { .. }) {
+            // A favorite leaves the pane on the volume that holds it, and that's the
+            // name it reports: waiting for the favorite's name failed a select that landed.
+            if matches!(ack, NavAck::Navigated { .. }) && listing_keeps_the_selected_name(volume_name) {
                 wait_for_pane_volume_name(&store, pane, volume_name).await?;
             }
             select_volume_result(pane, volume_name, ack)
