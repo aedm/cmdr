@@ -384,11 +384,11 @@
         // also moving this cursor.
         if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
 
-        // F8: forget the saved server under the cursor.
+        // F8: forget the saved server under the cursor. Claimed: it's `file.delete` to the dispatcher.
         if (e.key === 'F8') {
             const row = rowUnderCursor()
             if (row) {
-                e.preventDefault()
+                claimKey(e)
                 void actions.forget(row)
             }
             return

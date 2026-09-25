@@ -33,6 +33,8 @@ const h = vi.hoisted(() => ({
   forgetSavedServer: vi.fn(() => Promise.resolve()),
   addToast: vi.fn(() => 'id'),
   showNetworkHostContextMenu: vi.fn(() => Promise.resolve()),
+  /** Every command the document dispatcher resolved a key to, in order. */
+  dispatched: [] as string[],
 }))
 
 const mockHosts: NetworkHost[] = [
@@ -164,6 +166,7 @@ function mountBehindBothHandlers(): MountedHub {
   const documentDispatcher = (e: KeyboardEvent) => {
     const action = resolveGlobalKeyAction(e, { dialogOpen: false, paletteOpen: false })
     if (action.kind !== 'dispatch') return
+    h.dispatched.push(action.commandId)
     if (action.commandId === 'pane.refresh') api.refresh()
     // `nav.open`'s handler re-sends Enter to the focused pane, which hands the
     // network view every key: the hub's own handler runs a second time.
@@ -189,6 +192,7 @@ function plainKey(key: string): KeyboardEvent {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  h.dispatched.length = 0
   h.listSavedServers.mockResolvedValue([])
   document.body.innerHTML = ''
   // The document dispatcher's reverse lookup is built here in the app's startup.
@@ -337,6 +341,23 @@ describe('ServersHub F8', () => {
     api.handleKeyDown(plainKey('F8'))
     await tick()
     expect(h.forgetSavedServer).toHaveBeenCalledWith('sftp-jump.local-22-ada', 'Jump box')
+    await cleanup()
+  })
+
+  /**
+   * ❗ F8 is `file.delete` everywhere else, and the document dispatcher runs after
+   * the hub's own handler: a claimed-but-bubbling F8 asked twice (QA round 2, m3).
+   */
+  it('claims F8, so the document dispatcher never runs file.delete behind it', async () => {
+    h.listSavedServers.mockResolvedValue([savedSftp])
+    const { target, api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    api.setCursorIndex(api.findItemIndex('Jump box'))
+    target.querySelector('.row-list')?.dispatchEvent(plainKey('F8'))
+    await tick()
+    expect(h.forgetSavedServer).toHaveBeenCalledOnce()
+    expect(h.dispatched).toEqual([])
     await cleanup()
   })
 
