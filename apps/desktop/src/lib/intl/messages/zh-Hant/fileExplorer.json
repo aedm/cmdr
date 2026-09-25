@@ -431,10 +431,6 @@
   "@fileExplorer.network.browser.removeHostConfirm": {
     "sourceHash": "8ecdf1a"
   },
-  "fileExplorer.network.browser.removeHostConfirmButton": "移除",
-  "@fileExplorer.network.browser.removeHostConfirmButton": {
-    "sourceHash": "c3812fc"
-  },
   "fileExplorer.network.browser.hostRemoved": "已移除 {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
     "sourceHash": "9e02382"

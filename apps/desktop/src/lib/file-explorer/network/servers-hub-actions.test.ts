@@ -204,6 +204,26 @@ describe('forget', () => {
     expect(forgetSavedServer).not.toHaveBeenCalled()
   })
 
+  /**
+   * ❗ One verb: the menu says "Forget server", so the alert's title, its button, and
+   * the toast say Forget too. The title slot used to carry the button's word
+   * ("Remove") and the button read "OK" (QA round 2).
+   */
+  it('asks with a Forget title and a Forget button, and says Forgot after', async () => {
+    await actions().forget(savedHostRow)
+    expect(confirmDialog).toHaveBeenCalledWith(
+      'Forget Attic NAS? Cmdr stops listing it and the shares saved under it. Nothing gets unmounted.',
+      'Forget server',
+      'Forget',
+    )
+    expect(addToast).toHaveBeenCalledWith('Forgot Attic NAS', { level: 'success' })
+  })
+
+  it('asks a share’s Forget with a Forget button too', async () => {
+    await actions().forget(shareRow)
+    expect(confirmDialog).toHaveBeenCalledWith(expect.any(String), 'Forget share', 'Forget')
+  })
+
   it('re-reads the saved list after removing a host, which nothing broadcasts', async () => {
     await actions().forget(savedHostRow)
     expect(refreshSaved).toHaveBeenCalledOnce()

@@ -125,7 +125,8 @@ export function createHubActions(deps: HubActionDeps): HubActions {
   async function removeSavedSmbHost(row: HubRow): Promise<void> {
     const confirmed = await confirmDialog(
       tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name }),
-      tString('fileExplorer.network.browser.removeHostConfirmButton'),
+      tString('fileExplorer.navigation.forgetServerConfirmTitle'),
+      tString('fileExplorer.navigation.forgetConfirmButton'),
     )
     if (!confirmed) return
     try {
@@ -148,6 +149,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     const confirmed = await confirmDialog(
       tString('servers.hub.forgetShareConfirm', { name: row.name }),
       tString('servers.hub.forgetShareConfirmTitle'),
+      tString('fileExplorer.navigation.forgetConfirmButton'),
     )
     if (!confirmed) return
     try {

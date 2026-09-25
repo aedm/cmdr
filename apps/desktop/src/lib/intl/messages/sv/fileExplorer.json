@@ -433,10 +433,6 @@
   "@fileExplorer.network.browser.removeHostConfirm": {
     "sourceHash": "8ecdf1a"
   },
-  "fileExplorer.network.browser.removeHostConfirmButton": "Ta bort",
-  "@fileExplorer.network.browser.removeHostConfirmButton": {
-    "sourceHash": "c3812fc"
-  },
   "fileExplorer.network.browser.hostRemoved": "Tog bort {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
     "sourceHash": "9e02382"

@@ -127,6 +127,7 @@ export async function forgetSavedServer(volumeId: string, volumeName: string): P
   const confirmed = await confirmDialog(
     tString('fileExplorer.navigation.forgetServerConfirm', { name: volumeName }),
     tString('fileExplorer.navigation.forgetServerConfirmTitle'),
+    tString('fileExplorer.navigation.forgetConfirmButton'),
   )
   if (!confirmed) return
   try {
@@ -170,6 +171,7 @@ export async function forgetSavedSecret(volumeId: string, volumeName: string): P
   const confirmed = await confirmDialog(
     tString('fileExplorer.navigation.forgetSecretConfirm', { name: volumeName }),
     tString('fileExplorer.navigation.forgetSecretConfirmTitle'),
+    tString('fileExplorer.navigation.forgetConfirmButton'),
   )
   if (!confirmed) return
   try {

@@ -434,10 +434,6 @@
   "@fileExplorer.network.browser.removeHostConfirm": {
     "sourceHash": "8ecdf1a"
   },
-  "fileExplorer.network.browser.removeHostConfirmButton": "Verwijder",
-  "@fileExplorer.network.browser.removeHostConfirmButton": {
-    "sourceHash": "c3812fc"
-  },
   "fileExplorer.network.browser.hostRemoved": "{hostName} verwijderd",
   "@fileExplorer.network.browser.hostRemoved": {
     "sourceHash": "9e02382"
