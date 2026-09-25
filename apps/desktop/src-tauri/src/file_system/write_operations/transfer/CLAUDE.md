@@ -10,8 +10,7 @@ File map: `DETAILS.md` § Files.
 
 ## Streaming, cancel, and diagnosis
 
-- **EVERY write stages, local included**: bytes land on a `.cmdr-tmp-<uuid>` SIBLING and take the real name by one
-  same-directory rename. Local-FS goes through `overwrite::stage_and_land_file` (❌ never straight to the destination); cross-volume asks `resolve_staging`. A non-overwrite landing REFUSES an
+- **EVERY write stages, local included**: bytes land on a `.cmdr-tmp-<uuid>` SIBLING, then one same-directory rename. Local-FS uses `overwrite::stage_and_land_file` (❌ never straight to the destination); cross-volume asks `resolve_staging`. A non-overwrite landing REFUSES an
   occupied destination, a move's renames included (`move_op::rename_onto_free_name`); ❌ only a name the CALLER
   claimed earns `land`'s clear-and-rename (`staged_write::LandingName`).
 - **A source that would land on ITSELF is a duplicate, ❌ never a conflict**: settled by `dev+ino` per TOP-LEVEL source
@@ -28,7 +27,7 @@ File map: `DETAILS.md` § Files.
   (module cycle). § "What a reversal does with that identity".
 - **A cross-FS move's source delete removes the LEDGER of what staged, ❌ never the tree** (`move_op/source_sweep.rs`),
   only after the flush answers `Ok` and the destination is listed (DETAILS § Durability): what arrived mid-move keeps
-  its original (`AppearedDuringMove`).
+  its original (`AppearedDuringMove`), as does one saved over after copying (`SourceStamp`).
 - **A MERGED move is NOT rollbackable, and a cross-FS move journals FINAL paths, never staging ones**
   (`note_not_rollbackable`; `JournalDestUnder` rebases, created-dir rows included).
   `operation_log/DETAILS.md` § "Why a directory merge isn't reversible".

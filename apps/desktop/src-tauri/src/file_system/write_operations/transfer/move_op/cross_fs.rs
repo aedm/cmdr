@@ -23,7 +23,7 @@ use super::MoveTransaction;
 use super::merge_move_directory;
 use super::move_resolved_into_place;
 use super::rename_onto_free_name;
-use super::source_sweep::{SourceSweep, delete_sources_after_move};
+use super::source_sweep::{LandedOriginal, SourceStamp, SourceSweep, delete_sources_after_move};
 
 use crate::file_system::staging::StagingTemp;
 use crate::file_system::write_operations::cancellable::remove_dir_all_in_background;
@@ -172,7 +172,7 @@ pub(super) fn move_with_staging(
     // file that appears in the source after the scan is never in the delete set
     // and a leaf the staging copy skipped keeps its original. ❌ Never rebuild
     // it from the source tree: by Phase 4 the tree can hold anything.
-    let mut landed_files: Vec<PathBuf> = Vec::with_capacity(scan_result.files.len());
+    let mut landed_files: Vec<LandedOriginal> = Vec::with_capacity(scan_result.files.len());
     // Original source paths whose copy never reached the destination. Phase 4
     // consults this for what it SAYS about a source (the ledger above already
     // decides what it removes). Holds whole top-level sources (a single-file /
@@ -192,6 +192,11 @@ pub(super) fn move_with_staging(
                 file_info.path.display(),
                 file_info.size
             );
+            // What the original looks like BEFORE the copy reads it, so a save
+            // that lands during the copy counts as a change too, not only one
+            // that lands after it. Phase 4 keeps any original that no longer
+            // matches.
+            let stamp = SourceStamp::read(&file_info.path);
             // Copy to staging directory instead of final destination
             let staged_before = transaction.created_files().len();
             let verdict = copy_single_item(
@@ -234,7 +239,10 @@ pub(super) fn move_with_staging(
             // was written for must stay. `verdict` speaks only to REPORTING
             // below, where being wrong costs a wrong label rather than a file.
             if transaction.created_files().len() > staged_before {
-                landed_files.push(file_info.path.clone());
+                landed_files.push(LandedOriginal {
+                    path: file_info.path.clone(),
+                    stamp,
+                });
             } else {
                 skipped_source_paths.insert(file_info.path.clone());
             }
@@ -552,7 +560,11 @@ pub(super) fn move_with_staging(
         sources,
         landed_files
             .into_iter()
-            .filter(|file| !skipped_source_paths.iter().any(|skipped| file.starts_with(skipped)))
+            .filter(|original| {
+                !skipped_source_paths
+                    .iter()
+                    .any(|skipped| original.path.starts_with(skipped))
+            })
             .collect(),
         &scan_result,
         skipped_source_paths,

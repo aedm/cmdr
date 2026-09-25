@@ -8,6 +8,12 @@
 //! `ENOTEMPTY` the sweep honors: the directory stays, the item stays, and the
 //! operation reports what it left.
 //!
+//! Each ledger entry also carries what its original looked like right before
+//! the copy read it (`SourceStamp`). An original that no longer matches was
+//! saved over after the copy started, so the destination holds the old bytes
+//! and the source holds the only copy of the new ones: it stays, and the
+//! operation reports it beside what appeared.
+//!
 //! ❌ Never reach for `remove_dir_all` here. The source is the only other copy of
 //! the data until Phase 3 lands and Phase 4 runs, and a recursive delete acts on
 //! what is on disk NOW rather than on what this move carried.
@@ -16,10 +22,11 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use crate::file_system::write_operations::error_classification::IoResultExt;
 use crate::file_system::write_operations::event_sinks::OperationEventSink;
+use crate::file_system::write_operations::ledger::{NodeId, WrittenIdentity};
 use crate::file_system::write_operations::state::ScanResult;
 use crate::file_system::write_operations::state::{WriteOperationState, update_operation_status};
 use crate::file_system::write_operations::transfer_sides::{MoveSourceCounts, TransferSide};
@@ -27,12 +34,57 @@ use crate::file_system::write_operations::types::{
     AppearedDuringMove, CancelRollback, SourceItemOutcome, WriteCancelledEvent, WriteOperationError,
     WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
 };
+use crate::file_system::write_operations::validation::is_real_directory;
+
+/// What a source file looked like right before its copy began: size,
+/// modification time, and node. The sweep stats the original again before it
+/// deletes, and any difference means someone wrote to it after the copy started.
+///
+/// An mtime is sound HERE though the in-flight ledgers refuse one
+/// (`../DETAILS.md` § "What the in-flight ledgers record"): both stats read the
+/// SAME file on the SAME filesystem, so a coarse clock (FAT's two seconds)
+/// truncates both alike and can't invent a change. What it can do is hide a
+/// same-size save inside one tick, which is why the node rides along: an
+/// editor's write-temp-then-rename gives the original a new one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct SourceStamp {
+    size: u64,
+    modified: Option<SystemTime>,
+    node: Option<NodeId>,
+}
+
+impl SourceStamp {
+    /// The stamp of the entry at `path`, read with `symlink_metadata` so a
+    /// symlink describes itself. `None` when the stat fails, which the sweep
+    /// reads as unprovable and keeps.
+    pub(super) fn read(path: &Path) -> Option<Self> {
+        fs::symlink_metadata(path).ok().map(|metadata| Self::of(&metadata))
+    }
+
+    fn of(metadata: &fs::Metadata) -> Self {
+        Self {
+            size: metadata.len(),
+            modified: metadata.modified().ok(),
+            node: WrittenIdentity::node_of_stat(metadata),
+        }
+    }
+}
+
+/// One source file this move staged, and what it looked like when the copy
+/// read it.
+pub(super) struct LandedOriginal {
+    pub(super) path: PathBuf,
+    /// `None` when the stat before the copy failed: nothing proves the original
+    /// is still what landed, so the sweep keeps it.
+    pub(super) stamp: Option<SourceStamp>,
+}
 
 /// What the sweep may remove under one top-level source.
 pub(super) struct SweptSource {
     /// The source files this move staged and landed. Removed with
-    /// `remove_file`, which unlinks a symlink rather than following it.
-    landed_files: Vec<PathBuf>,
+    /// `remove_file`, which unlinks a symlink rather than following it, unless
+    /// the original changed after its copy started.
+    landed_files: Vec<LandedOriginal>,
     /// The scanned directories under this source, deepest first, the source
     /// itself last. Each goes through `remove_dir`.
     scanned_dirs: Vec<PathBuf>,
@@ -58,7 +110,7 @@ impl SourceSweep {
     /// phases recorded.
     pub(super) fn plan(
         sources: &[PathBuf],
-        landed_files: Vec<PathBuf>,
+        landed_files: Vec<LandedOriginal>,
         scan_result: &ScanResult,
         skipped: HashSet<PathBuf>,
     ) -> Self {
@@ -88,9 +140,9 @@ impl SourceSweep {
                 per_source[index].scanned_dirs.push(source.clone());
             }
         }
-        for file in landed_files {
-            if let Some(index) = sources.iter().position(|source| file.starts_with(source)) {
-                per_source[index].landed_files.push(file);
+        for original in landed_files {
+            if let Some(index) = sources.iter().position(|source| original.path.starts_with(source)) {
+                per_source[index].landed_files.push(original);
             }
         }
 
@@ -109,7 +161,8 @@ impl SourceSweep {
     }
 }
 
-/// What the sweep left in the source because this move never carried it there.
+/// What the sweep left in the source because this move never carried it there,
+/// or carried an older version of it.
 ///
 // DEFAULT-OK: the zero value is the claim "the sweep has found nothing left
 // behind", which is exactly true of a sweep that hasn't run yet and stays true
@@ -118,7 +171,10 @@ impl SourceSweep {
 pub(super) struct SweepLeftovers {
     /// Items the scan never saw, counted once per unknown subtree.
     item_count: u32,
-    /// The names of the top-level sources that kept one, in sweep order.
+    /// Originals saved over after their copy started, each counted once.
+    changed_count: u32,
+    /// The names of the folders holding either kind, one per top-level source
+    /// that kept something, in sweep order.
     folders: Vec<String>,
 }
 
@@ -129,6 +185,7 @@ impl SweepLeftovers {
         let folder_name = self.folders.first()?.clone();
         Some(AppearedDuringMove {
             item_count: self.item_count,
+            changed_count: self.changed_count,
             folder_name,
             folder_count: self.folders.len() as u32,
         })
@@ -191,8 +248,9 @@ fn stop(error: WriteOperationError, originals_removed: usize, sources_total: usi
 /// A whole top-level source in the skip set (single-file / type-mismatch Skip)
 /// is left untouched. Everything else is swept from the ledger: the landed files
 /// go, then the scanned directories under the source, deepest first, each via
-/// `remove_dir`. A source that survives the sweep — because a Skip kept a child,
-/// or because something arrived after the scan — ends on `Skipped` with
+/// `remove_dir`, except an original that changed after its copy started. A
+/// source that survives the sweep — because a Skip kept a child, something
+/// arrived after the scan, or an original changed — ends on `Skipped` with
 /// `source_removed: false`, so the pane keeps it selected and the search
 /// snapshot keeps its row.
 ///
@@ -303,9 +361,10 @@ pub(super) fn delete_sources_after_move(
             return Err(stop(error, originals_removed, sources_total));
         }
         if source_present {
-            if let Err(error) = remove_landed(&sweep.per_source[index], &drive) {
-                return Err(stop(error, originals_removed, sources_total));
-            }
+            let changed = match remove_landed(&sweep.per_source[index], &drive) {
+                Ok(changed) => changed,
+                Err(error) => return Err(stop(error, originals_removed, sources_total)),
+            };
 
             // Whatever is still standing here was never carried to the
             // destination. `source_removed` is the vanished-path contract, so it
@@ -319,14 +378,10 @@ pub(super) fn delete_sources_after_move(
             }
             if !source_removed {
                 let appeared = count_unscanned_entries(source, &sweep.scanned_paths);
-                if appeared > 0 {
+                if appeared > 0 || changed > 0 {
                     leftovers.item_count += appeared;
-                    leftovers.folders.push(
-                        source
-                            .file_name()
-                            .map(|name| name.to_string_lossy().into_owned())
-                            .unwrap_or_else(|| source.display().to_string()),
-                    );
+                    leftovers.changed_count += changed;
+                    leftovers.folders.push(folder_holding(source));
                 }
             }
             events.emit_source_item_done(WriteSourceItemDoneEvent {
@@ -359,15 +414,53 @@ pub(super) fn delete_sources_after_move(
 
 /// Removes one top-level source's landed files, then the directories that held
 /// them, deepest first. Nothing here recurses over what is on disk: the lists
-/// were fixed when the copy phase ended.
-fn remove_landed(swept: &SweptSource, drive: &SourceDrive<'_>) -> Result<(), WriteOperationError> {
-    for file in &swept.landed_files {
-        remove_landed_file(file, drive)?;
+/// were fixed when the copy phase ended. Answers how many originals it kept
+/// because they changed after their copy started; each one keeps its
+/// directories alive through their `ENOTEMPTY`.
+fn remove_landed(swept: &SweptSource, drive: &SourceDrive<'_>) -> Result<u32, WriteOperationError> {
+    let mut changed = 0;
+    for original in &swept.landed_files {
+        if changed_since_copy(original)? {
+            changed += 1;
+            continue;
+        }
+        remove_landed_file(&original.path, drive)?;
     }
     for dir in &swept.scanned_dirs {
         remove_swept_dir(dir, drive)?;
     }
-    Ok(())
+    Ok(changed)
+}
+
+/// Whether the original is no longer what its copy read. A missing one isn't
+/// "changed": `remove_landed_file` owns what a `NotFound` means, drive and all.
+/// Any other failed stat stops the sweep rather than deleting a file it
+/// couldn't look at.
+///
+/// A save that lands between this stat and the unlink after it still goes
+/// unseen; POSIX has no compare-and-unlink, and the window is two syscalls wide
+/// rather than the whole copy.
+fn changed_since_copy(original: &LandedOriginal) -> Result<bool, WriteOperationError> {
+    match fs::symlink_metadata(&original.path) {
+        Ok(metadata) => Ok(original.stamp != Some(SourceStamp::of(&metadata))),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(e).with_path(&original.path),
+    }
+}
+
+/// The name of the folder a source's leftovers sit in, for the completion
+/// sentence: the source itself when it's a folder, the folder holding it when
+/// it's a file.
+fn folder_holding(source: &Path) -> String {
+    let folder = if is_real_directory(source) {
+        source
+    } else {
+        source.parent().unwrap_or(source)
+    };
+    folder
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| folder.display().to_string())
 }
 
 /// Unlinks one landed source file. `remove_file` acts on a symlink itself, so a

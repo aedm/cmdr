@@ -414,7 +414,7 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 1,
-          appearedDuringMove: { itemCount: 2, folderName: 'Work', folderCount: 1 },
+          appearedDuringMove: { itemCount: 2, changedCount: 0, folderName: 'Work', folderCount: 1 },
         }),
       ).toBe('Moved 1 folder. 2 items appeared in Work during the move and stay there.')
     })
@@ -427,7 +427,7 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 1,
-          appearedDuringMove: { itemCount: 1, folderName: 'Work', folderCount: 1 },
+          appearedDuringMove: { itemCount: 1, changedCount: 0, folderName: 'Work', folderCount: 1 },
         }),
       ).toBe('Moved 1 folder. 1 item appeared in Work during the move and stays there.')
     })
@@ -440,7 +440,7 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 3,
-          appearedDuringMove: { itemCount: 5, folderName: 'Work', folderCount: 2 },
+          appearedDuringMove: { itemCount: 5, changedCount: 0, folderName: 'Work', folderCount: 2 },
         }),
       ).toBe('Moved 3 folders. 5 items appeared in Work and other source folders during the move and stay there.')
     })

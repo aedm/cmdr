@@ -5232,22 +5232,30 @@ export type AppStatus =
   | { type: 'expired'; organizationName: string | null; expiredAt: string; showModal: boolean }
 
 /**
- *  Items that turned up in a move's source folder after the scan counted it: a
- *  download finishing, a sync client landing a file, an editor saving. The copy
- *  phase never saw them, so the source sweep leaves them (and whatever holds
- *  them) alone, and the operation says so instead of reporting a clean move.
+ *  What a move's source sweep left in place because the move didn't carry it:
+ *  items that turned up in a source folder after the scan counted it (a
+ *  download finishing, a sync client landing a file), and originals someone
+ *  saved over after their copy started, whose new bytes never reached the
+ *  destination. The sweep leaves both (and whatever holds them) alone, and the
+ *  operation says so instead of reporting a clean move.
  *
  *  Typed, never a sentence: the FE words this in ten locales.
  */
 export type AppearedDuringMove = {
   /**
-   *  How many items stayed behind. A whole unknown subtree counts once, since
-   *  that's the item the user would recognize in the pane.
+   *  How many items appeared and stayed behind. A whole unknown subtree
+   *  counts once, since that's the item the user would recognize in the pane.
    */
   itemCount: number
   /**
+   *  How many originals changed after their copy started and stayed behind.
+   *  The destination holds the version the copy read.
+   */
+  changedCount: number
+  /**
    *  The name (not the path) of the source folder holding them, for the
-   *  sentence. When several sources kept something, the first one's name.
+   *  sentence: a folder source's own name, a file source's parent's. When
+   *  several sources kept something, the first one's.
    */
   folderName: string
   /**
