@@ -13,7 +13,7 @@
 // drops every volume no drive index can serve (a server, a view inside a drive)
 // on the typed `canBeIndexed` capability.
 
-import { addToast } from '$lib/ui/toast'
+import { addToast, dismissToast, getToasts } from '$lib/ui/toast'
 import { getVolumeIndexStatusById } from '$lib/tauri-commands'
 import { getSetting } from '$lib/settings'
 import { getAppLogger } from '$lib/logging/logger'
@@ -28,6 +28,13 @@ const log = getAppLogger('indexing')
 const promptedThisSession = new Set<string>()
 
 const TOAST_GROUP = 'index-first-connect'
+
+/** The offer on screen for `volumeId`, so it can be withdrawn when its drive goes. */
+const toastIdFor = (volumeId: string): string => `${TOAST_GROUP}:${volumeId}`
+
+/** Drives whose offer is (or may still be) on screen. Plain: nothing renders it. */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping only, nothing renders from it
+const offered = new Set<string>()
 
 export interface FirstConnectActions {
   onEnable: (volumeId: string) => void
@@ -63,7 +70,9 @@ export async function maybePromptFirstConnect(
   promptedThisSession.add(volumeId)
   log.debug('Showing first-connect index prompt for {vid}', { vid: volumeId })
 
+  offered.add(volumeId)
   addToast(FirstConnectIndexToastContent, {
+    id: toastIdFor(volumeId),
     level: 'info',
     dismissal: 'persistent',
     toastGroup: TOAST_GROUP,
@@ -90,4 +99,26 @@ export function isReadyForFirstConnectPrompt(
   containingVolumeId: string | null,
 ): boolean {
   return answersNow(volume.connectionState) && containingVolumeId === volume.id
+}
+
+/**
+ * Withdraws the offer for every drive that left `volumes` or stopped answering (an
+ * ejected share, a saved one whose session went). ❗ An offer to index a drive that
+ * isn't there any more is a button that can't work: "Index private on
+ * localhost:11481?" stayed up after its share was ejected. An offer withdrawn while
+ * still on screen may come back when the drive next connects, since the person
+ * never answered it; one they closed stays closed for the session.
+ */
+export function withdrawGonePrompts(
+  volumes: readonly { id: string; connectionState?: ConnectionState | null }[],
+): void {
+  for (const volumeId of offered) {
+    const volume = volumes.find((v) => v.id === volumeId)
+    if (volume && answersNow(volume.connectionState)) continue
+    offered.delete(volumeId)
+    const id = toastIdFor(volumeId)
+    if (!getToasts().some((toast) => toast.id === id)) continue
+    promptedThisSession.delete(volumeId)
+    dismissToast(id)
+  }
 }

@@ -9,10 +9,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { VolumeIndexStatus } from '$lib/ipc/bindings'
 
 const addToast = vi.fn()
+const dismissToast = vi.fn()
 vi.mock('$lib/ui/toast', () => ({
   addToast: (...a: unknown[]) => {
     addToast(...a)
   },
+  dismissToast: (...a: unknown[]) => {
+    dismissToast(...a)
+  },
+  // Every offer the mock was asked for counts as on screen.
+  getToasts: () => addToast.mock.calls.map((call) => ({ id: (call[1] as { id?: string }).id })),
 }))
 
 const settings: Record<string, unknown> = {}
@@ -48,7 +54,7 @@ vi.mock('$lib/ipc/bindings', () => ({
   },
 }))
 
-import { isReadyForFirstConnectPrompt, maybePromptFirstConnect } from './first-connect-trigger'
+import { isReadyForFirstConnectPrompt, maybePromptFirstConnect, withdrawGonePrompts } from './first-connect-trigger'
 
 const actions = { onEnable: vi.fn(), onSilenceDrive: vi.fn(), onSilenceAll: vi.fn() }
 
@@ -154,5 +160,31 @@ describe('isReadyForFirstConnectPrompt', () => {
     expect(isReadyForFirstConnectPrompt({ id: 'smb-p', connectionState: 'direct' }, 'root')).toBe(false)
     expect(isReadyForFirstConnectPrompt({ id: 'usb-1', connectionState: null }, 'root')).toBe(false)
     expect(isReadyForFirstConnectPrompt({ id: 'usb-1', connectionState: null }, 'usb-1')).toBe(true)
+  })
+})
+
+/**
+ * ❗ The offer goes when its drive does: "Index private on localhost:11481?"
+ * stayed on screen after the share was ejected (QA round 7).
+ */
+describe('withdrawGonePrompts', () => {
+  it('withdraws the offer for a drive that left or stopped answering, and keeps the others', async () => {
+    await maybePromptFirstConnect('smb-gone', 'Gone share', actions)
+    await maybePromptFirstConnect('smb-here', 'Here share', actions)
+    const offered = addToast.mock.calls.map((call) => (call[1] as { id?: string }).id)
+    dismissToast.mockClear()
+
+    withdrawGonePrompts([{ id: 'smb-here', connectionState: 'direct' }])
+
+    expect(dismissToast).toHaveBeenCalledWith(offered[0])
+    expect(dismissToast).not.toHaveBeenCalledWith(offered[1])
+  })
+
+  it('withdraws the offer for a share that is still listed but no longer live', async () => {
+    await maybePromptFirstConnect('smb-saved', 'Saved share', actions)
+    const offered = (addToast.mock.calls.at(-1)?.[1] as { id?: string }).id
+    dismissToast.mockClear()
+    withdrawGonePrompts([{ id: 'smb-saved', connectionState: 'saved' }])
+    expect(dismissToast).toHaveBeenCalledWith(offered)
   })
 })

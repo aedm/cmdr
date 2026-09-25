@@ -29,7 +29,11 @@
     import type { MenuIcon, MenuItem, MenuRowContext, MenuSection } from '$lib/ui/menu-types'
     import { deviceVolumeLabel } from '$lib/adb/adb-volume-label'
     import { deviceRowState } from '$lib/adb/device-readiness'
-    import { isReadyForFirstConnectPrompt, maybePromptFirstConnect } from '$lib/indexing/first-connect-trigger'
+    import {
+        isReadyForFirstConnectPrompt,
+        maybePromptFirstConnect,
+        withdrawGonePrompts,
+    } from '$lib/indexing/first-connect-trigger'
     import { silenceDrive } from '$lib/indexing/drive-index-prefs'
     import { setSetting } from '$lib/settings'
     import { getUsageBar, formatDiskSpaceShort } from '../disk-space-utils'
@@ -332,6 +336,11 @@
         // The first-connect indexing prompt (D6) waits for the drive below.
         if (isDriveRow(volume)) awaitingFirstConnect = volume.id
     }
+
+    // An offer to index a drive that went away (ejected, session gone) is withdrawn.
+    $effect(() => {
+        withdrawGonePrompts(volumes)
+    })
 
     /** A drive picked here whose indexing prompt waits for it to be live and the pane on it. */
     let awaitingFirstConnect = $state<string | null>(null)
