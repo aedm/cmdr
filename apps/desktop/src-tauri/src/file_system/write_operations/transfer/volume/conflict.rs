@@ -8,14 +8,14 @@
 //!   mid-stream failure can't lose both the old and the new copy
 //! - Overwrite (dir→dir): merge into the existing tree (no delete)
 //! - Overwrite (cross-type): only ever from a plain Overwrite a person answered
-//!   on a prompt for that SHAPE, carry included — delete the dest first, then
-//!   write. A policy nobody looked at per item (the config's, a same-kind
+//!   on a prompt for that SHAPE, carry included — rename the dest ASIDE, then
+//!   write; the caller's ledger drops or restores it when the operation ends
+//!   (`displaced_destination.rs`). A policy nobody looked at per item (the config's, a same-kind
 //!   apply-to-all carry) refuses across types and Skips, and so do the
 //!   conditional variants whoever asked for them;
 //!   `../../conflict.rs::resolution_for_clash` holds the rule.
 //! - Rename: Find unique name like "file (1).txt"
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -29,12 +29,12 @@ use super::super::super::state::WriteOperationState;
 use super::super::super::types::{
     ConflictResolution, VolumeCopyConfig, WriteConflictEvent, WriteConflictResolvedEvent, WriteOperationError,
 };
-use super::super::super::unique_name::ClaimedNames;
+use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::finalize::temp_sibling_path;
 use super::item_identity::is_the_same_item;
 use super::naming::find_unique_volume_name;
 use super::transfer_error::{PathRole, map_volume_error};
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 
 /// Outcome of resolving a volume conflict.
 ///
@@ -58,6 +58,11 @@ pub(super) struct ResolvedConflict {
     /// caller must delete `orig` (it survived the full write) then rename
     /// `write_path` → `orig`. `None` ⇒ `write_path` is final, write directly.
     pub replace_after_write: Option<PathBuf>,
+    /// `Some` ⇒ a cross-type Overwrite renamed the entry at `write_path` aside
+    /// to free the name. The caller owns it from here: dropped once what
+    /// replaces it has landed, put back when it doesn't
+    /// (`displaced_destination.rs`). ❌ Never let it fall on the floor.
+    pub displaced: Option<DisplacedDestination>,
 }
 
 /// Resolves a file conflict for volume-to-volume copy.
@@ -108,9 +113,6 @@ pub(super) async fn resolve_volume_conflict(
             .map_err(|e| map_volume_error(&source_path.display().to_string(), PathRole::Source, e))?,
     };
 
-    // The op's ledger of names already handed out, for every namer below.
-    let claimed = &state.claimed_names;
-
     // A source that would land on ITSELF is a request to DUPLICATE it, never a
     // conflict: hand back a free ` (N)` name, and neither the policy nor the
     // person is consulted. Answered before the destination probe and before the
@@ -121,7 +123,7 @@ pub(super) async fn resolve_volume_conflict(
     // child onto the destination it was handed, so a renamed root carries its
     // whole subtree. `../DETAILS.md` § "Self-collision (duplicating in place)".
     if is_the_same_item(source_volume, source_path, dest_volume, dest_path) {
-        let unique = find_unique_volume_name(dest_volume, dest_path, source_is_directory, claimed).await;
+        let unique = find_unique_volume_name(dest_volume, dest_path, source_is_directory, &state.claimed_names).await;
         log::info!(
             "resolve_volume_conflict: {} is already in the destination, duplicating it as {}",
             source_path.display(),
@@ -131,6 +133,7 @@ pub(super) async fn resolve_volume_conflict(
             write_path: unique.path,
             reserved_placeholder: unique.reserved_on_disk,
             replace_after_write: None,
+            displaced: None,
         }));
     }
 
@@ -150,6 +153,7 @@ pub(super) async fn resolve_volume_conflict(
             write_path: dest_path.to_path_buf(),
             reserved_placeholder: false,
             replace_after_write: None,
+            displaced: None,
         }));
     }
 
@@ -212,14 +216,8 @@ pub(super) async fn resolve_volume_conflict(
                     dest_size_hint,
                 )
                 .await;
-                return apply_volume_conflict_resolution(
-                    effective,
-                    dest_volume,
-                    dest_path,
-                    source_is_directory,
-                    claimed,
-                )
-                .await;
+                return apply_volume_conflict_resolution(effective, dest_volume, dest_path, source_is_directory, state)
+                    .await;
             }
 
             // Need to prompt user - gather metadata for the conflict event.
@@ -353,7 +351,7 @@ pub(super) async fn resolve_volume_conflict(
                         dest_size,
                     )
                     .await;
-                    apply_volume_conflict_resolution(effective, dest_volume, dest_path, source_is_directory, claimed)
+                    apply_volume_conflict_resolution(effective, dest_volume, dest_path, source_is_directory, state)
                         .await
                 }
                 Err(_) => {
@@ -372,7 +370,7 @@ pub(super) async fn resolve_volume_conflict(
                 dest_volume,
                 dest_path,
                 source_is_directory,
-                claimed,
+                state,
             )
             .await
         }
@@ -382,7 +380,7 @@ pub(super) async fn resolve_volume_conflict(
                 dest_volume,
                 dest_path,
                 source_is_directory,
-                claimed,
+                state,
             )
             .await
         }
@@ -397,7 +395,7 @@ pub(super) async fn resolve_volume_conflict(
                 dest_size_hint,
             )
             .await;
-            apply_volume_conflict_resolution(effective, dest_volume, dest_path, source_is_directory, claimed).await
+            apply_volume_conflict_resolution(effective, dest_volume, dest_path, source_is_directory, state).await
         }
     }
 }
@@ -485,32 +483,39 @@ async fn reduce_volume_conditional_resolution(
     }
 }
 
-/// Applies a specific conflict resolution for volume copy.
-/// Returns `None` for Skip, or `Some(ResolvedConflict)` describing where to
-/// write and whether a post-write safe-replace finalize is needed.
 /// Whether `path` on `dest_volume` is a directory, for the branches that decide
-/// what to DELETE.
+/// what to clear out of the way.
 ///
 /// "It isn't there" is an answer, and the honest one: a destination that raced
 /// away between conflict detection and resolution has nothing to protect, and
 /// failing the item there would break a write that would simply have succeeded.
 /// Every other error is a refusal to answer, and ❌ must not become `false`:
-/// both callers route a `false` into an arm that deletes.
+/// both callers route a `false` into an arm that clears the name.
+///
+/// A LINK is not a directory here, whatever it points at: a merge into one
+/// would land the source's files in the link's target, outside the folder the
+/// user picked. It meets a folder as the type clash it is.
 async fn resolve_dest_is_directory(dest_volume: &Arc<dyn Volume>, path: &Path) -> Result<bool, WriteOperationError> {
-    match dest_volume.is_directory(path).await {
-        Ok(is_dir) => Ok(is_dir),
+    match dest_volume.entry_kind(path).await {
+        Ok(kind) => Ok(kind == EntryKind::Directory),
         Err(VolumeError::NotFound(_)) => Ok(false),
         Err(e) => Err(map_volume_error(&path.display().to_string(), PathRole::Destination, e)),
     }
 }
 
+/// Applies a specific conflict resolution for volume copy.
+/// Returns `None` for Skip, or `Some(ResolvedConflict)` describing where to
+/// write, whether a post-write safe-replace finalize is needed, and what was set
+/// aside to free the name.
 async fn apply_volume_conflict_resolution(
     resolution: ConflictResolution,
     dest_volume: &Arc<dyn Volume>,
     dest_path: &Path,
     source_is_directory: bool,
-    // The operation's ledger of names already handed out, for the `Rename` arm.
-    claimed: &ClaimedNames,
+    // The operation's state: its ledger of names already handed out (the
+    // `Rename` arm), and the in-flight ledger an aside is recorded in (the
+    // cross-type Overwrite arm).
+    state: &Arc<WriteOperationState>,
 ) -> Result<Option<ResolvedConflict>, WriteOperationError> {
     match resolution {
         ConflictResolution::Stop => {
@@ -532,14 +537,15 @@ async fn apply_volume_conflict_resolution(
             // - For directories (same type): SKIP the delete entirely. The recursive copy merges into
             //   the existing tree; same-named files inside get overwritten by the streaming writers,
             //   files in dest that aren't in source are preserved.
-            // - For cross-type clashes (file→folder or folder→file): the dest type is wrong, so we
-            //   must delete it before the source materializes. There's no volume-level temp+rename
-            //   atomicity (cross-backend) for a type swap, so a recursive delete is the best we can
-            //   do; backends that support it (LocalPosix, MTP, SMB) handle the delete safely under
-            //   their own semantics. This arm is reachable ONLY from an Overwrite a person picked on
-            //   a Stop prompt naming both types: `resolve_volume_conflict` turns every BLANKET
-            //   Overwrite across types into a Skip before it gets here, so nothing a bulk policy
-            //   decided reaches a recursive delete.
+            // - For cross-type clashes (file→folder or folder→file): the dest type is wrong, so the
+            //   name has to be freed before the source materializes. It's freed by renaming the dest
+            //   ASIDE, never by deleting it: a folder replacing a file lands leaf by leaf, and a
+            //   failure or cancel halfway would otherwise leave neither the old entry nor a complete
+            //   new one. The caller holds the aside until the operation ends
+            //   (`displaced_destination.rs::DisplacedLedger`). This arm is reachable ONLY from an
+            //   Overwrite a person picked on a Stop prompt naming both types:
+            //   `resolve_volume_conflict` turns every BLANKET Overwrite across types into a Skip
+            //   before it gets here.
             //
             // The same-type dir branch is enforced HERE rather than relying on `Volume::delete`'s
             // "file or empty directory" trait contract. That contract is real — a shared
@@ -562,56 +568,34 @@ async fn apply_volume_conflict_resolution(
                     write_path: temp,
                     reserved_placeholder: false,
                     replace_after_write: Some(dest_path.to_path_buf()),
+                    displaced: None,
                 }));
             }
 
-            let same_type_dir = dest_is_dir && source_is_directory;
-            if !same_type_dir {
-                // Cross-type (file→folder or folder→file): clear the dest first.
-                if dest_is_dir {
-                    // File→folder overwrite: recursively delete the dest folder.
-                    // The one recursive delete this file is allowed, and it says
-                    // so in the type: the user picked Overwrite on a clash whose
-                    // types differ.
-                    let nothing_to_spare = HashSet::new();
-                    if let Err(e) = super::cleanup::remove_tree(
-                        dest_volume,
-                        dest_path,
-                        &nothing_to_spare,
-                        super::cleanup::TreeRemoval::UserChoseOverwriteAcrossTypes,
-                    )
-                    .await
-                    {
-                        log::warn!(
-                            "apply_volume_conflict_resolution(Overwrite): recursive delete of folder {} stopped at {}: {}",
-                            dest_path.display(),
-                            e.path.display(),
-                            e.error
-                        );
-                    }
-                } else if let Err(e) = dest_volume.delete(dest_path).await {
-                    log::warn!(
-                        "apply_volume_conflict_resolution(Overwrite): delete of file {} failed: {}",
-                        dest_path.display(),
-                        e
-                    );
-                    // Continue: the streaming writer might still succeed if the failure
-                    // was transient.
-                }
-            }
+            // Cross-type (file→folder or folder→file): set the dest aside. A
+            // refused rename fails the item: the name is still taken, and a
+            // write onto it would fail or, for a folder, merge into a file.
+            let displaced = if dest_is_dir == source_is_directory {
+                None
+            } else {
+                displace_destination(state, dest_volume, dest_path, dest_is_dir).await?
+            };
             Ok(Some(ResolvedConflict {
                 write_path: dest_path.to_path_buf(),
                 reserved_placeholder: false,
                 replace_after_write: None,
+                displaced,
             }))
         }
         ConflictResolution::Rename => {
             // Find a unique name - we need to check what exists on the volume
-            let unique = find_unique_volume_name(dest_volume, dest_path, source_is_directory, claimed).await;
+            let unique =
+                find_unique_volume_name(dest_volume, dest_path, source_is_directory, &state.claimed_names).await;
             Ok(Some(ResolvedConflict {
                 write_path: unique.path,
                 reserved_placeholder: unique.reserved_on_disk,
                 replace_after_write: None,
+                displaced: None,
             }))
         }
         ConflictResolution::OverwriteSmaller | ConflictResolution::OverwriteOlder => {

@@ -3873,3 +3873,11 @@ Avancé > Saisie.
   ou » avec un nom masculin), ce qui évite « celui-ci/celle-ci » · `high`.
 - Le drapeau interne suit le moule `oldMacosNoticeShown` et l'astuce `doubleClickOnPaneNotificationSeen` : « Astuce «
   Échap et plein écran » affichée » (hint → astuce, féminin).
+
+## Originaux modifiés pendant le déplacement (`transfer.changedDuringMove`, 2026-09-25)
+
+- **« changed during the move » → `a changé / ont changé pendant le déplacement`** · voix active, comme
+  `fileOperations.cancelRollback.reason.drift.counted` (« ils ont changé ») ; le Finder `PE56` écrit au passif « ont été
+  modifiés au cours de la gravure » (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25), mais le
+  catalogue préfère l'actif. `pendant le déplacement` et `dossiers source` repris mot pour mot du voisin
+  `transfer.appearedDuringMove`, affiché dans la même notification · `high`.

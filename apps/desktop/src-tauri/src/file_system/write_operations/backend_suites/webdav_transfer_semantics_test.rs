@@ -17,6 +17,9 @@
 //! a right one. `crates/cmdr-webdav/src/volume/paths_test.rs` pins the
 //! translation, the bare-path refusal included, with a non-root root.
 
+use super::network_move_drift_test_support::{
+    a_file_added_mid_move_off_the_server_stays, a_file_saved_over_mid_move_off_the_server_stays,
+};
 use super::network_semantics_test_support::{
     a_copy_into_a_missing_nested_destination_makes_every_level,
     a_deep_clash_merge_under_overwrite_replaces_only_the_clash,
@@ -80,6 +83,20 @@ async fn webdav_integration_a_folder_moved_onto_the_server_leaves_no_source() {
 async fn webdav_integration_a_folder_moved_off_the_server_leaves_no_source() {
     let (remote, dir) = fixture().await;
     a_folder_moved_off_the_server_leaves_no_source(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_a_file_saved_over_mid_move_off_the_server_stays() {
+    let (remote, dir) = fixture().await;
+    a_file_saved_over_mid_move_off_the_server_stays(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn webdav_integration_a_file_added_mid_move_off_the_server_stays() {
+    let (remote, dir) = fixture().await;
+    a_file_added_mid_move_off_the_server_stays(remote, dir).await;
 }
 
 // ── Staying on the server ────────────────────────────────────────────

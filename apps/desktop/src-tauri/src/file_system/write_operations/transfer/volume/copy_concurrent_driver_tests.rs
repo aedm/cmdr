@@ -195,7 +195,7 @@ impl Harness {
             dest_path: Path::new("/"),
             config: &self.config,
             concurrency,
-            file_window: super::super::strategy::FileWindow::new(concurrency),
+            file_window: super::super::merge_ctx::FileWindow::new(concurrency),
             dest_dir_is_ours: false,
             dest_index: &self.dest_index,
             pre_skip_paths: &self.pre_skip_paths,
@@ -214,6 +214,7 @@ impl Harness {
             copied_paths: Arc::clone(&self.copied_paths),
             created_dirs: Arc::clone(&self.created_dirs),
             in_flight_partials: Arc::clone(&self.in_flight_partials),
+            displaced: Arc::new(DisplacedLedger::default()),
             deep_skipped_files: Arc::new(AtomicUsize::new(0)),
             deep_skipped_bytes: Arc::new(AtomicU64::new(0)),
         }

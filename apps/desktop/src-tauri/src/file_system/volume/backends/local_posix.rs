@@ -14,7 +14,7 @@ use super::{
     CopyScanResult, ScanConflict, SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
 };
 use crate::file_system::listing::{FileEntry, ListingTally, get_single_entry, list_directory_core_with_tally};
-use crate::file_system::volume::{ListingProgress, WriteMode};
+use crate::file_system::volume::{EntryKind, ListingProgress, WriteMode};
 #[cfg(feature = "playwright-e2e")]
 use crate::ignore_poison::IgnorePoison;
 use std::future::Future;
@@ -346,6 +346,31 @@ impl Volume for LocalPosixVolume {
             })
             .await
             .expect("spawn_blocking is_directory closure doesn't panic and the task is uncancelable")
+        })
+    }
+
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<EntryKind, VolumeError>> + Send + 'a>> {
+        // One bare `lstat`: `get_metadata` also stats a link's target and looks
+        // up owner names, none of which answers this.
+        let abs_path = self.resolve(path);
+        Box::pin(async move {
+            spawn_blocking(move || {
+                let file_type = std::fs::symlink_metadata(&abs_path)
+                    .map_err(|e| VolumeError::from_io_at(&e, &abs_path))?
+                    .file_type();
+                Ok(if file_type.is_symlink() {
+                    EntryKind::Symlink
+                } else if file_type.is_dir() {
+                    EntryKind::Directory
+                } else {
+                    EntryKind::File
+                })
+            })
+            .await
+            .expect("spawn_blocking entry_kind closure doesn't panic and the task is uncancelable")
         })
     }
 

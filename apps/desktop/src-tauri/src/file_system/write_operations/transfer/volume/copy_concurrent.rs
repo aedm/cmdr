@@ -47,6 +47,8 @@ use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::OperationProbe;
 use super::copy::drain_deadline as drain_deadline_for;
 use super::copy_concurrent_task::{CopyTaskFailure, CopyTaskSuccess, run_copy_task};
+use super::displaced_destination::DisplacedLedger;
+use super::merge_ctx::CreatedPaths;
 use super::preflight::SourceHint;
 use super::transfer_error::{PathedVolumeError, WriteFailure};
 use crate::file_system::volume::Volume;
@@ -74,7 +76,7 @@ pub(super) struct ConcurrentCopy<'a> {
     /// the operation never has more than `concurrency` files in flight no matter
     /// how the batch is shaped. ❌ Never a second, per-walker width: `W` sources
     /// × `W` leaves is `W²` files on one connection.
-    pub(super) file_window: super::strategy::FileWindow,
+    pub(super) file_window: super::merge_ctx::FileWindow,
     /// The destination directory was created by THIS operation (Phase 0.5), so
     /// nothing the user already had can be inside it and every pre-check is a
     /// guaranteed miss.
@@ -100,6 +102,8 @@ pub(super) struct ConcurrentCopy<'a> {
     pub(super) copied_paths: Arc<std::sync::Mutex<Vec<WrittenFile>>>,
     pub(super) created_dirs: Arc<std::sync::Mutex<Vec<PathBuf>>>,
     pub(super) in_flight_partials: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    /// What cross-type Overwrites set aside, for the post-loop to settle.
+    pub(super) displaced: Arc<DisplacedLedger>,
     pub(super) deep_skipped_files: Arc<AtomicUsize>,
     pub(super) deep_skipped_bytes: Arc<AtomicU64>,
 }
@@ -159,6 +163,18 @@ struct ConcurrentDriver<'a> {
     /// Handed back to the caller's post-loop; see `ConcurrentOutcome`.
     last_dest_path: Option<PathBuf>,
     copy_error: Option<WriteFailure>,
+    /// A handle on every in-flight task's own rollback ledger, dropped when the
+    /// task settles. What's left at [`Self::finish`] belongs to tasks the driver
+    /// abandoned, whose futures (and the hand-over in them) never ran to the end.
+    unsettled: Vec<UnsettledSource>,
+}
+
+/// One in-flight source's ledger, as the driver holds it.
+struct UnsettledSource {
+    source_path: PathBuf,
+    dest_path: PathBuf,
+    source_is_dir: bool,
+    created: Arc<CreatedPaths>,
 }
 
 /// How one trip through the driver's await ended.
@@ -188,6 +204,7 @@ impl<'a> ConcurrentDriver<'a> {
             drain_shortened: false,
             last_dest_path: None,
             copy_error: None,
+            unsettled: Vec::new(),
         }
     }
 
@@ -241,6 +258,12 @@ impl<'a> ConcurrentDriver<'a> {
                 break;
             };
             if let Some(task) = self.ctx.prepare_source(source_index, source_path).await? {
+                self.unsettled.push(UnsettledSource {
+                    source_path: task.source_path.clone(),
+                    dest_path: task.dest_path.clone(),
+                    source_is_dir: task.source_is_dir,
+                    created: Arc::clone(&task.created),
+                });
                 self.in_flight.push(Box::pin(run_copy_task(task)));
             }
         }
@@ -353,6 +376,7 @@ impl<'a> ConcurrentDriver<'a> {
             skipped_count: task_skipped_count,
             skipped_bytes: task_skipped_bytes,
         } = success;
+        self.settle(&done_source);
         let ctx = &self.ctx;
 
         // Fold this source's deep-merge skips into the op-wide tally, and — when
@@ -366,6 +390,8 @@ impl<'a> ConcurrentDriver<'a> {
         // Remove the in-flight partial (the temp under safe-replace, else the
         // dest) and record what the op wrote for rollback.
         ctx.forget_in_flight_partial(&partial_path);
+        // Whatever this source set aside is now fully replaced.
+        ctx.displaced.landed_under(&recorded_path);
         let file_name_done = recorded_path.file_name().map(|n| n.to_string_lossy().to_string());
         // Journal the per-leaf `rollback_unit` rows under the REAL volume ids (a
         // file source → one leaf at `recorded_path`; a dir source → one leaf per
@@ -448,6 +474,7 @@ impl<'a> ConcurrentDriver<'a> {
             created_files,
             created_dirs: task_created_dirs,
         } = failure;
+        self.settle(&done_source);
         let ctx = &self.ctx;
 
         // Remove from in-flight partials; this one's own partial cleanup (if
@@ -520,6 +547,11 @@ impl<'a> ConcurrentDriver<'a> {
         }
     }
 
+    /// The task for `source` came back, and its own result carries its ledger.
+    fn settle(&mut self, source: &Path) {
+        self.unsettled.retain(|u| u.source_path != source);
+    }
+
     /// Hand the post-loop what it needs, after letting go of whatever is left in
     /// the window.
     fn finish(self) -> ConcurrentOutcome {
@@ -532,6 +564,31 @@ impl<'a> ConcurrentDriver<'a> {
             );
         }
         drop(self.in_flight);
+
+        // A DIRECTORY source dropped mid-walk already landed some of its
+        // children, and they're only in its own ledger. Hand them over exactly as
+        // `record_failure` does for one that came back, or a Rollback can't see
+        // them and a reversal from history has no row for them. A FILE source's
+        // ledger is empty; its partial rides `in_flight_partials`.
+        for abandoned in self.unsettled.into_iter().filter(|u| u.source_is_dir) {
+            let files = std::mem::take(&mut *abandoned.created.files.lock_ignore_poison());
+            let dirs = std::mem::take(&mut *abandoned.created.dirs.lock_ignore_poison());
+            if let Some((src_vol, dst_vol)) = self.ctx.journal_volumes.as_ref() {
+                journal::record_volume_transfer_source(
+                    self.ctx.operation_id,
+                    src_vol,
+                    &abandoned.source_path,
+                    dst_vol,
+                    &abandoned.dest_path,
+                    true,
+                    &files,
+                    None,
+                    abandoned.created.any_overwrote(),
+                );
+            }
+            self.ctx.copied_paths.lock_ignore_poison().extend(files);
+            self.ctx.created_dirs.lock_ignore_poison().extend(dirs);
+        }
 
         ConcurrentOutcome {
             last_dest_path: self.last_dest_path,

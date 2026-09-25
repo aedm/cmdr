@@ -47,8 +47,12 @@
   "@transfer.fileOnly.mixedMove": {
     "sourceHash": "1457a4f"
   },
-  "transfer.appearedDuringMove": "移動過程中有 {countText} {count, plural, other {個項目}}出現在{scope, select, manyFolders {{folderName} 等來源資料夾} other {{folderName}}}中，仍留在原處。",
+  "transfer.appearedDuringMove": "移動過程中有 {countText} {count, plural, other {個項目}}出現在 {scope, select, manyFolders {{folderName} 等來源資料夾} other {{folderName}}} 中，仍留在原處。",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "移動過程中有 {countText} {count, plural, other {個項目}}發生更動，仍留在 {scope, select, manyFolders {{folderName} 等來源資料夾} other {{folderName}}} 中。",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

@@ -18,8 +18,6 @@ mod copy_concurrent;
 mod copy_concurrent_source;
 mod copy_concurrent_task;
 mod copy_serial;
-/// The destination a same-volume Overwrite is replacing, held aside until the
-/// rename that replaces it lands.
 mod displaced_destination;
 // Both carry their own `//!` headers. ❌ No outer `///` here: rustdoc
 // concatenates it with the child's header and resolves the merged doc in THIS
@@ -31,6 +29,7 @@ mod item_identity;
 mod landed_mode;
 mod landing;
 mod merge;
+mod merge_ctx;
 /// `move` is a Rust keyword, so the module is `r#move`. Nothing outside this
 /// facade names it: the move entry points are re-exported below.
 mod r#move;
@@ -43,6 +42,7 @@ mod naming;
 mod preflight;
 mod rename_merge;
 mod sequential_extract;
+mod source_sweep;
 mod strategy;
 mod transfer_error;
 
@@ -51,9 +51,6 @@ mod transfer_error;
 pub use copy::{copy_between_volumes, scan_for_volume_copy};
 pub use r#move::move_between_volumes;
 
-/// The recursive source sweep a zip copy-into needs after pulling a subtree,
-/// plus the enum every caller names its authorization with.
-pub(in crate::file_system::write_operations) use cleanup::{TreeRemoval, remove_tree};
 pub(crate) use copy::copy_volumes_with_progress;
 /// The cross-volume copy body, reused as the extract phase of an out-of-zip
 /// move (`archive_edit`).
@@ -61,6 +58,9 @@ pub(crate) use item_identity::is_the_same_item;
 /// Move ONE file across two volumes, staged and mid-file cancelable, with no
 /// driver above it (the operation-log rollback's cross-volume restore).
 pub(in crate::file_system::write_operations) use move_file::move_file_across_volumes;
+/// A move's source sweep, for an into-zip move: stamp what it carries before
+/// reading it, then remove exactly that once the archive commits.
+pub(in crate::file_system::write_operations) use source_sweep::{CarriedSource, stamp_source, sweep_carried_source};
 /// Pull a remote path down to a local scratch copy (remote zip edits).
 pub(in crate::file_system::write_operations) use strategy::pull_path_to_local;
 /// The refusal for a volume id the registry had nothing for, shared by the
@@ -132,6 +132,9 @@ mod finalize_recovery_tests;
 #[cfg(test)]
 mod dest_precheck_failure_tests;
 
+/// The same rule on a backend whose `is_directory` follows a link (ADB, SFTP).
+#[cfg(test)]
+mod link_following_backend_tests;
 #[cfg(test)]
 mod preflight_stop_tests;
 #[cfg(test)]

@@ -246,6 +246,9 @@ function unshootableReason(entry: (typeof DIALOG_GALLERY_ENTRIES)[number], hasFi
   // never has in production; don't photograph it as if it were real.
   if (entry.hostWindow !== 'main') return `it really lives in the ${entry.hostWindow} window`
   if (entry.usesFixtureDir === true && !hasFixtures) return 'its fixture directory is unavailable'
+  // It starts a real copy, and its prompt has no Escape by design, so the
+  // Escape-based close below could never take it down before the next shot.
+  if (entry.openedBy === 'real-operation') return 'it starts a real copy whose prompt only an answer closes'
   return null
 }
 

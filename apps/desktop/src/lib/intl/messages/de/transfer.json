@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{countText} {count, plural, one {Objekt} other {Objekte}} {count, plural, one {ist} other {sind}} während des Bewegens in {scope, select, manyFolders {{folderName} und weiteren Quellordnern} other {{folderName}}} neu hinzugekommen und {count, plural, one {bleibt} other {bleiben}} dort.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{countText} {count, plural, one {Objekt} other {Objekte}} {count, plural, one {wurde} other {wurden}} während des Bewegens geändert und {count, plural, one {bleibt} other {bleiben}} in {scope, select, manyFolders {{folderName} und weiteren Quellordnern} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

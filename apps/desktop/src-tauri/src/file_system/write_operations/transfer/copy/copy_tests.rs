@@ -501,6 +501,7 @@ fn copy_one_file(source: &Path, dest_dir: &Path) -> CopyTransaction {
         &mut HashSet::new(),
         &mut HashMap::new(),
         &mut HashSet::new(),
+        &mut HashSet::new(),
     )
     .expect("the copy should land");
 

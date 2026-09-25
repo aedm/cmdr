@@ -370,6 +370,24 @@ pub trait Volume: Send + Sync {
         Box::pin(async move { self.get_metadata(path).await.map(|entry| entry.is_directory) })
     }
 
+    /// What the entry at `path` is, with a link reported AS a link.
+    ///
+    /// Ask this, ❌ never [`is_directory`](Self::is_directory), before
+    /// descending into, merging with, or recursively deleting a path: whether
+    /// `is_directory` follows a link differs by backend, and following one walks
+    /// out of the tree the user selected.
+    ///
+    /// Defaults to [`EntryKind::of`] on [`get_metadata`](Self::get_metadata),
+    /// which is right for any backend whose metadata sets `is_symlink`, and for
+    /// every backend with no links at all. Override when the stat underneath
+    /// follows links, or when a bare `lstat` is cheaper than full metadata.
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<EntryKind, VolumeError>> + Send + 'a>> {
+        Box::pin(async move { self.get_metadata(path).await.map(|entry| EntryKind::of(&entry)) })
+    }
+
     // ========================================
     // E2E test support (feature-gated)
     // ========================================
@@ -1640,6 +1658,7 @@ pub fn root_anchored(root: &Path, path: &Path) -> PathBuf {
 mod capabilities;
 mod channel_stream;
 mod connection;
+mod entry_kind;
 mod ids;
 mod in_memory;
 pub mod mkdir_all;
@@ -1675,6 +1694,7 @@ pub mod host;
 pub use capabilities::VolumeCapabilities;
 pub use channel_stream::ChannelReadStream;
 pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavailableReason, SignInShape};
+pub use entry_kind::EntryKind;
 pub use ids::*;
 pub use in_memory::InMemoryVolume;
 pub use mkdir_all::{MadeDirectories, MakesDirectories};
@@ -1688,6 +1708,8 @@ pub use usb_speed::UsbSpeed;
 
 #[cfg(test)]
 mod capabilities_test;
+#[cfg(test)]
+mod entry_kind_test;
 #[cfg(test)]
 mod in_memory_scan_test;
 #[cfg(test)]

@@ -7,13 +7,14 @@
 //! cancel tiers) — and the two call into each other: a directory child comes
 //! back here, a file child goes there.
 //!
-//! Shared vocabulary (`MergeCtx`, `CreatedPaths`, `copy_single_path`) lives in
-//! `strategy.rs` because both halves and `sequential_extract.rs` speak it.
+//! Shared vocabulary (`MergeCtx`, `CreatedPaths`, `FileWindow`) lives in
+//! `merge_ctx.rs` because both halves, both drivers, and `sequential_extract.rs`
+//! speak it.
 //!
 //! The walk DISCOVERS serially and COPIES concurrently: one walker descends the
 //! tree in listing order and resolves every conflict on itself, exactly as it
 //! always did, while each file's byte copy joins the operation-wide
-//! `strategy.rs::FileWindow` and overlaps its siblings. `DETAILS.md`
+//! `merge_ctx.rs::FileWindow` and overlaps its siblings. `DETAILS.md`
 //! § "One window for the whole operation".
 //!
 //! The merge invariant this file has to keep: a merge never deletes or
@@ -38,12 +39,10 @@ use super::super::transfer_driver::SourceProgress;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskPhase, TaskProbeHandle, TaskRole, set_task_phase};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::landing::{DestFolder, NewName, where_it_lands};
+use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::naming::take_back_reservation;
 use super::preflight::SourceFileFacts;
-use super::strategy::{
-    CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, WriteStaging, note_pending_for_local_dest,
-    staging_for, stream_pipe_file,
-};
+use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{Volume, VolumeError};
@@ -256,11 +255,11 @@ async fn copy_leaf<'a>(
     )
     .await;
     // This child gave up (a read failure, a cancel between chunks), so the name
-    // it reserved has to go back. Nothing else knows about the reservation:
-    // `created` is written on SUCCESS below, so a leftover placeholder is an
-    // empty file no rollback claims and no sweep can find.
+    // it reserved goes back now, rather than waiting for the post-loop sweep of
+    // unfilled reservations (`naming.rs::take_back_unfilled_reservations`), which
+    // is there for the leaf whose future is dropped before it gets here.
     if streamed.is_err() && reserved_placeholder {
-        take_back_reservation(dest_volume, &write_dest).await;
+        take_back_reservation(dest_volume, &write_dest, &state.claimed_names).await;
     }
     let bytes = streamed.map_err(|f| PathedVolumeError::at_source_or_rescued_dest(f, &child_source, &write_dest))?;
     // Safe-replace finalize for a file→file Overwrite: the temp now holds the
@@ -497,6 +496,9 @@ async fn merge_level<'a>(
     };
     let dest_index = dest_index.at(source_path)?;
     let entries = entries.at(source_path)?;
+    // A move sweeps exactly the folders this walk listed; anything else it
+    // finds in the source afterwards arrived later and stays.
+    created.record_walked_source_dir(source_path);
 
     for entry in &entries {
         // The cooperative boundary, per entry. The walk's own work (listings,
@@ -615,6 +617,11 @@ async fn merge_level<'a>(
             .await?;
             continue;
         }
+
+        // Past every Skip, so this child is one the move carries. Recording it
+        // here rather than when its bytes land is safe: a leaf that fails fails
+        // the whole source, and a failed source is never swept.
+        created.record_carried_source(&child_source, entry);
 
         // PLAN MODE (one-pass sequential extract): the destination + conflict are
         // resolved; record the write and let the caller's single decode pass
@@ -752,11 +759,19 @@ async fn resolve_merge_child(
             write_path,
             replace_after_write,
             reserved_placeholder,
-        })) => Ok(MergeChildDecision::Proceed {
-            write_path,
-            replace: replace_after_write,
-            reserved_placeholder,
-        }),
+            displaced,
+        })) => {
+            // A cross-type Overwrite's aside is the operation's to settle, once
+            // it knows how it ended.
+            if let Some(displaced) = displaced {
+                ctx.displaced.hold(displaced);
+            }
+            Ok(MergeChildDecision::Proceed {
+                write_path,
+                replace: replace_after_write,
+                reserved_placeholder,
+            })
+        }
         // The resolver returns a typed `WriteOperationError`; map cancellation
         // back to the `VolumeError::Cancelled` this function's callers expect so
         // the post-loop reclassifies it as a cancel, not a transport error.

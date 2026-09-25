@@ -27,16 +27,17 @@ use super::super::super::types::{
     CancelRollback, VolumeCopyConfig, WriteCancelledEvent, WriteCompleteEvent, WriteOperationError,
     WriteOperationPhase, WriteOperationType,
 };
+use super::super::left_in_source::LeftInSource;
 use super::super::transfer_driver::{
     ConflictDecision, ConflictDecisionInput, DriverConfig, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
-use super::cleanup::{TreeRemoval, remove_tree};
 use super::conflict::resolve_volume_conflict;
+use super::displaced_destination::DisplacedLedger;
 use super::preflight::SourceFileFacts;
 use super::preflight::{SourceHint, scan_volume_sources};
 use super::strategy::{copy_single_path, resolve_source_is_directory};
-use super::transfer_error::{AtPath, PathRole, WriteFailure, map_volume_error};
+use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
 
@@ -169,6 +170,15 @@ pub(crate) async fn move_volumes_with_progress(
     // moved. Mirrors `volume/copy_serial.rs`'s `deep_skipped_files`.
     let deep_skipped_files = Arc::new(AtomicUsize::new(0));
 
+    // What the source sweeps left in place, across every top-level source, for
+    // the completion event (`AppearedDuringMove`).
+    let left_in_source: Arc<std::sync::Mutex<LeftInSource>> = Arc::default();
+
+    // What a cross-type Overwrite renamed aside to free a name, at any depth.
+    // Settled after the loop, once the move knows how it ended
+    // (`displaced_destination.rs`).
+    let displaced = Arc::new(DisplacedLedger::default());
+
     // Live in-flight table + stall watchdog, the same registration
     // `volume/copy.rs` makes for both of its paths. Without it
     // `state.rs::enrich_progress` misses the lookup, every `write-progress`
@@ -230,7 +240,9 @@ pub(crate) async fn move_volumes_with_progress(
             let config = config_owned.clone();
             let operation_id = operation_id_owned.clone();
             let op_probe_conflict = Arc::clone(&op_probe);
+            let displaced = Arc::clone(&displaced);
             move |input: ConflictDecisionInput<'_>| -> ResolveFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let source_volume = Arc::clone(&source_volume);
                 let dest_volume = Arc::clone(&dest_volume);
                 let state = Arc::clone(&state);
@@ -294,10 +306,15 @@ pub(crate) async fn move_volumes_with_progress(
                             let bytes_accounted = source_hint.map(|h| h.size).unwrap_or(0);
                             ConflictDecision::Skip { bytes_accounted }
                         }
-                        Some(rc) => ConflictDecision::Proceed {
-                            dest_path: rc.write_path,
-                            replace_after_write: rc.replace_after_write,
-                        },
+                        Some(rc) => {
+                            if let Some(aside) = rc.displaced {
+                                displaced.hold(aside);
+                            }
+                            ConflictDecision::Proceed {
+                                dest_path: rc.write_path,
+                                replace_after_write: rc.replace_after_write,
+                            }
+                        }
                     })
                 })
             }
@@ -316,7 +333,7 @@ pub(crate) async fn move_volumes_with_progress(
             // is the same single-source shape a folder copy is: without a window
             // its whole subtree streams one file at a time. Same width as the
             // copy driver's, and the same number the in-flight table declares.
-            let file_window = super::strategy::FileWindow::new(concurrency);
+            let file_window = super::merge_ctx::FileWindow::new(concurrency);
             let last_progress_time: Arc<std::sync::Mutex<Instant>> = Arc::new(std::sync::Mutex::new(Instant::now()));
             // ONE ledger for the whole move, so the leaves a folder streams at
             // once each hold their own share of the in-flight byte total.
@@ -335,6 +352,7 @@ pub(crate) async fn move_volumes_with_progress(
                 progress_interval,
             );
             let deep_skipped_files = Arc::clone(&deep_skipped_files);
+            let left_in_source = Arc::clone(&left_in_source);
             let journal_volumes = journal_volumes.clone();
             // The move keeps an in-flight table like the copy driver's, so a
             // frozen bar during a folder move gets the same "waiting on the
@@ -344,7 +362,9 @@ pub(crate) async fn move_volumes_with_progress(
             // a time here.
             let op_probe = Arc::clone(&op_probe);
             let source_index = Arc::new(AtomicUsize::new(0));
+            let displaced = Arc::clone(&displaced);
             move |ctx: TransferContext<'_>| -> TransferFut<'_> {
+                let displaced = Arc::clone(&displaced);
                 let op_probe = Arc::clone(&op_probe);
                 let source_index = Arc::clone(&source_index);
                 let source_volume = Arc::clone(&source_volume);
@@ -359,6 +379,7 @@ pub(crate) async fn move_volumes_with_progress(
                 let leaf_ledger = Arc::clone(&leaf_ledger);
                 let last_progress_time = Arc::clone(&last_progress_time);
                 let deep_skipped_files = Arc::clone(&deep_skipped_files);
+                let left_in_source = Arc::clone(&left_in_source);
                 let journal_volumes = journal_volumes.clone();
                 let source_path = ctx.source_path.to_path_buf();
                 let dest_item_path = ctx
@@ -404,8 +425,9 @@ pub(crate) async fn move_volumes_with_progress(
                     // The copy phase's per-file ledger. Cross-volume move's own
                     // rollback reverses renames / cleans staging separately, but
                     // the operation-log capture harvests it below for the per-leaf
-                    // journal rows.
-                    let created = super::strategy::CreatedPaths::default();
+                    // journal rows. It also keeps the SOURCE ledger the sweep
+                    // below removes from.
+                    let created = super::merge_ctx::CreatedPaths::recording_sources();
                     // This source's row in the in-flight table, and the number
                     // every leaf row below it hangs off. Sources run one at a
                     // time here, so the counter labels the source rows in order.
@@ -417,7 +439,7 @@ pub(crate) async fn move_volumes_with_progress(
                     // dest folder, deep file clashes inside honor the file policy
                     // (Stop-wait, latch, conditional reduce, type mismatches) —
                     // the same granularity the top-level move already has.
-                    let merge_ctx = super::strategy::MergeCtx {
+                    let merge_ctx = super::merge_ctx::MergeCtx {
                         events: &*events,
                         operation_id: &operation_id,
                         config: &config_for_merge,
@@ -425,6 +447,7 @@ pub(crate) async fn move_volumes_with_progress(
                         apply_to_all: &merge_apply_to_all,
                         source_hints: &source_hints,
                         window: file_window,
+                        displaced: &displaced,
                         // ❗ Every leaf the window holds opens a row of its OWN
                         // through this, numbered under `source_row`, and that is
                         // the invariant every `TaskProbe` field is built on:
@@ -435,7 +458,7 @@ pub(crate) async fn move_volumes_with_progress(
                         // below, so concurrent writes would clobber one row's
                         // stall-abort token and byte count and the dump would
                         // name the folder instead of the file that wedged.
-                        probe: Some(super::strategy::MergeProbe {
+                        probe: Some(super::merge_ctx::MergeProbe {
                             operation: Arc::clone(&op_probe),
                             source_row,
                         }),
@@ -465,6 +488,13 @@ pub(crate) async fn move_volumes_with_progress(
                         &dest_item_path.display().to_string(),
                     );
                     let probe = task_probe.probe();
+                    // A FILE source's stamp, taken before a byte is read. A
+                    // folder's children are stamped by the walk's own listing.
+                    let stamp_before = if source_is_dir {
+                        None
+                    } else {
+                        super::source_sweep::stamp_file(&source_volume, &source_path).await
+                    };
                     let copy_fut = copy_single_path(
                         &source_volume,
                         &source_path,
@@ -546,32 +576,31 @@ pub(crate) async fn move_volumes_with_progress(
                             return Err(super::transfer_error::map_finalize_failure(&orig, e));
                         }
 
-                    // Delete source. `Volume::delete` is contractually for
-                    // files or *empty* directories (LocalPosix uses
-                    // `std::fs::remove_dir`, which fails ENOTEMPTY), so
-                    // directory sources need a recursive sweep. Cross-volume
-                    // copy doesn't touch the source, so its tree is intact.
-                    //
-                    // ❗ The sweep SPARES every child the merge skipped. A
-                    // skipped child never landed at the destination, so its
-                    // source is the only copy in existence and deleting it
-                    // destroys exactly the data the user declined to move — and
-                    // the conditional policies reduce to Skip per file, so
-                    // "Overwrite all smaller / older" hits this constantly.
-                    // Their ancestor directories survive with them.
-                    let delete_result = if source_is_dir {
-                        let skipped = created.skipped_source_paths();
-                        deep_skipped_files.fetch_add(skipped.len(), Ordering::Relaxed);
-                        remove_tree(
-                            &source_volume,
-                            &source_path,
-                            &skipped,
-                            TreeRemoval::MoveSourceAfterDestinationLanded,
-                        )
-                        .await
+                    // Remove the source, from the LEDGER the copy kept, ❌ never
+                    // by walking what's on disk now (`source_sweep.rs`). What
+                    // stays is the user's only copy of something: a child the
+                    // merge skipped (the conditional policies reduce to Skip per
+                    // file, so "Overwrite all smaller / older" hits this
+                    // constantly), an item that appeared while the folder
+                    // copied, or an original saved over after the copy read it.
+                    let skipped = created.skipped_source_paths();
+                    deep_skipped_files.fetch_add(skipped.len(), Ordering::Relaxed);
+                    let carried = if source_is_dir {
+                        super::source_sweep::CarriedSource::Folder(created.take_source_ledger())
                     } else {
-                        source_volume.delete(&source_path).await.at(&source_path)
+                        super::source_sweep::CarriedSource::File(stamp_before)
                     };
+                    let delete_result =
+                        super::source_sweep::sweep_carried_source(&source_volume, &source_path, &carried, &skipped)
+                            .await
+                            .map(|kept| {
+                                left_in_source.lock_ignore_poison().note(
+                                    &source_path,
+                                    source_is_dir,
+                                    kept.appeared,
+                                    kept.changed,
+                                );
+                            });
                     if let Err(e) = delete_result {
                         // Same rule as the copy phase: name the file that
                         // actually refused to go, which for a directory source
@@ -586,6 +615,8 @@ pub(crate) async fn move_volumes_with_progress(
                         );
                         return Err(map_volume_error(&e.path.display().to_string(), PathRole::Source, e.error));
                     }
+                    // Moved in full, so whatever it set aside is replaced.
+                    displaced.landed_under(&landed_dest);
 
                     // Journal the moved leaves under the REAL volume ids: a file
                     // source → one leaf (source on the source volume, dest on the
@@ -647,6 +678,20 @@ pub(crate) async fn move_volumes_with_progress(
     // below, so a cancel that left scratch behind never reports a clear
     // destination.
     let staged_leftovers = super::cleanup::clean_abandoned_staged_writes(&dest_volume, state).await;
+    // Every ` (N)` placeholder a `Rename` reserved that no write landed on
+    // (`naming.rs::take_back_unfilled_reservations`).
+    super::naming::take_back_unfilled_reservations(&dest_volume, &state.claimed_names).await;
+
+    // Every replacement is in on success, so what they replaced goes. Otherwise
+    // what a finished source replaced goes too, and the rest come home (or stay
+    // beside a half-moved folder under a ` (recovered)` name).
+    let recovered = match outcome.intent {
+        PostLoopIntent::Completed => {
+            displaced.discard_all(&dest_volume).await;
+            Vec::new()
+        }
+        PostLoopIntent::Cancelled | PostLoopIntent::Failed(_) => displaced.settle_interrupted(&dest_volume).await,
+    };
 
     match outcome.intent {
         PostLoopIntent::Completed => {
@@ -662,7 +707,7 @@ pub(crate) async fn move_volumes_with_progress(
                 files_processed: files_done,
                 files_skipped,
                 bytes_processed: bytes_done,
-                appeared_during_move: None,
+                appeared_during_move: left_in_source.lock_ignore_poison().appeared_during_move(),
                 top_level_skipped: None,
                 refused: None,
             });
@@ -688,8 +733,15 @@ pub(crate) async fn move_volumes_with_progress(
             }))
         }
         PostLoopIntent::Failed(err) => {
-            // `err` is already the typed `WriteOperationError` the FE renders from.
-            Err(WriteFailure::synthetic(err))
+            // `err` is already the typed `WriteOperationError` the FE renders
+            // from. It also has to say where any entry kept aside went.
+            if recovered.is_empty() {
+                return Err(WriteFailure::synthetic(err));
+            }
+            Err(WriteFailure::synthetic(WriteOperationError::OriginalsKeptAside {
+                cause: Box::new(err),
+                recovered,
+            }))
         }
     }
 }
@@ -729,6 +781,11 @@ mod same_overwrite_tests;
 #[cfg(test)]
 #[path = "move_same_tests.rs"]
 mod same_tests;
+/// What the source sweep does with an original saved over, or an item that
+/// appeared, while its folder copied.
+#[cfg(test)]
+#[path = "move_source_drift_tests.rs"]
+mod source_drift_tests;
 #[cfg(test)]
 #[path = "move_test_support.rs"]
 mod test_support;

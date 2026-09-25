@@ -26,11 +26,10 @@ use super::super::super::state::WriteOperationState;
 use super::super::super::types::VolumeCopyConfig;
 use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskProbeHandle};
+use super::displaced_destination::DisplacedLedger;
+use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::preflight::{SourceFileFacts, SourceHint};
-use super::strategy::{
-    CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, copy_single_path, failed_write_leaves_ours_at,
-    staging_for,
-};
+use super::strategy::{LandingName, copy_single_path, failed_write_leaves_ours_at, staging_for};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
@@ -146,6 +145,14 @@ pub(super) struct CopyTask {
     pub(super) file_name: Option<String>,
     /// The operation's one file-copy window, shared with every merge walker.
     pub(super) window: FileWindow,
+    /// The operation's ledger of cross-type asides, which a deep clash inside
+    /// this source adds to.
+    pub(super) displaced: Arc<DisplacedLedger>,
+    /// This source's rollback ledger: the files it streams and the dirs it newly
+    /// creates. Shared with the driver, which keeps a handle so a task it
+    /// ABANDONS at the cancel-drain deadline still hands over what it landed
+    /// (`copy_concurrent.rs::ConcurrentDriver::finish`).
+    pub(super) created: Arc<CreatedPaths>,
     /// The in-flight table plus this source's row, so every leaf of a directory
     /// source's subtree opens a row numbered under it.
     pub(super) merge_probe: Option<MergeProbe>,
@@ -179,6 +186,8 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         dest_name_claimed,
         file_name,
         window,
+        displaced,
+        created,
         merge_probe,
         // Held for the task's whole life; dropping it (completion, abort, panic)
         // removes the row from the in-flight table.
@@ -195,9 +204,6 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
     // clock is the operation's, shared with every sibling task, so the event
     // rate the user sees is the operation's and not each task's.
     let source_progress = leaf_ledger.for_source(file_name, Arc::clone(&last_progress));
-    // Per-source rollback ledger: the files this task streams and the dirs it
-    // newly creates inside a directory source.
-    let created = CreatedPaths::default();
     // Deep merge children are never top-level sources, so the resolver never
     // keys into per-source hints for them — an empty map is correct.
     let merge_hints: HashMap<PathBuf, SourceHint> = HashMap::new();
@@ -209,6 +215,7 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         apply_to_all: &apply_to_all,
         source_hints: &merge_hints,
         window: window.clone(),
+        displaced: &displaced,
         probe: merge_probe,
     };
     // A top-level FILE source IS a leaf, so it takes its slot from the same

@@ -404,8 +404,7 @@ async fn remove_tree_removes_nonempty_directory() {
     remove_tree(
         &result,
         Path::new("/photos"),
-        &HashSet::new(),
-        TreeRemoval::MoveSourceAfterDestinationLanded,
+        TreeRemoval::UserChoseOverwriteAcrossTypes,
     )
     .await
     .unwrap();
@@ -424,8 +423,7 @@ async fn remove_tree_removes_single_file() {
     remove_tree(
         &result,
         Path::new("/file.txt"),
-        &HashSet::new(),
-        TreeRemoval::MoveSourceAfterDestinationLanded,
+        TreeRemoval::UserChoseOverwriteAcrossTypes,
     )
     .await
     .unwrap();
@@ -456,14 +454,9 @@ async fn remove_tree_reports_the_leaf_that_refused() {
         .await
         .unwrap();
 
-    let failure = remove_tree(
-        &volume,
-        Path::new("/tree"),
-        &HashSet::new(),
-        TreeRemoval::MoveSourceAfterDestinationLanded,
-    )
-    .await
-    .expect_err("the leaf never deletes, so the sweep can't finish");
+    let failure = remove_tree(&volume, Path::new("/tree"), TreeRemoval::UserChoseOverwriteAcrossTypes)
+        .await
+        .expect_err("the leaf never deletes, so the sweep can't finish");
     assert_eq!(
         failure.path,
         Path::new("/tree/nested/doomed.txt"),
@@ -484,8 +477,7 @@ async fn remove_tree_missing_path_is_ok() {
     let r = remove_tree(
         &result,
         Path::new("/never-existed"),
-        &HashSet::new(),
-        TreeRemoval::MoveSourceAfterDestinationLanded,
+        TreeRemoval::UserChoseOverwriteAcrossTypes,
     )
     .await;
     assert!(r.is_ok(), "expected Ok, got {r:?}");

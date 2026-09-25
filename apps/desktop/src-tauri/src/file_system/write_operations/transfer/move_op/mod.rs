@@ -613,6 +613,11 @@ mod tests;
 #[path = "move_source_sweep_tests.rs"]
 mod move_source_sweep_tests;
 
+/// What the sweep does with an original someone saved over after its copy.
+#[cfg(test)]
+#[path = "move_source_drift_tests.rs"]
+mod move_source_drift_tests;
+
 /// What a move REPORTS while it runs: the phases it announces and the counts
 /// under them. Its sibling above owns what a move does to the files.
 #[cfg(test)]

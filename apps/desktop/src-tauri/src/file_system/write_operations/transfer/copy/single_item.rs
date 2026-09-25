@@ -124,6 +124,29 @@ fn journal_dest(remap: Option<JournalDestUnder<'_>>, written: &Path) -> PathBuf 
     remap.map_or_else(|| written.to_path_buf(), |r| r.rebase(written))
 }
 
+/// The source folder that lands at `blocking`, the file standing where a
+/// folder→file clash needs a directory.
+///
+/// `blocking` is an ancestor of `dest_path`, and everything below it mirrors the
+/// source tree (a `dir_remap` redirect only ever swaps a prefix ABOVE it, since
+/// the redirected root is a directory the walk stops at). So the folder is
+/// `source` with as many trailing components dropped as `dest_path` has below
+/// `blocking`. Counting components rather than comparing names keeps it right
+/// for a copy that lands under a different top-level name.
+fn incoming_folder_for(source: &Path, dest_path: &Path, blocking: &Path) -> PathBuf {
+    dest_path
+        .strip_prefix(blocking)
+        .ok()
+        .and_then(|below| source.ancestors().nth(below.components().count()))
+        .map_or_else(
+            // Can't happen (the walk that found `blocking` started under it).
+            // The blocking path still names the clash, and the prompt keeps
+            // calling the incoming side a folder: that comes from the caller.
+            || blocking.to_path_buf(),
+            Path::to_path_buf,
+        )
+}
+
 /// Copies a single file or symlink to its destination.
 /// Ensures parent directories exist before copying.
 /// Used by both copy and cross-filesystem move operations.
@@ -168,6 +191,11 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
     // `<dest>/name` (a file is there) to `<dest>/name (1)`; every subsequent
     // child of that subtree must follow the redirect. Empty in the common case.
     dir_remap: &mut HashMap<PathBuf, PathBuf>,
+    // Dest-subtree roots a folder→file clash answered with Skip: the file there
+    // stays, and every later child of the incoming folder is skipped without
+    // asking again. The person answered for the folder, not for the one child
+    // that happened to reach the clash first. Empty in the common case.
+    skipped_subtrees: &mut HashSet<PathBuf>,
     // Destinations already made durable by the copy strategy (chunked copy's
     // inline `sync_data`) or for which a flush is moot (APFS clonefile /
     // reflink). The end-of-op flush pass skips these so a long chunked batch
@@ -200,6 +228,12 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
     // operates on the remapped path. `apply_dir_remap` is a no-op when no
     // ancestor of `dest_path` was redirected (the overwhelmingly common case).
     let mut dest_path = super::apply_dir_remap(&dest_path, dir_remap);
+
+    if skipped_subtrees.iter().any(|root| dest_path.starts_with(root)) {
+        let _ = fs::symlink_metadata(source).with_path(source)?;
+        record_file_done(&progress_ctx, source, write_weight, files_done, bytes_done);
+        return Ok(FileVerdict::Skipped);
+    }
 
     // Ensure parent directories exist
     if let Some(parent) = dest_path.parent().map(Path::to_path_buf)
@@ -234,8 +268,11 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
 
             if let Some(blocking) = blocking_file {
                 // A file exists where we need a directory (folder→file clash):
-                // resolve it. We pass the blocking file path (not source) so the
-                // conflict dialog shows the existing file's metadata.
+                // resolve it. The pair handed over is the source FOLDER that
+                // maps onto `blocking` and the blocking file itself, so the
+                // prompt asks "replace this file with this whole folder?"
+                // rather than describing the child file that happened to reach
+                // the clash first.
                 //
                 // `apply_resolution` distinguishes the two non-skip outcomes by
                 // path: Overwrite returns `path == blocking` (replace in place),
@@ -245,11 +282,8 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
                 // now `true` for both (Rename also reserves a placeholder it must
                 // consume).
                 match resolve_conflict(
+                    &incoming_folder_for(source, &dest_path, &blocking),
                     &blocking,
-                    &blocking,
-                    // What's arriving is the DIRECTORY the dest tree needs
-                    // here, even though the pair handed over is the blocking
-                    // file on both sides (so the prompt describes it).
                     IncomingItem::Directory,
                     config,
                     events,
@@ -306,10 +340,12 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
                         dest_path = super::apply_dir_remap(&dest_path, dir_remap);
                     }
                     None => {
-                        // Skip: don't copy this file. Use `write_weight`
+                        // Skip: don't copy this file, nor anything else the
+                        // incoming folder holds. Use `write_weight`
                         // (not `metadata.len()`) so the dedup decision baked
                         // in by scan stays consistent across skip paths.
                         let _ = fs::symlink_metadata(source).with_path(source)?;
+                        skipped_subtrees.insert(blocking);
                         record_file_done(&progress_ctx, source, write_weight, files_done, bytes_done);
                         return Ok(FileVerdict::Skipped);
                     }

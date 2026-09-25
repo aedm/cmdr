@@ -56,11 +56,14 @@ interface DialogGalleryEntryBase {
    *   `routes/(main)/+page.svelte`).
    * - `event-seeded`: the gallery arranges the dialog's preconditions and emits
    *   the real backend event it self-mounts off (`drive-index-stale`).
+   * - `real-operation`: the gallery starts a real operation in the conflict
+   *   fixture tree, and that operation raises the dialog (`operation-conflict`).
+   *   Answers really happen, inside the fixture tree.
    *
    * The Debug panel discloses this per row, and the harness's mount sweep knows
    * these rows render nothing of their own.
    */
-  openedBy?: 'store-seeded' | 'app-command' | 'event-seeded'
+  openedBy?: 'store-seeded' | 'app-command' | 'event-seeded' | 'real-operation'
   /**
    * The dialog does real work on mount (scans, conflict lookups, path
    * resolution), so it runs against a real throwaway directory. The Debug panel
@@ -169,10 +172,14 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
     dialogId: 'operation-conflict',
     label: 'Operation conflict',
     hostWindow: 'main',
-    status: 'not-triggerable',
-    reason:
-      'Only a real operation can raise it. It appears when a copy or move that no progress dialog is showing (one sent to the queue with F2) hits a name clash deep inside a merging folder, which the upfront check can’t see. Getting here means staging a genuine clash under a folder that already exists at the destination, picking “Ask for each”, backgrounding the operation, and letting it reach that file — the body is the same TransferConflictDialog the progress dialog embeds, so the gallery’s transfer-progress row covers what it looks like.',
-    states: [],
+    status: 'ready',
+    openedBy: 'real-operation',
+    note: 'Each state starts a real copy under “Ask for each” in a throwaway conflict folder beside the fixture directory, and the copy parks on a real clash, exactly like one sent to the queue: the prompt, its “Copying to …” line, and its buttons are the shipping ones. Whatever you answer really happens there (and a finished copy shows its toast); the next trigger puts the clash back. While it asks, the prompt pauses every other running operation, as it does for real. Folder sizes come from the drive index, so a folder the index hasn’t seen yet reads “(unknown)”. There’s no Escape: every way out is an answer.',
+    states: [
+      { id: 'folder-over-file', label: 'Folder onto a file' },
+      { id: 'file-over-folder', label: 'File onto a folder' },
+      { id: 'file-over-file', label: 'File onto a file' },
+    ],
   },
   {
     dialogId: 'transfer-error',

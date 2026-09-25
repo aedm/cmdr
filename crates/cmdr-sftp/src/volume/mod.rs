@@ -267,6 +267,21 @@ impl SftpVolume {
         let session: Arc<dyn std::any::Any + Send + Sync> = self.inner.session.read().await.clone()?;
         Some(Arc::downgrade(&session))
     }
+
+    /// Makes `link` a symlink to `target` (both app paths), for a cell that needs
+    /// a link on the server. The `Volume` trait has no way to make one.
+    #[cfg(any(test, feature = "testing"))]
+    pub async fn create_symlink(&self, link: &Path, target: &Path) -> Result<(), VolumeError> {
+        let remote_link = self.to_remote_path(link)?;
+        let remote_target = self.to_remote_path(target)?;
+        let session = self.clone_session().await?;
+        session
+            .sftp()
+            .fs()
+            .symlink(&remote_target, &remote_link)
+            .await
+            .map_err(|e| crate::errors::map_sftp_error(&e, &remote_link))
+    }
 }
 
 /// Opens an SFTP volume, or reports that its host key needs approving.

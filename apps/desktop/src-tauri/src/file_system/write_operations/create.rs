@@ -265,7 +265,6 @@ async fn route_archive_create(
             source: Some(name.to_string()),
             destination: None,
         },
-        move_sources_to_delete: Vec::new(),
         skipped_count: 0,
         // No scan preview: nothing walked a tree to plan this edit.
         preview_id: None,

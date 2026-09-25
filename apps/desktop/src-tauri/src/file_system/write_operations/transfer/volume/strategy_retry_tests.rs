@@ -19,6 +19,7 @@
 //! arrive at the moments assumed here is `smb_full_concurrency_test.rs`'s and the
 //! smb2 crate's business.
 
+use super::super::super::transfer_probe::TaskRow;
 use super::test_support::{FlakyDest, make_state};
 use super::*;
 use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;

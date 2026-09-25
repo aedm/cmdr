@@ -19,13 +19,14 @@ use super::super::conflict::ApplyToAll;
 use super::super::manager::{self, ManagedTaskGuard, OperationDescriptor, OperationSummaryText};
 use super::super::scratch_dir::ScratchDir;
 use super::super::state::{WriteOperationState, WriteSettledGuard};
+use super::super::transfer::left_in_source::LeftInSource;
 use super::super::transfer::volume::pull_path_to_local;
-use super::super::transfer::volume::{TreeRemoval, remove_tree};
+use super::super::transfer::volume::{CarriedSource, stamp_source, sweep_carried_source};
 use super::super::types::ReadOnlySide;
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult, WriteOperationType};
 use super::conflicts::{ConflictMode, conditional_overwrites, find_unique_inner, resolve_effective};
 use super::edit_error::EditError;
-use super::engine::{MutatorHooks, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error};
+use super::engine::{MutatorHooks, emit_archive_terminal, run_managed_edit, to_write_error};
 use super::routing::{ensure_zip_writable, normalize_inner_path, read_only_error};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{LaneKey, LocalPosixVolume, Volume, VolumeError};
@@ -152,61 +153,53 @@ pub(crate) async fn route_archive_copy_into_with_provenance(
 /// The sources materialized as LOCAL paths the changeset walk and mutator read
 /// with `std::fs`. A local source volume is already local (no pull, no scratch);
 /// a remote one is streamed into a scratch dir whose guard lives for the whole
-/// op. `origin` records where the ORIGINAL sources live so an into-archive MOVE
-/// deletes the real user files, not the local scratch copies.
+/// op. For a MOVE, `carried` records what each ORIGINAL looked like before it was
+/// read, so the removal after the commit takes the real user files, and only
+/// the ones this move carried.
 struct MaterializedSources {
     /// Absolute LOCAL paths, one per top-level source, in the caller's order.
     /// What the changeset walks and the mutator reads via `AddSource::LocalPath`.
     absolute: Vec<PathBuf>,
-    origin: SourceOrigin,
+    /// The volume holding the originals, local or remote.
+    source_volume: Arc<dyn Volume>,
+    /// Each original's volume-relative path and what the move carried out of it.
+    /// Empty on a copy, which removes nothing.
+    carried: Vec<(PathBuf, CarriedSource)>,
     /// Keeps the pulled copies alive for the op; `None` for a local source.
     _scratch: Option<ScratchDir>,
 }
 
-/// Where an into-archive MOVE finds the ORIGINAL sources to delete after the
-/// rewrite commits — the absolute local paths for a local source, or the remote
-/// volume + volume-relative paths for a pulled remote one.
-enum SourceOrigin {
-    Local,
-    Remote {
-        volume: Arc<dyn Volume>,
-        paths: Vec<PathBuf>,
-    },
-}
-
 impl MaterializedSources {
-    /// Deletes the ORIGINAL sources after an into-archive MOVE's rewrite durably
-    /// commits (the move invariant — never delete a source before its bytes are
-    /// safe). Local originals go straight off the FS; remote originals go through
-    /// the source volume (recursive for trees). Best-effort per source: a failure
-    /// leaves an incomplete move (a copy in both places), never data loss.
-    async fn delete_originals(&self) {
-        match &self.origin {
-            SourceOrigin::Local => delete_move_sources(&self.absolute).await,
-            SourceOrigin::Remote { volume, paths } => {
-                let nothing_to_spare = HashSet::new();
-                for path in paths {
-                    if let Err(e) = remove_tree(
-                        volume,
-                        path,
-                        &nothing_to_spare,
-                        TreeRemoval::ArchiveMoveSourceAfterCommit,
-                    )
-                    .await
-                    {
-                        // `e.path` is the item that actually refused (a leaf
-                        // inside `path` when the source is a tree).
-                        log::warn!(
-                            target: "archive_edit",
-                            "couldn't remove {} of moved remote source {}: {}",
-                            e.path.display(),
-                            path.display(),
-                            e.error
-                        );
-                    }
-                }
+    /// Removes the ORIGINAL sources after an into-archive MOVE's rewrite durably
+    /// commits (the move invariant: never delete a source before its bytes are
+    /// safe). Removes exactly what the move carried, from the ledger stamped
+    /// before the read, ❌ never the tree as it stands now: a file saved over or
+    /// added in the source meanwhile exists only there, so it stays and the
+    /// answer counts it. Best-effort per source: a failure leaves an incomplete
+    /// move (a copy in both places), never data loss.
+    async fn delete_originals(&self) -> LeftInSource {
+        let mut left = LeftInSource::default();
+        let nothing_skipped = HashSet::new();
+        for (path, carried) in &self.carried {
+            match sweep_carried_source(&self.source_volume, path, carried, &nothing_skipped).await {
+                Ok(kept) => left.note(
+                    path,
+                    matches!(carried, CarriedSource::Folder(_)),
+                    kept.appeared,
+                    kept.changed,
+                ),
+                // `e.path` is the item that actually refused (a leaf inside
+                // `path` when the source is a tree).
+                Err(e) => log::warn!(
+                    target: "archive_edit",
+                    "couldn't remove {} of moved source {}: {}",
+                    e.path.display(),
+                    path.display(),
+                    e.error
+                ),
             }
         }
+        left
     }
 }
 
@@ -221,12 +214,29 @@ async fn materialize_sources(
     source_volume: &Arc<dyn Volume>,
     source_paths: &[PathBuf],
     src_local_root: Option<PathBuf>,
+    is_move: bool,
     state: &Arc<WriteOperationState>,
 ) -> Result<MaterializedSources, EditError> {
+    // A move stamps its originals FIRST, before anything reads them, so a save
+    // during the pull or the rewrite counts as a change too.
+    let mut carried = Vec::new();
+    if is_move {
+        for src in source_paths {
+            let stamped = stamp_source(source_volume, src).await.map_err(|e| {
+                EditError::Op(WriteOperationError::ReadError {
+                    path: e.path.display().to_string(),
+                    message: e.error.to_string(),
+                })
+            })?;
+            carried.push((src.clone(), stamped));
+        }
+    }
+
     if let Some(root) = src_local_root {
         return Ok(MaterializedSources {
             absolute: source_paths.iter().map(|p| root.join(p)).collect(),
-            origin: SourceOrigin::Local,
+            source_volume: Arc::clone(source_volume),
+            carried,
             _scratch: None,
         });
     }
@@ -254,10 +264,8 @@ async fn materialize_sources(
 
     Ok(MaterializedSources {
         absolute,
-        origin: SourceOrigin::Remote {
-            volume: Arc::clone(source_volume),
-            paths: source_paths.to_vec(),
-        },
+        source_volume: Arc::clone(source_volume),
+        carried,
         _scratch: Some(scratch),
     })
 }
@@ -640,8 +648,9 @@ async fn archive_copy_into_start(
             // archive. One `Result<skipped_count, EditError>` funnels into a single
             // terminal emit below. A cancel/fault in the PULL returns before
             // `run_managed_edit` ever opens the zip, so the archive stays untouched.
-            let outcome: Result<usize, EditError> = async {
-                let materialized = materialize_sources(&source_volume, &source_paths, src_local_root, &state).await?;
+            let outcome: Result<(usize, LeftInSource), EditError> = async {
+                let materialized =
+                    materialize_sources(&source_volume, &source_paths, src_local_root, is_move, &state).await?;
                 let absolute_sources = materialized.absolute.clone();
 
                 let (should_delete_sources, skipped_count) =
@@ -682,10 +691,12 @@ async fn archive_copy_into_start(
                     })
                     .await?;
 
-                if should_delete_sources {
-                    materialized.delete_originals().await;
-                }
-                Ok(skipped_count)
+                let left = if should_delete_sources {
+                    materialized.delete_originals().await
+                } else {
+                    LeftInSource::default()
+                };
+                Ok((skipped_count, left))
             }
             .await;
 
@@ -697,12 +708,16 @@ async fn archive_copy_into_start(
                 Err(EditError::Cancelled) => ExecutionStatus::Canceled,
                 Err(EditError::Op(_)) => ExecutionStatus::Failed,
             };
-            let skipped_count = *outcome.as_ref().unwrap_or(&0);
+            let (skipped_count, appeared_during_move) = outcome
+                .as_ref()
+                .map(|(skipped, left)| (*skipped, left.appeared_during_move()))
+                .unwrap_or((0, None));
             emit_archive_terminal(
                 events.as_ref(),
                 &op_id,
                 outcome.map(|_| ()),
                 skipped_count,
+                appeared_during_move,
                 &final_progress,
             );
 

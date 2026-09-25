@@ -3539,6 +3539,7 @@ export type MessageKey =
   | 'suggestedOps.showNewVersion'
   | 'suggestedOps.title'
   | 'transfer.appearedDuringMove'
+  | 'transfer.changedDuringMove'
   | 'transfer.compress.fileOnly'
   | 'transfer.compress.split'
   | 'transfer.delete'

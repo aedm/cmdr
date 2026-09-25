@@ -3468,3 +3468,10 @@ theo `docs/i18n/reference-pile/how-to-mine.md` § "No pile on this machine?".
   `fileExplorer.quickLookHint.configurable` (`Cài đặt > Phím tắt`); `Nâng cao` = `settings.section.advanced`. `high`.
 - **"You'll only see this once": `Bạn sẽ chỉ thấy thông báo này một lần.`** · `thông báo` cho toast, như thuật ngữ toast
   → `thông báo nhỏ` đã chốt. `high`.
+
+## Bản gốc đã thay đổi trong khi di chuyển (`transfer.changedDuringMove`, 2026-09-25)
+
+- **"changed during the move" → `đã thay đổi trong khi di chuyển`** · Finder `PE56` "một hoặc nhiều mục đã thay đổi
+  trong khi đang ghi" (Finder `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25) · `high`.
+  `trong khi di chuyển`, `vẫn ở lại` và `thư mục nguồn` lấy nguyên từ chuỗi chị em `transfer.appearedDuringMove`, hiện
+  cùng một toast.

@@ -65,6 +65,18 @@ pub(in crate::file_system::write_operations::transfer) fn create_scanned_dirs_at
                 None => break,
             }
         }
+        // The nearest existing ancestor is a FILE: this directory sits under a
+        // folder→file clash that ended in Skip, so the file stays and nothing
+        // lands under it. Creating here would fail with ENOTDIR and take the
+        // whole operation down over a clash it already settled.
+        if walk.exists() && !walk.is_dir() {
+            log::debug!(
+                "copy: not landing {} under the kept file {} (skipped folder→file clash)",
+                dest.display(),
+                walk.display()
+            );
+            continue;
+        }
         fs::create_dir_all(&dest).map_err(|e| WriteOperationError::IoError {
             path: dest.display().to_string(),
             message: format!("Failed to create directory: {}", e),

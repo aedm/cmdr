@@ -2141,3 +2141,12 @@ SMB 共享上兩個名稱在畫面上一模一樣，但伺服器存成不同的�
   `high`
 - `settings.askCmdr.enabled.label` = `Ask Cmdr`，與英文相同，帶 `sameAsSourceJustification`（產品名，同
   `settings.section.askCmdr`）。
+
+## 移動過程中有過更動的原檔（`transfer.changedDuringMove`，2026-09-25）
+
+- **changed during the move → `移動過程中有 … 發生更動`** · Finder `PE56` 「燒錄時有一個或多個項目發生更動」(Finder
+  `LocalizableMerged` `PE56`, macOS 26.6.2, live bundle, 2026-09-25)；`更動` 也是
+  `fileOperations.cancelRollback.reason.drift.counted` 的用字 · `high`。`移動過程中有` 和 `等來源資料夾`
+  照搬同一則通知裡的 `transfer.appearedDuringMove`。
+- **佔位符兩側加空格**：`留在 {scope…} 中`（style.md § Spacing）。順手把 `transfer.appearedDuringMove` 原本的
+  `出現在{scope…}中` 也改成加空格的寫法，兩句同框才一致。

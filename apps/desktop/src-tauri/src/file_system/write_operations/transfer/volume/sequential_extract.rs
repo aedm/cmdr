@@ -17,7 +17,8 @@ use super::super::super::state::WriteOperationState;
 use super::super::staged_write::StagedWrite;
 use super::super::transfer_driver::SourceProgress;
 use super::merge::copy_directory_streaming;
-use super::strategy::{CreatedPaths, LandingName, MergeCtx, note_pending_for_local_dest, resolve_staging, staging_for};
+use super::merge_ctx::{CreatedPaths, MergeCtx};
+use super::strategy::{LandingName, note_pending_for_local_dest, resolve_staging, staging_for};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
@@ -179,6 +180,11 @@ pub(super) async fn extract_sequential_subtree(
             .commit(dest_volume)
             .await
             .map_err(|f| PathedVolumeError::at_source_or_rescued_dest(f, &file.source_path, &planned.dest_path))?;
+        // Landed, so the ` (N)` placeholder the plan pass reserved here is filled.
+        // Every one this pass never reaches (a failure, a cancel between members)
+        // stays on the op's ledger for the post-loop to take back
+        // (`naming.rs::take_back_unfilled_reservations`).
+        state.claimed_names.release_placeholder(&planned.dest_path);
 
         // Safe-replace finalize for a file→file Overwrite (same as the per-entry
         // path): the temp holds the complete new bytes; swap it over the original.

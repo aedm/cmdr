@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{countText} {count, plural, other {mục}} đã xuất hiện trong {scope, select, manyFolders {{folderName} và các thư mục nguồn khác} other {{folderName}}} trong khi di chuyển và vẫn ở lại đó.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{countText} {count, plural, other {mục}} đã thay đổi trong khi di chuyển và vẫn ở lại trong {scope, select, manyFolders {{folderName} và các thư mục nguồn khác} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

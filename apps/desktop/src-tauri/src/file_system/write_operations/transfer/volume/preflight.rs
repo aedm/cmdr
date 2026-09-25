@@ -37,8 +37,10 @@ use super::super::super::types::{
     CancelRollback, VolumeCopyConfig, WriteCancelledEvent, WriteOperationError, WriteOperationPhase,
     WriteOperationType, WriteProgressEvent,
 };
-use super::transfer_error::{PathRole, WriteFailure};
-use crate::file_system::volume::{ListingProgress, ScanBoundary, ScanStop, ScanStopSignal, Volume, VolumeError};
+use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
+use crate::file_system::volume::{
+    EntryKind, ListingProgress, ScanBoundary, ScanStop, ScanStopSignal, Volume, VolumeError,
+};
 use crate::ignore_poison::IgnorePoison;
 
 /// Per-source hint collected during the scan: whether the top-level path is a
@@ -346,8 +348,14 @@ pub(super) async fn scan_volume_sources(
 /// same-volume move is a rename and transfers zero bytes, so there's nothing to
 /// drive a Size bar. We collect ONLY the per-top-level-item `is_directory` /
 /// size hints (for the conflict resolver and `known_directory_paths`), at the
-/// cost of one pipelined batch stat of the top-level items — O(top-level
-/// items), never a subtree walk.
+/// cost of one listing per distinct parent — O(top-level items), never a
+/// subtree walk.
+///
+/// ❗ `is_directory` here means "merges as a directory": a REAL one, ❌ never a
+/// link to one. A rename moves a link as the link, so a link meeting a
+/// same-named folder is a type clash, and a merge that took it for a folder
+/// would list the link's TARGET and rename its children out of a folder the
+/// user never selected (#140).
 pub(super) struct TopLevelMoveHints {
     pub source_hints: HashMap<PathBuf, SourceHint>,
 }
@@ -370,52 +378,49 @@ impl TopLevelMoveHints {
 /// waste, and it's exactly the 30–40 s "Verifying before move…" the fast path
 /// exists to kill.
 ///
-/// Consumes a cached TransferDialog preview when present (free — the dialog
-/// already scanned); we read ONLY each top-level item's `top_level_is_directory`
-/// / size from it, never re-walking. Otherwise, groups the top-level sources by
-/// PARENT and lists each distinct parent ONCE (`list_directory` is one
-/// round-trip per parent: a single pipelined op on SMB, one parent listing on
-/// MTP — the same shape `MtpVolume`'s `scan_for_copy_batch_with_boundary` uses,
-/// minus the recursion). Cost is O(distinct parents), never O(subtree).
+/// Consumes a cached TransferDialog preview when present, but trusts it only
+/// for FILES: a copy scan answers "does this stream as a folder", and a link to
+/// a folder does, so a preview can't tell a link from a directory. Every source
+/// the preview didn't settle as a file (a directory, or a path it has no row
+/// for) is read from its parent listing, whose `FileEntry` carries both flags.
+/// Sources are grouped by PARENT and each distinct parent is listed ONCE
+/// (`list_directory` is one round-trip per parent: a single pipelined op on
+/// SMB, one parent listing on MTP). Cost is O(distinct parents), never
+/// O(subtree).
 pub(super) async fn top_level_move_hints(
     volume: &Arc<dyn Volume>,
     source_paths: &[PathBuf],
     config: &VolumeCopyConfig,
 ) -> Result<TopLevelMoveHints, WriteOperationError> {
-    // Cached preview: read only the per-top-level-path type + (file) size.
+    let mut source_hints = HashMap::with_capacity(source_paths.len());
+    let mut from_listing: Vec<&PathBuf> = source_paths.iter().collect();
     if let Some(cached) = config
         .preview_id
         .as_deref()
         .and_then(|preview_id| take_cached_scan_result(preview_id, source_paths))
     {
-        let mut source_hints = HashMap::with_capacity(cached.per_path.len());
         for (path, scan) in cached.per_path {
-            let size = if scan.top_level_is_directory {
-                0
-            } else {
-                scan.total_bytes
-            };
-            source_hints.insert(
-                path,
-                SourceHint {
-                    is_directory: scan.top_level_is_directory,
-                    size,
-                },
-            );
+            if !scan.top_level_is_directory {
+                source_hints.insert(
+                    path,
+                    SourceHint {
+                        is_directory: false,
+                        size: scan.total_bytes,
+                    },
+                );
+            }
         }
-        return Ok(TopLevelMoveHints { source_hints });
+        from_listing.retain(|path| !source_hints.contains_key(*path));
     }
 
-    // No cached preview: group sources by parent and list each parent once,
-    // indexing entries by name for an O(1) per-source lookup. One listing per
-    // distinct parent — never a subtree walk.
-    let mut by_parent: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
-    for path in source_paths {
+    // Group what's left by parent and list each parent once, indexing entries
+    // by name for an O(1) per-source lookup.
+    let mut by_parent: HashMap<PathBuf, Vec<&PathBuf>> = HashMap::new();
+    for path in from_listing {
         let parent = path.parent().map(Path::to_path_buf).unwrap_or_default();
-        by_parent.entry(parent).or_default().push(path.clone());
+        by_parent.entry(parent).or_default().push(path);
     }
 
-    let mut source_hints = HashMap::with_capacity(source_paths.len());
     for (parent, paths) in by_parent {
         let entries = volume
             .list_directory(&parent, None)
@@ -429,14 +434,9 @@ pub(super) async fn top_level_move_hints(
         for path in paths {
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
             if let Some(entry) = by_name.get(name) {
-                let size = if entry.is_directory { 0 } else { entry.size.unwrap_or(0) };
-                source_hints.insert(
-                    path,
-                    SourceHint {
-                        is_directory: entry.is_directory,
-                        size,
-                    },
-                );
+                let is_directory = super::rename_merge::merges_as_a_directory(entry);
+                let size = if is_directory { 0 } else { entry.size.unwrap_or(0) };
+                source_hints.insert(path.clone(), SourceHint { is_directory, size });
             }
             // A source missing from its parent listing surfaces later as a
             // per-source rename error; leave it out of the hint map (the loop
@@ -444,6 +444,25 @@ pub(super) async fn top_level_move_hints(
         }
     }
     Ok(TopLevelMoveHints { source_hints })
+}
+
+/// Whether a top-level source merges as a directory: its hint, or with none,
+/// the volume's own [`EntryKind`] answer. A link to a folder is a LEAF here
+/// either way ([`TopLevelMoveHints`] holds the why), so the fallback is ❌
+/// never `Volume::is_directory`: some backends follow the link to answer it.
+pub(super) async fn source_merges_as_a_directory(
+    volume: &Arc<dyn Volume>,
+    source: &Path,
+    hint: Option<SourceHint>,
+) -> Result<bool, WriteOperationError> {
+    match hint {
+        Some(hint) => Ok(hint.is_directory),
+        None => volume
+            .entry_kind(source)
+            .await
+            .map(|kind| kind == EntryKind::Directory)
+            .map_err(|e| map_volume_error(&source.display().to_string(), PathRole::Source, e)),
+    }
 }
 
 /// Emits `write-cancelled` and returns a `WriteFailure::Cancelled`. Used when

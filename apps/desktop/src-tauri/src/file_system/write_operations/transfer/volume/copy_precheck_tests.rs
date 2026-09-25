@@ -210,6 +210,15 @@ impl Volume for RecordingDest {
             self.inner.is_directory(&real).await
         })
     }
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<crate::file_system::volume::EntryKind, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let real = self.resolve(path).await;
+            self.inner.entry_kind(&real).await
+        })
+    }
     fn create_directory<'a>(
         &'a self,
         path: &'a Path,

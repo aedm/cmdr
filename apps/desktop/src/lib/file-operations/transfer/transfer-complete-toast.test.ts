@@ -414,7 +414,7 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 1,
-          appearedDuringMove: { itemCount: 2, folderName: 'Work', folderCount: 1 },
+          appearedDuringMove: { itemCount: 2, changedCount: 0, folderName: 'Work', folderCount: 1 },
         }),
       ).toBe('Moved 1 folder. 2 items appeared in Work during the move and stay there.')
     })
@@ -427,7 +427,7 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 1,
-          appearedDuringMove: { itemCount: 1, folderName: 'Work', folderCount: 1 },
+          appearedDuringMove: { itemCount: 1, changedCount: 0, folderName: 'Work', folderCount: 1 },
         }),
       ).toBe('Moved 1 folder. 1 item appeared in Work during the move and stays there.')
     })
@@ -440,9 +440,40 @@ describe('composeTransferCompleteToast', () => {
           filesSkipped: 0,
           fileCount: 0,
           folderCount: 3,
-          appearedDuringMove: { itemCount: 5, folderName: 'Work', folderCount: 2 },
+          appearedDuringMove: { itemCount: 5, changedCount: 0, folderName: 'Work', folderCount: 2 },
         }),
       ).toBe('Moved 3 folders. 5 items appeared in Work and other source folders during the move and stay there.')
+    })
+
+    it('counts originals that changed after their copy, which stay where they were', () => {
+      // Someone saved over a file after Cmdr copied it, so the destination has the
+      // old version and the source keeps the new one.
+      expect(
+        composeTransferCompleteToast({
+          operationType: 'move',
+          filesProcessed: 4,
+          filesSkipped: 0,
+          fileCount: 0,
+          folderCount: 1,
+          appearedDuringMove: { itemCount: 0, changedCount: 2, folderName: 'Work', folderCount: 1 },
+        }),
+      ).toBe('Moved 1 folder. 2 items changed during the move and stay in Work.')
+    })
+
+    it('says both when items appeared and others changed', () => {
+      expect(
+        composeTransferCompleteToast({
+          operationType: 'move',
+          filesProcessed: 9,
+          filesSkipped: 0,
+          fileCount: 0,
+          folderCount: 3,
+          appearedDuringMove: { itemCount: 1, changedCount: 1, folderName: 'Work', folderCount: 2 },
+        }),
+      ).toBe(
+        'Moved 3 folders. 1 item appeared in Work and other source folders during the move and stays there. ' +
+          '1 item changed during the move and stays in Work and other source folders.',
+      )
     })
 
     it('says nothing when the move took everything', () => {

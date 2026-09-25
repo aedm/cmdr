@@ -101,12 +101,13 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
   The `?? filesSkipped` fallback is that old heuristic on purpose, for the engines that report no breakdown
   (cross-volume, in-archive), whose skips are all top-level files today. Backend contract:
   `write_operations/types/events.rs::TopLevelSkipped`.
-- **A move that left something in the source appends one sentence** ("2 items appeared in Work during the move and stay
-  there"), off `WriteCompleteEvent.appearedDuringMove` — typed data (`itemCount`, `folderName`, `folderCount`), never
-  prose crossing IPC. It means a cross-filesystem move found files the copy phase never carried, so the source sweep
-  left them alone (backend: `write_operations/transfer/DETAILS.md` § "deletes a LEDGER"). The move still reads as a
-  success, and the toast stays `success`, not a warning: nothing went wrong, some files simply arrived too late to
-  travel. Absent on every other ending, so the historic wordings render byte-identical.
+- **A move that left something in the source appends a sentence per kind** ("2 items appeared in Work during the move
+  and stay there", "1 item changed during the move and stays in Work"), off `WriteCompleteEvent.appearedDuringMove` —
+  typed data (`itemCount`, `changedCount`, `folderName`, `folderCount`), never prose crossing IPC. It means a
+  cross-filesystem move found files the copy phase never carried, or originals saved over after their copy, so the
+  source sweep left them alone (backend: `write_operations/transfer/DETAILS.md` § "deletes a LEDGER"). The move still
+  reads as a success, and the toast stays `success`, not a warning: nothing went wrong, some files simply arrived too
+  late to travel. Absent on every other ending, so the historic wordings render byte-identical.
 
 ## How transfer flows
 

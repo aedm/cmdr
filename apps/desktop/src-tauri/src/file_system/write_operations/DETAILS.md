@@ -191,7 +191,9 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   together (`photo.jpg` and `photo (1).jpg`, which continues its series at exactly the name the first one took) can't
   both arrive at `photo (2).jpg` and turn two requested copies into one. It lives on `state::WriteOperationState`, so
   the ledger's lifetime is the operation's and both engines read the same one; interior-mutable because the volume
-  engine's concurrent driver resolves several top-level sources at once.
+  engine's concurrent driver resolves several top-level sources at once. It also holds which of those picks left a
+  zero-byte `O_EXCL` placeholder on disk and no write has filled yet, for the volume engine's post-loop to take back
+  (`transfer/DETAILS.md`, the volume-side Rename reservation).
 - **`create.rs` co-locates the synthetic listing-cache diff** (`should_emit_synthetic_diff` /
   `emit_synthetic_entry_diff`, both `pub(super)`) that lands a brand-new entry in the pane on local-FS-backed volumes.
   `paste_clipboard.rs` reuses both so a pasted file cursor-lands exactly like mkfile.
@@ -408,7 +410,9 @@ What counts as consent, and what doesn't:
 
 `ClashKind` (same-kind / file-over-folder / folder-over-file) is what makes "per shape" real: `ApplyToAll` holds one bucket each, a cross-type answer only ever fills its own, and a first-clash cross-type "* all" spreads to same-kind but never to the other cross-type bucket. A destination that won't stat classifies as same-kind: an unanswerable type is never grounds for a destructive act.
 
-**Who says what's arriving.** `resolve_conflict` takes an `IncomingItem` rather than stat'ing the source path, because one caller's paths lie: `transfer/copy/single_item.rs`'s folder→file branch resolves against the BLOCKING FILE as both source and destination (so the prompt describes the entry in the way) while a directory is what's really landing. The move engines pass `IncomingItem::of_local_source`, which asks the symlink-aware `validation::is_real_directory` — a link is a leaf whatever it points at, so a link facing a real directory is a cross-type clash. A destination that won't stat is treated as neither type: an unanswerable question is never grounds for a destructive act.
+**Who says what's arriving.** `resolve_conflict` takes an `IncomingItem` rather than stat'ing the source path, because a stat follows links: the engines move and copy a link as a leaf whatever it points at (`validation::is_real_directory` holds the why), so a link facing a real directory is a cross-type clash. The move engines pass `IncomingItem::of_local_source`; the copy engine knows from its own branch. A destination that won't stat is treated as neither type: an unanswerable question is never grounds for a destructive act.
+
+**The prompt names the kinds the clash was classified as, and the real incoming item.** Consent is only consent if the prompt tells the truth, so `build_conflict_event` takes its `source_is_directory` / `destination_is_directory` from the same `IncomingItem` and `symlink_metadata` answer `ClashKind` reads, ❌ never from the link-following stat its sizes and mtimes come from. And every caller hands over the pair that's really meeting: the copy engine's folder→file branch finds the blocking file while creating a CHILD's parent, so it maps the file back to the source folder that lands there (`incoming_folder_for`) and the prompt asks "replace this file with this whole folder?", with the folder's size from the drive index like any folder side. Pinned end to end per engine and shape in `transfer/conflict_prompt_sides_tests.rs`.
 
 **Validation runs inside `spawn_blocking`.** The `*_files_start` functions return an `operationId` immediately, before any filesystem I/O. Validation (`validate_sources`, `validate_destination_writable`, etc.) runs inside the handler closure on the blocking thread pool. This keeps the Tauri IPC handler non-blocking, so the frontend can always open the progress dialog and offer cancel, even if a network mount is stalled.
 
@@ -1217,7 +1221,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   taken as `(remote: Arc<dyn Volume>, dir: PathBuf)` (a live volume plus a scratch dir it owns and removes), so a claim
   proved against one backend is proved in the same words against the others and the suites can't drift. Each backend
   file connects its own fixture (`sftp_test_support::fixture`, `smb_test_support::fixture`, `webdav_test_support::fixture`) and
-  delegates. Five files, by what they prove:
+  delegates. Six files, by what they prove:
   - `network_transfer_test_support.rs`: the byte path (below).
   - `network_semantics_test_support.rs`: merges under Skip / Overwrite / Rename / OverwriteSmaller, a move-merge that
     spares what it skipped, whole-folder moves both ways, same-server move-merge, move, and copy, a missing nested
@@ -1236,11 +1240,18 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   - `network_archive_test_support.rs`: a zip on the server browsed and extracted through the copy engine, the routing
     predicate, a remote edit and its cancel before the swap, files copied into a remote zip, a compress, and a
     compress onto a look-alike name.
-- **Which backend drives what.** SFTP, SMB, and WebDAV drive all five; ADB drives `network_transfer_test_support.rs`.
+  - `network_move_drift_test_support.rs`: a folder moved off the server while a file in it is saved over or a new one
+    appears (#139). A local destination that edits the server as the first file lands opens the window; the edit
+    stays with its new bytes, the rest goes, and `AppearedDuringMove` counts it. The saved-over file changes SIZE,
+    since a server's whole-second mtime can't tell a same-size save apart.
+- **Which backend drives what.** SFTP, SMB, and WebDAV drive all six; ADB drives `network_transfer_test_support.rs`.
   SFTP also points the same-server move and copy, the inline rename, and the remote zip edit at
   `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace. WebDAV points
   the zip browse at `webdav-fixture-norange`, whose whole-file answer to every ranged GET is what a zip reader's many
-  small windows have to be cut out of locally. The dialog-addressed destination cells are SFTP's and SMB's own: the
+  small windows have to be cut out of locally. SFTP alone holds a link, so its cell for a moved folder holding a link
+  to a folder outside the selection (#140) is its own, made through the test-only `SftpVolume::create_symlink`. It pins
+  that the target keeps its files; the move itself fails on the link today (SFTP lists a link with lstat attributes,
+  so the walk streams a folder link as a file). The dialog-addressed destination cells are SFTP's and SMB's own: the
   WebDAV fixture's remote root is `/`, where a volume-relative and a server-absolute path are spelled alike, so a
   doubled root can't be told from a right one there (`cmdr-webdav`'s `paths_test.rs` pins the refusal instead).
 - **A server that says no mid-operation: `webdav_refusal_test.rs`.** 507 on an upload (answered after the body, and

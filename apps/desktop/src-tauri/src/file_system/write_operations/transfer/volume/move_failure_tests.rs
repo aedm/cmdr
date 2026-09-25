@@ -197,3 +197,68 @@ async fn cross_volume_move_delete_error_names_the_child_that_failed_not_the_sele
     assert!(dest.exists(Path::new("/tree/nested/doomed.txt")).await);
     assert!(source.exists(Path::new("/tree/nested/doomed.txt")).await);
 }
+
+/// A cross-volume move of a FOLDER onto the user's FILE, answered Overwrite on
+/// the prompt, whose copy phase fails halfway. The folder already holds the
+/// name, so the file is kept beside it under a ` (recovered)` name, and the
+/// failure says so.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_cross_type_move_that_fails_halfway_keeps_the_file_it_was_replacing() {
+    let src = Arc::new(InMemoryVolume::new("source").with_space_info(10_000_000, 10_000_000));
+    src.create_directory(Path::new("/clash")).await.unwrap();
+    src.create_file(Path::new("/clash/a.txt"), b"incoming").await.unwrap();
+    let source = super::super::faulty_volume::FaultyVolume::wrapping(src)
+        .failing_call(
+            super::super::faulty_volume::FaultyOp::OpenReadStream,
+            1,
+            VolumeError::IoError {
+                message: "simulated source read failure".to_string(),
+                raw_os_error: None,
+            },
+        )
+        .arc();
+    let dest_inner = Arc::new(InMemoryVolume::new("dest").with_space_info(10_000_000, 10_000_000));
+    dest_inner
+        .create_file(Path::new("/clash"), b"the user's only copy")
+        .await
+        .unwrap();
+    let dest: Arc<dyn Volume> = dest_inner.clone();
+
+    let state = make_state();
+    let events = Arc::new(
+        super::super::super::conflict_responder_test_support::ConflictResponderSink::new(
+            &state,
+            ConflictResolution::Overwrite,
+            false,
+        ),
+    );
+    let result = move_volumes_with_progress(
+        events,
+        "op-move-cross-type-fails",
+        &state,
+        Arc::clone(&source) as Arc<dyn Volume>,
+        &[PathBuf::from("/clash")],
+        Arc::clone(&dest),
+        Path::new("/"),
+        &VolumeCopyConfig {
+            // Only an answered prompt may cross types.
+            conflict_resolution: ConflictResolution::Stop,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await;
+
+    assert!(source.fault_fired(super::super::faulty_volume::FaultyOp::OpenReadStream));
+    let failure = result.expect_err("the unreadable child fails the move");
+    assert!(
+        matches!(failure.error, WriteOperationError::OriginalsKeptAside { ref recovered, .. } if recovered.len() == 1),
+        "the failure names where the user's file went: {:?}",
+        failure.error
+    );
+    let mut stream = dest.open_read_stream(Path::new("/clash (recovered)")).await.unwrap();
+    assert_eq!(stream.next_chunk().await.unwrap().unwrap(), b"the user's only copy");
+    assert!(
+        source.inner().exists(Path::new("/clash/a.txt")).await,
+        "and the source never left"
+    );
+}

@@ -48,9 +48,10 @@ export interface TransferCompleteToastInput {
    *  engine that doesn't track it, and the phrase then falls back to `fileCount`/`folderCount`
    *  as the moved counts. See the BE's `TopLevelSkipped`. */
   topLevelSkipped?: TopLevelSkipped | null
-  /** What a cross-filesystem move found in the source that it never carried, and therefore left
-   *  where it was (a download that finished mid-move, a sync app, an editor saving). Absent on the
-   *  ordinary move, and on every copy. Adds a sentence; the move still reads as a success. */
+  /** What a cross-filesystem move left in the source because it never carried it: items that
+   *  appeared there mid-move (a download finishing, a sync app), and originals saved over after
+   *  their copy started. Absent on the ordinary move, and on every copy. Adds a sentence per kind;
+   *  the move still reads as a success. */
   appearedDuringMove?: AppearedDuringMove | null
 }
 
@@ -76,15 +77,30 @@ export function composeTrashRefusedToast(refused: TrashRefusedItems | null | und
   return trashRefusedCountSentence(refused.reason, refused.itemCount)
 }
 
-/** Appends what the move left in the source, when it left anything. */
-function withLeftBehind(toast: string, appeared: AppearedDuringMove | null | undefined): string {
-  if (!appeared || appeared.itemCount <= 0) return toast
-  return `${toast} ${tString('transfer.appearedDuringMove', {
-    scope: appeared.folderCount > 1 ? 'manyFolders' : 'oneFolder',
-    countText: formatNumber(appeared.itemCount),
-    count: appeared.itemCount,
-    folderName: appeared.folderName,
-  })}`
+/** Appends what the move left in the source, when it left anything: what appeared there, then what changed. */
+function withLeftBehind(toast: string, left: AppearedDuringMove | null | undefined): string {
+  if (!left) return toast
+  const where = { scope: left.folderCount > 1 ? 'manyFolders' : 'oneFolder', folderName: left.folderName }
+  const sentences = [toast]
+  if (left.itemCount > 0) {
+    sentences.push(
+      tString('transfer.appearedDuringMove', {
+        ...where,
+        countText: formatNumber(left.itemCount),
+        count: left.itemCount,
+      }),
+    )
+  }
+  if (left.changedCount > 0) {
+    sentences.push(
+      tString('transfer.changedDuringMove', {
+        ...where,
+        countText: formatNumber(left.changedCount),
+        count: left.changedCount,
+      }),
+    )
+  }
+  return sentences.join(' ')
 }
 
 /** The outcome sentence itself: what went, and what was skipped on the way. */

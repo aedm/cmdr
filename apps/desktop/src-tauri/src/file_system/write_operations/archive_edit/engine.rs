@@ -14,8 +14,8 @@ use super::super::OperationEventSink;
 use super::super::operation_intent::is_cancelled;
 use super::super::state::WriteOperationState;
 use super::super::types::{
-    CancelRollback, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent, WriteOperationError, WriteOperationPhase,
-    WriteOperationType, WriteProgressEvent,
+    AppearedDuringMove, CancelRollback, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent, WriteOperationError,
+    WriteOperationPhase, WriteOperationType, WriteProgressEvent,
 };
 use super::edit_error::EditError;
 use super::remote::pull_apply_upload_swap;
@@ -92,26 +92,6 @@ pub(super) fn to_write_error(archive_path: &Path, err: MutationError) -> WriteOp
     }
 }
 
-/// Deletes an into-archive move's local sources after the commit, on the blocking
-/// pool. Handles both files and directory trees. Best-effort per source (a
-/// failure leaves the file in both places — an incomplete move, never data loss).
-pub(super) async fn delete_move_sources(sources: &[PathBuf]) {
-    for source in sources {
-        let source = source.clone();
-        let removed = tokio::task::spawn_blocking(move || {
-            let result = match std::fs::symlink_metadata(&source) {
-                Ok(meta) if meta.is_dir() => std::fs::remove_dir_all(&source),
-                _ => std::fs::remove_file(&source),
-            };
-            result.map_err(|e| (source, e))
-        })
-        .await;
-        if let Ok(Err((path, err))) = removed {
-            log::warn!(target: "archive_edit", "couldn't remove moved source {}: {err}", path.display());
-        }
-    }
-}
-
 /// Emits the ONE terminal event an archive edit's outcome calls for, and
 /// nothing else.
 ///
@@ -133,6 +113,9 @@ pub(super) fn emit_archive_terminal(
     op_id: &str,
     outcome: Result<(), EditError>,
     skipped_count: usize,
+    // What a move INTO an archive left in its source (`copy_into.rs`); `None`
+    // for every other edit.
+    appeared_during_move: Option<AppearedDuringMove>,
     final_progress: &MutationProgress,
 ) {
     match outcome {
@@ -142,7 +125,7 @@ pub(super) fn emit_archive_terminal(
             files_processed: final_progress.entries_changed,
             files_skipped: skipped_count,
             bytes_processed: final_progress.bytes_total,
-            appeared_during_move: None,
+            appeared_during_move,
             top_level_skipped: None,
             refused: None,
         }),

@@ -43,7 +43,7 @@ async fn dir_overwrite_must_merge_not_replace_even_with_recursive_delete() {
         &dest_recursive,
         Path::new("/photos"),
         true,
-        &ClaimedNames::default(),
+        &Arc::new(WriteOperationState::new(std::time::Duration::from_millis(0))),
     )
     .await
     .unwrap()
@@ -255,7 +255,7 @@ async fn file_overwrite_keeps_original_until_temp_is_written() {
         &dest_dyn,
         Path::new("/notes.txt"),
         false,
-        &ClaimedNames::default(),
+        &Arc::new(WriteOperationState::new(std::time::Duration::from_millis(0))),
     )
     .await
     .unwrap()

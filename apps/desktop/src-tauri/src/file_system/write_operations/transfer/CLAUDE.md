@@ -10,14 +10,14 @@ File map: `DETAILS.md` § Files.
 
 ## Streaming, cancel, and diagnosis
 
-- **EVERY write stages, local included**: bytes land on a `.cmdr-tmp-<uuid>` SIBLING and take the real name by one
-  same-directory rename. Local-FS goes through `overwrite::stage_and_land_file` (❌ never straight to the destination); cross-volume asks `resolve_staging`. A non-overwrite landing REFUSES an
+- **EVERY write stages, local included**: bytes land on a `.cmdr-tmp-<uuid>` SIBLING, then one same-directory rename. Local-FS uses `overwrite::stage_and_land_file` (❌ never straight to the destination); cross-volume asks `resolve_staging`. A non-overwrite landing REFUSES an
   occupied destination, a move's renames included (`move_op::rename_onto_free_name`); ❌ only a name the CALLER
   claimed earns `land`'s clear-and-rename (`staged_write::LandingName`).
 - **A source that would land on ITSELF is a duplicate, ❌ never a conflict**: settled by `dev+ino` per TOP-LEVEL source
   before either engine's loop. DETAILS § "Self-collision".
-- **A symlink is a LEAF to every move engine**: ask `validation::is_real_directory`, ❌ never `Path::is_dir` (it follows
-  links, so a "merge" empties the TARGET). DETAILS § "Symlinks are opaque to a move".
+- **A symlink is a LEAF to every move engine**: ask `validation::is_real_directory` / `Volume::entry_kind`, ❌ never
+  `Path::is_dir` / `Volume::is_directory` (they may follow links, emptying the TARGET). DETAILS § "Symlinks are opaque
+  to a move".
 - **A ledger entry carries the identity it landed with, ❌ never an mtime** (`../ledger.rs`): local = size +
   `(dev,ino)`, volume = size, a partial marked as ITS OWN. Ledgers POP as they reverse. DETAILS § "What the in-flight
   ledgers record".
@@ -25,9 +25,9 @@ File map: `DETAILS.md` § Files.
   leave it, report it on `write-cancelled`; an own-partial goes on sight; a move-back never overwrites an occupied
   source. Only the `Drop` net is unconditional, sweeping from `../ledger.rs`; ❌ don't route it through `reversal.rs`
   (module cycle). § "What a reversal does with that identity".
-- **A cross-FS move's source delete removes the LEDGER of what staged, ❌ never the tree** (`move_op/source_sweep.rs`),
-  only after the flush answers `Ok` and the destination is listed (DETAILS § Durability): what arrived mid-move keeps
-  its original (`AppearedDuringMove`).
+- **A move's source delete removes the LEDGER of what it copied, ❌ never the tree** (`move_op/`, `volume/`
+  `source_sweep.rs`; locally after the flush, DETAILS § Durability): what arrived mid-move
+  keeps its original (`AppearedDuringMove`), as does one saved over after copying (`SourceStamp`).
 - **A MERGED move is NOT rollbackable, and a cross-FS move journals FINAL paths, never staging ones**
   (`note_not_rollbackable`; `JournalDestUnder` rebases, created-dir rows included).
   `operation_log/DETAILS.md` § "Why a directory merge isn't reversible".

@@ -2,7 +2,7 @@
 use std::path::Path;
 
 use cmdr_fs::entry::FileEntry;
-use cmdr_fs::volume::{ListingProgress, VolumeError};
+use cmdr_fs::volume::{EntryKind, ListingProgress, VolumeError};
 use openssh_sftp_client::fs::DirEntry;
 use tokio_util::sync::CancellationToken;
 
@@ -101,6 +101,26 @@ impl SftpVolume {
             &self.root.to_app_path(&remote).to_string_lossy(),
             &meta,
         ))
+    }
+
+    /// What is AT `path`, with a link reported as the link: one `lstat`.
+    ///
+    /// `get_metadata_impl` asks `stat`, which follows a link, so the trait
+    /// default would report a link to a folder as the folder.
+    pub(super) async fn entry_kind_impl(&self, path: &Path) -> Result<EntryKind, VolumeError> {
+        let remote = self.to_remote_path(path)?;
+        let session = self.clone_session().await?;
+        let meta = session
+            .sftp()
+            .fs()
+            .symlink_metadata(&remote)
+            .await
+            .map_err(|e| map_sftp_error(&e, &remote))?;
+        Ok(match meta.file_type() {
+            Some(t) if t.is_symlink() => EntryKind::Symlink,
+            Some(t) if t.is_dir() => EntryKind::Directory,
+            _ => EntryKind::File,
+        })
     }
 
     /// Whether `path` is there, as a plain yes/no.

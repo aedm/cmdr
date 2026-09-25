@@ -23,8 +23,9 @@ use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::copy_concurrent::ConcurrentCopy;
 use super::copy_concurrent_task::CopyTask;
 use super::landing::{DestFolder, Landing, NewName, where_it_lands};
+use super::merge_ctx::MergeProbe;
 use super::preflight::SourceFileFacts;
-use super::strategy::{LandingName, MergeProbe, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
+use super::strategy::{LandingName, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::VolumeError;
 use crate::ignore_poison::IgnorePoison;
@@ -212,6 +213,8 @@ impl ConcurrentCopy<'_> {
             dest_name_claimed,
             file_name,
             window: self.file_window.clone(),
+            displaced: Arc::clone(&self.displaced),
+            created: Arc::new(super::merge_ctx::CreatedPaths::default()),
             // Every leaf of a directory source's subtree numbers itself under
             // this source's own row.
             merge_probe: self.op_probe.as_ref().map(|probe| MergeProbe {
@@ -358,7 +361,16 @@ impl ConcurrentCopy<'_> {
         .await
         .map_err(WriteFailure::synthetic);
         *self.apply_to_all_cell.lock_ignore_poison() = latched;
-        resolved
+        // An aside a cross-type Overwrite made is the OPERATION's to settle, not
+        // the task's: the driver can abandon a task at its cancel deadline.
+        resolved.map(|resolved| {
+            resolved.map(|mut rc| {
+                if let Some(displaced) = rc.displaced.take() {
+                    self.displaced.hold(displaced);
+                }
+                rc
+            })
+        })
     }
 
     /// Drops one path from the in-flight partial list, wherever it sits.

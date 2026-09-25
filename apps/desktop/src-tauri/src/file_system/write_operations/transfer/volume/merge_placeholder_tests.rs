@@ -180,6 +180,157 @@ async fn a_merge_child_that_lands_keeps_its_rename_name() {
     );
 }
 
+/// The guard the post-loop sweep must not break: an EMPTY source that lands on
+/// its reservation is a zero-byte file exactly like the placeholder, and it is
+/// the copy's output, not a leftover. Top level and deep, copy and move alike;
+/// for the move it is the only copy there is.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_empty_file_that_lands_on_its_reservation_is_kept() {
+    for moving in [false, true] {
+        let dest_dir = tempfile::tempdir().expect("tempdir");
+        let root = dest_dir.path().to_path_buf();
+        std::fs::create_dir(root.join("album")).unwrap();
+        std::fs::write(root.join("album").join("clash.txt"), b"the user's file").unwrap();
+        std::fs::write(root.join("clash.txt"), b"the user's other file").unwrap();
+        let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", root.clone()));
+
+        let source_inner = Arc::new(InMemoryVolume::new("Source").with_space_info(10_000_000, 10_000_000));
+        source_inner.create_directory(Path::new("/album")).await.unwrap();
+        source_inner
+            .create_file(Path::new("/album/clash.txt"), b"")
+            .await
+            .unwrap();
+        source_inner.create_file(Path::new("/clash.txt"), b"").await.unwrap();
+        let source: Arc<dyn Volume> = source_inner.clone();
+
+        let config = VolumeCopyConfig {
+            conflict_resolution: ConflictResolution::Rename,
+            progress_interval_ms: 0,
+            ..VolumeCopyConfig::default()
+        };
+        let sources = [PathBuf::from("/album"), PathBuf::from("/clash.txt")];
+        let result = if moving {
+            super::super::move_cross::move_volumes_with_progress(
+                Arc::new(CollectorEventSink::new()),
+                "op-empty-rename-lands-move",
+                &make_state(),
+                Arc::clone(&source),
+                &sources,
+                Arc::clone(&dest),
+                Path::new("/"),
+                &config,
+            )
+            .await
+        } else {
+            copy_volumes_with_progress(
+                Arc::new(CollectorEventSink::new()),
+                "op-empty-rename-lands-copy",
+                &make_state(),
+                Arc::clone(&source),
+                &sources,
+                Arc::clone(&dest),
+                Path::new("/"),
+                &config,
+            )
+            .await
+        };
+        result.unwrap_or_else(|e| panic!("moving={moving}: the transfer should complete: {e:?}"));
+
+        for landed in ["clash (1).txt", "album/clash (1).txt"] {
+            assert_eq!(
+                std::fs::read(root.join(landed)).ok().as_deref(),
+                Some(b"".as_slice()),
+                "moving={moving}: the empty file that landed at {landed} is kept"
+            );
+        }
+    }
+}
+
 /// The unused-import guard: the forwarding macro's expansion names this type.
 #[allow(dead_code, reason = "the macro expansion names the type")]
 type ListingRow = FileEntry;
+
+/// A merge child resolved to `Rename` whose leaf is still streaming when the user
+/// cancels, and never winds down: the driver abandons its future at the
+/// cancel-drain deadline, and that future's own cleanup never runs. The
+/// reservation has to go anyway.
+///
+/// Three top-level sources put the copy on the CONCURRENT driver, the one with a
+/// drain deadline; every non-empty source file wedges on the gated source.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_merge_child_abandoned_at_the_drain_deadline_takes_its_rename_placeholder_back() {
+    use super::wedge_test_support::{CHUNK, CancelDrainGuard, WAIT, gated_source};
+    use crate::file_system::write_operations::state::cancel_write_operation;
+    use crate::file_system::write_operations::test_support::TestOperationGuard;
+    use std::sync::atomic::Ordering;
+
+    let _drain = CancelDrainGuard::set(Duration::from_millis(150));
+    let dest_dir = tempfile::tempdir().expect("tempdir");
+    let root = dest_dir.path().to_path_buf();
+    std::fs::create_dir(root.join("album")).unwrap();
+    std::fs::write(root.join("album").join("clash.bin"), b"the user's file").unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", root.clone()));
+
+    let gated = gated_source(CHUNK as u64 * 4);
+    gated.source_inner.create_directory(Path::new("/album")).await.unwrap();
+    for name in ["/album/clash.bin", "/wedge-a.bin", "/wedge-b.bin"] {
+        gated
+            .source_inner
+            .create_file(Path::new(name), &vec![0xAB; CHUNK * 4])
+            .await
+            .unwrap();
+    }
+    let sources = [
+        PathBuf::from("/album"),
+        PathBuf::from("/wedge-a.bin"),
+        PathBuf::from("/wedge-b.bin"),
+    ];
+
+    let events = Arc::new(CollectorEventSink::new());
+    let op = TestOperationGuard::register_state("merge-placeholder-abandoned", make_state());
+    let config = VolumeCopyConfig {
+        conflict_resolution: ConflictResolution::Rename,
+        progress_interval_ms: 0,
+        ..VolumeCopyConfig::default()
+    };
+    let copy = copy_volumes_with_progress(
+        events.clone(),
+        op.id(),
+        op.state(),
+        Arc::clone(&gated.source),
+        &sources,
+        Arc::clone(&dest),
+        Path::new("/"),
+        &config,
+    );
+    tokio::pin!(copy);
+
+    // Every file, the merge child included, has opened its stream and parked.
+    tokio::select! {
+        r = &mut copy => panic!("the copy must still be running: {r:?}"),
+        () = crate::test_support::wait_until_async(WAIT, "every source to park", || {
+            gated.opened.load(Ordering::SeqCst) >= 3
+        }) => {}
+    }
+    assert!(
+        root.join("album").join("clash (1).bin").exists(),
+        "precondition: the Rename reserved its name before the leaf wedged"
+    );
+
+    cancel_write_operation(op.id(), false);
+    tokio::time::timeout(Duration::from_secs(5), &mut copy)
+        .await
+        .expect("the driver must abandon the wedged tasks")
+        .expect_err("a cancelled copy ends as cancelled");
+
+    let names = names_in_album(&root);
+    assert_eq!(
+        names,
+        vec!["clash.bin".to_string()],
+        "the abandoned child's reservation must be taken back"
+    );
+    assert_eq!(
+        std::fs::read(root.join("album").join("clash.bin")).unwrap(),
+        b"the user's file"
+    );
+}

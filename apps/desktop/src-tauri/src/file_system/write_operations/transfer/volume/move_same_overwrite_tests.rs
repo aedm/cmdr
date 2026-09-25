@@ -139,3 +139,65 @@ async fn a_refused_child_rename_leaves_the_merged_destination_child() {
         "and the source child never moved, so it stays too"
     );
 }
+
+/// A cross-type Overwrite (a FILE moving onto the user's FOLDER), answered on
+/// the prompt, whose replacing rename is refused. The folder comes back, children
+/// and all: the resolver renamed it aside rather than deleting it.
+///
+/// Rename #1 is that aside; #2 is the one that would have replaced it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_rename_puts_back_the_folder_a_file_was_replacing() {
+    let inner = Arc::new(InMemoryVolume::new("V").with_space_info(10_000_000, 10_000_000));
+    inner.create_directory(Path::new("/inbox")).await.unwrap();
+    inner
+        .create_file(Path::new("/clash"), b"the incoming bytes")
+        .await
+        .unwrap();
+    inner.create_directory(Path::new("/inbox/clash")).await.unwrap();
+    inner
+        .create_file(Path::new("/inbox/clash/precious.txt"), THE_USERS_BYTES)
+        .await
+        .unwrap();
+    let volume = FaultyVolume::wrapping(Arc::clone(&inner))
+        .failing_call(FaultyOp::Rename, 2, refused())
+        .arc();
+    let state = make_state();
+    let events = Arc::new(
+        super::super::super::conflict_responder_test_support::ConflictResponderSink::new(
+            &state,
+            ConflictResolution::Overwrite,
+            false,
+        ),
+    );
+
+    let result = move_within_same_volume_with_progress(
+        events,
+        "op-same-move-cross-type-rename-refused",
+        &state,
+        Arc::clone(&volume) as Arc<dyn Volume>,
+        &[PathBuf::from("/clash")],
+        Path::new("/inbox"),
+        &VolumeCopyConfig {
+            // Only an answered prompt may cross types.
+            conflict_resolution: ConflictResolution::Stop,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await;
+
+    assert!(
+        volume.fault_fired(FaultyOp::Rename),
+        "the injected rename failure never fired, so this cell proves nothing"
+    );
+    assert!(result.is_err(), "a refused rename must fail the move: {result:?}");
+    assert_eq!(
+        bytes_at(&inner, "/inbox/clash/precious.txt").await.as_deref(),
+        Some(THE_USERS_BYTES),
+        "the folder the Overwrite was replacing must be back, children and all"
+    );
+    assert_eq!(
+        bytes_at(&inner, "/clash").await.as_deref(),
+        Some(b"the incoming bytes".as_slice()),
+        "and the source never moved"
+    );
+}

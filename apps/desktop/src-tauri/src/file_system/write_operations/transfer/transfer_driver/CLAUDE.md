@@ -15,7 +15,7 @@ callbacks. The transfers themselves: `../CLAUDE.md`.
 - **The cancellation check sits BEFORE any destructive call**, ❌ not after the closure returns.
 - **EVERY leaf holds its OWN share of the in-flight total** (`progress.rs`: `LeafProgressLedger` per operation,
   `SourceProgress` per top-level source, `LeafProgress` per file). A directory streams many leaves AT ONCE through
-  `volume/strategy.rs::FileWindow`, so ❌ never a shared high-water slot: the next leaf to finish wipes it and the bar
+  `volume/merge_ctx.rs::FileWindow`, so ❌ never a shared high-water slot: the next leaf to finish wipes it and the bar
   drops by everything the big one had streamed. Reported = `finished + sum(in-flight)`, under ONE lock.
 - **A leaf's mark is its HIGH-WATER**, because an attempt restarts at byte zero; ❌ never lower it on a restart (the
   prefix gets credited twice). `complete` swaps that share for the leaf's exact size; `Drop` withdraws it if the leaf

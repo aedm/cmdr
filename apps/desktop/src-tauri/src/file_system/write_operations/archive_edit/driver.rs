@@ -17,7 +17,7 @@ use super::super::state::{WriteOperationState, WriteSettledGuard};
 use super::super::types::ReadOnlySide;
 use super::super::types::{WriteOperationError, WriteOperationStartResult, WriteOperationType};
 use super::edit_error::EditError;
-use super::engine::{MutatorHooks, delete_move_sources, emit_archive_terminal, run_managed_edit, to_write_error};
+use super::engine::{MutatorHooks, emit_archive_terminal, run_managed_edit, to_write_error};
 use super::routing::{ensure_zip_writable, normalize_inner_path, read_only_error};
 use crate::file_system::volume::LaneKey;
 use crate::file_system::volume::manager::get_volume_manager;
@@ -35,11 +35,6 @@ pub(crate) struct ArchiveEditRequest {
     pub changeset: Changeset,
     /// Queue-window summary (e.g. the added item's name, "Delete note.txt").
     pub summary: OperationSummaryText,
-    /// Local source files to delete AFTER the edit commits — set only for an
-    /// into-archive MOVE. The move invariant: the source side is removed only
-    /// once the destination (the rewritten archive) is durably in place, so a
-    /// crash never loses both copies. Empty for copy-into and in-archive edits.
-    pub move_sources_to_delete: Vec<PathBuf>,
     /// How many source entries the changeset couldn't represent and skipped (a
     /// conflict resolved to Skip, or a symlink / special file a zip can't hold).
     /// Reported as `files_skipped` on the terminal event so the user isn't
@@ -97,7 +92,6 @@ pub(crate) async fn route_archive_delete(
             source: summary_source,
             destination: None,
         },
-        move_sources_to_delete: Vec::new(),
         skipped_count: 0,
         preview_id,
     };
@@ -144,7 +138,6 @@ pub(crate) async fn archive_edit_start(
         archive_path,
         parent_volume_id,
         changeset,
-        move_sources_to_delete,
         skipped_count,
         ..
     } = request;
@@ -205,15 +198,7 @@ pub(crate) async fn archive_edit_start(
             .await;
 
             let final_progress = hooks.latest_progress();
-            if result.is_ok() {
-                // Move invariant: delete the local sources only now that the
-                // rewritten archive is durably committed, and BEFORE the
-                // terminal event says the move is done. Best-effort — a failed
-                // source delete leaves the file in both places (an incomplete
-                // move), never loses data.
-                delete_move_sources(&move_sources_to_delete).await;
-            }
-            emit_archive_terminal(events.as_ref(), &op_id, result, skipped_count, &final_progress);
+            emit_archive_terminal(events.as_ref(), &op_id, result, skipped_count, None, &final_progress);
 
             task_guard.disarm();
             manager::manager().on_settled(&op_id);

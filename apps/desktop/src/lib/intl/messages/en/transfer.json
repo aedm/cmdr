@@ -147,5 +147,18 @@
     },
     "screenshot": "toast-transfer-complete.png",
     "screenshotNote": "The toast Cmdr shows when an operation finishes, pictured here. Your string is another outcome of the same toast: a move to trash or a delete, a compress, some files skipped, or files that appeared during a move."
+  },
+
+  "transfer.changedDuringMove": "{countText} {count, plural, one {item} other {items}} changed during the move and {count, plural, one {stays} other {stay}} in {scope, select, manyFolders {{folderName} and other source folders} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "description": "Extra sentence appended to the move-complete toast when someone saved over files in the source after Cmdr had already copied them (an app saving a document, a sync app updating a file). The destination got the version Cmdr copied, so Cmdr kept the newer original in the source folder instead of deleting it. Can follow the \"appeared during the move\" sentence in the same toast.",
+    "placeholders": {
+      "countText": "number of items kept in the source, ready to drop into the sentence (e.g. 1,234)",
+      "count": "the same number of items (decides the noun's singular/plural and the verb's agreement)",
+      "scope": "\"manyFolders\" when several of the moved items kept something, so only the first folder is named; anything else means one folder kept something",
+      "folderName": "the name of the source folder the items are in, e.g. Work (a name, not a path)"
+    },
+    "screenshot": "toast-transfer-complete.png",
+    "screenshotNote": "The toast Cmdr shows when an operation finishes, pictured here. Your string is another outcome of the same toast: a move to trash or a delete, a compress, some files skipped, or files that appeared during a move."
   }
 }

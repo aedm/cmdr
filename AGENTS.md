@@ -83,9 +83,9 @@ Writing them:
 
 ## Where to look (router)
 
-- **Editing code**: for "where does symbol X live", use `codegraph_search` (enabled and up to date). The harness
-  autoloads `C.md`s when you touch a dir. Read a subsystem's `C.md` proactively when running its tooling/tests without
-  touching it (like `test/e2e-playwright/CLAUDE.md` before the E2E suite).
+- **Editing code**: reach for codegraph before reading files (`codegraph_explore`, `codegraph_search`; deferred, load
+  via `ToolSearch` first). The harness autoloads `C.md`s when you touch a dir. Read a subsystem's `C.md` proactively
+  when running its tooling/tests without touching it (like `test/e2e-playwright/CLAUDE.md` before the E2E suite).
 - **Before planning**, read `docs/architecture.md`: the subsystem map (what + where + a pointer per area).
 - **A procedure** (release, screenshots, deps, adding a window): `docs/guides/` and the skills. Building a dialog,
   settings screen, window, or form control: `docs/guides/building-ui.md` (house primitives, and where each deeper doc

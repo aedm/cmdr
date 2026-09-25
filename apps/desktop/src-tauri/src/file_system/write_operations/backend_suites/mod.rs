@@ -22,6 +22,8 @@ mod network_archive_test_support;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod network_look_alike_test_support;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
+mod network_move_drift_test_support;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod network_safety_test_support;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod network_semantics_test_support;

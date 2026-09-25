@@ -5232,22 +5232,30 @@ export type AppStatus =
   | { type: 'expired'; organizationName: string | null; expiredAt: string; showModal: boolean }
 
 /**
- *  Items that turned up in a move's source folder after the scan counted it: a
- *  download finishing, a sync client landing a file, an editor saving. The copy
- *  phase never saw them, so the source sweep leaves them (and whatever holds
- *  them) alone, and the operation says so instead of reporting a clean move.
+ *  What a move's source sweep left in place because the move didn't carry it:
+ *  items that turned up in a source folder after the scan counted it (a
+ *  download finishing, a sync client landing a file), and originals someone
+ *  saved over after their copy started, whose new bytes never reached the
+ *  destination. The sweep leaves both (and whatever holds them) alone, and the
+ *  operation says so instead of reporting a clean move.
  *
  *  Typed, never a sentence: the FE words this in ten locales.
  */
 export type AppearedDuringMove = {
   /**
-   *  How many items stayed behind. A whole unknown subtree counts once, since
-   *  that's the item the user would recognize in the pane.
+   *  How many items appeared and stayed behind. A whole unknown subtree
+   *  counts once, since that's the item the user would recognize in the pane.
    */
   itemCount: number
   /**
+   *  How many originals changed after their copy started and stayed behind.
+   *  The destination holds the version the copy read.
+   */
+  changedCount: number
+  /**
    *  The name (not the path) of the source folder holding them, for the
-   *  sentence. When several sources kept something, the first one's name.
+   *  sentence: a folder source's own name, a file source's parent's. When
+   *  several sources kept something, the first one's.
    */
   folderName: string
   /**
@@ -5901,6 +5909,24 @@ export type ConflictInfo = {
   isDirectory: boolean
 }
 
+/**
+ *  Where the `operation-conflict` preview copies from and to. Every name below
+ *  exists in BOTH folders, as the kinds its field names, so copying `from_dir/<name>`
+ *  into `to_dir` parks on exactly that clash.
+ */
+export type ConflictPreviewFixtures = {
+  // Absolute path of the folder holding the incoming side of every clash.
+  fromDir: string
+  // Absolute path of the folder the preview copies into.
+  toDir: string
+  // Name of a folder in `from_dir` that is a FILE in `to_dir`.
+  folderOverFile: string
+  // Name of a file in `from_dir` that is a FOLDER in `to_dir`.
+  fileOverFolder: string
+  // Name of a file in both.
+  fileOverFile: string
+}
+
 // How to handle conflicts when destination files already exist.
 export type ConflictResolution =
   // Stop operation on first conflict (default behavior)
@@ -6476,6 +6502,8 @@ export type DialogGalleryFixtures = {
   existingFileName: string
   // A deep path inside `root`, for the "Go to path" preview.
   nestedPath: string
+  // The conflict preview's clash pairs, in their own sibling tree.
+  conflictPreview: ConflictPreviewFixtures
 }
 
 // A single directory diff change
@@ -15564,10 +15592,11 @@ export type WriteConflictEvent = {
   destinationPath: string
   /**
    *  Source size in bytes. Files use `metadata.len()`; folder sources use
-   *  the recursive total from the pre-flight scan when known. `None`
-   *  ("unknown") for a folder source on a path that ran no pre-flight scan
-   *  (the same-volume move fast path), which the FE renders as `(unknown)`,
-   *  mirroring `destination_size`.
+   *  their recursive total when known: the pre-flight scan's on a
+   *  cross-volume transfer, the drive index's on a local one. `None`
+   *  ("unknown") for a folder source with neither (the same-volume move fast
+   *  path runs no pre-flight scan; the index may not cover the path), which
+   *  the FE renders as `(unknown)`, mirroring `destination_size`.
    */
   sourceSize: number | null
   /**

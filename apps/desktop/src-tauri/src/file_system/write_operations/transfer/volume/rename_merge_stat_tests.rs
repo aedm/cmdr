@@ -24,9 +24,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tempfile::TempDir;
 
-/// Wraps a `LocalPosixVolume` and makes `is_directory` REFUSE TO ANSWER for one
-/// path (typed `IoError`), while everything else works and the path keeps
-/// existing. Models a dropped session or a hung mount, not a missing file. The
+/// Wraps a `LocalPosixVolume` and makes `is_directory` and `entry_kind` REFUSE
+/// TO ANSWER for one path (typed `IoError`), while everything else works and the
+/// path keeps existing. Models a dropped session or a hung mount, not a missing file. The
 /// `InMemoryVolume` knob (`set_stat_failing`) can't be used here: the
 /// rename-merge needs real POSIX `rename`-moves-a-subtree and empty-only
 /// `delete` semantics, which is why this whole file runs on `LocalPosixVolume`.
@@ -81,6 +81,20 @@ impl Volume for StatFailingVolume {
             });
         }
         self.inner.is_directory(path)
+    }
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<crate::file_system::volume::EntryKind, VolumeError>> + Send + 'a>> {
+        if path == self.unanswerable {
+            return Box::pin(async move {
+                Err(VolumeError::IoError {
+                    message: "Stat unavailable".to_string(),
+                    raw_os_error: None,
+                })
+            });
+        }
+        self.inner.entry_kind(path)
     }
     fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
         self.inner.delete(path)

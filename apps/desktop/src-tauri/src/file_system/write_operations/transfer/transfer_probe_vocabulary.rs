@@ -181,7 +181,7 @@ impl DriverPhase {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskRole {
     /// One file's byte copy: a merge leaf, or a top-level FILE source. These are
-    /// what the `strategy.rs::FileWindow` width bounds, so they are what the
+    /// what the `merge_ctx.rs::FileWindow` width bounds, so they are what the
     /// dump measures against it.
     File,
     /// A directory source's walker: it lists levels and hands each file to the

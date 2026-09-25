@@ -8,7 +8,7 @@
 use std::collections::HashSet;
 
 use super::cross_fs::move_with_staging;
-use super::source_sweep::{SourceSweep, delete_sources_after_move};
+use super::source_sweep::{LandedOriginal, SourceSweep, delete_sources_after_move};
 use super::*;
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::state::ScanResult;
@@ -140,7 +140,11 @@ fn sweep_of_one_missing_source(src: &Path) -> (Vec<PathBuf>, SourceSweep) {
         dedup_bytes: 0,
         per_path: Vec::new(),
     };
-    let sweep = SourceSweep::plan(&sources, vec![src.join("a.txt")], &scan, HashSet::new());
+    let landed = LandedOriginal {
+        path: src.join("a.txt"),
+        stamp: None,
+    };
+    let sweep = SourceSweep::plan(&sources, vec![landed], &scan, HashSet::new());
     (sources, sweep)
 }
 

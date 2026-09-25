@@ -50,5 +50,9 @@
   "transfer.appearedDuringMove": "{countText} {count, plural, one {elem} other {elem}} jelent meg {scope, select, manyFolders {a(z) {folderName} mappában és további forrásmappákban} other {a(z) {folderName} mappában}} az áthelyezés közben, és ott is marad.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "{countText} {count, plural, one {elem} other {elem}} módosult az áthelyezés közben, és {scope, select, manyFolders {a(z) {folderName} mappában és további forrásmappákban} other {a(z) {folderName} mappában}} marad.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
   }
 }

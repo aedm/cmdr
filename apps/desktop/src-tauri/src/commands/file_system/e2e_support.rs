@@ -58,7 +58,7 @@ pub async fn create_dialog_gallery_fixtures(
         || DeadlineError::TimedOut,
         |detail| DeadlineError::Unexpected { detail },
         move || {
-            crate::dev_fixtures::ensure_dialog_gallery_fixtures(&data_dir.join(crate::dev_fixtures::FIXTURE_DIR_NAME))
+            crate::dev_fixtures::ensure_dialog_gallery_fixtures(&data_dir)
                 .map_err(|detail| DeadlineError::Unexpected { detail })
         },
     )
