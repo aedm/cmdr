@@ -247,7 +247,9 @@ pub(crate) async fn connect_directly(volume_id: &str) -> UpgradeResult {
     // warm up, so nobody is asked for a password they already saved.
     let hostname = resolve_ip_to_hostname_with_wait(&info.server, HOSTNAME_WAIT).await;
     let display_name = friendly_server_name(&info.server);
-    let Some((username, password)) = get_keychain_password(&info.server, hostname.as_deref(), &info.share).await else {
+    let Some((username, password)) =
+        get_keychain_password(&info.server, hostname.as_deref(), info.port, &info.share).await
+    else {
         log::info!("No stored credentials found, requesting credentials from user");
         let hint = info.username.clone();
         return credentials_needed(info, display_name, hint, CredentialsNeededReason::NoCredential);
@@ -286,7 +288,10 @@ pub(crate) async fn connect_directly_with_credentials(
     match upgraded {
         Ok(()) => {
             if remember_in_keychain && let (Some(u), Some(p)) = (&username, &password) {
-                let server_key = hostname.as_deref().unwrap_or(&info.server);
+                let server_key = &crate::network::server_identity::smb_server(
+                    hostname.as_deref().unwrap_or(&info.server),
+                    info.port,
+                );
                 if let Err(e) = keychain::save_credentials(server_key, Some(&info.share), u, p) {
                     log::warn!("Couldn't save credentials to Keychain: {}", e);
                 }
@@ -346,7 +351,8 @@ pub(crate) async fn connect_directly_with_system_saved_password(volume_id: &str)
     match upgraded {
         Ok(()) => {
             // Keyed by hostname when known, else the server, like a typed password.
-            let server_key = hostname.as_deref().unwrap_or(&info.server);
+            let server_key =
+                &crate::network::server_identity::smb_server(hostname.as_deref().unwrap_or(&info.server), info.port);
             if let Err(e) = keychain::save_credentials(server_key, Some(&info.share), &creds.username, &creds.password)
             {
                 log::warn!("Couldn't copy borrowed credentials into Cmdr's store: {}", e);

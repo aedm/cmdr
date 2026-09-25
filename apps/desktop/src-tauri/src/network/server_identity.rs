@@ -44,8 +44,47 @@ fn normalize(s: &str) -> String {
 /// splits one server's password across several entries, so a password saved on mount
 /// is never found on the next connect. `credential_key` collapses every name form to
 /// the same bare identity (IP literals pass through unchanged — they have no bare form).
+///
+/// ❗ A PORT off 445 is part of the identity and stays on the key (`nas:11482`), in
+/// whichever form it arrives: the discovery name a sheet saves under
+/// (`nas.local:11482`) and [`smb_server`]'s host + port from a mount fold to the same
+/// key. One machine can run several SMB servers, each with its own accounts. On 445
+/// (or with no port) the key is exactly the bare name, as it always was.
 pub fn credential_key(server: &str) -> String {
-    bare_name(&normalize(server))
+    let normalized = normalize(server);
+    match split_port(&normalized) {
+        Some((host, port)) if port != SMB_PORT => format!("{}:{port}", bare_name(host)),
+        Some((host, _)) => bare_name(host),
+        None => bare_name(&normalized),
+    }
+}
+
+/// SMB's own port, which a server name leaves unsaid.
+const SMB_PORT: u16 = 445;
+
+/// How an SMB server with a port is spelled for [`credential_key`]: the host on 445,
+/// `host:port` off it (`[v6]:port` for an IPv6 literal, whose own colons would
+/// otherwise read as a port).
+pub fn smb_server(host: &str, port: u16) -> String {
+    match port {
+        SMB_PORT => host.to_string(),
+        _ if host.contains(':') => format!("[{host}]:{port}"),
+        _ => format!("{host}:{port}"),
+    }
+}
+
+/// `host:port` or `[v6]:port` into its halves. A bare IPv6 literal has no port to
+/// split (its last group would read as one), so only the bracketed form does.
+fn split_port(s: &str) -> Option<(&str, u16)> {
+    if let Some(rest) = s.strip_prefix('[') {
+        let (host, port) = rest.split_once("]:")?;
+        return Some((host, port.parse().ok()?));
+    }
+    let (host, port) = s.rsplit_once(':')?;
+    if host.is_empty() || host.contains(':') {
+        return None;
+    }
+    Some((host, port.parse().ok()?))
 }
 
 /// Extracts the bare name from any of the forms a server name arrives in:
@@ -193,6 +232,22 @@ mod tests {
         assert_eq!(credential_key("Naspolya.local."), "naspolya");
         assert_eq!(credential_key("Naspolya._smb._tcp.local"), "naspolya");
         assert_eq!(credential_key("Naspolya._smb._tcp.local."), "naspolya");
+    }
+
+    /// ❗ A port off 445 is part of the key, in every form it arrives in; on 445 the
+    /// key is exactly today's, so nothing saved on a standard NAS moves.
+    #[test]
+    fn credential_key_keeps_a_port_off_445_and_drops_445() {
+        assert_eq!(credential_key("nas.local:11482"), "nas:11482");
+        assert_eq!(credential_key(&smb_server("Nas", 11482)), "nas:11482");
+        assert_eq!(
+            credential_key(&smb_server("nas.local", 445)),
+            credential_key("nas.local")
+        );
+        assert_eq!(credential_key("nas:445"), "nas");
+        assert_eq!(credential_key(&smb_server("fe80::1", 11482)), "fe80::1:11482");
+        // A bare IPv6 literal has no port: its last group is not one.
+        assert_eq!(credential_key("fe80::1"), "fe80::1");
     }
 
     /// IP literals have no bare form; they pass through (lowercased) unchanged so two

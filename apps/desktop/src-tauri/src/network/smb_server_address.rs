@@ -193,26 +193,37 @@ fn system_keychain_aliases_from(server: &str, hosts: &[crate::network::NetworkHo
 
 /// Tries to retrieve SMB credentials from the Keychain.
 ///
-/// Tries multiple keys: by IP (from statfs), by hostname (from mDNS discovery),
+/// Tries multiple keys: by hostname (from mDNS discovery), then by IP (from statfs),
 /// at both share-level and server-level.
+///
+/// ❗ Keyed with the `port` (`server_identity::smb_server`), which is how the sign-in
+/// sheet saves them: it files a server off 445 under its discovery name
+/// (`localhost:11482`). Without it the upgrade never found that password and the direct
+/// session went out as a guest while the macOS mount was signed in. Off 445, the
+/// port-less keys are tried LAST, so a password saved before keys carried the port
+/// still works; on 445 the keys are exactly the port-less ones.
 pub(crate) async fn get_keychain_password(
     server_ip: &str,
     hostname: Option<&str>,
+    port: u16,
     share: &str,
 ) -> Option<(String, String)> {
-    let server_ip = server_ip.to_string();
-    let hostname = hostname.map(|s| s.to_string());
+    use crate::network::server_identity::smb_server;
+
+    let mut names: Vec<String> = hostname
+        .into_iter()
+        .chain(std::iter::once(server_ip))
+        .map(str::to_string)
+        .collect();
+    // The keys this port files under first, then (off 445) the port-less ones older saves used.
+    let mut servers_to_try: Vec<String> = names.iter().map(|name| smb_server(name, port)).collect();
+    if port != 445 {
+        servers_to_try.append(&mut names);
+    }
     let share = share.to_string();
 
     tokio::task::spawn_blocking(move || {
         use crate::network::keychain;
-
-        // Build a list of server names to try (hostname first, then IP)
-        let mut servers_to_try: Vec<&str> = Vec::new();
-        if let Some(ref h) = hostname {
-            servers_to_try.push(h);
-        }
-        servers_to_try.push(&server_ip);
 
         for server in &servers_to_try {
             // Try share-level credentials first (more specific)
@@ -227,7 +238,7 @@ pub(crate) async fn get_keychain_password(
             }
         }
 
-        log::debug!("No Keychain credentials for {:?} / {} / {}", hostname, server_ip, share);
+        log::debug!("No Keychain credentials for {:?} / {}", servers_to_try, share);
         None
     })
     .await

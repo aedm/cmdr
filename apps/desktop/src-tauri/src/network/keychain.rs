@@ -72,6 +72,11 @@ impl From<SecretStoreError> for KeychainError {
 /// composed (from the server's share list) and the upgrade path decomposed (from
 /// `statfs`), so an accented share saved one way is looked up the other and silently
 /// falls back to guest. `credential_key` already folds the server half.
+///
+/// ❗ The server half keeps a port off 445 (`smb://localhost:11482`), however the
+/// caller spelled it: the sign-in sheet passes the discovery name, the upgrade passes
+/// `server_identity::smb_server(host, port)`. On 445 the key is exactly the bare name.
+/// The in-memory cache is keyed by this same account name, so it can't disagree.
 fn make_account_name(server: &str, share: Option<&str>) -> String {
     use unicode_normalization::UnicodeNormalization;
 

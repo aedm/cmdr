@@ -157,3 +157,46 @@ fn an_undiscovered_mdns_service_name_has_nothing_to_dial() {
         ServerAddress::UndiscoveredService
     );
 }
+
+/// ❗ **A password the sign-in sheet saved for a server off port 445 is the one the
+/// direct-connection upgrade finds.** The sheet saves under the host's discovery name
+/// (`localhost:11482`) and the upgrade knows the host and port apart; keyed without the
+/// port on one side, the upgrade found nothing and the direct session went out as a
+/// guest while the macOS mount was signed in (QA 2026-09-25).
+#[tokio::test]
+async fn the_upgrade_finds_a_password_the_sheet_saved_off_port_445() {
+    let _secrets = crate::test_support::isolate_secrets();
+    crate::network::keychain::save_credentials("keytest-offport:11482", None, "testuser", "pw")
+        .expect("the test secret store always accepts");
+
+    let found = get_keychain_password("keytest-offport", None, 11482, "public").await;
+
+    assert_eq!(found, Some(("testuser".to_string(), "pw".to_string())));
+}
+
+/// A password saved before keys carried the port (under the bare host) still works
+/// for a server off 445, tried after the port-keyed ones.
+#[tokio::test]
+async fn a_password_saved_without_the_port_is_still_found() {
+    let _secrets = crate::test_support::isolate_secrets();
+    crate::network::keychain::save_credentials("keytest-legacy", None, "old", "pw")
+        .expect("the test secret store always accepts");
+
+    let found = get_keychain_password("keytest-legacy", None, 11482, "public").await;
+
+    assert_eq!(found, Some(("old".to_string(), "pw".to_string())));
+}
+
+/// Two SMB servers on one machine keep apart: the port-keyed password of one is never
+/// handed to the other.
+#[tokio::test]
+async fn a_password_for_another_port_of_the_machine_is_not_found() {
+    let _secrets = crate::test_support::isolate_secrets();
+    crate::network::keychain::save_credentials("keytest-twoports:11480", None, "other", "pw")
+        .expect("the test secret store always accepts");
+
+    assert_eq!(
+        get_keychain_password("keytest-twoports", None, 11482, "public").await,
+        None
+    );
+}
