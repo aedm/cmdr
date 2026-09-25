@@ -190,6 +190,23 @@ describe('parseServerAddress: the SMB shapes', () => {
     })
     expect(parseServerAddress('\\\\nas')).toMatchObject({ protocol: 'smb', host: 'nas' })
   })
+
+  /** `//nas/share` is how the macOS mount table (`mount`, Get Info) prints an SMB share (QA round 3). */
+  it('reads the mount table`s //host/share as SMB', () => {
+    expect(parseServerAddress('//nas/share')).toMatchObject({
+      kind: 'parsed',
+      protocol: 'smb',
+      host: 'nas',
+      port: 445,
+      path: '/share',
+    })
+    expect(parseServerAddress('//testuser@localhost:11480/public')).toMatchObject({
+      protocol: 'smb',
+      host: 'localhost',
+      port: 11480,
+      username: 'testuser',
+    })
+  })
 })
 
 describe('parseServerAddress: folding and refusing', () => {

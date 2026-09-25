@@ -14,6 +14,7 @@ import {
   formFromPrefill,
   formFromSftpServer,
   isStartFolderUnderRoot,
+  nameFallbackOf,
   nextcloudAddress,
   serverTargetFrom,
   smbAddressFrom,
@@ -68,6 +69,25 @@ describe('applyParsedAddress', () => {
     const filled = typed('smb://x@nas/share')
     expect(filled.username).toBe('x')
     const next = applyParsedAddress({ ...filled, address: 'nas.local:2222' }, parseServerAddress('nas.local:2222'))
+    expect(next.username).toBe('')
+  })
+
+  /** ❗ Typed "typed", then `x@nas` filled "x", then `nas2` left it empty (QA round 3). */
+  it('gives back the username the person typed once the address stops naming one', () => {
+    const own = { ...emptyServerForm(), username: 'typed' }
+    const filled = applyParsedAddress({ ...own, address: 'x@nas' }, parseServerAddress('x@nas'))
+    expect(filled.username).toBe('x')
+    const refilled = applyParsedAddress({ ...filled, address: 'y@nas' }, parseServerAddress('y@nas'))
+    expect(refilled.username).toBe('y')
+    const next = applyParsedAddress({ ...refilled, address: 'nas2' }, parseServerAddress('nas2'))
+    expect(next.username).toBe('typed')
+  })
+
+  /** ❗ `\\sven@nas\share` edited toward something that doesn't parse kept "sven" (QA round 3). */
+  it('drops a username the address filled once the address stops parsing', () => {
+    const filled = typed('\\\\sven@nas\\share')
+    expect(filled.username).toBe('sven')
+    const next = applyParsedAddress({ ...filled, address: 'sven@' }, parseServerAddress('sven@'))
     expect(next.username).toBe('')
   })
 
@@ -215,6 +235,13 @@ describe('serverTargetFrom', () => {
 describe('smbAddressFrom', () => {
   it('turns a UNC path into the smb:// address the backend reads', () => {
     expect(smbAddressFrom('\\\\nas\\share')).toBe('smb://nas/share')
+  })
+
+  it('turns the macOS mount table`s `//nas/share` into the smb:// address it means', () => {
+    expect(smbAddressFrom('//nas/share')).toBe('smb://nas/share')
+    expect(smbAddressFrom('//testuser@localhost:11480/public')).toBe('smb://testuser@localhost:11480/public')
+    // The Name field's placeholder names the host, as for any SMB address.
+    expect(nameFallbackOf({ ...emptyServerForm(), address: '//nas/share' })).toBe('nas')
   })
 
   it('spells an address with no scheme as an SMB URL, so `user@host` and a share path reach the backend', () => {

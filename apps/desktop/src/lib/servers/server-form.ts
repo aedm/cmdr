@@ -8,7 +8,7 @@
 
 import type { SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 import type { SavedSftpServer, SavedWebdavServer } from '$lib/tauri-commands'
-import { parseServerAddress, uncAsSmbUrl, type ParsedAddress } from './address-parser'
+import { mountSourceAsSmbUrl, parseServerAddress, uncAsSmbUrl, type ParsedAddress } from './address-parser'
 
 /** Every field the add and edit forms hold, across all three protocols. */
 export interface ServerForm {
@@ -22,6 +22,8 @@ export interface ServerForm {
    * address stops naming it. Typing into the field makes it the person's.
    */
   usernameFromAddress: boolean
+  /** The username the person typed, stashed while the address fills the field, and given back when it stops. */
+  typedUsername: string
   /** ❗ Lives here only while the sheet is open. Nothing persists it; the backend's store does. */
   secret: string
   remember: boolean
@@ -43,6 +45,7 @@ export function emptyServerForm(): ServerForm {
     address: '',
     username: '',
     usernameFromAddress: false,
+    typedUsername: '',
     secret: '',
     // ❗ Add mode ONLY. A person typing a password into a new server means to
     // come back to it; sign-in mode seeds this from what is already stored, so a
@@ -66,26 +69,39 @@ export function emptyServerForm(): ServerForm {
  * The sheet re-runs this when the toggle moves too, so a path typed before
  * picking SFTP still lands in the root folder.
  *
- * ❗ An `unparsed` address changes nothing, because a half-typed address is the
- * normal state of a field someone is typing into.
+ * ❗ An `unparsed` address changes nothing but an address-filled username,
+ * because a half-typed address is the normal state of a field someone is typing
+ * into. That username goes, since the address no longer says it.
  */
 export function applyParsedAddress(form: ServerForm, parsed: ParsedAddress): ServerForm {
-  if (parsed.kind === 'unparsed') return form
+  if (parsed.kind === 'unparsed')
+    return form.usernameFromAddress ? { ...form, ...usernameAfter(form, undefined) } : form
   // A path is a folder only on SFTP (an SMB path is a share, and a WebDAV one
   // stays in the base URL), and only when the address doesn't name another
   // protocol, whose path means something else.
   const pathIsRoot = form.protocol === 'sftp' && speaksOrNamesNone(parsed, 'sftp')
   return {
     ...form,
-    // ❗ The address's account when it carries one. When it doesn't, a username
-    // the address had filled goes with it, and one the person typed stays.
-    ...(parsed.username !== undefined
-      ? { username: parsed.username, usernameFromAddress: true }
-      : form.usernameFromAddress
-        ? { username: '', usernameFromAddress: false }
-        : {}),
+    ...usernameAfter(form, parsed.username),
     remoteRoot: pathIsRoot ? (parsed.path ?? form.remoteRoot) : form.remoteRoot,
   }
+}
+
+/**
+ * The Username field once the address carries `fromAddress` (`undefined`: none).
+ *
+ * ❗ The address's account when it carries one, else the person's own: a
+ * username they typed is stashed while the address fills the field, and comes
+ * back when the address stops naming one. One typed while the address names
+ * nobody stays as it is.
+ */
+function usernameAfter(
+  form: ServerForm,
+  fromAddress: string | undefined,
+): Pick<ServerForm, 'username' | 'usernameFromAddress' | 'typedUsername'> {
+  const typedUsername = form.usernameFromAddress ? form.typedUsername : form.username
+  if (fromAddress !== undefined) return { username: fromAddress, usernameFromAddress: true, typedUsername }
+  return { username: typedUsername, usernameFromAddress: false, typedUsername }
 }
 
 /**
@@ -169,9 +185,9 @@ export function serverTargetFrom(form: ServerForm): ServerTarget | null {
  */
 export function smbAddressFrom(address: string): string {
   const trimmed = address.trim()
-  // The backend reads `smb://`, not Windows' backslashes.
-  const unc = uncAsSmbUrl(trimmed)
-  if (unc) return unc
+  // The backend reads `smb://`, not Windows' backslashes or the mount table's `//`.
+  const spelled = uncAsSmbUrl(trimmed) ?? mountSourceAsSmbUrl(trimmed)
+  if (spelled) return spelled
   const parsed = parseServerAddress(trimmed)
   if (parsed.kind === 'unparsed' || parsed.protocol === 'smb') return trimmed
   if (parsed.protocol === undefined) return `smb://${trimmed}`

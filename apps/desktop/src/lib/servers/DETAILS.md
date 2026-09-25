@@ -346,6 +346,11 @@ selected dials `https://nas`), while one typed with no scheme belongs to whichev
 address carried fills the username either way; the path fills the SFTP root only when SFTP is selected, and the sheet
 re-applies the address when the toggle moves, so typing first and picking second lands in the same place.
 
+The username the address filled follows the address (`usernameAfter` in `server-form.ts`): it changes with the address,
+and goes once the address names nobody or stops parsing. One the person typed is stashed (`typedUsername`) while the
+address fills the field, and comes back when it stops. Besides `smb://`, SMB reads Windows' `\\nas\share` and the macOS
+mount table's `//nas/share`; `smbAddressFrom` hands both to the backend as `smb://`.
+
 ❗ **A prefill is the one place a scheme sets the toggle** (`formFromPrefill`). Go to path and ⌘K hand over a whole URL
 the person asked to open, so its scheme is already their choice, and the sheet opens with the toggle in view before
 anything is dialed. Go to path only hands over addresses WITH a scheme, so a bare `user@host` never takes this path.

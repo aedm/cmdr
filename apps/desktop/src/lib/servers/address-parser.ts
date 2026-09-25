@@ -92,6 +92,9 @@ export function parseServerAddress(input: string): ParsedAddress {
   // A UNC path (`\\nas\share`) is SMB spelled Windows' way: backslashes for slashes.
   const unc = uncAsSmbUrl(trimmed)
   if (unc) return readEndpoint(unc.slice('smb://'.length), 'smb', undefined)
+  // So is `//nas/share`, the macOS mount table's spelling (`mount`, Get Info).
+  const mountSource = mountSourceAsSmbUrl(trimmed)
+  if (mountSource) return readEndpoint(mountSource.slice('smb://'.length), 'smb', undefined)
 
   const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):\/\/(.*)$/.exec(trimmed)
   if (scheme) {
@@ -115,6 +118,15 @@ export function parseServerAddress(input: string): ParsedAddress {
 export function uncAsSmbUrl(input: string): string | null {
   const match = /^\\\\([^\\/]+)((?:\\[^\\]*)*)\\?$/.exec(input.trim())
   return match ? `smb://${match[1]}${match[2].replaceAll('\\', '/')}` : null
+}
+
+/**
+ * The macOS mount table's `//[user@]nas[:port]/share` as the `smb://` address it
+ * means, or `null` for anything that isn't one.
+ */
+export function mountSourceAsSmbUrl(input: string): string | null {
+  const match = /^\/\/([^/\\]+)(\/.*)?$/.exec(input.trim())
+  return match ? `smb://${match[1]}${match[2] ?? ''}` : null
 }
 
 /**
