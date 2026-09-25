@@ -222,3 +222,76 @@ async fn a_same_volume_move_onto_a_dir_link_never_lands_in_the_target() {
     );
     assert!(is_link(root, "dst/album"), "the destination link is untouched");
 }
+
+// The same two moves on a PLAIN `LocalPosixVolume` (an `lstat` backend), plus
+// the stamp-then-sweep pair an into-zip move uses, on both kinds of backend. A
+// move's source sweep deletes a LEDGER (`source_sweep.rs`), and a link in it is a
+// leaf: the link goes, nothing under it is re-listed or deleted.
+
+fn plain_volume() -> (Arc<dyn Volume>, TempDir) {
+    let dir = TempDir::new().unwrap();
+    let volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("V", dir.path().to_path_buf()));
+    (volume, dir)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn on_an_lstat_backend_a_moved_dir_link_goes_as_the_link() {
+    let (source, dir) = plain_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+
+    move_across(&source, "op-plain-cross-top-link", &[PathBuf::from("src/album")]).await;
+
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(!is_link(root, "src/album"), "the moved link is gone");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn on_an_lstat_backend_a_moved_folder_holding_a_dir_link_spares_the_target() {
+    let (source, dir) = plain_volume();
+    let root = dir.path();
+    plant_target(root);
+    write_file(root, "src/album/plain.txt", b"PLAIN");
+    link(root, "src/album/link", "outside/target");
+
+    move_across(&source, "op-plain-cross-child-link", &[PathBuf::from("src/album")]).await;
+
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(!exists(root, "src/album/plain.txt"), "the carried file went");
+}
+
+/// The into-zip pair: `stamp_source` never walks through a link, so the sweep
+/// finds it uncarried and leaves it, and the target is never touched.
+async fn stamp_then_sweep_spares_a_link_target(source: Arc<dyn Volume>, root: &Path) {
+    plant_target(root);
+    write_file(root, "src/album/plain.txt", b"PLAIN");
+    link(root, "src/album/link", "outside/target");
+
+    let album = Path::new("src/album");
+    let carried = super::source_sweep::stamp_source(&source, album).await.expect("stamp");
+    let left = super::source_sweep::sweep_carried_source(&source, album, &carried, &Default::default())
+        .await
+        .expect("sweep");
+
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(!exists(root, "src/album/plain.txt"), "the carried file went");
+    assert!(
+        is_link(root, "src/album/link"),
+        "the link was never carried, so it stays"
+    );
+    assert_eq!(left.appeared, 1, "and it's reported as left behind");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn stamp_then_sweep_spares_a_link_target_on_an_lstat_backend() {
+    let (source, dir) = plain_volume();
+    stamp_then_sweep_spares_a_link_target(source, dir.path()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn stamp_then_sweep_spares_a_link_target_on_a_following_backend() {
+    let (source, dir) = following_volume();
+    stamp_then_sweep_spares_a_link_target(source, dir.path()).await;
+}
