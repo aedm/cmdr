@@ -85,10 +85,23 @@ describe('resolveInitialPathAction', () => {
     ).toEqual({ kind: 'sync-path', path: 'adb://R58M12345/sdcard' })
   })
 
-  it('does nothing on the network view, which owns its own data', () => {
-    expect(resolveInitialPathAction({ ...base, isNetworkView: true, initialPath: '/elsewhere' })).toEqual({
-      kind: 'none',
-    })
+  /**
+   * ❗ The network view owns its own data, so nothing LOADS, but the path still
+   * commits: left as the previous volume's, the header read "Servers ▸ /Volumes/public"
+   * after a share, and anything reading the pane's path got a folder it isn't on
+   * (QA 2026-09-25).
+   */
+  it('commits the network view’s path without loading a listing', () => {
+    expect(
+      resolveInitialPathAction({
+        ...base,
+        isNetworkView: true,
+        prevVolumeId: 'smb-localhost-11482-public',
+        volumeId: 'network',
+        currentPath: '/Volumes/public',
+        initialPath: 'smb://',
+      }),
+    ).toEqual({ kind: 'sync-path', path: 'smb://' })
   })
 
   it('treats a plain volume switch as an ordinary path change', () => {
