@@ -46,9 +46,14 @@
         below?: Snippet<[MenuRowContext<T>]>
         /** Sits under the last section (a list-level warning). */
         footer?: Snippet
+        /**
+         * The lowest the surface may reach, in viewport px, when that's above the window's
+         * own edge: the volume switcher stops above its pane's footer rather than over it.
+         */
+        getBottomLimit?: () => number | undefined
     }
 
-    const { menu, ariaLabel, minWidth = 220, label, trailing, below, footer }: Props = $props()
+    const { menu, ariaLabel, minWidth = 220, label, trailing, below, footer, getBottomLimit }: Props = $props()
 
     menuInstanceCount += 1
     const instanceId = `menu-${String(menuInstanceCount)}`
@@ -114,7 +119,10 @@
         const width = surfaceEl.offsetWidth || minWidth
         const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN))
         const top = Math.max(VIEWPORT_MARGIN, rect.bottom)
-        position = { left, top, maxHeight: window.innerHeight - top - VIEWPORT_MARGIN }
+        const windowBottom = window.innerHeight - VIEWPORT_MARGIN
+        const limit = getBottomLimit?.()
+        const bottom = limit === undefined ? windowBottom : Math.min(windowBottom, limit - ANCHOR_GAP)
+        position = { left, top, maxHeight: bottom - top }
     }
 
     /**

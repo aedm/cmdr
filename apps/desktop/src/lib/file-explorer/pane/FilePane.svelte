@@ -2063,6 +2063,7 @@
         {#if footer.volumeSpace && !isDiskImageVolume && (!diskSpace.volumeSpace || usageBar)}
         <div
             class="disk-usage-bar-wrapper"
+            data-pane-footer
             use:tooltip={diskSpace.volumeSpace
                 ? { text: formatBarTooltip(diskSpace.volumeSpace, getFileSizeFormat(), mtpSpaceHint) }
                 : ''}

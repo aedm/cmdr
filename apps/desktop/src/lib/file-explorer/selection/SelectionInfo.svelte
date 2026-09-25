@@ -292,7 +292,7 @@
     )
 </script>
 
-<div class="selection-info">
+<div class="selection-info" data-pane-footer>
     {#if displayMode === 'empty'}
         <span class="summary-text">{tString('fileExplorer.selectionInfo.nothingHere')}</span>
         {#if spaceReadout}

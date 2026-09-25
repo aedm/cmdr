@@ -129,6 +129,11 @@
      */
     let savedPlaces = $state(new Map<string, SavedPlaceFacts>())
 
+    /** The top of the pane's footer (usage bar, status line), where the switcher stops. */
+    function paneFooterTop(): number | undefined {
+        return getAnchor()?.closest('.file-pane')?.querySelector('[data-pane-footer]')?.getBoundingClientRect().top
+    }
+
     /** The row that hands the header over to the favorites menu, and teaches ⌃D doing it. */
     const SEE_FAVORITES_VALUE = 'favorites:see'
 
@@ -362,7 +367,9 @@
 
 <!-- The name the switcher already carries in Settings > Keyboard shortcuts, so screen readers
      and the shortcut scope say the same thing (and M2 adds no new copy to translate). -->
-<Menu {menu} ariaLabel={tString('shortcuts.scope.volumeChooser')}>
+<!-- ❗ Stops above the pane's footer and scrolls: over it, the last row sat on the status
+     bar with the status text showing through the glass. -->
+<Menu {menu} ariaLabel={tString('shortcuts.scope.volumeChooser')} getBottomLimit={paneFooterTop}>
     {#snippet label(ctx: MenuRowContext<SwitcherRow>)}
         {@const volume = rowVolume(ctx.item)}
         <!-- TCC-restricted entries read quiet + italic (the shared `--color-text-quiet`

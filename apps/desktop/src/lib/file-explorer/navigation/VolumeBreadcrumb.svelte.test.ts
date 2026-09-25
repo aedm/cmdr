@@ -1003,6 +1003,39 @@ describe('VolumeBreadcrumb dropdown placement', () => {
     expect(dropdown?.style.maxHeight).toBe(`${String(window.innerHeight - 54 - 8)}px`)
   })
 
+  /**
+   * ❗ The switcher stops above its pane's footer (the usage bar and status line)
+   * and scrolls: capped only by the window, its last row sat over the status bar,
+   * with the status text showing through the glass (QA round 5).
+   */
+  it('caps its height above the pane footer, so a long list scrolls short of the status bar', async () => {
+    const pane = document.createElement('div')
+    pane.className = 'file-pane'
+    const footer = document.createElement('div')
+    footer.setAttribute('data-pane-footer', '')
+    footer.getBoundingClientRect = () =>
+      ({ top: 600, bottom: 640, left: 0, right: 400, width: 400, height: 40, x: 0, y: 600 }) as DOMRect
+    document.body.appendChild(pane)
+    const target = document.createElement('div')
+    pane.appendChild(target)
+    pane.appendChild(footer)
+    const instance = mount(VolumeBreadcrumb, {
+      target,
+      props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/Users/test', containingVolumeId: null },
+    }) as unknown as BreadcrumbInstance
+    flushSync()
+    const anchor = target.querySelector('.volume-name') as HTMLElement
+    anchor.getBoundingClientRect = () =>
+      ({ top: 30, bottom: 50, left: 12, right: 200, width: 188, height: 20, x: 12, y: 30 }) as DOMRect
+
+    instance.openVolumeChooser()
+    await vi.waitFor(() => {
+      expect(menuSurface()?.style.top).toBeTruthy()
+    })
+    // The surface starts at 54 and ends 4px above the footer's top.
+    expect(menuSurface()?.style.maxHeight).toBe(`${String(600 - 4 - 54)}px`)
+  })
+
   it('scrolls the row the keyboard just landed on into view', async () => {
     stubs.volumes = [
       { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
