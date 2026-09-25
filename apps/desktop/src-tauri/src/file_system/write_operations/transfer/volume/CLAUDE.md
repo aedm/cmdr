@@ -11,9 +11,9 @@ Copy and move across backends (Local ↔ MTP ↔ SMB ↔ archive): the phase run
 - **The merge invariant**: a merge never deletes or overwrites a dest file the source doesn't shadow, under every
   policy, backend, and mid-merge cancel/rollback/retry. Assert it through `safety_oracle.rs`, ❌ never inline; new cells:
   `safety_grid_tests.rs`.
-- **Dir-vs-dir is NEVER a conflict**, and only for REAL dirs: a link-to-dir lists as `is_directory`,
-  so ask `rename_merge::merges_as_a_directory`, ❌ never `Volume::is_directory` (follows links). `transfer/DETAILS.md`
-  § "Symlinks are opaque to a move".
+- **Dir-vs-dir is NEVER a conflict**, and only for REAL dirs: ask `rename_merge::merges_as_a_directory` (an entry)
+  or `Volume::entry_kind` (a path), ❌ never `Volume::is_directory` (may follow links). `transfer/DETAILS.md` §
+  "Symlinks are opaque to a move".
 - **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
   ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`).
 - **A MOVE's source sweep spares every child the merge skipped** (`remove_tree`'s `preserve` set): that source is the

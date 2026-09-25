@@ -132,6 +132,9 @@ mod finalize_recovery_tests;
 #[cfg(test)]
 mod dest_precheck_failure_tests;
 
+/// The same rule on a backend whose `is_directory` follows a link (ADB, SFTP).
+#[cfg(test)]
+mod link_following_backend_tests;
 #[cfg(test)]
 mod preflight_stop_tests;
 #[cfg(test)]

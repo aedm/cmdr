@@ -34,7 +34,7 @@ use super::finalize::temp_sibling_path;
 use super::item_identity::is_the_same_item;
 use super::naming::find_unique_volume_name;
 use super::transfer_error::{PathRole, map_volume_error};
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 
 /// Outcome of resolving a volume conflict.
 ///
@@ -496,9 +496,13 @@ async fn reduce_volume_conditional_resolution(
 /// failing the item there would break a write that would simply have succeeded.
 /// Every other error is a refusal to answer, and ❌ must not become `false`:
 /// both callers route a `false` into an arm that deletes.
+///
+/// A LINK is not a directory here, whatever it points at: a merge into one
+/// would land the source's files in the link's target, outside the folder the
+/// user picked. It meets a folder as the type clash it is.
 async fn resolve_dest_is_directory(dest_volume: &Arc<dyn Volume>, path: &Path) -> Result<bool, WriteOperationError> {
-    match dest_volume.is_directory(path).await {
-        Ok(is_dir) => Ok(is_dir),
+    match dest_volume.entry_kind(path).await {
+        Ok(kind) => Ok(kind == EntryKind::Directory),
         Err(VolumeError::NotFound(_)) => Ok(false),
         Err(e) => Err(map_volume_error(&path.display().to_string(), PathRole::Destination, e)),
     }

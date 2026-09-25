@@ -276,3 +276,166 @@ async fn a_dir_link_child_with_no_clash_moves_as_a_link() {
     );
     assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
 }
+
+// ---------------------------------------------------------------------------
+// The TOP-LEVEL source is the link (#140). The preflight scan and the
+// resolver's type hint both answered "directory" for it, so the move merged
+// the link's target into the destination folder.
+// ---------------------------------------------------------------------------
+
+/// Skip: a selected link meeting a real folder is a type mismatch, so the
+/// policy leaves both where they are and the target keeps every byte.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_top_level_dir_link_meeting_a_real_dir_is_skipped_not_merged() {
+    let (volume, dir) = local_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+    mkdir(root, "dst/album");
+
+    run_merge(&volume, "op-top-symlink-dir-skip", ConflictResolution::Skip).await;
+
+    assert_eq!(
+        read(root, "outside/target/inside.txt"),
+        b"OUTSIDE THE SELECTION",
+        "a move must never carry entries out of a selected link's target"
+    );
+    assert!(
+        is_link(root, "src/album"),
+        "the skipped link stays in the source, still a link"
+    );
+    assert_eq!(
+        std::fs::read_dir(root.join("dst/album")).unwrap().count(),
+        0,
+        "the destination's real directory stays empty"
+    );
+}
+
+/// Rename: the selected link lands beside the destination folder, as a link.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_top_level_dir_link_meeting_a_real_dir_lands_aside_on_rename() {
+    let (volume, dir) = local_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+    mkdir(root, "dst/album");
+
+    run_merge(&volume, "op-top-symlink-dir-rename", ConflictResolution::Rename).await;
+
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(
+        is_link(root, "dst/album (1)"),
+        "the incoming link lands aside AS a link"
+    );
+    assert_eq!(
+        std::fs::read_link(root.join("dst/album (1)")).unwrap(),
+        root.join("outside/target")
+    );
+    assert_eq!(std::fs::read_dir(root.join("dst/album")).unwrap().count(), 0);
+}
+
+/// A blanket Overwrite never crosses types, so both sides stay put.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_blanket_overwrite_leaves_a_top_level_dir_link_and_the_dest_dir_alone() {
+    let (volume, dir) = local_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+    write_file(root, "dst/album/theirs.txt", b"THEIRS");
+
+    run_merge(
+        &volume,
+        "op-top-symlink-dir-blanket-overwrite",
+        ConflictResolution::Overwrite,
+    )
+    .await;
+
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(
+        !exists(root, "dst/album/inside.txt"),
+        "nothing from the target may land at the destination"
+    );
+    assert_eq!(read(root, "dst/album/theirs.txt"), b"THEIRS");
+    assert!(is_link(root, "src/album"));
+}
+
+/// No clash: the selected link rides across on one rename, as a link.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_top_level_dir_link_with_no_clash_moves_as_a_link() {
+    let (volume, dir) = local_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+    mkdir(root, "dst");
+
+    run_merge(&volume, "op-top-symlink-dir-no-clash", ConflictResolution::Skip).await;
+
+    assert!(is_link(root, "dst/album"), "the link moves as a link");
+    assert!(!is_link(root, "src/album") && !exists(root, "src/album"));
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+}
+
+/// The same clash reached with a TransferDialog preview in hand, which is how a
+/// move from the dialog arrives. A copy scan follows the link (it answers "does
+/// this stream as a folder"), so the preview calls the link a directory; the
+/// move must still take it for the leaf it is.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_top_level_dir_link_is_not_merged_when_a_preview_scanned_it_as_a_folder() {
+    use super::super::super::scan_cache::{CachedScanResult, insert_scan_result};
+
+    let (volume, dir) = local_volume();
+    let root = dir.path();
+    plant_target(root);
+    mkdir(root, "src");
+    link(root, "src/album", "outside/target");
+    mkdir(root, "dst/album");
+
+    let sources = vec![PathBuf::from("src/album")];
+    let batch = volume.scan_for_copy_batch(&sources).await.expect("preview scan");
+    assert!(
+        batch.per_path[0].1.top_level_is_directory,
+        "precondition: the preview's scan follows the link"
+    );
+    let preview_id = "preview-top-symlink-dir".to_string();
+    insert_scan_result(
+        preview_id.clone(),
+        CachedScanResult::from_volume_batch(
+            sources.clone(),
+            batch.aggregate.file_count,
+            batch.aggregate.total_bytes,
+            batch.aggregate.dedup_bytes,
+            batch.per_path,
+        ),
+    );
+
+    let state = make_state();
+    let config = VolumeCopyConfig {
+        conflict_resolution: ConflictResolution::Skip,
+        progress_interval_ms: 0,
+        preview_id: Some(preview_id),
+        ..VolumeCopyConfig::default()
+    };
+    let result = move_within_same_volume_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "op-top-symlink-dir-preview",
+        &state,
+        Arc::clone(&volume),
+        &sources,
+        Path::new("dst"),
+        &config,
+    )
+    .await;
+    assert!(result.is_ok(), "expected Ok, got {result:?}");
+
+    assert_eq!(
+        read(root, "outside/target/inside.txt"),
+        b"OUTSIDE THE SELECTION",
+        "a preview's answer must never turn a link into a folder to merge"
+    );
+    assert!(is_link(root, "src/album"));
+    assert_eq!(std::fs::read_dir(root.join("dst/album")).unwrap().count(), 0);
+}

@@ -138,6 +138,15 @@ impl Volume for CaseFoldingDest {
             self.inner.is_directory(&folded).await
         })
     }
+    fn entry_kind<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<crate::file_system::volume::EntryKind, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let folded = self.fold(path).await;
+            self.inner.entry_kind(&folded).await
+        })
+    }
     fn create_file<'a>(
         &'a self,
         path: &'a Path,

@@ -107,7 +107,7 @@ pub(super) struct RenameMergeCtx<'a> {
 /// for exactly this. A link facing a real directory is a cross-type clash for
 /// the file policy, like any other. `transfer/DETAILS.md` § "Symlinks are opaque
 /// to a move"; the local engines' twin is `validation::is_real_directory`.
-fn merges_as_a_directory(entry: &FileEntry) -> bool {
+pub(super) fn merges_as_a_directory(entry: &FileEntry) -> bool {
     entry.is_directory && !entry.is_symlink
 }
 

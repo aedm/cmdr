@@ -22,7 +22,7 @@ use super::super::super::state::{StopMeans, WriteOperationState, update_operatio
 use super::super::super::types::{WriteOperationPhase, WriteOperationType, WriteProgressEvent};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::rollback::ItemResult;
 use crate::operation_log::types::SkipReason;
@@ -525,6 +525,13 @@ pub(in crate::file_system::write_operations) enum TreeRemoval {
 /// DID go leaves nothing behind to tell anyone about, so a child failure that
 /// raced with another deleter stays `Ok` rather than turning a finished move
 /// into a reported failure.
+///
+/// **A symlink is a leaf, and the link goes, ❌ never its target's contents.**
+/// Every "is this a directory?" here asks `Volume::entry_kind`:
+/// `Volume::is_directory` and a listing's `is_directory` both answer yes for a
+/// link to a folder on some backends, and recursing through one deletes a
+/// folder the user never selected. A link with a preserved path under it
+/// stays, so the path the skip was about keeps its way in.
 pub(in crate::file_system::write_operations) async fn remove_tree(
     volume: &Arc<dyn Volume>,
     path: &Path,
@@ -546,16 +553,18 @@ async fn delete_preserving_inner(
         return Ok(true);
     }
 
-    let is_dir = match volume.is_directory(path).await {
-        Ok(true) => true,
-        Ok(false) => false,
+    let kind = match volume.entry_kind(path).await {
+        Ok(kind) => kind,
         Err(_) => {
             // Path may not exist (already deleted or never fully created). Nothing to do.
             return Ok(false);
         }
     };
 
-    if !is_dir {
+    if kind == EntryKind::Symlink && preserve.iter().any(|kept| kept.starts_with(path)) {
+        return Ok(true);
+    }
+    if kind != EntryKind::Directory {
         volume.delete(path).await.at(path)?;
         return Ok(false);
     }
@@ -569,7 +578,9 @@ async fn delete_preserving_inner(
         let child_path = PathBuf::from(&child.path);
         // `.at(&child_path)` at the frame that knows the child: one level up and
         // every leaf failure would answer with this directory's name instead.
-        let outcome = if child.is_directory {
+        let outcome = if child.is_directory || child.is_symlink {
+            // A link re-asks `entry_kind` one frame down, which deletes it as the
+            // leaf it is (or keeps it for a preserved path under it).
             Box::pin(delete_preserving_inner(volume, &child_path, preserve)).await
         } else if preserve.contains(&child_path) {
             Ok(true)

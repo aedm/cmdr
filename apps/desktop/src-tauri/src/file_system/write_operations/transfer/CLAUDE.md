@@ -16,8 +16,9 @@ File map: `DETAILS.md` § Files.
   claimed earns `land`'s clear-and-rename (`staged_write::LandingName`).
 - **A source that would land on ITSELF is a duplicate, ❌ never a conflict**: settled by `dev+ino` per TOP-LEVEL source
   before either engine's loop. DETAILS § "Self-collision".
-- **A symlink is a LEAF to every move engine**: ask `validation::is_real_directory`, ❌ never `Path::is_dir` (it follows
-  links, so a "merge" empties the TARGET). DETAILS § "Symlinks are opaque to a move".
+- **A symlink is a LEAF to every move engine**: ask `validation::is_real_directory` / `Volume::entry_kind`, ❌ never
+  `Path::is_dir` / `Volume::is_directory` (they may follow links, emptying the TARGET). DETAILS § "Symlinks are opaque
+  to a move".
 - **A ledger entry carries the identity it landed with, ❌ never an mtime** (`../ledger.rs`): local = size +
   `(dev,ino)`, volume = size, a partial marked as ITS OWN. Ledgers POP as they reverse. DETAILS § "What the in-flight
   ledgers record".

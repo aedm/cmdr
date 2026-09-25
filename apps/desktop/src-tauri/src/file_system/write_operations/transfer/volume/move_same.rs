@@ -30,10 +30,10 @@ use super::super::transfer_driver::{
 use super::conflict::resolve_volume_conflict;
 use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::item_identity::is_the_same_volume_path;
-use super::preflight::{SourceHint, top_level_move_hints};
+use super::preflight::{SourceHint, source_merges_as_a_directory, top_level_move_hints};
 use super::rename_merge::{RenameMergeCtx, rename_merge_directory};
 use super::transfer_error::{PathRole, map_volume_error};
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::OpKind;
 
@@ -449,9 +449,12 @@ pub(crate) async fn move_within_same_volume_with_progress(
                     );
                     let source_hint = source_hints.get(&source_path_owned).copied();
                     let source_size_hint = source_hint.and_then(|h| (!h.is_directory).then_some(h.size));
-                    // `Some` only when the preflight produced a hint, so the
-                    // resolver keeps its trait-call fallback for the no-hint case.
-                    let source_is_directory_hint = source_hint.map(|h| h.is_directory);
+                    // Always `Some`: the resolver's own fallback probe is
+                    // `Volume::is_directory`, which some backends answer by
+                    // following a link, and a link meeting a folder must reach
+                    // it as the type clash it is.
+                    let source_is_directory_hint =
+                        Some(source_merges_as_a_directory(&volume, &source_path_owned, source_hint).await?);
                     let mut latched = *apply_to_all.lock_ignore_poison();
                     // Same volume on both sides; pass `&volume` twice.
                     let resolved = resolve_volume_conflict(
@@ -515,10 +518,29 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                         replace_after_write: None,
                                     }
                                 }
-                                None => ConflictDecision::Proceed {
-                                    dest_path: rc.write_path,
-                                    replace_after_write: None,
-                                },
+                                None => {
+                                    // A `Rename` on a local-FS volume reserves the
+                                    // new name with a zero-byte placeholder
+                                    // (`naming.rs`), which `rename(force=false)`
+                                    // would refuse. It's this op's own file, so it
+                                    // goes; the rename lands on the freed name.
+                                    if rc.reserved_placeholder {
+                                        match volume.delete(&rc.write_path).await {
+                                            Ok(()) | Err(VolumeError::NotFound(_)) => {}
+                                            Err(e) => {
+                                                return Err(map_volume_error(
+                                                    &rc.write_path.display().to_string(),
+                                                    PathRole::Destination,
+                                                    e,
+                                                ));
+                                            }
+                                        }
+                                    }
+                                    ConflictDecision::Proceed {
+                                        dest_path: rc.write_path,
+                                        replace_after_write: None,
+                                    }
+                                }
                             }
                         }
                     })
@@ -553,26 +575,18 @@ pub(crate) async fn move_within_same_volume_with_progress(
                     .expect("async driver always supplies dest_path")
                     .to_path_buf();
                 Box::pin(async move {
-                    // Source type from the top-level hint; falls back to a stat
-                    // only when no hint reached us (cached preview without
-                    // per-path data). A rename moves zero bytes, so the byte
-                    // axis stays at 0 throughout — no size lookup needed.
-                    // ❌ Not `.unwrap_or(false)`. A guessed `false` sends a
-                    // folder-onto-folder collision through
+                    // Source type from the top-level hint; falls back to the
+                    // volume's `entry_kind` only when no hint reached us (a
+                    // source missing from its parent listing). A rename moves zero
+                    // bytes, so the byte axis stays at 0 throughout — no size
+                    // lookup needed. ❌ Not `.unwrap_or(false)`: a guessed `false`
+                    // sends a folder-onto-folder collision through
                     // `resolve_volume_conflict` instead of `rename_merge_directory`
-                    // (it degrades to a merge via `same_type_dir` rather than
-                    // destroying anything, but it's still a branch chosen on a
-                    // belief), and it mislabels the journal row's entry type.
-                    // `resolve_source_is_directory` is the one helper every
-                    // pipeline asks, and it propagates.
+                    // and mislabels the journal row's entry type. And ❌ not
+                    // `resolve_source_is_directory` either: its probe follows a
+                    // link on some backends, and a link here moves as the link.
                     let hint = source_hints.get(&source_path).copied();
-                    let source_is_dir = super::strategy::resolve_source_is_directory(
-                        &volume,
-                        &source_path,
-                        hint.map(|h| h.is_directory),
-                    )
-                    .await
-                    .map_err(|e| map_volume_error(&source_path.display().to_string(), PathRole::Source, e))?;
+                    let source_is_dir = source_merges_as_a_directory(&volume, &source_path, hint).await?;
 
                     // Operation-log: a same-volume move is a same-FS-style move, so
                     // the top-level item is the `rollback_unit` row and the subtree's
@@ -608,9 +622,11 @@ pub(crate) async fn move_within_same_volume_with_progress(
                     // Same rule for the destination: the guard on the whole
                     // rename-merge branch can't be decided on a guess either.
                     // "It isn't there" IS an answer (no collision, so a plain
-                    // rename); anything else fails the item.
-                    let dest_item_is_dir = match volume.is_directory(&dest_item_path).await {
-                        Ok(is_dir) => is_dir,
+                    // rename); anything else fails the item. A LINK at the
+                    // destination is a leaf like any other, ❌ never merged
+                    // through: the files would land in its target.
+                    let dest_item_is_dir = match volume.entry_kind(&dest_item_path).await {
+                        Ok(kind) => kind == EntryKind::Directory,
                         Err(VolumeError::NotFound(_)) => false,
                         Err(e) => {
                             return Err(map_volume_error(
