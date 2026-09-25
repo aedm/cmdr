@@ -201,14 +201,21 @@ export function smbAddressFrom(address: string): string {
  * ❗ The MIRROR of the backend's stand-in labels, so the placeholder promises
  * what the hub will show: an SMB host goes by its address (with the port when it
  * isn't 445, `manual_servers::display_name`), an account by `username@host`
- * (`saved_server_fields::server_label`). The backend stays the one that decides.
+ * (`saved_server_fields::server_label`). The backend stays the one that decides. An SMB
+ * address already saved under a name someone gave it (`saved`) reads as that name.
  */
-export function nameFallbackOf(form: ServerForm): string | null {
+export function nameFallbackOf(form: ServerForm, saved: readonly SavedServer[] = []): string | null {
   const parsed = parseServerAddress(form.address)
   if (parsed.kind === 'unparsed') return null
   if (form.protocol === 'smb') {
     const port = speaksOrNamesNone(parsed, 'smb') ? parsed.port : undefined
-    return port !== undefined && port !== 445 ? `${parsed.host}:${String(port)}` : parsed.host
+    const label = port !== undefined && port !== 445 ? `${parsed.host}:${String(port)}` : parsed.host
+    // An address already saved under a name the person gave it is called that,
+    // as the hub calls it (Go to path and ⌘K open this sheet on any `smb://`).
+    const named = saved.find(
+      (server) => server.protocol === 'smb' && server.nameSource === 'user' && server.address.toLowerCase() === label,
+    )
+    return named?.displayName ?? label
   }
   const username = form.username.trim()
   return username === '' ? parsed.host : `${username}@${parsed.host}`

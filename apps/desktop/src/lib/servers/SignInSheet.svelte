@@ -59,6 +59,7 @@
         getSftpUnattendedReconnect,
         getWebdavUnattendedReconnect,
         hasServerSecret,
+        listSavedServers,
         saveSftpCredentials,
         saveWebdavCredentials,
         updateSavedServer,
@@ -145,13 +146,16 @@
         return tString('servers.sheet.signInTitle', { name: request.endpoint.displayName })
     })
 
+    /** The saved servers, so an address already saved under a name reads as that name. Add mode only. */
+    let savedServers = $state<SavedServer[]>([])
+
     /**
      * What an empty name field turns into, as a sentence: the stand-in the
      * backend would label the server with (`nameFallbackOf`), so the placeholder
      * reads as a promise rather than as a value someone already typed.
      */
     const namePlaceholder = $derived.by(() => {
-        const fallback = nameFallbackOf(form)
+        const fallback = nameFallbackOf(form, savedServers)
         return fallback === null ? undefined : tString('servers.sheet.namePlaceholder', { label: fallback })
     })
 
@@ -244,6 +248,11 @@
             // A URL handed over from Go to path or ⌘K opens on the protocol its
             // scheme spells out: the person already said it (`formFromPrefill`).
             if (request.prefill !== undefined) form = formFromPrefill(request.prefill)
+            void listSavedServers()
+                .then((servers) => {
+                    savedServers = servers
+                })
+                .catch(() => {})
             await tick()
             addressInput?.focus()
             return

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { ServerProtocol } from '$lib/ipc/bindings'
+import type { SavedServer, ServerProtocol } from '$lib/ipc/bindings'
 import { parseServerAddress } from './address-parser'
 import {
   applyParsedAddress,
@@ -343,5 +343,36 @@ describe('nextcloudAddress', () => {
 
   it('changes nothing without an account, because the path is per-account', () => {
     expect(nextcloudAddress('https://cloud.example.com', '  ')).toBe('https://cloud.example.com')
+  })
+})
+
+/**
+ * ❗ Go to path or ⌘K opening the Add sheet on an address that's already saved
+ * under a name the person gave it: the placeholder named the address, while the
+ * hub calls it "My NAS" (QA round 4).
+ */
+describe('nameFallbackOf, for an address already saved', () => {
+  const myNas: SavedServer = {
+    id: 'manual-localhost-11482',
+    protocol: 'smb',
+    displayName: 'My NAS',
+    nameSource: 'user',
+    address: 'localhost:11482',
+    username: null,
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: null,
+    places: [],
+  }
+
+  it('names the server by the name it is saved under', () => {
+    const form = { ...emptyServerForm(), address: 'smb://LOCALHOST:11482/public' }
+    expect(nameFallbackOf(form, [myNas])).toBe('My NAS')
+  })
+
+  it('keeps the address for another server on the same machine, or a name nobody chose', () => {
+    expect(nameFallbackOf({ ...emptyServerForm(), address: 'localhost:11480' }, [myNas])).toBe('localhost:11480')
+    const unnamed = { ...myNas, nameSource: 'fallback' as const, displayName: 'localhost:11482' }
+    expect(nameFallbackOf({ ...emptyServerForm(), address: 'localhost:11482' }, [unnamed])).toBe('localhost:11482')
   })
 })
