@@ -158,7 +158,8 @@
                 <p class="hint">{tString('servers.paneState.signedOutNothingToAsk')}</p>
             {/if}
         {:else if connectState.kind === 'not_connected'}
-            <span class="refusal-icon"><Icon name="circle-dashed" size={32} aria-hidden="true" /></span>
+            <!-- Static and quiet: nothing is loading and nothing failed; the person chose not to connect. -->
+            <span class="refusal-icon quiet"><Icon name="unplug" size={32} aria-hidden="true" /></span>
             <h2 class="title">{tString('servers.paneState.notConnected', { name })}</h2>
             <div class="actions">
                 <Button variant="primary" size="mini" onclick={connectState.connect}>
@@ -270,6 +271,10 @@
        more weight than an ordinary refusal. */
     .refusal-icon.danger {
         color: var(--color-error);
+    }
+
+    .refusal-icon.quiet {
+        color: var(--color-text-secondary);
     }
 
     .actions {
