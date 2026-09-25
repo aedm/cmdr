@@ -128,6 +128,7 @@ pub(super) fn move_with_staging(
     let mut apply_to_all_resolution = ApplyToAll::default();
     let mut created_dirs: HashSet<PathBuf> = HashSet::new();
     let mut dir_remap: HashMap<PathBuf, PathBuf> = HashMap::new();
+    let mut skipped_subtrees: HashSet<PathBuf> = HashSet::new();
     // Durability bookkeeping. The Phase-2 copy records each file's STAGING dest
     // in `transaction.created_files` (and in `already_synced` when the strategy
     // already synced its data) and each directory it makes in
@@ -220,6 +221,7 @@ pub(super) fn move_with_staging(
                 &mut apply_to_all_resolution,
                 &mut created_dirs,
                 &mut dir_remap,
+                &mut skipped_subtrees,
                 &mut already_synced,
             )?;
 

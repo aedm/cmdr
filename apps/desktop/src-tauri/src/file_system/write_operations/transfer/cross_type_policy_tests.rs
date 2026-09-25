@@ -198,6 +198,66 @@ fn overwrite_smaller_never_deletes_a_file_a_folder_landed_on() {
     assert_file_survived(&dst_root);
 }
 
+/// A folder→file clash that ends in Skip leaves the file, and the whole
+/// incoming folder with it, subfolders included. The copy lands the scanned
+/// directories after its per-file loop (so empty ones arrive too), and that pass
+/// must not try to build `thing/sub` under the FILE `thing`: the ENOTDIR failed
+/// the whole operation over a clash it had already settled.
+#[test]
+fn a_skipped_folder_with_subfolders_finishes_and_leaves_the_file() {
+    let dir = temp("skipped_folder_with_subfolders");
+    let (src_root, dst_root) = folder_over_file_fixture(&dir);
+    fs::create_dir_all(src_root.join("thing/sub/empty")).unwrap();
+    fs::write(src_root.join("thing/sub/deep.txt"), "deep").unwrap();
+
+    copy_files_with_progress_inner(
+        &CollectorEventSink::new(),
+        "op-skipped-folder-with-subfolders",
+        &state(),
+        &[src_root.join("thing")],
+        &dst_root,
+        &policy(ConflictResolution::Overwrite),
+    )
+    .expect("the copy should finish, having skipped the cross-type clash");
+
+    assert_file_survived(&dst_root);
+}
+
+/// Skip on "replace this file with this folder?" answers for the folder, not for
+/// the one child that happened to reach the clash first. Every other file under
+/// it is skipped without asking again.
+#[test]
+fn one_skip_answers_for_the_whole_incoming_folder() {
+    let dir = temp("one_skip_whole_folder");
+    let (src_root, dst_root) = folder_over_file_fixture(&dir);
+    fs::write(src_root.join("thing/second.txt"), "second").unwrap();
+    fs::create_dir_all(src_root.join("thing/sub")).unwrap();
+    fs::write(src_root.join("thing/sub/third.txt"), "third").unwrap();
+    let state = state();
+    // `apply_to_all: false`: one item's answer, and still one prompt.
+    let events = ConflictResponderSink::new(&state, ConflictResolution::Skip, false);
+
+    copy_files_with_progress_inner(
+        &events,
+        "op-one-skip-whole-folder",
+        &state,
+        &[src_root.join("thing")],
+        &dst_root,
+        &policy(ConflictResolution::Stop),
+    )
+    .expect("the copy should finish");
+
+    assert_eq!(
+        events.inner.conflicts.lock_ignore_poison().len(),
+        1,
+        "one folder, one question"
+    );
+    assert_file_survived(&dst_root);
+    let complete = events.inner.complete.lock_ignore_poison();
+    let event = complete.last().expect("a finished copy emits one complete event");
+    assert_eq!(event.files_skipped, 3, "all three files under the folder were skipped");
+}
+
 // ============================================================================
 // A refused item is REPORTED as skipped
 // ============================================================================

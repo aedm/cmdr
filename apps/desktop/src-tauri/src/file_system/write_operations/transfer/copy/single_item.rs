@@ -191,6 +191,11 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
     // `<dest>/name` (a file is there) to `<dest>/name (1)`; every subsequent
     // child of that subtree must follow the redirect. Empty in the common case.
     dir_remap: &mut HashMap<PathBuf, PathBuf>,
+    // Dest-subtree roots a folder→file clash answered with Skip: the file there
+    // stays, and every later child of the incoming folder is skipped without
+    // asking again. The person answered for the folder, not for the one child
+    // that happened to reach the clash first. Empty in the common case.
+    skipped_subtrees: &mut HashSet<PathBuf>,
     // Destinations already made durable by the copy strategy (chunked copy's
     // inline `sync_data`) or for which a flush is moot (APFS clonefile /
     // reflink). The end-of-op flush pass skips these so a long chunked batch
@@ -223,6 +228,12 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
     // operates on the remapped path. `apply_dir_remap` is a no-op when no
     // ancestor of `dest_path` was redirected (the overwhelmingly common case).
     let mut dest_path = super::apply_dir_remap(&dest_path, dir_remap);
+
+    if skipped_subtrees.iter().any(|root| dest_path.starts_with(root)) {
+        let _ = fs::symlink_metadata(source).with_path(source)?;
+        record_file_done(&progress_ctx, source, write_weight, files_done, bytes_done);
+        return Ok(FileVerdict::Skipped);
+    }
 
     // Ensure parent directories exist
     if let Some(parent) = dest_path.parent().map(Path::to_path_buf)
@@ -329,10 +340,12 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
                         dest_path = super::apply_dir_remap(&dest_path, dir_remap);
                     }
                     None => {
-                        // Skip: don't copy this file. Use `write_weight`
+                        // Skip: don't copy this file, nor anything else the
+                        // incoming folder holds. Use `write_weight`
                         // (not `metadata.len()`) so the dedup decision baked
                         // in by scan stays consistent across skip paths.
                         let _ = fs::symlink_metadata(source).with_path(source)?;
+                        skipped_subtrees.insert(blocking);
                         record_file_done(&progress_ctx, source, write_weight, files_done, bytes_done);
                         return Ok(FileVerdict::Skipped);
                     }

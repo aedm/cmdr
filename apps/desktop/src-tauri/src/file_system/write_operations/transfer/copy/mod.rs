@@ -252,6 +252,7 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
     let mut apply_to_all_resolution = ApplyToAll::default();
     let mut created_dirs: HashSet<PathBuf> = HashSet::new();
     let mut dir_remap: HashMap<PathBuf, PathBuf> = HashMap::new();
+    let mut skipped_subtrees: HashSet<PathBuf> = HashSet::new();
     // Destinations the copy strategy already flushed (chunked) or for which a
     // flush is moot (clonefile/reflink); the end-of-op flush pass skips these.
     let mut already_synced: HashSet<PathBuf> = HashSet::new();
@@ -500,6 +501,7 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 &mut apply_to_all_resolution,
                 &mut created_dirs,
                 &mut dir_remap,
+                &mut skipped_subtrees,
                 &mut already_synced,
             )?;
             let bytes_delta = local_bytes.saturating_sub(ctx.bytes_done_so_far);
