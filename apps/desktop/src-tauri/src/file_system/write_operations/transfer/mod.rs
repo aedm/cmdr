@@ -35,6 +35,8 @@ pub(super) mod volume;
 pub(crate) use super::ledger::CopyTransaction;
 
 #[cfg(test)]
+mod conflict_prompt_sides_tests;
+#[cfg(test)]
 pub(crate) mod conflict_responder_test_support;
 #[cfg(test)]
 mod copy_integration_test;

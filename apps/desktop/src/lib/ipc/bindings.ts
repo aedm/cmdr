@@ -15564,10 +15564,11 @@ export type WriteConflictEvent = {
   destinationPath: string
   /**
    *  Source size in bytes. Files use `metadata.len()`; folder sources use
-   *  the recursive total from the pre-flight scan when known. `None`
-   *  ("unknown") for a folder source on a path that ran no pre-flight scan
-   *  (the same-volume move fast path), which the FE renders as `(unknown)`,
-   *  mirroring `destination_size`.
+   *  their recursive total when known: the pre-flight scan's on a
+   *  cross-volume transfer, the drive index's on a local one. `None`
+   *  ("unknown") for a folder source with neither (the same-volume move fast
+   *  path runs no pre-flight scan; the index may not cover the path), which
+   *  the FE renders as `(unknown)`, mirroring `destination_size`.
    */
   sourceSize: number | null
   /**

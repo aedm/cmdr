@@ -183,12 +183,12 @@ pub(super) fn apply_to_all_record(
 
 /// What is ARRIVING at a destination, told by the caller that knows.
 ///
-/// A stat of the source path answers this everywhere but one place: the
-/// folder→file branch in `transfer/copy/single_item.rs` resolves the clash
-/// against the BLOCKING FILE as both source and destination (so the prompt
-/// describes the entry that's in the way), while what's really arriving is a
-/// directory. Asking the caller keeps that site honest instead of quietly
-/// classifying a folder landing as file-on-file.
+/// A plain `fs::metadata` of the source path gets this wrong for a link: it
+/// follows the link, so a link to a folder reads as a folder, while every local
+/// engine moves or copies the link itself as a leaf. The cross-volume engine
+/// has no local path to stat at all. So the caller says, and both the clash
+/// classification and the prompt's "file" / "folder" labels read this one
+/// answer.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) enum IncomingItem {
     /// A file, or a symlink — a leaf whatever a link points at.
@@ -330,19 +330,33 @@ pub(super) fn resolve_conflict(
 
     match resolution {
         ConflictResolution::Stop => {
-            // Emit conflict event for frontend to handle. Folder sizes come
-            // from the drive index — we never walk the destination tree
-            // synchronously to compute one. `None` is the legitimate
-            // "(unknown)" rendering on the FE.
-            let source_size_for_dir = if matches!(source_meta.as_ref().map(|m| m.is_dir()), Some(true)) {
-                lookup_indexed_size(source)
-            } else {
-                None
+            // Emit conflict event for frontend to handle. The kinds it names
+            // are the kinds `kind` was classified from, so the prompt asks
+            // about the act an Overwrite would really do: a link is a leaf on
+            // either side, whatever it points at. Folder sizes come from the
+            // drive index — we never walk a tree synchronously to compute one.
+            // `None` is the legitimate "(unknown)" rendering on the FE.
+            let source_is_directory = incoming == IncomingItem::Directory;
+            let destination_is_directory = destination_is_real_dir == Some(true);
+            let source_side = ClashSide {
+                path: source,
+                meta: source_meta.as_ref(),
+                is_directory: source_is_directory,
+                size_for_dir: if source_is_directory {
+                    lookup_indexed_size(source)
+                } else {
+                    None
+                },
             };
-            let destination_size_for_dir = if matches!(dest_meta.as_ref().map(|m| m.is_dir()), Some(true)) {
-                lookup_indexed_size(dest_path)
-            } else {
-                None
+            let destination_side = ClashSide {
+                path: dest_path,
+                meta: dest_meta.as_ref(),
+                is_directory: destination_is_directory,
+                size_for_dir: if destination_is_directory {
+                    lookup_indexed_size(dest_path)
+                } else {
+                    None
+                },
             };
             // Arm the conflict slot BEFORE emitting the event. A responder (the
             // FE's `resolve_write_conflict`, which answers through the slot) can
@@ -361,16 +375,7 @@ pub(super) fn resolve_conflict(
             // next one.
             let (tx, rx) = tokio::sync::oneshot::channel();
             let event = state.conflict_slot.arm(tx, |conflict_id| {
-                build_conflict_event(
-                    operation_id,
-                    conflict_id,
-                    source,
-                    dest_path,
-                    source_meta.as_ref(),
-                    dest_meta.as_ref(),
-                    source_size_for_dir,
-                    destination_size_for_dir,
-                )
+                build_conflict_event(operation_id, conflict_id, &source_side, &destination_side)
             });
             let event_conflict_id = event.conflict_id;
 
@@ -553,37 +558,34 @@ fn apply_resolution(
     }
 }
 
-/// Builds a `WriteConflictEvent` from the source / destination metadata pair.
-/// Extracted from `resolve_conflict` so the source/destination type-mismatch
-/// flags can be unit-tested in isolation. Pre-fix the inline event omitted
-/// `source_is_directory` / `destination_is_directory` entirely; the FE Stop
-/// dialog couldn't tell the user "you're about to replace a folder with a
-/// file" and silently took the user's "Overwrite" click as consent to drop
-/// an entire directory tree.
-#[allow(
-    clippy::too_many_arguments,
-    reason = "the event describes both sides of a clash from four sources (identity, paths, stat'd metadata, indexed folder sizes); bundling them would only move the same list one call up"
-)]
+/// One side of a clash, as the prompt describes it.
+struct ClashSide<'a> {
+    path: &'a Path,
+    /// The stat the sizes and mtimes come from. `None` when it wouldn't stat.
+    meta: Option<&'a fs::Metadata>,
+    /// Whether this side is a real directory, as the clash was classified: a
+    /// link is a leaf whatever it points at, so this is never read off `meta`
+    /// (which follows links).
+    is_directory: bool,
+    /// Recursive size when `is_directory`, from the drive index. `None` means
+    /// the index doesn't cover this path (network mount, MTP, paths outside the
+    /// index scope) and surfaces to the FE as the `(unknown)` rendering.
+    /// Ignored for a leaf, which uses `meta.len()`.
+    size_for_dir: Option<u64>,
+}
+
+/// Builds a `WriteConflictEvent` from the two sides of a clash. Extracted from
+/// `resolve_conflict` so the event's shape can be unit-tested in isolation.
+/// The `source_is_directory` / `destination_is_directory` flags are what let
+/// the FE Stop dialog say "you're about to replace a folder with a file" rather
+/// than taking an "Overwrite" click as consent to drop an entire directory tree.
 fn build_conflict_event(
     operation_id: &str,
     conflict_id: ConflictId,
-    source: &Path,
-    dest_path: &Path,
-    source_meta: Option<&fs::Metadata>,
-    dest_meta: Option<&fs::Metadata>,
-    // Recursive size of the *source* when it's a directory (from the
-    // pre-flight scan's per-source-root total). Ignored when source is a
-    // file — files use `metadata.len()` directly. Always `Some` for folder
-    // sources after pre-flight; the rare MCP / skip-preflight path may pass
-    // `None`, in which case source_size falls back to 0.
-    source_size_for_dir: Option<u64>,
-    // Recursive size of the *destination* when it's a directory. The caller
-    // looks it up in the drive index; `None` means "the index doesn't cover
-    // this path" (network mount, MTP, paths outside the index scope) and
-    // surfaces to the FE as the `(unknown)` rendering. Files always use
-    // `metadata.len()` and this override is ignored.
-    destination_size_for_dir: Option<u64>,
+    source: &ClashSide<'_>,
+    destination: &ClashSide<'_>,
 ) -> WriteConflictEvent {
+    let (source_meta, dest_meta) = (source.meta, destination.meta);
     let destination_is_newer = match (source_meta, dest_meta) {
         (Some(s), Some(d)) => {
             let src_time = s.modified().ok();
@@ -593,21 +595,15 @@ fn build_conflict_event(
         _ => false,
     };
 
-    let source_is_directory = source_meta.map(|m| m.is_dir()).unwrap_or(false);
-    let destination_is_directory = dest_meta.map(|m| m.is_dir()).unwrap_or(false);
-
     // Files: use `metadata.len()` directly. Directories: use the caller-
-    // supplied recursive total (the BE never walks a destination tree). On the
-    // local-FS path the source is always stat-able, so a file source is always
-    // `Some`; a folder source is `Some` post-preflight and `None` only on the
-    // rare skip-preflight path.
-    let source_size: Option<u64> = if source_is_directory {
-        source_size_for_dir
+    // supplied recursive total (the BE never walks a tree for a prompt).
+    let source_size: Option<u64> = if source.is_directory {
+        source.size_for_dir
     } else {
         source_meta.map(|m| m.len())
     };
-    let destination_size = if destination_is_directory {
-        destination_size_for_dir
+    let destination_size = if destination.is_directory {
+        destination.size_for_dir
     } else {
         dest_meta.map(|m| m.len())
     };
@@ -629,17 +625,17 @@ fn build_conflict_event(
     WriteConflictEvent {
         operation_id: operation_id.to_string(),
         conflict_id,
-        source_path: source.display().to_string(),
-        destination_path: dest_path.display().to_string(),
+        source_path: source.path.display().to_string(),
+        destination_path: destination.path.display().to_string(),
         source_size,
         destination_size,
         source_modified: unix_secs(source_meta),
         destination_modified: unix_secs(dest_meta),
         destination_is_newer,
         size_difference,
-        source_is_directory,
-        destination_is_directory,
-        destination_is_look_alike: is_look_alike_clash(source, dest_path),
+        source_is_directory: source.is_directory,
+        destination_is_directory: destination.is_directory,
+        destination_is_look_alike: is_look_alike_clash(source.path, destination.path),
     }
 }
 
