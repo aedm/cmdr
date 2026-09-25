@@ -219,7 +219,14 @@ function mountBreadcrumb(props: BreadcrumbProps = {}): { instance: BreadcrumbIns
   document.body.appendChild(target)
   const instance = mount(VolumeBreadcrumb, {
     target,
-    props: { paneId: 'left' as const, volumeId: 'root', currentPath: stubs.currentPath, ...props },
+    props: {
+      paneId: 'left' as const,
+      volumeId: 'root',
+      currentPath: stubs.currentPath,
+      // Nothing checked: the switcher's cursor then opens on its first row.
+      containingVolumeId: null,
+      ...props,
+    },
   }) as unknown as BreadcrumbInstance
   // Settle the chip's `bind:this`: the menus hang under that element, so an `open()`
   // before the binding lands would have nothing to anchor to.

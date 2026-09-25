@@ -1,15 +1,16 @@
 /**
  * Tests for `volume-space.svelte.ts`, the file pane's live disk-space readout.
- * They pin:
- * - refresh fetches for the current path but clears (no fetch) on a disk image,
- * - the live-event listener updates only for the pane's volume, skipping mismatched
- *   ids and disk images,
- * - watch / unwatch / cleanup register and tear down keyed by the pane's id.
  *
- * The factory holds `$state` but creates no `$effect`, so it's driven directly
- * (no `$effect.root`); the `.svelte.` infix is for the rune support.
+ * ❗ The readout is keyed by the volume the pane is ON (`getSpaceVolume`, the
+ * `paneVolumeOf` answer), and follows it by any route: a switcher pick, a walk-up
+ * after an eject, a navigation into another drive. It never shows another
+ * volume's figure: it clears the moment the volume changes, and an answer for a
+ * volume the pane has since left is dropped (QA round 5, R4-1).
+ *
+ * The factory owns an `$effect`, so each case runs inside `$effect.root`.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { flushSync } from 'svelte'
 import type { SpaceInfo, VolumeSpaceChanged } from '$lib/ipc/bindings'
 
 const { ipc } = vi.hoisted(() => ({
@@ -28,103 +29,154 @@ vi.mock('$lib/tauri-commands', () => ({
   onVolumeSpaceChanged: ipc.onVolumeSpaceChanged,
 }))
 
-import { createVolumeSpace, type VolumeSpaceDeps } from './volume-space.svelte'
+import { createVolumeSpace, type SpaceVolume, type VolumeSpace } from './volume-space.svelte'
 
-const space: SpaceInfo = { kind: 'bounded', totalBytes: 1000, availableBytes: 400, usedBytes: 600 }
+const bootDisk: SpaceInfo = { kind: 'bounded', totalBytes: 926, availableBytes: 253, usedBytes: 673 }
+const share: SpaceInfo = { kind: 'bounded', totalBytes: 328, availableBytes: 232, usedBytes: 96 }
 
-function setup(over: Partial<VolumeSpaceDeps> = {}) {
-  const deps: VolumeSpaceDeps = {
-    paneId: 'left',
-    getVolumeId: () => 'vol-1',
-    getCurrentPath: () => '/vol-1/dir',
-    getVolumePath: () => '/vol-1',
-    getIsDiskImage: () => false,
-    ...over,
-  }
-  return createVolumeSpace(deps)
-}
+const root: SpaceVolume = { id: 'root', path: '/', isDiskImage: false }
+const smb: SpaceVolume = { id: 'smb-p', path: '/Volumes/private', isDiskImage: false }
 
 describe('createVolumeSpace', () => {
+  let dispose: (() => void) | undefined
+  let volume = $state<SpaceVolume | null>(root)
+
+  function setup(): VolumeSpace {
+    let ctl!: VolumeSpace
+    dispose = $effect.root(() => {
+      ctl = createVolumeSpace({
+        paneId: 'left',
+        getSpaceVolume: () => volume,
+      })
+    })
+    flushSync()
+    return ctl
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
-    ipc.getVolumeSpace.mockResolvedValue({ data: space })
+    volume = root
+    ipc.getVolumeSpace.mockImplementation((path: string) =>
+      Promise.resolve({ data: path.startsWith('/Volumes/private') ? share : bootDisk }),
+    )
     ipc.onVolumeSpaceChanged.mockResolvedValue(vi.fn())
   })
 
-  it('refresh fetches space for the current path', async () => {
+  afterEach(() => {
+    dispose?.()
+    dispose = undefined
+  })
+
+  it('fetches and watches the space of the volume the pane is on', async () => {
     const ctl = setup()
-    await ctl.refresh()
-    expect(ipc.getVolumeSpace).toHaveBeenCalledWith('/vol-1/dir')
-    expect(ctl.volumeSpace).toEqual(space)
-  })
-
-  it('refresh clears the readout without fetching on a disk image', async () => {
-    const ctl = setup({ getIsDiskImage: () => true })
-    await ctl.refresh()
-    expect(ipc.getVolumeSpace).not.toHaveBeenCalled()
-    expect(ctl.volumeSpace).toBeNull()
-  })
-
-  it('refresh queries the parent volume path when inside an archive', async () => {
-    // The archive-inner current path isn't a real filesystem path (NSURL returns
-    // nothing), so the query uses the containing volume's mount — the space shown
-    // is the parent drive's.
-    const ctl = setup({ getCurrentPath: () => '/vol-1/foo.zip/inner', getVolumePath: () => '/vol-1' })
-    await ctl.refresh()
-    expect(ipc.getVolumeSpace).toHaveBeenCalledWith('/vol-1')
-    expect(ctl.volumeSpace).toEqual(space)
-  })
-
-  it('the live event updates the readout for the pane volume', () => {
-    let cb: ((p: VolumeSpaceChanged) => void) | undefined
-    ipc.onVolumeSpaceChanged.mockImplementation((fn: typeof cb) => {
-      cb = fn
-      return Promise.resolve(vi.fn())
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
     })
-    const ctl = setup()
-    ctl.startListening()
-    cb?.({ volumeId: 'vol-1', space: { kind: 'bounded', totalBytes: 2000, availableBytes: 900, usedBytes: 1100 } })
-    expect(ctl.volumeSpace).toEqual({ kind: 'bounded', totalBytes: 2000, availableBytes: 900, usedBytes: 1100 })
+    expect(ipc.getVolumeSpace).toHaveBeenCalledWith('/')
+    expect(ipc.watchVolumeSpace).toHaveBeenCalledWith('left', 'root', '/')
   })
 
-  it('the live event ignores a mismatched volume id', () => {
-    let cb: ((p: VolumeSpaceChanged) => void) | undefined
-    ipc.onVolumeSpaceChanged.mockImplementation((fn: typeof cb) => {
-      cb = fn
-      return Promise.resolve(vi.fn())
+  /** ❗ An eject walked the pane to the boot disk and it kept the share's 232 of 328. */
+  it('clears at once and re-fetches when the pane moves to another volume by any route', async () => {
+    volume = smb
+    const ctl = setup()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(share)
     })
-    const ctl = setup()
-    ctl.startListening()
-    cb?.({ volumeId: 'other', space: { kind: 'bounded', totalBytes: 2000, availableBytes: 900, usedBytes: 1100 } })
-    expect(ctl.volumeSpace).toBeNull()
-  })
 
-  it('the live event is ignored on a disk image', () => {
-    let cb: ((p: VolumeSpaceChanged) => void) | undefined
-    ipc.onVolumeSpaceChanged.mockImplementation((fn: typeof cb) => {
-      cb = fn
-      return Promise.resolve(vi.fn())
+    volume = root
+    flushSync()
+    expect(ctl.volumeSpace, 'never the old volume’s figure').toBeNull()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
     })
-    const ctl = setup({ getIsDiskImage: () => true })
-    ctl.startListening()
-    cb?.({ volumeId: 'vol-1', space: { kind: 'bounded', totalBytes: 2000, availableBytes: 900, usedBytes: 1100 } })
-    expect(ctl.volumeSpace).toBeNull()
-  })
-
-  it('watch and unwatch register keyed by the pane id', () => {
-    const ctl = setup()
-    ctl.watch({ volumeId: 'vol-2', path: '/vol-2' })
-    expect(ipc.watchVolumeSpace).toHaveBeenCalledWith('left', 'vol-2', '/vol-2')
-    ctl.unwatch()
     expect(ipc.unwatchVolumeSpace).toHaveBeenCalledWith('left')
+    expect(ipc.watchVolumeSpace).toHaveBeenLastCalledWith('left', 'root', '/')
   })
 
-  it('clear nulls the readout', async () => {
+  it('stays put, with no new fetch, while the pane stays on one volume', async () => {
     const ctl = setup()
-    await ctl.refresh()
-    expect(ctl.volumeSpace).toEqual(space)
-    ctl.clear()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
+    })
+    // A volume-list refresh hands over an equal row as a new object.
+    volume = { ...root }
+    flushSync()
+    expect(ctl.volumeSpace).toEqual(bootDisk)
+    expect(ipc.getVolumeSpace).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops an answer for a volume the pane has since left', async () => {
+    let answerShare!: (value: { data: SpaceInfo }) => void
+    ipc.getVolumeSpace.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answerShare = resolve
+        }),
+    )
+    volume = smb
+    const ctl = setup()
+    volume = root
+    flushSync()
+    answerShare({ data: share })
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
+    })
+  })
+
+  it('shows nothing, and watches nothing, on a disk image or a view with no volume', () => {
+    volume = { id: 'dmg', path: '/Volumes/Installer', isDiskImage: true }
+    const ctl = setup()
     expect(ctl.volumeSpace).toBeNull()
+    expect(ipc.getVolumeSpace).not.toHaveBeenCalled()
+    expect(ipc.watchVolumeSpace).not.toHaveBeenCalled()
+
+    volume = null
+    flushSync()
+    expect(ctl.volumeSpace).toBeNull()
+    expect(ipc.getVolumeSpace).not.toHaveBeenCalled()
+  })
+
+  /**
+   * ❗ Asked by the VOLUME's path, never the pane's. An eject resolved the pane to
+   * the boot disk while its path was still the dead `/Volumes/private`; the one
+   * fetch for that volume asked the dead path, got nothing, and the readout stayed
+   * blank on every folder after (live, QA round 5).
+   */
+  it('asks the volume’s own path, so a pane still on a dead path gets its new volume’s figure', async () => {
+    volume = smb
+    const ctl = setup()
+    ipc.getVolumeSpace.mockImplementation((path: string) => Promise.resolve({ data: path === '/' ? bootDisk : null }))
+    volume = root
+    flushSync()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
+    })
+  })
+
+  it('reads an archive’s space off the volume it sits on', async () => {
+    setup()
+    await vi.waitFor(() => {
+      expect(ipc.getVolumeSpace).toHaveBeenCalledWith('/')
+    })
+  })
+
+  it('takes live events for the volume the pane is on, and no other', async () => {
+    let cb: ((p: VolumeSpaceChanged) => void) | undefined
+    ipc.onVolumeSpaceChanged.mockImplementation((fn: typeof cb) => {
+      cb = fn
+      return Promise.resolve(vi.fn())
+    })
+    const ctl = setup()
+    ctl.startListening()
+    await vi.waitFor(() => {
+      expect(ctl.volumeSpace).toEqual(bootDisk)
+    })
+    cb?.({ volumeId: 'smb-p', space: share })
+    expect(ctl.volumeSpace).toEqual(bootDisk)
+    const fresher: SpaceInfo = { kind: 'bounded', totalBytes: 926, availableBytes: 250, usedBytes: 676 }
+    cb?.({ volumeId: 'root', space: fresher })
+    expect(ctl.volumeSpace).toEqual(fresher)
   })
 
   it('cleanup drops the listener and unwatches this pane', async () => {
@@ -135,7 +187,6 @@ describe('createVolumeSpace', () => {
     await vi.waitFor(() => {
       expect(ipc.onVolumeSpaceChanged).toHaveBeenCalled()
     })
-    // Let the `.then(fn => unlisten = fn)` microtask settle.
     await Promise.resolve()
     ctl.cleanup()
     expect(unlisten).toHaveBeenCalled()

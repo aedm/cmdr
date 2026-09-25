@@ -179,10 +179,6 @@ describe('createBreadcrumbHandlers', () => {
       onVolumeChange: vi.fn(),
       onRequestFocus: vi.fn(),
       loadDirectory: vi.fn(),
-      refreshSpace: vi.fn(),
-      watchSpace: vi.fn(),
-      unwatchSpace: vi.fn(),
-      clearSpace: vi.fn(),
     }
     deps = {
       getCurrentVolumeInfo: () => ({ id: 'ext', name: 'External' }) as never,
@@ -191,10 +187,6 @@ describe('createBreadcrumbHandlers', () => {
       onVolumeChange: calls.onVolumeChange,
       onRequestFocus: calls.onRequestFocus,
       loadDirectory: calls.loadDirectory,
-      refreshSpace: calls.refreshSpace,
-      watchSpace: calls.watchSpace,
-      unwatchSpace: calls.unwatchSpace,
-      clearSpace: calls.clearSpace,
     }
   })
 
@@ -225,7 +217,7 @@ describe('createBreadcrumbHandlers', () => {
   })
 
   describe('switching volume', () => {
-    it('commits the target path, loads it, and follows it with the space watch', () => {
+    it('commits the target path and loads it (the disk space follows the pane on its own)', () => {
       createBreadcrumbHandlers(deps).handleVolumeChange({
         volumeId: 'ext',
         volumePath: '/Volumes/Ext',
@@ -238,28 +230,11 @@ describe('createBreadcrumbHandlers', () => {
         targetPath: '/Volumes/Ext/photos',
       })
       expect(calls.loadDirectory).toHaveBeenCalledWith('/Volumes/Ext/photos')
-      expect(calls.unwatchSpace).toHaveBeenCalledTimes(1)
-      expect(calls.watchSpace).toHaveBeenCalledWith({ volumeId: 'ext', path: '/Volumes/Ext/photos' })
-      expect(calls.refreshSpace).toHaveBeenCalledTimes(1)
     })
 
-    it('reads the disk-image flag off the NEW volume, before the prop catches up', () => {
-      volumes = [{ id: 'dmg', name: 'Installer', isDiskImage: true }]
-      createBreadcrumbHandlers(deps).handleVolumeChange({
-        volumeId: 'dmg',
-        volumePath: '/Volumes/Installer',
-        targetPath: '/Volumes/Installer',
-      })
-      expect(calls.clearSpace).toHaveBeenCalledTimes(1)
-      expect(calls.watchSpace).not.toHaveBeenCalled()
-      expect(calls.refreshSpace).not.toHaveBeenCalled()
-    })
-
-    it('skips the load for the network volume and stops watching space', () => {
+    it('skips the load for the network volume', () => {
       createBreadcrumbHandlers(deps).handleVolumeChange({ volumeId: 'network', volumePath: '/', targetPath: '/' })
       expect(calls.loadDirectory).not.toHaveBeenCalled()
-      expect(calls.unwatchSpace).toHaveBeenCalledTimes(1)
-      expect(calls.watchSpace).not.toHaveBeenCalled()
     })
 
     it('skips the load for a device-only MTP target, which needs connecting first', () => {

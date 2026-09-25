@@ -200,6 +200,7 @@ afterEach(() => {
 interface BreadcrumbProps {
   volumeId?: string
   currentPath?: string
+  containingVolumeId?: string | null
   onVolumeChange?: (change: VolumeChangePayload) => void
 }
 
@@ -208,7 +209,14 @@ function mountBreadcrumb(props: BreadcrumbProps = {}): { instance: BreadcrumbIns
   document.body.appendChild(target)
   const instance = mount(VolumeBreadcrumb, {
     target,
-    props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/Users/test', ...props },
+    // The pane resolves the containing volume and hands it down (`pane-volume-state`).
+    props: {
+      paneId: 'left' as const,
+      volumeId: 'root',
+      currentPath: '/Users/test',
+      containingVolumeId: stubs.containingVolumeId,
+      ...props,
+    },
   }) as unknown as BreadcrumbInstance
   // Settle the chip's `bind:this`: the menu hangs under that element, so `open()` called
   // before the binding lands would have nothing to anchor to.
@@ -1000,7 +1008,8 @@ describe('VolumeBreadcrumb dropdown placement', () => {
       { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
       { id: 'volumes-a', name: 'Alpha', path: '/Volumes/Alpha', category: 'attached_volume', isEjectable: true },
     ]
-    const { instance } = mountBreadcrumb()
+    // No row checked, so the cursor opens on the menu's first row.
+    const { instance } = mountBreadcrumb({ containingVolumeId: null })
     instance.openVolumeChooser()
     await tick()
     flushSync()

@@ -312,6 +312,7 @@ describe('VolumeBreadcrumb a11y', () => {
         paneId: 'left' as const,
         volumeId: 'root',
         currentPath: '/Users/test',
+        containingVolumeId: 'root',
       },
     })
     await tick()
@@ -327,6 +328,7 @@ describe('VolumeBreadcrumb a11y', () => {
         paneId: 'left' as const,
         volumeId: 'network',
         currentPath: 'smb://',
+        containingVolumeId: null,
       },
     })
     await tick()

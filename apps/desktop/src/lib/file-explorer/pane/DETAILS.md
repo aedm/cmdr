@@ -1488,9 +1488,8 @@ routing happens backend-side in `VolumeManager::resolve(volume_id, path)`.
   archive, NOT the `.zip` path the backend emits as the listing's `volume_root` — otherwise the archive root would read
   as a volume root and hide its `..` row.
 - **Opt-outs that `hasBackendListing:true` doesn't cover**: `git-browser-sync` skips inside archives
-  (`pathCrossesArchiveBoundary` — a repo can't live in a zip); `volume-space` queries the parent mount path inside an
-  archive (an archive-inner path isn't NSURL-resolvable, and the archive borrows the parent's space). Both read the PANE
-  path, so both take the wide check.
+  (`pathCrossesArchiveBoundary` — a repo can't live in a zip); `volume-space` asks the pane volume's own mount path, so
+  an archive-inner path (not NSURL-resolvable) never reaches it and the archive shows its parent's space.
 - **Path bar** renders the transparent `…/foo.zip/inner` for free: `breadcrumbDisplayPath` strips the parent
   `volumePath` prefix and `enrichBreadcrumbSegments` rebuilds ancestor targets from it, both path-agnostic.
 - **Persistence/restore** is archive-safe with no FE change: the tab stores `(parentDriveId, fullPath)`; on restore

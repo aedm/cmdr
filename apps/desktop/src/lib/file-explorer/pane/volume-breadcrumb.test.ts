@@ -235,6 +235,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -250,6 +251,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -268,6 +270,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -283,6 +286,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -309,6 +313,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -333,6 +338,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
           onVolumeChange: volumeChangeFn,
         },
       })
@@ -366,6 +372,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -396,6 +403,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -432,6 +440,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
       await waitForUpdates(100)
@@ -448,6 +457,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -463,6 +473,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -486,6 +497,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
         },
       })
 
@@ -578,6 +590,7 @@ describe('VolumeBreadcrumb', () => {
           paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
+          containingVolumeId: 'root',
           onVolumeChange: volumeChangeFn,
         },
       })
@@ -670,7 +683,7 @@ describe('VolumeBreadcrumb', () => {
       ])
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
-        props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/' },
+        props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/', containingVolumeId: 'root' },
       })
       await waitForUpdates(100)
       ;(component as unknown as { toggleFavoritesMenu: () => void }).toggleFavoritesMenu()

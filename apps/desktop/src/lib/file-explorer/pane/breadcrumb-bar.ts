@@ -14,8 +14,7 @@ import { isMtpVolumeId, getMtpDisplayPath } from '$lib/mtp'
 import { getAdbDisplayPath, isAdbVolumeId } from '$lib/adb/adb-path-utils'
 import { boundShortcuts } from '$lib/shortcuts'
 import { isVolumeEjectable } from '../navigation/eject-predicate'
-import { getVolumes as getStoreVolumes } from '$lib/stores/volume-store.svelte'
-import type { VolumeChangePayload, VolumeSpaceWatchArgs } from './types'
+import type { VolumeChangePayload } from './types'
 
 export interface BreadcrumbDisplayPathInput {
   currentPath: string
@@ -76,10 +75,6 @@ export interface BreadcrumbHandlerDeps {
   onVolumeChange: (change: VolumeChangePayload) => void
   onRequestFocus: () => void
   loadDirectory: (path: string) => void
-  refreshSpace: () => void
-  watchSpace: (args: VolumeSpaceWatchArgs) => void
-  unwatchSpace: () => void
-  clearSpace: () => void
 }
 
 export interface BreadcrumbHandlers {
@@ -119,22 +114,9 @@ export function createBreadcrumbHandlers(deps: BreadcrumbHandlerDeps): Breadcrum
     // or device-only MTP views (they need connection first via auto-connect effect)
     // But DO load for connected MTP views (storage-specific volume ID contains ":")
     const isDeviceOnlyMtp = isMtpVolumeId(newVolumeId) && !newVolumeId.includes(':')
+    // The disk space follows the pane's volume on its own (`volume-space.svelte.ts`).
     if (newVolumeId !== 'network' && !isDeviceOnlyMtp) {
       deps.loadDirectory(targetPath)
-      deps.unwatchSpace()
-      // Disk images have no meaningful free space: skip the poll, the bottom bar, and the
-      // SelectionInfo free/total text. Read the flag off the NEW volume directly — the
-      // `volumeId` prop (and so the pane's disk-image derived) hasn't updated yet this tick.
-      const newIsDiskImage = getStoreVolumes().find((v) => v.id === newVolumeId)?.isDiskImage === true
-      if (newIsDiskImage) {
-        deps.clearSpace()
-      } else {
-        deps.refreshSpace()
-        deps.watchSpace({ volumeId: newVolumeId, path: targetPath })
-      }
-    } else {
-      // Leaving a physical volume: stop watching
-      deps.unwatchSpace()
     }
   }
 

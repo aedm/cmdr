@@ -83,16 +83,6 @@ export interface CopyPathBetweenPanesArgs {
 }
 
 /**
- * The volume + path to start live disk-space polling for. Shared by
- * `VolumeSpace.watch` and `BreadcrumbBarDeps.watchSpace`: both took
- * `(volumeId, path)`, two same-typed strings a caller could swap.
- */
-export interface VolumeSpaceWatchArgs {
-  volumeId: string
-  path: string
-}
-
-/**
  * Shared args for the copy / move / compress dialog openers: an optional
  * pre-answered conflict policy and MCP round-trip id, both `string`. Used by
  * `ExplorerAPI.openCopyDialog` / `.openMoveDialog` / `.openCompressDialog`, each

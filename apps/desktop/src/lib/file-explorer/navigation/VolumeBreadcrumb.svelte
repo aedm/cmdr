@@ -14,7 +14,6 @@
      */
     import { onMount, onDestroy } from 'svelte'
     import { dependOn } from '$lib/utils/reactivity'
-    import { resolvePathVolume } from '$lib/tauri-commands'
     import { getVolumes } from '$lib/stores/volume-store.svelte'
     import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.svelte'
     import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
@@ -48,10 +47,16 @@
         paneId: PaneId
         volumeId: string
         currentPath: string
+        /**
+         * What the backend says holds the pane's path, from the pane's ONE
+         * `pane-volume-state.svelte.ts` (the status bar's space reads the same), so
+         * the chip never runs its own lookup that could disagree with it.
+         */
+        containingVolumeId: string | null
         onVolumeChange?: (change: VolumeChangePayload) => void
     }
 
-    const { paneId, volumeId, currentPath, onVolumeChange }: Props = $props()
+    const { paneId, volumeId, currentPath, containingVolumeId, onVolumeChange }: Props = $props()
 
     const volumes = $derived(getVolumes())
 
@@ -83,9 +88,6 @@
         }
     }
 
-    // The ID of the actual volume that contains the current path. It's what the switcher's
-    // checkmark tracks, ❌ not the `volumeId` prop (which is virtual for a favorite).
-    let containingVolumeId = $state<string | null>(null)
 
     // Breadcrumb inline popup state (for the yellow os_mount indicator).
     const breadcrumbPopup = createBreadcrumbPopupController()
@@ -141,11 +143,6 @@
         getActiveVolume: () => currentVolume,
     })
 
-    async function updateContainingVolume(path: string) {
-        const { volume: containing } = await resolvePathVolume(path)
-        containingVolumeId = containing?.id ?? volumeId
-    }
-
     /** Exported for keyboard shortcut access from parent. */
     export function toggleVolumeChooser() {
         chooser?.toggle()
@@ -170,13 +167,6 @@
         favoritesMenu?.open(trigger)
     }
 
-    // Re-ask when the path changes, and when the volume list does: a share that mounts back
-    // at the same path turns that folder from the boot disk's into its own.
-    $effect(() => {
-        dependOn(volumes)
-        void updateContainingVolume(currentPath)
-    })
-
     function handleBreadcrumbPopupClickOutside(event: MouseEvent) {
         if (breadcrumbPopupRef && !breadcrumbPopupRef.contains(event.target as Node)) {
             breadcrumbPopup.close()
@@ -190,8 +180,6 @@
     }
 
     onMount(() => {
-        void updateContainingVolume(currentPath)
-
         // Make sure the generic dir icon is cached for the fallback below.
         if (!getCachedIcon('dir')) {
             void prefetchIcons(['dir'], getUseAppIconsForDocuments())

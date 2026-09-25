@@ -54,6 +54,7 @@
     import MtpConnectionView from './MtpConnectionView.svelte'
     import RemoteConnectView from './RemoteConnectView.svelte'
     import { createPlaceConnect } from './place-connect.svelte'
+    import { createPaneVolumeState } from '../navigation/pane-volume-state.svelte'
     import { placeRootOf } from '$lib/servers/open-sign-in'
     import { createDeviceConnect } from './device-connect.svelte'
     import AdbHint from '$lib/adb/AdbHint.svelte'
@@ -630,16 +631,22 @@
         onConnected: () => { void loader.loadDirectory({ path: currentPath }) },
     })
 
-    // Live per-pane disk space: the readout, the fetch, the backend live-update
-    // listener, and the watch/unwatch registration live in a `*.svelte.ts` factory.
-    // The pane keeps a one-line `refreshVolumeSpace` delegate (a FilePaneAPI export)
-    // and drives watch/unwatch across mount, volume-switch, and destroy.
-    const diskSpace = createVolumeSpace({
-        paneId,
+    // The volume the pane is on: ONE answer for the header, the checkmark, the index
+    // prompt, and the disk space below (`navigation/pane-volume-state.svelte.ts`).
+    const paneVolume = createPaneVolumeState({
+        getVolumes: getStoreVolumes,
         getVolumeId: () => volumeId,
         getCurrentPath: () => currentPath,
-        getVolumePath: () => volumePath,
-        getIsDiskImage: () => isDiskImageVolume,
+    })
+
+    // Live per-pane disk space, keyed by the volume the pane is on and following it
+    // by any route (`volume-space.svelte.ts`).
+    const diskSpace = createVolumeSpace({
+        paneId,
+        getSpaceVolume: () => {
+            const volume = paneVolume.volume
+            return volume ? { id: volume.id, path: volume.path, isDiskImage: volume.isDiskImage === true } : null
+        },
     })
 
     /** What to draw the disk-usage bar with, or `null` when there is no bar to draw. */
@@ -1420,7 +1427,7 @@
     const handleNavigate = activation.handleNavigate
 
     // The breadcrumb's three interactions (ancestor click, right-click menu with
-    // its eject item, volume switch with the disk-space watch that follows it).
+    // its eject item, volume switch).
     const breadcrumb = createBreadcrumbHandlers({
         getCurrentVolumeInfo: () => currentVolumeInfo,
         navigateToPath: (path) => navigateToPath(path),
@@ -1430,16 +1437,6 @@
         onVolumeChange: (change) => onVolumeChange?.(change),
         onRequestFocus: () => onRequestFocus?.(),
         loadDirectory: (path) => void loader.loadDirectory({ path }),
-        refreshSpace: () => void diskSpace.refresh(),
-        watchSpace: (args) => {
-            diskSpace.watch(args)
-        },
-        unwatchSpace: () => {
-            diskSpace.unwatch()
-        },
-        clearSpace: () => {
-            diskSpace.clear()
-        },
     })
 
     // Cursor movement for the Brief/Full list views (arrows, Page/Home/End,
@@ -1814,12 +1811,6 @@
         } else if (!isNetworkView && !isMtpDeviceOnly && !isSearchResultsView) {
             log.debug('[FilePane] onMount: triggering loadDirectory for paneId={paneId}', { paneId })
             void loader.loadDirectory({ path: currentPath })
-            // Disk images have no meaningful free space: no poll, no bar, no SelectionInfo text.
-            if (!isDiskImageVolume) {
-                void diskSpace.refresh()
-                // Register for live disk-space polling
-                diskSpace.watch({ volumeId, path: currentPath })
-            }
         } else {
             log.debug('[FilePane] onMount: SKIPPING loadDirectory for paneId={paneId}', { paneId })
             // Clear the initial `loading = true` for virtual-volume panes (network /
@@ -1880,6 +1871,7 @@
             {paneId}
             {volumeId}
             {currentPath}
+            containingVolumeId={paneVolume.containingVolumeId}
             onVolumeChange={breadcrumb.handleVolumeChange}
         />
         <span class="path">{#each clickableBreadcrumbSegments as seg, i (i)}{#if i > 0 && seg.text !== ''}<span class="path-sep">/</span>{/if}{#if seg.target !== null}<button

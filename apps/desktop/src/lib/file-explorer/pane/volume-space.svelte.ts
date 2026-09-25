@@ -1,14 +1,20 @@
 /**
- * Live per-pane disk space. Owns the reactive `volumeSpace` readout, the fetch,
- * the backend live-update listener, and the watch/unwatch registration keyed by
- * pane id. Lifted out of `FilePane.svelte`; the pane keeps a one-line
- * `refreshVolumeSpace` delegate (a `FilePaneAPI` export) and orchestrates the
- * watch/unwatch across mount, volume-switch, and destroy through this handle.
+ * Live per-pane disk space: the reactive `volumeSpace` readout, the fetch, the
+ * backend live-update listener, and the watch registration keyed by pane id.
  *
- * Disk images (`.dmg`) report no meaningful free space, so the fetch, the live
- * event, and the volume-switch path all skip them (the pane hides the bar too).
- * Two panes on the same volume register independently (keyed by pane id), so one
- * navigating away doesn't unwatch the other.
+ * ❗ **Keyed by the volume the pane is ON** (`getSpaceVolume`, the pane's
+ * `paneVolumeOf` answer), and it follows that volume by ANY route: a switcher
+ * pick, a walk-up after an eject, a navigation into another drive. When it
+ * changes, the readout clears at once, the watch moves, and a fresh answer is
+ * fetched; an answer for a volume the pane has since left is dropped. Driving it
+ * from the volume switch alone left a pane that an eject walked to the boot disk
+ * showing the share's "232 GB of 328 GB free" on every folder after (QA round 5,
+ * R4-1). A figure for the wrong volume is worse than none.
+ *
+ * Disk images (`.dmg`) and views with no volume (the servers hub, search results)
+ * show nothing and watch nothing. Two panes on the same volume register
+ * independently (keyed by pane id), so one navigating away doesn't unwatch the
+ * other.
  */
 
 import {
@@ -19,39 +25,29 @@ import {
   type SpaceInfo,
   type UnlistenFn,
 } from '$lib/tauri-commands'
-import { pathCrossesArchiveBoundary } from './archive-paths'
-import type { VolumeSpaceWatchArgs } from './types'
+import { untrack } from 'svelte'
+
+/** The volume a pane's space is read for: what `paneVolumeOf` answered. */
+export interface SpaceVolume {
+  id: string
+  path: string
+  /** Disk images report no meaningful space. */
+  isDiskImage: boolean
+}
 
 export interface VolumeSpaceDeps {
   paneId: 'left' | 'right'
-  getVolumeId: () => string
-  getCurrentPath: () => string
-  /**
-   * The pane's volume (parent) mount path (reactive read). Used for the space
-   * query when the pane is inside an archive: `getVolumeSpace` runs an NSURL
-   * volume-capacity lookup, which returns nothing for a non-existent `…/foo.zip/…`
-   * inner path, so we query the containing volume's path instead. The reported
-   * space is the parent drive's — which is exactly what should show, since an
-   * archive borrows its parent's space (matching the backend's parent delegation).
-   */
-  getVolumePath: () => string
-  /** The pane's disk-image flag (reactive read). Disk images report no meaningful space. */
-  getIsDiskImage: () => boolean
+  /** The volume the pane is on (reactive read), or `null` for a view with none. */
+  getSpaceVolume: () => SpaceVolume | null
 }
 
 export interface VolumeSpace {
-  /** Live space for the pane's volume, or null (disk image / not yet fetched / virtual). */
+  /** Live space for the volume the pane is on, or null (disk image / not yet fetched / no volume). */
   readonly volumeSpace: SpaceInfo | null
-  /** Fetch space for the current path. A disk image clears the readout instead. */
+  /** Fetch space again for the volume the pane is on (after an operation changed it). */
   refresh: () => Promise<void>
   /** Register for live backend disk-space events. Call once from `onMount`. */
   startListening: () => void
-  /** Start live polling for a volume + path (keyed by this pane's id). */
-  watch: (args: VolumeSpaceWatchArgs) => void
-  /** Stop live polling for this pane. */
-  unwatch: () => void
-  /** Clear the readout (e.g. after switching onto a disk-image volume). */
-  clear: () => void
   /** Drop the live-event listener and the watch. Call from `onDestroy`. */
   cleanup: () => void
 }
@@ -59,28 +55,47 @@ export interface VolumeSpace {
 export function createVolumeSpace(deps: VolumeSpaceDeps): VolumeSpace {
   let volumeSpace = $state<SpaceInfo | null>(null)
   let unlistenSpaceChanged: UnlistenFn | undefined
+  /** The volume the readout is for. Plain: the effect below is what moves it. */
+  let current: SpaceVolume | null = null
+  /** Bumped on every volume change, so an answer for a volume the pane left is dropped. */
+  let generation = 0
 
   async function refresh(): Promise<void> {
-    // Disk images report no meaningful free space; keep it null so neither the
-    // bottom disk-usage bar nor the SelectionInfo free/total text renders.
-    if (deps.getIsDiskImage()) {
+    const volume = current
+    const asked = generation
+    if (!volume || volume.isDiskImage) {
       volumeSpace = null
       return
     }
-    // Inside an archive the current path (`…/foo.zip/inner`) isn't a real
-    // filesystem path, so query the containing volume's mount instead — the space
-    // shown is the parent drive's, which is what an archive borrows.
-    const currentPath = deps.getCurrentPath()
-    const queryPath = pathCrossesArchiveBoundary(currentPath) ? deps.getVolumePath() : currentPath
-    volumeSpace = (await getVolumeSpace(queryPath)).data
+    // ❗ Asked by the VOLUME's own path, ❌ never the pane's: a volume's space is its
+    // mount's, and the pane's path can be dead (an ejected share's mount point, the
+    // moment the pane resolves to the boot disk and before it walks off) or not a
+    // filesystem path at all (inside an archive). One fetch for a dead path left the
+    // readout blank on every folder after.
+    const answer = (await getVolumeSpace(volume.path)).data
+    if (asked === generation) volumeSpace = answer
   }
 
+  $effect(() => {
+    const volume = deps.getSpaceVolume()
+    if (volume?.id === current?.id && volume?.path === current?.path && volume?.isDiskImage === current?.isDiskImage)
+      return
+    current = volume
+    generation++
+    volumeSpace = null
+    untrack(() => {
+      void unwatchVolumeSpace(deps.paneId)
+      if (!volume || volume.isDiskImage) return
+      void refresh()
+      void watchVolumeSpace(deps.paneId, volume.id, volume.path)
+    })
+  })
+
   function startListening(): void {
-    // Live disk-space updates from the backend poller (typed event). Ignore disk
-    // images: no meaningful free space. We don't register a watch for them, so
-    // this is a belt-and-suspenders guard against a late/stray event.
+    // Live disk-space updates from the backend poller (typed event), for the
+    // volume the pane is on and no other.
     void onVolumeSpaceChanged((payload) => {
-      if (payload.volumeId === deps.getVolumeId() && !deps.getIsDiskImage()) {
+      if (current && payload.volumeId === current.id && !current.isDiskImage) {
         volumeSpace = payload.space
       }
     }).then((fn) => {
@@ -94,15 +109,6 @@ export function createVolumeSpace(deps: VolumeSpaceDeps): VolumeSpace {
     },
     refresh,
     startListening,
-    watch: ({ volumeId, path }: VolumeSpaceWatchArgs) => {
-      void watchVolumeSpace(deps.paneId, volumeId, path)
-    },
-    unwatch: () => {
-      void unwatchVolumeSpace(deps.paneId)
-    },
-    clear: () => {
-      volumeSpace = null
-    },
     cleanup: () => {
       unlistenSpaceChanged?.()
       void unwatchVolumeSpace(deps.paneId)
