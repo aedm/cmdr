@@ -61,6 +61,13 @@ export function createDeletedDirPoll(deps: DeletedDirPollDeps): DeletedDirPoll {
     // No volume id on purpose: the gate above only admits a path the Mac can
     // stat, so the boot disk's own answer is the right and cheapest one.
     void pathExistsChecked(currentPath).then(({ data: exists, timedOut }) => {
+      // An answer about a folder the pane has since left says nothing about where it
+      // stands now: a share that mounted back elsewhere moved the pane mid-poll, and
+      // this walked it off the share onto the boot disk.
+      if (deps.getCurrentPath() !== currentPath) {
+        notExistsCount = 0
+        return
+      }
       // `timedOut` covers both a 2s syscall timeout and an SMB volume in
       // `Disconnected` state: in both cases we don't know whether the path
       // exists. Reset the counter and wait for the connection to recover.
@@ -88,6 +95,7 @@ export function createDeletedDirPoll(deps: DeletedDirPollDeps): DeletedDirPoll {
           // If we couldn't tell whether the volume is there, don't walk up.
           if (volumeTimedOut) return
           if (!volumeExists) return
+          if (deps.getCurrentPath() !== currentPath) return
           log.info('Directory {dir} no longer exists, navigating to nearest valid parent under {volume}', {
             dir: currentPath,
             volume: volumePath,

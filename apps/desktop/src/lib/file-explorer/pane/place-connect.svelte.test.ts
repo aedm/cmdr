@@ -44,18 +44,20 @@ describe('createPlaceConnect', () => {
   /** The pane's live `VolumeInfo`, reactive so a reassignment re-runs the factory's effect. */
   let info = $state<VolumeInfo | null>(null)
 
-  function create(): { sub: PlaceConnect; onConnected: ReturnType<typeof vi.fn> } {
-    const onConnected = vi.fn()
+  function create(): { sub: PlaceConnect; enter: ReturnType<typeof vi.fn> } {
+    const enter = vi.fn()
     let sub!: PlaceConnect
     dispose = $effect.root(() => {
       sub = createPlaceConnect({
         getVolumeId: () => info?.id ?? 'root',
         getCurrentVolumeInfo: () => info,
-        onConnected,
+        getVolumePath: () => savedPlace.path,
+        getCurrentPath: () => savedPlace.path,
+        enter,
       })
     })
     flushSync()
-    return { sub, onConnected }
+    return { sub, enter }
   }
 
   beforeEach(() => {
@@ -75,11 +77,15 @@ describe('createPlaceConnect', () => {
     expect(connectPlace).toHaveBeenCalledWith(expect.objectContaining({ volumeId: savedPlace.id }))
   })
 
-  it('reloads the pane once the place is live, and drops the view', async () => {
-    const { sub, onConnected } = create()
+  it('enters the place again once it is live, and drops the view', async () => {
+    const { sub, enter } = create()
     await vi.waitFor(() => {
-      // No landing of its own: a server place's root never moves on a connect.
-      expect(onConnected).toHaveBeenCalledWith({ volumeId: savedPlace.id, landing: undefined })
+      // A server place's root never moves on a connect, so it re-enters where it stands.
+      expect(enter).toHaveBeenCalledWith({
+        volumeId: savedPlace.id,
+        volumePath: savedPlace.path,
+        targetPath: savedPlace.path,
+      })
     })
     expect(sub.state).toBeNull()
   })
@@ -165,11 +171,11 @@ describe('createPlaceConnect', () => {
 
   it('says nothing when the user cancels: the view just goes', async () => {
     connectPlace.mockResolvedValue({ kind: 'cancelled' })
-    const { sub, onConnected } = create()
+    const { sub, enter } = create()
     await vi.waitFor(() => {
       expect(sub.state).toBeNull()
     })
-    expect(onConnected).not.toHaveBeenCalled()
+    expect(enter).not.toHaveBeenCalled()
   })
 
   it('keeps the spinner while the reconnect manager owns the recovery', async () => {
@@ -198,28 +204,74 @@ describe('createPlaceConnect: a saved SMB share', () => {
     connectionState: 'saved',
   }
   let dispose: (() => void) | undefined
+  let shareInfo = $state<VolumeInfo>({ ...savedShare })
+  let volumePath = $state('/Volumes/naspi')
+  let currentPath = $state('/Volumes/naspi/docs')
+
+  function create(landingOf = vi.fn(() => Promise.resolve<string | null>('/Volumes/naspi'))) {
+    const enter = vi.fn()
+    dispose = $effect.root(() => {
+      createPlaceConnect({
+        getVolumeId: () => savedShare.id,
+        getCurrentVolumeInfo: () => shareInfo,
+        getVolumePath: () => volumePath,
+        getCurrentPath: () => currentPath,
+        enter,
+        landingOf,
+      })
+    })
+    flushSync()
+    return enter
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    shareInfo = { ...savedShare }
+    volumePath = '/Volumes/naspi'
+    currentPath = '/Volumes/naspi/docs'
+    connectPlace.mockResolvedValue({ kind: 'connected', volumeId: savedShare.id })
+  })
 
   afterEach(() => {
     dispose?.()
   })
 
-  it('reloads the pane where the mount landed when that moved', async () => {
-    vi.clearAllMocks()
-    connectPlace.mockResolvedValue({ kind: 'connected', volumeId: savedShare.id })
-    const onConnected = vi.fn()
-    const landingOf = vi.fn(() => Promise.resolve('/Volumes/naspi-1'))
-    dispose = $effect.root(() => {
-      createPlaceConnect({
-        getVolumeId: () => savedShare.id,
-        getCurrentVolumeInfo: () => savedShare,
-        onConnected,
-        landingOf,
+  /**
+   * ❗ The pane ENTERS the volume at the path the mount got, the same route a
+   * switcher pick takes: root, path, listing, and disk space all move together.
+   * Reloading only the listing left the pane's root at the old path, and its
+   * missing-folder poll walked it to Macintosh HD (QA round 4, R3-A case 1).
+   */
+  it('enters the share where the mount landed when that moved, keeping the folder inside it', async () => {
+    const enter = create(vi.fn(() => Promise.resolve<string | null>('/Volumes/naspi-1')))
+    await vi.waitFor(() => {
+      expect(enter).toHaveBeenCalledWith({
+        volumeId: savedShare.id,
+        volumePath: '/Volumes/naspi-1',
+        targetPath: '/Volumes/naspi-1/docs',
       })
     })
-    flushSync()
+  })
 
-    await vi.waitFor(() => {
-      expect(onConnected).toHaveBeenCalledWith({ volumeId: savedShare.id, landing: '/Volumes/naspi-1' })
+  /**
+   * ❗ A pane whose volume and path disagree could write to the wrong server:
+   * 11480's share listed at `/Volumes/public`, which 11482's mount held (QA round
+   * 4, R3-A case 2). Whatever put it there, the pane follows its LIVE row's path.
+   */
+  it('follows a live share whose mount path differs from where the pane stands', () => {
+    shareInfo = { ...savedShare, path: '/Volumes/naspi-1', category: 'attached_volume', connectionState: 'direct' }
+    const enter = create()
+    expect(connectPlace, 'a live share is not dialed').not.toHaveBeenCalled()
+    expect(enter).toHaveBeenCalledWith({
+      volumeId: savedShare.id,
+      volumePath: '/Volumes/naspi-1',
+      targetPath: '/Volumes/naspi-1/docs',
     })
+  })
+
+  it('leaves a live share alone when the pane already stands on its mount path', () => {
+    shareInfo = { ...savedShare, category: 'attached_volume', connectionState: 'direct' }
+    const enter = create()
+    expect(enter).not.toHaveBeenCalled()
   })
 })

@@ -19,6 +19,8 @@ import { isSmbVolumeId, parseServerPath } from '$lib/servers/server-path-utils'
 import { getAppLogger } from '$lib/logging/logger'
 import type { RemoteConnectState } from './remote-connect-state'
 import type { VolumeInfo } from '../types'
+import type { VolumeChangePayload } from './types'
+import { isLiveSession } from '../navigation/connection-state'
 
 const log = getAppLogger('servers')
 
@@ -27,12 +29,16 @@ export interface PlaceConnectDeps {
   getVolumeId: () => string
   /** The pane's live `VolumeInfo` (or null). Owned by the component. */
   getCurrentVolumeInfo: () => VolumeInfo | null
+  /** The root the pane holds for its volume (the `volumePath` it was entered with). */
+  getVolumePath: () => string
+  /** The folder the pane stands in. */
+  getCurrentPath: () => string
   /**
-   * The place is live now. The pane re-runs its listing, which is what turns the
-   * connecting view back into a directory: at `landing` when the place came back
-   * somewhere other than where the pane stands, else where it is.
+   * Enters the volume: the route a switcher pick takes, so the pane's root, its
+   * path, its listing, and its disk space all move together. Used once the place
+   * is live, and whenever a live share's mount path isn't the root the pane holds.
    */
-  onConnected: (connected: { volumeId: string; landing?: string }) => void
+  enter: (change: VolumeChangePayload) => void
   /**
    * Where a place sits once live, off the saved list. Asked only for an SMB
    * share, whose next mount can land on another path (`/Volumes/naspi-1`) than
@@ -53,10 +59,33 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
   let attemptId: string | null = null
   /** The volume this factory has already dialed, so landing doesn't loop. */
   let dialed: string | null = null
+  /** The mount path last followed, so a volume-list refresh before the pane's root catches up doesn't enter twice. */
+  let followed: string | null = null
 
   $effect(() => {
     const info = deps.getCurrentVolumeInfo()
     const volumeId = deps.getVolumeId()
+    // ❗ A live share is followed to wherever its mount IS. Its next mount can land
+    // on another `/Volumes` path than the one the pane was entered at, and a pane
+    // whose root and volume disagree lists one server under another's path, where
+    // a write would reach the wrong one (QA round 4, R3-A). The live row's path is
+    // `statfs`'s, so it is the one to trust.
+    if (info && isSmbVolumeId(volumeId) && isLiveSession(info.connectionState)) {
+      const root = deps.getVolumePath()
+      if (info.path !== root && followed !== `${volumeId}:${info.path}`) {
+        followed = `${volumeId}:${info.path}`
+        log.info('The share {volumeId} is mounted at {path}, not {root}; following it', {
+          volumeId,
+          path: info.path,
+          root,
+        })
+        deps.enter({
+          volumeId,
+          volumePath: info.path,
+          targetPath: rebaseOnRoot(deps.getCurrentPath(), root, info.path),
+        })
+      }
+    }
     if (info?.connectionState !== 'saved') {
       // Live, gone, or a local volume: the pane shows its own listing again.
       state = null
@@ -93,8 +122,10 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         // The row flips to `direct` on the next `volumes-changed`; reloading now
         // is what makes the pane feel like it opened rather than waited.
         const landing = isSmbVolumeId(volumeId) ? await deps.landingOf?.(volumeId) : null
+        const root = deps.getVolumePath()
+        const volumePath = landing ?? root
         state = null
-        deps.onConnected({ volumeId, landing: landing && landing !== info.path ? landing : undefined })
+        deps.enter({ volumeId, volumePath, targetPath: rebaseOnRoot(deps.getCurrentPath(), root, volumePath) })
         return
       }
       case 'reconnecting':
@@ -143,4 +174,16 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
       return state
     },
   }
+}
+
+/**
+ * `path` moved from under `oldRoot` to under `newRoot`, keeping the folder inside:
+ * `/Volumes/naspi/docs` is `/Volumes/naspi-1/docs` once the share mounts there. A
+ * path outside `oldRoot` lands at `newRoot`.
+ */
+export function rebaseOnRoot(path: string, oldRoot: string, newRoot: string): string {
+  if (path === oldRoot) return newRoot
+  const base = oldRoot.endsWith('/') ? oldRoot : `${oldRoot}/`
+  if (!path.startsWith(base)) return newRoot
+  return `${newRoot.endsWith('/') ? newRoot : `${newRoot}/`}${path.slice(base.length)}`
 }

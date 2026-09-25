@@ -418,7 +418,8 @@ this side:
 - **`remembered` starts on and the Keychain is ❌ never probed** (`open-sign-in.ts`), SMB's rule everywhere; the backend
   writes the password only once the mount went through, so there is no secret writer here.
 - **A share's next mount may land elsewhere** (`/Volumes/naspi-1`), so `place-connect` asks `placeRootOf` for its
-  landing after a connect and the pane reloads there.
+  landing after a connect and the pane enters the share there; after that it follows the live row's mount path (the
+  backend's `remember_mount` rewrites the saved row's path on every Cmdr mount).
 - **The header names the share on its host** (`smb://192.168.0.153/Container`), since that is the place.
 
 ## The device dial, beside the place dial

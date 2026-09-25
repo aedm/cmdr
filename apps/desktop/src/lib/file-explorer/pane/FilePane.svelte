@@ -613,7 +613,9 @@
     const placeConnect = createPlaceConnect({
         getVolumeId: () => volumeId,
         getCurrentVolumeInfo: () => currentVolumeInfo,
-        onConnected: ({ landing }) => { void loader.loadDirectory({ path: landing ?? currentPath }) },
+        getVolumePath: () => volumePath,
+        getCurrentPath: () => currentPath,
+        enter: (change) => { breadcrumb.handleVolumeChange(change) },
         landingOf: placeRootOf,
     })
 

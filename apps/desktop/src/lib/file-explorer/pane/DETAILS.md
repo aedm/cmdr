@@ -332,6 +332,8 @@ volume-id string. The record has two halves, and which half answers is the whole
   the path first (archive by suffix, git portal by `isVirtualGitPath` gated on the live `showVirtualGitPortal` toggle),
   and otherwise defers to `capabilitiesFor`. ❌ Neither routed branch folds in the parent drive's published
   capabilities: those answer for the drive, and the pane is inside something ON it.
+- **`deleted-dir-poll.ts` drops an answer about a folder the pane has since left**: a share that mounted back elsewhere
+  moved the pane mid-poll, and the old path's "missing" walked it off the share.
 - **`paneFolderIsPolledForDeletion(volumeId, path)`** gates `deleted-dir-poll.ts`, which exists only for FSEvents' blind
   spot (macOS doesn't report a watched folder's own deletion). Two halves: the kind's `pollsForDeletedFolder` (true for
   `local`, `smb`, and `archive`; false for the `.git` portal, whose snapshot folders never exist on disk, and for every
@@ -472,10 +474,17 @@ no session behind it, so every listing on it would refuse until something dials.
 - **It dials where the pane already stands.** Picking a `saved` place sends the pane straight to its start folder
   (`../navigation/picked-volume-path.ts`), so `connected` reloads the landing rather than navigating after the fact: no
   second history entry, and no pinned-tab fork on arrival. A restored tab or a favorite keeps its own deeper path.
-- **`connected` reloads the pane** rather than waiting for the row to flip to `direct` on the next broadcast, which is
-  what makes the place feel like it opened rather than waited. `cancelled` clears the view and says nothing.
-  `reconnecting` KEEPS the spinner: the backoff loop owns it, and `smb-view-state`'s own `RemoteConnectState` takes over
-  once the row reaches `disconnected`.
+- **`connected` ENTERS the place** (`enter`, which is `breadcrumb.handleVolumeChange`: the route a switcher pick takes)
+  rather than waiting for the row to flip to `direct` on the next broadcast, which is what makes the place feel like it
+  opened rather than waited. ❗ Entering, ❌ not reloading the listing: the root, the path, the listing, and the disk
+  space have to move together. A reload alone left the pane's root at the share's old mount path, so the status bar kept
+  the boot disk's space and the missing-folder poll walked the pane to Macintosh HD.
+- **A live share is followed to its mount path.** Whenever a live SMB row's `path` isn't the root the pane holds, the
+  pane enters it again there, keeping the folder inside (`rebaseOnRoot`). The live row's path is `statfs`'s; a pane
+  whose volume and root disagree listed 11480's share under the path 11482's held, where a write would reach the wrong
+  server. A `followed` guard stops a refresh that lands before the pane's root catches up from entering twice.
+  `cancelled` clears the view and says nothing. `reconnecting` KEEPS the spinner: the backoff loop owns it, and
+  `smb-view-state`'s own `RemoteConnectState` takes over once the row reaches `disconnected`.
 - The listing still runs underneath and fails, setting `friendlyError`. That branch sits BEHIND this one in the chain,
   so it never shows, and the reload on connect clears it.
 

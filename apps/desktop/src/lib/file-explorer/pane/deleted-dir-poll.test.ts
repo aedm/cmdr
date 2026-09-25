@@ -104,6 +104,33 @@ describe('createDeletedDirPoll', () => {
     poll.stop()
   })
 
+  /**
+   * ❗ An answer about a folder the pane has LEFT says nothing about where it
+   * stands. A share that mounted back at `/Volumes/public` while the pane still
+   * polled `/Volumes/public-1` got "missing" back after the pane had moved, and
+   * walked it to Macintosh HD (QA round 4, R3-A case 1).
+   */
+  it('ignores an answer about a folder the pane has since left', async () => {
+    let answer!: (value: { data: boolean; timedOut: boolean }) => void
+    existsMap({ '/dir/sub': { data: false } })
+    const poll = createDeletedDirPoll(deps)
+    poll.start()
+    await tick()
+    // The second miss is still in flight when the pane moves.
+    ipc.pathExistsChecked.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+    )
+    await tick()
+    state.currentPath = '/elsewhere'
+    answer({ data: false, timedOut: false })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(navigateToFallback).not.toHaveBeenCalled()
+    poll.stop()
+  })
+
   it('resets the counter as soon as the directory is back', async () => {
     existsMap({ '/dir/sub': { data: false } })
     const poll = createDeletedDirPoll(deps)
