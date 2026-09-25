@@ -41,8 +41,6 @@ mod naming;
 mod preflight;
 mod rename_merge;
 mod sequential_extract;
-/// What a cross-volume move removes from its source once a copy lands: the
-/// ledger its walk kept, never the tree.
 mod source_sweep;
 mod strategy;
 mod transfer_error;
