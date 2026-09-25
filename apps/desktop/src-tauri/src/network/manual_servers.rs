@@ -586,6 +586,9 @@ pub async fn add_manual_server<R: Runtime>(
     }
 
     info!("Added manual server: {} (id={})", host.name, host.id);
+    // The saved lists changed (the host's account, maybe its name), even where no
+    // volume did: the hub re-reads them on `volumes-changed`.
+    crate::volume_broadcast::emit_volumes_changed();
 
     // Inject into discovery state
     on_host_found(host.clone(), app_handle);

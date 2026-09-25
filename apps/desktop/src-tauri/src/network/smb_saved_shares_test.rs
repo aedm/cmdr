@@ -67,3 +67,15 @@ async fn a_share_that_never_mounted_has_nothing_to_dial() {
     let answer = connect_saved_share(row, "never-mounted", None, None).await;
     assert!(matches!(answer, ServerConnectOutcome::Unreachable), "got {answer:?}");
 }
+
+/// ❗ **An Add's share row republishes the lists.** The Servers hub re-reads the
+/// saved stores on `volumes-changed`, and an Add that only changed a share's
+/// account changed no volume: the hub kept "private as otheruser" until the pane
+/// left and came back (QA round 7).
+#[test]
+fn an_added_share_row_tells_the_lists_to_redraw() {
+    let _recorder = crate::volume_broadcast::recorder_test_lock();
+    let before = crate::volume_broadcast::volumes_changed_requests();
+    remember_named_share("192.0.2.77", "redraw-test", Some("testuser"));
+    assert!(crate::volume_broadcast::volumes_changed_requests() > before);
+}

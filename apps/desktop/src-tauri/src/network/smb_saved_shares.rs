@@ -78,6 +78,10 @@ pub async fn remember_mount(mounted: MountedShare<'_>) -> Option<String> {
 
 /// Records a share an ADD named (`smb://sven@host/Container`), before anything
 /// mounted it: a row in the hub with no place yet.
+///
+/// ❗ Republishes the lists: the hub re-reads the saved stores on `volumes-changed`,
+/// and an Add that changed only a share's account changed no volume, so the row
+/// kept its old account until the pane left the hub.
 pub fn remember_named_share(host_name: &str, share: &str, username: Option<&str>) {
     known_shares::remember_share(KnownNetworkShare {
         server_name: host_name.to_string(),
@@ -93,6 +97,7 @@ pub fn remember_named_share(host_name: &str, share: &str, username: Option<&str>
         mount_path: None,
         pinned: false,
     });
+    crate::volume_broadcast::emit_volumes_changed();
 }
 
 /// Brings a saved share place to life: mounts it as its account, connects the
