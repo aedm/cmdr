@@ -924,10 +924,13 @@
      * Measuring the anchor AFTER that round trip is deliberate too: the row may have
      * scrolled during it, and the menu should land where the row is now.
      *
-     * The servers hub has no file rows, so it has no menu to open.
+     * The network view has no file rows: it opens the servers hub's cursor row menu instead.
      */
     export async function openContextMenuAtCursor(): Promise<void> {
-        if (isNetworkView) return
+        if (isNetworkView) {
+            await networkMountViewRef?.openContextMenuAtCursor()
+            return
+        }
         const cursorEntry = isSearchResultsView ? selectionInfo.entry : await refreshCursorEntry()
         if (!cursorEntry) return
         await handleContextMenu(cursorEntry, cursorRowAnchor(paneEl ?? null, cursorIndex))

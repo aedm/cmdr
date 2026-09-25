@@ -356,6 +356,8 @@ export interface ServersHubAPI extends BrowserAPI {
   getRowUnderCursor(): HubRow | null
   /** Selects a server by its saved id (or a host's discovery id), now or once it's listed. */
   selectServer(id: string): void
+  /** ⌃⏎: the cursor row's menu, opened from the keyboard just under the row. */
+  openContextMenuAtCursor(): Promise<void>
 }
 
 /** Typed interface for PlacesBrowser. */
@@ -402,6 +404,8 @@ export interface NetworkMountViewAPI {
    * - `null` (anywhere else: connect row, login form, mounting state, error).
    */
   getNetworkCursorEntry(): NetworkCursorEntry | null
+  /** ⌃⏎ in the servers hub: the cursor row's menu. A host's places list has none yet. */
+  openContextMenuAtCursor(): Promise<void>
 }
 
 /** Cursor target inside the network browser stack, returned by NetworkMountView. */

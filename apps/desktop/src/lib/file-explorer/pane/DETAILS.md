@@ -1614,7 +1614,9 @@ and `sameKindIndices(target, entries)` asks a listing snapshot which rows match.
 extra argument. ❗ Whose rows the menu acts on (cursor inside the selection → the selection; outside → that one row) is
 decided once, in that function, for both input devices — two paths deciding it separately are two paths that drift
 apart, and the disabled header line at the top of the menu would then start lying. The `..` row keeps its own one-item
-menu, anchored the same way.
+menu, anchored the same way. In the network view there are no file rows: `⌃⏎` goes through `NetworkMountView` to the
+servers hub's own `openContextMenuAtCursor`, which opens the cursor row's menu under the row with the same anchor rule
+(`../network/DETAILS.md` § Context menu and F8).
 
 The cursor row is RE-READ (`refreshCursorEntry`) for the reason "Select all of the same kind" above re-reads it, and the
 anchor is measured AFTER that round trip, so a row that scrolled during it still gets the menu where it now sits.

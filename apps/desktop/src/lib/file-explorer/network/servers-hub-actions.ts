@@ -89,8 +89,8 @@ export interface HubActions {
  * off a `.svelte` instance resolves to `any` under the plain-TypeScript lint service.
  */
 export interface HubRowMenuAPI {
-  /** Opens `row`'s menu at the pointer; false for a row with no in-app menu (an SMB host). */
-  openAt: (row: HubRow, event: MouseEvent) => boolean
+  /** Opens `row`'s menu at `point`; false for a row with no in-app menu (an SMB host). */
+  openAt: (row: HubRow, point: MenuAnchor) => boolean
 }
 
 export function createHubActions(deps: HubActionDeps): HubActions {

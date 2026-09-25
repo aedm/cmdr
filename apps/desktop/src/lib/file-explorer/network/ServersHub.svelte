@@ -35,6 +35,8 @@
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
+    import { contextMenuAnchor } from '../pane/context-menu-anchor'
+    import type { MenuAnchor } from '$lib/tauri-commands/file-actions'
     import type { NetworkHost } from '../types'
     import {
         updateLeftPaneState,
@@ -116,10 +118,34 @@
 
     let rowMenu: HubRowMenuAPI | undefined = $state()
 
-    /** Right-click: a one-place row gets the in-app row menu, an SMB host its native host menu. */
-    function openRowMenu(row: HubRow, event: MouseEvent): void {
-        if (rowMenu?.openAt(row, event)) return
-        void actions.openHostMenu(row)
+    /**
+     * A row's menu: a one-place row or a share gets the in-app row menu, an SMB host its
+     * native host menu. `anchor` is where a keyboard-opened one goes (⌃⏎); a right-click
+     * passes the pointer for the in-app menu and `null` for the native one, which then
+     * uses the pointer itself.
+     */
+    function openRowMenu(row: HubRow, pointer: MenuAnchor, anchor: MenuAnchor | null): void {
+        if (rowMenu?.openAt(row, pointer)) return
+        void actions.openHostMenu(row, anchor)
+    }
+
+    /**
+     * ⌃⏎ (`file.contextMenu`): the cursor row's menu, from the keyboard, just under the
+     * row the way a file row's opens (`../pane/context-menu-anchor.ts`). Nothing on the
+     * "Add server…" row, which has no actions.
+     */
+    // noinspection JSUnusedGlobalSymbols -- used dynamically by NetworkMountView
+    export async function openContextMenuAtCursor(): Promise<void> {
+        const row = rowUnderCursor()
+        if (!row) return
+        const rowEl = listContainer?.querySelector(`[data-hub-row="${String(cursorIndex)}"]`) ?? null
+        const anchor = contextMenuAnchor(
+            rowEl ? rowEl.getBoundingClientRect() : null,
+            listContainer ? listContainer.getBoundingClientRect() : null,
+        )
+        const point = anchor ?? { x: 0, y: 0 }
+        if (rowMenu?.openAt(row, point)) return
+        await actions.openHostMenu(row, anchor)
     }
 
     let cursorIndex = $state(0)
@@ -476,6 +502,7 @@
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <div
                 class="server-row"
+                data-hub-row={index}
                 class:is-under-cursor={index === cursorIndex}
                 class:is-focused-and-under-cursor={isFocused && index === cursorIndex}
                 role="listitem"
@@ -487,7 +514,7 @@
                 }}
                 oncontextmenu={(e: MouseEvent) => {
                     e.preventDefault()
-                    openRowMenu(row, e)
+                    openRowMenu(row, { x: e.clientX, y: e.clientY }, null)
                 }}
                 onkeydown={() => {}}
             >

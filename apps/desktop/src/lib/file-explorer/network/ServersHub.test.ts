@@ -32,6 +32,7 @@ const h = vi.hoisted(() => ({
   listSavedServers: vi.fn(),
   forgetSavedServer: vi.fn(() => Promise.resolve()),
   addToast: vi.fn(() => 'id'),
+  showNetworkHostContextMenu: vi.fn(() => Promise.resolve()),
 }))
 
 const mockHosts: NetworkHost[] = [
@@ -97,7 +98,7 @@ vi.mock('$lib/tauri-commands', () => ({
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
   updateRightPaneState: vi.fn(() => Promise.resolve()),
   removeManualServer: vi.fn(() => Promise.resolve()),
-  showNetworkHostContextMenu: vi.fn(() => Promise.resolve()),
+  showNetworkHostContextMenu: h.showNetworkHostContextMenu,
   onNetworkHostContextAction: vi.fn(() => Promise.resolve(() => {})),
   disconnectNetworkHost: vi.fn(() => Promise.resolve()),
   listSavedServers: h.listSavedServers,
@@ -125,6 +126,7 @@ interface ServersHubApi {
   openCursorItem: () => void
   getRowUnderCursor: () => HubRow | null
   selectServer: (id: string) => void
+  openContextMenuAtCursor: () => Promise<void>
 }
 
 interface MountedHub {
@@ -166,6 +168,8 @@ function mountBehindBothHandlers(): MountedHub {
     // `nav.open`'s handler re-sends Enter to the focused pane, which hands the
     // network view every key: the hub's own handler runs a second time.
     if (action.commandId === 'nav.open') api.handleKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // `file.contextMenu` (⌃⏎) reaches the hub through FilePane → NetworkMountView.
+    if (action.commandId === 'file.contextMenu') void api.openContextMenuAtCursor()
   }
   target.addEventListener('keydown', paneHandler)
   document.addEventListener('keydown', documentDispatcher)
@@ -390,6 +394,102 @@ describe('ServersHub row menu', () => {
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await tick()
     expect(onServerSelect).toHaveBeenCalledOnce()
+    expect(document.querySelector('[data-menu]')).toBeNull()
+    await cleanup()
+  })
+})
+
+/**
+ * ⌃⏎ opens the cursor row's menu, the way it does on a file row, so every row
+ * action is reachable without a mouse (QA 2026-09-25: it did nothing here).
+ */
+describe('ServersHub keyboard context menu', () => {
+  /** ⌃⏎, the `file.contextMenu` binding on every platform. */
+  function ctrlEnter(): KeyboardEvent {
+    return new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true })
+  }
+
+  it('opens a one-place row’s menu on ⌃⏎, once', async () => {
+    h.listSavedServers.mockResolvedValue([savedSftp])
+    const { target, api, onServerSelect, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    api.setCursorIndex(api.findItemIndex('Jump box'))
+
+    target.querySelector('.row-list')?.dispatchEvent(ctrlEnter())
+    await tick()
+    await tick()
+
+    const labels = [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
+    expect(labels[0]).toBe('Open')
+    // ⌃⏎ is not Enter: nothing opened.
+    expect(onServerSelect).not.toHaveBeenCalled()
+    await cleanup()
+  })
+
+  it('raises an SMB host’s menu for the row under the cursor, placed at the row', async () => {
+    const { target, api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    api.setCursorIndex(api.findItemIndex('Attic'))
+
+    target.querySelector('.row-list')?.dispatchEvent(ctrlEnter())
+    await vi.waitFor(() => {
+      expect(h.showNetworkHostContextMenu).toHaveBeenCalledOnce()
+    })
+
+    const args = h.showNetworkHostContextMenu.mock.calls[0] as unknown[]
+    expect(args[0]).toBe('h2')
+    // An anchor, not `null`: a keypress has no pointer for macOS to use.
+    const anchor = args[6] as { x: unknown; y: unknown } | null
+    expect(typeof anchor?.x).toBe('number')
+    expect(typeof anchor?.y).toBe('number')
+    await cleanup()
+  })
+
+  it('opens a saved share’s menu on ⌃⏎, the same one its right-click opens', async () => {
+    h.listSavedServers.mockResolvedValue([
+      {
+        id: 'manual-10-0-0-9-445',
+        protocol: 'smb',
+        displayName: 'Box',
+        nameSource: 'user',
+        address: '10.0.0.9',
+        username: null,
+        pinned: false,
+        lastConnectedAt: null,
+        autoReconnect: null,
+        places: [
+          {
+            volumeId: 'smb-box-public',
+            name: 'public',
+            pinned: true,
+            connected: false,
+            appRoot: '/Volumes/public',
+            username: null,
+          },
+        ],
+      } satisfies SavedServer,
+    ])
+    const { target, api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    api.setCursorIndex(api.findItemIndex('public'))
+
+    target.querySelector('.row-list')?.dispatchEvent(ctrlEnter())
+    await tick()
+    await tick()
+
+    const labels = [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
+    expect(labels).toEqual(['Open', expect.stringMatching(/pin/i), 'Forget share'])
+    await cleanup()
+  })
+
+  it('opens nothing on the "Add server…" row', async () => {
+    const { api, cleanup } = mountBehindBothHandlers()
+    await tick()
+    api.setCursorIndex(api.getItemCount() - 1)
+    await api.openContextMenuAtCursor()
+    expect(h.showNetworkHostContextMenu).not.toHaveBeenCalled()
     expect(document.querySelector('[data-menu]')).toBeNull()
     await cleanup()
   })

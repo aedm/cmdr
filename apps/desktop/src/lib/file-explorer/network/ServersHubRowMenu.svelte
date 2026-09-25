@@ -39,14 +39,15 @@
     })
 
     /**
-     * Opens `row`'s menu at the pointer. Answers false for a row with no in-app menu (an SMB
-     * host, which keeps its native one), so the caller raises that instead.
+     * Opens `row`'s menu at `point` (the pointer, or under the row for ⌃⏎). Answers false for
+     * a row with no in-app menu (an SMB host, which keeps its native one), so the caller
+     * raises that instead.
      */
-    export function openAt(row: HubRow, event: MouseEvent): boolean {
+    export function openAt(row: HubRow, point: { x: number; y: number }): boolean {
         if (!actions.rowMenu(row)) return false
         menuRow = row
         focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
-        menu.openAt({ x: event.clientX, y: event.clientY })
+        menu.openAt(point)
         return true
     }
 

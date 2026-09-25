@@ -516,6 +516,13 @@
         }
     }
 
+    /** ⌃⏎: the servers hub's cursor row menu. A host's places list has no row menu, so nothing there. */
+    // noinspection JSUnusedGlobalSymbols -- used dynamically by FilePane
+    export async function openContextMenuAtCursor(): Promise<void> {
+        if (currentNetworkHost) return
+        await serversHubRef?.openContextMenuAtCursor()
+    }
+
     /** Refresh network hosts (used by ⌘R shortcut). */
     export function refreshNetworkHosts() {
         serversHubRef?.refresh()

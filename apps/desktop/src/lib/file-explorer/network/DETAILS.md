@@ -147,6 +147,11 @@ keeps its own native host menu (`show_network_host_context_menu`: Disconnect, Fo
 saved password when creds are stored), whose actions arrive on the `network-host-context-action` event. Cursor
 auto-clamps when a row disappears.
 
+`⌃⏎` (`file.contextMenu`) opens the cursor row's menu from the keyboard, the same menu a right-click opens, placed just
+under the row by `../pane/context-menu-anchor.ts` (the native host menu takes that point as its `anchor`; a right-click
+sends none and macOS uses the pointer). The "Add server…" row has none. A host's places list has no row menu yet, so
+`⌃⏎` there does nothing.
+
 ❗ **Every row action carries the row's own id, end to end.** The native menu sends `rowId` out and gets it back on the
 answer, `runHostAction` finds the row by that exact id (a row gone meanwhile gets nothing), and the backend's
 `forgetSavedSmbHost` / `updateSavedSmbHost` take that id alone and find the host in the same listing. ❌ Never resolve
