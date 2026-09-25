@@ -193,6 +193,36 @@ describe('createPlaceConnect', () => {
     expect(connectPlace).toHaveBeenCalledTimes(2)
   })
 
+  /**
+   * ❗ Picking the place again in the switcher, while the pane stands on it not
+   * connected, dials it like Try again. It was a no-op (the pane's own volume), so
+   * the menu closed and nothing happened (QA round 7).
+   */
+  it('dials again when the place the pane stands on, not connected, is picked again', async () => {
+    connectPlace.mockResolvedValueOnce({ kind: 'cancelled' })
+    const { sub } = create()
+    await vi.waitFor(() => {
+      expect(sub.state?.kind).toBe('not_connected')
+    })
+    connectPlace.mockResolvedValueOnce({ kind: 'cancelled' })
+    sub.picked(savedPlace.id)
+    await vi.waitFor(() => {
+      expect(connectPlace).toHaveBeenCalledTimes(2)
+    })
+    // Another volume's pick is not this place's business.
+    sub.picked('root')
+    await Promise.resolve()
+    expect(connectPlace).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not dial twice when the place is picked while it is still connecting', () => {
+    connectPlace.mockReturnValueOnce(new Promise(() => {}))
+    const { sub } = create()
+    expect(sub.state?.kind).toBe('connecting')
+    sub.picked(savedPlace.id)
+    expect(connectPlace).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps the spinner while the reconnect manager owns the recovery', async () => {
     connectPlace.mockResolvedValue({ kind: 'reconnecting' })
     const { sub } = create()

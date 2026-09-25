@@ -55,6 +55,12 @@ export interface PlaceConnectDeps {
 export interface PlaceConnect {
   /** What the pane renders instead of a listing, or `null` for a normal pane. */
   readonly state: RemoteConnectState | null
+  /**
+   * The person picked `volumeId` (the switcher, the hub). ❗ A pick of the place the
+   * pane already stands on, not connected, dials it like Try again: it is the
+   * pane's own volume, so nothing else moves, and it used to do nothing at all.
+   */
+  picked: (volumeId: string) => void
 }
 
 export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
@@ -179,10 +185,18 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     }
   }
 
+  function picked(volumeId: string): void {
+    if (volumeId !== deps.getVolumeId()) return
+    if (state?.kind !== 'not_connected' && state?.kind !== 'refused') return
+    const info = deps.getCurrentVolumeInfo()
+    if (info) void dial(volumeId, info)
+  }
+
   return {
     get state() {
       return state
     },
+    picked,
   }
 }
 

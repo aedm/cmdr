@@ -477,8 +477,11 @@ no session behind it, so every listing on it would refuse until something dials.
 - **`connected` ENTERS the place** (`enter`, which is `breadcrumb.handleVolumeChange`: the route a switcher pick takes)
   rather than waiting for the row to flip to `direct` on the next broadcast, which is what makes the place feel like it
   opened rather than waited. ❗ Entering, ❌ not reloading the listing: the root, the path, the listing, and the disk
-  space have to move together. A reload alone left the pane's root at the share's old mount path, so the status bar kept
-  the boot disk's space and the missing-folder poll walked the pane to Macintosh HD.
+  space have to move together.
+- **A pick of the place the pane stands on dials it when it isn't connected** (`picked`, fed from the breadcrumb's
+  volume change): after a Cancel or a refusal the pane is already on that volume, so nothing else moves, and the
+  switcher's pick of it did nothing. A reload alone left the pane's root at the share's old mount path, so the status
+  bar kept the boot disk's space and the missing-folder poll walked the pane to Macintosh HD.
 - **A live share is followed to its mount path.** Whenever a live SMB row's `path` isn't the root the pane holds, the
   pane enters it again there, keeping the folder inside (`rebaseOnRoot`). The live row's path is `statfs`'s; a pane
   whose volume and root disagree listed 11480's share under the path 11482's held, where a write would reach the wrong

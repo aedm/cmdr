@@ -1439,7 +1439,10 @@
         setCurrentPath: (path) => {
             currentPath = path
         },
-        onVolumeChange: (change) => onVolumeChange?.(change),
+        onVolumeChange: (change) => {
+            placeConnect.picked(change.volumeId)
+            onVolumeChange?.(change)
+        },
         onRequestFocus: () => onRequestFocus?.(),
         loadDirectory: (path) => void loader.loadDirectory({ path }),
     })
