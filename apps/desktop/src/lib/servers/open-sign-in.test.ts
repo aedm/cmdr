@@ -20,6 +20,10 @@ vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
+/** The volume list as the store holds it: empty unless a cell says a place was already live. */
+let liveVolumes: { id: string; connectionState: string }[] = []
+vi.mock('$lib/stores/volume-store.svelte', () => ({ getVolumes: () => liveVolumes }))
+
 import { openAddServerSheet, openSignInForPlace } from './open-sign-in'
 import { closeSignInSheet, currentSignInRequest } from './sign-in-sheet-state.svelte'
 import type { SignInAttempt, SignInSheetRequest } from './sign-in-contract'
@@ -49,6 +53,7 @@ let ipc: IpcRecorder
 
 beforeEach(() => {
   vi.clearAllMocks()
+  liveVolumes = []
   ipc = installIpcMock()
   ipc.mock('list_saved_servers', () => [SAVED_SERVER])
   ipc.mock('get_volume_sign_in_state', () => ({ kind: 'password' }))
@@ -750,6 +755,52 @@ describe('add mode: Add, Add and open, and Add anyway', () => {
     await sheet
     expect(landed).toEqual([])
     expect(added).toEqual([{ serverId: VOLUME_ID, name: 'Naspolya' }])
+  })
+
+  /**
+   * ❗ "Add" only SAVES: the session its check opened is dropped, so the row reads
+   * Saved rather than Connected. Only "Add and open" keeps one.
+   */
+  it('drops the session the check opened once an Add saved the server', async () => {
+    ipc.mock('connect_server', () => ({ outcome: 'connected', volumeId: VOLUME_ID }))
+    ipc.mock('disconnect_place', () => true)
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {}, onAdded: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({ mode: 'add', target: SFTP_TARGET, secret: null, intent: 'save' })
+
+    expect(outcome).toEqual({ kind: 'added', serverId: VOLUME_ID })
+    expect(ipc.lastCall('disconnect_place')?.payload).toEqual({ volumeId: VOLUME_ID })
+    closeSignInSheet({ kind: 'added', serverId: VOLUME_ID })
+    await sheet
+  })
+
+  it('keeps the session of an Add and open, which is the one that opens', async () => {
+    ipc.mock('connect_server', () => ({ outcome: 'connected', volumeId: VOLUME_ID }))
+    ipc.mock('disconnect_place', () => true)
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {} })
+    const request = await parkedRequest()
+
+    await attemptOf(request)({ mode: 'add', target: SFTP_TARGET, secret: null, intent: 'open' })
+
+    expect(ipc.callCount('disconnect_place')).toBe(0)
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
+  })
+
+  /** A server already connected before the Add keeps its session: a pane may be standing on it. */
+  it('leaves a session that was already live before the Add alone', async () => {
+    liveVolumes = [{ id: VOLUME_ID, connectionState: 'direct' }]
+    ipc.mock('connect_server', () => ({ outcome: 'connected', volumeId: VOLUME_ID }))
+    ipc.mock('disconnect_place', () => true)
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {}, onConnected: () => {}, onAdded: () => {} })
+    const request = await parkedRequest()
+
+    await attemptOf(request)({ mode: 'add', target: SFTP_TARGET, secret: null, intent: 'save' })
+
+    expect(ipc.callCount('disconnect_place')).toBe(0)
+    closeSignInSheet({ kind: 'cancelled' })
+    await sheet
   })
 
   it('saves an unreachable SFTP server without connecting when the person said Add anyway', async () => {

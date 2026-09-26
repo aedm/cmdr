@@ -20,6 +20,7 @@ import {
   connectSavedPlace,
   connectServer,
   connectToServer,
+  disconnectPlace,
   forgetServerSecret,
   getVolumeSignInState,
   hasServerSecret,
@@ -37,6 +38,8 @@ import {
 } from '$lib/tauri-commands'
 import { asReconnectError } from '$lib/file-explorer/network/reconnect-error'
 import { forgetShareListsOfMachine } from '$lib/file-explorer/network/network-store.svelte'
+import { isLiveSession } from '$lib/file-explorer/navigation/connection-state'
+import { getVolumes } from '$lib/stores/volume-store.svelte'
 import type { NetworkHost } from '$lib/file-explorer/types'
 import { getAppLogger } from '$lib/logging/logger'
 import type { SignInSeamRequest, SignInSeamResult } from './connect-flow'
@@ -287,6 +290,12 @@ async function attemptAdd(
   if (submission.mode !== 'add') return { kind: 'refused', refusal: 'needs_credentials' }
 
   if (submission.intent === 'save_unchecked') return await saveUnchecked(submission.target, submission.secret)
+  // Read BEFORE the check dials: a place that was already live keeps its session.
+  const liveBefore = new Set(
+    getVolumes()
+      .filter((volume) => isLiveSession(volume.connectionState))
+      .map((volume) => volume.id),
+  )
   const attemptId = newServerAttemptId()
   const outcome = readConnectOutcome(await connectServer(submission.target, attemptId, submission.secret))
   // A WebDAV connect asks the store before it dials, so "needs credentials" with
@@ -299,12 +308,27 @@ async function attemptAdd(
   ) {
     return { kind: 'refused', refusal: 'password_missing' }
   }
-  // "Add": the connect proved the server and saved it; the session stays up,
-  // and the pane stays where it is.
+  // "Add": the connect proved the server and saved it, and ❗ "Add" only saves, so
+  // the session the check opened goes and the row reads Saved. A remembered
+  // password stays filed. A place that was live before the Add keeps its session,
+  // since a pane may be standing on it.
   if (outcome.kind === 'connected' && submission.intent === 'save') {
+    if (!liveBefore.has(outcome.volumeId)) await dropCheckSession(outcome.volumeId)
     return { kind: 'added', serverId: outcome.volumeId }
   }
   return outcome
+}
+
+/** Drops the session an "Add" check opened. One that won't go leaves the server Connected, which is only untidy. */
+async function dropCheckSession(volumeId: string): Promise<void> {
+  try {
+    await disconnectPlace(volumeId)
+  } catch (e) {
+    log.warn('Dropping the session the Add check opened for {volumeId} broke down: {error}', {
+      volumeId,
+      error: String(e),
+    })
+  }
 }
 
 /** SMB's add: a TCP probe (unless "Add anyway"), then a hand-off or just the save. */

@@ -389,8 +389,9 @@ somewhere else. Only "Add and open" moves a pane:
   hub does the same to its own pane.
 - **"Add" closes as `added`** with the server's saved id, and `onAdded` shows it: the hub selects the new row
   (`ServersHub.selectServer`, which waits for the row to be listed), and a door with no list on screen raises a toast
-  saying where it went. An SFTP or WebDAV "Add" leaves the session the check opened connected, which the row's status
-  says.
+  saying where it went. ❗ "Add" only saves: an SFTP or WebDAV "Add" drops the session its check opened
+  (`disconnectPlace`), so the row reads Saved, and a password Remember filed stays filed. A place that was already live
+  before the Add keeps its session, since a pane may be standing on it.
 - **"Add anyway"** appears under the address only after `unreachable` or `timed_out`, beside a line saying nothing was
   checked. It saves as typed: `connect_to_server` with `check_reachability: false` for SMB, `update_saved_server` for
   SFTP and WebDAV (plus the typed password when Remember is on). ❌ Never for `invalid_url`: `AddServerError` keeps an
