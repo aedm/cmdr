@@ -22,6 +22,7 @@ const setPlacePinned = vi.fn(() => Promise.resolve(true))
 const setPlaceAutoReconnect = vi.fn(() => Promise.resolve(true))
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
+const confirmWithCheckbox = vi.fn((_question: unknown) => Promise.resolve({ confirmed: true, checked: true }))
 const openEditServerSheet = vi.fn(() => Promise.resolve({ kind: 'cancelled' as const }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -38,7 +39,10 @@ vi.mock('$lib/ui/toast', () => ({
     addToast(...(args as []))
   },
 }))
-vi.mock('$lib/utils/confirm-dialog', () => ({ confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])) }))
+vi.mock('$lib/utils/confirm-dialog', () => ({
+  confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])),
+  confirmWithCheckbox: (question: unknown) => confirmWithCheckbox(question),
+}))
 vi.mock('$lib/servers/open-sign-in', () => ({
   openEditServerSheet: (...args: unknown[]) => openEditServerSheet(...(args as [])),
 }))
@@ -69,6 +73,7 @@ afterAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   confirmDialog.mockResolvedValue(true)
+  confirmWithCheckbox.mockResolvedValue({ confirmed: true, checked: true })
 })
 
 describe('isServerPlaceRow', () => {
@@ -137,9 +142,39 @@ describe('runServerRowAction', () => {
   it('asks before forgetting a server, and before forgetting its password', async () => {
     await runServerRowAction(payload('forget-server'))
     await runServerRowAction(payload('forget-secret'))
-    expect(confirmDialog).toHaveBeenCalledTimes(2)
+    expect(confirmWithCheckbox).toHaveBeenCalledOnce()
+    expect(confirmDialog).toHaveBeenCalledOnce()
     expect(forgetServer).toHaveBeenCalledWith('sftp-nas-local-22-ada')
     expect(forgetServerSecret).toHaveBeenCalledWith('sftp-nas-local-22-ada')
+  })
+
+  /**
+   * ❗ Forget server offers "Also forget the saved password", checked by default, and a
+   * checked box takes the password FIRST: once the server is gone, nothing names the
+   * entry any more.
+   */
+  it('forgets the saved password with the server when the box stays checked', async () => {
+    const order: string[] = []
+    forgetServerSecret.mockImplementationOnce(() => {
+      order.push('password')
+      return Promise.resolve(true)
+    })
+    forgetServer.mockImplementationOnce(() => {
+      order.push('server')
+      return Promise.resolve(true)
+    })
+    await runServerRowAction(payload('forget-server'))
+    expect(confirmWithCheckbox).toHaveBeenCalledWith(
+      expect.objectContaining({ checkboxLabel: 'Also forget the saved password', checked: true }),
+    )
+    expect(order).toEqual(['password', 'server'])
+  })
+
+  it('keeps the saved password when the box was unchecked', async () => {
+    confirmWithCheckbox.mockResolvedValueOnce({ confirmed: true, checked: false })
+    await runServerRowAction(payload('forget-server'))
+    expect(forgetServer).toHaveBeenCalledOnce()
+    expect(forgetServerSecret).not.toHaveBeenCalled()
   })
 
   /**
@@ -164,6 +199,7 @@ describe('runServerRowAction', () => {
 
   it('does nothing when the user says no', async () => {
     confirmDialog.mockResolvedValue(false)
+    confirmWithCheckbox.mockResolvedValue({ confirmed: false, checked: false })
     await runServerRowAction(payload('forget-server'))
     await runServerRowAction(payload('forget-secret'))
     expect(forgetServer).not.toHaveBeenCalled()

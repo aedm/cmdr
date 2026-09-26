@@ -256,6 +256,10 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 - **`quick_look.rs`**: `quick_look_open` / `quick_look_set_path` / `quick_look_close` (native `QLPreviewPanel`
   singleton on macOS, no-op stubs elsewhere; 2 s main-thread-hop timeout). Close passes the state mutex to the
   controller, which releases it before `orderOut` can notify the close observer. See `crate::quick_look`.
+- **`confirm_dialog.rs`**: `confirm_with_checkbox`, a native NSAlert sheet whose suppression button carries one option
+  (Forget server's "Also forget the saved password"), because `tauri-plugin-dialog`'s `ask` has no checkbox. Begins the
+  sheet, then runs a modal session its completion handler stops (rfd's own pattern). Off macOS it answers `unsupported`
+  and the frontend asks without the option, leaving it unchecked.
 - **`window_ordering.rs`**: `show_main_window` / `order_window_to_back`. `show_main_window` is the ONE path that makes
   Cmdr visible (the window is created `"visible": false`; the frontend calls it from `onMount`), and it takes a
   `ShowReason`: a `launch` show follows `show()` with `set_focus()`, a `repaint-repair` re-show doesn't. The activation

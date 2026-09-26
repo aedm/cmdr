@@ -66,6 +66,10 @@ impl SmbServer {
         &self.host
     }
 
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
     /// Whether `other` is this server: the same port, and the same machine under any
     /// name it goes by.
     pub fn is(&self, other: &SmbServer, hosts: &[NetworkHost]) -> bool {

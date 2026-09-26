@@ -17,11 +17,22 @@
 import {
   disconnectNetworkHost,
   forgetSavedSmbHost,
+  forgetSavedSmbHostPassword,
   forgetServer,
   showNetworkHostContextMenu,
 } from '$lib/tauri-commands'
-import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
-import { forgetSavedServer, runServerRowAction, setServerAutoReconnect } from '../navigation/server-row-actions'
+import {
+  checkCredentialsForHost,
+  forgetCredentials,
+  getCredentialStatus,
+  setCredentialStatus,
+} from './network-store.svelte'
+import {
+  forgetSavedServer,
+  forgetServerQuestion,
+  runServerRowAction,
+  setServerAutoReconnect,
+} from '../navigation/server-row-actions'
 import {
   EMPTY_ROW_MENU,
   runRowFix,
@@ -32,7 +43,7 @@ import {
   type RowToggleKind,
 } from '../navigation/row-menu'
 import { isVolumeBusy } from '$lib/stores/volume-busy-store.svelte'
-import { confirmDialog } from '$lib/utils/confirm-dialog'
+import { confirmDialog, confirmWithCheckbox } from '$lib/utils/confirm-dialog'
 import { openEditServerSheet } from '$lib/servers/open-sign-in'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
@@ -145,15 +156,16 @@ export function createHubActions(deps: HubActionDeps): HubActions {
 
   /**
    * Forgets a saved SMB host: its manual entry, its sign-in history, and the
-   * shares saved under it. ❗ Nothing is unmounted and no password is touched.
+   * shares saved under it, and (the box, checked by default) its stored password.
+   * ❗ Nothing is unmounted.
    */
   async function removeSavedSmbHost(row: HubRow): Promise<void> {
-    const confirmed = await confirmDialog(
-      tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name }),
-      tString('fileExplorer.navigation.forgetServerConfirmTitle'),
-      tString('fileExplorer.navigation.forgetConfirmButton'),
+    const { confirmed, checked } = await confirmWithCheckbox(
+      forgetServerQuestion(tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name })),
     )
     if (!confirmed) return
+    // ❗ The password FIRST: the backend finds its names on the rows the Forget removes.
+    if (checked) await forgetHostPassword(row)
     try {
       const forgotten = await forgetSavedSmbHost(row.id)
       if (!forgotten) throw new Error('nothing saved under that host')
@@ -161,6 +173,17 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       await deps.refreshSaved()
     } catch {
       addToast(tString('fileExplorer.network.browser.hostRemoveFailed', { hostName: row.name }), { level: 'error' })
+    }
+  }
+
+  /** The host's stored password, all its names. A store that refuses still lets the host go, and says so. */
+  async function forgetHostPassword(row: HubRow): Promise<void> {
+    try {
+      await forgetSavedSmbHostPassword(row.id)
+      if (row.host) setCredentialStatus(row.host.name, 'no_creds')
+    } catch (e) {
+      log.warn('Forgetting the saved password of {id} broke down: {error}', { id: row.id, error: String(e) })
+      addToast(tString('fileExplorer.navigation.forgetSecretRefusedToast', { name: row.name }), { level: 'error' })
     }
   }
 

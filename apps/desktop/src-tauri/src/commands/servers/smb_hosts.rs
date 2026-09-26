@@ -38,6 +38,51 @@ pub(crate) struct SmbHostGroup {
     pub rows: Vec<KnownNetworkShare>,
 }
 
+impl SmbHostGroup {
+    /// Every name this server's password can be filed under, each spelled with ITS
+    /// port the way `keychain` keys read it (`server_identity::smb_server`): the
+    /// address it dials, its discovery name (what the share list saves under), the
+    /// names its rows were filed and mounted under, and a discovered twin's names.
+    ///
+    /// ❗ Only names on this server's port: `localhost` alone keys the server on 445
+    /// of the same machine, whose password isn't this one's to forget.
+    pub fn credential_names(&self, hosts: &[NetworkHost]) -> Vec<String> {
+        use crate::network::server_identity::{SmbServer, smb_server, smb_servers_of};
+
+        let this = SmbServer::new(&self.host, self.port);
+        let mut servers = vec![this.clone(), SmbServer::from_name(&self.discovery_name)];
+        for row in &self.rows {
+            servers.push(SmbServer::from_name(&row.server_name));
+            if let Some(address) = &row.address {
+                servers.push(SmbServer::new(address, row.port.unwrap_or(DEFAULT_SMB_PORT)));
+            }
+        }
+        for host in hosts {
+            let twin = smb_servers_of(host);
+            if twin.iter().any(|server| this.is(server, hosts)) {
+                servers.extend(twin);
+            }
+        }
+        let mut names: Vec<String> = Vec::new();
+        for server in servers.into_iter().filter(|server| server.port() == self.port) {
+            let name = smb_server(server.host(), server.port());
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+        names
+    }
+
+    /// The shares saved under it, whose share-level passwords go with it.
+    pub fn share_names(&self) -> Vec<String> {
+        self.rows
+            .iter()
+            .filter(|row| row.is_share())
+            .map(|row| row.share_name.clone())
+            .collect()
+    }
+}
+
 /// The SMB hosts, from the manually-typed list and the share store, deduped, each
 /// carrying its saved shares as places. See [`smb_host_groups`].
 pub(super) fn smb_hosts(

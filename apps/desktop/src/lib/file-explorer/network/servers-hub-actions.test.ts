@@ -23,11 +23,15 @@ const openRow = vi.fn()
 const forgetCredentials = vi.fn(() => Promise.resolve())
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
+const confirmWithCheckbox = vi.fn((_question: unknown) => Promise.resolve({ confirmed: true, checked: true }))
+const forgetSavedSmbHostPassword = vi.fn((_id: string) => Promise.resolve(true))
+const setCredentialStatus = vi.fn()
 const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
 const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 
 vi.mock('$lib/tauri-commands', () => ({
   forgetSavedSmbHost: (id: string) => forgetSavedSmbHost(id),
+  forgetSavedSmbHostPassword: (id: string) => forgetSavedSmbHostPassword(id),
   forgetServer: (volumeId: string) => forgetServer(volumeId),
   disconnectNetworkHost: (...args: unknown[]) => disconnectNetworkHost(...(args as [])),
   showNetworkHostContextMenu: (...args: unknown[]) => showNetworkHostContextMenu(...(args as [])),
@@ -36,6 +40,7 @@ vi.mock('./network-store.svelte', () => ({
   getCredentialStatus: () => 'has_creds',
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
   forgetCredentials: (...args: unknown[]) => forgetCredentials(...(args as [])),
+  setCredentialStatus: (...args: unknown[]) => setCredentialStatus(...(args as [])),
 }))
 vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
@@ -56,7 +61,10 @@ vi.mock('$lib/ui/toast', () => ({
 vi.mock('$lib/servers/open-sign-in', () => ({
   openEditServerSheet: (server: unknown) => openEditServerSheet(server),
 }))
-vi.mock('$lib/utils/confirm-dialog', () => ({ confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])) }))
+vi.mock('$lib/utils/confirm-dialog', () => ({
+  confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])),
+  confirmWithCheckbox: (question: unknown) => confirmWithCheckbox(question),
+}))
 
 import { createHubActions, editHubRow } from './servers-hub-actions'
 import type { HubRow } from './servers-hub-rows'
@@ -190,6 +198,7 @@ afterAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   confirmDialog.mockResolvedValue(true)
+  confirmWithCheckbox.mockResolvedValue({ confirmed: true, checked: true })
 })
 
 describe('forget', () => {
@@ -201,7 +210,7 @@ describe('forget', () => {
 
   it('removes a saved SMB host from the manual store instead, after asking', async () => {
     await actions().forget(savedHostRow)
-    expect(confirmDialog).toHaveBeenCalledOnce()
+    expect(confirmWithCheckbox).toHaveBeenCalledOnce()
     expect(forgetSavedSmbHost).toHaveBeenCalledWith('manual-10-0-0-4-445')
     expect(forgetSavedServer).not.toHaveBeenCalled()
   })
@@ -213,12 +222,48 @@ describe('forget', () => {
    */
   it('asks with a Forget title and a Forget button, and says Forgot after', async () => {
     await actions().forget(savedHostRow)
-    expect(confirmDialog).toHaveBeenCalledWith(
-      'Forget Attic NAS? Cmdr stops listing it and the shares saved under it. Nothing gets unmounted.',
-      'Forget server',
-      'Forget',
-    )
+    expect(confirmWithCheckbox).toHaveBeenCalledWith({
+      message: 'Forget Attic NAS? Cmdr stops listing it and the shares saved under it. Nothing gets unmounted.',
+      title: 'Forget server',
+      confirmLabel: 'Forget',
+      checkboxLabel: 'Also forget the saved password',
+      checked: true,
+    })
     expect(addToast).toHaveBeenCalledWith('Forgot Attic NAS', { level: 'success' })
+  })
+
+  /**
+   * ❗ The box is checked by default, and a checked box takes the host's stored
+   * password FIRST: the backend finds its names on the rows the Forget then removes.
+   */
+  it('forgets the host’s saved password first when the box stays checked', async () => {
+    const order: string[] = []
+    forgetSavedSmbHostPassword.mockImplementationOnce(() => {
+      order.push('password')
+      return Promise.resolve(true)
+    })
+    forgetSavedSmbHost.mockImplementationOnce(() => {
+      order.push('host')
+      return Promise.resolve(true)
+    })
+    await actions().forget(savedHostRow)
+    expect(order).toEqual(['password', 'host'])
+    expect(forgetSavedSmbHostPassword).toHaveBeenCalledWith('manual-10-0-0-4-445')
+    expect(setCredentialStatus).toHaveBeenCalledWith('Attic NAS', 'no_creds')
+  })
+
+  it('keeps the host’s saved password when the box was unchecked', async () => {
+    confirmWithCheckbox.mockResolvedValueOnce({ confirmed: true, checked: false })
+    await actions().forget(savedHostRow)
+    expect(forgetSavedSmbHostPassword).not.toHaveBeenCalled()
+    expect(forgetSavedSmbHost).toHaveBeenCalledOnce()
+  })
+
+  it('still forgets the host when its password won’t go, and says which half didn’t', async () => {
+    forgetSavedSmbHostPassword.mockRejectedValueOnce(new Error('keychain locked'))
+    await actions().forget(savedHostRow)
+    expect(forgetSavedSmbHost).toHaveBeenCalledOnce()
+    expect(addToast).toHaveBeenCalledWith(expect.stringContaining('saved password'), { level: 'error' })
   })
 
   it('asks a share’s Forget with a Forget button too', async () => {
@@ -232,7 +277,7 @@ describe('forget', () => {
   })
 
   it('keeps a host the user said no to', async () => {
-    confirmDialog.mockResolvedValue(false)
+    confirmWithCheckbox.mockResolvedValue({ confirmed: false, checked: false })
     await actions().forget(savedHostRow)
     expect(forgetSavedSmbHost).not.toHaveBeenCalled()
   })

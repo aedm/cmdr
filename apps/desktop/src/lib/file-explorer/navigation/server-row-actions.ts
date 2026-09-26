@@ -22,13 +22,14 @@ import {
   setPlacePinned,
 } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
-import { confirmDialog } from '$lib/utils/confirm-dialog'
+import { confirmDialog, confirmWithCheckbox } from '$lib/utils/confirm-dialog'
 import { tString } from '$lib/intl/messages.svelte'
 import { getAppLogger } from '$lib/logging/logger'
 import { isServerVolumeId } from '$lib/servers/server-path-utils'
 import { openEditServerSheet } from '$lib/servers/open-sign-in'
 import type { VolumeContextActionKind } from '$lib/ipc/bindings'
 import type { VolumeInfo } from '../types'
+import type { CheckboxQuestion } from '$lib/utils/confirm-dialog'
 
 const log = getAppLogger('fileExplorer')
 
@@ -124,16 +125,37 @@ export async function disconnectServerPlace(volumeId: string, volumeName: string
  * [`forgetSavedSecret`], a separate request the menu offers separately.
  */
 export async function forgetSavedServer(volumeId: string, volumeName: string): Promise<void> {
-  const confirmed = await confirmDialog(
-    tString('fileExplorer.navigation.forgetServerConfirm', { name: volumeName }),
-    tString('fileExplorer.navigation.forgetServerConfirmTitle'),
-    tString('fileExplorer.navigation.forgetConfirmButton'),
+  const { confirmed, checked } = await confirmWithCheckbox(
+    forgetServerQuestion(tString('fileExplorer.navigation.forgetServerConfirm', { name: volumeName })),
   )
   if (!confirmed) return
+  // ❗ The password FIRST: once the server is gone, nothing names its entry any more.
+  if (checked) {
+    try {
+      await forgetServerSecret(volumeId)
+    } catch (e) {
+      refused('Forgetting the secret for', volumeId, e, 'fileExplorer.navigation.forgetSecretRefusedToast', volumeName)
+    }
+  }
   try {
     await forgetServer(volumeId)
   } catch (e) {
     refused('Forgetting', volumeId, e, 'fileExplorer.navigation.forgetServerRefusedToast', volumeName)
+  }
+}
+
+/**
+ * Forget server's question: the body `message`, and "Also forget the saved password",
+ * checked, under it. ❗ Checked by default: someone forgetting a server rarely means to
+ * leave its password behind, and nothing saved it anywhere they'd look for it.
+ */
+export function forgetServerQuestion(message: string): CheckboxQuestion {
+  return {
+    message,
+    title: tString('fileExplorer.navigation.forgetServerConfirmTitle'),
+    confirmLabel: tString('fileExplorer.navigation.forgetConfirmButton'),
+    checkboxLabel: tString('fileExplorer.navigation.forgetPasswordToo'),
+    checked: true,
   }
 }
 

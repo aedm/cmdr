@@ -185,6 +185,12 @@ async fn a_password_saved_without_the_port_is_still_found() {
     let found = get_keychain_password("keytest-legacy", None, 11482, "public").await;
 
     assert_eq!(found, Some(("old".to_string(), "pw".to_string())));
+    // ❗ Noted, so forgetting this server's password takes the entry it was found under.
+    crate::network::keychain::forget_server_credentials(&["keytest-legacy:11482".to_string()], &[]).expect("forgot");
+    assert_eq!(
+        get_keychain_password("keytest-legacy", None, 11482, "public").await,
+        None
+    );
 }
 
 /// Two SMB servers on one machine keep apart: the port-keyed password of one is never

@@ -360,6 +360,9 @@ objc2-app-kit = { version = "0.3", features = [
     # Startup "Cmdr is already running" alert (instance_lock.rs). NSAlert runs its own modal
     # loop, so it works inside Tauri's `setup` hook, before the event loop starts.
     "NSAlert",
+    # A confirmation with a checkbox (`commands/confirm_dialog.rs`): NSAlert's buttons and
+    # its suppression checkbox are `NSButton`s, and a checkbox's state is an `NSCell` value.
+    "NSButton", "NSControl", "NSCell",
     # File promises (drag out from MTP/SMB panes): NSFilePromiseProvider +
     # its delegate's writePromiseToURL:completionHandler: (block2 completion).
     "NSFilePromiseProvider", "block2",

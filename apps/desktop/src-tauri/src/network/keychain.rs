@@ -178,6 +178,75 @@ pub fn delete_credentials(server: &str, share: Option<&str>) -> Result<(), Keych
     Ok(())
 }
 
+/// Port-less entries a lookup found an off-445 server's password under this session,
+/// keyed by that server's own key (`credential_key`, port and all).
+///
+/// ❗ Recorded so "Also forget the saved password" can take that entry too, and ONLY
+/// that one: a port-less key is also the key of the server on 445 of the same
+/// machine, so deleting one nobody found for this server would take another
+/// server's password.
+static FOUND_UNDER_PORTLESS: std::sync::LazyLock<RwLock<HashMap<String, String>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+
+/// Notes that `server`'s (`host:port`) password answered under the port-less
+/// `portless` name, which is how a password saved before keys carried the port is
+/// found (`smb_server_address::get_keychain_password`).
+pub fn note_found_under_portless(server: &str, portless: &str) {
+    let key = crate::network::server_identity::credential_key(server);
+    if let Ok(mut found) = FOUND_UNDER_PORTLESS.write() {
+        found.insert(key, portless.to_string());
+    }
+}
+
+/// Forgets every password stored for ONE SMB server: the server-level entry and
+/// each share's under every name in `servers` (spelled `host:port` off 445, the
+/// way `credential_key` reads them), plus a port-less entry a lookup found its
+/// password under this session. Each goes from the in-memory cache too. Answers
+/// how many entries were there.
+///
+/// An entry that isn't there is not a failure; a store that refuses a delete is.
+pub fn forget_server_credentials(servers: &[String], shares: &[String]) -> Result<usize, KeychainError> {
+    let mut names: Vec<String> = servers.to_vec();
+    if let Ok(found) = FOUND_UNDER_PORTLESS.read() {
+        let recorded = servers.iter().filter_map(|server| {
+            found
+                .get(&crate::network::server_identity::credential_key(server))
+                .cloned()
+        });
+        names.extend(recorded.collect::<Vec<_>>());
+    }
+    let mut accounts: Vec<String> = Vec::new();
+    for name in &names {
+        for share in std::iter::once(None).chain(shares.iter().map(|share| Some(share.as_str()))) {
+            let account = make_account_name(name, share);
+            if !accounts.contains(&account) {
+                accounts.push(account);
+            }
+        }
+    }
+    let mut gone = 0;
+    for account in &accounts {
+        if let Ok(mut cache) = CREDENTIAL_CACHE.write() {
+            cache.remove(account);
+        }
+        match crate::secrets::store().delete(account) {
+            Ok(()) => gone += 1,
+            Err(SecretStoreError::NotFound(_)) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    if let Ok(mut found) = FOUND_UNDER_PORTLESS.write() {
+        for server in servers {
+            found.remove(&crate::network::server_identity::credential_key(server));
+        }
+    }
+    debug!(
+        "Forgot {gone} stored SMB credential entries across {} names",
+        names.len()
+    );
+    Ok(gone)
+}
+
 /// Whether a server-level password was already read this session (a listing or a
 /// mount found it), from the in-memory cache ONLY.
 ///
@@ -220,6 +289,42 @@ mod tests {
             has_cached_credentials("CACHE-ONLY-TEST-HOST:11482"),
             "keyed like every read"
         );
+    }
+
+    /// ❗ **Forgetting a server's password takes every entry it owns, and no other
+    /// server's.** Its server-level and share-level entries go, and so does a
+    /// port-less entry a lookup this session found ITS password under. A port-less
+    /// entry nobody found for it belongs to the server on 445 and stays.
+    #[test]
+    fn forgetting_a_servers_password_takes_its_entries_and_no_other_servers() {
+        let _secrets = crate::test_support::isolate_secrets();
+        let server = "forget-test.local:11482";
+        save_credentials(server, None, "ada", "a").expect("saved");
+        save_credentials(server, Some("photos"), "ada", "b").expect("saved");
+        save_credentials("forget-test.local", None, "bob", "c").expect("saved");
+        save_credentials("forget-legacy.local", None, "cy", "d").expect("saved");
+        note_found_under_portless("forget-legacy.local:11483", "forget-legacy.local");
+
+        let gone = forget_server_credentials(&[server.to_string()], &["photos".to_string()]).expect("forgot");
+        assert_eq!(gone, 2);
+        assert!(matches!(get_credentials(server, None), Err(KeychainError::NotFound(_))));
+        assert!(matches!(
+            get_credentials(server, Some("photos")),
+            Err(KeychainError::NotFound(_))
+        ));
+        assert!(!has_cached_credentials(server), "the cache lets go too");
+        assert_eq!(
+            get_credentials("forget-test.local", None).expect("445's own").username,
+            "bob",
+            "the server on 445 keeps its password"
+        );
+
+        let gone = forget_server_credentials(&["forget-legacy.local:11483".to_string()], &[]).expect("forgot");
+        assert_eq!(gone, 1, "the port-less entry it was found under");
+        assert!(matches!(
+            get_credentials("forget-legacy.local", None),
+            Err(KeychainError::NotFound(_))
+        ));
     }
 
     #[test]

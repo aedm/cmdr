@@ -990,3 +990,41 @@ fn a_saved_servers_id_is_the_listings_own_whatever_the_url_spelling() {
     );
     assert_eq!(saved_server_id(typed("not a url")), None);
 }
+
+/// ❗ **Forget server's "Also forget the saved password" takes every name this
+/// server's password can be filed under, on ITS port, and none on another.** The
+/// share list files it under the discovery name (`localhost:11482`), "Connect
+/// directly" under host + port, and a discovered twin under its Bonjour name;
+/// `localhost` alone is a different server (the one on 445) and keeps its password.
+#[test]
+fn a_hosts_credential_names_are_its_own_on_its_port() {
+    let groups = smb_hosts::smb_host_groups(
+        vec![
+            manual_entry_on_port("localhost", 11482, "Both box"),
+            manual_entry_on_port("localhost", 11480, ""),
+        ],
+        vec![
+            signed_in_history("localhost:11482"),
+            mounted_share("localhost:11482", "127.0.0.1", 11482, "private", "smb-c"),
+            mounted_share("localhost:11480", "localhost", 11480, "public", "smb-a"),
+        ],
+        &[],
+    );
+    let id = manual_servers::generate_server_id("localhost", 11482);
+    let group = groups.iter().find(|g| g.server.id == id).expect("the named host");
+
+    let names = group.credential_names(&[]);
+    let keys: std::collections::BTreeSet<_> = names
+        .iter()
+        .map(|name| crate::network::server_identity::credential_key(name))
+        .collect();
+    assert_eq!(
+        keys,
+        ["127.0.0.1:11482", "localhost:11482"]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+        "every spelling of this server on 11482, and nothing of 445 or 11480: {names:?}"
+    );
+    assert_eq!(group.share_names(), ["private"]);
+}

@@ -22,6 +22,7 @@ import type {
   ServerTarget,
 } from '$lib/ipc/bindings'
 import { TypedFailure, failureOf } from '$lib/ipc/typed-failure'
+import { throwKeychainError } from '$lib/servers/keychain-failure'
 
 export type {
   SavedPlace,
@@ -204,6 +205,18 @@ export async function savedServerId(server: ServerTarget): Promise<string | null
  */
 export async function forgetSavedSmbHost(id: string): Promise<boolean> {
   return await commands.forgetSavedSmbHost(id)
+}
+
+/**
+ * Forgets every password stored for the saved SMB host the listing calls `id`
+ * (Forget server's "Also forget the saved password"), answering whether one was
+ * there. ❗ Call it BEFORE `forgetSavedSmbHost`, which takes away the rows its
+ * names come from. A store that refuses throws a `KeychainFailure`.
+ */
+export async function forgetSavedSmbHostPassword(id: string): Promise<boolean> {
+  const res = await commands.forgetSavedSmbHostPassword(id)
+  if (res.status === 'error') throwKeychainError(res.error)
+  return res.data
 }
 
 /**

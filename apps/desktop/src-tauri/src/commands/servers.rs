@@ -663,6 +663,30 @@ pub fn forget_saved_smb_host(id: String, app: tauri::AppHandle) -> bool {
     forgotten
 }
 
+/// Forgets every password stored for the saved SMB host the listing calls `id`, the
+/// "Also forget the saved password" box on Forget server. Answers whether any entry
+/// was there.
+///
+/// ❗ Call it BEFORE [`forget_saved_smb_host`]: the host's names come off the rows
+/// that command takes away. Every name the password can be filed under goes, on the
+/// host's own port ([`smb_hosts::SmbHostGroup::credential_names`]), with each saved
+/// share's share-level entry and the in-memory cache; a server on another port of
+/// the same machine keeps its own. Deleting reads nothing, so it raises no prompt to
+/// read a password.
+#[tauri::command]
+#[specta::specta]
+pub fn forget_saved_smb_host_password(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<bool, crate::network::keychain::KeychainError> {
+    let Some(group) = smb_hosts::smb_host_group(&id, manual_servers::all(&app)) else {
+        return Ok(false);
+    };
+    let names = group.credential_names(&crate::network::get_discovered_hosts());
+    let gone = crate::network::keychain::forget_server_credentials(&names, &group.share_names())?;
+    Ok(gone > 0)
+}
+
 // ============================================================================
 // Shared plumbing
 // ============================================================================

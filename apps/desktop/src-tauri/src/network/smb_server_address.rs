@@ -217,6 +217,7 @@ pub(crate) async fn get_keychain_password(
         .collect();
     // The keys this port files under first, then (off 445) the port-less ones older saves used.
     let mut servers_to_try: Vec<String> = names.iter().map(|name| smb_server(name, port)).collect();
+    let with_port = servers_to_try.len();
     if port != 445 {
         servers_to_try.append(&mut names);
     }
@@ -225,15 +226,24 @@ pub(crate) async fn get_keychain_password(
     tokio::task::spawn_blocking(move || {
         use crate::network::keychain;
 
-        for server in &servers_to_try {
+        for (index, server) in servers_to_try.iter().enumerate() {
+            // A port-less key answering for a server off 445 is noted, so "Also forget the
+            // saved password" can take that entry too (`keychain::note_found_under_portless`).
+            let note = |server: &str| {
+                if index >= with_port {
+                    keychain::note_found_under_portless(&smb_server(server, port), server);
+                }
+            };
             // Try share-level credentials first (more specific)
             if let Ok(creds) = keychain::get_credentials(server, Some(&share)) {
                 log::debug!("Found Keychain credentials via {}/{}", server, share);
+                note(server);
                 return Some((creds.username, creds.password));
             }
             // Try server-level credentials
             if let Ok(creds) = keychain::get_credentials(server, None) {
                 log::debug!("Found Keychain credentials via {} (server-level)", server);
+                note(server);
                 return Some((creds.username, creds.password));
             }
         }

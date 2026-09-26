@@ -4537,6 +4537,26 @@ export const commands = {
    */
   forgetSavedSmbHost: (id: string) => __TAURI_INVOKE<boolean>('forget_saved_smb_host', { id }),
   /**
+   *  Forgets every password stored for the saved SMB host the listing calls `id`, the
+   *  "Also forget the saved password" box on Forget server. Answers whether any entry
+   *  was there.
+   *
+   *  ❗ Call it BEFORE [`forget_saved_smb_host`]: the host's names come off the rows
+   *  that command takes away. Every name the password can be filed under goes, on the
+   *  host's own port ([`smb_hosts::SmbHostGroup::credential_names`]), with each saved
+   *  share's share-level entry and the in-memory cache; a server on another port of
+   *  the same machine keeps its own. Deleting reads nothing, so it raises no prompt to
+   *  read a password.
+   */
+  forgetSavedSmbHostPassword: (id: string) =>
+    typedError<boolean, KeychainError>(__TAURI_INVOKE('forget_saved_smb_host_password', { id })),
+  /**
+   *  Asks `request` in a native alert on the calling window, and answers once the
+   *  person did.
+   */
+  confirmWithCheckbox: (request: CheckboxConfirmRequest) =>
+    __TAURI_INVOKE<CheckboxConfirm>('confirm_with_checkbox', { request }),
+  /**
    *  Tauri command: returns the current macOS accent color as a hex string.
    *
    *  `NSColor` is main-thread-only, so we hop to the AppKit main thread via
@@ -5852,6 +5872,25 @@ export type CancelRollbackOutcome =
   | 'rolledBack'
   // The reversal ran but left items behind — see [`CancelRollback::skips`].
   | 'partiallyRolledBack'
+
+// What the person answered.
+export type CheckboxConfirm =
+  // The confirming button, with the checkbox as it was left.
+  | { kind: 'confirmed'; checked: boolean }
+  | { kind: 'cancelled' }
+  // No native alert here: ask without the checkbox.
+  | { kind: 'unsupported' }
+
+// What to ask. Every string is already translated by the frontend.
+export type CheckboxConfirmRequest = {
+  title: string
+  message: string
+  confirmLabel: string
+  cancelLabel: string
+  checkboxLabel: string
+  // Whether the checkbox starts checked.
+  checked: boolean
+}
 
 /**
  *  Logical-pixel rectangle. `f64` mirrors what Tauri's `LogicalPosition` /

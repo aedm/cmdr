@@ -2064,6 +2064,10 @@
       "name": "the server's display name, like \"Naspolya\""
     }
   },
+  "fileExplorer.navigation.forgetPasswordToo": "Also forget the saved password",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "description": "Checkbox in the Forget server confirmation, checked by default: when checked, the password Cmdr saved for that server is deleted too. Sentence case, no final period."
+  },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr couldn’t forget {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {
     "description": "Toast shown when removing a saved server didn't go through.",

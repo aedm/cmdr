@@ -135,5 +135,9 @@
       "label": "the name of the field this button adjusts, e.g. \"Custom timeout\""
     },
     "screenshot": "settings-appearance-listing.png"
+  },
+  "ui.confirmDialog.cancel": "Cancel",
+  "@ui.confirmDialog.cancel": {
+    "description": "The cancelling button of a native confirmation alert that carries a checkbox (Forget server's \"Also forget the saved password\"). Use the word your language's macOS uses on a Cancel button."
   }
 }
