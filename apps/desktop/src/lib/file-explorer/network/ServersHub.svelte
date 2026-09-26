@@ -588,30 +588,56 @@
 <ServersHubRowMenu bind:this={rowMenu} {actions} />
 
 <style>
+    /* ONE grid for the header and every row (each a `subgrid`), so a column is as wide as
+       its widest cell: Type, Address, Status, and Last used fit their content, and Name
+       takes the rest. The name track keeps a floor, since the content-sized ones are
+       maximized first and would otherwise squeeze it to nothing in a narrow pane. */
     .servers-hub {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: minmax(min(12em, 40%), 1fr) auto auto auto auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        column-gap: var(--spacing-lg);
         height: 100%;
         font-size: var(--font-size-sm);
         font-family: var(--font-system), sans-serif;
     }
 
+    .header-row,
+    .row-list,
+    .server-row,
+    .hub-status-bar {
+        grid-column: 1 / -1;
+    }
+
+    .header-row,
+    .row-list,
+    .server-row {
+        display: grid;
+        grid-template-columns: subgrid;
+    }
+
+    /* Anything in the list that isn't a row (the add row's label, the searching and
+       discovery lines, the empty state) spans every column. */
+    .row-list > :not(.server-row),
+    .add-row .col-name {
+        grid-column: 1 / -1;
+    }
+
     .header-row {
-        display: flex;
         padding: var(--spacing-xs) var(--spacing-sm);
         background-color: var(--color-bg-secondary);
         border-bottom: 1px solid var(--color-border-strong);
         font-weight: 500;
         color: var(--color-text-secondary);
+        white-space: nowrap;
     }
 
     .row-list {
-        flex: 1;
+        align-content: start;
         overflow-y: auto;
     }
 
     .server-row {
-        display: flex;
         height: 20px;
         padding: var(--spacing-xxs) var(--spacing-sm);
         cursor: default;
@@ -626,7 +652,6 @@
     }
 
     .col-name {
-        flex: 2;
         display: flex;
         align-items: center;
         gap: var(--spacing-sm);
@@ -636,13 +661,11 @@
     }
 
     .col-type {
-        flex: 1;
         color: var(--color-text-secondary);
         white-space: nowrap;
     }
 
     .col-address {
-        flex: 2;
         color: var(--color-text-secondary);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -650,7 +673,6 @@
     }
 
     .col-status {
-        flex: 2;
         display: flex;
         align-items: center;
         gap: var(--spacing-xxs);
@@ -669,7 +691,6 @@
     }
 
     .col-last-used {
-        flex: 1.5;
         color: var(--color-text-tertiary);
         overflow: hidden;
         white-space: nowrap;
