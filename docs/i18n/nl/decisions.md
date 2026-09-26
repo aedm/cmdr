@@ -621,19 +621,6 @@ points at `deze gedeelde map`, since `hij` floats between two de-words.
 
 `Apps zoeken…` (a progress line in the infinitive), `Geen deelopties` (macOS's empty-menu pattern).
 
-## Het origineel bleef staan: de bron weigerde (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
+## Het origineel bleef staan (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
-Een verplaatsing tussen volumes heeft alles volledig gekopieerd, maar kon het origineel daarna niet verwijderen
-(bijvoorbeeld een in Finder beveiligd bestand). Het dialoogvenster moet zeggen: de kopie is compleet, het origineel
-staat er nog, er is niets verloren. Raw-familie: geen ICU, gewone apostrof, `{landedAt}` en `{path}` letterlijk.
-
-- **"You don't have permission to read this item" → `Je hebt geen bevoegdheid om dit onderdeel te lezen`** · vorm van
-  `errors.write.permissionDenied.message.copy`; lezen als oorzaak: Finder `PE99`/`PE22` ("omdat je er geen
-  leesbevoegdheden voor hebt") · high.
-- **"the folder it's in" → `de map waarin het staat`** · `staan` zoals de hele `errors.write.*`-familie · high.
-- **"the copy" → `de kopie`; "the original stayed" → `het origineel staat er nog`** · `origineel` zoals
-  `moveAlreadyLanded` · high.
-- **"in both places" → `op beide plekken`** · `plek` zoals `moveAlreadyLanded` ("op de oude plek") · high.
-- **"To finish the move" → `om het verplaatsen af te ronden`** · high.
-- **`deletePending.message` noemt nu het bestand: `Het bestand op {path}`** · `op {pad}` zoals `newDataKeptAt.message`
-  ("op {keptAt}"); de rest ongewijzigd, `verwijzing` als voorheen · high.
+- `het origineel staat er nog` and `op beide plekken`, like `moveAlreadyLanded`.

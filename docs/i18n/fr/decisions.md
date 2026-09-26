@@ -748,20 +748,7 @@ values write the catalog's `’`.
 
 - `Recherche d’apps…`, `options de partage`, `Aucune option de partage` (macOS’s empty-menu shape).
 
-## L'original est resté : la source a refusé (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
+## L'original est resté (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
-Un déplacement entre volumes a tout copié, mais n'a pas pu supprimer l'original (par exemple un fichier verrouillé dans
-Finder). Le dialogue doit dire que la copie est complète, que l'original est toujours là et que rien n'a été perdu.
-Famille brute : pas d'ICU, apostrophe typographique `’`, `{landedAt}` et `{path}` tels quels.
-
-- **"You don't have permission to read this item" → `Vous n’avez pas l’autorisation de lire cet élément`** · moule de
-  `errors.write.permissionDenied.message.copy` ; la lecture comme cause : Finder `PE99` (« parce que vous ne disposez
-  pas de l'autorisation nécessaire pour les lire ») · high.
-- **"move this item out of its folder" → `déplacer cet élément hors de son dossier`** · `déplacer` (glossaire) · high.
-- **"the folder it's in" → `le dossier qui le contient`** · évite un pronom qui s'accorderait avec l'élément inséré ·
-  high.
-- **"the copy" → `la copie` ; "in both places" → `aux deux endroits`** · high.
-- **"Nothing was lost." → `Rien n’a été perdu.`** · même forme que « Rien n'a été jeté » (`originalsKeptAside`) · high.
-- **"delete the original yourself" → `supprimez vous-même l’original`** · `vous-même` ne marque pas le genre · high.
-- **`deletePending.message` nomme maintenant le fichier : `Le fichier {path}`** · même insertion que « Le nouveau {path}
-  » (`newDataKeptAt.message`) ; le reste inchangé, `handle` comme avant · high.
+- `le dossier qui le contient` avoids a pronoun agreeing with the inserted item, and `supprimez vous-même l’original`
+  marks no gender.

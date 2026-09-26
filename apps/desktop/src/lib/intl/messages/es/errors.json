@@ -1613,7 +1613,7 @@
   "@errors.write.deletePending.title": {
     "sourceHash": "1e5741a"
   },
-  "errors.write.deletePending.message": "El archivo en {path} está de salida. El servidor lo marcó para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
+  "errors.write.deletePending.message": "El archivo en {path} está de salida. El servidor lo ha marcado para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
   "@errors.write.deletePending.message": {
     "sourceHash": "7e73fd6"
   },
@@ -1653,11 +1653,11 @@
   "@errors.write.originalsKeptAside.suggestion.many": {
     "sourceHash": "2b05c26"
   },
-  "errors.write.sourceNotRemoved.title": "La copia llegó, pero el original sigue ahí",
+  "errors.write.sourceNotRemoved.title": "La copia ha llegado, pero el original sigue ahí",
   "@errors.write.sourceNotRemoved.title": {
     "sourceHash": "ac5a888"
   },
-  "errors.write.sourceNotRemoved.message": "Todo llegó a {landedAt}, pero Cmdr no pudo eliminar el original en {path}, así que ahora está en las dos ubicaciones. No se perdió nada.",
+  "errors.write.sourceNotRemoved.message": "Todo ha llegado a {landedAt}, pero Cmdr no ha podido eliminar el original en {path}, así que ahora está en las dos ubicaciones. No se ha perdido nada.",
   "@errors.write.sourceNotRemoved.message": {
     "sourceHash": "6800fe4"
   },

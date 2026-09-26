@@ -563,22 +563,8 @@ catalog.
 - `lämna helskärmsläge` (AppKit), definite for the state left (`tog Cmdr ur helskärmsläget`). The key is `Escape` in
   sentences (AppKit), `ESC` only on the keycap. `switchLabel` and the settings label share one value.
 
-### Flytten vars original låg kvar (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`, 2026-09-24)
+## Flytten vars original låg kvar (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
-En flytt mellan volymer kopierade allt men kunde inte ta bort originalet (till exempel en låst fil). Dialogen ska säga
-att kopian är komplett, att originalet finns kvar och att ingenting gick förlorat.
-
-- **original (källsidans exemplar vid en flytt): `originalet` / `originalen`** · macOS Finder (`N6`: "originalet inte
-  kan hittas"), katalogen (`transferProgress.titleRemovingOriginals` "Tar bort originalen", `readOnlyDevice.source.*`
-  "Originalen blir kvar där de är") · `high`.
-- **remove the original (Cmdrs misslyckade steg) → `ta bort originalet`; delete the original yourself (användarens
-  åtgärd) → `Radera originalet själv`** · `ta bort` är katalogens ord för flyttens borttagningssteg
-  (`cancelRollback.moveAlreadyLanded` "borttagningen av originalen"), `radera` det settlade verbet för användarens
-  permanenta radering · `high`.
-- **permission to read → `behörighet att läsa`** · macOS Finder `PE99` ("du inte har behörighet att läsa dem") · `high`.
-- **the folder it's in → `mappen det ligger i`** · `objekt` är neutrum, och `ligga` är katalogens verb för var något
-  finns (`originalsKeptAside.*` "ligger nu på") · `high`.
-- **Nothing was lost → `Ingenting gick förlorat`** · skiljer sig medvetet från `originalsKeptAside`'s
-  `Ingenting slängdes` (engelskan säger "thrown away" där) · `high`.
-- **`deletePending.message` namnger nu filen: `Filen på {path} är på väg bort.`** · `på {path}` som i
-  `newDataKeptAt.message` ("Den nya ligger på {keptAt}") · `high`.
+- Cmdr's failed step is `ta bort originalet` (`moveAlreadyLanded`); the user's is `Radera originalet själv`, the settled
+  delete verb.
+- `Ingenting gick förlorat` differs on purpose from `originalsKeptAside`'s `Ingenting slängdes` ("thrown away" there).

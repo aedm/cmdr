@@ -293,21 +293,6 @@ Allow `允許` (TCC's permission button), ❌ not `同意`, which is approve. Ev
 
 `正在尋找 App⋯`, `分享選項`, `沒有分享選項` (macOS's empty-menu shape `沒有可套用的服務`).
 
-## 移動完成了，原本的檔案卻還在（`errors.write.sourceNotRemoved.*`、`errors.write.permissionDenied.*.source*`、`errors.write.deletePending.message`，2026-09-24）
+## 移動完成了，原本的檔案卻還在（`errors.write.sourceNotRemoved.*`、`errors.write.permissionDenied.*.source*`、`errors.write.deletePending.message`）
 
-跨卷宗的移動已經把所有東西都複製過去，卻移除不了原本的檔案（例如在 Finder 裡被鎖定的檔案）。對話框要講清楚：副本是完整的，原本的檔案還在，什麼都沒少。
-
-- **original（移動時來源那一份）→ `原本的檔案`** · 沿用 `destinationNotFound.*`、`moveNotConfirmed.*` 的
-  `你原本的檔案`（見上面 "your originals" 條）· `high`。這裡 `還在原處` 是對的：原本的檔案真的沒離開過。
-- **remove the original（Cmdr 沒做成的那一步）→ `移除`；delete the original yourself（使用者要做的）→ `刪除`**
-  · 前者沿用 § 復原按鈕的兩條提示 裡的 `正在移除原檔案`，後者是已定的 `刪除` · `high`。
-- **permission to read → `權限讀取`** · Apple Finder zh-TW `PE99`（`因為你沒有權限讀取它們`），`讀取` 為已定術語 ·
-  `high`。
-- **access（建議句）→ `存取`** · 與標題 `無法存取這個位置` 同一個動詞 · `high`。
-- **the folder it's in → `它所在的資料夾`** · 目錄已有 `它們所在的磁碟機`（`fileOperations.trash.undoUnavailable`）·
-  `high`。
-- **the copy（標題裡的名詞）→ `副本`** · 已定條目（AP-TW `保留可恢復的副本`）· `high`。
-- **Nothing was lost → `什麼都沒被丟掉`** · 逐字沿用 `deviceDisconnected.sided.destination.copy`
-  的句尾，同一族只保留一種安撫句尾 · `high`。
-- **at {path} → `{path} 這個原本的檔案`；`deletePending.message` 現在點名檔案 → `位於 {path} 的檔案正在離場。`** ·
-  `位於` 見 "in {folder}" 條 · `high`。
+- Cmdr's failed step is `移除`, the user's `刪除`. `原本的檔案` as in `destinationNotFound.*` and `moveNotConfirmed.*`.

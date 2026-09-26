@@ -413,19 +413,7 @@ the installed macOS `pt_BR.lproj` bundles.
 - `Esc` (AppKit's name) over the older `ESC`. `Este aviso só aparece uma vez` makes the notice the subject: no `você`,
   no future tense.
 
-## O original ficou: a origem recusou (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
+## O original ficou (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
-Uma movimentação entre volumes copiou tudo por completo, mas não conseguiu remover o original (por exemplo, um arquivo
-bloqueado no Finder). O diálogo precisa deixar claro que a cópia está completa, que o original continua lá e que nada se
-perdeu. Família raw: sem ICU, apóstrofo normal, `{landedAt}` e `{path}` literais.
-
-- **"You don't have permission to read this item" → `Você não tem permissão para ler este item`** · molde de
-  `errors.write.permissionDenied.message.copy`; ler como causa: Finder pt-BR `PE99`/`PE22` ("porque você não tem
-  permissão para lê-los") · high.
-- **"the copy" → `a cópia`; "the original stayed" → `o original continua lá`** · `cópia` é o substantivo fixado;
-  `continua` como `moveAlreadyLanded` ("continua onde estava") · high.
-- **"in both places" → `nos dois lugares`** · high.
-- **"delete the original yourself" → `apague o original por conta própria`** · `você mesmo` marcaria o masculino;
-  `por conta própria` é neutro e natural (§ Gender) · tentative (sem fonte na pilha).
-- **`deletePending.message` agora nomeia o arquivo: `O arquivo em {path}`** · e troca `exclusão` por `para ser apagado`,
-  a família do `Apagar` que este glossário fixa para delete; `identificador` como antes · high.
+- `apague o original por conta própria`: `você mesmo` would mark the masculine (`tentative`, nothing in the pile).
+- `deletePending.message` says `para ser apagado`, the `Apagar` family ruled for delete.

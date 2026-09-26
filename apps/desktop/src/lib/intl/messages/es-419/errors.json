@@ -511,9 +511,9 @@
   "@errors.write.fileLocked.suggestion.other": {
     "sourceHash": "c1d975c"
   },
-  "errors.write.deletePending.message": "Este archivo está de salida. El servidor lo marcó para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
+  "errors.write.deletePending.message": "El archivo en {path} está de salida. El servidor lo marcó para eliminarlo, pero otro identificador abierto lo mantiene mientras ese identificador no se cierre.",
   "@errors.write.deletePending.message": {
-    "sourceHash": "46af6e3"
+    "sourceHash": "5ff91b5"
   },
   "errors.write.newDataKeptAt.title": "Tu archivo nuevo quedó con otro nombre",
   "@errors.write.newDataKeptAt.title": {
@@ -534,6 +534,14 @@
   "errors.write.originalsKeptAside.message.many": "Varias carpetas se quedaron con los nombres de {count} de tus archivos, así que ahora esos archivos tienen nombres nuevos. No se descartó nada; los detalles técnicos de abajo los enumeran todos.",
   "@errors.write.originalsKeptAside.message.many": {
     "sourceHash": "60c92fe"
+  },
+  "errors.write.sourceNotRemoved.title": "La copia llegó, pero el original sigue ahí",
+  "@errors.write.sourceNotRemoved.title": {
+    "sourceHash": "495493c"
+  },
+  "errors.write.sourceNotRemoved.message": "Todo llegó a {landedAt}, pero Cmdr no pudo eliminar el original en {path}, así que ahora está en las dos ubicaciones. No se perdió nada.",
+  "@errors.write.sourceNotRemoved.message": {
+    "sourceHash": "5607002"
   },
   "errors.write.fallback.title.copy": "No se pudo copiar",
   "@errors.write.fallback.title.copy": {
