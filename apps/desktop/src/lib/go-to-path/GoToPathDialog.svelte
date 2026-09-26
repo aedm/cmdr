@@ -131,9 +131,11 @@
         try {
             const resolution = await onGo(trimmed)
             // `invalid` keeps the dialog open (the user should fix their input);
-            // every other outcome jumped, so close.
+            // every other outcome jumped, so close. ❗ A hand-off's sheet opens only
+            // AFTER the close, or it sits under this dialog (`GoToPathOutcome`).
             if (resolution && resolution.kind !== 'invalid') {
                 onCancel()
+                if (resolution.kind === 'handed_off') void resolution.openSheet()
             }
         } finally {
             isGoing = false
@@ -144,8 +146,9 @@
         if (isGoing) return
         isGoing = true
         try {
-            await onGo(path)
+            const resolution = await onGo(path)
             onCancel()
+            if (resolution?.kind === 'handed_off') void resolution.openSheet()
         } finally {
             isGoing = false
         }

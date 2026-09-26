@@ -17,8 +17,9 @@ The ⌘G modal that jumps the focused pane to a typed, pasted, or recent path. A
 - **A `<scheme>://` input never reaches the backend resolver.** `resolve_go_to_path` walks `std::fs` over a path joined
   onto the pane's directory, so it answers `invalid` for an address that is about to work. All three resolving sites
   (the jump, the debounced preview, the clipboard prefill) call ONE classifier. ❗ Reading and ACTING are separate:
-  `readSchemeInput` is safe from the preview; `actOnSchemeInput` opens the sheet and is the jump's alone, because a
-  preview that opened a modal would put a sheet on screen mid-keystroke. ❗ An SMB address hands off to the SERVERS HUB,
+  `readSchemeInput` is safe from the preview; `actOnSchemeInput` hands the sheet over and is the jump's alone, because
+  a preview that opened a modal would put a sheet on screen mid-keystroke. ❗ The dialog closes BEFORE the sheet opens
+  (`GoToPathOutcome`'s `openSheet`), or the sheet sits under it. ❗ An SMB address hands off to the SERVERS HUB,
   the same destination ⌘K's own hand-off uses: an SMB connect is a share MOUNT, so there is no volume to navigate to,
   and a navigation command that leaves the pane where it was has not navigated. DETAILS § The scheme intercept.
 - **Switch on the typed `kind`** (`directory` / `file` / `nearestAncestor` / `invalid`), never on `reason` or toast

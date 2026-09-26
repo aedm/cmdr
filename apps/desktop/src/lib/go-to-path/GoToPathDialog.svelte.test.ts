@@ -214,6 +214,31 @@ describe('GoToPathDialog', () => {
     cleanup()
   })
 
+  /**
+   * ❗ The dialog closes FIRST, and only then does the sheet open: a sheet opened
+   * behind a dialog that was still up sat under it, covered, and the close then
+   * handed focus back to the pane from under the sheet.
+   */
+  it('Enter on a server address closes the dialog, then opens the sheet', async () => {
+    const order: string[] = []
+    const openSheet = vi.fn(() => {
+      order.push('sheet')
+      return Promise.resolve()
+    })
+    const onGo = vi.fn<GoFn>(() => Promise.resolve({ kind: 'handed_off', openSheet } as never))
+    const onCancel = vi.fn(() => order.push('closed'))
+    const { target, cleanup } = setup({ onGo, onCancel })
+    await tick()
+    const input = target.querySelector('input') as HTMLInputElement
+    input.value = 'smb://localhost:11481/private'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await tick()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flush()
+    expect(order).toEqual(['closed', 'sheet'])
+    cleanup()
+  })
+
   it('Enter on an invalid outcome keeps the dialog open', async () => {
     const onGo = goMock({ kind: 'invalid', reason: 'empty' })
     const { target, onCancel, cleanup } = setup({ onGo })

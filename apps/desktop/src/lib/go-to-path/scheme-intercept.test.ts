@@ -179,6 +179,18 @@ describe('previewSchemeInput: what the box says under it', () => {
   })
 })
 
+/** The sheet a hand-off opens once its dialog is gone. */
+function openSheetOf(outcome: Awaited<ReturnType<typeof actOnSchemeInput>>): Promise<void> {
+  if (outcome.kind !== 'handed_off') throw new Error(`expected a hand-off, got ${outcome.kind}`)
+  return outcome.openSheet()
+}
+
+async function sheetUp(): Promise<void> {
+  for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+}
+
 describe('actOnSchemeInput: what the jump does', () => {
   it('reports a place as a directory, so the caller navigates the way it always has', async () => {
     expect(
@@ -193,19 +205,24 @@ describe('actOnSchemeInput: what the jump does', () => {
     expect(currentSignInRequest()).toBeNull()
   })
 
-  it('opens the sheet on the address, and answers that it handed over', async () => {
-    const acting = actOnSchemeInput(
+  /**
+   * ❗ The sheet opens only when the dialog asks for it, once it has closed: opened
+   * during the jump, it sat UNDER the still-open Go to path dialog.
+   */
+  it('answers that it hands over without opening anything, and opens the sheet when asked', async () => {
+    const outcome = await actOnSchemeInput(
       { kind: 'add', address: 'https://cloud.example.com' },
       { onSmbHandOff: () => {}, onConnected: () => {} },
     )
-    for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
-    }
-    const request = currentSignInRequest()
-    expect(request).toMatchObject({ mode: 'add', prefill: 'https://cloud.example.com' })
+    expect(outcome.kind).toBe('handed_off')
+    expect(currentSignInRequest()).toBeNull()
+
+    const sheet = openSheetOf(outcome)
+    await sheetUp()
+    expect(currentSignInRequest()).toMatchObject({ mode: 'add', prefill: 'https://cloud.example.com' })
 
     closeSignInSheet({ kind: 'cancelled' })
-    expect(await acting).toEqual({ kind: 'handed_off' })
+    await sheet
   })
 
   /**
@@ -218,7 +235,7 @@ describe('actOnSchemeInput: what the jump does', () => {
   it('sends an SMB address on to the hub, the same place ⌘K does', async () => {
     ipc.mock('connect_to_server', () => ({ host: { id: 'h1', name: 'naspolya' }, sharePath: null }))
     let handedOver = 0
-    const acting = actOnSchemeInput(
+    const outcome = await actOnSchemeInput(
       { kind: 'add', address: 'smb://naspolya' },
       {
         onSmbHandOff: () => {
@@ -227,9 +244,8 @@ describe('actOnSchemeInput: what the jump does', () => {
         onConnected: () => {},
       },
     )
-    for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
-    }
+    const sheet = openSheetOf(outcome)
+    await sheetUp()
     const request = currentSignInRequest()
     if (request?.mode !== 'add') throw new Error('expected the add sheet')
 
@@ -241,21 +257,20 @@ describe('actOnSchemeInput: what the jump does', () => {
     expect(handedOver).toBe(1)
 
     closeSignInSheet({ kind: 'handed_off' })
-    expect(await acting).toEqual({ kind: 'handed_off' })
+    await sheet
   })
 
   it('lands on the place an SFTP or WebDAV address connected, the same place ⌘K does', async () => {
     const landed: unknown[] = []
-    const acting = actOnSchemeInput(
+    const outcome = await actOnSchemeInput(
       { kind: 'add', address: 'sftp://ada@nas.local:22/srv/data' },
       { onSmbHandOff: () => {}, onConnected: (place) => landed.push(place) },
     )
-    for (let i = 0; i < 20 && !currentSignInRequest(); i++) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
-    }
+    const sheet = openSheetOf(outcome)
+    await sheetUp()
 
     closeSignInSheet({ kind: 'connected', volumeId: SAVED_SERVER.places[0].volumeId })
-    expect(await acting).toEqual({ kind: 'handed_off' })
+    await sheet
     expect(landed).toEqual([{ volumeId: SAVED_SERVER.places[0].volumeId, root: APP_ROOT }])
   })
 })

@@ -32,10 +32,12 @@ const log = getAppLogger('go-to-path')
  * What Go to path can answer, once a scheme input is in play.
  *
  * `GoToPathResolution` is Rust-generated, so the hand-off is a member the
- * frontend adds. The dialog closes on anything that isn't `invalid`, and a
- * hand-off has done its job, so it closes too.
+ * frontend adds. The dialog closes on anything that isn't `invalid`, a hand-off
+ * included, and ❗ only THEN calls `openSheet`: a sheet opened during the jump sat
+ * under the still-open dialog, covered by it, and the dialog's close handed focus
+ * back to the pane from under the sheet.
  */
-export type GoToPathOutcome = GoToPathResolution | { kind: 'handed_off' }
+export type GoToPathOutcome = GoToPathResolution | { kind: 'handed_off'; openSheet: () => Promise<void> }
 
 /** What a scheme input turned out to mean. */
 export type SchemeIntent =
@@ -98,8 +100,9 @@ export function previewSchemeInput(intent: SchemeIntent): string {
 }
 
 /**
- * Acts on a scheme input the jump is committing to: hands an address to the
- * sheet, or reports the path so the caller navigates to it.
+ * Acts on a scheme input the jump is committing to: reports the path so the
+ * caller navigates to it, or hands over the address with the sheet it opens,
+ * for the dialog to open once it has closed.
  *
  * ❗ Only the jump calls this. Opening a modal from the debounced preview would
  * put a sheet on screen while someone is still typing the address for it.
@@ -127,8 +130,13 @@ export async function actOnSchemeInput(
   if (intent.kind === 'snapshot') {
     return { kind: 'invalid', reason: tString('goToPath.dialog.snapshotNotAPath') }
   }
-  await openAddServerSheet({ prefill: intent.address, onSmbHandOff: deps.onSmbHandOff, onConnected: deps.onConnected })
-  return { kind: 'handed_off' }
+  const { address } = intent
+  return {
+    kind: 'handed_off',
+    openSheet: async () => {
+      await openAddServerSheet({ prefill: address, onSmbHandOff: deps.onSmbHandOff, onConnected: deps.onConnected })
+    },
+  }
 }
 
 /** The saved place a server path belongs to, by its own name. */
