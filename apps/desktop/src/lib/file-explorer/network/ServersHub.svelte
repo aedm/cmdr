@@ -35,6 +35,7 @@
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import { cursorAcrossRebuild, cursorAfterArrow } from './servers-hub-keys'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
+    import ServersHubStatusBar from './ServersHubStatusBar.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { rowAnchorIn } from '../pane/context-menu-anchor'
     import type { NetworkHost } from '../types'
@@ -50,14 +51,11 @@
     import { openSettingsWindow, settingAnchorId } from '$lib/settings/settings-window'
     import { handleNavigationShortcut } from '../navigation/keyboard-shortcuts'
     import { protocolLabel } from '../navigation/filesystem-label'
-    import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
     import { eventMatchesCommand } from '$lib/shortcuts'
     import { claimKey } from '$lib/shortcuts/claim-key'
     import { triggerNetworkDiscovery } from './lazy-trigger'
     import { tString } from '$lib/intl/messages.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
-    import Trans from '$lib/intl/Trans.svelte'
-    import { formatInteger } from '$lib/intl/number-format'
     import { getAppLogger } from '$lib/logging/logger'
     import { LogOnceGate } from '$lib/logging/log-once'
 
@@ -447,17 +445,7 @@
             settingAnchorId('network.enabled'),
         )
     }
-
-    // The refresh hint's `<key>` chip: the live `pane.refresh` binding, non-clickable because
-    // the whole status bar already refreshes (a nested target would double-activate).
-    const snippets = { key: refreshKeyChip }
 </script>
-
-{#snippet refreshKeyChip(_children: import('svelte').Snippet)}<ShortcutChip
-        commandId="pane.refresh"
-        clickable={false}
-        size="sm"
-    />{/snippet}
 
 <div class="servers-hub" class:is-focused={isFocused}>
     <div class="header-row">
@@ -569,19 +557,7 @@
     </div>
 
     {#if rows.length > 0}
-        <button
-            class="hub-status-bar"
-            onclick={handleRefreshClick}
-            aria-label={tString('fileExplorer.network.browser.refreshAriaLabel')}
-        >
-            <span class="status-text"
-                >{tString('servers.hub.rowCount', {
-                    count: serverCount,
-                    countText: formatInteger(serverCount),
-                })}</span
-            >
-            <span class="refresh-hint"><Trans key="fileExplorer.network.browser.refreshHint" {snippets} /></span>
-        </button>
+        <ServersHubStatusBar {serverCount} onRefresh={handleRefreshClick} />
     {/if}
 </div>
 
@@ -591,10 +567,12 @@
     /* ONE grid for the header and every row (each a `subgrid`), so a column is as wide as
        its widest cell: Type, Address, Status, and Last used fit their content, and Name
        takes the rest. The name track keeps a floor, since the content-sized ones are
-       maximized first and would otherwise squeeze it to nothing in a narrow pane. */
+       maximized first and would otherwise squeeze it to nothing in a narrow pane.
+       Address stops at 20%: a WebDAV URL is long, and it clips before a name does.
+       Last used never clips (a cut-off date misreads), so it has no overflow of its own. */
     .servers-hub {
         display: grid;
-        grid-template-columns: minmax(min(12em, 40%), 1fr) auto auto auto auto;
+        grid-template-columns: minmax(min(12em, 40%), 1fr) auto fit-content(20%) auto auto;
         grid-template-rows: auto minmax(0, 1fr) auto;
         column-gap: var(--spacing-lg);
         height: 100%;
@@ -604,8 +582,7 @@
 
     .header-row,
     .row-list,
-    .server-row,
-    .hub-status-bar {
+    .server-row {
         grid-column: 1 / -1;
     }
 
@@ -692,7 +669,6 @@
 
     .col-last-used {
         color: var(--color-text-tertiary);
-        overflow: hidden;
         white-space: nowrap;
     }
 
@@ -780,40 +756,5 @@
         font-size: var(--font-size-sm);
         color: var(--color-text-tertiary);
         text-align: center;
-    }
-
-    .hub-status-bar {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        width: 100%;
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-family: var(--font-system), sans-serif;
-        font-size: calc(var(--font-size-sm) * 0.95);
-        color: var(--color-text-secondary);
-        background-color: var(--color-bg-secondary);
-        border: none;
-        border-top: 1px solid var(--color-border-strong);
-        min-height: 1.5em;
-        text-align: left;
-    }
-
-    .status-text {
-        flex: 1 1 0;
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .refresh-hint {
-        flex-shrink: 0;
-        margin-left: auto;
-        padding-left: var(--spacing-md);
-        color: var(--color-text-tertiary);
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        gap: var(--spacing-xxs);
     }
 </style>
