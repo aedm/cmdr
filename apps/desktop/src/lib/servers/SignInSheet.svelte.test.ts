@@ -323,7 +323,7 @@ describe('SignInSheet: Add and Add and open', () => {
 
     buttonSaying('Add and open').click()
     await flush()
-    expect(document.body.querySelector('#server-add-anyway-help')?.textContent).toContain("couldn’t check")
+    expect(document.body.querySelector('#server-add-anyway-help')?.textContent).toContain('couldn’t check')
 
     buttonSaying('Add anyway').click()
     await flush()
@@ -480,7 +480,7 @@ describe('SignInSheet: add mode', () => {
     await tick()
 
     const warning = document.body.querySelector('#server-address-warning')
-    expect(warning?.textContent).toBe("This looks like an SFTP address. Pick SFTP above if that’s what you meant.")
+    expect(warning?.textContent).toBe('This looks like an SFTP address. Pick SFTP above if that’s what you meant.')
     expect(address.getAttribute('aria-describedby')).toBe('server-address-warning')
     expect(protocolTab('SMB').getAttribute('aria-selected')).toBe('true')
 
