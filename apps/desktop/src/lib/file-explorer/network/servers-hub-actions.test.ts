@@ -24,6 +24,7 @@ const forgetCredentials = vi.fn(() => Promise.resolve())
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
 const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
+const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 
 vi.mock('$lib/tauri-commands', () => ({
   forgetSavedSmbHost: (id: string) => forgetSavedSmbHost(id),
@@ -40,6 +41,7 @@ vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
   forgetSavedServer: (...args: unknown[]) => forgetSavedServer(...(args as [])),
   setServerAutoReconnect: (volumeId: string, on: boolean) => setServerAutoReconnect(volumeId, on),
+  runServerRowAction: (payload: unknown) => runServerRowAction(payload),
 }))
 vi.mock('$lib/stores/volume-busy-store.svelte', () => ({ isVolumeBusy: () => false, isVolumeEjecting: () => false }))
 vi.mock('../navigation/row-menu', async (importOriginal) => ({
@@ -56,7 +58,7 @@ vi.mock('$lib/servers/open-sign-in', () => ({
 }))
 vi.mock('$lib/utils/confirm-dialog', () => ({ confirmDialog: (...args: unknown[]) => confirmDialog(...(args as [])) }))
 
-import { createHubActions } from './servers-hub-actions'
+import { createHubActions, editHubRow } from './servers-hub-actions'
 import type { HubRow } from './servers-hub-rows'
 import type { NetworkHostContextActionKind, VolumeContextActionKind } from '$lib/ipc/bindings'
 
@@ -451,5 +453,38 @@ describe('a saved share', () => {
     await actions().runRowEntry(shareRow, menu.actions[2])
     expect(forgetServer).toHaveBeenCalledWith('smb-container')
     expect(forgetSavedServer).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Edit and Rename (F4, F2, ⇧F6 by default, whatever they're bound to) on a hub row are
+ * "Edit server…". ❗ A row with nothing to edit says why, ❌ never does nothing.
+ */
+describe('editHubRow', () => {
+  it('opens Edit server on a saved SMB host', async () => {
+    await editHubRow(savedHostRow)
+    expect(openEditServerSheet).toHaveBeenCalledExactlyOnceWith(savedHostRow.saved)
+    expect(addToast).not.toHaveBeenCalled()
+  })
+
+  it('opens Edit server on a one-place server through the menu’s own Edit', async () => {
+    await editHubRow(placeRow)
+    expect(runServerRowAction).toHaveBeenCalledExactlyOnceWith({
+      action: 'edit',
+      volumeId: 'sftp-nas.local-22-ada',
+      volumeName: 'Naspolya',
+    })
+  })
+
+  it('says why a share row has nothing to edit', async () => {
+    await editHubRow(shareRow)
+    expect(openEditServerSheet).not.toHaveBeenCalled()
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('server'), { level: 'info' })
+  })
+
+  it('says why a host only mDNS knows has nothing to edit', async () => {
+    await editHubRow(nearbyOnlyRow)
+    expect(openEditServerSheet).not.toHaveBeenCalled()
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Attic NAS'), { level: 'info' })
   })
 })

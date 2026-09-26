@@ -400,7 +400,8 @@ export interface NetworkMountViewAPI {
 
 /** Cursor target inside the network browser stack, returned by NetworkMountView. */
 export type NetworkCursorEntry =
-  | { kind: 'host'; host: NetworkHost }
+  /** An SMB host in the hub, with the hub row it is on (Edit server… acts on the row). */
+  | { kind: 'host'; host: NetworkHost; row: HubRow }
   | { kind: 'share'; share: ShareInfo }
   /** A one-place server in the hub: SFTP or WebDAV, which has no SMB host. */
   | { kind: 'server'; row: HubRow }

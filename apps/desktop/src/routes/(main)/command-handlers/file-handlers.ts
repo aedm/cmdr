@@ -33,6 +33,7 @@ import { resolveTerminalFolder } from '$lib/open-terminal/terminal-target'
 import { openTerminalHereForFolder } from '$lib/open-terminal/open-terminal-here'
 import { tString } from '$lib/intl/messages.svelte'
 import { trackEvent } from '$lib/tauri-commands'
+import { editHubRow } from '$lib/file-explorer/network/servers-hub-actions'
 import type { CommandArgs } from '$lib/commands'
 import type { CommandHandlerContext, CommandHandlerRecord } from './types'
 
@@ -90,6 +91,13 @@ export const fileHandlers = {
   },
 
   'file.rename': ({ explorerRef, dispatchArgs }) => {
+    // In the Servers list, Rename is "Edit server…": the name is what a server has to
+    // rename. ❗ Opened, ❌ never awaited: the sheet stays up as long as the user types.
+    const hubRow = explorerRef?.getFocusedPaneHubRow()
+    if (hubRow) {
+      void editHubRow(hubRow)
+      return
+    }
     // Arg-less from F2 / the palette (seed the current name); the MCP `rename`
     // tool passes `{ initialName, expectedName }` to seed a proposed name and pin
     // activation to the target row.
@@ -97,8 +105,14 @@ export const fileHandlers = {
     explorerRef?.startRename(renameArgs)
   },
 
-  'file.edit': (hctx) =>
-    withEntryUnderCursor(hctx, async (entry) => {
+  'file.edit': (hctx) => {
+    // In the Servers list, Edit is "Edit server…", the same as Rename there.
+    const hubRow = hctx.explorerRef?.getFocusedPaneHubRow()
+    if (hubRow) {
+      void editHubRow(hubRow)
+      return
+    }
+    return withEntryUnderCursor(hctx, async (entry) => {
       // F4 hands the file to the text editor the user chose (`$lib/text-editor`), or
       // refuses a row with no real file behind it, with a toast (`pane/editor-open.ts`). Nothing
       // downstream of the editor can count an open, so it's counted here, only when
@@ -106,7 +120,8 @@ export const fileHandlers = {
       // what must never cross.
       const outcome = await openInEditorOrExplain(getFocusedPaneVolumeId(), entry.path)
       if (outcome === 'opened') void trackEvent('editor_opened', {})
-    }),
+    })
+  },
 
   'file.copy': ({ explorerRef, dispatchArgs }) => {
     // Arg-less from the F-bar / palette / keyboard (open the dialog with no

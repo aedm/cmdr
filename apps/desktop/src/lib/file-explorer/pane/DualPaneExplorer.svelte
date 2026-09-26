@@ -1099,6 +1099,15 @@
         return entry?.kind === 'server' ? entry.row : null
     }
 
+    /**
+     * ANY hub row under the focused pane's cursor, an SMB host's included, or `null`
+     * off the hub (and on "Add server…"). What Edit and Rename act on there.
+     */
+    export function getFocusedPaneHubRow(): HubRow | null {
+        const entry = getPaneRef(explorerState.getFocusedPane())?.getNetworkCursorEntry() ?? null
+        return entry?.kind === 'server' || entry?.kind === 'host' ? entry.row : null
+    }
+
     export async function handleMcpSelect(
         pane: 'left' | 'right',
         start: number,

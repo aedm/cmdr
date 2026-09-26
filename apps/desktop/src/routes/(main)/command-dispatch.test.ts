@@ -164,7 +164,15 @@ describe('handleCommandExecute — blockedByCapabilities (search-results / netwo
     const openNewFolderDialog = vi.fn()
     const openNewFileDialog = vi.fn()
     const startRename = vi.fn()
-    const ctx = makeCtx({ pasteFromClipboard, openNewFolderDialog, openNewFileDialog, startRename })
+    // Off the Servers list: Rename there is "Edit server…" (`hub-row-edit.test.ts`).
+    const getFocusedPaneHubRow = () => null
+    const ctx = makeCtx({
+      pasteFromClipboard,
+      openNewFolderDialog,
+      openNewFileDialog,
+      startRename,
+      getFocusedPaneHubRow,
+    })
     return { ctx, pasteFromClipboard, openNewFolderDialog, openNewFileDialog, startRename }
   }
 

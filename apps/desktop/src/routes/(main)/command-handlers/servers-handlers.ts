@@ -13,6 +13,7 @@
  */
 import { runServerRowAction } from '$lib/file-explorer/navigation/server-row-actions'
 import { openAddServerSheet } from '$lib/servers/open-sign-in'
+import { editHubRow } from '$lib/file-explorer/network/servers-hub-actions'
 import { serverCommandTarget, type ServerCommandTarget } from '$lib/servers/server-command-target'
 import { getFocusedPaneVolumeId } from '$lib/file-explorer/pane/focused-pane-reads'
 import { getVolumes } from '$lib/stores/volume-store.svelte'
@@ -83,6 +84,13 @@ export const serversHandlers = {
   // pipeline open for as long as they take, and nothing downstream reads the
   // answer. `servers.show` behaves the same way.
   'servers.edit': ({ explorerRef }) => {
+    // Any hub row first, an SMB host's included: `target` stops at a host, which has
+    // no place for the other commands to act on but does have a name to edit.
+    const hubRow = explorerRef?.getFocusedPaneHubRow()
+    if (hubRow) {
+      void editHubRow(hubRow)
+      return
+    }
     const server = target(explorerRef)
     if (!server) return
     void runServerRowAction({ action: 'edit', volumeId: server.volumeId, volumeName: server.name })

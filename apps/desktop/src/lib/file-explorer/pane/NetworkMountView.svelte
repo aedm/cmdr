@@ -504,9 +504,9 @@
             const share = placesBrowserRef?.getShareUnderCursor() ?? null
             return share ? { kind: 'share', share } : null
         }
-        const host = serversHubRef?.getHostUnderCursor() ?? null
-        if (host) return { kind: 'host', host }
         const row = serversHubRef?.getRowUnderCursor() ?? null
+        const host = serversHubRef?.getHostUnderCursor() ?? null
+        if (host && row) return { kind: 'host', host, row }
         return row ? { kind: 'server', row } : null
     }
 

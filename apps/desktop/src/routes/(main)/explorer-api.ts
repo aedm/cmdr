@@ -240,6 +240,11 @@ export interface ExplorerAPI {
    * pane's own volume.
    */
   getFocusedPaneServerRow: () => HubRow | null
+  /**
+   * Any hub row under the focused pane's cursor, an SMB host's included, or `null`
+   * off the hub. Edit and Rename there are "Edit server…" (`editHubRow`).
+   */
+  getFocusedPaneHubRow: () => HubRow | null
   injectError: (pane: 'left' | 'right', friendly: FriendlyError) => void
   resetError: (pane: 'left' | 'right' | 'both') => void
   /** E2E only: drive the native drag-and-drop drop entry programmatically (real

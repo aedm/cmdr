@@ -21,7 +21,7 @@ import {
   showNetworkHostContextMenu,
 } from '$lib/tauri-commands'
 import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
-import { forgetSavedServer, setServerAutoReconnect } from '../navigation/server-row-actions'
+import { forgetSavedServer, runServerRowAction, setServerAutoReconnect } from '../navigation/server-row-actions'
 import {
   EMPTY_ROW_MENU,
   runRowFix,
@@ -93,6 +93,31 @@ export interface HubActions {
 export interface HubRowMenuAPI {
   /** Opens `row`'s menu: the in-app one at `point`, or an SMB host's native one at `anchor` (`null`: the pointer). */
   open: (row: HubRow, point: MenuAnchor, anchor: MenuAnchor | null) => Promise<void>
+}
+
+/**
+ * "Edit server…" on whatever hub row the cursor is on: what Edit and Rename (`file.edit`, `file.rename`, F4 and
+ * F2 / ⇧F6 by default) and `servers.edit` do in the Servers list, since a server's name and settings are what it has
+ * to rename or edit.
+ *
+ * A one-place server goes through the row menu's own Edit, which re-reads the saved list; an SMB host opens on the
+ * entry its row carries, as its native menu's Edit does. ❗ A row with nothing saved to edit (a share, a host only
+ * mDNS knows) says why, ❌ never does nothing: a key that silently did nothing reads as a broken key.
+ */
+export async function editHubRow(row: HubRow): Promise<void> {
+  if (row.kind === 'share') {
+    addToast(tString('servers.hub.editShareHint'), { level: 'info' })
+    return
+  }
+  if (!row.saved) {
+    addToast(tString('servers.hub.editNearbyHint', { name: row.name }), { level: 'info' })
+    return
+  }
+  if (row.volumeId) {
+    await runServerRowAction({ action: 'edit', volumeId: row.volumeId, volumeName: row.name })
+    return
+  }
+  await openEditServerSheet(row.saved)
 }
 
 export function createHubActions(deps: HubActionDeps): HubActions {

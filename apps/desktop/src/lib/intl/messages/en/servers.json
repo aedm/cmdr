@@ -82,6 +82,17 @@
       "username": "the account name, like sven"
     }
   },
+  "servers.hub.editShareHint": "A share has nothing to edit. To edit its server, select the server’s row.",
+  "@servers.hub.editShareHint": {
+    "description": "Toast when the user presses Edit or Rename (F4, F2) on a saved SMB share's row in the Servers list. Shares carry no settings of their own; the server row right above them does."
+  },
+  "servers.hub.editNearbyHint": "{name} was found nearby and isn’t saved, so there’s nothing to edit.",
+  "@servers.hub.editNearbyHint": {
+    "description": "Toast when the user presses Edit or Rename (F4, F2) on a server row in the Servers list that Cmdr only found on the local network and the user never saved. {name} is the server's name.",
+    "placeholders": {
+      "name": "the server name, like Naspolya"
+    }
+  },
   "servers.hub.forgetShare": "Forget share",
   "@servers.hub.forgetShare": {
     "description": "VERB phrase. Item in a saved SMB share's right-click menu in the Servers list: drops the saved share from the list and the volume switcher. Match the wording of menu.network.forgetServer, with share in place of server."
