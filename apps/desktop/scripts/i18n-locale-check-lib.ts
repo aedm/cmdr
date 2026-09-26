@@ -138,7 +138,9 @@ export type SummaryLine = (count: number, kind: { locale: string; isOverlay: boo
 /**
  * Renders an honest, per-locale report (modeled on the screenshot coverage report:
  * say what's clean, list what isn't, no silent gaps) and returns the process exit
- * code for the whole run.
+ * code for the whole run. A finding several locales share prints once, under all of
+ * them (`groupSharedIssues`); what's left prints per locale. Every listed finding
+ * stays one `  - key → detail` line, which the Go wrappers count.
  *
  * @returns `EXIT_CLEAN` if no locales or all clean, else `EXIT_ISSUES`
  */
@@ -154,22 +156,78 @@ export function reportFindings({ title, findings, summaryLine, write }: ReportFi
   }
 
   const summary: SummaryLine = summaryLine ?? ((count) => `${String(count)} stale key(s)`)
-  let total = 0
-  for (const { locale, isOverlay, issues } of findings) {
-    if (issues.length === 0) {
-      out(`${locale}: clean.`)
-      continue
-    }
-    total += issues.length
-    out(`${locale}: ${summary(issues.length, { locale, isOverlay })}`)
-    for (const { key, detail } of issues) out(`  - ${key} → ${detail}`)
-  }
-
-  if (total === 0) {
+  if (findings.every(({ issues }) => issues.length === 0)) {
+    for (const { locale } of findings) out(`${locale}: clean.`)
     out(`${title}: all locales clean.`)
     return EXIT_CLEAN
   }
+
+  const { shared, ownIssues } = groupSharedIssues(findings)
+  for (const group of shared) {
+    const scope = group.locales.length === findings.length ? 'all ' : ''
+    const locale = group.locales[0]
+    out(
+      `${group.locales.join(', ')} (${scope}${String(group.locales.length)} locales): ${summary(group.issues.length, { locale, isOverlay: group.isOverlay })}`,
+    )
+    for (const { key, detail } of group.issues) out(`  - ${key} → ${detail}`)
+  }
+  for (const { locale, isOverlay, issues } of findings) {
+    const own = ownIssues.get(locale) ?? []
+    if (issues.length === 0) out(`${locale}: clean.`)
+    if (own.length === 0) continue
+    // "also" when the locale already appeared under a shared group, so its count
+    // here doesn't read as everything that's wrong with it.
+    const label = own.length === issues.length ? locale : `${locale}, also`
+    out(`${label}: ${summary(own.length, { locale, isOverlay })}`)
+    for (const { key, detail } of own) out(`  - ${key} → ${detail}`)
+  }
   return EXIT_ISSUES
+}
+
+/** Findings that several locales of one kind share, listed once under all of them. */
+interface SharedIssues {
+  locales: string[]
+  isOverlay: boolean
+  issues: Issue[]
+}
+
+/**
+ * Splits every locale's issues into the ones two or more locales share (same key,
+ * same detail, same kind of catalog), grouped by exactly which locales share them,
+ * and the ones only a single locale has. English keys land before their
+ * translations, so on a branch between the two EVERY locale reports the same keys:
+ * printed per locale, 19 keys read as 190 lines. Groups come widest first, and an
+ * overlay never shares a group with a full translation, since the same words mean
+ * something else there.
+ */
+function groupSharedIssues(findings: readonly LocaleFindings[]): {
+  shared: SharedIssues[]
+  ownIssues: Map<string, Issue[]>
+} {
+  const holders = new Map<string, { issue: Issue; isOverlay: boolean; locales: string[] }>()
+  for (const { locale, isOverlay, issues } of findings) {
+    for (const issue of issues) {
+      const id = JSON.stringify([isOverlay, issue.key, issue.detail])
+      const entry = holders.get(id) ?? { issue, isOverlay, locales: [] }
+      if (!entry.locales.includes(locale)) entry.locales.push(locale)
+      holders.set(id, entry)
+    }
+  }
+
+  const groups = new Map<string, SharedIssues>()
+  const ownIssues = new Map<string, Issue[]>()
+  for (const { issue, isOverlay, locales } of holders.values()) {
+    if (locales.length === 1) {
+      ownIssues.set(locales[0], [...(ownIssues.get(locales[0]) ?? []), issue])
+      continue
+    }
+    const id = JSON.stringify([isOverlay, locales])
+    const group = groups.get(id) ?? { locales, isOverlay, issues: [] }
+    group.issues.push(issue)
+    groups.set(id, group)
+  }
+  const shared = [...groups.values()].sort((a, b) => b.locales.length - a.locales.length)
+  return { shared, ownIssues }
 }
 
 /** The arguments `runLocaleCheck` hands a per-locale `inspectLocale` body. */

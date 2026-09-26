@@ -292,4 +292,48 @@ describe('reportFindings: the shared report core (reused by every locale check)'
     expect(reportFindings({ title: 'X', findings: [f], write })).toBe(EXIT_ISSUES)
     expect(lines.join('\n')).toMatch(/a\.b → broke/)
   })
+
+  // English keys land before their translations, so on a branch between the two
+  // every locale reports the same keys. Listing them per locale made 19 keys read
+  // as 190 lines; a shared finding prints once, under the locales it hits.
+  it('lists a finding several locales share once, and keeps the rest per locale', () => {
+    const [de, fr, hu, sv] = ['de', 'fr', 'hu', 'sv'].map((locale) => newFindings(locale))
+    for (const f of [de, fr, hu]) {
+      f.add('a.one', 'missing')
+      f.add('a.two', 'missing')
+    }
+    hu.add('a.three', 'identical')
+    const { lines, write } = capture()
+    expect(reportFindings({ title: 'X', findings: [de, fr, hu, sv], write })).toBe(EXIT_ISSUES)
+    expect(lines).toEqual([
+      'de, fr, hu (3 locales): 2 stale key(s)',
+      '  - a.one → missing',
+      '  - a.two → missing',
+      'hu, also: 1 stale key(s)',
+      '  - a.three → identical',
+      'sv: clean.',
+    ])
+  })
+
+  it('says "all" when a finding hits every checked locale', () => {
+    const [de, fr] = ['de', 'fr'].map((locale) => newFindings(locale))
+    for (const f of [de, fr]) f.add('a.one', 'missing')
+    const { lines, write } = capture()
+    reportFindings({ title: 'X', findings: [de, fr], write })
+    expect(lines).toEqual(['de, fr (all 2 locales): 1 stale key(s)', '  - a.one → missing'])
+  })
+
+  it('never merges a full translation with an overlay, whose findings mean something else', () => {
+    const de = newFindings('de')
+    const enGB = newFindings('en-GB', true)
+    for (const f of [de, enGB]) f.add('a.one', 'same detail')
+    const { lines, write } = capture()
+    reportFindings({ title: 'X', findings: [de, enGB], write })
+    expect(lines).toEqual([
+      'de: 1 stale key(s)',
+      '  - a.one → same detail',
+      'en-GB: 1 stale key(s)',
+      '  - a.one → same detail',
+    ])
+  })
 })
