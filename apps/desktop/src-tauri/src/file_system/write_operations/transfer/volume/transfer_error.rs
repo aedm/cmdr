@@ -237,6 +237,19 @@ pub(in crate::file_system::write_operations) async fn unregistered_volume_error(
     }
 }
 
+/// A move whose copy LANDED at `landed_at` but whose source `refused` to go. ❗ Not a failed
+/// move: the item is now in both places, and the bare refusal ("you don't have permission to
+/// move files here") made a user conclude nothing had happened (cmdr-reports#17). The refusal
+/// rides along as `cause` for its own advice.
+pub(super) fn source_not_removed(refused: &Path, landed_at: &Path, e: VolumeError) -> WriteOperationError {
+    let path = refused.display().to_string();
+    WriteOperationError::SourceNotRemoved {
+        landed_at: landed_at.display().to_string(),
+        cause: Box::new(map_volume_error(&path, PathRole::Source, e)),
+        path,
+    }
+}
+
 fn not_connected(path: &str, role: PathRole) -> WriteOperationError {
     let path = path.to_string();
     match role {
