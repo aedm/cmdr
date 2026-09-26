@@ -118,7 +118,11 @@ id its volume and index register under:
    (`mount_id_for_path`, the longest non-root ancestor mount). The fast-reject is the load-bearing trap-guard: a
    registered cloud-drive folder in the home dir (`~/Library/CloudStorage/…`) is a non-root registered volume too, but
    `root`'s index owns it — a naive "any registered non-root volume" prefix match would divert it to an index-less id
-   and drop its sizes.
+   and drop its sizes. A real filesystem mounted OUTSIDE those prefixes (an rclone or sshfs mount in the home folder,
+   pCloud's `~/pCloud Drive`) stays on `root` too, by design: the full boot scan bounds itself by path prefix, not
+   device, so it walks into such a mount and `root`'s index owns the rows (`../scanner/DETAILS.md` § "The volume
+   boundary"). ❌ Don't route it to the mount's own id without also cutting the boot scan there, or its sizes vanish.
+   Pinned by `a_mount_inside_the_boot_tree_stays_on_root`.
 6. **Everything else** → `root` (the boot disk, plus cloud-drive folders root's index owns).
 
 `exclusion_scope_for_volume(volume_id)` derives the read-side scope (root ⇒ boot disk; every other registered volume ⇒

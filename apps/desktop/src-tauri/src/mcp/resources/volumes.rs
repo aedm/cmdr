@@ -2,7 +2,7 @@
 //!
 //! Every volume renders through one uniform shape so agents stop guessing which
 //! entries carry ids or what a bare string meant: `name`, `id`, and `kind`
-//! (`local` / `smb` / `sftp` / `webdav` / `mtp` / `adb` / `virtual`) always, plus
+//! (`local` / `smb` / `sftp` / `webdav` / `mtp` / `adb` / `network` / `virtual`) always, plus
 //! the present-when-known
 //! `filesystem`, `readOnly`, `ejectable`, `indexStatus`, `connectionState`,
 //! `totalBytes` / `availableBytes`, and their spelled-out twins `totalHuman` /
@@ -57,6 +57,13 @@ pub(crate) enum VolumeKind {
         allow(dead_code, reason = "macOS-path-only today; unconstructed off macOS, see `Smb`")
     )]
     Adb,
+    /// A network filesystem the OS mounted and Cmdr has no dedicated backend for
+    /// (NFS, AFP, FTP): browsable like a disk, but it can hang like any share.
+    #[cfg_attr(
+        not(target_os = "macos"),
+        allow(dead_code, reason = "macOS-path-only today; unconstructed off macOS, see `Smb`")
+    )]
+    Network,
     /// A synthetic entry with no backing device (the servers hub row). Also
     /// macOS-path-only today, so off macOS it's unconstructed — see `Smb`.
     #[cfg_attr(
@@ -75,6 +82,7 @@ impl VolumeKind {
             VolumeKind::Webdav => "webdav",
             VolumeKind::Mtp => "mtp",
             VolumeKind::Adb => "adb",
+            VolumeKind::Network => "network",
             VolumeKind::Virtual => "virtual",
         }
     }
@@ -201,6 +209,8 @@ fn kind_for_location(fs_type: Option<&str>, has_session: bool) -> VolumeKind {
         Some("mtp") => VolumeKind::Mtp,
         other if crate::volumes::is_smb_fs_type(other) => VolumeKind::Smb,
         _ if has_session => VolumeKind::Smb,
+        // After the arms above, so SMB and WebDAV keep their own kinds.
+        other if crate::volumes::is_network_fs_type(other) => VolumeKind::Network,
         _ => VolumeKind::Local,
     }
 }
@@ -438,6 +448,20 @@ mod tests {
             mount_path: Some("/".to_string()),
             space: None,
         }
+    }
+
+    /// An OS-mounted NFS, AFP, or FTP share is a network drive with no dedicated
+    /// backend, and it must read as one: pre-fix it fell through to `local`, telling
+    /// an agent a share that can hang for minutes was a plain disk.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_network_mount_without_a_backend_reads_as_network() {
+        for fs in ["nfs", "afpfs", "ftp"] {
+            assert_eq!(kind_for_location(Some(fs), false), VolumeKind::Network, "{fs}");
+        }
+        assert_eq!(kind_for_location(Some("apfs"), false), VolumeKind::Local);
+        assert_eq!(kind_for_location(Some("smbfs"), false), VolumeKind::Smb);
+        assert_eq!(kind_for_location(Some("webdav"), false), VolumeKind::Webdav);
     }
 
     #[test]

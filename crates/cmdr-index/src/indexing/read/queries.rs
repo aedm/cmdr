@@ -588,4 +588,46 @@ mod tests {
         );
         assert!(status.freshness.is_none());
     }
+
+    /// A filesystem mounted OUTSIDE the external-mount prefixes (an rclone or sshfs
+    /// mount in the home folder, a hand-mounted NFS share, pCloud's `~/pCloud Drive`)
+    /// is registered as its own volume, but it stays on `root`: the full boot scan
+    /// bounds itself by path prefix, not by device, so it walks into such a mount and
+    /// `root`'s index owns the rows (`scanner/DETAILS.md` § "The volume boundary").
+    /// Routing it to the mount's own, index-less id would drop those sizes.
+    #[test]
+    fn a_mount_inside_the_boot_tree_stays_on_root() {
+        let mount_root = "/Users/statustest/mnt/share";
+        let provider = FakeVolumeProvider::shared();
+        provider
+            .register(
+                "path-users-statustest-mnt-share",
+                Arc::new(InMemoryVolume::new("share").with_root(mount_root)),
+            )
+            .mount(mount_root, volumes::MountIdentity::from_raw(7));
+
+        let _serialized = crate::indexing::handle::test_lock();
+        let _installed = volumes::install_for_test(provider);
+
+        let status = get_volume_index_status_for_path(&format!("{mount_root}/docs"));
+        assert_eq!(status.volume_id, ROOT_VOLUME_ID);
+    }
+
+    /// A registered cloud-drive folder is NOT a mount point: it's a folder on the boot
+    /// disk that `root`'s index owns, so it must stay on `root` and keep its sizes.
+    #[test]
+    fn a_registered_folder_that_is_not_a_mount_point_stays_on_root() {
+        let cloud_root = "/Users/statustest/Library/CloudStorage/Dropbox";
+        let provider = FakeVolumeProvider::shared();
+        provider.register(
+            "cloud-dropbox",
+            Arc::new(InMemoryVolume::new("Dropbox").with_root(cloud_root)),
+        );
+
+        let _serialized = crate::indexing::handle::test_lock();
+        let _installed = volumes::install_for_test(provider);
+
+        let status = get_volume_index_status_for_path(&format!("{cloud_root}/photos"));
+        assert_eq!(status.volume_id, ROOT_VOLUME_ID);
+    }
 }
