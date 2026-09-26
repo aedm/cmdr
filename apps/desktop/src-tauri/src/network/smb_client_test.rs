@@ -40,6 +40,22 @@ async fn a_host_that_wants_an_account_asks_for_one_instead_of_listing_as_guest()
     );
 }
 
+/// ❗ **Credentials the caller passed are the question, so guest is never tried
+/// first.** Someone pressed "Sign in as…" or the listing is using the stored
+/// password: on a `map to guest = bad user` Samba a guest leg "succeeds" with the
+/// guest's list, and that list would come back instead of the account's.
+#[test]
+fn credentials_always_skip_the_guest_leg() {
+    assert_eq!(GuestAttempt::Try.given_credentials(true), GuestAttempt::Skip);
+    assert_eq!(GuestAttempt::Skip.given_credentials(true), GuestAttempt::Skip);
+    assert_eq!(
+        GuestAttempt::Try.given_credentials(false),
+        GuestAttempt::Try,
+        "no credentials: guest first, as ever"
+    );
+    assert_eq!(GuestAttempt::Skip.given_credentials(false), GuestAttempt::Skip);
+}
+
 /// An account's own listing in the cache still answers: it is exactly what the
 /// person asked for, and re-dialing it on every open would be wasted round-trips.
 #[tokio::test]

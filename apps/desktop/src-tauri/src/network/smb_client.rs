@@ -40,10 +40,22 @@ pub enum GuestAttempt {
     Skip,
 }
 
+impl GuestAttempt {
+    /// What this becomes once the caller did or didn't pass credentials.
+    ///
+    /// ❗ Credentials are the question, so they always skip guest. Someone pressed
+    /// "Sign in as…", or the listing is using the stored password: on a
+    /// `map to guest = bad user` Samba a guest leg "succeeds" with the guest's
+    /// list, which would come back instead of the account's.
+    pub fn given_credentials(self, has_credentials: bool) -> Self {
+        if has_credentials { Self::Skip } else { self }
+    }
+}
+
 /// Lists shares on a network host.
 ///
-/// Attempts guest access first (unless `guest` says not to), then uses provided
-/// credentials if guest fails. Results are cached for the specified TTL.
+/// Attempts guest access first (unless `guest` says not to, or `credentials` are
+/// given), else the credentials. Results are cached for the specified TTL.
 ///
 /// # Arguments
 /// * `host_id` - Unique identifier for the host (used for caching)
@@ -103,6 +115,9 @@ async fn list_shares_uncached(
     guest: GuestAttempt,
     timeout: Duration,
 ) -> Result<ShareListResult, ShareListError> {
+    // Before either leg, so neither the smb2 guest attempt nor the CLI fallback
+    // (which lists as guest) answers a question the credentials asked.
+    let guest = guest.given_credentials(credentials.is_some());
     debug!(
         "list_shares_uncached: hostname={:?}, ip_address={:?}, port={}, has_creds={}, guest={:?}",
         hostname,
@@ -159,7 +174,7 @@ async fn list_shares_smb2(
     // smb2's config timeout: slightly shorter so its typed Error::Timeout fires first
     let connect_timeout = timeout.saturating_sub(Duration::from_secs(2));
 
-    if guest == GuestAttempt::Skip {
+    if guest.given_credentials(credentials.is_some()) == GuestAttempt::Skip {
         return match credentials {
             Some((user, pass)) => {
                 list_authenticated(hostname, ip_address, port, user, pass, outer_timeout, connect_timeout).await
@@ -194,24 +209,19 @@ async fn list_shares_smb2(
             Ok(converted(shares, AuthMode::GuestAllowed))
         }
         Err(e) if is_auth_error(&e) => {
-            debug!("Guest failed with auth error: {}", e);
-            // Guest failed with auth error - try with credentials if provided
-            if let Some((user, pass)) = credentials {
-                list_authenticated(hostname, ip_address, port, user, pass, outer_timeout, connect_timeout).await
-            } else {
-                // No explicit credentials provided - try smbutil which uses macOS Keychain
-                debug!("No explicit credentials, trying smbutil with Keychain...");
-                match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
-                    Ok(result) => {
-                        debug!("smbutil with Keychain succeeded, got {} shares", result.shares.len());
-                        Ok(result)
-                    }
-                    Err(e) => {
-                        debug!("smbutil with Keychain failed: {:?}, requiring manual login", e);
-                        Err(ShareListError::AuthRequired {
-                            message: "This server requires authentication to list shares".to_string(),
-                        })
-                    }
+            // Guest refused. No credentials reach this leg (they skip guest), so
+            // try smbutil, which reads the macOS Keychain itself.
+            debug!("Guest failed with auth error: {e}; no explicit credentials, trying smbutil with Keychain...");
+            match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
+                Ok(result) => {
+                    debug!("smbutil with Keychain succeeded, got {} shares", result.shares.len());
+                    Ok(result)
+                }
+                Err(e) => {
+                    debug!("smbutil with Keychain failed: {:?}, requiring manual login", e);
+                    Err(ShareListError::AuthRequired {
+                        message: "This server requires authentication to list shares".to_string(),
+                    })
                 }
             }
         }

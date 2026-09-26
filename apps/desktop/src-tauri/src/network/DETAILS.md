@@ -138,10 +138,15 @@ Always pass the resolved IP from mDNS discovery when one is available; fall back
 
 ### Guest-first auth flow
 
-1. Try anonymous/guest access first
+1. Try anonymous/guest access first, ❗ only when the caller passed no credentials
 2. On auth error → check stored credentials
 3. If no stored creds → prompt user
-4. Never assume "guest only"; always offer "Sign in for more access" when guest succeeds (can't distinguish guest-only from guest-or-creds at probe time)
+4. Never assume "guest only"; always offer "Sign in as…" when guest succeeds (can't distinguish guest-only from guest-or-creds at probe time)
+
+❗ **Credentials skip guest, always** (`GuestAttempt::given_credentials`, applied before both the smb2 legs and the CLI
+fallback, which lists as guest). Credentials are the question: someone pressed "Sign in as…" or the listing is using
+the stored password. On a `map to guest = bad user` Samba a guest leg "succeeds" with the guest's list, which came back
+in place of the account's.
 
 ❗ **Except for a host someone typed an account for** (`manual_servers::typed_username`, set by the add or edit
 sheet or an `smb://user@host` address). The listing commands pass `smb_client::GuestAttempt::Skip` for it: no guest
