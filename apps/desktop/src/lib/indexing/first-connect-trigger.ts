@@ -33,7 +33,6 @@ const TOAST_GROUP = 'index-first-connect'
 const toastIdFor = (volumeId: string): string => `${TOAST_GROUP}:${volumeId}`
 
 /** Drives whose offer is (or may still be) on screen. Plain: nothing renders it. */
-// eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping only, nothing renders from it
 const offered = new Set<string>()
 
 export interface FirstConnectActions {

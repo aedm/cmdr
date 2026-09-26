@@ -28,7 +28,7 @@ const h = vi.hoisted(() => ({
   listSharesWithCredentials: vi.fn(),
   getSmbCredentials: vi.fn(),
   noteCachedCredentials: vi.fn(() => Promise.resolve()),
-  credentialStatus: 'unknown' as string,
+  credentialStatus: 'unknown',
   saveSmbCredentials: vi.fn(),
   openSignInSheet: vi.fn(),
 }))

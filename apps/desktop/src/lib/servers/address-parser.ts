@@ -126,7 +126,9 @@ export function uncAsSmbUrl(input: string): string | null {
  */
 export function mountSourceAsSmbUrl(input: string): string | null {
   const match = /^\/\/([^/\\]+)(\/.*)?$/.exec(input.trim())
-  return match ? `smb://${match[1]}${match[2] ?? ''}` : null
+  if (!match) return null
+  const [, host, path = ''] = match
+  return `smb://${host}${path}`
 }
 
 /**

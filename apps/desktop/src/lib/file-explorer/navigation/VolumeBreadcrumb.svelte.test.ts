@@ -460,12 +460,11 @@ describe('VolumeBreadcrumb chip control', () => {
       { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
     ]
     stubs.containingVolumeId = 'root'
-    const target = mountBreadcrumb({ volumeId: share.id, currentPath: '/Volumes/private' })
+    mountBreadcrumb({ volumeId: share.id, currentPath: '/Volumes/private' })
     await tick()
     await tick()
     flushSync()
     expect(document.querySelector('.volume-name')?.textContent).toContain('private on localhost:11482')
-    void target
   })
 
   /**
