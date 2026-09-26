@@ -149,7 +149,7 @@ func vitestFailureHeadline(report *vitestJSONReport, failures []vitestFailure, t
 	case len(failures) > 0:
 		fmt.Fprintf(&b, "%d %s failed", len(failures), Pluralize(len(failures), "test", "tests"))
 		if report != nil && report.NumTotalTests > 0 {
-			fmt.Fprintf(&b, " of %s", formatThousands(report.NumTotalTests))
+			fmt.Fprintf(&b, " of %s", FormatThousands(report.NumTotalTests))
 		}
 	default:
 		// A failure section with no report behind it: a startup error, or a crash

@@ -10,8 +10,8 @@ Authoring a check: `checks/CLAUDE.md`.
 - `plan.go` + `cache.go` + `runner-sources.go` + `checks/fingerprint.go` (the input-fingerprint cache),
   `checks/inputs.go` (shared `Inputs` blocks), `checks/cargo-workspace.go` (the geometry Rust checks scope from).
 - `stack_orchestrator.go` + `stacklease/` (Docker fixture stacks), `graph.go` / `docs_graph_render.go` (renderers),
-  `stats.go` + `unknown_selector_log.go` (the CSV logs), `autofix_notice.go`, `torn_target_notice.go`,
-  `ensure_e2e_binary.go` (`--ensure-e2e-binary`, the i18n screenshot run's way to the E2E binary).
+  `stats.go` + `unknown_selector_log.go` + `output_log.go` (the CSV logs, the saved outputs), `autofix_notice.go`,
+  `torn_target_notice.go`, `ensure_e2e_binary.go` (`--ensure-e2e-binary`, the E2E binary for i18n screenshots).
 
 ## Must-knows
 
@@ -20,8 +20,7 @@ Authoring a check: `checks/CLAUDE.md`.
 - **Checks refuse to run in the main clone** (the auto-fixers reformat tracked files, which belongs in a worktree).
   `--ci` is exempt; override with `--allow-main`.
 - **A run blocks while a fresh worktree is still warming** (`.warming-worktree`, written by `new-worktree.sh` while it
-  clones `target/` in the background). This is the one wait covering every lane, since nothing here calls cargo
-  directly. A dead worker pid means "proceed", never "wait forever".
+  clones `target/`), the one wait covering every lane. A dead worker pid means "proceed", never "wait forever".
 - **A check fingerprints the runner CORE (`GlobalInputs`) plus the files its own `Run` reaches** (read from the AST at
   plan time), and fails closed to the whole tree. ❌ No helper the EXECUTOR calls in a check file.
 - **Cache ordering is load-bearing.** Planning runs BEFORE `pnpm install` and Docker bring-up, so an all-hits run
@@ -42,12 +41,13 @@ Authoring a check: `checks/CLAUDE.md`.
   filterset. An unmatched `test(prefix)` is fine.
 - **An auto-fixer rewriting a COMMITTED file is a green local run and a red CI one.** The run's last line names them;
   commit them.
-- **Three CSV logs, never merged**, under `~/.local/share/check-runner/cmdr/` (outside the repo, so a worktree teardown
-  can't take years of history with it): `check-log.csv` per run, `test-log.csv` per test, `unknown-check-log.csv` per
-  rejected selector (a missed name says a check is named wrong; the rows feed a naming review, so keep writing them). ❌
-  Never add a column: it breaks every reader of a log now past 200,000 rows.
+- **Four CSV logs, never merged**, under `~/.local/share/check-runner/cmdr/` (outside the repo, so worktree teardowns
+  can't take the history): `check-log`, `test-log`, `unknown-check-log` (feeds a naming review), `output-log`. ❌ Never
+  add a column: it breaks every reader of a 200,000-row log.
+- **Each check's stdout is capped at 40 lines / 8 KB**; every failure and warning is saved whole in `output/`, and the
+  excerpt names the file. `-v` prints all. ❌ Don't raise the cap for one noisy check; tighten its output.
 - **`--only-slow` needs a ~20 min command timeout** (1,200,000 ms); `--fast` errors out with `--include-slow` /
   `--only-slow`. Named checks bypass both.
 
-Flow diagram, CLI options, exclusive resources, the fixture-stack leases, the per-test and unrecognized-name logs, and
-decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
+Flow diagram, CLI options, exclusive resources, fixture-stack leases, the logs, and decisions: `DETAILS.md`. Read it
+before any non-trivial work here: editing, planning, reorganizing, or advising.

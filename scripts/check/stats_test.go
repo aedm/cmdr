@@ -31,7 +31,7 @@ func wantLogPath(home, fileName string) string {
 func TestLogPathPutsEveryLogUnderTheSharedCheckRunnerDir(t *testing.T) {
 	home := redirectHome(t)
 
-	for _, name := range []string{csvFileName, testCSVFileName, unknownSelectorCSVFileName} {
+	for _, name := range []string{csvFileName, testCSVFileName, unknownSelectorCSVFileName, outputCSVFileName} {
 		got, err := logPath(name)
 		if err != nil {
 			t.Fatalf("logPath(%q): %v", name, err)

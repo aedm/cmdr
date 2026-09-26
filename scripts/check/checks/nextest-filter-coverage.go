@@ -239,7 +239,7 @@ func RunNextestFilterCoverage(ctx *CheckContext) (CheckResult, error) {
 
 	atoms := len(nextestTestAtomPattern.FindAllString(config, -1))
 	return Success(fmt.Sprintf("%d nextest %s, all selecting a live test over %s tests",
-		atoms, Pluralize(atoms, "filter", "filters"), formatThousands(len(names)))), nil
+		atoms, Pluralize(atoms, "filter", "filters"), FormatThousands(len(names)))), nil
 }
 
 // nextestFilterPlatformScopes maps the scope token an opt-out reason may open

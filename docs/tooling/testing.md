@@ -291,6 +291,8 @@ the watcher stays paused and can't race the reset (see the "Virtual MTP device" 
 
 The single entry point for all linters, formatters, type checkers, and test runners. It delegates to `scripts/check.sh`;
 use `pnpm check --help` for the full option list. Always use it instead of raw `cargo`, `pnpm vitest`, `eslint`, etc.
-Its output is concise and CI-aligned. Per-check: `pnpm check <name>`. By group: `pnpm check rust` / `svelte`. Fast
-pre-commit lane (~7 s, curated): `--fast`. Slow checks (E2E, Docker): `--only-slow`. See AGENTS.md "Testing and
-checking" for the three-cadence guidance.
+Its output is concise and CI-aligned: a check whose output runs past ~40 lines prints its first and last lines plus a
+path to the full text under `~/.local/share/check-runner/cmdr/output/` (read that file, or rerun with `-v` for
+everything). Per-check: `pnpm check <name>`. By group: `pnpm check rust` / `svelte`. Fast pre-commit lane (~7 s,
+curated): `--fast`. Slow checks (E2E, Docker): `--only-slow`. See AGENTS.md "Testing and checking" for the three-cadence
+guidance.

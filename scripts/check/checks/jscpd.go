@@ -438,12 +438,12 @@ func formatJscpdRegressions(regressions []jscpdRegression) string {
 func formatJscpdHeadline(report jscpdReport, what string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%s %s clones, %s duplicated %s (%.2f%%) across %s %s in %s file %s",
-		formatThousands(report.totals.clones), what,
-		formatThousands(report.totals.duplicatedLines),
+		FormatThousands(report.totals.clones), what,
+		FormatThousands(report.totals.duplicatedLines),
 		Pluralize(report.totals.duplicatedLines, "line", "lines"),
 		report.totals.percentage,
-		formatThousands(report.totals.sources), Pluralize(report.totals.sources, "file", "files"),
-		formatThousands(len(report.pairs)), Pluralize(len(report.pairs), "pair", "pairs"))
+		FormatThousands(report.totals.sources), Pluralize(report.totals.sources, "file", "files"),
+		FormatThousands(len(report.pairs)), Pluralize(len(report.pairs), "pair", "pairs"))
 	return sb.String()
 }
 

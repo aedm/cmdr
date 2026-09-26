@@ -16,8 +16,8 @@ func TestFormatThousands(t *testing.T) {
 		{-1234, "-1,234"},
 	}
 	for _, tt := range tests {
-		if got := formatThousands(tt.n); got != tt.want {
-			t.Errorf("formatThousands(%d) = %q, want %q", tt.n, got, tt.want)
+		if got := FormatThousands(tt.n); got != tt.want {
+			t.Errorf("FormatThousands(%d) = %q, want %q", tt.n, got, tt.want)
 		}
 	}
 }

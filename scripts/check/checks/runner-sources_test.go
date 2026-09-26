@@ -460,7 +460,7 @@ func TestRunnerSourcesReachSharedHelpers(t *testing.T) {
 		{"claude-md-length", "scripts/check/checks/docs_graph.go"},               // the doc graph it walks
 		{"desktop-svelte-e2e-playwright", "scripts/check/checks/e2e-build.go"},   // the binary it builds
 		{"desktop-rust-tests", "scripts/check/checks/rust-test-diagnostics.go"},  // how a red lane is re-run and reported
-		{"desktop-rust-module-cycles", "scripts/check/checks/common.go"},         // formatThousands, the shared thousands-separator helper
+		{"desktop-rust-module-cycles", "scripts/check/checks/common.go"},         // FormatThousands, the shared thousands-separator helper
 		// Reached only through a METHOD on a type it names, which is the rule that
 		// stands in for type information: drop it and this line goes red.
 		{"invariant-density", "scripts/check/checks/docs-dead-links.go"},

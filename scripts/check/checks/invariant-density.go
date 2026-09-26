@@ -384,9 +384,9 @@ func formatInvariantGauge(report invariantDensityReport) string {
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%s ❌ %s across %s agent %s: %.2f per 1,000 source lines (plus %s ⚠️)",
-		formatThousands(report.totalRules), Pluralize(report.totalRules, "rule", "rules"),
-		formatThousands(report.totalDocs), Pluralize(report.totalDocs, "doc", "docs"),
-		density, formatThousands(report.totalCautions))
+		FormatThousands(report.totalRules), Pluralize(report.totalRules, "rule", "rules"),
+		FormatThousands(report.totalDocs), Pluralize(report.totalDocs, "doc", "docs"),
+		density, FormatThousands(report.totalCautions))
 
 	width := len("subsystem")
 	for _, subsystem := range report.subsystems {
@@ -399,8 +399,8 @@ func formatInvariantGauge(report invariantDensityReport) string {
 	for _, subsystem := range report.subsystems {
 		fmt.Fprintf(&sb, row, width, subsystem.root,
 			formatDensity(subsystem.rulesPerKiloLine()),
-			formatThousands(subsystem.rules), formatThousands(subsystem.cautions),
-			formatThousands(subsystem.sourceLines), formatThousands(subsystem.docs))
+			FormatThousands(subsystem.rules), FormatThousands(subsystem.cautions),
+			FormatThousands(subsystem.sourceLines), FormatThousands(subsystem.docs))
 	}
 	return sb.String()
 }

@@ -619,8 +619,8 @@ func Pluralize(count int, singular, plural string) string {
 	return plural
 }
 
-// formatThousands renders n with thousands separators.
-func formatThousands(n int) string {
+// FormatThousands renders n with thousands separators.
+func FormatThousands(n int) string {
 	digits := fmt.Sprintf("%d", n)
 	sign := ""
 	if strings.HasPrefix(digits, "-") {

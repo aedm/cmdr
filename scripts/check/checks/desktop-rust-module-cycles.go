@@ -531,9 +531,9 @@ func formatModuleCyclesGauge(measurements []crateModuleCycles) string {
 		tangled += len(measurement.tangles)
 	}
 	fmt.Fprintf(&sb, "%s %s across %d %s hold %s %s once parent-child hubs collapse",
-		formatThousands(total), Pluralize(total, "module", "modules"),
+		FormatThousands(total), Pluralize(total, "module", "modules"),
 		len(measurements), Pluralize(len(measurements), "crate", "crates"),
-		formatThousands(tangled), Pluralize(tangled, "tangle", "tangles"))
+		FormatThousands(tangled), Pluralize(tangled, "tangle", "tangles"))
 
 	width := len("crate")
 	for _, measurement := range measurements {
@@ -543,8 +543,8 @@ func formatModuleCyclesGauge(measurements []crateModuleCycles) string {
 	fmt.Fprintf(&sb, row, width, "crate", "modules", "in cycles", "max raw", "tangles")
 	for _, measurement := range measurements {
 		fmt.Fprintf(&sb, row, width, measurement.pkg,
-			formatThousands(measurement.modules), formatThousands(measurement.inCycle),
-			formatThousands(measurement.maxRaw), formatThousands(len(measurement.tangles)))
+			FormatThousands(measurement.modules), FormatThousands(measurement.inCycle),
+			FormatThousands(measurement.maxRaw), FormatThousands(len(measurement.tangles)))
 	}
 	return sb.String()
 }

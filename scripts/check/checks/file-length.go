@@ -354,7 +354,7 @@ func formatLongFiles(files []longFile, allowlist fileLengthAllowlist, allowliste
 	}
 	return fmt.Sprintf("%d new %s over the length limit (%s lines, %s for tests)%s:\n%s\nsplit it if that's a genuine architectural win, otherwise add it to scripts/check/checks/file-length-allowlist.json WITH a reason",
 		len(files), Pluralize(len(files), "file", "files"),
-		formatThousands(fileLengthWarnLines), formatThousands(fileLengthTestWarnLines),
+		FormatThousands(fileLengthWarnLines), FormatThousands(fileLengthTestWarnLines),
 		suffix, strings.TrimRight(sb.String(), "\n"))
 }
 

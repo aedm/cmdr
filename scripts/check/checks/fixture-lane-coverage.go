@@ -335,5 +335,5 @@ func RunFixtureLaneCoverage(ctx *CheckContext) (CheckResult, error) {
 
 	gated := countGatedFixtureCells(files)
 	return Success(fmt.Sprintf("%s Docker-gated fixture %s in the app crate, all reachable by the lane's filter",
-		formatThousands(gated), Pluralize(gated, "cell", "cells"))), nil
+		FormatThousands(gated), Pluralize(gated, "cell", "cells"))), nil
 }

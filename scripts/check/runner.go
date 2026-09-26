@@ -37,7 +37,10 @@ type CheckState struct {
 	// Tests is what a test lane recorded about its individual tests, filed on the
 	// red path as well as the green one. Empty for every other check.
 	Tests []checks.TestRecord
-	mu    sync.Mutex
+	// FullOutputPath is where this run saved the check's full output, or "" when
+	// nothing was saved (a quiet pass, `--no-log`, or a failed write).
+	FullOutputPath string
+	mu             sync.Mutex
 }
 
 // Runner manages parallel check execution.
@@ -328,10 +331,15 @@ func (r *Runner) runCheck(state *CheckState) {
 	}
 	state.mu.Unlock()
 
-	r.printResult(state)
+	body := outputBody(state)
+	if !r.noLog && keepsFullOutput(state, body) {
+		state.FullOutputPath = saveFullOutput(state, r.ctx.RootDir, body)
+	}
+	printed := r.printResult(state)
 	if !r.noLog {
 		logCheckStats(state)
 		logTestStats(state)
+		logOutputStats(state, body, printed)
 	}
 }
 
@@ -350,10 +358,12 @@ func (r *Runner) suppressedInQuiet(state *CheckState) bool {
 	}
 }
 
-// printResult outputs the result of a check.
-func (r *Runner) printResult(state *CheckState) {
+// printResult outputs the result of a check and returns how many bytes of the
+// check's own output it printed (0 when quiet mode hid the line). In quiet mode
+// an output over the budget prints as an excerpt (`capOutput`).
+func (r *Runner) printResult(state *CheckState) int {
 	if r.quiet && r.suppressedInQuiet(state) {
-		return
+		return 0
 	}
 
 	r.outputMu.Lock()
@@ -366,9 +376,14 @@ func (r *Runner) printResult(state *CheckState) {
 	prefix := fmt.Sprintf("%s: %s / %s", checks.AppDisplayName(def.App), def.Tech, def.CLIName())
 	paddedPrefix := r.padPrefix(prefix)
 
+	shown := outputBody(state)
+	if r.quiet {
+		shown = capOutput(shown, state.FullOutputPath)
+	}
+
 	switch state.Status {
 	case StatusCompleted:
-		msg := state.Result.Message
+		msg := shown
 		statusColor := colorGreen
 		statusText := "OK"
 		if state.Result.Code == checks.ResultWarning {
@@ -394,13 +409,13 @@ func (r *Runner) printResult(state *CheckState) {
 			paddedPrefix, colorGreen, colorReset, colorDim, colorReset, colorDim, state.Result.Message, colorReset)
 
 	case StatusSkipped:
-		fmt.Printf("• %s... %sSKIPPED%s (%s) - %s\n", paddedPrefix, colorYellow, colorReset, formatDuration(state.Duration), state.Result.Message)
+		fmt.Printf("• %s... %sSKIPPED%s (%s) - %s\n", paddedPrefix, colorYellow, colorReset, formatDuration(state.Duration), shown)
 
 	case StatusFailed:
 		fmt.Printf("• %s... %sFAILED%s (%s)\n", paddedPrefix, colorRed, colorReset, formatDuration(state.Duration))
-		errMsg := state.Error.Error()
-		fmt.Print(indentOutput(errMsg, "      "))
+		fmt.Print(indentOutput(shown, "      "))
 	}
+	return len(shown)
 }
 
 // printBlocked outputs that a check was blocked.

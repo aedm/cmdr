@@ -48,13 +48,14 @@ naming review (§ "The unrecognized-name log").
 - **`--svelte`, `--svelte-only`**: Run only Svelte checks (desktop)
 - **`--check ID`**: Run specific checks by ID or nickname (same as naming them positionally)
 - **`--ci`**: Disable auto-fixing (for CI)
-- **`-v`, `--verbose`**: Print a line per check instead of the collapsed summary (details below); `--ci` implies it
+- **`-v`, `--verbose`**: Print a line per check instead of the collapsed summary, and every check's output whole instead
+  of an excerpt (details below); `--ci` implies it
 - **`--include-slow`**: Include slow checks (excluded by default)
 - **`--only-slow`**: Run only slow checks
 - **`--fast`**: Run only the curated fast pre-commit check set
 - **`--fresh`**: Bypass the input-fingerprint cache: run everything selected, then refresh it
 - **`--fail-fast`**: Stop on first failure
-- **`--no-log`**: Disable the CSV logs (all three of them)
+- **`--no-log`**: Disable the CSV logs (all four of them) and the saved outputs
 - **`--graph`**: Render the check dependency graph (weights + lanes + median wall-time) and exit
 - **`--graph-format`**: Graph output: `tree` (default, colored terminal), `mermaid`, `dot`
 - **`--docs-graph`**: Render the doc-discoverability tree (rooted at the repo-root `CLAUDE.md`) with per-doc usage, and
@@ -123,6 +124,40 @@ Implementation: `parseFlags` derives `cliFlags.quiet` as `!(verbose || ci)`, `Ru
 per-check lines to hide, and `printSuccess` / `summarizeRun` in `main.go` build the summary line. Caching, logging, and
 exit codes are unchanged. Suppression is output-only.
 
+### Output budget and the full-output log
+
+Quiet mode also caps what ONE check can print, because the same agent reading the run pays for every line of it. The
+trigger was `i18n-coverage` on a branch between writing English and translating it: 19 keys × 10 locales printed 204
+lines (14 KB) to say one thing.
+
+- **The budget** (`output_log.go`): an output over 40 lines or 8 KB prints its first 20 and last eight lines, each
+  clipped to 300 characters, then one closing line:
+  `Output cut to fit (204 lines, 14,253 bytes in all); full output: <path> (or rerun with -v)`. Head and tail both,
+  since errors lead and summaries (nextest's failure list) trail. Under budget, output prints exactly as before. `-v`
+  and `--ci` never cap.
+- **The saved text**: every failed or warning check, and any output that got capped, is written whole to
+  `output/<timestamp>-<pid>-<check>.log` beside the CSV logs, headed by the check, verdict, time, and worktree. Names
+  sort chronologically; `pruneOutputDir` keeps the newest 500. `--no-log` saves nothing, and the closing line then names
+  only `-v`.
+- **`output-log.csv`** (`timestamp,check,result,output_bytes,output_lines,printed_bytes,full_output`) has one row per
+  check that RAN (cache hits and blocked checks print nothing of their own). `result` is `pass` / `warn` / `fail` /
+  `skip`, a warning being its own label here, unlike in `check-log.csv`. `printed_bytes` is what reached stdout: 0 for a
+  pass quiet mode hid, less than `output_bytes` for a capped one. `full_output` is the saved file, or empty.
+
+**Decision**: fix a noisy check at the source before reaching for the budget. **Why**: the budget is a backstop that
+keeps one lane from flooding a run; an excerpt still costs a round trip to the file when the cut part mattered. So
+`i18n-locale-check-lib.ts` prints a finding several locales share once, under all of them (`groupSharedIssues`), which
+took that same failure to 23 lines, well under budget.
+
+Which checks are loudest when they fail, and how often they got cut:
+
+```sh
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/output-log.csv o' \
+  "select \"check\", count(*) as runs, max(cast(output_bytes as int)) as max_bytes,
+   sum(cast(printed_bytes as int) < cast(output_bytes as int)) as capped
+   from o where result in ('fail','warn') group by 1 order by 3 desc limit 15"
+```
+
 ## Architecture
 
 ```
@@ -162,6 +197,8 @@ pnpm check [flags]
 - **`stats.go`**: CSV stats logging: one row per check to `check-log.csv` (`logCheckStats`), plus one row per individual
   test to `test-log.csv` (`logTestStats`, § "The per-test log"); `logPath` resolves all three logs (§ "Where the logs
   live")
+- **`output_log.go`**: the stdout budget per check (`capOutput`), the saved full outputs under `output/`, and the fourth
+  CSV, `output-log.csv` (§ "Output budget and the full-output log")
 - **`unknown_selector_log.go`**: the third CSV, one row per selector the runner didn't recognize
   (`unknown-check-log.csv`), plus the nearest-name guess it shares with the error message (§ "The unrecognized-name
   log")
@@ -317,11 +354,12 @@ a per-platform allowlist. See `checks/DETAILS.md` § "E2E test duration flagger"
 
 **TTY detection:** `golang.org/x/term.IsTerminal` gates the live status line; CI logs stay clean.
 
-**Where the logs live:** all three sit in `~/.local/share/check-runner/cmdr/` (`logPath` in `stats.go`, honoring
-`$XDG_DATA_HOME`), so the rest of this file names them by bare filename. They're deliberately outside the repo: the
-history spans years and every worktree, and a worktree teardown must not take it along. The `check-runner/` parent is
-shared with the copies of this runner living in other repos, each under its own project subdirectory, which is why
-`projectLogDirName` is the only token those copies have to change.
+**Where the logs live:** all four, and the `output/` dir of saved check outputs, sit in
+`~/.local/share/check-runner/cmdr/` (`logPath` in `stats.go`, honoring `$XDG_DATA_HOME`), so the rest of this file names
+them by bare filename. They're deliberately outside the repo: the history spans years and every worktree, and a worktree
+teardown must not take it along. The `check-runner/` parent is shared with the copies of this runner living in other
+repos, each under its own project subdirectory, which is why `projectLogDirName` is the only token those copies have to
+change.
 
 **CSV stats logging:** Each check run appends a row to `check-log.csv` with timestamp, app, check name, duration, result
 (pass/fail/skip/blocked/cached), and optional counts (total, issues, changes). `CheckResult` has `Total`, `Issues`,
