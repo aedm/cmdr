@@ -65,10 +65,11 @@ export function hubMcpEntries(rows: HubRow[], lookups: HubMcpLookups): PaneFileE
 
 function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {
   const tokens = [`protocol=${row.protocol}`, `status="${row.status}"`, `address=${row.address}`]
+  // The account it's signed in as (a share: opens as); `(guest)` can't be an account's name.
+  if (row.account !== null) tokens.push(`account=${row.account.kind === 'guest' ? '(guest)' : row.account.username}`)
   if (row.kind === 'share') {
-    // A saved share under the row above it, and the account it opens as.
+    // A saved share under the row above it.
     tokens.push('kind=share')
-    if (row.account !== null) tokens.push(`account=${row.account}`)
   } else {
     const shares = lookups.shareCountOf?.(row)
     if (shares !== undefined) tokens.push(`shares=${String(shares)}`)

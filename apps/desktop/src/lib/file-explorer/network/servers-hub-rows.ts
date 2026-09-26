@@ -22,6 +22,7 @@
 
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
 import type { ConnectionState, NetworkHost, VolumeInfo } from '../types'
+import { sameAccount, signedInAsOfMount, signedInAsUser, type SignedInAs } from './signed-in-as'
 
 /** SMB's own port, which an address leaves unsaid. */
 const SMB_PORT = 445
@@ -51,10 +52,11 @@ export interface HubRow {
   /** A share's server row, `null` for a server. */
   parentId: string | null
   /**
-   * A share's account, `null` for guest and for every server row: the live mount's while it's connected,
-   * else the saved one the next connect uses.
+   * The account the row is signed in as, `null` when nothing known says. A share: the live mount's while it's
+   * connected, else the saved one the next connect uses. An SMB server: its live mounts' when they agree, else its
+   * share list's (`serverAccount`). A one-place server: `null` (its name is `user@host` already).
    */
-  account: string | null
+  account: SignedInAs | null
   /** A share's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
   place: SavedPlace | null
   /** What the Name column shows. */
@@ -89,6 +91,11 @@ export interface HubRowSources {
   hosts: NetworkHost[]
   /** The current volume list, which is where a place's standing lives. */
   volumes: VolumeInfo[]
+  /**
+   * The account a host's share list last signed in as, by the host's id (`network-store.svelte.ts`'s
+   * `getListedAccount`), or `undefined` when no listing said.
+   */
+  listedAs?: (hostId: string) => SignedInAs | undefined
 }
 
 /**
@@ -117,6 +124,13 @@ const STATUS_RANK: Record<HubRowStatus, number> = {
 export function buildHubRows(sources: HubRowSources): HubRow[] {
   const states = new Map(sources.volumes.map((volume) => [volume.id, volume.connectionState ?? null]))
   const mountAccounts = new Map(sources.volumes.map((volume) => [volume.id, volume.mountAccount ?? null]))
+  const listed = (ids: (string | undefined)[]): SignedInAs | null => {
+    for (const id of ids) {
+      const answer = id === undefined ? undefined : sources.listedAs?.(id)
+      if (answer) return answer
+    }
+    return null
+  }
   const claimed = new Set<string>()
   const taken = new Set<string>()
   const rows: HubRow[] = []
@@ -135,7 +149,7 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
 
   for (const host of sources.hosts) {
     if (claimed.has(host.id)) continue
-    add(nearbyRow(host))
+    add({ ...nearbyRow(host), account: listed([host.id]) })
   }
 
   // Servers in rank order, each followed by its shares in name order. ❗ Shares
@@ -147,8 +161,15 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
     const shares = [...row.saved.places].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     )
-    for (const place of shares) {
-      const share = shareRow(row, place, states, mountAccounts.get(place.volumeId) ?? null)
+    const shareRows = shares.map((place) => shareRow(row, place, states, mountAccounts.get(place.volumeId) ?? null))
+    const liveAccounts = shares.flatMap((place) => {
+      const state = states.get(place.volumeId)
+      const account =
+        state === 'direct' || state === 'os_mount' ? signedInAsOfMount(mountAccounts.get(place.volumeId)) : null
+      return account ? [account] : []
+    })
+    row.account = serverAccount(liveAccounts, listed([row.host?.id, row.id]))
+    for (const share of shareRows) {
       if (taken.has(share.id)) continue
       taken.add(share.id)
       ordered.push(share)
@@ -175,12 +196,12 @@ function shareRow(
 ): HubRow {
   const state = states.get(place.volumeId) ?? null
   const live = state === 'direct' || state === 'os_mount'
-  const liveAccount = mountAccount === null ? undefined : mountAccount.toLowerCase() === 'guest' ? null : mountAccount
+  const liveAccount = live ? signedInAsOfMount(mountAccount) : null
   return {
     id: `share:${place.volumeId}`,
     kind: 'share',
     parentId: server.id,
-    account: live && liveAccount !== undefined ? liveAccount : place.username,
+    account: liveAccount ?? signedInAsUser(place.username),
     place,
     name: place.name,
     protocol: 'smb',
@@ -192,6 +213,18 @@ function shareRow(
     saved: server.saved,
     host: server.host,
   }
+}
+
+/**
+ * The account an SMB server row is signed in as.
+ *
+ * ❗ Its LIVE mounts first, since they are the sessions it has, but only when they
+ * agree: two shares mounted as two accounts say nothing about "the" account. Then
+ * the account its share list signed in as. `null` when neither says.
+ */
+function serverAccount(live: SignedInAs[], listed: SignedInAs | null): SignedInAs | null {
+  if (live.length > 0 && live.every((account) => sameAccount(account, live[0]))) return live[0]
+  return listed
 }
 
 /**

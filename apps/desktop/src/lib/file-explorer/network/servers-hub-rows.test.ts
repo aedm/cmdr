@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { buildHubRows, openMoveFor } from './servers-hub-rows'
 import type { SavedServer } from '$lib/tauri-commands'
 import type { NetworkHost, VolumeInfo } from '../types'
+import type { SignedInAs } from './signed-in-as'
 
 function sftpServer(overrides: Partial<SavedServer> = {}): SavedServer {
   const id = overrides.id ?? 'sftp-nas.local-22-ada'
@@ -397,7 +398,7 @@ describe('saved SMB shares', () => {
 
     expect(rows.map((row) => [row.kind, row.name, row.account])).toEqual([
       ['server', "Sven's NAS", null],
-      ['share', 'Container', 'sven'],
+      ['share', 'Container', { kind: 'user', username: 'sven' }],
       ['share', 'Scans', null],
     ])
     const container = rows[1]
@@ -442,10 +443,75 @@ describe('saved SMB shares', () => {
     const account = (volumes: VolumeInfo[]) =>
       buildHubRows({ saved: [withShares], hosts: [], volumes }).find((row) => row.name === 'Container')?.account
 
-    expect(account([live('testuser')])).toBe('testuser')
-    expect(account([live('GUEST')]), 'a guest mount opens as nobody').toBeNull()
-    expect(account([live(null)]), 'a mount that says nothing leaves the saved one').toBe('sven')
-    expect(account([]), 'not connected: the account the next connect uses').toBe('sven')
+    expect(account([live('testuser')])).toEqual({ kind: 'user', username: 'testuser' })
+    expect(account([live('GUEST')]), 'a guest mount is signed in as guest').toEqual({ kind: 'guest' })
+    expect(account([live(null)]), 'a mount that says nothing leaves the saved one').toEqual({
+      kind: 'user',
+      username: 'sven',
+    })
+    expect(account([]), 'not connected: the account the next connect uses').toEqual({
+      kind: 'user',
+      username: 'sven',
+    })
+  })
+
+  /**
+   * ❗ An SMB SERVER row names the account it's actually signed in as, from what's
+   * already known and ❌ never a Keychain read: its live mounts first (they are the
+   * sessions), then the listing's own answer. Mounts that disagree say nothing about
+   * "the" account, so the listing speaks.
+   */
+  describe('the account a server row is signed in as', () => {
+    const live = (id: string, mountAccount: string): VolumeInfo => ({
+      id,
+      name: id,
+      path: `/Volumes/${id}`,
+      category: 'attached_volume',
+      isEjectable: false,
+      connectionState: 'direct',
+      mountAccount,
+    })
+    const serverAccount = (volumes: VolumeInfo[], listed?: SignedInAs) =>
+      buildHubRows({
+        saved: [withShares],
+        hosts: [],
+        volumes,
+        listedAs: (hostId) => (hostId === withShares.id ? listed : undefined),
+      })[0].account
+
+    it('names the account its live mounts are signed in as', () => {
+      expect(serverAccount([live('smb-container', 'testuser')])).toEqual({ kind: 'user', username: 'testuser' })
+      expect(serverAccount([live('smb-container', 'GUEST')])).toEqual({ kind: 'guest' })
+    })
+
+    it('names the account its share list signed in as when nothing is mounted', () => {
+      expect(serverAccount([], { kind: 'guest' })).toEqual({ kind: 'guest' })
+      expect(serverAccount([], { kind: 'user', username: 'ada' })).toEqual({ kind: 'user', username: 'ada' })
+    })
+
+    it('lets the mounts win over the listing, and the listing speak when mounts disagree', () => {
+      expect(serverAccount([live('smb-container', 'testuser')], { kind: 'guest' })).toEqual({
+        kind: 'user',
+        username: 'testuser',
+      })
+      expect(serverAccount([live('smb-container', 'testuser'), live('smb-scans', 'GUEST')], { kind: 'guest' })).toEqual(
+        { kind: 'guest' },
+      )
+    })
+
+    it('says nothing when nothing is known', () => {
+      expect(serverAccount([])).toBeNull()
+    })
+
+    it('names a nearby host’s listing account too', () => {
+      const rows = buildHubRows({
+        saved: [],
+        hosts: [host()],
+        volumes: [],
+        listedAs: (hostId) => (hostId === 'h1' ? { kind: 'guest' } : undefined),
+      })
+      expect(rows[0].account).toEqual({ kind: 'guest' })
+    })
   })
 
   it('keeps shares under their own server when the servers sort around them', () => {

@@ -78,6 +78,8 @@ vi.mock('./network-store.svelte', () => ({
   getCredentialStatus: () => 'unknown',
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
   forgetCredentials: vi.fn(() => Promise.resolve()),
+  setCredentialStatus: vi.fn(),
+  getListedAccount: () => undefined,
 }))
 
 vi.mock('./lazy-trigger', () => ({ triggerNetworkDiscovery: vi.fn() }))

@@ -69,6 +69,7 @@ import IconTag from '~icons/lucide/tag'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconTriangleAlert from '~icons/lucide/triangle-alert'
 import IconUnplug from '~icons/lucide/unplug'
+import IconUser from '~icons/lucide/user'
 import IconX from '~icons/lucide/x'
 import IconZap from '~icons/lucide/zap'
 import EjectIcon from './EjectIcon.svelte'
@@ -156,6 +157,7 @@ export const ICON_COMPONENTS = {
   'trash-2': IconTrash2,
   'triangle-alert': IconTriangleAlert,
   unplug: IconUnplug,
+  user: IconUser,
   x: IconX,
   zap: IconZap,
 } satisfies Record<string, Component>

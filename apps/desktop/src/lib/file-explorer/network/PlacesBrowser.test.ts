@@ -31,6 +31,8 @@ const h = vi.hoisted(() => ({
   credentialStatus: 'unknown',
   saveSmbCredentials: vi.fn(),
   openSignInSheet: vi.fn(),
+  // A `SvelteMap` once the store mock is built, so the header follows it like the real store's.
+  listed: new Map<string, unknown>(),
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -45,16 +47,22 @@ vi.mock('$lib/tauri-commands', () => ({
   updateRightPaneState: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock('./network-store.svelte', () => ({
-  getShareState: () => undefined,
-  fetchShares: h.fetchShares,
-  clearShareState: vi.fn(),
-  setShareState: vi.fn(),
-  setCredentialStatus: vi.fn(),
-  getCredentialStatus: () => h.credentialStatus,
-  noteCachedCredentials: h.noteCachedCredentials,
-  forgetCredentials: vi.fn(() => Promise.resolve()),
-}))
+vi.mock('./network-store.svelte', async () => {
+  const { SvelteMap } = await import('svelte/reactivity')
+  h.listed = new SvelteMap<string, unknown>()
+  return {
+    getShareState: () => undefined,
+    fetchShares: h.fetchShares,
+    clearShareState: vi.fn(),
+    setShareState: vi.fn(),
+    setCredentialStatus: vi.fn(),
+    getCredentialStatus: () => h.credentialStatus,
+    noteCachedCredentials: h.noteCachedCredentials,
+    forgetCredentials: vi.fn(() => Promise.resolve()),
+    getListedAccount: (hostId: string) => h.listed.get(hostId),
+    setListedAccount: (hostId: string, account: unknown) => h.listed.set(hostId, account),
+  }
+})
 
 vi.mock('$lib/ui/toast', () => ({ addToast: vi.fn(() => 'id') }))
 
@@ -133,6 +141,7 @@ afterAll(() => navigatorSpy.mockReset())
 describe('PlacesBrowser credential gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    h.listed.clear()
     document.body.innerHTML = ''
     // No stored credentials anywhere (the incident state).
     h.getSmbCredentials.mockRejectedValue(new Error('not found'))
@@ -484,5 +493,77 @@ describe('PlacesBrowser header', () => {
       expect(target.querySelector('.host-name')?.textContent.trim()).toBe('My NAS')
     })
     await unmount(component)
+  })
+})
+
+/**
+ * ❗ The share list's header says which account the list is signed in as, and offers
+ * "Sign in as…" to see it as someone else: on a `map to guest = bad user` server the
+ * guest list is almost empty, and the account's is the one the person came for.
+ */
+describe('PlacesBrowser: the account it is signed in as', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    h.listed.clear()
+    h.getSmbCredentials.mockRejectedValue(new Error('not found'))
+  })
+
+  it('names the account and signs in as another one from the header, staying on the list', async () => {
+    h.listed.set(host.id, { kind: 'guest' })
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.listSharesWithCredentials.mockResolvedValue({ shares: [naspi], authMode: 'creds_required', fromCache: false })
+    let request: SheetRequest | undefined
+    h.openSignInSheet.mockImplementation(async (r: SheetRequest) => {
+      request = r
+      await r.attempt({ mode: 'sign-in', secret: { secret: 'testpass', remember: false }, username: 'testuser' })
+      return { kind: 'handed_off' }
+    })
+    const onBack = vi.fn()
+    const { target, component } = mountBrowser(vi.fn(), onBack)
+    await waitForShareList(target)
+    expect(target.querySelector('.header-row')?.textContent).toContain('as guest')
+
+    const signInAs = must(
+      [...target.querySelectorAll('.header-row button')].find((b) => b.textContent.includes('Sign in as')),
+      'the Sign in as… button',
+    ) as HTMLButtonElement
+    signInAs.click()
+    await vi.waitFor(() => {
+      expect(target.querySelector('.header-row')?.textContent).toContain('as testuser')
+    })
+
+    expect(request?.shape).toEqual({ kind: 'username_password', guestAllowed: false })
+    expect(request?.refusal, 'nothing was refused: the person asked').toBeUndefined()
+    expect(h.listSharesWithCredentials).toHaveBeenCalledWith(
+      host.id,
+      expect.anything(),
+      expect.anything(),
+      host.port,
+      'testuser',
+      'testpass',
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(onBack).not.toHaveBeenCalled()
+    unmount(component)
+  })
+
+  it('stays on the list when the person cancels Sign in as…', async () => {
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.openSignInSheet.mockResolvedValue({ kind: 'cancelled' })
+    const onBack = vi.fn()
+    const { target, component } = mountBrowser(vi.fn(), onBack)
+    await waitForShareList(target)
+    ;(
+      [...target.querySelectorAll('.header-row button')].find((b) =>
+        b.textContent.includes('Sign in as'),
+      ) as HTMLButtonElement
+    ).click()
+    await tick()
+    await tick()
+    expect(h.openSignInSheet).toHaveBeenCalledOnce()
+    expect(onBack).not.toHaveBeenCalled()
+    unmount(component)
   })
 })

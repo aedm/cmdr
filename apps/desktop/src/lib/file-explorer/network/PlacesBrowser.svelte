@@ -21,7 +21,10 @@
         getCredentialStatus,
         noteCachedCredentials,
         forgetCredentials,
+        getListedAccount,
+        setListedAccount,
     } from './network-store.svelte'
+    import PlacesHeader from './PlacesHeader.svelte'
     import {
         listSharesWithCredentials,
         saveSmbCredentials,
@@ -30,9 +33,7 @@
         updateKnownShare,
     } from '$lib/tauri-commands'
     import { addToast } from '$lib/ui/toast'
-    import { tooltip } from '$lib/tooltip/tooltip'
     import { tString } from '$lib/intl/messages.svelte'
-    import { formatInteger } from '$lib/intl/number-format'
     import { getNetworkTimeoutMs, getShareCacheTtlMs } from '$lib/settings/network-settings'
     import { isListingAuthError, openSmbSignInSheet, refusalForShareError } from './smb-sign-in'
     import type { ConnectRefusalKind } from '$lib/servers/connect-refusals'
@@ -96,6 +97,9 @@
      * rows nobody can reach past a modal.
      */
     let signingIn = $state(false)
+
+    /** The account the list is signed in as, off the listings themselves (`getListedAccount`). */
+    const listedAccount = $derived(getListedAccount(host.id))
 
     // Track authenticated credentials for mounting
     let authenticatedCredentials = $state<{ username: string; password: string } | null>(null)
@@ -303,6 +307,28 @@
         }
     }
 
+    /**
+     * "Sign in as…" in the header: the same sheet, asked by the person rather than a
+     * refusal, so it opens with no refusal sentence, prefilled with the account the
+     * list is signed in as, and ❗ a cancel stays on the list (they can already see it).
+     * No guest choice: the sheet selects guest whenever it offers it, and this button
+     * is for signing in with an account.
+     */
+    async function signInAs() {
+        if (signingIn) return
+        signingIn = true
+        try {
+            await openSmbSignInSheet({
+                host,
+                guestAllowed: false,
+                initialUsername: listedAccount?.kind === 'user' ? listedAccount.username : undefined,
+                attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember),
+            })
+        } finally {
+            signingIn = false
+        }
+    }
+
     /** Try to use stored credentials. Returns true if shares were loaded. */
     async function tryStoredCredentials(): Promise<boolean> {
         const serverName = host.name
@@ -358,8 +384,9 @@
             // Update global share state so ServersHub shows correct info
             setShareState(host.id, result)
 
-            // Update credential status
+            // Update credential status, and the account the header names
             setCredentialStatus(host.name, username ? 'has_creds' : 'no_creds')
+            setListedAccount(host.id, username !== null ? { kind: 'user', username } : { kind: 'guest' })
 
             // Store credentials for mounting (empty password is valid for SMB)
             if (username !== null) {
@@ -605,31 +632,15 @@
             </div>
         </div>
     {:else}
-        <div class="header-row">
-            <Button variant="secondary" size="mini" onclick={onBack}>
-                <span class="btn-icon-label">
-                    <Icon name="arrow-left" size={14} aria-hidden="true" />
-                    {tString('fileExplorer.network.share.backArrow')}
-                </span>
-            </Button>
-            <span class="host-name">{hostLabel}</span>
-            {#if authenticatedCredentials || getCredentialStatus(host.name) === 'has_creds'}
-                <button
-                    class="forget-password-btn"
-                    onclick={handleForgetPassword}
-                    use:tooltip={tString('fileExplorer.network.share.forgetPasswordTooltip')}
-                >
-                    <Icon name="key" size={12} aria-hidden="true" />
-                    {tString('fileExplorer.network.share.forgetPassword')}
-                </button>
-            {/if}
-            <span class="share-count"
-                >{tString('fileExplorer.network.share.shareCount', {
-                    count: sortedShares.length,
-                    countText: formatInteger(sortedShares.length),
-                })}</span
-            >
-        </div>
+        <PlacesHeader
+            {hostLabel}
+            account={listedAccount}
+            canForgetPassword={authenticatedCredentials !== null || getCredentialStatus(host.name) === 'has_creds'}
+            shareCount={sortedShares.length}
+            {onBack}
+            onSignInAs={() => void signInAs()}
+            onForgetPassword={() => void handleForgetPassword()}
+        />
         <div class="share-list" bind:this={listContainer} bind:clientHeight={containerHeight}>
             {#each sortedShares as share, index (share.name)}
                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -710,49 +721,6 @@
         display: flex;
         gap: var(--spacing-sm);
         margin-top: var(--spacing-sm);
-    }
-
-    .header-row {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md);
-        padding: var(--spacing-sm) var(--spacing-md);
-        background-color: var(--color-bg-secondary);
-        border-bottom: 1px solid var(--color-border-strong);
-    }
-    .btn-icon-label {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--spacing-xs);
-    }
-
-    .host-name {
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    .forget-password-btn {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-xs);
-        padding: 1px var(--spacing-sm);
-        font-family: var(--font-system), sans-serif;
-        font-size: calc(var(--font-size-sm) * 0.9);
-        color: var(--color-text-tertiary);
-        background: none;
-        border: 1px solid transparent;
-        border-radius: var(--radius-sm);
-    }
-
-    .forget-password-btn:hover {
-        color: var(--color-text-secondary);
-        border-color: var(--color-border);
-        background-color: var(--color-bg-tertiary);
-    }
-
-    .share-count {
-        color: var(--color-text-tertiary);
-        margin-left: auto;
     }
 
     .share-list {

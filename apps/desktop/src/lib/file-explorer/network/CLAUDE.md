@@ -7,7 +7,7 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 
 - `network-store.svelte.ts`: the `$state` singleton behind all network data. `lazy-trigger.ts`: starting mDNS.
 - `ServersHub.svelte` (+ `servers-hub-{rows,actions,mcp}.ts`, `host-status.ts`, `ServersHubRowMenu.svelte`, `ServersHubStatusBar.svelte`): the hub
-  table on the `network` volume. `PlacesBrowser.svelte`: one account's places, and the listing's sign-in.
+  table on the `network` volume. `PlacesBrowser.svelte` (+ `PlacesHeader.svelte`): one account's places, the listing's sign-in, and "Sign in as…".
   `smb-sign-in.ts`: SMB's side of the sheet. `mount-error-messages.ts` (+ `mount-error.ts`): a refused mount's words.
 - `direct-connect.ts` (+ `upgrade-messages.ts`): the "Connect directly" upgrade. `os-mount-notice-bridge.ts` +
   `SmbOsMountFallbackToastContent.svelte`: the slow-connection notice. `smb-reconnect-manager.svelte.ts`: the per-volume
@@ -31,6 +31,8 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 - **`NetworkMountView` must propagate its local `currentNetworkHost` via `onNetworkHostChange`**, mirrored in the parent
   `FilePane` (`initialNetworkHost`). Without it, leaving Network and coming back re-mounts a stale host and opens
   `PlacesBrowser` for the wrong one.
+- **"as testuser" / "as guest" comes only from what's known** (`signed-in-as.ts`): a live mount's account, then the
+  share list's own outcome (`getListedAccount`, set by the listings themselves). ❌ Never a Keychain read to fill it.
 - **Credential status is keyed by lowercase `host.name`** (the stable Bonjour name); IP and hostname both drift.
 - **The `network` volume id is virtual**: its `smb://` path is a sentinel, not a mount. Mounted shares arrive as
   separate `VolumeInfo` entries with real ids.

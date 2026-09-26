@@ -77,10 +77,14 @@
   },
   "servers.hub.shareAccount": "as {username}",
   "@servers.hub.shareAccount": {
-    "description": "Shown after a saved SMB share's name in the Servers list, in a quieter color, saying which account opening the share signs in as: \"Container as sven\". {username} is the account name, never translated.",
+    "description": "Shown after an SMB server's or saved share's name in the Servers list, and after the server's name in its share list, in a quieter color, saying which account it's signed in as: \"Container as sven\". {username} is the account name, never translated.",
     "placeholders": {
       "username": "the account name, like sven"
     }
+  },
+  "servers.hub.guestAccount": "as guest",
+  "@servers.hub.guestAccount": {
+    "description": "Shown after an SMB server's or share's name in the Servers list, and after the server's name in its share list, in a quieter color: the server is signed in to as a guest, with no account. Pairs with servers.hub.shareAccount (\"as sven\"); keep the two built the same way."
   },
   "servers.hub.editShareHint": "A share has nothing to edit. To edit its server, select the server’s row.",
   "@servers.hub.editShareHint": {

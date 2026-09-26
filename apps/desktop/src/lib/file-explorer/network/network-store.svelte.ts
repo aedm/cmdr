@@ -23,6 +23,7 @@ import { initializeSettings } from '$lib/settings'
 import type { UnlistenFn } from '$lib/tauri-commands'
 import type { NetworkHost, DiscoveryState, ShareListResult, ShareListError } from '../types'
 import { ShareListFailure, shareListErrorOf } from './share-list-error'
+import type { SignedInAs } from './signed-in-as'
 
 // Singleton state for network discovery
 let hosts = $state<NetworkHost[]>([])
@@ -35,6 +36,13 @@ type ShareState =
   | { status: 'loaded'; result: ShareListResult; fetchedAt: number }
   | { status: 'error'; error: ShareListError; fetchedAt: number }
 const shareStates = new SvelteMap<string, ShareState>()
+/**
+ * The account each host's share list last signed in as, by host id. ❗ Off the
+ * listings only: a guest listing says guest, a sign-in says its account
+ * (`setListedAccount`), and an account listing answered from the backend's cache
+ * keeps what the sign-in recorded, since it IS that listing.
+ */
+const listedAccounts = new SvelteMap<string, SignedInAs>()
 const prefetchingHosts = new SvelteSet<string>()
 
 // Credential status tracking - 'unknown' | 'has_creds' | 'no_creds' | 'failed'
@@ -127,8 +135,10 @@ async function fetchSharesSilent(host: NetworkHost): Promise<void> {
       getShareCacheTtlMs(),
     )
     shareStates.set(host.id, { status: 'loaded', result, fetchedAt: Date.now() })
+    noteListing(host.id, result)
   } catch (error) {
     shareStates.set(host.id, { status: 'error', error: shareListErrorOf(error), fetchedAt: Date.now() })
+    listedAccounts.delete(host.id)
   }
 }
 
@@ -175,6 +185,7 @@ export async function initNetworkDiscovery(): Promise<void> {
     hosts = hosts.filter((h) => h.id !== id)
     // Clean up share state for lost host
     shareStates.delete(id)
+    listedAccounts.delete(id)
   })
 
   // Listen for host resolution from mDNS (Bonjour NSNetService.resolve())
@@ -287,9 +298,11 @@ export async function fetchShares(host: NetworkHost): Promise<ShareListResult> {
       getShareCacheTtlMs(),
     )
     shareStates.set(host.id, { status: 'loaded', result, fetchedAt: Date.now() })
+    noteListing(host.id, result)
     return result
   } catch (error) {
     shareStates.set(host.id, { status: 'error', error: shareListErrorOf(error), fetchedAt: Date.now() })
+    listedAccounts.delete(host.id)
     throw error
   }
 }
@@ -315,9 +328,28 @@ export function forgetShareListsOfMachine(host: NetworkHost): void {
   for (const other of hosts) {
     const sameIp = host.ipAddress !== undefined && other.ipAddress === host.ipAddress
     const sameHostname = host.hostname !== undefined && other.hostname === host.hostname
-    if (other.id === host.id || sameIp || sameHostname) shareStates.delete(other.id)
+    if (other.id === host.id || sameIp || sameHostname) {
+      shareStates.delete(other.id)
+      listedAccounts.delete(other.id)
+    }
   }
   shareStates.delete(host.id)
+  listedAccounts.delete(host.id)
+}
+
+/** A plain listing's account: a guest one says guest; an account one keeps what its sign-in recorded. */
+function noteListing(hostId: string, result: ShareListResult): void {
+  if (result.authMode === 'guest_allowed') listedAccounts.set(hostId, { kind: 'guest' })
+}
+
+/** The account `hostId`'s share list last signed in as, or `undefined` when no listing said. */
+export function getListedAccount(hostId: string): SignedInAs | undefined {
+  return listedAccounts.get(hostId)
+}
+
+/** Records the account a listing with explicit credentials (or the guest choice) signed in as. */
+export function setListedAccount(hostId: string, account: SignedInAs): void {
+  listedAccounts.set(hostId, account)
 }
 
 /**

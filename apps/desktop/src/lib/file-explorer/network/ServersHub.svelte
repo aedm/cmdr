@@ -17,6 +17,7 @@
     import {
         getNetworkHosts,
         getDiscoveryState,
+        getListedAccount,
         getShareCount,
         clearShareState,
         fetchShares,
@@ -54,6 +55,7 @@
     import { eventMatchesCommand } from '$lib/shortcuts'
     import { claimKey } from '$lib/shortcuts/claim-key'
     import { triggerNetworkDiscovery } from './lazy-trigger'
+    import { signedInAsLabel } from './signed-in-as-label'
     import { tString } from '$lib/intl/messages.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
     import { getAppLogger } from '$lib/logging/logger'
@@ -99,7 +101,7 @@
     const volumes = $derived(getVolumes())
     const isSearching = $derived(getDiscoveryState() === 'searching')
     const discoveryEnabled = $derived(getNetworkEnabled())
-    const rows = $derived(buildHubRows({ saved: savedServers, hosts, volumes }))
+    const rows = $derived(buildHubRows({ saved: savedServers, hosts, volumes, listedAs: getListedAccount }))
 
     /**
      * F8, the row menus, and the SMB host menu's answers. Live getters, ❌ never
@@ -415,9 +417,8 @@
         cursorIndex = rows.length
     }
 
-    /** " as testuser", space first: a Svelte block trims the whitespace it opens with. */
-    const accountSuffix = (row: HubRow) =>
-        row.account === null ? '' : ` ${tString('servers.hub.shareAccount', { username: row.account })}`
+    /** " as testuser" / " as guest", space first: a Svelte block trims the whitespace it opens with. */
+    const accountSuffix = (row: HubRow) => (row.account === null ? '' : ` ${signedInAsLabel(row.account)}`)
 
     /** The protocol name, from the same map the volume switcher's slot reads. */
     function typeLabel(row: HubRow): string {
