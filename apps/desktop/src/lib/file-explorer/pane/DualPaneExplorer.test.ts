@@ -130,6 +130,7 @@ vi.mock('$lib/tauri-commands', () => ({
   activateWindowMenu: vi.fn().mockResolvedValue(undefined),
   // Volume space polling
   watchVolumeSpace: vi.fn().mockResolvedValue(undefined),
+  unwatchVolumeSpace: vi.fn().mockResolvedValue(undefined),
   // Eject
   ejectVolume: vi.fn().mockResolvedValue(undefined),
   onVolumeContextAction: vi.fn().mockResolvedValue(() => {}),

@@ -104,6 +104,7 @@ vi.mock('$lib/tauri-commands', () => ({
   notifyDialogOpened: vi.fn().mockResolvedValue(undefined),
   notifyDialogClosed: vi.fn().mockResolvedValue(undefined),
   watchVolumeSpace: vi.fn().mockResolvedValue(undefined),
+  unwatchVolumeSpace: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('$lib/icon-cache', async () => {

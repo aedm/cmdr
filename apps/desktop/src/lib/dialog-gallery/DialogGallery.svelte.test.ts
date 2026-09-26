@@ -45,6 +45,7 @@ vi.mock('$lib/tauri-commands', () => ({
   onScanPreviewCancelled: vi.fn(() => Promise.resolve(() => {})),
   onDirectoryDiff: vi.fn(() => Promise.resolve(() => {})),
   getVolumeSpace: vi.fn(() => Promise.resolve(null)),
+  listSavedServers: vi.fn(() => Promise.resolve([])),
   findFileIndex: vi.fn(() => Promise.resolve(null)),
   getFileAt: vi.fn(() => Promise.resolve(null)),
   getAiStatus: vi.fn(() => Promise.resolve('unavailable')),
