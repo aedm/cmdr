@@ -233,15 +233,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "Parece una dirección SMB. Elige SMB arriba si es lo que querías.",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "Parece una dirección SFTP. Elige SFTP arriba si es lo que querías.",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "Parece una dirección WebDAV. Elige WebDAV arriba si es lo que querías.",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "La dirección y la cuenta son las que identifican este servidor. Para cambiarlas, olvida el servidor y vuelve a añadirlo.",
   "@servers.sheet.identityLocked": {

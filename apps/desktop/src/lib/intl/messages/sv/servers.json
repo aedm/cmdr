@@ -234,15 +234,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "Det här ser ut som en SMB-adress. Välj SMB ovan om det var det du menade.",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "Det här ser ut som en SFTP-adress. Välj SFTP ovan om det var det du menade.",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "Det här ser ut som en WebDAV-adress. Välj WebDAV ovan om det var det du menade.",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "Adressen och kontot är det som identifierar den här servern. Glöm servern och lägg till den igen om du vill ändra dem.",
   "@servers.sheet.identityLocked": {

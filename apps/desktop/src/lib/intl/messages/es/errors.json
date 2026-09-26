@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "No tienes permiso para leer este elemento, así que no se puede copiar.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "No tienes permiso para mover este elemento fuera de su carpeta.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Comprueba que tengas acceso a este elemento y a la carpeta en la que está.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "No hay suficiente espacio",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Todo llegó a {landedAt}, pero Cmdr no pudo eliminar el original en {path}, así que ahora está en las dos ubicaciones. No se perdió nada.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Para completar el movimiento, elimina tú el original.",
   "@errors.write.sourceNotRemoved.suggestion": {

@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "Du har inte behörighet att läsa det här objektet, så det går inte att kopiera.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "Du har inte behörighet att flytta det här objektet ur mappen det ligger i.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Kontrollera att du har åtkomst till det här objektet och till mappen det ligger i.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "Inte tillräckligt med utrymme",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Allt kom fram till {landedAt}, men Cmdr kunde inte ta bort originalet på {path}, så det finns på båda ställena nu. Ingenting gick förlorat.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Radera originalet själv för att slutföra flytten.",
   "@errors.write.sourceNotRemoved.suggestion": {

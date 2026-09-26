@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "你沒有權限讀取這個項目，所以無法複製它。",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "你沒有權限把這個項目移出它所在的資料夾。",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "確認你有權限存取這個項目，以及它所在的資料夾。",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "空間不夠",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "所有內容都已經抵達 {landedAt}，但 Cmdr 無法移除 {path} 這個原本的檔案，所以現在兩個位置都有它。什麼都沒被丟掉。",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "要完成這次移動，請自己刪除原本的檔案。",
   "@errors.write.sourceNotRemoved.suggestion": {

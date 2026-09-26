@@ -235,15 +235,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "Das sieht nach einer SMB-Adresse aus. Wähle oben SMB, falls du das gemeint hast.",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "Das sieht nach einer SFTP-Adresse aus. Wähle oben SFTP, falls du das gemeint hast.",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "Das sieht nach einer WebDAV-Adresse aus. Wähle oben WebDAV, falls du das gemeint hast.",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "Adresse und Konto machen diesen Server aus. Vergiss ihn und füge ihn erneut hinzu, um sie zu ändern.",
   "@servers.sheet.identityLocked": {

@@ -794,9 +794,9 @@ const cases: Case[] = [
     },
     op: 'copy',
     expected: {
-      title: "Couldn't access this location",
-      message: "You don't have permission to read this item, so it can't be copied.",
-      suggestion: "Check that you have access to this item and to the folder it's in.",
+      title: "Couldn’t access this location",
+      message: "You don’t have permission to read this item, so it can’t be copied.",
+      suggestion: "Check that you have access to this item and to the folder it’s in.",
     },
   },
   {
@@ -813,8 +813,8 @@ const cases: Case[] = [
     op: 'move',
     mac: true,
     expected: {
-      title: "Couldn't access this location",
-      message: "You don't have permission to move this item out of its folder.",
+      title: "Couldn’t access this location",
+      message: "You don’t have permission to move this item out of its folder.",
       suggestion:
         'Check that you have write access to the parent folder. The file may be locked. Unlock it in Finder (Get Info > uncheck Locked) and try again.',
     },
@@ -842,9 +842,9 @@ const cases: Case[] = [
     expected: {
       title: 'The copy arrived, but the original stayed',
       message:
-        "Everything arrived at /Volumes/naspi/photos/a.jpg, but Cmdr couldn't remove the original at /Users/me/a.jpg, so it's in both places now. Nothing was lost.",
+        "Everything arrived at /Volumes/naspi/photos/a.jpg, but Cmdr couldn’t remove the original at /Users/me/a.jpg, so it’s in both places now. Nothing was lost.",
       suggestion:
-        "macOS protects this one itself, so administrator rights won't change it. The item may be locked: select it in Finder, choose Get Info, and uncheck Locked. To finish the move, delete the original yourself.",
+        "macOS protects this one itself, so administrator rights won’t change it. The item may be locked: select it in Finder, choose Get Info, and uncheck Locked. To finish the move, delete the original yourself.",
     },
   },
   {

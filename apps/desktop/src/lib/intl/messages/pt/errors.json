@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "Você não tem permissão para ler este item, então ele não pode ser copiado.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "Você não tem permissão para mover este item para fora da pasta dele.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Verifique se você tem acesso a este item e à pasta em que ele está.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "Espaço insuficiente",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Tudo chegou em {landedAt}, mas o Cmdr não conseguiu remover o original em {path}, então agora ele está nos dois locais. Nada se perdeu.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Para concluir a movimentação, apague o original por conta própria.",
   "@errors.write.sourceNotRemoved.suggestion": {

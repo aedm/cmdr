@@ -233,15 +233,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "Ez SMB-címnek tűnik. Ha erre gondoltál, fent válaszd az SMB-t.",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "Ez SFTP-címnek tűnik. Ha erre gondoltál, fent válaszd az SFTP-t.",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "Ez WebDAV-címnek tűnik. Ha erre gondoltál, fent válaszd a WebDAV-ot.",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "A cím és a fiók azonosítja ezt a szervert. A módosításukhoz felejtsd el a szervert, és add hozzá újra.",
   "@servers.sheet.identityLocked": {

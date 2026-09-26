@@ -233,15 +233,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "這看起來像是 SMB 位址。如果你本來就是這個意思，請在上方選擇 SMB。",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "這看起來像是 SFTP 位址。如果你本來就是這個意思，請在上方選擇 SFTP。",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "這看起來像是 WebDAV 位址。如果你本來就是這個意思，請在上方選擇 WebDAV。",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "位址和帳號決定了這是哪個伺服器。要改這兩項，先忘記這個伺服器，再重新加入。",
   "@servers.sheet.identityLocked": {

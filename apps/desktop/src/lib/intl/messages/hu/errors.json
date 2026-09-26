@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "Nincs engedélyed olvasni ezt az elemet, így nem másolható.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "Nincs engedélyed áthelyezni ezt az elemet a mappájából.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Ellenőrizd, hogy van hozzáférésed ehhez az elemhez és a mappához, amelyben van.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "Nincs elég hely",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Minden megérkezett ide: {landedAt}, de a Cmdr nem tudta eltávolítani az eredetit innen: {path}, így most mindkét helyen megvan. Semmi sem veszett el.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Az áthelyezés befejezéséhez töröld te magad az eredetit.",
   "@errors.write.sourceNotRemoved.suggestion": {

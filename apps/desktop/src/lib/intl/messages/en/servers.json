@@ -8,7 +8,7 @@
   "@servers.pinHint.title": {
     "description": "Title of a one-time notification, shown the first time five servers sit in the volume switcher's Network group. \"Network group\" is the heading in the switcher (the dropdown listing disks and servers) that servers are filed under; use the same wording as that heading. Friendly and factual, never a warning."
   },
-  "servers.pinHint.body": "Right-click a server and choose Unpin from switcher, or use \"{command}\" from the command palette. It stays in the Servers list.",
+  "servers.pinHint.body": "Right-click a server and choose Unpin from switcher, or use “{command}” from the command palette. It stays in the Servers list.",
   "@servers.pinHint.body": {
     "description": "Body of that notification: how to take a server out of the volume switcher, and the reassurance that unpinning loses nothing. \"Unpin\" must match the context-menu item menu.network.unpin word for word. \"Servers\" is the hub row in the switcher that lists every saved server. The command name arrives translated in {command}; keep the quotation marks your language uses around a UI label.",
     "placeholders": {
@@ -90,7 +90,7 @@
   "@servers.hub.forgetShareConfirmTitle": {
     "description": "Title of the confirmation dialog that asks before a saved SMB share leaves the Servers list."
   },
-  "servers.hub.forgetShareConfirm": "Forget {name}? Cmdr stops listing it. If it''s mounted, it stays mounted, and your files stay on the server.",
+  "servers.hub.forgetShareConfirm": "Forget {name}? Cmdr stops listing it. If it’s mounted, it stays mounted, and your files stay on the server.",
   "@servers.hub.forgetShareConfirm": {
     "description": "Body of the confirmation dialog before a saved SMB share leaves the Servers list and the volume switcher. {name} is the share's name. Reassures that nothing is unmounted or deleted.",
     "placeholders": {
@@ -289,7 +289,7 @@
   "@servers.sheet.addAnyway": {
     "description": "Small button under the address in the Add server sheet, shown only after Cmdr couldn't reach the server: saves it as typed without checking anything. VERB phrase."
   },
-  "servers.sheet.addAnywayHelp": "Cmdr couldn''t check this server, so Add anyway saves it as you typed it.",
+  "servers.sheet.addAnywayHelp": "Cmdr couldn’t check this server, so Add anyway saves it as you typed it.",
   "@servers.sheet.addAnywayHelp": {
     "description": "One line beside the Add anyway button: nothing about the server was checked, so a typo would be saved too. \"Add anyway\" must match servers.sheet.addAnyway word for word."
   },
@@ -362,15 +362,15 @@
   "@servers.sheet.addressHelpWebdav": {
     "description": "One line under the address field while WebDAV is the selected protocol, telling the user what they can type or paste. Keep the example URL as-is."
   },
-  "servers.sheet.addressLooksLikeSmb": "This looks like an SMB address. Pick SMB above if that''s what you meant.",
+  "servers.sheet.addressLooksLikeSmb": "This looks like an SMB address. Pick SMB above if that’s what you meant.",
   "@servers.sheet.addressLooksLikeSmb": {
     "description": "Warning under the address field in the \"Add server\" form, shown while the user types an address that looks like it's for SMB (for example it starts with smb://) but a different protocol is selected in the SMB / SFTP / WebDAV picker right above the field. Nothing changes on its own; the user decides. “SMB” is a protocol name; keep it as-is. “Pick” matches the picker's buttons, which are above this line."
   },
-  "servers.sheet.addressLooksLikeSftp": "This looks like an SFTP address. Pick SFTP above if that''s what you meant.",
+  "servers.sheet.addressLooksLikeSftp": "This looks like an SFTP address. Pick SFTP above if that’s what you meant.",
   "@servers.sheet.addressLooksLikeSftp": {
     "description": "Warning under the address field in the \"Add server\" form, shown while the user types an address that looks like it's for SFTP (for example it starts with sftp:// or ssh://, or ends in port 22) but a different protocol is selected in the SMB / SFTP / WebDAV picker right above the field. Nothing changes on its own; the user decides. “SFTP” is a protocol name; keep it as-is."
   },
-  "servers.sheet.addressLooksLikeWebdav": "This looks like a WebDAV address. Pick WebDAV above if that''s what you meant.",
+  "servers.sheet.addressLooksLikeWebdav": "This looks like a WebDAV address. Pick WebDAV above if that’s what you meant.",
   "@servers.sheet.addressLooksLikeWebdav": {
     "description": "Warning under the address field in the \"Add server\" form, shown while the user types an address that looks like it's for WebDAV (for example it starts with https://) but a different protocol is selected in the SMB / SFTP / WebDAV picker right above the field. Nothing changes on its own; the user decides. “WebDAV” is a protocol name; keep it as-is."
   },
@@ -549,11 +549,11 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
   },
-  "servers.paneState.notConnected": "{name} isn't connected",
+  "servers.paneState.notConnected": "{name} isn’t connected",
   "@servers.paneState.notConnected": {
     "description": "Heading of the pane view shown when the user cancelled connecting to a saved server or share (for example, closed its sign-in form). A plain statement, NOT an error: nothing failed, the person chose not to connect yet.",
     "placeholders": {
-      "name": "the place''s display name, like “private on localhost:11481”"
+      "name": "the place’s display name, like “private on localhost:11481”"
     },
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."

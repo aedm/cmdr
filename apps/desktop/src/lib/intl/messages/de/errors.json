@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "Du hast keine Berechtigung, dieses Objekt zu lesen, deshalb lässt es sich nicht kopieren.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "Du hast keine Berechtigung, dieses Objekt aus seinem Ordner zu bewegen.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Prüfe, ob du Zugriff auf dieses Objekt und auf den Ordner hast, in dem es liegt.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "Nicht genügend Speicher",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Alles ist unter {landedAt} angekommen, aber Cmdr konnte das Original unter {path} nicht entfernen, deshalb liegt es jetzt an beiden Orten. Es ist nichts verloren gegangen.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Um das Bewegen abzuschließen, lösche das Original selbst.",
   "@errors.write.sourceNotRemoved.suggestion": {

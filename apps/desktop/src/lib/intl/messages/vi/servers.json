@@ -233,15 +233,15 @@
   },
   "servers.sheet.addressLooksLikeSmb": "Địa chỉ này có vẻ là địa chỉ SMB. Hãy chọn SMB ở trên nếu đó là ý bạn.",
   "@servers.sheet.addressLooksLikeSmb": {
-    "sourceHash": "89ab389"
+    "sourceHash": "86fc72a"
   },
   "servers.sheet.addressLooksLikeSftp": "Địa chỉ này có vẻ là địa chỉ SFTP. Hãy chọn SFTP ở trên nếu đó là ý bạn.",
   "@servers.sheet.addressLooksLikeSftp": {
-    "sourceHash": "5942840"
+    "sourceHash": "81f95e3"
   },
   "servers.sheet.addressLooksLikeWebdav": "Địa chỉ này có vẻ là địa chỉ WebDAV. Hãy chọn WebDAV ở trên nếu đó là ý bạn.",
   "@servers.sheet.addressLooksLikeWebdav": {
-    "sourceHash": "7741119"
+    "sourceHash": "a1185f1"
   },
   "servers.sheet.identityLocked": "Địa chỉ và tài khoản là những gì xác định máy chủ này. Để thay đổi chúng, hãy quên máy chủ này rồi thêm lại.",
   "@servers.sheet.identityLocked": {

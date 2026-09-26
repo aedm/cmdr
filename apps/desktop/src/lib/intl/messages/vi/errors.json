@@ -1487,15 +1487,15 @@
   },
   "errors.write.permissionDenied.message.sourceCopy": "Bạn không có quyền đọc mục này, nên không thể sao chép nó.",
   "@errors.write.permissionDenied.message.sourceCopy": {
-    "sourceHash": "a815b07"
+    "sourceHash": "849f411"
   },
   "errors.write.permissionDenied.message.sourceMove": "Bạn không có quyền di chuyển mục này ra khỏi thư mục chứa nó.",
   "@errors.write.permissionDenied.message.sourceMove": {
-    "sourceHash": "c9fd25f"
+    "sourceHash": "7704fca"
   },
   "errors.write.permissionDenied.suggestion.sourceRead": "Kiểm tra xem bạn có quyền truy cập mục này và thư mục chứa nó không.",
   "@errors.write.permissionDenied.suggestion.sourceRead": {
-    "sourceHash": "22eb5f4"
+    "sourceHash": "978e180"
   },
   "errors.write.insufficientSpace.title": "Không đủ dung lượng",
   "@errors.write.insufficientSpace.title": {
@@ -1659,7 +1659,7 @@
   },
   "errors.write.sourceNotRemoved.message": "Mọi thứ đã tới {landedAt}, nhưng Cmdr không thể xóa bản gốc ở {path}, nên giờ nó có ở cả hai nơi. Không mất gì cả.",
   "@errors.write.sourceNotRemoved.message": {
-    "sourceHash": "c28d499"
+    "sourceHash": "6800fe4"
   },
   "errors.write.sourceNotRemoved.suggestion": "Để hoàn tất việc di chuyển, hãy tự xóa bản gốc.",
   "@errors.write.sourceNotRemoved.suggestion": {
