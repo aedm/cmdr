@@ -357,6 +357,25 @@ describe('SignInSheet: Add and Add and open', () => {
     expect(submissions.at(-1)).toMatchObject({ mode: 'add_smb', intent: 'save_unchecked' })
   })
 
+  /** ❗ "Couldn't reach localhost" named a different server than `localhost:11499`: the port is part of which one. */
+  it('names the port in the unreachable sentence when it is not the default', async () => {
+    await renderSheet({ mode: 'add', attempt: recording({ kind: 'refused', refusal: 'unreachable' }) })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'localhost:11499')
+    await tick()
+    buttonSaying('Add and open').click()
+    await flush()
+    expect(document.body.textContent).toContain('localhost:11499')
+  })
+
+  it('leaves the default port unsaid', async () => {
+    await renderSheet({ mode: 'add', attempt: recording({ kind: 'refused', refusal: 'unreachable' }) })
+    typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya:445')
+    await tick()
+    buttonSaying('Add and open').click()
+    await flush()
+    expect(document.body.textContent).toContain('reach naspolya.')
+  })
+
   it('offers no Add anyway for an address that does not parse: that is a typo, not a sleeping server', async () => {
     await renderSheet({ mode: 'add', attempt: recording({ kind: 'refused', refusal: 'invalid_url' }) })
     typeInto(document.body.querySelector<HTMLInputElement>('#server-address') as HTMLInputElement, 'naspolya')

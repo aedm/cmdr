@@ -68,7 +68,7 @@
     } from '$lib/tauri-commands'
     import { tString } from '$lib/intl/messages.svelte'
     import { getAppLogger } from '$lib/logging/logger'
-    import type { HostKeyPrompt, SavedServer, ServerTarget } from '$lib/ipc/bindings'
+    import type { HostKeyPrompt, SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 
     interface Props {
         request: SignInSheetRequest
@@ -173,6 +173,18 @@
      */
     const offersAddAnyway = $derived(request.mode === 'add' && (refusal === 'unreachable' || refusal === 'timed_out'))
 
+    /** The protocols' own ports, which a sentence leaves unsaid. */
+    const DEFAULT_PORTS: Record<ServerProtocol, number[]> = { smb: [445], sftp: [22], webdav: [80, 443] }
+
+    /**
+     * The host as a sentence names it: with its port when that isn't the protocol's
+     * own, since `localhost` alone is another server than `localhost:11499`.
+     */
+    function hostWithPort(host: string, port: number | undefined, protocol: ServerProtocol): string {
+        if (port === undefined || DEFAULT_PORTS[protocol].includes(port)) return host
+        return host.includes(':') ? `[${host}]:${String(port)}` : `${host}:${String(port)}`
+    }
+
     /** The subject a refusal's sentence names: the server, and the account on it. */
     const refusalSubject = $derived.by(() => {
         if (request.mode === 'sign-in') {
@@ -183,7 +195,7 @@
             return { host: request.endpoint.host, username }
         }
         const parsed = parseServerAddress(form.address)
-        const host = parsed.kind === 'parsed' ? parsed.host : form.address
+        const host = parsed.kind === 'parsed' ? hostWithPort(parsed.host, parsed.port, form.protocol) : form.address
         return { host, username: form.username || host }
     })
 
