@@ -1,0 +1,14 @@
+{
+  "amp.mcpServers": {
+    "cmdr-prod": {
+      "url": "http://127.0.0.1:19224/mcp"
+    },
+    "cmdr-dev": {
+      "url": "http://127.0.0.1:19225/mcp"
+    },
+    "tauri": {
+      "command": "npx",
+      "args": ["-y", "@hypothesi/tauri-mcp-server"]
+    }
+  }
+}
