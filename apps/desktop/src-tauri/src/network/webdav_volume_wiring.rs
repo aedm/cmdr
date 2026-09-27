@@ -110,14 +110,18 @@ pub async fn connect_and_register(
 ) -> WebdavConnection {
     let volume_id = cmdr_fs::volume::webdav_volume_id(params.host(), params.port(), &params.username);
     let start_folder = saved_server_fields::start_folder_for_root(&params.remote_root.to_string_lossy(), start_folder);
-    let (host, _offer) =
+    let (host, offer) =
         one_shot_credentials::host_for_dial(&params.credential_service(), &params.username, secret).await;
     let (cancel, _attempt) = ATTEMPTS.register(attempt_id);
     let label = saved_server_fields::server_label(display_name, &params.username, params.host());
     let outcome = cmdr_webdav::connect_webdav_volume(&label, &volume_id, params.clone(), host, cancel).await;
 
     let volume = match outcome {
-        Ok(volume) => volume,
+        Ok(volume) => {
+            // Only now: a secret filed before the dial outlived a cancelled or refused one.
+            offer.went_through().await;
+            volume
+        }
         Err(e) => return failed(e),
     };
 

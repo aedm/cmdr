@@ -114,14 +114,18 @@ pub async fn connect_and_register(
 ) -> SftpConnection {
     let volume_id = cmdr_fs::volume::sftp_volume_id(&params.host, params.port, &params.username);
     let start_folder = saved_server_fields::start_folder_for_root(&params.remote_root.to_string_lossy(), start_folder);
-    let (host, _offer) =
+    let (host, offer) =
         one_shot_credentials::host_for_dial(&params.credential_service(), &params.username, secret).await;
     let (cancel, _attempt) = ATTEMPTS.register(attempt_id);
     let label = saved_server_fields::server_label(display_name, &params.username, &params.host);
     let outcome = cmdr_sftp::connect_sftp_volume(&label, &volume_id, params.clone(), host, cancel).await;
 
     let volume = match outcome {
-        Ok(SftpConnectOutcome::Connected(volume)) => volume,
+        Ok(SftpConnectOutcome::Connected(volume)) => {
+            // Only now: a secret filed before the dial outlived a cancelled or refused one.
+            offer.went_through().await;
+            volume
+        }
         Ok(SftpConnectOutcome::NeedsHostKeyApproval(prompt)) => return SftpConnection::NeedsHostKeyApproval(prompt),
         Err(e) => return failed(e),
     };

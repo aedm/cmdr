@@ -44,9 +44,9 @@ pub struct SecretOffer {
     /// The secret itself: a password, a key file's passphrase, whatever the
     /// account's rung wants. ❌ Never logged, never in an event, never a property.
     pub secret: String,
-    /// The "Remember in Keychain" switch as the sheet showed it. `true` writes
-    /// the secret before dialing; `false` keeps it in memory for this attempt
-    /// only.
+    /// The "Remember in Keychain" switch as the sheet showed it. `true` files the
+    /// secret once the dial went through ([`DialOffer::went_through`]); `false`
+    /// keeps it in memory for this attempt only.
     pub remember: bool,
 }
 
@@ -195,31 +195,53 @@ impl CredentialStore for HostCredentials {
 ///
 /// - No offer: the app's ordinary host. The dial reads the store, which is every
 ///   connect that isn't answering a sign-in.
-/// - `remember: true`: the secret is written first, then the same ordinary host.
-///   Identical to what a save-then-connect round-trip did, one round-trip
-///   shorter.
-/// - `remember: false`: a host whose secret store answers this one
-///   `(service, account)` from memory and ❗ forgets it the moment the returned
-///   guard drops, which is the end of the attempt.
-///
-/// ❗ A store that declines the write falls back to the wrapper: the user typed a
-/// secret and this dial has to use it. All that's lost is "silent next time",
-/// which is what `CredentialsNotStored` means everywhere else.
-pub async fn host_for_dial(
-    service: &str,
-    account: &str,
-    offer: Option<SecretOffer>,
-) -> (VolumeHost, Option<OneShotGuard>) {
+/// - An offer: a host whose secret store answers this one `(service, account)`
+///   from memory and ❗ forgets it once the returned [`DialOffer`] drops, which is
+///   the end of the attempt.
+/// - `remember: true` additionally files the secret, ❗ but only when the dial
+///   WENT THROUGH ([`DialOffer::went_through`]). Writing it before the dial left a
+///   password in the store for an Add the person cancelled at the host-key step,
+///   or one the server refused.
+pub async fn host_for_dial(service: &str, account: &str, offer: Option<SecretOffer>) -> (VolumeHost, DialOffer) {
     let host = crate::volume_host::host();
     let Some(offer) = offer else {
-        return (host, None);
+        return (host, DialOffer::default());
     };
     let credentials = StoredCredentials {
         username: account.to_string(),
         secret: offer.secret,
     };
-    if offer.remember {
-        let (service, account, secret) = (service.to_string(), account.to_string(), credentials.secret.clone());
+    let to_remember = offer.remember.then(|| (service.to_string(), account.to_string(), credentials.secret.clone()));
+    let (host, guard) = offer_for_one_dial(host, service, Some(account), credentials);
+    (
+        host,
+        DialOffer {
+            _guard: Some(guard),
+            to_remember,
+        },
+    )
+}
+
+/// What an offer leaves to do once its dial is over: forget the in-memory secret
+/// (on drop), and file it when the dial went through and the person asked to.
+#[derive(Default)]
+#[must_use]
+pub struct DialOffer {
+    _guard: Option<OneShotGuard>,
+    /// `(service, account, secret)` to file on success; `None` for `remember: false`.
+    to_remember: Option<(String, String, String)>,
+}
+
+impl DialOffer {
+    /// The dial went through: files the secret if the person asked to remember it.
+    ///
+    /// ❗ A store that declines the write is logged and carried on from: the place is
+    /// connected, and all that's lost is "silent next time", which is what
+    /// `CredentialsNotStored` means everywhere else.
+    pub async fn went_through(mut self) {
+        let Some((service, account, secret)) = self.to_remember.take() else {
+            return;
+        };
         // ❗ On a blocking task with a deadline, like every other write: the store
         // can put a Keychain prompt in front of this, and a modal dialog on the
         // async runtime stalls every volume.
@@ -231,16 +253,10 @@ pub async fn host_for_dial(
             move || crate::network::keychain::save_credentials(&service, Some(&account), &account, &secret),
         )
         .await;
-        match written {
-            Ok(()) => return (host, None),
-            Err(e) => log::warn!(
-                target: "volume",
-                "the secret store wouldn't remember this server ({e}); connecting with the secret this once"
-            ),
+        if let Err(e) = written {
+            log::warn!(target: "volume", "the secret store wouldn't remember this server ({e}); it'll ask next time");
         }
     }
-    let (host, guard) = offer_for_one_dial(host, service, Some(account), credentials);
-    (host, Some(guard))
 }
 
 #[cfg(test)]

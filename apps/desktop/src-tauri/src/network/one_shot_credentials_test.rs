@@ -103,3 +103,53 @@ fn an_offer_says_whether_to_remember_it() {
     };
     assert!(!offer.remember);
 }
+
+/// ❗ **A remembered offer is written only once the dial went through.** It used to
+/// be written BEFORE the dial, so an Add cancelled at the "First time connecting"
+/// step left the typed password in the store for a server nobody saved (final QA).
+/// The dial answers from memory until then.
+#[tokio::test]
+async fn a_remembered_offer_is_written_only_when_the_dial_goes_through() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let service = "one-shot-remember.local:22";
+    let offer = SecretOffer {
+        secret: "typed-just-now".to_string(),
+        remember: true,
+    };
+
+    let (host, dial) = super::host_for_dial(service, ACCOUNT, Some(offer)).await;
+    assert_eq!(
+        host.credentials()
+            .credentials(service, Some(ACCOUNT))
+            .map(|c| c.secret),
+        Some("typed-just-now".to_string()),
+        "the dial reads the typed secret"
+    );
+    assert!(
+        crate::network::keychain::get_credentials(service, Some(ACCOUNT)).is_err(),
+        "nothing is written before the dial went through"
+    );
+
+    dial.went_through().await;
+    assert_eq!(
+        crate::network::keychain::get_credentials(service, Some(ACCOUNT))
+            .expect("written once it went through")
+            .password,
+        "typed-just-now"
+    );
+}
+
+/// A dial that didn't go through (cancelled, refused, a host key to approve) writes nothing.
+#[tokio::test]
+async fn a_remembered_offer_whose_dial_did_not_go_through_writes_nothing() {
+    let _secrets = crate::test_support::isolate_secrets();
+    let service = "one-shot-cancelled.local:22";
+    let offer = SecretOffer {
+        secret: "typed-just-now".to_string(),
+        remember: true,
+    };
+
+    let (_host, dial) = super::host_for_dial(service, ACCOUNT, Some(offer)).await;
+    drop(dial);
+    assert!(crate::network::keychain::get_credentials(service, Some(ACCOUNT)).is_err());
+}
