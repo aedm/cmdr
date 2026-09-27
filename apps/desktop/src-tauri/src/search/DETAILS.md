@@ -225,7 +225,9 @@ mount root while the volume is mounted (the only time a `/Volumes/…` scope eve
 scan-completion path and `start_indexing_for_smb` now persist it (the latter heals an existing DB on the next
 registration — no rescan). Lifecycle is dialog-scoped, not per-volume: opening the dialog pre-loads
 root and arms the timers; a search lazily loads its scope's volumes; idle/backstop drops ALL arenas at once (RAM
-reclaim). A long root pre-load is cancelable (`cancel_active_loads` on dialog close). An MCP search has no dialog, so its
+reclaim). Forgetting an index also drops that volume's arena under its load gate: a replacement database restarts its
+row ids and cannot safely catch the old arena up. A long root pre-load is cancelable (`cancel_active_loads` on dialog
+close). An MCP search has no dialog, so its
 call stands in for one (`volumes::AgentSearch`): the 30 s idle drop arms when its answer returns, and holds off while any
 agent call is still waiting, so a burst of calls shares one arena and the ~400 MiB goes 30 s after the last rather than at
 the 10-minute backstop.
@@ -482,7 +484,8 @@ of all 6.3 M rows and a peak ~450 MiB higher, where the catch-up reads 0–2,400
 
 - **Created rows are exactly the ones past the arena's highest id.** Ids come from the writer's one counter, which only
   climbs within a process; the coverage token rests on the same property, with the same restart edge (`cmdr-index`'s
-  `read/DETAILS.md` § "The freshness token"), and a restart drops every arena.
+  `read/DETAILS.md` § "The freshness token"). A process restart drops every arena, and an in-process destructive forget
+  drops the affected one before any replacement database can be searched.
 - **Created rows are the half the promise needs.** A row a walk DELETED or UPDATED stays as the arena read it: a stale
   extra result or a stale size, never a missing one, which is the lag background indexing leaves in any warm arena
   (Accepted difference 6). The background refresh in `get_loaded` still rebuilds a stale arena whole, 30 s apart, while

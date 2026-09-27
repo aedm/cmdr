@@ -71,12 +71,24 @@ impl Drop for TestDataDirGuard {
     }
 }
 
-/// Drop one volume's arena and its walk mark, so a test's drive can't be served
-/// to whatever runs next in the same binary.
-#[cfg(test)]
-pub(crate) fn forget_volume_for_test(volume_id: &str) {
+/// Drop one volume's arena and its walk mark after its database is forgotten.
+///
+/// The load gate makes the removal final: an arena load already in flight lands
+/// before this takes the map entry, rather than resurrecting stale rows after the
+/// destructive operation returns. Recreating a database restarts its row ids, so
+/// its old arena cannot be caught up against the replacement.
+pub(crate) fn forget_volume(volume_id: &str) {
+    let gate = load_gate(volume_id);
+    let _gate_held = gate.lock_ignore_poison();
     SEARCH_INDICES.lock_ignore_poison().remove(volume_id);
     take_walked_behind(volume_id);
+    log::debug!("Search index dropped for '{volume_id}'");
+}
+
+/// Keep test cleanup on the same lifecycle operation production uses.
+#[cfg(test)]
+pub(crate) fn forget_volume_for_test(volume_id: &str) {
+    forget_volume(volume_id);
 }
 
 /// Every arena this process has built, so a test can pin how many one search pays

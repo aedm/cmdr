@@ -157,6 +157,32 @@ fn a_warm_arena_a_walk_wrote_behind_catches_up_in_place_before_it_answers() {
     let _ = index.forget_volume(VOLUME_ID);
 }
 
+/// Recreating an index restarts its row-id sequence, so the old arena cannot be
+/// caught up against the replacement database: rows whose reused ids are below
+/// the old high-water mark would stay invisible. Forgetting the database must
+/// therefore forget the arena in the same operation.
+#[test]
+fn forgetting_a_drive_index_also_forgets_its_warm_search_arena() {
+    let _serialized = test_lock();
+    let data = tempfile::tempdir().expect("index data dir");
+    let _search_data = volumes::install_data_dir_for_test(data.path());
+    let (_index, _installed, _root) = drive_with_a_covered(data.path());
+
+    volumes::forget_volume_for_test(VOLUME_ID);
+    assert!(
+        matches!(volumes::ensure_volume(VOLUME_ID), VolumeLoad::Loaded(_)),
+        "the arena is warm before the destructive forget"
+    );
+
+    tauri::async_runtime::block_on(crate::commands::indexing::forget_drive_index(VOLUME_ID.to_string()))
+        .expect("forget the drive index");
+
+    assert!(
+        volumes::get_loaded(VOLUME_ID).is_none(),
+        "the deleted database cannot leave its old arena warm"
+    );
+}
+
 #[test]
 fn an_agent_search_walks_the_same_ground_and_gets_the_same_union() {
     // Decision 10: the MCP tools are a thin wrapper on the same path, so an

@@ -128,7 +128,9 @@ pub async fn clear_drive_index() -> Result<(), String> {
     // it goes on a blocking thread rather than the IPC handler's.
     tauri::async_runtime::spawn_blocking(|| index().forget_all_volumes().map_err(|e| e.to_string()))
         .await
-        .map_err(|e| format!("Clearing the index didn't finish: {e}"))?
+        .map_err(|e| format!("Clearing the index didn't finish: {e}"))??;
+    crate::search::drop_all_indices();
+    Ok(())
 }
 
 /// Extended debug status for the debug window (dev only).
@@ -323,7 +325,7 @@ pub async fn disable_drive_index(volume_id: String) -> Result<(), String> {
 /// sidecars), and drop its registry instance, so its badge goes gray and a
 /// future enable does a clean fresh scan rather than resuming a stale DB.
 ///
-/// This is the per-volume sibling of `clear_drive_index` (which is `root`-only):
+/// This is the per-volume sibling of `clear_drive_index` (which clears every volume):
 /// the user-facing "forget this drive" action for an external (SMB/MTP) index
 /// that's accumulating on disk. Unlike `disable_drive_index` (which preserves the
 /// DB for a fast resume), forget reclaims the disk. A no-op if not indexed. Since
@@ -332,7 +334,9 @@ pub async fn disable_drive_index(volume_id: String) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 pub async fn forget_drive_index(volume_id: String) -> Result<(), String> {
-    index().forget_volume(&volume_id).map_err(|e| e.to_string())
+    index().forget_volume(&volume_id).map_err(|e| e.to_string())?;
+    crate::search::forget_volume(&volume_id);
+    Ok(())
 }
 
 /// Force a fresh full rescan of a drive (the menu's "Rescan now").
