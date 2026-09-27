@@ -15,6 +15,13 @@ use serde::{Deserialize, Serialize};
 /// What to ask. Every string is already translated by the frontend.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "only macOS's alert reads it; elsewhere the answer is `Unsupported`"
+    )
+)]
 pub struct CheckboxConfirmRequest {
     pub title: String,
     pub message: String,
@@ -28,6 +35,13 @@ pub struct CheckboxConfirmRequest {
 /// What the person answered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "snake_case", tag = "kind")]
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "only macOS's alert confirms or cancels; elsewhere the answer is `Unsupported`"
+    )
+)]
 pub enum CheckboxConfirm {
     /// The confirming button, with the checkbox as it was left.
     Confirmed {
