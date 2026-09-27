@@ -176,7 +176,15 @@ fn the_ascii_fold_agrees_with_the_general_one() {
     // the stack. It must fold to the very key the set was built with, or an
     // exclusion silently stops applying on the scan while the live walk still
     // honours it for non-ASCII names.
-    for name in ["node_modules", "Node_Modules", "TARGET", ".Git", "a-B_c.123", "", "~$Tmp"] {
+    for name in [
+        "node_modules",
+        "Node_Modules",
+        "TARGET",
+        ".Git",
+        "a-B_c.123",
+        "",
+        "~$Tmp",
+    ] {
         let shortcut = with_ascii_folded(name, str::to_string);
         assert_eq!(shortcut.as_deref(), Some(fold(name, true).as_str()), "{name:?}");
     }

@@ -557,8 +557,14 @@ pub(crate) fn hash_path_from_index(index: &SearchIndex, entry_id: i64) -> u64 {
     }
 
     // The chain yields components leaf-first; the path needs them root-first, so
-    // collect the (borrowed, non-allocating) names before hashing.
-    let mut components: Vec<&str> = Vec::new();
+    // collect the borrowed names before hashing. On the STACK: ranking calls this
+    // once per folder a broad query's matches sit in (hundreds of thousands), and a
+    // `Vec` here was an allocation each. A chain deeper than the stack buffer spills
+    // its root-side remainder to `deeper`, which allocates only then.
+    const INLINE_DEPTH: usize = 64;
+    let mut inline: [&str; INLINE_DEPTH] = [""; INLINE_DEPTH];
+    let mut deeper: Vec<&str> = Vec::new();
+    let mut depth = 0;
     let mut current_id = entry_id;
     loop {
         if current_id == ROOT_ID || current_id == 0 {
@@ -571,19 +577,29 @@ pub(crate) fn hash_path_from_index(index: &SearchIndex, entry_id: i64) -> u64 {
                 if name.is_empty() {
                     break; // root sentinel
                 }
-                components.push(name);
+                if depth < INLINE_DEPTH {
+                    inline[depth] = name;
+                } else {
+                    deeper.push(name);
+                }
+                depth += 1;
                 current_id = entry.parent_id;
             }
             None => break, // orphan or missing parent
         }
     }
 
-    if components.is_empty() {
+    if depth == 0 {
         // `format!("/{}", "")` — the reconstructed path for an empty chain.
         hasher.write(b"/");
         return hasher.finish();
     }
-    for name in components.iter().rev() {
+    // Root-first: the spilled root-side names, then the inline leaf-side ones.
+    for name in deeper
+        .iter()
+        .rev()
+        .chain(inline[..depth.min(INLINE_DEPTH)].iter().rev())
+    {
         hasher.write(b"/");
         hasher.write(name.as_bytes());
     }

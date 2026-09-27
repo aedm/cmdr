@@ -50,6 +50,51 @@ fn streamed_hash_matches_whole_path_hash() {
     );
 }
 
+#[test]
+fn streamed_hash_matches_whole_path_hash_past_the_inline_depth() {
+    use cmdr_fs::path_hash::hash_path;
+
+    // A chain deeper than the names `hash_path_from_index` keeps on the stack, so the
+    // part that spills to the heap has to land in the right order too.
+    let mut names = String::new();
+    let (root_offset, root_len) = arena_push(&mut names, "");
+    let mut entries = vec![SearchEntry {
+        id: ROOT_ID,
+        parent_id: 0,
+        name_offset: root_offset,
+        name_len: root_len,
+        is_directory: true,
+        size: OptU64::NONE,
+        modified_at: OptU64::NONE,
+    }];
+    for depth in 0..100_i64 {
+        let (offset, len) = arena_push(&mut names, &format!("level-{depth}"));
+        entries.push(SearchEntry {
+            id: ROOT_ID + 1 + depth,
+            parent_id: ROOT_ID + depth,
+            name_offset: offset,
+            name_len: len,
+            is_directory: true,
+            size: OptU64::NONE,
+            modified_at: OptU64::NONE,
+        });
+    }
+    let index = SearchIndex {
+        names,
+        entries,
+        generation: 1,
+    };
+    for depth in [1, 63, 64, 65, 100] {
+        let id = ROOT_ID + depth;
+        let path = reconstruct_path_from_index(&index, id);
+        assert_eq!(
+            hash_path_from_index(&index, id),
+            hash_path(&path),
+            "depth {depth} ({path})"
+        );
+    }
+}
+
 // ── Icon ID derivation ───────────────────────────────────────────
 
 #[test]

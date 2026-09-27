@@ -66,6 +66,10 @@ pub(crate) enum MatchQuality {
 /// weights themselves are a starting point; see `importance/scorer/weights.rs`).
 pub(crate) const IMPORTANCE_BLEND_COEFF: f64 = 0.5;
 
+/// The fewest matches one parallel ranking task takes, so the per-task folder memo
+/// stays warm (`rank_indices`). ~230 tasks for 1.9 M matches, against 16 workers.
+const RANK_MIN_SPLIT: usize = 8_192;
+
 /// The wildcard-free query stem used for match-quality classification, or an empty
 /// string when the pattern carries a wildcard or is regex.
 ///
@@ -384,8 +388,12 @@ pub(crate) fn rank_indices(
         let mut memo = std::collections::HashMap::new();
         matching.iter().map(|&idx| key_for(&mut memo, idx)).collect()
     } else {
+        // `map_init` builds a fresh memo per rayon split, and each one grows from empty,
+        // so a floor on the split length keeps the memos few and warm: unbounded, a
+        // broad query split thousands of ways and re-hashed the same folders in each.
         matching
             .par_iter()
+            .with_min_len(RANK_MIN_SPLIT)
             .map_init(std::collections::HashMap::new, |memo, &idx| key_for(memo, idx))
             .collect()
     };

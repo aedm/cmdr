@@ -176,7 +176,6 @@ impl ExcludeRules {
             .filter(|component| !component.is_empty())
             .any(|component| self.excludes_dir_name(component))
     }
-
 }
 
 /// One name in the alphabet the exact-name set is keyed on.

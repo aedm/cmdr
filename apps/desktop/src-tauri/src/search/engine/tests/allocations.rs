@@ -1,5 +1,5 @@
 use super::*;
-use crate::search::bench::build_synthetic_index;
+use crate::search::bench::{build_synthetic_index, synthetic_weights};
 use crate::search::types::PatternType;
 use crate::test_support::allocations_on_pool;
 
@@ -16,8 +16,9 @@ const ROWS: usize = 200_000;
 
 /// Allocations the big arena may cost over the tiny one: one regex cache per scan
 /// chunk (seven here, ~30 allocations each), rayon's bookkeeping, and the result
-/// `Vec`s. ~225 with no match and ~360 with 11,250 matches when this was written;
-/// per-ancestor folding was 316,000.
+/// `Vec`s, plus the ranking memos and 30 result rows for a full search. ~225 with no
+/// match, ~360 with 11,250 matches, and ~625 ranking them against weights when this
+/// was written; per-ancestor folding was 316,000 and a path `Vec` per folder 26,000.
 ///
 /// ⚠️ The regex half of the fix (a clone per chunk, `engine.rs`) is NOT reliably
 /// pinned here: in a debug build the regex pool's lock is rarely contended, so the
@@ -52,20 +53,26 @@ fn count_only(pattern: &str) -> SearchQuery {
     }
 }
 
-/// Allocations one count-only query costs on `index`, and its match count.
-fn measure(index: &SearchIndex, query: &SearchQuery) -> (u64, u32) {
+/// Allocations one query costs on `index`, and its match count.
+fn measure(index: &SearchIndex, query: &SearchQuery, weights: &ImportanceWeights) -> (u64, u32) {
     let (result, allocations) = allocations_on_pool(THREADS, || {
-        search(index, query, &ImportanceWeights::empty()).expect("search should succeed")
+        search(index, query, weights).expect("search should succeed")
     });
     (allocations, result.total_count)
 }
 
-/// The per-row cost of `query`: its allocations on a big arena minus those on a tiny one.
-fn per_arena_cost(query: &SearchQuery) -> (u64, u32) {
+/// The per-row cost of `query`: its allocations on a big arena minus those on a tiny
+/// one. `with_weights` ranks the big one against an importance weight on every folder.
+fn per_arena_cost(query: &SearchQuery, with_weights: bool) -> (u64, u32) {
     let big = build_synthetic_index(ROWS);
+    let weights = if with_weights {
+        synthetic_weights(&big)
+    } else {
+        ImportanceWeights::empty()
+    };
     let tiny = make_test_index();
-    let (tiny_allocations, _) = measure(&tiny, query);
-    let (big_allocations, matches) = measure(&big, query);
+    let (tiny_allocations, _) = measure(&tiny, query, &ImportanceWeights::empty());
+    let (big_allocations, matches) = measure(&big, query, &weights);
     assert!(
         tiny_allocations > 0,
         "the counter measured nothing; compiling a regex alone allocates, so the allocator isn't counting"
@@ -75,7 +82,7 @@ fn per_arena_cost(query: &SearchQuery) -> (u64, u32) {
 
 #[test]
 fn a_query_that_matches_nothing_does_not_allocate_per_row() {
-    let (cost, matches) = per_arena_cost(&count_only("no-such-name-anywhere"));
+    let (cost, matches) = per_arena_cost(&count_only("no-such-name-anywhere"), false);
     assert_eq!(matches, 0);
     assert!(cost < BUDGET, "{cost} allocations over {ROWS} rows (budget {BUDGET})");
 }
@@ -83,7 +90,27 @@ fn a_query_that_matches_nothing_does_not_allocate_per_row() {
 #[test]
 fn matches_under_the_default_excludes_do_not_allocate_per_ancestor() {
     // One word in 20: ~10,000 matches, each walking ~8 ancestors past the excludes.
-    let (cost, matches) = per_arena_cost(&count_only("report"));
+    let (cost, matches) = per_arena_cost(&count_only("report"), false);
     assert!(matches > 5_000, "the fixture should match plenty, got {matches}");
-    assert!(cost < BUDGET, "{cost} allocations for {matches} matches (budget {BUDGET})");
+    assert!(
+        cost < BUDGET,
+        "{cost} allocations for {matches} matches (budget {BUDGET})"
+    );
+}
+
+#[test]
+fn ranking_against_importance_weights_does_not_allocate_per_folder() {
+    // The full search, ranked the way production ranks it: every match looks up its
+    // folder's weight, which means hashing the folder's path off the parent chain.
+    // The synthetic tree spreads the ~10,000 matches over thousands of folders.
+    let query = SearchQuery {
+        count_only: false,
+        ..count_only("report")
+    };
+    let (cost, matches) = per_arena_cost(&query, true);
+    assert!(matches > 5_000, "the fixture should match plenty, got {matches}");
+    assert!(
+        cost < BUDGET,
+        "{cost} allocations ranking {matches} matches (budget {BUDGET})"
+    );
 }

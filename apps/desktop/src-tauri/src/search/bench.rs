@@ -163,7 +163,7 @@ pub(super) fn build_synthetic_index(n: usize) -> SearchIndex {
 
 /// An importance map covering every directory in `index`, like a real
 /// `importance-root.db` (a weight on most folders the user has touched).
-fn synthetic_weights(index: &SearchIndex) -> ImportanceWeights {
+pub(super) fn synthetic_weights(index: &SearchIndex) -> ImportanceWeights {
     let mut weights = ImportanceWeights::empty();
     for (i, e) in index.entries.iter().enumerate() {
         if e.is_directory && e.id != ROOT_ID {
