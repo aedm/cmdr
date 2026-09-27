@@ -187,4 +187,17 @@ describe('withdrawGonePrompts', () => {
     withdrawGonePrompts([{ id: 'smb-saved', connectionState: 'saved' }])
     expect(dismissToast).toHaveBeenCalledWith(offered)
   })
+
+  /**
+   * ❗ Offered once per session, answered or not: a withdrawn offer doesn't come back on
+   * the share's next connect. It reappeared on every reconnect of the same share (final
+   * QA), which nags about a question the person already saw.
+   */
+  it('does not offer again when the drive reconnects after its offer was withdrawn', async () => {
+    await maybePromptFirstConnect('smb-again', 'Again share', actions)
+    withdrawGonePrompts([])
+    addToast.mockClear()
+    await maybePromptFirstConnect('smb-again', 'Again share', actions)
+    expect(addToast).not.toHaveBeenCalled()
+  })
 })

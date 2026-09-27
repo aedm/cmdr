@@ -104,9 +104,10 @@ export function isReadyForFirstConnectPrompt(
  * Withdraws the offer for every drive that left `volumes` or stopped answering (an
  * ejected share, a saved one whose session went). ❗ An offer to index a drive that
  * isn't there any more is a button that can't work: "Index private on
- * localhost:11481?" stayed up after its share was ejected. An offer withdrawn while
- * still on screen may come back when the drive next connects, since the person
- * never answered it; one they closed stays closed for the session.
+ * localhost:11481?" stayed up after its share was ejected.
+ *
+ * ❗ Withdrawn, the drive still counts as offered this session: it came back on every
+ * reconnect of the same share, which nags about a question the person already saw.
  */
 export function withdrawGonePrompts(
   volumes: readonly { id: string; connectionState?: ConnectionState | null }[],
@@ -117,7 +118,6 @@ export function withdrawGonePrompts(
     offered.delete(volumeId)
     const id = toastIdFor(volumeId)
     if (!getToasts().some((toast) => toast.id === id)) continue
-    promptedThisSession.delete(volumeId)
     dismissToast(id)
   }
 }

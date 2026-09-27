@@ -369,7 +369,8 @@ Three FE-owned surfaces ask the user something about drive indexing, and all thr
 asks only for a row `isDriveRow` passes, so a volume no drive index can serve, like a phone over ADB, is never offered,
 and only once `isReadyForFirstConnectPrompt` says the drive is live and the pane has landed on it, so a saved share
 still connecting or waiting on its sign-in sheet isn't offered yet; `withdrawGonePrompts` takes an offer still on screen
-back down once its drive leaves the list or stops answering), `StaleDriveDialog.svelte` (below), and
+back down once its drive leaves the list or stops answering, and the drive still counts as offered this session, so a
+reconnect doesn't ask again), `StaleDriveDialog.svelte` (below), and
 `drive-index-prefs.ts` (the persisted one-shots both read).
 
 ## The one-time stale dialog
