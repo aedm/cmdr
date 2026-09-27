@@ -236,7 +236,9 @@ describe('PlacesBrowser credential gate', () => {
     h.credentialStatus = 'has_creds'
     const { target, component } = mountBrowser(vi.fn())
     await waitForShareList(target)
-    expect(target.querySelector('.forget-password-btn')).toBeTruthy()
+    expect(
+      [...target.querySelectorAll('.header-row button')].find((b) => b.textContent.includes('Forget saved password')),
+    ).toBeTruthy()
     expect(h.noteCachedCredentials).toHaveBeenCalledWith('Naspolya')
     expect(h.getSmbCredentials, 'no Keychain read to decide a button').not.toHaveBeenCalled()
     await unmount(component)
@@ -248,7 +250,9 @@ describe('PlacesBrowser credential gate', () => {
     const { target, component } = mountBrowser(vi.fn())
     await waitForShareList(target)
     await tick()
-    expect(target.querySelector('.forget-password-btn')).toBeNull()
+    expect(
+      [...target.querySelectorAll('.header-row button')].find((b) => b.textContent.includes('Forget saved password')),
+    ).toBeUndefined()
     await unmount(component)
   })
 

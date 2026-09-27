@@ -16,7 +16,7 @@ use crate::network::{NetworkHost, on_host_found};
 /// (it prefills the sign-in and keeps the listing off guest), protected by
 /// `STORE_LOCK`. `None` clears it: the person chose guest. Answers the entry as stored.
 ///
-/// ❗ Found by [`SmbServer::is`], the way [`typed_username`] reads it, and the name
+/// ❗ Found by [`SmbServer::is`], the way [`typed_username`](super::typed_username) reads it, and the name
 /// stays. A host nobody typed in is saved with no name, so the preference has
 /// somewhere to live: the person just told Cmdr how they use this server. Clearing
 /// an account a host never had saves nothing (`None`).

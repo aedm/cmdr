@@ -57,7 +57,7 @@
     {/if}
     {#if canForgetPassword}
         <button
-            class="header-action forget-password-btn"
+            class="header-action"
             onclick={onForgetPassword}
             use:tooltip={tString('fileExplorer.network.share.forgetPasswordTooltip')}
         >

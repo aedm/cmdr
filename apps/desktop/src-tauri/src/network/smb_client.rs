@@ -180,6 +180,7 @@ async fn list_shares_smb2(
                 list_authenticated(hostname, ip_address, port, user, pass, outer_timeout, connect_timeout).await
             }
             None => {
+                // allowed-pluralize-noun: `{port}` is a port number, and "wants" is a verb.
                 debug!("{hostname}:{port} wants an account and none was offered; not listing as guest");
                 Err(ShareListError::AuthRequired {
                     message: "An account was set up for this server, so it isn't listed as guest".to_string(),
