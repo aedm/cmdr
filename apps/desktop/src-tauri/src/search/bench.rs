@@ -482,7 +482,7 @@ fn bench_query_allocations() {
     let pool = ReadPool::new(db.clone().into()).expect("open index DB");
     let index = load_search_index(&pool, &AtomicBool::new(false)).expect("load index");
     eprintln!(
-        "\n{db}\n  {}, {} scored folders, {} rayon threads, {repeats} runs each",
+        "\n{db}\n  {}, {} scored folders, {} rayon threads, {repeats} runs each", // allowed-pluralize-noun: a bench header; an arena, the weights, and the pool are never one
         pluralize_with(index.entries.len() as u64, "entry", "entries"),
         weights.len(),
         rayon::current_num_threads(),

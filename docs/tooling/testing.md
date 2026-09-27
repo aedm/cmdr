@@ -57,6 +57,10 @@ Under `cfg(test)` this module installs a pass-through global allocator that coun
 generous bound ("this walk doesn't allocate per row"), never an exact number: the numbers move with buffer growth and
 allocator internals, the shape is the invariant. Worked examples: `media_index/scheduler/enrich_memory_tests.rs`.
 
+For PARALLEL code the per-thread counters see nothing (rayon's workers do the work), so the app crate's
+`crate::test_support::allocations_on_pool(threads, || …)` runs the closure on a fresh rayon pool and counts every
+allocation that pool's threads make, into a counter of its own. Worked example: `search/engine/tests/allocations.rs`.
+
 It lives in the indexing tree, not next to `wait_until`, because a `#[global_allocator]` is per BINARY: it has to sit in
 the crate whose test binary is measuring, and a shared crate would give the shipped app a second one. Rust memory
 numbers taken in tests are therefore measured under THIS allocator, not mimalloc — don't compare them with production

@@ -356,8 +356,8 @@ counts in `engine::search_ranked` (via `ScopeVerdict::Excluded`) and rides back 
 asked about somewhere else, so those aren't results they could reveal by flipping a flag. That's why
 `ScopeFilter::verdict` is three-way (`Inside` / `Excluded` / `OutsideRoots`) rather than a bool.
 
-The counter is a relaxed `AtomicU32` rather than a rayon fold, because `filter().collect()` on an indexed parallel
-iterator preserves arena order and the ranking's tie-break rides on it; a fold/reduce would make equal-ranked results
+The counter is a relaxed `AtomicU32` rather than a rayon fold, because rayon's `collect()` preserves arena order and
+the ranking's tie-break rides on it; a fold/reduce would make equal-ranked results
 non-deterministic to save an increment that only fires on an excluded match.
 
 `target_volume_id` rides alongside: the ONE volume routing picked. The dialog acts on it rather than re-deriving a
@@ -739,18 +739,48 @@ within-band multiplier is `1.0` and the sort is pure recency within each band �
 ordering. Pinned by `empty_weights_within_band_is_pure_recency` and `empty_weights_and_no_stem_is_pure_recency`. The
 engine also takes an empty-map fast path (skipping the per-result parent-path reconstruction entirely).
 
+### Scan cost: allocations per query, never per row
+
+A query costs a fixed few thousand allocations whatever the arena size, and nothing per scanned row. Allocating per row
+meant 1–1.3 M allocations for a query matching nothing on a 5.2 M-row arena, 93 M for a one-letter query, and a 1.4×
+penalty under the system allocator. Evidence and before/after numbers:
+`docs/notes/performance/search-loop-allocations-2026-09-27.md`. Three things hold it:
+
+- **Each scan chunk clones the compiled query and the scope filter** (`SCAN_CHUNK_ROWS`, 32,768 rows). A cloned
+  `regex::Regex` gets a cache pool of its own, and the one thread scanning the chunk becomes its owner, so every
+  `is_match` takes the pool's lock-free path. ❌ Don't share one `Regex` across the workers: all but one then go
+  through the pool's eight mutex-guarded stacks (`regex_automata::util::pool::Pool`, 0.4), and a worker that loses a
+  `try_lock` builds and drops a whole cache. That lock traffic, not the allocator, was most of the cost: 64 → 10 ms
+  for a no-match query under mimalloc. `ExcludeRules` and `ScopeFilter` share their sets behind `Arc`s so the clone is
+  cheap. `collect()` over the chunks still preserves arena order.
+- **`ExcludeRules::excludes_dir_name` folds an ASCII name on the stack** (`with_ascii_folded`), byte-identical to
+  `fold` (pinned by `the_ascii_fold_agrees_with_the_general_one`). It runs per ancestor per match with the system
+  excludes on by default. A non-ASCII or over-long name still takes `fold`'s `String`s: ~1% of directory names on a
+  real boot volume, which is the ~67,000 allocations a `*.pdf` query still makes. ❌ Don't make that path
+  allocation-free by folding char by char here: it would re-derive `normalize_for_comparison`'s NFD and case rules
+  (final sigma included), the fork `CLAUDE.md` forbids.
+- **Ranking hashes a folder's path off a stack buffer**, and its memos are few and warm (§ Ranking cost below).
+
+Pinned per query, not per row, by `engine/tests/allocations.rs` over `test_support::allocations_on_pool`, which counts a
+dedicated rayon pool's threads. ⚠️ The regex half isn't reliably red there: a debug build rarely contends the pool's
+lock. `bench::bench_query_allocations` measures it on a release build against a real index, split into full search,
+scan, and scan without excludes.
+
 ### Ranking cost: the top-k pass (`rank_decorated`)
 
 Ranking runs once per MATCHED entry, and a one-letter query matches millions (4.6 M of 6.96 M on a real
 home dir), so this pass — not the rayon scan — was the search's dominant cost: 11.9 s for that query,
 ~75% of it the importance blend. Four things keep it bounded, all order-preserving:
 
-- **A per-thread `folder_id → weight` memo.** Matches cluster hard by folder, and a weight lookup means
-  walking the folder's parent chain.
+- **A per-task `folder_id → weight` memo.** Matches cluster hard by folder, and a weight lookup means
+  walking the folder's parent chain. `map_init` builds one memo per rayon split, so `RANK_MIN_SPLIT` (8,192
+  matches) keeps the splits few and the memos warm.
 - **The folder path is HASHED, never built.** `engine::hash_path_from_index` streams the parent chain's
   components into `cmdr_fs::path_hash::PathHasher` (incremental FNV-1a + the same splitmix finalizer), so the
-  `String` that existed only to be hashed and dropped is gone. It's byte-identical to
-  `hash_path(reconstruct_path_from_index(..))`, pinned by `streamed_hash_matches_whole_path_hash` — a
+  `String` that existed only to be hashed and dropped is gone, and the components sit in a 64-deep stack buffer
+  (a deeper chain spills the rest to a `Vec`). It's byte-identical to
+  `hash_path(reconstruct_path_from_index(..))`, pinned by `streamed_hash_matches_whole_path_hash` (and
+  `…_past_the_inline_depth`) — a
   drift there would silently read the wrong weight, with no symptom beyond subtly worse ranking.
 - **`classify_match` allocates nothing** for a case-sensitive compare or an ASCII name+stem (nearly
   every real filename). Non-ASCII case-insensitive names still take the `to_lowercase()` path, so
@@ -765,7 +795,8 @@ Measurements and the before/after table: `docs/notes/search-latency-2026-07-28.m
 `bench.rs` (`#[ignore]`d; it can run against a real `index-*.db`). Two of its benches answer the arena-SHAPE
 questions rather than the ranking ones: `bench_arena_bytes` (what a loaded arena costs, in heap bytes and in process
 RSS) and `bench_arena_scan` (the count-only pass, best-of-N, with and without the size/date filters that read an
-entry's `OptU64` fields). ❌ Don't reach for `bench_real_index` to answer "did the row's shape make scanning slower":
+entry's `OptU64` fields). A third, `bench_query_allocations`, asks the way the dialog and MCP do (excludes on,
+optional real weights) and reports allocations as well as latency. ❌ Don't reach for `bench_real_index` to answer "did the row's shape make scanning slower":
 its queries set no size or date bound, so the matcher skips those predicates, and one run per pattern is swamped by
 machine noise.
 

@@ -84,7 +84,7 @@ fn per_arena_cost(query: &SearchQuery, with_weights: bool) -> (u64, u32) {
 fn a_query_that_matches_nothing_does_not_allocate_per_row() {
     let (cost, matches) = per_arena_cost(&count_only("no-such-name-anywhere"), false);
     assert_eq!(matches, 0);
-    assert!(cost < BUDGET, "{cost} allocations over {ROWS} rows (budget {BUDGET})");
+    assert!(cost < BUDGET, "{cost} allocations over {ROWS} rows (budget {BUDGET})"); // allowed-pluralize-noun: a measurement message whose counts are thousands, never one
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn matches_under_the_default_excludes_do_not_allocate_per_ancestor() {
     assert!(matches > 5_000, "the fixture should match plenty, got {matches}");
     assert!(
         cost < BUDGET,
-        "{cost} allocations for {matches} matches (budget {BUDGET})"
+        "{cost} allocations for {matches} matches (budget {BUDGET})" // allowed-pluralize-noun: a measurement message whose counts are thousands, never one
     );
 }
 
@@ -111,6 +111,6 @@ fn ranking_against_importance_weights_does_not_allocate_per_folder() {
     assert!(matches > 5_000, "the fixture should match plenty, got {matches}");
     assert!(
         cost < BUDGET,
-        "{cost} allocations ranking {matches} matches (budget {BUDGET})"
+        "{cost} allocations ranking {matches} matches (budget {BUDGET})" // allowed-pluralize-noun: a measurement message whose counts are thousands, never one
     );
 }
