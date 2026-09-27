@@ -16,8 +16,10 @@ binary launches (fixture creation, port-file reads, MCP client setup) lives here
 - **`mtp-fixtures.ts`**: virtual MTP backing-dir composition, at the run's `MTP_FIXTURE_ROOT` (`CMDR_MTP_FIXTURE_ROOT`,
   matching the app's `CMDR_VIRTUAL_MTP`). One root per run, shared by its shards, so the MTP shard is serialized.
 - **`smb-fixtures.ts`**: SMB virtual-host fixtures, injected into the running Tauri process via the `smb-e2e` feature.
-  ❗ Teardown unmounts by mount SOURCE (`fixtureMountPoints`: the fixture's host, port, and share), ❌ never by path:
-  `/Volumes/public` can be a person's or a dev session's share.
+  ❗ The fixture's mount is found by SOURCE (`fixtureMountPoints`: the fixture's host, port, and share), ❌ never by
+  path: `/Volumes/public` can be a person's or a dev session's share, and E2E writes and deletes on the fixture's.
+  Pre-mount reuses the fixture's mount wherever it landed and leaves a foreign one alone (`preMountPlan`), specs read
+  `guestMountPoint()` / `guestMountSuite()`, and teardown unmounts only the fixture's.
 - **`server-fixtures.ts`**: where the app dials the SFTP / WebDAV fixtures, plus an `ssh` / `curl` side door to their
   exports. `../e2e-playwright/DETAILS.md` § "Real SFTP and WebDAV servers".
 - **`pin-locale.ts`**: both halves of "pretend this machine is en-US". `pinUiLanguage(dataDir)` merges
