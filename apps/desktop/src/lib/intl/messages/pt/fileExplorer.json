@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Remover {hostName} da lista de servidores?",
+  "fileExplorer.network.browser.removeHostConfirm": "Esquecer {hostName}? O Cmdr tira esse host da lista, junto com os compartilhamentos salvos nele, e não desmonta nada.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "{hostName} removido",
+  "fileExplorer.network.browser.hostRemoved": "O Cmdr esqueceu {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Não foi possível remover {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Não foi possível esquecer {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Senha salva de {hostName} esquecida",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Remover a senha salva do Acesso às Chaves",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Usar como convidado",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Iniciar sessão como…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Esquecer senha salva",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1414,9 +1422,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Esquecer",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "Esquecer {name}? O Cmdr encerra a conexão e tira esse servidor da lista. Seus arquivos continuam no servidor.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Esquecer também a senha salva",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "O Cmdr não conseguiu esquecer {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

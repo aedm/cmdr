@@ -1324,6 +1324,18 @@
     "confidence": "high",
     "sources": "shipped pt catalog"
   },
+  "list": {
+    "chosen": "lista",
+    "forms": "the Servers list → a lista Servidores (the row name after the noun, like grupo Rede)",
+    "confidence": "high",
+    "sources": "macOS pt-BR Finder “Lista” (view as List); Microsoft pt-BR terminology list → lista; Nautilus pt_BR “Visão em lista”"
+  },
+  "local": {
+    "chosen": "local",
+    "accept": ["locais", "localmente"],
+    "confidence": "high",
+    "sources": "Microsoft pt-BR terminology local → local; GNOME Nautilus and Total Commander pt-BR “rede local”"
+  },
   "local-network": {
     "chosen": "rede local",
     "accept": ["descoberta", "por perto"],

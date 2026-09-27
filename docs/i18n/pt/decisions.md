@@ -289,13 +289,17 @@ the installed macOS `pt_BR.lproj` bundles.
 - `moveNotConfirmed` is neither failure nor loss: `Dê uma olhada em`, not `Verifique`; `então ele manteve…` keeps the
   subject explicit.
 
-## Server pane, sign in, and forget (`servers.*`, `fileExplorer.navigation.connectionTooltip*`/`disconnect*`/`forget*`)
+## Server pane, sign in, and forget (`servers.*`, `fileExplorer.navigation.connectionTooltip*`/`disconnect*`/`forget*`, `fileExplorer.network.browser.removeHost*`/`hostRemove*`, `fileExplorer.network.share.*`)
 
 - sign in → `iniciar sessão` (`iniciar a sessão` in prose); signed out → `Sessão encerrada`, which agrees with the
   session, not the person. Disconnect a server, never `Ejetar`.
 - `servers.refusal.authMethodUnsupported` makes `O Cmdr` the subject: keeping the server there needs a clumsy `a que`.
-- `forgetServerConfirm` / `forgetSecretConfirm` write the noun (`tira esse servidor`, `a senha`), never a pronoun on
-  `{name}`.
+- `forgetServerConfirm` / `forgetShareConfirm` / `removeHostConfirm` / `forgetSecretConfirm` write the noun
+  (`tira esse servidor` / `compartilhamento` / `host`, `a senha`), never a pronoun or participle on `{name}`: so
+  `O Cmdr esqueceu {hostName}`, `O Cmdr salvou {name}`, `O Cmdr encontrou {name} por perto`.
+- "as {username}" / "as guest" → `como {username}` / `como convidado`, the `Conectar como convidado` frame; the button
+  is `Usar como convidado`. `notConnected` → `Não conectado a {name}`: `{name} não está conectado` would agree with the
+  name, and `Sem conexão` reads as a network fault (review queue).
 
 ## Server hub (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.serverPinnedToast`/`serverUnpinnedToast`/`pinRefusedToast`/`networkVolume`, `shortcuts.scope.servers`/`places`)
 

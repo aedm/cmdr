@@ -53,3 +53,6 @@ settled wording into `terms.json` (and `decisions.md` when the reason is worth k
   (`errors.write.moveNotConfirmed.suggestion`), `Editar arquivos com` (`settings.behavior.textEditorApp.label`),
   `configurações do servidor` for a NAS's own settings (`errors.mount.*`), `distribuição` for a Linux distribution
   (`errors.mount.gvfsMissing`).
+- **`Não conectado a {name}`** (`servers.paneState.notConnected`): a pane heading after the person cancelled a sign-in.
+  `{name} não está conectado` would agree with the name, and `Sem conexão com` reads as a network fault; confirm this
+  status-style heading doesn't sound like a failure either.
