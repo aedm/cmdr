@@ -4,6 +4,7 @@
 
 use super::*;
 
+mod child_dirs_index;
 mod dir_stats_and_epochs;
 mod entry_crud;
 mod error_classification;

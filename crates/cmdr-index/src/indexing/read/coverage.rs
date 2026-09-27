@@ -401,17 +401,19 @@ fn read_dir_coverage(conn: &Connection, index_path: &str) -> Result<Option<DirCo
     Ok(row)
 }
 
+/// The query behind [`read_child_dir_coverage`]. Served by `idx_child_dirs`.
+pub(crate) const CHILD_DIR_COVERAGE_SQL: &str =
+    "SELECT c.id, c.name, c.listed_epoch, c.unreadable_cause, COALESCE(ds.min_subtree_epoch, 0)
+     FROM entries c LEFT JOIN dir_stats ds ON ds.entry_id = c.id
+     WHERE c.parent_id = ?1 AND c.is_directory = 1";
+
 /// Every child DIRECTORY's coverage columns plus its name, for one parent.
 ///
 /// Files are skipped: coverage is a property of directories, and a listed
-/// directory's files came with the listing. Served by `idx_parent_name_folded`'s
-/// leading `parent_id`.
+/// directory's files came with the listing, so the query reads the child dirs
+/// alone off `idx_child_dirs`.
 fn read_child_dir_coverage(conn: &Connection, parent_id: i64) -> Result<Vec<(DirCoverage, String)>, IndexStoreError> {
-    let mut stmt = conn.prepare_cached(
-        "SELECT c.id, c.name, c.listed_epoch, c.unreadable_cause, COALESCE(ds.min_subtree_epoch, 0)
-         FROM entries c LEFT JOIN dir_stats ds ON ds.entry_id = c.id
-         WHERE c.parent_id = ?1 AND c.is_directory = 1",
-    )?;
+    let mut stmt = conn.prepare_cached(CHILD_DIR_COVERAGE_SQL)?;
     let rows = stmt.query_map(params![parent_id], |row| {
         Ok((
             DirCoverage {

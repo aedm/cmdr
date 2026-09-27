@@ -22,7 +22,8 @@ types, and the re-exports every `store::X` path resolves through), `schema.rs` (
 - **The index is a disposable cache, but only PROVEN garbage is thrown away.** Schema-version mismatch or
   `indicates_corruption()` deletes and recreates; `BUSY` / `LOCKED` retry; every other `open` failure errors and KEEPS
   the file. ❌ Never widen `indicates_corruption()`; a real rebuild costs tens of minutes. Bump `SCHEMA_VERSION` for any
-  schema change — no migrations, by design.
+  schema change — no migrations, by design. The one exception: a new INDEX goes in `CREATE_TABLES_SQL` with
+  `IF NOT EXISTS` and reaches existing DBs on open (DETAILS § "child directories have their own partial index").
 - **❌ Stamp `EXCLUSION_POLICY_KEY` only on a provably empty DB**: right after a `TruncateData`, or the bare `ROOT`
   sentinel. Absent or stale ⇒ no coverage claim is trusted and every search walks its whole scope. DETAILS § "What
   coverage needs".

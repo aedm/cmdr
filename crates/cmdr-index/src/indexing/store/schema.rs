@@ -120,6 +120,7 @@ const CREATE_TABLES_SQL: &str = "
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_parent_name_folded ON entries (parent_id, name_folded);
     CREATE INDEX IF NOT EXISTS idx_inode ON entries (inode);
+    CREATE INDEX IF NOT EXISTS idx_child_dirs ON entries (parent_id) WHERE is_directory = 1;
 
     CREATE TABLE IF NOT EXISTS dir_stats (
         entry_id                 INTEGER PRIMARY KEY,
@@ -211,10 +212,31 @@ pub(super) fn apply_pragmas(conn: &Connection, readonly: bool) -> Result<(), Ind
 }
 
 /// Create tables if they don't exist and insert root sentinel.
+///
+/// Runs on every writable open, so an index added here with `IF NOT EXISTS`
+/// reaches existing DBs without a [`SCHEMA_VERSION`] bump: `idx_child_dirs` is
+/// built once, on the first open after an upgrade (~2.5 s cold on a 5.9 M-row
+/// index), before the writer spawns.
 pub(super) fn create_tables(conn: &Connection) -> Result<(), IndexStoreError> {
     conn.execute_batch(CREATE_TABLES_SQL)?;
     ensure_root_sentinel(conn)?;
     Ok(())
+}
+
+/// `EXPLAIN QUERY PLAN` over `sql`, each step's `detail` joined by newlines, with
+/// `1` bound to every parameter (the plan is structural, so the values don't
+/// matter). How tests pin a query to the index meant to serve it.
+#[cfg(test)]
+pub(crate) fn explain_query_plan(conn: &Connection, sql: &str) -> String {
+    let mut stmt = conn
+        .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+        .expect("prepare explain");
+    let params = vec![1_i64; stmt.parameter_count()];
+    stmt.query_map(rusqlite::params_from_iter(params), |row| row.get::<_, String>(3))
+        .expect("explain rows")
+        .map(|r| r.expect("detail"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Drop all index tables and recreate them from scratch.

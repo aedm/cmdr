@@ -63,6 +63,8 @@ use paths::reconstruct_path;
 #[cfg(test)]
 use paths::reconstruct_path_from_map;
 #[cfg(test)]
+pub(crate) use schema::explain_query_plan;
+#[cfg(test)]
 use schema::{ROOT_PARENT_ID, reset_schema};
 use schema::{SCHEMA_VERSION, apply_pragmas, create_tables};
 

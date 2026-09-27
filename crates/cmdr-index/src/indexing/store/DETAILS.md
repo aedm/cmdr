@@ -41,8 +41,8 @@ The `impl IndexStore` block is divided into four more sibling files (each `impl 
   rather than issuing one recursive-CTE `DELETE` (which materialized 10.9M ids into a single ephemeral table and
   transaction on a real index), and deletes POST-ORDER (see below). `for_each_child_directory_of` /
   `for_each_child_file_of` are the SCOPED counterparts: same columns, but for a batch of parent ids at a time, so a
-  consumer reading one subtree expands a whole level per query instead of scanning the table. Both are served by
-  `idx_parent_name_folded`'s leading `parent_id`; the file one keeps `for_each_file_child_by_parent`'s
+  consumer reading one subtree expands a whole level per query instead of scanning the table. The directory one is
+  served by `idx_child_dirs` (below), the file one by `idx_parent_name_folded`'s leading `parent_id`; the file one keeps `for_each_file_child_by_parent`'s
   `ORDER BY parent_id` group contract (each parent id sits in exactly one chunk, so chunking never splits a group). The
   importance incremental rescore is the consumer (`../../importance/scheduler/DETAILS.md` § The scoped walk).
 - `dir_tree.rs`: `DirTree`, the compact in-memory projection of the directory rows that `for_each_directory` exists to
@@ -71,6 +71,34 @@ transaction it opened — in place, so a single failed `upsert_dir_stats_by_id` 
 `mark_dirs_listed` would park the writer's connection in an open transaction holding the write lock: every other
 connection then sees `database is locked` indefinitely, and the writer's own later writes never commit. Regression:
 `store::tests::open_and_recover::a_failed_savepoint_call_leaves_the_connection_in_autocommit`.
+
+## Decision: child directories have their own partial index, added on open
+
+`idx_child_dirs` is `ON entries (parent_id) WHERE is_directory = 1`. Every "the child dirs of X" query reads it: the
+`min_subtree_epoch` recompute (`dir_stats.rs`, run up the ancestor chain on every dir create or delete and every
+`PropagateMinSubtreeEpoch`), the subdir half of `recompute_recursive_has_symlinks` (`../writer/repair.rs`), the coverage
+frontier's `read_child_dir_coverage` (`../read/coverage.rs`), `list_child_dir_ids_and_names`, and
+`for_each_child_directory_of`. The whole-table `WHERE is_directory = 1` reads (the aggregator's bulk loads, `COUNT`)
+pick it up too, as a covering scan.
+
+**Why**: through `idx_parent_name_folded`, SQLite seeks the table once per CHILD to test `is_directory`, so a folder of
+92,219 files cost ~60 ms per query to find its one subfolder, on every propagation that passed through it. Off the
+partial index it's ~10 µs. The whole-table dir reads drop from ~260 ms to 4–18 ms (covering) or ~180 ms (with row
+lookups); the two `ORDER BY id` ones keep their table scan, unchanged. The index costs 7.5 MB on a 5.9 M-row index, and
+file inserts don't touch it (verified on a clone of a real 931 MB index, `sqlite3 .timer`, warm cache, 2026-09-27;
+numbers and method: `docs/notes/performance/dir-children-index-2026-09-27.md`).
+
+**Why on open, not a `SCHEMA_VERSION` bump**: `create_tables` runs its `IF NOT EXISTS` DDL on every writable open
+(`connection.rs::try_open`), so a new index reaches existing DBs with no rescan. The first open after an upgrade builds
+it once: ~2.5 s cold (0.65 s of it CPU) or 0.35 s warm on that index, on the start path's worker thread and before the
+writer spawns, so it never meets the main thread or another writer. WAL readers aren't blocked; a short-lived write
+connection waits it out under `busy_timeout`. This is the one schema change that needs no bump: purely additive, and
+derivable from rows already there. A new column or a changed meaning still bumps.
+
+Guards: `tests/child_dirs_index.rs` pins each query's plan to the index and covers the open-time build;
+`../writer/repair.rs` pins the symlink query. Still O(children) and deliberately left: the direct-symlink test
+(`parent_id = ? AND is_symlink = 1`, ~60 ms on that folder, but it runs only when a symlink appears, goes, or changes)
+and the repair's children `SUM`, which must read every child.
 
 ## What coverage needs
 

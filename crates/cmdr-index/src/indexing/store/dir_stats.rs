@@ -11,6 +11,14 @@ fn clamp_to_sql(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
+/// The 0-absorbing `min` over one directory's child dirs, for
+/// [`IndexStore::recompute_min_subtree_epoch`]. Served by `idx_child_dirs`, so it
+/// reads the child dirs alone, never every child file.
+pub(super) const CHILD_DIRS_MIN_SUBTREE_EPOCH_SQL: &str = "SELECT MIN(COALESCE(ds.min_subtree_epoch, 0))
+     FROM entries c
+     LEFT JOIN dir_stats ds ON ds.entry_id = c.id
+     WHERE c.parent_id = ?1 AND c.is_directory = 1";
+
 impl IndexStore {
     /// Look up dir_stats for a single entry by ID.
     pub fn get_dir_stats_by_id(conn: &Connection, entry_id: i64) -> Result<Option<DirStatsById>, IndexStoreError> {
@@ -239,12 +247,7 @@ impl IndexStore {
         // If ANY child is 0, MIN is 0. No child dirs ⇒ MIN over empty ⇒ NULL ⇒
         // keep `own` (a listed-but-childless dir is fully covered at its epoch).
         let child_min: Option<u64> = conn
-            .prepare_cached(
-                "SELECT MIN(COALESCE(ds.min_subtree_epoch, 0))
-                 FROM entries c
-                 LEFT JOIN dir_stats ds ON ds.entry_id = c.id
-                 WHERE c.parent_id = ?1 AND c.is_directory = 1",
-            )?
+            .prepare_cached(CHILD_DIRS_MIN_SUBTREE_EPOCH_SQL)?
             .query_row(params![dir_id], |row| row.get::<_, Option<u64>>(0))?;
 
         Ok(match child_min {

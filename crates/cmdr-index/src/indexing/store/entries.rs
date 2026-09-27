@@ -17,6 +17,21 @@ fn placeholders(count: usize) -> String {
     vec!["?"; count].join(", ")
 }
 
+/// One parent's child dirs, for [`IndexStore::list_child_dir_ids_and_names`].
+/// Served by `idx_child_dirs`.
+pub(super) const CHILD_DIR_IDS_AND_NAMES_SQL: &str =
+    "SELECT id, name FROM entries WHERE parent_id = ?1 AND is_directory = 1";
+
+/// The child dirs of `count` parents, for [`IndexStore::for_each_child_directory_of`].
+/// Served by `idx_child_dirs`.
+pub(super) fn child_directories_of_sql(count: usize) -> String {
+    format!(
+        "SELECT id, parent_id, name, modified_at FROM entries \
+         WHERE is_directory = 1 AND parent_id IN ({})",
+        placeholders(count)
+    )
+}
+
 /// An inode as SQLite stores it: the same 64 bits, reinterpreted as signed.
 ///
 /// SQLite's `INTEGER` is a signed 64-bit column and holds every bit of a `u64`,
@@ -241,8 +256,8 @@ impl IndexStore {
     /// The level-by-level descent a SCOPED walk uses: the importance incremental
     /// rescore reads only the changed subtrees, so it expands one whole level per
     /// query instead of paying a point query per directory (or, as the full walk
-    /// does, reading the volume). Served by `idx_parent_name_folded`'s leading
-    /// `parent_id` column, so the cost tracks the subtree, not the table.
+    /// does, reading the volume). Served by `idx_child_dirs`, so the cost tracks
+    /// the subtree's folders, not the table or the files beside them.
     ///
     /// The caller chunks `parent_ids` to stay under SQLite's bound-parameter limit.
     /// Rows arrive in no guaranteed order — a directory has no per-parent
@@ -255,12 +270,7 @@ impl IndexStore {
         if parent_ids.is_empty() {
             return Ok(());
         }
-        let sql = format!(
-            "SELECT id, parent_id, name, modified_at FROM entries \
-             WHERE is_directory = 1 AND parent_id IN ({})",
-            placeholders(parent_ids.len())
-        );
-        let mut stmt = conn.prepare_cached(&sql)?;
+        let mut stmt = conn.prepare_cached(&child_directories_of_sql(parent_ids.len()))?;
         for_each_directory_row(stmt.query(rusqlite::params_from_iter(parent_ids))?, f)
     }
 
@@ -303,7 +313,7 @@ impl IndexStore {
         conn: &Connection,
         parent_id: i64,
     ) -> Result<Vec<(i64, String)>, IndexStoreError> {
-        let mut stmt = conn.prepare_cached("SELECT id, name FROM entries WHERE parent_id = ?1 AND is_directory = 1")?;
+        let mut stmt = conn.prepare_cached(CHILD_DIR_IDS_AND_NAMES_SQL)?;
         let rows = stmt.query_map(params![parent_id], |row| {
             Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
         })?;
