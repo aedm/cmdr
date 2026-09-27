@@ -525,16 +525,23 @@ describe('editHubRow', () => {
     })
   })
 
+  /** ❗ With an `id`, so F4 held down or pressed again replaces the hint instead of stacking copies. */
   it('says why a share row has nothing to edit', async () => {
     await editHubRow(shareRow)
     expect(openEditServerSheet).not.toHaveBeenCalled()
-    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('server'), { level: 'info' })
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('server'), {
+      level: 'info',
+      id: 'servers-edit-hint',
+    })
   })
 
   it('says why a host only mDNS knows has nothing to edit', async () => {
     await editHubRow(nearbyOnlyRow)
     expect(openEditServerSheet).not.toHaveBeenCalled()
-    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Attic NAS'), { level: 'info' })
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Attic NAS'), {
+      level: 'info',
+      id: 'servers-edit-hint',
+    })
   })
 })
 
@@ -558,11 +565,17 @@ describe('editServerInView', () => {
   it('says a nearby host whose share list is up has nothing saved to edit', async () => {
     await editServerInView({ row: null, host: { ...host, id: 'h9', name: 'Printer', ipAddress: '10.0.0.9' } })
     expect(openEditServerSheet).not.toHaveBeenCalled()
-    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Printer'), { level: 'info' })
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Printer'), {
+      level: 'info',
+      id: 'servers-edit-hint',
+    })
   })
 
   it('asks for a server when the cursor is on Add server…', async () => {
     await editServerInView({ row: null, host: null })
-    expect(addToast).toHaveBeenCalledExactlyOnceWith('Select a server to edit it.', { level: 'info' })
+    expect(addToast).toHaveBeenCalledExactlyOnceWith('Select a server to edit it.', {
+      level: 'info',
+      id: 'servers-edit-hint',
+    })
   })
 })

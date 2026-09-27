@@ -107,6 +107,9 @@ export interface HubRowMenuAPI {
   open: (row: HubRow, point: MenuAnchor, anchor: MenuAnchor | null) => Promise<void>
 }
 
+/** Edit's "nothing to edit here" hints share one toast `id`, so a key pressed again replaces it rather than stacking copies. */
+const EDIT_HINT = { level: 'info', id: 'servers-edit-hint' } as const
+
 /**
  * "Edit server…" on whatever hub row the cursor is on: what Edit and Rename (`file.edit`, `file.rename`, F4 and
  * F2 / ⇧F6 by default) and `servers.edit` do in the Servers list, since a server's name and settings are what it has
@@ -118,11 +121,11 @@ export interface HubRowMenuAPI {
  */
 export async function editHubRow(row: HubRow): Promise<void> {
   if (row.kind === 'share') {
-    addToast(tString('servers.hub.editShareHint'), { level: 'info' })
+    addToast(tString('servers.hub.editShareHint'), EDIT_HINT)
     return
   }
   if (!row.saved) {
-    addToast(tString('servers.hub.editNearbyHint', { name: row.name }), { level: 'info' })
+    addToast(tString('servers.hub.editNearbyHint', { name: row.name }), EDIT_HINT)
     return
   }
   if (row.volumeId) {
@@ -144,7 +147,7 @@ export async function editServerInView(view: { row: HubRow | null; host: Network
   }
   const { host } = view
   if (!host) {
-    addToast(tString('servers.hub.editPickHint'), { level: 'info' })
+    addToast(tString('servers.hub.editPickHint'), EDIT_HINT)
     return
   }
   const saved = await listSavedServers().catch((e: unknown) => {
@@ -154,7 +157,7 @@ export async function editServerInView(view: { row: HubRow | null; host: Network
   // The host is the only one in the merge, so it is either claimed by its saved server or a nearby row of its own.
   const row = buildHubRows({ saved, hosts: [host], volumes: [] }).find((r) => r.host?.id === host.id)
   if (row) await editHubRow(row)
-  else addToast(tString('servers.hub.editNearbyHint', { name: host.name }), { level: 'info' })
+  else addToast(tString('servers.hub.editNearbyHint', { name: host.name }), EDIT_HINT)
 }
 
 export function createHubActions(deps: HubActionDeps): HubActions {
