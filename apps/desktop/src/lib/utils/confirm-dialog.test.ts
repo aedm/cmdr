@@ -5,11 +5,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const ask = vi.fn(() => Promise.resolve(true))
-const confirmWithCheckboxCommand = vi.fn((_request: unknown) => Promise.resolve({ kind: 'cancelled' }))
+const confirmWithCheckboxCommand = vi.fn((_request: unknown): Promise<{ kind: string; checked?: boolean }> =>
+  Promise.resolve({ kind: 'cancelled' }),
+)
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: (...args: unknown[]) => ask(...(args as [])) }))
-vi.mock('$lib/ipc/bindings', () => ({
-  commands: { confirmWithCheckbox: (request: unknown) => confirmWithCheckboxCommand(request) },
+vi.mock('$lib/tauri-commands', () => ({
+  confirmWithCheckbox: (request: unknown) => confirmWithCheckboxCommand(request),
 }))
 
 import { confirmWithCheckbox } from './confirm-dialog'

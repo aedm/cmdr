@@ -546,7 +546,7 @@ describe('PlacesBrowser: the account it is signed in as', () => {
       expect.anything(),
     )
     expect(onBack).not.toHaveBeenCalled()
-    unmount(component)
+    await unmount(component)
   })
 
   it('stays on the list when the person cancels Sign in as…', async () => {
@@ -564,6 +564,6 @@ describe('PlacesBrowser: the account it is signed in as', () => {
     await tick()
     expect(h.openSignInSheet).toHaveBeenCalledOnce()
     expect(onBack).not.toHaveBeenCalled()
-    unmount(component)
+    await unmount(component)
   })
 })

@@ -47,12 +47,12 @@ beforeEach(() => {
 
 describe('on a Servers list row', () => {
   it.each([
-    ['file.rename', fileHandlers['file.rename'] as Handler],
+    ['file.rename', fileHandlers['file.rename']],
     ['file.edit', fileHandlers['file.edit'] as Handler],
-    ['servers.edit', serversHandlers['servers.edit'] as Handler],
-  ])('%s opens Edit server for the row under the cursor', async (_id, handler) => {
+    ['servers.edit', serversHandlers['servers.edit']],
+  ])('%s opens Edit server for the row under the cursor', (_id, handler) => {
     const { ctx, explorerRef } = hctx(hubRow)
-    await handler(ctx)
+    handler(ctx)
     expect(editHubRow).toHaveBeenCalledExactlyOnceWith(hubRow)
     expect(explorerRef.startRename).not.toHaveBeenCalled()
     expect(openInEditorOrExplain).not.toHaveBeenCalled()
@@ -60,9 +60,10 @@ describe('on a Servers list row', () => {
 })
 
 describe('anywhere else', () => {
-  it('file.rename renames the file under the cursor', async () => {
+  it('file.rename renames the file under the cursor', () => {
     const { ctx, explorerRef } = hctx(null)
-    await (fileHandlers['file.rename'] as Handler)(ctx)
+    const rename = fileHandlers['file.rename']
+    rename(ctx)
     expect(explorerRef.startRename).toHaveBeenCalledOnce()
     expect(editHubRow).not.toHaveBeenCalled()
   })

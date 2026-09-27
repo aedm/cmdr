@@ -982,3 +982,5 @@ export {
   getWebdavUnattendedReconnect,
 } from './webdav'
 export type { KnownWebdavServer, SavedWebdavServer, WebdavUnattendedReconnect } from './webdav'
+
+export { confirmWithCheckbox } from './confirm-dialog'

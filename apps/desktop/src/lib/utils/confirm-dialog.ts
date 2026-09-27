@@ -4,7 +4,7 @@
  */
 
 import { ask } from '@tauri-apps/plugin-dialog'
-import { commands } from '$lib/ipc/bindings'
+import { confirmWithCheckbox as askNativeWithCheckbox } from '$lib/tauri-commands'
 import { tString } from '$lib/intl/messages.svelte'
 
 /**
@@ -45,7 +45,7 @@ export interface CheckboxQuestion {
 export async function confirmWithCheckbox(
   question: CheckboxQuestion,
 ): Promise<{ confirmed: boolean; checked: boolean }> {
-  const answer = await commands.confirmWithCheckbox({ ...question, cancelLabel: tString('ui.confirmDialog.cancel') })
+  const answer = await askNativeWithCheckbox({ ...question, cancelLabel: tString('ui.confirmDialog.cancel') })
   switch (answer.kind) {
     case 'confirmed':
       return { confirmed: true, checked: answer.checked }

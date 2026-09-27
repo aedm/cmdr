@@ -107,7 +107,7 @@ export function previewSchemeInput(intent: SchemeIntent): string {
  * ❗ Only the jump calls this. Opening a modal from the debounced preview would
  * put a sheet on screen while someone is still typing the address for it.
  */
-export async function actOnSchemeInput(
+export function actOnSchemeInput(
   intent: SchemeIntent,
   deps: {
     /**
@@ -123,20 +123,20 @@ export async function actOnSchemeInput(
     onConnected: (place: ConnectedPlace) => void
   },
 ): Promise<GoToPathOutcome> {
-  if (intent.kind === 'place') return { kind: 'directory', path: intent.path }
+  if (intent.kind === 'place') return Promise.resolve({ kind: 'directory', path: intent.path })
   // ❗ `invalid` keeps the dialog OPEN with the preview line still under the box,
   // which is the honest answer: there's nowhere to send the person, and closing
   // on it would look like the jump worked.
   if (intent.kind === 'snapshot') {
-    return { kind: 'invalid', reason: tString('goToPath.dialog.snapshotNotAPath') }
+    return Promise.resolve({ kind: 'invalid', reason: tString('goToPath.dialog.snapshotNotAPath') })
   }
   const { address } = intent
-  return {
+  return Promise.resolve({
     kind: 'handed_off',
     openSheet: async () => {
       await openAddServerSheet({ prefill: address, onSmbHandOff: deps.onSmbHandOff, onConnected: deps.onConnected })
     },
-  }
+  })
 }
 
 /** The saved place a server path belongs to, by its own name. */

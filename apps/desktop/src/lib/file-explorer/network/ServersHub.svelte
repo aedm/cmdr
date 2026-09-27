@@ -585,11 +585,6 @@
     .row-list,
     .server-row {
         grid-column: 1 / -1;
-    }
-
-    .header-row,
-    .row-list,
-    .server-row {
         display: grid;
         grid-template-columns: subgrid;
     }

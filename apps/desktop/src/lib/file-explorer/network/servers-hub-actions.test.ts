@@ -40,7 +40,9 @@ vi.mock('./network-store.svelte', () => ({
   getCredentialStatus: () => 'has_creds',
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
   forgetCredentials: (...args: unknown[]) => forgetCredentials(...(args as [])),
-  setCredentialStatus: (...args: unknown[]) => setCredentialStatus(...(args as [])),
+  setCredentialStatus: (...args: unknown[]) => {
+    setCredentialStatus(...(args as []))
+  },
 }))
 vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
@@ -145,7 +147,7 @@ const shareRow: HubRow = {
   id: 'share:smb-container',
   kind: 'share',
   parentId: savedHostRow.id,
-  account: 'sven',
+  account: { kind: 'user', username: 'sven' },
   name: 'Container',
   status: 'saved',
   volumeId: 'smb-container',

@@ -126,9 +126,9 @@ unit-tested:
   host is a manual-server entry whose "disconnect" unmounts shares rather than dropping a session.
 - **`../navigation/servers-hub-rows` consumers**: `../pane/types.ts`'s `NetworkCursorEntry` gains a `server` arm, which
   is how the palette's server commands reach the row under the cursor (`$lib/servers/server-command-target.ts` owns the
-  rule: the hub IS a pane, so "the focused pane's volume" would answer the synthetic hub row). The `host` arm carries its
-  row too, so Edit and Rename reach an SMB host (`editHubRow`, `$lib/servers/DETAILS.md` § "Which server a command acts
-  on").
+  rule: the hub IS a pane, so "the focused pane's volume" would answer the synthetic hub row). The `host` arm carries
+  its row too, so Edit and Rename reach an SMB host (`editHubRow`, `$lib/servers/DETAILS.md` § "Which server a command
+  acts on").
 
 ### Discovery off
 

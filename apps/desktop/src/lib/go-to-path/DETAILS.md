@@ -129,6 +129,6 @@ wrong destination.
 `GoToPathOutcome = GoToPathResolution | { kind: 'handed_off'; openSheet }` and widens `goToPath` and the dialog's `onGo`
 to it. The dialog closes on anything that isn't `invalid`, a hand-off included, and ❗ only THEN calls `openSheet`. The
 jump used to open the sheet itself and wait for it, so the sheet sat under the still-open dialog, covered by it, and the
-dialog's close (`explorerRef.refocus()`) took focus back from under the sheet.
-`shouldPrefillClipboard` stays on the narrow type; a scheme input takes its own prefill path, because a copied server
-address is exactly what the box was opened to paste.
+dialog's close (`explorerRef.refocus()`) took focus back from under the sheet. `shouldPrefillClipboard` stays on the
+narrow type; a scheme input takes its own prefill path, because a copied server address is exactly what the box was
+opened to paste.
