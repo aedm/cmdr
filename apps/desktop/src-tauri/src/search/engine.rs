@@ -8,6 +8,7 @@
 //! the scope filter's ancestor walk, ranking, and path reconstruction.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use rayon::prelude::*;
 
@@ -28,15 +29,19 @@ use super::types::{SearchQuery, SearchResultEntry, SearchSort};
 /// [`ExcludeRules`], shared with the live walk so the two can't disagree
 /// (`excludes.rs`). What stays here is arena-shaped: the include roots are entry
 /// ids, and the ancestor walk is a `parent_id` chain.
+///
+/// Cloned once per scan chunk, like the compiled query, and cheap to: everything
+/// but the exclude regexes is shared.
+#[derive(Clone)]
 struct ScopeFilter {
     /// Entry IDs that represent the include path roots. An entry passes if
     /// any of its ancestors (including itself) is in this set.
-    include_ids: Option<HashSet<i64>>,
+    include_ids: Option<Arc<HashSet<i64>>>,
     /// The directory names and path prefixes this query excludes.
     excludes: ExcludeRules,
     /// The volume's mount root, prepended before a path-prefix comparison: the
     /// index stores mount-relative paths, and a user's path exclude is absolute.
-    path_prefix: String,
+    path_prefix: Arc<str>,
 }
 
 impl ScopeFilter {
@@ -136,7 +141,7 @@ fn prepare_scope_filter(query: &SearchQuery, case_insensitive: bool, path_prefix
         if ids.is_empty() {
             None
         } else {
-            Some(ids.iter().copied().collect::<HashSet<i64>>())
+            Some(Arc::new(ids.iter().copied().collect::<HashSet<i64>>()))
         }
     } else if query.include_paths.as_ref().is_some_and(|p| !p.is_empty()) {
         // include_paths present but include_path_ids not set (this shouldn't happen).
@@ -150,11 +155,16 @@ fn prepare_scope_filter(query: &SearchQuery, case_insensitive: bool, path_prefix
     ScopeFilter {
         include_ids,
         excludes: ExcludeRules::from_query(query, case_insensitive),
-        path_prefix: path_prefix.to_string(),
+        path_prefix: Arc::from(path_prefix),
     }
 }
 
 // ── Search execution ─────────────────────────────────────────────────
+
+/// Rows one scan task takes. Each task clones the compiled query and the scope
+/// filter (see the scan in [`search_ranked`] for why), so this sets how many clones
+/// a query pays: ~160 on a 5 M-row arena, against 16 workers to balance.
+const SCAN_CHUNK_ROWS: usize = 32_768;
 
 /// Execute a search query against ONE in-memory index, returning a `SearchResult`.
 ///
@@ -258,58 +268,73 @@ pub(crate) fn search_ranked(
     let scope_filter = prepare_scope_filter(query, case_insensitive, path_prefix);
 
     // How many query-matching entries an exclusion rule dropped. Counted with a
-    // relaxed atomic rather than a fold, because `filter().collect()` on an
-    // indexed parallel iterator preserves arena order and the ranking's tie-break
-    // rides on it; a fold/reduce would silently make equal-ranked results
-    // non-deterministic. The increment only fires on an excluded match.
+    // relaxed atomic rather than a fold, because `collect()` preserves arena order
+    // and the ranking's tie-break rides on it; a fold/reduce would silently make
+    // equal-ranked results non-deterministic. The increment only fires on an
+    // excluded match.
     let hidden_by_excludes = std::sync::atomic::AtomicU32::new(0);
+    let hidden = &hidden_by_excludes;
 
-    // Parallel scan: collect matching indices
+    // Parallel scan in fixed chunks, each with its OWN clones of the compiled query
+    // and the scope filter. A cloned `Regex` gets a cache pool of its own, and the
+    // one thread scanning the chunk becomes its owner, so every `is_match` takes the
+    // pool's lock-free path. ❌ Don't share one `Regex` across the workers: all but
+    // one of them then go through the pool's eight mutex-guarded stacks, and a worker
+    // that loses a `try_lock` there builds a whole throwaway cache. That was ~380,000
+    // allocations for a query matching nothing on a 5 M-row arena, and 30–45% of the
+    // system allocator's search penalty
+    // (`docs/notes/performance/search-loop-allocations-2026-09-27.md`).
     let matching_indices: Vec<usize> = index
         .entries
-        .par_iter()
+        .par_chunks(SCAN_CHUNK_ROWS)
         .enumerate()
-        .filter(|(i, entry)| {
-            // Skip root sentinel
-            if entry.id == ROOT_ID {
-                return false;
-            }
+        .flat_map_iter(|(chunk_no, chunk)| {
+            let compiled = compiled.clone();
+            let scope_filter = scope_filter.clone();
+            let first = chunk_no * SCAN_CHUNK_ROWS;
+            chunk.iter().enumerate().filter_map(move |(offset, entry)| {
+                let i = first + offset;
 
-            if !compiled.matches(&Candidate {
-                name: index.name(entry),
-                is_directory: entry.is_directory,
-                size: entry.size.get(),
-                modified_at: entry.modified_at.get(),
-            }) {
-                return false;
-            }
-
-            // A directory's size filter, applied HERE rather than after ranking:
-            // its size isn't in the arena, so `compiled` couldn't judge it, and a
-            // filter applied to the ranked top-k answers from a recency-ordered
-            // sample instead of from the drive.
-            if entry.is_directory
-                && let Some(sizes) = dir_sizes
-                && !sizes.passes(entry.id)
-            {
-                return false;
-            }
-
-            // Scope filter (ancestor walk): only for entries passing all other filters
-            if scope_filter.is_active() {
-                match scope_filter.verdict(index, *i) {
-                    ScopeVerdict::Inside => {}
-                    ScopeVerdict::Excluded => {
-                        hidden_by_excludes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        return false;
-                    }
-                    ScopeVerdict::OutsideRoots => return false,
+                // Skip root sentinel
+                if entry.id == ROOT_ID {
+                    return None;
                 }
-            }
 
-            true
+                if !compiled.matches(&Candidate {
+                    name: index.name(entry),
+                    is_directory: entry.is_directory,
+                    size: entry.size.get(),
+                    modified_at: entry.modified_at.get(),
+                }) {
+                    return None;
+                }
+
+                // A directory's size filter, applied HERE rather than after ranking:
+                // its size isn't in the arena, so `compiled` couldn't judge it, and a
+                // filter applied to the ranked top-k answers from a recency-ordered
+                // sample instead of from the drive.
+                if entry.is_directory
+                    && let Some(sizes) = dir_sizes
+                    && !sizes.passes(entry.id)
+                {
+                    return None;
+                }
+
+                // Scope filter (ancestor walk): only for entries passing all other filters
+                if scope_filter.is_active() {
+                    match scope_filter.verdict(index, i) {
+                        ScopeVerdict::Inside => {}
+                        ScopeVerdict::Excluded => {
+                            hidden.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            return None;
+                        }
+                        ScopeVerdict::OutsideRoots => return None,
+                    }
+                }
+
+                Some(i)
+            })
         })
-        .map(|(i, _)| i)
         .collect();
 
     let total_count = matching_indices.len() as u32;

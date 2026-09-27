@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::*;
 use crate::search::index::{OptU64, SearchEntry};
 
+mod allocations;
 mod count;
 mod filters;
 mod matching;

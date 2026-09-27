@@ -167,3 +167,30 @@ fn a_rule_set_with_no_names_never_walks_the_components() {
     assert!(rules.excludes_walked("/tmp/scratch/a.txt", None));
     assert!(!rules.excludes_walked("/tmp/keep/a.txt", None));
 }
+
+// ── The allocation-free fold ─────────────────────────────────────────
+
+#[test]
+fn the_ascii_fold_agrees_with_the_general_one() {
+    // The arena asks about every ancestor of every match, so an ASCII name folds on
+    // the stack. It must fold to the very key the set was built with, or an
+    // exclusion silently stops applying on the scan while the live walk still
+    // honours it for non-ASCII names.
+    for name in ["node_modules", "Node_Modules", "TARGET", ".Git", "a-B_c.123", "", "~$Tmp"] {
+        let shortcut = with_ascii_folded(name, str::to_string);
+        assert_eq!(shortcut.as_deref(), Some(fold(name, true).as_str()), "{name:?}");
+    }
+}
+
+#[test]
+fn a_name_the_shortcut_declines_still_folds_and_is_still_excluded() {
+    // Non-ASCII and over-long names take the general fold: slower, same answer.
+    let accented = "Caf\u{e9}";
+    let long = "X".repeat(STACK_FOLD_MAX + 1);
+    assert!(with_ascii_folded(accented, |_| ()).is_none());
+    assert!(with_ascii_folded(&long, |_| ()).is_none());
+
+    let rules = ExcludeRules::from_query(&with_excludes(&[accented, &long.to_lowercase()]), true);
+    assert!(rules.excludes_dir_name("CAF\u{c9}"));
+    assert!(rules.excludes_dir_name(&long));
+}

@@ -20,6 +20,7 @@
 //! exclusions all fold under one alphabet.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use regex::{Regex, RegexBuilder};
 
@@ -28,17 +29,25 @@ use cmdr_index::store;
 use super::query::{SYSTEM_DIR_EXCLUDES, glob_to_regex};
 use super::types::SearchQuery;
 
+/// Longest name the exact-name lookup folds on the stack: `NAME_MAX` on APFS and
+/// most local filesystems. A longer name (possible over SMB) takes the general fold.
+const STACK_FOLD_MAX: usize = 255;
+
 /// The directory names and path prefixes a query excludes, compiled once.
-#[derive(Debug)]
+///
+/// Cheap to clone, and cloned once per scan chunk (`engine.rs`): the sets are
+/// shared, and each clone's regexes get a cache pool of their own, which keeps the
+/// arena scan's workers off each other's caches.
+#[derive(Debug, Clone)]
 pub(crate) struct ExcludeRules {
     /// Exact directory names (system tier + plain user excludes), stored
     /// normalized when [`case_insensitive`](Self::case_insensitive) is set so a
     /// lookup is one hash.
-    exact_names: HashSet<String>,
+    exact_names: Arc<HashSet<String>>,
     /// User excludes containing a wildcard, as regexes over a directory name.
     name_patterns: Vec<Regex>,
     /// User excludes containing a `/`, matched as absolute path prefixes.
-    path_prefixes: Vec<String>,
+    path_prefixes: Arc<[String]>,
     /// Whether name matching folds case, taken from the compiled query.
     case_insensitive: bool,
 }
@@ -47,26 +56,23 @@ impl ExcludeRules {
     /// Compile a query's exclusions. `case_insensitive` comes from the compiled
     /// query; ❌ don't derive it again here.
     pub(crate) fn from_query(query: &SearchQuery, case_insensitive: bool) -> Self {
-        let mut rules = Self {
-            exact_names: HashSet::new(),
-            name_patterns: Vec::new(),
-            path_prefixes: Vec::new(),
-            case_insensitive,
-        };
+        let mut exact_names = HashSet::new();
+        let mut name_patterns = Vec::new();
+        let mut path_prefixes = Vec::new();
 
         // User excludes: a `/` means a path prefix, a wildcard means a glob, and
         // anything else is a plain directory name.
         if let Some(patterns) = query.exclude_dir_names.as_ref() {
             for pattern in patterns {
                 if pattern.contains('/') {
-                    rules.path_prefixes.push(pattern.clone());
+                    path_prefixes.push(pattern.clone());
                 } else if pattern.contains('*') || pattern.contains('?') {
                     let regex_str = glob_to_regex(pattern);
                     if let Ok(re) = RegexBuilder::new(&regex_str).case_insensitive(case_insensitive).build() {
-                        rules.name_patterns.push(re);
+                        name_patterns.push(re);
                     }
                 } else {
-                    rules.exact_names.insert(rules.fold(pattern));
+                    exact_names.insert(fold(pattern, case_insensitive));
                 }
             }
         }
@@ -74,12 +80,16 @@ impl ExcludeRules {
         // The system/build/cache tier, on unless the query turns it off.
         if query.exclude_system_dirs != Some(false) {
             for &name in SYSTEM_DIR_EXCLUDES {
-                let key = rules.fold(name);
-                rules.exact_names.insert(key);
+                exact_names.insert(fold(name, case_insensitive));
             }
         }
 
-        rules
+        Self {
+            exact_names: Arc::new(exact_names),
+            name_patterns,
+            path_prefixes: path_prefixes.into(),
+            case_insensitive,
+        }
     }
 
     /// Whether anything is excluded at all, so a caller can skip the walk.
@@ -100,20 +110,23 @@ impl ExcludeRules {
 
     /// Whether one ANCESTOR directory's name is excluded.
     ///
-    /// Runs per ancestor per candidate on the arena's hot path, so the
-    /// case-sensitive branch borrows rather than folding a copy of every name it
-    /// is asked about.
+    /// Runs per ancestor per match on the arena's hot path (a one-letter query
+    /// asks it ~15 M times), so it doesn't allocate for any real-world name: the
+    /// case-sensitive branch borrows, and the insensitive one folds an ASCII name
+    /// on the stack. Only a non-ASCII or over-long name pays [`fold`]'s `String`s.
     ///
-    /// ❌ The insensitive branch goes through [`Self::fold`], never
-    /// `normalize_for_comparison` alone: the set is KEYED through `fold`, and off
-    /// macOS that normalize is a no-op, so a raw lookup would compare an unfolded
-    /// name against a lowercased key and match nothing with a capital in it.
+    /// ❌ The insensitive branch goes through [`fold`] (or its ASCII shortcut),
+    /// never `normalize_for_comparison` alone: the set is KEYED through `fold`, and
+    /// off macOS that normalize is a no-op, so a raw lookup would compare an
+    /// unfolded name against a lowercased key and match nothing with a capital in it.
     pub(crate) fn excludes_dir_name(&self, name: &str) -> bool {
         if !self.exact_names.is_empty() {
-            let excluded = if self.case_insensitive {
-                self.exact_names.contains(&self.fold(name))
-            } else {
+            let excluded = if !self.case_insensitive {
                 self.exact_names.contains(name)
+            } else if let Some(excluded) = with_ascii_folded(name, |folded| self.exact_names.contains(folded)) {
+                excluded
+            } else {
+                self.exact_names.contains(&fold(name, true))
             };
             if excluded {
                 return true;
@@ -164,22 +177,41 @@ impl ExcludeRules {
             .any(|component| self.excludes_dir_name(component))
     }
 
-    /// One name in the alphabet the exact-name set is keyed on.
-    ///
-    /// ⚠️ The lowercase is EXPLICIT and not left to `normalize_for_comparison`,
-    /// which is deliberately a no-op off macOS: two names differing in case are two
-    /// different FILES there, so the index is right not to fold its keys. This is a
-    /// user's filter, not an index key — the query said case-insensitive, and
-    /// honoring that only on macOS is exactly the fork that makes a search exclude
-    /// under one alphabet and match under another. The normalization still comes
-    /// from the index, so macOS keeps folding NFD to the form APFS stores.
-    fn fold(&self, name: &str) -> String {
-        if self.case_insensitive {
-            store::normalize_for_comparison(name).to_lowercase()
-        } else {
-            name.to_string()
-        }
+}
+
+/// One name in the alphabet the exact-name set is keyed on.
+///
+/// ⚠️ The lowercase is EXPLICIT and not left to `normalize_for_comparison`,
+/// which is deliberately a no-op off macOS: two names differing in case are two
+/// different FILES there, so the index is right not to fold its keys. This is a
+/// user's filter, not an index key — the query said case-insensitive, and
+/// honoring that only on macOS is exactly the fork that makes a search exclude
+/// under one alphabet and match under another. The normalization still comes
+/// from the index, so macOS keeps folding NFD to the form APFS stores.
+fn fold(name: &str, case_insensitive: bool) -> String {
+    if case_insensitive {
+        store::normalize_for_comparison(name).to_lowercase()
+    } else {
+        name.to_string()
     }
+}
+
+/// Run `f` on `name` case-folded, without allocating, if `name` is ASCII and fits
+/// on the stack; `None` otherwise, for the caller to take the general [`fold`].
+///
+/// Byte-identical to `fold(name, true)` for every name it accepts: NFD leaves ASCII
+/// untouched, and Unicode lowercasing of ASCII is ASCII lowercasing (pinned by
+/// `the_ascii_fold_agrees_with_the_general_one`).
+fn with_ascii_folded<R>(name: &str, f: impl FnOnce(&str) -> R) -> Option<R> {
+    if name.len() > STACK_FOLD_MAX || !name.is_ascii() {
+        return None;
+    }
+    let mut buf = [0u8; STACK_FOLD_MAX];
+    let folded = &mut buf[..name.len()];
+    folded.copy_from_slice(name.as_bytes());
+    folded.make_ascii_lowercase();
+    // ASCII in, ASCII out, so this is always valid UTF-8.
+    std::str::from_utf8(folded).ok().map(f)
 }
 
 #[cfg(test)]

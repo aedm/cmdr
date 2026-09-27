@@ -115,7 +115,11 @@ pub(crate) struct Candidate<'a> {
 }
 
 /// A `SearchQuery` compiled once, then asked about many candidates.
-#[derive(Debug)]
+///
+/// Cloning is cheap and deliberate: the compiled regex is shared, but each clone
+/// gets a cache pool of its own. The arena scan clones one per chunk so the thread
+/// scanning it owns that pool outright (`engine.rs`, `search_ranked`).
+#[derive(Debug, Clone)]
 pub(crate) struct CompiledQuery {
     /// The name pattern, or `None` when the query doesn't filter by name.
     pattern: Option<Regex>,
@@ -166,8 +170,9 @@ impl CompiledQuery {
     /// Whether one candidate satisfies every predicate.
     ///
     /// Runs per entry over millions of rows, so it borrows its name and does no
-    /// allocation. Size bounds apply to FILES only; a directory's size arrives later,
-    /// from `dir_stats` (see the module doc).
+    /// allocation, as long as one thread at a time asks a given clone (see the type
+    /// doc). Size bounds apply to FILES only; a directory's size arrives later, from
+    /// `dir_stats` (see the module doc).
     #[inline]
     pub(crate) fn matches(&self, candidate: &Candidate<'_>) -> bool {
         if let Some(ref re) = self.pattern

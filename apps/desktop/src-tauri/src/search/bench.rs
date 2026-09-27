@@ -19,6 +19,11 @@
 //! CMDR_SEARCH_BENCH_DB="/path/index-root.db" \
 //!   cargo test -p cmdr --lib -- --ignored --nocapture --exact search::bench::bench_arena_bytes
 //!
+//! # Allocations and latency per query, as the dialog and MCP ask (excludes on,
+//! # optional real importance weights).
+//! CMDR_SEARCH_BENCH_DB="/path/index-root.db" CMDR_SEARCH_BENCH_IMPORTANCE_DB="/path/importance-root.db" \
+//!   cargo test -p cmdr --lib --release -- --ignored --nocapture --exact search::bench::bench_query_allocations
+//!
 //! # The arena pass alone, best-of-N, with and without size/date filters.
 //! CMDR_SEARCH_BENCH_DB="/path/index-root.db" \
 //!   cargo test -p cmdr --lib search::bench::bench_arena_scan -- --ignored --nocapture
@@ -78,7 +83,7 @@ const EXTS: [&str; 8] = ["pdf", "jpg", "png", "txt", "md", "rs", "json", "zip"];
 
 /// Build a synthetic index of roughly `n` entries shaped like a real home dir:
 /// a fanned-out tree ~8 levels deep, ~12% directories, mixed sizes and mtimes.
-fn build_synthetic_index(n: usize) -> SearchIndex {
+pub(super) fn build_synthetic_index(n: usize) -> SearchIndex {
     const FANOUT: usize = 6;
     const MAX_DEPTH: usize = 8;
 
@@ -432,6 +437,104 @@ fn bench_arena_scan() {
             "  {label:<24} matches {total:>9}  min {:>9.2?}  median {:>9.2?}",
             runs[0],
             runs[repeats / 2],
+        );
+    }
+    eprintln!();
+}
+
+/// Allocations and latency per query, the way the dialog and MCP ask: a full ranked
+/// search (limit 30), case folding at the platform default, and the system/cache
+/// excludes ON. The other benches here turn the excludes off to keep the scan
+/// comparable; this one doesn't, because the excludes' ancestor walk is part of what
+/// a real query costs. `CMDR_SEARCH_BENCH_IMPORTANCE_DB` adds real importance
+/// weights, which production ranks with; without it the weights are empty.
+///
+/// Prints one `QUERY` line per pattern: the match count; allocations (on a dedicated
+/// rayon pool as wide as the global one, [`allocations_on_pool`]; 0 when the test
+/// binary's allocator doesn't count) for the full search, for the scan alone
+/// (count-only), and for the scan with the excludes off, which splits the cost
+/// between ranking, the excludes' walk, and the matcher; then min / median / max
+/// wall time of the full search over `CMDR_SEARCH_BENCH_REPEATS` runs on the global
+/// pool. Findings: `docs/notes/performance/search-loop-allocations-2026-09-27.md`.
+///
+/// [`allocations_on_pool`]: crate::test_support::allocations_on_pool
+#[test]
+#[ignore = "benchmark; needs CMDR_SEARCH_BENCH_DB pointing at a real index-*.db"]
+#[allow(
+    clippy::print_stderr,
+    reason = "an ignored measurement harness prints its table to stderr for `--nocapture`; it never runs in the app or CI"
+)]
+fn bench_query_allocations() {
+    use crate::test_support::allocations_on_pool;
+
+    let Ok(db) = std::env::var("CMDR_SEARCH_BENCH_DB") else {
+        eprintln!("CMDR_SEARCH_BENCH_DB not set; skipping");
+        return;
+    };
+    let repeats: usize = std::env::var("CMDR_SEARCH_BENCH_REPEATS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(9);
+    let weights = std::env::var("CMDR_SEARCH_BENCH_IMPORTANCE_DB")
+        .map(|path| load_weights_from(&path))
+        .unwrap_or_else(|_| ImportanceWeights::empty());
+
+    let pool = ReadPool::new(db.clone().into()).expect("open index DB");
+    let index = load_search_index(&pool, &AtomicBool::new(false)).expect("load index");
+    eprintln!(
+        "\n{db}\n  {}, {} scored folders, {} rayon threads, {repeats} runs each",
+        pluralize_with(index.entries.len() as u64, "entry", "entries"),
+        weights.len(),
+        rayon::current_num_threads(),
+    );
+
+    let as_the_app_asks = |pattern: &str| SearchQuery {
+        case_sensitive: None,
+        exclude_system_dirs: None,
+        ..query(pattern, PatternType::Glob, false)
+    };
+    let allocations = |q: &SearchQuery| {
+        allocations_on_pool(rayon::current_num_threads(), || {
+            search_ranked(&index, q, &weights, "", None)
+                .expect("search should succeed")
+                .total_count
+        })
+    };
+    for (label, pattern) in [
+        ("no match", "zqxj-no-such-name"),
+        ("rare literal", "Cargo.lock"),
+        ("word", "report"),
+        ("extension", "*.pdf"),
+        ("one letter", "e"),
+    ] {
+        let full = as_the_app_asks(pattern);
+        let scan = SearchQuery {
+            count_only: true,
+            ..full.clone()
+        };
+        let bare_scan = SearchQuery {
+            exclude_system_dirs: Some(false),
+            ..scan.clone()
+        };
+        let (matches, full_allocs) = allocations(&full);
+        let (_, scan_allocs) = allocations(&scan);
+        let (_, bare_scan_allocs) = allocations(&bare_scan);
+
+        let mut runs: Vec<std::time::Duration> = (0..repeats)
+            .map(|_| {
+                let t = Instant::now();
+                search_ranked(&index, &full, &weights, "", None).expect("search should succeed");
+                t.elapsed()
+            })
+            .collect();
+        runs.sort_unstable();
+        let ms = |d: std::time::Duration| d.as_secs_f64() * 1000.0;
+        eprintln!(
+            "QUERY {label:<13} matches={matches:<9} allocs={full_allocs:<10} scan_allocs={scan_allocs:<10} \
+             bare_scan_allocs={bare_scan_allocs:<10} min_ms={:.1} median_ms={:.1} max_ms={:.1}",
+            ms(runs[0]),
+            ms(runs[repeats / 2]),
+            ms(runs[repeats - 1]),
         );
     }
     eprintln!();
