@@ -19,8 +19,3 @@ export function signedInAsOfMount(mountAccount: string | null | undefined): Sign
 export function signedInAsUser(username: string | null | undefined): SignedInAs | null {
   return username ? { kind: 'user', username } : null
 }
-
-/** Whether two answers name the same account. */
-export function sameAccount(a: SignedInAs, b: SignedInAs): boolean {
-  return a.kind === b.kind && (a.kind === 'guest' || (b.kind === 'user' && a.username === b.username))
-}

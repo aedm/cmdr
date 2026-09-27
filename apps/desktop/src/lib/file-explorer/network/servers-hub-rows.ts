@@ -22,7 +22,7 @@
 
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
 import type { ConnectionState, NetworkHost, VolumeInfo } from '../types'
-import { sameAccount, signedInAsOfMount, signedInAsUser, type SignedInAs } from './signed-in-as'
+import { signedInAsOfMount, signedInAsUser, type SignedInAs } from './signed-in-as'
 
 /** SMB's own port, which an address leaves unsaid. */
 const SMB_PORT = 445
@@ -53,8 +53,9 @@ export interface HubRow {
   parentId: string | null
   /**
    * The account the row is signed in as, `null` when nothing known says. A share: the live mount's while it's
-   * connected, else the saved one the next connect uses. An SMB server: its live mounts' when they agree, else its
-   * share list's (`serverAccount`). A one-place server: `null` (its name is `user@host` already).
+   * connected, else the saved one the next connect uses. An SMB server: the SERVER-level account, the same one its
+   * share list's header names (the account its listing signed in as, else the one it's set to be used with), ❌ never
+   * a share's mount, which disagreed with the header. A one-place server: `null` (its name is `user@host` already).
    */
   account: SignedInAs | null
   /** A share's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
@@ -162,13 +163,7 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     )
     const shareRows = shares.map((place) => shareRow(row, place, states, mountAccounts.get(place.volumeId) ?? null))
-    const liveAccounts = shares.flatMap((place) => {
-      const state = states.get(place.volumeId)
-      const account =
-        state === 'direct' || state === 'os_mount' ? signedInAsOfMount(mountAccounts.get(place.volumeId)) : null
-      return account ? [account] : []
-    })
-    row.account = serverAccount(liveAccounts, listed([row.host?.id, row.id]))
+    row.account = listed([row.host?.id, row.id]) ?? signedInAsUser(row.saved.username)
     for (const share of shareRows) {
       if (taken.has(share.id)) continue
       taken.add(share.id)
@@ -213,18 +208,6 @@ function shareRow(
     saved: server.saved,
     host: server.host,
   }
-}
-
-/**
- * The account an SMB server row is signed in as.
- *
- * ❗ Its LIVE mounts first, since they are the sessions it has, but only when they
- * agree: two shares mounted as two accounts say nothing about "the" account. Then
- * the account its share list signed in as. `null` when neither says.
- */
-function serverAccount(live: SignedInAs[], listed: SignedInAs | null): SignedInAs | null {
-  if (live.length > 0 && live.every((account) => sameAccount(account, live[0]))) return live[0]
-  return listed
 }
 
 /**

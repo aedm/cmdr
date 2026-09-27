@@ -50,9 +50,10 @@ its name and account fields in the two steps before this one.
 - A share row sits right under its server, indented: its name, "as sven" when it has an account, status Connected while
   it's mounted (off the volume list by id), else Saved. While it's connected, "as …" names the account the live mount
   signed in as (the mount table's user, `LocationInfo::mount_account`); the saved account is for the next connect.
-- A server row names the account it's signed in as too ("My NAS as testuser", "as guest"): its live mounts' account when
-  they agree, else the account its share list signed in as (`network-store.svelte.ts`'s `getListedAccount`), else
-  nothing. ❌ Never a Keychain read. A share list's header says the same for the list ("as guest") and offers "Sign in
+- A server row names the SERVER-level account ("My NAS as testuser", "as guest"), the same one its share list's header
+  names: the account its listing signed in as (`network-store.svelte.ts`'s `getListedAccount`), else the one it's set to
+  be used with, else nothing. ❌ Never a share's mount (each share row says its own), and ❌ never a Keychain read.
+  "My NAS as guest" from its one guest mount once disagreed with the header's "as testuser". The header offers "Sign in
   as…", the sign-in sheet with the username editable and no guest choice; a cancel stays on the list. The account signed
   in as becomes the host's preference (the typed-username one), so later listings, background ones included, sign in as
   it, and a guest listing never takes a known account back to guest. "Use guest" (offered where a guest listing worked

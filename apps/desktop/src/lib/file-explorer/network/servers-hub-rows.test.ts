@@ -456,10 +456,11 @@ describe('saved SMB shares', () => {
   })
 
   /**
-   * ❗ An SMB SERVER row names the account it's actually signed in as, from what's
-   * already known and ❌ never a Keychain read: its live mounts first (they are the
-   * sessions), then the listing's own answer. Mounts that disagree say nothing about
-   * "the" account, so the listing speaks.
+   * ❗ An SMB SERVER row names the SERVER-level account, the same one its share list's
+   * header names: the account its listing signed in as, else the one it's set to be used
+   * with. ❌ Never a share's mount: "My NAS as guest" (from the one live mount, public, as
+   * guest) disagreed with the header's "as testuser" (final QA). Share rows keep their
+   * own mount's account.
    */
   describe('the account a server row is signed in as', () => {
     const live = (id: string, mountAccount: string): VolumeInfo => ({
@@ -471,36 +472,36 @@ describe('saved SMB shares', () => {
       connectionState: 'direct',
       mountAccount,
     })
-    const serverAccount = (volumes: VolumeInfo[], listed?: SignedInAs) =>
+    const rowsFor = (volumes: VolumeInfo[], listed?: SignedInAs, preference: string | null = null) =>
       buildHubRows({
-        saved: [withShares],
+        saved: [{ ...withShares, username: preference }],
         hosts: [],
         volumes,
         listedAs: (hostId) => (hostId === withShares.id ? listed : undefined),
-      })[0].account
+      })
+    const serverAccount = (volumes: VolumeInfo[], listed?: SignedInAs, preference: string | null = null) =>
+      rowsFor(volumes, listed, preference)[0].account
 
-    it('names the account its live mounts are signed in as', () => {
-      expect(serverAccount([live('smb-container', 'testuser')])).toEqual({ kind: 'user', username: 'testuser' })
-      expect(serverAccount([live('smb-container', 'GUEST')])).toEqual({ kind: 'guest' })
-    })
-
-    it('names the account its share list signed in as when nothing is mounted', () => {
+    it('names the account its share list signed in as', () => {
       expect(serverAccount([], { kind: 'guest' })).toEqual({ kind: 'guest' })
       expect(serverAccount([], { kind: 'user', username: 'ada' })).toEqual({ kind: 'user', username: 'ada' })
     })
 
-    it('lets the mounts win over the listing, and the listing speak when mounts disagree', () => {
-      expect(serverAccount([live('smb-container', 'testuser')], { kind: 'guest' })).toEqual({
+    it('ignores its shares’ mounts, which keep their own account on their own rows', () => {
+      const rows = rowsFor([live('smb-container', 'GUEST')], { kind: 'user', username: 'testuser' })
+      expect(rows[0].account).toEqual({ kind: 'user', username: 'testuser' })
+      expect(rows.find((row) => row.name === 'Container')?.account).toEqual({ kind: 'guest' })
+    })
+
+    it('falls back to the account it is set to be used with when no listing said', () => {
+      expect(serverAccount([live('smb-container', 'GUEST')], undefined, 'sven')).toEqual({
         kind: 'user',
-        username: 'testuser',
+        username: 'sven',
       })
-      expect(serverAccount([live('smb-container', 'testuser'), live('smb-scans', 'GUEST')], { kind: 'guest' })).toEqual(
-        { kind: 'guest' },
-      )
     })
 
     it('says nothing when nothing is known', () => {
-      expect(serverAccount([])).toBeNull()
+      expect(serverAccount([live('smb-container', 'testuser')])).toBeNull()
     })
 
     it('names a nearby host’s listing account too', () => {
