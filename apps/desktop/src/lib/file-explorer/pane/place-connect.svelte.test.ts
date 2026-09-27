@@ -253,10 +253,12 @@ describe('createPlaceConnect: a saved SMB share', () => {
   let volumePath = $state('/Volumes/naspi')
   let currentPath = $state('/Volumes/naspi/docs')
 
+  let sub: PlaceConnect | undefined
+
   function create(landingOf = vi.fn(() => Promise.resolve<string | null>('/Volumes/naspi'))) {
     const enter = vi.fn()
     dispose = $effect.root(() => {
-      createPlaceConnect({
+      sub = createPlaceConnect({
         getVolumeId: () => savedShare.id,
         getCurrentVolumeInfo: () => shareInfo,
         getVolumePath: () => volumePath,
@@ -311,6 +313,69 @@ describe('createPlaceConnect: a saved SMB share', () => {
       volumeId: savedShare.id,
       volumePath: '/Volumes/naspi-1',
       targetPath: '/Volumes/naspi-1/docs',
+    })
+  })
+
+  /**
+   * ❗ The pane's root can match the live mount while the folder it stands in is the
+   * stale saved one: after a Cancel whose kernel mount finished anyway, the pane sat
+   * at `/Volumes/public-1` over a share now at `/Volumes/public`, listing "Not
+   * connected yet" (final QA). Standing outside the live mount is followed too.
+   */
+  it('follows a live share when the pane stands outside its mount, even with the right root', () => {
+    shareInfo = { ...savedShare, category: 'attached_volume', connectionState: 'direct' }
+    currentPath = '/Volumes/naspi-1'
+    const enter = create()
+    expect(enter).toHaveBeenCalledWith({
+      volumeId: savedShare.id,
+      volumePath: '/Volumes/naspi',
+      targetPath: '/Volumes/naspi',
+    })
+  })
+
+  /**
+   * ❗ A dial that answers "already live" lands where the share IS live, ❌ never the
+   * saved row's remembered path: a mount that finished after a Cancel never updated
+   * that row, and Try again landed on it and read "Not connected yet" (final QA).
+   */
+  it('lands an already-live share at its live mount, not the stale saved landing', async () => {
+    connectPlace.mockImplementationOnce(() => {
+      shareInfo = { ...savedShare, path: '/Volumes/naspi-2', category: 'attached_volume', connectionState: 'direct' }
+      return Promise.resolve({ kind: 'already_live' })
+    })
+    const landingOf = vi.fn(() => Promise.resolve<string | null>('/Volumes/naspi-1'))
+    const enter = create(landingOf)
+    await vi.waitFor(() => {
+      expect(connectPlace).toHaveBeenCalledOnce()
+      expect(enter).toHaveBeenCalled()
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const roots = enter.mock.calls.map(([change]) => (change as { volumePath: string }).volumePath)
+    expect(roots).not.toContain('/Volumes/naspi-1')
+    expect(roots.at(-1)).toBe('/Volumes/naspi-2')
+  })
+
+  /**
+   * ❗ A Cancel that lands after the mount already went through leaves no
+   * "isn't connected" view over a live share: the view stayed while the header's dot
+   * was green, and Try again read "Not connected yet" (final QA).
+   */
+  it('drops the not-connected view when the cancelled mount finished anyway', async () => {
+    connectPlace.mockImplementationOnce(() => {
+      shareInfo = { ...savedShare, path: '/Volumes/naspi-2', category: 'attached_volume', connectionState: 'direct' }
+      return Promise.resolve({ kind: 'cancelled' })
+    })
+    const enter = create()
+    await vi.waitFor(() => {
+      expect(connectPlace).toHaveBeenCalledOnce()
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    flushSync()
+    expect(sub?.state).toBeNull()
+    expect(enter).toHaveBeenLastCalledWith({
+      volumeId: savedShare.id,
+      volumePath: '/Volumes/naspi-2',
+      targetPath: '/Volumes/naspi-2/docs',
     })
   })
 

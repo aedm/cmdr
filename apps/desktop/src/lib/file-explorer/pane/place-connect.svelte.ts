@@ -82,8 +82,12 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     // `statfs`'s, so it is the one to trust.
     if (info && isSmbVolumeId(volumeId) && isLiveSession(info.connectionState)) {
       const root = deps.getVolumePath()
-      if (info.path !== root && followed !== `${volumeId}:${info.path}`) {
-        followed = `${volumeId}:${info.path}`
+      // ❗ Also when the root matches but the folder is outside the mount: a mount that
+      // finished after a Cancel left the pane at the stale saved path, listing "Not
+      // connected yet" over a share that was live elsewhere (final QA).
+      const outside = !isAtOrUnder(deps.getCurrentPath(), info.path)
+      if ((info.path !== root || outside) && followed !== `${volumeId}:${info.path}:${deps.getCurrentPath()}`) {
+        followed = `${volumeId}:${info.path}:${deps.getCurrentPath()}`
         log.info('The share {volumeId} is mounted at {path}, not {root}; following it', {
           volumeId,
           path: info.path,
@@ -131,7 +135,14 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
       case 'already_live': {
         // The row flips to `direct` on the next `volumes-changed`; reloading now
         // is what makes the pane feel like it opened rather than waited.
-        const landing = isSmbVolumeId(volumeId) ? await deps.landingOf?.(volumeId) : null
+        // ❗ Where it is LIVE first: a mount that finished after a Cancel never updated the
+        // saved row, whose remembered path then read "Not connected yet" on Try again.
+        const live = deps.getCurrentVolumeInfo()
+        const landing = !isSmbVolumeId(volumeId)
+          ? null
+          : live && isLiveSession(live.connectionState)
+            ? live.path
+            : await deps.landingOf?.(volumeId)
         const root = deps.getVolumePath()
         const volumePath = landing ?? root
         state = null
@@ -143,6 +154,12 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         // to `disconnected`. Keep the spinner until it does.
         return
       case 'cancelled':
+        // ❗ A kernel mount can finish after the Cancel: then the place is live, the
+        // `$effect` has already followed it, and there's nothing "not connected" to say.
+        if (isLiveSession(deps.getCurrentVolumeInfo()?.connectionState)) {
+          state = null
+          return
+        }
         // ❗ Says nothing about WHY (the user pressed the button), but stays on the
         // place: its name, a way to connect again, and the way back.
         state = {
@@ -198,6 +215,11 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     },
     picked,
   }
+}
+
+/** Whether `path` is `root` or a folder inside it, by whole components. */
+function isAtOrUnder(path: string, root: string): boolean {
+  return path === root || path.startsWith(root.endsWith('/') ? root : `${root}/`)
 }
 
 /**
