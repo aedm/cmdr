@@ -1487,6 +1487,7 @@ export type MessageKey =
   | 'fileExplorer.network.share.notFound'
   | 'fileExplorer.network.share.shareCount'
   | 'fileExplorer.network.share.signInAs'
+  | 'fileExplorer.network.share.useGuest'
   | 'fileExplorer.network.signIn'
   | 'fileExplorer.networkMount.back'
   | 'fileExplorer.networkMount.mountFailedTitle'

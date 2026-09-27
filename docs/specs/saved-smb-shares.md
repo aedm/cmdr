@@ -53,10 +53,10 @@ its name and account fields in the two steps before this one.
 - A server row names the account it's signed in as too ("My NAS as testuser", "as guest"): its live mounts' account when
   they agree, else the account its share list signed in as (`network-store.svelte.ts`'s `getListedAccount`), else
   nothing. ❌ Never a Keychain read. A share list's header says the same for the list ("as guest") and offers "Sign in
-  as…", the sign-in sheet with the username editable and no guest choice; a cancel stays on the list. The account
-  signed in as becomes the host's preference (the typed-username one), so later listings, background ones included,
-  sign in as it, and a guest listing never takes a known account back to guest. "Use guest" (offered where a guest
-  listing worked this session) clears it first, then lists as guest.
+  as…", the sign-in sheet with the username editable and no guest choice; a cancel stays on the list. The account signed
+  in as becomes the host's preference (the typed-username one), so later listings, background ones included, sign in as
+  it, and a guest listing never takes a known account back to guest. "Use guest" (offered where a guest listing worked
+  this session) clears it first, then lists as guest.
 - **Enter on a share row opens that share with that account.** With a volume id it goes the way an SFTP place does: the
   pane lands on the place, and a place that isn't mounted is brought to life in the pane (below). Without one, the
   host's share list opens and mounts it.
@@ -84,12 +84,14 @@ mount already under way may still finish, and then the share simply shows up mou
 - **Forget share** (a share row): drops the row and its pin. The share stays mounted if it is, and no password is
   touched.
 - **Forget server** (a server row): drops the manual entry, the host's sign-in history, and every share row under it.
-  Nothing is unmounted. Where a password may be stored (the host is used with an account, or this session already read one; ❌ never a Keychain read to find out), its confirmation carries "Also forget the saved password", checked by default (a native alert's
-  checkbox, `commands/confirm_dialog.rs`; Linux asks without it and keeps the password). Checked, it first deletes every
-  password stored for that server (`forget_saved_smb_host_password`): the server-level and share-level entries under
-  each name it goes by on ITS port (`SmbHostGroup::credential_names`), plus a port-less entry a lookup found its
-  password under this session, and the in-memory cache. A port-less entry nobody found for it stays: it is also the key
-  of the server on 445 of the same machine. SFTP and WebDAV servers get the same box (`forget_server_secret`).
+  Nothing is unmounted. Where a password may be stored (the host is used with an account, or this session already read
+  one; ❌ never a Keychain read to find out), its confirmation carries "Also forget the saved password", checked by
+  default (a native alert's checkbox, `commands/confirm_dialog.rs`; Linux asks without it and keeps the password).
+  Checked, it first deletes every password stored for that server (`forget_saved_smb_host_password`): the server-level
+  and share-level entries under each name it goes by on ITS port (`SmbHostGroup::credential_names`), plus a port-less
+  entry a lookup found its password under this session, and the in-memory cache. A port-less entry nobody found for it
+  stays: it is also the key of the server on 445 of the same machine. SFTP and WebDAV servers get the same box
+  (`forget_server_secret`).
 - ❗ Both act on the row they were raised on, by its id alone, and take exactly the store rows that row showed. A host's
   identity is its address AND port, so a Forget never reaches another server on the same machine.
 

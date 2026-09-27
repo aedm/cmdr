@@ -119,9 +119,7 @@ async fn a_remembered_offer_is_written_only_when_the_dial_goes_through() {
 
     let (host, dial) = super::host_for_dial(service, ACCOUNT, Some(offer)).await;
     assert_eq!(
-        host.credentials()
-            .credentials(service, Some(ACCOUNT))
-            .map(|c| c.secret),
+        host.credentials().credentials(service, Some(ACCOUNT)).map(|c| c.secret),
         Some("typed-just-now".to_string()),
         "the dial reads the typed secret"
     );

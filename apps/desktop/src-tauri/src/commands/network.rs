@@ -114,10 +114,7 @@ fn account_listing_for(
     hostname: &str,
     ip_address: Option<&str>,
     port: u16,
-) -> (
-    smb_client::GuestAttempt,
-    Option<SmbCredentials>,
-) {
+) -> (smb_client::GuestAttempt, Option<SmbCredentials>) {
     use crate::network::server_identity::{SmbServer, smb_server};
 
     let typed = manual_servers::typed_username(app, &SmbServer::new(hostname, port))

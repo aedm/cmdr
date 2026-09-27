@@ -479,10 +479,10 @@ no session behind it, so every listing on it would refuse until something dials.
   opened rather than waited. ❗ Entering, ❌ not reloading the listing: the root, the path, the listing, and the disk
   space have to move together.
 - **A live SMB share is followed to where its mount IS**, whenever the pane's root differs from it OR the folder the
-  pane stands in is outside it, and `connected` / `already_live` land at the LIVE path before the saved row's
-  remembered one. ❗ A kernel mount can finish after a Cancel without updating the saved row: the pane then sat at the
-  stale path listing "Not connected yet" over a live share, and Try again landed there again. A `cancelled` answer over
-  a place that is live by then shows no "isn't connected" view.
+  pane stands in is outside it, and `connected` / `already_live` land at the LIVE path before the saved row's remembered
+  one. ❗ A kernel mount can finish after a Cancel without updating the saved row: the pane then sat at the stale path
+  listing "Not connected yet" over a live share, and Try again landed there again. A `cancelled` answer over a place
+  that is live by then shows no "isn't connected" view.
 - **A pick of the place the pane stands on dials it when it isn't connected** (`picked`, fed from the breadcrumb's
   volume change): after a Cancel or a refusal the pane is already on that volume, so nothing else moves, and the
   switcher's pick of it did nothing. A reload alone left the pane's root at the share's old mount path, so the status

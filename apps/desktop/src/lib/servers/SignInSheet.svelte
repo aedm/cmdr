@@ -43,6 +43,7 @@
         serverTargetFrom,
         smbAddressFrom,
         type ServerForm,
+        hostWithPort,
     } from './server-form'
     import { readSavedServerOutcome, type SaveOutcome } from './server-outcomes'
     import type {
@@ -68,7 +69,7 @@
     } from '$lib/tauri-commands'
     import { tString } from '$lib/intl/messages.svelte'
     import { getAppLogger } from '$lib/logging/logger'
-    import type { HostKeyPrompt, SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
+    import type { HostKeyPrompt, SavedServer, ServerTarget } from '$lib/ipc/bindings'
 
     interface Props {
         request: SignInSheetRequest
@@ -172,18 +173,6 @@
      * read is a typo, and saving it on purpose helps nobody.
      */
     const offersAddAnyway = $derived(request.mode === 'add' && (refusal === 'unreachable' || refusal === 'timed_out'))
-
-    /** The protocols' own ports, which a sentence leaves unsaid. */
-    const DEFAULT_PORTS: Record<ServerProtocol, number[]> = { smb: [445], sftp: [22], webdav: [80, 443] }
-
-    /**
-     * The host as a sentence names it: with its port when that isn't the protocol's
-     * own, since `localhost` alone is another server than `localhost:11499`.
-     */
-    function hostWithPort(host: string, port: number | undefined, protocol: ServerProtocol): string {
-        if (port === undefined || DEFAULT_PORTS[protocol].includes(port)) return host
-        return host.includes(':') ? `[${host}]:${String(port)}` : `${host}:${String(port)}`
-    }
 
     /** The subject a refusal's sentence names: the server, and the account on it. */
     const refusalSubject = $derived.by(() => {

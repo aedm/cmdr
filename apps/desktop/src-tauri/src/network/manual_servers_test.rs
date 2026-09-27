@@ -1,5 +1,6 @@
 //! Tests for `manual_servers.rs`: address parsing, ids, the store, and its concurrency.
 
+use super::account::set_account_at_path;
 use super::*;
 
 // -- parse_server_address: all input formats --

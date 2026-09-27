@@ -211,7 +211,9 @@ pub async fn host_for_dial(service: &str, account: &str, offer: Option<SecretOff
         username: account.to_string(),
         secret: offer.secret,
     };
-    let to_remember = offer.remember.then(|| (service.to_string(), account.to_string(), credentials.secret.clone()));
+    let to_remember = offer
+        .remember
+        .then(|| (service.to_string(), account.to_string(), credentials.secret.clone()));
     let (host, guard) = offer_for_one_dial(host, service, Some(account), credentials);
     (
         host,

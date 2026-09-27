@@ -135,14 +135,7 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
       case 'already_live': {
         // The row flips to `direct` on the next `volumes-changed`; reloading now
         // is what makes the pane feel like it opened rather than waited.
-        // ❗ Where it is LIVE first: a mount that finished after a Cancel never updated the
-        // saved row, whose remembered path then read "Not connected yet" on Try again.
-        const live = deps.getCurrentVolumeInfo()
-        const landing = !isSmbVolumeId(volumeId)
-          ? null
-          : live && isLiveSession(live.connectionState)
-            ? live.path
-            : await deps.landingOf?.(volumeId)
+        const landing = await landingOf(volumeId)
         const root = deps.getVolumePath()
         const volumePath = landing ?? root
         state = null
@@ -174,6 +167,19 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         state = refusedState(volumeId, info, result.refusal)
         return
     }
+  }
+
+  /**
+   * Where a place that just went live sits: ❗ where it is LIVE first, since a mount
+   * that finished after a Cancel never updated the saved row, whose remembered path
+   * then read "Not connected yet" on Try again. Only an SMB share moves; `null` keeps
+   * the pane's root.
+   */
+  async function landingOf(volumeId: string): Promise<string | null> {
+    if (!isSmbVolumeId(volumeId)) return null
+    const live = deps.getCurrentVolumeInfo()
+    if (live && isLiveSession(live.connectionState)) return live.path
+    return (await deps.landingOf?.(volumeId)) ?? null
   }
 
   function refusedState(volumeId: string, info: VolumeInfo, refusal: ConnectRefusalKind): RemoteConnectState {

@@ -4354,9 +4354,9 @@ export const commands = {
        */
       secret: string
       /**
-       *  The "Remember in Keychain" switch as the sheet showed it. `true` writes
-       *  the secret before dialing; `false` keeps it in memory for this attempt
-       *  only.
+       *  The "Remember in Keychain" switch as the sheet showed it. `true` files the
+       *  secret once the dial went through ([`DialOffer::went_through`]); `false`
+       *  keeps it in memory for this attempt only.
        */
       remember: boolean
     } | null,
@@ -4381,9 +4381,9 @@ export const commands = {
        */
       secret: string
       /**
-       *  The "Remember in Keychain" switch as the sheet showed it. `true` writes
-       *  the secret before dialing; `false` keeps it in memory for this attempt
-       *  only.
+       *  The "Remember in Keychain" switch as the sheet showed it. `true` files the
+       *  secret once the dial went through ([`DialOffer::went_through`]); `false`
+       *  keeps it in memory for this attempt only.
        */
       remember: boolean
     } | null,
@@ -13092,9 +13092,9 @@ export type SecretOffer = {
    */
   secret: string
   /**
-   *  The "Remember in Keychain" switch as the sheet showed it. `true` writes
-   *  the secret before dialing; `false` keeps it in memory for this attempt
-   *  only.
+   *  The "Remember in Keychain" switch as the sheet showed it. `true` files the
+   *  secret once the dial went through ([`DialOffer::went_through`]); `false`
+   *  keeps it in memory for this attempt only.
    */
   remember: boolean
 }

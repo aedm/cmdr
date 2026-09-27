@@ -373,3 +373,15 @@ function normalizeRoot(root: string): string {
   const trimmed = root.trim()
   return trimmed === '' || trimmed === '.' ? '/' : trimmed
 }
+
+/** The protocols' own ports, which a sentence leaves unsaid. */
+const DEFAULT_PORTS: Record<ServerProtocol, number[]> = { smb: [445], sftp: [22], webdav: [80, 443] }
+
+/**
+ * A host as a sentence names it: with its port when that isn't the protocol's own,
+ * since `localhost` alone is another server than `localhost:11499`.
+ */
+export function hostWithPort(host: string, port: number | undefined, protocol: ServerProtocol): string {
+  if (port === undefined || DEFAULT_PORTS[protocol].includes(port)) return host
+  return host.includes(':') ? `[${host}]:${String(port)}` : `${host}:${String(port)}`
+}
