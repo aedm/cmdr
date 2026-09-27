@@ -71,9 +71,9 @@ MiB, verified on release `e9fd713ad`, `memory_diagnostics` with `rustHeapCensus`
 - **Run A, indexing on**: t = 10 min: footprint 263, heap 206, live 103, slack 102. t = 20: 267, 211, 103, 107. t = 30:
   266, 209, 105, 104. The SQLite slab is 64 of the live bytes, with 23 read connections open.
 - **Run B, indexing off**: t = 20: footprint 194, heap 146, live 80, slack 65. t = 30: 196, 147, 81, 66.
-- **`IOSurface` (tag 88) holds 55 MiB in the main process in both runs**, 20–28% of the idle footprint. Regions: two of
-  14.7 MiB, one of 9.9, six of 4.0, six of 1.5. The window was visible, 2,230 × 1,380 pt on a 2× display. Not
-  attributed.
+- **`memory_diagnostics` shows 55 MiB of `IOSurface` (tag 88) in the main process in both runs**, but none of it is in
+  the footprint above: it's WebKit's layer backing, owned and paid for by WebContent
+  (`main-process-iosurface-2026-09-27.md`). The window was visible, 2,230 × 1,380 pt on a 2× display.
 
 ## Follow-up #2: after search bursts
 
@@ -143,10 +143,9 @@ pool (#1), per-entry search allocations (#3), mDNS gating (#5), and indexing bui
    `CREATE INDEX IF NOT EXISTS` on open would add it without one, David's call). Estimate: up to half the writer's CPU
    under tree-shape churn (writer 0.56% here), and shorter writer backlogs after removal storms. The single-window share
    is a sample, so treat it as a direction.
-4. **55 MiB of `IOSurface` in the main process**, a fifth of the idle footprint, the same with indexing on or off.
-   Unattributed. Next step: read `memory_diagnostics` with the window visible, minimized, and hidden, and at a smaller
-   window size; if it scales with the window it's the app-side compositing buffers and may be trimmable (layer backing,
-   `drawsBackground`, a retained snapshot). Size: an hour to attribute. Estimate: unknown, up to 55 MiB.
+4. **Settled, no cut: the 55 MiB of `IOSurface` in the main process isn't in its footprint.** It's WebKit's layer
+   backing, charged to WebContent, where a window this size costs ~49 MiB against a bare `WKWebView`'s 120
+   (`main-process-iosurface-2026-09-27.md`).
 5. **WebContent costs 0.73% with indexing on against 0.11% with it off**, with a pane on `~`: index-driven size updates
    reaching the frontend. Above the 0.36% median in `webcontent-idle-fixes-2026-09-23.md`, which ran with less churn.
    Worth a look from the frontend side (coalescing size updates for rows whose readout doesn't change). Estimate: up to

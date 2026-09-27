@@ -9895,7 +9895,11 @@ export type MemoryTag = {
   tag: number
   // Its `vmmap`-style name, or `tag-<n>` for one we don't carry a name for.
   name: string
-  // Pages this process wrote, so pages it pays for. The column to read.
+  /**
+   *  Dirty pages in this process's mappings, and the column to read. Private memory is
+   *  what the process pays for; a shared object's pages (`IOSurface`) count in every
+   *  process that maps them and are paid by the one that owns them.
+   */
   dirtyBytes: number
   // Dirty pages since compressed or swapped out.
   swappedBytes: number

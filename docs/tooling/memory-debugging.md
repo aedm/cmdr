@@ -27,6 +27,16 @@ Consequences worth internalising, because each one burned a day:
 - "The balloon popped back on its own" is usually **mimalloc decommitting pages**, not macOS purging GPU surfaces. The
   arena regions stay mapped, so the region count doesn't drop even though dirty bytes collapse.
 
+## The second trap: `IOSurface` in the main process isn't in its footprint
+
+`memory_diagnostics` reports `IOSurface` (tag 88) in the Cmdr process with 30–220 MiB dirty, depending on window size
+and timing, while `vmmap` and `footprint` show those same regions at 0 dirty. The regions are WebKit's layer backing
+stores: WebKit's GPU process creates them, WebContent owns them and pays for them, and the app process only maps them
+for WindowServer. `physFootprintBytes` doesn't move when they grow, so ❌ never subtract them from, or divide them into,
+the main process's footprint. To see what the window's pixels cost, read `footprint <WebContent pid>`'s
+`Owned physical footprint (unmapped) (graphics)` row. Evidence and a bare-`WKWebView` baseline:
+`docs/notes/performance/main-process-iosurface-2026-09-27.md`.
+
 ## How to measure: ask the app (start here)
 
 One call to a RUNNING instance answers "how much is it using, and what is it", and it's the only reading that spans both

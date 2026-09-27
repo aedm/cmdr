@@ -34,8 +34,10 @@ pub struct TagUsage {
     pub tag: u32,
     /// The tag's `vmmap`-style name, or `tag-<n>` when we don't carry one.
     pub name: String,
-    /// Dirty bytes: pages this process wrote, so pages it pays for. The column
-    /// to read.
+    /// Dirty bytes in this process's mappings, and the column to read. Private
+    /// memory is what the process pays for; a shared object's pages (an
+    /// `IOSurface`) count in every process that maps them, while only the owner
+    /// pays (see tag 88 in `TAG_NAMES`).
     pub dirty_bytes: u64,
     /// Dirty pages since compressed or swapped out.
     pub swapped_bytes: u64,
@@ -77,6 +79,13 @@ pub const MIMALLOC_ARENA_TAG: u32 = 100;
 /// `IOAccelerator`, so those rows are the Rust heap (module docs). The name here
 /// carries that inline, because whoever meets it in a diagnostic payload has no
 /// module docs in front of them.
+///
+/// `88` carries a warning for the same reason. In Cmdr's main process every
+/// `IOSurface` region is a WebKit layer backing store that WebKit's GPU process
+/// created and WebContent owns: the kernel reports all its pages as dirty here,
+/// yet none of them count in this process's footprint (verified on macOS 27.0,
+/// `footprint` against the in-process walk, 2026-09-27;
+/// `docs/notes/performance/main-process-iosurface-2026-09-27.md`).
 const TAG_NAMES: &[(u32, &str)] = &[
     (0, "unnamed"),
     (1, "MALLOC"),
@@ -127,7 +136,7 @@ const TAG_NAMES: &[(u32, &str)] = &[
     (77, "CoreUI image file"),
     (82, "Swift runtime"),
     (83, "Swift metadata"),
-    (88, "IOSurface"),
+    (88, "IOSurface (WebKit's, paid by WebContent, not in our footprint)"),
     (89, "libnetwork"),
     (90, "Audio"),
     (97, "QuickLook thumbnails"),

@@ -40,6 +40,10 @@
 //! - Anything under `IOAccelerator` is the Rust heap, ❌ never graphics. mimalloc tags its
 //!   arenas with `VM_MEMORY_IOACCELERATOR`, and that single mislabel cost two days across
 //!   three agents.
+//! - `IOSurface` (tag 88) is ❌ NOT in `physFootprintBytes`. Those regions are WebKit's
+//!   layer backing stores, mapped here from the GPU process and charged to WebContent, so
+//!   their dirty bytes can exceed the whole footprint
+//!   (`docs/notes/performance/main-process-iosurface-2026-09-27.md`).
 //!
 //! Recipes, the traps, and the past investigations: `docs/tooling/memory-debugging.md`.
 //!
@@ -189,7 +193,9 @@ pub struct MemoryTag {
     pub tag: u32,
     /// Its `vmmap`-style name, or `tag-<n>` for one we don't carry a name for.
     pub name: String,
-    /// Pages this process wrote, so pages it pays for. The column to read.
+    /// Dirty pages in this process's mappings, and the column to read. Private memory is
+    /// what the process pays for; a shared object's pages (`IOSurface`) count in every
+    /// process that maps them and are paid by the one that owns them.
     pub dirty_bytes: u64,
     /// Dirty pages since compressed or swapped out.
     pub swapped_bytes: u64,
