@@ -35,6 +35,8 @@
     import { hubPaneState } from './servers-hub-mcp'
     import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
     import { cursorAcrossRebuild, cursorAfterArrow } from './servers-hub-keys'
+    import { hubColumnsAt } from './servers-hub-columns'
+    import { useInlineSize } from '$lib/utils/inline-size-action'
     import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import ServersHubStatusBar from './ServersHubStatusBar.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
@@ -127,6 +129,9 @@
     }
 
     let cursorIndex = $state(0)
+    /** The list's content width, which decides the columns that fit (`hubColumnsAt`). */
+    let hubWidth = $state(0)
+    const columns = $derived(hubColumnsAt(hubWidth))
     let listContainer: HTMLDivElement | undefined = $state()
     let containerHeight = $state(0)
     let unlistenContextAction: (() => void) | undefined
@@ -448,7 +453,13 @@
     }
 </script>
 
-<div class="servers-hub" class:is-focused={isFocused}>
+<div
+    class="servers-hub"
+    class:is-focused={isFocused}
+    class:without-address={!columns.address}
+    class:without-status={!columns.status}
+    use:useInlineSize={{ onResize: (px) => (hubWidth = px) }}
+>
     <div class="header-row">
         <span class="col-name">{tString('servers.hub.colName')}</span>
         <span class="col-type">{tString('servers.hub.colType')}</span>
@@ -645,10 +656,9 @@
         white-space: nowrap;
     }
 
+    /* A block, ❌ not flex: `text-overflow` doesn't reach a flex container's text, so a
+       squeezed status clipped mid-word ("Found ne") instead of ending in an ellipsis. */
     .col-status {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-xxs);
         color: var(--color-text-tertiary);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -752,5 +762,25 @@
         font-size: var(--font-size-sm);
         color: var(--color-text-tertiary);
         text-align: center;
+    }
+
+    .header-row > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* A narrow pane drops columns deliberately, Address first, then Status (`hubColumnsAt`),
+       rather than collapsing them to zero width. */
+    .servers-hub.without-address {
+        grid-template-columns: minmax(min(10em, 45%), 1fr) auto auto auto;
+    }
+
+    .servers-hub.without-address.without-status {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+
+    .without-address .col-address,
+    .without-status .col-status {
+        display: none;
     }
 </style>
