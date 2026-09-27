@@ -262,6 +262,7 @@ export {
   type UpgradeResult,
   connectToServer,
   removeManualServer,
+  setSmbAccountPreference,
   showNetworkHostContextMenu,
   onNetworkHostContextAction,
   onNetworkHostFound,

@@ -23,6 +23,7 @@
         forgetCredentials,
         getListedAccount,
         setListedAccount,
+        guestListingWorked,
     } from './network-store.svelte'
     import PlacesHeader from './PlacesHeader.svelte'
     import {
@@ -31,6 +32,7 @@
         getSmbCredentials,
         isUsingCredentialFileFallback,
         updateKnownShare,
+        setSmbAccountPreference,
     } from '$lib/tauri-commands'
     import { addToast } from '$lib/ui/toast'
     import { tString } from '$lib/intl/messages.svelte'
@@ -331,6 +333,13 @@
         }
     }
 
+    /** "Use guest": the way back from an account, where a guest listing worked on this server. */
+    async function useGuest() {
+        // ❗ The account goes FIRST: while it's set, the backend never lists this server as guest.
+        await setSmbAccountPreference(host.name, null).catch(() => false)
+        await listWithCredentials(null, null, false)
+    }
+
     /** Try to use stored credentials. Returns true if shares were loaded. */
     async function tryStoredCredentials(): Promise<boolean> {
         const serverName = host.name
@@ -389,6 +398,9 @@
             // Update credential status, and the account the header names
             setCredentialStatus(host.name, username ? 'has_creds' : 'no_creds')
             setListedAccount(host.id, username !== null ? { kind: 'user', username } : { kind: 'guest' })
+            // ❗ The choice sticks: it becomes the server's account (the typed-username preference),
+            // so later listings, the background ones included, sign in as it instead of as guest.
+            void setSmbAccountPreference(host.name, username).catch(() => {})
 
             // Store credentials for mounting (empty password is valid for SMB)
             if (username !== null) {
@@ -641,6 +653,7 @@
             shareCount={sortedShares.length}
             {onBack}
             onSignInAs={() => void signInAs()}
+            onUseGuest={listedAccount?.kind === 'user' && guestListingWorked(host.id) ? () => void useGuest() : undefined}
             onForgetPassword={() => void handleForgetPassword()}
         />
         <div class="share-list" bind:this={listContainer} bind:clientHeight={containerHeight}>

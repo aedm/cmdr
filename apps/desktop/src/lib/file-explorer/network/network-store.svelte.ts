@@ -43,6 +43,8 @@ const shareStates = new SvelteMap<string, ShareState>()
  * keeps what the sign-in recorded, since it IS that listing.
  */
 const listedAccounts = new SvelteMap<string, SignedInAs>()
+/** Hosts a guest listing worked on this session: where "Use guest" is a real way back. */
+const guestListingHosts = new SvelteSet<string>()
 const prefetchingHosts = new SvelteSet<string>()
 
 // Credential status tracking - 'unknown' | 'has_creds' | 'no_creds' | 'failed'
@@ -337,9 +339,22 @@ export function forgetShareListsOfMachine(host: NetworkHost): void {
   listedAccounts.delete(host.id)
 }
 
-/** A plain listing's account: a guest one says guest; an account one keeps what its sign-in recorded. */
+/**
+ * A plain listing's account: a guest one says guest, and an account one keeps what its
+ * sign-in recorded. ❗ A guest listing never takes a KNOWN account back to guest: the
+ * person chose it, and a background listing ("Sign in as testuser" read "as guest" three
+ * seconds later, from the prefetch on the way back) is no one choosing anything.
+ * "Use guest" goes through `setListedAccount`.
+ */
 function noteListing(hostId: string, result: ShareListResult): void {
-  if (result.authMode === 'guest_allowed') listedAccounts.set(hostId, { kind: 'guest' })
+  if (result.authMode !== 'guest_allowed') return
+  guestListingHosts.add(hostId)
+  if (listedAccounts.get(hostId)?.kind !== 'user') listedAccounts.set(hostId, { kind: 'guest' })
+}
+
+/** Whether a guest listing worked on `hostId` this session, so "Use guest" can offer a way back. */
+export function guestListingWorked(hostId: string): boolean {
+  return guestListingHosts.has(hostId)
 }
 
 /** The account `hostId`'s share list last signed in as, or `undefined` when no listing said. */
@@ -350,6 +365,7 @@ export function getListedAccount(hostId: string): SignedInAs | undefined {
 /** Records the account a listing with explicit credentials (or the guest choice) signed in as. */
 export function setListedAccount(hostId: string, account: SignedInAs): void {
   listedAccounts.set(hostId, account)
+  if (account.kind === 'guest') guestListingHosts.add(hostId)
 }
 
 /**

@@ -88,17 +88,48 @@ pub async fn list_shares_on_host(
     cache_ttl_ms: Option<u64>,
     app_handle: tauri::AppHandle,
 ) -> Result<ShareListResult, ShareListError> {
+    let (guest, account) = account_listing_for(&app_handle, &hostname, ip_address.as_deref(), port);
     smb_client::list_shares(
         &host_id,
         &hostname,
         ip_address.as_deref(),
         port,
-        None,
-        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
+        account.as_ref().map(|c| (c.username.as_str(), c.password.as_str())),
+        guest,
         timeout_ms,
         cache_ttl_ms,
     )
     .await
+}
+
+/// How a listing that got no credentials signs in: guest first, unless the person set
+/// an account for this host, in which case as that account with the password this
+/// session already read (`keychain::cached_credentials`, ❌ never a Keychain read), or
+/// not at all (`AuthRequired`, which the frontend takes to the Keychain and the sheet).
+///
+/// ❗ Without the cached leg, "Sign in as…" didn't stick: the next background listing
+/// had no password to offer and came back as nothing, where it used to come back guest.
+fn account_listing_for(
+    app: &tauri::AppHandle,
+    hostname: &str,
+    ip_address: Option<&str>,
+    port: u16,
+) -> (
+    smb_client::GuestAttempt,
+    Option<crate::network::keychain::SmbCredentials>,
+) {
+    use crate::network::server_identity::{SmbServer, smb_server};
+
+    let typed = manual_servers::typed_username(app, &SmbServer::new(hostname, port))
+        .or_else(|| ip_address.and_then(|ip| manual_servers::typed_username(app, &SmbServer::new(ip, port))));
+    let Some(username) = typed else {
+        return (smb_client::GuestAttempt::Try, None);
+    };
+    let cached = std::iter::once(hostname)
+        .chain(ip_address)
+        .find_map(|name| keychain::cached_credentials(&smb_server(name, port)))
+        .filter(|creds| creds.username == username);
+    (smb_client::GuestAttempt::Skip, cached)
 }
 
 /// Whether a listing of this host may try guest: not when the person typed an
@@ -139,13 +170,14 @@ pub async fn prefetch_shares(
     app_handle: tauri::AppHandle,
 ) {
     // Fire and forget - we don't care about the result for prefetching
+    let (guest, account) = account_listing_for(&app_handle, &hostname, ip_address.as_deref(), port);
     let _ = smb_client::list_shares(
         &host_id,
         &hostname,
         ip_address.as_deref(),
         port,
-        None,
-        guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
+        account.as_ref().map(|c| (c.username.as_str(), c.password.as_str())),
+        guest,
         timeout_ms,
         cache_ttl_ms,
     )
@@ -691,6 +723,21 @@ pub async fn connect_to_server(
         manual_servers::Reachability::Skip
     };
     manual_servers::add_manual_server(&address, &details, reachability, &app_handle).await
+}
+
+/// Sets the account the SMB server `server_name` (its discovery name, `host` or
+/// `host:port`) is used with: "Sign in as…" in its share list, or `None` for guest.
+/// The same preference a typed username is, so the listing stops trying guest and
+/// signs in as it. Answers whether the store could be written.
+#[tauri::command]
+#[specta::specta]
+pub fn set_smb_account_preference(server_name: String, username: Option<String>, app_handle: tauri::AppHandle) -> bool {
+    let server = crate::network::server_identity::SmbServer::from_name(&server_name);
+    let set = manual_servers::set_account(&server, username.as_deref(), &app_handle);
+    if set {
+        crate::volume_broadcast::emit_volumes_changed();
+    }
+    set
 }
 
 /// Removes a manually-added server by ID.

@@ -4042,6 +4042,14 @@ export const commands = {
    *  progress.
    */
   getEjectingVolumeIds: () => __TAURI_INVOKE<string[]>('get_ejecting_volume_ids'),
+  /**
+   *  Sets the account the SMB server `server_name` (its discovery name, `host` or
+   *  `host:port`) is used with: "Sign in as…" in its share list, or `None` for guest.
+   *  The same preference a typed username is, so the listing stops trying guest and
+   *  signs in as it. Answers whether the store could be written.
+   */
+  setSmbAccountPreference: (serverName: string, username: string | null) =>
+    __TAURI_INVOKE<boolean>('set_smb_account_preference', { serverName, username }),
   // Removes a manually-added server by ID.
   removeManualServer: (serverId: string) =>
     typedError<null, string>(__TAURI_INVOKE('remove_manual_server', { serverId })),

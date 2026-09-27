@@ -33,6 +33,8 @@ const h = vi.hoisted(() => ({
   openSignInSheet: vi.fn(),
   // A `SvelteMap` once the store mock is built, so the header follows it like the real store's.
   listed: new Map<string, unknown>(),
+  guestWorks: false,
+  setSmbAccountPreference: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -41,6 +43,7 @@ vi.mock('$lib/tauri-commands', () => ({
   getSmbCredentials: h.getSmbCredentials,
   isUsingCredentialFileFallback: vi.fn(() => Promise.resolve(false)),
   updateKnownShare: vi.fn(() => Promise.resolve()),
+  setSmbAccountPreference: h.setSmbAccountPreference,
   getUsernameHint: vi.fn(() => Promise.resolve(null)),
   getKnownShareByName: vi.fn(() => Promise.resolve(null)),
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
@@ -60,6 +63,7 @@ vi.mock('./network-store.svelte', async () => {
     noteCachedCredentials: h.noteCachedCredentials,
     forgetCredentials: vi.fn(() => Promise.resolve()),
     getListedAccount: (hostId: string) => h.listed.get(hostId),
+    guestListingWorked: () => h.guestWorks,
     setListedAccount: (hostId: string, account: unknown) => h.listed.set(hostId, account),
   }
 })
@@ -572,6 +576,44 @@ describe('PlacesBrowser: the account it is signed in as', () => {
       expect.anything(),
     )
     expect(onBack).not.toHaveBeenCalled()
+    // ❗ The choice sticks: it becomes the server's account, so later listings sign in as it.
+    expect(h.setSmbAccountPreference).toHaveBeenCalledWith('Naspolya', 'testuser')
+    await unmount(component)
+  })
+
+  /** The way back: "Use guest" where guest is known to work, clearing the account. */
+  it('offers Use guest when signed in on a guest-allowing server, and goes back to guest', async () => {
+    h.listed.set(host.id, { kind: 'user', username: 'testuser' })
+    h.guestWorks = true
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'creds_required', fromCache: false })
+    h.listSharesWithCredentials.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    const { target, component } = mountBrowser(vi.fn())
+    await waitForShareList(target)
+
+    const useGuest = must(
+      [...target.querySelectorAll('.header-row button')].find((b) => b.textContent.includes('Use guest')),
+      'the Use guest button',
+    ) as HTMLButtonElement
+    useGuest.click()
+    await vi.waitFor(() => {
+      expect(target.querySelector('.header-row')?.textContent).toContain('as guest')
+    })
+    expect(h.setSmbAccountPreference).toHaveBeenCalledWith('Naspolya', null)
+    // ❗ The account goes FIRST: while it's set, the backend never lists this server as guest.
+    expect(h.setSmbAccountPreference.mock.invocationCallOrder[0]).toBeLessThan(
+      h.listSharesWithCredentials.mock.invocationCallOrder[0],
+    )
+    expect(h.listSharesWithCredentials).toHaveBeenCalledWith(
+      host.id,
+      expect.anything(),
+      expect.anything(),
+      host.port,
+      null,
+      null,
+      expect.anything(),
+      expect.anything(),
+    )
+    h.guestWorks = false
     await unmount(component)
   })
 

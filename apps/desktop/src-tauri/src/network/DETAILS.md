@@ -143,6 +143,12 @@ Always pass the resolved IP from mDNS discovery when one is available; fall back
 3. If no stored creds → prompt user
 4. Never assume "guest only"; always offer "Sign in as…" when guest succeeds (can't distinguish guest-only from guest-or-creds at probe time)
 
+❗ **"Sign in as…" sets that preference too** (`set_smb_account_preference` → `manual_servers::set_account`, saving
+the host when nobody typed it in; `None` is "Use guest" and clears it). And a listing that got no credentials signs in
+as the preferred account with the password this session already read (`account_listing_for`, over
+`keychain::cached_credentials`, ❌ never a Keychain read). Without both, the next background prefetch listed as guest
+and "Sign in as testuser" read "as guest" three seconds later.
+
 ❗ **Credentials skip guest, always** (`GuestAttempt::given_credentials`, applied before both the smb2 legs and the CLI
 fallback, which lists as guest). Credentials are the question: someone pressed "Sign in as…" or the listing is using
 the stored password. On a `map to guest = bad user` Samba a guest leg "succeeds" with the guest's list, which came back

@@ -545,6 +545,15 @@ export async function connectToServer(
  * Deletes from persistent storage and removes from discovery state.
  * @param serverId The manual server's host ID (like "manual-192-168-1-100-445")
  */
+/**
+ * Sets the account the SMB server `serverName` (its discovery name) is used with, the
+ * same preference a typed username is: "Sign in as…" in its share list, or `null` for
+ * guest. Answers whether the store could be written.
+ */
+export async function setSmbAccountPreference(serverName: string, username: string | null): Promise<boolean> {
+  return await commands.setSmbAccountPreference(serverName, username)
+}
+
 export async function removeManualServer(serverId: string): Promise<void> {
   const res = await commands.removeManualServer(serverId)
   if (res.status === 'error') throwIpcError(res.error)

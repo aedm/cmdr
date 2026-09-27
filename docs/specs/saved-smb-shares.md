@@ -53,7 +53,10 @@ its name and account fields in the two steps before this one.
 - A server row names the account it's signed in as too ("My NAS as testuser", "as guest"): its live mounts' account when
   they agree, else the account its share list signed in as (`network-store.svelte.ts`'s `getListedAccount`), else
   nothing. ❌ Never a Keychain read. A share list's header says the same for the list ("as guest") and offers "Sign in
-  as…", the sign-in sheet with the username editable and no guest choice; a cancel stays on the list.
+  as…", the sign-in sheet with the username editable and no guest choice; a cancel stays on the list. The account
+  signed in as becomes the host's preference (the typed-username one), so later listings, background ones included,
+  sign in as it, and a guest listing never takes a known account back to guest. "Use guest" (offered where a guest
+  listing worked this session) clears it first, then lists as guest.
 - **Enter on a share row opens that share with that account.** With a volume id it goes the way an SFTP place does: the
   pane lands on the place, and a place that isn't mounted is brought to life in the pane (below). Without one, the
   host's share list opens and mounts it.

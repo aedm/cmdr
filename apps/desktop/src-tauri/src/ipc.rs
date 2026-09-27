@@ -635,6 +635,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::network::disconnect_smb_volume,
                     crate::commands::eject::eject_volume,
                     crate::commands::eject::get_ejecting_volume_ids,
+                    crate::commands::network::set_smb_account_preference,
                     crate::commands::network::remove_manual_server,
                     crate::commands::network::disconnect_network_host,
                     crate::commands::network::ensure_network_discovery_started,
@@ -736,6 +737,7 @@ macro_rules! ipc_command_manifest {
                     crate::stubs::network::get_volume_sign_in_state,
                     crate::stubs::network::disconnect_smb_volume,
                     crate::stubs::network::remove_manual_server,
+                    crate::stubs::network::set_smb_account_preference,
                     crate::stubs::network::disconnect_network_host,
                 ]
                 dispatch_only: []

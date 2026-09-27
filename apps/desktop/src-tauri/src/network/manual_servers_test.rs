@@ -816,3 +816,32 @@ fn a_typed_account_belongs_to_its_own_port_only() {
         Some("testuser")
     );
 }
+
+/// ❗ **"Sign in as…" makes the account the server's preference**, the same one a typed
+/// username is: the entry keeps its name, and a host nobody typed in is saved so the
+/// preference has somewhere to live. Clearing it (guest) leaves the entry.
+#[test]
+fn signing_in_as_an_account_makes_it_the_hosts_preference() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join(MANUAL_SERVERS_FILENAME);
+    let mut named = test_entry(24);
+    named.display_name = "My NAS".to_string();
+    add_server_entry_to_path(&path, named);
+
+    let stored = set_account_at_path(&path, &SmbServer::new("10.0.0.24", 445), &[], Some("testuser")).unwrap();
+    assert_eq!(stored.username.as_deref(), Some("testuser"));
+    assert_eq!(stored.display_name, "My NAS", "the name stays");
+
+    let stored = set_account_at_path(&path, &SmbServer::new("10.0.0.24", 445), &[], None).unwrap();
+    assert_eq!(stored.username, None);
+    assert_eq!(read_store_from_path(&path).servers.len(), 1);
+
+    assert!(
+        set_account_at_path(&path, &SmbServer::new("10.0.0.26", 445), &[], None).is_none(),
+        "guest on a host nobody saved saves nothing"
+    );
+    let fresh = set_account_at_path(&path, &SmbServer::new("10.0.0.25", 11482), &[], Some("ada")).unwrap();
+    assert_eq!(fresh.id, generate_server_id("10.0.0.25", 11482));
+    assert_eq!(fresh.username.as_deref(), Some("ada"));
+    assert_eq!(read_store_from_path(&path).servers.len(), 2);
+}

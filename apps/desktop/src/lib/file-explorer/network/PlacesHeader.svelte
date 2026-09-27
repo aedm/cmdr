@@ -22,11 +22,21 @@
         shareCount: number
         onBack?: () => void
         onSignInAs: () => void
+        /** "Use guest", when there's a guest to go back to; absent, no button. */
+        onUseGuest?: () => void
         onForgetPassword: () => void
     }
 
-    const { hostLabel, account, canForgetPassword, shareCount, onBack, onSignInAs, onForgetPassword }: Props =
-        $props()
+    const {
+        hostLabel,
+        account,
+        canForgetPassword,
+        shareCount,
+        onBack,
+        onSignInAs,
+        onUseGuest,
+        onForgetPassword,
+    }: Props = $props()
 </script>
 
 <div class="header-row">
@@ -42,6 +52,9 @@
         <Icon name="user" size={12} aria-hidden="true" />
         {tString('fileExplorer.network.share.signInAs')}
     </button>
+    {#if onUseGuest}
+        <button class="header-action" onclick={onUseGuest}>{tString('fileExplorer.network.share.useGuest')}</button>
+    {/if}
     {#if canForgetPassword}
         <button
             class="header-action forget-password-btn"

@@ -258,6 +258,14 @@ pub fn has_cached_credentials(server: &str) -> bool {
     CREDENTIAL_CACHE.read().is_ok_and(|cache| cache.contains_key(&account))
 }
 
+/// The server-level credentials this session already read or saved for `server`, from
+/// the in-memory cache ONLY. ❗ Never touches the secret store, so a background
+/// listing can sign in as the server's account without raising a prompt.
+pub fn cached_credentials(server: &str) -> Option<SmbCredentials> {
+    let account = make_account_name(server, None);
+    CREDENTIAL_CACHE.read().ok()?.get(&account).cloned()
+}
+
 /// Checks if credentials exist without retrieving them.
 pub fn has_credentials(server: &str, share: Option<&str>) -> bool {
     get_credentials(server, share).is_ok()

@@ -509,6 +509,17 @@ pub fn remove_manual_server(_server_id: String, _app_handle: tauri::AppHandle) -
     Err("Manual server removal not supported on this platform".to_string())
 }
 
+/// Sets the account an SMB server is used with (stub: nothing to set).
+#[tauri::command]
+#[specta::specta]
+pub fn set_smb_account_preference(
+    _server_name: String,
+    _username: Option<String>,
+    _app_handle: tauri::AppHandle,
+) -> bool {
+    false
+}
+
 /// Unmounts all SMB shares from a host (stub: returns empty).
 #[tauri::command]
 #[specta::specta]

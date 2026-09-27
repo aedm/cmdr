@@ -14,7 +14,13 @@ const { ipc } = vi.hoisted(() => ({
 vi.mock('$lib/tauri-commands', () => ipc)
 vi.mock('$lib/settings/network-settings', () => ({ getNetworkTimeoutMs: () => 1000, getShareCacheTtlMs: () => 1000 }))
 
-import { fetchShares, forgetShareListsOfMachine, getListedAccount, setListedAccount } from './network-store.svelte'
+import {
+  fetchShares,
+  forgetShareListsOfMachine,
+  getListedAccount,
+  guestListingWorked,
+  setListedAccount,
+} from './network-store.svelte'
 import type { NetworkHost } from '../types'
 
 const host = (id: string): NetworkHost => ({ id, name: id, hostname: 'localhost', port: 11482, source: 'manual' })
@@ -36,6 +42,19 @@ describe('the account a share list signed in as', () => {
     ipc.listSharesOnHost.mockResolvedValue(listing('creds_required'))
     await fetchShares(host('b'))
     expect(getListedAccount('b')).toEqual({ kind: 'user', username: 'testuser' })
+  })
+
+  /**
+   * ❗ A background listing never takes a known account back to guest: "Sign in as
+   * testuser" reverted to "as guest" three seconds later, when the prefetch on the way
+   * back to the Servers list listed as guest (final QA).
+   */
+  it('stays the account a sign-in chose when a later listing comes back as guest', async () => {
+    setListedAccount('e', { kind: 'user', username: 'testuser' })
+    ipc.listSharesOnHost.mockResolvedValue(listing('guest_allowed'))
+    await fetchShares(host('e'))
+    expect(getListedAccount('e')).toEqual({ kind: 'user', username: 'testuser' })
+    expect(guestListingWorked('e'), 'and it knows guest works there, for "Use guest"').toBe(true)
   })
 
   it('is unknown after a listing that failed, and after the machine’s lists are dropped', async () => {
