@@ -12,6 +12,7 @@
   "gallery-redundant:new-file-confirmation-prefilled",
   "gallery-redundant:new-file-confirmation-too-long",
   "gallery-redundant:rename-conflict-older-and-smaller",
+  "gallery-redundant:rename-conflict-no-trash",
   "gallery-redundant:extension-change-typical",
   "gallery-redundant:extension-change-long-extension",
   "gallery-redundant:go-to-path-fixture-dir",

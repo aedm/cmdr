@@ -728,7 +728,8 @@
     "description": "VERB (imperative). Right-click item on a disk in the path bar or the volume dropdown: safely unmounts it so it can be unplugged. Use the exact word your macOS Finder uses for Eject. Keep the {name} token exactly as written, braces included; it is replaced literally, with no formatting, and can be any length. Its busy form is menu.volume.ejectBusy.",
     "placeholders": {
       "name": "the disk's own name as the system reports it, uncontrolled and possibly long (e.g. \"Backup Drive\", \"NO NAME\")"
-    }
+    },
+    "screenshot": "pane-volume-chooser.png"
   },
 
   "menu.volume.ejectBusy": "Eject ({name}) (busy)",
@@ -741,17 +742,20 @@
 
   "menu.volume.renameFavorite": "Rename",
   "@menu.volume.renameFavorite": {
-    "description": "VERB (imperative). Right-click item on a favorite in the volume dropdown: lets the user give that saved folder a different display name. It renames the SHORTCUT, not the folder on disk. Very short label in a narrow dropdown."
+    "description": "VERB (imperative). Right-click item on a favorite in the volume dropdown: lets the user give that saved folder a different display name. It renames the SHORTCUT, not the folder on disk. Very short label in a narrow dropdown.",
+    "screenshot": "favorites-menu.png"
   },
 
   "menu.volume.editFavoriteShortcut": "Set shortcut…",
   "@menu.volume.editFavoriteShortcut": {
-    "description": "Right-click action on a favorite: capture one A–Z key for opening that favorite while the Favorites menu is open. The user may also press Delete to clear an existing key. The ellipsis means the key is chosen after this item is picked."
+    "description": "Right-click action on a favorite: capture one A–Z key for opening that favorite while the Favorites menu is open. The user may also press Delete to clear an existing key. The ellipsis means the key is chosen after this item is picked.",
+    "screenshot": "favorites-menu.png"
   },
 
   "menu.volume.removeFavorite": "Remove",
   "@menu.volume.removeFavorite": {
-    "description": "VERB (imperative). Right-click item on a favorite in the volume dropdown: takes it off the favorites list. Nothing on disk is deleted, so avoid a word that sounds like deleting files. Very short label in a narrow dropdown."
+    "description": "VERB (imperative). Right-click item on a favorite in the volume dropdown: takes it off the favorites list. Nothing on disk is deleted, so avoid a word that sounds like deleting files. Very short label in a narrow dropdown.",
+    "screenshot": "favorites-menu.png"
   },
 
   "menu.network.open": "Open",

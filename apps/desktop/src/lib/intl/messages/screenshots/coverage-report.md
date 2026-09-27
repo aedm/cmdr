@@ -16,60 +16,60 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2553 / 3743 keys have a screenshot (68%):** 1373 direct (37%) and 1180 representative (32%). 1023 remain
-uncoupled, and 167 are native surfaces a webview capture cannot reach.
+**Total: 2573 / 3743 keys have a screenshot (69%):** 1402 direct (37%) and 1171 representative (31%). 1007 remain
+uncoupled, and 163 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
 | adb            |      3 |              0 |        17 |      0 |    20 |   15% |
 | ai             |      0 |            114 |         0 |      0 |   114 |  100% |
-| askCmdr        |     62 |              0 |       129 |      0 |   191 |   32% |
+| askCmdr        |     65 |              0 |       126 |      0 |   191 |   34% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
 | commands       |    152 |              1 |        63 |      0 |   216 |   71% |
 | common         |      1 |              1 |         4 |      0 |     6 |   33% |
 | crashReporter  |     12 |             11 |         0 |      0 |    23 |  100% |
 | downloads      |     10 |              5 |        21 |      0 |    36 |   42% |
 | errorReporter  |     17 |              0 |        29 |      0 |    46 |   37% |
-| errors         |     93 |            409 |         0 |      0 |   502 |  100% |
+| errors         |     98 |            404 |         0 |      0 |   502 |  100% |
 | feedback       |      7 |              5 |         1 |      0 |    13 |   92% |
-| fileExplorer   |    109 |             70 |       230 |      0 |   409 |   44% |
+| fileExplorer   |    111 |             70 |       228 |      0 |   409 |   44% |
 | fileOperations |    107 |             58 |        68 |      0 |   233 |   71% |
 | goToPath       |      5 |              6 |         2 |      0 |    13 |   85% |
 | indexing       |     33 |             16 |        18 |      0 |    67 |   73% |
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        32 |      2 |    41 |   17% |
-| menu           |      0 |              0 |         0 |    165 |   165 |    0% |
+| menu           |      4 |              0 |         0 |    161 |   165 |    2% |
 | mtp            |     18 |              4 |         0 |      0 |    22 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
-| onboarding     |     95 |             39 |        20 |      0 |   154 |   87% |
+| onboarding     |     96 |             38 |        20 |      0 |   154 |   87% |
 | operationLog   |     26 |             26 |         0 |      0 |    52 |  100% |
 | queryUi        |     44 |            128 |         0 |      0 |   172 |  100% |
 | queue          |     25 |             10 |         1 |      0 |    36 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
-| servers        |     46 |             21 |        59 |      0 |   126 |   53% |
-| settings       |    339 |             39 |       251 |      0 |   629 |   60% |
+| servers        |     55 |             21 |        50 |      0 |   126 |   60% |
+| settings       |    343 |             37 |       249 |      0 |   629 |   60% |
 | shortcuts      |     32 |             28 |         0 |      0 |    60 |  100% |
 | suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
 | transfer       |      2 |             12 |         0 |      0 |    14 |  100% |
 | ui             |     13 |              0 |        11 |      0 |    24 |   54% |
 | updates        |      5 |             16 |         0 |      0 |    21 |  100% |
-| viewer         |     29 |             75 |         0 |      0 |   104 |  100% |
+| viewer         |     30 |             74 |         0 |      0 |   104 |  100% |
 | whatsNew       |      6 |              1 |         1 |      0 |     8 |   88% |
 
 ## Surfaces to review
 
-The run captured 164 surfaces. This section is regenerated every run, so it stays true as the UI changes.
+The run captured 165 surfaces. This section is regenerated every run, so it stays true as the UI changes.
 
-### No unique keys (23)
+### No unique keys (24)
 
 Every key on these surfaces also renders on another captured surface, so dropping one costs no coverage: its keys would
 simply couple to whichever surface keeps them. Worth considering, NOT an automatic delete. A surface can be the clearest
 picture of a key several surfaces share, and being the clearest is reason enough to keep it. To drop one, remove its
 staging (or add it to `DROPPED_GALLERY_STATES` for a gallery state) in `test/e2e-playwright/`.
 
-- `search-dialog` (96 keys, none unique)
+- `search-dialog` (95 keys, none unique)
 - `select-dialog` (88 keys, none unique)
 - `transfer-confirmation-copy` (83 keys, none unique)
 - `onboarding-optional` (82 keys, none unique)
@@ -77,7 +77,7 @@ staging (or add it to `DROPPED_GALLERY_STATES` for a gallery state) in `test/e2e
 - `bulk-rename-review-all-allowed` (72 keys, none unique)
 - `onboarding-fda-notgranted` (71 keys, none unique)
 - `onboarding-fda-denied` (71 keys, none unique)
-- `server-sign-in-add` (66 keys, none unique)
+- `server-sign-in-add` (68 keys, none unique)
 - `mkdir-confirmation-empty` (65 keys, none unique)
 - `delete-confirm` (62 keys, none unique)
 - `trash-confirm` (62 keys, none unique)
@@ -91,7 +91,8 @@ staging (or add it to `DROPPED_GALLERY_STATES` for a gallery state) in `test/e2e
 - `favorites-menu-empty` (57 keys, none unique)
 - `alert-long` (55 keys, none unique)
 - `main-window` (53 keys, none unique)
-- `viewer-encoding` (15 keys, none unique)
+- `empty-pane` (49 keys, none unique)
+- `viewer-encoding` (17 keys, none unique)
 
 ### Captured at a reduced UI zoom (1)
 

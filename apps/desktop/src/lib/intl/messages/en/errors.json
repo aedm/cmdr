@@ -2139,8 +2139,7 @@
   },
   "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
     "description": "Recovery suggestion on macOS when the OS itself refused (EPERM: System Integrity Protection, a privacy protection, or a locked item), so administrator rights would change nothing. Plain text. Apple localizes both \"Get Info\" (the Finder menu command) and \"Locked\" (the checkbox in its Info window), so write them with your locale's Finder wording.",
-    "screenshot": "error-message-example.png",
-    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+    "screenshot": "transfer-error-source_not_removed.png"
   },
   "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
     "description": "Recovery suggestion on non-macOS when the OS itself refused (EPERM), so administrator rights would change nothing. Plain text.",
@@ -2157,8 +2156,7 @@
   },
   "@errors.write.permissionDenied.message.sourceMove": {
     "description": "Body of the move error dialog when the SOURCE refused (the original couldn't be read or removed from its folder), as opposed to the destination refusing the write. Plain text. Uses a contraction (\"don't\"). Raw errors.* string (no ICU).",
-    "screenshot": "error-message-example.png",
-    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+    "screenshot": "transfer-error-source_not_removed.png"
   },
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "description": "Recovery suggestion when the SOURCE of a copy refused to be read. Plain text. Uses a contraction (\"it's\"). Raw errors.* string (no ICU).",
@@ -2427,8 +2425,7 @@
   "errors.write.sourceNotRemoved.suggestion": "To finish the move, delete the original yourself.",
   "@errors.write.sourceNotRemoved.title": {
     "description": "Title of the move error dialog when the move copied everything to the destination but then couldn't remove the original (for example a Finder-locked file). The item now exists in both places and nothing was lost. Plain text.",
-    "screenshot": "error-message-example.png",
-    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+    "screenshot": "transfer-error-source_not_removed.png"
   },
   "@errors.write.sourceNotRemoved.message": {
     "description": "Body of the move error dialog when the copy landed but the original couldn't be removed. Plain text. It has to be clear that the copy is complete, that the original is still there, and that nothing was lost. \"Cmdr\" is the app name; do NOT translate it. Uses contractions (\"couldn't\", \"it's\"). Raw errors.* string (no ICU).",
@@ -2440,13 +2437,11 @@
         "description": "The full path of the original that stayed (for a folder, the item inside it that refused to go), inserted verbatim. Do not translate or reformat it."
       }
     },
-    "screenshot": "error-message-example.png",
-    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+    "screenshot": "transfer-error-source_not_removed.png"
   },
   "@errors.write.sourceNotRemoved.suggestion": {
     "description": "Last sentence of the recovery suggestion when the copy landed but the original couldn't be removed. At runtime it follows the refusal's own advice (for example \"The item may be locked: ... uncheck Locked.\"), as a separate sentence. Plain text. Raw errors.* string (no ICU).",
-    "screenshot": "error-message-example.png",
-    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+    "screenshot": "transfer-error-source_not_removed.png"
   },
   "errors.write.fallback.title.copy": "Couldn’t copy",
   "errors.write.fallback.title.move": "Couldn’t move",

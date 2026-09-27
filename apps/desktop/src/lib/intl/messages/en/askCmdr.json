@@ -2,12 +2,12 @@
   "askCmdr.title": "Ask Cmdr",
   "@askCmdr.title": {
     "description": "Title of the Ask Cmdr chat rail, where the user chats with an AI about their files. This is the product name; keep it as-is.",
-    "screenshot": "ask-cmdr-consent.png"
+    "screenshot": "ask-cmdr-gate-off.png"
   },
   "askCmdr.close": "Close Ask Cmdr",
   "@askCmdr.close": {
     "description": "Accessible label for the button that closes the Ask Cmdr chat rail. Sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
+    "screenshot": "ask-cmdr-gate-off.png"
   },
   "askCmdr.newChat": "New chat",
   "@askCmdr.newChat": {
@@ -378,15 +378,18 @@
   },
   "askCmdr.gate.off.title": "Ask Cmdr is off",
   "@askCmdr.gate.off.title": {
-    "description": "Heading in the Ask Cmdr side panel when the assistant is switched off in settings. \"Ask Cmdr\" is a product name. Sentence case, no period."
+    "description": "Heading in the Ask Cmdr side panel when the assistant is switched off in settings. \"Ask Cmdr\" is a product name. Sentence case, no period.",
+    "screenshot": "ask-cmdr-gate-off.png"
   },
   "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
   "@askCmdr.gate.off.body": {
-    "description": "Line under askCmdr.gate.off.title in the Ask Cmdr side panel. \"it\" is Ask Cmdr; a button that turns it on follows."
+    "description": "Line under askCmdr.gate.off.title in the Ask Cmdr side panel. \"it\" is Ask Cmdr; a button that turns it on follows.",
+    "screenshot": "ask-cmdr-gate-off.png"
   },
   "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
   "@askCmdr.gate.off.turnOn": {
-    "description": "Primary button in the Ask Cmdr side panel that switches the assistant on (the same switch as Settings > AI > Ask Cmdr). Starts with a verb. Sentence case."
+    "description": "Primary button in the Ask Cmdr side panel that switches the assistant on (the same switch as Settings > AI > Ask Cmdr). Starts with a verb. Sentence case.",
+    "screenshot": "ask-cmdr-gate-off.png"
   },
   "askCmdr.gate.cloudOff.title": "Cloud AI is off",
   "@askCmdr.gate.cloudOff.title": {

@@ -1551,11 +1551,13 @@
   },
   "settings.advanced.exitFullScreenOnEscape.label": "Exit full screen on Escape",
   "@settings.advanced.exitFullScreenOnEscape.label": {
-    "description": "Advanced-section label for a switch: when on, pressing the Escape key in the main window (with no dialog or menu open) takes the window out of macOS full screen. \"Escape\" is the keyboard key; \"full screen\" is macOS's full-screen window mode (the window gets its own Space)."
+    "description": "Advanced-section label for a switch: when on, pressing the Escape key in the main window (with no dialog or menu open) takes the window out of macOS full screen. \"Escape\" is the keyboard key; \"full screen\" is macOS's full-screen window mode (the window gets its own Space).",
+    "screenshot": "settings-advanced.png"
   },
   "settings.advanced.exitFullScreenOnEscape.description": "When the main window is in full screen, Escape takes it out. Escape in a dialog or menu only closes that.",
   "@settings.advanced.exitFullScreenOnEscape.description": {
-    "description": "Help text for the \"Exit full screen on Escape\" switch (advanced). Explains that the switch never affects closing dialogs or menus with Escape."
+    "description": "Help text for the \"Exit full screen on Escape\" switch (advanced). Explains that the switch never affects closing dialogs or menus with Escape.",
+    "screenshot": "settings-advanced.png"
   },
   "settings.advanced.exitFullScreenOnEscapeHintShown.label": "Escape full-screen hint shown",
   "@settings.advanced.exitFullScreenOnEscapeHintShown.label": {
@@ -2084,14 +2086,12 @@
   "settings.askCmdr.enabled.label": "Ask Cmdr",
   "@settings.askCmdr.enabled.label": {
     "description": "Label of the on/off switch for the Ask Cmdr assistant in Settings > AI > Ask Cmdr. Just the product name: the switch beside it says on or off. \"Ask Cmdr\" is a product name and stays as it is.",
-    "screenshot": "settings-ai-ask-cmdr.png",
-    "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
+    "screenshot": "settings-ai-ask-cmdr.png"
   },
   "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
   "@settings.askCmdr.enabled.description": {
     "description": "Description under the Turn on Ask Cmdr switch (settings.askCmdr.enabled.label). \"Cmdr\" is the product name.",
-    "screenshot": "settings-ai-ask-cmdr.png",
-    "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
+    "screenshot": "settings-ai-ask-cmdr.png"
   },
   "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service. Allow cloud AI in AI settings to start chatting.",
   "@settings.askCmdr.cloudOffHint": {

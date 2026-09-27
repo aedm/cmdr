@@ -2,7 +2,7 @@
   "servers.sheet.usernamePlaceholder": "Example: barry",
   "@servers.sheet.usernamePlaceholder": {
     "description": "Placeholder in the username field of the sign-in sheet (when the server gave no hint about who signs in) and of the Add server sheet for SFTP and WebDAV. \"barry\" is a sample first name; swap it for a typical sample name in the target language if appropriate. The word before it is the ordinary label your language puts in front of an example.",
-    "screenshot": "server-sign-in-sign-in-guest.png"
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.pinHint.title": "Your Network group is getting long",
   "@servers.pinHint.title": {
@@ -298,11 +298,13 @@
   },
   "servers.sheet.addAndOpen": "Add and open",
   "@servers.sheet.addAndOpen": {
-    "description": "Primary button of the Add server sheet, and what Enter does: checks the server, saves it, and opens it in the pane. VERB phrase. Pairs with servers.sheet.add, which only saves."
+    "description": "Primary button of the Add server sheet, and what Enter does: checks the server, saves it, and opens it in the pane. VERB phrase. Pairs with servers.sheet.add, which only saves.",
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.add": "Add",
   "@servers.sheet.add": {
-    "description": "Secondary button of the Add server sheet: checks the server and saves it to the Servers list without opening it. VERB, one word. Pairs with servers.sheet.addAndOpen."
+    "description": "Secondary button of the Add server sheet: checks the server and saves it to the Servers list without opening it. VERB, one word. Pairs with servers.sheet.addAndOpen.",
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.addAnyway": "Add anyway",
   "@servers.sheet.addAnyway": {
@@ -370,16 +372,17 @@
   },
   "servers.sheet.addressHelpSftp": "A hostname, an address you copied, or a whole ssh line.",
   "@servers.sheet.addressHelpSftp": {
-    "description": "One line under the address field while SFTP is the selected protocol, telling the user they can paste whatever they have. “ssh” is a command name, keep it lowercase and untranslated.",
-    "screenshot": "server-sign-in-add.png"
+    "description": "One line under the address field while SFTP is the selected protocol, telling the user they can paste whatever they have. “ssh” is a command name, keep it lowercase and untranslated."
   },
   "servers.sheet.addressHelpSmb": "A hostname, an IP address, or an smb:// address you copied.",
   "@servers.sheet.addressHelpSmb": {
-    "description": "One line under the address field while SMB is the selected protocol, telling the user what they can type or paste. “smb://” is a URL scheme, keep it as-is."
+    "description": "One line under the address field while SMB is the selected protocol, telling the user what they can type or paste. “smb://” is a URL scheme, keep it as-is.",
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.addressHelpWebdav": "A web address you copied, like https://nas.local/dav, or a hostname.",
   "@servers.sheet.addressHelpWebdav": {
-    "description": "One line under the address field while WebDAV is the selected protocol, telling the user what they can type or paste. Keep the example URL as-is."
+    "description": "One line under the address field while WebDAV is the selected protocol, telling the user what they can type or paste. Keep the example URL as-is.",
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.addressLooksLikeSmb": "This looks like an SMB address. Pick SMB above if that’s what you meant.",
   "@servers.sheet.addressLooksLikeSmb": {
@@ -395,7 +398,8 @@
   },
   "servers.sheet.addressLocked": "The address is what identifies this server. To use another one, forget this server and add it again.",
   "@servers.sheet.addressLocked": {
-    "description": "Under the greyed-out Address field when editing a saved SMB server: why it can't be changed there. \"Forget\" matches the menu item \"Forget server\"."
+    "description": "Under the greyed-out Address field when editing a saved SMB server: why it can't be changed there. \"Forget\" matches the menu item \"Forget server\".",
+    "screenshot": "server-sign-in-edit.png"
   },
   "servers.sheet.identityLocked": "The address and the account are what name this server. Forget this server and add it again to change them.",
   "@servers.sheet.identityLocked": {
@@ -404,7 +408,7 @@
   "servers.sheet.username": "Username",
   "@servers.sheet.username": {
     "description": "Label of the account field. One word, NOUN.",
-    "screenshot": "server-sign-in-add-prefilled.png"
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.password": "Password",
   "@servers.sheet.password": {
@@ -413,11 +417,13 @@
   },
   "servers.sheet.smbUsernamePlaceholder": "Optional",
   "@servers.sheet.smbUsernamePlaceholder": {
-    "description": "Placeholder inside the optional Username field of the Add server sheet when SMB is selected. One word saying the field may stay empty."
+    "description": "Placeholder inside the optional Username field of the Add server sheet when SMB is selected. One word saying the field may stay empty.",
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.smbUsernameHelp": "Fill this in if your NAS needs an account. Cmdr asks for the password when you open a share.",
   "@servers.sheet.smbUsernameHelp": {
-    "description": "One line under the optional Username field of the Add and Edit server sheets for an SMB server. With a username, Cmdr signs in as that account instead of browsing the server as a guest, and asks for the password only when the person opens a share. Friendly and short."
+    "description": "One line under the optional Username field of the Add and Edit server sheets for an SMB server. With a username, Cmdr signs in as that account instead of browsing the server as a guest, and asks for the password only when the person opens a share. Friendly and short.",
+    "screenshot": "server-sign-in-add.png"
   },
   "servers.sheet.passphrase": "Key passphrase",
   "@servers.sheet.passphrase": {
@@ -446,7 +452,7 @@
   "servers.sheet.advanced": "Advanced",
   "@servers.sheet.advanced": {
     "description": "A collapsed section holding the settings most people never change. One word, ADJECTIVE.",
-    "screenshot": "server-sign-in-add.png"
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.name": "Name",
   "@servers.sheet.name": {
@@ -458,7 +464,8 @@
     "description": "Placeholder inside the Name field of the add and edit server sheets. {label} is what Cmdr calls the server when the field stays empty: its address for an SMB server (192.168.0.153), or the account and host for SFTP and WebDAV (ada@nas.local). Short: it has to fit inside a text field.",
     "placeholders": {
       "label": "what Cmdr calls the server by default, like 192.168.0.153 or ada@nas.local; never translated"
-    }
+    },
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.rootFolder": "Root folder",
   "@servers.sheet.rootFolder": {
@@ -499,11 +506,13 @@
   },
   "servers.sheet.autoReconnectHelp": "If the connection drops, Cmdr reconnects to this server on its own. This doesn’t make Cmdr connect at startup: it connects when you open the server in a pane.",
   "@servers.sheet.autoReconnectHelp": {
-    "description": "Tooltip explaining the “Reconnect automatically” checkbox, shown from an info glyph beside it in the server sheet, and as the hover tooltip of the same checkbox row in a saved server's row menu. Its job is to correct a likely misreading: the switch only reconnects after a dropped connection, and does NOT make Cmdr connect to the server when the app starts. “pane” is one of the app's two side-by-side file lists."
+    "description": "Tooltip explaining the “Reconnect automatically” checkbox, shown from an info glyph beside it in the server sheet, and as the hover tooltip of the same checkbox row in a saved server's row menu. Its job is to correct a likely misreading: the switch only reconnects after a dropped connection, and does NOT make Cmdr connect to the server when the app starts. “pane” is one of the app's two side-by-side file lists.",
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.autoReconnectInfoLabel": "More about “Reconnect automatically”",
   "@servers.sheet.autoReconnectInfoLabel": {
-    "description": "Screen-reader name of the info glyph beside the “Reconnect automatically” checkbox; activating it shows the explanation. Never visible on screen. Quote the checkbox label exactly as servers.sheet.autoReconnect translates it, so voice-control users can name it."
+    "description": "Screen-reader name of the info glyph beside the “Reconnect automatically” checkbox; activating it shows the explanation. Never visible on screen. Quote the checkbox label exactly as servers.sheet.autoReconnect translates it, so voice-control users can name it.",
+    "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.needsStoredSecret": "Reconnecting on its own needs a remembered password. Turn on “Remember in Keychain” and sign in once.",
   "@servers.sheet.needsStoredSecret": {
