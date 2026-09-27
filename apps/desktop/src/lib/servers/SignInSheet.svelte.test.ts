@@ -108,6 +108,33 @@ async function pickProtocol(label: string) {
   await tick()
 }
 
+/** ❗ The caret goes where the typing starts: Username when it's empty and editable, Password otherwise. */
+describe('SignInSheet: where the caret starts', () => {
+  const attempt = (): Promise<SignInAttemptOutcome> => Promise.resolve({ kind: 'handed_off' })
+
+  it('starts on Username when it is editable and empty', async () => {
+    await renderSheet({
+      mode: 'sign-in',
+      remembered: true,
+      endpoint: { ...endpoint, username: undefined },
+      shape: { kind: 'username_password', guestAllowed: false },
+      attempt,
+    })
+    expect(document.activeElement).toBe(document.body.querySelector('#sign-in-username'))
+  })
+
+  it('starts on Password when the username is already there', async () => {
+    await renderSheet({
+      mode: 'sign-in',
+      remembered: true,
+      endpoint: { ...endpoint, username: 'ada' },
+      shape: { kind: 'username_password', guestAllowed: false },
+      attempt,
+    })
+    expect(document.activeElement).toBe(document.body.querySelector('#sign-in-secret'))
+  })
+})
+
 describe('SignInSheet: a refusal', () => {
   it('renders the sentence under the password field and leaves the focus there', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {

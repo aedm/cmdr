@@ -266,7 +266,10 @@
             credentials.remember = request.remembered
             rememberWhenOpened = request.remembered
             await tick()
-            secretInput?.focus()
+            // Where the typing starts: an editable Username that's empty, else the secret.
+            const usernameField = sheetBody?.querySelector<HTMLInputElement>('input#sign-in-username:not(:disabled)')
+            if (usernameField && credentials.username === '') usernameField.focus()
+            else secretInput?.focus()
             return
         }
         await seedEditForm(request.server)
