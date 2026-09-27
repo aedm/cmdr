@@ -28,6 +28,11 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 
 ## Phrasing
 
+- **Server account switch** (`fileExplorer.network.share.useGuest` → `Utiliser l’accès invité`,
+  `servers.hub.shareAccount` → `en tant que « {username} »`): confirm the button reads as switching back to guest, and
+  that the guillemets aren’t too heavy for a quiet suffix after a server name.
+- **`servers.paneState.notConnected` → `Pas de connexion à {name}`**: a heading for a connection the person chose not to
+  make; confirm it doesn’t read as a failure.
 - **`un nouveau passage`** (`operationLog.rollback.partiallyRolledBackNotice`, "finishing the rollback takes another
   pass"): no corpus source; `reprend l’opération` reads as restarting the original operation, `une seconde passe` is
   jargon. Top priority if a native reviewer shows up.

@@ -493,6 +493,13 @@ values write the catalog's `’`.
   transitive `Déconnecter`.
 - The disabled tooltip copies `ejectBusyTooltip`'s structure; `(occupé)` is for menu items only.
 - Refusal toasts that name Cmdr keep it (`Cmdr n’a pas pu …`).
+- Forget confirmations (`network.browser.removeHostConfirm`, `servers.hub.forgetShareConfirm`) name the object after the
+  question (`Cmdr n’affiche plus ce serveur` / `ce partage`), so no pronoun points at `{name}`. Button → `Oublier`.
+- Toasts after an insert take a colon or a verb, never a participle agreeing with it: `Serveur oublié : {hostName}`,
+  `Cmdr a enregistré {name} dans votre liste Serveurs`, `Pas de connexion à {name}` (a heading, not a failure).
+- Signed in as → `en tant que « {username} »` (guillemets, as `errors.mount.permissionDenied`, and no `qu’` elision
+  before a name); guest → `en tant qu’invité`; Sign in as… → `S’identifier en tant que…` over Finder’s
+  `Se connecter comme…` (`se connecter` is the network). Use guest → `Utiliser l’accès invité` (tentative).
 
 ## Le hub des serveurs : la table, ses colonnes et ses états (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.groupNetwork`, `shortcuts.scope.servers`, `shortcuts.scope.places`)
 
@@ -520,6 +527,8 @@ values write the catalog's `’`.
   `Comment se connecter` (a question, not a field name).
 - Sign in with a username and password spells both out, over `identifiants`, which is ambiguous in French.
 - Cmdr won’t connect → `Cmdr ne se connectera pas à {name}` (a permanent refusal, like `hostKeyRevoked`).
+- Add / Add and open / Add anyway → `Ajouter` / `Ajouter et ouvrir` / `Ajouter quand même` (Apple’s
+  `Enregistrer quand même`); quoted in prose as `« Ajouter quand même »`. Optional (placeholder) → `Facultatif`.
 - `nas.local` stays (a resolvable example). The Go-to-path previews are third person (`Ouvre {name}`,
   `Ajoute un serveur`): they describe what Enter will do.
 
@@ -533,8 +542,8 @@ values write the catalog's `’`.
 
 ## Épingler un serveur au sélecteur, les clés d'hôte approuvées et la ligne ADB des réglages (`menu.network.pinToSwitcher`/`.unpin`, `servers.pinHint.*`, `settings.servers.*`, `settings.adb.*`, `settings.section.servers`/`.adb`, `settings.appearance.tintSmb.*`)
 
-- `Épingler au sélecteur` shortens `sélecteur de volume` exactly where the English says "switcher". Unpin →
-  `Désépingler`, never `Retirer` (reads as removing the server).
+- `Épingler au sélecteur` shortens `sélecteur de volume` exactly where the English says "switcher"; Unpin from switcher
+  → `Désépingler du sélecteur`, never `Retirer` (reads as removing the server). `pinHint.body` quotes it verbatim.
 - not found → `Introuvable`; found at {path} → `Trouvé : {path}` (Apple’s `<mot> : %@` status shape).
 - Re-check → `Rechercher à nouveau` (Apple’s `Rechercher les mises à jour`) over `Vérifier`.
 - Trusted <date> → `Approuvée le` (French needs `le`; agrees with `clé`). plugged in → `branché`.

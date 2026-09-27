@@ -1093,7 +1093,7 @@
   "@errors.write.sourceNotFound.message.trash": {
     "sourceHash": "dbc0bbe"
   },
-  "errors.write.sourceNotFound.suggestion": "Il a peut-être été déplacé, renommé ou supprimé. Essayez de actualiser la liste des fichiers.",
+  "errors.write.sourceNotFound.suggestion": "Il a peut-être été déplacé, renommé ou supprimé. Essayez d’actualiser la liste des fichiers.",
   "@errors.write.sourceNotFound.suggestion": {
     "sourceHash": "1a6cd17"
   },

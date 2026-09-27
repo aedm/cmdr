@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Faites un clic droit sur un serveur et choisissez Désépingler, ou utilisez « {command} » dans la palette de commandes. Le serveur reste dans la liste Serveurs.",
+  "servers.pinHint.body": "Faites un clic droit sur un serveur et choisissez Désépingler du sélecteur, ou utilisez « {command} » dans la palette de commandes. Le serveur reste dans la liste Serveurs.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "D’accord",
   "@servers.pinHint.gotIt": {
@@ -63,6 +63,38 @@
   "servers.hub.neverUsed": "Jamais",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "en tant que « {username} »",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "en tant qu’invité",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Sélectionnez un serveur pour le modifier.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "Il n’y a rien à modifier sur un partage. Pour modifier son serveur, sélectionnez la ligne de ce serveur.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "Le serveur {name} a été découvert à proximité et n’est pas enregistré, il n’y a donc rien à modifier.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Oublier le partage",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Oublier le partage",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "Oublier {name} ? Cmdr n’affiche plus ce partage. S’il est monté, il le reste, et vos fichiers restent sur le serveur.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "La découverte du réseau local est désactivée.",
   "@servers.hub.discoveryOff": {
@@ -160,6 +192,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Saisissez le mot de passe pour {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} n’a pas répondu à temps, Cmdr n’a donc rien enregistré. Réessayez dans un instant.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -183,6 +219,26 @@
   "servers.sheet.editTitle": "Modifier {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Ajouter et ouvrir",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Ajouter",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Ajouter quand même",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr n’a pas pu vérifier ce serveur, donc « Ajouter quand même » l’enregistre tel que vous l’avez saisi.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "Cmdr a enregistré {name} dans votre liste Serveurs.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "S’identifier",
   "@servers.sheet.signIn": {
@@ -232,6 +288,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Un nom d’hôte, une adresse IP ou une adresse smb:// que vous avez copiée.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Une adresse web que vous avez copiée, comme https://nas.local/dav, ou un nom d’hôte.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Cela ressemble à une adresse SMB. Choisissez SMB ci-dessus si c’est ce que vous vouliez.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -244,6 +308,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "L’adresse identifie ce serveur. Pour en utiliser une autre, oubliez ce serveur puis ajoutez-le à nouveau.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "L’adresse et le compte identifient ce serveur. Pour les modifier, oubliez ce serveur puis ajoutez-le à nouveau.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -255,6 +323,14 @@
   "servers.sheet.password": "Mot de passe",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Facultatif",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Remplissez ce champ si votre NAS nécessite un compte. Cmdr vous demande le mot de passe quand vous ouvrez un partage.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Phrase secrète de la clé",
   "@servers.sheet.passphrase": {
@@ -283,6 +359,10 @@
   "servers.sheet.name": "Nom",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Laissez vide pour utiliser {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Dossier racine",
   "@servers.sheet.rootFolder": {
@@ -367,6 +447,14 @@
   "servers.paneState.signedOut": "Session fermée sur {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "Pas de connexion à {name}",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Revenir",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "S’identifier…",
   "@servers.paneState.signIn": {

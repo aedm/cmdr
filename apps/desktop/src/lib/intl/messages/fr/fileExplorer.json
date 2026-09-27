@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Retirer {hostName} de la liste des serveurs ?",
+  "fileExplorer.network.browser.removeHostConfirm": "Oublier {hostName} ? Cmdr n’affiche plus ce serveur ni ses partages enregistrés. Rien n’est démonté.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "{hostName} retiré",
+  "fileExplorer.network.browser.hostRemoved": "Serveur oublié : {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Impossible de retirer {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Impossible d’oublier {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Mot de passe enregistré oublié pour {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Retirer le mot de passe enregistré du trousseau",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Utiliser l’accès invité",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "S’identifier en tant que…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Oublier le mot de passe enregistré",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1414,9 +1422,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Oublier",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "Oublier {name} ? Cmdr ferme la connexion et ne l’affiche plus. Vos fichiers restent sur le serveur.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Oublier aussi le mot de passe enregistré",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr n’a pas pu oublier {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

@@ -1375,6 +1375,12 @@
     "decision": "Select all of the same kind",
     "sources": "Double Commander, Total Commander, Nautilus, Thunar, Dolphin fr (unanimous)"
   },
+  "ip-address": {
+    "chosen": "adresse IP",
+    "confidence": "high",
+    "forms": "feminine: une adresse IP",
+    "sources": "MS terminology FRA (IP address → adresse IP); catalog (fileExplorer.network.browser.tooltip.resolving)"
+  },
   "item": {
     "avoid": [
       {
@@ -1481,6 +1487,19 @@
     "chosen": "ligne",
     "confidence": "high",
     "sources": "standard FR"
+  },
+  "list": {
+    "chosen": "liste",
+    "confidence": "high",
+    "forms": "the Servers list → la liste Serveurs (row name unquoted, as shipped); stops listing it → n’affiche plus",
+    "sources": "MS terminology FRA (list → liste); catalog (la liste, 33 uses)"
+  },
+  "local": {
+    "accept": ["localement", "locaux", "locale", "locales"],
+    "chosen": "local",
+    "confidence": "high",
+    "forms": "stored locally → stockés localement; the nas.local hostname in an example URL is not this concept",
+    "sources": "MS terminology FRA (local → local); macOS (Local); catalog (credentialsStoredLocally)"
   },
   "local-network": {
     "accept": ["découverte", "à proximité"],
