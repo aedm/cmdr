@@ -1028,6 +1028,20 @@
     "confidence": "high",
     "sources": "macOS Dutch (Forceer stop…)"
   },
+  "forget": {
+    "accept": ["vergeten", "vergeet"],
+    "avoid": [
+      {
+        "form": "verwijderen",
+        "why": "that is remove or delete; forget drops only what Cmdr remembers and touches no files"
+      }
+    ],
+    "chosen": "Vergeet",
+    "confidence": "high",
+    "decision": "De serverhub: verbindingsscherm, verbindingstooltips en de vergeet-bevestigingen",
+    "forms": "button and menu item Vergeet (Vergeet server, Vergeet gedeelde map, Vergeet opgeslagen wachtwoord); question {name} vergeten?; toast {name} vergeten; failure {name} vergeten lukte niet; checkbox Ook het opgeslagen wachtwoord vergeten",
+    "sources": "GNOME Nautilus (Associatie vergeten; Weet u zeker dat u '%s' wilt vergeten?), Total Commander (Deze schijven na afsluiten vergeten), catalog (menu.network.forgetServer, settings.servers.trustedHostKeys.forget)"
+  },
   "format": {
     "accept": ["geformatteerd", "structuur", "notatie", "notaties", "opmaak"],
     "chosen": "formaat",
@@ -1315,6 +1329,12 @@
     "note": "A deliberate exception to the bare-stem imperative for menu items: the @key description asks for Total Commander's localized wording.",
     "sources": "Total Commander nl (WCMD.LNG 525, 3321–3323 Selectie omkeren), KDE Dolphin and GNOME shortcuts (Selectie omkeren), Thunar (Selectie omdraaien)"
   },
+  "ip-address": {
+    "accept": ["IP-adressen"],
+    "chosen": "IP-adres",
+    "confidence": "high",
+    "sources": "Microsoft Terminology (IP address → IP-adres), catalog (fileExplorer.network.browser.tooltip.resolving)"
+  },
   "item": {
     "accept": ["onderdelen"],
     "chosen": "onderdeel",
@@ -1432,6 +1452,21 @@
     "confidence": "high",
     "forms": "ssh line → ssh-regel",
     "sources": "MS (line → regel)"
+  },
+  "list": {
+    "accept": ["lijst", "lijsten"],
+    "proseAccept": ["toont", "noemen", "op te sommen"],
+    "chosen": "lijst",
+    "confidence": "high",
+    "forms": "the Servers list → de lijst Servers (the hub's name after the noun); server list → serverlijst; stops listing it → haalt … uit de lijst; the verb list (apps, shares, names) → tonen, opsommen, noemen in prose",
+    "sources": "catalog (servers.pinHint.body, settings.servers intro: in de lijst Servers), Microsoft Terminology (list → lijst)"
+  },
+  "local": {
+    "accept": ["lokale"],
+    "chosen": "lokaal",
+    "confidence": "high",
+    "forms": "stored locally → lokaal opgeslagen; a hostname like nas.local stays verbatim",
+    "sources": "Microsoft Terminology (local → lokaal), catalog (de logbestanden worden lokaal geschoond)"
   },
   "local-network": {
     "accept": ["lokale netwerk", "in de buurt", "detectie"],

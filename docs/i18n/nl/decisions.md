@@ -369,8 +369,11 @@ split EN makes; the frame is that of `settings.archives.zip.description`.
 
 - Keychain Access → `Sleutelhangertoegang` (its `InfoPlist.loctable`); Keychain alone → `Sleutelhanger`.
 - `Verbinden met {name}…` (Finder `MN1`), unquoted like EN; server address → `serveradres`.
-- The confirmation title repeats the menu item that opens it (`Vergeet server`); the question takes the infinitive-last
-  form (`{name} vergeten?`) with an imperative button.
+- The confirmation title repeats the menu item that opens it (`Vergeet server`, `Vergeet gedeelde map`); the question
+  takes the infinitive-last form (`{name} vergeten?`) with the button `Vergeet`. "Stops listing it" →
+  `haalt … uit de lijst`, and "nothing gets unmounted" → `Cmdr koppelt niets los` (active, the catalog's `loskoppelen`).
+- Account suffix `als {username}` / `als gast` (Apple's `Verbind als gast`); "Use guest" → `Gebruik gasttoegang`
+  (tentative), since a bare `Gebruik gast` reads as using a person.
 - `disconnectBusyTooltip` mirrors `ejectBusyTooltip` word for word.
 - `disconnectPlaceAriaLabel` → `Verbreek de verbinding met {name}`: it starts with the visible `Verbreek`, and Dutch
   breaks a connection, never a server.
@@ -398,6 +401,8 @@ split EN makes; the frame is that of `settings.archives.zip.description`.
 - "Cmdr stopped connecting" → `Cmdr verbindt niet meer met {name}`, present tense: the pane stays until the user acts.
 - `{name}` and `{host}` never take a pronoun: `De sleutel van {host} is gewijzigd`.
 - Coined (tentative): `Sleutelbestand`, `Manier van verbinden` (aria only), `de servereigenaar`.
+- Add buttons: `Voeg toe`, `Voeg toe en open`, `Voeg toch toe`; the help line quotes the last one in ‘…’. Edit hints say
+  `wijzigen` (a form) and `er valt niets te wijzigen`; `addressLocked` shares the frame of `identityLocked`.
 
 ## Twee paneelregels erbij: automatisch opnieuw verbinden en inloggen met een sleutel (`servers.paneState.reconnecting`, `.signedOutNothingToAsk`)
 
@@ -409,9 +414,9 @@ split EN makes; the frame is that of `settings.archives.zip.description`.
 
 ## De vastzet-hint, de vertrouwde serversleutels en het ADB-paneel (`menu.network.pinToSwitcher`/`.unpin`, `servers.pinHint.*`, `settings.servers.*`, `settings.adb.*`, `settings.section.servers`/`.adb`, `settings.summary.servers`/`.adb`, `settings.appearance.tintSmb.*`)
 
-- `Maak vast in volumekiezer` / `Maak los`: Apple's own `Maak vast in <plek>` (the particle before the place is Apple's
-  order here). `vastzetten` and `vast maken` are one verb pair: never `Maak server vast / maak hem los`, which repeats
-  `maak`.
+- `Maak vast in volumekiezer` / `Maak los uit volumekiezer`: Apple's own `Maak vast in <plek>` (the particle before the
+  place is Apple's order here, and the pair mirrors it). `vastzetten` and `vast maken` are one verb pair: never
+  `Maak server vast / maak hem los`, which repeats `maak`.
 - `Controleer opnieuw` (Check Again), `Niet gevonden`, `Vergeet`, `Vertrouwde <ding>`, `Blader op <plek>`: all macOS.
 - Host key where EN says "host key" → `serversleutel` (tentative): a settings list needs a noun, and `hostsleutel` was
   rejected.

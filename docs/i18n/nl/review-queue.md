@@ -48,6 +48,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **`Uit archief halen`** (`askCmdr.sessions.unarchive`): no single-word reverse of `Archiveer`.
 - **pin in the Dock → `vastzetten` / `losmaken`** (`main.dockPinNudge.body`, `.unpinNote`): the catalog pair over
   Apple's Dock-menu labels `Permanent in Dock` / `Verwijder uit Dock`.
+- **`Gebruik gasttoegang`** (`fileExplorer.network.share.useGuest`): vs `Ga verder als gast` or `Bekijk als gast`.
+- **`Maak los uit volumekiezer`** (`menu.network.unpin`): mirrors `Maak vast in volumekiezer`; confirm it fits the
+  narrow dropdown and doesn't sound like removing.
 
 ## Phrasing and tone
 

@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Klik met de rechtermuisknop op een server en kies ‘Maak los’, of gebruik ‘{command}’ in het opdrachtenpalet. De server blijft in de lijst Servers staan.",
+  "servers.pinHint.body": "Klik met de rechtermuisknop op een server en kies ‘Maak los uit volumekiezer’, of gebruik ‘{command}’ in het opdrachtenpalet. De server blijft in de lijst Servers staan.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Begrepen",
   "@servers.pinHint.gotIt": {
@@ -64,6 +64,38 @@
   "servers.hub.neverUsed": "Nooit",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "als {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "als gast",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Selecteer een server om hem te wijzigen.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "Aan een gedeelde map valt niets te wijzigen. Selecteer de rij van de server om de server te wijzigen.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} is in de buurt gevonden en niet opgeslagen, dus er valt niets te wijzigen.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Vergeet gedeelde map",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Vergeet gedeelde map",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "{name} vergeten? Cmdr haalt de gedeelde map uit de lijst. Is de gedeelde map aangekoppeld, dan blijft dat zo, en je bestanden blijven op de server staan.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "Lokale netwerkdetectie staat uit.",
   "@servers.hub.discoveryOff": {
@@ -162,6 +194,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Voer het wachtwoord voor {username} in.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} reageerde niet op tijd, dus er is niets bewaard. Probeer het zo opnieuw.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -185,6 +221,26 @@
   "servers.sheet.editTitle": "Wijzig {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Voeg toe en open",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Voeg toe",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Voeg toch toe",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr kon deze server niet controleren, dus ‘Voeg toch toe’ bewaart hem zoals je hem hebt getypt.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} is opgeslagen in je lijst Servers.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Log in",
   "@servers.sheet.signIn": {
@@ -235,6 +291,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Een hostnaam, een IP-adres, of een smb://-adres dat je hebt gekopieerd.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Een webadres dat je hebt gekopieerd, zoals https://nas.local/dav, of een hostnaam.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Dit lijkt op een SMB-adres. Kies hierboven SMB als je dat bedoelde.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -247,6 +311,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "Het adres bepaalt welke server dit is. Vergeet deze server en voeg hem opnieuw toe om een ander adres te gebruiken.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "Het adres en het account bepalen welke server dit is. Vergeet deze server en voeg hem opnieuw toe om ze te wijzigen.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -258,6 +326,14 @@
   "servers.sheet.password": "Wachtwoord",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Optioneel",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Vul dit in als je NAS een account nodig heeft. Cmdr vraagt om het wachtwoord wanneer je een gedeelde map opent.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Sleutelwachtzin",
   "@servers.sheet.passphrase": {
@@ -286,6 +362,10 @@
   "servers.sheet.name": "Naam",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Laat leeg om {label} te gebruiken",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Hoofdmap",
   "@servers.sheet.rootFolder": {
@@ -370,6 +450,14 @@
   "servers.paneState.signedOut": "Uitgelogd bij {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "{name} is niet verbonden",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Ga terug",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Log in…",
   "@servers.paneState.signIn": {

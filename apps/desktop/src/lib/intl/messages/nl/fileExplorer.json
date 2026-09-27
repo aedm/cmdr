@@ -430,17 +430,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "{hostName} uit de serverlijst verwijderen?",
+  "fileExplorer.network.browser.removeHostConfirm": "{hostName} vergeten? Cmdr haalt de server en de gedeelde mappen die daaronder zijn opgeslagen uit de lijst. Cmdr koppelt niets los.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "{hostName} verwijderd",
+  "fileExplorer.network.browser.hostRemoved": "{hostName} vergeten",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "{hostName} verwijderen lukte niet",
+  "fileExplorer.network.browser.hostRemoveFailed": "{hostName} vergeten lukte niet",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Opgeslagen wachtwoord voor {hostName} vergeten",
   "@fileExplorer.network.forgotPassword": {
@@ -493,6 +493,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Verwijder opgeslagen wachtwoord uit Sleutelhanger",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Gebruik gasttoegang",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Log in als…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Vergeet opgeslagen wachtwoord",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1417,9 +1425,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Vergeet",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "{name} vergeten? Cmdr verbreekt de verbinding en haalt de server uit de lijst. Je bestanden blijven op de server staan.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Ook het opgeslagen wachtwoord vergeten",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr kon {name} niet vergeten.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

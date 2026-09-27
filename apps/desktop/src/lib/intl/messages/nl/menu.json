@@ -619,9 +619,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Maak los",
+  "menu.network.unpin": "Maak los uit volumekiezer",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Vergeet server",
   "@menu.network.forgetServer": {
