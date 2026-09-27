@@ -84,7 +84,7 @@ mount already under way may still finish, and then the share simply shows up mou
 - **Forget share** (a share row): drops the row and its pin. The share stays mounted if it is, and no password is
   touched.
 - **Forget server** (a server row): drops the manual entry, the host's sign-in history, and every share row under it.
-  Nothing is unmounted. Its confirmation carries "Also forget the saved password", checked by default (a native alert's
+  Nothing is unmounted. Where a password may be stored (the host is used with an account, or this session already read one; ❌ never a Keychain read to find out), its confirmation carries "Also forget the saved password", checked by default (a native alert's
   checkbox, `commands/confirm_dialog.rs`; Linux asks without it and keeps the password). Checked, it first deletes every
   password stored for that server (`forget_saved_smb_host_password`): the server-level and share-level entries under
   each name it goes by on ITS port (`SmbHostGroup::credential_names`), plus a port-less entry a lookup found its

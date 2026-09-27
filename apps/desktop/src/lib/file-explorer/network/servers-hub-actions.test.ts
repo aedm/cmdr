@@ -27,6 +27,8 @@ const confirmWithCheckbox = vi.fn((_question: unknown) => Promise.resolve({ conf
 const forgetSavedSmbHostPassword = vi.fn((_id: string) => Promise.resolve(true))
 const listSavedServers = vi.fn(() => Promise.resolve<unknown[]>([]))
 const setCredentialStatus = vi.fn()
+/** What the store's in-memory credential status says about the host. */
+let credentialStatus = 'has_creds'
 const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
 const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 
@@ -39,7 +41,7 @@ vi.mock('$lib/tauri-commands', () => ({
   showNetworkHostContextMenu: (...args: unknown[]) => showNetworkHostContextMenu(...(args as [])),
 }))
 vi.mock('./network-store.svelte', () => ({
-  getCredentialStatus: () => 'has_creds',
+  getCredentialStatus: () => credentialStatus,
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
   forgetCredentials: (...args: unknown[]) => forgetCredentials(...(args as [])),
   setCredentialStatus: (...args: unknown[]) => {
@@ -203,6 +205,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   confirmDialog.mockResolvedValue(true)
   confirmWithCheckbox.mockResolvedValue({ confirmed: true, checked: true })
+  credentialStatus = 'has_creds'
 })
 
 describe('forget', () => {
@@ -254,6 +257,27 @@ describe('forget', () => {
     expect(order).toEqual(['password', 'host'])
     expect(forgetSavedSmbHostPassword).toHaveBeenCalledWith('manual-10-0-0-4-445')
     expect(setCredentialStatus).toHaveBeenCalledWith('Attic NAS', 'no_creds')
+  })
+
+  /**
+   * ❗ The box shows only where a password may be stored: an account the host is used
+   * with, or one this session already read. A guest-only host offered to forget a
+   * password it never had (final QA). Known without a Keychain read.
+   */
+  it('asks plainly, with no password box, for a host with no account and nothing read', async () => {
+    credentialStatus = 'unknown'
+    await actions().forget(savedHostRow)
+    expect(confirmWithCheckbox).not.toHaveBeenCalled()
+    expect(confirmDialog).toHaveBeenCalledOnce()
+    expect(forgetSavedSmbHostPassword).not.toHaveBeenCalled()
+    expect(forgetSavedSmbHost).toHaveBeenCalledOnce()
+  })
+
+  it('offers the box for a host used with an account, even with nothing read', async () => {
+    credentialStatus = 'unknown'
+    const withAccount = { ...savedHostRow, saved: savedHostRow.saved && { ...savedHostRow.saved, username: 'ada' } }
+    await actions().forget(withAccount)
+    expect(confirmWithCheckbox).toHaveBeenCalledOnce()
   })
 
   it('keeps the host’s saved password when the box was unchecked', async () => {

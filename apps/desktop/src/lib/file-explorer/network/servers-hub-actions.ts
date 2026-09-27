@@ -189,9 +189,13 @@ export function createHubActions(deps: HubActionDeps): HubActions {
    * ❗ Nothing is unmounted.
    */
   async function removeSavedSmbHost(row: HubRow): Promise<void> {
-    const { confirmed, checked } = await confirmWithCheckbox(
-      forgetServerQuestion(tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name })),
+    const question = forgetServerQuestion(
+      tString('fileExplorer.network.browser.removeHostConfirm', { hostName: row.name }),
     )
+    // ❗ The password box only where one may be stored, known without a Keychain read.
+    const { confirmed, checked } = mayHaveStoredPassword(row)
+      ? await confirmWithCheckbox(question)
+      : { confirmed: await confirmDialog(question.message, question.title, question.confirmLabel), checked: false }
     if (!confirmed) return
     // ❗ The password FIRST: the backend finds its names on the rows the Forget removes.
     if (checked) await forgetHostPassword(row)
@@ -203,6 +207,17 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     } catch {
       addToast(tString('fileExplorer.network.browser.hostRemoveFailed', { hostName: row.name }), { level: 'error' })
     }
+  }
+
+  /**
+   * Whether a password may be stored for this SMB host: it's used with an account (the
+   * host's own, or a saved share's), or this session already read one (the in-memory
+   * credential status). ❌ Never a Keychain read to find out.
+   */
+  function mayHaveStoredPassword(row: HubRow): boolean {
+    const accounts = [row.saved?.username, ...(row.saved?.places ?? []).map((place) => place.username)]
+    if (accounts.some((account) => account)) return true
+    return row.host !== null && getCredentialStatus(row.host.name) === 'has_creds'
   }
 
   /** The host's stored password, all its names. A store that refuses still lets the host go, and says so. */
