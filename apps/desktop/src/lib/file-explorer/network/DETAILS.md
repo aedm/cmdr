@@ -227,7 +227,7 @@ a share they never picked.
 SMB's side of the one sign-in sheet. The sheet contract, the three SMB sites and what each `attempt` runs, and the
 endpoint header per site live in `../../servers/DETAILS.md`; this section is what SMB alone decides.
 
-`openSmbSignInSheet({ host, shareName?, guestAllowed, initialUsername?, refusal?, attempt })` builds the request, and
+`openSmbSignInSheet({ host, label?, shareName?, guestAllowed, initialUsername?, refusal?, attempt })` builds the request (titled by `label`, the name the person gave the server, when there is one; `host.name` stays every lookup's key), and
 the caller's `attempt` gets an `SmbCredentialAnswer` (`{ username, password, remember }`) rather than the sheet's
 generic submission. ❗ `username: null` IS guest: all three SMB commands take a nullable username and read it that way,
 so a separate flag could only disagree with it.

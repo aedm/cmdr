@@ -494,6 +494,32 @@ describe('PlacesBrowser header', () => {
     })
     await unmount(component)
   })
+
+  /** ❗ The sheet it opens says the same name: "Sign in to localhost:11482" named a server nobody calls that. */
+  it('names the server by that label in the sign-in sheet too', async () => {
+    vi.clearAllMocks()
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.openSignInSheet.mockResolvedValue({ kind: 'cancelled' })
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const component = mount(PlacesBrowser, {
+      target,
+      props: { account: { protocol: 'smb', host, label: 'My NAS' }, onShareSelect: vi.fn() },
+    })
+    await waitForShareList(target)
+    ;(
+      [...target.querySelectorAll('.header-row button')].find((b) =>
+        b.textContent.includes('Sign in as'),
+      ) as HTMLButtonElement
+    ).click()
+    await vi.waitFor(() => {
+      expect(h.openSignInSheet).toHaveBeenCalledOnce()
+    })
+    const request = h.openSignInSheet.mock.lastCall?.[0] as SheetRequest & { endpoint: { displayName: string } }
+    expect(request.endpoint.displayName).toBe('My NAS')
+    expect(request.endpoint.host, 'the key the hints and the store use stays the host').toBe('Naspolya')
+    await unmount(component)
+  })
 })
 
 /**

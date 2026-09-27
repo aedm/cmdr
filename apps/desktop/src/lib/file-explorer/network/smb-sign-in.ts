@@ -58,6 +58,11 @@ export interface SmbCredentialAnswer {
 
 export interface SmbSignInRequest {
   host: SmbSignInHost
+  /**
+   * What the person calls the server ("My NAS"), for the sheet's title, when it has a
+   * name of its own. `host.name` stays the key every lookup uses.
+   */
+  label?: string
   /** The share this is about, when it is about one. Listing auth is server-level. */
   shareName?: string
   /** Whether to offer "Connect as guest". ❗ `false` where guest has already been tried and refused. */
@@ -75,7 +80,7 @@ export async function openSmbSignInSheet(request: SmbSignInRequest): Promise<Sig
   const username = await rememberedUsername(request)
   return await openSignInSheet({
     mode: 'sign-in',
-    endpoint: smbEndpoint(request.host, request.shareName, username),
+    endpoint: smbEndpoint(request.host, request.label, request.shareName, username),
     // SMB's shape, always: the SHARE is the identity and the account is a field
     // on it, so the username stays editable and re-auth-as-someone-else works.
     shape: { kind: 'username_password', guestAllowed: request.guestAllowed },
@@ -118,11 +123,17 @@ async function rememberedUsername(request: SmbSignInRequest): Promise<string | u
   }
 }
 
-/** The read-only header: which server, and which share when it is about one. */
-function smbEndpoint(host: SmbSignInHost, shareName: string | undefined, username: string | undefined): SignInEndpoint {
+/** The read-only header: which server, by the name the person knows it by, and which share when it is about one. */
+function smbEndpoint(
+  host: SmbSignInHost,
+  label: string | undefined,
+  shareName: string | undefined,
+  username: string | undefined,
+): SignInEndpoint {
+  const name = label ?? host.name
   return {
     protocol: 'smb',
-    displayName: shareName ? `${host.name}/${shareName}` : host.name,
+    displayName: shareName ? `${name}/${shareName}` : name,
     address: shareName ? `smb://${host.name}/${shareName}` : `smb://${host.name}`,
     host: host.name,
     username,

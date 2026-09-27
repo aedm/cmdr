@@ -390,6 +390,7 @@
         try {
             const result = await openSmbSignInSheet({
                 host,
+                label: currentHostLabel,
                 shareName: share.name,
                 // ❗ No guest option: an unauthenticated mount is exactly what just
                 // came back refused, so offering it again would be inert.

@@ -297,6 +297,7 @@
         try {
             const result = await openSmbSignInSheet({
                 host,
+                label: hostLabel,
                 guestAllowed: authMode === 'guest_allowed',
                 refusal,
                 attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember),
@@ -320,6 +321,7 @@
         try {
             await openSmbSignInSheet({
                 host,
+                label: hostLabel,
                 guestAllowed: false,
                 initialUsername: listedAccount?.kind === 'user' ? listedAccount.username : undefined,
                 attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember),
