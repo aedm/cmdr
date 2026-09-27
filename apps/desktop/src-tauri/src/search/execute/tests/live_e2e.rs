@@ -79,11 +79,18 @@ fn a_cold_arena_is_built_once_even_though_the_index_moved_while_it_loaded() {
 }
 
 #[test]
-fn a_warm_arena_a_walk_wrote_behind_is_rebuilt_before_it_answers() {
+fn a_warm_arena_a_walk_wrote_behind_catches_up_in_place_before_it_answers() {
     // The other half of Decision 12, and the reason the check can't simply go: a
     // WARM arena predates its answer, so nothing about when it was built says it
     // holds the rows the answer calls covered. Here a walk writes behind it, and
-    // it has to be rebuilt — once — before the answer may be honored against it.
+    // the rows it created have to be in the arena before the answer may be
+    // honored against it.
+    //
+    // Without a rebuild, though. A walk's rows are a handful against millions, and
+    // rebuilding for them cost a full read of the drive and an arena-sized peak on
+    // every search after a walk (`search-arena-reload-2026-09-27.md`). The rows it
+    // created are exactly the ones past the arena's highest id, so the arena reads
+    // those and appends them, into its own spare capacity.
     let _serialized = test_lock();
     let _one_run_at_a_time = live::test_registry_lock();
     let data = tempfile::tempdir().expect("index data dir");
@@ -94,6 +101,11 @@ fn a_warm_arena_a_walk_wrote_behind_is_rebuilt_before_it_answers() {
     let VolumeLoad::Loaded(warm) = volumes::ensure_volume(VOLUME_ID) else {
         panic!("the volume has an index to load");
     };
+    let warm_token = warm.coverage_token;
+    let warm_rows = warm.index.entries.len();
+    let warm_rows_at = warm.index.entries.as_ptr() as usize;
+    // Nobody else is reading this arena, so it may be extended where it stands.
+    drop(warm);
 
     // A walk writes behind that arena, and only THEN is the answer taken.
     cover_to_completion(&index, &format!("{root}/b"));
@@ -104,16 +116,36 @@ fn a_warm_arena_a_walk_wrote_behind_is_rebuilt_before_it_answers() {
     let load = arena_for_coverage(VOLUME_ID, &question, AfterAnotherWalk::No);
     assert_eq!(
         volumes::arenas_built_for_test() - before,
-        1,
-        "the stale arena is rebuilt, and once"
+        0,
+        "the stale arena catches up rather than being rebuilt"
     );
 
     let VolumeLoad::Loaded(loaded) = load else {
         panic!("the volume still has an index to load");
     };
+    let names: Vec<&str> = loaded
+        .index
+        .entries
+        .iter()
+        .map(|entry| loaded.index.name(entry))
+        .collect();
+    assert!(
+        names.contains(&"three.txt"),
+        "it holds the rows the walk created: {names:?}"
+    );
+    assert!(loaded.index.entries.len() > warm_rows, "appended, not replaced");
+    assert!(
+        loaded.index.entries.windows(2).all(|pair| pair[0].id < pair[1].id),
+        "and still sorted by id, which every lookup binary-searches"
+    );
+    assert_eq!(
+        loaded.index.entries.as_ptr() as usize,
+        warm_rows_at,
+        "into the arena's own spare capacity, with no second copy of it"
+    );
     assert_ne!(
-        loaded.coverage_token, warm.coverage_token,
-        "and what comes back is not the arena the walk wrote behind"
+        loaded.coverage_token, warm_token,
+        "and it no longer claims to be the arena the walk wrote behind"
     );
     assert_eq!(
         loaded.coverage_token,

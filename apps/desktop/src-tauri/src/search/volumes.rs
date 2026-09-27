@@ -25,7 +25,7 @@ use crate::index_host::index;
 use cmdr_index::store::IndexStore;
 use cmdr_index::{CoverageToken, ROOT_VOLUME_ID, ReadPool};
 
-use super::index::{SearchIndex, load_search_index, now_secs};
+use super::index::{SearchIndex, catch_up_search_index, load_search_index, now_secs};
 
 mod weights;
 use weights::{load_weights, store_weights};
@@ -97,6 +97,10 @@ pub(crate) fn arenas_built_for_test() -> u64 {
 /// enrichment) and its mount root (path prefixing/stripping). Importance weights
 /// live in the separate `WEIGHTS` map so the root recompute subscriber can swap
 /// them live without rebuilding this.
+///
+/// `Clone` is cheap (every heavy field is an `Arc`), and it's what lets a catch-up
+/// ([`catch_up_volume`]) restamp a volume some search is still holding.
+#[derive(Clone)]
 pub(crate) struct LoadedVolume {
     pub(crate) index: Arc<SearchIndex>,
     pub(crate) pool: Arc<ReadPool>,
@@ -113,16 +117,18 @@ pub(crate) struct LoadedVolume {
     /// less volatile, and it drops on idle anyway).
     generation: u64,
     /// Which state of the volume's index this arena is a snapshot of, read just
-    /// BEFORE the rows were (so it can only under-claim). A coverage answer is
+    /// BEFORE the rows were (so it can only under-claim), and again before each
+    /// catch-up's. A coverage answer is
     /// honored only while its own token matches this one: an answer that calls a
     /// subtree covered is a promise the arena holds its rows, and a walk that
     /// wrote rows behind the arena breaks that promise silently
     /// (`docs/specs/unindexed-search-plan.md` Decision 12).
     pub(crate) coverage_token: CoverageToken,
-    /// When this arena's load STARTED, read before the token and the rows. The
-    /// causal half of the same question: an answer taken before this instant saw
-    /// only rows committed before this load read anything.
-    load_started_at: std::time::Instant,
+    /// When this arena's rows were last READ: its load, or its latest catch-up,
+    /// taken before the token and the rows. The causal half of the same question:
+    /// an answer taken before this instant saw only rows created before this read,
+    /// and the read holds every one of them.
+    read_started_at: std::time::Instant,
 }
 
 impl LoadedVolume {
@@ -131,9 +137,9 @@ impl LoadedVolume {
     ///
     /// Two independent ways it can, and both are needed:
     ///
-    /// - **It was built after the answer was taken.** Every row that answer calls
-    ///   covered was committed before this load read a thing, so the arena holds
-    ///   them whatever else landed meanwhile. The same property a rebuild
+    /// - **Its rows were read after the answer was taken.** Every row that answer
+    ///   calls covered was committed before this read started, so the arena holds
+    ///   them whatever else landed meanwhile. The same property a catch-up
     ///   manufactures, observed instead of paid for — which is what keeps a COLD
     ///   volume to ONE arena on a drive whose first index moves the token faster
     ///   than an arena takes to build.
@@ -144,7 +150,7 @@ impl LoadedVolume {
     /// ❌ Never order two tokens instead: `CoverageToken` is a watermark, equality
     /// only (`cmdr-index`'s `read/DETAILS.md` § "The freshness token").
     pub(crate) fn honors(&self, answered_at: std::time::Instant, tokens: &[CoverageToken]) -> bool {
-        self.load_started_at >= answered_at || tokens.iter().all(|token| *token == self.coverage_token)
+        self.read_started_at >= answered_at || tokens.iter().all(|token| *token == self.coverage_token)
     }
 }
 
@@ -346,9 +352,9 @@ fn load_volume_blocking(volume_id: &str, data_dir: &Path, cancel: &AtomicBool) -
     ARENAS_BUILT.fetch_add(1, Ordering::Relaxed);
 
     // Both taken BEFORE the rows, so a write racing this load makes the arena look
-    // older than it is rather than newer. Under-claiming costs a reload; the
+    // older than it is rather than newer. Under-claiming costs a catch-up; the
     // other way round would serve a coverage answer the arena can't back.
-    let load_started_at = std::time::Instant::now();
+    let read_started_at = std::time::Instant::now();
     let coverage_token = index().coverage_token(volume_id);
 
     let (pool, mount_root, generation) = if volume_id == ROOT_VOLUME_ID {
@@ -391,7 +397,7 @@ fn load_volume_blocking(volume_id: &str, data_dir: &Path, cancel: &AtomicBool) -
         mount_root,
         generation,
         coverage_token,
-        load_started_at,
+        read_started_at,
     }))
 }
 
@@ -410,27 +416,69 @@ static WALKED_BEHIND: LazyLock<Mutex<std::collections::HashSet<String>>> =
     LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
 
 /// Record that a walk wrote rows into this volume's index, so the next query
-/// reloads its arena before pruning anything as covered.
+/// catches its arena up before pruning anything as covered.
 pub(crate) fn mark_walked_behind(volume_id: &str) {
     WALKED_BEHIND.lock_ignore_poison().insert(volume_id.to_string());
 }
 
-/// Take the mark, if there is one. Taking it is the caller's promise to reload:
-/// a walk still running re-marks with its next batch, so a query that reloads
-/// mid-walk is behind by at most what landed since.
+/// Take the mark, if there is one. Taking it is the caller's promise to catch the
+/// arena up: a walk still running re-marks with its next batch, so a query that
+/// catches up mid-walk is behind by at most what landed since.
 pub(crate) fn take_walked_behind(volume_id: &str) -> bool {
     WALKED_BEHIND.lock_ignore_poison().remove(volume_id)
 }
 
-/// Drop a volume's arena and load it again, synchronously.
+/// Bring a volume's warm arena up to the rows its index holds now, synchronously.
 ///
 /// For the one caller that must NOT be served a snapshot: a coverage answer whose
-/// covered half this arena predates. Loading here rather than in the background is
-/// the whole point — the answer is only true against an arena at least as new as
-/// it is.
-pub(crate) fn reload_volume(volume_id: &str) -> VolumeLoad {
-    SEARCH_INDICES.lock_ignore_poison().remove(volume_id);
-    ensure_volume(volume_id)
+/// covered half this arena predates, because a walk wrote rows behind it. Doing it
+/// here rather than in the background is the whole point — the answer is only
+/// true against an arena that holds every row it calls covered.
+///
+/// A catch-up appends the rows CREATED since the arena was read
+/// ([`catch_up_search_index`]), which is the half a coverage answer depends on:
+/// a few milliseconds and a few MB where a rebuild read every row again and held a
+/// second copy of the arena through its merge (`search/DETAILS.md` § "Decision 12").
+/// A volume that isn't warm any more loads cold, which is newer than any answer.
+///
+/// The caller drops its own handle to the arena first, or the catch-up has to copy
+/// it rather than extend it.
+pub(crate) fn catch_up_volume(volume_id: &str) -> VolumeLoad {
+    let epoch = CANCEL_EPOCH.load(Ordering::Relaxed);
+    let gate = load_gate(volume_id);
+    let gate_held = gate.lock_ignore_poison();
+    // Out of the map for the length of the catch-up, so the arena is ours to extend.
+    // Anyone who wants it meanwhile waits on the gate and gets the caught-up one.
+    let Some(stale) = SEARCH_INDICES.lock_ignore_poison().remove(volume_id) else {
+        drop(gate_held);
+        return ensure_volume(volume_id);
+    };
+
+    // Both taken BEFORE the rows, as a load's are (see `load_volume_blocking`).
+    let read_started_at = std::time::Instant::now();
+    let coverage_token = index().coverage_token(volume_id);
+    let mut volume = Arc::unwrap_or_clone(stale);
+    let appended = match catch_up_search_index(&mut volume.index, &volume.pool) {
+        Ok(rows) => rows,
+        Err(e) => return VolumeLoad::Failed(format!("catch up '{volume_id}': {e}")),
+    };
+    volume.coverage_token = coverage_token;
+    volume.read_started_at = read_started_at;
+    log::debug!(
+        "Search index caught up for '{volume_id}': {} created since it was read, took {:?}",
+        crate::pluralize::pluralize_with(appended as u64, "row", "rows"),
+        read_started_at.elapsed()
+    );
+
+    let volume = Arc::new(volume);
+    // Dropped while it caught up (the dialog closed): answer this search, but don't
+    // put back the RAM the drop just reclaimed.
+    if CANCEL_EPOCH.load(Ordering::Relaxed) == epoch {
+        SEARCH_INDICES
+            .lock_ignore_poison()
+            .insert(volume_id.to_string(), Arc::clone(&volume));
+    }
+    VolumeLoad::Loaded(volume)
 }
 
 /// Ensure a volume's index is loaded and return it (cache-aware). A warm entry

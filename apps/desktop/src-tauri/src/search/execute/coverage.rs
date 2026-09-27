@@ -170,14 +170,14 @@ pub(super) enum AfterAnotherWalk {
 /// symptom is silent: the same query, run again, prunes the ground it just walked
 /// and returns FEWER results than the first time.
 ///
-/// So: rebuild when the arena can't honor the answer
+/// So: catch the arena up ([`volumes::catch_up_volume`]: append the rows created
+/// since it was read) when it can't honor the answer
 /// ([`LoadedVolume::honors`](crate::search::volumes::LoadedVolume::honors))
 /// AND a walk is what put them out of step. Both halves earn their keep. Without
-/// the freshness test, every query after any walk would pay a full arena rebuild.
-/// Without the walk mark, a boot disk — whose background indexer moves the token
-/// several times a second — would rebuild in front of nearly every search, which
-/// is the regression `volumes::get_loaded` documents removing once already. What's
-/// left uncovered is ordinary index lag, which search has always had.
+/// the freshness test, every query after any walk would pay a catch-up. Without
+/// the walk mark, a boot disk — whose background indexer moves the token several
+/// times a second — would catch up in front of nearly every search. What's left
+/// uncovered is ordinary index lag, which search has always had.
 pub(super) fn arena_for_coverage(volume_id: &str, question: &CoverageQuestion, after: AfterAnotherWalk) -> VolumeLoad {
     let load = volumes::ensure_volume(volume_id);
     let VolumeLoad::Loaded(ref loaded) = load else {
@@ -192,12 +192,15 @@ pub(super) fn arena_for_coverage(volume_id: &str, question: &CoverageQuestion, a
     // A run that WATCHED another walk end doesn't need the mark to know a walk
     // wrote rows: it waited for that walk, and its own reason for waiting was
     // that the rows would be there afterwards. The mark is a global one-shot, so
-    // whoever else consumed it must not cost this run the reload.
+    // whoever else consumed it must not cost this run the catch-up.
     if after == AfterAnotherWalk::No && !volumes::take_walked_behind(volume_id) {
         return load;
     }
-    // Loaded strictly after the coverage answer was taken, so it holds every row
-    // that answer calls covered, whatever else landed meanwhile.
-    log::debug!("Live search: reloading '{volume_id}'s arena, a walk wrote rows behind it");
-    volumes::reload_volume(volume_id)
+    // Caught up strictly after the coverage answer was taken, so it holds every
+    // row that answer calls covered, whatever else landed meanwhile. Our handle
+    // goes first: while we hold it, the catch-up would have to copy the arena
+    // rather than extend it.
+    log::debug!("Live search: catching up '{volume_id}'s arena, a walk wrote rows behind it");
+    drop(load);
+    volumes::catch_up_volume(volume_id)
 }

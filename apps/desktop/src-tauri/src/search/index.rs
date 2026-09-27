@@ -9,7 +9,7 @@ mod load;
 #[cfg(test)]
 mod memory_tests;
 
-pub(crate) use load::load_search_index;
+pub(crate) use load::{catch_up_search_index, load_search_index};
 
 // ── An optional u64 that costs eight bytes ───────────────────────────
 
@@ -80,7 +80,7 @@ impl std::fmt::Debug for OptU64 {
 /// One row of the arena, 40 bytes. See [`OptU64`] before adding a field: the arena holds
 /// one of these per file on the volume, so a byte here is megabytes of peak footprint,
 /// and `search/index/memory_tests.rs` pins the size.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SearchEntry {
     pub id: i64,
     pub parent_id: i64,

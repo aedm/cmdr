@@ -4,6 +4,7 @@
 //! ranges rather than made a tighter loop. Why, and what the split costs in transient
 //! memory: `search/DETAILS.md` § "Loading in parallel".
 
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rayon::prelude::*;
@@ -141,25 +142,118 @@ fn load_range(
 /// while the segments still hold the same bytes, so a 320 MB arena transiently costs
 /// ~640 MB. It falls monotonically as each segment drops at the end of its iteration.
 /// Removing the peak entirely needs the mapped arena (GitHub #114), not a bigger loop.
+///
+/// The destination also reserves [`spare_rows`] of room past the rows it holds, which
+/// is what lets [`catch_up_search_index`] append without copying the arena.
 fn merge_segments(segments: Vec<Segment>) -> (String, Vec<SearchEntry>) {
     let total_rows: usize = segments.iter().map(|s| s.entries.len()).sum();
     let total_names: usize = segments.iter().map(|s| s.names.len()).sum();
+    let spare = spare_rows(total_rows);
 
-    let mut names = String::with_capacity(total_names);
-    let mut entries = Vec::with_capacity(total_rows);
-    for mut segment in segments {
-        let base = names.len() as u32;
-        names.push_str(&segment.names);
-        for entry in &mut segment.entries {
-            entry.name_offset += base;
-        }
-        entries.append(&mut segment.entries);
+    let mut names = String::with_capacity(total_names + spare_name_bytes(spare, total_names, total_rows));
+    let mut entries = Vec::with_capacity(total_rows + spare);
+    for segment in segments {
+        append_segment(&mut names, &mut entries, segment);
     }
     debug_assert!(
         entries.windows(2).all(|w| w[0].id < w[1].id),
         "the arena must stay strictly ascending by id: index_of_id binary-searches it"
     );
     (names, entries)
+}
+
+/// Move a segment's rows onto the end of an arena, rebasing their name offsets.
+fn append_segment(names: &mut String, entries: &mut Vec<SearchEntry>, mut segment: Segment) {
+    let base = names.len() as u32;
+    names.push_str(&segment.names);
+    for entry in &mut segment.entries {
+        entry.name_offset += base;
+    }
+    entries.append(&mut segment.entries);
+}
+
+/// How many rows of room an arena keeps past the ones it holds: 1/128 of them, and
+/// never fewer than 64.
+///
+/// A catch-up appends the rows created since the arena was read, and a walk's rows
+/// plus a few minutes of background indexing are thousands, not millions. Room for
+/// 49,000 of them costs 2 MB of rows and about 1 MB of names on a 6.3 M-row boot
+/// index, where running out means reallocating the whole arena: a second copy of it,
+/// transiently. A small arena keeps little room because copying it is cheap.
+fn spare_rows(rows: usize) -> usize {
+    (rows / 128).max(64)
+}
+
+/// Name bytes to keep for `spare` rows, at the arena's own average name length.
+fn spare_name_bytes(spare: usize, name_bytes: usize, rows: usize) -> usize {
+    const FALLBACK_AVG_NAME_BYTES: usize = 20;
+    let average = name_bytes.checked_div(rows).unwrap_or(FALLBACK_AVG_NAME_BYTES);
+    spare.saturating_mul(average.max(1))
+}
+
+/// Append every row created since `index` was read: the rows with an id past its
+/// highest. Returns how many it appended.
+///
+/// This is what keeps a warm arena honest after a walk wrote rows behind it,
+/// without the full read and arena-sized peak a rebuild costs.
+///
+/// **Why that is every created row.** Ids come from the volume writer's one counter,
+/// which only climbs within a process, so a row created after the arena's read has
+/// an id past everything it read. The arena and the coverage token lean on the same
+/// property, with the same edge across a restart (`cmdr-index`'s `read/DETAILS.md`
+/// § "The freshness token"), and a restart drops every arena anyway.
+///
+/// **What it doesn't carry**: rows deleted or updated since the read. Those stay as
+/// the arena read them, the same staleness background indexing leaves in any warm
+/// arena; `search/DETAILS.md` § "Decision 12" says why that is enough for a coverage
+/// answer.
+///
+/// **Where the rows go.** Into the arena itself when nobody else holds it and it has
+/// room ([`spare_rows`]), which is the normal case: no copy at all. Otherwise into
+/// ONE new arena sized for its rows plus the new ones plus fresh room: a search
+/// still reading the old one keeps it, and a full one grows once rather than
+/// doubling.
+pub(crate) fn catch_up_search_index(index: &mut Arc<SearchIndex>, pool: &ReadPool) -> Result<usize, String> {
+    let after = index.entries.last().map_or(0, |entry| entry.id);
+    let created = load_range(pool, after + 1, None, 0, &AtomicBool::new(false))?;
+    let rows = created.entries.len();
+    if rows == 0 {
+        return Ok(0);
+    }
+
+    match Arc::get_mut(index) {
+        Some(owned) if has_room(owned, &created) => append_segment(&mut owned.names, &mut owned.entries, created),
+        _ => *index = Arc::new(copy_with_room(index, created)),
+    }
+    debug_assert!(
+        index.entries.windows(2).all(|w| w[0].id < w[1].id),
+        "the arena must stay strictly ascending by id: index_of_id binary-searches it"
+    );
+    Ok(rows)
+}
+
+/// Whether a segment fits in the arena's spare capacity, rows and names both.
+fn has_room(index: &SearchIndex, segment: &Segment) -> bool {
+    index.entries.capacity() - index.entries.len() >= segment.entries.len()
+        && index.names.capacity() - index.names.len() >= segment.names.len()
+}
+
+/// A new arena holding `index`'s rows, then `created`'s, with fresh room past both.
+fn copy_with_room(index: &SearchIndex, created: Segment) -> SearchIndex {
+    let rows = index.entries.len() + created.entries.len();
+    let name_bytes = index.names.len() + created.names.len();
+    let spare = spare_rows(rows);
+
+    let mut names = String::with_capacity(name_bytes + spare_name_bytes(spare, name_bytes, rows));
+    let mut entries = Vec::with_capacity(rows + spare);
+    names.push_str(&index.names);
+    entries.extend_from_slice(&index.entries);
+    append_segment(&mut names, &mut entries, created);
+    SearchIndex {
+        names,
+        entries,
+        generation: index.generation,
+    }
 }
 
 /// Split `[min_id, max_id]` into at most `workers` contiguous rowid ranges.
@@ -360,6 +454,103 @@ mod tests {
                 "the rebased name offset must still address the right bytes"
             );
         }
+    }
+
+    // ── Catching up ──────────────────────────────────────────────────
+
+    /// Rows written after `store_with_rows`, the way a walk writes behind a warm arena.
+    fn write_more_rows(db_path: &std::path::Path, from: usize, rows: usize) {
+        let conn = IndexStore::open_write_connection(db_path).unwrap();
+        conn.execute_batch("BEGIN").unwrap();
+        for i in from..from + rows {
+            IndexStore::insert_entry_v2(
+                &conn,
+                ROOT_ID,
+                &format!("later-{i:07}.txt"),
+                false,
+                false,
+                Some(i as u64),
+                Some(i as u64),
+                None,
+                None,
+            )
+            .unwrap();
+        }
+        conn.execute_batch("COMMIT").unwrap();
+    }
+
+    /// A caught-up arena has to be indistinguishable from one loaded fresh, name
+    /// offsets above all: the appended rows address a names buffer that grew under
+    /// them.
+    fn assert_same_rows(caught_up: &SearchIndex, fresh: &SearchIndex) {
+        assert_eq!(caught_up.entries.len(), fresh.entries.len());
+        for (a, b) in caught_up.entries.iter().zip(fresh.entries.iter()) {
+            assert_eq!(a.id, b.id);
+            assert_eq!(a.parent_id, b.parent_id);
+            assert_eq!(a.size.get(), b.size.get(), "size on id {}", a.id);
+            assert_eq!(caught_up.name(a), fresh.name(b), "name on id {}", a.id);
+        }
+    }
+
+    #[test]
+    fn a_caught_up_arena_matches_a_fresh_load_and_grew_where_it_stood() {
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let db_path = store_with_rows(dir.path(), 500);
+        let pool = ReadPool::new(db_path.clone()).unwrap();
+        let mut arena = Arc::new(load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+        let rows_at = arena.entries.as_ptr() as usize;
+
+        write_more_rows(&db_path, 500, 40);
+        let appended = catch_up_search_index(&mut arena, &pool).unwrap();
+
+        assert_eq!(appended, 40, "exactly the rows created since the read");
+        assert_same_rows(&arena, &load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+        assert_eq!(
+            arena.entries.as_ptr() as usize,
+            rows_at,
+            "an arena with room takes the rows in place, no second copy"
+        );
+        assert_eq!(
+            catch_up_search_index(&mut arena, &pool).unwrap(),
+            0,
+            "and a second catch-up has nothing left to read"
+        );
+    }
+
+    #[test]
+    fn a_shared_arena_is_copied_and_the_reader_keeps_its_own() {
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let db_path = store_with_rows(dir.path(), 500);
+        let pool = ReadPool::new(db_path.clone()).unwrap();
+        let mut arena = Arc::new(load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+        // A search still reading the arena it was handed.
+        let reader = Arc::clone(&arena);
+
+        write_more_rows(&db_path, 500, 40);
+        catch_up_search_index(&mut arena, &pool).unwrap();
+
+        assert_eq!(reader.entries.len(), 501, "the reader's arena doesn't move under it");
+        assert!(!Arc::ptr_eq(&arena, &reader), "the catch-up went into a copy");
+        assert_same_rows(&arena, &load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+    }
+
+    #[test]
+    fn an_arena_out_of_room_grows_once_and_keeps_room_after() {
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let db_path = store_with_rows(dir.path(), 500);
+        let pool = ReadPool::new(db_path.clone()).unwrap();
+        let mut arena = Arc::new(load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+
+        // More than the spare room a small arena keeps.
+        let past_the_room = spare_rows(arena.entries.len()) + 100;
+        write_more_rows(&db_path, 500, past_the_room);
+        catch_up_search_index(&mut arena, &pool).unwrap();
+
+        assert_same_rows(&arena, &load_search_index(&pool, &AtomicBool::new(false)).unwrap());
+        assert!(
+            arena.entries.capacity() - arena.entries.len() >= spare_rows(arena.entries.len()),
+            "a grown arena keeps room for the next catch-up"
+        );
     }
 
     /// A rebased offset is the one thing the merge can silently corrupt: every row
