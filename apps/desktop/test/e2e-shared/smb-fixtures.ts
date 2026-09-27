@@ -159,7 +159,43 @@ export function preMountGuestShare(): void {
   }
 }
 
-/** Unmounts SMB shares mounted by pre-mount helpers. */
+/** An SMB share on one server: what a fixture mount's source names. */
+export interface SmbShareSource {
+  host: string
+  port: number
+  share: string
+}
+
+/** One `mount` line for an SMB mount: `//[user@]host[:port]/share on <mount point> (smbfs, …)`. */
+const SMBFS_MOUNT_LINE = /^\/\/(?:[^@]*@)?([^/:]+)(?::(\d+))?\/(.+?) on (.+) \(smbfs[,)]/
+
+/**
+ * The mount points, in `mountOutput` (the macOS `mount` command's), whose SOURCE is one of `shares`: that host (any
+ * case), that port (445 when the line names none), and that share (any case), wherever the mount landed.
+ *
+ * ❗ By source, ❌ never by path: `/Volumes/public` is also where a person's NAS share or a dev session's mount of
+ * another server lands, and a teardown that unmounted the path took theirs.
+ */
+export function fixtureMountPoints(mountOutput: string, shares: SmbShareSource[]): string[] {
+  const points: string[] = []
+  for (const line of mountOutput.split('\n')) {
+    const match = SMBFS_MOUNT_LINE.exec(line)
+    if (!match) continue
+    const [, host, port, share, mountPoint] = match
+    const mounted = { host: host.toLowerCase(), port: port ? Number(port) : 445, share: share.toLowerCase() }
+    const ours = shares.some(
+      (s) =>
+        s.host.toLowerCase() === mounted.host && s.port === mounted.port && s.share.toLowerCase() === mounted.share,
+    )
+    if (ours) points.push(mountPoint)
+  }
+  return points
+}
+
+/**
+ * Unmounts the fixture's own SMB shares, the ones the pre-mount helpers mount: on macOS every mount whose source is
+ * the fixture's guest or auth share on the fixture's port, wherever it landed, and nothing else.
+ */
 export function unmountSmbShares(): void {
   if (IS_LINUX) {
     // On Linux, use gio mount -u with the SMB URL to unmount GVFS mounts.
@@ -172,21 +208,24 @@ export function unmountSmbShares(): void {
         // Best-effort: may already be unmounted
       }
     }
-  } else {
-    for (const mountPoint of [SMB_GUEST_MOUNT, SMB_AUTH_MOUNT]) {
-      if (fs.existsSync(mountPoint)) {
-        try {
-          execSync(`umount ${mountPoint}`, { encoding: 'utf-8', timeout: 10_000 })
-          console.log(`Unmounted ${mountPoint}`)
-        } catch {
-          // Best-effort: may already be unmounted
-        }
-        try {
-          fs.rmdirSync(mountPoint)
-        } catch {
-          // Mount point may still be in use or already removed
-        }
-      }
+    return
+  }
+  const mountOutput = execSync('mount', { encoding: 'utf-8', timeout: 10_000 })
+  const ours = fixtureMountPoints(mountOutput, [
+    { host: SMB_GUEST_HOST, port: SMB_GUEST_PORT, share: SMB_GUEST_SHARE },
+    { host: SMB_AUTH_HOST, port: SMB_AUTH_PORT, share: SMB_AUTH_SHARE },
+  ])
+  for (const mountPoint of ours) {
+    try {
+      execSync(`umount '${mountPoint.replaceAll("'", "'\\''")}'`, { encoding: 'utf-8', timeout: 10_000 })
+      console.log(`Unmounted ${mountPoint}`)
+    } catch {
+      // Best-effort: may already be unmounted
+    }
+    try {
+      fs.rmdirSync(mountPoint)
+    } catch {
+      // Mount point may still be in use, already removed, or owned by the system
     }
   }
 }
