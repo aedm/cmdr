@@ -30,6 +30,10 @@
 //! indexing live/replay loops run as tokio tasks and are deliberately NOT lowered here
 //! for exactly this reason.
 //!
+//! A pool whose every thread runs only `Utility` work is the exception, because nothing
+//! unrelated ever lands on it: [`crate::utility_pool::UtilityPool`] lowers each of its
+//! threads once, at the top, the same way a dedicated thread does.
+//!
 //! ## No-op in test builds
 //!
 //! In any test build this is a no-op. Unit tests run massively parallel under nextest

@@ -37,7 +37,9 @@ the next section.
   hash two resident maps key on instead of the path: search's importance weights and the media coverage score cache),
   `git_meta` (what a git portal row's Size cell states), `name_fold.rs` (the ONE "same name, spelled another way" key:
   NFC + lowercase, shared by share IDs, transfer conflict buckets, the SMB spelling resolve, and cursor placement),
-  `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
+  `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`,
+  `utility_pool.rs` (`UtilityPool`, a keep-alive pool of `Utility`-QoS threads, so background work that comes in
+  streams, like index walks, reuses threads instead of creating one per job).
 - `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; `tcp_proxy.rs` (`TcpProxy`, a
   loopback proxy a network backend's test puts in front of a shared Docker fixture to cut the connection, refused or
   silent, without touching a container other runs lease; its header has the usage); on macOS, `disk_images/` (the
@@ -69,6 +71,9 @@ through a local helper, a fully-qualified call inline in an expression, a `use` 
   `ps -M` reports per-thread cumulative CPU but no thread names, so a thread has to report its own. It's cumulative on
   purpose, so a window is the difference of two readings; the index writer's heartbeat is its one consumer today
   (`../cmdr-index/src/indexing/writer/probe_stats.rs`).
+- **`utility_pool`.** The pooled half of `thread_qos`: a thread that runs only `Utility` work for its whole life can be
+  lowered without leaking the class onto anything else, which is what makes pooling background threads legal. It's here
+  beside `thread_qos` for that reason; its consumers today are the index walker and the rescan drain in `cmdr-index`.
 - **`path_hash`.** The folder-path hash both resident score maps key on: search's `ImportanceWeights` app-side and the
   media coverage score cache in `cmdr-index`. Neither side can own it without the other reaching across, and two copies
   of a hash that has to agree with a streamed variant (`PathHasher`) would drift.

@@ -3,9 +3,10 @@
 A `MustScanSubDirs` anchor says "re-walk this subtree". This decides which one walks, when, how often, and what the user
 sees while it does; the diff engine it calls to do the walking is `../../CLAUDE.md`.
 
-`mod.rs` the drain (one walk at a time, `Utility`-QoS, anchors queued in `pending_rescans`); `route.rs` the depth split;
-`throttle.rs` the per-subtree window; `settle.rs` the delay a brand-new subtree gets; `hold.rs` the "size updating"
-hourglass; `churn.rs` the 15-minute observability line; `cardinality.rs` the arrival-rate bound.
+`mod.rs` the drain (one walk at a time on the pooled `Utility`-QoS `RESCAN_THREADS`, anchors queued in
+`pending_rescans`); `route.rs` the depth split; `throttle.rs` the per-subtree window; `settle.rs` the delay a brand-new
+subtree gets; `hold.rs` the "size updating" hourglass; `churn.rs` the 15-minute observability line; `cardinality.rs` the
+arrival-rate bound.
 
 ## Must-knows
 

@@ -5,8 +5,8 @@ guardrails are in `CLAUDE.md`.
 
 The scheduler decides WHICH `MustScanSubDirs` anchor walks, WHEN, HOW OFTEN, and what the user sees while it does. The
 diff engine it calls to do the walking (`reconcile_subtree`, `diff_dir_against_db`) and the event processing that feeds
-it anchors are `../../DETAILS.md`. `mod.rs` orchestrates: one walk at a time on a `Utility`-QoS thread, anchors queued
-in `pending_rescans`, drained on completion. The five leaves below own one decision each.
+it anchors are `../../DETAILS.md`. `mod.rs` orchestrates: one walk at a time on a pooled `Utility`-QoS thread, anchors
+queued in `pending_rescans`, drained on completion. The five leaves below own one decision each.
 
 ## Per-subtree rescan throttle (`throttle.rs`, `mod.rs`)
 
@@ -16,11 +16,12 @@ bounded-fresh (≤1 window stale) without re-walking continuously. Leading + tra
 `../throttle.rs`): a never-walked anchor reconciles immediately; a sustained one re-walks once per window forever (the
 ~1 s `throttle_sweep_interval` tick re-kicks via `EventReconciler::sweep_rescan_throttle`, and it re-asks `is_eligible`
 each tick, so a longer window is never bypassed). `pick_and_collapse_rescan` picks the shallowest ELIGIBLE anchor;
-throttled anchors stay queued in `pending_rescans` until their window elapses. The drain runs on a dedicated
-`Utility`-QoS thread (not the tokio blocking pool, which `thread_qos` forbids lowering), so background subtree walks
-never outrank the webview for CPU. A single growing file is handled by the per-file live path (incremental `dir_stats`
-deltas), never a subtree re-walk, so the throttle needs no significant-change bypass. Tests zero both bounds via
-`disable_rescan_throttle_for_test`.
+throttled anchors stay queued in `pending_rescans` until their window elapses. The drain runs on the `RESCAN_THREADS`
+keep-alive pool of `Utility`-QoS threads (not the tokio blocking pool, which `thread_qos` forbids lowering), so
+background subtree walks never outrank the webview for CPU, and a busy drain reuses about two threads instead of
+creating one per walk (`docs/notes/performance/walker-thread-pool-2026-09-27.md`). A single growing file is handled by
+the per-file live path (incremental `dir_stats` deltas), never a subtree re-walk, so the throttle needs no
+significant-change bypass. Tests zero both bounds via `disable_rescan_throttle_for_test`.
 
 **Each anchor's window is proportional to what its walk COST**:
 `clamp(WALK_COST_MULTIPLIER × walk_cost, RESCAN_THROTTLE_WINDOW, RESCAN_THROTTLE_MAX_WINDOW)`, currently `30 ×`, clamped

@@ -11,6 +11,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use cmdr_fs::ignore_poison::IgnorePoison;
+use cmdr_fs::utility_pool::UtilityPool;
 
 use super::{DirTask, DirVisitor, ReadDirFn, ReadProgress, WalkConfig, WalkReadError, WalkStats};
 use crate::indexing::hold::VolumeWork;
@@ -25,6 +26,13 @@ const LOG_TARGET: &str = "cmdr::indexing::scanner::walker";
 /// never rayon (project rule: never rayon for calls that reach macOS
 /// frameworks).
 const WORKER_STACK_SIZE: usize = 8 * 1024 * 1024;
+
+/// How long a pooled walker thread waits for the next walk before it exits.
+const WORKER_KEEP_ALIVE: Duration = Duration::from_secs(60);
+
+/// The threads every production walk's workers run on. See [`UtilityPool`] for
+/// why they're pooled.
+pub(crate) static WALK_THREADS: UtilityPool = UtilityPool::new("index-walk", WORKER_STACK_SIZE, WORKER_KEEP_ALIVE);
 
 // In-flight read state (see the abandon/replace protocol in the module docs).
 const READING: u8 = 0;
@@ -68,6 +76,7 @@ pub fn walk<V: DirVisitor + 'static>(
         give_up_after: cfg.give_up_after,
         heartbeat: cfg.heartbeat,
         per_dir_delay: cfg.per_dir_delay,
+        threads: cfg.threads,
         slots: Mutex::new(Vec::with_capacity(num_threads)),
         #[cfg(test)]
         park: super::park::armed_for(&root.path),
@@ -97,29 +106,11 @@ pub fn walk<V: DirVisitor + 'static>(
         engine.clone().spawn_worker(slot);
     }
 
-    let watchdog = {
-        let engine = engine.clone();
-        let interval = cfg.watchdog_interval;
-        std::thread::Builder::new()
-            .name("index-walk-watchdog".into())
-            .spawn(move || {
-                // Utility tier: the whole walk (workers + this watchdog) yields CPU to the UI.
-                cmdr_fs::thread_qos::set_current_thread_qos(cmdr_fs::thread_qos::QosClass::Utility);
-                engine.run_watchdog(interval)
-            })
-            .expect("failed to spawn walker watchdog thread")
-    };
-
-    // Wait for completion. Workers are intentionally not joined — an abandoned
-    // one is parked in a syscall and would block forever. The watchdog runs on a
-    // timer, so it's safe to join.
-    {
-        let mut q = engine.queue.lock_ignore_poison();
-        while !engine.done.load(Ordering::SeqCst) {
-            q = engine.cv.wait(q).unwrap_or_else(|e| e.into_inner());
-        }
-    }
-    let _ = watchdog.join();
+    // The watchdog runs on the calling thread, which would otherwise only wait: it
+    // returns once the walk is done or cancelled, and that's when `walk` returns.
+    // Workers are intentionally not waited for: an abandoned one is parked in a
+    // syscall and would block forever.
+    Arc::clone(&engine).run_watchdog(cfg.watchdog_interval);
 
     WalkStats {
         dirs_read: engine.dirs_read.load(Ordering::Relaxed),
@@ -261,6 +252,9 @@ struct Engine<V: DirVisitor> {
     heartbeat: Option<WalkHeartbeat>,
     /// The E2E throttle, applied before each read (see [`WalkConfig::per_dir_delay`]).
     per_dir_delay: Option<Duration>,
+    /// Where workers (initial and replacement) run. A worker is one pool job that
+    /// lasts until the walk is done, or until its read is abandoned and returns.
+    threads: &'static UtilityPool,
     /// One slot per live worker (initial + replacements). Grows on abandonment.
     slots: Mutex<Vec<Slot>>,
     /// The park point a test armed for this walk's root, if any (`park.rs`).
@@ -321,21 +315,18 @@ impl<V: DirVisitor + 'static> Engine<V> {
 
     fn spawn_worker(self: Arc<Self>, slot: Slot) {
         let visitor = Arc::clone(&self.visitor);
-        let spawned = std::thread::Builder::new()
-            .name("index-walk".into())
-            .stack_size(WORKER_STACK_SIZE)
-            .spawn(move || self.run_worker(slot));
-        if let Err(e) = spawned {
+        let threads = self.threads;
+        if let Err(e) = threads.execute(move || self.run_worker(slot)) {
             // A failed spawn only reduces capacity; the remaining workers still
             // drain the queue. Never panic a replacement (it'd abort mid-scan).
             visitor.note_worker_spawn_failure(&e);
         }
     }
 
+    /// One worker: pops and reads directories until the walk is done or cancelled,
+    /// or until the watchdog abandons its read. Runs as one job on the walk's pool,
+    /// whose threads are already `Utility` QoS, so the walk yields CPU to the UI.
     fn run_worker(self: Arc<Self>, slot: Slot) {
-        // Yield CPU to the UI: directory-walking is heavy background work. Set once per
-        // worker thread (covers both initial and replacement workers).
-        cmdr_fs::thread_qos::set_current_thread_qos(cmdr_fs::thread_qos::QosClass::Utility);
         loop {
             // Pop the next task, or exit when the walk is done/cancelled.
             let scheduled = {
@@ -401,7 +392,8 @@ impl<V: DirVisitor + 'static> Engine<V> {
             let result = (self.reader)(&scheduled.task.path, &progress);
 
             // Resolve the race with the watchdog. If it already abandoned this
-            // read, drop the result and exit — a replacement worker took over.
+            // read, drop the result and end this job — a replacement worker took
+            // over, and this thread goes back to the pool.
             if state
                 .compare_exchange(READING, COMPLETED, Ordering::SeqCst, Ordering::SeqCst)
                 .is_err()

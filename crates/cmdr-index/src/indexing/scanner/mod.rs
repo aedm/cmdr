@@ -48,7 +48,8 @@ mod walker;
 #[cfg(test)]
 pub(crate) use walker::park;
 use walker::{
-    DEFAULT_GIVE_UP_AFTER, DEFAULT_PER_ENTRY_ALLOWANCE, DirTask, ReadDirFn, WalkConfig, default_reader, walk,
+    DEFAULT_GIVE_UP_AFTER, DEFAULT_PER_ENTRY_ALLOWANCE, DirTask, ReadDirFn, WALK_THREADS, WalkConfig, default_reader,
+    walk,
 };
 
 // The batched `getattrlistbulk` read and the child file-type vocabulary that goes
@@ -886,6 +887,7 @@ fn run_scan(
         give_up_after: DEFAULT_GIVE_UP_AFTER,
         heartbeat: heartbeat.cloned(),
         per_dir_delay: heartbeat.and(cover_walk_throttle()),
+        threads: &WALK_THREADS,
     };
     let root_task = DirTask {
         path: root.to_path_buf(),

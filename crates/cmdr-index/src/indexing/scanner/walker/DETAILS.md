@@ -12,18 +12,26 @@ survive a hung `readdir`: a disconnected macOS File Provider mount (Dropbox / Go
 `~/Library/CloudStorage`, iCloud under `~/Library/Mobile Documents`) blocks a `readdir` indefinitely when the provider
 is offline, which froze the whole scan.
 
-- **The pool.** A persistent pool of 8 MB-stack worker threads (dedicated OS threads, never rayon — File Provider reads
-  descend deep XPC override chains that overflow rayon's 2 MB stack) pull directory-read tasks from a shared queue and
-  call `readdir` directly. A blocking `readdir` can't time itself out, so a **watchdog** thread caps each read from
+- **The workers.** Each walk runs `num_threads` workers (8 MB-stack OS threads, never rayon — File Provider reads
+  descend deep XPC override chains that overflow rayon's 2 MB stack) that pull directory-read tasks from the walk's own
+  queue and call `readdir` directly. A blocking `readdir` can't time itself out, so a **watchdog** caps each read from
   outside: every in-flight read carries an `Arc<AtomicU8>` state (`READING → COMPLETED`, won by the worker; or
   `READING → ABANDONED`, won by the watchdog), and whoever wins the compare-and-swap owns the outcome exactly once. A
   read the watchdog condemns is **abandoned**: reported as a read error (subtree pruned, dir left unmarked), a
-  replacement worker is spawned to restore pool capacity, and the stuck worker is left parked in the syscall (it exits
-  on its own when the File Provider layer finally errors). Only genuinely-hung _frontier_ dirs reach this, each pruning
-  its subtree, so the parked-worker cost is bounded and self-clearing. Workers are NOT joined (an abandoned one would
-  block forever); the walk returns when the outstanding-task count hits zero. The reader is an injected `ReadDirFn`
-  (production `bulk_read_dir` on macOS, `std_read_dir` elsewhere, tests a mock that blocks or trickles), so hang /
-  big-but-healthy / honest-skip / parallel-correctness are unit-tested with no real hung mount.
+  replacement worker is started to restore capacity, and the stuck worker is left parked in the syscall (its job ends
+  when the File Provider layer finally errors). Only genuinely-hung _frontier_ dirs reach this, each pruning its
+  subtree, so the parked-worker cost is bounded and self-clearing. Workers are NOT waited for (an abandoned one would
+  block forever); the walk returns when the outstanding-task count hits zero.
+- **Where the threads come from.** A worker is one job on `WalkConfig::threads`, production's process-wide
+  `WALK_THREADS` (`cmdr_fs::utility_pool::UtilityPool`: `Utility` QoS, 8 MB stacks, a 60 s keep-alive). The pool hands
+  each job an idle thread or spawns one, and never queues a job behind a busy thread, so every walk still gets its full
+  `num_threads` at once and the concurrency bound is the walks' own, exactly as with dedicated threads. The watchdog
+  loop runs on the caller's thread, which `walk` blocks anyway. **Why pooled:** a thread per worker per walk plus a
+  watchdog each came to ~29,000 thread creations in 40 min on a busy machine, which costs CPU and, under mimalloc,
+  abandons each exiting thread's heap pages (`docs/notes/performance/walker-thread-pool-2026-09-27.md`). Test:
+  `tests.rs::a_run_of_walks_reuses_its_threads`. The reader is an injected `ReadDirFn` (production `bulk_read_dir` on
+  macOS, `std_read_dir` elsewhere, tests a mock that blocks or trickles), so hang / big-but-healthy / honest-skip /
+  parallel-correctness are unit-tested with no real hung mount.
 - **Per-subtree give-up budget.** The per-dir watchdog abandons ONE hung dir at a time, so a dead mount that fails on
   every read (a disconnected File Provider returning `ETIMEDOUT`/`os error 60` per descendant, e.g. a MacDroid phone's
   `/proc/*/task/*/fd`) still cost one abandon PER DESCENDANT — hundreds/thousands of probes and a log flood. The give-up
@@ -85,10 +93,10 @@ the walker only through a `#[cfg(test)]` re-export in `../mod.rs`, for the real-
 ## The walk holds its volume
 
 `walk` takes the walk's own `VolumeWork` (a `WalkerWorker` child of its caller's, which `run_scan` mints) and the engine
-keeps it. Every worker thread holds the engine, so the share drops only once `walk` has returned AND the last worker is
-out of its read. An abandoned worker parked in a hung syscall keeps the volume held on purpose: a removable stop then
-answers `StillReleasing` instead of unmounting under a read in flight (`../../hold.rs`). Test:
-`tests.rs::an_abandoned_worker_holds_its_volume_until_its_read_returns`.
+keeps it. Every worker job holds the engine, so the share drops only once `walk` has returned AND the last worker is out
+of its read. A pooled thread drops the job, engine included, before it goes idle. An abandoned worker parked in a hung
+syscall keeps the volume held on purpose: a removable stop then answers `StillReleasing` instead of unmounting under a
+read in flight (`../../hold.rs`). Test: `tests.rs::an_abandoned_worker_holds_its_volume_until_its_read_returns`.
 
 ## The walker's progress timeout
 

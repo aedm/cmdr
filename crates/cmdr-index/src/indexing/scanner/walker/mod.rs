@@ -46,15 +46,25 @@
 //!   the result and accounts the task done. On failure (watchdog already abandoned
 //!   it) it drops the result and exits — its slot was replaced.
 //! - Watchdog condemns a read, `CAS(READING → ABANDONED)`. On
-//!   success it reports the timeout, accounts the task done, and spawns a
-//!   replacement worker. The stuck worker thread is left parked in the syscall; it
-//!   exits on its own once the File Provider layer finally errors. That lingering
-//!   thread is bounded (only genuinely-hung *frontier* dirs reach it, each pruning
-//!   its subtree) and self-clearing, so it's a bounded cost, not a leak.
+//!   success it reports the timeout, accounts the task done, and starts a
+//!   replacement worker. The stuck worker's thread is left parked in the syscall;
+//!   once the File Provider layer finally errors, its job ends and the thread goes
+//!   back to the pool. That lingering thread is bounded (only genuinely-hung
+//!   *frontier* dirs reach it, each pruning its subtree) and self-clearing, so it's
+//!   a bounded cost, not a leak.
 //!
 //! Because the driver must never block on a parked worker, workers are **not**
-//! joined; the walk returns when the outstanding-task count hits zero (only the
-//! watchdog is joined — it runs on a timer, never on a syscall).
+//! waited for; the walk returns when the outstanding-task count hits zero. The
+//! watchdog runs on the caller's own thread, which `walk` blocks anyway, and
+//! returns when the walk is done.
+//!
+//! # Threads
+//!
+//! Workers are jobs on a shared keep-alive pool ([`WalkConfig::threads`],
+//! production `WALK_THREADS`), so a stream of walks reuses the same threads
+//! instead of creating `num_threads` of them per walk. Each walk still gets its
+//! own `num_threads` workers at once: the pool never queues a job behind a busy
+//! thread.
 //!
 //! # Testability
 //!
@@ -69,10 +79,13 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use cmdr_fs::utility_pool::UtilityPool;
+
 #[cfg(target_os = "macos")]
 pub(super) mod bulk_read;
 
 mod engine;
+pub(crate) use engine::WALK_THREADS;
 pub use engine::walk;
 
 // A test-only park point that holds a walk between directories (see the module).
@@ -268,6 +281,10 @@ pub struct WalkConfig {
     /// a cover walk ever sets it, and only under an E2E run; see
     /// [`cover_walk_throttle`](super::cover_walk_throttle).
     pub per_dir_delay: Option<Duration>,
+    /// The pool the walk's workers run on. Production shares
+    /// [`engine::WALK_THREADS`] across every walk; a test passes its own to count
+    /// the threads a walk creates.
+    pub threads: &'static UtilityPool,
 }
 
 impl Default for WalkConfig {
@@ -280,6 +297,7 @@ impl Default for WalkConfig {
             give_up_after: DEFAULT_GIVE_UP_AFTER,
             heartbeat: None,
             per_dir_delay: None,
+            threads: &WALK_THREADS,
         }
     }
 }

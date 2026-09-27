@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::time::Instant;
 
 use crate::indexing::hold::{self, HoldKind, VolumeWork};
+use cmdr_fs::utility_pool::UtilityPool;
 
 // ── Mock filesystem + reader ─────────────────────────────────────────
 
@@ -175,6 +176,7 @@ fn fast_cfg(num_threads: usize) -> WalkConfig {
         give_up_after: DEFAULT_GIVE_UP_AFTER,
         heartbeat: None,
         per_dir_delay: None,
+        threads: &WALK_THREADS,
     }
 }
 
@@ -642,6 +644,7 @@ fn cancellation_returns_promptly() {
             give_up_after: DEFAULT_GIVE_UP_AFTER,
             heartbeat: None,
             per_dir_delay: None,
+            threads: &WALK_THREADS,
         },
         fs.clone().reader(),
         visitor,
@@ -657,7 +660,7 @@ fn cancellation_returns_promptly() {
 /// A walk that finishes returns as soon as it's finished, not one watchdog
 /// interval later.
 ///
-/// The watchdog is joined before `walk` returns, so a plain `sleep(interval)`
+/// `walk` returns when its watchdog loop does, so a plain `sleep(interval)`
 /// put a flat floor of one interval — a full second in production — under EVERY
 /// walk however small. Invisible on a volume scan; ruinous for a search covering
 /// a run of small frontier nodes, which pays it once per node.
@@ -679,6 +682,7 @@ fn a_tiny_walk_returns_without_waiting_out_the_watchdog() {
             give_up_after: DEFAULT_GIVE_UP_AFTER,
             heartbeat: None,
             per_dir_delay: None,
+            threads: &WALK_THREADS,
         },
         fs.reader(),
         Arc::new(RecordingVisitor::new()),
@@ -733,6 +737,7 @@ fn gives_up_on_a_dead_subtree_and_keeps_walking_a_healthy_sibling() {
         give_up_after: GIVE_UP_AFTER,
         heartbeat: None,
         per_dir_delay: None,
+        threads: &WALK_THREADS,
     };
     let stats = walk(
         root_task("/r"),
@@ -797,6 +802,66 @@ fn gives_up_on_a_dead_subtree_and_keeps_walking_a_healthy_sibling() {
             p.display(),
         );
     }
+}
+
+// ── Thread reuse ─────────────────────────────────────────────────────
+
+/// Walks come in streams (a verifier pass, a run of cover walks, the reconcile
+/// drain), and each used to spawn its own workers and watchdog: ~29,000 thread
+/// creations in 40 minutes on a busy machine. They share a pool now, so a run of
+/// walks creates about one walk's worth of threads, not one per walk.
+#[test]
+fn a_run_of_walks_reuses_its_threads() {
+    const WALKS: u64 = 20;
+    const NUM_THREADS: usize = 2;
+    let pool: &'static UtilityPool = Box::leak(Box::new(UtilityPool::new(
+        "walker-reuse-test",
+        256 * 1024,
+        Duration::from_secs(30),
+    )));
+    let mut b = TreeBuilder::default();
+    b.dir("/r", &[("a", RawFileType::Dir), ("b", RawFileType::Dir)])
+        .dir("/r/a", &[("x.txt", RawFileType::File)])
+        .dir("/r/b", &[("y.txt", RawFileType::File)]);
+    let fs = b.build(HashSet::new(), Duration::ZERO);
+
+    let reads_on: Arc<StdMutex<HashSet<std::thread::ThreadId>>> = Arc::default();
+    let inner = fs.reader();
+    let seen = Arc::clone(&reads_on);
+    let reader: ReadDirFn = Arc::new(move |path: &Path, progress: &ReadProgress| {
+        seen.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(std::thread::current().id());
+        inner(path, progress)
+    });
+
+    for _ in 0..WALKS {
+        let stats = walk(
+            root_task("/r"),
+            WalkConfig {
+                threads: pool,
+                ..fast_cfg(NUM_THREADS)
+            },
+            Arc::clone(&reader),
+            Arc::new(RecordingVisitor::new()),
+            VolumeWork::for_test("walker-test"),
+        );
+        assert_eq!(stats.dirs_read, 3, "each walk reads the whole tree");
+    }
+
+    let reading_threads = reads_on.lock().unwrap_or_else(|e| e.into_inner()).len();
+    // A walk's workers go back to the pool a moment after `walk` returns, so the
+    // next walk can occasionally find one still on its way and start another.
+    // That's the slack here; a thread per walk is what this pins against.
+    assert!(
+        pool.threads_started() < WALKS,
+        "pool threads created: {} (walk count {WALKS}); they should be reused",
+        pool.threads_started(),
+    );
+    assert!(
+        (reading_threads as u64) < WALKS,
+        "distinct reading threads: {reading_threads} (walk count {WALKS}); they should be shared",
+    );
 }
 
 // ── The test-only park point ─────────────────────────────────────────

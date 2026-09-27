@@ -37,6 +37,7 @@ pub mod staging;
 pub mod tcc_paths;
 pub mod thread_cpu;
 pub mod thread_qos;
+pub mod utility_pool;
 pub mod volume;
 
 #[cfg(any(test, feature = "testing"))]
