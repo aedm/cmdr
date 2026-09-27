@@ -209,14 +209,24 @@ mod tests {
     #[test]
     fn a_write_moves_the_reading_by_exactly_what_it_wrote() {
         let t0 = Instant::now();
-        let got = plan(Some(&anchor(t0)), cheap(STATFS_FREE - 300 * MB), t0 + Duration::from_secs(2), 0);
+        let got = plan(
+            Some(&anchor(t0)),
+            cheap(STATFS_FREE - 300 * MB),
+            t0 + Duration::from_secs(2),
+            0,
+        );
         assert_eq!(got, Plan::Derived(SpaceInfo::bounded(TOTAL, IMPORTANT_FREE - 300 * MB)));
     }
 
     #[test]
     fn a_delete_moves_the_reading_up_by_what_it_freed() {
         let t0 = Instant::now();
-        let got = plan(Some(&anchor(t0)), cheap(STATFS_FREE + 200 * MB), t0 + Duration::from_secs(2), 0);
+        let got = plan(
+            Some(&anchor(t0)),
+            cheap(STATFS_FREE + 200 * MB),
+            t0 + Duration::from_secs(2),
+            0,
+        );
         assert_eq!(got, Plan::Derived(SpaceInfo::bounded(TOTAL, IMPORTANT_FREE + 200 * MB)));
     }
 
@@ -225,15 +235,26 @@ mod tests {
         // A gigabyte on a 995 GB drive: past one step, so it may be macOS purging.
         let t0 = Instant::now();
         let later = t0 + Duration::from_secs(2);
-        assert_eq!(plan(Some(&anchor(t0)), cheap(STATFS_FREE + GB), later, 0), Plan::Refresh);
-        assert_eq!(plan(Some(&anchor(t0)), cheap(STATFS_FREE - GB), later, 0), Plan::Refresh);
+        assert_eq!(
+            plan(Some(&anchor(t0)), cheap(STATFS_FREE + GB), later, 0),
+            Plan::Refresh
+        );
+        assert_eq!(
+            plan(Some(&anchor(t0)), cheap(STATFS_FREE - GB), later, 0),
+            Plan::Refresh
+        );
     }
 
     #[test]
     fn an_old_anchor_asks_again_even_when_nothing_moved() {
         let t0 = Instant::now();
         assert!(matches!(
-            plan(Some(&anchor(t0)), cheap(STATFS_FREE), t0 + MAX_ANCHOR_AGE - Duration::from_secs(1), 0),
+            plan(
+                Some(&anchor(t0)),
+                cheap(STATFS_FREE),
+                t0 + MAX_ANCHOR_AGE - Duration::from_secs(1),
+                0
+            ),
             Plan::Derived(_)
         ));
         assert_eq!(

@@ -180,6 +180,8 @@ Smaller or already filed, unranked:
 
 Newest first.
 
+- `space-poll-cost-2026-09-27.md`: the space poller's important-usage query cost ~0.65% of a core; the cheap `statfs`
+  reading that replaced it, why `statfs` is a trustworthy change detector, and the interleaved before/after numbers.
 - `walker-thread-pool-2026-09-27.md`: the walker and rescan threads pooled (97–99% fewer walker thread creations), and
   the allocator comparison re-run on top: the slack isn't thread churn, so pooling doesn't move the allocator tradeoff.
   Raw numbers: `walker-thread-pool-2026-09-27.csv`.
