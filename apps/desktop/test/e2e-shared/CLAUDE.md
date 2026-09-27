@@ -12,14 +12,12 @@ binary launches (fixture creation, port-file reads, MCP client setup) lives here
   declared layout, `restoreFixtureTree` repairs what drifted; the Playwright `afterEach` runs both.
 - **`port-file.ts`**: reads `<data_dir>/mcp.port` and `<data_dir>/tauri-mcp.port`. `resolveMcpPort(dataDir)` follows the
   canonical precedence, never a legacy port.
-- **`mcp-client.ts`**: lightweight MCP client wrapping `fetch` to the Cmdr MCP server (tool calls, resource reads).
+- **`mcp-client.ts`**: a `fetch` client for the Cmdr MCP server (tool calls, resource reads).
 - **`mtp-fixtures.ts`**: virtual MTP backing-dir composition, at the run's `MTP_FIXTURE_ROOT` (`CMDR_MTP_FIXTURE_ROOT`,
   matching the app's `CMDR_VIRTUAL_MTP`). One root per run, shared by its shards, so the MTP shard is serialized.
 - **`smb-fixtures.ts`**: SMB virtual-host fixtures, injected into the running Tauri process via the `smb-e2e` feature.
-  ❗ The fixture's mount is found by SOURCE (`fixtureMountPoints`: the fixture's host, port, and share), ❌ never by
-  path: `/Volumes/public` can be a person's or a dev session's share, and E2E writes and deletes on the fixture's.
-  Pre-mount reuses the fixture's mount wherever it landed and leaves a foreign one alone (`preMountPlan`), specs read
-  `guestMountPoint()` / `guestMountSuite()`, and teardown unmounts only the fixture's.
+  ❗ Its mount is found by source, ❌ never by path (`/Volumes/public` may be someone else's). Specs read
+  `guestMountPoint()`. `DETAILS.md` § "Finding the SMB fixture's mount".
 - **`server-fixtures.ts`**: where the app dials the SFTP / WebDAV fixtures, plus an `ssh` / `curl` side door to their
   exports. `../e2e-playwright/DETAILS.md` § "Real SFTP and WebDAV servers".
 - **`pin-locale.ts`**: both halves of "pretend this machine is en-US". `pinUiLanguage(dataDir)` merges
@@ -28,16 +26,13 @@ binary launches (fixture creation, port-file reads, MCP client setup) lives here
 
 ## Must-knows
 
-- **`createFixtures(instanceId)` is the only fixture API.** Pass an instance ID on macOS for the per-shard path +
-  hardlink cache; pass `undefined` (or omit) on Linux Docker for the legacy shared path. Both return the fixture root
-  for `CMDR_E2E_START_PATH`.
-- **Port-file read NEVER falls back to a hardcoded default.** Strict precedence: `CMDR_MCP_PORT` env (manual pin, set by
-  the Go checker per shard) → `<data_dir>/mcp.port` (Cmdr MCP HTTP server) or `tauri-mcp.port` (Tauri MCP bridge) →
-  throw `PortDiscoveryError`. A silent fallback hides bugs (the test "works" against the wrong instance). Writers:
-  `DETAILS.md` § "Who writes the port files".
-- **`mcp-client.ts` and `mtp-fixtures.ts` don't read the port file.** They're invoked from inside the running app via
-  Tauri IPC, where the in-process `MCP_ACTUAL_PORT` atomic is the source of truth. Out-of-process callers use
-  `port-file.ts`.
+- **`createFixtures(instanceId)` is the only fixture API.** Pass an instance ID on macOS (per-shard path + hardlink
+  cache), omit it on Linux Docker (shared path). Both return the root for `CMDR_E2E_START_PATH`.
+- **Port-file read NEVER falls back to a hardcoded default.** Strict precedence: `CMDR_MCP_PORT` env (the Go checker's
+  per-shard pin) → `<data_dir>/mcp.port` (Cmdr MCP) or `tauri-mcp.port` (Tauri MCP bridge) → throw `PortDiscoveryError`.
+  A fallback would let a test "work" against the wrong instance. Writers: `DETAILS.md` § "Who writes the port files".
+- **`mcp-client.ts` and `mtp-fixtures.ts` don't read the port file.** They run inside the app (Tauri IPC), where the
+  `MCP_ACTUAL_PORT` atomic is the truth. Out-of-process callers use `port-file.ts`.
 - **Bulk `.dat` files are zero-fill ASCII, hardlinked, and read-only.** Tests needing real binary patterns add their own
   fixtures: the cache check samples content at a few offsets, so arbitrary content breaks the cache contract.
 - **❌ Never write to a bulk `.dat` IN PLACE.** They're hardlinks into the cache, so one `truncateSync` shortens it in
@@ -64,7 +59,7 @@ left/                         right/  (empty)
 ## Related docs
 
 - `../CLAUDE.md`: E2E suite overview.
-- `../e2e-playwright/CLAUDE.md`: Playwright conventions (incl. the clipboard-mock gotcha).
+- `../e2e-playwright/CLAUDE.md`: Playwright conventions.
 - `../e2e-linux/CLAUDE.md`: Linux Docker single-shard contract.
 - `docs/tooling/instance-isolation.md`: canonical per-instance reference.
 - `apps/desktop/src-tauri/src/mcp/port_file.rs`: the Rust side of the port-file protocol.

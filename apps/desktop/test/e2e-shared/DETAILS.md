@@ -49,6 +49,13 @@ its metadata is encrypted, so even listing prompts). `mcp-archive-password.spec.
 lets the restore sweep them away, because putting them in the pristine tree would hand two extra entries to every other
 spec's `left/`.
 
+## Finding the SMB fixture's mount
+
+`smb-fixtures.ts` finds the fixture's mount by SOURCE (`fixtureMountPoints`: the fixture's host, port, and share), ❌
+never by path: `/Volumes/public` can be a person's or a dev session's share, and E2E writes and deletes on the
+fixture's. Pre-mount reuses the fixture's mount wherever it landed and leaves a foreign one alone (`preMountPlan`),
+specs read `guestMountPoint()` / `guestMountSuite()`, and teardown unmounts only the fixture's.
+
 ## Who writes the port files
 
 The Rust side writes `mcp.port` after `bind()` via tempfile + fsync + rename; the wrapper writes `tauri-mcp.port` BEFORE
