@@ -180,6 +180,8 @@ Smaller or already filed, unranked:
 
 Newest first.
 
+- `idle-census-2026-09-27.md`: `main` against both targets, the post-burst memory that turned out to be slack, a
+  per-thread CPU instrument with names, and six new levers (the space poller's 6.5 ms free-space query first).
 - `mdns-browse-gating-2026-09-27.md`: the mDNS browse runs only while something needs it; the two threads and ~0.055% of
   a core it saves at idle, and the Servers-view behavior it keeps.
 - `search-loop-allocations-2026-09-27.md`: the search loop allocated per row (regex cache pool, exclude fold, ranking),
