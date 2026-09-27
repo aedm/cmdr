@@ -183,6 +183,46 @@ test.describe('Keyboard navigation', () => {
     expect(leftPaneClassFinal).toContain('is-focused')
   })
 
+  test('Tab hands an open volume switcher back and forth between panes', async ({ tauriPage }) => {
+    await ensureAppReady(tauriPage)
+    await focusPane(tauriPage, 0)
+    await tauriPage.evaluate(`document.querySelectorAll('.file-pane')[0]?.querySelector('.volume-name')?.click()`)
+    await tauriPage.waitForSelector('[data-menu]', waitBudget(3000))
+
+    // Arrow keys remain the switcher's row navigation rather than changing panes.
+    const initialRow = await tauriPage.getAttribute('[data-menu]', 'aria-activedescendant')
+    await tauriPage.keyboard.press('ArrowDown')
+    const nextRow = await tauriPage.getAttribute('[data-menu]', 'aria-activedescendant')
+    expect(nextRow).not.toBe(initialRow)
+
+    async function expectHandoff(focusedPaneIndex: 0 | 1): Promise<void> {
+      await expect
+        .poll(
+          async () =>
+            tauriPage.evaluate<boolean>(`(function() {
+              var panes = document.querySelectorAll('.file-pane');
+              var menu = document.querySelector('[data-menu]');
+              return panes[${String(focusedPaneIndex)}]?.classList.contains('is-focused') === true &&
+                document.querySelectorAll('[data-menu]').length === 1 &&
+                document.activeElement === menu;
+            })()`),
+          { timeout: waitBudget(3000) },
+        )
+        .toBeTruthy()
+    }
+
+    // Repeated keydown while Tab remains held exercises the browser's repeat path.
+    await tauriPage.keyboard.down('Tab')
+    await expectHandoff(1)
+    await tauriPage.keyboard.down('Tab')
+    await expectHandoff(0)
+    await tauriPage.keyboard.down('Tab')
+    await expectHandoff(1)
+    await tauriPage.keyboard.up('Tab')
+
+    await dismissOverlay(tauriPage)
+  })
+
   test('toggles selection with Space key', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
 

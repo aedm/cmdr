@@ -138,6 +138,8 @@
         onGoToLocation?: (location: Location) => void
         onSortChange?: (column: SortColumn) => void
         onRequestFocus?: () => void
+        /** Tab in this pane's open volume switcher hands the switcher to the other pane. */
+        onSwitchVolumeChooserPane?: () => void
         /** Called when active network host changes (for history tracking) */
         onNetworkHostChange?: (host: NetworkHost | null) => void
         /** Escape during a load: the parent puts the pane back on what it last showed */
@@ -196,6 +198,7 @@
         onGoToLocation,
         onSortChange,
         onRequestFocus,
+        onSwitchVolumeChooserPane,
         onNetworkHostChange,
         onCancelLoading,
         onMtpFatalError,
@@ -1893,6 +1896,7 @@
             {currentPath}
             containingVolumeId={paneVolume.containingVolumeId}
             onVolumeChange={breadcrumb.handleVolumeChange}
+            onSwitchPane={() => onSwitchVolumeChooserPane?.()}
         />
         <span class="path">{#each clickableBreadcrumbSegments as seg, i (i)}{#if i > 0 && seg.text !== ''}<span class="path-sep">/</span>{/if}{#if seg.target !== null}<button
                     type="button"

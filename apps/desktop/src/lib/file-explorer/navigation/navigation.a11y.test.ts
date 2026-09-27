@@ -434,6 +434,7 @@ describe('VolumeChooserMenu a11y', () => {
         badges: noBadges,
         getAnchor: () => anchor,
         getChipCluster: () => anchor,
+        onSwitchPane: () => {},
         onShowFavorites: () => {},
         onOpenChange: () => {},
       },

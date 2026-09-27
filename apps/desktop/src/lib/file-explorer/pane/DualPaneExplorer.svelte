@@ -807,6 +807,17 @@
         containerElement?.focus()
     }
 
+    /** Move an open volume switcher to the other pane without letting Tab walk DOM focus. */
+    function switchVolumeChooserPane(fromPane: 'left' | 'right'): void {
+        getPaneRef(fromPane)?.closeHeaderMenu()
+        const newFocus = otherPane(fromPane)
+        explorerState.setFocusedPane(newFocus)
+        void updateFocusedPane(newFocus)
+        pushViewMenuState()
+        containerElement?.focus()
+        getPaneRef(newFocus)?.openVolumeChooser()
+    }
+
     /**
      * Swap left and right panes entirely (paths, volumes, history, sort, view mode, listing state).
      * Zero backend calls: we just swap listing ownership on the frontend.
@@ -1299,6 +1310,9 @@
                 }}
                 onRequestFocus={() => {
                     handleFocus(paneId)
+                }}
+                onSwitchVolumeChooserPane={() => {
+                    switchVolumeChooserPane(paneId)
                 }}
                 onSortChange={(column: SortColumn) => sortOps.handleSortChange(paneId, column)}
                 onNetworkHostChange={(host: NetworkHost | null) => {

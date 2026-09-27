@@ -630,6 +630,29 @@ describe('VolumeBreadcrumb', () => {
       expect(menuSurface()).toBeNull()
     })
 
+    it('claims Tab and hands pane switching to the dual-pane owner', async () => {
+      const onSwitchPane = vi.fn()
+      const component = mount(VolumeBreadcrumb, {
+        target: getTarget(),
+        props: {
+          paneId: 'left' as const,
+          volumeId: 'root',
+          currentPath: '/',
+          containingVolumeId: 'root',
+          onSwitchPane,
+        },
+      })
+      await waitForUpdates(100)
+      ;(component as unknown as { openVolumeChooser: () => void }).openVolumeChooser()
+      await waitForUpdates()
+
+      const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+      document.dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(onSwitchPane).toHaveBeenCalledOnce()
+    })
+
     it('Home jumps to first item', async () => {
       await mountAndOpen()
 

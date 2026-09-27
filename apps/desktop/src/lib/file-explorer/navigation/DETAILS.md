@@ -250,8 +250,9 @@ built on the house `Menu` primitive (`$lib/ui/DETAILS.md` § Menu).
 ❗ **The primitive owns every interaction**: open and close, anchoring and viewport fitting, the cursor, the whole
 keyboard contract (arrows, Home/End, Enter, Escape, ⌥↑/⌥↓ reorder, the submenu), keyboard-vs-pointer mode, the drag,
 scroll-into-view, and focus. `VolumeChooserMenu` hands it DATA (`MenuSection`s built from `volume-grouping.ts`) plus
-four snippets, and gets `onSelect` / `onReorder` back. ❌ Don't reintroduce a key handler, a highlight index, or a
-`getBoundingClientRect` here; that's what the port removed.
+four snippets, and gets `onSelect` / `onReorder` back. Its `onKey` claims only commands that leave this menu: ⌃D hands
+the chip to Favorites, and Tab hands the open switcher to the other pane. ❌ Don't reimplement row navigation, a
+highlight index, or `getBoundingClientRect` here; those belong to the primitive.
 
 - **`label`** is the row's text, swapped for the inline rename `<input>` on the favorite being renamed.
 - **`trailing`** is the filesystem tag, the restricted glyph, and the `.row-trailing` badge cluster (read-only, the
@@ -263,10 +264,13 @@ four snippets, and gets `onSelect` / `onReorder` back. ❌ Don't reintroduce a k
   with the arrows, and never opens it — ❌ no separate "is it openable" check at the click site.
 - **Focus** returns to whatever held it when the menu opened, ❌ not to this pane: ⌥F2 opens the OTHER pane's switcher,
   and closing it must not move the focus across.
+- **Tab** prevents the browser's focus walk, closes this switcher, activates the other pane, and opens that pane's
+  switcher synchronously. Each repeat keydown therefore has one open switcher to hand back, including while Tab is held;
+  arrows remain the primitive's row navigation.
 - **The two of them share one `createDriveBadges`** (`drive-badges.svelte.ts`): one index-status manager, one
   image-index map, one action runner for both placements, so the event subscriptions and fetches happen once.
 
-Props: `volumeId`, `currentPath`, `onVolumeChange?`.
+Props: `volumeId`, `currentPath`, `onVolumeChange?`, `onSwitchPane?`.
 
 **The trigger's geometry is a copy of a file row's, and stays that way by hand.** The volume icon must sit on the same x
 as the file icons below it, and the volume label on the same x as the Name column. Left to right that's `.header`'s

@@ -75,6 +75,8 @@
         /** The chip's whole control cluster: pressing a control in it doesn't close the list. */
         getChipCluster: () => HTMLElement | undefined
         onVolumeChange?: (change: VolumeChangePayload) => void
+        /** Tab hands this switcher to the other pane; the dual-pane owner performs the handoff. */
+        onSwitchPane: () => void
         /**
          * Hand the header over to the favorites menu: the "See N favorites" row, or ⌃D
          * typed right here (the row has just taught that key, so it has to work).
@@ -84,7 +86,16 @@
         onOpenChange: (open: boolean) => void
     }
 
-    const { containingVolumeId, badges, getAnchor, getChipCluster, onVolumeChange, onShowFavorites, onOpenChange }: Props = $props()
+    const {
+        containingVolumeId,
+        badges,
+        getAnchor,
+        getChipCluster,
+        onVolumeChange,
+        onSwitchPane,
+        onShowFavorites,
+        onOpenChange,
+    }: Props = $props()
 
     const volumes = $derived(getVolumes())
     const volumesTimedOut = $derived(getVolumesTimedOut())
@@ -233,6 +244,13 @@
      * rebind follows.
      */
     function handleKey(event: KeyboardEvent): boolean {
+        if (eventMatchesCommand(event, 'pane.switch')) {
+            // Unlike every other consumer key, Tab must suppress the browser's focus walk:
+            // the dual-pane owner closes this menu and opens the other pane's in one handoff.
+            event.preventDefault()
+            onSwitchPane()
+            return true
+        }
         if (!eventMatchesCommand(event, 'favorites.open')) return false
         onShowFavorites('command')
         return true

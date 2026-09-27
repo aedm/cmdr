@@ -54,9 +54,11 @@
          */
         containingVolumeId: string | null
         onVolumeChange?: (change: VolumeChangePayload) => void
+        /** Tab in this pane's open switcher hands it to the other pane. */
+        onSwitchPane?: () => void
     }
 
-    const { paneId, volumeId, currentPath, containingVolumeId, onVolumeChange }: Props = $props()
+    const { paneId, volumeId, currentPath, containingVolumeId, onVolumeChange, onSwitchPane }: Props = $props()
 
     const volumes = $derived(getVolumes())
 
@@ -305,6 +307,7 @@
         {onVolumeChange}
         getAnchor={() => chipEl}
         getChipCluster={() => clusterEl}
+        onSwitchPane={() => onSwitchPane?.()}
         onShowFavorites={showFavorites}
         onOpenChange={(open: boolean) => { handleMenuOpenChange('volumes', open) }}
     />
