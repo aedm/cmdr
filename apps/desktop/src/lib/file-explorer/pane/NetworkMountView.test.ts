@@ -597,3 +597,44 @@ describe('NetworkMountView auto-mount', () => {
     await unmount(component)
   })
 })
+
+/**
+ * ❗ Back from a host's share list puts the cursor on THAT host's row, found by the
+ * host's identity: it used to land on the first row whichever host the person came from
+ * (final QA).
+ */
+describe('NetworkMountView: back from a share list', () => {
+  const attic: NetworkHost = { id: 'attic-id', name: 'Attic', hostname: 'attic.local', port: 445, source: 'discovered' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    h.hosts = [attic, host]
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    h.getSmbCredentials.mockRejectedValue(new Error('not found'))
+  })
+
+  it('puts the cursor on the host it came back from', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const component = mount(NetworkMountView, { target, props: { paneId: 'left', isFocused: true } })
+    const api = component as unknown as NetworkMountViewApi
+    await vi.waitFor(() => {
+      expect(target.querySelectorAll('.server-row').length).toBeGreaterThan(1)
+    })
+
+    // Down to Naspolya (the second row), then in.
+    api.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+    await tick()
+    api.openCursorItem()
+    await vi.waitFor(() => {
+      expect(target.querySelector('.share-row')).toBeTruthy()
+    })
+
+    api.handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }))
+    await vi.waitFor(() => {
+      expect(target.querySelector('.server-row.is-under-cursor')?.textContent).toContain('Naspolya')
+    })
+    await unmount(component)
+  })
+})

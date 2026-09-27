@@ -267,11 +267,15 @@
     }
 
     function handleNetworkBack() {
+        const cameFrom = currentNetworkHost
         retireAutoMount()
         currentNetworkHost = null
         mountError = null
         lastMountAttempt = null
         onNetworkHostChange?.(null)
+        // The cursor goes back to the host the person came from, by its identity (a saved
+        // row carries the host's id, a discovered one its `host`), ❌ not the first row.
+        if (cameFrom) void tick().then(() => serversHubRef?.selectServer(cameFrom.id))
     }
 
     function handleMountErrorBack() {
