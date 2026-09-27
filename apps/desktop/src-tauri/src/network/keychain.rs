@@ -4,6 +4,7 @@
 //! Credentials are cached in-memory after first access to avoid
 //! repeated backend lookups during a session.
 
+use crate::ignore_poison::RwLockIgnorePoison as _;
 use crate::secrets::SecretStoreError;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -123,15 +124,13 @@ pub fn save_credentials(
     crate::secrets::store().set(&account, &entry)?;
 
     // Update the in-memory cache
-    if let Ok(mut cache) = CREDENTIAL_CACHE.write() {
-        cache.insert(
-            account,
-            SmbCredentials {
-                username: username.to_string(),
-                password: password.to_string(),
-            },
-        );
-    }
+    CREDENTIAL_CACHE.write_ignore_poison().insert(
+        account,
+        SmbCredentials {
+            username: username.to_string(),
+            password: password.to_string(),
+        },
+    );
 
     Ok(())
 }
@@ -141,9 +140,7 @@ pub fn get_credentials(server: &str, share: Option<&str>) -> Result<SmbCredentia
     let account = make_account_name(server, share);
 
     // Check in-memory cache first
-    if let Ok(cache) = CREDENTIAL_CACHE.read()
-        && let Some(creds) = cache.get(&account)
-    {
+    if let Some(creds) = CREDENTIAL_CACHE.read_ignore_poison().get(&account) {
         debug!("Returning cached credentials for account: {}", account);
         return Ok(creds.clone());
     }
@@ -155,9 +152,7 @@ pub fn get_credentials(server: &str, share: Option<&str>) -> Result<SmbCredentia
         .ok_or_else(|| KeychainError::Other("Invalid credential format in store".to_string()))?;
 
     // Cache the credentials for future use
-    if let Ok(mut cache) = CREDENTIAL_CACHE.write() {
-        cache.insert(account, creds.clone());
-    }
+    CREDENTIAL_CACHE.write_ignore_poison().insert(account, creds.clone());
 
     Ok(creds)
 }
@@ -169,9 +164,7 @@ pub fn delete_credentials(server: &str, share: Option<&str>) -> Result<(), Keych
     debug!("Deleting credentials for account: {}", account);
 
     // Remove from cache first
-    if let Ok(mut cache) = CREDENTIAL_CACHE.write() {
-        cache.remove(&account);
-    }
+    CREDENTIAL_CACHE.write_ignore_poison().remove(&account);
 
     crate::secrets::store().delete(&account)?;
 
@@ -193,9 +186,9 @@ static FOUND_UNDER_PORTLESS: std::sync::LazyLock<RwLock<HashMap<String, String>>
 /// found (`smb_server_address::get_keychain_password`).
 pub fn note_found_under_portless(server: &str, portless: &str) {
     let key = crate::network::server_identity::credential_key(server);
-    if let Ok(mut found) = FOUND_UNDER_PORTLESS.write() {
-        found.insert(key, portless.to_string());
-    }
+    FOUND_UNDER_PORTLESS
+        .write_ignore_poison()
+        .insert(key, portless.to_string());
 }
 
 /// Forgets every password stored for ONE SMB server: the server-level entry and
@@ -207,7 +200,8 @@ pub fn note_found_under_portless(server: &str, portless: &str) {
 /// An entry that isn't there is not a failure; a store that refuses a delete is.
 pub fn forget_server_credentials(servers: &[String], shares: &[String]) -> Result<usize, KeychainError> {
     let mut names: Vec<String> = servers.to_vec();
-    if let Ok(found) = FOUND_UNDER_PORTLESS.read() {
+    {
+        let found = FOUND_UNDER_PORTLESS.read_ignore_poison();
         let recorded = servers.iter().filter_map(|server| {
             found
                 .get(&crate::network::server_identity::credential_key(server))
@@ -226,16 +220,15 @@ pub fn forget_server_credentials(servers: &[String], shares: &[String]) -> Resul
     }
     let mut gone = 0;
     for account in &accounts {
-        if let Ok(mut cache) = CREDENTIAL_CACHE.write() {
-            cache.remove(account);
-        }
+        CREDENTIAL_CACHE.write_ignore_poison().remove(account);
         match crate::secrets::store().delete(account) {
             Ok(()) => gone += 1,
             Err(SecretStoreError::NotFound(_)) => {}
             Err(e) => return Err(e.into()),
         }
     }
-    if let Ok(mut found) = FOUND_UNDER_PORTLESS.write() {
+    {
+        let mut found = FOUND_UNDER_PORTLESS.write_ignore_poison();
         for server in servers {
             found.remove(&crate::network::server_identity::credential_key(server));
         }
@@ -255,7 +248,7 @@ pub fn forget_server_credentials(servers: &[String], shares: &[String]) -> Resul
 /// "Forget saved password"?) must not cost one. Unread means `false`.
 pub fn has_cached_credentials(server: &str) -> bool {
     let account = make_account_name(server, None);
-    CREDENTIAL_CACHE.read().is_ok_and(|cache| cache.contains_key(&account))
+    CREDENTIAL_CACHE.read_ignore_poison().contains_key(&account)
 }
 
 /// The server-level credentials this session already read or saved for `server`, from
@@ -263,7 +256,7 @@ pub fn has_cached_credentials(server: &str) -> bool {
 /// listing can sign in as the server's account without raising a prompt.
 pub fn cached_credentials(server: &str) -> Option<SmbCredentials> {
     let account = make_account_name(server, None);
-    CREDENTIAL_CACHE.read().ok()?.get(&account).cloned()
+    CREDENTIAL_CACHE.read_ignore_poison().get(&account).cloned()
 }
 
 /// Checks if credentials exist without retrieving them.
