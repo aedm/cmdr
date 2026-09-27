@@ -1039,6 +1039,19 @@
     "decision": "Shortcut conflicts",
     "sources": "Apple-style Swedish, not in the pile"
   },
+  "forget": {
+    "accept": ["glömma", "glömde", "glömt", "glömd"],
+    "avoid": [
+      {
+        "form": "Ta bort",
+        "why": "the remove concept; it reads as taking the thing away for good, while forget drops only what Cmdr remembers"
+      }
+    ],
+    "chosen": "glöm",
+    "confidence": "high",
+    "forms": "button Glöm; Glöm servern / Glöm den delade mappen / Glöm sparat lösenord; toast Glömde {hostName}; refusal Det gick inte att glömma {hostName}",
+    "sources": "macOS AppKit (Forget Spelling → Glöm stavning); GNOME Nautilus (_Glöm); catalog (Glöm servern, Glöm sparat lösenord)"
+  },
   "format": {
     "chosen": "format",
     "confidence": "high",
@@ -1322,6 +1335,11 @@
     "forms": "menu item and palette command read the same",
     "sources": "Total Commander and Dolphin sv (Invertera markering, five hits)"
   },
+  "ip-address": {
+    "chosen": "IP-adress",
+    "confidence": "high",
+    "sources": "Total Commander sv (IP-adressen); GNOME Nautilus (smb://[IP-adress]); catalog (Slår upp värdnamn och IP-adress…)"
+  },
   "item": {
     "avoid": [
       {
@@ -1425,6 +1443,23 @@
     "confidence": "high",
     "forms": "rader, radnummer",
     "sources": "macOS"
+  },
+  "list": {
+    "accept": ["list"],
+    "chosen": "lista",
+    "exceptions": {
+      "ai.cloudConsent.askCmdr.contentsRule": "the list of files inside an archive reads naturally as vilka filer som finns i ett arkiv; nothing names a list"
+    },
+    "confidence": "high",
+    "forms": "listan; compound stem list- (Listfärgläggning); a named list by apposition: listan Servrar; compounds serverlista, värdlista, volymlista",
+    "sources": "catalog (Uppdatera listan, Läser in listan…, Tillbaka till värdlistan); standard Swedish"
+  },
+  "local": {
+    "accept": ["lokalt", "lokala"],
+    "chosen": "lokal",
+    "confidence": "high",
+    "forms": "lokal volym, lokala enheter; stored locally → lokalt",
+    "sources": "macOS Finder (Lokal volym, Lokala volymer); catalog (Lokal LLM, lokala volymer)"
   },
   "load": {
     "accept": ["läser in", "lästs in", "läsa in", "lästes in", "läste in"],

@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Ta bort {hostName} från serverlistan?",
+  "fileExplorer.network.browser.removeHostConfirm": "Glöm {hostName}? Cmdr slutar visa servern och de delade mappar som är sparade under den. Inget avmonteras.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "Tog bort {hostName}",
+  "fileExplorer.network.browser.hostRemoved": "Glömde {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Det gick inte att ta bort {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Det gick inte att glömma {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Glömde det sparade lösenordet för {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Ta bort sparat lösenord från nyckelringen",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Använd gäståtkomst",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Logga in som…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Glöm sparat lösenord",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1407,9 +1415,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Glöm",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "Glöm {name}? Cmdr släpper anslutningen och slutar visa servern i listan. Dina filer ligger kvar på servern.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Glöm också det sparade lösenordet",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr kunde inte glömma {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

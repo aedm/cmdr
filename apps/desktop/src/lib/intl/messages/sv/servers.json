@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Högerklicka på en server och välj Lossa, eller använd ”{command}” från kommandopaletten. Servern ligger kvar i listan Servrar.",
+  "servers.pinHint.body": "Högerklicka på en server och välj Lossa från volymväljaren, eller använd ”{command}” från kommandopaletten. Servern ligger kvar i listan Servrar.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Uppfattat",
   "@servers.pinHint.gotIt": {
@@ -63,6 +63,38 @@
   "servers.hub.neverUsed": "Aldrig",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "som {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "som gäst",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Välj en server för att redigera den.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "En delad mapp har inget att redigera. Välj serverns rad för att redigera servern.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "Servern {name} hittades i närheten och är inte sparad, så det finns inget att redigera.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Glöm den delade mappen",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Glöm den delade mappen",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "Glöm {name}? Cmdr slutar visa den delade mappen i listan. Om mappen är monterad förblir den monterad. Dina filer ligger kvar på servern.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "Sökning i det lokala nätverket är avstängd.",
   "@servers.hub.discoveryOff": {
@@ -160,6 +192,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Ange lösenordet för {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} svarade inte i tid, så Cmdr sparade ingenting. Försök igen om en stund.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -183,6 +219,26 @@
   "servers.sheet.editTitle": "Redigera {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Lägg till och öppna",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Lägg till",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Lägg till ändå",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr kunde inte kontrollera den här servern, så Lägg till ändå sparar den som du skrev den.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "Servern {name} är sparad i listan Servrar.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Logga in",
   "@servers.sheet.signIn": {
@@ -232,6 +288,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Ett värdnamn, en IP-adress eller en smb://-adress du har kopierat.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "En webbadress du har kopierat, som https://nas.local/dav, eller ett värdnamn.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Det här ser ut som en SMB-adress. Välj SMB ovan om det var det du menade.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -244,6 +308,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "Adressen är det som identifierar den här servern. Glöm servern och lägg till den igen om du vill använda en annan adress.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "Adressen och kontot är det som identifierar den här servern. Glöm servern och lägg till den igen om du vill ändra dem.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -255,6 +323,14 @@
   "servers.sheet.password": "Lösenord",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Valfritt",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Fyll i det här om din NAS kräver ett konto. Cmdr frågar efter lösenordet när du öppnar en delad mapp.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Nyckelns lösenfras",
   "@servers.sheet.passphrase": {
@@ -283,6 +359,10 @@
   "servers.sheet.name": "Namn",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Lämna tomt för att använda {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Rotmapp",
   "@servers.sheet.rootFolder": {
@@ -367,6 +447,14 @@
   "servers.paneState.signedOut": "Utloggad från {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "Inte ansluten till {name}",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Gå bakåt",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Logga in…",
   "@servers.paneState.signIn": {

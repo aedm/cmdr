@@ -91,5 +91,9 @@
   "ui.numberInput.increase": "Öka {label}",
   "@ui.numberInput.increase": {
     "sourceHash": "bbf5fc9"
+  },
+  "ui.confirmDialog.cancel": "Avbryt",
+  "@ui.confirmDialog.cancel": {
+    "sourceHash": "19766ed"
   }
 }

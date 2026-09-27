@@ -382,7 +382,7 @@ catalog.
 
 - `Sortera efter relevans`, indefinite like the sibling sort labels.
 
-## Server hub: connection state, refusals, forget dialogs (`servers.paneState.*`, `servers.refusal.*`, `fileExplorer.navigation.connectionTooltip*`, `fileExplorer.navigation.disconnect*`, `fileExplorer.navigation.forget*`)
+## Server hub: connection state, refusals, forget dialogs (`servers.paneState.*`, `servers.refusal.*`, `fileExplorer.navigation.connectionTooltip*`, `fileExplorer.navigation.disconnect*`, `fileExplorer.navigation.forget*`, `fileExplorer.network.browser.*Host*`, `servers.hub.forgetShare*`)
 
 - trust → `lita på`, trusted `betrodd` / `betrott` / `betrodda` (SecurityInterface).
 - The host key is bare `nyckel` where the English says "key", and `nyckeln från {host}`, never a genitive on the
@@ -390,6 +390,10 @@ catalog.
 - Cmdr's reconnect loop `arbetar på att …` (the catalog never says `jobbar`).
 - Forget dialogs inherit the menu labels verbatim; `slutar visa servern i listan` names the noun because both
   `anslutningen` and `servern` are en-words and a lone `den` would point two ways.
+- forget → `glöm` everywhere, ❌ not `Ta bort` (remove). A browser host is `servern` in prose, since `värden` also reads
+  as "the values". A share's items say `Glöm den delade mappen`, mirroring `Glöm servern`.
+- An uncontrolled `{name}` never carries a participle: name the noun (`Servern {name} är sparad`) or use a preposition
+  (`Inte ansluten till {name}`, like `Utloggad från {name}`).
 - `Den här servern använder en nyckel …` mirrors `authMethodUnsupported`; ❌ not `loggar in med`, which makes the server
   the one logging in somewhere.
 - Retry lengths (`retryTotalSeconds` / `.retryTotalMinutes`) are bare building blocks for `retryKeepsTrying`: no
@@ -403,6 +407,8 @@ catalog.
   `upptäckt` (mDNS finds in the browser); English chose the plain "found".
 - `Fäst / lossa server` keeps the slash: ONE command toggling both ways, unlike keys whose English says "or".
 - `Servern är fortfarande sparad` names the noun: `volymväljaren` and `servern` are both en-words.
+- Account suffixes `som {username}` / `som gäst`. Use guest → `Använd gäståtkomst` (a bare `Använd gäst` reads as using
+  a person). Select a server (the cursor, not a file mark) → `Välj`, ❌ not `Markera`.
 
 ## Server hub: connect sheet, host key, root and start folder (`servers.sheet.*`, `servers.hostKey.*`, `goToPath.dialog.opensServer`/`.addsServer`, `commands.serversConnect.label`, `servers.refusal.startFolderOutsideRoot`/`.rootNotFound`/`.startFolderNotFound`/`.saveUnconfirmed`, `servers.paneState.reconnecting`/`.signedOutNothingToAsk`)
 
@@ -420,7 +426,7 @@ catalog.
 
 ## Pinned servers, trusted host keys, Android settings rows (`menu.network.*`, `servers.pinHint.*`, `settings.servers.*`, `settings.adb.*`, `settings.fileOperations.adb*`)
 
-- `Fäst i volymväljaren` / bare `Lossa` keep the English asymmetry; ❌ not `Ta bort` (the server stays listed).
+- `Fäst i volymväljaren` / `Lossa från volymväljaren`; ❌ not `Ta bort` (the server stays listed).
 - UI names are quoted by apposition (`listan Servrar`, `Gruppen Nätverk`), since a compound would respell them.
 - Got it → `Uppfattat` over macOS's `OK`, which the catalog keeps for a dialog's default button.
 - `värdnyckel` only where the English writes "host key".

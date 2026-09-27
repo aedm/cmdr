@@ -50,10 +50,14 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **`Hur?`** (the link that opens Android's own instructions, `adb.hint.how`): no one-word Apple form for "How".
 - **The online-only delete warnings** (`fileOperations.delete.cloudOnlineOnly*`): long; confirm the four facts read
   clearly and calmly.
+- **`Använd gäståtkomst`** (`fileExplorer.network.share.useGuest`): `Byt till gäst` is shorter if it reads stiff.
+- **`Välj en server för att redigera den.`** (`servers.hub.editPickHint`): the English means moving the cursor to a
+  server row; confirm `Välj` doesn't suggest a picker.
 
 ## Layout (overflow-check against the pseudolocale)
 
 - **`Gå till papperskorgen`** (21 characters against 11) beside `Ångra` on the trash toast.
 - **`Lägg till i rapporten`** (21 against 13) beside `Stäng` in the amend dialog.
 - **`Visa rapporten eller lägg till en notering`** (42 against 31) in the auto-sent toast.
+- **`Lossa från volymväljaren`** (24 characters against 19) in the narrow volume dropdown (`menu.network.unpin`).
 - **The online-only warning box**, which sits in a narrow strip above the file list.

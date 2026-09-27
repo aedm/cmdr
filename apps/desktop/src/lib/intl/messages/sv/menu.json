@@ -610,9 +610,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Lossa",
+  "menu.network.unpin": "Lossa från volymväljaren",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Glöm servern",
   "@menu.network.forgetServer": {
