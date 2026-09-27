@@ -1,6 +1,6 @@
 /**
- * Tier 3 a11y tests for the network browsing surfaces: the host list, a row's menu, the share
- * list, and the OS-mount fallback toast.
+ * Tier 3 a11y tests for the network browsing surfaces: the host list, a row's menu, its status
+ * bar, the share list and its header, and the OS-mount fallback toast.
  *
  * One file per component would cost about five times as much: `svelte-tests`
  * charges per test FILE, not per test (`docs/testing.md` § "What a test actually
@@ -23,6 +23,8 @@ import ServersHub from './ServersHub.svelte'
 import ServersHubRowMenu from './ServersHubRowMenu.svelte'
 import PlacesBrowser from './PlacesBrowser.svelte'
 import SmbOsMountFallbackToastContent from './SmbOsMountFallbackToastContent.svelte'
+import PlacesHeader from './PlacesHeader.svelte'
+import ServersHubStatusBar from './ServersHubStatusBar.svelte'
 import type { HubActions, HubRowMenuAPI } from './servers-hub-actions'
 import type { HubRow } from './servers-hub-rows'
 import { expectNoA11yViolations } from '$lib/test-a11y'
@@ -263,6 +265,43 @@ describe('ServersHubRowMenu a11y', () => {
       expect(document.querySelector('[data-menu]')).not.toBeNull()
     })
     await expectNoA11yViolations(document.body)
+  })
+})
+
+/**
+ * Tier 3 a11y for `PlacesHeader.svelte` with every button showing: Back, Sign in as…,
+ * Use guest, and Forget saved password, next to the account and the share count.
+ */
+describe('PlacesHeader a11y', () => {
+  it('the header with every action has no a11y violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(PlacesHeader, {
+      target,
+      props: {
+        hostLabel: 'Naspolya',
+        account: { kind: 'user', username: 'testuser' },
+        canForgetPassword: true,
+        shareCount: 3,
+        onBack: () => {},
+        onSignInAs: () => {},
+        onUseGuest: () => {},
+        onForgetPassword: () => {},
+      },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+})
+
+/** Tier 3 a11y for `ServersHubStatusBar.svelte`: the bar is one button, labelled, with a shortcut chip inside. */
+describe('ServersHubStatusBar a11y', () => {
+  it('the status bar has no a11y violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(ServersHubStatusBar, { target, props: { serverCount: 4, onRefresh: () => {} } })
+    await tick()
+    await expectNoA11yViolations(target)
   })
 })
 
