@@ -11,8 +11,8 @@
  *
  * Gates (each re-derives live, so a Settings toggle applies without a restart):
  * - The cloud SYNC badge needs a local pane. A share never holds a File Provider
- *   domain, and probing its paths through macOS's own mount opens every file over a
- *   second SMB session.
+ *   domain, and probing its paths through macOS's own mount costs an SMB round-trip
+ *   per row.
  * - The FILE badge needs image indexing on, the file-badge setting on, AND a
  *   local pane (index paths are OS paths; an archive / MTP / virtual pane's
  *   paths could never match the index).
@@ -129,9 +129,9 @@ export function createRowOverlays(deps: RowOverlaysDeps): RowOverlays {
   async function fetchSyncStatusForPaths(paths: string[]): Promise<void> {
     // Local panes only. Cloud providers live on local disks, and a network pane's
     // paths can ALSO exist under macOS's own mount of the share (`/Volumes/<share>`),
-    // where every probe opens the file through a second SMB session: one round-trip
-    // per row for an answer that is always "unknown", and a handle that can hold a
-    // file Cmdr just deleted in `STATUS_DELETE_PENDING` (cmdr-reports#17).
+    // where every probe is an SMB stream-open round-trip per row for an answer that
+    // is always "unknown". On a busy NAS those batches stalled for seconds and
+    // competed with real work. (The probe holds no handle open.)
     if (paths.length === 0 || !deps.getIsLocalPane()) return
 
     // Cancel any pending retry: a new fetch supersedes it

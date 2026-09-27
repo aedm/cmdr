@@ -131,10 +131,8 @@ describe('createRowOverlays', () => {
     })
 
     // cmdr-reports#17: a direct SMB pane's paths also exist under macOS's own mount
-    // of the share, so every probe opened the file through a SECOND SMB session.
-    // No File Provider domain lives on a share, so the answer was never anything
-    // but a round-trip per row, and the prime suspect for a handle that kept a
-    // deleted file `STATUS_DELETE_PENDING` for 20+ seconds.
+    // of the share, so every probe cost an SMB round-trip per row. No File Provider
+    // domain lives on a share, so the answer was never anything but "unknown".
     it('asks nothing for a pane that is not on a local volume', async () => {
       const { overlays } = create({ isLocal: false })
       await overlays.fetchSyncStatusForPaths(['/Volumes/naspi/photos/a.jpg'])
