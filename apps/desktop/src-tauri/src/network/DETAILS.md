@@ -200,7 +200,7 @@ After first credential fetch, credentials cached in `CREDENTIAL_CACHE` (LazyLock
 
 ### Credential storage via `secrets` module
 
-All credential storage backends now live in `crate::secrets` (see `secrets/CLAUDE.md`). `keychain.rs` is platform-agnostic and delegates to `crate::secrets::store()`. The `is_file_backed()` check (used by the frontend to show a one-time info toast) delegates to `crate::secrets::is_file_backed()`.
+All credential storage backends now live in `crate::secrets` (see `secrets/CLAUDE.md`). `keychain.rs` is platform-agnostic and delegates to `crate::secrets::store()`. The `is_file_backed()` check (used by the frontend to show a one-time info toast when the store fell back to a file for lack of a keyring) delegates to `crate::secrets::is_file_backed()`.
 
 ### "Sneaky mount" for SmbVolume
 

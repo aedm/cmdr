@@ -56,7 +56,8 @@ pub trait SecretStore: Send + Sync {
     fn delete(&self, key: &str) -> Result<(), SecretStoreError>;
 }
 
-/// Set during `init_store()`, read by `is_file_backed()`.
+/// Set during `init_store()` when the store FELL BACK to a file for lack of a system
+/// keyring, read by `is_file_backed()`. ❌ Not for a file store chosen on purpose.
 static FILE_BACKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 static STORE: LazyLock<Box<dyn SecretStore>> = LazyLock::new(init_store);
@@ -66,8 +67,10 @@ pub fn store() -> &'static dyn SecretStore {
     &**STORE
 }
 
-/// Returns true when the active store is file-backed (plain or encrypted).
-/// Implicitly initializes the store if it hasn't been yet.
+/// Whether the store fell back to a file because there's no system keyring (a Linux
+/// without a secret service, an unsupported platform), which the frontend tells the
+/// person once. ❌ False for a file store chosen on purpose (tests, and dev and E2E
+/// through `CMDR_SECRET_STORE=file`). Implicitly initializes the store.
 pub fn is_file_backed() -> bool {
     let _ = store();
     FILE_BACKED.load(std::sync::atomic::Ordering::Relaxed)
@@ -96,7 +99,6 @@ fn init_store() -> Box<dyn SecretStore> {
     // developer's real data dir.
     #[cfg(test)]
     {
-        FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
         return Box::new(TestStore);
     }
 
@@ -112,7 +114,7 @@ fn init_store() -> Box<dyn SecretStore> {
         Some(reason) => {
             let dir = secret_store_dir();
             info!("Secret store: PlainFileStore ({reason})");
-            FILE_BACKED.store(true, std::sync::atomic::Ordering::Relaxed);
+            // ❗ Chosen on purpose, so NOT a fallback: nothing to tell the person about.
             return Box::new(plain_file::PlainFileStore::new(dir));
         }
         None if secret_store_env.as_deref() == Some("file") || e2e_mode => {
@@ -229,6 +231,15 @@ fn secret_store_dir() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ❗ A file store chosen ON PURPOSE (tests, and dev and E2E through
+    /// `CMDR_SECRET_STORE=file`) is not a fallback, so it announces none: the "stored
+    /// locally, no system keyring" toast showed in dev, where the keyring was never
+    /// missing (final QA). Only a store that fell back for lack of a keyring says so.
+    #[test]
+    fn a_file_store_chosen_on_purpose_is_not_a_fallback() {
+        assert!(!is_file_backed());
+    }
 
     #[test]
     fn test_secret_store_error_display() {

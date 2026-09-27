@@ -42,8 +42,9 @@ and ignores both, so an env var can't downgrade a user's Keychain to plaintext);
   would write fixtures into the developer's real `secrets.json` and make the next run's "nothing is stored yet"
   assertions fail. `docs/testing.md` § "Secret-store isolation (Rust)".
 - **`EncryptedFileStore` and `PlainFileStore` have separate `Mutex` statics** (compiled on different platforms).
-- **`is_file_backed()`** drives a one-time frontend info toast about credential storage. It returns true in dev mode
-  (PlainFileStore), but the toast isn't shown in dev.
+- **`is_file_backed()`** drives a one-time frontend info toast about credential storage. It's true only when the store
+  FELL BACK to a file for lack of a keyring; a file store chosen on purpose (tests, dev, E2E) returns false, so dev shows
+  no toast.
 - **`KeyringStore::is_available()` does a full write-read-delete probe** once at startup, to catch locked keyrings that
   silently accept writes without persisting.
 
