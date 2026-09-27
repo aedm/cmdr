@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { fixtureMountPoints } from './smb-fixtures.js'
+import { fixtureMountPoints, preMountPlan } from './smb-fixtures.js'
 
 const mountOutput = [
   '/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)',
@@ -38,5 +38,29 @@ describe('fixtureMountPoints', () => {
     expect(fixtureMountPoints(mountOutput, [{ host: 'LOCALHOST', port: 10480, share: 'Public' }])).toEqual([
       '/Volumes/public-1',
     ])
+  })
+})
+
+/**
+ * ❗ "Already mounted" means the FIXTURE is mounted, found by source, ❌ never a path
+ * that exists: E2E writes and deletes on that share, and a person's share sitting at
+ * `/Volumes/public` must never be mistaken for it.
+ */
+describe('preMountPlan', () => {
+  const guest = { host: 'localhost', port: 10480, share: 'public' }
+  const foreignAtPublic =
+    '//david@192.168.1.111/public on /Volumes/public (smbfs, nodev, nosuid, mounted by veszelovszki)'
+
+  it('reuses the fixture’s own mount, wherever it landed', () => {
+    const out = `${foreignAtPublic}\n//guest@localhost:10480/public on /Volumes/public-1 (smbfs, nodev, nosuid)`
+    expect(preMountPlan(out, guest, '/Volumes/public', true)).toEqual({ kind: 'reuse', path: '/Volumes/public-1' })
+  })
+
+  it('refuses a path held by a foreign share instead of treating it as the fixture', () => {
+    expect(preMountPlan(foreignAtPublic, guest, '/Volumes/public', true)).toEqual({ kind: 'occupied' })
+  })
+
+  it('mounts at the default path when nothing holds it', () => {
+    expect(preMountPlan('', guest, '/Volumes/public', false)).toEqual({ kind: 'mount', path: '/Volumes/public' })
   })
 })

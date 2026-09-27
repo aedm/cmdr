@@ -45,13 +45,14 @@ export const SMB_AUTH_SHARE = 'private'
  * The E2E Docker container runs as root (uid 0).
  */
 const LINUX_UID = String(IS_LINUX ? (process.getuid?.() ?? 0) : 0)
-export const SMB_GUEST_MOUNT = IS_LINUX
+/**
+ * Where the guest share is mounted when nothing else holds the path: GVFS's own path on Linux, `/Volumes/public` on
+ * macOS. ❗ Not where it IS: on macOS it can land at `/Volumes/public-1`, and another share can sit at
+ * `/Volumes/public`. Specs read `guestMountPoint()`.
+ */
+const SMB_GUEST_MOUNT = IS_LINUX
   ? `/run/user/${LINUX_UID}/gvfs/smb-share:server=${SMB_GUEST_HOST},share=${SMB_GUEST_SHARE}`
   : `/Volumes/${SMB_GUEST_SHARE}`
-export const SMB_AUTH_MOUNT = IS_LINUX
-  ? `/run/user/${LINUX_UID}/gvfs/smb-share:server=${SMB_AUTH_HOST},share=${SMB_AUTH_SHARE}`
-  : `/Volumes/${SMB_AUTH_SHARE}`
-
 /**
  * Suite-specific subdirectory inside the SMB shares used by the E2E playwright
  * suite for any writes. The Rust integration tests already scope each test to
@@ -63,13 +64,27 @@ export const SMB_AUTH_MOUNT = IS_LINUX
  */
 export const SMB_E2E_SUITE_DIR = 'e2e-playwright'
 
+/** The fixture's guest share, as a mount source. */
+const GUEST_SOURCE = { host: SMB_GUEST_HOST, port: SMB_GUEST_PORT, share: SMB_GUEST_SHARE }
+
 /**
- * Mount path joined with the suite subdir. Use this when writing files via
- * the mounted path so the writes land in suite-specific space. Reads of
- * share-level metadata (host discovery, share listing) still use the bare
- * share via `SMB_GUEST_MOUNT`.
+ * Where the fixture's guest share is mounted right now, found by its SOURCE, or `null` when it isn't. ❗ Specs write
+ * and delete there, so a foreign share at `/Volumes/public` must never answer for it.
  */
-export const SMB_GUEST_MOUNT_SUITE = `${SMB_GUEST_MOUNT}/${SMB_E2E_SUITE_DIR}`
+export function guestMountPoint(): string | null {
+  if (IS_LINUX) return fs.existsSync(SMB_GUEST_MOUNT) ? SMB_GUEST_MOUNT : null
+  const mountOutput = execSync('mount', { encoding: 'utf-8', timeout: 10_000 })
+  return fixtureMountPoints(mountOutput, [GUEST_SOURCE])[0] ?? null
+}
+
+/**
+ * The suite subdir on the mounted guest share, or `null` when it isn't mounted. Write through this so the writes land
+ * in suite-specific space; share-level reads use `guestMountPoint()`.
+ */
+export function guestMountSuite(): string | null {
+  const mount = guestMountPoint()
+  return mount === null ? null : `${mount}/${SMB_E2E_SUITE_DIR}`
+}
 
 const SMB_SERVERS_DIR = path.resolve(__dirname, '../smb-servers')
 const DOCKER_COMPOSE_DIR = path.resolve(SMB_SERVERS_DIR, '.compose')
@@ -122,41 +137,72 @@ export function ensureSmbContainers(): void {
  *   Cmdr's mount_linux.rs will detect via `gio mount -l`
  */
 export function preMountGuestShare(): void {
+  if (IS_LINUX) {
+    preMountGuestShareLinux()
+    return
+  }
+  const plan = preMountPlan(
+    execSync('mount', { encoding: 'utf-8', timeout: 10_000 }),
+    GUEST_SOURCE,
+    SMB_GUEST_MOUNT,
+    fs.existsSync(SMB_GUEST_MOUNT),
+  )
+  if (plan.kind === 'reuse') {
+    console.log(`Guest share already mounted at ${plan.path}`)
+    return
+  }
+  if (plan.kind === 'occupied') {
+    // ❗ Someone else's share (or folder) holds the path: leave it alone. The app mounts
+    // the fixture itself (NetFS picks a free path), and specs find it by source.
+    console.log(`${SMB_GUEST_MOUNT} holds something that isn't the fixture; not pre-mounting over it`)
+    return
+  }
+  fs.mkdirSync(plan.path, { recursive: true })
+  execSync(`mount_smbfs //guest@${SMB_GUEST_HOST}:${String(SMB_GUEST_PORT)}/${SMB_GUEST_SHARE} ${plan.path}`, {
+    encoding: 'utf-8',
+    timeout: 15_000,
+  })
+  console.log(`Mounted guest share at ${plan.path}`)
+}
+
+/** Linux: `gio mount`, whose GVFS path already names the share's source, so the path answers for it. */
+function preMountGuestShareLinux(): void {
   if (fs.existsSync(SMB_GUEST_MOUNT)) {
     console.log(`Guest share already mounted at ${SMB_GUEST_MOUNT}`)
     return
   }
-
   try {
-    if (IS_LINUX) {
-      // Use gio mount so GVFS manages the mount. Cmdr's mount_linux.rs checks
-      // `gio mount -l` for existing mounts and derives paths from GVFS.
-      const smbUrl = `smb://${SMB_GUEST_HOST}/${SMB_GUEST_SHARE}`
-      execSync(`gio mount --anonymous '${smbUrl}'`, { encoding: 'utf-8', timeout: 30_000 })
-    } else {
-      fs.mkdirSync(SMB_GUEST_MOUNT, { recursive: true })
-      execSync(
-        `mount_smbfs //guest@${SMB_GUEST_HOST}:${String(SMB_GUEST_PORT)}/${SMB_GUEST_SHARE} ${SMB_GUEST_MOUNT}`,
-        {
-          encoding: 'utf-8',
-          timeout: 15_000,
-        },
-      )
-    }
+    // Cmdr's mount_linux.rs checks `gio mount -l` for existing mounts and derives paths from GVFS.
+    const smbUrl = `smb://${SMB_GUEST_HOST}/${SMB_GUEST_SHARE}`
+    execSync(`gio mount --anonymous '${smbUrl}'`, { encoding: 'utf-8', timeout: 30_000 })
     console.log(`Mounted guest share at ${SMB_GUEST_MOUNT}`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (
-      msg.includes('File exists') ||
-      msg.includes('already mounted') ||
-      msg.includes('Device or resource busy') ||
-      msg.includes('Location is already mounted')
-    ) {
+    if (msg.includes('already mounted') || msg.includes('Location is already mounted')) {
       console.log(`Guest share already mounted at ${SMB_GUEST_MOUNT}`)
     } else {
       throw new Error(`Failed to mount guest share: ${msg}`, { cause: err })
     }
   }
+}
+
+/** What `preMountGuestShare` does on macOS. */
+export type PreMountPlan = { kind: 'reuse'; path: string } | { kind: 'mount'; path: string } | { kind: 'occupied' }
+
+/**
+ * The macOS pre-mount's decision. ❗ "Already mounted" means the FIXTURE's share is mounted, found by source in
+ * `mountOutput`, wherever it landed; a path that merely exists (`defaultPathTaken`) is someone else's and is left
+ * alone, since E2E writes and deletes on the fixture share.
+ */
+export function preMountPlan(
+  mountOutput: string,
+  source: SmbShareSource,
+  defaultPath: string,
+  defaultPathTaken: boolean,
+): PreMountPlan {
+  const ours = fixtureMountPoints(mountOutput, [source])
+  if (ours.length > 0) return { kind: 'reuse', path: ours[0] }
+  return defaultPathTaken ? { kind: 'occupied' } : { kind: 'mount', path: defaultPath }
 }
 
 /** An SMB share on one server: what a fixture mount's source names. */

@@ -20,8 +20,8 @@ import { recreateFixtures } from '../e2e-shared/fixtures.js'
 import {
   setupSmb,
   teardownSmb,
-  SMB_GUEST_MOUNT,
-  SMB_GUEST_MOUNT_SUITE,
+  guestMountPoint,
+  guestMountSuite,
   SMB_E2E_SUITE_DIR,
   SMB_GUEST_SHARE,
   SMB_GUEST_HOST,
@@ -347,10 +347,13 @@ describeSmb('SMB mounting and file browsing', () => {
     await mcpCall('open_under_cursor', {})
 
     // After mounting, the pane should navigate to the mounted volume path.
-    await mcpAwaitPath('left', SMB_GUEST_MOUNT, 30)
+    // ❗ Wherever it landed (`/Volumes/public-1` when something else holds `/Volumes/public`), found by source.
+    await expect.poll(() => guestMountPoint(), { timeout: waitBudget(30000) }).not.toBeNull()
+    const mount = guestMountPoint() ?? ''
+    await mcpAwaitPath('left', mount, 30)
 
     const state = await mcpReadResource('cmdr://state')
-    expect(state).toContain(SMB_GUEST_MOUNT)
+    expect(state).toContain(mount)
   })
 
   test('browse files on mounted guest share', async ({ tauriPage }) => {
@@ -358,17 +361,18 @@ describeSmb('SMB mounting and file browsing', () => {
 
     // Navigate directly to the pre-mounted share
     // (The share is mounted by setupSmb → preMountGuestShare)
-    if (!fs.existsSync(SMB_GUEST_MOUNT)) {
+    const mount = guestMountPoint()
+    if (mount === null) {
       test.skip()
       return
     }
 
-    await mcpNavToPath('left', SMB_GUEST_MOUNT)
+    await mcpNavToPath('left', mount)
 
     // The Docker guest container creates files in /share.
     // Verify we can read the directory (even if empty, the navigation should succeed).
     const state = await mcpReadResource('cmdr://state')
-    expect(state).toContain(SMB_GUEST_MOUNT)
+    expect(state).toContain(mount)
   })
 })
 
@@ -378,7 +382,9 @@ describeSmb('SMB cross-storage copy', () => {
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
 
-    if (!fs.existsSync(SMB_GUEST_MOUNT_SUITE)) {
+    // ❗ The fixture's own share, found by source: never a foreign share at `/Volumes/public`.
+    const suite = guestMountSuite()
+    if (suite === null || !fs.existsSync(suite)) {
       test.skip()
       return
     }
@@ -387,7 +393,7 @@ describeSmb('SMB cross-storage copy', () => {
     // Right pane: suite-specific subdir on the mounted SMB share
     // (write isolation from the Rust integration tests — see
     // SMB_E2E_SUITE_DIR in smb-fixtures.ts).
-    await mcpNavToPath('right', SMB_GUEST_MOUNT_SUITE)
+    await mcpNavToPath('right', suite)
 
     // Copy file-a.txt from left to right
     await mcpCall('move_cursor', { pane: 'left', filename: 'file-a.txt' })
@@ -397,7 +403,7 @@ describeSmb('SMB cross-storage copy', () => {
     await mcpAwaitItem('right', 'file-a.txt', 30)
 
     // Verify on disk (the mount maps to Docker container volume)
-    const copied = path.join(SMB_GUEST_MOUNT_SUITE, 'file-a.txt')
+    const copied = path.join(suite, 'file-a.txt')
     await expect.poll(() => fs.existsSync(copied), { timeout: waitBudget(10000) }).toBeTruthy()
 
     // Verify source still exists (copy, not move)
@@ -409,7 +415,9 @@ describeSmb('SMB cross-storage copy', () => {
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
 
-    if (!fs.existsSync(SMB_GUEST_MOUNT_SUITE)) {
+    // ❗ The fixture's own share, found by source: never a foreign share at `/Volumes/public`.
+    const suite = guestMountSuite()
+    if (suite === null || !fs.existsSync(suite)) {
       test.skip()
       return
     }
@@ -427,7 +435,7 @@ describeSmb('SMB cross-storage copy', () => {
     )
 
     // Left pane: SMB share, Right pane: local fixtures right/
-    await mcpNavToPath('left', SMB_GUEST_MOUNT_SUITE)
+    await mcpNavToPath('left', suite)
     await mcpAwaitItem('left', 'smb-test-file.txt', 15)
 
     // Copy from SMB to local
