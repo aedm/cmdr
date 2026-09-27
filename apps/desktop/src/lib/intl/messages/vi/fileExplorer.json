@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Gỡ bỏ {hostName} khỏi danh sách máy chủ?",
+  "fileExplorer.network.browser.removeHostConfirm": "Quên {hostName}? Cmdr sẽ không hiển thị máy chủ này và các mục chia sẻ đã lưu trên đó nữa. Không có gì bị bỏ gắn kết.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "Đã gỡ bỏ {hostName}",
+  "fileExplorer.network.browser.hostRemoved": "Đã quên {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Không thể gỡ bỏ {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Không thể quên {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Đã quên mật khẩu đã lưu cho {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Xóa mật khẩu đã lưu khỏi chuỗi khóa",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Dùng tư cách khách",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Đăng nhập với tư cách…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Quên mật khẩu đã lưu",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1408,9 +1416,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Quên",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "Quên {name}? Cmdr sẽ ngắt kết nối và không hiển thị máy chủ này nữa. Các tệp của bạn vẫn ở trên máy chủ.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Quên cả mật khẩu đã lưu",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr không thể quên {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

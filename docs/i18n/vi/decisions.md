@@ -419,8 +419,12 @@ source is Apple's own Connect to Server dialog (`NetAuthAgent.app`).
 - Last used → `Dùng cuối`, its empty cell → `Chưa từng` (the System Settings privacy table, same column), over
   `Không bao giờ`, which is a FUTURE choice ("never do"). "Found nearby" → `Tìm thấy ở gần`, deliberately without `Đã`.
 - Places (spots inside a server) → `Vị trí` (Finder Locations), ❌ never `Địa điểm`, Apple's GEOGRAPHIC places.
-- One surface, one name: the volume chooser and "switcher" are both `bộ chọn ổ đĩa`, and `pinToSwitcher` says so. pin /
-  unpin → `Ghim` / `Bỏ ghim` (AppKit `MenuCommands`) over `Gỡ ghim` / `Hủy ghim`.
+- One surface, one name: the volume chooser and "switcher" are both `bộ chọn ổ đĩa`, and `pinToSwitcher` / `unpin` say
+  so (`Ghim vào…` / `Bỏ ghim khỏi bộ chọn ổ đĩa`). pin / unpin → `Ghim` / `Bỏ ghim` (AppKit `MenuCommands`) over
+  `Gỡ ghim` / `Hủy ghim`.
+- "as {username}" / "as guest" / "Sign in as…" / "Use guest" share `với tư cách` (the `guest` ruling's
+  `Kết nối với tư cách khách`), over `bằng tài khoản`, which can't carry `khách`. The Optional placeholder →
+  `Không bắt buộc`, mirroring Apple's `Bắt buộc` placeholder: a bare `Tùy chọn` reads as "Options".
 - Passphrase → `Cụm từ mật khẩu của khóa`: `của khóa` keeps it apart from the account password in the same form.
 - "check X against Y" → `đối chiếu`; a bare "check" → `kiểm tra`, so `Tôi đã kiểm tra rồi` answers
   `Đang chờ bạn kiểm tra khóa`. "something sitting between you and it" stays descriptive (`tentative`), no MITM jargon.

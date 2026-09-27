@@ -613,9 +613,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Bỏ ghim",
+  "menu.network.unpin": "Bỏ ghim khỏi bộ chọn ổ đĩa",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Quên máy chủ",
   "@menu.network.forgetServer": {

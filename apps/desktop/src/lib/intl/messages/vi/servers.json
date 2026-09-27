@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Bấm chuột phải vào một máy chủ rồi chọn Bỏ ghim, hoặc dùng “{command}” trong bảng lệnh. Máy chủ vẫn nằm trong danh sách Máy chủ.",
+  "servers.pinHint.body": "Bấm chuột phải vào một máy chủ rồi chọn Bỏ ghim khỏi bộ chọn ổ đĩa, hoặc dùng “{command}” trong bảng lệnh. Máy chủ vẫn nằm trong danh sách Máy chủ.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Đã hiểu",
   "@servers.pinHint.gotIt": {
@@ -62,6 +62,38 @@
   "servers.hub.neverUsed": "Chưa từng",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "với tư cách {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "với tư cách khách",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Hãy chọn một máy chủ để sửa.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "Mục chia sẻ không có gì để sửa. Để sửa máy chủ của mục chia sẻ này, hãy chọn hàng của máy chủ đó.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} được tìm thấy ở gần và chưa được lưu, nên không có gì để sửa.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Quên mục chia sẻ",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Quên mục chia sẻ",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "Quên {name}? Cmdr sẽ không hiển thị mục chia sẻ này nữa. Nếu đang được gắn kết, mục chia sẻ vẫn được gắn kết. Các tệp của bạn vẫn ở trên máy chủ.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "Việc tìm máy chủ trên mạng cục bộ đang tắt.",
   "@servers.hub.discoveryOff": {
@@ -159,6 +191,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Hãy nhập mật khẩu cho {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} đã không phản hồi kịp thời, nên Cmdr chưa lưu gì. Hãy thử lại sau giây lát.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -182,6 +218,26 @@
   "servers.sheet.editTitle": "Sửa {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Thêm và mở",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Thêm",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Vẫn thêm",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr không kiểm tra được máy chủ này, nên nút “Vẫn thêm” sẽ lưu máy chủ đúng như bạn đã nhập.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} đã được lưu trong danh sách Máy chủ.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Đăng nhập",
   "@servers.sheet.signIn": {
@@ -231,6 +287,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Một tên máy chủ, một địa chỉ IP, hoặc một địa chỉ smb:// bạn đã sao chép.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Một địa chỉ web bạn đã sao chép, như https://nas.local/dav, hoặc một tên máy chủ.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Địa chỉ này có vẻ là địa chỉ SMB. Hãy chọn SMB ở trên nếu đó là ý bạn.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -243,6 +307,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "Địa chỉ là thứ xác định máy chủ này. Để dùng một địa chỉ khác, hãy quên máy chủ này rồi thêm lại.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "Địa chỉ và tài khoản là những gì xác định máy chủ này. Để thay đổi chúng, hãy quên máy chủ này rồi thêm lại.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -254,6 +322,14 @@
   "servers.sheet.password": "Mật khẩu",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Không bắt buộc",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Điền vào đây nếu NAS của bạn cần tài khoản. Cmdr sẽ hỏi mật khẩu khi bạn mở một mục chia sẻ.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Cụm từ mật khẩu của khóa",
   "@servers.sheet.passphrase": {
@@ -282,6 +358,10 @@
   "servers.sheet.name": "Tên",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Để trống để dùng {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Thư mục gốc",
   "@servers.sheet.rootFolder": {
@@ -366,6 +446,14 @@
   "servers.paneState.signedOut": "Đã đăng xuất khỏi {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "{name} chưa được kết nối",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Trở lại",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Đăng nhập…",
   "@servers.paneState.signIn": {

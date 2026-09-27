@@ -951,6 +951,23 @@
     "note": "Apple localizes this window's name, so it is not kept in English.",
     "sources": "macOS AppKit (Bắt buộc Thoát…, vi/macOS pile)"
   },
+  "forget": {
+    "avoid": [
+      {
+        "form": "gỡ bỏ",
+        "why": "un-listing an ordinary list item; Forget is Apple's own verb for dropping something remembered (Wi-Fi Forget → Quên)"
+      },
+      {
+        "form": "xóa",
+        "why": "claims bytes are destroyed; Forget touches no files"
+      }
+    ],
+    "chosen": "quên",
+    "confidence": "high",
+    "decision": "Trung tâm máy chủ",
+    "forms": "button and menu Quên; Forget server → Quên máy chủ; Forget share → Quên mục chia sẻ; Forgot X → Đã quên X; Couldn't forget X → Không thể quên X; also forget → quên cả",
+    "sources": "macOS Wi-Fi (Forget → Quên, decisions.md § Trung tâm máy chủ); GNOME Nautilus (Forget link → Quên liên kết); catalog: 20+ shipped Quên keys"
+  },
   "format": {
     "chosen": "định dạng",
     "confidence": "high",
@@ -1223,6 +1240,11 @@
     "confidence": "high",
     "sources": "catalog (menu.select.invert, commands.selectionInvert.label)"
   },
+  "ip-address": {
+    "chosen": "địa chỉ IP",
+    "confidence": "high",
+    "sources": "MS terminology (IP address → địa chỉ IP); GNOME Nautilus (smb://[địa chỉ IP]); catalog fileExplorer.network.browser.tooltip.resolving"
+  },
   "item": {
     "chosen": "mục",
     "confidence": "high",
@@ -1310,6 +1332,19 @@
     "confidence": "high",
     "forms": "text lines only; a list row is hàng",
     "sources": "GNOME (dòng)"
+  },
+  "list": {
+    "accept": ["liệt kê"],
+    "chosen": "danh sách",
+    "confidence": "high",
+    "forms": "the noun → danh sách (the Servers list → danh sách Máy chủ); the verb (Cmdr lists X) → liệt kê",
+    "sources": "macOS Finder and AppKit (List → Danh sách, 29 hits); MS terminology (list → danh sách)"
+  },
+  "local": {
+    "chosen": "cục bộ",
+    "confidence": "high",
+    "forms": "a local model → mô hình cục bộ; stored locally → ở cục bộ",
+    "sources": "MS terminology (local → cục bộ); catalog ai.local.*, askCmdr.error.localWindowTooSmall"
   },
   "local-network": {
     "accept": ["ở gần"],

@@ -45,6 +45,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `Bỏ lưu trữ` (unarchive a chat), `chu trình đổi tên` (rename cycle), `kho ảnh` (photo archive), `thư mục bắt đầu`
   (start folder), `tiến triển` (in "no progress"), `đang đứng yên` (a stalled transfer), `vị trí chụp` and the
   classifier `một bức ảnh` (next to `máy ảnh`).
+- **`với tư cách {username}`** (`servers.hub.shareAccount`, `.guestAccount`, `fileExplorer.network.share.signInAs`,
+  `.useGuest`): natural with `khách`, slightly formal after a person's name; alternative `dưới tên`. And
+  `Không bắt buộc` for the Optional placeholder against the catalog's parenthesized `(tùy chọn)`.
 - **Spaces** (`shortcuts.system.spaces`): kept English, unverified whether macOS vi localizes it.
 - **List commas**: newer keys drop the comma before `và` / `hoặc`, older ones keep it. Decide a convention and sweep.
 
