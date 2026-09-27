@@ -32,8 +32,9 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 - **`NetworkMountView` must propagate its local `currentNetworkHost` via `onNetworkHostChange`**, mirrored in the parent
   `FilePane` (`initialNetworkHost`). Without it, leaving Network and coming back re-mounts a stale host and opens
   `PlacesBrowser` for the wrong one.
-- **"as testuser" / "as guest" comes only from what's known** (`signed-in-as.ts`): a live mount's account, then the
-  share list's own outcome (`getListedAccount`, set by the listings themselves). ❌ Never a Keychain read to fill it.
+- **"as testuser" / "as guest" comes only from what's known** (`signed-in-as.ts`), ❌ never a Keychain read. A SHARE row:
+  its live mount's account. A SERVER row and its share list's header: the same server-level account (the listing's,
+  `getListedAccount`, else the one it's set to be used with), ❌ never a share's mount, which made the two disagree.
 - **Credential status is keyed by lowercase `host.name`** (the stable Bonjour name); IP and hostname both drift.
 - **The `network` volume id is virtual**: its `smb://` path is a sentinel, not a mount. Mounted shares arrive as
   separate `VolumeInfo` entries with real ids.
