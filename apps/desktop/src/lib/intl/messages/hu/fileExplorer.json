@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Eltávolítod ezt a gépet a szerverlistából: {hostName}?",
+  "fileExplorer.network.browser.removeHostConfirm": "Elfelejted ezt a gépet: {hostName}? A Cmdr leveszi a listáról a hozzá mentett megosztásokkal együtt. Semmit nem csatol le.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "Eltávolítva: {hostName}",
+  "fileExplorer.network.browser.hostRemoved": "Elfelejtve: {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Nem sikerült eltávolítani: {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Nem sikerült elfelejteni: {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Elfelejtett mentett jelszó ehhez: {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Mentett jelszó eltávolítása a kulcskarikából",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Váltás vendégre",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Bejelentkezés másként…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Mentett jelszó elfelejtése",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1408,9 +1416,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Elfelejtés",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "Elfelejted ezt a szervert: „{name}”? A Cmdr bontja a kapcsolatot, és leveszi a listáról. A fájljaid a szerveren maradnak.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "A mentett jelszó elfelejtése is",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "A Cmdr nem tudta elfelejteni ezt: {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

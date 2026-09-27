@@ -612,9 +612,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Rögzítés feloldása",
+  "menu.network.unpin": "Rögzítés feloldása a kötetválasztóban",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Szerver elfelejtése",
   "@menu.network.forgetServer": {

@@ -458,8 +458,15 @@ packages from app bundles. The description keeps its siblings' frame, `Mit tesz 
   store is `kulcskarika`.
 - Open X to Y → a `-hoz/-hez` purpose noun (`a kapcsolódáshoz`), never a `hogy` clause.
 - The forget questions name the type and move the name behind a colon: `Elfelejted ezt a szervert: „{name}”?`,
-  `Elfelejted a mentett jelszót ehhez: „{name}”?`.
+  `Elfelejted a mentett jelszót ehhez: „{name}”?`. The network browser's host keeps `gép` and its unquoted `{hostName}`
+  (`Elfelejted ezt a gépet: {hostName}?`); Nothing gets unmounted → `Semmit nem csatol le`.
 - `{name} leválasztása` is the aria, like `{name} kiadása`.
+- The account suffix pair shares `-ként`: `{username} felhasználóként` / `vendégként` (the base noun carries the case).
+  Sign in as… → `Bejelentkezés másként…` (Apple's `Mentés másként` shape); Use guest → `Váltás vendégre`.
+- X Anyway → `Hozzáadás mindenképp` (AppKit `Mentés mindenképp`, `Átnevezés mindenképp`).
+- Not connected (a chosen state, not a failure) → `Nem kapcsolódik: {name}` (AppKit's `Not Connected` state, colon
+  slot); ❌ not `Nincs csatlakoztatva`, the error pane's wording for a failed listing.
+- Optional (a field) → `Nem kötelező` (Microsoft); an optional STEP stays `választható`.
 
 ## A szerverközpont táblázata és a kötetváltó rögzítése (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.server*Toast`/`.pinRefusedToast`/`.networkVolume`, `shortcuts.scope.servers`/`.places`)
 

@@ -1390,7 +1390,7 @@
   },
   "guest": {
     "chosen": "vendég",
-    "forms": "Connect as guest → Csatlakozás vendégként; guest access → vendéghozzáférés",
+    "forms": "Connect as guest → Csatlakozás vendégként; as guest → vendégként (pairs with {username} felhasználóként); Use guest → Váltás vendégre; guest access → vendéghozzáférés",
     "confidence": "high",
     "sources": "macOS NetAuthAgent (GUEST Vendég, EINFO_NO_ACCESS_GUEST)"
   },
@@ -1602,6 +1602,12 @@
     "confidence": "high",
     "sources": "Total Commander (WCMD.INC); GNOME Nautilus; KDE Dolphin; Xfce Thunar (Kijelölés megfordítása)"
   },
+  "ip-address": {
+    "chosen": "IP-cím",
+    "forms": "hyphenated compound: IP-cím, IP-címek",
+    "confidence": "high",
+    "sources": "Microsoft terminology (IP address → IP-cím); catalog (fileExplorer.network.browser.tooltip.resolving)"
+  },
   "item": {
     "chosen": "elem",
     "forms": "singular after a numeral in both plural branches ({countText} elem); and N more items → és {countText} további elem",
@@ -1742,6 +1748,20 @@
     ],
     "confidence": "tentative",
     "sources": "no source has the Linux sense"
+  },
+  "list": {
+    "chosen": "lista",
+    "accept": ["listá", "felsorol"],
+    "forms": "the Servers list → a Szerverek lista (a Szerverek listában, your → a Szerverek listádban); stops listing it → leveszi a listáról; Cmdr lists X (verb) → a Cmdr felsorolja",
+    "confidence": "high",
+    "sources": "Microsoft terminology (list → lista); macOS AppKit (méretlista, stíluslista); catalog (fileExplorer.navigation.forgetServerConfirm)"
+  },
+  "local": {
+    "chosen": "helyi",
+    "accept": ["helyben"],
+    "forms": "local server → helyi szerver; stored locally → helyben",
+    "confidence": "high",
+    "sources": "Microsoft terminology (local → helyi); Total Commander (Csak helyi fájlok); catalog (helyi szerver)"
   },
   "local-network": {
     "chosen": "helyi hálózat",
@@ -2253,7 +2273,7 @@
   "pin": {
     "chosen": "rögzítés",
     "accept": ["rögzít"],
-    "forms": "pin / unpin → Rögzítés / Rögzítés feloldása; Pin tab → Lap rögzítése, Unpin tab → Lap rögzítésének feloldása; Pin to switcher → Rögzítés a kötetválasztóban; a pinned badge → Rögzített",
+    "forms": "pin / unpin → Rögzítés / Rögzítés feloldása; Pin tab → Lap rögzítése, Unpin tab → Lap rögzítésének feloldása; Pin to switcher → Rögzítés a kötetválasztóban, Unpin from switcher → Rögzítés feloldása a kötetválasztóban; a pinned badge → Rögzített",
     "avoid": [
       {
         "form": "Rögzítés megszüntetése",
@@ -2722,7 +2742,7 @@
   },
   "save": {
     "chosen": "Mentés",
-    "accept": ["mentve", "mentett", "menteni", "mentés", "elment", "mentsd", "megmarad"],
+    "accept": ["mentve", "mentett", "menteni", "mentés", "elment", "mentsd", "megmarad", "menti el"],
     "forms": "button Mentés, quoted in prose as a Mentés gombot; state Saved → Mentve; attributive Mentett",
     "confidence": "high",
     "sources": "macOS Finder (AL2 Mentés, 171×); Preview (SignatureSaved Mentve)",
@@ -2795,7 +2815,7 @@
   },
   "select": {
     "chosen": "kijelölés",
-    "accept": ["kijelöl", "kiválaszt", "válassz", "kijeloles", "jelöld ki"],
+    "accept": ["kijelöl", "kiválaszt", "válassz", "kijeloles", "jelöld ki", "jelölj ki"],
     "forms": "the menu and the action → Kijelölés; Select all → Összes kijelölése; Select files → Fájlok kijelölése; the dropdown placeholder (the user picks an option) → Válassz",
     "confidence": "high",
     "sources": "macOS Finder (172.title Összes kijelölése); Nautilus (Kijelölés)"

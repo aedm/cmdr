@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Kattints jobb gombbal egy szerverre, és válaszd a „Rögzítés feloldása” lehetőséget, vagy futtasd a parancspalettából ezt a parancsot: „{command}”. Továbbra is ott marad a Szerverek listában.",
+  "servers.pinHint.body": "Kattints jobb gombbal egy szerverre, és válaszd a „Rögzítés feloldása a kötetválasztóban” lehetőséget, vagy futtasd a parancspalettából ezt a parancsot: „{command}”. Továbbra is ott marad a Szerverek listában.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Értem",
   "@servers.pinHint.gotIt": {
@@ -62,6 +62,38 @@
   "servers.hub.neverUsed": "Soha",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "{username} felhasználóként",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "vendégként",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Jelölj ki egy szervert a szerkesztéséhez.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "Egy megosztáson nincs mit szerkeszteni. A szerverének szerkesztéséhez jelöld ki a szerver sorát.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} a közelben felfedezett, nem mentett szerver, ezért nincs mit szerkeszteni.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Megosztás elfelejtése",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Megosztás elfelejtése",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "Elfelejted ezt a megosztást: „{name}”? A Cmdr leveszi a listáról. Ha csatolva van, csatolva is marad, és a fájljaid a szerveren maradnak.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "A helyi hálózati felderítés ki van kapcsolva.",
   "@servers.hub.discoveryOff": {
@@ -159,6 +191,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Add meg a jelszót ehhez a felhasználóhoz: {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} nem válaszolt időben, ezért a Cmdr nem mentett semmit. Próbáld újra egy pillanat múlva.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -182,6 +218,26 @@
   "servers.sheet.editTitle": "{name} szerkesztése",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Hozzáadás és megnyitás",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Hozzáadás",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Hozzáadás mindenképp",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "A Cmdr nem tudta ellenőrizni ezt a szervert, ezért a Hozzáadás mindenképp gomb úgy menti el, ahogy beírtad.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} el van mentve a Szerverek listádban.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Bejelentkezés",
   "@servers.sheet.signIn": {
@@ -231,6 +287,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Egy gépnév, egy IP-cím vagy egy másolt smb:// kezdetű cím.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Egy másolt webcím, például https://nas.local/dav, vagy egy gépnév.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Ez SMB-címnek tűnik. Ha erre gondoltál, fent válaszd az SMB-t.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -243,6 +307,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "A cím azonosítja ezt a szervert. Másik cím használatához felejtsd el ezt a szervert, és add hozzá újra.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "A cím és a fiók azonosítja ezt a szervert. A módosításukhoz felejtsd el a szervert, és add hozzá újra.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -254,6 +322,14 @@
   "servers.sheet.password": "Jelszó",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Nem kötelező",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Töltsd ki, ha a NAS-odhoz fiók kell. A jelszót a Cmdr akkor kéri, amikor megnyitsz egy megosztást.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Kulcsjelmondat",
   "@servers.sheet.passphrase": {
@@ -282,6 +358,10 @@
   "servers.sheet.name": "Név",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Ha üresen hagyod: {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Gyökérmappa",
   "@servers.sheet.rootFolder": {
@@ -366,6 +446,14 @@
   "servers.paneState.signedOut": "Kijelentkezve innen: {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "Nem kapcsolódik: {name}",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Vissza",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Bejelentkezés…",
   "@servers.paneState.signIn": {

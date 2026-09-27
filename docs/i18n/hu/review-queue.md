@@ -31,6 +31,10 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 
 ## Wording
 
+- **Server sheet coinages with no pile attestation**: `Nem kapcsolódik: {name}` (pane heading for a chosen not-connected
+  state), `Bejelentkezés másként…`, `Váltás vendégre`, `{username} felhasználóként`, and `smb:// kezdetű cím`. Each is
+  grammatical; a native ear should confirm they read naturally.
+
 - **AI tool chips** (`askCmdr.tool.*`): the verbal-noun / `-va/-ve` pair is a novel construction; `inspectFile`'s
   `Fájlok átnézése` / `Fájlok átnézve` only hints at looking inside. `nothingToSuggest.done`
   (`Nem talált semmi említésre méltót`) is the family's one finite verb: a negative done state has no clean participle.
@@ -57,3 +61,5 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   bubble.
 - **`main.escapeFullScreenHint.switchLabel` → `Kilépés a teljes képernyős módból az Escape billentyűvel`** (57 vs 26
   chars) in the one-time bubble.
+- **`menu.network.unpin` → `Rögzítés feloldása a kötetválasztóban`** (38 vs 19 chars) in a narrow volume dropdown; the
+  short `Rögzítés feloldása` would lose the "from switcher" that tells it apart from deleting.
