@@ -149,6 +149,8 @@ export interface FilePaneAPI {
   refreshCursorEntry(): Promise<FileEntry | null>
   /** Cursor target inside the network view (host or share), or null. */
   getNetworkCursorEntry(): NetworkCursorEntry | null
+  /** The host whose share list the network view shows, or null (the Servers list, or not the network view). */
+  getNetworkHost(): NetworkHost | null
   setCursorIndex(index: number): Promise<void>
   getCursorIndex(): number
   /** Total cursor-addressable rows (incl. the `..` row; snapshot count for snapshot panes). */

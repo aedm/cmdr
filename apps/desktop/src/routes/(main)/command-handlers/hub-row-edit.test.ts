@@ -1,15 +1,17 @@
 /**
- * Edit and Rename in the Servers list are "Edit server…": `file.edit`, `file.rename`, and `servers.edit` all reach the
- * hub row under the cursor, whatever keys they're bound to, and fall through to their file-list meaning elsewhere.
+ * Edit and Rename on the Servers volume are "Edit server…": `file.edit`, `file.rename`, and `servers.edit` all hand
+ * `editServerInView` what the pane shows (the hub row under the cursor, or the host whose share list is up), whatever
+ * keys they're bound to, and keep their file-list meaning everywhere else.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const editHubRow = vi.fn((_row: unknown) => Promise.resolve())
+const editServerInView = vi.fn((_view: unknown) => Promise.resolve())
 const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 const openInEditorOrExplain = vi.fn(() => Promise.resolve('opened'))
+let volumeId = 'root'
 
 vi.mock('$lib/file-explorer/network/servers-hub-actions', () => ({
-  editHubRow: (row: unknown) => editHubRow(row),
+  editServerInView: (view: unknown) => editServerInView(view),
 }))
 vi.mock('$lib/file-explorer/navigation/server-row-actions', () => ({
   runServerRowAction: (payload: unknown) => runServerRowAction(payload),
@@ -17,7 +19,7 @@ vi.mock('$lib/file-explorer/navigation/server-row-actions', () => ({
 vi.mock('$lib/file-explorer/pane/editor-open', () => ({ openInEditorOrExplain: () => openInEditorOrExplain() }))
 vi.mock('$lib/file-explorer/pane/focused-pane-reads', () => ({
   getFocusedPanePath: () => '/Users/me',
-  getFocusedPaneVolumeId: () => 'root',
+  getFocusedPaneVolumeId: () => volumeId,
 }))
 vi.mock('$lib/stores/volume-store.svelte', () => ({ getVolumes: () => [] }))
 vi.mock('$lib/tauri-commands', () => ({ listSavedServers: () => Promise.resolve([]), trackEvent: vi.fn() }))
@@ -26,12 +28,15 @@ import { fileHandlers } from './file-handlers'
 import { serversHandlers } from './servers-handlers'
 import type { CommandHandlerContext } from './types'
 import type { HubRow } from '$lib/file-explorer/network/servers-hub-rows'
+import type { NetworkHost } from '$lib/file-explorer/types'
 
 const hubRow = { id: 'manual-nas', kind: 'server', name: 'Naspolya' } as unknown as HubRow
+const host: NetworkHost = { id: 'h1', name: 'Naspolya', port: 445, source: 'discovered' }
 
-function hctx(row: HubRow | null) {
+function hctx(row: HubRow | null, placesHost: NetworkHost | null = null) {
   const explorerRef = {
     getFocusedPaneHubRow: vi.fn(() => row),
+    getFocusedPaneNetworkHost: vi.fn(() => placesHost),
     getFocusedPaneServerRow: vi.fn(() => null),
     startRename: vi.fn(),
     getFileAndPathUnderCursor: vi.fn(() => ({ path: '/Users/me/a.txt', filename: 'a.txt' })),
@@ -40,22 +45,42 @@ function hctx(row: HubRow | null) {
 }
 
 type Handler = (hctx: CommandHandlerContext) => unknown
+const onServersVolume: [string, Handler][] = [
+  ['file.rename', fileHandlers['file.rename'] as Handler],
+  ['file.edit', fileHandlers['file.edit'] as Handler],
+  ['servers.edit', serversHandlers['servers.edit'] as Handler],
+]
 
 beforeEach(() => {
   vi.clearAllMocks()
+  volumeId = 'root'
 })
 
-describe('on a Servers list row', () => {
-  it.each([
-    ['file.rename', fileHandlers['file.rename']],
-    ['file.edit', fileHandlers['file.edit'] as Handler],
-    ['servers.edit', serversHandlers['servers.edit']],
-  ])('%s opens Edit server for the row under the cursor', (_id, handler) => {
+describe('on the Servers volume', () => {
+  beforeEach(() => {
+    volumeId = 'network'
+  })
+
+  it.each(onServersVolume)('%s edits the hub row under the cursor', (_id, handler) => {
     const { ctx, explorerRef } = hctx(hubRow)
-    handler(ctx)
-    expect(editHubRow).toHaveBeenCalledExactlyOnceWith(hubRow)
+    void handler(ctx)
+    expect(editServerInView).toHaveBeenCalledExactlyOnceWith({ row: hubRow, host: null })
     expect(explorerRef.startRename).not.toHaveBeenCalled()
     expect(openInEditorOrExplain).not.toHaveBeenCalled()
+  })
+
+  it.each(onServersVolume)('%s edits the host whose share list is up', (_id, handler) => {
+    const { ctx } = hctx(null, host)
+    void handler(ctx)
+    expect(editServerInView).toHaveBeenCalledExactlyOnceWith({ row: null, host })
+  })
+
+  /** "Add server…" under the cursor: `editServerInView` says to pick a server, ❌ never silence. */
+  it('hands over an empty view too, and never falls back to renaming a file', () => {
+    const { ctx, explorerRef } = hctx(null)
+    void (fileHandlers['file.rename'] as Handler)(ctx)
+    expect(editServerInView).toHaveBeenCalledExactlyOnceWith({ row: null, host: null })
+    expect(explorerRef.startRename).not.toHaveBeenCalled()
   })
 })
 
@@ -65,13 +90,13 @@ describe('anywhere else', () => {
     const rename = fileHandlers['file.rename']
     rename(ctx)
     expect(explorerRef.startRename).toHaveBeenCalledOnce()
-    expect(editHubRow).not.toHaveBeenCalled()
+    expect(editServerInView).not.toHaveBeenCalled()
   })
 
   it('file.edit opens the file under the cursor in the editor', async () => {
     const { ctx } = hctx(null)
     await (fileHandlers['file.edit'] as Handler)(ctx)
     expect(openInEditorOrExplain).toHaveBeenCalledOnce()
-    expect(editHubRow).not.toHaveBeenCalled()
+    expect(editServerInView).not.toHaveBeenCalled()
   })
 })

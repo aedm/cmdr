@@ -18,6 +18,7 @@ import {
   disconnectNetworkHost,
   forgetSavedSmbHost,
   forgetSavedSmbHostPassword,
+  listSavedServers,
   forgetServer,
   showNetworkHostContextMenu,
 } from '$lib/tauri-commands'
@@ -47,7 +48,7 @@ import { confirmDialog, confirmWithCheckbox } from '$lib/utils/confirm-dialog'
 import { openEditServerSheet } from '$lib/servers/open-sign-in'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import type { HubRow } from './servers-hub-rows'
+import { buildHubRows, type HubRow } from './servers-hub-rows'
 import type { NetworkHost, VolumeInfo } from '../types'
 import type { NetworkHostContextActionKind } from '$lib/ipc/bindings'
 import type { MenuAnchor } from '$lib/tauri-commands/file-actions'
@@ -129,6 +130,31 @@ export async function editHubRow(row: HubRow): Promise<void> {
     return
   }
   await openEditServerSheet(row.saved)
+}
+
+/**
+ * "Edit server…" for what the Servers volume shows (`file.edit`, `file.rename`, `servers.edit` there): the hub row
+ * under the cursor, else the server whose share list is up, found among the saved ones by the same merge the hub
+ * uses. ❗ Every case answers: "Add server…" under the cursor asks for a server, ❌ never nothing.
+ */
+export async function editServerInView(view: { row: HubRow | null; host: NetworkHost | null }): Promise<void> {
+  if (view.row) {
+    await editHubRow(view.row)
+    return
+  }
+  const { host } = view
+  if (!host) {
+    addToast(tString('servers.hub.editPickHint'), { level: 'info' })
+    return
+  }
+  const saved = await listSavedServers().catch((e: unknown) => {
+    log.warn('Reading the saved servers to edit {host} broke down: {error}', { host: host.name, error: String(e) })
+    return []
+  })
+  // The host is the only one in the merge, so it is either claimed by its saved server or a nearby row of its own.
+  const row = buildHubRows({ saved, hosts: [host], volumes: [] }).find((r) => r.host?.id === host.id)
+  if (row) await editHubRow(row)
+  else addToast(tString('servers.hub.editNearbyHint', { name: host.name }), { level: 'info' })
 }
 
 export function createHubActions(deps: HubActionDeps): HubActions {

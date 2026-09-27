@@ -50,6 +50,16 @@ describe('FunctionKeyBar capability disablement', () => {
     }
   })
 
+  /**
+   * ❗ On the Servers list, F2 and F4 are "Edit server…" (`editServerInView`), so their
+   * buttons read enabled: a working key behind a greyed button reads as broken.
+   */
+  it('the Servers list enables F2 and F4, which edit the server in view', () => {
+    const [f2Rename, , f4Edit] = mountOn('network', 'smb://')
+    expect(f2Rename.disabled).toBe(false)
+    expect(f4Edit.disabled).toBe(false)
+  })
+
   it('a search-results pane disables F2 / F7 (destination ops), keeps F5 / F6 / F8 (source ops)', () => {
     // caps: canWrite false ⇒ F2, F7 disabled;
     // canBeSource true ⇒ F5, F6, F8 enabled (snapshot rows are real files).
@@ -117,11 +127,9 @@ describe('FunctionKeyBar capability disablement', () => {
 
   it('a network pane disables both destination AND source buttons (canBeSource: false)', () => {
     // The network host/share list isn't files, so it can neither source nor host
-    // an op. The F-bar honestly reflects that now (canBeSource: false) — the bar
-    // is inert on a focused network pane either way (the ops no-op deep down).
-    const [f2Rename, , , f5Copy, f6Move, f7NewFolder, f8Delete] = mountOn('network')
+    // an op. F2 is the exception: there it's "Edit server…" (the test above).
+    const [, , , f5Copy, f6Move, f7NewFolder, f8Delete] = mountOn('network')
 
-    expect(f2Rename.disabled).toBe(true)
     expect(f7NewFolder.disabled).toBe(true)
     expect(f5Copy.disabled).toBe(true)
     expect(f6Move.disabled).toBe(true)

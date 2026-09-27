@@ -1108,6 +1108,11 @@
         return entry?.kind === 'server' || entry?.kind === 'host' ? entry.row : null
     }
 
+    /** The host whose share list the focused pane shows, or `null`. Edit and Rename there edit that server. */
+    export function getFocusedPaneNetworkHost(): NetworkHost | null {
+        return getPaneRef(explorerState.getFocusedPane())?.getNetworkHost() ?? null
+    }
+
     export async function handleMcpSelect(
         pane: 'left' | 'right',
         start: number,

@@ -761,6 +761,11 @@
         return networkMountViewRef?.getNetworkCursorEntry() ?? null
     }
 
+    // noinspection JSUnusedGlobalSymbols -- used by DualPaneExplorer.getFocusedPaneNetworkHost
+    export function getNetworkHost(): NetworkHost | null {
+        return isNetworkView ? networkHost.host : null
+    }
+
     /** Also scrolls to make the cursor visible and syncs state to MCP. */
     export async function setCursorIndex(index: number): Promise<void> {
         if (isNetworkView) {

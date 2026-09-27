@@ -25,6 +25,7 @@ const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
 const confirmWithCheckbox = vi.fn((_question: unknown) => Promise.resolve({ confirmed: true, checked: true }))
 const forgetSavedSmbHostPassword = vi.fn((_id: string) => Promise.resolve(true))
+const listSavedServers = vi.fn(() => Promise.resolve<unknown[]>([]))
 const setCredentialStatus = vi.fn()
 const openEditServerSheet = vi.fn((_server: unknown) => Promise.resolve({ kind: 'saved' }))
 const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
@@ -32,6 +33,7 @@ const runServerRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 vi.mock('$lib/tauri-commands', () => ({
   forgetSavedSmbHost: (id: string) => forgetSavedSmbHost(id),
   forgetSavedSmbHostPassword: (id: string) => forgetSavedSmbHostPassword(id),
+  listSavedServers: () => listSavedServers(),
   forgetServer: (volumeId: string) => forgetServer(volumeId),
   disconnectNetworkHost: (...args: unknown[]) => disconnectNetworkHost(...(args as [])),
   showNetworkHostContextMenu: (...args: unknown[]) => showNetworkHostContextMenu(...(args as [])),
@@ -68,7 +70,7 @@ vi.mock('$lib/utils/confirm-dialog', () => ({
   confirmWithCheckbox: (question: unknown) => confirmWithCheckbox(question),
 }))
 
-import { createHubActions, editHubRow } from './servers-hub-actions'
+import { createHubActions, editHubRow, editServerInView } from './servers-hub-actions'
 import type { HubRow } from './servers-hub-rows'
 import type { NetworkHostContextActionKind, VolumeContextActionKind } from '$lib/ipc/bindings'
 
@@ -533,5 +535,34 @@ describe('editHubRow', () => {
     await editHubRow(nearbyOnlyRow)
     expect(openEditServerSheet).not.toHaveBeenCalled()
     expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Attic NAS'), { level: 'info' })
+  })
+})
+
+/**
+ * What's in view on the Servers volume: a hub row, or the host whose share list is up.
+ * ❗ Every case answers something: a sheet, or a toast saying why not.
+ */
+describe('editServerInView', () => {
+  it('edits the hub row under the cursor', async () => {
+    await editServerInView({ row: savedHostRow, host: null })
+    expect(openEditServerSheet).toHaveBeenCalledExactlyOnceWith(savedHostRow.saved)
+  })
+
+  it('edits the saved server whose share list is up, found by its host', async () => {
+    if (!savedHostRow.saved) throw new Error('fixture')
+    listSavedServers.mockResolvedValueOnce([savedHostRow.saved])
+    await editServerInView({ row: null, host })
+    expect(openEditServerSheet).toHaveBeenCalledExactlyOnceWith(savedHostRow.saved)
+  })
+
+  it('says a nearby host whose share list is up has nothing saved to edit', async () => {
+    await editServerInView({ row: null, host: { ...host, id: 'h9', name: 'Printer', ipAddress: '10.0.0.9' } })
+    expect(openEditServerSheet).not.toHaveBeenCalled()
+    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('Printer'), { level: 'info' })
+  })
+
+  it('asks for a server when the cursor is on Add server…', async () => {
+    await editServerInView({ row: null, host: null })
+    expect(addToast).toHaveBeenCalledExactlyOnceWith('Select a server to edit it.', { level: 'info' })
   })
 })

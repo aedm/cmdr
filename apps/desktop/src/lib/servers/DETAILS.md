@@ -461,12 +461,14 @@ Two details are load-bearing:
   the switcher's cap, decided in Rust, and deliberately off the wire). `servers.togglePin` reads `listSavedServers()`
   for that case; a store that doesn't answer reads as unpinned, which makes the command a pin rather than a no-op.
 
-**Edit and Rename in the Servers list are "Edit server…".** `file.edit` and `file.rename` (F4, F2 / ⇧F6 by default, read
-through the shortcut system like every command) and `servers.edit` ask `ExplorerAPI.getFocusedPaneHubRow()` first: ANY
-hub row, an SMB host's included (the `host` arm of `NetworkCursorEntry` carries its row for this), and land in
-`../file-explorer/network/servers-hub-actions.ts::editHubRow`. Off the hub they keep their file-list meaning. A row with
-nothing saved to edit (a share, a host only mDNS sees) gets a one-line info toast, ❌ never silence. The F-key bar's
-Rename button still reads `canWrite` and stays disabled on the hub; the key works.
+**Edit and Rename on the Servers volume are "Edit server…".** `file.edit` and `file.rename` (F4, F2 / ⇧F6 by default,
+read through the shortcut system like every command) and `servers.edit` hand
+`../file-explorer/network/servers-hub-actions.ts::editServerInView` what the pane shows: the hub row under the cursor
+(`ExplorerAPI.getFocusedPaneHubRow()`, an SMB host's included, since the `host` arm of `NetworkCursorEntry` carries its
+row), else the host whose share list is up (`getFocusedPaneNetworkHost()`), matched to its saved server by the hub's own
+merge. Off that volume they keep their file-list meaning. ❗ Every case answers: a row with nothing saved to edit (a
+share, a host only mDNS sees) and "Add server…" under the cursor each get a one-line info toast, ❌ never silence. That
+is also why the F-key bar's F2 button is enabled there (`FunctionKeyBar.svelte`'s `canRename`).
 
 The handlers themselves (`src/routes/(main)/command-handlers/servers-handlers.ts`) then route through
 `../file-explorer/navigation/server-row-actions.ts::runServerRowAction`, the same function the native menu's answer

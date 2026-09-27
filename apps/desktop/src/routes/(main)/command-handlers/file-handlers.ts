@@ -33,7 +33,7 @@ import { resolveTerminalFolder } from '$lib/open-terminal/terminal-target'
 import { openTerminalHereForFolder } from '$lib/open-terminal/open-terminal-here'
 import { tString } from '$lib/intl/messages.svelte'
 import { trackEvent } from '$lib/tauri-commands'
-import { editHubRow } from '$lib/file-explorer/network/servers-hub-actions'
+import { editServerInView } from '$lib/file-explorer/network/servers-hub-actions'
 import type { CommandArgs } from '$lib/commands'
 import type { CommandHandlerContext, CommandHandlerRecord } from './types'
 
@@ -85,17 +85,21 @@ async function copyPathAndAnnounce(path: string): Promise<void> {
   })
 }
 
+/** What the Servers volume shows: the hub row under the cursor, or the host whose share list is up. */
+function serverInView(explorer: NonNullable<CommandHandlerContext['explorerRef']>) {
+  return { row: explorer.getFocusedPaneHubRow(), host: explorer.getFocusedPaneNetworkHost() }
+}
+
 export const fileHandlers = {
   'file.view': ({ explorerRef }) => {
     void explorerRef?.openViewerForCursor()
   },
 
   'file.rename': ({ explorerRef, dispatchArgs }) => {
-    // In the Servers list, Rename is "Edit server…": the name is what a server has to
+    // On the Servers volume, Rename is "Edit server…": the name is what a server has to
     // rename. ❗ Opened, ❌ never awaited: the sheet stays up as long as the user types.
-    const hubRow = explorerRef?.getFocusedPaneHubRow()
-    if (hubRow) {
-      void editHubRow(hubRow)
+    if (explorerRef && getFocusedPaneVolumeId() === 'network') {
+      void editServerInView(serverInView(explorerRef))
       return
     }
     // Arg-less from F2 / the palette (seed the current name); the MCP `rename`
@@ -106,10 +110,9 @@ export const fileHandlers = {
   },
 
   'file.edit': (hctx) => {
-    // In the Servers list, Edit is "Edit server…", the same as Rename there.
-    const hubRow = hctx.explorerRef?.getFocusedPaneHubRow()
-    if (hubRow) {
-      void editHubRow(hubRow)
+    // On the Servers volume, Edit is "Edit server…", the same as Rename there.
+    if (hctx.explorerRef && getFocusedPaneVolumeId() === 'network') {
+      void editServerInView(serverInView(hctx.explorerRef))
       return
     }
     return withEntryUnderCursor(hctx, async (entry) => {

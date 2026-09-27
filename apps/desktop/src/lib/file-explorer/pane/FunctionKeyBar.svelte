@@ -53,7 +53,8 @@
     const caps = $derived(capabilitiesForPane(activeTab.volumeId, activeTab.path))
     const canMkdir = $derived(caps.canWrite)
     const canMkfile = $derived(caps.canWrite)
-    const canRename = $derived(caps.canWrite)
+    /** On the Servers volume F2 is "Edit server…" (`editServerInView`), which always answers. */
+    const canRename = $derived(caps.canWrite || caps.kind === 'network')
     /** Source-side actions (copy/move/delete). The snapshot pane's rows are real files. */
     const canSourceOps = $derived(caps.canBeSource)
 

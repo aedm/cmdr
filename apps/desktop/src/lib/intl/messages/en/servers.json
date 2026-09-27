@@ -86,6 +86,10 @@
   "@servers.hub.guestAccount": {
     "description": "Shown after an SMB server's or share's name in the Servers list, and after the server's name in its share list, in a quieter color: the server is signed in to as a guest, with no account. Pairs with servers.hub.shareAccount (\"as sven\"); keep the two built the same way."
   },
+  "servers.hub.editPickHint": "Select a server to edit it.",
+  "@servers.hub.editPickHint": {
+    "description": "Toast when the user presses Edit or Rename (F4, F2) in the Servers list while the cursor is on the \"Add server…\" row rather than on a server."
+  },
   "servers.hub.editShareHint": "A share has nothing to edit. To edit its server, select the server’s row.",
   "@servers.hub.editShareHint": {
     "description": "Toast when the user presses Edit or Rename (F4, F2) on a saved SMB share's row in the Servers list. Shares carry no settings of their own; the server row right above them does."

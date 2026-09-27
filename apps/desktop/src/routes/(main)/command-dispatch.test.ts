@@ -274,11 +274,10 @@ describe('handleCommandExecute — blockedByCapabilities (search-results / netwo
 
     await handleCommandExecute('edit.paste', g.ctx)
     await handleCommandExecute('file.newFolder', g.ctx)
-    await handleCommandExecute('file.rename', g.ctx)
 
     expect(addToast).not.toHaveBeenCalled()
     expect(g.pasteFromClipboard).toHaveBeenCalledOnce()
     expect(g.openNewFolderDialog).toHaveBeenCalledOnce()
-    expect(g.startRename).toHaveBeenCalledOnce()
+    // `file.rename` there is "Edit server…" (`hub-row-edit.test.ts`), ❌ not the explorer's rename.
   })
 })

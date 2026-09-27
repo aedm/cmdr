@@ -6,7 +6,7 @@
 import type { ViewMode } from '$lib/app-status-store'
 import type { McpSelectMode, McpTabAction, ConfirmDialogType } from '$lib/commands'
 import type { QuickLookKeyEventPayload } from '$lib/file-explorer/quick-look/quick-look-state.svelte'
-import type { FileEntry, FriendlyError, TransferOperationType } from '$lib/file-explorer/types'
+import type { FileEntry, FriendlyError, NetworkHost, TransferOperationType } from '$lib/file-explorer/types'
 import type { AdoptedOperationData, ForegroundOperationVerdict } from '$lib/file-explorer/pane/dialog-props'
 import type { NavigateIntent, NavigateResult } from '$lib/file-explorer/pane/navigate'
 import type { VolumeSelectOutcome } from '$lib/file-explorer/pane/volume-selection'
@@ -245,6 +245,8 @@ export interface ExplorerAPI {
    * off the hub. Edit and Rename there are "Edit server…" (`editHubRow`).
    */
   getFocusedPaneHubRow: () => HubRow | null
+  /** The host whose share list the focused pane shows, or `null`. */
+  getFocusedPaneNetworkHost: () => NetworkHost | null
   injectError: (pane: 'left' | 'right', friendly: FriendlyError) => void
   resetError: (pane: 'left' | 'right' | 'both') => void
   /** E2E only: drive the native drag-and-drop drop entry programmatically (real
