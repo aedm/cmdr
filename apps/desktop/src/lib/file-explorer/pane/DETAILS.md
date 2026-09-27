@@ -483,6 +483,10 @@ no session behind it, so every listing on it would refuse until something dials.
   one. ❗ A kernel mount can finish after a Cancel without updating the saved row: the pane then sat at the stale path
   listing "Not connected yet" over a live share, and Try again landed there again. A `cancelled` answer over a place
   that is live by then shows no "isn't connected" view.
+- **A failed listing lists again the moment its volume is live** (`live-retry.svelte.ts`), by any route and with no
+  timing assumptions, once per live spell so a real error can't loop. ❗ The structural answer to the Cancel race: a
+  Cancel within ~20 ms of a pick left "Not connected yet" over a share whose mount then finished; whatever order the
+  cancel answer, the error, and the mount arrive in, "failed, then live" now heals.
 - **A pick of the place the pane stands on dials it when it isn't connected** (`picked`, fed from the breadcrumb's
   volume change): after a Cancel or a refusal the pane is already on that volume, so nothing else moves, and the
   switcher's pick of it did nothing. A reload alone left the pane's root at the share's old mount path, so the status
