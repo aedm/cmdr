@@ -18,9 +18,9 @@ via `volumes.rs`); `matcher.rs`, `excludes.rs`, `ranking.rs` judge and order a r
   differently. ❌ Neither carries directory sizes or the include-root filter.
 - **The broad-query guard is per evaluator**: a refusing walk takes the whole RUN with it, ❌ never answering from the
   index alone.
-- **A stale root arena is SERVED**, refreshed in the background: ❌ never reload-on-mismatch, it costs seconds per
-  search. The ONE exception is an arena that can't honor its coverage answer, or the NEXT query silently returns fewer.
-  `LoadedVolume::honors`: equal tokens, or a load STARTED after the answer — ❌ never the token alone.
+- **A stale root arena is SERVED**, refreshed in the background: ❌ never reload-on-mismatch. The ONE exception, an
+  arena that can't honor its coverage answer, CATCHES UP (appends created rows), ❌ never reloads whole, or the NEXT
+  query silently returns fewer. `LoadedVolume::honors`: equal tokens or rows READ after the answer, ❌ never token alone.
 - **Superseding a run ≠ cancelling it**: events stop, the walk runs on. Cancel is the dialog close (which SPARES
   `keep_run_id`), Escape, or quit — ❌ never the arena idle-drop, `RunOrigin::Dialog` only.
 - **Non-root indices are mount-relative**: PREFIX the mount root onto read paths, STRIP it from scopes. Mount root is

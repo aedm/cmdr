@@ -153,7 +153,8 @@ That costs parallelism and nothing else, because the merge is ordered by range e
 open-ended, so a row written after `MAX(id)` was read still lands.
 
 ⚠️ **The merge is the load's memory peak.** The destination is reserved at full size while the segments still hold the
-same bytes, so a ~320 MB arena transiently costs ~640 MB, falling as each segment drops. Removing it needs the mapped
+same bytes, so a ~320 MB arena transiently costs ~640 MB, falling as each segment drops. (It also reserves 1/128 of the
+rows as spare room, which is what lets a catch-up append in place: § "Decision 12".) Removing it needs the mapped
 arena (GitHub #114), not a different loop shape.
 
 **Decision: the row estimate comes from `dir_stats`, not `COUNT(*)`.** `SELECT COUNT(*)` looks like a cheap b-tree count
@@ -424,10 +425,10 @@ lets a run which would answer with NOTHING AT ALL wait instead: no rows and no c
 root already claimed by a walk in flight (`another_walk_owns_the_whole_answer`). Only one walk may have a patch of
 ground (`cover/live/mod.rs`), so such a run has nothing to show and nothing it may walk; it used to finish on the spot
 reading as "no files found", under a note promising the files would turn up in a moment. It now waits for that walk
-(`wait_for_the_other_walk`: the COVERAGE question only, 200 ms apart — reloading the arena per poll would rebuild a
-multi-second snapshot for nothing), then redoes the groundwork once and answers from what the walk wrote. That redo
-reloads the arena on a token mismatch without consulting the walk mark (`AfterAnotherWalk::Yes`): a run that watched a
-walk end knows rows landed, and the mark is a global one-shot somebody else may have taken.
+(`wait_for_the_other_walk`: the COVERAGE question only, 200 ms apart), then redoes the groundwork once and answers
+from what the walk wrote. That redo catches the arena up on a token mismatch without consulting the walk mark
+(`AfterAnotherWalk::Yes`): a run that watched a walk end knows rows landed, and the mark is a global one-shot somebody
+else may have taken.
 
 **The wait ends early on a walk that has STOPPED, never on a clock.** A walk is bounded, but the bound scales badly: a
 share that stopped answering fails one listing per 120 s `LIST_TIMEOUT`, and a share the user is browsing drops the walk
@@ -467,37 +468,58 @@ Two mechanisms, both load-bearing:
   holds every row it calls covered, whatever else landed meanwhile. That is the actual invariant, and it is causal: the
   answer read rows committed before it returned, and the load reads rows after that.
 - **The walk mark plus the freshness test.** `volumes::mark_walked_behind` is set when a walk starts and again on every
-  batch (`live::drive_walk`), so a walk still running re-marks whatever a query consumed. The rebuild runs only when the
-  mark is set AND the arena can't honor the answer. Without the freshness test, every query after any walk pays a full
-  rebuild; without the mark, a boot disk — whose background indexer moves the token several times a second — would
-  rebuild in front of nearly every search, the regression `volumes::get_loaded` documents removing once already. What's
-  left uncovered is ordinary index lag, which search has always had.
+  batch (`live::drive_walk`), so a walk still running re-marks whatever a query consumed. The catch-up (below) runs only
+  when the mark is set AND the arena can't honor the answer. Without the freshness test, every query after any walk pays
+  one; without the mark, a boot disk — whose background indexer moves the token several times a second — would pay one
+  in front of nearly every search. What's left uncovered is ordinary index lag, which search has always had.
+
+**Decision: catch the arena up, don't rebuild it.** `volumes::catch_up_volume` appends the rows CREATED since the arena
+was read (`index::catch_up_search_index`: the rows with an id past its highest) and restamps its token and read instant.
+It replaced a full reload, and the numbers are why: on a boot disk nearly every agent search walks a few frontier roots
+(three per search on David's machine, writing zero rows), so nearly every search after the first paid a 1.2–1.5 s read
+of all 6.3 M rows and a peak ~450 MiB higher, where the catch-up reads 0–2,400 rows in under a millisecond
+(`docs/notes/performance/search-arena-reload-2026-09-27.md`). Why it's enough:
+
+- **Created rows are exactly the ones past the arena's highest id.** Ids come from the writer's one counter, which only
+  climbs within a process; the coverage token rests on the same property, with the same restart edge (`cmdr-index`'s
+  `read/DETAILS.md` § "The freshness token"), and a restart drops every arena.
+- **Created rows are the half the promise needs.** A row a walk DELETED or UPDATED stays as the arena read it: a stale
+  extra result or a stale size, never a missing one, which is the lag background indexing leaves in any warm arena
+  (Accepted difference 6). The background refresh in `get_loaded` still rebuilds a stale arena whole, 30 s apart, while
+  the dialog stays open.
+- **In place, no copy, in the normal case.** The loader reserves 1/128 of the rows as spare capacity (`spare_rows`, ~2
+  MB of rows and ~1 MB of names at 6.3 M), and the caller drops its own handle before catching up. A search still
+  holding the arena, or a catch-up bigger than the room, gets ONE new copy sized with fresh room; the reader keeps the
+  arena it was handed.
+- **Under the volume's load gate**, so it can't interleave with a load or a background refresh, and a caller that finds
+  the arena missing meanwhile waits and gets the caught-up one. An arena dropped while it caught up answers this search
+  and isn't put back.
 
 **Two ways an arena honors an answer** (`LoadedVolume::honors`), and the second exists because the first can't see a
 cold load:
 
 - Its **token** is the answer's, so the two describe the same rows outright. This is the only thing that can be said for
   a WARM arena, which was built before the question was asked.
-- Its **load started after the answer was taken**, so it holds a superset of what the answer calls covered. `Instant`,
-  not the token: `CoverageToken` is a watermark, comparable for equality only (`cmdr-index`'s `read/DETAILS.md`
-  § "The freshness token"), so it can say "something changed" but never "this one is newer". Both stamps are read
-  BEFORE the rows they describe, so each can only under-claim, and under-claiming costs a rebuild rather than serving an
-  answer the arena can't back.
+- Its **rows were read after the answer was taken** (its load, or its latest catch-up: `read_started_at`), so it holds a
+  superset of what the answer calls covered. `Instant`, not the token: `CoverageToken` is a watermark, comparable for
+  equality only (`cmdr-index`'s `read/DETAILS.md` § "The freshness token"), so it can say "something changed" but never
+  "this one is newer". Both stamps are read BEFORE the rows they describe, so each can only under-claim, and
+  under-claiming costs a catch-up rather than serving an answer the arena can't back.
 
 Why the second one matters: a token moves on any write, including the ones that land during the seconds an arena takes
 to build. On a drive being indexed for the first time that is constant, so a COLD load — one already reading the
 database after the answer, and honorable on arrival — read as "out of step" and was thrown away for a second, identical
 build. Every first search of a session paid for two arenas (measured 2.0 s + 2.1 s over a 6 M-entry root index,
 2026-08-15). `live_e2e.rs::a_cold_arena_is_built_once_even_though_the_index_moved_while_it_loaded` pins the count;
-`a_warm_arena_a_walk_wrote_behind_is_rebuilt_before_it_answers` pins that the protection survived, and step 4 of
-`a_drive_with_no_index_is_walked_live_then_read_back_from_what_the_walk_wrote` still fails with an empty list if the
-rebuild goes.
+`a_warm_arena_a_walk_wrote_behind_catches_up_in_place_before_it_answers` pins that the protection survived without a
+rebuild, and step 4 of `a_drive_with_no_index_is_walked_live_then_read_back_from_what_the_walk_wrote` still fails with
+an empty list if the catch-up appends nothing.
 
 **Known narrow hole, pre-existing:** `ensure_volume` single-flights per volume, so a caller can be handed an arena
-another thread was ALREADY building when the answer was taken. The freshness test catches that and rebuilds — but the
-rebuild itself can be donated the same way, and its result is served unchecked. It takes a search landing inside the
-dialog's own pre-load window on a volume a walk is writing to. Closing it needs a load primitive that can promise "built
-by this call", which is a bigger change than it's worth so far.
+another thread was ALREADY building when the answer was taken. The freshness test catches that and catches it up, which
+runs by this call under the load gate, so a warm arena can't slip through. What's left is an arena dropped between the
+two, whose replacing cold load can be donated the same way and is served unchecked. It takes an arena drop landing
+between one search's `ensure_volume` and its catch-up, on a volume a walk is writing to.
 
 ### Decision 11: superseding is not cancelling
 

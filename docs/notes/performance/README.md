@@ -180,6 +180,9 @@ Smaller or already filed, unranked:
 
 Newest first.
 
+- `search-arena-reload-2026-09-27.md`: the arena reload after a walk set the burst peak (~610 MiB) and put 1.4 s in
+  front of the next search, the catch-up that replaced it, and why the settled post-burst footprint comes from big
+  listings instead.
 - `dir-children-index-2026-09-27.md`: a partial index over directory rows cuts the writer's child-dir queries from ~60
   ms to ~10 µs on a 92,000-file folder, added on open with no rescan; per-query and whole-table numbers, and the
   one-time build cost.
