@@ -120,7 +120,7 @@ key.
 `文件` (Finder's document) and bare `套件` (Finder `顯示套件內容`), wider than the `App 套件` card below it, as English
 contrasts packages with app bundles.
 
-## Servers hub (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.server*Toast`)
+## Servers hub (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.server*Toast`/`.forget*`, `fileExplorer.network.share.*`, `fileExplorer.network.browser.*Host*`)
 
 - Servers `伺服器`; Places `位置` (Finder's Locations), ❌ not `地點` (geographic in Freeform and Find My).
 - Last used `上次使用` (AP-HK; Finder's `上次…` shape); Never `從未使用` over bare `永不`, which AP-TW spends on future
@@ -130,8 +130,12 @@ contrasts packages with app bundles.
 - Pin `釘選` / `取消釘選` (Music, AP-TW = AP-HK). Volume switcher `卷宗切換器` everywhere (`切換器` = switcher).
 - Local network `區域網路` over `本機網路`: the macOS permission dialog the user must find says `區域網路`.
 - A server's classifier `部` (composed on `這部 Mac`; tentative, see `review-queue.md`).
+- Signed-in-as suffix is one frame, `以 {username} 身分登入` / `以訪客身分登入`: a bare `以 X 身分` dangles after a
+  name. The buttons reuse it: `以其他身分登入⋯`, `改用訪客身分`.
+- Forget is `忘記` everywhere, hosts included (`已忘記` / `無法忘記`). Confirm bodies name the object (`這部主機`,
+  `這個共享資料夾`) instead of a pronoun on the insert.
 
-## Server sheet and host key (`servers.sheet.*`, `servers.hostKey.*`, `servers.paneState.signedOut`/`.signIn`/`.hostKeyChanged*`, `servers.paneState.retryTotalSeconds`/`.retryTotalMinutes`, `goToPath.dialog.opensServer`/`.addsServer`, `commands.serversConnect.label`)
+## Server sheet and host key (`servers.sheet.*`, `servers.hostKey.*`, `servers.refusal.passwordMissing`, `servers.paneState.signedOut`/`.signIn`/`.notConnected`/`.hostKeyChanged*`, `servers.paneState.retryTotalSeconds`/`.retryTotalMinutes`, `goToPath.dialog.opensServer`/`.addsServer`, `commands.serversConnect.label`)
 
 - The button `連線`, the command `連接伺服器⋯`: Apple's own split in Finder's Connect to Server dialog.
 - Passphrase `密語` (Apple, many keys), ❌ not `通行密碼`. `金鑰密語`, `金鑰檔案`, `金鑰指紋` over Apple Shortcuts'
@@ -142,6 +146,9 @@ contrasts packages with app bundles.
   Start in, and `位置` is Places) nor `啟動資料夾` (Windows Startup). Label and every mention match exactly.
 - "Won't connect" `Cmdr 不會連線到 {name}` (a standing refusal, like `servers.refusal.hostKeyRevoked`), not `停止`.
 - Sheet titles quote the server: `登入「{name}」` / `編輯「{name}」`.
+- Add anyway `仍要加入` (Apple's `仍要儲存` / `仍要共享`), quoted exactly in `addAnywayHelp`. An optional field's
+  placeholder is `選填` (Apple Home's optional field, `errorReporter.dialog.noteLabel`); `可選` is an optional step.
+- A cancelled connect is `{name} 尚未連線`, like `errors.*.notConnected.title`: a state, so no `無法`.
 
 ## Reconnecting and the nothing-to-ask line (`servers.paneState.reconnecting`, `servers.paneState.signedOutNothingToAsk`)
 
@@ -151,7 +158,8 @@ contrasts packages with app bundles.
 
 ## Pin hint, trusted host keys, and the ADB page (`menu.network.pinToSwitcher`/`.unpin`, `servers.pinHint.*`, `settings.behavior.serversPinHintSeen.*`, `settings.section.servers`/`.adb`, `settings.summary.servers`/`.adb`, `settings.servers.*`, `settings.adb.*`, `settings.appearance.tintSmb.*`)
 
-- `釘選到切換器` (Music `釘選到資料庫`); group `群組`, the network group quoted `「網路」群組`.
+- `釘選到切換器` / `從切換器取消釘選` (Music `釘選到資料庫`), the unpin label quoted exactly in `servers.pinHint.body`;
+  group `群組`, the network group quoted `「網路」群組`.
 - "Getting long" `越來越長了` over Apple's `過長`, a can't-use verdict; this is a friendly nudge.
 - Got it `知道了` over Apple's `瞭解`: three keys already ship it.
 - Trusted X `信任的 X`, and the dated status `已信任`. Re-check `重新檢查` (English says re-); Not found `找不到`;

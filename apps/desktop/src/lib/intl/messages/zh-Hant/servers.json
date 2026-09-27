@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "在伺服器上按右鍵並選擇「取消釘選」，或在指令面板中使用「{command}」。它仍會留在「伺服器」列表裡。",
+  "servers.pinHint.body": "在伺服器上按右鍵並選擇「從切換器取消釘選」，或在指令面板中使用「{command}」。它仍會留在「伺服器」列表裡。",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "知道了",
   "@servers.pinHint.gotIt": {
@@ -62,6 +62,38 @@
   "servers.hub.neverUsed": "從未使用",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "以 {username} 身分登入",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "以訪客身分登入",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "選取一部伺服器來編輯。",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "共享資料夾沒有可以編輯的東西。要編輯它所屬的伺服器，請選取伺服器那一列。",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} 是在附近找到的，還沒有儲存，所以沒有東西可以編輯。",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "忘記共享資料夾",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "忘記共享資料夾",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "要忘記 {name} 嗎？Cmdr 不會再列出這個共享資料夾。如果它已經裝載，會繼續保持裝載，你的檔案也會留在伺服器上。",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "區域網路探索已關閉。",
   "@servers.hub.discoveryOff": {
@@ -159,6 +191,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "請輸入 {username} 的密碼。",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} 沒有及時回應，所以什麼都沒儲存。等一下再試一次。",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -182,6 +218,26 @@
   "servers.sheet.editTitle": "編輯「{name}」",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "加入並開啟",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "加入",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "仍要加入",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr 無法檢查這個伺服器，所以「仍要加入」會照你輸入的樣子把它儲存起來。",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} 已儲存在你的「伺服器」列表裡。",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "登入",
   "@servers.sheet.signIn": {
@@ -231,6 +287,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "主機名稱、IP 位址，或你複製來的 smb:// 位址都可以。",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "你複製來的網址（例如 https://nas.local/dav），或主機名稱都可以。",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "這看起來像是 SMB 位址。如果你本來就是這個意思，請在上方選擇 SMB。",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -243,6 +307,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "位址決定了這是哪個伺服器。要改用其他位址，先忘記這個伺服器，再重新加入。",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "位址和帳號決定了這是哪個伺服器。要改這兩項，先忘記這個伺服器，再重新加入。",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -254,6 +322,14 @@
   "servers.sheet.password": "密碼",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "選填",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "如果你的 NAS 需要帳號，就填這一欄。Cmdr 會在你開啟共享資料夾時再問你密碼。",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "金鑰密語",
   "@servers.sheet.passphrase": {
@@ -282,6 +358,10 @@
   "servers.sheet.name": "名稱",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "留空就使用 {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "根資料夾",
   "@servers.sheet.rootFolder": {
@@ -366,6 +446,14 @@
   "servers.paneState.signedOut": "已從 {name} 登出",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "{name} 尚未連線",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "返回",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "登入⋯",
   "@servers.paneState.signIn": {

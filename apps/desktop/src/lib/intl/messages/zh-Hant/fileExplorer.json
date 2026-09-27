@@ -427,17 +427,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "要把 {hostName} 從伺服器列表中移除嗎？",
+  "fileExplorer.network.browser.removeHostConfirm": "要忘記 {hostName} 嗎？Cmdr 不會再列出這部主機，以及儲存在它底下的共享資料夾。不會卸除任何東西。",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "已移除 {hostName}",
+  "fileExplorer.network.browser.hostRemoved": "已忘記 {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "無法移除 {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "無法忘記 {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "已忘記 {hostName} 儲存的密碼",
   "@fileExplorer.network.forgotPassword": {
@@ -490,6 +490,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "從鑰匙圈中移除已儲存的密碼",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "改用訪客身分",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "以其他身分登入⋯",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "忘記已儲存的密碼",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1405,9 +1413,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "忘記",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "要忘記 {name} 嗎？Cmdr 會中斷連線，也不再列出它。你的檔案會留在伺服器上。",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "同時忘記已儲存的密碼",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr 無法忘記 {name}。",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

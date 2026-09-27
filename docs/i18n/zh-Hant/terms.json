@@ -87,7 +87,7 @@
       "main.upgradeNudge.other": "Same as main.upgradeNudge.mac: 新增了 = introduced.",
       "settings.mediaIndex.importanceThreshold.deltaAdd": "A delta readout paired with deltaRemove's 少了約: 多了約 reads as the count going up."
     },
-    "forms": "button 加入伺服器⋯; tags 加入「{color}」 (label) / 加上或移除 (prose); favorites 加入喜好項目; Dock 加入 Dock; attach onto something (a note, a badge, a tag, a modifier) → 加上; add to a report → 補充 / 加到報告裡",
+    "forms": "button 加入伺服器⋯; Add anyway → 仍要加入 (Apple's X anyway shape: 仍要儲存, 仍要共享); tags 加入「{color}」 (label) / 加上或移除 (prose); favorites 加入喜好項目; Dock 加入 Dock; attach onto something (a note, a badge, a tag, a modifier) → 加上; add to a report → 補充 / 加到報告裡",
     "sources": "AP-TW = AP-HK (ADD_DEVICE → 加入裝置⋯, Add Account… → 加入帳號⋯; Finder TG5 加入)"
   },
   "advanced": {
@@ -1380,7 +1380,7 @@
   "guest": {
     "chosen": "訪客",
     "confidence": "high",
-    "forms": "Connect as guest → 以訪客身分連線",
+    "forms": "Connect as guest → 以訪客身分連線; signed-in-as suffix → 以訪客身分登入 / 以 {username} 身分登入; Use guest → 改用訪客身分; Sign in as… → 以其他身分登入⋯",
     "sources": "AP-TW = AP-HK AuthDialog GUEST; NetAuthAgent EINFO_NO_ACCESS_GUEST"
   },
   "hard-link": {
@@ -1572,6 +1572,11 @@
     "confidence": "high",
     "sources": "catalog commands.selectionInvert.label, menu.select.invert; on the select ruling 選取"
   },
+  "ip-address": {
+    "chosen": "IP 位址",
+    "confidence": "high",
+    "sources": "MS TBX IP address → IP 位址 (HKG, TWN); on the server-address ruling 位址; catalog errorReporter.dialog.description, fileExplorer.network.browser.tooltip.resolving"
+  },
   "item": {
     "accept": ["項"],
     "chosen": "項目",
@@ -1755,9 +1760,6 @@
     ],
     "chosen": "本機",
     "confidence": "confirmed",
-    "exceptions": {
-      "servers.sheet.addressPlaceholder": "The literal hostname nas.local, kept verbatim."
-    },
     "sources": "AP-TW = AP-HK, MS, NAU"
   },
   "local-network": {
@@ -1969,6 +1971,17 @@
     "confidence": "high",
     "forms": "filename → 檔名 (41/41) or 檔案名稱",
     "sources": "AP-TW = AP-HK Finder N220"
+  },
+  "nas": {
+    "avoid": [
+      {
+        "form": "網路連接儲存裝置",
+        "why": "MS's spelled-out term is a mouthful nobody says; home users know the device as NAS"
+      }
+    ],
+    "chosen": "NAS",
+    "confidence": "high",
+    "sources": "catalog (servers.hub.emptyMessage, onboarding.stepOptional.networking.desc, settings.network.smbConcurrency.description, errors.listing.hostDown.suggestion all keep Latin NAS, spaced)"
   },
   "navigate": {
     "accept": ["跳至", "跳到", "前往", "回到", "瀏覽", "進入", "離開"],
@@ -2238,7 +2251,7 @@
       "main.dockPinNudge.body": "The macOS Dock takes Apple's own Dock-menu words: 保留在 Dock 上.",
       "main.dockPinNudge.unpinNote": "The macOS Dock takes Apple's own Dock-menu words: 從 Dock 中移除."
     },
-    "forms": "Pin / Unpin → 釘選 / 取消釘選; Pin to X → 釘選到 X; the macOS Dock takes Apple's Dock-menu words: 保留在 Dock 上 / 從 Dock 中移除",
+    "forms": "Pin / Unpin → 釘選 / 取消釘選; Pin to X / Unpin from X → 釘選到 X / 從 X 取消釘選;the macOS Dock takes Apple's Dock-menu words: 保留在 Dock 上 / 從 Dock 中移除",
     "sources": "AP-TW = AP-HK Music (Pin → 釘選, Unpin → 取消釘選); Dock.app DockMenus (Keep in Dock, Remove from Dock)"
   },
   "placeholder": {
@@ -2630,6 +2643,12 @@
     "confidence": "high",
     "forms": "left / right → 向左旋轉 / 向右旋轉",
     "sources": "AP Preview (TW = HK)"
+  },
+  "row": {
+    "chosen": "列",
+    "confidence": "high",
+    "forms": "a server's row → 伺服器那一列; scroll to a row → 捲動到指定的列",
+    "sources": "MS TBX row → 列; catalog commands.cursorScrollTo.label"
   },
   "running": {
     "accept": ["執行中", "正在", "還在", "執行", "進行"],
