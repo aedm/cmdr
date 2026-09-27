@@ -21,7 +21,8 @@ import {
   setupSmb,
   teardownSmb,
   guestMountPoint,
-  guestMountSuite,
+  requireGuestMount,
+  requireGuestSuite,
   SMB_E2E_SUITE_DIR,
   SMB_GUEST_SHARE,
   SMB_GUEST_HOST,
@@ -47,7 +48,7 @@ import {
   mcpAwaitItem,
   mcpAwaitPath,
 } from '../e2e-shared/mcp-client.js'
-import { ensureAppReady, getFixtureRoot, pollUntil, isStateClean } from './helpers.js'
+import { ensureAppReady, expectAndDismissToast, getFixtureRoot, pollUntil, isStateClean } from './helpers.js'
 
 import os from 'os'
 
@@ -361,11 +362,8 @@ describeSmb('SMB mounting and file browsing', () => {
 
     // Navigate directly to the pre-mounted share
     // (The share is mounted by setupSmb → preMountGuestShare)
-    const mount = guestMountPoint()
-    if (mount === null) {
-      test.skip()
-      return
-    }
+    // ❗ Fails, naming the fixture and what's mounted, rather than skipping: a skip hid a mounting regression.
+    const mount = requireGuestMount()
 
     await mcpNavToPath('left', mount)
 
@@ -382,12 +380,9 @@ describeSmb('SMB cross-storage copy', () => {
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
 
-    // ❗ The fixture's own share, found by source: never a foreign share at `/Volumes/public`.
-    const suite = guestMountSuite()
-    if (suite === null || !fs.existsSync(suite)) {
-      test.skip()
-      return
-    }
+    // ❗ The fixture's own share, found by source, with the suite folder visible through the mount. Fails, naming
+    // the fixture and what's mounted, rather than skipping: a skip here hid both copy specs on every run.
+    const suite = await requireGuestSuite()
 
     // Left pane: local fixtures (already set by ensureAppReady)
     // Right pane: suite-specific subdir on the mounted SMB share
@@ -408,6 +403,8 @@ describeSmb('SMB cross-storage copy', () => {
 
     // Verify source still exists (copy, not move)
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
+    // The copy's completion toast: seen, then closed, so it doesn't leak into the next spec.
+    await expectAndDismissToast(tauriPage, 'Copied 1 file')
   })
 
   test('copies file from mounted SMB share to local', async ({ tauriPage }) => {
@@ -415,12 +412,9 @@ describeSmb('SMB cross-storage copy', () => {
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
 
-    // ❗ The fixture's own share, found by source: never a foreign share at `/Volumes/public`.
-    const suite = guestMountSuite()
-    if (suite === null || !fs.existsSync(suite)) {
-      test.skip()
-      return
-    }
+    // ❗ The fixture's own share, found by source, with the suite folder visible through the mount. Fails, naming
+    // the fixture and what's mounted, rather than skipping: a skip here hid both copy specs on every run.
+    const suite = await requireGuestSuite()
 
     // Write test file directly to the SMB server via smbclient (bypasses GVFS
     // caching; files written through the GVFS mount aren't immediately visible).
@@ -449,6 +443,7 @@ describeSmb('SMB cross-storage copy', () => {
     const localCopy = path.join(fixtureRoot, 'right', 'smb-test-file.txt')
     expect(fs.existsSync(localCopy)).toBe(true)
     expect(fs.readFileSync(localCopy, 'utf-8')).toContain('File from SMB share')
+    await expectAndDismissToast(tauriPage, 'Copied 1 file')
   })
 })
 

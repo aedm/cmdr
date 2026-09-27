@@ -77,13 +77,61 @@ export function guestMountPoint(): string | null {
   return fixtureMountPoints(mountOutput, [GUEST_SOURCE])[0] ?? null
 }
 
+/** What SMB mounts there are, for a failure message: `mount`'s smbfs lines on macOS, GVFS's shares on Linux. */
+function describeSmbMounts(): string {
+  try {
+    const lines = IS_LINUX
+      ? fs.readdirSync(path.dirname(SMB_GUEST_MOUNT)).filter((name) => name.startsWith('smb-share:'))
+      : execSync('mount', { encoding: 'utf-8', timeout: 10_000 })
+          .split('\n')
+          .filter((line) => line.includes('(smbfs'))
+    return lines.length > 0 ? lines.join('; ') : 'none'
+  } catch {
+    return 'none readable'
+  }
+}
+
+/** The fixture's guest share as a URL, for messages. */
+const GUEST_SOURCE_URL = `smb://${SMB_GUEST_HOST}:${String(SMB_GUEST_PORT)}/${SMB_GUEST_SHARE}`
+
 /**
- * The suite subdir on the mounted guest share, or `null` when it isn't mounted. Write through this so the writes land
- * in suite-specific space; share-level reads use `guestMountPoint()`.
+ * Where the fixture's guest share is mounted. ❗ Throws, naming the fixture and what IS mounted, when it isn't: a
+ * spec that skipped here hid a mounting regression behind a green run.
  */
-export function guestMountSuite(): string | null {
+export function requireGuestMount(): string {
   const mount = guestMountPoint()
-  return mount === null ? null : `${mount}/${SMB_E2E_SUITE_DIR}`
+  if (mount === null) {
+    throw new Error(`The SMB fixture ${GUEST_SOURCE_URL} isn't mounted. SMB mounts: ${describeSmbMounts()}`)
+  }
+  return mount
+}
+
+/**
+ * The suite subdir on the mounted guest share, visible THROUGH the mount. Write through this so the writes land in
+ * suite-specific space.
+ *
+ * ❗ `resetSmbSuiteDir` creates the subdir with smbclient, straight on the server, and a GVFS mount can go on not
+ * showing it: both copy specs skipped on every Linux run because of it. So this creates it through the mount when it
+ * isn't there (a subdir that already exists server-side answers EEXIST, which is fine), then waits, bounded, until
+ * the mount shows it. Throws, naming the fixture and what's mounted, when it never does.
+ */
+export async function requireGuestSuite(timeoutMs = 10_000): Promise<string> {
+  const suite = `${requireGuestMount()}/${SMB_E2E_SUITE_DIR}`
+  const deadline = Date.now() + timeoutMs
+  while (!fs.existsSync(suite)) {
+    try {
+      fs.mkdirSync(suite, { recursive: true })
+    } catch {
+      // Already there on the server, or the mount is still catching up: the next look tells.
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        `The suite folder ${SMB_E2E_SUITE_DIR} on the SMB fixture ${GUEST_SOURCE_URL} never showed at ${suite}. SMB mounts: ${describeSmbMounts()}`,
+      )
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return suite
 }
 
 const SMB_SERVERS_DIR = path.resolve(__dirname, '../smb-servers')
@@ -369,7 +417,8 @@ export function teardownSmb(): void {
  * file on the server directly, and GVFS discovers it naturally on the next browse.
  */
 export function smbWriteFile(host: string, port: number, share: string, remoteName: string, content: string): void {
-  const tmpFile = path.join(os.tmpdir(), `smb-upload-${String(Date.now())}-${remoteName}`)
+  // The base name only: `remoteName` may carry a folder (`e2e-playwright/…`), which isn't a folder in the temp dir.
+  const tmpFile = path.join(os.tmpdir(), `smb-upload-${String(Date.now())}-${path.basename(remoteName)}`)
   try {
     fs.writeFileSync(tmpFile, content)
     execSync(`smbclient '//${host}/${share}' -N -p ${String(port)} -c 'put ${tmpFile} ${remoteName}'`, {
