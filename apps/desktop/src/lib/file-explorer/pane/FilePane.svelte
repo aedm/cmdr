@@ -54,6 +54,7 @@
     import MtpConnectionView from './MtpConnectionView.svelte'
     import RemoteConnectView from './RemoteConnectView.svelte'
     import { createPlaceConnect } from './place-connect.svelte'
+    import { createLiveRetry } from './live-retry.svelte'
     import { createPaneVolumeState } from '../navigation/pane-volume-state.svelte'
     import { answersNow } from '../navigation/connection-state'
     import { placeRootOf } from '$lib/servers/open-sign-in'
@@ -621,6 +622,12 @@
         landingOf: placeRootOf,
         goBack: () => onGoBack?.(),
         canGoBack: () => canGoBack,
+    })
+    // A listing that failed lists again the moment its volume is live, by any route (`live-retry.svelte.ts`).
+    createLiveRetry({
+        getVolumeInfo: () => currentVolumeInfo,
+        hasListingError: () => friendlyError !== null,
+        retry: () => void navigateToPath(currentPath),
     })
 
     // A pane standing on a PHONE dials it the same way, gated on the device's
