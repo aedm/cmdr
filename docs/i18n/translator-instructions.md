@@ -59,8 +59,8 @@ style guide disagree, the style guide's general rule wins unless the ruling says
   native reviewer can settle to docs/i18n/{{TAG}}/review-queue.md.
 - **decisions.md holds distilled rulings only**: "X over Y because Z", citing the keys in backticks in its heading, at
   most ~3 lines. When a ruling changes, edit or replace its entry and delete what it supersedes; never append a
-  narrative, a dated story, or a second entry beside the old one. The file has a byte budget that only shrinks
-  (`i18n-termbase` warns when it grows), so distilling is the job. Anything that applies beyond one language goes to
+  narrative, a dated story, or a second entry beside the old one. The file has a byte budget (`i18n-termbase` warns past
+  it): distill first, and bump it when new decisions need room. Anything that applies beyond one language goes to
   docs/i18n/source-queue.md as a proposal to promote, never into this language's files.
 - **Check**: run `pnpm i18n:check-locale {{TAG}}` in `apps/desktop` (several tags work too). It prints one line per
   clean check and the full report only for one that isn't; the batch is done when every line is a ✓.

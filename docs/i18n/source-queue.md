@@ -6,3 +6,25 @@ key(s), what's wrong, the suggested fix. The lead fixes the English, the descrip
 rule into `translation-principles.md` or `translator-instructions.md`), then deletes the entry; git keeps the history.
 
 ## Open
+
+- `fileExplorer.network.browser.removeHostConfirm`, `.hostRemoved`, `.hostRemoveFailed`: descriptions (and key names)
+  still say "remove" while the English says "Forget". Say forget, and that the host is a saved server.
+- `fileExplorer.network.share.useGuest`: "Use guest" is terse and the description doesn't say whether it reconnects as
+  guest or re-lists the shares. Consider "Switch to guest" or "Browse as guest".
+- `menu.network.unpin`, `servers.pinHint.body`: the descriptions still call it a "very short label" / quote "Unpin", but
+  the English is now "Unpin from switcher". Update both; "switcher" alone doesn't hit the `volume-switcher` concept
+  either.
+- `servers.paneState.notConnected`: "{name} isn't connected" forces agreement with `{name}` in gendered languages, and
+  the description says "yet" where the English doesn't. Prefer "Not connected: {name}"-style framing.
+- `servers.hub.shareAccount`, `.guestAccount`: "as {username}" has no bare equivalent in many languages; say a label
+  form ("Account: sven") or an added verb is fine, and add a screenshot.
+- `fileExplorer.navigation.forgetConfirmButton`: one button serves the server, share, and saved-password alerts; locales
+  that clear a password with another verb (zh `清除`) get a button that doesn't match the title. Consider a separate
+  key.
+- `servers.hub.editPickHint`: "Select a server" pulls locales toward their file-marking verb; the English means moving
+  the cursor to a row.
+- Cross-language rule proposal: when English prose names a button without quotes (`servers.sheet.addAnywayHelp`,
+  `servers.pinHint.body`), a locale may quote it; or quote it in English too.
+- `list` concept: matches the verb "lists" (Cmdr lists …); add a verb-sense `notMatch` so locales stop needing
+  exceptions.
+- `go-back` concept: matches "forward" while its headword is "Go back"; split or rename.

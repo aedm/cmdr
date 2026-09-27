@@ -1735,7 +1735,7 @@
     "distinct": ["remote", "local-network"],
     "en": "local",
     "match": ["local", "locally"],
-    "notMatch": ["local network", "local networks"],
+    "notMatch": ["local network", "local networks", "nas.local"],
     "sense": "On this Mac, as opposed to a server or the cloud (a local model, stored locally)."
   },
   "local-network": {

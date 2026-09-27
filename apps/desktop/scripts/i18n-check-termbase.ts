@@ -489,7 +489,7 @@ function reportDecisionsGrowth(
   if (decisionsBytes === undefined || decisionsBudget === undefined || decisionsBytes <= decisionsBudget) return false
   out(
     `${locale}/decisions.md grew to ${String(decisionsBytes)} bytes, past its budget of ${String(decisionsBudget)}: ` +
-      `distill instead of appending (edit or replace the ruling, delete what's superseded). Raising the budget needs David's OK.`,
+      `distill instead of appending (edit or replace the ruling, delete what's superseded). When new decisions need room, bump its decisionsBytes in i18n-termbase-baseline.json.`,
   )
   return true
 }

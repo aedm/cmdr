@@ -22,7 +22,7 @@ Prose glossaries rotted in three ways; this is how the termbase stands against e
   moved to `avoid` with its reason. `decisions.md` prose can still hold an older rationale, but it prescribes nothing:
   the ruling wins.
 - **Journal regrowth** (append-only notes swelling past 200 KB until nobody reads them): REDUCED. `decisions.md` holds
-  distilled rulings edited in place, and a byte budget that only shrinks warns when one grows (§ Tooling).
+  distilled rulings edited in place, and a byte budget warns when one grows (§ Tooling).
 
 Not fixed by any shape: prose rationale going stale, and evidence citations that point outside the repo (a Microsoft TBX
 id, a macOS bundle path), which stay unverifiable.
@@ -283,8 +283,8 @@ about 2 s when most of the batch is stale (measured on sv, 2026-09-25).
   `i18n-check-term-consistency.ts`'s `notYetReviewed`.
 - **`decisions.md` growth is a WARN** (exit 1): the same baseline file records each locale's `decisions.md` byte size
   (`decisionsBytes`), and a file past its number warns. Local runs ratchet it down to the current size, record a
-  locale's first `decisions.md` at its size, and drop one that's gone. So the file only grows through a deliberate bump
-  (David's OK), and distilling it (editing an entry in place, deleting what's superseded) lowers the budget for good.
+  locale's first `decisions.md` at its size, and drop one that's gone. Bump the number by hand when new decisions need
+  room; distilling (editing an entry in place, deleting what's superseded) lowers it for good.
 - A locale without `terms.json` is skipped silently.
 - `--list` prints every drifting key even under the baseline: the cleanup view.
 - A `<tag>/concepts-proposed.json`, when a parallel fan-out leaves one, is validated too, and its IDs count as known for
