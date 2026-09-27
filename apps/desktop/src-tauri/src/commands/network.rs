@@ -116,7 +116,7 @@ fn account_listing_for(
     port: u16,
 ) -> (
     smb_client::GuestAttempt,
-    Option<crate::network::keychain::SmbCredentials>,
+    Option<SmbCredentials>,
 ) {
     use crate::network::server_identity::{SmbServer, smb_server};
 
