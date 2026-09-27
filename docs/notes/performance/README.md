@@ -180,6 +180,8 @@ Smaller or already filed, unranked:
 
 Newest first.
 
+- `search-loop-allocations-2026-09-27.md`: the search loop allocated per row (regex cache pool, exclude fold, ranking),
+  the fixes, and the interleaved before/after numbers that close the system allocator's search penalty.
 - `hidden-entry-diffs-2026-09-23.md`: diffs skip rows the pane doesn't show; natural and controlled-churn A/B numbers.
 - `webcontent-idle-fixes-2026-09-23.md`: the seven frontend idle fixes and their interleaved before/after numbers.
 - `webcontent-idle-cost-2026-09-23.md`: where WebContent and the GPU helper spend idle CPU, why window state barely

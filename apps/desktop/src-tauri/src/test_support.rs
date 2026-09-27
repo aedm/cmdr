@@ -27,6 +27,9 @@
 //! Feature-gating a shared copy doesn't work either: every binary linking that crate would get a
 //! second global allocator and fail to build.
 //!
+//! For parallel code, [`allocations_on_pool`] counts the allocations a dedicated rayon pool's
+//! threads make: the per-thread counter can't see work that runs on rayon's workers.
+//!
 //! ❌ **Never let this become a no-op.** With no allocator installed, [`heap_bytes_held`] reports
 //! 0 for everything and every memory guard passes while measuring nothing. That's why
 //! `search/ranking/memory_tests.rs` asserts a non-zero measurement before it asserts a budget.
