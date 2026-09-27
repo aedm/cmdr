@@ -61,8 +61,8 @@ Run B, indexing off, 18:10–18:32 (22 min):
   run's SMB fixture mounted and unmounted `/Volumes/café` once.
 
 **Indexing-driven share: ~1.1–1.4% of the 2.2%** (A minus B), of which the writer is 0.56 and the rest is the live event
-loop and reconciler on tokio workers. On this machine it's load from sibling agents; follow-up #6 (not indexing build
-output) is what removes most of it.
+loop and reconciler on tokio workers. On this machine it's load from sibling agents' build output and browser caches.
+Build output stays indexed by decision (issue #236, closed as not planned).
 
 ## Idle memory
 

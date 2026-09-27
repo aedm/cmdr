@@ -10,7 +10,7 @@ Pure throughput benchmarks (scan, copy, search latency) stay in `docs/notes/READ
 
 1. This page, all of it. The methodology rules below have each cost at least one wrong answer.
 2. `docs/tooling/memory-debugging.md`: how to measure memory (the `memory_diagnostics` MCP tool first, `vmmap` second),
-   the `IOAccelerator` trap, fingerprinting a block by region size, and attributing allocations.
+   the `IOAccelerator` and `IOSurface` traps, fingerprinting a block by region size, and attributing allocations.
 3. `idle-cpu-attribution-2026-08-03.md`: how idle CPU was mis-attributed four times and what method held.
 4. The dated note for the area you're in, from the index at the bottom.
 
@@ -21,25 +21,35 @@ Pure throughput benchmarks (scan, copy, search latency) stay in `docs/notes/READ
 - **Steady-state RAM of 200–300 MB**, never above 300 MB while nothing is indexing, searching, or transferring.
 - **Idle CPU under 1%**.
 
-**Memory, prod v0.46.1 after ~25 h** (verified with `vmmap` and `footprint -s` on the `/Applications` build, 2026-09-22;
-breakdown in `mimalloc-purge-experiment-2026-09-22.md` § "Baseline"):
+All readings below are release builds of `main` on David's dev Mac, the heavy case (see § "Methodology rules"), over a
+clone of prod's data unless marked otherwise.
 
-- Footprint **708 MiB** (peak 829).
-- Rust heap (mimalloc, tag 100, which `vmmap` calls `IOAccelerator`) **611 MiB**: 275 dirty plus 336 swapped. The SQLite
-  page slab (63 MiB) is inside it.
-- System malloc (`Malloc *`) **66 MiB**, beside the heap, not in it.
-- CLIP not loaded (no `Malloc Large`).
-- A later census, on a release build of current `main` over a clone of prod's data, read **101 MiB live and 144 MiB
-  slack in a 246 MiB heap** at 22 min (verified with `rustHeapCensus`, 2026-09-23). Current `main` includes the four
-  heap changes in `rust-heap-attribution-2026-09-23.md`, so expect the next prod reading to be lower than 708.
+**Memory, idle: met** (verified on release `e9fd713ad`, `memory_diagnostics` with `rustHeapCensus`, 2026-09-27;
+`idle-census-2026-09-27.md` § "Idle memory"):
 
-**Idle CPU, prod** (verified with per-thread cumulative CPU from `ps -M` and CPU-time deltas, 2026-09-17):
+- Indexing on: footprint **263–273 MiB** at 10–37 min; heap ~206–211, of which ~103 live (64 of it the SQLite page slab)
+  and ~105 slack.
+- Indexing off: **~195 MiB** (194–196); heap ~146, ~80 live.
+- Prod 0.47.0 after 2 h: footprint 295 MiB (`main-process-iosurface-2026-09-27.md`).
 
-- Main process ~2.5% of a core, WebContent ~1.7%, GPU helper ~0.1%.
-- **No hotspot**: about 30 threads at 0.05–0.22% each. The cost is diffuse and wakeup-driven, so there's no single fix
-  left; each remaining item below shaves a thread or two.
-- WebContent's share has since dropped: a median 1.50% → 0.36% on a pane on `~` with indexing on
-  (`webcontent-idle-fixes-2026-09-23.md`).
+**Memory, after search and listing bursts: missed, the open RAM gap** (verified on release builds with the arena
+catch-up, `memory_diagnostics` plus a `proc_pid_rusage` poller, 2026-09-27; `search-arena-reload-2026-09-27.md`):
+
+- The footprint settles at **~405–418 MiB** and stays there past 15 min, against the 300 target.
+- Live bytes return to their pre-burst level (~100 MiB) within 30 s of the arena's drop. What stays is allocator slack
+  (~240 MiB), mostly from listing the two big folders (~100 MiB of it on its own); a search alone gives its memory back
+  within 5 min.
+- The burst peak is ~1,334 MiB.
+
+**Idle CPU** (verified on release builds, per-thread `proc_pidinfo` deltas, 2026-09-27):
+
+- **Indexing off, network and MCP off: 0.14%** of a core for the main process, median over four 240 s windows
+  (0.13–0.17%), after the space-poll fix (`space-poll-cost-2026-09-27.md`). Met.
+- **Indexing on: 2.2%** main process, WebContent 0.73%, GPU helper 0.31% (`idle-census-2026-09-27.md` § "Idle CPU").
+  Measured before the child-dir index, the space-poll fix, and mDNS gating, under ~160 FS events/s from sibling agents'
+  builds; the indexing-driven share was ~1.1–1.4%. Not yet re-measured.
+- **No hotspot**: the cost is spread over many threads at a few hundredths of a percent each, so each remaining item
+  below shaves a thread or two.
 
 **Idle frontend**: `webcontent-idle-cost-2026-09-23.md` (before) and `webcontent-idle-fixes-2026-09-23.md` (after).
 
@@ -51,9 +61,14 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
   parked. Use per-thread cumulative CPU (`ps -M <pid>`) and CPU-time deltas over minutes (`ps -o time`). Never rank work
   off one `sample` window, never count a syscall leaf as CPU, never infer CPU from log volume
   (`idle-cpu-attribution-2026-08-03.md` § "The rules this leaves behind").
+- **For per-thread CPU with names, use `proc_pidinfo`** (`PROC_PIDLISTTHREADS` plus `PROC_PIDTHREADINFO`), diffed per
+  minute; the process delta minus the live threads' deltas is what exited threads spent (`idle-census-2026-09-27.md` §
+  "A better CPU instrument").
 - **`top`'s `IDLEW` column is unreliable on macOS 27**: it read static across intervals. Don't use it for wakeups.
 - **`IOAccelerator` in `vmmap` is the Rust heap** (mimalloc tags its arenas 100), and `Malloc *` is NOT Cmdr's heap
   (`docs/tooling/memory-debugging.md` § "The trap").
+- **`IOSurface` (tag 88) in the main process isn't its cost**: it's WebKit's layer backing, owned and paid for by
+  WebContent, and outside the main footprint (`docs/tooling/memory-debugging.md` § "The second trap").
 - **The same tag is spelled three ways**: `vmmap` says `Malloc Small`, older notes say `MALLOC_SMALL`, and
   `memory_diagnostics` reports `VM_MEMORY_*` names. Match on the tag NUMBER (`docs/tooling/memory-debugging.md`).
 - **`vmmap`'s `SQLite Page Cache` row (32 KB) is not the page slab.** The slab is a leaked Rust allocation inside the
@@ -81,6 +96,20 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
 
 ## What's fixed, and where it's documented
 
+- **Search arena catch-up**: a search after a walk appends the walk's new rows to the warm arena, which takes ~610 MiB
+  off the burst peak and cuts that search from 1.4 s to 0.1 s: `search-arena-reload-2026-09-27.md`.
+- **Child-dir partial index**: the writer's child-dir lookups drop from ~60 ms to ~10 µs on a 92,000-file folder, added
+  on open with no rescan: `dir-children-index-2026-09-27.md`.
+- **Space poll**: `statfs` moves an occasional important-usage reading, cutting the main process from ~0.77% to ~0.14%
+  of a core at idle: `space-poll-cost-2026-09-27.md`.
+- **mDNS browse gating**: the browse runs only while something needs it, saving two threads and ~0.055% of a core at
+  idle: `mdns-browse-gating-2026-09-27.md`.
+- **Search loop allocations**: the scan no longer allocates per row, every query is 2–10× faster, and the system
+  allocator's search penalty is gone: `search-loop-allocations-2026-09-27.md`.
+- **Walker thread pool**: 97–99% fewer walker thread creations. A hygiene win; memory didn't move:
+  `walker-thread-pool-2026-09-27.md`.
+- **`IOSurface` relabel**: `memory_diagnostics` labels tag 88 as WebKit layer backing that isn't the main process's
+  cost: `main-process-iosurface-2026-09-27.md`.
 - **Idle frontend**: seven fixes (scanning tooltips, Size-column width hold, disk-space emits, backend routing of folder
   sizes, refresh only on a shown change, the hourglass delay, free-space precision):
   `webcontent-idle-fixes-2026-09-23.md`.
@@ -102,53 +131,63 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
 ## Open follow-ups
 
 The single ranked list. Where an issue exists, it's the place to track the work; the rest have none yet. Ranked by
-expected payoff over effort.
+expected payoff against the targets over effort.
 
-1. **Pool the index walker threads, then re-compare allocators.**
-   `crates/cmdr-index/src/indexing/scanner/walker/engine.rs` spawns a watchdog plus workers per walk, and
-   `reconcile/reconciler/rescan/mod.rs` spawns `rescan-subtree` per subtree reconcile: ~29,000 threads in 40 min, which
-   likely strands mimalloc pages. Then re-run v3 against the system allocator at idle
-   (`allocator-comparison-2026-09-23.md`). Status: not started. Clear win on churn alone.
-2. **Diagnose the ~500 MiB still live 13 min after search bursts**, under every allocator. Measured on a base from
-   before the MCP arena's 30 s drop, so re-check on current `main` first; it may be gone. Status: not started.
-3. **The search loop probably allocates per entry** (a no-match query slows under the system allocator). Unverified.
-   Fixing it would speed search under any allocator. Status: not started.
-4. **One SMB share reached three ways becomes three volumes.** `smb_volume_id` keys on the address as mounted, so the
+1. **Settled allocator slack after bursts: ~405–418 MiB against the 300 target.** Big listings keep ~100 MiB, and the
+   slack sits in free arena slices mimalloc keeps committed (`search-arena-reload-2026-09-27.md` § "What the settled
+   footprint is made of"). A slack-probe effort is running: a forced `mi_collect`, the listing source, and the system
+   allocator plus `malloc_zone_pressure_relief`. The allocator choice is David's once the numbers are in. Status: in
+   progress.
+2. **Re-measure idle CPU with indexing on, on current `main`.** The 2.2% predates the child-dir index, the space-poll
+   fix, and mDNS gating. Use the census recipe (`idle-census-2026-09-27.md`) and say how many FS events/s the machine
+   saw. Status: not started.
+3. **After the next release**: run `memory_diagnostics` (it now includes `rustHeapCensus`) on a long-running prod to
+   explain the rest of the heap (~360 MiB was unexplained at 0.46.1), and run the Cmdr acceptance check for the `smb2`
+   socket fix (mount/unmount cycles leave no sockets). `smb2`'s own consumer suite wasn't run for 0.24.1.
+4. **The search arena's 30 s background refresh still does a full rebuild with the old arena alive**: the same
+   three-copies peak, on a timer, while someone keeps searching. Options: catch up on each refresh and rebuild whole
+   only every few minutes (the rebuild is what carries deletions), or drop the old arena first
+   (`search-arena-reload-2026-09-27.md` § "Still open"). Status: not started.
+5. **WebContent costs 0.73% of a core with indexing on against 0.11% off**: coalesce the index-driven size updates on
+   the frontend side, for rows whose readout doesn't change (`idle-census-2026-09-27.md` § "The levers", lever 5).
+   Estimate: up to −0.5% on a churning machine. Status: not started.
+6. **WebContent grows over days** (138 → 262 MB): take a Web Inspector heap snapshot on a long-running build before
+   changing anything. Status: not started.
+7. **One SMB share reached three ways becomes three volumes.** `smb_volume_id` keys on the address as mounted, so the
    LAN IP, a VPN IP, and the mDNS name make three indexes, writers, and scans
    (`thread-and-connection-inventory-2026-09-22.md`). Fix with an alias-adoption layer, not `same_server*` as a key.
    Risk: a wrong match merges two indexes. Status: not started; worth a spec.
-5. **Gate the mDNS browse on UI need, and keep the identity cache.** The staleness policy is David's call
-   (recommendation: mount dedupe never trusts a stale cache). Status: waiting on David.
-6. **Cmdr indexes developers' build output** (`target/`, `node_modules`, `.svelte-kit`, temp fixtures). Whether the
-   rescan walk may read `SYSTEM_DIR_EXCLUDES` is David's call: issue #236.
-7. **A stuck-loop watchdog at the log sink**, plus a `(target, level)` counter. Designed, ~2–2.5 days. Separately,
-   third-party `log::error!` never reaches the error-report flow (Flow B). Status: not started.
-8. **The CPU half of the diagnostics instrument**: per-thread CPU (`task_threads` plus `thread_info`) and wakeup
-   counters (`TASK_POWER_INFO`) over MCP, next to `memory_diagnostics`. It would also log thread-count growth over a
-   run. Status: not started.
-9. **A sync-status pool thread wedged in a File Provider call** (seen in the prod log). The pool bounds the cost by
-   design; what's open is which provider call never answers. Status: not started.
-10. **Load only the active language's messages** (~10–25 MB of WebContent heap and 4 MB of startup parse): issue #134,
+8. **The root volume can skip `drive_is_listed`'s `getfsstat` on every subtree reconcile**: the boot volume can't be
+   unlisted, and the call showed ~470 samples in a churn window (`idle-census-2026-09-27.md` lever 6). Small. Status:
+   not started.
+9. **The CPU half of the diagnostics instrument**: per-thread CPU with names (the census's `proc_pidinfo` recipe) and
+   wakeup counters (`TASK_POWER_INFO`) over MCP, next to `memory_diagnostics`. It would also log thread-count growth
+   over a run. Status: not started.
+10. **A per-chunk memo of ancestor verdicts in the search exclude check.** Non-ASCII ancestor names still fold through
+    `String`s, and one-letter queries still take ~275 ms re-walking the same ancestors for every match
+    (`search-loop-allocations-2026-09-27.md` § "What's left"). Status: not started.
+11. **Load only the active language's messages** (~10–25 MB of WebContent heap and 4 MB of startup parse): issue #134,
     David's decision.
-11. **Upstream the `mdns-sd` fix.** The PR draft is in `docs/notes/mdns-sd-upstream-pr/pr-draft.md`, unsent. Add a guard
+12. **A stuck-loop watchdog at the log sink**, plus a `(target, level)` counter. Designed, ~2–2.5 days. Separately,
+    third-party `log::error!` never reaches the error-report flow (Flow B). Status: not started.
+13. **At launch, share lists are prefetched for every discovered SMB host**, even with the Servers view closed
+    (`mdns-browse-gating-2026-09-27.md`). Arguably a product call. Status: not started.
+14. **A sync-status pool thread wedged in a File Provider call** (seen in the prod log). The pool bounds the cost by
+    design; what's open is which provider call never answers. Status: not started.
+15. **Upstream the `mdns-sd` fix.** The PR draft is in `docs/notes/mdns-sd-upstream-pr/pr-draft.md`, unsent. Add a guard
     that `mdns-sd` resolves from `vendor/`: a dependency bump past 0.20.x would silently drop the `[patch]`. Status:
     draft ready.
-12. **The `bridge*` interface filter for mDNS**: parked (it false-positives on Thunderbolt Bridge).
-13. **WebContent grows over days** (138 → 262 MB): take a Web Inspector heap snapshot on a long-running build before
-    changing anything. Status: not started.
-14. **The i18n screenshot run may lose drive-row coverage**, since the scanning tooltip body is no longer mounted until
-    hovered. Check on the next capture run.
-15. **After the next release**: run `memory_diagnostics` (it now includes `rustHeapCensus`) on a long-running prod to
-    explain the rest of the heap (~360 MiB was unexplained at 0.46.1), and run the Cmdr acceptance check for the `smb2`
-    socket fix (mount/unmount cycles leave no sockets). `smb2`'s own consumer suite wasn't run for 0.24.1.
-16. **`SmbClient::close()` (LOGOFF)** was left out of `smb2` on purpose; it needs design calls
+16. **The direct-symlink EXISTS query has the same O(children) shape** as the child-dir queries (~62 ms on a 92,000-file
+    folder), but runs only when a symlink changes (`dir-children-index-2026-09-27.md` § "Left as it is"). Low priority.
+17. **`SmbClient::close()` (LOGOFF)** was left out of `smb2` on purpose; it needs design calls
     (`smb2-socket-lifetime-2026-09-23.md` § "Left out on purpose").
-17. **Reply to the #92 reporter**: David's.
+18. **The `bridge*` interface filter for mDNS**: parked (it false-positives on Thunderbolt Bridge).
+19. **Refresh the Finder-style free space reactively when purgeable space changes**: #308, `someday`.
 
 Smaller or already filed, unranked:
 
-- **Take a fresh idle baseline on a quiet machine**, issue #231: largely answered by the two baselines above; what's
-  left is re-ranking the CLIP items against them.
+- **Take a fresh idle baseline on a quiet machine**, issue #231: largely answered by `idle-census-2026-09-27.md`; what's
+  left is re-ranking the CLIP items against it.
 - **CLIP**: should an idle tower unload itself (#233), the ~400 MB non-GPU compute-unit path (#232), and an fp16 text
   tower (#234). The costs they trade: `crates/cmdr-index/src/media_index/clip/DETAILS.md` § "What holding the towers
   costs".
@@ -169,10 +208,17 @@ Smaller or already filed, unranked:
   under a second (`mcp-connection-leak-2026-09-22.md`).
 - **The "thread leak"**: every thread is legitimate and bounded (`thread-and-connection-inventory-2026-09-22.md`).
 - **"132 connections × 16 MB page cache"**: page memory is one process-wide slab (same note).
-- **mimalloc purge tuning**: no effect on the slack (`rust-heap-attribution-2026-09-23.md`).
+- **"Thread churn strands mimalloc pages"**: refuted. Five paired rounds with a 3–20× churn difference left the slack
+  within noise (`walker-thread-pool-2026-09-27.md`).
+- **mimalloc purge tuning, `MIMALLOC_PURGE_DELAY=0` included**: no effect on the settled slack; immediate purging only
+  lowers the burst peak (`rust-heap-attribution-2026-09-23.md`, `idle-census-2026-09-27.md` § "Follow-up #2").
 - **Capping tokio's blocking pool**: not where the thread churn is, and measured to change nothing
   (`allocator-comparison-2026-09-23.md`).
 - **mimalloc v2**: no gain over v3 (same note).
+- **The main process's `IOSurface`**: WebKit's layer backing, charged to WebContent, where Cmdr already costs under half
+  a bare `WKWebView` (`main-process-iosurface-2026-09-27.md`).
+- **Not indexing developers' build output** (`target/`, `node_modules`, `.svelte-kit`): build output stays indexed and
+  gets no special treatment, by David's decision; issue #236 is closed as not planned.
 - **The GPU-compositor theory of the memory runaway**: it was the Rust heap mislabeled
   (`memory-runaway-rust-heap-2026-07-25.md`).
 
@@ -205,8 +251,9 @@ Newest first.
   matters, and the frontend memory picture (including the eager translation catalogs).
 - `rust-heap-attribution-2026-09-23.md`: live data against slack in the Rust heap, the named live consumers, the four
   changes and their measured effect, and the ~360 MiB still unexplained at 0.46.1.
-- `allocator-comparison-2026-09-23.md`: v3 against v2 and the system allocator, the decision to keep v3, and the walker
-  thread churn behind mimalloc's slack. Raw numbers: `allocator-comparison-2026-09-23.csv`.
+- `allocator-comparison-2026-09-23.md`: v3 against v2 and the system allocator, and the decision to keep v3 (its search
+  penalty argument is gone: `search-loop-allocations-2026-09-27.md`). Raw numbers:
+  `allocator-comparison-2026-09-23.csv`.
 - `smb2-socket-lifetime-2026-09-23.md`: the two `smb2` socket bugs behind the leftover SMB sockets, fixed in 0.24.1.
 - `mimalloc-purge-experiment-2026-09-22.md`: what's tunable in mimalloc v3 (option names, `launchctl setenv`, why
   `MIMALLOC_SHOW_STATS` is half-useful), the 0.46.1 baseline, and a purge A/B protocol whose prior is low.
