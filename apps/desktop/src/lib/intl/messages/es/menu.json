@@ -614,9 +614,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Desfijar",
+  "menu.network.unpin": "Desfijar del selector",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Olvidar el servidor",
   "@menu.network.forgetServer": {

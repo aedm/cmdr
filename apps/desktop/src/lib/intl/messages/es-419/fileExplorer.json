@@ -67,9 +67,9 @@
   "@fileExplorer.network.browser.tooltip.authFailed": {
     "sourceHash": "9bba671"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "No se pudo quitar {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "No se pudo olvidar {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "e1d0232"
+    "sourceHash": "5f0d379"
   },
   "fileExplorer.network.forgotPassword": "Se olvidó la contraseña guardada de {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -342,5 +342,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {No se pudo copiar “{name}”.} one {No se pudo copiar {countText} elemento.} many {No se pudieron copiar {countText} elementos.} other {No se pudieron copiar {countText} elementos.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9de914d"
+  },
+  "fileExplorer.network.browser.hostRemoved": "Cmdr olvidó {hostName}",
+  "@fileExplorer.network.browser.hostRemoved": {
+    "sourceHash": "b6ed0e4"
   }
 }

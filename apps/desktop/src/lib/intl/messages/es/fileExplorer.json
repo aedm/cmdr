@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "¿Quitar {hostName} de la lista de servidores?",
+  "fileExplorer.network.browser.removeHostConfirm": "¿Olvidar el servidor {hostName}? Cmdr lo quita de la lista, junto con sus recursos compartidos guardados. No se desmonta nada.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "{hostName} quitado",
+  "fileExplorer.network.browser.hostRemoved": "Cmdr ha olvidado {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "No se ha podido quitar {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "No se ha podido olvidar {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Se ha olvidado la contraseña guardada de {hostName}",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Quitar la contraseña guardada del Llavero",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Entrar como invitado",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Iniciar sesión como…",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Olvidar la contraseña guardada",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1410,9 +1418,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Olvidar",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "¿Olvidar {name}? Cmdr corta la conexión y lo quita de la lista. Tus archivos se quedan en el servidor.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Olvidar también la contraseña guardada",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr no ha podido olvidar {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {

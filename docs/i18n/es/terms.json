@@ -1286,6 +1286,11 @@
     "confidence": "high",
     "sources": "Total Commander es (Invertir selección); Double Commander"
   },
+  "ip-address": {
+    "chosen": "dirección IP",
+    "confidence": "high",
+    "sources": "macOS es (dirección IP ×21, Dirección IP ×4 in the pile); catalog fileExplorer.network.browser.tooltip.resolving"
+  },
   "item": {
     "chosen": "elemento",
     "accept": ["elementos"],
@@ -1368,6 +1373,24 @@
     "accept": ["líneas"],
     "confidence": "high",
     "sources": "standard"
+  },
+  "list": {
+    "chosen": "lista",
+    "accept": ["listas"],
+    "forms": "the hub row → la lista Servidores (unquoted); stop listing X → quitar X de la lista",
+    "confidence": "high",
+    "sources": "macOS Finder (visualización como lista); catalog la lista Servidores / la lista de servidores",
+    "exceptions": {
+      "errors.write.originalsKeptAside.message.many": "The verb (the details list them all) → enumerar, not the noun.",
+      "settings.behavior.openTerminalHereApp.description": "The verb (Cmdr lists the apps) → muestra, as a picker shows its options.",
+      "settings.behavior.textEditorApp.description": "The verb (Cmdr lists the editors) → muestra, as a picker shows its options."
+    }
+  },
+  "local": {
+    "chosen": "local",
+    "accept": ["locales"],
+    "confidence": "high",
+    "sources": "macOS es (Local); every file-manager corpus"
   },
   "local-network": {
     "chosen": "red local",

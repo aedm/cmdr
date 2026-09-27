@@ -47,3 +47,7 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   stretches the verb; the fallback is `Cmdr no pudo deshacer lo hecho con {name}`.
 - **`En segundo plano`** (the empty-queue button): if a reviewer finds it too elliptical, `Pasar a segundo plano` is the
   reserve (21 characters on a button whose other state says `Cola`).
+- **`Entrar como invitado`** (`fileExplorer.network.share.useGuest`): English "Use guest" has no macOS twin;
+  `Usar acceso de invitado` is the reserve if `Entrar` reads as a fresh sign-in rather than a switch back.
+- **`Sin conexión con {name}`** (`servers.paneState.notConnected`): must not read as an error;
+  `Aún no te has conectado a {name}` is the reserve.

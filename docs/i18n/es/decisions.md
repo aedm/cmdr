@@ -400,6 +400,12 @@ The row covers Office documents AND app packages, so bare `paquetes`, broader th
 - Try again as a BUTTON → `Reintentar`; in prose `inténtalo de nuevo` / `vuelve a intentarlo`.
 - Busy tooltips copy `ejectBusyTooltip` word for word; `…Busy` menu items add ` (ocupado)`.
 - Participles and clitics agree only with fixed nouns (`Sesión cerrada`, `Ábrelo` → el servidor), never `{name}`.
+- A forget confirmation names the type first (`¿Olvidar el recurso compartido {name}?`), so `lo` and `montado` agree
+  with the noun. Forgetting a host is `olvidar` in the toasts too (`Cmdr ha olvidado {hostName}`), ❌ not the old
+  `quitar`.
+- The account suffix → `como {username}` / `como invitado`; `Use guest` → `Entrar como invitado`, `Sign in as…` →
+  `Iniciar sesión como…` (Finder: `Conectar como…`). `{name} isn’t connected` → `Sin conexión con {name}`: no participle
+  on `{name}`.
 
 ## La tabla del hub de servidores y sus comandos (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.serverPinnedToast`/`serverUnpinnedToast`/`pinRefusedToast`/`networkVolume`, `shortcuts.scope.servers`/`places`)
 
@@ -409,6 +415,8 @@ The row covers Office documents AND app packages, so bare `paquetes`, broader th
 - Discovery → `detección`; `descubrimiento` sounds like a finding.
 - `Añadir servidor…` drops the article for something new; commands on the selected server keep it.
 - `Pin / unpin` → `Fijar o desfijar el servidor`: `o`, never a slash.
+- `Unpin from switcher` → `Desfijar del selector`, twin of `Fijar en el selector`; `servers.pinHint.body` quotes it
+  bare.
 
 ## La hoja para conectarse a un servidor y la confianza en la clave de host (`servers.sheet.*`, `servers.hostKey.*`, `servers.paneState.signedOut`/`signIn`/`hostKeyChanged`/`hostKeyChangedHint`, `goToPath.dialog.opensServer`/`addsServer`, `commands.serversConnect.label`)
 

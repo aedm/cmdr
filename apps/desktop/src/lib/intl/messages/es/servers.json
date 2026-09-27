@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Haz clic derecho en un servidor y elige Desfijar, o usa “{command}” en la paleta de comandos. Seguirá en la lista Servidores.",
+  "servers.pinHint.body": "Haz clic derecho en un servidor y elige Desfijar del selector, o usa “{command}” en la paleta de comandos. Seguirá en la lista Servidores.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Entendido",
   "@servers.pinHint.gotIt": {
@@ -62,6 +62,38 @@
   "servers.hub.neverUsed": "Nunca",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "como {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "como invitado",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Selecciona un servidor para editarlo.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "Un recurso compartido no tiene nada que editar. Para editar su servidor, selecciona la fila del servidor.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} se ha detectado cerca y sigue sin guardar, así que no hay nada que editar.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Olvidar el recurso compartido",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Olvidar el recurso compartido",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "¿Olvidar el recurso compartido {name}? Cmdr lo quita de la lista. Si está montado, sigue montado, y tus archivos se quedan en el servidor.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "La detección de servidores en la red local está desactivada.",
   "@servers.hub.discoveryOff": {
@@ -159,6 +191,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Introduce la contraseña de {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} no ha respondido a tiempo, así que no se ha guardado nada. Inténtalo de nuevo en un momento.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -182,6 +218,26 @@
   "servers.sheet.editTitle": "Editar {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Añadir y abrir",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Añadir",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Añadir de todos modos",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr no ha podido comprobar este servidor, así que “Añadir de todos modos” lo guarda tal como lo has escrito.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} se ha guardado en tu lista Servidores.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Iniciar sesión",
   "@servers.sheet.signIn": {
@@ -231,6 +287,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Un nombre de host, una dirección IP o una dirección smb:// que hayas copiado.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Una dirección web que hayas copiado, como https://nas.local/dav, o un nombre de host.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Parece una dirección SMB. Elige SMB arriba si es lo que querías.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -243,6 +307,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "La dirección es lo que identifica este servidor. Para usar otra, olvida el servidor y vuelve a añadirlo.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "La dirección y la cuenta son las que identifican este servidor. Para cambiarlas, olvida el servidor y vuelve a añadirlo.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -254,6 +322,14 @@
   "servers.sheet.password": "Contraseña",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Opcional",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Complétalo si tu NAS pide una cuenta. Cmdr te pide la contraseña cuando abres un recurso compartido.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Contraseña de la clave",
   "@servers.sheet.passphrase": {
@@ -282,6 +358,10 @@
   "servers.sheet.name": "Nombre",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Déjalo vacío y se usará {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Carpeta raíz",
   "@servers.sheet.rootFolder": {
@@ -366,6 +446,14 @@
   "servers.paneState.signedOut": "Sesión cerrada de {name}",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "Sin conexión con {name}",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Atrás",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Iniciar sesión…",
   "@servers.paneState.signIn": {

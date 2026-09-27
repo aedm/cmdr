@@ -66,5 +66,37 @@
   "servers.paneState.hostKeyChangedHint": "Su clave cambió. Esto puede significar que el servidor se reinstaló, o que hay algo entre tú y él. Desconecta y vuelve a abrirlo para comprobar la huella digital.",
   "@servers.paneState.hostKeyChangedHint": {
     "sourceHash": "5b20396"
+  },
+  "servers.hub.editNearbyHint": "{name} se detectó cerca y sigue sin guardar, así que no hay nada que editar.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "40e1470"
+  },
+  "servers.refusal.passwordMissing": "Ingresa la contraseña de {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "dd6fc96"
+  },
+  "servers.sheet.addAndOpen": "Agregar y abrir",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "af7dbdc"
+  },
+  "servers.sheet.add": "Agregar",
+  "@servers.sheet.add": {
+    "sourceHash": "7542a5e"
+  },
+  "servers.sheet.addAnyway": "Agregar de todos modos",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "9387197"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr no pudo comprobar este servidor, así que “Agregar de todos modos” lo guarda tal como lo escribiste.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "00de0eb"
+  },
+  "servers.sheet.addressLocked": "La dirección es lo que identifica este servidor. Para usar otra, olvida el servidor y vuelve a agregarlo.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "bffb190"
+  },
+  "servers.sheet.addedToast": "{name} se guardó en tu lista Servidores.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "7c4642f"
   }
 }
