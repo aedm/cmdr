@@ -101,7 +101,7 @@ pub(crate) fn smb_host_group(id: &str, manual: Vec<manual_servers::ManualServerE
     smb_host_groups(
         manual,
         crate::network::known_shares::get_all_known_shares(),
-        &crate::network::get_discovered_hosts(),
+        &crate::network::fresh_discovered_hosts(),
     )
     .into_iter()
     .find(|group| group.server.id == id)

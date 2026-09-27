@@ -16,8 +16,9 @@ of the app build.
 
 ## Architecture
 
-- **Discovery**: `mdns_discovery.rs`: Pure Rust mDNS using `mdns-sd` crate. Cross-platform.
-- **Manual servers**: `manual_servers.rs`: User-added servers via the "Add server" sheet. Parses addresses, checks TCP reachability, persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into `DISCOVERY_STATE`. Loaded at startup. An entry's `displayName` is a name a person typed, read through `label()` / `is_named()` (§ "A manual server's name").
+- **Discovery**: `mdns_discovery.rs`: Pure Rust mDNS using `mdns-sd` crate. Cross-platform. `discovery_gate.rs` decides
+  when it browses and `discovery_cache.rs` holds what it found (§ "Discovery runs only while something needs it").
+- **Manual servers**: `manual_servers.rs`: User-added servers via the "Add server" sheet. Parses addresses, checks TCP reachability, persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into the discovery cache as pinned hosts. Loaded at startup. An entry's `displayName` is a name a person typed, read through `label()` / `is_named()` (§ "A manual server's name").
 - **E2E testing**: `virtual_smb_hosts.rs`: Injects 14 synthetic `NetworkHost` entries for smb2's consumer Docker containers. Hosts come from `SMB_E2E_{SVC}_HOST` (default `localhost`). Ports come from `SMB_E2E_{SVC}_PORT` when set, else `smb2::testing::*_port()` (which reads `SMB_CONSUMER_*_PORT`, default 10480+). `SMB_E2E_*_PORT` is the test-suite contract (same var the frontend fixture reads), so backend and fixture agree on which port to connect to. This matters inside Docker where containers listen on `:445` internally but `SMB_CONSUMER_*_PORT` would point at the host-side mapping. Gated behind `smb-e2e` Cargo feature. Never enabled in production.
 - **Share listing**: Split across multiple files:
   - `smb_client.rs`: Top-level share-listing entry point; orchestrates guest -> keychain -> prompt auth flow; tries smb2 first, falls back to smbutil (macOS only)
@@ -54,34 +55,66 @@ of the app build.
 
 ## Key decisions
 
-### Lazy mDNS startup gated on user toggle and first-trigger flag
+### Discovery runs only while something needs it
 
-`network::start_discovery()` never fires unconditionally from `lib.rs::setup`; two settings drive the lifecycle:
+An idle Cmdr browses nothing: no `mDNS_daemon` thread, no `mdns-event-loop` thread, no multicast queries. Measured
+saving: `docs/notes/performance/mdns-browse-gating-2026-09-27.md`.
+
+- **The gate** (`discovery_gate.rs`): every need holds a `DiscoveryLease`. The first lease starts the browse; after the
+  last one drops, it lingers `LINGER` (10 s) and stops, so a pane that leaves the Servers view and comes straight back,
+  or back-to-back upgrades, don't restart it. `BrowseGate` is the pure state machine (tested in
+  `discovery_gate_test.rs`); `transition` carries out each step under the gate's lock, so a start and a stop can't land
+  in the opposite order they were decided in.
+- **The holders**, each for exactly its need:
+  - The Servers view (`NetworkMountView`, host list and share list alike): the frontend counts shown views
+    (`holdDiscoveryForServersView`) and sends `set_servers_view_shown` on the first and the last. A reloaded page sends
+    its own truth from `initNetworkDiscovery`.
+  - Every upgrade's `smb_server_address::discover_server`, for the whole dial (§ "SMB upgrade waits briefly for mDNS to
+    warm" under Gotchas).
+  - The startup upgrade pass, across its `wait_for_mdns_ready`.
+  - A 10 s warm-up at launch (`LAUNCH_WARM_UP`) for returning users, so the Servers view opens on known servers.
+- **The cache** (`discovery_cache.rs`) outlives the browse. Each browse gets a number, and an mDNS entry records the
+  browse that last saw it and the one that last resolved it. Events from a stopped browse are dropped by number, so a
+  late one can't write into the next browse. 10 s into a browse (`SETTLE_AFTER`), cached hosts it hasn't seen are
+  dropped with `network-host-lost`.
+- **Display vs. identity** (David's call, 2026-09-27): showing a cached server is fine; merging or matching two servers
+  is not. `cached_discovered_hosts` (display: `list_network_hosts`, `friendly_server_name`) returns everything;
+  `fresh_discovered_hosts` (every identity reader: `same_machine` callers, mount dedupe, credential keying and aliases,
+  the per-share switch, the saved-server union) returns only pinned hosts and mDNS hosts the RUNNING browse resolved. A
+  new browse's resolution replaces the cached address rather than merging with it, or an address from an earlier browse
+  would ride along as fresh. Why stale pairings are dangerous: an IP reassigned to another server would hand it the
+  first one's mount, index, or password.
+- **Pinned hosts** (manual servers, E2E virtual hosts, through `on_host_found`) come from config and are always
+  evidence.
+
+### Lazy startup gated on the user toggle and the first-trigger flag
+
+Two settings shape it:
 
 - **`network.enabled`** (boolean, default `true`): top-level user toggle in `Settings > Network > SMB/Network shares`.
-  When `false`, the picker shows "Network (disabled)", no mDNS daemon runs, and no proactive smb2 upgrades happen.
+  When `false`, the picker shows "Network (disabled)", nothing browses whoever holds a lease, and no proactive smb2
+  upgrades happen.
 - **`network.firstTriggerDone`** (boolean, default `false`, hidden): tracks whether we've already performed a gated
   network action. Persisted across launches.
 
-The runtime mirror of `network.enabled` lives in `network::NETWORK_ENABLED` (`AtomicBool`). `lib.rs::setup` seeds it
-from the persisted settings; `commands::network::set_network_enabled` keeps it in sync with the live toggle.
-`network::is_network_enabled()` is the runtime accessor; BE-side upgrade paths check this before kicking off mDNS or
-waiting on hostname resolution.
+The runtime mirror of `network.enabled` lives in `network::NETWORK_ENABLED` (`AtomicBool`), and
+`set_network_enabled_flag` also tells the gate. `lib.rs::setup` seeds it from the persisted settings;
+`commands::network::set_network_enabled` keeps it in sync with the live toggle. `network::is_network_enabled()` is the
+runtime accessor.
 
-At startup, mDNS starts only if `network.enabled && (firstTriggerDone || smb-e2e feature)`. On a fresh install,
-`firstTriggerDone == false` so we stay quiet and the macOS "Cmdr wants to find devices on local networks" prompt
-doesn't fire at app launch.
+At startup, the warm-up browse runs only if `network.enabled && (firstTriggerDone || smb-e2e feature)`. On a fresh
+install, `firstTriggerDone == false` so we stay quiet and the macOS "Cmdr wants to find devices on local networks"
+prompt doesn't fire at app launch.
 
-The frontend calls `ensure_network_discovery_started` (idempotent) when the user takes a network action: clicking
-"Network" in the picker, opening "Connect to server…", or hitting the OS-mount → direct-smb2 upgrade indicator. That
-first call is what triggers the OS prompt. We also flip `firstTriggerDone = true` so subsequent launches start mDNS
-eagerly without surprising the user.
+The frontend calls `note_network_action` when the user takes a network action: opening the Servers view or "Connect to
+server…", or hitting the OS-mount → direct-smb2 upgrade indicator. It reloads the manual servers and runs the upgrade
+pass, and the frontend flips `firstTriggerDone = true`. The browse that fires the OS prompt is the Servers view's own
+hold, or the upgrade's.
 
-`set_network_enabled(false)` stops the daemon and clears `DISCOVERY_STATE.hosts`, emitting `network-host-lost` events
-so the frontend store empties. `set_network_enabled(true)` is a no-op; the user must take a network action to
-re-trigger discovery.
+`set_network_enabled(false)` stops the browse and clears the cache, emitting `network-host-lost` events so the frontend
+store empties. `set_network_enabled(true)` resumes the browse if a Servers view is holding it.
 
-The E2E build feature (`smb-e2e`) bypasses both gates so virtual SMB hosts are populated before tests run.
+The E2E build feature (`smb-e2e`) bypasses the first-trigger gate so virtual SMB hosts are populated before tests run.
 
 ### `NetFSMountURLAsync` for SMB mounting (not `mount_smbfs` CLI)
 
@@ -1032,21 +1065,22 @@ cycles"; re-measure there before trusting any number.
 - **macOS smbutil and NetFSMountURLSync fail with loopback IP + non-standard port**: `//127.0.0.1:10480` gives "Broken pipe", but `//localhost:10480` works. `build_smbutil_url` and `NetworkMountView.svelte` both fall back to hostname when IP is `127.0.0.1` or `::1`. This matters for E2E testing against Docker containers on localhost.
 - **Mount URL must include port when non-standard**: `mount_share_sync` builds `smb://server:port/share` for non-445 ports. The port is passed as a separate parameter through `mount_share` → `mount_share_sync`, not embedded in the server string (embedding it would cause `cmdr_smb::build_smb_addr` to double the port: `localhost:10480:10480`). `SmbMountInfo.port` extracts the port from `statfs` mount source for upgrade paths.
 - **Manual hosts always set `hostname`**: The share listing pipeline guards on `host.hostname` being truthy. `create_network_host` always sets `hostname` (to the address, even for IPs) so manual hosts flow through the pipeline correctly.
-- **SMB upgrade waits briefly for mDNS to warm**: When macOS auto-remounts an SMB share at login, FSEvents fires before
-  mDNS has discovered the host, so `statfs` gives us an IP but the host map is empty. Stored Keychain credentials are
-  keyed by mDNS hostname (`smb://naspolya/share`), not by IP, so a sync IP→hostname lookup misses and we'd prompt the
-  user for credentials they already saved. The upgrade path now (a) kicks off mDNS via `network::ensure_mdns_started`
-  before resolving and (b) calls `smb_server_address::resolve_ip_to_hostname_with_wait` which polls the discovered-host map
-  every 100ms up to 1500ms for private-range IPv4. Non-private IPs (Tailscale, public DNS) skip the wait, since mDNS won't
-  help there. The wait fails open: if mDNS never warms, the IP-only Keychain lookup still runs. Only relevant in dev,
-  where `network.firstTriggerDone == false` keeps mDNS off at launch; prod users hit this once on the very first install
-  but never afterwards. **Every upgrade path is covered.** The three fire-and-forget paths, startup
-  (`file_system::upgrade_existing_smb_mounts`), mount-time (`volumes::watcher::try_upgrade_smb_mount`), and pane-open
-  (`smb_pane_upgrade::upgrade_on_pane_open`), all go through the shared `smb_upgrade::resolve_and_register_smb_volume`,
-  so the resolver choice can't drift between them (a startup copy that used the one-shot `resolve_ip_to_hostname`
-  looked creds up by LAN IP, missed hostname-keyed creds, and fell back to guest → `STATUS_LOGON_FAILURE`). The manual "Connect directly" path
-  (`smb_connect_directly`) stays separate because it surfaces `CredentialsNeeded` to prompt the
-  user, but uses the same `resolve_ip_to_hostname_with_wait` + `get_keychain_password` pair.
+- **SMB upgrade waits briefly for mDNS to warm**: the browse runs only while something needs it (§ "Discovery runs only
+  while something needs it"), so every upgrade meets a cold cache: `statfs` gives an IP (or an mDNS service name) and
+  nothing fresh pairs it with a name yet. Stored Keychain credentials are keyed by mDNS hostname
+  (`smb://naspolya/share`), not by IP, so a sync IP→hostname lookup misses and we'd prompt the user for credentials they
+  already saved; a service name has nothing to dial at all. So every upgrade calls
+  `smb_server_address::discover_server`, which holds the browse and polls the fresh host list every 100 ms up to 1500 ms
+  for a private-range IPv4 or a service name. Other addresses (Tailscale, public DNS) skip the wait, since mDNS won't
+  help there. The wait fails open: if mDNS never warms, the IP-only Keychain lookup still runs. The returned
+  `DiscoveredServer` carries the lease, so keep it alive until the dial is done. **Every upgrade path is covered.** The
+  three fire-and-forget paths, startup (`file_system::upgrade_existing_smb_mounts`), mount-time
+  (`volumes::watcher::try_upgrade_smb_mount`), and pane-open (`smb_pane_upgrade::upgrade_on_pane_open`), all go through
+  the shared `smb_upgrade::resolve_and_register_smb_volume`, so the resolver choice can't drift between them (a startup
+  copy that used the one-shot `resolve_ip_to_hostname` looked creds up by LAN IP, missed hostname-keyed creds, and fell
+  back to guest → `STATUS_LOGON_FAILURE`). The manual "Connect directly" path (`smb_connect_directly`) stays separate
+  because it surfaces `CredentialsNeeded` to prompt the user, but uses the same `discover_server` +
+  `get_keychain_password` pair.
 - **A wedged `NetAuthSysAgent` hangs every NetFS mount, and only restarting the daemon clears it**: `mount_share_sync`
   sits in `NetFSMountURLSync` → `NAAA_MountURL`, blocked on the MIG reply, while the daemon itself sits in `smb_mount` →
   `setNetworkAccountSID` → `LsarGetUserName` → `rpc__cn_assoc_receive_frag`, waiting on an LSARPC response fragment that
@@ -1057,4 +1091,4 @@ cycles"; re-measure there before trusting any number.
   name; clear it with `killall NetAuthSysAgent`, which launchd relaunches on demand. (Verified on macOS 26.6.2 / 25G83,
   2026-09-05: 39 consecutive timeouts across two commits and two worktrees, then a 1.5 s pass immediately after the
   restart, with no code change.)
-- **`statfs` can return mDNS service names instead of IPs**: When macOS auto-reconnects an SMB mount on login, `statfs.f_mntfromname` may contain `//user@Naspolya._smb._tcp.local/share` instead of `//user@192.168.1.111/share`. These service names are not DNS-resolvable. `resolve_server_address()` in `smb_server_address.rs` detects these (by checking for `._tcp`/`._udp`) and resolves them to IPs via `get_discovered_hosts()`. All upgrade paths (startup, mount-time, manual) go through this resolution. Similarly, `friendly_server_name()` extracts the display name (e.g., `Naspolya`) for UI display.
+- **`statfs` can return mDNS service names instead of IPs**: When macOS auto-reconnects an SMB mount on login, `statfs.f_mntfromname` may contain `//user@Naspolya._smb._tcp.local/share` instead of `//user@192.168.1.111/share`. These service names are not DNS-resolvable. `resolve_server_address()` in `smb_server_address.rs` detects these (by checking for `._tcp`/`._udp`) and resolves them to IPs via `fresh_discovered_hosts()`. All upgrade paths (startup, mount-time, manual) go through this resolution. Similarly, `friendly_server_name()` extracts the display name (e.g., `Naspolya`) for UI display.

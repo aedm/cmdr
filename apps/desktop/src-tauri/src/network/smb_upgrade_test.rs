@@ -540,7 +540,7 @@ fn only_a_healthy_direct_volume_short_circuits_the_upgrade() {
     }
 }
 
-/// `ensure_network_discovery_started` runs on every user networking action,
+/// `note_network_action` runs on every user networking action,
 /// and each upgrade pass waits up to 15 s for mDNS before acting. Two clicks
 /// nine seconds apart stacked two passes, both firing blind. Only one pass
 /// may be in flight.

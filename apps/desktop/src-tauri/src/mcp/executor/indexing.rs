@@ -16,9 +16,7 @@ use serde_json::{Value, json};
 use super::{ToolError, ToolResult};
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use crate::commands::indexing::EnableIndexingOutcome;
-use crate::commands::indexing::{
-    disable_drive_index, enable_drive_index_via_handle, forget_drive_index, rescan_drive_index_via_handle,
-};
+use crate::commands::indexing::{disable_drive_index, enable_drive_index, forget_drive_index, rescan_drive_index};
 use crate::mcp::resources::indexing::freshness_token;
 use cmdr_index::Freshness;
 
@@ -43,9 +41,9 @@ pub async fn execute_indexing(params: &Value) -> ToolResult {
             // ordering-contract wait can detect the departure.
             let pre = crate::index_host::index().volume_status(volume_id).freshness;
             let outcome = if action == "rescan" {
-                rescan_drive_index_via_handle(volume_id.to_string()).await
+                rescan_drive_index(volume_id.to_string()).await
             } else {
-                enable_drive_index_via_handle(volume_id.to_string()).await
+                enable_drive_index(volume_id.to_string()).await
             };
 
             match outcome {

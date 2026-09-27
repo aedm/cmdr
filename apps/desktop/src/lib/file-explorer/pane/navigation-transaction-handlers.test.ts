@@ -165,6 +165,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => {
     onMtpPermissionError: vi.fn().mockResolvedValue(() => {}),
     listMtpDevices: vi.fn().mockResolvedValue([]),
     listNetworkHosts: vi.fn().mockResolvedValue([]),
+    setServersViewShown: vi.fn().mockResolvedValue(undefined),
     getNetworkDiscoveryState: vi.fn().mockResolvedValue('idle'),
     onVolumeContextAction: vi.fn().mockResolvedValue(() => {}),
     onVolumeUnmounted: vi.fn().mockResolvedValue(() => {}),

@@ -475,23 +475,30 @@ which is what carries the `needs_credentials` reason into the sheet's first roun
 Disconnect button: `disconnectSmbVolume(volumeId)` shells out to `diskutil unmount` (macOS) → FSEvents fires →
 `SmbVolume::on_unmount` → volume removed from `VolumeManager` → `volumes-changed` removes it from the picker.
 
-## Lazy mDNS trigger
+## Lazy mDNS trigger, and the Servers view's hold
 
 `triggerNetworkDiscovery()`:
 
 1. No-ops if `network.enabled === false`.
-2. Calls `ensureNetworkDiscoveryStarted()` (idempotent backend command; the first call kicks off the mDNS daemon, firing
-   the macOS "Cmdr wants to find devices on local networks" prompt the first time).
-3. Sets `network.firstTriggerDone = true` so subsequent launches start mDNS eagerly (returning users get full speed
-   without re-prompts).
+2. Calls `noteNetworkAction()` (backend: reload the manual servers, run the existing-SMB-mount upgrade pass, which holds
+   the browse while it resolves).
+3. Sets `network.firstTriggerDone = true` so later launches warm the server list up briefly (returning users see known
+   servers at once, without re-prompts).
 
 Call sites: `ServersHub.onMount` and `VolumeBreadcrumb.handleSubmenuAction` (the OS-mount → direct-smb2 upgrade also
-opens a private-IP socket). Backend side: `src-tauri/src/network/DETAILS.md` § "Lazy mDNS startup".
+opens a private-IP socket).
+
+The browse itself runs while a Servers view is on screen: `NetworkMountView` holds it through
+`holdDiscoveryForServersView()` (an `$effect` whose cleanup releases it), and the store tells the backend only on the
+first view shown and the last one gone (`setServersViewShown`). Two panes can each show one. `initNetworkDiscovery`
+re-sends the store's count, so a reloaded page corrects what the one before it left. Between browses the backend keeps
+the hosts it found, so a view opens on them at once and the fresh browse adds and drops hosts live. Backend side:
+`src-tauri/src/network/DETAILS.md` § "Discovery runs only while something needs it".
 
 ## Key decisions
 
 - **Lazy discovery on first user intent, not at startup**: avoids the macOS Local Network prompt on fresh installs
-  before the user has context; `network.firstTriggerDone` persists so returning users keep the warm-cache benefit.
+  before the user has context; `network.firstTriggerDone` persists so returning users get the launch warm-up.
 - **Resolution and share prefetch are fire-and-forget**: hosts come and go, so a timeout / unreachable during prefetch
   is normal, not worth surfacing. The UI shows "Not checked" / "Waiting..." until data arrives; only user-initiated
   actions surface errors.

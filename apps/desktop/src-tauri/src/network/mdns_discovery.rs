@@ -1,20 +1,22 @@
 //! mDNS/DNS-SD discovery using the `mdns-sd` crate.
 //!
-//! Discovers SMB services on the local network via multicast DNS.
-//! Replaces the deprecated NSNetServiceBrowser approach with a pure-Rust,
-//! cross-platform implementation that runs on a background thread.
+//! Browses for SMB services on the local network on a daemon thread plus an event
+//! thread of our own. Both exist only while a browse runs: `discovery_gate.rs`
+//! decides when, and calls [`start_browse`] and [`stop_browse`]. What the browse
+//! finds goes into `discovery_cache.rs`, tagged with the browse's number.
 
 use crate::ignore_poison::IgnorePoison;
-use crate::network::{
-    DiscoveryState, HostSource, NetworkHost, on_discovery_state_changed, on_host_found, on_host_lost, on_host_resolved,
-    service_name_to_id,
+use crate::network::discovery_cache::{
+    self, MdnsResolution, on_mdns_host_found, on_mdns_host_lost, on_mdns_host_resolved, on_mdns_state_changed,
 };
+use crate::network::{DiscoveryState, HostSource, NetworkHost, service_name_to_id};
 use log::{debug, warn};
 use mdns_sd::{Receiver, ServiceDaemon, ServiceEvent};
 use std::net::IpAddr;
 #[cfg(target_os = "macos")]
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 use tauri::AppHandle;
 
 /// SMB service type for mDNS discovery (mdns-sd requires the trailing `.local.` form).
@@ -24,6 +26,10 @@ const SMB_DEFAULT_PORT: u16 = 445;
 /// Default timeout for service resolution in milliseconds.
 #[cfg(target_os = "macos")]
 const DEFAULT_RESOLVE_TIMEOUT_MS: u64 = 5000;
+/// How long a browse runs before the cached hosts it hasn't heard from count as gone.
+/// Every host on the network answers the first query within a second or two; the
+/// margin is for a NAS waking from sleep.
+const SETTLE_AFTER: Duration = Duration::from_secs(10);
 
 /// Configured resolve timeout in milliseconds (set by frontend via update_resolve_timeout).
 /// With mdns-sd, browse automatically resolves services. This timeout is only relevant
@@ -39,87 +45,90 @@ pub fn update_resolve_timeout(ms: u64) {
     debug!("mDNS resolve timeout updated to {} ms", ms);
 }
 
-/// Global mDNS discovery daemon.
-static DISCOVERY_DAEMON: OnceLock<Mutex<Option<ServiceDaemon>>> = OnceLock::new();
+/// The running browse's daemon, `None` while nothing browses.
+static DISCOVERY_DAEMON: Mutex<Option<ServiceDaemon>> = Mutex::new(None);
 
-/// Global app handle for sending events.
-static APP_HANDLE: OnceLock<Mutex<Option<AppHandle>>> = OnceLock::new();
+/// The app handle every browse reports through, installed once at setup.
+static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
-fn get_daemon_lock() -> &'static Mutex<Option<ServiceDaemon>> {
-    DISCOVERY_DAEMON.get_or_init(|| Mutex::new(None))
+/// Gives discovery the app handle it emits through. Call once, at setup, before
+/// anything can hold a `DiscoveryLease`; a browse asked for before this starts nothing.
+pub fn install(app_handle: &AppHandle) {
+    let _ = APP_HANDLE.set(app_handle.clone());
 }
 
-fn get_app_handle() -> Option<AppHandle> {
-    APP_HANDLE
-        .get()
-        .and_then(|m| m.lock().ok())
-        .and_then(|guard| guard.clone())
-}
-
-fn set_app_handle(handle: AppHandle) {
-    let storage = APP_HANDLE.get_or_init(|| Mutex::new(None));
-    if let Ok(mut guard) = storage.lock() {
-        *guard = Some(handle);
-    }
-}
-
-/// Starts mDNS discovery for SMB hosts.
+/// Starts a browse for SMB hosts. Answers whether one is running now.
 ///
-/// Spawns a background thread that listens for service events. No main-thread requirement.
-pub fn start_discovery(app_handle: AppHandle) {
-    let mut guard = get_daemon_lock().lock_ignore_poison();
-
-    // Don't start if already running
+/// Only `discovery_gate` calls this, under its lock.
+pub(super) fn start_browse() -> bool {
+    let Some(app_handle) = APP_HANDLE.get() else {
+        return false;
+    };
+    let mut guard = DISCOVERY_DAEMON.lock_ignore_poison();
     if guard.is_some() {
-        return;
+        return true;
     }
-
-    set_app_handle(app_handle);
 
     let daemon = match ServiceDaemon::new() {
         Ok(d) => d,
         Err(e) => {
             warn!("Failed to create mDNS daemon: {}", e);
-            return;
+            return false;
         }
     };
-
     let receiver = match daemon.browse(SMB_SERVICE_TYPE) {
         Ok(r) => r,
         Err(e) => {
             warn!("Failed to start mDNS browse: {}", e);
-            return;
+            let _ = daemon.shutdown();
+            return false;
         }
     };
 
-    *guard = Some(daemon);
-
-    // Process events on a dedicated thread
-    std::thread::Builder::new()
+    let browse = discovery_cache::begin_browse();
+    let events_handle = app_handle.clone();
+    if let Err(e) = std::thread::Builder::new()
         .name("mdns-event-loop".into())
-        .spawn(move || process_events(receiver))
-        .expect("Failed to spawn mDNS event thread");
-}
-
-/// Stops mDNS discovery and shuts down the daemon.
-pub fn stop_discovery() {
-    let mut guard = get_daemon_lock().lock_ignore_poison();
-
-    if let Some(daemon) = guard.take() {
-        let _ = daemon.stop_browse(SMB_SERVICE_TYPE);
+        .spawn(move || process_events(receiver, browse, events_handle))
+    {
+        warn!("Couldn't spawn the mDNS event thread: {e}");
         let _ = daemon.shutdown();
+        discovery_cache::end_browse(app_handle);
+        return false;
     }
+    *guard = Some(daemon);
+    debug!("mDNS browse {browse} started");
+
+    let settle_handle = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(SETTLE_AFTER).await;
+        discovery_cache::settle_browse(browse, &settle_handle);
+    });
+    true
 }
 
-/// Main event loop: maps mdns-sd events to the existing network module callbacks.
-fn process_events(receiver: Receiver<ServiceEvent>) {
+/// Stops the running browse, if any: the daemon thread and the event thread both
+/// end, and the cache keeps its hosts, marked stale.
+///
+/// Only `discovery_gate` calls this, under its lock.
+pub(super) fn stop_browse() {
+    let Some(daemon) = DISCOVERY_DAEMON.lock_ignore_poison().take() else {
+        return;
+    };
+    let _ = daemon.stop_browse(SMB_SERVICE_TYPE);
+    let _ = daemon.shutdown();
+    if let Some(app_handle) = APP_HANDLE.get() {
+        discovery_cache::end_browse(app_handle);
+    }
+    debug!("mDNS browse stopped");
+}
+
+/// Main event loop: maps mdns-sd events to the discovery cache, tagged with `browse`
+/// so a late event from this browse can't write into the next one.
+fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: AppHandle) {
     let mut initial_scan_complete = false;
 
     while let Ok(event) = receiver.recv() {
-        let Some(app_handle) = get_app_handle() else {
-            continue;
-        };
-
         match event {
             ServiceEvent::SearchStarted(stype) => {
                 // mdns-sd sends SearchStarted on every periodic re-query, not just once.
@@ -127,7 +136,7 @@ fn process_events(receiver: Receiver<ServiceEvent>) {
                 // After that, we stay in Active to avoid resetting the UI spinner.
                 if !initial_scan_complete {
                     debug!("mDNS SearchStarted: {}", stype);
-                    on_discovery_state_changed(DiscoveryState::Searching, &app_handle);
+                    on_mdns_state_changed(DiscoveryState::Searching, browse, &app_handle);
                 } else {
                     debug!("mDNS SearchStarted (ignored, already active): {}", stype);
                 }
@@ -145,7 +154,7 @@ fn process_events(receiver: Receiver<ServiceEvent>) {
                     port: SMB_DEFAULT_PORT,
                     source: HostSource::Discovered,
                 };
-                on_host_found(host, &app_handle);
+                on_mdns_host_found(host, browse, &app_handle);
 
                 // Transition to Active on the first found host. The old NSNetServiceBrowser
                 // code used the `moreComing` flag for this, but mdns-sd doesn't expose that
@@ -154,7 +163,7 @@ fn process_events(receiver: Receiver<ServiceEvent>) {
                 if !initial_scan_complete {
                     initial_scan_complete = true;
                     debug!("mDNS initial scan complete, transitioning to Active");
-                    on_discovery_state_changed(DiscoveryState::Active, &app_handle);
+                    on_mdns_state_changed(DiscoveryState::Active, browse, &app_handle);
                 }
             }
             ServiceEvent::ServiceResolved(info) => {
@@ -170,17 +179,24 @@ fn process_events(receiver: Receiver<ServiceEvent>) {
                     id, hostname, ip_address, port
                 );
 
-                on_host_resolved(&id, &name, hostname, ip_address, port, &app_handle);
+                let resolution = MdnsResolution {
+                    host_id: id,
+                    name,
+                    hostname,
+                    ip_address,
+                    port,
+                };
+                on_mdns_host_resolved(resolution, browse, &app_handle);
             }
             ServiceEvent::ServiceRemoved(_, fullname) => {
                 let name = extract_instance_name(&fullname);
                 let id = service_name_to_id(&name);
                 debug!("mDNS ServiceRemoved: {} (id={})", name, id);
-                on_host_lost(&id, &app_handle);
+                on_mdns_host_lost(&id, browse, &app_handle);
             }
             ServiceEvent::SearchStopped(stype) => {
                 debug!("mDNS SearchStopped: {}", stype);
-                on_discovery_state_changed(DiscoveryState::Idle, &app_handle);
+                on_mdns_state_changed(DiscoveryState::Idle, browse, &app_handle);
             }
             other => {
                 debug!("mDNS unhandled event: {:?}", other);
@@ -189,7 +205,7 @@ fn process_events(receiver: Receiver<ServiceEvent>) {
     }
 
     // Channel closed: daemon was shut down
-    debug!("mDNS event loop ended");
+    debug!("mDNS event loop for browse {browse} ended");
 }
 
 /// Extracts the instance name from a full mDNS service name.

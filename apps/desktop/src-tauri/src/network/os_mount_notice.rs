@@ -147,7 +147,7 @@ pub(crate) fn announce_os_mount_fallback(
     reason: UpgradeFailure,
     notice: FallbackNotice,
 ) {
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     if !OS_MOUNT_NOTICES
         .lock_ignore_poison()
         .admit(notice, server, volume_id, &hosts)
@@ -166,7 +166,7 @@ pub(crate) fn announce_os_mount_fallback(
 /// A notice describes a situation, not an event, so once the server is off the
 /// slow path the next genuine regression is worth saying out loud again.
 pub(crate) fn clear_os_mount_notice(server: &str) {
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     OS_MOUNT_NOTICES.lock_ignore_poison().forget(server, &hosts);
 }
 

@@ -377,7 +377,7 @@ pub fn mount_share_sync(
     // IP), in which case a second NetFS call would "disambiguate" into mounting a
     // doomed second copy with a fresh session instead of reusing this one.
     let target = MountTarget { server, share, port };
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     if let Some(existing) = find_mount_path_for_share(target, &hosts) {
         return Ok(MountResult {
             mount_path: existing,

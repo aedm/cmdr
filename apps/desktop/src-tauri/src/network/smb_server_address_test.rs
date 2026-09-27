@@ -49,13 +49,13 @@ fn is_private_ipv4_rejects_public_and_special() {
     assert!(!is_private_ipv4("::1"), "IPv6 currently returns false");
 }
 
-/// `resolve_ip_to_hostname_with_wait` must return immediately (no polling)
+/// `discover_server` must return immediately (no polling)
 /// when the IP isn't a private-range IPv4 — Tailscale/public DNS won't show
 /// up in mDNS so there's nothing to wait for.
 #[tokio::test]
 async fn wait_helper_returns_immediately_for_non_private_ip() {
     let start = std::time::Instant::now();
-    let result = resolve_ip_to_hostname_with_wait("8.8.8.8", Duration::from_millis(500)).await;
+    let result = discover_server("8.8.8.8", Duration::from_millis(500)).await.hostname;
     let elapsed = start.elapsed();
     assert_eq!(result, None);
     assert!(
@@ -71,7 +71,7 @@ async fn wait_helper_returns_immediately_for_non_private_ip() {
 /// Async-aware: both tests `await` while holding it.
 static NETWORK_FLAG_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-/// `resolve_ip_to_hostname_with_wait` must short-circuit when the runtime
+/// `discover_server` must short-circuit when the runtime
 /// `network.enabled` flag is off, even for a private IP — mDNS isn't running
 /// so polling would just burn the timeout.
 #[tokio::test]
@@ -81,7 +81,9 @@ async fn wait_helper_short_circuits_when_network_disabled() {
     crate::network::set_network_enabled_flag(false);
 
     let start = std::time::Instant::now();
-    let result = resolve_ip_to_hostname_with_wait("192.168.1.111", Duration::from_millis(500)).await;
+    let result = discover_server("192.168.1.111", Duration::from_millis(500))
+        .await
+        .hostname;
     let elapsed = start.elapsed();
 
     // Restore before assertions so other tests aren't poisoned by panics.
@@ -108,7 +110,7 @@ async fn wait_helper_times_out_gracefully() {
     // miss is deterministic.
     let timeout = Duration::from_millis(300);
     let start = std::time::Instant::now();
-    let result = resolve_ip_to_hostname_with_wait("10.255.255.254", timeout).await;
+    let result = discover_server("10.255.255.254", timeout).await.hostname;
     let elapsed = start.elapsed();
 
     crate::network::set_network_enabled_flag(prev);
@@ -124,6 +126,44 @@ async fn wait_helper_times_out_gracefully() {
         elapsed < timeout + Duration::from_millis(250),
         "shouldn't blow past timeout by much; elapsed {:?}",
         elapsed
+    );
+}
+
+/// An mDNS service name has nothing to dial until discovery resolves it, and the
+/// browse only starts when something asks, so an upgrade waits for it like it waits
+/// for an IP's name.
+#[tokio::test]
+async fn wait_helper_waits_for_an_undiscovered_service_name() {
+    let _serialized = NETWORK_FLAG_LOCK.lock().await;
+    let prev = crate::network::is_network_enabled();
+    crate::network::set_network_enabled_flag(true);
+
+    let timeout = Duration::from_millis(300);
+    let start = std::time::Instant::now();
+    let result = discover_server("Nowhere._smb._tcp.local", timeout).await.hostname;
+    let elapsed = start.elapsed();
+
+    crate::network::set_network_enabled_flag(prev);
+
+    assert_eq!(result, None);
+    assert!(
+        elapsed >= timeout,
+        "should have waited for discovery; elapsed {elapsed:?}"
+    );
+}
+
+/// A DNS hostname is dialable as it is: nothing to wait for.
+#[tokio::test]
+async fn wait_helper_returns_immediately_for_a_dns_hostname() {
+    let start = std::time::Instant::now();
+    let result = discover_server("fileserver.corp.example.com", Duration::from_millis(500))
+        .await
+        .hostname;
+    assert_eq!(result, None);
+    assert!(
+        start.elapsed() < Duration::from_millis(50),
+        "took {:?}",
+        start.elapsed()
     );
 }
 

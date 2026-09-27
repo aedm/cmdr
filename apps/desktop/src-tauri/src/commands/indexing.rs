@@ -2,8 +2,6 @@
 //!
 //! Thin wrappers around `indexing` module functions, exposed to the frontend via Tauri commands.
 
-use std::sync::OnceLock;
-
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
@@ -176,7 +174,7 @@ pub async fn get_volume_index_status_by_id(volume_id: String) -> Result<VolumeIn
 /// per-drive intent, so the choice survives any number of master toggles.
 #[tauri::command]
 #[specta::specta]
-pub async fn set_indexing_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+pub async fn set_indexing_enabled(enabled: bool) -> Result<(), String> {
     // Move the gate FIRST in both directions: on, so the starts below pass it; off,
     // so a concurrent reconnect resume can't slip in behind the stop sweep.
     index().set_indexing_enabled(enabled);
@@ -187,7 +185,7 @@ pub async fn set_indexing_enabled(app: AppHandle, enabled: bool) -> Result<(), S
             // is expected here (a share that's offline right now) and only logged;
             // the reconnect resume picks it up when the drive comes back. A drive
             // that's leaving is skipped at once rather than waited out.
-            match start_drive_index_as(app.clone(), volume_id.clone(), StartKind::MasterResume).await {
+            match start_drive_index_as(volume_id.clone(), StartKind::MasterResume).await {
                 Ok(EnableIndexingOutcome::Started) => {}
                 Ok(other) => log::info!("set_indexing_enabled: '{volume_id}' not resumed: {other:?}"),
                 Err(e) => log::warn!("set_indexing_enabled: resuming '{volume_id}' failed: {e}"),
@@ -272,34 +270,17 @@ pub async fn start_indexing_after_fda_decision(app: AppHandle) -> Result<(), Str
 /// `DriveLeaving` if the drive leaves or the wait runs out.
 #[tauri::command]
 #[specta::specta]
-pub async fn enable_drive_index(app: AppHandle, volume_id: String) -> Result<EnableIndexingOutcome, String> {
-    start_drive_index_as(app, volume_id, StartKind::UserEnable).await
+pub async fn enable_drive_index(volume_id: String) -> Result<EnableIndexingOutcome, String> {
+    start_drive_index_as(volume_id, StartKind::UserEnable).await
 }
 
 /// Start a drive's index as `kind`, holding the drive-release ticket for the whole
 /// start call.
-async fn start_drive_index_as(
-    app: AppHandle,
-    volume_id: String,
-    kind: StartKind,
-) -> Result<EnableIndexingOutcome, String> {
-    kick_mdns_for(&app, &volume_id);
+async fn start_drive_index_as(volume_id: String, kind: StartKind) -> Result<EnableIndexingOutcome, String> {
     let gated = drive_release::gate()
         .start(&volume_id, kind, || index().start_volume(&volume_id))
         .await;
     gated_outcome(&volume_id, gated)
-}
-
-/// Kick mDNS first so a freshly-typed server name resolves during a share's
-/// direct-session upgrade. Idempotent, and cheap enough not to branch on the
-/// volume's kind (which is the index's business, not this command's).
-fn kick_mdns_for(app: &AppHandle, volume_id: &str) {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    if volume_id != ROOT_VOLUME_ID {
-        crate::network::ensure_mdns_started(app.clone());
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let _ = (app, volume_id);
 }
 
 /// What the frontend hears about a start that went through the drive-release gate.
@@ -364,45 +345,11 @@ pub async fn forget_drive_index(volume_id: String) -> Result<(), String> {
 /// - `root` that's not active: starts the local indexer.
 #[tauri::command]
 #[specta::specta]
-pub async fn rescan_drive_index(app: AppHandle, volume_id: String) -> Result<EnableIndexingOutcome, String> {
+pub async fn rescan_drive_index(volume_id: String) -> Result<EnableIndexingOutcome, String> {
     // Not active: enabling is what triggers the (first) scan, so this is the same
     // call either way.
-    kick_mdns_for(&app, &volume_id);
     let gated = drive_release::gate()
         .start(&volume_id, StartKind::UserRescan, || index().rescan_volume(&volume_id))
         .await;
     gated_outcome(&volume_id, gated)
-}
-
-// ── App handle for handle-free callers (the MCP `indexing` tool) ─────
-//
-// `enable`/`rescan` need a concrete `AppHandle` (they spawn the indexer and emit
-// events), but the MCP tool executor is generic over `Runtime` and can't supply
-// one. So we stash the concrete handle at startup and expose handle-free
-// wrappers, mirroring the `space_poller` pattern. `disable`/`forget` need no
-// handle and are called directly.
-
-static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
-
-/// Cache the concrete `AppHandle` for handle-free callers. Called once from
-/// `setup()`.
-pub fn set_app_handle(app: AppHandle) {
-    let _ = APP_HANDLE.set(app);
-}
-
-fn app_handle() -> Result<AppHandle, String> {
-    APP_HANDLE
-        .get()
-        .cloned()
-        .ok_or_else(|| "Indexing app handle isn't ready yet".to_string())
-}
-
-/// Handle-free `enable_drive_index` for the MCP `indexing` tool.
-pub async fn enable_drive_index_via_handle(volume_id: String) -> Result<EnableIndexingOutcome, String> {
-    enable_drive_index(app_handle()?, volume_id).await
-}
-
-/// Handle-free `rescan_drive_index` for the MCP `indexing` tool.
-pub async fn rescan_drive_index_via_handle(volume_id: String) -> Result<EnableIndexingOutcome, String> {
-    rescan_drive_index(app_handle()?, volume_id).await
 }

@@ -128,6 +128,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => {
     updateFocusedPane: vi.fn().mockResolvedValue(undefined),
     resortListing: vi.fn().mockResolvedValue({}),
     listNetworkHosts: vi.fn().mockResolvedValue([]),
+    setServersViewShown: vi.fn().mockResolvedValue(undefined),
     getNetworkDiscoveryState: vi.fn().mockResolvedValue('idle'),
     resolveNetworkHost: vi.fn().mockResolvedValue(null),
     listMtpDevices: vi.fn().mockResolvedValue([]),

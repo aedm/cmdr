@@ -7,20 +7,22 @@
 //! (`smb_connect_directly`) both read a mount's server through here, so they can't
 //! disagree about which server it is.
 
-use crate::network::get_discovered_hosts;
+use crate::network::discovery_gate::{self, DiscoveryLease};
+use crate::network::{NetworkHost, cached_discovered_hosts, fresh_discovered_hosts};
+use std::time::Duration;
 
-/// Looks up the mDNS hostname for an IP address from discovered hosts.
-///
-/// Returns the hostname (like "naspolya") without `.local` suffix.
+/// The mDNS name discovery pairs with `ip` right now, lowercased (what Keychain
+/// keys use). Fresh evidence only: a credential picked off a stale pairing could
+/// belong to whichever server had that IP before.
 pub(crate) fn resolve_ip_to_hostname(ip: &str) -> Option<String> {
-    let hosts = get_discovered_hosts();
-    for host in &hosts {
-        if host.ip_address.as_deref() == Some(ip) {
-            // Return the service name (lowercased), which is what Keychain keys use
-            return Some(host.name.to_lowercase());
-        }
-    }
-    None
+    name_for_ip_in(ip, &fresh_discovered_hosts())
+}
+
+fn name_for_ip_in(ip: &str, hosts: &[NetworkHost]) -> Option<String> {
+    hosts
+        .iter()
+        .find(|host| host.ip_address.as_deref() == Some(ip))
+        .map(|host| host.name.to_lowercase())
 }
 
 /// Returns true if `ip` is a literal IPv4 address in a private range (RFC 1918 or
@@ -37,48 +39,59 @@ pub(crate) fn is_private_ipv4(ip: &str) -> bool {
     addr.is_private() || addr.is_link_local()
 }
 
-/// Like `resolve_ip_to_hostname`, but waits briefly for mDNS to populate the
-/// discovered-host cache when the lookup misses on the first try. Solves the
-/// startup race where macOS auto-remounts an SMB share, FSEvents fires before
-/// mDNS has had time to find the host, and `statfs`-derived IP-only Keychain
-/// lookups miss the credentials we have keyed by hostname.
-///
-/// Only waits for private-range IPv4 addresses (where mDNS is plausible) and only
-/// if `is_network_enabled()`. Otherwise returns whatever the immediate sync
-/// lookup gave us. Polls every 100ms up to `timeout`. The caller is responsible
-/// for kicking off discovery via `network::ensure_mdns_started` before calling
-/// this; the wait alone won't start the daemon.
-pub(crate) async fn resolve_ip_to_hostname_with_wait(ip: &str, timeout: std::time::Duration) -> Option<String> {
-    // Fast path: already in the cache.
-    if let Some(hostname) = resolve_ip_to_hostname(ip) {
-        return Some(hostname);
-    }
-    // No point waiting for non-private IPs (Tailscale, public DNS, etc.) or when
-    // networking is disabled by the user.
-    if !is_private_ipv4(ip) || !crate::network::is_network_enabled() {
-        return None;
-    }
+/// What discovery could vouch for about a mount's server, with the browse kept
+/// running while the caller acts on it.
+pub(crate) struct DiscoveredServer {
+    /// The mDNS name for an IP `server`, lowercased: what Cmdr keys its Keychain
+    /// entries by. `None` when discovery doesn't know it, and for a server that isn't
+    /// an IP.
+    pub hostname: Option<String>,
+    /// Keeps the identity answers the caller reads next (`resolve_server_address`,
+    /// the per-share switch, the Keychain aliases) on fresh evidence.
+    _browse: Option<DiscoveryLease>,
+}
 
-    let poll_interval = std::time::Duration::from_millis(100);
-    let start = std::time::Instant::now();
-    while start.elapsed() < timeout {
-        tokio::time::sleep(poll_interval).await;
-        if let Some(hostname) = resolve_ip_to_hostname(ip) {
-            log::debug!(
-                "Resolved IP {} to hostname {} after waiting {:?}",
-                ip,
-                hostname,
-                start.elapsed()
-            );
-            return Some(hostname);
+/// Holds the mDNS browse and waits, up to `timeout`, for discovery to vouch for
+/// `server`: an IP to be paired with its mDNS name, or an mDNS service name to get
+/// an address. Keep the answer alive for as long as the caller reads identity.
+///
+/// Solves the race where macOS auto-remounts an SMB share, FSEvents fires before
+/// discovery has found the host, and a `statfs`-derived IP misses the credentials
+/// keyed by hostname, or a service name has nothing to dial. With the browse off
+/// until something needs it, every upgrade meets this race, not only the one at
+/// login.
+///
+/// Waits only where mDNS can answer: a private-range IPv4 or a service name, with
+/// `network.enabled` on. Anything else is looked up once. Polls every 100 ms.
+pub(crate) async fn discover_server(server: &str, timeout: Duration) -> DiscoveredServer {
+    let browse = crate::network::is_network_enabled().then(discovery_gate::hold);
+    let waits = browse.is_some() && (is_private_ipv4(server) || is_service_name(server));
+    let known = || {
+        if is_service_name(server) {
+            service_address(server).map(|_| None)
+        } else {
+            resolve_ip_to_hostname(server).map(Some)
         }
+    };
+
+    let poll_interval = Duration::from_millis(100);
+    let start = std::time::Instant::now();
+    let mut answer = known();
+    while answer.is_none() && waits && start.elapsed() < timeout {
+        tokio::time::sleep(poll_interval).await;
+        answer = known();
     }
-    log::debug!(
-        "Couldn't resolve IP {} to a hostname via mDNS within {:?}; proceeding without",
-        ip,
-        timeout
-    );
-    None
+    if waits && answer.is_none() {
+        log::debug!("Discovery didn't vouch for {server} within {timeout:?}; proceeding without");
+    }
+    DiscoveredServer {
+        hostname: answer.flatten(),
+        _browse: browse,
+    }
+}
+
+fn is_service_name(server: &str) -> bool {
+    server.contains("._tcp") || server.contains("._udp")
 }
 
 /// A server string from `statfs`, once we know whether anything can dial it.
@@ -110,28 +123,12 @@ pub(crate) enum ServerAddress {
 /// [`UndiscoveredService`](ServerAddress::UndiscoveredService), and only until
 /// discovery finds it.
 pub(crate) fn resolve_server_address(server: &str) -> ServerAddress {
-    // Detect mDNS service names (contain "._tcp" or "._udp")
-    if !server.contains("._tcp") && !server.contains("._udp") {
+    if !is_service_name(server) {
         return ServerAddress::Connectable(server.to_string());
     }
-
-    // Extract the service/display name (everything before the first "._")
-    let service_name = server.split("._").next().unwrap_or(server);
-
-    // Look up the discovered host by name (case-insensitive)
-    let hosts = get_discovered_hosts();
-    for host in &hosts {
-        if host.name.eq_ignore_ascii_case(service_name) {
-            if let Some(ref ip) = host.ip_address {
-                log::debug!("Resolved mDNS service name {} to IP {}", server, ip);
-                return ServerAddress::Connectable(ip.clone());
-            }
-            // Host found but no IP yet; try the hostname
-            if let Some(ref hostname) = host.hostname {
-                log::debug!("Resolved mDNS service name {} to hostname {}", server, hostname);
-                return ServerAddress::Connectable(hostname.clone());
-            }
-        }
+    if let Some(address) = service_address(server) {
+        log::debug!("Resolved mDNS service name {server} to {address}");
+        return ServerAddress::Connectable(address);
     }
 
     // DEBUG rather than WARN: an upgrade pass that runs before discovery settles
@@ -145,17 +142,27 @@ pub(crate) fn resolve_server_address(server: &str) -> ServerAddress {
     ServerAddress::UndiscoveredService
 }
 
+/// The address the running browse resolved the service name `server` to: its IP,
+/// else its hostname. Fresh evidence only: dialing a name at the address it had
+/// under an earlier browse could reach another server.
+fn service_address(server: &str) -> Option<String> {
+    let service_name = server.split("._").next().unwrap_or(server);
+    fresh_discovered_hosts()
+        .into_iter()
+        .filter(|host| host.name.eq_ignore_ascii_case(service_name))
+        .find_map(|host| host.ip_address.or(host.hostname))
+}
+
 /// Extracts the friendly display name from a server address.
 ///
 /// For mDNS service names like `Naspolya._smb._tcp.local`, returns `Naspolya`.
-/// For IPs or hostnames, tries `resolve_ip_to_hostname`, falls back to the raw string.
+/// For IPs, the mDNS name discovery last paired it with (a stale pairing is fine for a
+/// label), else the raw string.
 pub(crate) fn friendly_server_name(server: &str) -> String {
-    // mDNS service name: extract the part before "._"
-    if server.contains("._tcp") || server.contains("._udp") {
+    if is_service_name(server) {
         return server.split("._").next().unwrap_or(server).to_string();
     }
-    // IP address: try to resolve to mDNS hostname
-    resolve_ip_to_hostname(server).unwrap_or_else(|| server.to_string())
+    name_for_ip_in(server, &cached_discovered_hosts()).unwrap_or_else(|| server.to_string())
 }
 
 /// The server-name forms another app (Finder) might have keyed an SMB password under for
@@ -163,17 +170,17 @@ pub(crate) fn friendly_server_name(server: &str) -> String {
 /// service name (`Naspolya._smb._tcp.local`), while we mount by IP — so for each
 /// discovered host that's the same identity as `server`, we contribute its advertised
 /// name, its `.local` hostname, and the synthesized `{name}._smb._tcp.local` service form.
-/// Pure over `hosts` for testability; the live wrapper feeds `get_discovered_hosts()`.
+/// Pure over `hosts` for testability; the live wrapper feeds `fresh_discovered_hosts()`.
 /// macOS-only: every caller reads the system keychain, and an ungated definition fails the
 /// Linux build via `#![deny(unused)]`.
 #[cfg(target_os = "macos")]
 pub(crate) fn system_keychain_aliases(server: &str) -> Vec<String> {
-    system_keychain_aliases_from(server, &get_discovered_hosts())
+    system_keychain_aliases_from(server, &fresh_discovered_hosts())
 }
 
 // `test` keeps the pure helper compiling for its unit tests, which run on Linux too.
 #[cfg(any(target_os = "macos", test))]
-fn system_keychain_aliases_from(server: &str, hosts: &[crate::network::NetworkHost]) -> Vec<String> {
+fn system_keychain_aliases_from(server: &str, hosts: &[NetworkHost]) -> Vec<String> {
     use crate::network::server_identity::same_machine;
     let mut out = Vec::new();
     for h in hosts {

@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 
 /// Returns true when `a` and `b` name the same MACHINE, with `hosts` (the discovery
-/// state, `super::get_discovered_hosts()`, for a live caller) supplying name ↔ IP
+/// state, `super::fresh_discovered_hosts()`, for a live caller) supplying name ↔ IP
 /// equivalence.
 ///
 /// ❗ A machine, ❌ not an SMB server: one machine can run several (the Docker fixtures
@@ -102,7 +102,7 @@ pub fn mount_is_from(info: &SmbMountInfo, targets: &[SmbServer], hosts: &[Networ
 /// mount table snapshot (`volumes::smb_mounts`): no call per mount, so a hung share
 /// can't stall it, and it answers in time to decide what a menu offers.
 pub fn smb_mounts_from(targets: &[SmbServer]) -> Vec<String> {
-    let hosts = super::get_discovered_hosts();
+    let hosts = super::fresh_discovered_hosts();
     smb_mounts()
         .unwrap_or_default()
         .into_iter()

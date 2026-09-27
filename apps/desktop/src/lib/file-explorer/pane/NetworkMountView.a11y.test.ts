@@ -54,6 +54,7 @@ vi.mock('$lib/logging/logger', () => ({
 vi.mock('../network/network-store.svelte', () => ({
   getNetworkHosts: () => [],
   getDiscoveryState: () => 'idle',
+  holdDiscoveryForServersView: () => () => {},
   isHostResolving: () => false,
   getShareState: () => undefined,
   getShareCount: () => null,

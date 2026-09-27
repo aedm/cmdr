@@ -107,6 +107,7 @@ vi.mock('$lib/tauri-commands', () => ({
   resortListing: vi.fn().mockResolvedValue({}),
   // Network discovery mocks
   listNetworkHosts: vi.fn().mockResolvedValue([]),
+  setServersViewShown: vi.fn().mockResolvedValue(undefined),
   getNetworkDiscoveryState: vi.fn().mockResolvedValue('idle'),
   resolveNetworkHost: vi.fn().mockResolvedValue(null),
   // MTP device mocks

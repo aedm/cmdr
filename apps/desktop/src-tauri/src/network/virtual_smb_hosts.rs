@@ -40,8 +40,8 @@ fn port_for(env_key: &str, default_port: u16) -> u16 {
 
 /// Injects all 14 virtual SMB hosts into the discovery state.
 ///
-/// Must be called **after** `start_discovery()` so the hosts appear alongside
-/// any real mDNS-discovered hosts.
+/// They enter the cache as pinned hosts (`discovery_cache::on_host_found`), so they
+/// count as identity evidence whether or not a browse runs.
 pub fn setup_virtual_smb_hosts(app_handle: &AppHandle) {
     let hosts = [
         (

@@ -19,8 +19,7 @@ use crate::network::smb_connect_failure::{
     DirectConnectOutcome, UpgradeError, UpgradeFailure, log_direct_connect_failure,
 };
 use crate::network::smb_server_address::{
-    ServerAddress, friendly_server_name, get_keychain_password, resolve_ip_to_hostname_with_wait,
-    resolve_server_address,
+    ServerAddress, discover_server, friendly_server_name, get_keychain_password, resolve_server_address,
 };
 #[cfg(target_os = "macos")]
 use crate::volumes::SmbMountInfo;
@@ -230,7 +229,7 @@ static UPGRADE_PASS_PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::
 
 /// A single in-flight run of `file_system::upgrade_existing_smb_mounts`.
 ///
-/// `ensure_network_discovery_started` fires on EVERY user networking action
+/// `note_network_action` fires on EVERY user networking action
 /// (opening Network, "Connect to server…", clicking "Connect directly"), and
 /// each pass waits up to 15 s for mDNS before it does anything. Two clicks nine
 /// seconds apart stacked two passes that both fired blind. Holding this guard
@@ -496,11 +495,13 @@ pub(crate) async fn register_smb_volume(
 /// resolver choice can't drift between them. (The manual "Connect directly" path uses
 /// `try_smb_upgrade` instead, because it surfaces `CredentialsNeeded` to prompt.)
 ///
-/// Uses `resolve_ip_to_hostname_with_wait` (polls the mDNS host cache up to
+/// Uses `discover_server` (holds the mDNS browse and polls the host cache up to
 /// 1500 ms), not the one-shot resolver: macOS auto-remounts give us the LAN IP
 /// via statfs, but stored creds are keyed by the mDNS hostname (e.g.
-/// `smb://naspolya/share`). A no-wait lookup races mDNS and misses. Fails open —
-/// if mDNS never warms, the IP-keyed lookup still runs, then guest.
+/// `smb://naspolya/share`), and a service-name mount needs an address. A no-wait
+/// lookup races mDNS and misses. Fails open: if mDNS never warms, the IP-keyed
+/// lookup still runs, then guest. The browse stays held until the dial is done, so
+/// every identity answer on the way reads fresh evidence.
 ///
 /// `notice` is the caller's answer to "is anyone watching this share?"
 /// ([`FallbackNotice`]): the startup pass says no, the mount watcher and the
@@ -512,8 +513,8 @@ pub(crate) async fn resolve_and_register_smb_volume(
     port: u16,
     notice: FallbackNotice,
 ) {
-    let hostname = resolve_ip_to_hostname_with_wait(server, std::time::Duration::from_millis(1500)).await;
-    let creds = get_keychain_password(server, hostname.as_deref(), port, share).await;
+    let discovered = discover_server(server, std::time::Duration::from_millis(1500)).await;
+    let creds = get_keychain_password(server, discovered.hostname.as_deref(), port, share).await;
     let (username, password) = match &creds {
         Some((u, p)) => (Some(u.as_str()), Some(p.as_str())),
         None => (None, None),

@@ -17,6 +17,7 @@
     import ServersHub from '../network/ServersHub.svelte'
     import type { HubRow } from '../network/servers-hub-rows'
     import PlacesBrowser from '../network/PlacesBrowser.svelte'
+    import { holdDiscoveryForServersView } from '../network/network-store.svelte'
     import { isMountSignInQuestion, openSmbSignInSheet, refusalForMountError } from '../network/smb-sign-in'
     import { asMountError } from '../network/mount-error'
     import { renderMountError } from '../network/mount-error-messages'
@@ -121,6 +122,10 @@
     // credentials, which is the "Naspolya dead end". That covers a signed-in
     // account the share turned away too, since another account is the fix.
     // `isMountSignInQuestion` and the refusal vocabulary live in `../network/smb-sign-in`.
+
+    // Hosts arrive and leave live while this view is on screen: the backend browses mDNS
+    // exactly as long as some Servers view holds it. The release is the effect's cleanup.
+    $effect(() => holdDiscoveryForServersView())
 
     // Component refs for keyboard navigation
     let serversHubRef: ServersHubAPI | undefined = $state()

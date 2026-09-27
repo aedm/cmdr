@@ -24,8 +24,8 @@ shared seams (`connect_wiring.rs`, `server_list_file.rs`, `saved_server_fields.r
   map over IPC: answer a lookup.
 - **NFC-fold every SMB server and share name you send, key, or compare** (❌ never the password, ❌ never a path
   inside the share, which goes out byte-for-byte), or `TreeConnect` answers `STATUS_BAD_NETWORK_NAME`.
-- **mDNS is gated**: startup fires only if `network.enabled && (firstTriggerDone || smb-e2e)`, so a fresh install holds
-  the macOS "find devices" prompt until `ensure_network_discovery_started`.
+- **mDNS browses only under a `DiscoveryLease`** (`discovery_gate.rs`), and identity reads `fresh_discovered_hosts`,
+  ❌ never the display-only `cached_discovered_hosts`: a stale pairing must never match two servers (`DETAILS.md`).
 - **Every NetFS mount sets `UIOption = NoUI`**, or NetAuthAgent pops a dialog and blocks the mount.
 - **Re-register via `register_replacing_predecessor` (SMB) or `install_retiring_incumbent`**, which retire through
   `on_superseded`; ❌ never a bare overwrite or `on_unmount`, which cuts in-flight transfers. An EDIT to a connected

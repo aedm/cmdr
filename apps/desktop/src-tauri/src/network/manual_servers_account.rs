@@ -58,7 +58,7 @@ pub fn set_account<R: Runtime>(server: &SmbServer, username: Option<&str>, app_h
     let Some(path) = get_store_path(app_handle) else {
         return false;
     };
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     let was_saved = read_store_from_path(&path)
         .servers
         .iter()

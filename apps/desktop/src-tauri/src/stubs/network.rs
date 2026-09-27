@@ -527,10 +527,17 @@ pub async fn disconnect_network_host(_host: NetworkHost) -> Result<Vec<String>, 
     Ok(vec![])
 }
 
-/// Lazy-starts network discovery (stub: no-op).
+/// Notes a network action (stub: no-op).
 #[tauri::command]
 #[specta::specta]
-pub fn ensure_network_discovery_started(_app_handle: tauri::AppHandle) {
+pub fn note_network_action(_app_handle: tauri::AppHandle) {
+    // No-op on platforms without network discovery
+}
+
+/// Notes whether the Servers view is on screen (stub: no-op).
+#[tauri::command]
+#[specta::specta]
+pub fn set_servers_view_shown(_shown: bool) {
     // No-op on platforms without network discovery
 }
 
@@ -544,12 +551,6 @@ pub fn set_network_enabled(_enabled: bool, _app_handle: tauri::AppHandle) {
 // ============================================================================
 // Non-command functions (kept for API compatibility, not called on Linux)
 // ============================================================================
-
-/// Starts network discovery (stub: no-op).
-#[allow(dead_code, reason = "API compatibility with macOS implementation")]
-pub fn start_discovery<R: tauri::Runtime>(_app: tauri::AppHandle<R>) {
-    // No-op on Linux
-}
 
 /// Loads known shares from disk (stub: no-op).
 #[allow(dead_code, reason = "API compatibility with macOS implementation")]

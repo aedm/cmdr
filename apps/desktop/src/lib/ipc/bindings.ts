@@ -3642,7 +3642,10 @@ export const commands = {
    *  the filesystem.
    */
   getVolumeSpace: (path: string) => __TAURI_INVOKE<TimedOut<SpaceInfo | null>>('get_volume_space', { path }),
-  // Gets all currently discovered network hosts.
+  /**
+   *  Gets every host discovery knows, including ones a stopped browse found: the
+   *  Servers view shows them straight away while a fresh browse runs.
+   */
   listNetworkHosts: () => __TAURI_INVOKE<NetworkHost[]>('list_network_hosts'),
   /**
    *  Resolves a network host by ID, returning the host with hostname and IP address populated.
@@ -4066,25 +4069,29 @@ export const commands = {
   disconnectNetworkHost: (host: NetworkHost) =>
     typedError<string[], string>(__TAURI_INVOKE('disconnect_network_host', { host })),
   /**
-   *  Idempotently starts mDNS discovery if it isn't running. Triggered by the frontend the first
-   *  time the user takes a network action (clicks "Network", opens "Connect to server…", or
-   *  upgrades a mounted share to direct smb2). The first call here is what triggers macOS's
-   *  "Cmdr wants to find devices on local networks" prompt; we defer to the latest reasonable
-   *  moment so fresh installs don't see the prompt at launch.
+   *  The user took a network action: opened the Servers view, "Connect to server…", or
+   *  upgraded a mounted share to direct smb2. Brings back the manual servers (a
+   *  toggle-off cleared them) and runs the existing-SMB-mount upgrade pass: if macOS
+   *  auto-remounted shares at login, this is the first moment we can open direct smb2
+   *  connections to them (TCP to a private IP gates on the Local Network permission).
    *
-   *  Also kicks off the existing-SMB-mount upgrade pass: if macOS auto-remounted SMB shares
-   *  at login, this is the first moment we can open direct smb2 connections to them (TCP to a
-   *  private IP also gates on the Local Network permission).
-   *
-   *  Reloads manually-added servers in case discovery was previously stopped (toggle-off path)
-   *  and `DISCOVERY_STATE` got cleared.
+   *  Starts no browse of its own: the Servers view holds one while it's on screen
+   *  (`set_servers_view_shown`), and the upgrade pass holds one while it resolves.
    */
-  ensureNetworkDiscoveryStarted: () => __TAURI_INVOKE<void>('ensure_network_discovery_started'),
+  noteNetworkAction: () => __TAURI_INVOKE<void>('note_network_action'),
+  /**
+   *  The Servers view (a pane on the network volume) is on screen, or no longer is.
+   *  While it is, the mDNS browse runs, so hosts arriving and leaving show live;
+   *  `discovery_gate` stops it once nothing else needs it either.
+   *
+   *  The frontend sends its whole truth each time (any view shown at all), so a
+   *  repeat is harmless and a reloaded page corrects whatever the last one left.
+   */
+  setServersViewShown: (shown: boolean) => __TAURI_INVOKE<void>('set_servers_view_shown', { shown }),
   /**
    *  Live-apply the `network.enabled` toggle. When `false`, stops mDNS and clears the discovered
-   *  host list (frontend store empties via emitted `network-host-lost` events). When `true`, this
-   *  is a no-op; the frontend triggers `ensure_network_discovery_started` separately when the
-   *  user takes a network action.
+   *  host list (frontend store empties via emitted `network-host-lost` events). When `true`, the
+   *  browse resumes if the Servers view is holding it.
    */
   setNetworkEnabled: (enabled: boolean) => __TAURI_INVOKE<void>('set_network_enabled', { enabled }),
   /**

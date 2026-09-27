@@ -1,6 +1,9 @@
 /**
- * Network discovery store - manages network host discovery at app level.
- * This ensures discovery is active from app startup, not just when viewing the Network volume.
+ * Network discovery store: the hosts the backend knows, kept in sync at app level.
+ *
+ * The backend browses mDNS only while something needs it; this store's part is to say
+ * when a Servers view is on screen (`holdDiscoveryForServersView`). Between browses the
+ * backend keeps the hosts it found, so a view opens on known servers straight away.
  */
 
 import { SvelteSet, SvelteMap } from 'svelte/reactivity'
@@ -17,6 +20,7 @@ import {
   getSmbCredentials,
   hasCachedSmbCredentials,
   deleteSmbCredentials,
+  setServersViewShown,
 } from '$lib/tauri-commands'
 import { getNetworkTimeoutMs, getShareCacheTtlMs } from '$lib/settings/network-settings'
 import { initializeSettings } from '$lib/settings'
@@ -144,6 +148,26 @@ async function fetchSharesSilent(host: NetworkHost): Promise<void> {
   }
 }
 
+/** How many Servers views are on screen (two panes can each show one). */
+let serversViewsShown = 0
+
+/**
+ * Keeps the backend's mDNS browse running while a Servers view is on screen, so hosts
+ * arrive and leave live there. Call when the view appears; call the returned release
+ * when it goes. The backend hears only the first appearance and the last departure.
+ */
+export function holdDiscoveryForServersView(): () => void {
+  serversViewsShown += 1
+  if (serversViewsShown === 1) void setServersViewShown(true)
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    serversViewsShown -= 1
+    if (serversViewsShown === 0) void setServersViewShown(false)
+  }
+}
+
 /**
  * Initialize network discovery - call once at app startup.
  * Subscribes to network events and loads initial hosts.
@@ -151,6 +175,10 @@ async function fetchSharesSilent(host: NetworkHost): Promise<void> {
 export async function initNetworkDiscovery(): Promise<void> {
   if (initialized) return
   initialized = true
+
+  // A reloaded page starts from zero views, while the backend may still hold the browse
+  // for the page before it: send this page's truth.
+  void setServersViewShown(serversViewsShown > 0)
 
   // Ensure settings are loaded before reading network timeout/cache values
   await initializeSettings()

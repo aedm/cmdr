@@ -151,10 +151,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `system_has_saved_smb_password` (prompt-free probe driving the "Use saved password" offer) and
   `upgrade_to_smb_volume_using_saved_password` (consent-gated read via `secrets::system_keychain_smb` → direct smb2 →
   copies the password into Cmdr's own store so future reconnects are silent → `CredentialsNeeded` fallback if
-  absent/denied). User-initiated only. Lazy-startup hooks: `ensure_network_discovery_started` (idempotent: kicks off
-  mDNS + manual-server load + smb-mount upgrade on first user network action) and `set_network_enabled` (live-applies
-  the `network.enabled` toggle). The "Connect directly" upgrade lives in `network::smb_connect_directly` and the
-  auto-upgrade in `network::smb_upgrade`; the three `upgrade_to_smb_volume*` commands only kick mDNS and delegate, and
+  absent/denied). User-initiated only. Lazy-startup hooks: `note_network_action` (manual-server
+  load + smb-mount upgrade on a user network action), `set_servers_view_shown` (holds the mDNS browse while a Servers
+  view is on screen), and `set_network_enabled` (live-applies the `network.enabled` toggle). The "Connect directly"
+  upgrade lives in `network::smb_connect_directly` and the auto-upgrade in `network::smb_upgrade`; the three
+  `upgrade_to_smb_volume*` commands only delegate (each door holds the browse for its own run), and
   `system_has_saved_smb_password` delegates to `smb_connect_directly::system_has_saved_password`. They answer a bare
   `UpgradeResult`, with no `Err` channel: a volume that's gone, isn't an SMB mount, or whose mount didn't answer in time
   is a variant (`VolumeGone` / `NotSmbMount` / `MountNotResponding`) the frontend words, and elsewhere than macOS the

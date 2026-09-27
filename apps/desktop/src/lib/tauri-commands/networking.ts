@@ -560,17 +560,29 @@ export async function removeManualServer(serverId: string): Promise<void> {
 }
 
 /**
- * Idempotently kicks off mDNS discovery if it isn't running yet. Call this when the user
- * takes their first network action: clicking "Network" in the volume picker, opening
- * "Connect to server…", or upgrading a mounted share to direct smb2.
- *
- * The first call here is what triggers macOS's "Cmdr wants to find devices on local
- * networks" prompt. Returns immediately on subsequent calls. No-op when networking is
- * disabled (the caller is expected to gate on `network.enabled` before calling).
+ * Tells the backend the user took a network action: opening the Servers view,
+ * "Connect to server…", or upgrading a mounted share to direct smb2. It brings back
+ * the manual servers and runs the existing-SMB-mount upgrade pass. It starts no browse
+ * of its own: see `setServersViewShown`.
  */
-export async function ensureNetworkDiscoveryStarted(): Promise<void> {
+export async function noteNetworkAction(): Promise<void> {
   try {
-    await commands.ensureNetworkDiscoveryStarted()
+    await commands.noteNetworkAction()
+  } catch {
+    // Stub on unsupported platforms. Silently swallow.
+  }
+}
+
+/**
+ * Whether any Servers view is on screen. The backend browses mDNS only while one is
+ * (or while something else needs discovery), so hosts arrive and leave live there and
+ * nothing browses at idle. The first browse is what raises macOS's "Cmdr wants to
+ * find devices on local networks" prompt; the backend won't browse while
+ * `network.enabled` is off.
+ */
+export async function setServersViewShown(shown: boolean): Promise<void> {
+  try {
+    await commands.setServersViewShown(shown)
   } catch {
     // Stub on unsupported platforms. Silently swallow.
   }
@@ -579,8 +591,7 @@ export async function ensureNetworkDiscoveryStarted(): Promise<void> {
 /**
  * Pushes the `network.enabled` toggle live to the backend. When `false`, stops mDNS and
  * clears the discovered host list (the frontend store empties via `network-host-lost`).
- * When `true`, the backend stays passive: discovery starts only when the user takes a
- * network action and the frontend calls `ensureNetworkDiscoveryStarted`.
+ * When `true`, the browse resumes if a Servers view is holding it.
  */
 export async function setNetworkEnabled(enabled: boolean): Promise<void> {
   try {

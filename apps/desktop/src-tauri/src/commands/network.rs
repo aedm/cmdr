@@ -2,7 +2,7 @@
 
 use crate::file_system::volume::reconnect_error::ReconnectError;
 use crate::network::{
-    AuthMode, DiscoveryState, NetworkHost, ShareListError, ShareListResult, get_discovered_hosts,
+    AuthMode, DiscoveryState, NetworkHost, ShareListError, ShareListResult, cached_discovered_hosts,
     get_discovery_state_value, get_host_for_resolution, resolve_host_ip, service_name_to_hostname, smb_client,
     update_host_resolution,
 };
@@ -12,11 +12,12 @@ use crate::network::smb_connect_directly::{self, UpgradeResult};
 use crate::network::smb_direct_switch::{self, DirectConnectionSwitch};
 use crate::network::smb_upgrade::register_smb_volume;
 
-/// Gets all currently discovered network hosts.
+/// Gets every host discovery knows, including ones a stopped browse found: the
+/// Servers view shows them straight away while a fresh browse runs.
 #[tauri::command]
 #[specta::specta]
 pub fn list_network_hosts() -> Vec<NetworkHost> {
-    get_discovered_hosts()
+    cached_discovered_hosts()
 }
 
 /// Gets the current discovery state.
@@ -459,12 +460,7 @@ pub async fn mount_network_share(
 /// `network::smb_connect_directly::UpgradeResult`.
 #[tauri::command]
 #[specta::specta]
-pub async fn upgrade_to_smb_volume(volume_id: String, app_handle: tauri::AppHandle) -> UpgradeResult {
-    // Kick mDNS off so IP → hostname resolution has a shot before the Keychain
-    // lookup. Idempotent; a no-op if it's already running or `network.enabled` is
-    // off. Here rather than in the upgrade itself, which stays `AppHandle`-free so
-    // the MCP executor (generic over `Runtime`) can call it.
-    crate::network::ensure_mdns_started(app_handle);
+pub async fn upgrade_to_smb_volume(volume_id: String) -> UpgradeResult {
     smb_connect_directly::connect_directly(&volume_id).await
 }
 
@@ -503,10 +499,7 @@ pub async fn upgrade_to_smb_volume_with_credentials(
     username: Option<String>,
     password: Option<String>,
     remember_in_keychain: bool,
-    app_handle: tauri::AppHandle,
 ) -> UpgradeResult {
-    // Kick mDNS off so a remembered password is saved under the hostname, not the raw IP.
-    crate::network::ensure_mdns_started(app_handle);
     smb_connect_directly::connect_directly_with_credentials(&volume_id, username, password, remember_in_keychain).await
 }
 
@@ -534,12 +527,7 @@ pub async fn system_has_saved_smb_password(_volume_id: String) -> Result<bool, S
 /// never call it at startup. Where there's no system keychain, it asks for the password.
 #[tauri::command]
 #[specta::specta]
-pub async fn upgrade_to_smb_volume_using_saved_password(
-    volume_id: String,
-    app_handle: tauri::AppHandle,
-) -> UpgradeResult {
-    // Warm mDNS so the alias set (Finder keys by the mDNS service name) is populated.
-    crate::network::ensure_mdns_started(app_handle);
+pub async fn upgrade_to_smb_volume_using_saved_password(volume_id: String) -> UpgradeResult {
     smb_connect_directly::connect_directly_with_system_saved_password(&volume_id).await
 }
 
@@ -744,39 +732,54 @@ pub fn remove_manual_server(server_id: String, app_handle: tauri::AppHandle) -> 
     manual_servers::remove_manual_server(&server_id, &app_handle)
 }
 
-/// Idempotently starts mDNS discovery if it isn't running. Triggered by the frontend the first
-/// time the user takes a network action (clicks "Network", opens "Connect to server…", or
-/// upgrades a mounted share to direct smb2). The first call here is what triggers macOS's
-/// "Cmdr wants to find devices on local networks" prompt; we defer to the latest reasonable
-/// moment so fresh installs don't see the prompt at launch.
+/// The user took a network action: opened the Servers view, "Connect to server…", or
+/// upgraded a mounted share to direct smb2. Brings back the manual servers (a
+/// toggle-off cleared them) and runs the existing-SMB-mount upgrade pass: if macOS
+/// auto-remounted shares at login, this is the first moment we can open direct smb2
+/// connections to them (TCP to a private IP gates on the Local Network permission).
 ///
-/// Also kicks off the existing-SMB-mount upgrade pass: if macOS auto-remounted SMB shares
-/// at login, this is the first moment we can open direct smb2 connections to them (TCP to a
-/// private IP also gates on the Local Network permission).
-///
-/// Reloads manually-added servers in case discovery was previously stopped (toggle-off path)
-/// and `DISCOVERY_STATE` got cleared.
+/// Starts no browse of its own: the Servers view holds one while it's on screen
+/// (`set_servers_view_shown`), and the upgrade pass holds one while it resolves.
 #[tauri::command]
 #[specta::specta]
-pub fn ensure_network_discovery_started(app_handle: tauri::AppHandle) {
-    crate::network::start_discovery(app_handle.clone());
+pub fn note_network_action(app_handle: tauri::AppHandle) {
     manual_servers::load_manual_servers(&app_handle);
-    crate::file_system::upgrade_existing_smb_mounts(app_handle.clone());
+    crate::file_system::upgrade_existing_smb_mounts();
 
     #[cfg(feature = "smb-e2e")]
     crate::network::virtual_smb_hosts::setup_virtual_smb_hosts(&app_handle);
 }
 
+/// The Servers view (a pane on the network volume) is on screen, or no longer is.
+/// While it is, the mDNS browse runs, so hosts arriving and leaving show live;
+/// `discovery_gate` stops it once nothing else needs it either.
+///
+/// The frontend sends its whole truth each time (any view shown at all), so a
+/// repeat is harmless and a reloaded page corrects whatever the last one left.
+#[tauri::command]
+#[specta::specta]
+pub fn set_servers_view_shown(shown: bool) {
+    use crate::ignore_poison::IgnorePoison;
+    use crate::network::discovery_gate::{self, DiscoveryLease};
+    use std::sync::Mutex;
+
+    static VIEW_LEASE: Mutex<Option<DiscoveryLease>> = Mutex::new(None);
+    let mut lease = VIEW_LEASE.lock_ignore_poison();
+    match (shown, lease.is_some()) {
+        (true, false) => *lease = Some(discovery_gate::hold()),
+        (false, true) => *lease = None,
+        _ => {}
+    }
+}
+
 /// Live-apply the `network.enabled` toggle. When `false`, stops mDNS and clears the discovered
-/// host list (frontend store empties via emitted `network-host-lost` events). When `true`, this
-/// is a no-op; the frontend triggers `ensure_network_discovery_started` separately when the
-/// user takes a network action.
+/// host list (frontend store empties via emitted `network-host-lost` events). When `true`, the
+/// browse resumes if the Servers view is holding it.
 #[tauri::command]
 #[specta::specta]
 pub fn set_network_enabled(enabled: bool, app_handle: tauri::AppHandle) {
     crate::network::set_network_enabled_flag(enabled);
     if !enabled {
-        crate::network::mdns_discovery::stop_discovery();
         crate::network::clear_discovered_hosts(&app_handle);
     }
 }

@@ -125,7 +125,7 @@ fn find_existing_mount(server: &str, share: &str) -> Option<String> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     let mount_server = match_existing_smb_mount(&stdout, server, share, &hosts)?;
     // Derive from the server name the existing mount actually uses, so the GVFS path
     // matches even when it was mounted under a different alias than we looked up.

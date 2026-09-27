@@ -31,7 +31,7 @@ fn stop_background_services() {
     ai::manager::shutdown();
     mcp::stop_mcp_server();
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    network::mdns_discovery::stop_discovery();
+    network::discovery_gate::shut_down();
     #[cfg(target_os = "linux")]
     crate::volumes_linux::watcher::stop_volume_watcher();
 }

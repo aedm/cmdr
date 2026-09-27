@@ -335,11 +335,6 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             file_system::file_provider_actions::warm();
 
-            // Stash the AppHandle so the MCP `indexing` tool can drive
-            // enable/rescan (which need a concrete handle) from its generic
-            // executor. Disable/forget need no handle.
-            commands::indexing::set_app_handle(app.handle().clone());
-
             // Stash the AppHandle so a share that stays on the slow kernel mount
             // can say so. Session-state transitions need no handle here: they go
             // through the volume host's event seam, wired in `volume_host`.
@@ -568,18 +563,21 @@ pub fn run() {
             #[cfg(any(target_os = "macos", target_os = "linux"))]
             network::set_network_enabled_flag(saved_settings.network_enabled.unwrap_or(true));
 
-            // Start mDNS network discovery only for returning users who've already answered the
-            // OS Local Network prompt at least once. Fresh installs stay quiet at launch. The
-            // frontend calls `ensure_network_discovery_started` lazily on first user network
-            // action (clicks "Network", opens "Connect to server…", upgrades a mounted share).
-            // E2E builds always start so virtual hosts are populated before tests run.
+            // Discovery browses only while something needs it (`network/discovery_gate.rs`).
+            // At launch, returning users who've already answered the OS Local Network prompt
+            // get a short warm-up browse, so the Servers view opens on known servers. Fresh
+            // installs stay quiet: the first network action is what asks. E2E builds always
+            // warm up so virtual hosts are populated before tests run.
             #[cfg(any(target_os = "macos", target_os = "linux"))]
-            let should_start_network_at_launch = saved_settings.network_enabled.unwrap_or(true)
+            network::mdns_discovery::install(app.handle());
+
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            let should_warm_network_at_launch = saved_settings.network_enabled.unwrap_or(true)
                 && (saved_settings.network_first_trigger_done.unwrap_or(false) || cfg!(feature = "smb-e2e"));
 
             #[cfg(any(target_os = "macos", target_os = "linux"))]
-            if should_start_network_at_launch {
-                network::start_discovery(app.handle().clone());
+            if should_warm_network_at_launch {
+                network::discovery_gate::hold_for(network::discovery_gate::LAUNCH_WARM_UP);
 
                 #[cfg(feature = "smb-e2e")]
                 network::virtual_smb_hosts::setup_virtual_smb_hosts(app.handle());
@@ -623,12 +621,12 @@ pub fn run() {
             // Upgrade existing SMB mounts to direct smb2 connections (background, non-blocking).
             // No `firstTriggerDone` gate here: the function is a no-op when there are no SMB
             // mounts (no network activity, no prompt). When there ARE mounts and direct-SMB is
-            // enabled, the function kicks off mDNS itself so the Keychain lookup can resolve
+            // enabled, the pass holds the mDNS browse itself so the Keychain lookup can resolve
             // hostnames — same shape as the manual "Connect directly" and mount-time paths.
             // The macOS Local Network prompt fires once per app and only when an SMB mount is
-            // present at launch; subsequent launches start mDNS eagerly via `firstTriggerDone`.
+            // present at launch.
             #[cfg(any(target_os = "macos", target_os = "linux"))]
-            file_system::upgrade_existing_smb_mounts(app.handle().clone());
+            file_system::upgrade_existing_smb_mounts();
 
             // Before the menu bar is built: AppKit decides what the Services submenu may
             // contain from the send types the app has registered.

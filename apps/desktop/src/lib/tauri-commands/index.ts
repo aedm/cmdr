@@ -272,7 +272,8 @@ export {
   onSmbFellBackToOsMount,
   onSmbOsMountNoticeWithdrawn,
   disconnectNetworkHost,
-  ensureNetworkDiscoveryStarted,
+  noteNetworkAction,
+  setServersViewShown,
   setNetworkEnabled,
 } from './networking'
 

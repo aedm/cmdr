@@ -20,7 +20,6 @@
     "apps/desktop/src-tauri/src/mcp/listing_errors.rs": 1,
     "apps/desktop/src-tauri/src/mcp/server.rs": 9,
     "apps/desktop/src-tauri/src/mcp/terminal_ops.rs": 1,
-    "apps/desktop/src-tauri/src/network/mdns_discovery.rs": 2,
     "apps/desktop/src-tauri/src/network/smb_cache.rs": 4,
     "apps/desktop/src-tauri/src/quick_look/controller.rs": 3,
     "crates/cmdr-fs/src/entry.rs": 4,

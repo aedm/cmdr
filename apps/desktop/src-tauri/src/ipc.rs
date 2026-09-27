@@ -638,7 +638,8 @@ macro_rules! ipc_command_manifest {
                     crate::commands::network::set_smb_account_preference,
                     crate::commands::network::remove_manual_server,
                     crate::commands::network::disconnect_network_host,
-                    crate::commands::network::ensure_network_discovery_started,
+                    crate::commands::network::note_network_action,
+                    crate::commands::network::set_servers_view_shown,
                     crate::commands::network::set_network_enabled,
                 ]
                 dispatch_only: []
@@ -705,7 +706,8 @@ macro_rules! ipc_command_manifest {
             }
             cfg(not(any(target_os = "macos", target_os = "linux"))) {
                 typed: [
-                    crate::stubs::network::ensure_network_discovery_started,
+                    crate::stubs::network::note_network_action,
+                    crate::stubs::network::set_servers_view_shown,
                     crate::stubs::network::set_network_enabled,
                     crate::stubs::network::list_network_hosts,
                     crate::stubs::network::resolve_host,

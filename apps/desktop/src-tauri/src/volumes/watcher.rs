@@ -401,15 +401,8 @@ fn try_upgrade_smb_mount(volume_path: &str) {
         return;
     };
 
-    // Kick mDNS off here (idempotent, no-op if already running or if
-    // `network.enabled` is off). In dev mode `network.firstTriggerDone` is
-    // typically `false`, so the launch-time mDNS gate doesn't fire and
-    // hostname resolution would otherwise miss when macOS auto-remounts an
-    // SMB share at login. See `network::smb_server_address::resolve_ip_to_hostname_with_wait`.
-    if let Some(app) = APP_HANDLE.get() {
-        crate::network::ensure_mdns_started(app.clone());
-    }
-
+    // The upgrade holds the mDNS browse for its own hostname resolution
+    // (`network::smb_server_address::discover_server`).
     let mount_path = volume_path.to_string();
     // A share that mounts while the app runs is usually one someone mounted in
     // Finder a moment ago, so they're watching: a failure is worth saying.

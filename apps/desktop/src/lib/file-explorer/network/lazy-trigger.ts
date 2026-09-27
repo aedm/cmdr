@@ -1,12 +1,13 @@
 /**
- * Lazy trigger for the macOS Local Network permission prompt.
+ * The first network action, and every one after it.
  *
- * mDNS browsing isn't started at app launch on fresh installs. Instead, the first user
- * action that depends on networking calls `triggerNetworkDiscovery()`. This is what fires
- * the system "Cmdr wants to find devices on local networks" prompt: macOS gates it on the
- * actual multicast browse, not on app startup. After the first trigger we persist
- * `network.firstTriggerDone = true` so subsequent launches start mDNS eagerly without
- * surprising the user.
+ * mDNS browsing doesn't run at app launch on fresh installs. The first user action that
+ * depends on networking calls `triggerNetworkDiscovery()`, which runs the backend's
+ * existing-mount upgrade pass and records `network.firstTriggerDone = true`, so later
+ * launches warm the server list up briefly without surprising the user. The browse
+ * itself, which is what fires the system "Cmdr wants to find devices on local networks"
+ * prompt, runs while a Servers view is on screen (`holdDiscoveryForServersView`) or an
+ * upgrade needs it.
  *
  * Callers: `ServersHub` mount and the OS-mount → direct-smb2
  * upgrade click in `VolumeBreadcrumb`.
@@ -15,13 +16,13 @@
  * single chokepoint.
  */
 
-import { ensureNetworkDiscoveryStarted } from '$lib/tauri-commands'
+import { noteNetworkAction } from '$lib/tauri-commands'
 import { getSetting, setSetting } from '$lib/settings'
 
 export function triggerNetworkDiscovery(): void {
   if (!getSetting('network.enabled')) return
 
-  void ensureNetworkDiscoveryStarted()
+  void noteNetworkAction()
 
   if (!getSetting('network.firstTriggerDone')) {
     setSetting('network.firstTriggerDone', true)

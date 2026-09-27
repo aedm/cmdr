@@ -12,6 +12,8 @@ pub mod credential_store;
 pub mod keychain;
 
 pub mod connect_wiring;
+pub mod discovery_cache;
+pub mod discovery_gate;
 // Every typed event the module emits. Always compiled: `collect_events!` in
 // `ipc.rs` can't cfg-gate inline.
 pub mod events;
@@ -95,21 +97,20 @@ pub(crate) mod os_mount_notice;
 #[cfg(feature = "smb-e2e")]
 pub mod virtual_smb_hosts;
 
-use crate::ignore_poison::IgnorePoison;
-use log::debug;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock};
-use tauri::{AppHandle, Emitter, Manager};
-use tauri_specta::Event;
+use tauri::AppHandle;
 
+pub use discovery_cache::{
+    cached_discovered_hosts, clear_discovered_hosts, fresh_discovered_hosts, get_discovery_state_value,
+    get_host_for_resolution, update_host_resolution,
+};
+pub(crate) use discovery_cache::{on_host_found, on_host_lost};
 pub use events::{
     NetworkDiscoveryStateChanged, NetworkHostContextAction, NetworkHostContextActionKind, NetworkHostFound,
     NetworkHostLost, NetworkHostResolved, SmbFellBackToOsMount, SmbOsMountNoticeWithdrawn, VolumeConnection,
     VolumeConnectionChanged,
 };
-pub use mdns_discovery::start_discovery;
 pub use smb_client::{AuthMode, ShareListError, ShareListResult};
 
 /// Runtime mirror of the `network.enabled` setting. Default `true` matches the
@@ -121,27 +122,13 @@ static NETWORK_ENABLED: AtomicBool = AtomicBool::new(true);
 /// settings) and from the live-toggle command.
 pub fn set_network_enabled_flag(enabled: bool) {
     NETWORK_ENABLED.store(enabled, Ordering::Relaxed);
+    discovery_gate::set_enabled(enabled);
 }
 
 /// Returns whether networking is enabled. Used by BE-side upgrade paths to decide
 /// whether they're allowed to kick off mDNS or wait for hostname resolution.
 pub fn is_network_enabled() -> bool {
     NETWORK_ENABLED.load(Ordering::Relaxed)
-}
-
-/// Idempotently starts mDNS discovery if `network.enabled` is on. Safe to call
-/// from any BE-side upgrade path that needs hostname resolution from the mDNS
-/// cache. No-op if discovery is already running or the user has disabled
-/// networking.
-///
-/// Unlike `commands::network::ensure_network_discovery_started`, this does NOT
-/// re-trigger `upgrade_existing_smb_mounts` — it's meant for paths that ARE the
-/// upgrade flow and just need the mDNS daemon up to resolve IP → hostname.
-pub fn ensure_mdns_started(app_handle: AppHandle) {
-    if !is_network_enabled() {
-        return;
-    }
-    start_discovery(app_handle);
 }
 
 /// How long a mount attempt may run before we give up on it, in milliseconds.
@@ -249,162 +236,6 @@ pub enum DiscoveryState {
     Active,
 }
 
-/// Current network discovery state, accessible globally.
-struct NetworkDiscoveryState {
-    hosts: HashMap<String, NetworkHost>,
-    state: DiscoveryState,
-}
-
-impl Default for NetworkDiscoveryState {
-    fn default() -> Self {
-        Self {
-            hosts: HashMap::new(),
-            state: DiscoveryState::Idle,
-        }
-    }
-}
-
-/// Global discovery state, protected by a mutex.
-static DISCOVERY_STATE: OnceLock<Mutex<NetworkDiscoveryState>> = OnceLock::new();
-
-fn get_discovery_state() -> &'static Mutex<NetworkDiscoveryState> {
-    DISCOVERY_STATE.get_or_init(|| Mutex::new(NetworkDiscoveryState::default()))
-}
-
-/// Gets all currently discovered network hosts.
-pub fn get_discovered_hosts() -> Vec<NetworkHost> {
-    let state = get_discovery_state().lock_ignore_poison();
-    state.hosts.values().cloned().collect()
-}
-
-/// Gets the current discovery state.
-pub fn get_discovery_state_value() -> DiscoveryState {
-    let state = get_discovery_state().lock_ignore_poison();
-    state.state
-}
-
-/// Drains the cached host map and resets discovery state to `Idle`. Pure
-/// mutation: returns the IDs of hosts that were removed so the caller can
-/// emit `network-host-lost` for each. Testable without a Tauri runtime.
-pub(crate) fn drain_discovered_hosts() -> Vec<String> {
-    let mut state = get_discovery_state().lock_ignore_poison();
-    let ids: Vec<String> = state.hosts.keys().cloned().collect();
-    state.hosts.clear();
-    state.state = DiscoveryState::Idle;
-    ids
-}
-
-/// Clears all discovered hosts and resets discovery state to `Idle`.
-/// Called when networking is disabled via the user toggle so the frontend store empties
-/// without waiting for `network-host-lost` events from a stopped daemon.
-pub fn clear_discovered_hosts<R: tauri::Runtime>(app_handle: &(impl Emitter<R> + Manager<R>)) {
-    let removed_ids = drain_discovered_hosts();
-    for id in removed_ids {
-        let _ = NetworkHostLost { id }.emit(app_handle);
-    }
-    let _ = NetworkDiscoveryStateChanged {
-        state: DiscoveryState::Idle,
-    }
-    .emit(app_handle);
-}
-
-/// Called by the mDNS discovery module when a host is discovered.
-pub(crate) fn on_host_found<R: tauri::Runtime>(host: NetworkHost, app_handle: &(impl Emitter<R> + Manager<R>)) {
-    let mut state = get_discovery_state().lock_ignore_poison();
-
-    let is_new = !state.hosts.contains_key(&host.id);
-    debug!(
-        "Host {}: id={}, name={}, ip={:?}, hostname={:?}",
-        if is_new { "ADDED" } else { "UPDATED" },
-        host.id,
-        host.name,
-        host.ip_address,
-        host.hostname
-    );
-
-    // Insert or update the host
-    state.hosts.insert(host.id.clone(), host.clone());
-
-    // Emit event to frontend
-    let _ = NetworkHostFound { host }.emit(app_handle);
-}
-
-/// Called by the mDNS discovery module when a host disappears.
-pub(crate) fn on_host_lost<R: tauri::Runtime>(host_id: &str, app_handle: &(impl Emitter<R> + Manager<R>)) {
-    let mut state = get_discovery_state().lock_ignore_poison();
-
-    if let Some(removed) = state.hosts.remove(host_id) {
-        debug!(
-            "Host REMOVED: id={}, name={}, ip={:?}",
-            removed.id, removed.name, removed.ip_address
-        );
-        // Emit event to frontend
-        let _ = NetworkHostLost {
-            id: host_id.to_string(),
-        }
-        .emit(app_handle);
-    }
-}
-
-/// Updates the cached discovery state without emitting. Pure mutation;
-/// testable in isolation from a Tauri runtime. The public
-/// `on_discovery_state_changed` calls this and then emits the FE event.
-pub(crate) fn set_discovery_state(new_state: DiscoveryState) {
-    let mut state = get_discovery_state().lock_ignore_poison();
-    state.state = new_state;
-}
-
-/// Called when discovery state changes.
-pub(crate) fn on_discovery_state_changed(new_state: DiscoveryState, app_handle: &AppHandle) {
-    set_discovery_state(new_state);
-
-    // Emit event to frontend
-    let _ = NetworkDiscoveryStateChanged { state: new_state }.emit(app_handle);
-}
-
-/// Called by the mDNS discovery module when a host's address is resolved.
-pub(crate) fn on_host_resolved(
-    host_id: &str,
-    name: &str,
-    hostname: Option<String>,
-    ip_address: Option<String>,
-    port: u16,
-    app_handle: &AppHandle,
-) {
-    let mut state = get_discovery_state().lock_ignore_poison();
-
-    // If host wasn't seen via ServiceFound (race or library quirk), create it now
-    if !state.hosts.contains_key(host_id) {
-        debug!(
-            "Host RESOLVED before FOUND, creating entry: id={}, name={}, hostname={:?}, ip={:?}",
-            host_id, name, hostname, ip_address
-        );
-        let host = NetworkHost {
-            id: host_id.to_string(),
-            name: name.to_string(),
-            hostname: None,
-            ip_address: None,
-            port,
-            source: HostSource::Discovered,
-        };
-        state.hosts.insert(host_id.to_string(), host.clone());
-        let _ = NetworkHostFound { host }.emit(app_handle);
-    }
-
-    let host = state.hosts.get_mut(host_id).expect("just inserted or already present");
-    host.hostname = hostname.clone().or(host.hostname.clone());
-    host.ip_address = ip_address.clone().or(host.ip_address.clone());
-    host.port = port;
-
-    debug!(
-        "Host RESOLVED: id={}, hostname={:?}, ip={:?}, port={}",
-        host_id, host.hostname, host.ip_address, port
-    );
-
-    // Emit event to frontend with updated host info
-    let _ = NetworkHostResolved { host: host.clone() }.emit(app_handle);
-}
-
 /// Generates a stable ID from a service name.
 pub(crate) fn service_name_to_id(name: &str) -> String {
     // Create a URL-safe ID from the service name
@@ -475,41 +306,6 @@ pub fn resolve_host_ip(hostname: &str) -> Option<String> {
     }
 }
 
-/// Information needed to resolve a host, extracted without holding mutex long.
-pub struct HostResolutionInfo {
-    pub id: String,
-    pub name: String,
-    pub hostname: Option<String>,
-    pub ip_address: Option<String>,
-    pub port: u16,
-    pub source: HostSource,
-}
-
-/// Gets the information needed to resolve a host. Brief mutex hold.
-pub fn get_host_for_resolution(host_id: &str) -> Option<HostResolutionInfo> {
-    let state = get_discovery_state().lock_ignore_poison();
-    state.hosts.get(host_id).map(|h| HostResolutionInfo {
-        id: h.id.clone(),
-        name: h.name.clone(),
-        hostname: h.hostname.clone(),
-        ip_address: h.ip_address.clone(),
-        port: h.port,
-        source: h.source,
-    })
-}
-
-/// Updates a host with resolved hostname and IP. Brief mutex hold.
-pub fn update_host_resolution(host_id: &str, hostname: String, ip_address: Option<String>) -> Option<NetworkHost> {
-    let mut state = get_discovery_state().lock_ignore_poison();
-    if let Some(host) = state.hosts.get_mut(host_id) {
-        host.hostname = Some(hostname);
-        host.ip_address = ip_address;
-        Some(host.clone())
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -560,86 +356,6 @@ mod tests {
         // hostname and ip_address serialize as explicit null (no longer omitted)
         assert!(json.contains("\"hostname\":null"));
         assert!(json.contains("\"ipAddress\":null"));
-    }
-
-    // ── DiscoveryState transitions ─────────────────────────────────────
-    //
-    // The global `DISCOVERY_STATE` cell is shared across tests and across
-    // the rest of the process. To keep these tests deterministic when run
-    // in parallel with each other, they share a serializing mutex so only
-    // one DiscoveryState test runs at a time.
-
-    static DISCOVERY_TEST_GUARD: Mutex<()> = Mutex::new(());
-
-    #[test]
-    fn discovery_state_idle_to_searching_to_active_to_idle_transitions() {
-        // Drives the full mDNS-lifecycle path through the public setter:
-        // - `Idle → Searching` (daemon start)
-        // - `Searching → Active` (initial burst complete)
-        // - `Active → Idle` (daemon stop)
-        // The setter is the same one `on_discovery_state_changed` calls
-        // before emitting the FE event.
-        let _guard = DISCOVERY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
-
-        set_discovery_state(DiscoveryState::Idle);
-        assert_eq!(get_discovery_state_value(), DiscoveryState::Idle);
-
-        set_discovery_state(DiscoveryState::Searching);
-        assert_eq!(get_discovery_state_value(), DiscoveryState::Searching);
-
-        set_discovery_state(DiscoveryState::Active);
-        assert_eq!(get_discovery_state_value(), DiscoveryState::Active);
-
-        set_discovery_state(DiscoveryState::Idle);
-        assert_eq!(get_discovery_state_value(), DiscoveryState::Idle);
-    }
-
-    #[test]
-    fn discovery_state_searching_to_idle_via_drain() {
-        // The "clear all discovered hosts" path that the user-facing
-        // network-toggle invokes. Drain must reset state to Idle even
-        // from Searching (mid-discovery toggle off), not only from Active.
-        let _guard = DISCOVERY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
-
-        set_discovery_state(DiscoveryState::Searching);
-        let _removed = drain_discovered_hosts();
-        assert_eq!(get_discovery_state_value(), DiscoveryState::Idle);
-    }
-
-    #[test]
-    fn drain_discovered_hosts_clears_state_and_returns_removed_ids() {
-        // Pre-populate the global host map. We bypass `on_host_found` (which
-        // takes an Emitter) and write the map directly; the point of this
-        // test is the drain side effect on the cache, not the event emit.
-        let _guard = DISCOVERY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
-
-        {
-            let mut state = get_discovery_state().lock_ignore_poison();
-            state.hosts.clear();
-            state.state = DiscoveryState::Active;
-            let host = NetworkHost {
-                id: "host-drain-test-1".to_string(),
-                name: "Drain test host".to_string(),
-                hostname: None,
-                ip_address: None,
-                port: 445,
-                source: HostSource::Discovered,
-            };
-            state.hosts.insert(host.id.clone(), host);
-        }
-
-        let removed = drain_discovered_hosts();
-
-        assert!(
-            removed.contains(&"host-drain-test-1".to_string()),
-            "drain must return removed host IDs so the caller can emit per-host events; got {removed:?}"
-        );
-        assert_eq!(
-            get_discovery_state_value(),
-            DiscoveryState::Idle,
-            "drain must reset state to Idle so the FE store can clear without daemon teardown events"
-        );
-        assert!(get_discovered_hosts().is_empty(), "drain must empty the host cache");
     }
 
     #[test]

@@ -1,19 +1,19 @@
 /**
- * The one chokepoint that starts mDNS, and the two things it must get right.
+ * The one chokepoint for a network action, and the two things it must get right.
  *
- * ❗ This is what fires the macOS "Cmdr wants to find devices on local networks"
- * prompt: the OS gates it on the actual multicast browse, not on app startup. So
- * a call that slips past the `network.enabled` gate shows a system permission
- * dialog to someone who turned discovery off, which is the failure this file
- * exists to prevent.
+ * ❗ The action's upgrade pass dials private IPs and browses mDNS, which is what
+ * fires the macOS "Cmdr wants to find devices on local networks" prompt. So a call
+ * that slips past the `network.enabled` gate shows a system permission dialog to
+ * someone who turned discovery off, which is the failure this file exists to
+ * prevent.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const ensureNetworkDiscoveryStarted = vi.fn(() => Promise.resolve())
+const noteNetworkAction = vi.fn(() => Promise.resolve())
 const settings = new Map<string, unknown>()
 
 vi.mock('$lib/tauri-commands', () => ({
-  ensureNetworkDiscoveryStarted: () => ensureNetworkDiscoveryStarted(),
+  noteNetworkAction: () => noteNetworkAction(),
 }))
 vi.mock('$lib/settings', () => ({
   getSetting: (id: string) => settings.get(id),
@@ -32,10 +32,10 @@ beforeEach(() => {
 })
 
 describe('triggerNetworkDiscovery', () => {
-  it('starts discovery and records that the prompt has been paid for', () => {
+  it('notes the action and records that the prompt has been paid for', () => {
     triggerNetworkDiscovery()
-    expect(ensureNetworkDiscoveryStarted).toHaveBeenCalledTimes(1)
-    // Later launches start mDNS eagerly, so a returning user gets full speed
+    expect(noteNetworkAction).toHaveBeenCalledTimes(1)
+    // Later launches warm the server list up, so a returning user gets it at once
     // without re-prompting.
     expect(settings.get('network.firstTriggerDone')).toBe(true)
   })
@@ -43,16 +43,16 @@ describe('triggerNetworkDiscovery', () => {
   it('❌ never browses while discovery is off', () => {
     settings.set('network.enabled', false)
     triggerNetworkDiscovery()
-    expect(ensureNetworkDiscoveryStarted).not.toHaveBeenCalled()
+    expect(noteNetworkAction).not.toHaveBeenCalled()
     expect(settings.get('network.firstTriggerDone')).toBe(false)
   })
 
-  it('is idempotent: a second call re-arms the daemon and writes nothing', () => {
+  it('is idempotent: a second call notes again and writes nothing', () => {
     triggerNetworkDiscovery()
     triggerNetworkDiscovery()
     // The backend command is idempotent, so calling it again is free; the
     // setting is already true, so nothing writes.
-    expect(ensureNetworkDiscoveryStarted).toHaveBeenCalledTimes(2)
+    expect(noteNetworkAction).toHaveBeenCalledTimes(2)
     expect(settings.get('network.firstTriggerDone')).toBe(true)
   })
 })

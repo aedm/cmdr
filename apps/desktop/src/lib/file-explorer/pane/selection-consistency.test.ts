@@ -93,6 +93,7 @@ vi.mock('$lib/tauri-commands', () => ({
   refreshDirectoryIcons: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
   DEFAULT_VOLUME_ID: 'root',
   listNetworkHosts: vi.fn().mockResolvedValue([]),
+  setServersViewShown: vi.fn().mockResolvedValue(undefined),
   getNetworkDiscoveryState: vi.fn().mockResolvedValue('idle'),
   resolveNetworkHost: vi.fn().mockResolvedValue(null),
   listMtpDevices: vi.fn().mockResolvedValue([]),

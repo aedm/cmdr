@@ -50,7 +50,7 @@ pub fn list_saved_servers(app: tauri::AppHandle) -> Vec<SavedServer> {
     saved_servers(
         manual_servers::all(&app),
         known_shares::get_all_known_shares(),
-        &crate::network::get_discovered_hosts(),
+        &crate::network::fresh_discovered_hosts(),
     )
 }
 
@@ -682,7 +682,7 @@ pub fn forget_saved_smb_host_password(
     let Some(group) = smb_hosts::smb_host_group(&id, manual_servers::all(&app)) else {
         return Ok(false);
     };
-    let names = group.credential_names(&crate::network::get_discovered_hosts());
+    let names = group.credential_names(&crate::network::fresh_discovered_hosts());
     let gone = crate::network::keychain::forget_server_credentials(&names, &group.share_names())?;
     Ok(gone > 0)
 }

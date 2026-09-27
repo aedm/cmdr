@@ -242,12 +242,12 @@ fn register_discovered_volumes() {
 /// ([`os_mounted_smb_shares`]), and tries to establish a parallel smb2 session for
 /// each. Non-blocking: failures are logged and skipped.
 ///
-/// If any SMB mounts are found, kicks off mDNS via `ensure_mdns_started` so the
+/// If any SMB mounts are found, holds the mDNS browse for the pass so the
 /// upgrade's Keychain lookup (keyed by hostname, not IP) can find stored creds.
 /// This mirrors the manual "Connect directly" and mount-time auto-upgrade paths,
 /// so existing OS-mounted SMB shares get the same treatment as new ones — see
-/// the "SMB upgrade waits briefly for mDNS to warm" gotcha in
-/// `network/CLAUDE.md`. Kicking off mDNS will pop the macOS Local Network prompt
+/// "SMB upgrade waits briefly for mDNS to warm" in `network/DETAILS.md`.
+/// Starting the browse will pop the macOS Local Network prompt
 /// once per app on first launch; that's the trade-off for not requiring users
 /// to click "Connect directly" on every relaunch when they have direct-SMB on
 /// and an existing mount.
@@ -259,7 +259,7 @@ fn register_discovered_volumes() {
 /// - direct-SMB is disabled (`network.directSmbConnection`),
 /// - or the mount table lists no SMB share left to upgrade (no scan cost, no prompt).
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-pub fn upgrade_existing_smb_mounts(app_handle: tauri::AppHandle) {
+pub fn upgrade_existing_smb_mounts() {
     use crate::network::smb_upgrade::UpgradePass;
 
     // Before the scan, not after: an E2E run must not so much as look at what the
@@ -282,7 +282,7 @@ pub fn upgrade_existing_smb_mounts(app_handle: tauri::AppHandle) {
         return;
     }
 
-    // One pass at a time. `ensure_network_discovery_started` calls us on every
+    // One pass at a time. `note_network_action` calls us on every
     // user networking action, and each pass then sits in `wait_for_mdns_ready`
     // for up to 15 s: two clicks nine seconds apart used to stack two passes
     // that both fired blind, replacing an already-healthy volume twice.
@@ -291,19 +291,22 @@ pub fn upgrade_existing_smb_mounts(app_handle: tauri::AppHandle) {
         return;
     };
 
-    // Kick off mDNS so the per-volume hostname resolution can find the host.
-    // Without this, the Keychain lookup misses on auth-required shares (creds are
-    // keyed by hostname like `smb://naspolya/share`, not by IP). Same pattern as
-    // the manual `upgrade_to_smb_volume` and mount-time `try_upgrade_smb_mount`
-    // paths. Idempotent: no-op if mDNS is already running.
-    crate::network::ensure_mdns_started(app_handle);
+    // Hold the mDNS browse for the whole pass so the per-volume hostname resolution
+    // can find the host. Without it, the Keychain lookup misses on auth-required
+    // shares (creds are keyed by hostname like `smb://naspolya/share`, not by IP).
+    // Each volume's own `discover_server` holds it too; this one covers the wait
+    // below. `None` with networking off, and the pass goes ahead on IPs alone.
+    let browse = crate::network::is_network_enabled().then(crate::network::discovery_gate::hold);
 
     // Use tauri's runtime spawn (this runs during setup() before Tokio is fully available).
     // Wait for mDNS discovery to reach Active state (initial burst complete) so hostname
     // resolution is available for Keychain lookup.
     tauri::async_runtime::spawn(async move {
         let _pass = pass; // released when this task ends, whatever the outcome
-        wait_for_mdns_ready().await;
+        let _browse = browse;
+        if _browse.is_some() {
+            wait_for_mdns_ready().await;
+        }
 
         // Scan AFTER the wait, never before. The wait is up to 15 s long, and in
         // that window another path (a manual "Connect directly", the FSEvents

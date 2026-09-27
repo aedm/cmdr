@@ -12,8 +12,8 @@
 //! Cmdr's fast direct connection" switch back on first (`claim_mounted_share`).
 //!
 //! Nothing here takes an `AppHandle`, so the MCP executor (generic over `Runtime`)
-//! can call it. The commands kick mDNS before delegating; MCP relies on something
-//! else having started it.
+//! can call it. Each door holds the mDNS browse for its own run
+//! (`smb_server_address::discover_server`), so every caller gets the same answer.
 //!
 //! The auto-upgrade paths (the startup pass, the mount watcher) answer nobody, so
 //! they go through `smb_upgrade::register_smb_volume` instead, and it's their
@@ -23,9 +23,7 @@ use crate::deadline::blocking_with_timeout;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::network::keychain;
 use crate::network::smb_connect_failure::{Refusal, RefusedAt, SignInIdentity, UpgradeError, UpgradeFailure};
-use crate::network::smb_server_address::{
-    friendly_server_name, get_keychain_password, resolve_ip_to_hostname_with_wait,
-};
+use crate::network::smb_server_address::{discover_server, friendly_server_name, get_keychain_password};
 use crate::network::smb_upgrade::{MOUNT_READ_LIMIT, try_smb_upgrade};
 #[cfg(target_os = "macos")]
 use crate::volumes::{SmbMountInfo, get_smb_mount_info};
@@ -245,10 +243,10 @@ pub(crate) async fn connect_directly(volume_id: &str) -> UpgradeResult {
     // The mount source carries the IP, but Cmdr keys its Keychain entries by the
     // mDNS hostname, so look under both. The short wait gives mDNS a chance to
     // warm up, so nobody is asked for a password they already saved.
-    let hostname = resolve_ip_to_hostname_with_wait(&info.server, HOSTNAME_WAIT).await;
+    let discovered = discover_server(&info.server, HOSTNAME_WAIT).await;
     let display_name = friendly_server_name(&info.server);
     let Some((username, password)) =
-        get_keychain_password(&info.server, hostname.as_deref(), info.port, &info.share).await
+        get_keychain_password(&info.server, discovered.hostname.as_deref(), info.port, &info.share).await
     else {
         log::info!("No stored credentials found, requesting credentials from user");
         let hint = info.username.clone();
@@ -281,17 +279,16 @@ pub(crate) async fn connect_directly_with_credentials(
     };
 
     // Resolved so a remembered password is saved under the hostname, not the raw IP.
-    let hostname = resolve_ip_to_hostname_with_wait(&info.server, HOSTNAME_WAIT).await;
+    let discovered = discover_server(&info.server, HOSTNAME_WAIT).await;
+    let hostname = discovered.hostname.as_deref();
     let display_name = friendly_server_name(&info.server);
 
     let upgraded = try_smb_upgrade(&info, &mount_path, username.as_deref(), password.as_deref(), volume_id).await;
     match upgraded {
         Ok(()) => {
             if remember_in_keychain && let (Some(u), Some(p)) = (&username, &password) {
-                let server_key = &crate::network::server_identity::smb_server(
-                    hostname.as_deref().unwrap_or(&info.server),
-                    info.port,
-                );
+                let server_key =
+                    &crate::network::server_identity::smb_server(hostname.unwrap_or(&info.server), info.port);
                 if let Err(e) = keychain::save_credentials(server_key, Some(&info.share), u, p) {
                     log::warn!("Couldn't save credentials to Keychain: {}", e);
                 }
@@ -321,13 +318,14 @@ pub(crate) async fn connect_directly_with_system_saved_password(volume_id: &str)
         Err(answer) => return answer,
     };
 
-    let hostname = resolve_ip_to_hostname_with_wait(&info.server, HOSTNAME_WAIT).await;
+    let discovered = discover_server(&info.server, HOSTNAME_WAIT).await;
+    let hostname = discovered.hostname.as_deref();
     let display_name = friendly_server_name(&info.server);
 
     // Finder keys its entry by the name form it mounted with, often the mDNS
     // service name, so the query tries every alias discovery knows.
     let aliases = system_keychain_aliases(&info.server);
-    let candidates = system_keychain_smb::server_query_candidates(&info.server, hostname.as_deref(), &aliases);
+    let candidates = system_keychain_smb::server_query_candidates(&info.server, hostname, &aliases);
 
     // The read raises the consent dialog and blocks on the user: keep it off the
     // async worker pool.
@@ -351,8 +349,7 @@ pub(crate) async fn connect_directly_with_system_saved_password(volume_id: &str)
     match upgraded {
         Ok(()) => {
             // Keyed by hostname when known, else the server, like a typed password.
-            let server_key =
-                &crate::network::server_identity::smb_server(hostname.as_deref().unwrap_or(&info.server), info.port);
+            let server_key = &crate::network::server_identity::smb_server(hostname.unwrap_or(&info.server), info.port);
             if let Err(e) = keychain::save_credentials(server_key, Some(&info.share), &creds.username, &creds.password)
             {
                 log::warn!("Couldn't copy borrowed credentials into Cmdr's store: {}", e);

@@ -35,20 +35,20 @@ here:
 
 SMB mounts are automatically upgraded to `SmbVolume` (direct smb2 connection) in three scenarios:
 
-1. **Startup** (`file_system::upgrade_existing_smb_mounts(app_handle)`): Reads the kernel's mount table
+1. **Startup** (`file_system::upgrade_existing_smb_mounts()`): Reads the kernel's mount table
    (`volumes::smb_mounts`, the non-blocking `getfsstat` snapshot) for SMB shares no `SmbVolume` serves. ❌ Not the
    volume registry: that fills on a background thread that `statfs`es every mount, so at launch it lags the kernel by
    seconds, and a gate that asked it read "No SMB mounts to upgrade" with four shares up, on every launch (issue #123).
-   If any are found, calls `network::ensure_mdns_started` to kick off mDNS itself (creds are keyed by hostname, not IP),
-   then waits for mDNS to reach `Active` state (polls every 500ms, up to 15s). Uses `tauri::async_runtime::spawn` (not
+   If any are found, holds the mDNS browse for the pass (creds are keyed by hostname, not IP), then waits for mDNS to
+   reach `Active` state (polls every 500ms, up to 15s). Uses `tauri::async_runtime::spawn` (not
    `tokio::spawn`; runs during `setup()` before Tokio is fully available). Emits `volumes-changed` after upgrades so
    the frontend refreshes indicators. **No `firstTriggerDone` gate**: the function is a no-op when no SMB mounts are
    present (no network activity, no macOS Local Network prompt). When mounts are present AND `network.directSmbConnection`
-   is on (default `true`), it kicks off mDNS — that's when the macOS prompt fires, once per app per data dir. Without
+   is on (default `true`), it starts the browse — that's when the macOS prompt fires, once per app per data dir. Without
    this, dev profiles with auto-reconnected SMB shares would stay on the slow OS-mount path forever.
 
 2. **Mount detection** (`volumes/watcher.rs::try_upgrade_smb_mount`): When FSEvents detects a new volume in `/Volumes/`
-   and it's `smbfs`, spawns a background upgrade attempt. Calls `ensure_mdns_started` to kick off mDNS too.
+   and it's `smbfs`, spawns a background upgrade attempt, which holds the mDNS browse through `discover_server`.
 
 3. **Pane open** (`network::smb_pane_upgrade::upgrade_on_pane_open`, from `list_directory_start_streaming`): a pane
    landing on an OS-mounted share Cmdr hasn't upgraded tries that one share, behind a 60 s per-share cooldown.
@@ -101,7 +101,7 @@ where it's a diagnostic. Before this, `try_smb_upgrade` built an English sentenc
 raw `String(e)` in the same slot.
 
 **Only one pass runs at a time** (`smb_upgrade::UpgradePass`, an RAII guard over a process-global flag).
-`ensure_network_discovery_started` calls `upgrade_existing_smb_mounts` on every user networking action, so without the
+`note_network_action` calls `upgrade_existing_smb_mounts` on every user networking action, so without the
 guard N actions stack N passes that each sleep 15 s and then fire. Dropping the extra triggers is safe precisely
 because the running pass re-scans at act time.
 

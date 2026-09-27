@@ -5,7 +5,7 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 
 ## Module map
 
-- `network-store.svelte.ts`: the `$state` singleton behind all network data. `lazy-trigger.ts`: starting mDNS.
+- `network-store.svelte.ts`: the `$state` singleton behind all network data. `lazy-trigger.ts`: the network-action hook.
 - `ServersHub.svelte` (+ `servers-hub-{rows,actions,mcp,columns}.ts`, `host-status.ts`, `ServersHubRowMenu.svelte`,
   `ServersHubStatusBar.svelte`): the hub table on the `network` volume. `PlacesBrowser.svelte` (+
   `PlacesHeader.svelte`): one account's places, the listing's sign-in, and "Sign in as…". `smb-sign-in.ts`: SMB's side
@@ -18,8 +18,8 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 
 - **❌ Never import raw `$state` from `network-store.svelte.ts`; use the exported getters.** Svelte 5 `$state` is
   reactive only inside `.svelte` / `.svelte.ts`, so a raw import from a plain `.ts` silently loses reactivity.
-- **`triggerNetworkDiscovery()` is the single chokepoint for starting mDNS.** Call it on any networking intent; ❌ don't
-  gate on `network.enabled` yourself, the helper does.
+- **`triggerNetworkDiscovery()` is the single chokepoint for a networking intent**; ❌ don't gate on `network.enabled`
+  yourself, the helper does. The browse runs while a Servers view holds it (`holdDiscoveryForServersView`).
 - **❌ Never ask the Keychain twice**: each access can raise a system prompt. No `hasSmbCredentials` pre-check before
   `getSmbCredentials`, and share activation never pre-prompts (`activateShare`): try stored creds, mount, and let the
   mount's own refusal ask (`PlacesBrowser.test.ts` pins it). "Is one stored?" for a button reads the backend's in-memory

@@ -124,7 +124,7 @@ fn plan(
 /// `is_already_direct` re-check all hold here too. `FallbackNotice::Announce`: the
 /// person is looking at this share, so a failure is news they can act on (once per
 /// server per run).
-pub(crate) fn upgrade_on_pane_open(app: &tauri::AppHandle, volume_id: &str) {
+pub(crate) fn upgrade_on_pane_open(volume_id: &str) {
     if !crate::file_system::is_direct_smb_enabled() || !cmdr_fs::volume::is_smb_volume_id(volume_id) {
         return;
     }
@@ -145,9 +145,7 @@ pub(crate) fn upgrade_on_pane_open(app: &tauri::AppHandle, volume_id: &str) {
         "A pane landed on {volume_id}, which rides the OS mount at {}; trying the direct connection",
         upgrade.mount_path
     );
-    // Idempotent. Hostname resolution for the Keychain lookup needs discovery running,
-    // same as the mount watcher.
-    crate::network::ensure_mdns_started(app.clone());
+    // The dial holds the mDNS browse for its own resolution (`discover_server`).
     tauri::async_runtime::spawn(dial(upgrade));
 }
 

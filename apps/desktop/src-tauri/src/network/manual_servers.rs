@@ -673,7 +673,7 @@ pub fn typed_username<R: Runtime>(app: &AppHandle<R>, server: &SmbServer) -> Opt
     if entries.iter().all(|entry| entry.username.is_none()) {
         return None;
     }
-    typed_username_in(&entries, server, &crate::network::get_discovered_hosts())
+    typed_username_in(&entries, server, &crate::network::fresh_discovered_hosts())
 }
 
 /// Names a saved SMB host, saving it first when only the share history knew it.

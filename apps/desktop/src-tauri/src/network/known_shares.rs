@@ -333,7 +333,7 @@ fn upsert_share_row(rows: &mut Vec<KnownNetworkShare>, mut row: KnownNetworkShar
 /// [`upsert_share_row`], and `docs/specs/saved-smb-shares.md` for who may call it.
 pub fn remember_share(row: KnownNetworkShare) {
     debug_assert!(row.is_share(), "a share row names its share");
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     {
         let mut store = get_known_shares_mutex().lock_ignore_poison();
         upsert_share_row(&mut store.known_network_shares, row, &hosts);
@@ -482,7 +482,7 @@ fn apply_choice(opt_outs: &mut Vec<ShareRef>, server_name: &str, share: &str, en
 /// name and the address it resolved to, say); any one of them matching counts.
 pub fn direct_connection_enabled(server_names: &[&str], share: &str) -> bool {
     // Discovery is read BEFORE this store's lock is taken, so the two never nest.
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     let store = get_known_shares_mutex().lock_ignore_poison();
     !is_opted_out(&store.direct_connection_opt_outs, server_names, share, &hosts)
 }
@@ -496,7 +496,7 @@ pub fn direct_connection_enabled(server_names: &[&str], share: &str) -> bool {
 /// also withdraws the share's slow-connection notice; calling this with `false`
 /// directly would leave that notice offering what the user just opted out of.
 pub fn set_direct_connection_enabled(server_name: &str, share: &str, enabled: bool) {
-    let hosts = crate::network::get_discovered_hosts();
+    let hosts = crate::network::fresh_discovered_hosts();
     {
         let mut store = get_known_shares_mutex().lock_ignore_poison();
         apply_choice(

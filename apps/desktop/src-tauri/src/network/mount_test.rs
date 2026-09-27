@@ -352,7 +352,7 @@ async fn smb_integration_mount_non_ascii_share() {
                 share,
                 port
             },
-            &crate::network::get_discovered_hosts()
+            &crate::network::fresh_discovered_hosts()
         )
         .as_deref(),
         Some(mount.mount_path.as_str()),
