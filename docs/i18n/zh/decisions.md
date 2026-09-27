@@ -429,6 +429,9 @@ English contrasts packages with app bundles.
 - Host key `主机密钥`; a sentence mentioning it twice shortens the second to `密钥`.
 - `servers.refusal.unreachable` `Cmdr 连不上 {host}。`, shorter for a one-line pane.
 - Compromised `已泄露` over `已失陷` (tentative, native review pending).
+- Every Forget alert shares one button, `忘记` (`fileExplorer.navigation.forgetConfirmButton`), even the saved-password
+  one titled `清除…`; its checkbox keeps the password's verb, `同时清除保存的密码`. "Nothing gets unmounted" `卸载`
+  (`fileExplorer.network.browser.removeHostConfirm`): Finder's `推出` would read as disconnecting.
 
 ## 服务器中心：表格列、状态与固定到宗卷选择器（`servers.hub.*`、`commands.servers*`、`fileExplorer.navigation.*Pin*`、`shortcuts.scope.servers`/`places`）
 
@@ -442,6 +445,8 @@ English contrasts packages with app bundles.
   unspaced. Disconnect server `断开服务器连接`, never `推出`.
 - The pin toasts don't say `固定`, like the English; the unpin toast's second sentence answers "was it deleted?".
 - A NAS "turn on" is power, `开机`.
+- The account suffix is a noun label, `身份：{username}` / `身份：客人` (`servers.hub.shareAccount`/`.guestAccount`):
+  `以客人身份连接` is already the sheet's button and would read as one. Use guest `改用客人身份`.
 
 ## 添加服务器的模态表单、SSH 主机密钥确认、前往路径的预览行（`servers.sheet.*`、`servers.hostKey.*`、`servers.paneState.signedOut`/`.signIn`/`.hostKeyChanged*`、`goToPath.dialog.opensServer`/`.addsServer`、`commands.serversConnect.label`）
 
@@ -455,6 +460,9 @@ English contrasts packages with app bundles.
   `中间人攻击`.
 - The server's owner `所有者`, not `管理员` (reserved for an administrator). "I've checked it" `我核对过了`, the verb of
   `等你核对主机密钥`.
+- Add anyway `仍然添加` (the catalog's `仍然使用`). Sign in as… `用其他账户登录…`
+  (`fileExplorer.network.share.signInAs`): a bare "as" has no Chinese label form. A cancelled connect
+  `{name} 还没有连接`, a state, not a failure.
 
 ## 自动重连的面板标题 + 无需输入的退出登录说明（`servers.paneState.reconnecting`、`.signedOutNothingToAsk`）
 
@@ -467,6 +475,8 @@ English contrasts packages with app bundles.
 
 - Pin `固定`, ❌ never Apple's list `置顶` (move to top): this keeps a row in the switcher; Apple itself uses `固定` for
   this sense (`在菜单栏中固定`).
+- Unpin from switcher `从宗卷选择器中取消固定`, the mirror of `固定到宗卷选择器`; `servers.pinHint.body` quotes it
+  whole.
 - A group in the switcher is `分组`, never Apple's `群组` (people or devices).
 - Trusted host keys `受信任的主机密钥`; the date prefix `已信任`. Not found `未找到` (a bare status); found
   `已找到：{path}`. Re-check `再次检查` (Apple's Check Again).

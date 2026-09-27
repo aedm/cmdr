@@ -612,9 +612,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "取消固定",
+  "menu.network.unpin": "从宗卷选择器中取消固定",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "忘记服务器",
   "@menu.network.forgetServer": {

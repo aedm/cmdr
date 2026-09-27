@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "右键点击某台服务器，选择“取消固定”，或者在命令面板里使用“{command}”。它仍然留在“服务器”列表里。",
+  "servers.pinHint.body": "右键点击某台服务器，选择“从宗卷选择器中取消固定”，或者在命令面板里使用“{command}”。它仍然留在“服务器”列表里。",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "知道了",
   "@servers.pinHint.gotIt": {
@@ -62,6 +62,38 @@
   "servers.hub.neverUsed": "从未",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "身份：{username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "身份：客人",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "选择一台服务器即可编辑。",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "共享没有要编辑的内容。要编辑它所在的服务器，请选择那台服务器所在的行。",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} 是在附近发现的，还没有保存，所以没有要编辑的内容。",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "忘记共享",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "忘记共享",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "要忘记 {name} 吗？Cmdr 不会再列出它。如果它已装载，会保持装载，你的文件也会留在服务器上。",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "本地网络发现已关闭。",
   "@servers.hub.discoveryOff": {
@@ -159,6 +191,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "输入 {username} 的密码。",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} 没能及时响应，所以什么都没保存。过一会儿再试一次。",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -182,6 +218,26 @@
   "servers.sheet.editTitle": "编辑 {name}",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "添加并打开",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "添加",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "仍然添加",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr 没能检查这台服务器，所以“仍然添加”会按你输入的原样保存它。",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} 已保存到你的“服务器”列表里。",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "登录",
   "@servers.sheet.signIn": {
@@ -231,6 +287,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "主机名、IP 地址，或者你拷贝来的 smb:// 地址都行。",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "你拷贝来的网址（比如 https://nas.local/dav），或者主机名都行。",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "这看起来像是 SMB 地址。如果你本来就是这个意思，请在上方选择 SMB。",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -243,6 +307,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "地址决定了这是哪台服务器。要换一个地址，先忘记这台服务器，再重新添加。",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "地址和账户决定了这是哪台服务器。要改这两项，先忘记这台服务器，再重新添加。",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -254,6 +322,14 @@
   "servers.sheet.password": "密码",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "可选",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "如果你的 NAS 需要账户，就填上这一项。打开共享时 Cmdr 会问你要密码。",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "密钥密码短语",
   "@servers.sheet.passphrase": {
@@ -282,6 +358,10 @@
   "servers.sheet.name": "名称",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "留空则使用 {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "根文件夹",
   "@servers.sheet.rootFolder": {
@@ -366,6 +446,14 @@
   "servers.paneState.signedOut": "已从 {name} 退出登录",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "{name} 还没有连接",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "返回",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "登录…",
   "@servers.paneState.signIn": {

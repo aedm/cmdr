@@ -52,3 +52,9 @@ settled wording into `terms.json` (and `decisions.md` when the reason is worth k
 - **The cloud-only delete warnings** (`fileOperations.delete.cloudOnlineOnlyMixedWarning`,
   `fileOperations.delete.cloudOnlineOnlyAllWarning`, `fileOperations.delete.cloudOnlineOnlyHandedBack`): long,
   `medium`-confidence drafts (prose now says `只在云端`); check they read well and don't overflow the narrow strip.
+- **The account suffix `身份：{username}` / `身份：客人`** (`servers.hub.shareAccount`, `.guestAccount`): a noun label
+  after a server name ("Container 身份：sven"). Confirm it reads naturally in the quieter suffix, or pick a better pair.
+- **Sign in as… → `用其他账户登录…`** (`fileExplorer.network.share.signInAs`): adds "other", since Chinese has no bare
+  "as" label. Confirm it reads right when the list is signed in as an account (not just as a guest).
+- **The shared Forget button `忘记`** (`fileExplorer.navigation.forgetConfirmButton`) sits under the saved-password
+  alert titled `清除保存的密码`. Confirm the verb mismatch doesn't confuse.

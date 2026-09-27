@@ -1097,7 +1097,7 @@
     ],
     "chosen": "忘记",
     "confidence": "high",
-    "forms": "Forget server 忘记服务器; Forget (a trusted key) 忘记; Forget saved password → 清除保存的密码 (and its dialog 要清除 {name} 保存的密码吗？); Ask Cmdr's notes 忘掉",
+    "forms": "Forget server 忘记服务器; Forget (a trusted key) 忘记; Forget saved password → 清除保存的密码 (and its dialog 要清除 {name} 保存的密码吗？, the checkbox 同时清除保存的密码); Forget share 忘记共享; the one confirm button every Forget alert shares 忘记; toasts 已忘记 / 无法忘记 {hostName}; Ask Cmdr's notes 忘掉",
     "sources": "catalog"
   },
   "format": {
@@ -1214,7 +1214,7 @@
     "chosen": "客人",
     "confidence": "high",
     "decision": "添加服务器的模态表单、SSH 主机密钥确认、前往路径的预览行",
-    "forms": "Connect as guest → 以客人身份连接; status 客人; \"doesn't show shares to guests\" → 不向客人显示共享",
+    "forms": "Connect as guest → 以客人身份连接; status 客人; Use guest (switch back) → 改用客人身份; the account suffix pair 身份：客人 / 身份：{username}; \"doesn't show shares to guests\" → 不向客人显示共享",
     "sources": "macOS zh-CN (NetAuthAgent GUEST, LoginUIKit, AppKit NSUserGuest)"
   },
   "hard-link": {
@@ -1362,6 +1362,11 @@
     "confidence": "high",
     "sources": "standard; catalog"
   },
+  "ip-address": {
+    "chosen": "IP 地址",
+    "confidence": "high",
+    "sources": "MS terminology (IP 地址); KDE Dolphin (smb://[IP 地址]); catalog fileExplorer.network.browser.tooltip.resolving"
+  },
   "item": {
     "accept": ["这一项", "那一项"],
     "chosen": "项目",
@@ -1470,6 +1475,18 @@
     "confidence": "high",
     "forms": "\"some lines of text\" 几行文本; a one-time hint line is 提示",
     "sources": "standard"
+  },
+  "list": {
+    "accept": ["列出"],
+    "chosen": "列表",
+    "confidence": "high",
+    "forms": "the Servers list “服务器”列表 (quoted, 列表 outside the quotes); the verb (Cmdr lists X) 列出",
+    "sources": "macOS zh-CN Finder (最近使用的服务器的列表); catalog (43 uses)"
+  },
+  "local": {
+    "chosen": "本地",
+    "confidence": "high",
+    "sources": "catalog (本地 AI, 本地模型: 31 uses); MS terminology gives 本机的, which the catalog never uses"
   },
   "local-network": {
     "accept": ["附近", "发现"],
@@ -1968,7 +1985,7 @@
     "chosen": "固定",
     "confidence": "high",
     "decision": "固定/取消固定的右键项与一次性提示、可信主机密钥页、Android（ADB）设置页",
-    "forms": "Pin tab 固定标签页; Pin to switcher 固定到宗卷选择器; a command pair hugs its slash (固定/取消固定服务器)",
+    "forms": "Pin tab 固定标签页; Pin to switcher 固定到宗卷选择器, Unpin from switcher 从宗卷选择器中取消固定; a command pair hugs its slash (固定/取消固定服务器)",
     "sources": "Safari (固定标签页)"
   },
   "port": {
