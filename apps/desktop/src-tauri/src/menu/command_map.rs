@@ -67,6 +67,9 @@ pub const FILE_NEW_FILE_ID: &str = "file_new_file";
 pub const FILE_DELETE_ID: &str = "file_delete";
 pub const FILE_DELETE_PERMANENTLY_ID: &str = "file_delete_permanently";
 pub const SHOW_IN_FINDER_ID: &str = "show_in_finder";
+/// Search-results-only context item. Emits the stashed primary row path directly;
+/// it is not a command-registry action because cursor/selection state is intentionally irrelevant.
+pub const SHOW_SEARCH_RESULT_IN_FOLDER_ID: &str = "show_search_result_in_folder";
 /// "Open terminal here". macOS only (the launch module is), and the one item whose
 /// enabled state follows the FOCUSED PANE rather than the window: a pane on MTP or
 /// ADB has no path a shell can `cd` into. `set_open_terminal_here_enabled` owns it,

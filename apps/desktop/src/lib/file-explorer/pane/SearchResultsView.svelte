@@ -266,7 +266,7 @@
                 snapshotBasename(entry.path),
                 entry.isDirectory,
                 paths,
-                { restrictDestinationActions: !caps.canWrite },
+                { restrictDestinationActions: !caps.canWrite, canShowInFolder: true },
                 {
                     countText: contextMenuCountText(paths.length),
                     sizeText: contextMenuSizeText(contextMenuSizeBytes(targets)),

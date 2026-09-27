@@ -482,7 +482,14 @@ describe('SearchResultsView', () => {
 
       rightClick(rows[1])
 
+      // "Show in folder" must travel with B itself across the native-menu boundary;
+      // rereading either the cursor or the A/C selection after the popup would be wrong.
+      expect(showFileContextMenuSpy.mock.calls[0][0]).toBe('/Users/test/b.txt')
       expect(showFileContextMenuSpy.mock.calls[0][3]).toEqual(['/Users/test/b.txt'])
+      expect(showFileContextMenuSpy.mock.calls[0][4]).toEqual({
+        restrictDestinationActions: true,
+        canShowInFolder: true,
+      })
       target.remove()
     })
 

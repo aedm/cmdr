@@ -36,6 +36,7 @@
     import type { SpaceInfo } from '$lib/ipc/bindings'
     import { formatDiskSpaceStatus, formatSpaceNotes } from '../disk-space-utils'
     import { formatByteSize } from '$lib/units'
+    import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
 
     // Free-space text is intentionally uncolored: red GB would falsely signal "low space".
     function diskSpaceStatusText(space: SpaceInfo): string {
@@ -79,6 +80,8 @@
          * rather than claiming the pane holds every hit. Absent on a normal pane.
          */
         totalMatches?: number
+        /** Live `nav.parent` display binding for a search-results pane. */
+        showInFolderShortcut?: string
         /**
          * Phone-storage caveat for the disk-space readout, set only on MTP
          * volumes. When present, it tooltips the free/total text to explain why
@@ -97,6 +100,7 @@
         volumeSpace,
         showVolumeSpace = true,
         totalMatches,
+        showInFolderShortcut,
         mtpSpaceHint,
     }: Props = $props()
 
@@ -397,6 +401,12 @@
             {/if}
         </span>
     {/if}
+    {#if showInFolderShortcut}
+        <span class="search-result-hint" data-search-result-hint>
+            {tString('menu.context.showInFolder')}
+            <ShortcutChip key={showInFolderShortcut} size="sm" />
+        </span>
+    {/if}
 </div>
 
 <style>
@@ -450,6 +460,16 @@
         margin-left: auto;
         order: 2;
         padding-left: var(--spacing-md);
+        color: var(--color-text-tertiary);
+        white-space: nowrap;
+    }
+
+    .search-result-hint {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: var(--spacing-xs);
+        margin-left: auto;
         color: var(--color-text-tertiary);
         white-space: nowrap;
     }

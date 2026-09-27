@@ -267,6 +267,11 @@ Shared state managed via `tauri::State<MenuState<Wry>>`. Holds:
   and (macOS) `open_with_apps` (`bundle_id → app_path` map populated when "Open with" submenu
   is built, consumed by `on_menu_event` on click)
 
+The search-results-only “Show in folder” row is gated by `ContextMenuPaneFacts::can_show_in_folder`, independently of
+`restrict_destination_actions`. Its handler emits `ShowSearchResultInFolder { path }` from `MenuContext.path`; it must
+not use `MenuContext.paths`, because that is the selection when the popup opened and the action names the primary
+right-clicked row itself. Its accelerator label is the live `nav.parent` binding looked up through `GO_PARENT_ID`.
+
 ### Accelerator sync
 
 Menu accelerators must match user-customized shortcuts. An update removes the old item, creates a new

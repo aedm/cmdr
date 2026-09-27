@@ -4955,6 +4955,7 @@ export const events = {
   searchIndexReady: makeEvent<SearchIndexReadyEvent>('search-index-ready'),
   searchProgress: makeEvent<SearchProgressEvent>('search-progress'),
   settingsChanged: makeEvent<SettingsChanged>('settings-changed'),
+  showSearchResultInFolder: makeEvent<ShowSearchResultInFolder>('show-search-result-in-folder'),
   smbFellBackToOsMount: makeEvent<SmbFellBackToOsMount>('smb-fell-back-to-os-mount'),
   smbOsMountNoticeWithdrawn: makeEvent<SmbOsMountNoticeWithdrawn>('smb-os-mount-notice-withdrawn'),
   suggestionsChanged: makeEvent<SuggestionsChanged>('suggestions-changed'),
@@ -13629,6 +13630,15 @@ export type ShareListResult = {
   authMode: AuthMode
   // True when this answer came from the in-memory cache rather than the wire.
   fromCache: boolean
+}
+
+/**
+ *  `show-search-result-in-folder`: a snapshot context-menu click. The primary
+ *  right-clicked path travels with the event so the frontend never rereads a
+ *  potentially different cursor or selection after the native popup closes.
+ */
+export type ShowSearchResultInFolder = {
+  path: string
 }
 
 /**

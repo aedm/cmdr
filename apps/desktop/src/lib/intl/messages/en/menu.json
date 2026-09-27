@@ -164,6 +164,11 @@
     "description": "VERB (imperative). Starts renaming the file under the cursor in place, right in the list (F2). No dialog, so no ellipsis. This is Finder's File > Rename."
   },
 
+  "menu.context.showInFolder": "Show in folder",
+  "@menu.context.showInFolder": {
+    "description": "VERB phrase (imperative). Appears only in a search-result row's context menu and as a compact hint in the search-results pane footer. Replaces the virtual results pane with the row's real containing folder and leaves the cursor on that row. The displayed shortcut is the live binding for Go to parent folder. This stays distinct from Show in Finder: the destination is Cmdr's current pane, not another app."
+  },
+
   "menu.file.showInFinder": "Show in Finder",
   "@menu.file.showInFinder": {
     "description": "VERB phrase (imperative). Opens a macOS Finder window with the selected file highlighted. ❗ \"Finder\" is Apple's app name and Apple keeps it English in every language, so it must stay verbatim as \"Finder\". macOS itself calls this \"Show in Finder\" or \"Reveal in Finder\" depending on the app; use whichever your Finder's own menus use. The Linux wording is menu.file.showInFileManager."

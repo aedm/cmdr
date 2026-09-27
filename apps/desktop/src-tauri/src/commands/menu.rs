@@ -98,6 +98,9 @@ pub struct PaneContextMenuFacts {
     /// Omits Rename and New folder. `true` from the search-results virtual pane,
     /// whose rows aren't a real directory; see `apps/desktop/src/lib/search/capabilities.ts`.
     pub restrict_destination_actions: bool,
+    /// Whether this menu is over a search-results row that can be opened in its
+    /// containing folder. Distinct from destination restrictions: it adds an action.
+    pub can_show_in_folder: bool,
     /// The pane's listing id, so a Finder-tag click can refresh that listing's
     /// cache after writing. Empty for a virtual pane with no normal listing.
     pub listing_id: String,
@@ -238,6 +241,7 @@ pub fn show_file_context_menu<R: Runtime>(
         &info,
         ContextMenuPaneFacts {
             restrict_destination_actions: pane.restrict_destination_actions,
+            can_show_in_folder: pane.can_show_in_folder,
             can_open_terminal_here: pane.can_open_terminal_here,
             can_share: pane.can_share,
             can_favorite: pane.can_favorite,

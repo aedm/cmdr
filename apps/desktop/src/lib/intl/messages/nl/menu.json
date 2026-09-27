@@ -134,6 +134,10 @@
   "@menu.file.rename": {
     "sourceHash": "3064d79"
   },
+  "menu.context.showInFolder": "Toon in map",
+  "@menu.context.showInFolder": {
+    "sourceHash": "da47876"
+  },
   "menu.file.showInFinder": "Toon in Finder",
   "@menu.file.showInFinder": {
     "sourceHash": "c2a9c77"

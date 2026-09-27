@@ -132,6 +132,10 @@
   "@menu.file.rename": {
     "sourceHash": "3064d79"
   },
+  "menu.context.showInFolder": "Hiển thị trong thư mục",
+  "@menu.context.showInFolder": {
+    "sourceHash": "da47876"
+  },
   "menu.file.showInFinder": "Hiển thị trong Finder",
   "@menu.file.showInFinder": {
     "sourceHash": "c2a9c77"

@@ -61,6 +61,12 @@ function render(props: Record<string, unknown>): HTMLElement {
 }
 
 describe('SelectionInfo on a search-results pane', () => {
+  it('shows the live shortcut as a compact reveal hint', () => {
+    const target = render({ showInFolderShortcut: '⌃K' })
+    expect(target.querySelector('[data-search-result-hint]')?.textContent).toContain('⌃K')
+    expect(target.querySelector('[data-search-result-hint]')?.textContent).toContain('Show in folder')
+  })
+
   it('says how many of the matches the pane holds when the list is a lower bound', () => {
     const target = render({ totalMatches: 345 })
     expect(target.textContent).toContain('112 of 345 matches')

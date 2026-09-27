@@ -249,7 +249,7 @@ a just-deselected row reads as wrong. The target comes from `firstSelectedIndex`
 land on the same first row it actually selected. Both sides apply the identical skip, so an `idxs` still carrying a
 leading `0` can't park the cursor on the synthetic `..` row.
 
-**Snapshot pane (`volumeId === 'search-results'`).** SIX integration points that MUST stay coupled, and skipping one
+**Snapshot pane (`volumeId === 'search-results'`).** SEVEN integration points that MUST stay coupled, and skipping one
 gives an off-by-one selection, a stuck `search-results` path, a delete on rows nobody picked, an MCP delete refused by
 stale pane state, a folder re-sorted from a pane that isn't showing it, or a footer that counts nothing:
 
@@ -265,6 +265,10 @@ stale pane state, a folder re-sorted from a pane that isn't showing it, or a foo
    listing to answer for. The feed's search branch is unthrottled and re-reads the snapshot itself, so the count follows
    a walk that's still filling the pane. Without it `stats` stays `null`, and a null `stats` costs more than the footer:
    the native context menu's header line loses its size and count too (§ "The context menu's header line").
+7. `nav.parent` reveals the cursor result in its real containing folder, as does the snapshot-only “Show in folder”
+   context item. Both pass the result's absolute `path` to `revealSearchResultInPane`; `parentPath` is display text and
+   must never navigate. The context-menu event carries its primary right-clicked path through Rust, so a click outside
+   an A/C selection still reveals B rather than rereading cursor or selection state.
 
 `FilePane.handleNavigate` gates the second on the `isSearchResultsView` capability (the `caps.kind === 'search-results'`
 classifier, never a raw id compare), resolves the entry's `Location` (`resolveLocationOrToast`, shared with the other
@@ -289,6 +293,8 @@ The snapshot pane also passes `totalMatches` (the snapshot's `totalCount`). When
 holds — the 10,000-row cap, or a walk still filling it — the no-selection line reads "No selection, 10,000 of 34,512
 matches." instead of claiming the rows are everything. Equal counts fall back to the normal "No selection, 112 files."
 It renders `viewMode: 'full'` regardless of the pane's own view mode, because `SearchResultsView` is always a full list.
+It also passes the reactive display binding for `nav.parent`; `SelectionInfo` renders that beside the localized “Show in
+folder” footer hint, so a shortcut rebind updates the clue without remounting the pane.
 
 **Volume capabilities (`volume-capabilities.ts`).** Guard logic branches on a `VolumeCapabilities` record, ❌ never on a
 volume-id string. The record has two halves, and which half answers is the whole design:
@@ -992,10 +998,11 @@ return-point bookkeeping. `navigate.ts` re-exports the names callers use, so the
 
 - **`Location` is navigation's currency; resolution happens at the edge.** A bare path becomes a `Location`
   (`{ volumeId, path }`) at exactly four edges — ⌘G "Go to path", MCP `nav_to_path`, search-result activation (dialog
-  "Go to file" + a search-results row), downloads reveal (⌘J) — each via `navigation/resolve-location.ts`, before
-  `navigate()` is called. `navigate()` itself never resolves a volume; it receives a fully-formed destination. An
-  unresolvable path is a friendly toast (shared `resolveLocationOrToast`) or a typed MCP `ok: false`, never a
-  wrong-volume listing. The canonical description of the shapes + edges lives in `navigate.ts`'s module doc.
+  "Go to file" + a search-results row + snapshot reveal), downloads reveal (⌘J) — each via
+  `navigation/resolve-location.ts`, before `navigate()` is called. `navigate()` itself never resolves a volume; it
+  receives a fully-formed destination. An unresolvable path is a friendly toast (shared `resolveLocationOrToast`) or a
+  typed MCP `ok: false`, never a wrong-volume listing. The canonical description of the shapes + edges lives in
+  `navigate.ts`'s module doc.
 - **Intent arms.** `{ goTo }` self-routes: same volume as the pane → the in-place arm, a different volume → the switch
   arm. `{ selectVolume }` is the deliberate volume-(re)select intent and ALWAYS takes the switch arm (its callers — the
   cancel walk-up, retry, `selectVolumeByIndex` — pass the CURRENT volume id on purpose).

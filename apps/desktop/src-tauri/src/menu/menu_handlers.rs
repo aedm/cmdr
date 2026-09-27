@@ -22,12 +22,12 @@ use super::{
     FUNCTION_KEY_BAR_HIDE_ID, MEDIA_INDEX_ADD_FOLDER_ID, MEDIA_INDEX_EXCLUDE_FOLDER_ID, MEDIA_INDEX_INCLUDE_FOLDER_ID,
     MEDIA_INDEX_REMOVE_FOLDER_ID, MediaIndexFolderChoice, MediaIndexFolderExclusion, MenuSort, MenuState,
     NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_EDIT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID,
-    SELECT_ALL_ID, SHOW_HIDDEN_FILES_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID,
-    SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID,
-    TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID,
-    VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID,
-    VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged,
-    menu_id_to_command,
+    SELECT_ALL_ID, SHOW_HIDDEN_FILES_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID,
+    SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged,
+    TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID,
+    VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID,
+    VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode,
+    ViewModeChanged, menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -209,6 +209,19 @@ fn viewer_edit_action_for(menu_id: &str) -> Option<ViewerEditActionKind> {
 /// state syncing, focus-routed clipboard handling, or native macOS panels.
 pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEvent) {
     let id = event.id().as_ref();
+
+    if id == SHOW_SEARCH_RESULT_IN_FOLDER_ID {
+        let state = app.state::<MenuState<tauri::Wry>>();
+        let path = {
+            let context = state.context.lock_ignore_poison();
+            search_result_reveal_path(id, &context)
+        };
+        if let Some(path) = path {
+            use tauri_specta::Event as _;
+            let _ = crate::window_events::ShowSearchResultInFolder { path }.emit_to(app, "main");
+        }
+        return;
+    }
 
     // === CheckMenuItem exceptions: sync checked state and emit directly ===
     // These must NOT go through "execute-command", as that would double-toggle.
@@ -709,6 +722,11 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     // Unknown menu ID: no-op (all known IDs are handled above)
 }
 
+/// The primary row path carried by the snapshot-only context action.
+fn search_result_reveal_path(menu_id: &str, context: &super::MenuContext) -> Option<String> {
+    (menu_id == SHOW_SEARCH_RESULT_IN_FOLDER_ID && !context.path.is_empty()).then(|| context.path.clone())
+}
+
 /// The action a volume menu id stands for, or `None` when the id belongs to some
 /// other menu.
 ///
@@ -811,5 +829,26 @@ mod native_edit_selector_tests {
         assert_eq!(native_edit_selector_for(VIEWER_SELECT_ALL_ID), None);
         assert_eq!(native_edit_selector_for(VIEWER_WORD_WRAP_ID), None);
         assert_eq!(native_edit_selector_for("unknown_id"), None);
+    }
+}
+
+#[cfg(test)]
+mod search_result_reveal_tests {
+    use super::*;
+    use crate::menu::{MenuContext, SHOW_IN_FINDER_ID};
+
+    #[test]
+    fn show_in_folder_carries_the_primary_right_clicked_path_not_the_selection() {
+        let context = MenuContext {
+            path: "/share/B.txt".to_string(),
+            paths: vec!["/share/A.txt".to_string(), "/share/C.txt".to_string()],
+            ..MenuContext::default()
+        };
+
+        assert_eq!(
+            search_result_reveal_path(SHOW_SEARCH_RESULT_IN_FOLDER_ID, &context),
+            Some("/share/B.txt".to_string())
+        );
+        assert_eq!(search_result_reveal_path(SHOW_IN_FINDER_ID, &context), None);
     }
 }

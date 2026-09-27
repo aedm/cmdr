@@ -31,6 +31,15 @@ pub struct ExecuteCommand {
     pub command_id: String,
 }
 
+/// `show-search-result-in-folder`: a snapshot context-menu click. The primary
+/// right-clicked path travels with the event so the frontend never rereads a
+/// potentially different cursor or selection after the native popup closes.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct ShowSearchResultInFolder {
+    pub path: String,
+}
+
 /// `open-settings`: open the settings window deep-linked to `section` (MCP
 /// `dialog open settings --section …`). Emitted to the main window.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]

@@ -19,6 +19,7 @@ import {
   activateWindowMenu,
   onViewModeChanged,
   onMenuSort,
+  onShowSearchResultInFolder,
   onMediaIndexFolderExclusion,
   onMediaIndexFolderChoice,
   onFunctionKeyBarHideRequested,
@@ -50,7 +51,11 @@ import { getMainWindowOperationRows } from '$lib/file-operations/queue/main-wind
 import { openSettingsWindow } from '$lib/settings/settings-window'
 import { seedSettingForE2E, setSetting } from '$lib/settings'
 import { openFileViewerForPath } from '$lib/file-viewer/open-viewer-for-path'
-import { navigateToDirInBestPane, resolveLocationOrToast } from '$lib/file-explorer/navigation/navigate-and-select'
+import {
+  navigateToDirInBestPane,
+  resolveLocationOrToast,
+  revealSearchResultInPane,
+} from '$lib/file-explorer/navigation/navigate-and-select'
 import { closeDialogById } from '$lib/ui/dialog-close-registry'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
 import { openGalleryDialog } from '$lib/dialog-gallery/gallery-state.svelte'
@@ -329,6 +334,15 @@ export async function setupMenuListeners(ctx: ListenerSetupContext): Promise<voi
     await onMenuSort((payload) => {
       const command = menuSortToCommand(payload.action, payload.value)
       if (command) void dispatchers.menu(command)
+    }),
+  )
+
+  // Snapshot menus carry the primary right-clicked row through Rust. Do not
+  // reread cursor/selection here: either may differ from the row the menu named.
+  unlistenFns.push(
+    await onShowSearchResultInFolder((payload) => {
+      const explorer = getExplorer()
+      if (explorer) void revealSearchResultInPane(explorer, explorer.getFocusedPane(), payload.path)
     }),
   )
 

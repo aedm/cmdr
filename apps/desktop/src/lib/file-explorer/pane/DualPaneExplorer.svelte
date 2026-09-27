@@ -109,6 +109,7 @@
     import DragOverlay from '../drag/DragOverlay.svelte'
     import { addToastForPane } from '$lib/ui/toast'
     import { tString } from '$lib/intl/messages.svelte'
+    import { revealSearchResultInPane } from '../navigation/navigate-and-select'
 
     function saveTabsForPaneSide(pane: 'left' | 'right') {
         saveTabsForPane(pane, getTabMgr)
@@ -1307,6 +1308,13 @@
                     // volume. `onVolumeChange` is the other intent (deliberate volume
                     // (re)select); they map to the two destination shapes.
                     navigateIntent({ pane: paneId, to: { goTo: location }, source: 'user' })
+                }}
+                onRevealSearchResult={(path: string) => {
+                    void revealSearchResultInPane(
+                        { getFocusedPane, setFocusedPane, getPaneLocation, navigate, moveCursor },
+                        paneId,
+                        path,
+                    )
                 }}
                 onRequestFocus={() => {
                     handleFocus(paneId)

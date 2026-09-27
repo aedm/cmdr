@@ -106,6 +106,7 @@
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
+    import { getFirstShortcutReactive } from '$lib/shortcuts/reactive-shortcuts.svelte'
 
     interface Props {
         initialPath: string
@@ -178,6 +179,8 @@
          * a `CommandId` (`'selection.selectFiles'` / `'selection.deselectFiles'`).
          */
         onCommand?: (commandId: CommandId) => void
+        /** Reveals a snapshot result through the coordinator's navigation transaction. */
+        onRevealSearchResult?: (path: string) => void
     }
 
     const {
@@ -209,6 +212,7 @@
         canGoBack = false,
         onGoBack,
         onCommand,
+        onRevealSearchResult,
     }: Props = $props()
 
     let currentPath = $state(untrack(() => initialPath))
@@ -1535,6 +1539,10 @@
             { selection.handleShiftKeyboardNavigation(fromIndex, toIndex, overflow, false); },
         toggleSelectionAt: (index: number) => selection.toggleAt(index, false),
         openCursorItem: () => void openCursorItem(),
+        revealCursorItem: () => {
+            const path = searchSnapshot?.entries[cursorIndex]?.path
+            if (path) onRevealSearchResult?.(path)
+        },
     })
 
     // Keydown routing for a focused pane: the rename / network / search-results
@@ -2120,6 +2128,7 @@
             volumeSpace={diskSpace.volumeSpace}
             showVolumeSpace={footer.volumeSpace}
             totalMatches={searchSnapshot?.totalCount}
+            showInFolderShortcut={isSearchResultsView ? getFirstShortcutReactive('nav.parent') : undefined}
             {mtpSpaceHint}
         />
     {/if}

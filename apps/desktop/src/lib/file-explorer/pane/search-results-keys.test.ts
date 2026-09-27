@@ -5,20 +5,24 @@
  * Home/End, Space-toggle, ⇧Up/⇧Down range, ⌘A select-all, F-keys). Each case
  * pins a specific contract: see `computeSearchPaneKeyAction` below.
  */
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+
+const { eventMatchesCommandSpy } = vi.hoisted(() => ({ eventMatchesCommandSpy: vi.fn() }))
+vi.mock('$lib/shortcuts', () => ({ eventMatchesCommand: eventMatchesCommandSpy }))
+
 import { computeSearchPaneKeyAction, type SearchPaneKeyAction } from './search-results-keys'
 
 function key(
   name: string,
   mods: { shift?: boolean; meta?: boolean; ctrl?: boolean; alt?: boolean } = {},
-): { key: string; shiftKey: boolean; metaKey: boolean; ctrlKey: boolean; altKey: boolean } {
-  return {
+): KeyboardEvent {
+  return new KeyboardEvent('keydown', {
     key: name,
     shiftKey: !!mods.shift,
     metaKey: !!mods.meta,
     ctrlKey: !!mods.ctrl,
     altKey: !!mods.alt,
-  }
+  })
 }
 
 const ctx = { cursorIndex: 5, count: 50, visibleItems: 10 }
@@ -29,6 +33,24 @@ function asMove(a: SearchPaneKeyAction | null) {
 }
 
 describe('computeSearchPaneKeyAction', () => {
+  beforeEach(() => {
+    eventMatchesCommandSpy.mockReset().mockReturnValue(false)
+  })
+
+  it('reveals the cursor result for the live nav.parent binding, without swallowing Cmd+Backspace', () => {
+    eventMatchesCommandSpy.mockImplementation(
+      (event: { key: string; metaKey: boolean }, command: string) =>
+        (command === 'file.delete' && event.key === 'Backspace' && event.metaKey) ||
+        (command === 'nav.parent' &&
+          (event.key === 'Backspace' || event.key === 'k' || (event.key === 'ArrowUp' && event.metaKey))),
+    )
+
+    expect(computeSearchPaneKeyAction(key('k'), ctx)).toEqual({ kind: 'reveal-cursor' })
+    expect(computeSearchPaneKeyAction(key('Backspace'), ctx)).toEqual({ kind: 'reveal-cursor' })
+    expect(computeSearchPaneKeyAction(key('ArrowUp', { meta: true }), ctx)).toEqual({ kind: 'reveal-cursor' })
+    expect(computeSearchPaneKeyAction(key('Backspace', { meta: true }), ctx)).toBeNull()
+  })
+
   describe('P1: PageUp / PageDown', () => {
     it('PageDown steps by visibleItems - 1', () => {
       const a = asMove(computeSearchPaneKeyAction(key('PageDown'), ctx))

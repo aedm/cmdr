@@ -49,8 +49,8 @@ use super::{
 };
 use super::{
     COPY_FILENAME_ID, COPY_PATH_ID, EDIT_ID, FAVORITES_ADD_CONTEXT_ID, FILE_COPY_ID, FILE_DELETE_ID, FILE_DUPLICATE_ID,
-    FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, ImageIndexMenuState, OPEN_ID, RENAME_ID,
-    SHOW_IN_FINDER_ID, image_index_menu_items,
+    FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, GO_PARENT_ID, ImageIndexMenuState, OPEN_ID,
+    RENAME_ID, SHOW_IN_FINDER_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, image_index_menu_items,
 };
 
 /// A fact the menu asked off the main thread (`context_menu_facts.rs`): answered in time,
@@ -156,6 +156,9 @@ pub struct ContextMenuPaneFacts {
     /// Source-side actions (Open, Copy, Move, Delete, Show in Finder, Copy filename,
     /// Copy path) stay, because the underlying paths are real.
     pub restrict_destination_actions: bool,
+    /// Whether to offer the snapshot-only “Show in folder” action. Its handler
+    /// emits the primary right-clicked path, not the pane cursor or selected paths.
+    pub can_show_in_folder: bool,
     /// Whether "Open terminal here" is clickable. It acts on the pane's FOLDER, not
     /// this file, so a pane on MTP or ADB shows it greyed out; the snapshot pane and
     /// the Search dialog pass `false` too, having no folder of their own to open.
@@ -209,6 +212,7 @@ pub fn build_context_menu<R: Runtime>(
 ) -> tauri::Result<ContextMenuResult<R>> {
     let ContextMenuPaneFacts {
         restrict_destination_actions,
+        can_show_in_folder,
         can_open_terminal_here,
         can_share,
         can_favorite,
@@ -305,6 +309,16 @@ pub fn build_context_menu<R: Runtime>(
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     // Utility group: Show in Finder, Copy filename, Copy path
+    if can_show_in_folder {
+        let show_in_folder_item = MenuItem::with_id(
+            app,
+            SHOW_SEARCH_RESULT_IN_FOLDER_ID,
+            menu_t("menu.context.showInFolder"),
+            true,
+            shortcuts.for_menu_item(GO_PARENT_ID).as_deref(),
+        )?;
+        menu.append(&show_in_folder_item)?;
+    }
     let show_in_finder_item = context_item(
         app,
         shortcuts,

@@ -40,6 +40,7 @@ function setup(over: Partial<SearchPaneKeysDeps> = {}) {
     extendSelection: vi.fn(),
     toggleSelectionAt: vi.fn(),
     openCursorItem: vi.fn(),
+    revealCursorItem: vi.fn(),
     getSnapshotEntryAt: vi.fn(() => ({ path: '/f.txt', isDirectory: false })) as Mock,
   }
   const deps: SearchPaneKeysDeps = {
@@ -52,6 +53,7 @@ function setup(over: Partial<SearchPaneKeysDeps> = {}) {
     extendSelection: spies.extendSelection,
     toggleSelectionAt: spies.toggleSelectionAt,
     openCursorItem: spies.openCursorItem,
+    revealCursorItem: spies.revealCursorItem,
     ...over,
   }
   return { keys: createSearchPaneKeys(deps), spies }
@@ -89,6 +91,13 @@ describe('createSearchPaneKeys', () => {
     const { keys, spies } = setup()
     keys.handleSearchResultsKeyDown(fakeEvent().e)
     expect(spies.openCursorItem).toHaveBeenCalled()
+  })
+
+  it('reveal-cursor opens the cursor result’s containing folder', () => {
+    computeSpy.mockReturnValue({ kind: 'reveal-cursor' })
+    const { keys, spies } = setup()
+    keys.handleSearchResultsKeyDown(fakeEvent().e)
+    expect(spies.revealCursorItem).toHaveBeenCalledTimes(1)
   })
 
   it('view-file opens the viewer for a file on the volume the search covered, skips a directory', () => {

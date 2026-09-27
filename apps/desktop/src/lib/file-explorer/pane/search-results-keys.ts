@@ -18,10 +18,13 @@
  * it's a unified app shortcut, and the snapshot pane already exposes `selectAll` via `FilePane`.
  */
 
+import { eventMatchesCommand } from '$lib/shortcuts'
+
 /** Each action the search-pane key dispatch can request from the caller. */
 export type SearchPaneKeyAction =
   | { kind: 'move-cursor'; index: number; overflow: boolean; shiftKey: boolean }
   | { kind: 'open-cursor' }
+  | { kind: 'reveal-cursor' }
   | { kind: 'toggle-selection-at-cursor' }
   | { kind: 'toggle-selection-and-advance' }
   | { kind: 'view-file' }
@@ -134,10 +137,19 @@ function moveAction(
  *   - Alt+Up / Alt+Down mirror Home / End (per the full-pane navigation convention).
  */
 export function computeSearchPaneKeyAction(
-  event: { key: string; shiftKey: boolean; metaKey: boolean; ctrlKey: boolean; altKey: boolean },
+  event: KeyboardEvent,
   ctx: SearchPaneKeyContext,
 ): SearchPaneKeyAction | null {
   const { key, shiftKey, metaKey, ctrlKey, altKey } = event
+
+  // Delete wins if customization ever puts both commands on one combo. In
+  // particular, the default Cmd+Backspace must keep reaching the delete dispatcher.
+  if (eventMatchesCommand(event, 'file.delete')) return null
+
+  // Snapshot panes have no `..` row, so the configured parent action reveals the
+  // result instead. Match before rejecting modified combos so the default Cmd+Up
+  // binding works.
+  if (eventMatchesCommand(event, 'nav.parent')) return { kind: 'reveal-cursor' }
 
   // Cmd / Ctrl combos belong to the unified dispatch layer. Don't shadow them here.
   if (metaKey || ctrlKey) return null

@@ -523,6 +523,7 @@ export {
 export {
   onViewModeChanged,
   onMenuSort,
+  onShowSearchResultInFolder,
   onMediaIndexFolderExclusion,
   onMediaIndexFolderChoice,
   onMenuBarRebuilt,

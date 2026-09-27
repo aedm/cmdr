@@ -2093,6 +2093,7 @@ export type MessageKey =
   | 'menu.context.share'
   | 'menu.context.shareLoading'
   | 'menu.context.shareNone'
+  | 'menu.context.showInFolder'
   | 'menu.context.toggleSelection'
   | 'menu.dock.connectToServer'
   | 'menu.dock.goToFolder'

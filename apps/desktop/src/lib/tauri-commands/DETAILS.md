@@ -35,6 +35,9 @@ commands, and notable non-obvious placements.
   `$lib/file-explorer/selection/DETAILS.md` § Context-menu header. It also sends a `shortcuts` map the caller never
   passes: the private `boundShortcuts()` reads every bound combo out of the registry per popup, so the native menu
   labels its items from what the user has actually bound rather than from literals that go stale on a rebind.
+  `PaneContextMenuFacts.canShowInFolder` is the explicit search-results-only menu fact; it is not inferred from
+  `restrictDestinationActions`, because one says which action to add and the other says which destination actions to
+  remove. The matching typed event carries the popup's primary `path` back to the main window.
   `showBreadcrumbContextMenu` rides the same map (its only argument is the eject target now), and both send the
   CANONICAL spelling — ❌ never `toDisplayShortcut`, whose glyphs Rust's converter turns into garbage.
   `src-tauri/src/menu/DETAILS.md` § "Where a CONTEXT menu's accelerator comes from".

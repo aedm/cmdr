@@ -12,6 +12,7 @@ import {
   type MediaIndexFolderExclusion,
   type MenuBarRebuilt,
   type MenuSort,
+  type ShowSearchResultInFolder,
   type ViewModeChanged,
 } from '$lib/ipc/bindings'
 
@@ -47,6 +48,13 @@ export function onViewModeChanged(handler: (payload: ViewModeChanged) => void): 
  */
 export function onMenuSort(handler: (payload: MenuSort) => void): Promise<UnlistenFn> {
   return events.menuSort.listen((event) => {
+    handler(event.payload)
+  })
+}
+
+/** A search-result context menu asks the focused pane to reveal its primary clicked row. */
+export function onShowSearchResultInFolder(handler: (payload: ShowSearchResultInFolder) => void): Promise<UnlistenFn> {
+  return events.showSearchResultInFolder.listen((event) => {
     handler(event.payload)
   })
 }

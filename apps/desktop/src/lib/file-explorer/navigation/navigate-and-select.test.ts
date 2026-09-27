@@ -103,13 +103,14 @@ describe('revealSearchResultInPane (the search "Go to file" edge)', () => {
     addToastMock.mockReset().mockReturnValue('toast-id')
   })
 
-  it('resolves the result’s PARENT dir, navigates with that location, then moves the cursor onto the file', async () => {
+  it('crosses from the snapshot pane to the result’s resolved volume, then lands on the file', async () => {
     resolveLocationMock.mockResolvedValue({ ok: true, location: loc('/Volumes/Nas/docs', 'nas') })
     const { explorer, navigate, moveCursor } = makeExplorer(started())
 
     await revealSearchResultInPane(explorer, 'left', '/Volumes/Nas/docs/report.pdf')
 
-    // It resolves the parent dir, not the file path.
+    // The display-only `parentPath` could say `~/docs`; the full result path is the
+    // source of truth. Resolve its parent, and preserve the resolver's cross-volume id.
     expect(resolveLocationMock).toHaveBeenCalledWith('/Volumes/Nas/docs')
     expect(navigate).toHaveBeenCalledWith({
       pane: 'left',

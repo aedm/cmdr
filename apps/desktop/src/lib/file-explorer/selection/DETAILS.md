@@ -133,7 +133,7 @@ Other layout: filename truncation uses `useShortenMiddle` with `preferBreakAt: '
 `measureDateColumnWidth(formatDateTime)` to stay in sync with FullList; `formatDateTime` comes from
 `reactive-settings.svelte`.
 
-Two props exist for the search-results pane, which shows the same footer over a snapshot instead of a folder:
+Three props exist for the search-results pane, which shows the same footer over a snapshot instead of a folder:
 
 - `showVolumeSpace` (default `true`) switches the free-space text off. It's a separate prop rather than "pass no
   `volumeSpace`", because `null` there already means "not fetched yet". Who passes what: `../pane/pane-footer.ts`.
@@ -141,6 +141,8 @@ Two props exist for the search-results pane, which shows the same footer over a 
   more than the pane holds (the row cap, or a walk still filling it). Equal or absent, the line counts files and dirs as
   usual. The numbers themselves come from `../pane/snapshot-stats.ts`, a fold over the snapshot's rows that stands in
   for the stats IPC.
+- `showInFolderShortcut` adds the compact localized “Show in folder” clue with the live display binding for
+  `nav.parent`. `FilePane` reads it through `getFirstShortcutReactive`, so Settings rebinding updates the chip in place.
 
 ## Phone-storage hint (MTP)
 

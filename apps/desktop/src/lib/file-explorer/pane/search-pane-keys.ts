@@ -44,6 +44,8 @@ export interface SearchPaneKeysDeps {
   toggleSelectionAt: (index: number) => void
   /** Open the entry under the cursor (Enter). */
   openCursorItem: () => void
+  /** Reveal the entry under the cursor in its containing folder (`nav.parent`). */
+  revealCursorItem: () => void
 }
 
 export interface SearchPaneKeys {
@@ -95,6 +97,9 @@ export function createSearchPaneKeys(deps: SearchPaneKeysDeps): SearchPaneKeys {
         return
       case 'open-cursor':
         deps.openCursorItem()
+        return
+      case 'reveal-cursor':
+        deps.revealCursorItem()
         return
       case 'view-file':
         openSnapshotFileWith('viewer')

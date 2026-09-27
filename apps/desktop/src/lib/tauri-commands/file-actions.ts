@@ -66,6 +66,8 @@ export interface PaneContextMenuFacts {
    * `apps/desktop/src/lib/search/capabilities.ts`).
    */
   restrictDestinationActions?: boolean
+  /** Whether this menu is over a search result that can be opened in its containing folder. */
+  canShowInFolder?: boolean
   /**
    * The pane's listing id, so a Finder-tag color click can refresh that listing's
    * cache after writing. Omit for a virtual pane with no normal listing; the tag
@@ -176,6 +178,7 @@ export async function showFileContextMenu(
     paths,
     pane: {
       restrictDestinationActions: pane.restrictDestinationActions ?? false,
+      canShowInFolder: pane.canShowInFolder ?? false,
       listingId: pane.listingId ?? '',
       canOpenTerminalHere: pane.canOpenTerminalHere ?? false,
       canShare: pane.canShare ?? false,
