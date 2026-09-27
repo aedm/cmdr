@@ -46,9 +46,9 @@ function hctx(row: HubRow | null, placesHost: NetworkHost | null = null) {
 
 type Handler = (hctx: CommandHandlerContext) => unknown
 const onServersVolume: [string, Handler][] = [
-  ['file.rename', fileHandlers['file.rename'] as Handler],
-  ['file.edit', fileHandlers['file.edit'] as Handler],
-  ['servers.edit', serversHandlers['servers.edit'] as Handler],
+  ['file.rename', fileHandlers['file.rename']],
+  ['file.edit', fileHandlers['file.edit']],
+  ['servers.edit', serversHandlers['servers.edit']],
 ]
 
 beforeEach(() => {
@@ -78,7 +78,8 @@ describe('on the Servers volume', () => {
   /** "Add server…" under the cursor: `editServerInView` says to pick a server, ❌ never silence. */
   it('hands over an empty view too, and never falls back to renaming a file', () => {
     const { ctx, explorerRef } = hctx(null)
-    void (fileHandlers['file.rename'] as Handler)(ctx)
+    const rename = fileHandlers['file.rename']
+    rename(ctx)
     expect(editServerInView).toHaveBeenCalledExactlyOnceWith({ row: null, host: null })
     expect(explorerRef.startRename).not.toHaveBeenCalled()
   })

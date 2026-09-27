@@ -2743,6 +2743,7 @@ export type MessageKey =
   | 'servers.hub.discoveryOff'
   | 'servers.hub.discoveryOffLink'
   | 'servers.hub.editNearbyHint'
+  | 'servers.hub.editPickHint'
   | 'servers.hub.editShareHint'
   | 'servers.hub.emptyMessage'
   | 'servers.hub.emptyTitle'
