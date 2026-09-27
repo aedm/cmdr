@@ -84,8 +84,8 @@ So the search's own memory comes back, within five minutes, once it runs alone. 
 leaves ~100 MiB behind for good, and together the two leave more than either alone. None of it involves the reload.
 
 In every condition the retained memory sits outside any page's blocks (`blockSpaceBytes` moves by 5–35 MiB while slack
-moves by 90–150), which matches the census's open question about which state mimalloc's retained slices are in. It isn't the walker's thread churn: pooling those threads left the slack where
-it was (`walker-thread-pool-2026-09-27.md`).
+moves by 90–150), which matches the census's open question about which state mimalloc's retained slices are in. It isn't
+the walker's thread churn: pooling those threads left the slack where it was (`walker-thread-pool-2026-09-27.md`).
 
 ## Still open
 
