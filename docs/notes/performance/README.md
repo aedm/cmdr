@@ -180,8 +180,9 @@ Smaller or already filed, unranked:
 
 Newest first.
 
-- `walker-thread-pool-2026-09-27.md`: the walker and rescan threads pooled, thread creations before and after, and the
-  allocator comparison re-run on top.
+- `walker-thread-pool-2026-09-27.md`: the walker and rescan threads pooled (97–99% fewer walker thread creations), and
+  the allocator comparison re-run on top: the slack isn't thread churn, so pooling doesn't move the allocator tradeoff.
+  Raw numbers: `walker-thread-pool-2026-09-27.csv`.
 - `main-process-iosurface-2026-09-27.md`: the main process's `IOSurface` is WebKit's layer backing, paid for by
   WebContent and outside the main footprint; what a window costs there, and a bare-`WKWebView` baseline.
 - `idle-census-2026-09-27.md`: `main` against both targets, the post-burst memory that turned out to be slack, a

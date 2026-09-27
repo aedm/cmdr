@@ -2,9 +2,8 @@
 
 **What this settles:** whether switching Cmdr's global allocator would cut its footprint, and at what cost. **Decision:
 keep mimalloc v3 for now.** The system allocator saves a median ~95 MiB at idle, but it's 30–45% slower on search
-queries and leaves multi-hundred-MiB peaks for minutes after a big free. mimalloc v2 buys nothing. The idle gap tracks
-thread churn, and the churn is the index walker's per-walk threads, so pooling those comes first and the comparison gets
-re-run after.
+queries and leaves multi-hundred-MiB peaks for minutes after a big free. mimalloc v2 buys nothing. The idle gap looked
+like thread churn, but pooling the walker's threads left it unchanged (`walker-thread-pool-2026-09-27.md`).
 
 The live-versus-slack method this builds on: `rust-heap-attribution-2026-09-23.md`. Per-round raw numbers:
 `allocator-comparison-2026-09-23.csv` (one row per round, condition, and sample point; bytes).
@@ -72,9 +71,10 @@ that allocation would also remove the system allocator's search penalty.
   `num_threads` workers per walk, and `reconcile/reconciler/rescan/mod.rs` spawns a `rescan-subtree` thread per subtree
   reconcile. A diagnostic build logged 7,351 `index-walk`, 459 watchdog, and 328 `rescan-subtree` threads in ~20 min;
   runs reached ~29,000 threads in 40 min.
-- **Churn predicts mimalloc's idle slack**: the round with ~55 threads (the startup-scan round) showed a
-  system-versus-v3 idle gap of −11 MiB, and the rounds with 700–25,000 threads showed −70 to −121. That's one low-churn
-  round, but it fits "each exiting thread abandons its mimalloc pages".
+- **Churn seemed to predict mimalloc's idle slack**: the round with ~55 threads (the startup-scan round) showed a
+  system-versus-v3 idle gap of −11 MiB, and the rounds with 700–25,000 threads showed −70 to −121. That was one
+  low-churn round, and it didn't hold: with the walker pooled, five paired rounds with a 3–20× churn difference showed
+  no slack difference (`walker-thread-pool-2026-09-27.md`).
 
 ## What switching would take
 

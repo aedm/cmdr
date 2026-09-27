@@ -4,11 +4,11 @@
 //! ## Why it exists
 //!
 //! The index walker ran every walk on threads of its own and the rescan drain ran
-//! every subtree reconcile on one: ~29,000 thread creations in 40 minutes on a busy
-//! machine. Each costs a `clone` plus stack setup, and under mimalloc each exiting
-//! thread abandons its heap pages, which the allocator comparison tied to the idle
-//! slack (`docs/notes/performance/walker-thread-pool-2026-09-27.md`). A pool turns
-//! that stream into a handful of long-lived threads.
+//! every subtree reconcile on one: up to ~20,000 thread creations in half an hour on
+//! a busy machine, each a `clone`, a stack mapping, and an allocator thread setup. A
+//! pool turns that stream into a handful of long-lived threads. It's hygiene, not a
+//! memory fix: pooling the walker left mimalloc's slack and the idle CPU where they
+//! were (`docs/notes/performance/walker-thread-pool-2026-09-27.md`).
 //!
 //! ## What it promises
 //!

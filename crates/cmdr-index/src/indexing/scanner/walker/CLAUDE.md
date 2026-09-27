@@ -13,7 +13,7 @@ runs the walk (`walk`, the workers, the watchdog, `SubtreeBudget`, `WALK_THREADS
 - **Never rayon.** Workers are 8 MB-stack OS threads: File Provider reads descend XPC chains that overflow rayon's 2 MB
   stack.
 - **Workers are jobs on the shared `WALK_THREADS` pool**; the watchdog runs on `walk`'s caller. ❌ Don't spawn threads
-  per walk: that was ~29,000 creations in 40 min. DETAILS § "The engine".
+  per walk: that was up to ~19,000 creations in half an hour. DETAILS § "The engine".
 - **The guard measures PROGRESS, not elapsed time.** Every read publishes what it has delivered through `ReadProgress`,
   and only a read that STOPPED PRODUCING is abandoned. ❌ Never re-cap total duration: elapsed time can't tell a
   200,000-entry dir from a dead mount, and that cap once dropped 661,411 rows.

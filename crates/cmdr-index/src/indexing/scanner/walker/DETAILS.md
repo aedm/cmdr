@@ -21,17 +21,17 @@ is offline, which froze the whole scan.
   replacement worker is started to restore capacity, and the stuck worker is left parked in the syscall (its job ends
   when the File Provider layer finally errors). Only genuinely-hung _frontier_ dirs reach this, each pruning its
   subtree, so the parked-worker cost is bounded and self-clearing. Workers are NOT waited for (an abandoned one would
-  block forever); the walk returns when the outstanding-task count hits zero.
+  block forever); the walk returns when the outstanding-task count hits zero. The reader is an injected `ReadDirFn`
+  (production `bulk_read_dir` on macOS, `std_read_dir` elsewhere, tests a mock that blocks or trickles), so hang /
+  big-but-healthy / honest-skip / parallel-correctness are unit-tested with no real hung mount.
 - **Where the threads come from.** A worker is one job on `WalkConfig::threads`, production's process-wide
   `WALK_THREADS` (`cmdr_fs::utility_pool::UtilityPool`: `Utility` QoS, 8 MB stacks, a 60 s keep-alive). The pool hands
   each job an idle thread or spawns one, and never queues a job behind a busy thread, so every walk still gets its full
   `num_threads` at once and the concurrency bound is the walks' own, exactly as with dedicated threads. The watchdog
   loop runs on the caller's thread, which `walk` blocks anyway. **Why pooled:** a thread per worker per walk plus a
-  watchdog each came to ~29,000 thread creations in 40 min on a busy machine, which costs CPU and, under mimalloc,
-  abandons each exiting thread's heap pages (`docs/notes/performance/walker-thread-pool-2026-09-27.md`). Test:
-  `tests.rs::a_run_of_walks_reuses_its_threads`. The reader is an injected `ReadDirFn` (production `bulk_read_dir` on
-  macOS, `std_read_dir` elsewhere, tests a mock that blocks or trickles), so hang / big-but-healthy / honest-skip /
-  parallel-correctness are unit-tested with no real hung mount.
+  watchdog each came to up to ~19,000 thread creations in half an hour on a busy machine; pooled, it's 40–124. It's
+  hygiene: measured to change neither memory nor CPU, so ❌ don't cite it as a slack fix
+  (`docs/notes/performance/walker-thread-pool-2026-09-27.md`). Test: `tests.rs::a_run_of_walks_reuses_its_threads`.
 - **Per-subtree give-up budget.** The per-dir watchdog abandons ONE hung dir at a time, so a dead mount that fails on
   every read (a disconnected File Provider returning `ETIMEDOUT`/`os error 60` per descendant, e.g. a MacDroid phone's
   `/proc/*/task/*/fd`) still cost one abandon PER DESCENDANT — hundreds/thousands of probes and a log flood. The give-up
