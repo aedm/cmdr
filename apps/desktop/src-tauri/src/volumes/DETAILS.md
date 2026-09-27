@@ -218,6 +218,31 @@ panes off ejected volumes.
 `get_volume_space(path)` uses `NSURLVolumeTotalCapacityKey` and `NSURLVolumeAvailableCapacityForImportantUsageKey`
 (falls back to `NSURLVolumeAvailableCapacityKey`). Returns `None` for non-existent paths.
 
+## Live volume space
+
+`live_space.rs::live_volume_space(path)` is what the space poller reads every 2 s (through
+`Volume::get_live_space_info` and the poller's unregistered-path fallback). It returns the same important-usage figure
+as `get_volume_space`, mostly at `statfs` cost:
+
+- **Why**: on the boot volume the important-usage query costs ~6.5 ms of CPU (5.9 of it system time, plus work in the
+  `deleted` daemon), against ~0.01 ms for `statfs`. The poller asks for the boot volume permanently (the low-space
+  check), so that alone was ~0.33% of a core. On external and SMB volumes the query is ~0.02 ms; the cost is
+  CacheDelete's purgeable accounting on the boot container.
+- **How**: important-usage free = `statfs` free + purgeable, and ordinary writes and deletes move `statfs` and the
+  important-usage figure by the same bytes while purgeable holds still. So each filesystem (keyed by mount point) keeps
+  an anchor: the last important-usage reading and the `statfs` taken beside it. A live reading is the anchor plus how far
+  `statfs` moved since, clamped to the drive.
+- **When it asks again** (`plan`): no anchor yet; the anchor is 60 s old; `statfs` drifted by 1/1,000 of the drive (one
+  readout step: past that it may be macOS purging, which raises `statfs` free while the important-usage figure holds);
+  the total changed; or a write operation settled since (`expect_space_change`, from `TauriEventSink::emit_settled`),
+  because deleting a file a Time Machine local snapshot still holds frees purgeable space `statfs` never sees.
+- **Evidence** (verified on macOS 27.0, a Swift probe sampling all three figures every 2 s for 5 min, 2026-09-27): `statfs`
+  free equals `NSURLVolumeAvailableCapacityKey` to the byte, purgeable held at 10.692 GB through 3.3 GB of writes,
+  and the anchor-plus-delta figure stayed within 0.4 MB of the real one (one sample 10 MB off: a write inside the call). Numbers and before/after CPU:
+  `docs/notes/performance/space-poll-cost-2026-09-27.md`.
+- ❌ **Only for readouts that poll.** Copy validation and the transfer pre-flight act on the figure once, so they keep
+  calling `get_volume_space`, which always asks.
+
 ## The unmount approver
 
 `unmount_approver/` answers DiskArbitration's unmount approval, so a drive is let go BEFORE any DA-mediated unmount,

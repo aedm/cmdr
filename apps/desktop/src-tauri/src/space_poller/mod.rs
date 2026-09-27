@@ -1,7 +1,8 @@
 //! Live disk-space poller.
 //!
-//! Polls `get_volume_space()` for volumes the frontend is actively displaying
-//! in panes, and emits `volume-space-changed` only when the readout would draw a
+//! Polls `Volume::get_live_space_info()` (on macOS, `volumes::live_volume_space`:
+//! Finder's free-space figure at mostly `statfs` cost) for volumes the frontend
+//! is actively displaying in panes, and emits `volume-space-changed` only when the readout would draw a
 //! different figure (`readout.rs`) and the change passes the user's threshold.
 //! While the main window is hidden (`main_window_visibility`), it polls only the
 //! boot volume for the low-space check and emits nothing, then catches up the
@@ -346,7 +347,7 @@ async fn poll_loop() {
             let path_clone = path.clone();
             let fetch = async move {
                 if let Some(vol) = vol_clone
-                    && let Ok(info) = vol.get_space_info().await
+                    && let Ok(info) = vol.get_live_space_info().await
                 {
                     return Some(info);
                 }
@@ -489,7 +490,7 @@ fn emit_low_disk_space(
 fn fetch_space_for_path(path: &str) -> Option<SpaceInfo> {
     #[cfg(target_os = "macos")]
     {
-        crate::volumes::get_volume_space(path)
+        crate::volumes::live_volume_space(path)
     }
 
     #[cfg(target_os = "linux")]

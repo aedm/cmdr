@@ -634,6 +634,15 @@ impl Volume for LocalPosixVolume {
         })
     }
 
+    fn get_live_space_info<'a>(&'a self) -> Pin<Box<dyn Future<Output = Result<SpaceInfo, VolumeError>> + Send + 'a>> {
+        let root = self.root.clone();
+        Box::pin(async move {
+            spawn_blocking(move || live_space_info_for_path(&root))
+                .await
+                .expect("spawn_blocking get_live_space_info closure doesn't panic and the task is uncancelable")
+        })
+    }
+
     /// `statvfs` and `access(W_OK)` on the nearest folder at or above `path` that
     /// exists, off the async runtime (`write_access_for_path`).
     fn write_access_at<'a>(
@@ -708,6 +717,19 @@ pub(crate) fn get_space_info_for_path(path: &Path) -> Result<SpaceInfo, VolumeEr
     }
 
     // Fallback (and Linux primary path): statvfs
+    get_space_info_statvfs(path)
+}
+
+/// [`get_space_info_for_path`] for a readout that polls: on macOS the same figure, mostly at
+/// `statfs` cost (`volumes::live_volume_space`). Linux's `statvfs` is already that cheap.
+pub(crate) fn live_space_info_for_path(path: &Path) -> Result<SpaceInfo, VolumeError> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(space) = crate::volumes::live_volume_space(&path.to_string_lossy()) {
+            return Ok(space);
+        }
+    }
+
     get_space_info_statvfs(path)
 }
 

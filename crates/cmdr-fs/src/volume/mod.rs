@@ -1103,6 +1103,18 @@ pub trait Volume: Send + Sync {
         Box::pin(async { Err(VolumeError::NotSupported) })
     }
 
+    /// Space for a readout that polls it every few seconds (the space poller).
+    /// Defaults to [`get_space_info`](Self::get_space_info).
+    ///
+    /// A backend whose exact figure is expensive may answer from a recent exact
+    /// reading plus what a cheap one says moved since: on macOS the local backend
+    /// pays `statfs` here, where `get_space_info` asks CacheDelete for purgeable
+    /// space at ~6.5 ms of CPU. Anything that acts on the figure once (the transfer
+    /// pre-flight) keeps calling `get_space_info` / `get_space_info_at`.
+    fn get_live_space_info<'a>(&'a self) -> Pin<Box<dyn Future<Output = Result<SpaceInfo, VolumeError>> + Send + 'a>> {
+        self.get_space_info()
+    }
+
     /// Space for the filesystem that holds `path`. Defaults to
     /// [`get_space_info`](Self::get_space_info), the volume's one figure.
     ///
@@ -1135,8 +1147,9 @@ pub trait Volume: Send + Sync {
 
     /// Recommended poll interval for live disk-space monitoring.
     ///
-    /// Local volumes use a short interval (2 s) because `statvfs`/NSURL is
-    /// microsecond-cheap. Network and MTP volumes use a longer interval (5 s)
+    /// Local volumes use a short interval (2 s) because their live reading
+    /// ([`get_live_space_info`](Self::get_live_space_info)) is mostly a
+    /// microsecond `statfs`. Network and MTP volumes use a longer interval (5 s)
     /// to avoid unnecessary traffic. Returns `None` if space polling is not
     /// meaningful for this volume type (for example, in-memory test volumes).
     fn space_poll_interval(&self) -> Option<std::time::Duration> {
