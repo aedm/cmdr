@@ -613,9 +613,9 @@
   "@menu.network.pinToSwitcher": {
     "sourceHash": "868b68d"
   },
-  "menu.network.unpin": "Lösen",
+  "menu.network.unpin": "Aus der Volume-Auswahl lösen",
   "@menu.network.unpin": {
-    "sourceHash": "ee3c716"
+    "sourceHash": "82297d8"
   },
   "menu.network.forgetServer": "Server vergessen",
   "@menu.network.forgetServer": {

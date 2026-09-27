@@ -480,7 +480,7 @@ Deliberate splits (don't unify):
 - The row covers Office documents and .jar/.apk, so bare `Pakete`, kept broader than the `App-Pakete` card below; the
   sentence frame copies `settings.archives.zip.description`.
 
-## Der Server-Hub: Verbindungszustände, Trennen und Vergessen (`servers.*`, `fileExplorer.navigation.connectionTooltip*`, `.disconnect*`, `.forget*`)
+## Der Server-Hub: Verbindungszustände, Trennen und Vergessen (`servers.*`, `fileExplorer.navigation.connectionTooltip*`, `.disconnect*`, `.forget*`, `fileExplorer.network.browser.*Host*`, `fileExplorer.network.share.useGuest`/`.signInAs`)
 
 - Disconnecting separates the connection, not the server: `Cmdr konnte die Verbindung zu {name} nicht trennen.`, aria
   `Verbindung zu {name} trennen` (Apple's FileProvider frame), never `{name} trennen`.
@@ -493,7 +493,12 @@ Deliberate splits (don't unify):
 - `Das Passwort hat für {username} nicht geklappt.`, never Apple's `ungültig`: nobody gets blamed.
 - The sheet's field is the short `Adresse`; prose says `Serveradresse`.
 - Back-references say `den Server`, never `ihn`: in `connectionTooltipNeedsHostKey` two masculine nouns precede it.
-- The dialog titles equal their menu items (`menu.network.forgetServer`, `menu.network.forgetSavedPassword`).
+- The dialog titles equal their menu items (`menu.network.forgetServer`, `menu.network.forgetSavedPassword`);
+  `Freigabe vergessen` copies the `Server vergessen` frame.
+- Forget toasts take Cmdr as subject (`Cmdr hat {hostName} vergessen`, `Cmdr konnte {hostName} nicht vergessen`): a bare
+  `{hostName} vergessen` reads as an order, and `ließ sich nicht vergessen` means „unforgettable“.
+- The account suffix stays lowercase after the name (`als {username}`, `als Gast`); the buttons beside it are
+  `Anmelden als …` (Finder `SN1` `Verbinden als …`) and `Gastzugriff verwenden`.
 
 ## Die Server-Übersicht: Spalten, Zustände und die Zeile im Volume-Umschalter (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.server*`/`.pinRefusedToast`/`.networkVolume`, `shortcuts.scope.servers`/`.places`)
 
@@ -534,6 +539,8 @@ the first source.
 - `Ich habe ihn geprüft` (first person per the `@key`); `ihn` is safe because both candidates are masculine.
 - „the server's owner“ → `die Person, die den Server betreibt`: `Betreiber` / `Besitzer` are generic masculine.
 - `Cmdr hat die Verbindung zu {name} gestoppt`, never `abgebrochen` (reads as the user's Cancel).
+- `Hinzufügen` / `Hinzufügen und öffnen` / `Trotzdem hinzufügen` share one stem; the help line says `speichert` (storing
+  data), never the `Sichern` button word.
 - The Go to path preview lines stay third person (`Öffnet {name}`): they describe the input's effect.
 
 ## Der Wiederverbindungs-Zyklus und die Anmeldung per Schlüssel (`servers.paneState.reconnecting`, `.signedOutNothingToAsk`)
@@ -549,7 +556,9 @@ the first source.
 
 ## Server fixieren und lösen, die vertrauten Hostschlüssel und die ADB-Seite (`menu.network.pinToSwitcher`/`.unpin`, `servers.pinHint.*`, `settings.servers.*`, `settings.adb.*`, `settings.section.servers`/`.adb`, `settings.summary.servers`/`.adb`, `settings.appearance.tintSmb.*`)
 
-- `fixieren` (Safari „Tab fixieren“), never Notes' `anpinnen`; `Lösen` alone in the context menu, never `Loslösen`.
+- `fixieren` (Safari „Tab fixieren“), never Notes' `anpinnen`; the context-menu reverse is
+  `Aus der Volume-Auswahl lösen` (mirrors `pinToSwitcher`, quoted verbatim in `servers.pinHint.body`), never `Loslösen`
+  or `entfernen` (sounds like deleting).
 - `In der Volume-Auswahl fixieren`: the surface's known name outweighs brevity; Finder keeps the article („Zum Dock
   hinzufügen“).
 - `Erneut prüfen` (Software Update's „Check Again“), never `Erneut suchen`: nothing new is searched.

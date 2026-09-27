@@ -91,5 +91,9 @@
   "ui.numberInput.increase": "{label} erhöhen",
   "@ui.numberInput.increase": {
     "sourceHash": "bbf5fc9"
+  },
+  "ui.confirmDialog.cancel": "Abbrechen",
+  "@ui.confirmDialog.cancel": {
+    "sourceHash": "19766ed"
   }
 }

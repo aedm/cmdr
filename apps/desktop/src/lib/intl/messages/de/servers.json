@@ -7,9 +7,9 @@
   "@servers.pinHint.title": {
     "sourceHash": "0cf001a"
   },
-  "servers.pinHint.body": "Klicke einen Server mit der rechten Maustaste an und wähle „Lösen“, oder führe „{command}“ in der Befehlspalette aus. Der Server bleibt in der Liste „Server“.",
+  "servers.pinHint.body": "Klicke einen Server mit der rechten Maustaste an und wähle „Aus der Volume-Auswahl lösen“, oder führe „{command}“ in der Befehlspalette aus. Der Server bleibt in der Liste „Server“.",
   "@servers.pinHint.body": {
-    "sourceHash": "e47522b"
+    "sourceHash": "c2545d0"
   },
   "servers.pinHint.gotIt": "Alles klar",
   "@servers.pinHint.gotIt": {
@@ -64,6 +64,38 @@
   "servers.hub.neverUsed": "Nie",
   "@servers.hub.neverUsed": {
     "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "als {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "als Gast",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Wähle einen Server aus, um ihn zu bearbeiten.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "An einer Freigabe lässt sich nichts bearbeiten. Um ihren Server zu bearbeiten, wähle die Zeile des Servers aus.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "{name} wurde in der Nähe gefunden und ist nicht gespeichert, daher lässt sich nichts bearbeiten.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Freigabe vergessen",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Freigabe vergessen",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "{name} vergessen? Cmdr zeigt die Freigabe nicht mehr an. Ist sie eingebunden, bleibt sie eingebunden, und deine Dateien bleiben auf dem Server.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
   },
   "servers.hub.discoveryOff": "Die Suche im lokalen Netzwerk ist ausgeschaltet.",
   "@servers.hub.discoveryOff": {
@@ -161,6 +193,10 @@
   "@servers.refusal.startFolderNotFound": {
     "sourceHash": "0997a8d"
   },
+  "servers.refusal.passwordMissing": "Gib das Passwort für {username} ein.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
   "servers.refusal.saveUnconfirmed": "{host} hat nicht rechtzeitig geantwortet, deshalb hat Cmdr nichts gesichert. Versuche es gleich noch einmal.",
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "3fb55a6"
@@ -184,6 +220,26 @@
   "servers.sheet.editTitle": "{name} bearbeiten",
   "@servers.sheet.editTitle": {
     "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Hinzufügen und öffnen",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Hinzufügen",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Trotzdem hinzufügen",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr konnte diesen Server nicht prüfen, deshalb speichert „Trotzdem hinzufügen“ ihn so, wie du ihn eingegeben hast.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "{name} ist in deiner Liste „Server“ gespeichert.",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
   },
   "servers.sheet.signIn": "Anmelden",
   "@servers.sheet.signIn": {
@@ -233,6 +289,14 @@
   "@servers.sheet.addressHelpSftp": {
     "sourceHash": "1e21d29"
   },
+  "servers.sheet.addressHelpSmb": "Ein Hostname, eine IP-Adresse oder eine kopierte smb://-Adresse.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Eine kopierte Webadresse wie https://nas.local/dav oder ein Hostname.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
   "servers.sheet.addressLooksLikeSmb": "Das sieht nach einer SMB-Adresse aus. Wähle oben SMB, falls du das gemeint hast.",
   "@servers.sheet.addressLooksLikeSmb": {
     "sourceHash": "86fc72a"
@@ -245,6 +309,10 @@
   "@servers.sheet.addressLooksLikeWebdav": {
     "sourceHash": "a1185f1"
   },
+  "servers.sheet.addressLocked": "Die Adresse macht diesen Server aus. Um eine andere zu verwenden, vergiss diesen Server und füge ihn erneut hinzu.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
   "servers.sheet.identityLocked": "Adresse und Konto machen diesen Server aus. Vergiss ihn und füge ihn erneut hinzu, um sie zu ändern.",
   "@servers.sheet.identityLocked": {
     "sourceHash": "c16657d"
@@ -256,6 +324,15 @@
   "servers.sheet.password": "Passwort",
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Optional",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713",
+    "sameAsSourceJustification": "„Optional“ ist im Deutschen dasselbe Wort (Duden: optional, Adjektiv); Microsoft-Terminologie führt optional → optional."
+  },
+  "servers.sheet.smbUsernameHelp": "Füll das aus, wenn dein NAS ein Konto braucht. Cmdr fragt nach dem Passwort, wenn du eine Freigabe öffnest.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
   },
   "servers.sheet.passphrase": "Schlüssel-Passphrase",
   "@servers.sheet.passphrase": {
@@ -285,6 +362,10 @@
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52",
     "sameAsSourceJustification": "„Name“ ist im Deutschen dasselbe Wort; macOS Finder beschriftet dasselbe Feld genauso (NetAuthAgent `AuthDialog.loctable` `SV8-VX-EVJ.title` „Name:“, macOS 26.6.2, 2026-09-07)."
+  },
+  "servers.sheet.namePlaceholder": "Leer lassen, um {label} zu verwenden",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
   },
   "servers.sheet.rootFolder": "Stammordner",
   "@servers.sheet.rootFolder": {
@@ -369,6 +450,14 @@
   "servers.paneState.signedOut": "Von {name} abgemeldet",
   "@servers.paneState.signedOut": {
     "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "{name} ist nicht verbunden",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.goBack": "Zurück",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
   },
   "servers.paneState.signIn": "Anmelden …",
   "@servers.paneState.signIn": {

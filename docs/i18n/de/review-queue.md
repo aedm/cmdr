@@ -50,6 +50,8 @@ settled wording into `terms.json` (and `decisions.md` when the reason is worth k
   is the Windows forward-delete label; a Mac keyboard shows ⌫ and Apple's German docs say `Rückschritttaste`. Confirm,
   or switch to the Mac key name.
 - **`Distribution`** (Linux, `errors.mount.gvfsMissing`): no source in the Linux sense.
+- **`Gastzugriff verwenden`** (`fileExplorer.network.share.useGuest`): no Apple string for switching a listing back to
+  guest; `Als Gast verbinden` (the catalog's Connect as guest) is the alternative if the button reconnects.
 
 ## Overflow checks
 
@@ -68,4 +70,5 @@ German runs 20–35% longer than English. Look at these against the pseudolocale
 - `fileOperations.transferProgress.stallNotice` on the queue row (`Kein Fortschritt seit 2 Min. 30 s` vs
   `noch 2 Min. 30 s`).
 - `settings.indexing.overriddenBadge` (`Mit der Laufwerksindizierung aus`) and `menu.network.pinToSwitcher`
-  (`In der Volume-Auswahl fixieren`), both much longer than the English.
+  (`In der Volume-Auswahl fixieren`), both much longer than the English; `menu.network.unpin`
+  (`Aus der Volume-Auswahl lösen`, 28 vs 19) in the same narrow dropdown.

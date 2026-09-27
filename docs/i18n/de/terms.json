@@ -2063,7 +2063,7 @@
     "exceptions": {
       "main.dockPinNudge.body": "Dock sense: Soll das Symbol … bleiben, the body’s plain question before the title’s Im Dock behalten"
     },
-    "forms": "tabs and servers → fixieren / lösen (Tab fixieren, Server fixieren/lösen, In der Volume-Auswahl fixieren, standalone Lösen); the Dock → im Dock behalten / aus dem Dock entfernen",
+    "forms": "tabs and servers → fixieren / lösen (Tab fixieren, Server fixieren/lösen, In der Volume-Auswahl fixieren / Aus der Volume-Auswahl lösen); the Dock → im Dock behalten / aus dem Dock entfernen",
     "sources": "Safari MainMenu.strings (PrR-Dj-zwG.title Tab fixieren); Notes (Unpin Note → Notiz lösen); Dock DockMenus"
   },
   "placeholder": {
@@ -3222,5 +3222,41 @@
     ],
     "confidence": "tentative",
     "sources": "Cmdr's license is the BSL (docs/business/README.md); catalog (onboarding.stepFda.con.body)"
+  },
+  "go-back": {
+    "accept": ["Vor", "zurück"],
+    "chosen": "Zurück",
+    "confidence": "high",
+    "forms": "Go back → Zurück; Forward → Vorwärts (menu), Vor (palette)",
+    "sources": "macOS SystemSettings (Go Back → Zurück); Finder MenuBar (Back → Zurück); catalog (menu.go.back, menu.go.forward)"
+  },
+  "hostname": {
+    "accept": ["Hostnamen"],
+    "chosen": "Hostname",
+    "confidence": "high",
+    "sources": "MS terminology (hostname → Hostname); catalog (servers.sheet.addressHelpSftp, fileExplorer.network.browser.tooltip.resolving)"
+  },
+  "ip-address": {
+    "accept": ["IP-Adressen"],
+    "chosen": "IP-Adresse",
+    "confidence": "high",
+    "sources": "MS terminology (IP address → IP-Adresse); catalog (fileExplorer.network.browser.tooltip.resolving)"
+  },
+  "list": {
+    "accept": ["Listen", "Serverliste"],
+    "chosen": "Liste",
+    "confidence": "high",
+    "forms": "the Servers list in prose → die Liste „Server“ (like a menu, never Server-Liste)",
+    "decision": "Server fixieren und lösen, die vertrauten Hostschlüssel und die ADB-Seite",
+    "sources": "macOS AppKit (Liste „Farbauswahl“); catalog (servers.pinHint.body, settings.servers.trustedHostKeys.description)",
+    "exceptions": {
+      "errors.write.originalsKeptAside.message.many": "verb sense (the details list every one) → führt … auf, not the noun Liste"
+    }
+  },
+  "local": {
+    "accept": ["lokale", "lokalen", "lokaler", "lokales"],
+    "chosen": "lokal",
+    "confidence": "high",
+    "sources": "MS terminology (local → lokal); catalog (ai.*, settings.*)"
   }
 }

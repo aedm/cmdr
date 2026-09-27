@@ -429,17 +429,17 @@
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "{hostName} aus der Serverliste entfernen?",
+  "fileExplorer.network.browser.removeHostConfirm": "{hostName} vergessen? Cmdr zeigt den Server und die darunter gespeicherten Freigaben nicht mehr an. Ausgehängt wird dabei nichts.",
   "@fileExplorer.network.browser.removeHostConfirm": {
-    "sourceHash": "8ecdf1a"
+    "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "{hostName} entfernt",
+  "fileExplorer.network.browser.hostRemoved": "Cmdr hat {hostName} vergessen",
   "@fileExplorer.network.browser.hostRemoved": {
-    "sourceHash": "9e02382"
+    "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "{hostName} ließ sich nicht entfernen",
+  "fileExplorer.network.browser.hostRemoveFailed": "Cmdr konnte {hostName} nicht vergessen",
   "@fileExplorer.network.browser.hostRemoveFailed": {
-    "sourceHash": "684e6eb"
+    "sourceHash": "4411547"
   },
   "fileExplorer.network.forgotPassword": "Gespeichertes Passwort für {hostName} vergessen",
   "@fileExplorer.network.forgotPassword": {
@@ -492,6 +492,14 @@
   "fileExplorer.network.share.forgetPasswordTooltip": "Gespeichertes Passwort aus dem Schlüsselbund entfernen",
   "@fileExplorer.network.share.forgetPasswordTooltip": {
     "sourceHash": "f067186"
+  },
+  "fileExplorer.network.share.useGuest": "Gastzugriff verwenden",
+  "@fileExplorer.network.share.useGuest": {
+    "sourceHash": "53540e5"
+  },
+  "fileExplorer.network.share.signInAs": "Anmelden als …",
+  "@fileExplorer.network.share.signInAs": {
+    "sourceHash": "6a34e17"
   },
   "fileExplorer.network.share.forgetPassword": "Gespeichertes Passwort vergessen",
   "@fileExplorer.network.share.forgetPassword": {
@@ -1411,9 +1419,17 @@
   "@fileExplorer.navigation.forgetServerConfirmTitle": {
     "sourceHash": "e43c85d"
   },
+  "fileExplorer.navigation.forgetConfirmButton": "Vergessen",
+  "@fileExplorer.navigation.forgetConfirmButton": {
+    "sourceHash": "a6bd489"
+  },
   "fileExplorer.navigation.forgetServerConfirm": "{name} vergessen? Cmdr trennt die Verbindung und zeigt den Server nicht mehr an. Deine Dateien bleiben auf dem Server.",
   "@fileExplorer.navigation.forgetServerConfirm": {
     "sourceHash": "6a43f67"
+  },
+  "fileExplorer.navigation.forgetPasswordToo": "Auch das gespeicherte Passwort vergessen",
+  "@fileExplorer.navigation.forgetPasswordToo": {
+    "sourceHash": "6d79654"
   },
   "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr konnte {name} nicht vergessen.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {
