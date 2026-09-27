@@ -83,6 +83,9 @@ docs/specs/file-viewer-selection-progress.md
 # CodeGraph
 .codegraph/
 
+# Amp local artifacts and review scratch files
+/.amp/
+
 # Wrangler local state (local D1/KV/R2 for `wrangler dev --local`), regenerable
 .wrangler/
 
