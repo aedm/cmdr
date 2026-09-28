@@ -182,8 +182,9 @@ and unit-tested in `mod.rs`). Per-tool:
   rides the same helper for its navigation leg, so it can't move a cursor in a directory the pane never reached.
 - `select_volume` (30 s, the same helper on `mcp-volume-select`): the FE holds its reply until the switch's
   remembered-folder correction has landed and the pane has come to rest, and `select_volume_result` words the same
-  three outcomes, its `OK` naming the folder the pane opened. A `navigated` reply is followed by a short `volume_name`
-  poll so `cmdr://state` agrees. The request id reaches the FE through the command bus (`volume.selectByName`'s
+  three outcomes, its `OK` naming the folder the pane opened. Resolve the completed volume rows by stable `volumeId`;
+  a legacy name is accepted only when unique. A `navigated` reply is followed by a short `volume_name` poll so
+  `cmdr://state` agrees. The request id reaches the FE through the command bus (`volume.selectByName`'s
   `mcpRequestId`). The bus lets MCP through behind an open dialog, so the select runs there; only the tools that start
   a file operation refuse (`refuse_while_dialog_blocks`). Why: `apps/desktop/src/routes/(main)/DETAILS.md` § The
   dialog gate.

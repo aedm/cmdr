@@ -13,10 +13,14 @@ pub fn select_volume_schema() -> Value {
             },
             "name": {
                 "type": "string",
-                "description": "Volume name to select"
+                "description": "Legacy selector: a unique volume name from cmdr://state. Prefer volumeId."
+            },
+            "volumeId": {
+                "type": "string",
+                "description": "Stable volume id from cmdr://state. Preferred because names can collide; wins when both selectors are supplied."
             }
         },
-        "required": ["pane", "name"]
+        "required": ["pane"]
     })
 }
 

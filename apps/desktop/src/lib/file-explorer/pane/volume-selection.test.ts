@@ -56,6 +56,32 @@ describe('createVolumeSelection', () => {
     })
   })
 
+  it('selectVolumeById chooses the exact connection when MTP and ADB share a phone name', async () => {
+    const { ops, navigate, started } = setup([
+      vol({ id: 'mtp-pixel:1', name: 'Pixel 9', path: 'mtp://pixel/1', category: 'mobile_device' }),
+      vol({ id: 'adb-pixel', name: 'Pixel 9', path: 'adb://pixel', category: 'mobile_device' }),
+    ])
+
+    const outcome = await ops.selectVolumeById('left', 'adb-pixel')
+
+    expect(outcome).toEqual({ kind: 'selected', volumeId: 'adb-pixel', navigation: started })
+    expect(navigate).toHaveBeenCalledExactlyOnceWith({
+      pane: 'left',
+      to: { selectVolume: { volumeId: 'adb-pixel', path: 'adb://pixel' } },
+      source: 'user',
+    })
+  })
+
+  it('selectVolumeByName refuses an ambiguous MTP and ADB phone name', async () => {
+    const { ops, navigate } = setup([
+      vol({ id: 'mtp-pixel:1', name: 'Pixel 9', path: 'mtp://pixel/1', category: 'mobile_device' }),
+      vol({ id: 'adb-pixel', name: 'Pixel 9', path: 'adb://pixel', category: 'mobile_device' }),
+    ])
+
+    expect(await ops.selectVolumeByName('left', 'Pixel 9')).toEqual({ kind: 'not-found' })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
   it('selectVolumeByName for a saved server place opens it on its start folder', async () => {
     const place = vol({
       id: 'sftp-nas',
@@ -124,6 +150,12 @@ describe('createVolumeSelection', () => {
   it('selectVolumeByName says not-found and does not navigate when the name is unknown', async () => {
     const { ops, navigate } = setup([vol({ name: 'USB' })])
     expect(await ops.selectVolumeByName('left', 'Nope')).toEqual({ kind: 'not-found' })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('selectVolumeById says not-found and does not navigate when the id is unknown', async () => {
+    const { ops, navigate } = setup([vol({ id: 'usb', name: 'USB' })])
+    expect(await ops.selectVolumeById('left', 'missing')).toEqual({ kind: 'not-found' })
     expect(navigate).not.toHaveBeenCalled()
   })
 

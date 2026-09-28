@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use super::nav::{nav_result, pane_keeps_the_selected_name, select_volume_result};
+use super::nav::{SelectableVolume, nav_result, resolve_volume_selector, select_volume_result};
 use super::search::parse_human_size;
 use super::*;
 
@@ -511,16 +511,67 @@ fn select_volume_result_leaves_out_the_folder_when_the_reply_names_none() {
     assert_eq!(ok, json!("OK: Switched left pane to volume Macintosh HD"));
 }
 
-/// ❗ A favorite isn't a volume: selecting "Documents" opens that folder on the
-/// volume holding it, so the pane reports "Macintosh HD", and waiting for it to say
-/// "Documents" failed a select that had landed right (QA round 5).
 #[test]
-fn a_selected_favorite_leaves_the_pane_on_another_volumes_name() {
-    let rows = [("Documents", true), ("Macintosh HD", false)];
-    assert!(!pane_keeps_the_selected_name(rows, "Documents"));
-    assert!(pane_keeps_the_selected_name(rows, "Macintosh HD"));
-    // A name no row carries (the servers hub, a phone): the pane reports what was asked.
-    assert!(pane_keeps_the_selected_name(rows, "Servers"));
+fn volume_id_selects_the_adb_connection_when_mtp_has_the_same_name() {
+    let rows = [
+        SelectableVolume {
+            id: "mtp-pixel:1".to_string(),
+            name: "Pixel 9".to_string(),
+            is_favorite: false,
+        },
+        SelectableVolume {
+            id: "adb-pixel".to_string(),
+            name: "Pixel 9".to_string(),
+            is_favorite: false,
+        },
+    ];
+
+    let selected = resolve_volume_selector(&rows, Some("adb-pixel"), Some("stale name"))
+        .expect("the stable id wins over display copy");
+    assert_eq!(selected.id, "adb-pixel");
+}
+
+#[test]
+fn duplicate_volume_name_is_refused_with_the_ids_that_disambiguate_it() {
+    let rows = [
+        SelectableVolume {
+            id: "mtp-pixel:1".to_string(),
+            name: "Pixel 9".to_string(),
+            is_favorite: false,
+        },
+        SelectableVolume {
+            id: "adb-pixel".to_string(),
+            name: "Pixel 9".to_string(),
+            is_favorite: false,
+        },
+    ];
+
+    let err = resolve_volume_selector(&rows, None, Some("Pixel 9")).expect_err("a duplicate name is ambiguous");
+    assert_eq!(
+        err.data,
+        Some(json!({
+            "reason": "ambiguousVolumeName",
+            "matchingVolumeIds": ["mtp-pixel:1", "adb-pixel"]
+        }))
+    );
+}
+
+#[test]
+fn unknown_volume_id_reports_the_available_stable_references() {
+    let rows = [SelectableVolume {
+        id: "adb-pixel".to_string(),
+        name: "Pixel 9".to_string(),
+        is_favorite: false,
+    }];
+
+    let err = resolve_volume_selector(&rows, Some("missing"), None).expect_err("an unknown id is not selectable");
+    assert_eq!(
+        err.data,
+        Some(json!({
+            "reason": "volumeNotFound",
+            "availableVolumes": ["Pixel 9 (adb-pixel)", "Servers (network)"]
+        }))
+    );
 }
 
 #[test]

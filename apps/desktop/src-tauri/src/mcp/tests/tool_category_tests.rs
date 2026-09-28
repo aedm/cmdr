@@ -85,9 +85,12 @@ fn test_select_volume_tool_schema() {
         "select_volume should require 'pane' parameter"
     );
     assert!(
-        required.is_some_and(|r| r.iter().any(|v| v == "name")),
-        "select_volume should require 'name' parameter"
+        required.is_some_and(|r| r.iter().all(|v| v != "name" && v != "volumeId")),
+        "select_volume should accept either name or volumeId"
     );
+    let properties = tool.input_schema["properties"].as_object().expect("properties object");
+    assert!(properties.contains_key("name"));
+    assert!(properties.contains_key("volumeId"));
 }
 
 #[test]

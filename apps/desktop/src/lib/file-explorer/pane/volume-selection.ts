@@ -42,6 +42,8 @@ export type VolumeSelectOutcome =
 export interface VolumeSelection {
   /** Select a volume by zero-based index into the volumes array. */
   selectVolumeByIndex: (pane: 'left' | 'right', index: number) => Promise<VolumeSelectOutcome>
+  /** Select a volume by its stable backend identity. */
+  selectVolumeById: (pane: 'left' | 'right', volumeId: string) => Promise<VolumeSelectOutcome>
   /** Select a volume by name (MCP `select_volume`). The servers hub is virtual. */
   selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<VolumeSelectOutcome>
 }
@@ -76,6 +78,16 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
     return select(pane, volume.id, pathForPickedVolume(volume))
   }
 
+  async function selectVolumeById(pane: 'left' | 'right', volumeId: string): Promise<VolumeSelectOutcome> {
+    if (volumeId === 'network') return select(pane, 'network', 'smb://')
+
+    const index = deps.getVolumes().findIndex((v) => v.id === volumeId)
+    if (index !== -1) return selectVolumeByIndex(pane, index)
+
+    log.warn('Volume not found: {volumeId}', { volumeId })
+    return { kind: 'not-found' }
+  }
+
   async function selectVolumeByName(pane: 'left' | 'right', name: string): Promise<VolumeSelectOutcome> {
     // ❗ The servers hub row is SYNTHETIC: `volume-grouping.ts` builds it, so it
     // is not in the volume list and no `findIndex` can reach it. Its name comes
@@ -85,14 +97,18 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
       return select(pane, 'network', 'smb://')
     }
 
-    const index = deps.getVolumes().findIndex((v) => v.name === name)
-    if (index !== -1) {
-      return selectVolumeByIndex(pane, index)
+    const matches = deps.getVolumes().flatMap((volume, index) => (volume.name === name ? [index] : []))
+    if (matches.length === 1) {
+      return selectVolumeByIndex(pane, matches[0])
+    }
+    if (matches.length > 1) {
+      log.warn('Volume name is ambiguous: {name}', { name })
+      return { kind: 'not-found' }
     }
 
     log.warn('Volume not found: {name}', { name })
     return { kind: 'not-found' }
   }
 
-  return { selectVolumeByIndex, selectVolumeByName }
+  return { selectVolumeByIndex, selectVolumeById, selectVolumeByName }
 }

@@ -44,10 +44,10 @@ export const miscHandlers = {
   },
 
   'volume.selectByName': ({ explorerRef, dispatchArgs }) => {
-    // MCP `select_volume` tool: select a SPECIFIC pane's volume by name, and with a
+    // MCP `select_volume` tool: select a SPECIFIC pane's volume by id or name, and with a
     // request id reply once the pane has come to rest. Voided on purpose: the landing
     // wait can run for seconds, and nothing downstream of the dispatch reads it.
-    const { pane, name, mcpRequestId } = dispatchArgs as CommandArgs['volume.selectByName']
-    void selectVolumeForMcp({ explorer: explorerRef, pane, name, requestId: mcpRequestId })
+    const { pane, name, volumeId, mcpRequestId } = dispatchArgs as CommandArgs['volume.selectByName']
+    void selectVolumeForMcp({ explorer: explorerRef, pane, name, volumeId, requestId: mcpRequestId })
   },
 } satisfies Partial<CommandHandlerRecord>

@@ -32,6 +32,7 @@ function fakeExplorer(start: FakePane, onSelect: (pane: FakePane) => VolumeSelec
   const calls: string[] = []
   const explorer = {
     selectVolumeByName: vi.fn((): Promise<VolumeSelectOutcome> => Promise.resolve(onSelect(pane))),
+    selectVolumeById: vi.fn((): Promise<VolumeSelectOutcome> => Promise.resolve(onSelect(pane))),
     getPaneLocation: () => ({ volumeId: pane.volumeId, volumePath: '/', path: pane.path }),
     getPaneListingId: () => pane.listingId,
     isPaneLoading: () => pane.loading,
@@ -104,6 +105,40 @@ describe('selectVolumeForMcp', () => {
       outcome: 'navigated',
       volumeId: 'mtp-1',
       path: 'mtp://1/65537/Documents',
+    })
+  })
+
+  it('selects by volume id when both id and display name are present', async () => {
+    const correction = pendingCorrection('adb-pixel')
+    const { explorer } = fakeExplorer(
+      { volumeId: 'root', path: '/Users/david', listingId: 'L0', loading: false },
+      (p) => {
+        p.volumeId = 'adb-pixel'
+        p.path = 'adb://pixel'
+        p.listingId = 'L1'
+        return correction.outcome
+      },
+    )
+    correction.resolve()
+
+    const done = selectVolumeForMcp({
+      explorer,
+      pane: 'left',
+      name: 'Pixel 9',
+      volumeId: 'adb-pixel',
+      requestId: 'req-id',
+    })
+    await vi.advanceTimersByTimeAsync(1_000)
+    await done
+
+    expect(explorer.selectVolumeById).toHaveBeenCalledExactlyOnceWith('left', 'adb-pixel')
+    expect(explorer.selectVolumeByName).not.toHaveBeenCalled()
+    expect(emit).toHaveBeenCalledWith('mcp-response', {
+      requestId: 'req-id',
+      ok: true,
+      outcome: 'navigated',
+      volumeId: 'adb-pixel',
+      path: 'adb://pixel',
     })
   })
 

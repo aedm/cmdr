@@ -262,9 +262,10 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
     const raw = asRecord(event.payload)
     const pane = parsePane(raw.pane)
     const name = typeof raw.name === 'string' ? raw.name : undefined
+    const volumeId = typeof raw.volumeId === 'string' ? raw.volumeId : undefined
     const mcpRequestId = typeof raw.requestId === 'string' ? raw.requestId : undefined
-    if (!pane || name === undefined) return
-    void dispatch(volumeSelectByNameCommand, { pane, name, mcpRequestId })
+    if (!pane || (name === undefined && volumeId === undefined)) return
+    void dispatch(volumeSelectByNameCommand, { pane, name, volumeId, mcpRequestId })
   })
 
   await listenTauri('mcp-select', (event) => {

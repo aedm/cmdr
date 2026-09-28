@@ -69,34 +69,71 @@ pub(super) fn select_volume_result(pane: &str, volume_name: &str, ack: NavAck) -
     }
 }
 
-/// Whether a pane that selected `name` reports that same name once it's there.
-///
-/// ❗ Not for a favorite: it's a folder on some volume, and the pane reports the
-/// volume ("Macintosh HD"), which `paneVolumeOf` and `cmdr://state` agree on. The
-/// switch picks the FIRST row by that name, as the frontend's `selectVolumeByName`
-/// does, and the listing puts favorites first.
-/// `rows` is each listed name with whether it's a favorite.
-pub(super) fn pane_keeps_the_selected_name<'a>(rows: impl IntoIterator<Item = (&'a str, bool)>, name: &str) -> bool {
-    rows.into_iter()
-        .find(|(row, _)| *row == name)
-        .is_none_or(|(_, is_favorite)| !is_favorite)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SelectableVolume {
+    pub id: String,
+    pub name: String,
+    pub is_favorite: bool,
 }
 
-/// [`pane_keeps_the_selected_name`] against the live listing.
-fn listing_keeps_the_selected_name(name: &str) -> bool {
-    #[cfg(target_os = "macos")]
-    let rows: Vec<(String, bool)> = crate::volumes::list_locations()
-        .into_iter()
-        .map(|l| (l.name, l.category == crate::volumes::LocationCategory::Favorite))
+/// Resolves a stable id, or a unique legacy name, against the same rows the switcher receives.
+/// An id wins when both are supplied so stale display copy can never redirect the selection.
+pub(super) fn resolve_volume_selector(
+    rows: &[SelectableVolume],
+    volume_id: Option<&str>,
+    volume_name: Option<&str>,
+) -> Result<SelectableVolume, ToolError> {
+    let servers = SelectableVolume {
+        id: "network".to_string(),
+        name: crate::volume_listing::SERVERS_VOLUME_NAME.to_string(),
+        is_favorite: false,
+    };
+    let available = || {
+        rows.iter()
+            .chain(std::iter::once(&servers))
+            .map(|row| format!("{} ({})", row.name, row.id))
+            .collect::<Vec<_>>()
+    };
+
+    if let Some(id) = volume_id {
+        return rows
+            .iter()
+            .chain(std::iter::once(&servers))
+            .find(|row| row.id == id)
+            .cloned()
+            .ok_or_else(|| {
+                ToolError::invalid_params(format!(
+                    "Volume id '{id}' not found. Available volumes: {}",
+                    available().join(", ")
+                ))
+                .with_data(json!({ "reason": "volumeNotFound", "availableVolumes": available() }))
+            });
+    }
+
+    let Some(name) = volume_name else {
+        return Err(ToolError::invalid_params("Give either 'volumeId' or 'name'"));
+    };
+    let matches: Vec<&SelectableVolume> = rows
+        .iter()
+        .chain(std::iter::once(&servers))
+        .filter(|row| row.name == name)
         .collect();
-    #[cfg(target_os = "linux")]
-    let rows: Vec<(String, bool)> = crate::volumes_linux::list_locations()
-        .into_iter()
-        .map(|l| (l.name, l.category == crate::volumes_linux::LocationCategory::Favorite))
-        .collect();
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let rows: Vec<(String, bool)> = Vec::new();
-    pane_keeps_the_selected_name(rows.iter().map(|(n, f)| (n.as_str(), *f)), name)
+    match matches.as_slice() {
+        [found] => Ok((*found).clone()),
+        [] => Err(ToolError::invalid_params(format!(
+            "Volume '{name}' not found. Available volumes: {}",
+            available().join(", ")
+        ))
+        .with_data(json!({ "reason": "volumeNotFound", "availableVolumes": available() }))),
+        _ => {
+            let matching_ids: Vec<&str> = matches.iter().map(|row| row.id.as_str()).collect();
+            Err(ToolError::invalid_params(format!(
+                "Volume name '{name}' is ambiguous. Use volumeId instead. Matching ids: {}",
+                matching_ids.join(", ")
+            ))
+            .with_data(json!({ "reason": "ambiguousVolumeName", "matchingVolumeIds": matching_ids })))
+        }
+    }
 }
 
 /// Wait for the pane's pushed `volume_name` to equal the one selected, so a `cmdr://state`
@@ -241,56 +278,37 @@ pub async fn execute_nav_command_with_params<R: Runtime>(app: &AppHandle<R>, nam
                 .get("pane")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| ToolError::invalid_params("Missing 'pane' parameter"))?;
-            let volume_name = params
-                .get("name")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| ToolError::invalid_params("Missing 'name' parameter"))?;
+            let requested_name = params.get("name").and_then(|v| v.as_str());
+            let requested_id = params.get("volumeId").and_then(|v| v.as_str());
 
             if !["left", "right"].contains(&pane) {
                 return Err(ToolError::invalid_params("pane must be 'left' or 'right'"));
             }
-
-            // Validate that the volume exists
-            #[cfg(target_os = "macos")]
-            {
-                let locations = crate::volumes::list_locations();
-                let is_virtual = volume_name == crate::volume_listing::SERVERS_VOLUME_NAME;
-                let is_local = locations.iter().any(|loc| loc.name == volume_name);
-
-                // Check MTP volumes if not a local or virtual volume
-                let is_mtp = if !is_virtual && !is_local {
-                    let devices = crate::mtp::connection_manager().get_all_connected_devices().await;
-                    devices.iter().any(|d| {
-                        let has_multiple = d.storages.len() > 1;
-                        let device_name = d
-                            .device
-                            .product
-                            .as_deref()
-                            .or(d.device.manufacturer.as_deref())
-                            .unwrap_or(&d.device.id);
-                        d.storages.iter().any(|s| {
-                            let name = if has_multiple {
-                                format!("{} - {}", device_name, s.name)
-                            } else {
-                                device_name.to_string()
-                            };
-                            name == volume_name
-                        })
-                    })
-                } else {
-                    false
-                };
-
-                if !is_virtual && !is_local && !is_mtp {
-                    let mut available: Vec<&str> = locations.iter().map(|l| l.name.as_str()).collect();
-                    available.push(crate::volume_listing::SERVERS_VOLUME_NAME);
-                    return Err(ToolError::invalid_params(format!(
-                        "Volume '{}' not found. Available volumes: {}",
-                        volume_name,
-                        available.join(", ")
-                    )));
-                }
+            if requested_id.is_none() && requested_name.is_none() {
+                return Err(ToolError::invalid_params("Give either 'volumeId' or 'name'"));
             }
+
+            // Resolve against the same completed pipeline that supplies the switcher. This
+            // folds in every device provider, so ADB and MTP keep their own stable ids.
+            #[cfg(target_os = "macos")]
+            let selected = {
+                let locations = crate::volume_listing::complete(crate::volumes::list_locations()).await;
+                let rows: Vec<SelectableVolume> = locations
+                    .into_iter()
+                    .map(|location| SelectableVolume {
+                        id: location.id,
+                        name: location.name,
+                        is_favorite: location.category == crate::volumes::LocationCategory::Favorite,
+                    })
+                    .collect();
+                resolve_volume_selector(&rows, requested_id, requested_name)?
+            };
+            #[cfg(not(target_os = "macos"))]
+            let selected = SelectableVolume {
+                id: requested_id.unwrap_or_default().to_string(),
+                name: requested_name.or(requested_id).unwrap_or_default().to_string(),
+                is_favorite: false,
+            };
 
             let store = app
                 .try_state::<PaneStateStore>()
@@ -300,19 +318,17 @@ pub async fn execute_nav_command_with_params<R: Runtime>(app: &AppHandle<R>, nam
             // The FE replies once the pane has come to rest (`mcp-volume-select.ts`): after
             // the switch's remembered-folder correction has landed and the listing it picked
             // has settled, with the typed outcome and the folder it opened.
-            let ack = mcp_nav_round_trip(
-                app,
-                "mcp-volume-select",
-                json!({"pane": pane, "name": volume_name}),
-                SELECT_VOLUME_TIMEOUT_SECS,
-            )
-            .await?;
+            let mut select_payload = json!({"pane": pane, "name": &selected.name});
+            if !selected.id.is_empty() {
+                select_payload["volumeId"] = json!(&selected.id);
+            }
+            let ack = mcp_nav_round_trip(app, "mcp-volume-select", select_payload, SELECT_VOLUME_TIMEOUT_SECS).await?;
             // A favorite leaves the pane on the volume that holds it, and that's the
             // name it reports: waiting for the favorite's name failed a select that landed.
-            if matches!(ack, NavAck::Navigated { .. }) && listing_keeps_the_selected_name(volume_name) {
-                wait_for_pane_volume_name(&store, pane, volume_name).await?;
+            if matches!(ack, NavAck::Navigated { .. }) && !selected.is_favorite {
+                wait_for_pane_volume_name(&store, pane, &selected.name).await?;
             }
-            select_volume_result(pane, volume_name, ack)
+            select_volume_result(pane, &selected.name, ack)
         }
         "nav_to_path" => {
             let pane = params

@@ -1022,6 +1022,11 @@
         return volumeSelection.selectVolumeByName(pane, name)
     }
 
+    /** Select a volume by stable id, preserving the exact backend connection. */
+    export async function selectVolumeById(pane: 'left' | 'right', volumeId: string): Promise<VolumeSelectOutcome> {
+        return volumeSelection.selectVolumeById(pane, volumeId)
+    }
+
     /**
      * "Copy path from <source> to <target> pane" command. Mirrors the source
      * pane's location (volume + path + network state) into the target pane,

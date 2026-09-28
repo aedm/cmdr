@@ -163,6 +163,8 @@ export interface ExplorerAPI {
    * that result's `corrected` resolves.
    */
   selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<VolumeSelectOutcome>
+  /** The identity-safe twin of `selectVolumeByName`, used when names can collide. */
+  selectVolumeById: (pane: 'left' | 'right', volumeId: string) => Promise<VolumeSelectOutcome>
   handleSelectionAction: (args: SelectionActionArgs) => void
   handleMcpSelect: (pane: 'left' | 'right', start: number, count: number | 'all', mode: McpSelectMode) => Promise<void>
   /**

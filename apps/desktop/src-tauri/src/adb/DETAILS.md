@@ -224,7 +224,4 @@ kind of "oversight" someone will otherwise fix.
 - An " (ADB)" name suffix when the same phone is also listed over MTP (`entries()` names the model alone). The frontend
   applies one from the volume list (`src/lib/adb/adb-volume-label.ts`); the merged one-row-per-phone listing that
   retires it is GitHub [#192](https://github.com/vdavid/cmdr/issues/192).
-- The MCP `select_volume` tool can't reach an ADB device: `mcp/executor/nav.rs` validates a name against
-  `volumes::list_locations` plus MTP, and a device row comes from the provider seam instead. (Go to path DOES answer
-  for an `adb://` path, through `src/lib/go-to-path/scheme-intercept.ts`.)
 - The real-device pass and the crate's own deferrals: `crates/cmdr-adb/DETAILS.md` § "Known gaps and follow-ups".

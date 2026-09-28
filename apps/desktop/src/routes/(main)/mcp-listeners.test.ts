@@ -244,18 +244,19 @@ describe('mcp-refresh listener (round-trip)', () => {
 })
 
 describe('mcp-volume-select listener', () => {
-  it('carries the request id through the bus, so the select can reply once the pane has come to rest', async () => {
+  it('carries the volume id and request id through the bus, so the exact connection is selected', async () => {
     const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
     const handlers = await setupWithHandlers(dispatch)
 
     getHandler(
       handlers,
       'mcp-volume-select',
-    )({ payload: { pane: 'left', name: 'Internal Storage', requestId: 'req-v' } })
+    )({ payload: { pane: 'left', name: 'Pixel 9', volumeId: 'adb-pixel', requestId: 'req-v' } })
 
     expect(dispatch).toHaveBeenCalledExactlyOnceWith('volume.selectByName', {
       pane: 'left',
-      name: 'Internal Storage',
+      name: 'Pixel 9',
+      volumeId: 'adb-pixel',
       mcpRequestId: 'req-v',
     })
   })
@@ -269,6 +270,7 @@ describe('mcp-volume-select listener', () => {
     expect(dispatch).toHaveBeenCalledExactlyOnceWith('volume.selectByName', {
       pane: 'right',
       name: 'Macintosh HD',
+      volumeId: undefined,
       mcpRequestId: undefined,
     })
   })

@@ -1026,7 +1026,7 @@ return-point bookkeeping. `navigate.ts` re-exports the names callers use, so the
   `smb://` path onto the virtual `network` volume, whose state is a host plus a share list rather than a path, so
   `smb://` itself is the only navigable one. A longer path used to take the switch arm and report success from the host
   list, which is why `nav_to_path` advertised `smb://` support it never had. A mounted share is its own volume
-  (`select_volume` by name); an unmounted one opens from the Network host list.
+  (`select_volume` by stable volume id, or by a unique legacy name); an unmounted one opens from the Network host list.
 - **A `search-results://` path in a `{ goTo }` is refused (`snapshot-path-unsupported`).** Only the `{ snapshot }` arm
   may open a result set: it routes through the volume-change machinery that claims the snapshot's refcount, so a path
   arriving any other way would leave a pane holding an id nothing keeps alive. The refusal is the frontend's own answer

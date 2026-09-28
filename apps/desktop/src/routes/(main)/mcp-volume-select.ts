@@ -1,6 +1,6 @@
 /**
- * MCP `select_volume`: switch a pane to a volume by name, then tell the agent where the
- * pane came to rest.
+ * MCP `select_volume`: switch a pane to a volume by stable id or legacy name, then tell the
+ * agent where the pane came to rest.
  *
  * The switch commits the volume's root optimistically, and its background correction then
  * reopens the folder last used there (`pane/navigate.ts` § "`settled` resolve point").
@@ -20,6 +20,7 @@
  */
 
 import { capabilitiesFor } from '$lib/file-explorer/pane/volume-capabilities'
+import type { VolumeSelectOutcome } from '$lib/file-explorer/pane/volume-selection'
 import { getAppLogger } from '$lib/logging/logger'
 import type { ExplorerAPI } from './explorer-api'
 import {
@@ -35,11 +36,13 @@ const log = getAppLogger('mcpListeners')
 export async function selectVolumeForMcp(args: {
   explorer: ExplorerAPI | undefined
   pane: 'left' | 'right'
-  name: string
+  name?: string
+  volumeId?: string
   /** The MCP round-trip id. Absent for a fire-and-forget caller (the E2E harness's resets). */
   requestId: string | undefined
 }): Promise<void> {
-  const { explorer, pane, name, requestId } = args
+  const { explorer, pane, name, volumeId, requestId } = args
+  const selector = volumeId ?? name ?? 'unknown volume'
   const reply = async (body: NavReplyBody): Promise<void> => {
     if (requestId === undefined) return
     const { emit } = await import('@tauri-apps/api/event')
@@ -47,14 +50,19 @@ export async function selectVolumeForMcp(args: {
   }
 
   if (!explorer) {
-    log.warn('mcp-volume-select dropped: no explorer is mounted ({pane} pane, {name})', { pane, name })
+    log.warn('mcp-volume-select dropped: no explorer is mounted ({pane} pane, {selector})', { pane, selector })
     await reply({ ok: false, error: 'Explorer is not ready' })
     return
   }
+  const select = async (): Promise<VolumeSelectOutcome> => {
+    if (volumeId !== undefined) return explorer.selectVolumeById(pane, volumeId)
+    if (name !== undefined) return explorer.selectVolumeByName(pane, name)
+    return { kind: 'not-found' }
+  }
 
-  // Nobody to tell, so nothing to wait for. `selectVolumeByName` logs a name it can't find.
+  // Nobody to tell, so nothing to wait for. The volume-selection helper logs a selector it can't find.
   if (requestId === undefined) {
-    await explorer.selectVolumeByName(pane, name)
+    await select()
     return
   }
 
@@ -62,15 +70,15 @@ export async function selectVolumeForMcp(args: {
   const before = explorer.getPaneLocation(pane)
   const listingIdBefore = explorer.getPaneListingId(pane)
 
-  const selection = await explorer.selectVolumeByName(pane, name)
+  const selection = await select()
   if (selection.kind === 'not-found') {
-    await reply({ ok: false, error: `Volume '${name}' not found` })
+    await reply({ ok: false, error: `Volume '${selector}' not found` })
     return
   }
   const { navigation } = selection
   if (navigation.status === 'refused') {
-    log.warn('mcp-volume-select refused {name} ({pane} pane): {reason}', {
-      name,
+    log.warn('mcp-volume-select refused {selector} ({pane} pane): {reason}', {
+      selector,
       pane,
       reason: navigation.reason.message,
     })
@@ -114,8 +122,8 @@ export async function selectVolumeForMcp(args: {
     await reply({ ok: true, ...landing })
     return
   }
-  log.warn('mcp-volume-select did not land {name} on the {pane} pane: {outcome} at {landedPath}', {
-    name,
+  log.warn('mcp-volume-select did not land {selector} on the {pane} pane: {outcome} at {landedPath}', {
+    selector,
     pane,
     outcome: landing.outcome,
     landedPath: landing.path,
