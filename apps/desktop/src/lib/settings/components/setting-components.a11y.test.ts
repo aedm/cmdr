@@ -17,7 +17,7 @@
  * stubs here, so a component sees the same value whichever import path it uses.
  */
 
-import { describe, it, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, tick, createRawSnippet } from 'svelte'
 import { expectNoA11yViolations } from '$lib/test-a11y'
 

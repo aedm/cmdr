@@ -243,7 +243,9 @@
                                     id="appearance.customDateTimeFormat"
                                     mono
                                     containerStyle="width: 180px"
-                                    onValueChange={(value) => { customFormat = value; }}
+                                    onValueChange={(value: string) => {
+                                        customFormat = value
+                                    }}
                                     placeholder={DATE_FORMAT_PLACEHOLDER}
                                     ariaLabel={tString('settings.appearance.dateTimeFormat.label')}
                                 />

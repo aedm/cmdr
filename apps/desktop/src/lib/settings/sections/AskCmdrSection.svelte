@@ -223,7 +223,9 @@
                 id="askCmdr.interactiveModel"
                 placeholder={tString('settings.askCmdr.interactiveModel.placeholder')}
                 ariaLabel={modelDef.label}
-                onValueChange={(value) => { model = value; }}
+                onValueChange={(value: string) => {
+                    model = value
+                }}
             />
         </SettingRow>
     {/if}

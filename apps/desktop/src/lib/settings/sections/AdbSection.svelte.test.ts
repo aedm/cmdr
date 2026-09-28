@@ -20,7 +20,7 @@ interface InstallStatus {
 const getAdbInstallStatus = vi.fn<() => Promise<InstallStatus>>()
 const recheckAdbInstall = vi.fn<() => Promise<InstallStatus>>()
 
-const setSetting = vi.fn()
+const setSetting = vi.fn<(id: string, value: unknown) => void>()
 
 vi.mock('$lib/settings/settings-store', () => ({
   getSetting: vi.fn((key: string) => {
@@ -28,7 +28,7 @@ vi.mock('$lib/settings/settings-store', () => ({
     if (key === 'fileOperations.adbBinaryPath') return ''
     return undefined
   }),
-  setSetting: (id: string, value: unknown) => setSetting(id, value),
+  setSetting: (id: string, value: unknown) => { setSetting(id, value); },
   resetSetting: vi.fn(),
   isModified: vi.fn(() => false),
   onSpecificSettingChange: vi.fn(() => () => {}),
