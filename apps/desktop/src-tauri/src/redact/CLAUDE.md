@@ -8,7 +8,8 @@ dispatch calling the matched group's rewriter. `Cow::Borrowed` for no-match line
 one report in one process. Its key derives from an ephemeral process secret plus the report ID; neither key nor secret
 ships. Tests use `RedactionContext::for_test`, never process-global overrides.
 
-The pattern table and overlap rules are in `DETAILS.md`. `redact_name` handles a bare name with no line around it.
+The pattern table and overlap rules are in `DETAILS.md`. Typed diagnostic fields use structured `RedactionContext`
+methods, which fail closed and retain report correlation.
 
 ## Must-knows
 

@@ -2,7 +2,7 @@
 //! formatting. The public-API checks (resource count, URIs, mime types) live in
 //! `resource_tests.rs`.
 
-use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo, TypeToJumpInfo};
+use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo};
 use crate::mcp::resources::panes::{
     build_pane_yaml_with_options, format_file_compact, format_tab_compact, tags_marker,
 };
@@ -342,7 +342,7 @@ fn test_format_tab_compact_active() {
         active: true,
     };
     assert_eq!(
-        format_tab_compact(&tab, 0, false),
+        format_tab_compact(&tab, 0),
         "i:0 id:t1 [active] Documents (/Users/foo/Documents)"
     );
 }
@@ -356,7 +356,7 @@ fn test_format_tab_compact_pinned() {
         active: false,
     };
     assert_eq!(
-        format_tab_compact(&tab, 1, false),
+        format_tab_compact(&tab, 1),
         "i:1 id:t2 [pinned] Downloads (/Users/foo/Downloads)"
     );
 }
@@ -370,7 +370,7 @@ fn test_format_tab_compact_active_and_pinned() {
         active: true,
     };
     assert_eq!(
-        format_tab_compact(&tab, 2, false),
+        format_tab_compact(&tab, 2),
         "i:2 id:t3 [active] [pinned] Projects (/Users/foo/Projects)"
     );
 }
@@ -383,10 +383,7 @@ fn test_format_tab_compact_plain() {
         pinned: false,
         active: false,
     };
-    assert_eq!(
-        format_tab_compact(&tab, 3, false),
-        "i:3 id:t4 Desktop (/Users/foo/Desktop)"
-    );
+    assert_eq!(format_tab_compact(&tab, 3), "i:3 id:t4 Desktop (/Users/foo/Desktop)");
 }
 
 #[test]
@@ -398,7 +395,7 @@ fn test_format_tab_compact_root_path() {
         active: true,
     };
     // Root path has no non-empty segment after splitting by '/', so falls back to full path
-    assert_eq!(format_tab_compact(&tab, 0, false), "i:0 id:t5 [active] / (/)");
+    assert_eq!(format_tab_compact(&tab, 0), "i:0 id:t5 [active] / (/)");
 }
 
 #[test]
@@ -662,79 +659,6 @@ fn a_pane_state_no_pane_pushed_still_renders_a_sort_line() {
     let yaml = build_pane_yaml_with_options(&state, "  ", &StateOptions::default());
 
     assert!(yaml.contains("sort: \"name:asc\""));
-}
-
-/// The error reporter's snapshot ships in every bundle, so no name a person gave
-/// something may survive it. Real incident: one bundle carried all 48 names in a
-/// NAS folder, the tab titles, and the cursor's file, in the clear.
-#[test]
-fn redacted_pane_yaml_names_nothing() {
-    let state = PaneState {
-        path: "/Volumes/naspi/trips/summer trip".to_string(),
-        volume_id: Some("smb-naspi".to_string()),
-        volume_name: Some("naspi".to_string()),
-        files: vec![
-            PaneFileEntry {
-                name: "Secret project".to_string(),
-                path: "/Volumes/naspi/trips/summer trip/Secret project".to_string(),
-                is_directory: true,
-                ..Default::default()
-            },
-            PaneFileEntry {
-                name: "kapu méretek.jpg".to_string(),
-                path: "/Volumes/naspi/trips/summer trip/kapu méretek.jpg".to_string(),
-                size: Some(3_887_758),
-                modified: Some("2023-08-26".to_string()),
-                ..Default::default()
-            },
-        ],
-        cursor_index: 1,
-        view_mode: "brief".to_string(),
-        loaded_end: 2,
-        total_files: 2,
-        tabs: vec![TabInfo {
-            id: "t1".to_string(),
-            path: "/Users/alice/summer trip".to_string(),
-            pinned: false,
-            active: true,
-        }],
-        type_to_jump: Some(TypeToJumpInfo {
-            buffer: "kap".to_string(),
-            indicator_visible: true,
-            indicator_stale: false,
-            last_matched_name: Some("kapu méretek.jpg".to_string()),
-        }),
-        mount_error: Some(MountErrorInfo {
-            share: "naspi".to_string(),
-            reason: "timeout".to_string(),
-            message: "Couldn't open /Volumes/naspi/trips/Secret project: it timed out".to_string(),
-        }),
-        ..Default::default()
-    };
-    let opts = StateOptions {
-        redact_names: true,
-        ..StateOptions::default()
-    };
-
-    let yaml = build_pane_yaml_with_options(&state, "  ", &opts);
-
-    for secret in ["Secret project", "kapu", "méretek", "\"kap\""] {
-        assert!(!yaml.contains(secret), "{secret:?} survived:\n{yaml}");
-    }
-    // The tab's title goes; its path stays for the bundle's salted pass to redact.
-    assert!(yaml.contains("[active] <dir> (/Users/alice/summer trip)"), "{yaml}");
-    assert!(yaml.contains("\"i:0 d <dir>\""), "{yaml}");
-    assert!(yaml.contains("\"i:1 f <file>.jpg 3.7 MB 2023-08-26 [cur]\""), "{yaml}");
-    assert!(yaml.contains("name: <file>.jpg"), "{yaml}");
-    assert!(yaml.contains("buffer: \"<3 chars>\""), "{yaml}");
-    assert!(yaml.contains("lastMatchedName: <file>.jpg"), "{yaml}");
-    assert!(
-        yaml.contains("/Volumes/<volume>/<dir>/<dir>: it timed out"),
-        "mount error message: {yaml}"
-    );
-    // Everything that isn't a name still reads.
-    assert!(yaml.contains("volume: naspi"), "{yaml}");
-    assert!(yaml.contains("totalFiles: 2"), "{yaml}");
 }
 
 /// A plain `cmdr://state` read is for local agents, which need the real names.

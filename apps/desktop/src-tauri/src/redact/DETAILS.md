@@ -57,6 +57,11 @@ exact lowercase 16-hex digest; MTP's numeric storage suffix and a manual server'
 become one opaque report token because the slug is deliberately lossy and cannot be safely reverse-parsed into host,
 account, and share. Functional ID generation and ordinary MCP data remain unchanged.
 
+Typed report structures call `RedactionContext::redact_path`, `redact_name`, `redact_volume_name`, and
+`redact_volume_id` instead of converting themselves to prose. They preserve report-scoped token domains, and an
+unrecognized or relative path fails closed by tokenizing every non-structural segment. These methods are lexical only:
+bundle assembly performs no filesystem or network lookup.
+
 ## Decision: path-shape preservation + allowlist
 
 The tradeoff is debuggability ("I can see this is a Documents path") against PII safety ("but I don't want to leak

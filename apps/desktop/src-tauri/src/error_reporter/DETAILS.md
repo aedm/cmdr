@@ -387,22 +387,21 @@ need stack context regardless of the user's env.
 
 ### State snapshot at error time
 
-`auto_dispatcher::on_error_logged` (called from every `log_error!`) also builds the
-`cmdr://state` YAML and emits it as a debug-level record under
-`cmdr_lib::error_reporter::state_snapshot`. Throttled to one per 30 s so an error storm
-doesn't fill the file. **Always runs** (regardless of the Flow B opt-in) so manual
-"Send error report" bundles built minutes after a failure still have a snapshot.
-File-only via the same per-output filtering as the backtrace.
+`auto_dispatcher::on_error_logged` (called from every `log_error!`) reserves a capture in
+`state_history` at most once every 30 seconds. The capture runs off the logging caller and
+clones typed in-memory pane, volume, operation, and listing-failure facts into an eight-entry,
+oldest-first ring. Sequence numbers preserve reservation order when asynchronous captures
+complete out of order. Collection always runs regardless of Flow B opt-in, but the ring exists
+only for this process: it is never logged, serialized independently, or restored after relaunch.
 
-**Decision: redacted at emit time, kept in bundles.** It's the best triage artifact a
-bundle has, but the resource lists every file name in both panes, the tab titles, and
-the favorites, and the bundle's line pass can't tell a bare name from any other word:
-one bundle shipped a whole NAS folder's names that way. So the dispatcher calls
-`mcp::resources::read_state_for_error_report`, which swaps every name for a
-`redact::redact_name` token (`<file>.jpg`, `<dir>`) and leaves paths for the bundle's
-report-context pass, so they still correlate with the log lines around them. Bare-name
-tokens stay non-correlatable because the snapshot is captured before a report context
-exists. ❌ Never log a plain `cmdr://state` read here.
+Bundle assembly snapshots the ring and transforms identity-bearing fields with the same
+`RedactionContext` used for that report's logs. Paths, URLs, names, volume labels, and
+name-derived volume IDs become report-local tokens, while typed pane/backend/connection/
+operation states, counts, roles, and genuine UUIDv7 operation IDs remain useful. Unknown
+frontend strings map to absent enum values instead of crossing the boundary as free-form text.
+Every consumer converges through `build_bundle`, so preview/send rebuilds, Flow B, crash-log
+reports, and debug saves receive the same representation. Ordinary `cmdr://state` output
+remains a separate functional interface and is unchanged.
 
 ### AppHandle wiring
 

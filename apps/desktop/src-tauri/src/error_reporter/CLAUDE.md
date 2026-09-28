@@ -9,7 +9,7 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - `bundle_builder.rs` / `bundle_capper.rs` / `tail_walker.rs`: the two build pipelines, the cap pass, the
   read-from-end log walker.
 - `auto_dispatcher.rs`: Flow B. `auto_sent.rs`: what the last auto-send shipped, plus the amend call.
-  `breadcrumbs.rs`: ring buffer of triage events.
+  `breadcrumbs.rs`: ring buffer of triage events. `state_history.rs`: process-local typed state ring and report transform.
 
 ## Must-knows
 
@@ -23,6 +23,8 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - **Never widen what we send.** No license keys, device IDs, raw paths, volume names, SMB creds, settings beyond the
   resolved flags, or anything outside the log dir. `manifest.system` is the one PII-reviewed exception (sizes and
   coarse machine identity). Add nothing naming a drive, path, or person.
+- **Diagnostic state stays typed and process-local.** Keep at most eight captures at a 30-second cadence. Raw
+  identities never enter logs or disk; bundle assembly transforms them with that report's context.
 - **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;
   never restore free-form messages, maps, or JSON. Unknown IPC fields fail closed.
 - **Auto notes get redacted; `User` notes ship verbatim**: an auto note is a raw error message nobody previewed.

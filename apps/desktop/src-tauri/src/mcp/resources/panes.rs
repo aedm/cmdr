@@ -1,5 +1,5 @@
 //! The `cmdr://state` pane blocks: tabs, the summary fields, the cursor, and the compact file lines, plus the
-//! name-redacted variant the error reporter logs (`StateOptions::redact_names`).
+//! pane state used by ordinary MCP resources.
 
 use super::StateOptions;
 use crate::mcp::pane_state::{PaneFileEntry, PaneState, TabInfo};
@@ -160,53 +160,22 @@ fn tag_color_name(color: u8) -> Option<&'static str> {
     })
 }
 
-/// A copy of the pane with every name a person gave something replaced by a
-/// token: file entries (and with them the cursor's `name:`), type-to-jump's
-/// buffer and match, and the mount error's message. What's left is shape:
-/// counts, sizes, dates, indices, markers, and paths for the bundle to redact.
-fn with_names_redacted(state: &PaneState) -> PaneState {
-    let mut state = state.clone();
-    for file in &mut state.files {
-        file.name = crate::redact::redact_name(&file.name, file.is_directory);
-    }
-    if let Some(ttj) = state.type_to_jump.as_mut() {
-        // What someone typed is a prefix of a name; its length is all that's safe.
-        if !ttj.buffer.is_empty() {
-            ttj.buffer = format!("<{} chars>", ttj.buffer.chars().count());
-        }
-        if let Some(name) = ttj.last_matched_name.as_mut() {
-            *name = crate::redact::redact_name(name, false);
-        }
-    }
-    if let Some(err) = state.mount_error.as_mut() {
-        err.message = crate::redact::redact_line(&err.message).into_owned();
-    }
-    state
-}
-
 /// Build YAML for a single pane.
 ///
 /// When `opts.compact` is true, omits the `files:` list (the largest source of
 /// YAML volume in the default state read) while keeping every summary field.
 /// The per-pane `cursor`, `totalFiles`, and `loadedRange` still show, so
 /// callers can still tell where the cursor is without paying for 100 file
-/// lines. `opts.redact_names` swaps names for tokens (see [`StateOptions`]).
+/// lines.
 pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, opts: &StateOptions) -> String {
     let compact = opts.compact;
-    let redacted;
-    let state = if opts.redact_names {
-        redacted = with_names_redacted(state);
-        &redacted
-    } else {
-        state
-    };
     let mut lines = Vec::new();
 
     // Tabs (first, gives context for which tab is active before showing its content)
     if !state.tabs.is_empty() {
         lines.push(format!("{}tabs:", indent));
         for (idx, tab) in state.tabs.iter().enumerate() {
-            let formatted = format_tab_compact(tab, idx, opts.redact_names);
+            let formatted = format_tab_compact(tab, idx);
             lines.push(format!("{}  - {}", indent, formatted));
         }
     }
@@ -322,19 +291,8 @@ pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, opts
 
 /// Format a tab entry in compact format.
 /// Format: `i:INDEX id:TAB_ID [active] [pinned] FolderName (/full/path)`
-///
-/// `redact_name` swaps the folder name for a token. The path stays, for the
-/// error bundle's salted pass to redact alongside every other path.
-pub(crate) fn format_tab_compact(tab: &TabInfo, index: usize, redact_name: bool) -> String {
+pub(crate) fn format_tab_compact(tab: &TabInfo, index: usize) -> String {
     let folder_name = tab.path.rsplit('/').find(|s| !s.is_empty()).unwrap_or(&tab.path);
-    let redacted;
-    // `/` has no component to name, and nothing to hide.
-    let folder_name = if redact_name && folder_name != "/" {
-        redacted = crate::redact::redact_name(folder_name, true);
-        redacted.as_str()
-    } else {
-        folder_name
-    };
 
     let mut markers = Vec::new();
     if tab.active {

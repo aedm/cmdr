@@ -13,6 +13,8 @@ use std::path::Path;
 use std::time::{Duration, SystemTime};
 use zip::{DateTime as ZipDateTime, ZipArchive};
 
+const RAW_STATE_SENTINEL: &str = "PRIVATE-STATE-SENTINEL-ASYMMETRIC";
+
 fn test_redaction() -> redact::RedactionContext {
     redact::RedactionContext::for_test([0x3c; 32], "ERR-TESTS")
 }
@@ -44,12 +46,78 @@ fn sample_manifest() -> BundleManifest {
             stdout_module_overrides: Vec::new(),
         },
         breadcrumbs: Vec::new(),
+        state_history: Vec::new(),
         user_note: Some("This thing failed".to_string()),
         diag_id: "diag_00000000-0000-4000-8000-000000000000".to_string(),
         email: None,
         system: crate::diagnostics_snapshot::SystemSnapshot::collect_full(Path::new("")),
         generated_at: "2026-04-23T10:00:00+00:00".to_string(),
     }
+}
+
+fn manifest_with_diagnostic_history() -> BundleManifest {
+    use super::state_history::{
+        DiagnosticEntryIdentity, DiagnosticOperationSnapshot, DiagnosticPaneSnapshot, EntryRole, PaneSide,
+        PaneSortField, PaneSortOrder, PaneView, ReportBackend, ReportConnectionState,
+    };
+    use crate::file_system::write_operations::{LifecycleStatus, WriteOperationPhase, WriteOperationType};
+
+    let mut manifest = sample_manifest();
+    manifest.state_history = vec![DiagnosticStateSnapshot {
+        captured_at: "2027-01-15T08:00:00+00:00".to_string(),
+        generation: 73,
+        focused: Some(PaneSide::Right),
+        show_hidden: true,
+        panes: vec![DiagnosticPaneSnapshot {
+            side: PaneSide::Right,
+            path: "$HOME/<dir-a1b2c3d4e5f6>/<file-112233445566>.pdf".to_string(),
+            volume_id: Some("<volume-id-123456789abc>".to_string()),
+            volume_name: Some("<volume-abcdef123456>".to_string()),
+            backend: Some(ReportBackend::Smb),
+            connection: Some(ReportConnectionState::NeedsSignIn),
+            view: Some(PaneView::Full),
+            sort_field: Some(PaneSortField::Size),
+            sort_order: Some(PaneSortOrder::Descending),
+            total_files: 91,
+            loaded_count: 17,
+            cursor_index: 13,
+            cursor: Some(DiagnosticEntryIdentity {
+                name: "<file-112233445566>.pdf".to_string(),
+                path: "$HOME/<dir-a1b2c3d4e5f6>/<file-112233445566>.pdf".to_string(),
+                role: EntryRole::File,
+            }),
+            selected_count: 5,
+            selected_files: 2,
+            selected_folders: 3,
+            tab_count: 4,
+        }],
+        operations: vec![DiagnosticOperationSnapshot {
+            operation_id: Some("0199a2e7-47d8-7c31-a897-c58f415f4f91".to_string()),
+            operation_type: WriteOperationType::Copy,
+            lifecycle: LifecycleStatus::Paused,
+            phase: Some(WriteOperationPhase::Copying),
+            source: Some("$HOME/<dir-a1b2c3d4e5f6>/<file-112233445566>.pdf".to_string()),
+            destination: Some("smb://<host-abcdef123456>/<share-0123456789ab>/<dir-fedcba654321>".to_string()),
+            current_file: Some("<file-112233445566>.pdf".to_string()),
+            files_done: 7,
+            files_total: 19,
+            bytes_done: 11,
+            bytes_total: 23,
+        }],
+        recent_listing_error_count: 5,
+    }];
+    manifest
+}
+
+fn assert_manifest_has_safe_diagnostic_history(manifest_json: &str) {
+    assert!(!manifest_json.contains(RAW_STATE_SENTINEL));
+    let parsed: BundleManifest = serde_json::from_str(manifest_json).unwrap();
+    let snapshot = &parsed.state_history[0];
+    assert_eq!(snapshot.generation, 73);
+    assert_eq!(snapshot.panes[0].selected_files, 2);
+    assert_eq!(snapshot.panes[0].selected_folders, 3);
+    assert_eq!(snapshot.operations[0].files_done, 7);
+    assert_eq!(snapshot.operations[0].bytes_total, 23);
 }
 
 /// Build a `PreparedFile` straight from an iterator of lines (strings) plus an mtime.
@@ -119,6 +187,13 @@ fn build_zip_contains_manifest_and_log_entries() {
     // Log lines are joined with `\n` and trail with one.
     let cmdr_log = entries.get("logs/cmdr.log").unwrap();
     assert_eq!(cmdr_log, "redacted line 1\nredacted line 2\n");
+}
+
+#[test]
+fn legacy_bundle_serializes_safe_typed_state_history() {
+    let bytes = build_zip(&manifest_with_diagnostic_history(), &BTreeMap::new(), SystemTime::now()).unwrap();
+    let entries = read_zip_entries(&bytes);
+    assert_manifest_has_safe_diagnostic_history(entries.get("manifest.json").unwrap());
 }
 
 #[test]
@@ -843,7 +918,7 @@ mod streaming_tests {
         let cutoff = now - chrono::Duration::hours(1);
         let bundle = build_bundle_streaming(
             "ERR-TEST1".to_string(),
-            sample_manifest(),
+            manifest_with_diagnostic_history(),
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
@@ -853,6 +928,7 @@ mod streaming_tests {
 
         let entries = read_zip_entries(&bundle.zip_bytes);
         assert!(entries.contains_key("manifest.json"));
+        assert_manifest_has_safe_diagnostic_history(entries.get("manifest.json").unwrap());
         let log_body = entries.get("logs/cmdr.log").expect("log entry present");
         assert!(!log_body.contains("2-hour-old"), "old line must be dropped: {log_body}");
         assert!(log_body.contains("30-min-old"));

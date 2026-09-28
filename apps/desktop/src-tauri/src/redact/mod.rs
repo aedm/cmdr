@@ -83,16 +83,35 @@ impl RedactionContext {
     pub fn redact_line<'a>(&self, line: &'a str) -> Cow<'a, str> {
         redact_with(line, Some(self))
     }
-}
 
-/// Redact a bare file or folder NAME, one with no path around it for a pattern to find:
-/// `budget.pdf` → `<file>.pdf`, `Wedding` → `<dir>`, `Downloads` → `Downloads` (allowlisted).
-/// Same leaf rules as a path's last segment, unsalted.
-///
-/// For structured output that names things on its own (the error reporter's state snapshot),
-/// where a line-level pass can't tell a name from any other word.
-pub fn redact_name(name: &str, is_dir: bool) -> String {
-    redact_leaf(name, !is_dir, None)
+    /// Redact a typed path or URL value. Unlike [`Self::redact_line`], this fails closed for
+    /// relative and otherwise-unrecognized paths: every non-structural segment is tokenized.
+    pub fn redact_path(&self, path: &str) -> String {
+        if claimed_by_path_branch(path) {
+            redact_with(path, Some(self)).into_owned()
+        } else {
+            redact_relative_path(path, Some(self))
+        }
+    }
+
+    /// Redact a typed file or folder name with this report's correlation key.
+    pub fn redact_name(&self, name: &str, is_dir: bool) -> String {
+        redact_leaf(name, !is_dir, Some(self))
+    }
+
+    /// Redact a volume's display name with the domain used for mount and share identities.
+    pub fn redact_volume_name(&self, name: &str) -> String {
+        identity_token("volume", TokenDomain::Volume, name, Some(self))
+    }
+
+    /// Redact a name-derived volume ID. The synthetic local-root ID carries no identity.
+    pub fn redact_volume_id(&self, id: &str) -> String {
+        if id == "root" {
+            id.to_string()
+        } else {
+            identity_token("volume-id", TokenDomain::VolumeId, id, Some(self))
+        }
+    }
 }
 
 /// One left-to-right pass, resuming at whatever the rewriter actually consumed.

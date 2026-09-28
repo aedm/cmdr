@@ -114,6 +114,7 @@ pub fn build_bundle<R: tauri::Runtime>(
         active_settings: cached_active_settings(app).clone(),
         log_levels: build_log_level_snapshot(),
         breadcrumbs: breadcrumbs::snapshot(),
+        state_history: super::state_history::for_report(&redaction),
         user_note: user_note.and_then(|n| prepare_user_note(&n, kind, &redaction)),
         // The diag id (full stdlib here, safe to mint/lock). NEVER the `anal_` analytics id.
         diag_id: crate::install_id::diagnostics_id(),

@@ -146,52 +146,12 @@ pub fn set_app_handle(handle: AppHandle<Wry>) {
     }
 }
 
-/// Throttles `cmdr://state` snapshots so an error storm in a tight loop doesn't fill
-/// the log file with thousands of YAML blobs. One snapshot every 30 s is plenty for
-/// triage; if the same error keeps firing, the *first* snapshot is the load-bearing
-/// one anyway.
-static LAST_STATE_SNAPSHOT_AT: Mutex<Option<Instant>> = Mutex::new(None);
-const STATE_SNAPSHOT_THROTTLE: Duration = Duration::from_secs(30);
-
-/// Spawn a background task that builds the name-redacted `cmdr://state` and writes it to the log file as
-/// a debug-level record. Always runs (regardless of the Flow B opt-in) so that
-/// user-initiated bundles built minutes after a failure still have a state snapshot
-/// to read. File-only because of the dispatch tree: stdout's Info default drops debug
-/// records on the floor, file chain stays at Debug. No-op if the AppHandle isn't wired
-/// yet (early startup, unit tests) or the throttle window is still active.
-fn emit_state_snapshot() {
-    {
-        let mut guard = match LAST_STATE_SNAPSHOT_AT.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let now = Instant::now();
-        if let Some(last) = *guard
-            && now.duration_since(last) < STATE_SNAPSHOT_THROTTLE
-        {
-            return;
-        }
-        *guard = Some(now);
+/// Ask the report-local history to capture typed state. It owns the 30-second throttle and
+/// bounded ring; no snapshot enters the log file or any other persisted store.
+fn capture_state_snapshot() {
+    if let Some(app) = APP_HANDLE.get().cloned() {
+        super::state_history::capture_if_due(app);
     }
-    let Some(app) = APP_HANDLE.get().cloned() else {
-        return;
-    };
-    tauri::async_runtime::spawn(async move {
-        // ❗ The redacted build, never a plain `cmdr://state` read: that resource is
-        // for local agents and lists every file name in both panes, and this text
-        // ships in every bundle. The bundle's line pass can't catch a bare name.
-        match crate::mcp::resources::read_state_for_error_report(&app).await {
-            Ok(text) => log::debug!(
-                target: "cmdr_lib::error_reporter::state_snapshot",
-                "State at error time:\n{}",
-                text,
-            ),
-            Err(e) => log::debug!(
-                target: "cmdr_lib::error_reporter::state_snapshot",
-                "(state snapshot unavailable: {e})",
-            ),
-        }
-    });
 }
 
 /// Records an error against the auto-dispatcher. If the opt-in flag is off, returns
@@ -203,10 +163,9 @@ fn emit_state_snapshot() {
 /// `format!()` in the macro happens regardless (cheap for short error strings; the
 /// macro user controls the size), but everything past the `is_enabled()` check is gated.
 pub fn on_error_logged(category: &str, message: &str) {
-    // State snapshot fires regardless of the Flow B opt-in: a user who later runs the
-    // manual "Send error report" flow needs the snapshot in their bundle too.
-    // Throttled internally; cheap when throttled.
-    emit_state_snapshot();
+    // State capture fires regardless of the Flow B opt-in: a user who later runs the manual
+    // flow needs the history too. The collector is process-local and throttled internally.
+    capture_state_snapshot();
     if !ENABLED.load(Ordering::Relaxed) {
         return;
     }

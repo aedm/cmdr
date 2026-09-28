@@ -62,6 +62,7 @@ fn manifest(id: &str) -> BundleManifest {
             stdout_module_overrides: Vec::new(),
         },
         breadcrumbs: Vec::new(),
+        state_history: Vec::new(),
         user_note: None,
         diag_id: "diag_test".to_string(),
         email: None,

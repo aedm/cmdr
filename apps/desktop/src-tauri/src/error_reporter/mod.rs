@@ -50,6 +50,7 @@ pub mod auto_sent;
 pub mod breadcrumbs;
 pub(crate) mod bundle_builder;
 pub(crate) mod bundle_capper;
+mod state_history;
 mod tail_walker;
 
 #[cfg(test)]
@@ -59,6 +60,7 @@ mod auto_sent_tests;
 
 pub use bundle_builder::{BundleRequest, build_bundle};
 pub use bundle_capper::cap_bundle_to_mb;
+pub use state_history::DiagnosticStateSnapshot;
 
 /// Log an error and (if Flow B is opted in) feed it to the auto-dispatcher.
 ///
@@ -328,6 +330,10 @@ pub struct BundleManifest {
     /// user-driven UI command. Empty when nothing was recorded (e.g. very early failures, tests).
     /// See `breadcrumbs.rs` for the buffer semantics.
     pub breadcrumbs: Vec<breadcrumbs::Breadcrumb>,
+    /// Up to eight typed state captures from this process, oldest first. Raw names and paths
+    /// exist only in the in-memory collector and are transformed with this report's redaction
+    /// context during bundle assembly. Empty after relaunch by construction.
+    pub state_history: Vec<DiagnosticStateSnapshot>,
     /// Omitted from the wire when absent rather than sent as `null`: the api server treats
     /// a missing and a `null` optional field alike, but omitting keeps the payload clean.
     #[serde(skip_serializing_if = "Option::is_none")]

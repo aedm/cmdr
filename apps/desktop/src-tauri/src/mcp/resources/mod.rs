@@ -117,13 +117,6 @@ pub(crate) struct StateOptions {
     /// noise. The per-pane summary fields (`path`, `volumeId`, `cursor.index`,
     /// `totalFiles`, etc.) are still rendered.
     pub(crate) compact: bool,
-    /// Replace every file, folder, and favorite NAME with a redaction token
-    /// (`<file>.pdf`, `<dir>`), for a snapshot that leaves the machine. Paths
-    /// stay as they are: the bundle's own salted pass redacts those, and keeps
-    /// them correlatable with the log lines around them, which a name never
-    /// could be (nothing in a bare name says it's a name). No URI sets this;
-    /// [`read_state_for_error_report`] does.
-    pub(crate) redact_names: bool,
 }
 
 /// Parses `?k=v&k=v` query string into a flat map. Returns an empty map for
@@ -170,11 +163,7 @@ pub(crate) fn parse_state_options(query: Option<&str>) -> StateOptions {
             .collect::<std::collections::HashSet<String>>()
     });
     let compact = q.get("compact").map(|v| v == "true" || v == "1").unwrap_or(false);
-    StateOptions {
-        include,
-        compact,
-        redact_names: false,
-    }
+    StateOptions { include, compact }
 }
 
 impl StateOptions {
@@ -360,17 +349,6 @@ pub async fn read_resource<R: Runtime>(app: &tauri::AppHandle<R>, uri: &str) -> 
     })
 }
 
-/// The full `cmdr://state` YAML with every name redacted, for the error
-/// reporter's snapshot. A bundle leaves the machine, and this resource is built
-/// for local agents that need real names, so it can't ship as-is.
-pub(crate) async fn read_state_for_error_report<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<String, String> {
-    let opts = StateOptions {
-        redact_names: true,
-        ..StateOptions::default()
-    };
-    build_state_yaml(app, &opts).await
-}
-
 /// Build the `cmdr://state` YAML, respecting `include` / `compact` options.
 async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOptions) -> Result<String, String> {
     let store = app.try_state::<PaneStateStore>().ok_or("Pane state not available")?;
@@ -397,15 +375,7 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
     }
 
     if opts.includes("volumes") {
-        let mut snapshot = volumes::snapshot_volumes().await;
-        if opts.redact_names {
-            // A favorite's row is named after its folder, which for the home
-            // folder is the account name. Drive and share names stay, as they do
-            // in every log line (`redact/DETAILS.md` § account names).
-            for v in snapshot.iter_mut().filter(|v| v.id.starts_with("fav-")) {
-                v.name = crate::redact::redact_name(&v.name, true);
-            }
-        }
+        let snapshot = volumes::snapshot_volumes().await;
         yaml.push_str(&volumes::build_volumes_yaml(&snapshot));
     }
 
@@ -434,11 +404,7 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
                 if dialog_type == "archive-password"
                     && let Some(prompt) = prompt.as_ref()
                 {
-                    let mut prompt = prompt.clone();
-                    if opts.redact_names {
-                        prompt.archive_name = crate::redact::redact_name(&prompt.archive_name, false);
-                    }
-                    dialog_entries.push(format_archive_password_dialog(&prompt));
+                    dialog_entries.push(format_archive_password_dialog(prompt));
                 } else {
                     dialog_entries.push(format!("  - type: {}", dialog_type));
                 }
@@ -481,14 +447,9 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
         } else {
             yaml.push_str("favorites:\n");
             for fav in &favorites {
-                let name = if opts.redact_names {
-                    crate::redact::redact_name(&fav.name, true)
-                } else {
-                    fav.name.clone()
-                };
                 yaml.push_str(&format!(
                     "  - id: {}\n    name: {:?}\n    path: {:?}\n",
-                    fav.id, name, fav.path
+                    fav.id, fav.name, fav.path
                 ));
             }
         }
