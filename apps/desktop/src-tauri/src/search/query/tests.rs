@@ -268,69 +268,72 @@ fn summarize_empty_name_pattern() {
     assert_eq!(summarize_query(&q), "(all entries)");
 }
 
-// ── summarize_scope ──────────────────────────────────────────────
-//
-// The engine's two log lines carry this beside `summarize_query`, so a 0-match line in an
-// error-report bundle says where it looked. `ERR-FCAXU` is why: a search scoped to the pane's
-// folder found nothing, and the log couldn't tell that apart from an empty drive.
-
-fn scoped(include_paths: Option<Vec<&str>>, exclude_dir_names: Option<Vec<&str>>) -> SearchQuery {
-    let mut q = make_query(None, PatternType::Glob, None, None, None, None, None);
-    q.include_paths = include_paths.map(|v| v.into_iter().map(String::from).collect());
-    q.exclude_dir_names = exclude_dir_names.map(|v| v.into_iter().map(String::from).collect());
-    q
-}
+// ── Diagnostic-safe summary ──────────────────────────────────────
 
 #[test]
-fn summarize_scope_unscoped_says_whole_volume() {
-    // An unscoped query really does cover the volume, and the line must not read as a
-    // narrow scope whose path just happened to be empty.
-    assert_eq!(summarize_scope(&scoped(None, None)), "in (whole volume)");
-    assert_eq!(summarize_scope(&scoped(Some(vec![]), None)), "in (whole volume)");
-}
+fn diagnostic_summary_keeps_shape_without_private_query_material() {
+    const PATTERN_SENTINEL: &str = "Q🔒.*private-pattern";
+    const SCOPE_SENTINEL_A: &str = "/Users/private-person/secret-scope-a";
+    const SCOPE_SENTINEL_B: &str = "/Volumes/private-drive/secret-scope-b";
+    const EXCLUDE_SENTINEL_A: &str = "private-exclusion-a";
+    const EXCLUDE_SENTINEL_B: &str = "private-exclusion-b";
 
-#[test]
-fn summarize_scope_single_root_is_quoted() {
+    let mut q = make_query(
+        Some(PATTERN_SENTINEL),
+        PatternType::Regex,
+        Some(1_024),
+        Some(8_192),
+        Some(1_735_689_600),
+        Some(1_772_323_200),
+        Some(false),
+    );
+    q.include_paths = Some(vec![SCOPE_SENTINEL_A.to_string(), SCOPE_SENTINEL_B.to_string()]);
+    q.exclude_dir_names = Some(vec![EXCLUDE_SENTINEL_A.to_string(), EXCLUDE_SENTINEL_B.to_string()]);
+    q.count_only = true;
+    q.case_sensitive = Some(false);
+    q.exclude_system_dirs = Some(false);
+
+    let summary = summarize_query_for_diagnostics(&q);
+
+    for private in [
+        PATTERN_SENTINEL,
+        SCOPE_SENTINEL_A,
+        SCOPE_SENTINEL_B,
+        EXCLUDE_SENTINEL_A,
+        EXCLUDE_SENTINEL_B,
+    ] {
+        assert!(
+            !summary.contains(private),
+            "diagnostic summary leaked {private:?}: {summary}"
+        );
+    }
     assert_eq!(
-        summarize_scope(&scoped(Some(vec!["/Users/j/Downloads"]), None)),
-        "in \"/Users/j/Downloads\""
+        summary,
+        "pattern=regex(19 chars/22 bytes), size=min+max, modified=after+before, type=files, case=insensitive, count-only=true, scope=roots(2), exclusions=2, system-exclusions=off"
     );
 }
 
 #[test]
-fn summarize_scope_counts_several_roots() {
-    assert_eq!(
-        summarize_scope(&scoped(Some(vec!["/a", "/b"]), None)),
-        "in 2 folders: \"/a\", \"/b\""
+fn functional_summary_keeps_the_literal_pattern_for_mcp() {
+    const FUNCTIONAL_SENTINEL: &str = "Q[private-functional].*";
+    let q = make_query(
+        Some(FUNCTIONAL_SENTINEL),
+        PatternType::Regex,
+        None,
+        None,
+        None,
+        None,
+        None,
     );
+
+    assert_eq!(summarize_query(&q), format!("\"{FUNCTIONAL_SENTINEL}\" (regex)"));
 }
 
 #[test]
-fn summarize_scope_caps_the_list_but_keeps_the_count_honest() {
-    // A 40-path scope must not own the log line, and the total still has to be readable.
-    assert_eq!(
-        summarize_scope(&scoped(Some(vec!["/a", "/b", "/c", "/d", "/e"]), None)),
-        "in 5 folders: \"/a\", \"/b\", \"/c\", +2 more"
-    );
-}
+fn diagnostic_summary_pluralizes_a_one_character_pattern() {
+    let q = make_query(Some("x"), PatternType::Glob, None, None, None, None, None);
 
-#[test]
-fn summarize_scope_appends_the_users_own_exclusions() {
-    assert_eq!(
-        summarize_scope(&scoped(Some(vec!["/a"]), Some(vec!["tmp", "node_modules"]))),
-        "in \"/a\" minus [\"tmp\", \"node_modules\"]"
-    );
-    // An empty list is the same as none: no trailing "minus []" noise.
-    assert_eq!(summarize_scope(&scoped(Some(vec!["/a"]), Some(vec![]))), "in \"/a\"");
-}
-
-#[test]
-fn summarize_scope_quotes_a_path_holding_a_quote_or_space() {
-    // Paths are `{:?}`-formatted precisely so a space or quote can't make the line ambiguous.
-    assert_eq!(
-        summarize_scope(&scoped(Some(vec!["/a b/c\"d"]), None)),
-        "in \"/a b/c\\\"d\""
-    );
+    assert!(summarize_query_for_diagnostics(&q).starts_with("pattern=glob(1 char),"));
 }
 
 // ── canonicalize_scope_path ─────────────────────────────────────

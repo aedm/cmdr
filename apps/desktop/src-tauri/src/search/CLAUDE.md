@@ -1,13 +1,11 @@
 # Search module
 
-In-memory filename search + AI query translation. **One volume per search, and that's the CEILING, enforced at the API**
-(`resolve_target`), not just the UI: ❌ no fan-out, it's the only way a search can silently omit a drive. A scope routes
-to the volume that owns it; unscoped means the boot volume.
+In-memory filename search + AI query translation. **One volume per search, enforced at the API** (`resolve_target`):
+❌ no fan-out, the only way a search can silently omit a drive. Scope routes the volume; unscoped means boot volume.
 
-`execute.rs` routes the index-only search, `execute/live_run.rs` the live one over `execute/coverage.rs`'s model;
-`live.rs` the run registry and `ResultStream` (`live/CLAUDE.md`); `engine.rs` scans the arena (`index.rs`, per volume
-via `volumes.rs`); `matcher.rs`, `excludes.rs`, `ranking.rs` judge and order a row; `types.rs` / `query.rs` the data,
-`history.rs` recent searches over `crate::recents`, `ai/` NL translation (`ai/CLAUDE.md`).
+`execute.rs` routes index/live search over `execute/coverage.rs`; `live.rs` owns runs and `ResultStream`
+(`live/CLAUDE.md`). `engine.rs` scans `index.rs`'s per-volume arena; matcher/excludes/ranking judge rows; types/query
+hold data/operations; `history.rs` owns recents; `ai/` translates NL (`ai/CLAUDE.md`).
 
 ## Must-knows
 
@@ -25,8 +23,9 @@ via `volumes.rs`); `matcher.rs`, `excludes.rs`, `ranking.rs` judge and order a r
   `keep_run_id`), Escape, or quit — ❌ never the arena idle-drop, `RunOrigin::Dialog` only.
 - **Non-root indices are mount-relative**: PREFIX the mount root onto read paths, STRIP it from scopes. Mount root is
   the `volume_path` meta OR the live registry, ❌ never assume the meta is set.
-- **Honesty is TYPED, ❌ never a string match**: `uncovered_scopes`, `unresolved_scopes` (❌ never "doesn't exist": it
-  can't tell a typo from a not-yet-walked folder), and `SearchRunCoverage`, where `walk: Completed` ≠ exhaustive.
+- **Honesty is TYPED, diagnostics are structural**: `uncovered_scopes`, `unresolved_scopes`, and `SearchRunCoverage`.
+  `summarize_query_for_diagnostics` never logs literal pattern/scope/exclusion text; `summarize_query` stays literal
+  for MCP `interpreted_query`. A resolved scope can't distinguish a typo from not-yet-walked ground.
 - **`prepare_search_index`'s `loading` says whether an event is COMING**; `loading: false, ready: false` is the terminal
   "no index here", or a machine that declined indexing waits forever.
 - **A directory's size filter applies BEFORE ranking** (`dir_sizes_for`), ❌ never after, and ❌ never fall back to "no

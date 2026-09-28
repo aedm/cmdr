@@ -17,7 +17,7 @@ use cmdr_index::store::ROOT_ID;
 use super::excludes::ExcludeRules;
 use super::index::SearchIndex;
 use super::matcher::{Candidate, CompiledQuery, Evaluator};
-use super::query::{summarize_query, summarize_scope};
+use super::query::summarize_query_for_diagnostics;
 use super::ranking::{self, ImportanceWeights};
 use super::types::{SearchQuery, SearchResultEntry, SearchSort};
 
@@ -345,10 +345,10 @@ pub(crate) fn search_ranked(
     // directory size filters, because `dir_sizes` applied those inside the scan.
     if query.count_only {
         log::debug!(
-            "Count-only search: {} {} → {} matches, took {:?}",
-            summarize_query(query),
-            summarize_scope(query),
+            "Count-only search: {} → {} matches ({} hidden), took {:?}",
+            summarize_query_for_diagnostics(query),
             total_count,
+            hidden_by_excludes,
             t.elapsed()
         );
         return Ok(Ranked {
@@ -385,11 +385,11 @@ pub(crate) fn search_ranked(
         .collect();
 
     log::debug!(
-        "Search completed: {} {} → {} matches (returning {}), took {:?}",
-        summarize_query(query),
-        summarize_scope(query),
+        "Search completed: {} → {} matches (returning {}, {} hidden), took {:?}",
+        summarize_query_for_diagnostics(query),
         total_count,
         entries.len(),
+        hidden_by_excludes,
         t.elapsed()
     );
     Ok(Ranked {
