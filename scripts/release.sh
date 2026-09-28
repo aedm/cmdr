@@ -158,7 +158,11 @@ pnpm check oxfmt --ci
 CMDR_I18N_STALE_STRICT=1 pnpm check i18n-stale -m
 
 git commit -m "chore(release): v$VERSION"
-git tag "v$VERSION"
+# A signed annotated tag proves the release trigger came from the trusted key whose public
+# half lives in `.github/release-signers`. The workflow verifies it before starting a build.
+# `-s` follows the user's configured signing format and key; any missing key or denied
+# passphrase prompt aborts here rather than leaving an unsigned release tag behind.
+git tag -s -m "Cmdr v$VERSION" "v$VERSION"
 
 echo ""
 echo "Release v$VERSION prepared locally."

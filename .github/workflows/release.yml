@@ -17,15 +17,26 @@ jobs:
   # manifest naming 0.4.0 over the live 0.41.0. Only the `[skip ci]` on that commit kept it off
   # the website.
   #
-  # This runs in seconds and gates `build`, so a mistaken push costs nothing: no three parallel
-  # 90-minute macOS builds, and no assets overwritten on an old release.
+  # It also verifies that the tag itself was signed by a release key trusted in
+  # `.github/release-signers`, so every shipped tag carries independently verifiable provenance
+  # and a release cannot accidentally go out unsigned. This runs in seconds and gates `build`,
+  # so a bad push costs nothing: no three parallel 90-minute macOS builds, and no assets
+  # overwritten on an old release.
   guard:
-    name: Check this tag moves the release forward
+    name: Verify this release tag
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Require a trusted tag signature
+        run: |
+          # Fetch the tag object explicitly: checkout may dereference an annotated tag to its
+          # commit, but `verify-tag` needs the signed object itself.
+          git fetch --force --no-tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git -c gpg.ssh.allowedSignersFile="$GITHUB_WORKSPACE/.github/release-signers" \
+            verify-tag "$GITHUB_REF_NAME"
 
       - name: Refuse to move the update manifest backwards
         env:

@@ -295,9 +295,15 @@ The first checks provenance, the second the SBOM binding. The public instruction
 
 Pushing a `v*` tag runs the whole Release workflow, and `publish` rewrites `latest.json` for whatever tag fired it. It
 has no idea which version that is, so re-pushing an old tag points the entire install base at an old build. The `guard`
-job gates the workflow on one rule: the tag's version must be strictly greater than the version
-`apps/website/public/latest.json` currently advertises. It runs in seconds and blocks `build`, so a mistaken push never
+job first verifies the annotated tag's SSH signature against `.github/release-signers`, then requires the tag's version
+to be strictly greater than the version `apps/website/public/latest.json` currently advertises. The release script
+creates that signed tag with the configured Git signing key. A missing key or declined passphrase aborts locally, and an
+unsigned or differently signed tag aborts in CI. The guard runs in seconds and blocks `build`, so a bad push never
 reaches the three 90-minute macOS jobs and never overwrites assets on an old release.
+
+The signing key is replaceable. To rotate it, commit the new public key in `.github/release-signers` before cutting the
+first release signed by its private half. An older tag keeps the signer file from its own tagged commit, so replacing
+the current public key does not invalidate published releases or prevent their workflow jobs from being re-run.
 
 Two consequences worth knowing before they surprise you:
 
@@ -328,7 +334,7 @@ Delete tag, fix the issue, commit, recreate tag, push:
 git tag -d v0.x.x                      # delete local tag
 git push origin :refs/tags/v0.x.x      # delete remote tag
 # ... fix and commit ...
-git tag v0.x.x                         # recreate tag
+git tag -s -m "Cmdr v0.x.x" v0.x.x     # recreate signed tag
 git push origin main --tags            # push again
 ```
 
