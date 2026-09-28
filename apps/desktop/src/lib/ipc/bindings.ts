@@ -5466,6 +5466,13 @@ export type ApprovalResultView =
   // The group claimed, but the write engine wouldn't start it.
   | { kind: 'couldNotStart'; detail: string }
 
+// The archive-specific distinction a non-UI viewer consumer may act on.
+export type ArchiveFailureKind =
+  // The archive uses a feature this build cannot decode.
+  | 'unsupported'
+  // The archive entry could not be read for another archive-specific reason.
+  | 'unreadable'
+
 // The live archive-password prompt, as the frontend raised it.
 export type ArchivePasswordPrompt = {
   // The archive's display name, the one the dialog shows (`photos.zip`).
@@ -14976,10 +14983,11 @@ export type ViewerError =
    */
   | { kind: 'destinationIsReadOnly' }
   /**
-   *  The archive entry can't be previewed (encrypted, corrupt, or an unsupported
-   *  codec). Carries a message; the FE renders it without inspecting the string.
+   *  The archive entry can't be previewed. The typed failure kind lets non-UI
+   *  consumers distinguish an unsupported feature from corruption without parsing
+   *  the message; the FE still renders one generic archive message.
    */
-  | { kind: 'archive'; message: string }
+  | { kind: 'archive'; failure: ArchiveFailureKind; message: string }
 
 // Result returned when opening a viewer session.
 export type ViewerOpenResult = {

@@ -291,15 +291,15 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   inner directory's `sizeBytes` is absent (never a zero). A file node → refused `unreadable { encrypted }` from the
   node's flag BEFORE extraction (the tool has no password path), else
   `materialize::extract_if_routed_for_inspect(path, volume_id, cancel)` streams it to the shared bounded temp (the same
-  256 MiB refuse-before-extract cap; `TooLargeToPreview` → `tooLargeToExtract`, `ViewerError::Archive` → `corrupt`),
+  256 MiB refuse-before-extract cap; `TooLargeToPreview` → `tooLargeToExtract`, `ViewerError::Archive { failure:
+  Unsupported }` → `unsupported`, every other archive failure → `corrupt`),
   `read_content` runs the normal per-kind pipeline on `temp_file` (so `find` and the window work inside a zip), and
   `TempCleanup` removes `cleanup_dir` in `Drop`, so an early return or a panic can't leak it. A zip inside a zip is
   `binary`: the boundary is the leftmost archive component, as in the pane. The parse errors map typed:
   `NeedsPassword` (a header-encrypted 7z) → `encrypted`, `IoError` (a damaged structure) → `corrupt`, `NotSupported`
   (the archive layer's unsupported-codec / non-archive / over-cap collapse) → `unsupported`: an unsupported codec is
-  not a damaged file. (An unsupported codec met at EXTRACT time still reads `corrupt`: `materialize` folds it into
-  `ViewerError::Archive { message }`, which carries no kind.) The extract step is injected (`ExtractFn`) so the tests
-  shrink the cap and watch the temp dir.
+  not a damaged file. `materialize` preserves that same distinction when the codec refusal appears only at EXTRACT
+  time. The extract step is injected (`ExtractFn`) so the tests shrink the cap and watch the temp dir.
 - **Every other route** (`inspect_routed_path` in `mod.rs`): a file in a repo's virtual `.git` trees has no inode to
   `stat` either, so once the archive branch declines, `volume::manager::path_routes_over_its_parent` gates the same
   cancellable route extraction and the row is built from the temp with the ordinary per-kind pipeline. It reports no

@@ -143,8 +143,10 @@ streams the file to a bounded temp and opens THAT — the deliberately simple br
 
 **One code path for both routes.** Both mint a read-only volume, both answer `open_read_stream`, and a second copy of
 the temp lifecycle would drift. The only thing that reads the `RoutedKind` is the error mapping: the archive family
-(encrypted, corrupt, unsupported codec) has its own frontend copy under `ViewerError::Archive`, and a portal read that
-fails has no such family, so it stays a plain `ViewerError::Io`. Path-shaped errors keep their twins either way.
+(encrypted, corrupt, unsupported codec) has its own frontend copy under `ViewerError::Archive`; its nested
+`ArchiveFailureKind` preserves `NotSupported` for non-UI consumers while the viewer keeps one generic message. A portal
+read that fails has no such family, so it stays a plain `ViewerError::Io`. Path-shaped errors keep their twins either
+way.
 
 Flow (in `open_session_inner`, before the media/text split):
 

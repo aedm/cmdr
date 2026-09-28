@@ -47,6 +47,28 @@ fn write_bundle(dir: &TestDir) -> PathBuf {
     )
 }
 
+/// Rewrites the first entry's compression method to an unsupported ZIP method while
+/// leaving the central directory and payload structurally valid. The archive can be
+/// listed, but extracting the entry must meet the codec refusal.
+fn use_unsupported_compression_method(bytes: &mut [u8]) {
+    const LOCAL_HEADER: &[u8] = b"PK\x03\x04";
+    const CENTRAL_HEADER: &[u8] = b"PK\x01\x02";
+    // ZIP method 98 is PPMd, which this reader does not decode.
+    const UNSUPPORTED_METHOD: [u8; 2] = 98u16.to_le_bytes();
+
+    let local = bytes
+        .windows(LOCAL_HEADER.len())
+        .position(|window| window == LOCAL_HEADER)
+        .expect("local ZIP header");
+    bytes[local + 8..local + 10].copy_from_slice(&UNSUPPORTED_METHOD);
+
+    let central = bytes
+        .windows(CENTRAL_HEADER.len())
+        .position(|window| window == CENTRAL_HEADER)
+        .expect("central ZIP header");
+    bytes[central + 10..central + 12].copy_from_slice(&UNSUPPORTED_METHOD);
+}
+
 fn inspect(path: &Path) -> FileRow {
     ensure_root_volume();
     inspect_path(
@@ -370,6 +392,28 @@ fn an_unsupported_archive_is_unsupported_and_a_broken_one_is_corrupt() {
             raw_os_error: None,
         }),
         UnreadableReason::Corrupt
+    );
+}
+
+#[test]
+fn an_unsupported_codec_met_while_extracting_is_unsupported() {
+    let dir = TestDir::new("inspect_zip_unsupported_codec");
+    let mut bytes = build_zip(&[stored("notes.txt", b"healthy contents".to_vec())]);
+    use_unsupported_compression_method(&mut bytes);
+    let zip = write_bytes(&dir, "unsupported-codec.zip", &bytes);
+    let extract_dir = TestDir::new("inspect_zip_unsupported_codec_extract");
+
+    let row = inspect_extracting_to(&zip.join("notes.txt"), &extract_dir, PREVIEW_CAP_BYTES);
+
+    assert!(
+        matches!(
+            row,
+            FileRow::Unreadable {
+                reason: UnreadableReason::Unsupported,
+                ..
+            }
+        ),
+        "an unsupported codec is not corruption: {row:?}"
     );
 }
 

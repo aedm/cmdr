@@ -52,8 +52,8 @@ use std::sync::{LazyLock, RwLock};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::RwLockIgnorePoison;
 
-use super::ViewerError;
 use super::pending_open::PendingOpen;
+use super::{ArchiveFailureKind, ViewerError};
 use crate::file_system::volume::manager::{RoutedKind, get_volume_manager, path_routes_over_its_parent};
 
 /// Max bytes to materialize for a single preview. Above this the open is refused
@@ -447,17 +447,22 @@ fn temp_basename(entry_name: &str) -> String {
 /// Maps a `VolumeError` from a materializing read into a typed `ViewerError`.
 /// Path-shaped errors keep their twins whatever the source; the rest depend on it.
 ///
-/// The archive family (encrypted, corrupt, unsupported codec) has its own frontend
-/// copy under `ViewerError::Archive`, which the FE renders without inspecting the
-/// message string. A portal read and a plain pull have no such family — a repository
-/// that can't be opened or a phone that dropped mid-read is a fault, not a kind of
-/// file — so they stay a plain `Io`.
+/// The archive family has its own frontend copy under `ViewerError::Archive`, which
+/// the FE renders without inspecting the typed failure or message string. The typed
+/// failure preserves `NotSupported` for non-UI consumers. A portal read and a plain
+/// pull have no such family — a repository that can't be opened or a phone that
+/// dropped mid-read is a fault, not a kind of file — so they stay a plain `Io`.
 fn map_volume_error(err: VolumeError, routed: Option<RoutedKind>) -> ViewerError {
     match err {
         VolumeError::NotFound(path) => ViewerError::NotFound { path },
         VolumeError::IsADirectory(_) => ViewerError::IsDirectory,
         other => match routed {
             Some(RoutedKind::Archive) => ViewerError::Archive {
+                failure: if matches!(other, VolumeError::NotSupported) {
+                    ArchiveFailureKind::Unsupported
+                } else {
+                    ArchiveFailureKind::Unreadable
+                },
                 message: other.to_string(),
             },
             Some(RoutedKind::GitPortal) | None => ViewerError::Io {

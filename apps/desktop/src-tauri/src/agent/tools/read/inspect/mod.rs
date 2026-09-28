@@ -78,7 +78,7 @@ use crate::file_viewer::content_kind::{
 use crate::file_viewer::encoding::detect_from_head;
 use crate::file_viewer::materialize::{MaterializedFile, extract_if_routed_for_inspect, materialize_for_inspect};
 use crate::file_viewer::media::read_image_dimensions;
-use crate::file_viewer::{Matcher, SearchMode, ViewerError};
+use crate::file_viewer::{ArchiveFailureKind, Matcher, SearchMode, ViewerError};
 use crate::mcp::{ToolError, ToolResult, fit_to_result_budget, is_virtual_path};
 use crate::search::{format_size, format_timestamp};
 
@@ -638,9 +638,16 @@ fn status_for(path: String, failure: ReadFailure) -> FileRow {
             reason: UnreadableReason::TooLargeToExtract,
         },
         ReadFailure::Viewer(ViewerError::Cancelled) => FileRow::Unreachable { path },
-        // The archive layer's typed "couldn't serve this entry": damaged, or a codec it
-        // doesn't decode. (An encrypted entry never gets here; `archive.rs` refuses it
-        // from the index before extracting.)
+        ReadFailure::Viewer(ViewerError::Archive {
+            failure: ArchiveFailureKind::Unsupported,
+            ..
+        }) => FileRow::Unreadable {
+            path,
+            reason: UnreadableReason::Unsupported,
+        },
+        // An encrypted entry normally never gets here: `archive.rs` refuses it from
+        // the index before extracting. Preserve the existing corruption fallback for
+        // every other archive-specific extraction refusal.
         ReadFailure::Viewer(ViewerError::Archive { .. }) => FileRow::Unreadable {
             path,
             reason: UnreadableReason::Corrupt,

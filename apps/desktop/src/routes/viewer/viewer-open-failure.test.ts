@@ -30,7 +30,7 @@ describe('handleOpenFailure log level', () => {
     { kind: 'notFound', path: '/gone.txt' },
     { kind: 'isDirectory' },
     { kind: 'tooLargeToPreview', size: 2_000_000_000, cap: 1_000_000_000 },
-    { kind: 'archive', message: 'encrypted entry' },
+    { kind: 'archive', failure: 'unreadable', message: 'encrypted entry' },
     { kind: 'cancelled' },
     { kind: 'io', message: 'Permission denied (os error 13)' },
   ]

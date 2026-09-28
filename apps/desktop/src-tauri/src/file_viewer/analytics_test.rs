@@ -4,9 +4,9 @@
 //! where the viewer's own behavior steps, and that a failure is told apart by a
 //! token rather than by a message nobody may ship a second time.
 
-use super::ViewerError;
 use super::analytics::{content_token, failure_token, size_bucket};
 use super::content_kind::ViewerContentKind;
+use super::{ArchiveFailureKind, ViewerError};
 
 const MB: u64 = 1024 * 1024;
 
@@ -50,6 +50,7 @@ fn failure_tokens_carry_no_payload() {
         (ViewerError::TooLargeToPreview { size: 9, cap: 2 }, "extract_too_large"),
         (
             ViewerError::Archive {
+                failure: ArchiveFailureKind::Unsupported,
                 message: "unsupported codec".to_string(),
             },
             "archive",

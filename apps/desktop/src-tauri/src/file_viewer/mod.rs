@@ -192,6 +192,16 @@ pub struct BackendCapabilities {
     pub knows_total_lines: bool,
 }
 
+/// The archive-specific distinction a non-UI viewer consumer may act on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ArchiveFailureKind {
+    /// The archive uses a feature this build cannot decode.
+    Unsupported,
+    /// The archive entry could not be read for another archive-specific reason.
+    Unreadable,
+}
+
 /// Errors from the viewer backends.
 ///
 /// Variants carry the typed reason; the IPC layer maps these to user-facing strings.
@@ -235,9 +245,11 @@ pub enum ViewerError {
     /// disk for the write to land in, and both are read-only besides. Rejected by
     /// `viewer_write_range_to_file`.
     DestinationIsReadOnly,
-    /// The archive entry can't be previewed (encrypted, corrupt, or an unsupported
-    /// codec). Carries a message; the FE renders it without inspecting the string.
+    /// The archive entry can't be previewed. The typed failure kind lets non-UI
+    /// consumers distinguish an unsupported feature from corruption without parsing
+    /// the message; the FE still renders one generic archive message.
     Archive {
+        failure: ArchiveFailureKind,
         message: String,
     },
 }
@@ -267,7 +279,7 @@ impl std::fmt::Display for ViewerError {
             // (`viewer.saveAs.destinationReadOnly`). Names no namespace, because
             // both a `.zip` and a `.git` snapshot reach it.
             Self::DestinationIsReadOnly => write!(f, "Can't save into a read-only location"),
-            Self::Archive { message } => write!(f, "{message}"),
+            Self::Archive { message, .. } => write!(f, "{message}"),
         }
     }
 }
