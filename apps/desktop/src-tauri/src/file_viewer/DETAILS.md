@@ -148,7 +148,7 @@ fails has no such family, so it stays a plain `ViewerError::Io`. Path-shaped err
 
 Flow (in `open_session_inner`, before the media/text split):
 
-1. `extract_if_routed(requested, volume_id)` calls `VolumeManager::resolve(volume_id, requested)` — the SAME shared
+1. `materialize_for_viewer(requested, volume_id, open)` calls `VolumeManager::resolve(volume_id, requested)` — the SAME shared
    routes + on-demand volume registration + LRUs the listing and copy paths use, so the pane label and the preview
    target can't disagree. An unrouted path returns `None` and the open flows through unchanged. `volume_id` is threaded
    from `viewer_open` (command → FE `viewerOpen` wrapper → the viewer window's `volume` URL param, sourced from the
@@ -177,20 +177,21 @@ Pinned by `materialize_test::switching_the_view_mode_reuses_the_windows_temp_and
 counting slow volume: zero chunks on the switch, one shared temp, gone after the last close) and
 `another_window_on_the_same_file_pulls_its_own_copy`.
 
-**The second caller: the agent's `inspect_file`** (`agent/tools/read/inspect/`). It calls the same
-`extract_if_routed(path, volume_id)` — from `archive.rs` for a FILE inside an archive, where it has richer rows to give,
-and from `inspect_routed_path` in `mod.rs` for every other route — runs its per-kind pipeline on `temp_file`, and
-removes `cleanup_dir` in a `Drop` guard, so its temp lives for one read rather than a session. A routed row reports no
-`modified`: the temp was written a moment ago, and quoting its mtime would date a years-old commit as today. The
-contract both callers share, and any third one inherits: the 256 MiB cap and the refuse-before-extract guard are inside
-the function and stay there; a caller never materializes around them; and whoever receives an `MaterializedFile` owns
-removing its `cleanup_dir` (the reaper only covers a crash). `extract_if_routed_with` (explicit dir + cap) is
-`pub(crate)` for both callers' tests.
+**The second caller: the agent's `inspect_file`** (`agent/tools/read/inspect/`). Archives route first because they have
+richer rows to give; every remaining route or non-OS-visible connected volume goes through
+`materialize_for_inspect(path, volume_id, cancel)`, then the per-kind pipeline reads `temp_file`. Its `Drop` guard
+removes `cleanup_dir`, so the temp lives for one read rather than a session. The inspector's five-second per-path
+budget flips `cancel`; the pull observes it between chunks (never by dropping an in-flight MTP read), returns
+`Cancelled` → `unreachable`, and removes the partial temp. A materialized row reports no `modified`: the temp was
+written a moment ago, and quoting its mtime would date an old remote file as today. The contract both callers share,
+and any third one inherits: the 256 MiB cap and refuse-before-extract guard stay inside the materializer, and whoever
+receives a `MaterializedFile` owns removing `cleanup_dir` (the reaper only covers a crash).
 
 **The cap is 256 MiB** (`PREVIEW_CAP_BYTES`), chosen to comfortably cover real preview content (documents, images, PDFs,
 most media) while bounding the temp write, extraction time, and decompression amplification. It's independent of the FE
 copy-selection ceiling (`COPY_REFUSE_BYTES`, 100 MiB): that caps a *selection*, this caps a whole-entry materialization.
-A pull has no time budget, only a stall rule, and its window shows its progress: § "Watching a pull" below.
+A viewer pull has no total time budget, only a stall rule, and its window shows progress; an `inspect_file` pull obeys
+that tool's five-second per-path budget: § "Watching a pull" below.
 
 `ViewerError::TooLargeToPreview` names no namespace, in the Rust `Display` string and in the frontend copy it maps to
 (`viewer.error.tooLargeToPreview`, "too big to preview from here"): a `.zip` entry, a >256 MiB blob in a `.git`
@@ -200,13 +201,12 @@ Pinned on both sides (`materialize_test.rs`, `viewer-i18n-parity.test.ts`).
 ### A file on a volume the OS can't open
 
 A phone over ADB or MTP, an SFTP or WebDAV server, and a direct SMB share whose mount went away hand out paths no
-`std::fs` call can open (`adb://R58M1/sdcard/notes.txt`, `mtp://…`, `sftp://…`). `materialize_for_viewer` is the
-viewer's entry: it tries the route first (so a `.zip` ON a phone still routes), then `resolve`s the path and, when the
-volume's `paths_are_os_visible()` is false, pulls the file through that volume with the same `pull_to_temp` a routed
+`std::fs` call can open (`adb://R58M1/sdcard/notes.txt`, `mtp://…`, `sftp://…`). `materialize_for_viewer` and
+`materialize_for_inspect` try the route first (so a `.zip` ON a phone still routes), then `resolve` the path and, when
+the volume's `paths_are_os_visible()` is false, pull the file through that volume with the same `pull_to_temp` a routed
 entry uses. Same cap, refused from the volume's stat before a temp exists; same `.cmdr-viewer-<uuid>/` subdir; same
-`temp_cleanup` on close; same media path, since the temp is a local file an image or PDF renders from. Errors map
-like a portal read's: `NotFound` and `IsDirectory` keep their twins, and anything else (a phone dropping mid-read) is a
-plain `ViewerError::Io`.
+cleanup ownership; same local media and text pipeline. Errors map like a portal read's: `NotFound` and `IsDirectory`
+keep their twins, and anything else (a phone dropping mid-read) is a plain `ViewerError::Io`.
 
 **Decision**: locality is `Volume::paths_are_os_visible()`, not `supports_local_fs_access()`. **Why**: the viewer core
 opens paths with `std::fs`, which is the question `paths_are_os_visible` answers. A direct SMB volume answers `false` to

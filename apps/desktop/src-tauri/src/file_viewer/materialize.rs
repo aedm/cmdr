@@ -20,9 +20,9 @@
 //! would drift. The only thing that reads the kind is the error mapping, where the
 //! archive family has its own frontend copy and nothing else does.
 //!
-//! [`materialize_for_viewer`] is the viewer's entry and covers both kinds;
-//! [`extract_if_routed`] covers routes only, for the agent's `inspect_file`, which
-//! refuses a volume the OS can't open before it gets here.
+//! [`materialize_for_viewer`] is the viewer's entry and [`materialize_for_inspect`]
+//! is the agent's; both cover both kinds. [`extract_if_routed_for_inspect`] gives the
+//! inspector's route-first pipeline the same cancellable pull.
 //!
 //! Discipline this module owns:
 //!
@@ -46,6 +46,7 @@
 //!   temps). The startup reaper removes any `.cmdr-viewer-*` subdir left by a crash.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, RwLock};
 
 use crate::file_system::volume::{Volume, VolumeError};
@@ -208,7 +209,39 @@ pub(crate) fn materialize_for_viewer_with(
     cap: u64,
     open: &PendingOpen,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
-    if let Some(entry) = extract_routed(requested, volume_id, dir, cap, open)? {
+    materialize_with(requested, volume_id, dir, cap, open, None)
+}
+
+/// What `inspect_file` reads for `requested`: the same bounded temp the viewer uses,
+/// with the inspector's per-path deadline stopping a pull at its next chunk boundary.
+pub(crate) fn materialize_for_inspect(
+    requested: &Path,
+    volume_id: &str,
+    cancel: &AtomicBool,
+) -> Result<Option<MaterializedFile>, ViewerError> {
+    materialize_for_inspect_with(requested, volume_id, &materialize_dir(), PREVIEW_CAP_BYTES, cancel)
+}
+
+/// [`materialize_for_inspect`] with an explicit dir + cap, for tests.
+pub(crate) fn materialize_for_inspect_with(
+    requested: &Path,
+    volume_id: &str,
+    dir: &Path,
+    cap: u64,
+    cancel: &AtomicBool,
+) -> Result<Option<MaterializedFile>, ViewerError> {
+    materialize_with(requested, volume_id, dir, cap, &PendingOpen::new(), Some(cancel))
+}
+
+fn materialize_with(
+    requested: &Path,
+    volume_id: &str,
+    dir: &Path,
+    cap: u64,
+    open: &PendingOpen,
+    cancel: Option<&AtomicBool>,
+) -> Result<Option<MaterializedFile>, ViewerError> {
+    if let Some(entry) = extract_routed(requested, volume_id, dir, cap, open, cancel)? {
         return Ok(Some(entry));
     }
     // Locality is `paths_are_os_visible`, ❌ never `supports_local_fs_access`: a
@@ -222,29 +255,35 @@ pub(crate) fn materialize_for_viewer_with(
     if resolved.routed.is_some() || volume.paths_are_os_visible() {
         return Ok(None);
     }
-    tauri::async_runtime::block_on(pull_to_temp(volume, resolved.path, dir, cap, None, open)).map(Some)
+    tauri::async_runtime::block_on(pull_to_temp(volume, resolved.path, dir, cap, None, open, cancel)).map(Some)
 }
 
-/// If a ROUTE serves `requested`, stream the addressed entry to a bounded temp and
-/// return it; otherwise `Ok(None)` (the caller opens `requested` directly).
-///
-/// Uses the shared [`VolumeManager::resolve`](crate::file_system::VolumeManager::resolve)
-/// against `volume_id`'s volume so route detection, registration, and the LRU stay
-/// single-sourced with the listing/copy paths — and a `.zip` on a REMOTE parent
-/// (direct SMB / MTP) is pulled through that parent, not a hardcoded `"root"`.
-/// Blocking: run it inside `spawn_blocking`, not on the IPC thread.
-pub(crate) fn extract_if_routed(requested: &Path, volume_id: &str) -> Result<Option<MaterializedFile>, ViewerError> {
-    extract_if_routed_with(requested, volume_id, &materialize_dir(), PREVIEW_CAP_BYTES)
+/// The route-only materializer for `inspect_file`, with its per-path cancellation.
+/// Uses the shared volume-manager routing, including archives on remote parents.
+pub(crate) fn extract_if_routed_for_inspect(
+    requested: &Path,
+    volume_id: &str,
+    cancel: &AtomicBool,
+) -> Result<Option<MaterializedFile>, ViewerError> {
+    extract_routed(
+        requested,
+        volume_id,
+        &materialize_dir(),
+        PREVIEW_CAP_BYTES,
+        &PendingOpen::new(),
+        Some(cancel),
+    )
 }
 
-/// [`extract_if_routed`] with an explicit dir + cap, for tests.
+/// Route extraction with an explicit dir + cap, for tests.
+#[cfg(test)]
 pub(crate) fn extract_if_routed_with(
     requested: &Path,
     volume_id: &str,
     dir: &Path,
     cap: u64,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
-    extract_routed(requested, volume_id, dir, cap, &PendingOpen::new())
+    extract_routed(requested, volume_id, dir, cap, &PendingOpen::new(), None)
 }
 
 /// The route half of [`materialize_for_viewer_with`], watched by `open`.
@@ -254,6 +293,7 @@ fn extract_routed(
     dir: &Path,
     cap: u64,
     open: &PendingOpen,
+    cancel: Option<&AtomicBool>,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
     // Only a path with no file of its own is materialized. The `.zip` file ITSELF
     // is a regular file: viewing it shows its raw bytes like any binary file
@@ -274,7 +314,7 @@ fn extract_routed(
         return Ok(None);
     };
     let entry_path = resolved.path;
-    tauri::async_runtime::block_on(pull_to_temp(volume, entry_path, dir, cap, Some(routed), open)).map(Some)
+    tauri::async_runtime::block_on(pull_to_temp(volume, entry_path, dir, cap, Some(routed), open, cancel)).map(Some)
 }
 
 /// Streams one file to a fresh temp subdir under `dir`, refusing an oversize file
@@ -287,9 +327,10 @@ async fn pull_to_temp(
     cap: u64,
     routed: Option<RoutedKind>,
     open: &PendingOpen,
+    cancel: Option<&AtomicBool>,
 ) -> Result<MaterializedFile, ViewerError> {
-    if let Some(abandoned) = open.abandoned_error() {
-        return Err(abandoned);
+    if let Some(stopped) = stopped_error(open, cancel) {
+        return Err(stopped);
     }
     // Size + kind come from the volume's metadata (an archive's central directory,
     // the portal's tree entry, a phone's or server's stat), never a decompression or
@@ -298,6 +339,9 @@ async fn pull_to_temp(
         .get_metadata(&entry_path)
         .await
         .map_err(|e| map_volume_error(e, routed))?;
+    if let Some(stopped) = stopped_error(open, cancel) {
+        return Err(stopped);
+    }
     if meta.is_directory {
         return Err(ViewerError::IsDirectory);
     }
@@ -311,7 +355,18 @@ async fn pull_to_temp(
     let temp_file = cleanup_dir.join(temp_basename(&meta.name));
 
     // Any failure past this point must not leave the subdir behind.
-    match stream_to_file(volume.as_ref(), &entry_path, &temp_file, cap, meta.size, routed, open).await {
+    match stream_to_file(
+        volume.as_ref(),
+        &entry_path,
+        &temp_file,
+        cap,
+        meta.size,
+        routed,
+        open,
+        cancel,
+    )
+    .await
+    {
         Ok(()) => Ok(MaterializedFile { temp_file, cleanup_dir }),
         Err(e) => {
             let _ = std::fs::remove_dir_all(&cleanup_dir);
@@ -322,7 +377,8 @@ async fn pull_to_temp(
 
 /// Streams the file into `temp_file`, enforcing the byte-cap as a backstop against a
 /// reported size that understates the real one. Records progress on `open` against
-/// `declared_size` after every chunk, and stops once `open` is abandoned.
+/// `declared_size` after every chunk, and stops once the viewer open is abandoned or
+/// the inspector's per-path deadline flips `cancel`.
 ///
 /// The abandon check sits BETWEEN chunks, ❌ never as a race that drops an in-flight
 /// `next_chunk`: an MTP window read is a USB transaction, and dropping it mid-flight
@@ -341,6 +397,7 @@ async fn stream_to_file(
     declared_size: Option<u64>,
     routed: Option<RoutedKind>,
     open: &PendingOpen,
+    cancel: Option<&AtomicBool>,
 ) -> Result<(), ViewerError> {
     use std::io::Write as _;
 
@@ -359,12 +416,20 @@ async fn stream_to_file(
         }
         file.write_all(&chunk)?;
         open.record_pull(written, declared_size);
-        if let Some(abandoned) = open.abandoned_error() {
-            return Err(abandoned);
+        if let Some(stopped) = stopped_error(open, cancel) {
+            return Err(stopped);
         }
     }
     file.flush()?;
     Ok(())
+}
+
+fn stopped_error(open: &PendingOpen, cancel: Option<&AtomicBool>) -> Option<ViewerError> {
+    if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
+        Some(ViewerError::Cancelled)
+    } else {
+        open.abandoned_error()
+    }
 }
 
 /// A safe single-component filename for the temp, derived from the source's basename.

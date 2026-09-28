@@ -31,8 +31,9 @@ use cmdr_archive::{ArchiveVolume, archive_boundary_candidate, format_for_path};
 pub(crate) const MAX_ARCHIVE_ENTRIES: usize = 200;
 
 /// The extract step, as a value so a test can shrink the cap and point the temp at its own
-/// dir. Production passes `materialize::extract_if_routed`.
-pub(crate) type ExtractFn<'a> = &'a (dyn Fn(&Path, &str) -> Result<Option<MaterializedFile>, ViewerError> + Sync);
+/// dir. Production passes `materialize::extract_if_routed_for_inspect`.
+pub(crate) type ExtractFn<'a> =
+    &'a (dyn Fn(&Path, &str, &AtomicBool) -> Result<Option<MaterializedFile>, ViewerError> + Sync);
 
 // ── Result DTOs ─────────────────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ fn inspect_archive_path(
             reason: UnreadableReason::Encrypted,
         };
     }
-    let extracted = match extract(p, volume_id) {
+    let extracted = match extract(p, volume_id, cancel) {
         Ok(Some(extracted)) => extracted,
         // The boundary confirmed a moment ago and is gone now: an unmount race.
         Ok(None) => return FileRow::Missing { path: owned },

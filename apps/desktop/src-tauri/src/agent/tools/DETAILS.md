@@ -263,10 +263,13 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   the deadline), which `scanIncomplete` + `pagesScanned` report; `matchesCapped` at the viewer's `MAX_SEARCH_MATCHES`
   is its own reason to stop, as on text. `hasTextLayer` is a verdict over decoded pages only. The whole file is read
   into memory (bounded by the gate); nothing is cached between calls.
-- **Not local**: `mcp::is_virtual_path` (`mtp://`, direct `smb://`) → `unsupportedVolume`, and so does a scheme-less
-  path whose owning volume (`VolumeManager::mount_id_for_path`, else `root`) reports
-  `!supports_local_fs_access()`. A `missing` there would be a lie the model relays. An OS-mounted share
-  (`/Volumes/share`) is a real path and flows through; the timeout is what protects the turn.
+- **Connected remote files**: `VolumeManager::mount_id_for_path` identifies the registered owner before a
+  scheme-prefixed path can be refused. A virtual path with no owner → `unsupportedVolume`; a connected owner whose
+  `paths_are_os_visible()` is false streams through `materialize_for_inspect` into the shared bounded temp, then runs
+  the ordinary per-kind pipeline. Mounted direct SMB stays on `std::fs` even though `supports_local_fs_access()` is
+  false; once its mount disappears, the same volume streams through SMB. The 256 MiB cap refuses from the source stat
+  before pulling, and the runner's cancel flag stops a pull between chunks and removes its partial temp. A materialized
+  row carries no `modified`: the temp's fresh mtime would be a lie about the source.
 - **An OOXML document inspects as an ARCHIVE, deliberately.** `.docx` / `.xlsx` / `.pptx` / `.jar` / `.apk` are
   browsable archive suffixes, so `inspect_file` on a Word document returns its PARTS (`[Content_Types].xml`, `word/`,
   `docProps/`) rather than treating it as one opaque file. **Decision/Why**: there is no Office-document reader
@@ -287,7 +290,7 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   format from `ArchiveFormat::label()`; the archive root's row metadata is the `.zip` file's own `std::fs` stat, an
   inner directory's `sizeBytes` is absent (never a zero). A file node → refused `unreadable { encrypted }` from the
   node's flag BEFORE extraction (the tool has no password path), else
-  `materialize::extract_if_routed(path, volume_id)` streams it to the viewer's bounded temp (the same
+  `materialize::extract_if_routed_for_inspect(path, volume_id, cancel)` streams it to the shared bounded temp (the same
   256 MiB refuse-before-extract cap; `TooLargeToPreview` → `tooLargeToExtract`, `ViewerError::Archive` → `corrupt`),
   `read_content` runs the normal per-kind pipeline on `temp_file` (so `find` and the window work inside a zip), and
   `TempCleanup` removes `cleanup_dir` in `Drop`, so an early return or a panic can't leak it. A zip inside a zip is
@@ -299,7 +302,7 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   shrink the cap and watch the temp dir.
 - **Every other route** (`inspect_routed_path` in `mod.rs`): a file in a repo's virtual `.git` trees has no inode to
   `stat` either, so once the archive branch declines, `volume::manager::path_routes_over_its_parent` gates the same
-  `extract_if_routed` call and the row is built from the temp with the ordinary per-kind pipeline. It reports no
+  cancellable route extraction and the row is built from the temp with the ordinary per-kind pipeline. It reports no
   `modified`: the temp was written a moment ago, and quoting its mtime would date a years-old commit as today. A path
   the confirm rejects (a mislabeled `.zip`, a `.git` that isn't a repository) falls through to the plain `std::fs`
   pipeline, and so do the REAL files under `.git/`, which are the parent volume's and keep their own mtime. Snapshot

@@ -282,7 +282,7 @@ fn an_image_inside_a_zip_carries_its_exif() {
         &build_zip(&[stored("shot.jpg", jpeg_with_exif(&full_shot("N", "E")))]),
     );
     let extract_dir = TestDir::new("inspect_exif_zip_extract");
-    let extract = |requested: &Path, volume_id: &str| {
+    let extract = |requested: &Path, volume_id: &str, _cancel: &AtomicBool| {
         extract_if_routed_with(requested, volume_id, &extract_dir, PREVIEW_CAP_BYTES)
     };
     let row = inspect_path_with(

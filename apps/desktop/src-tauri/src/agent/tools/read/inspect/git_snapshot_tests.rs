@@ -32,7 +32,7 @@ fn repo_registered_as_the_local_drive(name: &str) -> std::path::PathBuf {
 /// Inspect with the materialization pointed at `extract_dir`, so the test can see
 /// whether the temp was cleaned up.
 fn inspect_extracting_to(path: &Path, extract_dir: &Path) -> FileRow {
-    let extract = |requested: &Path, volume_id: &str| {
+    let extract = |requested: &Path, volume_id: &str, _cancel: &AtomicBool| {
         extract_if_routed_with(requested, volume_id, extract_dir, PREVIEW_CAP_BYTES)
     };
     inspect_path_with(

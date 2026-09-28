@@ -76,7 +76,7 @@ use crate::file_viewer::content_kind::{
     CLASSIFY_HEAD_LEN, ViewerContentKind, classify_viewer_content, looks_binary, media_mime,
 };
 use crate::file_viewer::encoding::detect_from_head;
-use crate::file_viewer::materialize::extract_if_routed;
+use crate::file_viewer::materialize::{MaterializedFile, extract_if_routed_for_inspect, materialize_for_inspect};
 use crate::file_viewer::media::read_image_dimensions;
 use crate::file_viewer::{Matcher, SearchMode, ViewerError};
 use crate::mcp::{ToolError, ToolResult, fit_to_result_budget, is_virtual_path};
@@ -244,9 +244,8 @@ pub enum FileRow {
     Unreadable { path: String, reason: UnreadableReason },
     /// [`PATH_TIMEOUT`] passed: a disconnected drive or a hung mount.
     Unreachable { path: String },
-    /// An `mtp://` or direct `smb://` path, or a path on a registered volume without
-    /// local filesystem access: no local byte path to read (the viewer has the same
-    /// limit).
+    /// A virtual path with no registered owning volume, so there is no connection to
+    /// read it through. Connected volumes are materialized into a bounded local temp.
     UnsupportedVolume { path: String },
 }
 
@@ -485,27 +484,22 @@ impl From<ViewerError> for ReadFailure {
 /// Inspect one path. Blocking: runs on the pool under the runner's deadline, which flips
 /// `cancel` when the path is out of time (the line-index build and the search check it).
 pub(crate) fn inspect_path(path: &str, ask: &TextAsk, cancel: &AtomicBool) -> FileRow {
-    inspect_path_with(path, ask, cancel, &extract_if_routed)
+    inspect_path_with(path, ask, cancel, &extract_if_routed_for_inspect)
 }
 
 /// [`inspect_path`] with the archive extract step injected (tests shrink its cap and
 /// redirect its temp).
 pub(crate) fn inspect_path_with(path: &str, ask: &TextAsk, cancel: &AtomicBool, extract: ExtractFn) -> FileRow {
     let owned = path.to_string();
-    if is_virtual_path(path) {
-        return FileRow::UnsupportedVolume { path: owned };
-    }
     // The volume that holds the path: the longest registered mount root over it, else the
     // main drive. It is the archive's parent for routing, and the one place a path with no
     // scheme can still be unreadable through `std::fs` (a device volume's namespace).
     let manager = get_volume_manager();
-    let volume_id = manager.mount_id_for_path(path).unwrap_or_else(|| "root".to_string());
-    if manager
-        .get(&volume_id)
-        .is_some_and(|volume| !volume.supports_local_fs_access())
-    {
+    let owning_volume = manager.mount_id_for_path(path);
+    if owning_volume.is_none() && is_virtual_path(path) {
         return FileRow::UnsupportedVolume { path: owned };
     }
+    let volume_id = owning_volume.unwrap_or_else(|| "root".to_string());
     if let Routed::Row(row) = archive::route_archive_path(path, &volume_id, ask, cancel, extract) {
         return row;
     }
@@ -513,6 +507,11 @@ pub(crate) fn inspect_path_with(path: &str, ask: &TextAsk, cancel: &AtomicBool, 
     let p = Path::new(path);
     if let Some(row) = inspect_routed_path(&owned, p, &volume_id, ask, cancel, extract) {
         return row;
+    }
+    match materialize_for_inspect(p, &volume_id, cancel) {
+        Ok(Some(materialized)) => return inspect_materialized(&owned, p, ask, cancel, materialized),
+        Ok(None) => {}
+        Err(e) => return status_for(owned, ReadFailure::Viewer(e)),
     }
 
     let meta = match std::fs::metadata(p) {
@@ -554,17 +553,29 @@ fn inspect_routed_path(
     if !path_routes_over_its_parent(p) {
         return None;
     }
-    let materialized = match extract(p, volume_id) {
+    let materialized = match extract(p, volume_id, cancel) {
         Ok(Some(entry)) => entry,
         Ok(None) => return None,
         Err(e) => return Some(status_for(owned.to_string(), ReadFailure::Viewer(e))),
     };
+    Some(inspect_materialized(owned, p, ask, cancel, materialized))
+}
+
+/// Inspect a bounded local snapshot without reporting the temp's freshly-written mtime
+/// as the source file's. The guard removes the snapshot however classification ends.
+fn inspect_materialized(
+    owned: &str,
+    source_path: &Path,
+    ask: &TextAsk,
+    cancel: &AtomicBool,
+    materialized: MaterializedFile,
+) -> FileRow {
     let _cleanup = archive::TempCleanup(materialized.cleanup_dir);
     let size = std::fs::metadata(&materialized.temp_file).map(|m| m.len()).unwrap_or(0);
-    Some(match read_content(&materialized.temp_file, size, ask, cancel) {
-        Ok(content) => ok_row(owned.to_string(), p, Some(size), None, content),
+    match read_content(&materialized.temp_file, size, ask, cancel) {
+        Ok(content) => ok_row(owned.to_string(), source_path, Some(size), None, content),
         Err(failure) => status_for(owned.to_string(), failure),
-    })
+    }
 }
 
 /// An `ok` row: the metadata every kind shares, named after the requested path.
@@ -626,6 +637,7 @@ fn status_for(path: String, failure: ReadFailure) -> FileRow {
             path,
             reason: UnreadableReason::TooLargeToExtract,
         },
+        ReadFailure::Viewer(ViewerError::Cancelled) => FileRow::Unreachable { path },
         // The archive layer's typed "couldn't serve this entry": damaged, or a codec it
         // doesn't decode. (An encrypted entry never gets here; `archive.rs` refuses it
         // from the index before extracting.)

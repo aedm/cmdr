@@ -2,12 +2,13 @@
 
 use std::io::Write as _;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use super::ViewerError;
 use super::materialize::{
-    PREVIEW_CAP_BYTES, extract_if_routed_with, init_materialize_dir, is_orphan_temp_name, materialize_for_viewer_with,
-    reap_orphan_temps,
+    PREVIEW_CAP_BYTES, extract_if_routed_with, init_materialize_dir, is_orphan_temp_name, materialize_for_inspect_with,
+    materialize_for_viewer_with, reap_orphan_temps,
 };
 use super::session;
 
@@ -318,8 +319,8 @@ fn a_file_past_the_cap_on_a_volume_the_os_cant_open_is_refused_before_a_temp_exi
 /// reading" from "the pull read everything and threw it away".
 struct SlowPhone {
     inner: crate::file_system::volume::InMemoryVolume,
-    chunks_served: Arc<std::sync::atomic::AtomicUsize>,
-    stream_dropped: Arc<std::sync::atomic::AtomicBool>,
+    chunks_served: Arc<AtomicUsize>,
+    stream_dropped: Arc<AtomicBool>,
 }
 
 /// 64 KiB, `InMemoryVolume`'s chunk size.
@@ -330,13 +331,13 @@ const CHUNK_DELAY: std::time::Duration = std::time::Duration::from_millis(25);
 
 struct CountingStream {
     inner: Box<dyn crate::file_system::volume::VolumeReadStream>,
-    chunks_served: Arc<std::sync::atomic::AtomicUsize>,
-    stream_dropped: Arc<std::sync::atomic::AtomicBool>,
+    chunks_served: Arc<AtomicUsize>,
+    stream_dropped: Arc<AtomicBool>,
 }
 
 impl Drop for CountingStream {
     fn drop(&mut self) {
-        self.stream_dropped.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.stream_dropped.store(true, Ordering::SeqCst);
     }
 }
 
@@ -349,7 +350,7 @@ impl crate::file_system::volume::VolumeReadStream for CountingStream {
         Box::pin(async move {
             let chunk = self.inner.next_chunk().await;
             if matches!(chunk, Some(Ok(_))) {
-                self.chunks_served.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                self.chunks_served.fetch_add(1, Ordering::SeqCst);
             }
             chunk
         })
@@ -435,13 +436,7 @@ impl crate::file_system::volume::Volume for SlowPhone {
 
 /// Registers a [`SlowPhone`] under `id` holding one `PHONE_FILE_LEN`-byte `big.log`,
 /// and returns that file's path with the phone's two counters.
-fn a_slow_phone(
-    id: &str,
-) -> (
-    String,
-    Arc<std::sync::atomic::AtomicUsize>,
-    Arc<std::sync::atomic::AtomicBool>,
-) {
+fn a_slow_phone(id: &str) -> (String, Arc<AtomicUsize>, Arc<AtomicBool>) {
     use crate::file_system::volume::manager::get_volume_manager;
     use crate::file_system::volume::{InMemoryVolume, Volume as _};
 
@@ -452,8 +447,8 @@ fn a_slow_phone(
     let path = format!("{root}/big.log");
     tauri::async_runtime::block_on(inner.create_file(Path::new(&path), &vec![b'x'; PHONE_FILE_LEN]))
         .expect("seed the file");
-    let chunks_served = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let stream_dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let chunks_served = Arc::new(AtomicUsize::new(0));
+    let stream_dropped = Arc::new(AtomicBool::new(false));
     get_volume_manager().register(
         id,
         Arc::new(SlowPhone {
@@ -463,6 +458,53 @@ fn a_slow_phone(
         }),
     );
     (path, chunks_served, stream_dropped)
+}
+
+/// `inspect_file` has a five-second per-path budget. Once its flag flips, a remote
+/// pull stops at the next chunk boundary, drops the source stream, and removes its
+/// partial temp instead of continuing on a detached blocking thread.
+#[test]
+fn an_inspection_cancel_stops_the_pull_and_removes_its_partial_temp() {
+    let extract = crate::test_support::TestDir::new("inspect_pull_cancel");
+    let (path, chunks_served, stream_dropped) = a_slow_phone("inspect-pull-cancel-cell");
+    let cancel = Arc::new(AtomicBool::new(false));
+
+    let puller = {
+        let cancel = Arc::clone(&cancel);
+        let dir = extract.to_path_buf();
+        std::thread::spawn(move || {
+            materialize_for_inspect_with(
+                Path::new(&path),
+                "inspect-pull-cancel-cell",
+                &dir,
+                EXTRACT_CAP_FOR_TESTS,
+                &cancel,
+            )
+        })
+    };
+    crate::test_support::wait_until(
+        std::time::Duration::from_secs(5),
+        "the inspection pull to read its first chunks",
+        || chunks_served.load(Ordering::SeqCst) >= 2,
+    );
+
+    cancel.store(true, Ordering::Relaxed);
+    let outcome = puller.join().expect("the puller thread");
+
+    assert!(
+        matches!(outcome, Err(ViewerError::Cancelled)),
+        "a cancelled inspection answers Cancelled, got {outcome:?}"
+    );
+    let served = chunks_served.load(Ordering::SeqCst);
+    assert!(
+        served < PHONE_FILE_LEN / PHONE_CHUNK,
+        "the cancelled inspection must stop reading; it read {served} of 16 chunks"
+    );
+    assert!(
+        stream_dropped.load(Ordering::SeqCst),
+        "the stream is dropped, so no further chunk can be read"
+    );
+    assert!(temps_in(&extract).is_empty(), "the partial temp must be removed");
 }
 
 /// Closing the viewer window mid-pull stops the pull at the source: it reads no
@@ -485,7 +527,7 @@ fn closing_the_window_mid_pull_stops_reading_and_leaves_no_temp() {
     crate::test_support::wait_until(
         std::time::Duration::from_secs(5),
         "the pull to read its first chunks",
-        || chunks_served.load(std::sync::atomic::Ordering::SeqCst) >= 2,
+        || chunks_served.load(Ordering::SeqCst) >= 2,
     );
 
     session::close_session_for_window(window);
@@ -496,13 +538,13 @@ fn closing_the_window_mid_pull_stops_reading_and_leaves_no_temp() {
         matches!(outcome, Err(ViewerError::Cancelled)),
         "a closed window's open answers Cancelled, got {outcome:?}"
     );
-    let served = chunks_served.load(std::sync::atomic::Ordering::SeqCst);
+    let served = chunks_served.load(Ordering::SeqCst);
     assert!(
         served < PHONE_FILE_LEN / PHONE_CHUNK,
         "the pull must stop reading when the window closes; it read {served} of 16 chunks"
     );
     assert!(
-        stream_dropped.load(std::sync::atomic::Ordering::SeqCst),
+        stream_dropped.load(Ordering::SeqCst),
         "the stream is dropped, so no further chunk can be read"
     );
     let left: Vec<_> = std::fs::read_dir(&extract)
@@ -570,8 +612,6 @@ fn temps_in(dir: &Path) -> Vec<std::fs::DirEntry> {
 /// whole file again.
 #[test]
 fn switching_the_view_mode_reuses_the_windows_temp_and_reads_nothing_from_the_phone() {
-    use std::sync::atomic::Ordering;
-
     let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let extract = crate::test_support::TestDir::new("viewer_mode_switch");
     init_materialize_dir(extract.to_path_buf());
@@ -627,8 +667,6 @@ fn switching_the_view_mode_reuses_the_windows_temp_and_reads_nothing_from_the_ph
 /// so closing one window never takes the file out from under the other.
 #[test]
 fn another_window_on_the_same_file_pulls_its_own_copy() {
-    use std::sync::atomic::Ordering;
-
     let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let extract = crate::test_support::TestDir::new("viewer_two_windows");
     init_materialize_dir(extract.to_path_buf());

@@ -1,8 +1,9 @@
 //! Tests for the archive kind: the `.zip` itself, a directory inside it, a file inside it
-//! (read through the viewer's bounded temp), the encryption and cap refusals, and the
-//! `unsupportedVolume` half that needs a registered volume.
+//! (read through the bounded temp), encryption and cap refusals, and connected remote files.
 
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -11,8 +12,10 @@ use serde_json::json;
 use super::archive::{ArchiveContent, ArchiveEntry, MAX_ARCHIVE_ENTRIES, TempCleanup, status_for_volume};
 use super::tests::assert_text_only;
 use super::*;
+use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::manager::get_volume_manager;
-use crate::file_system::volume::{InMemoryVolume, LocalPosixVolume, VolumeError};
+use crate::file_system::volume::manager::test_support::TestVolumeRegistration;
+use crate::file_system::volume::{InMemoryVolume, ListingProgress, LocalPosixVolume, Volume, VolumeError};
 use crate::file_viewer::materialize::{PREVIEW_CAP_BYTES, extract_if_routed_with};
 use crate::test_support::TestDir;
 use cmdr_archive::test_fixtures::{
@@ -57,7 +60,9 @@ fn inspect(path: &Path) -> FileRow {
 /// the temp and shrink the cap.
 fn inspect_extracting_to(path: &Path, extract_dir: &Path, cap: u64) -> FileRow {
     ensure_root_volume();
-    let extract = |requested: &Path, volume_id: &str| extract_if_routed_with(requested, volume_id, extract_dir, cap);
+    let extract = |requested: &Path, volume_id: &str, _cancel: &AtomicBool| {
+        extract_if_routed_with(requested, volume_id, extract_dir, cap)
+    };
     inspect_path_with(
         path.to_str().unwrap(),
         &TextAsk::Window(WindowOpts::default()),
@@ -368,19 +373,86 @@ fn an_unsupported_archive_is_unsupported_and_a_broken_one_is_corrupt() {
     );
 }
 
-// ── Not local ─────────────────────────────────────────────────────────────────
+// ── Remote volume ─────────────────────────────────────────────────────────────
 
 #[test]
-fn a_path_on_a_volume_without_local_fs_access_is_unsupported() {
-    // A registered volume whose paths `std::fs` can't open (an MTP device would be the
-    // real case); `is_virtual_path` alone doesn't catch it because the path has no scheme.
-    let root = "/inspect-file-remote-volume";
-    get_volume_manager().register_if_absent(
-        "inspect-remote",
-        Arc::new(InMemoryVolume::new("Remote device").with_root(root)),
+fn a_file_on_a_connected_remote_volume_is_inspected_through_its_stream() {
+    let root = "mtp://inspect-file-remote/1";
+    let path = format!("{root}/notes.txt");
+    let volume = InMemoryVolume::new("Remote device").with_root(root);
+    tauri::async_runtime::block_on(volume.create_file(Path::new(&path), b"from the phone\nsecond line\n"))
+        .expect("seed remote file");
+    let _registration = TestVolumeRegistration::install("inspect-file-remote", Arc::new(volume));
+
+    let row = inspect(Path::new(&path));
+
+    let text = match &file_of(&row).content {
+        Content::Text(text) => text,
+        other => panic!("expected text, got {other:?}"),
+    };
+    assert_eq!(
+        text.window.as_ref().expect("window").content,
+        "from the phone\nsecond line\n"
     );
-    let row = inspect(Path::new(&format!("{root}/DCIM/photo.jpg")));
-    assert!(matches!(row, FileRow::UnsupportedVolume { .. }), "got {row:?}");
+}
+
+struct OsVisibleRemote {
+    root: PathBuf,
+}
+
+impl Volume for OsVisibleRemote {
+    fn name(&self) -> &str {
+        "Mounted SMB"
+    }
+
+    fn root(&self) -> &Path {
+        &self.root
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        _path: &'a Path,
+        _on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+        unreachable!("an OS-visible path must be read directly, not through its volume")
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        _path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+        unreachable!("an OS-visible path must be read directly, not through its volume")
+    }
+
+    fn supports_local_fs_access(&self) -> bool {
+        false
+    }
+
+    fn paths_are_os_visible(&self) -> bool {
+        true
+    }
+}
+
+#[test]
+fn an_os_visible_remote_path_reads_directly_even_without_local_fs_access() {
+    let dir = TestDir::new("inspect_mounted_smb");
+    let path = write_bytes(&dir, "notes.txt", b"through the mount\n");
+    let volume = OsVisibleRemote {
+        root: dir.to_path_buf(),
+    };
+    let _registration = TestVolumeRegistration::install("inspect-mounted-smb", Arc::new(volume));
+
+    let row = inspect(&path);
+
+    let text = match &file_of(&row).content {
+        Content::Text(text) => text,
+        other => panic!("expected text, got {other:?}"),
+    };
+    assert_eq!(text.window.as_ref().expect("window").content, "through the mount\n");
 }
 
 // ── Through the call ──────────────────────────────────────────────────────────
