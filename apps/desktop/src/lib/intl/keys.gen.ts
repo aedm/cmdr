@@ -1608,6 +1608,7 @@ export type MessageKey =
   | 'fileOperations.cancelRollback.reason.spotTaken.named'
   | 'fileOperations.cancelRollback.reason.unverifiable.counted'
   | 'fileOperations.cancelRollback.reason.unverifiable.named'
+  | 'fileOperations.cancelRollback.recoveredOriginal'
   | 'fileOperations.cancelRollback.someDeleted'
   | 'fileOperations.cancelRollback.someMovedBack'
   | 'fileOperations.cancelRollback.stagedLeftover.counted'

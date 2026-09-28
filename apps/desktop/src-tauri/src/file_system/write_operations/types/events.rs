@@ -18,7 +18,8 @@ use tauri_specta::Event;
 use crate::operation_log::rollback::SkipBreakdown;
 
 use super::{
-    ConflictId, TransferActivity, TrashRefusalKind, WriteOperationError, WriteOperationPhase, WriteOperationType,
+    ConflictId, RecoveredOriginal, TransferActivity, TrashRefusalKind, WriteOperationError, WriteOperationPhase,
+    WriteOperationType,
 };
 
 // ============================================================================
@@ -384,6 +385,11 @@ pub struct CancelRollback {
     /// and the READOUT owes it a line even though `outcome` is `NotRolledBack`
     /// (`src/lib/file-operations/transfer/cancel-rollback-toast.ts`).
     pub originals_still_in_place: Option<OriginalsStillInPlace>,
+    /// Originals that could not take their old names back and therefore kept a
+    /// ` (recovered)` sibling name. Independent of `outcome`: a reversal can
+    /// remove everything it wrote and still have to put an original beside a
+    /// name another writer occupied.
+    pub recovered: Vec<RecoveredOriginal>,
 }
 
 impl CancelRollback {
@@ -395,6 +401,7 @@ impl CancelRollback {
             skips: Vec::new(),
             staged_leftovers: None,
             originals_still_in_place: None,
+            recovered: Vec::new(),
         }
     }
 
@@ -411,6 +418,14 @@ impl CancelRollback {
     #[must_use]
     pub fn with_staged_leftovers(mut self, unremoved: &[PathBuf]) -> Self {
         self.staged_leftovers = StagedLeftovers::of(unremoved);
+        self
+    }
+
+    /// Name originals that had to keep another name, so the cancellation
+    /// summary can point the user at them.
+    #[must_use]
+    pub fn with_recovered(mut self, recovered: Vec<RecoveredOriginal>) -> Self {
+        self.recovered = recovered;
         self
     }
 }

@@ -190,6 +190,7 @@ describe('TransferProgressDialog cancel-settle gate', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       })
       await tick()
@@ -235,6 +236,7 @@ describe('TransferProgressDialog cancel-settle gate', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       })
       await tick()
@@ -295,6 +297,7 @@ describe('TransferProgressDialog cancel-settle gate', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       })
       settledCb({ operationId: 'op-other', operationType: 'delete', volumeId: 'mtp-1' })
@@ -335,6 +338,7 @@ describe('TransferProgressDialog is always dismissable', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       })
       await tick()

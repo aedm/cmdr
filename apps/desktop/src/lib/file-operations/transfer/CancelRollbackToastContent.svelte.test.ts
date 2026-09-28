@@ -35,6 +35,7 @@ describe('CancelRollbackToastContent', () => {
       headline: 'Removed the 3 items Cmdr had written.',
       leftBehind: null,
       reasons: [],
+      recovered: [],
       staged: null,
       level: 'success',
     })
@@ -51,6 +52,7 @@ describe('CancelRollbackToastContent', () => {
         'Left notes.md alone: it changed after Cmdr put it there.',
         'Left 3 folders alone: they have something in them now.',
       ],
+      recovered: [],
       staged: null,
       level: 'info',
     })
@@ -65,6 +67,7 @@ describe('CancelRollbackToastContent', () => {
       headline: 'Removed 9 items.',
       leftBehind: "Cmdr skips anything it isn't sure about, so these stayed where they are:",
       reasons: ['Left notes.md alone: it changed after Cmdr put it there.'],
+      recovered: [],
       staged: null,
       level: 'info',
     })
@@ -78,6 +81,7 @@ describe('CancelRollbackToastContent', () => {
       headline: null,
       leftBehind: "Cmdr skips anything it isn't sure about, so these stayed where they are:",
       reasons: ['Left 2 items alone: they changed after Cmdr put them there.'],
+      recovered: [],
       staged: null,
       level: 'info',
     })
@@ -95,6 +99,7 @@ describe('CancelRollbackToastContent', () => {
       headline: 'Removed 4 items.',
       leftBehind: null,
       reasons: [],
+      recovered: [],
       staged:
         "Couldn't remove holiday.jpg.cmdr-tmp-4d1f9c, an unfinished copy left at the destination. " +
         "It's safe to delete, and Cmdr clears it on a later transfer there.",
@@ -104,5 +109,18 @@ describe('CancelRollbackToastContent', () => {
     expect(target.querySelector('.staged')?.textContent).toContain('holiday.jpg.cmdr-tmp-4d1f9c')
     const rendered = target.textContent
     expect(rendered.indexOf("Couldn't remove")).toBeGreaterThan(rendered.indexOf('Removed 4 items'))
+  })
+
+  it('puts each recovered original on its own wrapping line', () => {
+    render({
+      headline: null,
+      leftBehind: null,
+      reasons: [],
+      recovered: ['Cmdr kept the original from /old/path at /old/path (recovered).'],
+      staged: null,
+      level: 'info',
+    })
+    expect(target.querySelectorAll('.recovered li')).toHaveLength(1)
+    expect(target.querySelector('.recovered')?.textContent).toContain('/old/path (recovered)')
   })
 })

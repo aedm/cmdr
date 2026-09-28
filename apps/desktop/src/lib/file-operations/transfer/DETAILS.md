@@ -783,8 +783,8 @@ that.
 
 `cancel-rollback-toast.ts` reads `event.rollback` and raises the toast the user reads a second after the progress dialog
 closes. `readCancelRollback` is pure and returns the already-localized lines; `raiseCancelRollbackToast` is the only
-impure half. `CancelRollbackToastContent.svelte` stacks them: a headline, the expectation-setting line, then one bullet
-per typed reason.
+impure half. `CancelRollbackToastContent.svelte` stacks them: a headline, the expectation-setting line, one bullet per
+typed reason, then any recovered-original paths and staged scratch.
 
 **Why this exists at all.** The in-flight reversal's bar DRAINS, and every item it walks past advances it, so it always
 lands on zero (BE doc: `write_operations/transfer/DETAILS.md`). Zero therefore means "this reversal is finished", not
@@ -813,6 +813,12 @@ because nothing went wrong, and claiming no undo, because none is coming. The re
 it the user has to infer from a bare count that some originals went, which is the one fact they can't check by looking
 at the toast. Why the backend spends a field on this instead of an outcome: `write_operations/transfer/DETAILS.md` § "A
 stop in the source sweep says where the files are".
+
+`recovered` breaks both silences too. It names each original that an Overwrite displaced and the exact ` (recovered)`
+path where Cmdr preserved it when its old name stayed occupied. This is data the user can find, not a reversal skip and
+not Cmdr scratch, so it gets its own bullet list, exact full paths, the longer timeout, and `info` level. A recovered
+entry also downgrades clean-completion wording and colour: `rolledBack` answers for the ledger, not whether every
+displaced original reclaimed its name.
 
 **How a stopped reversal is told apart from a skipping one**, with no extra field on the wire: a full pass that skipped
 nothing lands `rolledBack`, so `partiallyRolledBack` with an EMPTY `skips` can only be a reversal the user stopped, and

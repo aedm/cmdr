@@ -786,6 +786,10 @@
   "@fileOperations.cancelRollback.leftBehind": {
     "sourceHash": "bab6eb4"
   },
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr heeft het origineel van {path} bewaard in {keptAt}.",
+  "@fileOperations.cancelRollback.recoveredOriginal": {
+    "sourceHash": "f0df327"
+  },
   "fileOperations.cancelRollback.reason.drift.named": "{name} ongemoeid gelaten: daar is iets aan gewijzigd nadat Cmdr er klaar mee was.",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "sourceHash": "e227f3b"

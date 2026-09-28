@@ -23,6 +23,7 @@ function rollback(partial: Partial<CancelRollback>): CancelRollback {
     skips: [],
     stagedLeftovers: null,
     originalsStillInPlace: null,
+    recovered: [],
     ...partial,
   }
 }
@@ -51,6 +52,7 @@ describe('readCancelRollback', () => {
         headline: 'Removed all 1,240 items Cmdr had written.',
         leftBehind: null,
         reasons: [],
+        recovered: [],
         staged: null,
         level: 'success',
       })
@@ -88,6 +90,7 @@ describe('readCancelRollback', () => {
         headline: 'Stopped after removing 12 items. The rest stayed where Cmdr put them.',
         leftBehind: null,
         reasons: [],
+        recovered: [],
         staged: null,
         level: 'info',
       })
@@ -113,6 +116,7 @@ describe('readCancelRollback', () => {
         headline: 'Removed 9 items.',
         leftBehind: 'Cmdr skips anything it isn’t sure about, so these stayed where they are:',
         reasons: ['Left invoice-2026.pdf alone: it changed after Cmdr put it there.'],
+        recovered: [],
         staged: null,
         level: 'info',
       })
@@ -219,6 +223,7 @@ describe('readCancelRollback', () => {
         headline: 'Stopped after removing 5 items. The rest stayed where Cmdr put them.',
         leftBehind: null,
         reasons: [],
+        recovered: [],
         staged: null,
         level: 'info',
       })
@@ -264,6 +269,7 @@ describe('readCancelRollback', () => {
         headline: 'Removed 4 items.',
         leftBehind: null,
         reasons: [],
+        recovered: [],
         staged:
           'Couldn’t remove holiday.jpg.cmdr-tmp-4d1f9c, an unfinished copy left at the destination. ' +
           'It’s safe to delete, and Cmdr clears it on a later transfer there.',
@@ -325,6 +331,46 @@ describe('readCancelRollback', () => {
     })
   })
 
+  describe('an original kept under a recovered name', () => {
+    it('breaks a plain Stop’s silence and names both exact paths', () => {
+      const readout = readCancelRollback(
+        rollback({
+          recovered: [
+            {
+              path: '/Volumes/Photos/Scans',
+              keptAt: '/Volumes/Photos/Scans (recovered)',
+            },
+          ],
+        }),
+        'copy',
+      )
+
+      expect(readout).toEqual({
+        headline: null,
+        leftBehind: null,
+        reasons: [],
+        recovered: ['Cmdr kept the original from /Volumes/Photos/Scans at /Volumes/Photos/Scans (recovered).'],
+        staged: null,
+        level: 'info',
+      })
+    })
+
+    it('prevents a completed rollback from reading as a clean success', () => {
+      const readout = readCancelRollback(
+        rollback({
+          outcome: 'rolledBack',
+          reversed: 4,
+          recovered: [{ path: '/old', keptAt: '/old (recovered)' }],
+        }),
+        'copy',
+      )
+
+      expect(readout?.headline).toBe('Removed 4 items.')
+      expect(readout?.level).toBe('info')
+      expect(readout?.recovered).toHaveLength(1)
+    })
+  })
+
   describe('a cross-filesystem move stopped while it was clearing the originals', () => {
     // The whole copy is at the destination and durable by the time this phase
     // starts, so there is no undo to run and none to report. Staying silent
@@ -340,6 +386,7 @@ describe('readCancelRollback', () => {
           'and stays there. 200 originals are still where they were.',
         leftBehind: null,
         reasons: [],
+        recovered: [],
         staged: null,
         level: 'info',
       })

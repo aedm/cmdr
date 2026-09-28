@@ -1366,6 +1366,15 @@
     "screenshotNote": "This shows a different toast in the same corner of the window; your string is one of the lines inside a toast like it."
   },
 
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr kept the original from {path} at {keptAt}.",
+  "@fileOperations.cancelRollback.recoveredOriginal": {
+    "description": "One line in the toast after a cancelled copy or move when an Overwrite displaced an existing file or folder, but Cmdr could not put that original back under its old name because the incomplete replacement still occupies it. The original is safe under a sibling name ending in ‘ (recovered)’. Name BOTH full paths so the user can find it and knows which entry it came from. This is informational, not a warning: Cmdr preserved the data rather than overwriting either entry. ‘Cmdr’ is the app name and stays as it is. Sentence case.",
+    "placeholders": {
+      "path": "the original entry’s full old path, e.g. /Volumes/Photos/Scans. Uncontrolled text of any length, in any script, so keep the sentence readable whatever lands here, and never translate it",
+      "keptAt": "the full path where Cmdr kept that original, e.g. /Volumes/Photos/Scans (recovered). Uncontrolled text of any length, in any script, so keep the sentence readable whatever lands here, and never translate it"
+    }
+  },
+
   "fileOperations.cancelRollback.reason.drift.named": "Left {name} alone: it changed after Cmdr put it there.",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "description": "One line in the bulleted list of what a cancelled copy or move’s undo left behind. This version is used when the reason applies to exactly ONE item, so the line names it. This reason: something edited or replaced that item after Cmdr wrote it, so removing it (or moving it away) would take away work the user has done since. Say it as a considered choice, not as something going wrong. Sentence case.",

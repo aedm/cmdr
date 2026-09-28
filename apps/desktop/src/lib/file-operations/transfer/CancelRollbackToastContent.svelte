@@ -36,6 +36,13 @@
             {/each}
         </ul>
     {/if}
+    {#if readout.recovered.length > 0}
+        <ul class="recovered">
+            {#each readout.recovered as recovery (recovery)}
+                <li>{recovery}</li>
+            {/each}
+        </ul>
+    {/if}
     <!-- Under the reasons, not among them: those are files Cmdr chose to keep,
          this is Cmdr's own scratch it couldn't take away. -->
     {#if readout.staged !== null}
@@ -56,6 +63,7 @@
        not the news, so they sit a step back from the headline. */
     .left-behind,
     .reasons,
+    .recovered,
     .staged {
         color: var(--color-text-secondary);
     }
@@ -65,7 +73,8 @@
         overflow-wrap: anywhere;
     }
 
-    .reasons {
+    .reasons,
+    .recovered {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
@@ -74,7 +83,8 @@
 
     /* A leftover's own name can be long and unbreakable, and it must not push the
        toast off the edge of the window. */
-    .reasons li {
+    .reasons li,
+    .recovered li {
         overflow-wrap: anywhere;
     }
 </style>

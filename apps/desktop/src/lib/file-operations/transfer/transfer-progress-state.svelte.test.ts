@@ -385,6 +385,7 @@ describe('createTransferProgressState: cancel + settle close-out', () => {
         skips: [],
         stagedLeftovers: null,
         originalsStillInPlace: null,
+        recovered: [],
       },
     })
     flushSync()
@@ -464,7 +465,14 @@ describe('createTransferProgressState: rollback', () => {
       operationId: 'op-1',
       operationType: 'copy',
       filesProcessed: 2,
-      rollback: { outcome: 'rolledBack', reversed: 2, skips: [], stagedLeftovers: null, originalsStillInPlace: null },
+      rollback: {
+        outcome: 'rolledBack',
+        reversed: 2,
+        skips: [],
+        stagedLeftovers: null,
+        originalsStillInPlace: null,
+        recovered: [],
+      },
     })
     listeners.settled({ operationId: 'op-1', operationType: 'copy' })
     flushSync()
@@ -493,6 +501,7 @@ describe('createTransferProgressState: rollback', () => {
         skips: [{ reason: 'drift', count: 1, exampleName: 'notes.md' }],
         stagedLeftovers: null,
         originalsStillInPlace: null,
+        recovered: [],
       },
     })
     listeners.settled({ operationId: 'op-1', operationType: 'copy' })
@@ -522,6 +531,7 @@ describe('createTransferProgressState: rollback', () => {
         skips: [],
         stagedLeftovers: null,
         originalsStillInPlace: null,
+        recovered: [],
       },
     })
     listeners.settled({ operationId: 'op-1', operationType: 'copy' })

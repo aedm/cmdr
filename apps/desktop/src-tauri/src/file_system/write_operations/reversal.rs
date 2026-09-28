@@ -303,6 +303,9 @@ impl ReversalTally {
             // Only a cross-FS move's source sweep has originals to account for,
             // and it has no ledger to walk — it never reaches this tally.
             originals_still_in_place: None,
+            // A displaced-original restore runs outside this tally. Its caller
+            // attaches any fallback names after the ledger walk.
+            recovered: Vec::new(),
         }
     }
 }

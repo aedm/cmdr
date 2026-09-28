@@ -1215,13 +1215,16 @@ pub(crate) async fn copy_volumes_with_progress(
         )
         .await;
         // After the reversal, which is what frees the names they come home to.
-        displaced.restore_all(&dest_volume).await;
+        let recovered = displaced.restore_all(&dest_volume).await;
 
         events.emit_cancelled(WriteCancelledEvent {
             operation_id: operation_id.to_string(),
             operation_type: WriteOperationType::Copy,
             files_processed: files_done,
-            rollback: reversal.into_cancel_rollback().with_staged_leftovers(&staged_leftovers),
+            rollback: reversal
+                .into_cancel_rollback()
+                .with_staged_leftovers(&staged_leftovers)
+                .with_recovered(recovered),
         });
     } else {
         // Stopped or error: keep completed files, clean up partial files.
@@ -1240,18 +1243,18 @@ pub(crate) async fn copy_volumes_with_progress(
         clean_partial_writes(&dest_volume, &partials_to_clean, operation_id).await;
         // After the partial cleanup, so a name a partial held is free again.
         let recovered = displaced.settle_interrupted(&dest_volume).await;
-        if !recovered.is_empty()
-            && let Some(failure) = copy_error.take()
-        {
+        if let Some(failure) = copy_error.take() {
             // The failure has to say where the user's entries went: nothing
             // else in the app tells them one changed its name.
-            copy_error = Some(WriteFailure::synthetic(WriteOperationError::OriginalsKeptAside {
-                cause: Box::new(failure.error),
-                recovered,
-            }));
-        }
-
-        if copy_error.is_none() {
+            copy_error = Some(if recovered.is_empty() {
+                failure
+            } else {
+                WriteFailure::synthetic(WriteOperationError::OriginalsKeptAside {
+                    cause: Box::new(failure.error),
+                    recovered,
+                })
+            });
+        } else {
             // Pure cancellation (Stopped)
             log::info!(
                 "copy_volumes_with_progress: cancelled op={}, keeping {} copied files",
@@ -1263,9 +1266,11 @@ pub(crate) async fn copy_volumes_with_progress(
                 operation_type: WriteOperationType::Copy,
                 files_processed: files_done,
                 // A plain Stop keeps what it wrote, so there is no reversal to
-                // report — but a staged partial the destination wouldn't take
-                // back is still news, and this is the only event that carries it.
-                rollback: CancelRollback::none().with_staged_leftovers(&staged_leftovers),
+                // report — but leftovers are still news, and this is the only
+                // event that carries them.
+                rollback: CancelRollback::none()
+                    .with_staged_leftovers(&staged_leftovers)
+                    .with_recovered(recovered),
             });
         }
     }

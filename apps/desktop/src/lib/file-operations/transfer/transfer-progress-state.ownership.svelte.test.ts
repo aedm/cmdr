@@ -122,6 +122,7 @@ describe('createTransferProgressState: foreground-operation ownership', () => {
         skips: [],
         stagedLeftovers: null,
         originalsStillInPlace: null,
+        recovered: [],
       },
     })
     listeners.settled({ operationId: 'op-1', operationType: 'copy' })

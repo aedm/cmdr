@@ -788,6 +788,10 @@
   "@fileOperations.cancelRollback.leftBehind": {
     "sourceHash": "bab6eb4"
   },
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr hat das Original von „{path}“ unter „{keptAt}“ behalten.",
+  "@fileOperations.cancelRollback.recoveredOriginal": {
+    "sourceHash": "f0df327"
+  },
   "fileOperations.cancelRollback.reason.drift.named": "Habe {name} unverändert gelassen: das Objekt hat sich geändert, seit Cmdr es dort abgelegt hat.",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "sourceHash": "e227f3b"

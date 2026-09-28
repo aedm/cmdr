@@ -425,13 +425,14 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
         // scratch the destination refused to release, and a log that omitted it
         // would be as misleading as the toast used to be.
         log.info(
-          '{op} cancelled after {filesProcessed} {filesNoun}, rollback={rollback} ({left} left behind, {staged} staged)',
+          '{op} cancelled after {filesProcessed} {filesNoun}, rollback={rollback} ({left} left behind, {recovered} recovered, {staged} staged)',
           {
             op: operationLabel,
             filesProcessed: event.filesProcessed,
             filesNoun: pluralize(event.filesProcessed, 'file'),
             rollback: event.rollback.outcome,
             left: event.rollback.skips.reduce((total, group) => total + group.count, 0),
+            recovered: event.rollback.recovered.length,
             staged: event.rollback.stagedLeftovers?.count ?? 0,
           },
         )

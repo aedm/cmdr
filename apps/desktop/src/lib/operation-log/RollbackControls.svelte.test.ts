@@ -224,6 +224,7 @@ describe('a rolling-back row offers to pause and to stop', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       },
     })

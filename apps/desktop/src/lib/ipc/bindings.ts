@@ -5869,6 +5869,13 @@ export type CancelRollback = {
    *  (`src/lib/file-operations/transfer/cancel-rollback-toast.ts`).
    */
   originalsStillInPlace: OriginalsStillInPlace | null
+  /**
+   *  Originals that could not take their old names back and therefore kept a
+   *  ` (recovered)` sibling name. Independent of `outcome`: a reversal can
+   *  remove everything it wrote and still have to put an original beside a
+   *  name another writer occupied.
+   */
+  recovered: RecoveredOriginal[]
 }
 
 /**
@@ -11825,16 +11832,16 @@ export type ReconnectError =
     }
 
 /**
- *  One file a failed copy kept under a new name, because a folder that was
- *  replacing it took its own. Carried by
- *  [`WriteOperationError::OriginalsKeptAside`].
+ *  One original the operation kept under a new name because its old name was
+ *  occupied by the replacement. Shared by failure and cancellation payloads so
+ *  every terminal path can tell the user where their bytes are.
  */
 export type RecoveredOriginal = {
-  // The name the file had, which the folder now wears.
+  // The name the entry had before the replacement took it.
   path: string
   /**
-   *  Where its bytes are now. Typed, so nothing has to parse a path back out
-   *  of prose.
+   *  Where the original's bytes are now. Typed, so nothing has to parse a path
+   *  back out of prose.
    */
   keptAt: string
 }

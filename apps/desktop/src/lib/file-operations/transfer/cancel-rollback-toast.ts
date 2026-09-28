@@ -19,7 +19,14 @@ import { tString } from '$lib/intl/messages.svelte'
 import { addToast } from '$lib/ui/toast'
 import type { MessageKey } from '$lib/intl/keys.gen'
 import type { ToastLevel } from '$lib/ui/toast'
-import type { CancelRollback, SkipBreakdown, SkipReason, StagedLeftovers, WriteOperationType } from '$lib/ipc/bindings'
+import type {
+  CancelRollback,
+  RecoveredOriginal,
+  SkipBreakdown,
+  SkipReason,
+  StagedLeftovers,
+  WriteOperationType,
+} from '$lib/ipc/bindings'
 import CancelRollbackToastContent from './CancelRollbackToastContent.svelte'
 
 /** What the toast says, already localized, in the order the lines are read. */
@@ -31,6 +38,8 @@ export interface CancelRollbackReadout {
   leftBehind: string | null
   /** One line per typed reason, in the order the backend grouped them. */
   reasons: string[]
+  /** One line per original that had to keep a recovered sibling name. */
+  recovered: string[]
   /** Cmdr's own half-written working files that stayed at the destination.
    *  `null` whenever the sweep cleared them, which is the ordinary ending. */
   staged: string | null
@@ -126,6 +135,14 @@ function stagedLine(staged: StagedLeftovers): string {
   })
 }
 
+/** Name both paths when an original could not take its old name back. */
+function recoveredLine(recovered: RecoveredOriginal): string {
+  return tString('fileOperations.cancelRollback.recoveredOriginal', {
+    path: recovered.path,
+    keptAt: recovered.keptAt,
+  })
+}
+
 /** The count line for a reversal that finished, with nothing left behind. */
 function cleanHeadline(operationType: WriteOperationType, reversed: number): string {
   const key: MessageKey = movesItemsBack(operationType)
@@ -210,17 +227,46 @@ function stoppedHeadline(operationType: WriteOperationType, reversed: number): s
 function readNothingReversed(
   originalsStillInPlace: CancelRollback['originalsStillInPlace'],
   staged: string | null,
+  recovered: string[],
 ): CancelRollbackReadout | null {
   const landed = originalsStillInPlace === null ? null : landedMoveHeadline(originalsStillInPlace.count)
-  if (landed === null && staged === null) return null
+  if (landed === null && staged === null && recovered.length === 0) return null
   return {
     headline: landed,
     leftBehind: null,
     reasons: [],
+    recovered,
     staged,
     // Nothing went wrong on the landed-move path: the files are whole at the
     // destination and the line only says so. Cmdr's own scratch outliving the
     // sweep is the one thing here worth a colour.
+    level: staged === null ? 'info' : 'warn',
+  }
+}
+
+function readCompletedReversal(
+  operationType: WriteOperationType,
+  reversed: number,
+  staged: string | null,
+  recovered: string[],
+): CancelRollbackReadout | null {
+  if (reversed === 0 && staged === null && recovered.length === 0) return null
+  if (staged === null && recovered.length === 0) {
+    return {
+      headline: cleanHeadline(operationType, reversed),
+      leftBehind: null,
+      reasons: [],
+      recovered: [],
+      staged: null,
+      level: 'success',
+    }
+  }
+  return {
+    headline: reversed === 0 ? null : partialHeadline(operationType, reversed),
+    leftBehind: null,
+    reasons: [],
+    recovered,
+    staged,
     level: staged === null ? 'info' : 'warn',
   }
 }
@@ -231,26 +277,9 @@ export function readCancelRollback(
 ): CancelRollbackReadout | null {
   const { outcome, reversed, skips, stagedLeftovers, originalsStillInPlace } = rollback
   const staged = stagedLeftovers === null ? null : stagedLine(stagedLeftovers)
-  if (outcome === 'notRolledBack') return readNothingReversed(originalsStillInPlace, staged)
-  if (outcome === 'rolledBack') {
-    if (reversed === 0 && staged === null) return null
-    if (staged === null) {
-      return {
-        headline: cleanHeadline(operationType, reversed),
-        leftBehind: null,
-        reasons: [],
-        staged: null,
-        level: 'success',
-      }
-    }
-    return {
-      headline: reversed === 0 ? null : partialHeadline(operationType, reversed),
-      leftBehind: null,
-      reasons: [],
-      staged,
-      level: 'warn',
-    }
-  }
+  const recovered = rollback.recovered.map(recoveredLine)
+  if (outcome === 'notRolledBack') return readNothingReversed(originalsStillInPlace, staged, recovered)
+  if (outcome === 'rolledBack') return readCompletedReversal(operationType, reversed, staged, recovered)
 
   const reasons = skips.map(reasonLine).filter((line): line is string => line !== null)
   if (reasons.length === 0) {
@@ -258,6 +287,7 @@ export function readCancelRollback(
       headline: stoppedHeadline(operationType, reversed),
       leftBehind: null,
       reasons: [],
+      recovered,
       staged,
       level: staged === null ? 'info' : 'warn',
     }
@@ -266,6 +296,7 @@ export function readCancelRollback(
     headline: reversed === 0 ? null : partialHeadline(operationType, reversed),
     leftBehind: tString('fileOperations.cancelRollback.leftBehind'),
     reasons,
+    recovered,
     staged,
     level: staged === null ? levelFor(skips) : 'warn',
   }
@@ -288,7 +319,10 @@ export function raiseCancelRollbackToast(rollback: CancelRollback, operationType
   addToast(CancelRollbackToastContent, {
     id: CANCEL_ROLLBACK_TOAST_ID,
     level: readout.level,
-    timeoutMs: readout.reasons.length > 0 || readout.staged !== null ? REASONS_TIMEOUT_MS : SUMMARY_TIMEOUT_MS,
+    timeoutMs:
+      readout.reasons.length > 0 || readout.recovered.length > 0 || readout.staged !== null
+        ? REASONS_TIMEOUT_MS
+        : SUMMARY_TIMEOUT_MS,
     props: { readout },
   })
 }

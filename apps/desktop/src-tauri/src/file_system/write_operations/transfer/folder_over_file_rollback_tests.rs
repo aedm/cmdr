@@ -250,4 +250,14 @@ fn a_stopped_folder_over_file_overwrite_keeps_the_users_file_beside_the_folder()
             .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
             .collect::<Vec<_>>()
     );
+    let cancelled = events.inner.cancelled.lock().unwrap();
+    assert_eq!(cancelled.len(), 1, "the stopped copy emits one terminal event");
+    assert_eq!(
+        cancelled[0].rollback.recovered,
+        vec![super::super::types::RecoveredOriginal::new(
+            &dst_root.join("thing"),
+            &dst_root.join("thing (recovered)"),
+        )],
+        "the cancel event names where the displaced original went"
+    );
 }

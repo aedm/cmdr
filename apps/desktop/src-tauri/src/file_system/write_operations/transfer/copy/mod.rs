@@ -117,11 +117,15 @@ fn commit_journaling_created_dirs(transaction: CopyTransaction, operation_id: &s
 /// same journaling, and the folder→file asides are kept the way a failure keeps
 /// them. A stop halfway through a folder that's replacing one of the user's files
 /// leaves that folder at the name with part of its subtree, so discarding the
-/// aside would delete the user's only copy for a folder they stopped. Nothing on
-/// the cancel event carries where it went yet, so it's logged.
-fn stop_keeping_displaced_aside(transaction: CopyTransaction, operation_id: &str) {
+/// aside would delete the user's only copy for a folder they stopped. Returns
+/// each fallback name for the cancellation event the user reads.
+fn stop_keeping_displaced_aside(
+    transaction: CopyTransaction,
+    operation_id: &str,
+) -> Vec<super::super::types::RecoveredOriginal> {
     crate::file_system::write_operations::journal::record_created_dirs(operation_id, &transaction.created_dirs);
-    for kept in transaction.commit_keeping_displaced_aside() {
+    let recovered = transaction.commit_keeping_displaced_aside();
+    for kept in &recovered {
         log::warn!(
             "copy_files_with_progress: op={} stopped, so the original at {} is kept at {}",
             operation_id,
@@ -129,6 +133,7 @@ fn stop_keeping_displaced_aside(transaction: CopyTransaction, operation_id: &str
             kept.kept_at
         );
     }
+    recovered
 }
 
 /// The FAILING terminal path's close-out: same journaling, but the folder→file
@@ -624,12 +629,12 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 &dir_remap,
             ) {
                 if matches!(e, WriteOperationError::Cancelled { .. }) {
-                    stop_keeping_displaced_aside(transaction, operation_id);
+                    let recovered = stop_keeping_displaced_aside(transaction, operation_id);
                     events.emit_cancelled(WriteCancelledEvent {
                         operation_id: operation_id.to_string(),
                         operation_type: WriteOperationType::Copy,
                         files_processed: files_done,
-                        rollback: CancelRollback::none(),
+                        rollback: CancelRollback::none().with_recovered(recovered),
                     });
                     return Err(e);
                 }
@@ -731,12 +736,12 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                         operation_id,
                         transaction.created_files().len()
                     );
-                    stop_keeping_displaced_aside(transaction, operation_id);
+                    let recovered = stop_keeping_displaced_aside(transaction, operation_id);
                     events.emit_cancelled(WriteCancelledEvent {
                         operation_id: operation_id.to_string(),
                         operation_type: WriteOperationType::Copy,
                         files_processed: files_done,
-                        rollback: CancelRollback::none(),
+                        rollback: CancelRollback::none().with_recovered(recovered),
                     });
                 }
             }

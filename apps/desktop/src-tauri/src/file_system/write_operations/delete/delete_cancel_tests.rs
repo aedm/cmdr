@@ -109,6 +109,7 @@ fn a_cancelled_event_carries_what_the_reversal_managed() {
             skips: Vec::new(),
             staged_leftovers: None,
             originals_still_in_place: None,
+            recovered: Vec::new(),
         },
     };
 

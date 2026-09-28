@@ -242,6 +242,7 @@ describe('seeding', () => {
             skips: [],
             stagedLeftovers: null,
             originalsStillInPlace: null,
+            recovered: [],
           },
         },
       })
@@ -335,6 +336,7 @@ describe('derived read state', () => {
           skips: [],
           stagedLeftovers: null,
           originalsStillInPlace: null,
+          recovered: [],
         },
       },
     })

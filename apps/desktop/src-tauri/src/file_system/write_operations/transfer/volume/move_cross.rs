@@ -726,8 +726,10 @@ pub(crate) async fn move_volumes_with_progress(
                 operation_type: WriteOperationType::Move,
                 files_processed: files_done,
                 // A cross-volume move has no reversal to report, but a staged
-                // partial the destination wouldn't take back is still news.
-                rollback: CancelRollback::none().with_staged_leftovers(&staged_leftovers),
+                // partial or renamed original is still news.
+                rollback: CancelRollback::none()
+                    .with_staged_leftovers(&staged_leftovers)
+                    .with_recovered(recovered),
             });
             Err(WriteFailure::synthetic(WriteOperationError::Cancelled {
                 message: "Operation cancelled by user".to_string(),

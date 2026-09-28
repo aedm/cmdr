@@ -783,6 +783,10 @@
   "@fileOperations.cancelRollback.leftBehind": {
     "sourceHash": "bab6eb4"
   },
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr 已把 {path} 的原檔案保存在 {keptAt}。",
+  "@fileOperations.cancelRollback.recoveredOriginal": {
+    "sourceHash": "f0df327"
+  },
   "fileOperations.cancelRollback.reason.drift.named": "{name} 維持原樣：它在 Cmdr 放好之後有過更動。",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "sourceHash": "e227f3b"

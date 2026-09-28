@@ -1,12 +1,14 @@
 //! What a write operation refuses with: `WriteOperationError` and the typed
 //! payloads its variants carry (`ReadOnlySide`, `TransferRole`,
-//! `DisconnectedSide`, `TrashRefusalKind`, `RecoveredOriginal`, `OversizedFile`).
+//! `DisconnectedSide`, `TrashRefusalKind`, `OversizedFile`).
 //!
 //! One level down from `types.rs` and re-exported from it, the way `events.rs`
 //! is, so every caller keeps its `types::WriteOperationError` path. Same floor
 //! rule: ❌ nothing here may `use` a `write_operations` sibling.
 
 use serde::{Deserialize, Serialize};
+
+use super::RecoveredOriginal;
 
 // ============================================================================
 // Error enum (following MountError pattern)
@@ -456,30 +458,6 @@ pub enum TrashRefusalKind {
     NoTrashForVolume,
     /// Anything else, including every non-macOS refusal.
     Other,
-}
-
-/// One file a failed copy kept under a new name, because a folder that was
-/// replacing it took its own. Carried by
-/// [`WriteOperationError::OriginalsKeptAside`].
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct RecoveredOriginal {
-    /// The name the file had, which the folder now wears.
-    pub path: String,
-    /// Where its bytes are now. Typed, so nothing has to parse a path back out
-    /// of prose.
-    pub kept_at: String,
-}
-
-impl RecoveredOriginal {
-    /// `pub(in …write_operations)` rather than `pub(super)`: `super` is `types` now that the error
-    /// family sits one level down, and the callers are the transfer engines a level up.
-    pub(in crate::file_system::write_operations) fn new(path: &std::path::Path, kept_at: &std::path::Path) -> Self {
-        Self {
-            path: path.display().to_string(),
-            kept_at: kept_at.display().to_string(),
-        }
-    }
 }
 
 /// A file that exceeds the destination filesystem's per-file size limit.

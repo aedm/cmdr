@@ -22,6 +22,28 @@ pub use events::*;
 // Re-export sort types from sorting module
 pub use crate::file_system::listing::{SortColumn, SortOrder};
 
+/// One original the operation kept under a new name because its old name was
+/// occupied by the replacement. Shared by failure and cancellation payloads so
+/// every terminal path can tell the user where their bytes are.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveredOriginal {
+    /// The name the entry had before the replacement took it.
+    pub path: String,
+    /// Where the original's bytes are now. Typed, so nothing has to parse a path
+    /// back out of prose.
+    pub kept_at: String,
+}
+
+impl RecoveredOriginal {
+    pub(in crate::file_system::write_operations) fn new(path: &std::path::Path, kept_at: &std::path::Path) -> Self {
+        Self {
+            path: path.display().to_string(),
+            kept_at: kept_at.display().to_string(),
+        }
+    }
+}
+
 // ============================================================================
 // Operation types
 // ============================================================================

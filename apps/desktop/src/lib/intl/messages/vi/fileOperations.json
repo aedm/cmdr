@@ -784,6 +784,10 @@
   "@fileOperations.cancelRollback.leftBehind": {
     "sourceHash": "bab6eb4"
   },
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr đã giữ bản gốc từ {path} tại {keptAt}.",
+  "@fileOperations.cancelRollback.recoveredOriginal": {
+    "sourceHash": "f0df327"
+  },
   "fileOperations.cancelRollback.reason.drift.named": "Giữ nguyên {name}: mục này đã thay đổi sau khi Cmdr đưa nó tới đó.",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "sourceHash": "e227f3b"
