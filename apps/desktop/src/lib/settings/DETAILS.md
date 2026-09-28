@@ -55,7 +55,10 @@ Each entry is authored as a `SettingDefinitionSource` (in `types.ts`) carrying:
 - `default`: Default value
 - `constraints`: Type-specific validation (min/max, enum options, etc.); enum options carry `labelKey` (or a literal
   `label` for non-copy values like brand names and numerals)
-- `component`: UI hint (switch, select, slider, etc.)
+- `component`: UI hint (switch, select, slider, etc.). Advanced is the one auto-rendered section: it renders boolean,
+  number, and duration types as `switch`, `number-input`, and `duration`, respectively. Its entries declare that same
+  component so the registry never advertises options the UI ignores; `settings-registry.test.ts` enforces the mapping
+  across every visible Advanced setting.
 
 ### i18n: the registry stores message KEYS, resolved through `t()`
 

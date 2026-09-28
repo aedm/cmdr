@@ -234,23 +234,11 @@ export const advancedSettings: SettingDefinitionSource[] = [
     keywords: ['conflict', 'max', 'limit', 'preview', 'operation'],
     type: 'number',
     default: 100,
-    component: 'select',
+    component: 'number-input',
     constraints: {
-      // Numeric option labels are plain numerals, not translatable copy.
-      options: [
-        { value: 1, label: '1' },
-        { value: 2, label: '2' },
-        { value: 3, label: '3' },
-        { value: 5, label: '5' },
-        { value: 10, label: '10' },
-        { value: 50, label: '50' },
-        { value: 100, label: '100' },
-        { value: 200, label: '200' },
-        { value: 500, label: '500' },
-      ],
-      allowCustom: true,
-      customMin: 1,
-      customMax: 1000,
+      min: 1,
+      max: 1000,
+      step: 1,
     },
   },
   {
@@ -262,12 +250,11 @@ export const advancedSettings: SettingDefinitionSource[] = [
     keywords: ['progress', 'update', 'interval', 'refresh', 'cpu', 'performance'],
     type: 'number',
     default: 500,
-    component: 'slider',
+    component: 'number-input',
     constraints: {
       min: 50,
       max: 5000,
       step: 50,
-      sliderStops: [100, 250, 500, 1000, 2000],
     },
   },
   {

@@ -122,6 +122,21 @@ describe('getAdvancedSettings', () => {
     }
   })
 
+  it('declares the component that the Advanced auto-renderer uses for each setting type', () => {
+    const componentByType = {
+      boolean: 'switch',
+      number: 'number-input',
+      duration: 'duration',
+    } as const
+
+    for (const setting of getAdvancedSettings()) {
+      expect({ id: setting.id, component: setting.component }).toEqual({
+        id: setting.id,
+        component: componentByType[setting.type as keyof typeof componentByType],
+      })
+    }
+  })
+
   it('should include the repointed former mirrors and exclude them from their old feature pages', () => {
     const advancedIds = new Set(getAdvancedSettings().map((s) => s.id))
     // The three former mirrors now live only in Advanced.
@@ -182,6 +197,21 @@ describe('validateSettingValue', () => {
     // Invalid - below min
     expect(() => {
       validateSettingValue('fileOperations.progressUpdateInterval', 0)
+    }).toThrow()
+  })
+
+  it('validates the full conflict-preview limit range', () => {
+    expect(() => {
+      validateSettingValue('fileOperations.maxConflictsToShow', 1)
+    }).not.toThrow()
+    expect(() => {
+      validateSettingValue('fileOperations.maxConflictsToShow', 1000)
+    }).not.toThrow()
+    expect(() => {
+      validateSettingValue('fileOperations.maxConflictsToShow', 0)
+    }).toThrow()
+    expect(() => {
+      validateSettingValue('fileOperations.maxConflictsToShow', 1001)
     }).toThrow()
   })
 })
