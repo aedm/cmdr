@@ -184,7 +184,7 @@ pub(crate) fn mount_share_sync(
     };
 
     debug!(
-        "Mounting SMB share: server=\"{}\", share=\"{}\", backend=gio",
+        "Mounting SMB share: server={:?}, share={:?}, backend=gio",
         server, share
     );
 
@@ -196,7 +196,7 @@ pub(crate) fn mount_share_sync(
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::info!(
-            "Mount stopped: server=\"{}\", share=\"{}\", source=cli, backend=gio, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+            "Mount stopped: server={:?}, share={:?}, source=cli, backend=gio, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
             server,
             share,
             output.status.code(),
@@ -214,7 +214,7 @@ pub(crate) fn mount_share_sync(
         |path| std::path::Path::new(path).is_dir(),
     ) else {
         log::warn!(
-            "Mount missing after success: server=\"{}\", share=\"{}\", source=cli, backend=gio, error_kind=mount_missing",
+            "Mount missing after success: server={:?}, share={:?}, source=cli, backend=gio, error_kind=mount_missing",
             server,
             share
         );

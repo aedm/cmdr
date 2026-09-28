@@ -119,7 +119,7 @@ pub fn save_credentials(
     let account = make_account_name(server, share);
     let entry = make_password_entry(username, password);
 
-    debug!("Saving credentials for account=\"{}\"", account);
+    debug!("Saving credentials: server={server:?}, share={share:?}");
 
     crate::secrets::store().set(&account, &entry)?;
 
@@ -141,11 +141,11 @@ pub fn get_credentials(server: &str, share: Option<&str>) -> Result<SmbCredentia
 
     // Check in-memory cache first
     if let Some(creds) = CREDENTIAL_CACHE.read_ignore_poison().get(&account) {
-        debug!("Returning cached credentials for account=\"{}\"", account);
+        debug!("Returning cached credentials: server={server:?}, share={share:?}");
         return Ok(creds.clone());
     }
 
-    debug!("Getting credentials for account=\"{}\"", account);
+    debug!("Getting credentials: server={server:?}, share={share:?}");
 
     let data = crate::secrets::store().get(&account)?;
     let creds = parse_password_entry(&data)
@@ -161,7 +161,7 @@ pub fn get_credentials(server: &str, share: Option<&str>) -> Result<SmbCredentia
 pub fn delete_credentials(server: &str, share: Option<&str>) -> Result<(), KeychainError> {
     let account = make_account_name(server, share);
 
-    debug!("Deleting credentials for account=\"{}\"", account);
+    debug!("Deleting credentials: server={server:?}, share={share:?}");
 
     // Remove from cache first
     CREDENTIAL_CACHE.write_ignore_poison().remove(&account);

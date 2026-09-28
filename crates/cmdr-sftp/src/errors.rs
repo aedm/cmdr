@@ -185,7 +185,7 @@ fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
     match kind {
         SftpErrorKind::NoSuchFile => {
             debug!(
-                "SFTP path=\"{path}\": source=backend, backend=sftp, error_kind=no_such_file, omitted_bytes={}, omitted_lines={}",
+                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=no_such_file, omitted_bytes={}, omitted_lines={}",
                 message.len(),
                 message.lines().count()
             );
@@ -193,7 +193,7 @@ fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
         }
         SftpErrorKind::PermDenied => {
             debug!(
-                "SFTP path=\"{path}\": source=backend, backend=sftp, error_kind=permission_denied, omitted_bytes={}, omitted_lines={}",
+                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=permission_denied, omitted_bytes={}, omitted_lines={}",
                 message.len(),
                 message.lines().count()
             );

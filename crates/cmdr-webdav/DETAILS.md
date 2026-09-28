@@ -327,9 +327,10 @@ and what the write cells do to a real account, is in `apps/desktop/test/webdav-s
 
 ## Diagnostic privacy
 
-WebDAV logs quote operation paths and retain HTTP status or typed transport kind. `reqwest` prose can include a remote
-name outside a URL, so collected diagnostics keep omitted UTF-8 byte/line counts instead. The original error remains
-available to classification and the typed `VolumeError` path.
+WebDAV logs debug-escape operation paths, so embedded quotes and control characters stay inside the typed field, and
+retain HTTP status or typed transport kind. `reqwest` prose can include a remote name outside a URL, so collected
+diagnostics keep omitted UTF-8 byte/line counts instead. The original error remains available to classification and the
+typed `VolumeError` path.
 
 ## Not supported, and say so out loud
 

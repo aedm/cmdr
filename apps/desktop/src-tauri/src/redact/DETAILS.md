@@ -59,8 +59,10 @@ account, and share. Functional ID generation and ordinary MCP data remain unchan
 
 Typed report structures call `RedactionContext::redact_path`, `redact_name`, `redact_volume_name`, and
 `redact_volume_id` instead of converting themselves to prose. They preserve report-scoped token domains, and an
-unrecognized or relative path fails closed by tokenizing every non-structural segment. These methods are lexical only:
-bundle assembly performs no filesystem or network lookup.
+unrecognized or relative path fails closed by tokenizing every non-structural segment. A typed path owns its complete
+value boundary: it dispatches directly to the home, mount, remote-reference, UNC, or relative rewriter and never calls
+the prose scanner or `split_trailing_noise`. These methods are lexical only: bundle assembly performs no filesystem or
+network lookup.
 
 ## Decision: path-shape preservation + allowlist
 
@@ -173,14 +175,14 @@ looks like any other word, so the only thing that can mark it is the key it's lo
 fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare one:
 
 - **Quoted** is exact: the value is unescaped (so `e\u{301}` is one character again and a `\` inside an escape isn't
-  read as a separator), walked, and re-quoted.
+  read as a separator), redacted as one complete typed value, and re-quoted. It never enters the prose-boundary scanner.
 - **Bare** (`smb2`'s own `tree: renamed from=a\b c.jpg to=…`) over-matches to the end of the line, and
   `end_of_bare_value` cuts at the first `: ` seam, `, `, or ` key=`, then drops an unbalanced `)`. A comma-space inside
   a bare name ends it early and leaks the rest; `{:?}` values can't hit that, which is why our own sites use it.
-- **An absolute value** that a path branch claims from its first byte is handed back (`key=` consumed, value
-  re-scanned), so `$HOME` and `/Volumes/<volume>` keep working. Anything else is walked here by
-  `redact_relative_path`: same leaf and allowlist rules, the first segment of an absolute value kept if it's a
-  system root (`/private`, `/Applications`), and already-redacted segments left alone, which keeps it idempotent.
+- **An unquoted absolute value** that a path branch claims from its first byte is handed back (`key=` consumed, value
+  re-scanned), because only prose heuristics can find its end. Anything else is walked here by `redact_relative_path`:
+  same leaf and allowlist rules, the first segment of an absolute value kept if it's a system root (`/private`,
+  `/Applications`), and already-redacted segments left alone, which keeps it idempotent.
 - The key set is deliberately narrow: `name=` stays out because it names hosts and settings too (`Host …: name=NAS`),
   and `target=` because the file viewer uses it for a seek target. A name-bearing site logs under `new_name=` instead.
 
@@ -189,7 +191,9 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 Bare remote identities have no safe lexical shape. The redactor therefore claims only quoted values under exact typed
 keys: `host`, `server`, `share`, `volumeId`, `serverId`, and `deviceId`. Values may use `Some("…")`. Near matches,
 generic `name=` / `id=`, and unquoted legacy fields are excluded so ordinary diagnostics do not disappear. Producers
-that own an identity must quote it under one of those keys; arbitrary external prose must be omitted upstream.
+that own an identity must emit its Rust debug form under one of those keys (`host={host:?}`), never put literal quotes
+around Display output. The same escape-aware quoted grammar applies to `user` / `username`. Arbitrary external prose
+must be omitted upstream.
 
 ## Report-scoped token identity
 

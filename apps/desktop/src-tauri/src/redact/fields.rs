@@ -5,12 +5,14 @@ use super::RedactionContext;
 use super::context::TokenDomain;
 use super::identity_token;
 use super::names::{split_cmdr_suffix, unescape_debug};
-use super::paths::{dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf};
+use super::paths::{
+    dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf, redact_media, redact_unix_home,
+    redact_unix_system, redact_volumes, redact_windows_home,
+};
 use super::redactor_regex;
-use super::references::redact_host;
+use super::references::{redact_host, redact_remote_unc, redact_remote_url, redact_scheme_less};
 use super::whole_len;
 use regex::Captures;
-use std::borrow::Cow;
 
 /// Path-branch groups: a value one of these claims from its first byte is an absolute path
 /// they already know how to redact.
@@ -50,10 +52,10 @@ pub(super) const SYSTEM_ROOTS: &[&str] = &[
 
 /// Rewrite a `key=value` path field. Returns (replacement, bytes consumed).
 ///
-/// An absolute value one of the path branches recognizes is handed back: the replacement is
-/// just `key=` (plus the opening quote), and `redact_with` resumes at the value, where that
-/// branch claims it with its own prefix rules (`$HOME`, `/Volumes/<volume>`, …). Everything
-/// else is walked here segment by segment, which is what reaches a share-relative path.
+/// A quoted value has a producer-owned boundary and is redacted here as one complete typed
+/// value. An unquoted absolute value one of the path branches recognizes is handed back:
+/// `redact_with` resumes at the value so the prose scanner can determine where it ends.
+/// Everything else is walked here segment by segment, which reaches a share-relative path.
 pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
     let key = caps.name("pf_key").map_or("", |m| m.as_str());
     let raw = caps.name("pf_value").map_or("", |m| m.as_str());
@@ -66,20 +68,83 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
     } else {
         end_of_bare_value(raw)
     };
-    if value.is_empty() || value == "None" || claimed_by_path_branch(value) {
+    if value.is_empty() || value == "None" {
+        return (head.clone(), head.len());
+    }
+    if quoted {
+        let redacted = redact_typed_path(&unescape_debug(value), context);
+        return (format!("{head}{redacted}{quote}"), whole_len(caps));
+    }
+    if claimed_by_path_branch(value) {
         return (head.clone(), head.len());
     }
 
-    // A quoted value is `{:?}` output: unescape it so `e\u{301}` is one character again (and
-    // so a lone `\` in an escape isn't mistaken for a Windows separator).
-    let unescaped = if quoted {
-        unescape_debug(value)
-    } else {
-        Cow::Borrowed(value)
-    };
-    let redacted = redact_relative_path(&unescaped, context);
+    let redacted = redact_relative_path(value, context);
     let consumed = head.len() + value.len() + quote.len();
     (format!("{head}{redacted}{quote}"), consumed)
+}
+
+/// Redact one complete typed path or URL. Unlike the prose scanner, this function owns the
+/// supplied value boundary and therefore never calls `split_trailing_noise` or trims URL
+/// punctuation. Extensionless multiword leaves remain one segment all the way to tokenization.
+pub(super) fn redact_typed_path(path: &str, context: Option<&RedactionContext>) -> String {
+    let bytes = path.as_bytes();
+    if bytes.first().is_some_and(u8::is_ascii_alphabetic)
+        && bytes.get(1) == Some(&b':')
+        && path.get(2..).is_some_and(|tail| tail.starts_with(r"\Users\"))
+    {
+        return redact_windows_home(path, context);
+    }
+    if path.starts_with("/Users/") || path.starts_with("/home/") {
+        return redact_unix_home(path, context);
+    }
+    if ["/tmp/", "/var/", "/private/", "/opt/"]
+        .iter()
+        .any(|prefix| path.starts_with(prefix))
+    {
+        return redact_unix_system(path, context);
+    }
+    if path.starts_with("/Volumes/") {
+        return redact_volumes(path, context);
+    }
+    if path.starts_with("/media/") {
+        return redact_media(path, context);
+    }
+    if is_supported_remote_url(path) {
+        return redact_remote_url(path, context);
+    }
+    if path.starts_with(r"\\") {
+        return redact_remote_unc(path, context);
+    }
+    if path.strip_prefix("//").is_some_and(|remainder| {
+        remainder
+            .split(['/', '?', '#'])
+            .next()
+            .is_some_and(|authority| authority.contains('@'))
+    }) {
+        return redact_scheme_less(path, context);
+    }
+    redact_relative_path(path, context)
+}
+
+fn is_supported_remote_url(path: &str) -> bool {
+    let Some((scheme, remainder)) = path.split_once("://") else {
+        return false;
+    };
+    matches!(
+        scheme.to_ascii_lowercase().as_str(),
+        "sftp" | "ssh" | "webdav" | "http" | "https" | "smb"
+    ) || (valid_url_scheme(scheme)
+        && remainder
+            .split(['/', '?', '#'])
+            .next()
+            .is_some_and(|authority| authority.contains('@')))
+}
+
+fn valid_url_scheme(scheme: &str) -> bool {
+    let mut chars = scheme.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
 }
 
 /// Rewrite one producer-owned identity field while retaining its key and optional wrapper.

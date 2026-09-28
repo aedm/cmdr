@@ -398,7 +398,7 @@ pub fn mount_share_sync(
             core_foundation::url::CFURLCreateWithString(ptr::null(), cf_url_string.as_concrete_TypeRef(), ptr::null());
         if url_ref.is_null() {
             log::warn!(
-                "Mount URL rejected: server=\"{}\", share=\"{}\", source=netfs, error_kind=invalid_url",
+                "Mount URL rejected: server={:?}, share={:?}, source=netfs, error_kind=invalid_url",
                 target.server,
                 target.share
             );
@@ -687,20 +687,20 @@ fn find_mount_path_for_share(target: MountTarget<'_>, hosts: &[NetworkHost]) -> 
 pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
     let mut unmounted = Vec::new();
     for mount_path in crate::network::server_identity::smb_mounts_from(targets) {
-        log::info!("Unmounting SMB share at path=\"{}\"", mount_path);
+        log::info!("Unmounting SMB share at path={mount_path:?}");
         let output = std::process::Command::new("diskutil")
             .args(["unmount", &mount_path])
             .output();
 
         match output {
             Ok(o) if o.status.success() => {
-                log::info!("Unmounted path=\"{}\"", mount_path);
+                log::info!("Unmounted path={mount_path:?}");
                 unmounted.push(mount_path);
             }
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
                 log::warn!(
-                    "Unmount stopped: path=\"{}\", source=cli, backend=diskutil, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    "Unmount stopped: path={:?}, source=cli, backend=diskutil, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
                     mount_path,
                     o.status.code(),
                     o.stderr.len(),
@@ -710,7 +710,7 @@ pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
             Err(e) => {
                 let detail = e.to_string();
                 log::warn!(
-                    "Unmount stopped: path=\"{}\", source=os, backend=diskutil, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    "Unmount stopped: path={:?}, source=os, backend=diskutil, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
                     mount_path,
                     e.kind(),
                     e.raw_os_error(),

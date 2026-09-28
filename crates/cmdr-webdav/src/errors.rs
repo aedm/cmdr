@@ -72,14 +72,14 @@ pub(crate) const EBUSY: i32 = 16;
 pub(crate) fn map_status(status: StatusCode, path: &str, attempted: Attempted) -> VolumeError {
     match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
-            debug!("WebDAV path=\"{path}\": backend=webdav, error_kind=permission_denied, code={status}");
+            debug!("WebDAV path={path:?}: backend=webdav, error_kind=permission_denied, code={status}");
             VolumeError::PermissionDenied {
                 path: path.to_string(),
                 raw_os_error: None,
             }
         }
         StatusCode::NOT_FOUND => {
-            debug!("WebDAV path=\"{path}\": backend=webdav, error_kind=not_found");
+            debug!("WebDAV path={path:?}: backend=webdav, error_kind=not_found");
             VolumeError::NotFound(path.to_string())
         }
         // A MKCOL on an occupied name (RFC 4918 § 9.3.1). Anywhere else it
@@ -128,7 +128,7 @@ pub(crate) fn map_transport_error(err: &reqwest::Error, volume_id: &str, path: &
     if err.is_connect() || err.is_request() {
         let detail = err.to_string();
         debug!(
-            "WebDAV path=\"{path}\": source=backend, backend=webdav, error_kind=disconnected, omitted_bytes={}, omitted_lines={}",
+            "WebDAV path={path:?}: source=backend, backend=webdav, error_kind=disconnected, omitted_bytes={}, omitted_lines={}",
             detail.len(),
             detail.lines().count()
         );

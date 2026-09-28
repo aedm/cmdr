@@ -348,7 +348,7 @@ pub(super) async fn run_smb_watcher(
         Ok(c) => c,
         Err(e) => {
             warn!(
-                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during connect",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during connect",
                 share_name,
                 e.kind()
             );
@@ -360,7 +360,7 @@ pub(super) async fn run_smb_watcher(
         Ok(t) => t,
         Err(e) => {
             warn!(
-                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during tree connect",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during tree connect",
                 share_name,
                 e.kind()
             );
@@ -375,12 +375,12 @@ pub(super) async fn run_smb_watcher(
     // arrive while we process the previous batch don't fall in a re-arm gap.
     let mut watcher = match client.watch(&tree, "", true).await {
         Ok(w) => {
-            info!("smb_watcher share=\"{}\": connected, starting watch", share_name);
+            info!("smb_watcher share={share_name:?}: connected, starting watch");
             w
         }
         Err(e) => {
             warn!(
-                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during watch start",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during watch start",
                 share_name,
                 e.kind()
             );

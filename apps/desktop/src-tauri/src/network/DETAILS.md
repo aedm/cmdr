@@ -1056,8 +1056,9 @@ cycles"; re-measure there before trusting any number.
 
 ### Diagnostic privacy
 
-Discovery, manual-server, keychain, share-listing, and mount diagnostics put user-controlled identities in quoted typed
-fields recognized by `redact/`. At external-text boundaries, mDNS/OS/backend prose and `smbutil`, `smbclient`, `gio`,
+Discovery, manual-server, keychain, share-listing, and mount diagnostics put user-controlled identities in debug-escaped
+typed fields (`server={server:?}`, not literal quotes around Display output) recognized by `redact/`. At external-text
+boundaries, mDNS/OS/backend prose and `smbutil`, `smbclient`, `gio`,
 or `diskutil` output can echo names outside a path, so logs retain the known operation, source/backend, typed error
 kind, exit or OS code, and omitted byte/line counts rather than prose. Classification and user-facing typed errors
 still consume the original output.

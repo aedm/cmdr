@@ -173,7 +173,7 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
             ServiceEvent::ServiceFound(_, fullname) => {
                 let name = extract_instance_name(&fullname);
                 let id = service_name_to_id(&name);
-                debug!("mDNS ServiceFound: server=\"{}\" serverId=\"{}\"", name, id);
+                debug!("mDNS ServiceFound: server={name:?} serverId={id:?}");
 
                 let host = NetworkHost {
                     id,
@@ -204,7 +204,7 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
                 let port = info.get_port();
 
                 debug!(
-                    "mDNS ServiceResolved: serverId=\"{}\" host={:?}, ip={:?}, port={}",
+                    "mDNS ServiceResolved: serverId={:?} host={:?}, ip={:?}, port={}",
                     id, hostname, ip_address, port
                 );
 
@@ -220,7 +220,7 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
             ServiceEvent::ServiceRemoved(_, fullname) => {
                 let name = extract_instance_name(&fullname);
                 let id = service_name_to_id(&name);
-                debug!("mDNS ServiceRemoved: server=\"{}\" serverId=\"{}\"", name, id);
+                debug!("mDNS ServiceRemoved: server={name:?} serverId={id:?}");
                 on_mdns_host_lost(&id, browse, &app_handle);
             }
             ServiceEvent::SearchStopped(stype) => {

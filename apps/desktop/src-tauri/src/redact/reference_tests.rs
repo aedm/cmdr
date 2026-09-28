@@ -221,6 +221,40 @@ fn identity_field_keys_are_narrow_and_keep_stable_facts() {
 }
 
 #[test]
+fn debug_escaped_structured_fields_are_consumed_as_complete_values() {
+    let context = context();
+    let cases = [
+        ("host", "host name\"line\nnext"),
+        ("server", "serve\\r\t雪"),
+        ("share", "share\"name\nnext"),
+        ("volumeId", "volume\\id\t雪"),
+        ("serverId", "server\"id\nnext"),
+        ("deviceId", "device\\id\t雪"),
+        ("user", "account\"name\nnext\\part\t雪"),
+        ("path", "/Users/alice/Plans/client \"secret\"\nnext\\leaf\t雪"),
+    ];
+
+    for (key, value) in cases {
+        let line = format!("before {key}={value:?}, after=stable");
+        let output = context.redact_line(&line);
+        assert!(
+            !output.contains("name"),
+            "identity fragment survived for {key}: {output}"
+        );
+        assert!(!output.contains("secret"), "path fragment survived for {key}: {output}");
+        assert!(
+            !output.contains("next"),
+            "escaped newline tail survived for {key}: {output}"
+        );
+        assert!(!output.contains('雪'), "Unicode fragment survived for {key}: {output}");
+        assert!(
+            output.ends_with(", after=stable"),
+            "field boundary changed for {key}: {output}"
+        );
+    }
+}
+
+#[test]
 fn derived_id_tokens_correlate_per_report_but_not_across_identity_domains() {
     let context = context();
     let mtp_device = context.redact_line("mtp-pixel-8-4123456789abcdef");

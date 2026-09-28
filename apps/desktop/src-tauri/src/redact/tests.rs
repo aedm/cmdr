@@ -425,6 +425,35 @@ fn context_preserves_only_context_proven_home_downloads_role() {
 }
 
 #[test]
+fn typed_paths_consume_extensionless_multiword_leaves_as_complete_values() {
+    let context = context("ERR-TYPED");
+    let cases = [
+        ("/Users/alice/Plans/client secret", "$HOME/"),
+        ("/Volumes/Client Disk/Plans/client secret", "/Volumes/"),
+        ("/media/Client Disk/Plans/client secret", "/media/"),
+        ("Plans/client secret", "<dir:"),
+        ("sftp://alice@host.test/Plans/client secret", "sftp://"),
+        (r"\\host\Private Share\Plans\client secret", r"\\"),
+    ];
+
+    for (input, prefix) in cases {
+        let output = context.redact_path(input);
+        assert!(
+            output.starts_with(prefix),
+            "typed shape changed for {input:?}: {output}"
+        );
+        assert!(
+            !output.contains("client"),
+            "first leaf word survived for {input:?}: {output}"
+        );
+        assert!(
+            !output.contains("secret"),
+            "trailing leaf word survived for {input:?}: {output}"
+        );
+    }
+}
+
+#[test]
 fn smb_uris() {
     let cases = [
         (

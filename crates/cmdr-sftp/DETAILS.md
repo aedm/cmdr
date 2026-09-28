@@ -1225,9 +1225,10 @@ The servers themselves: `apps/desktop/test/sftp-servers/README.md`.
 
 ## Diagnostic privacy
 
-SFTP status prose can repeat remote names without a path boundary. Logs quote the operation path and retain the typed
-SFTP error kind where available, or the known operation otherwise, plus omitted UTF-8 byte/line counts instead of the
-server sentence. Error classification still receives the original message and returns the same typed `VolumeError`.
+SFTP status prose can repeat remote names without a path boundary. Logs debug-escape the operation path, so embedded
+quotes and control characters stay inside the typed field, and retain the typed SFTP error kind where available, or the
+known operation otherwise, plus omitted UTF-8 byte/line counts instead of the server sentence. Error classification
+still receives the original message and returns the same typed `VolumeError`.
 
 ## The public surface is capped
 

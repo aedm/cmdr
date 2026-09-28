@@ -1040,6 +1040,7 @@ exports the override. The full container list: `apps/desktop/test/smb-servers/RE
 
 ## Diagnostic privacy
 
-SMB watcher and operation-failure diagnostics quote identities under typed keys and retain `smb2::ErrorKind` instead
-of the backend's free-form `Display` prose, which may repeat server/share names. Error mapping still receives the
-original `smb2::Error`, so this changes collected diagnostics without weakening typed behavior.
+SMB watcher and operation-failure diagnostics debug-escape identities under typed keys and retain `smb2::ErrorKind`
+instead of the backend's free-form `Display` prose, which may repeat server/share names. Debug formatting is
+load-bearing: literal wrapper quotes let a share's own quote or newline escape the redactor's field. Error mapping still
+receives the original `smb2::Error`, so this changes collected diagnostics without weakening typed behavior.

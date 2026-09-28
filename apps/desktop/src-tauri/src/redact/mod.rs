@@ -86,12 +86,10 @@ impl RedactionContext {
 
     /// Redact a typed path or URL value. Unlike [`Self::redact_line`], this fails closed for
     /// relative and otherwise-unrecognized paths: every non-structural segment is tokenized.
+    /// The caller supplies the value boundary, so this path never applies prose-boundary
+    /// heuristics or returns a suffix unredacted.
     pub fn redact_path(&self, path: &str) -> String {
-        if claimed_by_path_branch(path) {
-            redact_with(path, Some(self)).into_owned()
-        } else {
-            redact_relative_path(path, Some(self))
-        }
+        redact_typed_path(path, Some(self))
     }
 
     /// Redact a typed file or folder name with this report's correlation key.
@@ -312,8 +310,8 @@ fn redactor_regex() -> &'static Regex {
                 \b (?P<account_key> [Uu]ser (?: [Nn]ame )? )
                 (?P<account_sep> = | : \x20+ )
                 (?P<account_value>
-                    Some\( " [^"]* " \)
-                  | " [^"]* "
+                    Some\( " (?: [^"\\\n] | \\ . )* " \)
+                  | " (?: [^"\\\n] | \\ . )* "
                   | [^\s,;"'()}]+
                 )
             )
@@ -484,16 +482,17 @@ fn redact_account(key: &str, separator: &str, value: &str, whole: &str, context:
         return whole.to_string();
     }
     if value.starts_with("Some(\"") && value.ends_with("\")") {
-        let account = &value[6..value.len() - 2];
+        let account = unescape_debug(&value[6..value.len() - 2]);
         return format!(
             "{key}{separator}Some(\"{}\")",
-            identity_token("user", TokenDomain::Userinfo, account, context)
+            identity_token("user", TokenDomain::Userinfo, &account, context)
         );
     }
     if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
+        let account = unescape_debug(&value[1..value.len() - 1]);
         return format!(
             "{key}{separator}\"{}\"",
-            identity_token("user", TokenDomain::Userinfo, &value[1..value.len() - 1], context)
+            identity_token("user", TokenDomain::Userinfo, &account, context)
         );
     }
     format!(

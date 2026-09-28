@@ -105,7 +105,7 @@ pub async fn run_smbclient_list(
         // smbclient output can repeat server, share, and account names in prose
         // with no typed boundary. Keep only stable process facts in collected logs.
         warn!(
-            "smbclient share listing stopped: host=\"{}\", port={}, source=cli, backend=smbclient, error_kind=exit, code={:?}, has_creds={}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
+            "smbclient share listing stopped: host={:?}, port={}, source=cli, backend=smbclient, error_kind=exit, code={:?}, has_creds={}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
             host,
             port,
             output.status.code(),

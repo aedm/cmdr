@@ -323,7 +323,7 @@ impl SftpVolume {
         if let Err(e) = session.sftp().fs().remove_file(remote).await {
             let detail = e.to_string();
             debug!(
-                "SftpVolume::write_from_stream: couldn't remove path=\"{remote}\": source=backend, backend=sftp, operation=remove_partial, omitted_bytes={}, omitted_lines={}",
+                "SftpVolume::write_from_stream: couldn't remove path={remote:?}: source=backend, backend=sftp, operation=remove_partial, omitted_bytes={}, omitted_lines={}",
                 detail.len(),
                 detail.lines().count()
             );

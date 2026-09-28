@@ -48,6 +48,8 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
         .join("\n");
     for private in [
         "private-account",
+        "client secret",
+        " secret",
         state_history::PRIVACY_TEST_RAW_NAME,
         state_history::PRIVACY_TEST_RAW_PATH,
         state_history::PRIVACY_TEST_EXTERNAL_PROSE,

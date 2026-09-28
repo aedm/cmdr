@@ -30,7 +30,7 @@ impl CredentialStore for KeychainCredentials {
                 // DEBUG, not WARN: "nothing stored for this server" is the
                 // ordinary answer for a guest share, and every reconnect asks.
                 let detail = e.to_string();
-                log::debug!(target: "volume", "no stored credentials: server=\"{service}\", source=secret_store, operation=get, omitted_bytes={}, omitted_lines={}", detail.len(), detail.lines().count());
+                log::debug!(target: "volume", "no stored credentials: server={service:?}, source=secret_store, operation=get, omitted_bytes={}, omitted_lines={}", detail.len(), detail.lines().count());
                 None
             }
         }
@@ -47,7 +47,7 @@ impl CredentialStore for KeychainCredentials {
         // stops being remembered is exactly what someone would file a bug about.
         keychain::save_credentials(service, scope, &credentials.username, &credentials.secret).map_err(|e| {
             let detail = e.to_string();
-            log::warn!(target: "volume", "the secret store wouldn't keep credentials: server=\"{service}\", source=secret_store, operation=set, omitted_bytes={}, omitted_lines={}", detail.len(), detail.lines().count());
+            log::warn!(target: "volume", "the secret store wouldn't keep credentials: server={service:?}, source=secret_store, operation=set, omitted_bytes={}, omitted_lines={}", detail.len(), detail.lines().count());
             CredentialsNotStored
         })
     }

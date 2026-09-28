@@ -249,7 +249,7 @@ impl SmbVolumeInner {
         }
 
         info!(
-            "SmbVolumeInner::attempt_reconnect(share=\"{}\"): success",
+            "SmbVolumeInner::attempt_reconnect(share={:?}): success",
             self.share_name
         );
         Ok(())

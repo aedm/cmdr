@@ -9,7 +9,7 @@ one report in one process. Its key derives from an ephemeral process secret plus
 ships. Tests use `RedactionContext::for_test`, never process-global overrides.
 
 The pattern table and overlap rules are in `DETAILS.md`. Typed diagnostic fields use structured `RedactionContext`
-methods, which fail closed and retain report correlation.
+methods, which consume complete values, fail closed, and retain report correlation.
 
 ## Must-knows
 
@@ -30,6 +30,7 @@ methods, which fail closed and retain report correlation.
   (`.03` in a timestamp halves the name). `DETAILS.md` § "Finding the end of a path".
 - **A relative path is only found by its key** (`path_field`: `path=`, `smb_path=`, `from=`, …). ❗ Log a file path or
   name as `key={:?}` with a key from that list, never as bare prose, which is invisible to the redactor.
+- **Debug-format producer-owned identities** (`host={host:?}`); literal wrappers let values escape the field.
 - **Tokens key on a domain plus the name, not its printed bytes** (escapes undone, NFC, Cmdr temp suffix split off).
   Credentials, query/fragment values, and diagnostic IDs have separate domains from the entities they describe.
 - **`redact_with` resumes at `match.start() + consumed`, ❌ never `replace_all`.** A handed-back tail must face the

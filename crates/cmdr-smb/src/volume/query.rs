@@ -202,13 +202,13 @@ impl SmbVolume {
         if let Some(batch) = SPACE_INFO_LOG.record(&self.inner.share_name) {
             if batch.is_rolled_up() {
                 debug!(
-                    "SmbVolume::get_space_info: share=\"{}\" ×{} in {}s",
+                    "SmbVolume::get_space_info: share={:?} ×{} in {}s",
                     self.inner.share_name,
                     batch.count,
                     batch.elapsed.as_secs()
                 );
             } else {
-                debug!("SmbVolume::get_space_info: share=\"{}\"", self.inner.share_name);
+                debug!("SmbVolume::get_space_info: share={:?}", self.inner.share_name);
             }
         }
 

@@ -19,7 +19,7 @@ pub async fn list_shares_smbutil(
 ) -> Result<ShareListResult, ShareListError> {
     let url = build_smbutil_url(hostname, ip_address, port);
     debug!(
-        "Running smbutil view: host=\"{}\", port={}, backend=smbutil, auth=guest",
+        "Running smbutil view: host={:?}, port={}, backend=smbutil, auth=guest",
         hostname, port
     );
 
@@ -44,7 +44,7 @@ pub async fn list_shares_smbutil_authenticated_from_keychain(
 ) -> Result<ShareListResult, ShareListError> {
     let url = build_smbutil_url(hostname, ip_address, port);
     debug!(
-        "Running smbutil view: host=\"{}\", port={}, backend=smbutil, auth=keychain",
+        "Running smbutil view: host={:?}, port={}, backend=smbutil, auth=keychain",
         hostname, port
     );
 
@@ -117,7 +117,7 @@ pub async fn list_shares_smbutil(
     use log::debug;
     let host = ip_address.unwrap_or(hostname);
     debug!(
-        "Trying share-list fallback: host=\"{}\", port={}, backend=smbclient, auth=guest",
+        "Trying share-list fallback: host={:?}, port={}, backend=smbclient, auth=guest",
         host, port
     );
 
@@ -153,7 +153,7 @@ pub async fn list_shares_smbutil_with_auth(
     use log::debug;
     let host = ip_address.unwrap_or(hostname);
     debug!(
-        "Trying share-list fallback: host=\"{}\", port={}, user=\"{}\", backend=smbclient, auth=credentials",
+        "Trying share-list fallback: host={:?}, port={}, user={:?}, backend=smbclient, auth=credentials",
         host, port, username
     );
 
