@@ -337,7 +337,7 @@ fn nothing_asks_security_about_a_binary_that_lives_on_the_drive_being_ejected() 
     let (_dir, holder) = holder_running_from_the_drive("holder-facts-tool");
     let on = device_of(holder.executable()).expect("the holder's own volume answers");
 
-    let facts = gather(holder.pid(), std::process::id(), &Surroundings::new(vec![on]));
+    let facts = gather(holder.pid(), std::process::id(), &Surroundings::new(Some(vec![on])));
 
     assert_eq!(
         facts.platform_binary, None,
@@ -350,23 +350,41 @@ fn nothing_asks_security_about_a_binary_that_lives_on_the_drive_being_ejected() 
 }
 
 /// The drive test itself, against a real process: the executable's own device against
-/// the teardown's mounts. A `proc_pidpath` that answered the wrong path, or an `lstat` of
-/// the wrong thing, reads the same as "not on the drive" — which is exactly the case the
-/// safety rule above must never miss.
+/// the teardown's mounts. A `proc_pidpath` or `lstat` that couldn't answer stays unknown,
+/// ❌ never "not on the drive" — which is exactly the case the safety rule above must
+/// never miss.
 #[cfg(target_os = "macos")]
 #[test]
 fn whether_a_process_runs_from_the_drive_is_its_executables_own_device() {
     let (_dir, holder) = holder_running_from_the_drive("holder-facts-device");
     let on = device_of(holder.executable()).expect("the holder's own volume answers");
 
-    assert!(Surroundings::new(vec![on]).owns_executable(holder.pid()));
-    assert!(
-        !Surroundings::new(vec![u64::MAX]).owns_executable(holder.pid()),
+    assert_eq!(
+        Surroundings::new(Some(vec![on])).owns_executable(holder.pid()),
+        Some(true)
+    );
+    assert_eq!(
+        Surroundings::new(Some(vec![u64::MAX])).owns_executable(holder.pid()),
+        Some(false),
         "a drive somewhere else isn't this executable's"
     );
-    assert!(
-        !Surroundings::new(Vec::new()).owns_executable(holder.pid()),
-        "and a teardown whose mounts wouldn't stat asks about nobody"
+    assert_eq!(
+        Surroundings::new(Some(Vec::new())).owns_executable(holder.pid()),
+        Some(false),
+        "and a teardown with no target mounts asks about nobody"
+    );
+}
+
+#[test]
+fn an_unreadable_target_device_stays_unknown_rather_than_reading_as_elsewhere() {
+    let dir = crate::test_support::TestDir::new("holder-facts-unreadable-target");
+    let missing_mount = dir.as_ref().join("unmounted");
+    let targets = [dir.as_ref().to_path_buf(), missing_mount];
+
+    assert_eq!(
+        Surroundings::new(target_devices(&targets)).owns_executable(std::process::id()),
+        None,
+        "one failed target stat must stop the code-signing rules even when another target answers"
     );
 }
 

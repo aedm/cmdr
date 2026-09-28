@@ -558,12 +558,14 @@ prefix, or a message. The rules run in order and the first that answers wins:
 6. An Apple platform binary (`kSecCodeInfoPlatformIdentifier`) → `System`; anything else → `Tool`. A signature nothing
    could read stays `Unclassified`, since "tool" would be a guess.
 
-- ❗ **No code-signing query ever runs against a process whose executable is on the target volume** (invariant 14).
+- ❗ **A code-signing query runs only when a process's executable is known to be off every target mount** (invariant
+  14).
   `SecCodeCopyGuestWithAttributes` READS the binary, which puts Cmdr itself in the kernel's holder list for the very
   drive it's letting go of: measured at 4.5 s, with a Whole unmount in that window naming the prober as the dissenter.
   Rule 5 is that guard as much as it is a classification, and rule 4's signature fallback carries its own copy of it.
   The device comparison is the executable's own `lstat().st_dev` against each mount's; ❌ never `f_fsid`, and ❌ never a
-  path prefix.
+  path prefix. An unreadable mount root or executable leaves the holder `Unclassified` and skips the query, ❌ never
+  "known elsewhere".
 - **Two stages, one budget.** The walk names every holder by its executable; the facts run after every path has
   answered, on the same abandonable thread. That order is what gives rule 5 the device of EVERY mount of the teardown
   (a process holding one partition may run from a sibling), and it's what makes the budget behave: a holder the facts

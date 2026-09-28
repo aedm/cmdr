@@ -22,12 +22,13 @@
 //!    [`HolderKind::Tool`]. A signature nothing could read stays
 //!    [`HolderKind::Unclassified`], since "tool" would be a guess.
 //!
-//! ❗ **Never a code-signing query against a process whose executable is on the target
-//! volume.** `SecCodeCopyGuestWithAttributes` reads the binary, which puts Cmdr itself in
+//! ❗ **Run a code-signing query only when the executable is known to be off every target
+//! mount.** `SecCodeCopyGuestWithAttributes` reads the binary, which puts Cmdr itself in
 //! the kernel's holder list for the very volume it's letting go of: measured at 4.5 s,
 //! and a Whole unmount in that window named the prober as the dissenter. Rule 5 is that
 //! guard as much as it is a classification, and rule 4's fallback carries its own copy of
-//! it for the responsible process.
+//! it for the responsible process. An unreadable target or executable stays
+//! [`HolderKind::Unclassified`].
 //!
 //! ❗ **The facts run after every path's walk, on the same abandonable thread and inside
 //! the same budget.** A holder the budget cuts short keeps its name and stays
@@ -190,16 +191,18 @@ pub(super) fn name_the_kinds(
 /// ❗ A second `stat` of each mount root, after the walk's own. It's cheap on a healthy
 /// mount, and it happens only once every path has already answered, so a root that hangs
 /// here costs the KINDS and never the names. ❌ Never `f_fsid`: on the boot volume it
-/// names the sealed system snapshot rather than the mount (§ "Spike results" 8).
-fn target_devices(paths: &[PathBuf]) -> Vec<u64> {
-    paths.iter().filter_map(|path| super::root_device(path)).collect()
+/// names the sealed system snapshot rather than the mount (§ "Spike results" 8). `None`
+/// means at least one root couldn't be identified, ❌ never that the known roots are the
+/// whole drive.
+fn target_devices(paths: &[PathBuf]) -> Option<Vec<u64>> {
+    paths.iter().map(|path| super::root_device(path)).collect()
 }
 
 /// What the facts stage knows about the drive as a whole, shared by every holder it
 /// classifies.
 pub(super) struct Surroundings {
-    /// The device of each mount being torn down.
-    targets: Vec<u64>,
+    /// The device of every mount being torn down, or `None` when any was unreadable.
+    targets: Option<Vec<u64>>,
     /// The attached disk images, read at most once per scan and only when a holder gets
     /// as far as rule 3. `None` inside means nothing could be read.
     images: std::cell::OnceCell<Option<Vec<nested_images::AttachedImage>>>,
@@ -207,7 +210,7 @@ pub(super) struct Surroundings {
 
 impl Surroundings {
     /// The drive, by the device of each of its mounts.
-    pub(super) fn new(targets: Vec<u64>) -> Self {
+    pub(super) fn new(targets: Option<Vec<u64>>) -> Self {
         Self {
             targets,
             images: std::cell::OnceCell::new(),
@@ -216,37 +219,40 @@ impl Surroundings {
 
     /// The disk image `pid` serves, when it's stored on the drive being ejected.
     fn image_named(&self, pid: u32) -> Option<String> {
-        if self.targets.is_empty() {
+        let targets = self.targets.as_ref()?;
+        if targets.is_empty() {
             return None;
         }
         let images = self.images.get_or_init(nested_images::attached).as_ref()?;
-        nested_images::stored_on(images, pid, &self.targets, device_of).map(|image| image.name.clone())
+        nested_images::stored_on(images, pid, targets, device_of).map(|image| image.name.clone())
     }
 
-    /// Whether `pid`'s executable lives on the drive being ejected.
+    /// Whether `pid`'s executable lives on the drive being ejected, or `None` when
+    /// either side of the comparison couldn't be identified.
     ///
     /// ❗ Rule 5, and the guard rule 6 and rule 4's fallback both lean on.
-    fn owns_executable(&self, pid: u32) -> bool {
-        if self.targets.is_empty() {
-            return false;
+    fn owns_executable(&self, pid: u32) -> Option<bool> {
+        let targets = self.targets.as_ref()?;
+        if targets.is_empty() {
+            return Some(false);
         }
-        platform::executable_path(pid)
-            .and_then(|executable| device_of(&executable))
-            .is_some_and(|device| self.targets.contains(&device))
+        let executable = platform::executable_path(pid)?;
+        let device = device_of(&executable)?;
+        Some(targets.contains(&device))
     }
 
     /// The app macOS holds responsible for `pid`, when there is one.
     ///
     /// A responsible process with no `NSRunningApplication` (Google Drive's is one) still
-    /// names an app, through the display name its signature seals — but ❌ never when its
-    /// executable is on the drive, because that read is the code-signing query rule 5
-    /// exists to prevent.
+    /// names an app, through the display name its signature seals — but ❌ only when its
+    /// executable is known to be off the drive, because that read is the code-signing
+    /// query rule 5 exists to prevent.
     fn responsible_app(&self, pid: u32) -> Option<AppFacts> {
         let responsible = platform::responsible_pid(pid)?;
         if let Some(app) = platform::running_app(responsible) {
             return Some(app);
         }
-        if self.owns_executable(responsible) {
+        if self.owns_executable(responsible) != Some(false) {
             return None;
         }
         Some(AppFacts {
@@ -285,11 +291,11 @@ pub(super) fn gather(pid: u32, ours: u32, about: &Surroundings) -> ProcessFacts 
     if facts.responsible.is_some() {
         return facts;
     }
-    facts.executable_on_target = about.owns_executable(pid);
-    if facts.executable_on_target {
-        return facts;
+    match about.owns_executable(pid) {
+        Some(true) => facts.executable_on_target = true,
+        Some(false) => facts.platform_binary = platform::is_platform_binary(pid),
+        None => {}
     }
-    facts.platform_binary = platform::is_platform_binary(pid);
     facts
 }
 
