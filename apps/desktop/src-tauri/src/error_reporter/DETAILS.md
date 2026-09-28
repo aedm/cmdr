@@ -403,6 +403,13 @@ Every consumer converges through `build_bundle`, so preview/send rebuilds, Flow 
 reports, and debug saves receive the same representation. Ordinary `cmdr://state` output
 remains a separate functional interface and is unchanged.
 
+The archive-level privacy contract is pinned once across both production ZIP pipelines in
+`tests/privacy_tests.rs::both_zip_pipelines_apply_one_report_context_to_every_diagnostic_surface`. Its fixture carries
+raw local paths, remote identities and credentials, names, query/fragment secrets, omitted MCP-only prose, and the
+rejected legacy free-form breadcrumb shape. It decompresses every entry and proves those values are absent while
+report-local correlation, typed state facts, and explicit user note/email fields survive. The two builds recreate the
+context independently from one report ID, which also pins preview/send token stability without a test-only global key.
+
 ### AppHandle wiring
 
 The macro can't thread an `AppHandle` through every call site, so

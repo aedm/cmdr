@@ -103,6 +103,10 @@ pub fn build_bundle<R: tauri::Runtime>(
     let now_system = SystemTime::now();
 
     let redaction = redact::RedactionContext::for_report(&id);
+    let files = match logging::log_dir() {
+        Some(dir) => logging::list_recent_log_files(dir),
+        None => Vec::new(),
+    };
 
     let manifest = BundleManifest {
         id: id.clone(),
@@ -133,13 +137,11 @@ pub fn build_bundle<R: tauri::Runtime>(
     match scope {
         BundleScope::Recent { window } => {
             let cutoff = now_utc - chrono::Duration::from_std(window).unwrap_or(chrono::Duration::hours(1));
-            let files = match logging::log_dir() {
-                Some(dir) => logging::list_recent_log_files(dir),
-                None => Vec::new(),
-            };
             build_bundle_streaming(id, manifest, files, cutoff, now_system, &redaction)
         }
-        BundleScope::Window { .. } => build_bundle_legacy_window(id, manifest, scope, now_utc, now_system, &redaction),
+        BundleScope::Window { .. } => {
+            build_bundle_legacy_window(id, manifest, files, scope, now_utc, now_system, &redaction)
+        }
     }
 }
 
@@ -417,9 +419,10 @@ impl Seek for CountingCursor {
 /// Flow B (`BundleScope::Window`). Kept as-is because the auto-dispatcher already runs
 /// `cap_bundle_to_mb` on the result and the auto-send code path runs in a debounced
 /// background task off the user's hot path.
-fn build_bundle_legacy_window(
+pub(super) fn build_bundle_legacy_window(
     id: String,
     manifest: BundleManifest,
+    files: Vec<PathBuf>,
     scope: BundleScope,
     now_utc: DateTime<Utc>,
     now_system: SystemTime,
@@ -431,26 +434,23 @@ fn build_bundle_legacy_window(
     let mut total_redacted_lines: usize = 0;
     let mut live_file_name: Option<String> = None;
 
-    if let Some(dir) = logging::log_dir() {
-        let files = logging::list_recent_log_files(dir);
-        if let Some(first) = files.first()
-            && let Some(name) = first.file_name().and_then(|n| n.to_str())
-        {
-            live_file_name = Some(name.to_string());
+    if let Some(first) = files.first()
+        && let Some(name) = first.file_name().and_then(|n| n.to_str())
+    {
+        live_file_name = Some(name.to_string());
+    }
+    for path in files {
+        let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Some((lines, mtime)) = load_and_filter_log_file(&path, scope, now_utc, now_system, redaction) else {
+            continue;
+        };
+        if lines.is_empty() {
+            continue;
         }
-        for path in files {
-            let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
-                continue;
-            };
-            let Some((lines, mtime)) = load_and_filter_log_file(&path, scope, now_utc, now_system, redaction) else {
-                continue;
-            };
-            if lines.is_empty() {
-                continue;
-            }
-            total_redacted_lines += lines.len();
-            prepared.insert(file_name.to_string(), PreparedFile { lines, mtime });
-        }
+        total_redacted_lines += lines.len();
+        prepared.insert(file_name.to_string(), PreparedFile { lines, mtime });
     }
 
     // Derive samples from the most recent log file (the live one in normal operation).

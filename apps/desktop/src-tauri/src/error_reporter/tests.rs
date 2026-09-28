@@ -13,6 +13,8 @@ use std::path::Path;
 use std::time::{Duration, SystemTime};
 use zip::{DateTime as ZipDateTime, ZipArchive};
 
+mod privacy_tests;
+
 const RAW_STATE_SENTINEL: &str = "PRIVATE-STATE-SENTINEL-ASYMMETRIC";
 
 fn test_redaction() -> redact::RedactionContext {

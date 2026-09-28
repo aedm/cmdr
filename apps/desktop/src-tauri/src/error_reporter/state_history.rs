@@ -509,6 +509,97 @@ impl From<ConnectionState> for ReportConnectionState {
 }
 
 #[cfg(test)]
+pub(super) const PRIVACY_TEST_RAW_NAME: &str = "PRIVATE-NAME-SENTINEL-ASYMMETRIC.pdf";
+#[cfg(test)]
+pub(super) const PRIVACY_TEST_RAW_PATH: &str = "/Users/private-account/Projects/PRIVATE-NAME-SENTINEL-ASYMMETRIC.pdf";
+#[cfg(test)]
+pub(super) const PRIVACY_TEST_EXTERNAL_PROSE: &str = "PRIVATE-EXTERNAL-PROSE-SENTINEL-ASYMMETRIC";
+
+/// Build adversarial raw state through the same pane projection and report transform as
+/// production. The omitted MCP-only fields deliberately carry prose and names so archive-level
+/// tests prove that functional MCP state did not become diagnostic payload by accident.
+#[cfg(test)]
+pub(super) fn privacy_fixture_for_test(redaction: &RedactionContext) -> Vec<DiagnosticStateSnapshot> {
+    use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, TabInfo, TypeToJumpInfo};
+
+    let pane = PaneState {
+        path: PRIVACY_TEST_RAW_PATH.to_string(),
+        volume_id: Some("smb-private-host-private-share-0123456789abcdef".to_string()),
+        volume_name: Some("PRIVATE-VOLUME-NAME-SENTINEL".to_string()),
+        files: vec![
+            PaneFileEntry {
+                name: PRIVACY_TEST_RAW_NAME.to_string(),
+                path: PRIVACY_TEST_RAW_PATH.to_string(),
+                ..Default::default()
+            },
+            PaneFileEntry {
+                name: PRIVACY_TEST_EXTERNAL_PROSE.to_string(),
+                path: format!("/Users/private-account/{PRIVACY_TEST_EXTERNAL_PROSE}"),
+                is_directory: true,
+                ..Default::default()
+            },
+        ],
+        cursor_index: 0,
+        view_mode: "full".to_string(),
+        selected_indices: vec![0, 1],
+        sort_field: "size".to_string(),
+        sort_order: "desc".to_string(),
+        total_files: 91,
+        loaded_end: 2,
+        show_hidden: true,
+        tabs: vec![TabInfo {
+            id: PRIVACY_TEST_EXTERNAL_PROSE.to_string(),
+            path: format!("/Users/private-account/{PRIVACY_TEST_EXTERNAL_PROSE}"),
+            pinned: true,
+            active: true,
+        }],
+        type_to_jump: Some(TypeToJumpInfo {
+            buffer: PRIVACY_TEST_EXTERNAL_PROSE.to_string(),
+            indicator_visible: true,
+            indicator_stale: false,
+            last_matched_name: Some(PRIVACY_TEST_EXTERNAL_PROSE.to_string()),
+        }),
+        mount_error: Some(MountErrorInfo {
+            share: "PRIVATE-REMOTE-SHARE-SENTINEL".to_string(),
+            reason: "timeout".to_string(),
+            message: PRIVACY_TEST_EXTERNAL_PROSE.to_string(),
+        }),
+        ..Default::default()
+    };
+    let mut raw_pane = capture_pane(PaneSide::Right, &pane);
+    raw_pane.backend = Some(ReportBackend::Smb);
+    raw_pane.connection = Some(ReportConnectionState::NeedsSignIn);
+
+    let raw = RawStateSnapshot {
+        sequence: 0,
+        captured_at: DateTime::parse_from_rfc3339("2027-01-15T08:00:00+00:00")
+            .expect("test timestamp is valid")
+            .with_timezone(&Utc),
+        generation: 73,
+        focused: Some(PaneSide::Right),
+        show_hidden: true,
+        panes: vec![raw_pane],
+        operations: vec![RawOperationSnapshot {
+            operation_id: Some("0199a2e7-47d8-7c31-a897-c58f415f4f91".to_string()),
+            operation_type: WriteOperationType::Copy,
+            lifecycle: LifecycleStatus::Paused,
+            phase: Some(WriteOperationPhase::Copying),
+            source: Some(PRIVACY_TEST_RAW_PATH.to_string()),
+            destination: Some(
+                "smb://private-user:private-password@private-host.local/private-share/private-folder".to_string(),
+            ),
+            current_file: Some(PRIVACY_TEST_RAW_NAME.to_string()),
+            files_done: 7,
+            files_total: 19,
+            bytes_done: 11,
+            bytes_total: 23,
+        }],
+        recent_listing_error_count: 5,
+    };
+    redact_snapshots(&[raw], redaction)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::file_system::write_operations::{LifecycleStatus, WriteOperationPhase, WriteOperationType};
