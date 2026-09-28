@@ -615,7 +615,15 @@
   "complete": {
     "distinct": ["done", "not-finished"],
     "en": "complete",
-    "match": ["complete", "completed", "incomplete", "unfinished", "finish rolling back"],
+    "match": [
+      "complete",
+      "completed",
+      "incomplete",
+      "unfinished",
+      "finish rolling back",
+      "finishing compression",
+      "finishing transfer"
+    ],
     "notMatch": ["and complete", "is complete", "isn't complete"],
     "note": "A scan or an AI answer being finished may take a different word than a file operation; see the locale's note.",
     "sense": "An operation or a wizard reaching its end, or a rollback being finished."

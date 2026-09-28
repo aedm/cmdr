@@ -15,9 +15,9 @@
   "@queue.empty.body": {
     "sourceHash": "89e6045"
   },
-  "queue.row.label": "{type, select, copy {Kopierar} move {Flyttar} delete {Raderar} trash {Flyttar till papperskorgen} rename {Byter namn} create_folder {Skapar mapp} create_file {Skapar fil} archive_edit {Redigerar arkiv} other {Arbetar}}",
+  "queue.row.label": "{type, select, copy {Kopierar} move {Flyttar} delete {Raderar} trash {Flyttar till papperskorgen} rename {Byter namn} create_folder {Skapar mapp} create_file {Skapar fil} archive_edit {Redigerar arkiv} compress {Komprimerar} other {Arbetar}}",
   "@queue.row.label": {
-    "sourceHash": "9f18acf"
+    "sourceHash": "3c8e776"
   },
   "queue.row.reversalMovingBack": "Flyttar tillbaka filerna",
   "@queue.row.reversalMovingBack": {
@@ -138,6 +138,10 @@
   "queue.chip.scanningAriaLabel": "{label}, söker igenom. Öppna åtgärdskön.",
   "@queue.chip.scanningAriaLabel": {
     "sourceHash": "791fc9f"
+  },
+  "queue.chip.indeterminateAriaLabel": "{label}. Öppna åtgärdskön.",
+  "@queue.chip.indeterminateAriaLabel": {
+    "sourceHash": "d35fc3f"
   },
   "queue.chip.tooltip": "{label}{count, plural, =0 {} one { · {countText} objekt} other { · {countText} objekt}}{hasDestination, select, yes { · till {destination}} other {}} · {percentText} %{hasDetail, select, yes { · {detail}} other {}}",
   "@queue.chip.tooltip": {

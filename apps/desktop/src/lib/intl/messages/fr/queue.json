@@ -15,9 +15,9 @@
   "@queue.empty.body": {
     "sourceHash": "89e6045"
   },
-  "queue.row.label": "{type, select, copy {Copie} move {Déplacement} delete {Suppression} trash {Placement dans la corbeille} rename {Renommage} create_folder {Création du dossier} create_file {Création du fichier} archive_edit {Modification de l’archive} other {En cours}}",
+  "queue.row.label": "{type, select, copy {Copie} move {Déplacement} delete {Suppression} trash {Placement dans la corbeille} rename {Renommage} create_folder {Création du dossier} create_file {Création du fichier} archive_edit {Modification de l’archive} compress {Compression} other {En cours}}",
   "@queue.row.label": {
-    "sourceHash": "9f18acf"
+    "sourceHash": "3c8e776"
   },
   "queue.row.reversalMovingBack": "Remise en place des fichiers",
   "@queue.row.reversalMovingBack": {
@@ -139,6 +139,10 @@
   "queue.chip.scanningAriaLabel": "{label}, analyse en cours. Ouvrez la file d’attente des opérations.",
   "@queue.chip.scanningAriaLabel": {
     "sourceHash": "791fc9f"
+  },
+  "queue.chip.indeterminateAriaLabel": "{label}. Ouvrez la file d’attente des opérations.",
+  "@queue.chip.indeterminateAriaLabel": {
+    "sourceHash": "d35fc3f"
   },
   "queue.chip.tooltip": "{label}{count, plural, =0 {} one { · {countText} élément} many { · {countText} éléments} other { · {countText} éléments}}{hasDestination, select, yes { · vers {destination}} other {}} · {percentText} %{hasDetail, select, yes { · {detail}} other {}}",
   "@queue.chip.tooltip": {

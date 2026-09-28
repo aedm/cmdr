@@ -505,6 +505,22 @@
   "@fileOperations.transferProgress.stageScanning": {
     "sourceHash": "474ad81"
   },
+  "fileOperations.transferProgress.stageCompressing": "Wird komprimiert",
+  "@fileOperations.transferProgress.stageCompressing": {
+    "sourceHash": "c4c202f"
+  },
+  "fileOperations.transferProgress.stageFinishingCompression": "Komprimierung wird abgeschlossen …",
+  "@fileOperations.transferProgress.stageFinishingCompression": {
+    "sourceHash": "6cd500b"
+  },
+  "fileOperations.transferProgress.stageTransferringArchive": "Archiv wird übertragen",
+  "@fileOperations.transferProgress.stageTransferringArchive": {
+    "sourceHash": "28ed9e3"
+  },
+  "fileOperations.transferProgress.stageFinishingTransfer": "Übertragung wird abgeschlossen …",
+  "@fileOperations.transferProgress.stageFinishingTransfer": {
+    "sourceHash": "6c39b41"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "Das Ziel existiert und ist ein <strong>Ordner</strong>. Du bist dabei, es mit einer <strong>Datei</strong> desselben Namens zu überschreiben. Der gesamte Inhalt des Zielordners würde gelöscht und durch die Datei ersetzt. Was möchtest du tun?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

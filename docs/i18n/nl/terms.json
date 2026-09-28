@@ -2679,7 +2679,7 @@
     "sources": "standard NL; MS (larger than → groter dan)"
   },
   "transfer": {
-    "accept": ["overdrachten", "overgedragen"],
+    "accept": ["overdrachten", "overdragen", "overgedragen"],
     "avoid": [
       {
         "form": "overdracht (for the queue or a queue row)",
@@ -2689,7 +2689,7 @@
     "chosen": "overdracht",
     "confidence": "high",
     "decision": "Operation queue: de hernoeming van Overdrachtswachtrij",
-    "forms": "copy/move sense only (Pauzeer deze overdracht, bij een latere overdracht); de-woord, pronoun hem",
+    "forms": "copy/move sense only (Pauzeer deze overdracht, bij een latere overdracht); progress → overdragen; de-woord, pronoun hem",
     "sources": "standard NL"
   },
   "trash": {

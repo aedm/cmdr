@@ -2548,7 +2548,9 @@
   },
   "transfer": {
     "chosen": "transferência",
+    "accept": ["transferindo"],
     "confidence": "high",
+    "forms": "progress → Transferindo",
     "sources": "shipped pt catalog",
     "note": "The progress dialog talks about one transferência; the queue window talks about operações.",
     "decision": "Operation queue"

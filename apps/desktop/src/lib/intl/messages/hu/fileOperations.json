@@ -505,6 +505,22 @@
   "@fileOperations.transferProgress.stageScanning": {
     "sourceHash": "474ad81"
   },
+  "fileOperations.transferProgress.stageCompressing": "Tömörítés",
+  "@fileOperations.transferProgress.stageCompressing": {
+    "sourceHash": "c4c202f"
+  },
+  "fileOperations.transferProgress.stageFinishingCompression": "Tömörítés befejezése…",
+  "@fileOperations.transferProgress.stageFinishingCompression": {
+    "sourceHash": "6cd500b"
+  },
+  "fileOperations.transferProgress.stageTransferringArchive": "Archívum átvitele",
+  "@fileOperations.transferProgress.stageTransferringArchive": {
+    "sourceHash": "28ed9e3"
+  },
+  "fileOperations.transferProgress.stageFinishingTransfer": "Átvitel befejezése…",
+  "@fileOperations.transferProgress.stageFinishingTransfer": {
+    "sourceHash": "6c39b41"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "A cél létezik, és egy <strong>mappa</strong>. Egy azonos nevű <strong>fájllal</strong> készülsz felülírni. A célmappa teljes tartalma törlődne, és a fájl lépne a helyébe. Mi legyen?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

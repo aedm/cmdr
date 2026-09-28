@@ -506,6 +506,22 @@
   "@fileOperations.transferProgress.stageScanning": {
     "sourceHash": "474ad81"
   },
+  "fileOperations.transferProgress.stageCompressing": "Compression",
+  "@fileOperations.transferProgress.stageCompressing": {
+    "sourceHash": "c4c202f"
+  },
+  "fileOperations.transferProgress.stageFinishingCompression": "Finalisation de la compression…",
+  "@fileOperations.transferProgress.stageFinishingCompression": {
+    "sourceHash": "6cd500b"
+  },
+  "fileOperations.transferProgress.stageTransferringArchive": "Transfert de l’archive",
+  "@fileOperations.transferProgress.stageTransferringArchive": {
+    "sourceHash": "28ed9e3"
+  },
+  "fileOperations.transferProgress.stageFinishingTransfer": "Finalisation du transfert…",
+  "@fileOperations.transferProgress.stageFinishingTransfer": {
+    "sourceHash": "6c39b41"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "La cible existe et c’est un <strong>dossier</strong>. Vous êtes sur le point de l’écraser avec un <strong>fichier</strong> portant le même nom. Tout le contenu du dossier cible serait supprimé et remplacé par le fichier. Que faire ?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

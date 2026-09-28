@@ -15,9 +15,9 @@
   "@queue.empty.body": {
     "sourceHash": "89e6045"
   },
-  "queue.row.label": "{type, select, copy {Bezig met kopiëren} move {Bezig met verplaatsen} delete {Bezig met verwijderen} trash {Naar prullenmand verplaatsen} rename {Bezig met naam wijzigen} create_folder {Bezig met map aanmaken} create_file {Bezig met bestand aanmaken} archive_edit {Bezig met archief bewerken} other {Bezig}}",
+  "queue.row.label": "{type, select, copy {Bezig met kopiëren} move {Bezig met verplaatsen} delete {Bezig met verwijderen} trash {Naar prullenmand verplaatsen} rename {Bezig met naam wijzigen} create_folder {Bezig met map aanmaken} create_file {Bezig met bestand aanmaken} archive_edit {Bezig met archief bewerken} compress {Bezig met comprimeren} other {Bezig}}",
   "@queue.row.label": {
-    "sourceHash": "9f18acf"
+    "sourceHash": "3c8e776"
   },
   "queue.row.reversalMovingBack": "Bezig met bestanden terugzetten",
   "@queue.row.reversalMovingBack": {
@@ -139,6 +139,10 @@
   "queue.chip.scanningAriaLabel": "{label}, bezig met doorzoeken. Open de bewerkingenwachtrij.",
   "@queue.chip.scanningAriaLabel": {
     "sourceHash": "791fc9f"
+  },
+  "queue.chip.indeterminateAriaLabel": "{label}. Open de bewerkingenwachtrij.",
+  "@queue.chip.indeterminateAriaLabel": {
+    "sourceHash": "d35fc3f"
   },
   "queue.chip.tooltip": "{label}{count, plural, =0 {} one { · {countText} onderdeel} other { · {countText} onderdelen}}{hasDestination, select, yes { · naar {destination}} other {}} · {percentText}%{hasDetail, select, yes { · {detail}} other {}}",
   "@queue.chip.tooltip": {

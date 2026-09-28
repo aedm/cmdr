@@ -2652,10 +2652,11 @@
     "sources": "macOS (för stor, för stora)"
   },
   "transfer": {
+    "accept": ["överför"],
     "chosen": "överföring",
     "confidence": "high",
     "decision": "Stalled transfer",
-    "forms": "a copy or move in flight (Överföringen står stilla); the queue is no longer named after it",
+    "forms": "a copy or move in flight (Överföringen står stilla); progress → Överför; the queue is no longer named after it",
     "note": "MS's överlåtelse is the legal sense.",
     "sources": "Total Commander (Återuppta avbruten överföring)"
   },

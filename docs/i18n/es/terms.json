@@ -2569,8 +2569,8 @@
   },
   "transfer": {
     "chosen": "transferencia",
-    "accept": ["transfer"],
-    "forms": "still names a copy or move in flight; the queue's name widened to operaciones",
+    "accept": ["transfer", "transfiri"],
+    "forms": "still names a copy or move in flight; progress → Transfiriendo; the queue's name widened to operaciones",
     "confidence": "high",
     "sources": "catalog"
   },

@@ -15,9 +15,9 @@
   "@queue.empty.body": {
     "sourceHash": "89e6045"
   },
-  "queue.row.label": "{type, select, copy {正在複製} move {正在移動} delete {正在刪除} trash {正在移到垃圾桶} rename {正在重新命名} create_folder {正在新增資料夾} create_file {正在新增檔案} archive_edit {正在編輯封存檔} other {正在處理}}",
+  "queue.row.label": "{type, select, copy {正在複製} move {正在移動} delete {正在刪除} trash {正在移到垃圾桶} rename {正在重新命名} create_folder {正在新增資料夾} create_file {正在新增檔案} archive_edit {正在編輯封存檔} compress {正在壓縮} other {正在處理}}",
   "@queue.row.label": {
-    "sourceHash": "9f18acf"
+    "sourceHash": "3c8e776"
   },
   "queue.row.reversalMovingBack": "正在把檔案放回原處",
   "@queue.row.reversalMovingBack": {
@@ -138,6 +138,10 @@
   "queue.chip.scanningAriaLabel": "{label}，正在掃描。開啟「操作佇列」。",
   "@queue.chip.scanningAriaLabel": {
     "sourceHash": "791fc9f"
+  },
+  "queue.chip.indeterminateAriaLabel": "{label}。開啟「操作佇列」。",
+  "@queue.chip.indeterminateAriaLabel": {
+    "sourceHash": "d35fc3f"
   },
   "queue.chip.tooltip": "{label}{count, plural, =0 {} other { · 共 {countText} 個項目}}{hasDestination, select, yes { · 目標：「{destination}」} other {}} · {percentText}%{hasDetail, select, yes { · {detail}} other {}}",
   "@queue.chip.tooltip": {

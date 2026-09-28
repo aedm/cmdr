@@ -15,9 +15,9 @@
   "@queue.empty.body": {
     "sourceHash": "89e6045"
   },
-  "queue.row.label": "{type, select, copy {正在拷贝} move {正在移动} delete {正在删除} trash {正在移到废纸篓} rename {正在重命名} create_folder {正在创建文件夹} create_file {正在创建文件} archive_edit {正在编辑压缩文件} other {正在处理}}",
+  "queue.row.label": "{type, select, copy {正在拷贝} move {正在移动} delete {正在删除} trash {正在移到废纸篓} rename {正在重命名} create_folder {正在创建文件夹} create_file {正在创建文件} archive_edit {正在编辑压缩文件} compress {正在压缩} other {正在处理}}",
   "@queue.row.label": {
-    "sourceHash": "9f18acf"
+    "sourceHash": "3c8e776"
   },
   "queue.row.reversalMovingBack": "正在把文件放回原处",
   "@queue.row.reversalMovingBack": {
@@ -138,6 +138,10 @@
   "queue.chip.scanningAriaLabel": "{label}，正在扫描。打开操作队列。",
   "@queue.chip.scanningAriaLabel": {
     "sourceHash": "791fc9f"
+  },
+  "queue.chip.indeterminateAriaLabel": "{label}。打开操作队列。",
+  "@queue.chip.indeterminateAriaLabel": {
+    "sourceHash": "d35fc3f"
   },
   "queue.chip.tooltip": "{label}{count, plural, =0 {} other { · 共 {countText} 个项目}}{hasDestination, select, yes { · 目标：“{destination}”} other {}} · {percentText}%{hasDetail, select, yes { · {detail}} other {}}",
   "@queue.chip.tooltip": {

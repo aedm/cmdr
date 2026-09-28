@@ -523,7 +523,7 @@
     "sources": "MS terminology FRA"
   },
   "complete": {
-    "accept": ["terminé", "incomplet", "incomplète", "complet", "complète"],
+    "accept": ["terminé", "finalis", "incomplet", "incomplète", "complet", "complète"],
     "avoid": [
       {
         "form": "inachevé",
@@ -537,7 +537,7 @@
     "chosen": "terminer",
     "confidence": "high",
     "decision": "Une opération à moitié revenue en arrière : terminer le retour",
-    "forms": "Finish rolling back → Terminer le retour en arrière (Apple’s `Terminer + <nom>`); unfinished copy/move → copie incomplète / déplacement incomplet",
+    "forms": "Finish rolling back → Terminer le retour en arrière (Apple’s `Terminer + <nom>`); an active final phase → Finalisation de…; unfinished copy/move → copie incomplète / déplacement incomplet",
     "sources": "macOS Finder (Finish Copying → Terminer la copie; LA33 « endommagée ou incomplète »)"
   },
   "compress": {
