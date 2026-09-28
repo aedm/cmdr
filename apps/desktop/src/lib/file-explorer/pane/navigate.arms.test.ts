@@ -192,6 +192,25 @@ describe('history walk ({ history } arm)', () => {
     expect(h.tab('left').history.currentIndex).toBe(0)
   })
 
+  it('back into a search-results snapshot resets the cursor instead of carrying the real-folder index across', () => {
+    const mgr = h.mgr('left')
+    getActiveTab(mgr).history = {
+      stack: [
+        { volumeId: 'search-results', path: 'search-results://sr-1' },
+        { volumeId: 'root', path: '/Users/me/reports' },
+      ],
+      currentIndex: 1,
+    }
+    getActiveTab(mgr).volumeId = 'root'
+    getActiveTab(mgr).path = '/Users/me/reports'
+
+    navigate({ pane: 'left', to: { history: 'back' }, source: 'user' }, h.deps)
+
+    expect(h.tab('left').volumeId).toBe('search-results')
+    expect(h.tab('left').path).toBe('search-results://sr-1')
+    expect(h.paneState.left.paneRef?.setCursorIndex).toHaveBeenCalledWith(0)
+  })
+
   it('back at the oldest entry is a no-op', () => {
     const indexBefore = h.tab('left').history.currentIndex
     const pathBefore = h.tab('left').path

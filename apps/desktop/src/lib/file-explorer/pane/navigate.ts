@@ -565,6 +565,11 @@ function commitHistoryWalk(
   deps.persist({ kind: 'pane-state', pane })
   deps.persist({ kind: 'last-used-path', record: { volumeId: entry.volumeId, path: targetPath } })
 
+  // Cursor state is pane-global, not stored per history entry. A reveal can leave
+  // it at a deep real-folder index that means a different row in the snapshot.
+  // Until history owns cursor memory, restoring a snapshot always starts at row 0.
+  if (isSnapshotPath(targetPath)) void paneRef?.setCursorIndex(0)
+
   if (entry.volumeId === 'network') {
     paneRef?.setNetworkHost(entry.networkHost ?? null)
   }

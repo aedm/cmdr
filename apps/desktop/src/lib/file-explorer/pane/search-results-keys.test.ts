@@ -38,12 +38,13 @@ describe('computeSearchPaneKeyAction', () => {
   })
 
   it('reveals the cursor result for the live nav.parent binding, without swallowing Cmd+Backspace', () => {
-    eventMatchesCommandSpy.mockImplementation(
-      (event: { key: string; metaKey: boolean }, command: string) =>
-        (command === 'file.delete' && event.key === 'Backspace' && event.metaKey) ||
-        (command === 'nav.parent' &&
-          (event.key === 'Backspace' || event.key === 'k' || (event.key === 'ArrowUp' && event.metaKey))),
-    )
+    eventMatchesCommandSpy.mockImplementation((event: { key: string; metaKey: boolean }, command: string) => {
+      const combo = `${event.metaKey ? 'Meta+' : ''}${event.key}`
+      return (
+        (command === 'file.delete' && combo === 'Meta+Backspace') ||
+        (command === 'nav.parent' && ['Backspace', 'k', 'Meta+ArrowUp'].includes(combo))
+      )
+    })
 
     expect(computeSearchPaneKeyAction(key('k'), ctx)).toEqual({ kind: 'reveal-cursor' })
     expect(computeSearchPaneKeyAction(key('Backspace'), ctx)).toEqual({ kind: 'reveal-cursor' })
