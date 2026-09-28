@@ -1234,6 +1234,12 @@ Pick the variant by what you want the user to do, not by button position:
 
 Dismissal: `transient` (4s timeout + nav-dismiss, default) or `persistent`.
 
+When an interaction inside a toast removes it, `ToastItem` returns focus to the connected element that held it before
+focus or the pointer entered the toast. Tracking pointer-down matters on macOS, where WebKit can blur the explorer when
+a button is clicked without focusing that button. It restores only when focus fell to `<body>`, so a dialog or field
+opened by the toast action keeps the focus it claimed. This applies to the X and inline actions; timeout or programmatic
+removal of a toast that the user did not interact with moves nothing.
+
 ### Origin pane and scoped dismissal
 
 A toast carries an optional `originPane?: 'left' | 'right'`. It marks a toast as describing THAT pane's directory or a

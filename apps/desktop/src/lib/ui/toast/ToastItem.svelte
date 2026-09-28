@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onDestroy, onMount } from 'svelte'
     import type { ToastContent, ToastLevel, ToastDismissal } from './toast-store.svelte'
     import { HOVER_LEAVE_GRACE_MS } from './toast-store.svelte'
     import { formatToastAge, msUntilToastAgeChanges } from './toast-age'
@@ -75,6 +76,45 @@
     let timer: ReturnType<typeof setTimeout> | undefined
     let naturalDeadline = 0
     let hovered = false
+    let toastElement: HTMLDivElement | undefined = $state()
+    let focusReturnTarget: HTMLElement | null = null
+    let ownedFocus = false
+
+    onMount(() => {
+        const active = document.activeElement
+        focusReturnTarget = active instanceof HTMLElement && active !== document.body ? active : null
+        document.addEventListener('focusin', observeDocumentFocus)
+        return () => document.removeEventListener('focusin', observeDocumentFocus)
+    })
+
+    function rememberFocusOrigin(event: FocusEvent): void {
+        ownedFocus = true
+        const origin = event.relatedTarget
+        if (origin instanceof HTMLElement && origin !== document.body && !toastElement?.contains(origin)) {
+            focusReturnTarget = origin
+        }
+    }
+
+    function rememberPointerFocusOrigin(): void {
+        const active = document.activeElement
+        if (active instanceof HTMLElement && active !== document.body && !toastElement?.contains(active)) {
+            focusReturnTarget = active
+            ownedFocus = true
+        }
+    }
+
+    function observeDocumentFocus(event: FocusEvent): void {
+        const destination = event.target
+        if (ownedFocus && destination instanceof HTMLElement && !toastElement?.contains(destination)) ownedFocus = false
+    }
+
+    onDestroy(() => {
+        if (!ownedFocus) return
+        const target = focusReturnTarget
+        queueMicrotask(() => {
+            if (target?.isConnected && document.activeElement === document.body) target.focus()
+        })
+    })
 
     // Age label ("2m ago"). `now` moves only when the label would change: one timer, armed for
     // the next whole minute (or hour) and re-armed each time it fires, so an idle toast costs one
@@ -150,6 +190,7 @@
 </script>
 
 <div
+    bind:this={toastElement}
     class="toast"
     class:info={level === 'info'}
     class:success={level === 'success'}
@@ -159,6 +200,8 @@
     role={level === 'default' || level === 'info' || level === 'success' ? 'status' : 'alert'}
     onpointerenter={handlePointerEnter}
     onpointerleave={handlePointerLeave}
+    onpointerdown={rememberPointerFocusOrigin}
+    onfocusin={rememberFocusOrigin}
 >
     <ToastLevelIcon {level} />
     <div class="toast-main">

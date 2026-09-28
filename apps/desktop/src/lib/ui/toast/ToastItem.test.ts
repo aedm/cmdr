@@ -102,6 +102,68 @@ describe('ToastItem close button', () => {
     expect(onTimeout).not.toHaveBeenCalled()
   })
 
+  it('returns focus after its focused X dismisses the toast', async () => {
+    const explorer = document.createElement('div')
+    explorer.tabIndex = 0
+    document.body.appendChild(explorer)
+    explorer.focus()
+
+    addToast('No updates found', { id: 'update-check', dismissal: 'persistent' })
+    const target = await mountContainer()
+    const closeButton = target.querySelector('.toast-close') as HTMLButtonElement
+    closeButton.focus()
+    expect(document.activeElement).toBe(closeButton)
+
+    closeButton.click()
+    await tick()
+
+    expect(document.activeElement).toBe(explorer)
+  })
+
+  it('returns focus when a pointer click blurs the explorer without focusing the X', async () => {
+    const explorer = document.createElement('div')
+    explorer.tabIndex = 0
+    document.body.appendChild(explorer)
+    explorer.focus()
+
+    addToast('No updates found', { id: 'update-check', dismissal: 'persistent' })
+    const target = await mountContainer()
+    const closeButton = target.querySelector('.toast-close') as HTMLButtonElement
+
+    closeButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    explorer.blur()
+    expect(document.activeElement).toBe(document.body)
+    closeButton.click()
+    await tick()
+
+    expect(document.activeElement).toBe(explorer)
+  })
+
+  it('does not steal focus from a surface opened by the dismiss callback', async () => {
+    const explorer = document.createElement('div')
+    explorer.tabIndex = 0
+    document.body.appendChild(explorer)
+    const openedSurface = document.createElement('input')
+    document.body.appendChild(openedSurface)
+    explorer.focus()
+
+    addToast('Could not finish', {
+      id: 'action-toast',
+      dismissal: 'persistent',
+      onDismiss: () => {
+        openedSurface.focus()
+      },
+    })
+    const target = await mountContainer()
+    const closeButton = target.querySelector('.toast-close') as HTMLButtonElement
+    closeButton.focus()
+
+    closeButton.click()
+    await tick()
+
+    expect(document.activeElement).toBe(openedSurface)
+  })
+
   it('calls onTimeout (not onUserDismiss) when the auto-dismiss timer fires', async () => {
     const onUserDismiss = vi.fn()
     const onTimeout = vi.fn()

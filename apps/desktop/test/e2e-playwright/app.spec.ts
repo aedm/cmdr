@@ -11,6 +11,7 @@ import { test, expect } from './fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
 import {
   clickEntryInPane,
+  dispatchMenuCommand,
   dismissOverlay,
   ensureAppReady,
   ensureExplorerFocused,
@@ -122,6 +123,47 @@ test.describe('Keyboard navigation', () => {
 
     expect(newCursorIndex).toBeGreaterThanOrEqual(0)
     expect(newCursorIndex).not.toBe(initialCursorIndex)
+  })
+
+  test('keeps arrow-key navigation after a toast is closed with its X', async ({ tauriPage }) => {
+    await ensureAppReady(tauriPage)
+    await focusPane(tauriPage, 0)
+    await tauriPage.keyboard.press('Home')
+
+    await dispatchMenuCommand(tauriPage, 'view.zoom.in')
+    try {
+      await tauriPage.waitForSelector('.toast', waitBudget(3000))
+      await tauriPage.evaluate(`(() => {
+        const close = document.querySelector('.toast-close')
+        close?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      })()`)
+      expect(await tauriPage.evaluate<boolean>(`document.activeElement === document.body`)).toBe(true)
+      await tauriPage.click('.toast-close')
+      await expect.poll(async () => (await tauriPage.count('.toast')) === 0, { timeout: waitBudget(2000) }).toBeTruthy()
+
+      expect(
+        await tauriPage.evaluate<boolean>(`document.activeElement === document.querySelector('.dual-pane-explorer')`),
+      ).toBe(true)
+      const initialCursor = await tauriPage.evaluate<string>(
+        `document.querySelector('.file-pane.is-focused .file-entry.is-under-cursor')?.getAttribute('data-filename') || ''`,
+      )
+      expect(initialCursor).not.toBe('')
+
+      await tauriPage.keyboard.press('ArrowDown')
+      await expect
+        .poll(
+          async () =>
+            tauriPage.evaluate<string>(
+              `document.querySelector('.file-pane.is-focused .file-entry.is-under-cursor')?.getAttribute('data-filename') || ''`,
+            ),
+          { timeout: waitBudget(3000) },
+        )
+        .not.toBe(initialCursor)
+    } finally {
+      await dispatchMenuCommand(tauriPage, 'view.zoom.set100')
+      await expectAndDismissToast(tauriPage, 'Zoom reset')
+    }
   })
 
   test('switches panes with Tab key', async ({ tauriPage }) => {
