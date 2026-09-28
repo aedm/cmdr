@@ -20,7 +20,7 @@ use crate::volumes_linux as platform;
 use crate::file_system::volume::SpaceInfo;
 use platform::{DEFAULT_VOLUME_ID, LocationCategory, VolumeInfo};
 
-const VOLUME_TIMEOUT: Duration = Duration::from_secs(2);
+pub(super) const VOLUME_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// The `fs_type` the synthetic `network` volume reports: whatever the OS calls an
 /// SMB mount, so a consumer classifying by fs type sees a share and not an unknown
@@ -85,7 +85,14 @@ pub async fn get_volume_space(path: String) -> TimedOut<Option<SpaceInfo>> {
 #[tauri::command]
 #[specta::specta]
 pub async fn resolve_path_volume(path: String) -> PathVolumeResolution {
-    let (volume, timed_out) = resolve_path_to_volume(path, VOLUME_TIMEOUT).await;
+    resolve_path_volume_with_timeout(path, VOLUME_TIMEOUT).await
+}
+
+/// Shared body of [`resolve_path_volume`] with an injectable filesystem timeout.
+/// Production passes [`VOLUME_TIMEOUT`]; tests that exercise resolver correctness use a generous
+/// timeout so blocking-pool scheduling contention cannot masquerade as a missing volume.
+pub(super) async fn resolve_path_volume_with_timeout(path: String, fs_timeout: Duration) -> PathVolumeResolution {
+    let (volume, timed_out) = resolve_path_to_volume(path, fs_timeout).await;
     PathVolumeResolution { volume, timed_out }
 }
 

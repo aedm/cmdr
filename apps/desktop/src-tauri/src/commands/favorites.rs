@@ -82,7 +82,7 @@ impl std::error::Error for AddFavoriteError {}
 #[tauri::command]
 #[specta::specta]
 pub async fn add_favorite(path: String, name: Option<String>) -> Result<(), AddFavoriteError> {
-    if !path_can_be_favorited(&path).await {
+    if !path_can_be_favorited(&path).await? {
         log::info!(target: "favorites", "refused to favorite {path:?}: get_favorites would filter it out");
         return Err(AddFavoriteError::NotAnOsVisiblePath);
     }
@@ -124,20 +124,29 @@ pub async fn add_favorite(path: String, name: Option<String>) -> Result<(), AddF
 ///
 /// `path` is the pane's own path, so this costs one mount-table read on the add path and nothing
 /// anywhere else.
-async fn path_can_be_favorited(path: &str) -> bool {
+async fn path_can_be_favorited(path: &str) -> Result<bool, AddFavoriteError> {
+    path_can_be_favorited_with_timeout(path, crate::commands::volumes::VOLUME_TIMEOUT).await
+}
+
+/// Add-gate body with an injectable resolver timeout. A resolver timeout means the gate has no
+/// answer, so it stays a typed timeout rather than becoming a permanent-path refusal.
+async fn path_can_be_favorited_with_timeout(path: &str, fs_timeout: Duration) -> Result<bool, AddFavoriteError> {
     let path = Path::new(path);
     if !path.is_absolute() || crate::file_system::volume::manager::path_routes_over_its_parent(path) {
-        return false;
+        return Ok(false);
     }
     // The canonical path→volume resolver: protocol dispatch first, then the mount table under its
-    // own timeout, so a hung mount answers `None` rather than wedging the add.
-    let Some(volume) = crate::commands::volumes::resolve_path_volume(path.to_string_lossy().into_owned())
-        .await
-        .volume
-    else {
-        return false;
+    // own timeout. A timeout is UNKNOWN rather than evidence that the path is invalid.
+    let resolution =
+        crate::commands::volumes::resolve_path_volume_with_timeout(path.to_string_lossy().into_owned(), fs_timeout)
+            .await;
+    if resolution.timed_out {
+        return Err(AddFavoriteError::TimedOut);
+    }
+    let Some(volume) = resolution.volume else {
+        return Ok(false);
     };
-    volume_paths_are_os_visible(&volume.id)
+    Ok(volume_paths_are_os_visible(&volume.id))
 }
 
 /// Whether the registered volume `volume_id` names hands out paths the OS can reach.
@@ -259,6 +268,10 @@ mod add_gate_tests {
     use crate::test_support::CapabilityStub;
     use std::sync::Arc;
 
+    /// Correctness tests must not inherit the production scheduling deadline. The mount-table read
+    /// is fast, but a saturated blocking pool can delay when it starts.
+    const TEST_FS_TIMEOUT: Duration = Duration::from_secs(3600);
+
     /// The boot volume, so an ordinary local path has something OS-visible behind it.
     /// `register_if_absent` because the registry is process-wide and shared with every other test
     /// in this binary.
@@ -270,7 +283,21 @@ mod add_gate_tests {
     async fn an_ordinary_local_folder_can_be_favorited() {
         ensure_root_volume();
         let dir = tempfile::tempdir().expect("tempdir");
-        assert!(path_can_be_favorited(&dir.path().to_string_lossy()).await);
+        assert!(
+            path_can_be_favorited_with_timeout(&dir.path().to_string_lossy(), TEST_FS_TIMEOUT)
+                .await
+                .expect("local volume resolution should finish")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_volume_resolution_timeout_stays_a_timeout() {
+        ensure_root_volume();
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        let result = path_can_be_favorited_with_timeout(&dir.path().to_string_lossy(), Duration::ZERO).await;
+
+        assert!(matches!(result, Err(AddFavoriteError::TimedOut)));
     }
 
     /// ❗ The silent-disappearance case, and the whole reason the gate exists: `volumes::get_favorites`
@@ -290,7 +317,12 @@ mod add_gate_tests {
             "adb://pixel/sdcard/DCIM",
             "search-results://8f3a1c",
         ] {
-            assert!(!path_can_be_favorited(path).await, "{path} should be refused");
+            assert!(
+                !path_can_be_favorited_with_timeout(path, TEST_FS_TIMEOUT)
+                    .await
+                    .expect("protocol path classification should finish"),
+                "{path} should be refused"
+            );
         }
     }
 
@@ -304,10 +336,18 @@ mod add_gate_tests {
         let zip = dir.path().join("bundle.zip");
         std::fs::write(&zip, b"PK\x03\x04not-a-real-archive-body").expect("write zip magic");
 
-        assert!(!path_can_be_favorited(&zip.join("docs").to_string_lossy()).await);
+        assert!(
+            !path_can_be_favorited_with_timeout(&zip.join("docs").to_string_lossy(), TEST_FS_TIMEOUT)
+                .await
+                .expect("archive path classification should finish")
+        );
         // ❗ The archive FILE itself is an ordinary file on an ordinary drive, and its containing
         // folder is a perfectly good favorite. Only a path CONTINUING inside one is refused.
-        assert!(path_can_be_favorited(&dir.path().to_string_lossy()).await);
+        assert!(
+            path_can_be_favorited_with_timeout(&dir.path().to_string_lossy(), TEST_FS_TIMEOUT)
+                .await
+                .expect("local volume resolution should finish")
+        );
     }
 
     #[tokio::test]

@@ -171,6 +171,12 @@ existence filter have to agree, and the gate must never be the laxer of the two.
 So today it accepts local and SMB-mounted panes, and refuses SFTP, WebDAV, MTP, ADB, the `smb://`
 servers hub, search-results snapshots, archive-inner paths, and `.git`-portal paths.
 
+**A resolver timeout is not a refusal.** It means the gate could not classify the path, so
+`add_favorite` returns `AddFavoriteError::TimedOut` and does not persist anything. Resolver-correctness
+tests inject a generous filesystem timeout because a saturated blocking pool can spend the production
+two-second budget waiting to schedule an otherwise fast mount-table read; a separate zero-timeout test
+pins the typed timeout outcome.
+
 **Every add surface meets it**, because they all route through the command: the `favorites.add`
 palette / Go-menu handler, the folder-row and `..` context menus (`menu/menu_handlers.rs` calls
 `commands::favorites::add_favorite`, ❌ never `store::add`), and the MCP `favorites` tool, which maps
