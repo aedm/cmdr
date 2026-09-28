@@ -140,6 +140,13 @@ async fn path_can_be_favorited_with_timeout(path: &str, fs_timeout: Duration) ->
     let resolution =
         crate::commands::volumes::resolve_path_volume_with_timeout(path.to_string_lossy().into_owned(), fs_timeout)
             .await;
+    resolved_path_can_be_favorited(resolution)
+}
+
+/// Classifies the resolver's three outcomes without turning an unknown result into a refusal.
+fn resolved_path_can_be_favorited(
+    resolution: crate::commands::volumes::PathVolumeResolution,
+) -> Result<bool, AddFavoriteError> {
     if resolution.timed_out {
         return Err(AddFavoriteError::TimedOut);
     }
@@ -290,12 +297,12 @@ mod add_gate_tests {
         );
     }
 
-    #[tokio::test]
-    async fn a_volume_resolution_timeout_stays_a_timeout() {
-        ensure_root_volume();
-        let dir = tempfile::tempdir().expect("tempdir");
-
-        let result = path_can_be_favorited_with_timeout(&dir.path().to_string_lossy(), Duration::ZERO).await;
+    #[test]
+    fn a_volume_resolution_timeout_stays_a_timeout() {
+        let result = resolved_path_can_be_favorited(crate::commands::volumes::PathVolumeResolution {
+            volume: None,
+            timed_out: true,
+        });
 
         assert!(matches!(result, Err(AddFavoriteError::TimedOut)));
     }

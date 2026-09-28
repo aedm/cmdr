@@ -174,8 +174,8 @@ servers hub, search-results snapshots, archive-inner paths, and `.git`-portal pa
 **A resolver timeout is not a refusal.** It means the gate could not classify the path, so
 `add_favorite` returns `AddFavoriteError::TimedOut` and does not persist anything. Resolver-correctness
 tests inject a generous filesystem timeout because a saturated blocking pool can spend the production
-two-second budget waiting to schedule an otherwise fast mount-table read; a separate zero-timeout test
-pins the typed timeout outcome.
+two-second budget waiting to schedule an otherwise fast mount-table read; a separate synthetic resolver
+result pins the typed timeout outcome without depending on scheduler timing.
 
 **Every add surface meets it**, because they all route through the command: the `favorites.add`
 palette / Go-menu handler, the folder-row and `..` context menus (`menu/menu_handlers.rs` calls
