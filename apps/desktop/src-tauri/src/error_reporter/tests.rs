@@ -13,6 +13,10 @@ use std::path::Path;
 use std::time::{Duration, SystemTime};
 use zip::{DateTime as ZipDateTime, ZipArchive};
 
+fn test_redaction() -> redact::RedactionContext {
+    redact::RedactionContext::for_test([0x3c; 32], "ERR-TESTS")
+}
+
 fn sample_manifest() -> BundleManifest {
     BundleManifest {
         id: "ERR-AB23X".to_string(),
@@ -154,9 +158,8 @@ fn redaction_is_applied_to_log_lines() {
 fn prepare_user_note_redacts_paths_in_auto_notes() {
     // Regression: v0.21.0 auto-send bundles shipped `userNote` verbatim, which leaked
     // `/Users/<name>/...` from updater error messages. The redactor must scrub it.
-    let salt = [0u8; 16];
     let raw = "auto-send: 1 error within 60s, first: FE:updater | Couldn't find .app bundle in path: /Users/jane/projects/cmdr/target/release/Cmdr";
-    let redacted = prepare_user_note(raw, BundleKind::Auto, &salt).expect("non-empty note");
+    let redacted = prepare_user_note(raw, BundleKind::Auto, &test_redaction()).expect("non-empty note");
     assert!(
         !redacted.contains("/Users/jane"),
         "expected `/Users/jane` to be redacted (got: {redacted})"
@@ -176,28 +179,26 @@ fn prepare_user_note_redacts_paths_in_auto_notes() {
 fn prepare_user_note_leaves_user_notes_verbatim() {
     // User-typed notes are previewed in the dialog and shipped verbatim. We trust the
     // user to know what they're sharing; a path they typed in is a path they want sent.
-    let salt = [0u8; 16];
     let raw = "I opened /Users/jane/Documents/budget.pdf and the app froze";
-    let kept = prepare_user_note(raw, BundleKind::User, &salt).expect("non-empty note");
+    let kept = prepare_user_note(raw, BundleKind::User, &test_redaction()).expect("non-empty note");
     assert_eq!(kept, raw);
 }
 
 #[test]
 fn prepare_user_note_drops_empty_and_whitespace_for_both_kinds() {
-    let salt = [0u8; 16];
-    assert!(prepare_user_note("", BundleKind::Auto, &salt).is_none());
-    assert!(prepare_user_note("   \t  ", BundleKind::Auto, &salt).is_none());
-    assert!(prepare_user_note("", BundleKind::User, &salt).is_none());
-    assert!(prepare_user_note("\n  \n", BundleKind::User, &salt).is_none());
+    let redaction = test_redaction();
+    assert!(prepare_user_note("", BundleKind::Auto, &redaction).is_none());
+    assert!(prepare_user_note("   \t  ", BundleKind::Auto, &redaction).is_none());
+    assert!(prepare_user_note("", BundleKind::User, &redaction).is_none());
+    assert!(prepare_user_note("\n  \n", BundleKind::User, &redaction).is_none());
 }
 
 #[test]
 fn prepare_user_note_redacts_each_line_of_multiline_auto_note() {
     // Defensive: auto_dispatcher's format string is single-line, but `state.first_message`
     // is arbitrary; a multi-line message must still get redacted on every line.
-    let salt = [0u8; 16];
     let raw = "auto-send: first error\nlocation: /Users/jane/projects/foo\ndetail: also /Users/jane/Documents/x.pdf";
-    let redacted = prepare_user_note(raw, BundleKind::Auto, &salt).expect("non-empty note");
+    let redacted = prepare_user_note(raw, BundleKind::Auto, &test_redaction()).expect("non-empty note");
     assert!(
         !redacted.contains("/Users/jane"),
         "every line must be redacted (got: {redacted})"
@@ -626,15 +627,15 @@ fn build_bundle_24h_filter_drops_old_files() {
     // handle; the per-file scope filter is exercised via `load_and_filter_log_file`.
     let now_utc = Utc::now();
     let now_system = SystemTime::now();
-    let salt: [u8; 16] = [0u8; 16];
+    let redaction = test_redaction();
     // The legacy file-by-mtime filter was the Flow A path, but Flow A now uses the
     // streaming tail walker. Run this assertion against the legacy path via the
     // `Recent { window: 24h }` configuration, same behavior, easier-to-read intent.
     let scope = BundleScope::Recent {
         window: Duration::from_secs(24 * 3600),
     };
-    let fresh_picked = load_and_filter_log_file(&fresh, scope, now_utc, now_system, &salt);
-    let stale_picked = load_and_filter_log_file(&stale, scope, now_utc, now_system, &salt);
+    let fresh_picked = load_and_filter_log_file(&fresh, scope, now_utc, now_system, &redaction);
+    let stale_picked = load_and_filter_log_file(&stale, scope, now_utc, now_system, &redaction);
 
     let (fresh_lines, _) = fresh_picked.expect("fresh file always included");
     assert!(!fresh_lines.is_empty(), "fresh file lines should be kept");
@@ -673,13 +674,13 @@ fn build_bundle_window_scope_trims_old_lines() {
     .expect("write log");
 
     let now_system = SystemTime::now();
-    let salt: [u8; 16] = [0u8; 16];
+    let redaction = test_redaction();
     let (lines, _) = load_and_filter_log_file(
         &log_path,
         BundleScope::Window { first_error_at },
         now_utc,
         now_system,
-        &salt,
+        &redaction,
     )
     .expect("file should be loaded");
 
@@ -846,7 +847,7 @@ mod streaming_tests {
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
-            &[0u8; 16],
+            &test_redaction(),
         )
         .expect("build_bundle_streaming");
 
@@ -896,7 +897,7 @@ mod streaming_tests {
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
-            &[0u8; 16],
+            &test_redaction(),
         )
         .unwrap();
 
@@ -943,7 +944,7 @@ mod streaming_tests {
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
-            &[0u8; 16],
+            &test_redaction(),
         )
         .unwrap();
 
@@ -981,7 +982,7 @@ mod streaming_tests {
             vec![missing, empty],
             Utc::now() - chrono::Duration::hours(1),
             SystemTime::now(),
-            &[0u8; 16],
+            &test_redaction(),
         )
         .unwrap();
         let entries = read_zip_entries(&bundle.zip_bytes);
@@ -1033,7 +1034,7 @@ mod streaming_tests {
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
-            &[0u8; 16],
+            &test_redaction(),
         )
         .unwrap();
         let elapsed = start.elapsed();

@@ -8,9 +8,25 @@
 use super::*;
 use std::borrow::Cow;
 
+const TEST_PROCESS_SECRET: [u8; 32] = [0x5a; 32];
+
 /// Helper: redact_line returns Cow; tests want String.
 fn r(s: &str) -> String {
     redact_line(s).into_owned()
+}
+
+fn context(report_id: &str) -> RedactionContext {
+    RedactionContext::for_test(TEST_PROCESS_SECRET, report_id)
+}
+
+fn token(output: &str, kind: &str) -> String {
+    let prefix = format!("<{kind}:");
+    output
+        .split(&prefix)
+        .nth(1)
+        .and_then(|tail| tail.split('>').next())
+        .unwrap_or_else(|| panic!("missing {kind} token in {output:?}"))
+        .to_string()
 }
 
 #[test]
@@ -320,24 +336,92 @@ fn temp_suffixed_filename_with_a_space_is_redacted_whole() {
     }
 }
 
-/// The same name must hash to the same token however it was printed.
-///
-/// Real incident: one jpg came out as three different `<file:…>` tokens in one bundle, because
-/// it was logged via `Display` (raw NFD), via `{:?}` (`e\u{301}` escaped), and from the NAS
-/// listing (NFC). Salted correlation is the whole point of `redact_line_salted`.
 #[test]
-fn a_name_hashes_the_same_whatever_printed_it() {
-    let salt = b"0123456789abcdef";
-    let display_nfd = redact_line_salted("/Users/jo/Pics/kapu me\u{301}retek.jpg", salt).into_owned();
-    let debug_nfd = redact_line_salted(r#"path="/Users/jo/Pics/kapu me\u{301}retek.jpg""#, salt).into_owned();
-    let display_nfc = redact_line_salted("/Users/jo/Pics/kapu m\u{e9}retek.jpg", salt).into_owned();
-    let token = |s: &str| s.split("<file:").nth(1).map(|t| t[..6].to_string());
-    let t1 = token(&display_nfd).expect("display token");
-    assert_eq!(token(&debug_nfd), Some(t1.clone()), "{display_nfd} vs {debug_nfd}");
-    assert_eq!(token(&display_nfc), Some(t1.clone()), "{display_nfd} vs {display_nfc}");
-    // The temp a transfer writes first correlates with the name it's renamed to.
-    let temp = redact_line_salted(r#"path="Pics/kapu méretek.jpg.cmdr-tmp-66381a4a""#, salt).into_owned();
-    assert_eq!(token(&temp), Some(t1), "{display_nfd} vs {temp}");
+fn one_context_correlates_repeated_names_with_twelve_lowercase_hex_chars() {
+    let context = context("ERR-AAAAA");
+    let first = context.redact_line("/Users/jo/Pics/private report.pdf");
+    let second = context.redact_line(r#"path="/Users/jo/Pics/private report.pdf""#);
+    let first_token = token(&first, "file");
+
+    assert_eq!(token(&second, "file"), first_token);
+    assert_eq!(first_token.len(), 12);
+    assert!(
+        first_token
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    );
+}
+
+#[test]
+fn separate_contexts_do_not_correlate_the_same_name() {
+    let first = context("ERR-AAAAA").redact_line("/Users/jo/Pics/private report.pdf");
+    let second = context("ERR-BBBBB").redact_line("/Users/jo/Pics/private report.pdf");
+
+    assert_ne!(token(&first, "file"), token(&second, "file"));
+}
+
+#[test]
+fn real_identity_domains_do_not_correlate_the_same_value() {
+    let context = context("ERR-AAAAA");
+    let tokens = [
+        token(&context.redact_line(r#"path="Sentinel""#), "dir"),
+        token(&context.redact_line("Sentinel.local"), "host"),
+        token(&context.redact_line("user=Sentinel"), "user"),
+        token(&context.redact_line("/Volumes/Sentinel"), "volume"),
+        token(&context.redact_line("smb://Sentinel"), "server"),
+        token(&context.redact_line("Sentinel's Pixel"), "mtp-owner"),
+    ];
+
+    for (index, left) in tokens.iter().enumerate() {
+        assert!(tokens[index + 1..].iter().all(|right| right != left));
+    }
+}
+
+#[test]
+fn process_secrets_separate_the_same_report() {
+    let first = RedactionContext::for_test([0x11; 32], "ERR-AAAAA").redact_line("/Users/jo/Pics/private report.pdf");
+    let second = RedactionContext::for_test([0x22; 32], "ERR-AAAAA").redact_line("/Users/jo/Pics/private report.pdf");
+
+    assert_ne!(token(&first, "file"), token(&second, "file"));
+}
+
+/// One name can arrive from `Display` in NFD, from `Debug` with escapes, or from a NAS in NFC.
+#[test]
+fn context_normalizes_unicode_debug_spelling_and_staging_names() {
+    let context = context("ERR-AAAAA");
+    let display_nfd = context.redact_line("/Users/jo/Pics/kapu me\u{301}retek.jpg");
+    let debug_nfd = context.redact_line(r#"path="/Users/jo/Pics/kapu me\u{301}retek.jpg""#);
+    let display_nfc = context.redact_line("/Users/jo/Pics/kapu m\u{e9}retek.jpg");
+    let staged = context.redact_line(r#"path="Pics/kapu méretek.jpg.cmdr-tmp-66381a4a""#);
+    let expected = token(&display_nfd, "file");
+
+    assert_eq!(token(&debug_nfd, "file"), expected);
+    assert_eq!(token(&display_nfc, "file"), expected);
+    assert_eq!(token(&staged, "file"), expected);
+    assert!(staged.ends_with(".jpg.cmdr-tmp-66381a4a\""));
+}
+
+#[test]
+fn context_keeps_extensionless_and_staging_name_shape() {
+    let context = context("ERR-AAAAA");
+    let extensionless = context.redact_line(r#"path="projects/README""#);
+    let staged = context.redact_line(r#"path="projects/report.pdf.cmdr-staging-dead-beef""#);
+
+    assert_eq!(token(&extensionless, "dir").len(), 12);
+    assert!(!extensionless.contains("README"));
+    assert!(staged.ends_with(".pdf.cmdr-staging-dead-beef\""));
+}
+
+#[test]
+fn context_preserves_only_context_proven_home_downloads_role() {
+    let context = context("ERR-AAAAA");
+    let home = context.redact_line("/Users/alice/Downloads/client/project/report.pdf");
+    let unrelated = context.redact_line("/Users/alice/Work/Downloads/report.pdf");
+    let remote = context.redact_line("smb://server/share/Downloads/report.pdf");
+
+    assert!(home.starts_with("$HOME/Downloads/<dir:"), "{home}");
+    assert!(!unrelated.contains("Downloads"), "{unrelated}");
+    assert!(!remote.contains("Downloads"), "{remote}");
 }
 
 #[test]

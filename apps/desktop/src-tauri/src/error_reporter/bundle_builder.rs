@@ -18,7 +18,6 @@ use super::{
 use crate::logging;
 use crate::redact;
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use rand::RngExt;
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -62,7 +61,7 @@ pub struct BundleRequest {
     pub id: Option<String>,
     /// Trimmed and dropped if empty. Callers cap its length (the commands layer enforces
     /// 100 000 code points). For [`BundleKind::Auto`] the note is also run through
-    /// [`redact::redact_line_salted`]: the auto-dispatcher builds it from a raw error
+    /// [`redact::RedactionContext::redact_line`]: the auto-dispatcher builds it from a raw error
     /// message that routinely contains paths (updater failures embedding `current_exe()`),
     /// and the user never gets to vet what ships. A [`BundleKind::User`] note was typed and
     /// previewed by the person sending it, so it goes verbatim.
@@ -103,10 +102,7 @@ pub fn build_bundle<R: tauri::Runtime>(
     let now_utc = Utc::now();
     let now_system = SystemTime::now();
 
-    // Per-bundle redaction salt: 16 random bytes mixed into every path-segment hash so
-    // a triager can spot "same dir mentioned 12 times" within this bundle while the
-    // same path in another bundle hashes differently. The salt itself never ships.
-    let salt: [u8; 16] = rand::rng().random();
+    let redaction = redact::RedactionContext::for_report(&id);
 
     let manifest = BundleManifest {
         id: id.clone(),
@@ -118,7 +114,7 @@ pub fn build_bundle<R: tauri::Runtime>(
         active_settings: cached_active_settings(app).clone(),
         log_levels: build_log_level_snapshot(),
         breadcrumbs: breadcrumbs::snapshot(),
-        user_note: user_note.and_then(|n| prepare_user_note(&n, kind, &salt)),
+        user_note: user_note.and_then(|n| prepare_user_note(&n, kind, &redaction)),
         // The diag id (full stdlib here, safe to mint/lock). NEVER the `anal_` analytics id.
         diag_id: crate::install_id::diagnostics_id(),
         // Email rides ONLY Flow A (User). `email_for_kind` strips it for Flow B (Auto) so an
@@ -140,14 +136,14 @@ pub fn build_bundle<R: tauri::Runtime>(
                 Some(dir) => logging::list_recent_log_files(dir),
                 None => Vec::new(),
             };
-            build_bundle_streaming(id, manifest, files, cutoff, now_system, &salt)
+            build_bundle_streaming(id, manifest, files, cutoff, now_system, &redaction)
         }
-        BundleScope::Window { .. } => build_bundle_legacy_window(id, manifest, scope, now_utc, now_system, &salt),
+        BundleScope::Window { .. } => build_bundle_legacy_window(id, manifest, scope, now_utc, now_system, &redaction),
     }
 }
 
 /// Trims `note`, drops it if empty, and (for [`BundleKind::Auto`] only) runs the result
-/// through the per-line salted redactor. Split out so the kind-dispatching logic has its
+/// through the report's redaction context. Split out so the kind-dispatching logic has its
 /// own unit tests without needing a full `tauri::AppHandle`.
 ///
 /// Auto notes get redacted because [`super::auto_dispatcher`] builds them from a raw
@@ -157,7 +153,7 @@ pub fn build_bundle<R: tauri::Runtime>(
 /// The split-on-`\n` is defensive: `auto_dispatcher`'s format string has no newline, but
 /// `state.first_message` is arbitrary and a multi-line note would otherwise break
 /// `redact_line`'s `\b`-anchored patterns at the line boundary.
-pub(super) fn prepare_user_note(note: &str, kind: BundleKind, salt: &[u8]) -> Option<String> {
+pub(super) fn prepare_user_note(note: &str, kind: BundleKind, redaction: &redact::RedactionContext) -> Option<String> {
     let trimmed = note.trim();
     if trimmed.is_empty() {
         return None;
@@ -165,7 +161,7 @@ pub(super) fn prepare_user_note(note: &str, kind: BundleKind, salt: &[u8]) -> Op
     Some(match kind {
         BundleKind::Auto => trimmed
             .split('\n')
-            .map(|line| redact::redact_line_salted(line, salt))
+            .map(|line| redaction.redact_line(line))
             .collect::<Vec<_>>()
             .join("\n"),
         BundleKind::User => trimmed.to_string(),
@@ -227,7 +223,7 @@ pub(super) fn build_bundle_streaming(
     files: Vec<PathBuf>,
     cutoff: DateTime<Utc>,
     now_system: SystemTime,
-    salt: &[u8],
+    redaction: &redact::RedactionContext,
 ) -> Result<BuiltBundle, String> {
     let cap_bytes = FLOW_A_BUNDLE_CAP_MB * 1024 * 1024;
 
@@ -315,7 +311,7 @@ pub(super) fn build_bundle_streaming(
         }
 
         for line in &walk.lines {
-            let redacted = redact::redact_line_salted(line, salt);
+            let redacted = redaction.redact_line(line);
             if writer.write_all(redacted.as_bytes()).is_err() || writer.write_all(b"\n").is_err() {
                 budget_exhausted = true;
                 break;
@@ -426,7 +422,7 @@ fn build_bundle_legacy_window(
     scope: BundleScope,
     now_utc: DateTime<Utc>,
     now_system: SystemTime,
-    salt: &[u8],
+    redaction: &redact::RedactionContext,
 ) -> Result<BuiltBundle, String> {
     // BTreeMap so zip order is deterministic: same inputs, same bytes out. Matters for
     // the preview hash and for byte-level tests.
@@ -445,7 +441,7 @@ fn build_bundle_legacy_window(
             let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
                 continue;
             };
-            let Some((lines, mtime)) = load_and_filter_log_file(&path, scope, now_utc, now_system, salt) else {
+            let Some((lines, mtime)) = load_and_filter_log_file(&path, scope, now_utc, now_system, redaction) else {
                 continue;
             };
             if lines.is_empty() {
@@ -490,7 +486,7 @@ pub(super) fn load_and_filter_log_file(
     scope: BundleScope,
     now_utc: DateTime<Utc>,
     now_system: SystemTime,
-    salt: &[u8],
+    redaction: &redact::RedactionContext,
 ) -> Option<(Vec<String>, SystemTime)> {
     let metadata = match std::fs::metadata(path) {
         Ok(m) => m,
@@ -543,7 +539,7 @@ pub(super) fn load_and_filter_log_file(
         {
             continue;
         }
-        lines.push(redact::redact_line_salted(&line, salt).into_owned());
+        lines.push(redaction.redact_line(&line).into_owned());
     }
 
     Some((lines, mtime))

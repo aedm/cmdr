@@ -25,7 +25,7 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
   coarse machine identity). Add nothing naming a drive, path, or person.
 - **Auto notes get redacted; `User` notes ship verbatim**: an auto note is a raw error message nobody previewed.
 - **One dialog session, one id.** The preview mints it, the send passes it back via `BundleRequest.id`. Skip it and
-  the user holds an id no report was filed under.
+  the user holds an id no report was filed under. The same ID also rebuilds the same report-scoped redaction context.
 - **Don't gate sending on `cfg!(debug_assertions)`.** Debug builds DO send (`buildMode` tags them `[DEV]`); only `CI`
   and the `playwright-e2e` feature short-circuit.
 - **`diagId` is the `diag_` diagnostics id, NEVER the `anal_` analytics id**: that split keeps an attached email

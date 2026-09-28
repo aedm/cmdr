@@ -46,8 +46,9 @@ pub fn nothing_to_suggest_schema() -> Value {
 ///
 /// ❌ **Never log this verbatim.** `cmdr.log` ships inside error reports, including the
 /// auto-dispatched ones the user never previews, and the redactor
-/// (`redact::redact_line_salted`) is path-shaped, so it does nothing to prose. A sentence
-/// about which of the user's folders were boring is exactly the thing that must not travel.
+/// (`redact::RedactionContext::redact_line`) is path-shaped, so it does nothing to prose.
+/// A sentence about which of the user's folders were boring is exactly the thing that must
+/// not travel.
 pub fn reason_of(arguments: &Value) -> Option<String> {
     let text = arguments.get("reason")?.as_str()?.trim();
     if text.is_empty() {

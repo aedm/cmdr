@@ -1,6 +1,7 @@
 //! Keyed log fields (`path=`, `smb_path=`, `from=`, …): the only way to recognize a path with no mount prefix in
 //! front of it. `DETAILS.md` § "Keyed path fields".
 
+use super::RedactionContext;
 use super::names::{split_cmdr_suffix, unescape_debug};
 use super::paths::{dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf};
 use super::redactor_regex;
@@ -49,7 +50,7 @@ pub(super) const SYSTEM_ROOTS: &[&str] = &[
 /// just `key=` (plus the opening quote), and `redact_with` resumes at the value, where that
 /// branch claims it with its own prefix rules (`$HOME`, `/Volumes/<volume>`, …). Everything
 /// else is walked here segment by segment, which is what reaches a share-relative path.
-pub(super) fn redact_path_field(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
+pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
     let key = caps.name("pf_key").map_or("", |m| m.as_str());
     let raw = caps.name("pf_value").map_or("", |m| m.as_str());
     let quoted = raw.len() >= 2 && raw.starts_with('"') && raw.ends_with('"');
@@ -72,7 +73,7 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, salt: Option<&[u8]>) -> (St
     } else {
         Cow::Borrowed(value)
     };
-    let redacted = redact_relative_path(&unescaped, salt);
+    let redacted = redact_relative_path(&unescaped, context);
     let consumed = head.len() + value.len() + quote.len();
     (format!("{head}{redacted}{quote}"), consumed)
 }
@@ -126,7 +127,7 @@ pub(super) fn claimed_by_path_branch(value: &str) -> bool {
 /// `docs\a b.pdf`), volume-relative (`/docs/a b.pdf`), or a bare name. Same shape rules as
 /// every other path: the leaf keeps its extension, an allowlisted parent keeps its name, the
 /// rest collapse. Segments that are already tokens pass through, which keeps it idempotent.
-pub(super) fn redact_relative_path(value: &str, salt: Option<&[u8]>) -> String {
+pub(super) fn redact_relative_path(value: &str, context: Option<&RedactionContext>) -> String {
     let sep = if value.contains('/') || !value.contains('\\') {
         '/'
     } else {
@@ -146,11 +147,11 @@ pub(super) fn redact_relative_path(value: &str, salt: Option<&[u8]>) -> String {
         if keep {
             out.push_str(seg);
         } else if i == leaf_idx {
-            out.push_str(&redact_leaf(seg, has_extension_like_suffix(seg), salt));
-        } else if i + 1 == leaf_idx && is_safe_parent_dir(seg) {
+            out.push_str(&redact_leaf(seg, has_extension_like_suffix(seg), context));
+        } else if i + 1 == leaf_idx && is_safe_parent_dir(seg) && (context.is_none() || *seg != "Downloads") {
             out.push_str(seg);
         } else {
-            out.push_str(&dir_token(seg, salt));
+            out.push_str(&dir_token(seg, context));
         }
     }
     out
@@ -170,7 +171,8 @@ pub(super) fn is_redacted_segment(seg: &str) -> bool {
     let (label, tail) = (&rest[..close], &rest[close + 1..]);
     let (kind, hash) = label.split_once(':').unwrap_or((label, ""));
     let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_lowercase() || c == '-');
-    let hash_ok = hash.is_empty() || (hash.len() == 6 && hash.chars().all(|c| c.is_ascii_hexdigit()));
+    let hash_ok =
+        hash.is_empty() || ((hash.len() == 6 || hash.len() == 12) && hash.chars().all(|c| c.is_ascii_hexdigit()));
     let tail_ok = tail.is_empty()
         || tail
             .strip_prefix('.')

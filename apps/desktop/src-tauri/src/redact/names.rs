@@ -1,5 +1,5 @@
 //! How a name was spelled on its way into the log: Cmdr's own temp suffixes and Rust's `{:?}` escapes. Both have to
-//! be seen through, or one file reads as several (`DETAILS.md` § "Hashing a name, not its bytes").
+//! be seen through, or one file reads as several (`DETAILS.md` § "Report-scoped token identity").
 
 use std::borrow::Cow;
 

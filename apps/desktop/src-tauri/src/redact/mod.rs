@@ -17,15 +17,13 @@
 //! allowlist (`Documents`, `Downloads`, `Desktop`, ...). Unknown parent dirs collapse to
 //! `<dir>` so we never leak project-like names (`SecretProjectName`).
 //!
-//! # Salted mode (per-bundle correlation)
+//! # Report-scoped correlation
 //!
 //! [`redact_line`] emits bare `<dir>` / `<file>` tokens, useful but indistinguishable
-//! when a log line mentions the same directory twenty times. The error reporter calls
-//! [`redact_line_salted`] instead, threading a 16-byte random salt minted at bundle
-//! build time. Salted mode emits `<dir:HHHHHH>` / `<file:HHHHHH>` where the 6 hex chars
-//! are the first 3 bytes of `blake3(salt || segment)`. Same path → same hash within a
-//! bundle, so a triager (or agent) can spot "same dir, mentioned 12 times." Different
-//! salt across bundles → no cross-bundle correlation, no rainbow tables.
+//! when a log line mentions the same directory twenty times. The error reporter builds a
+//! [`RedactionContext`] from the report ID. It emits 12-hex tokens derived from an ephemeral
+//! process secret, report ID, identity domain, and normalized name. Preview and send rebuilds
+//! of one report correlate; another report or process does not.
 //!
 //! # Coverage
 //!
@@ -36,12 +34,15 @@ use regex::{Captures, Regex};
 use std::borrow::Cow;
 use std::sync::OnceLock;
 
+mod context;
 mod fields;
 mod names;
 mod paths;
 #[cfg(test)]
 mod tests;
 
+pub use context::RedactionContext;
+use context::TokenDomain;
 use fields::*;
 use names::*;
 use paths::*;
@@ -67,22 +68,17 @@ const SAFE_PARENT_DIR_NAMES: &[&str] = &[
 /// Returns a [`Cow::Borrowed`] when no redaction was needed so we don't allocate
 /// on lines like `"Reconciler: switched to live mode"` that have no PII at all.
 ///
-/// Bare `<dir>` / `<file>` tokens. For salted mode (correlatable hashes within a
-/// bundle), use [`redact_line_salted`].
+/// Bare `<dir>` / `<file>` tokens. Report builders use [`RedactionContext::redact_line`]
+/// for report-local correlation.
 pub fn redact_line(line: &str) -> Cow<'_, str> {
     redact_with(line, None)
 }
 
-/// Salted variant of [`redact_line`]. Path segments that would collapse to `<dir>`
-/// or `<file>` instead emit `<dir:HHHHHH>` / `<file:HHHHHH>` where the 6 hex chars are
-/// `blake3(salt || segment)[..3]`. Same input → same output within a single salt;
-/// no cross-bundle correlation between different salts.
-///
-/// The salt is expected to be ≥ 16 bytes of cryptographic random per bundle. Anything
-/// shorter is accepted (the hash still correlates) but cross-bundle resistance suffers
-/// proportionally.
-pub fn redact_line_salted<'a>(line: &'a str, salt: &[u8]) -> Cow<'a, str> {
-    redact_with(line, Some(salt))
+impl RedactionContext {
+    /// Redact one line with report-local, domain-separated correlation tokens.
+    pub fn redact_line<'a>(&self, line: &'a str) -> Cow<'a, str> {
+        redact_with(line, Some(self))
+    }
 }
 
 /// Redact a bare file or folder NAME, one with no path around it for a pattern to find:
@@ -104,7 +100,7 @@ pub fn redact_name(name: &str, is_dir: bool) -> String {
 /// `smb:` into the volume match, gave it back as text, and left `//host/share/x.txt` with no
 /// pattern willing to claim it: the share and the filename shipped verbatim. Resuming at
 /// `match.start() + consumed` puts the tail back in front of the scanner, where it belongs.
-fn redact_with<'a>(line: &'a str, salt: Option<&[u8]>) -> Cow<'a, str> {
+fn redact_with<'a>(line: &'a str, context: Option<&RedactionContext>) -> Cow<'a, str> {
     let re = redactor_regex();
     let mut out: Option<String> = None;
     let mut pos = 0usize;
@@ -114,7 +110,7 @@ fn redact_with<'a>(line: &'a str, salt: Option<&[u8]>) -> Cow<'a, str> {
         // "start of line" rather than "start of the remaining slice".
         let Some(caps) = re.captures_at(line, pos) else { break };
         let Some(whole) = caps.get(0) else { break };
-        let (replacement, consumed) = dispatch(&caps, salt);
+        let (replacement, consumed) = dispatch(&caps, context);
 
         let buf = out.get_or_insert_with(|| String::with_capacity(line.len()));
         buf.push_str(&line[pos..whole.start()]);
@@ -313,50 +309,68 @@ fn redactor_regex() -> &'static Regex {
 /// A path branch consumes only the path, NOT the trailing noise it split off: the noise goes
 /// back to the scanner in [`redact_with`], which is what lets a pattern that begins inside
 /// the over-match still be recognized. Every other branch consumes its whole match.
-fn dispatch(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
+fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
     if let Some(m) = caps.name("win_home") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_windows_home(path, salt), path.len());
+        return (redact_windows_home(path, context), path.len());
     }
     if let Some(m) = caps.name("unix_home") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_unix_home(path, salt), path.len());
+        return (redact_unix_home(path, context), path.len());
     }
     if let Some(m) = caps.name("unix_system") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_unix_system(path, salt), path.len());
+        return (redact_unix_system(path, context), path.len());
     }
     if let Some(m) = caps.name("volumes") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_volumes(path, salt), path.len());
+        return (redact_volumes(path, context), path.len());
     }
     if let Some(m) = caps.name("media") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_media(path, salt), path.len());
+        return (redact_media(path, context), path.len());
     }
     if let Some(m) = caps.name("smb_uri") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_smb_uri(path, salt), path.len());
+        return (redact_smb_uri(path, context), path.len());
     }
     if let Some(m) = caps.name("unc") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_unc(path, salt), path.len());
+        return (redact_unc(path, context), path.len());
     }
     if caps.name("url_userinfo").is_some() {
         // Preserve scheme and everything after the `@`, redact the userinfo.
         let scheme = caps.name("scheme").map(|m| m.as_str()).unwrap_or("");
+        let userinfo = caps.name("userinfo").map(|m| m.as_str()).unwrap_or("");
         let host_rest = caps.name("host_rest").map(|m| m.as_str()).unwrap_or("");
-        return (format!("{scheme}://<userinfo>@{host_rest}"), whole_len(caps));
+        return (
+            format!(
+                "{scheme}://{}@{host_rest}",
+                identity_token("userinfo", TokenDomain::Userinfo, userinfo, context)
+            ),
+            whole_len(caps),
+        );
     }
-    if caps.name("bare_userinfo").is_some() {
+    if let Some(m) = caps.name("bare_userinfo") {
         // Scheme-less `//user:pass@host`: drop the userinfo, keep the leading delimiter
         // and everything after the `@`.
         let lead = caps.name("bare_lead").map(|m| m.as_str()).unwrap_or("");
         let host_rest = caps.name("bare_host_rest").map(|m| m.as_str()).unwrap_or("");
-        return (format!("{lead}//<userinfo>@{host_rest}"), whole_len(caps));
+        let userinfo = m
+            .as_str()
+            .strip_prefix("//")
+            .and_then(|value| value.split_once('@'))
+            .map_or("", |parts| parts.0);
+        return (
+            format!(
+                "{lead}//{}@{host_rest}",
+                identity_token("userinfo", TokenDomain::Userinfo, userinfo, context)
+            ),
+            whole_len(caps),
+        );
     }
     if caps.name("path_field").is_some() {
-        return redact_path_field(caps, salt);
+        return redact_path_field(caps, context);
     }
     if caps.name("email").is_some() {
         return ("<email>".to_string(), whole_len(caps));
@@ -368,21 +382,32 @@ fn dispatch(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
                 caps.name("account_sep").map(|s| s.as_str()).unwrap_or("="),
                 caps.name("account_value").map(|v| v.as_str()).unwrap_or(""),
                 m.as_str(),
+                context,
             ),
             whole_len(caps),
         );
     }
-    if caps.name("mdns").is_some() {
-        return ("<host>.local".to_string(), whole_len(caps));
+    if let Some(m) = caps.name("mdns") {
+        let host = m.as_str().strip_suffix(".local").unwrap_or(m.as_str());
+        return (
+            format!("{}.local", identity_token("host", TokenDomain::Host, host, context)),
+            whole_len(caps),
+        );
     }
-    if caps.name("ipv6").is_some() {
-        return ("<ipv6>".to_string(), whole_len(caps));
+    if let Some(m) = caps.name("ipv6") {
+        return (
+            identity_token("ipv6", TokenDomain::Host, m.as_str(), context),
+            whole_len(caps),
+        );
     }
-    if caps.name("ipv4").is_some() {
-        return ("<ipv4>".to_string(), whole_len(caps));
+    if let Some(m) = caps.name("ipv4") {
+        return (
+            identity_token("ipv4", TokenDomain::Host, m.as_str(), context),
+            whole_len(caps),
+        );
     }
     if let Some(m) = caps.name("mtp_owner") {
-        return (redact_mtp_owner(m.as_str()), whole_len(caps));
+        return (redact_mtp_owner(m.as_str(), context), whole_len(caps));
     }
     // Shouldn't happen: regex matched but no named group. Return verbatim to be safe.
     (
@@ -396,36 +421,57 @@ fn whole_len(caps: &Captures<'_>) -> usize {
     caps.get(0).map_or(0, |m| m.len())
 }
 
+fn identity_token(kind: &str, domain: TokenDomain, value: &str, context: Option<&RedactionContext>) -> String {
+    context.map_or_else(
+        || format!("<{kind}>"),
+        |context| format!("<{kind}:{}>", context.token(domain, value)),
+    )
+}
+
 /// Replace an account name with `<user>`, keeping the field's shape so the line still reads.
 ///
 /// `Some(...)` and the quotes stay because they carry the answer to the question a triager
 /// asks of these lines ("did we have a username at all, and did it come from the mount info
 /// or the Keychain?"). `None` is not a name and passes through verbatim, which is the whole
 /// reason this can't be a blanket `user=\S+` → `<user>` rewrite.
-fn redact_account(key: &str, separator: &str, value: &str, whole: &str) -> String {
+fn redact_account(key: &str, separator: &str, value: &str, whole: &str, context: Option<&RedactionContext>) -> String {
     if value == "None" {
         return whole.to_string();
     }
     if value.starts_with("Some(\"") && value.ends_with("\")") {
-        return format!("{key}{separator}Some(\"<user>\")");
+        let account = &value[6..value.len() - 2];
+        return format!(
+            "{key}{separator}Some(\"{}\")",
+            identity_token("user", TokenDomain::Userinfo, account, context)
+        );
     }
     if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
-        return format!("{key}{separator}\"<user>\"");
+        return format!(
+            "{key}{separator}\"{}\"",
+            identity_token("user", TokenDomain::Userinfo, &value[1..value.len() - 1], context)
+        );
     }
-    format!("{key}{separator}<user>")
+    format!(
+        "{key}{separator}{}",
+        identity_token("user", TokenDomain::Userinfo, value, context)
+    )
 }
 
 /// Replace the possessive owner prefix with `<mtp-owner>`, keep the model words intact.
 /// Input is guaranteed to start with `<Owner>'s ` (capital letter, then letters, then
 /// `'s`, then one or more spaces) by the regex.
-fn redact_mtp_owner(s: &str) -> String {
+fn redact_mtp_owner(s: &str, context: Option<&RedactionContext>) -> String {
     // Find the `'s` boundary; everything from there onward is the model phrase.
     // Splitting on `'s` is safe because the regex anchors the apostrophe-s.
     match s.find("'s") {
         Some(i) => {
             // s[i..] starts with "'s", which we want to keep so the redacted output
             // reads naturally ("<mtp-owner>'s Pixel 8 Pro").
-            format!("<mtp-owner>{}", &s[i..])
+            format!(
+                "{}{}",
+                identity_token("mtp-owner", TokenDomain::Device, &s[..i], context),
+                &s[i..]
+            )
         }
         None => s.to_string(),
     }

@@ -167,8 +167,8 @@ delete lives on the wake path, after the turn (`agent/wake/`), and a rail turn c
 
 **Why the `reason` never reaches a log.** It exists for the agent's own memory and is trimmed to
 `MAX_REASON_CHARS`. ❌ It must never be logged verbatim: `cmdr.log` ships inside error reports, including the
-auto-dispatched ones the user never previews, and `redact::redact_line_salted` is path-shaped, so it does nothing to a
-sentence about which of the user's folders were boring. Log that a wake was quiet, never what it said.
+auto-dispatched ones the user never previews, and `redact::RedactionContext::redact_line` is path-shaped, so it does
+nothing to a sentence about which of the user's folders were boring. Log that a wake was quiet, never what it said.
 
 **What it costs everyone else.** The schema is prefix, so all 19 declarations are paid on every rail turn: this one is
 97 tokens of the 6,263 fixed overhead (`agent/chat/DETAILS.md` § What the budgets buy). That's the price of the wake

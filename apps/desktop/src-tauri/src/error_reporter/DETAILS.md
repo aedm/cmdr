@@ -71,7 +71,7 @@ Manifest fields (`BundleManifest`):
   keyboard / palette / menu dispatch. See "Breadcrumbs" below.
 - `userNote` (optional): user-supplied free text. Trimmed; capped at 100 000 chars by the
   Tauri command layer. For [`BundleKind::Auto`] bundles only, the note is also routed
-  through the same `redact_line_salted` pass that scrubs every log line. The auto
+  through the report's `RedactionContext` that scrubs every log line. The auto
   pipeline constructs the note from a raw error message (see [`auto_dispatcher`]) that
   routinely contains paths (e.g. updater failures embedding `current_exe()`), and the
   user never previews what ships, so the redactor is the only thing standing between a
@@ -225,7 +225,7 @@ The dialog has an extra "Save bundle to disk (debug)" button in dev that calls
   3. Otherwise call `tail_walker::walk_tail`, which reads the file from the END
      backward in 64 KB chunks and yields lines newest-first. The walker stops the
      moment it hits a leading ISO-8601 stamp older than the cutoff.
-  4. Each line is redacted on the fly via `redact_line_salted` and streamed straight
+  4. Each line is redacted on the fly via the report's `RedactionContext` and streamed straight
      into a `ZipWriter` over a `CountingCursor` (a `Cursor<Vec<u8>>` wrapper holding
      an `AtomicU64` of bytes written through it).
   5. After every line, the running compressed-byte counter is polled. The instant
@@ -398,10 +398,9 @@ the favorites, and the bundle's line pass can't tell a bare name from any other 
 one bundle shipped a whole NAS folder's names that way. So the dispatcher calls
 `mcp::resources::read_state_for_error_report`, which swaps every name for a
 `redact::redact_name` token (`<file>.jpg`, `<dir>`) and leaves paths for the bundle's
-salted pass, so they still correlate with the log lines around them. The tokens are
-unsalted (the salt doesn't exist until a bundle is built), so a name in the snapshot
-can't be matched to the same name in a log line. ❌ Never log a plain `cmdr://state`
-read here.
+report-context pass, so they still correlate with the log lines around them. Bare-name
+tokens stay non-correlatable because the snapshot is captured before a report context
+exists. ❌ Never log a plain `cmdr://state` read here.
 
 ### AppHandle wiring
 

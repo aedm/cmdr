@@ -45,6 +45,12 @@ The tradeoff is debuggability ("I can see this is a Documents path") against PII
 project codenames"). The allowlist captures the dirs that are near-universal across users; anything custom collapses.
 Net result: triagers can usually guess the failure context without seeing the user's secrets.
 
+`Downloads` has a stricter report-mode rule because Cmdr gives the real home Downloads folder special behavior. A
+contextual redaction keeps it only when the path branch proved `/Users/<account>/Downloads`, `/home/<account>/Downloads`,
+or the Windows equivalent. It remains visible through deeper descendants. A custom local path or remote path that merely
+contains a `Downloads` segment gets a token. This is lexical and non-blocking: the hot path never resolves symlinks or
+touches a filesystem. The unsalted API keeps the broad historical allowlist for compatibility with non-report callers.
+
 ## Decision: an extensionless leaf reads as `<dir>`
 
 `has_extension_like_suffix` decides whether a path's last segment becomes `<file>` or `<dir>`, so an extensionless file
@@ -157,13 +163,19 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 - The key set is deliberately narrow: `name=` stays out because it names hosts and settings too (`Host …: name=NAS`),
   and `target=` because the file viewer uses it for a seek target. A name-bearing site logs under `new_name=` instead.
 
-## Hashing a name, not its bytes
+## Report-scoped token identity
 
-Salted tokens are for spotting "same file, 12 mentions", so the hash has to see through how a name was printed. The
-same file used to come out as three tokens in one bundle: `Display` of an NFD name, `{:?}` of it (`me\u{301}retek`),
-and the NFC form a NAS lists. `short_hash` undoes `{:?}` escapes and NFC-normalizes before hashing. Cmdr's own
-`.cmdr-tmp-` / `.cmdr-temp-` / `.cmdr-staging-` suffix is split off first (`split_cmdr_suffix`): the name part hashes
-like the final file and the suffix ships as-is, since its UUID says nothing about anyone.
+`RedactionContext::for_report` derives a context key from a process-lifetime random 32-byte secret and the validated
+report ID. Rebuilding preview and send for one ID in the same process reproduces tokens; another report ID or process
+does not. `for_test` takes an explicit secret, so unit tests never replace global randomness. Tokens are the first six
+SHA-256 bytes rendered as 12 lowercase hex characters. The hash input includes versioned labels and a domain tag to
+separate path, host, userinfo, volume, server, and device identities. A bare-name domain will belong here only when a
+report-scoped bare-name caller exists; the current state snapshot still uses the ordinary unsalted API.
+
+Tokens are for spotting repeated normalized names, so identity sees through printing differences. `token` undoes
+`{:?}` escapes and NFC-normalizes before hashing. Cmdr's `.cmdr-tmp-` / `.cmdr-temp-` / `.cmdr-staging-` suffix is split
+off first (`split_cmdr_suffix`): the name part correlates with the final file and the suffix ships as-is, since its UUID
+says nothing about anyone. A path token denotes a normalized segment name, not proof that two complete paths are equal.
 
 ## Known gap: a lowercase last word before prose
 

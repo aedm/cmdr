@@ -702,8 +702,8 @@ reserved quiet-wakes thread first, in one transaction with the delete (`agent/st
 § v8). A failure leaves the thread standing WITH its cost rather than gone without it.
 
 **The `reason` is memory, not a log line.** ⚠️ Never log it verbatim: `cmdr.log` ships inside error
-reports, including the auto-dispatched ones the user never previews, and `redact_line_salted` is
-path-shaped, so a sentence naming which of the user's folders were boring travels intact. The
+reports, including the auto-dispatched ones the user never previews, and the report-context redaction
+pass is path-shaped, so a sentence naming which of the user's folders were boring travels intact. The
 outcome line says THAT a wake was quiet; `WakeOutcome::Quiet` carries the reason for M3's memory.
 
 ## The turn a rejection earns
