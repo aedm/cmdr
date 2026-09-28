@@ -9,9 +9,8 @@
     import SettingRow from '../components/SettingRow.svelte'
     import Button from '$lib/ui/Button.svelte'
     import StatusBadge from '$lib/ui/StatusBadge.svelte'
-    import TextInput from '$lib/ui/TextInput.svelte'
     import { getBadgeStatus } from '$lib/feature-status'
-    import { getSetting, setSetting, onSpecificSettingChange, getSettingDefinition, type AiProvider } from '$lib/settings'
+    import { getSetting, onSpecificSettingChange, getSettingDefinition, type AiProvider } from '$lib/settings'
     import { anyVisible, createShouldShow } from '$lib/settings/settings-search'
     import { tString } from '$lib/intl/messages.svelte'
     import { formatInteger } from '$lib/intl/number-format'
@@ -19,6 +18,7 @@
     import SettingSelect from '../components/SettingSelect.svelte'
     import SettingSwitch from '../components/SettingSwitch.svelte'
     import SettingSlider from '../components/SettingSlider.svelte'
+    import SettingTextInput from '../components/SettingTextInput.svelte'
     import { formatDuration, seconds } from '$lib/units'
     import {
         askCmdrCostSummary,
@@ -63,16 +63,11 @@
     let provider = $state<AiProvider>(getSetting('ai.provider'))
     $effect(() => onSpecificSettingChange('ai.provider', (v) => { provider = v }))
 
-    // The interactive-slot model override (a hand-rolled text row: the registry has no
-    // generic text-input primitive). Seed from the store, keep in sync cross-window.
+    // The interactive-slot model override. The section also follows it because the
+    // model-window warning below derives from the current value.
     const modelDef = getSettingDefinition('askCmdr.interactiveModel') ?? { label: '', description: '' }
     let model = $state(getSetting('askCmdr.interactiveModel'))
     $effect(() => onSpecificSettingChange('askCmdr.interactiveModel', (v) => { model = v }))
-    function onModelInput(event: Event): void {
-        const value = (event.target as HTMLInputElement).value
-        model = value
-        setSetting('askCmdr.interactiveModel', value)
-    }
 
     // Chat memory size: the presets live in the registry, the warning needs the model's window.
     // The window comes from the backend (one family table, not two), and the COMPARISON happens
@@ -224,11 +219,11 @@
             split
             {searchQuery}
         >
-            <TextInput
-                value={model}
+            <SettingTextInput
+                id="askCmdr.interactiveModel"
                 placeholder={tString('settings.askCmdr.interactiveModel.placeholder')}
                 ariaLabel={modelDef.label}
-                oninput={onModelInput}
+                onValueChange={(value) => { model = value; }}
             />
         </SettingRow>
     {/if}

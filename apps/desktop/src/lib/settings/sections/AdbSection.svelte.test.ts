@@ -20,13 +20,15 @@ interface InstallStatus {
 const getAdbInstallStatus = vi.fn<() => Promise<InstallStatus>>()
 const recheckAdbInstall = vi.fn<() => Promise<InstallStatus>>()
 
+const setSetting = vi.fn()
+
 vi.mock('$lib/settings/settings-store', () => ({
   getSetting: vi.fn((key: string) => {
     if (key === 'fileOperations.adbEnabled') return true
     if (key === 'fileOperations.adbBinaryPath') return ''
     return undefined
   }),
-  setSetting: vi.fn(() => Promise.resolve()),
+  setSetting: (id: string, value: unknown) => setSetting(id, value),
   resetSetting: vi.fn(),
   isModified: vi.fn(() => false),
   onSpecificSettingChange: vi.fn(() => () => {}),
@@ -198,6 +200,25 @@ describe('Re-check', () => {
 
     expect(recheckAdbInstall).toHaveBeenCalledTimes(1)
     release?.(found)
+    target.remove()
+  })
+})
+
+describe('binary path editing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getAdbInstallStatus.mockResolvedValue(missing)
+  })
+
+  it('puts every typed value in the settings store without waiting for blur', async () => {
+    const target = await mountSection()
+    const input = target.querySelector<HTMLInputElement>('.path-field input')
+    if (!input) throw new Error('ADB path field did not render')
+
+    input.value = '/opt/android/platform-tools/adb'
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }))
+
+    expect(setSetting).toHaveBeenCalledWith('fileOperations.adbBinaryPath', '/opt/android/platform-tools/adb')
     target.remove()
   })
 })

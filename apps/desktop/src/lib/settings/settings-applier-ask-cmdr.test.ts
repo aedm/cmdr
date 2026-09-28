@@ -8,7 +8,10 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const { order } = vi.hoisted(() => ({ order: [] as string[] }))
+const { order, pushAdbConfigToBackend } = vi.hoisted(() => ({
+  order: [] as string[],
+  pushAdbConfigToBackend: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+}))
 
 /** The change listener the applier registers, captured so the test can fire it. */
 let changeListener: ((change: { id: string; value: unknown }) => void) | undefined
@@ -45,11 +48,16 @@ vi.mock('$lib/settings', async (importOriginal) => {
   }
 })
 
+vi.mock('$lib/adb/adb-settings', () => ({
+  pushAdbConfigToBackend,
+}))
+
 import { initSettingsApplier, cleanupSettingsApplier } from './settings-applier'
 
 beforeEach(() => {
   order.length = 0
   changeListener = undefined
+  pushAdbConfigToBackend.mockClear()
 })
 
 afterEach(() => {
@@ -64,5 +72,29 @@ describe('settings-applier: askCmdr.enabled', () => {
     await vi.waitFor(() => {
       expect(order).toEqual(['save', 'enabledChanged'])
     })
+  })
+})
+
+describe('settings-applier: fileOperations.adbBinaryPath', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('applies only the final path after 500 ms without another edit', async () => {
+    await initSettingsApplier()
+    pushAdbConfigToBackend.mockClear()
+
+    changeListener?.({ id: 'fileOperations.adbBinaryPath', value: '/a' })
+    await vi.advanceTimersByTimeAsync(300)
+    changeListener?.({ id: 'fileOperations.adbBinaryPath', value: '/adb' })
+    await vi.advanceTimersByTimeAsync(499)
+    expect(pushAdbConfigToBackend).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(pushAdbConfigToBackend).toHaveBeenCalledTimes(1)
   })
 })

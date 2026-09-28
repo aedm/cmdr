@@ -7,9 +7,9 @@
     import SettingRadioGroup from '../components/SettingRadioGroup.svelte'
     import SettingSelect from '../components/SettingSelect.svelte'
     import SettingColorSwatchPicker from '../components/SettingColorSwatchPicker.svelte'
+    import SettingTextInput from '../components/SettingTextInput.svelte'
     import SectionCard from '$lib/ui/SectionCard.svelte'
     import LinkButton from '$lib/ui/LinkButton.svelte'
-    import TextInput from '$lib/ui/TextInput.svelte'
     import { getSettingDefinition, getSetting, setSetting, onSpecificSettingChange } from '$lib/settings'
     import { createShouldShow, anyVisible } from '$lib/settings/settings-search'
     import { openAppearanceSettings } from '$lib/tauri-commands'
@@ -85,11 +85,6 @@
         }
     }
 
-    function handleCustomFormatChange(event: Event) {
-        const target = event.target as HTMLInputElement
-        customFormat = target.value
-        setSetting('appearance.customDateTimeFormat', target.value)
-    }
 </script>
 
 <SettingsSection title={tString('settings.section.colorsAndFormats')}>
@@ -244,11 +239,11 @@
                     {#snippet customContent(value)}
                         {#if value === 'custom'}
                             <div class="custom-format">
-                                <TextInput
+                                <SettingTextInput
+                                    id="appearance.customDateTimeFormat"
                                     mono
                                     containerStyle="width: 180px"
-                                    value={customFormat}
-                                    oninput={handleCustomFormatChange}
+                                    onValueChange={(value) => { customFormat = value; }}
                                     placeholder={DATE_FORMAT_PLACEHOLDER}
                                     ariaLabel={tString('settings.appearance.dateTimeFormat.label')}
                                 />

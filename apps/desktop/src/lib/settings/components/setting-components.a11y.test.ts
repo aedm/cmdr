@@ -86,6 +86,7 @@ import SettingRow from './SettingRow.svelte'
 import SettingSelect from './SettingSelect.svelte'
 import SettingSlider from './SettingSlider.svelte'
 import SettingSwitch from './SettingSwitch.svelte'
+import SettingTextInput from './SettingTextInput.svelte'
 import SettingToggleGroup from './SettingToggleGroup.svelte'
 import SettingsContent from './SettingsContent.svelte'
 import SettingsSection from './SettingsSection.svelte'
@@ -475,6 +476,36 @@ describe('SettingSelect a11y', () => {
     await tick()
     await expectNoA11yViolations(target)
   })
+
+  it('stores a valid custom number as it is typed, without waiting for blur', async () => {
+    stubs.getSetting = () => 30_000
+    stubs.settingDefinition = () => ({
+      label: 'Share cache duration',
+      description: '',
+      constraints: {
+        options: [{ value: 30_000, label: '30 seconds' }],
+        allowCustom: true,
+        customMin: 1_000,
+        customMax: 2_592_000_000,
+      },
+    })
+    stubs.setSetting.mockReset()
+    const target = container()
+    mount(SettingSelect, { target, props: { id: 'network.shareCacheDuration' } })
+    await tick()
+
+    target.querySelector<HTMLButtonElement>('.select-trigger')?.click()
+    await tick()
+    document.querySelector<HTMLElement>('[data-part="item"][data-value="__custom__"]')?.click()
+    await tick()
+
+    const input = target.querySelector<HTMLInputElement>('.custom-input-wrapper input')
+    if (!input) throw new Error('Custom setting input did not render')
+    input.value = '45000'
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }))
+
+    expect(stubs.setSetting).toHaveBeenCalledWith('network.shareCacheDuration', 45_000)
+  })
 })
 
 /** Tier 3 a11y tests for `SettingSlider.svelte`. */
@@ -528,6 +559,35 @@ describe('SettingSwitch a11y', () => {
   it('disabled has no a11y violations', async () => {
     const target = container()
     mount(SettingSwitch, { target, props: { id: 'listing.stripedRows', disabled: true } })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+})
+
+/** Registry-backed text input: store synchronization and accessible field chrome. */
+describe('SettingTextInput', () => {
+  beforeEach(() => {
+    stubs.getSetting = () => 'claude-sonnet'
+    stubs.settingDefinition = () => ({ label: 'Model', description: '' })
+    stubs.setSetting.mockReset()
+  })
+
+  it('writes each edit immediately, before focus can be lost', async () => {
+    const target = container()
+    mount(SettingTextInput, { target, props: { id: 'askCmdr.interactiveModel' } })
+    await tick()
+
+    const input = target.querySelector('input')
+    if (!input) throw new Error('SettingTextInput did not render an input')
+    input.value = 'gpt-5'
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }))
+
+    expect(stubs.setSetting).toHaveBeenCalledWith('askCmdr.interactiveModel', 'gpt-5')
+  })
+
+  it('has no a11y violations', async () => {
+    const target = container()
+    mount(SettingTextInput, { target, props: { id: 'askCmdr.interactiveModel' } })
     await tick()
     await expectNoA11yViolations(target)
   })

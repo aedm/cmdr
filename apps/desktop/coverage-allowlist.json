@@ -124,9 +124,6 @@
     "reduce-transparency.ts": {
       "reason": "Depends on Tauri invoke (getShouldReduceTransparency) and listen (reduceTransparencyChanged) APIs; just toggles the reduce-transparency html class"
     },
-    "settings/components/SettingSelect.svelte": {
-      "reason": "UI component, logic is simple"
-    },
     "settings/components/SettingsContent.svelte": {
       "reason": "UI layout component"
     },

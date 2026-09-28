@@ -9,20 +9,20 @@
      * would spawn processes behind the user's back. The status shown when the page
      * opens is `getAdbInstallStatus`, which reads what is already known.
      *
-     * Both settings live-apply together through `adb-settings.ts`; nothing here
-     * pushes to the backend itself.
+     * Both settings live-apply together through `adb-settings.ts`. A Browse pick
+     * additionally awaits that push before asking the backend about the new path.
      */
     import { onMount } from 'svelte'
     import { open } from '@tauri-apps/plugin-dialog'
     import SettingsSection from '../components/SettingsSection.svelte'
     import SettingRow from '../components/SettingRow.svelte'
     import SettingSwitch from '../components/SettingSwitch.svelte'
+    import SettingTextInput from '../components/SettingTextInput.svelte'
     import SectionCard from '$lib/ui/SectionCard.svelte'
     import Button from '$lib/ui/Button.svelte'
     import CopyBox from '$lib/ui/CopyBox.svelte'
-    import TextInput from '$lib/ui/TextInput.svelte'
     import { tString } from '$lib/intl/messages.svelte'
-    import { getSetting, getSettingDefinition, setSetting, onSpecificSettingChange } from '$lib/settings'
+    import { getSettingDefinition, setSetting } from '$lib/settings'
     import { createShouldShow, anyVisible } from '$lib/settings/settings-search'
     import { getAdbInstallStatus, recheckAdbInstall } from '$lib/tauri-commands'
     import { pushAdbConfigToBackend } from '$lib/adb/adb-settings'
@@ -48,15 +48,9 @@
 
     let status = $state<AdbInstallStatus | null>(null)
     let rechecking = $state(false)
-    let binaryPath = $state(getSetting('fileOperations.adbBinaryPath'))
 
     onMount(() => {
         void refreshStatus()
-        // An external reset (or the other window) writing the path has to reach the
-        // field, the way every registry-bound control follows the store.
-        return onSpecificSettingChange('fileOperations.adbBinaryPath', (next) => {
-            binaryPath = next
-        })
     })
 
     async function refreshStatus(): Promise<void> {
@@ -80,7 +74,6 @@
     }
 
     function commitPath(next: string): void {
-        binaryPath = next
         setSetting('fileOperations.adbBinaryPath', next)
     }
 
@@ -166,15 +159,9 @@
                     {searchQuery}
                 >
                     <div class="path-field">
-                        <TextInput
-                            value={binaryPath}
+                        <SettingTextInput
+                            id="fileOperations.adbBinaryPath"
                             placeholder={tString('settings.adb.pathPlaceholder')}
-                            oninput={(event: Event & { currentTarget: HTMLInputElement }) => {
-                                binaryPath = event.currentTarget.value
-                            }}
-                            onblur={() => {
-                                commitPath(binaryPath)
-                            }}
                             ariaLabel={binaryPathDef.label}
                         />
                         <Button variant="secondary" size="mini" onclick={() => void handleBrowse()}>

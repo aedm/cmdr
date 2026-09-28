@@ -24,6 +24,9 @@ shape:
 - `SettingSlider` vs `SettingNumberInput`: see the next section, and § Index-mapped stops for the discrete mode. A
   `duration` setting on the number input edits in `constraints.unit` while the store stays in ms (`durationValueToMs` /
   `msToDurationValue`).
+- `SettingTextInput`: a registry-backed string field. It writes each edit to the store immediately and follows
+  cross-window/reset changes, so a newer value never lives only in a section-local draft. `onValueChange` is for live
+  previews and other derived UI; persistence stays inside the primitive.
 - `SettingPasswordInput`: masked input with a reveal toggle; two modes, below.
 - `SettingColorSwatchPicker`: circle trigger plus a 4×4 swatch popover for pane tints. `swatch-keyboard.ts` is its pure
   key-index resolver, unit-testable without a DOM.

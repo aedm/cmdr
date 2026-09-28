@@ -134,14 +134,18 @@
 
     let wrapperRef: HTMLElement | null = $state(null)
 
-    function handleCustomSubmit(): void {
+    function applyCustomValue(close: boolean): void {
         const numValue = Number(customValue)
-        if (!isNaN(numValue)) {
-            value = numValue
-            setSetting(id, numValue as SettingsValues[typeof id])
-            // Close custom input and return to dropdown.
+        const min = definition?.constraints?.customMin
+        const max = definition?.constraints?.customMax
+        if (!Number.isFinite(numValue) || (min !== undefined && numValue < min) || (max !== undefined && numValue > max)) {
+            return
+        }
+
+        value = numValue
+        setSetting(id, numValue as SettingsValues[typeof id])
+        if (close) {
             showCustomInput = false
-            // Focus the dropdown trigger after it renders.
             requestAnimationFrame(() => {
                 const trigger = wrapperRef?.querySelector('.select-trigger') as HTMLElement | null
                 trigger?.focus()
@@ -158,9 +162,10 @@
                 type="number"
                 containerStyle="width: 100px"
                 bind:value={customValue}
-                onblur={handleCustomSubmit}
+                oninput={() => { applyCustomValue(false); }}
+                onblur={() => { applyCustomValue(true); }}
                 onkeydown={(e: KeyboardEvent) => {
-                    if (e.key === 'Enter') handleCustomSubmit()
+                    if (e.key === 'Enter') applyCustomValue(true)
                 }}
                 placeholder={tString('settings.control.customValuePlaceholder')}
                 ariaLabel={tString('settings.control.customValuePlaceholder')}

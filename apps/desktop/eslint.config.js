@@ -239,6 +239,38 @@ export default tseslint.config(
     },
   },
   {
+    // A registry-backed text setting goes through `SettingTextInput`, which owns
+    // store synchronization. Raw fields in sections may only represent transient
+    // filters or a specialized workflow explicitly exempted below.
+    files: ['src/lib/settings/sections/*.svelte'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '$lib/ui/TextInput.svelte',
+              message:
+                'Use SettingTextInput for registry-backed text settings. Add a narrow config exemption only for transient or specialized non-setting behavior.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Keyboard filters are transient UI state. The beta email controller is a
+    // shared Settings/onboarding workflow that persists on input and separately
+    // submits to the mailing list on commit.
+    files: [
+      'src/lib/settings/sections/KeyboardShortcutsSection.svelte',
+      'src/lib/settings/sections/UpdatesSection.svelte',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  {
     // Test files - ensure they actually test source code
     // Excludes e2e tests (Playwright) which test through the browser, not via imports
     files: ['src/**/*.test.ts'],

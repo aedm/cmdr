@@ -59,6 +59,26 @@ const log = getAppLogger('settings-applier')
 let initialized = false
 let unsubscribe: (() => void) | undefined
 let unlistenOsLocale: (() => void) | undefined
+let adbPathApplyTimeout: ReturnType<typeof setTimeout> | undefined
+
+/** A path is typed character by character, while applying it restarts the ADB tracker. */
+const ADB_PATH_APPLY_DEBOUNCE_MS = 500
+
+function scheduleAdbPathApply(): void {
+  if (adbPathApplyTimeout !== undefined) clearTimeout(adbPathApplyTimeout)
+  adbPathApplyTimeout = setTimeout(() => {
+    adbPathApplyTimeout = undefined
+    void pushAdbConfigToBackend()
+  }, ADB_PATH_APPLY_DEBOUNCE_MS)
+}
+
+function applyAdbEnabled(): void {
+  if (adbPathApplyTimeout !== undefined) {
+    clearTimeout(adbPathApplyTimeout)
+    adbPathApplyTimeout = undefined
+  }
+  void pushAdbConfigToBackend()
+}
 
 /**
  * Last observed value of `advanced.maxLogStorageMb`. Used to detect `0 ↔ non-zero`
@@ -213,10 +233,10 @@ const passthroughBackendHandlers: Partial<Record<string, (value: unknown) => voi
   'mediaIndex.scope': (v) => void mediaIndexSetScope(v as string),
   'mediaIndex.semanticSearch.enabled': (v) => void mediaIndexSetSemanticSearchEnabled(v as boolean),
   'fileOperations.mtpEnabled': (v) => void setMtpEnabled(v as boolean),
-  // ADB pair: the tracker restarts under whichever binary the path names, so
-  // either change re-pushes both. The helper re-reads them fresh.
-  'fileOperations.adbEnabled': () => void pushAdbConfigToBackend(),
-  'fileOperations.adbBinaryPath': () => void pushAdbConfigToBackend(),
+  // ADB pair: the helper re-reads both fresh. The switch applies immediately;
+  // path edits wait for a 500 ms pause so typing does not repeatedly restart the tracker.
+  'fileOperations.adbEnabled': applyAdbEnabled,
+  'fileOperations.adbBinaryPath': scheduleAdbPathApply,
   'advanced.diskSpaceChangeThreshold': (v) => void setDiskSpaceThreshold(v as number),
   // The disk-space poller rounds its emit gate in the base the readout draws in.
   'appearance.fileSizeFormat': (v) => void setDiskSpaceSizeFormat(v as FileSizeFormat),
@@ -430,6 +450,10 @@ export function cleanupSettingsApplier(): void {
   if (unlistenOsLocale) {
     unlistenOsLocale()
     unlistenOsLocale = undefined
+  }
+  if (adbPathApplyTimeout !== undefined) {
+    clearTimeout(adbPathApplyTimeout)
+    adbPathApplyTimeout = undefined
   }
   initialized = false
   log.debug('Settings applier cleaned up')

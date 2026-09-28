@@ -106,7 +106,8 @@ silently do nothing.
 `fileOperations.adbEnabled` and `fileOperations.adbBinaryPath` travel TOGETHER through
 `adb-settings.ts::pushAdbConfigToBackend`, which re-reads both fresh at call time: the backend restarts its device
 tracker under whichever binary the path names, so pushing one without the other would restart it under a stale one.
-`settings-applier.ts` maps both keys to that one push.
+`settings-applier.ts` maps both keys to that one push. The enabled switch applies immediately; path edits wait for a 500
+ms pause because each backend application restarts the tracker.
 
 ❗ **A caller that ASKS ABOUT the binary right after changing it has to await the push itself.** The applier's call is
 fire-and-forget (`void pushAdbConfigToBackend()`), and Tauri runs `set_adb_settings` and `recheck_adb_install` as
