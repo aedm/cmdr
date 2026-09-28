@@ -337,6 +337,45 @@ fn test_safe_overwrite_dir_restores_original_on_materialize_failure() {
     }
 }
 
+/// A transiently unreadable destination has not proved that the name is free.
+/// The original must stay aside rather than replacing an entry the failed stat
+/// could not see.
+#[test]
+fn failed_destination_stat_stops_the_restore_without_replacing_anything() {
+    let temp_dir = create_temp_dir("restore_stat_failure");
+    let aside = temp_dir.join("dest.cmdr-temp-original");
+    let dest = temp_dir.join("dest");
+    fs::write(&aside, "the original").unwrap();
+    fs::write(&dest, "a new arrival").unwrap();
+
+    let err = restore_after_materialize_failure(&aside, &dest, |_| Err(std::io::Error::from_raw_os_error(libc::EIO)))
+        .expect_err("a stat that could not answer must stop the restore");
+
+    assert_eq!(err.raw_os_error(), Some(libc::EIO), "the stat refusal must surface");
+    assert_eq!(fs::read_to_string(&dest).unwrap(), "a new arrival");
+    assert_eq!(fs::read_to_string(&aside).unwrap(), "the original");
+}
+
+/// A name can become occupied after the stat says `NotFound`. The restore's
+/// rename must still refuse rather than replace the new arrival.
+#[test]
+fn restore_refuses_a_name_that_became_occupied_after_the_stat() {
+    let temp_dir = create_temp_dir("restore_race");
+    let aside = temp_dir.join("dest.cmdr-temp-original");
+    let dest = temp_dir.join("dest");
+    fs::write(&aside, "the original").unwrap();
+    fs::write(&dest, "a new arrival").unwrap();
+
+    let err = restore_after_materialize_failure(&aside, &dest, |_| {
+        Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+    })
+    .expect_err("an occupied name must stop the restore despite the stale stat");
+
+    assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
+    assert_eq!(fs::read_to_string(&dest).unwrap(), "a new arrival");
+    assert_eq!(fs::read_to_string(&aside).unwrap(), "the original");
+}
+
 #[test]
 fn test_safe_overwrite_dir_over_folder_dest_replaces_contents() {
     // Source intent = folder. Dest = existing folder with different contents.

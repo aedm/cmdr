@@ -565,14 +565,7 @@ where
         Err(e) => {
             // Failure or cancellation: clean up whatever materialize created at
             // dest and rename the aside back.
-            if dest.exists() {
-                if dest.is_dir() {
-                    let _ = fs::remove_dir_all(dest);
-                } else {
-                    let _ = fs::remove_file(dest);
-                }
-            }
-            let restored = fs::rename(aside_path, dest);
+            let restored = restore_after_materialize_failure(aside_path, dest, |path| fs::symlink_metadata(path));
             if let Err(restore_err) = &restored {
                 crate::log_error!(
                     "safe_overwrite_dir: failed to restore aside {} -> {}: {}",
@@ -585,6 +578,30 @@ where
             Err(e)
         }
     }
+}
+
+/// Removes what a failed materializer left behind and restores the original.
+///
+/// The metadata read is injected so a test can model a transient stat failure:
+/// on a real filesystem, permissions that make this read fail generally make
+/// the adjacent remove and rename fail too.
+///
+/// Only `NotFound` proves the name is free. Any other failed stat leaves the
+/// original aside for the in-flight sweep rather than risking a rename over an
+/// entry the filesystem would not describe. The exclusive rename closes the
+/// separate race in which something takes the name after cleanup.
+fn restore_after_materialize_failure(
+    aside: &Path,
+    dest: &Path,
+    metadata: impl FnOnce(&Path) -> std::io::Result<fs::Metadata>,
+) -> std::io::Result<()> {
+    match metadata(dest) {
+        Ok(metadata) if metadata.is_dir() => fs::remove_dir_all(dest)?,
+        Ok(_) => fs::remove_file(dest)?,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    rename_no_replace(aside, dest)
 }
 
 /// Retires an aside's record when the thing that was meant to happen to it
