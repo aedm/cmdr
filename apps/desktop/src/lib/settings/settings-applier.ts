@@ -51,7 +51,7 @@ import { refreshSystemStrings } from '$lib/system-strings.svelte'
 import { pushConfigToBackend } from './ai-config'
 import { noteSlotSettingChanged } from '$lib/ask-cmdr/ask-cmdr-trigger.svelte'
 import { pushLowDiskSpaceConfigToBackend } from '$lib/low-disk-space/notifications-mode'
-import { pushAdbConfigToBackend } from '$lib/adb/adb-settings'
+import { cancelScheduledAdbConfigPush, pushAdbConfigToBackend, scheduleAdbConfigPush } from '$lib/adb/adb-settings'
 import { applyAutoCheckEnabled } from '$lib/updates/updater.svelte'
 
 const log = getAppLogger('settings-applier')
@@ -59,26 +59,6 @@ const log = getAppLogger('settings-applier')
 let initialized = false
 let unsubscribe: (() => void) | undefined
 let unlistenOsLocale: (() => void) | undefined
-let adbPathApplyTimeout: ReturnType<typeof setTimeout> | undefined
-
-/** A path is typed character by character, while applying it restarts the ADB tracker. */
-const ADB_PATH_APPLY_DEBOUNCE_MS = 500
-
-function scheduleAdbPathApply(): void {
-  if (adbPathApplyTimeout !== undefined) clearTimeout(adbPathApplyTimeout)
-  adbPathApplyTimeout = setTimeout(() => {
-    adbPathApplyTimeout = undefined
-    void pushAdbConfigToBackend()
-  }, ADB_PATH_APPLY_DEBOUNCE_MS)
-}
-
-function applyAdbEnabled(): void {
-  if (adbPathApplyTimeout !== undefined) {
-    clearTimeout(adbPathApplyTimeout)
-    adbPathApplyTimeout = undefined
-  }
-  void pushAdbConfigToBackend()
-}
 
 /**
  * Last observed value of `advanced.maxLogStorageMb`. Used to detect `0 ↔ non-zero`
@@ -235,8 +215,8 @@ const passthroughBackendHandlers: Partial<Record<string, (value: unknown) => voi
   'fileOperations.mtpEnabled': (v) => void setMtpEnabled(v as boolean),
   // ADB pair: the helper re-reads both fresh. The switch applies immediately;
   // path edits wait for a 500 ms pause so typing does not repeatedly restart the tracker.
-  'fileOperations.adbEnabled': applyAdbEnabled,
-  'fileOperations.adbBinaryPath': scheduleAdbPathApply,
+  'fileOperations.adbEnabled': () => void pushAdbConfigToBackend(),
+  'fileOperations.adbBinaryPath': scheduleAdbConfigPush,
   'advanced.diskSpaceChangeThreshold': (v) => void setDiskSpaceThreshold(v as number),
   // The disk-space poller rounds its emit gate in the base the readout draws in.
   'appearance.fileSizeFormat': (v) => void setDiskSpaceSizeFormat(v as FileSizeFormat),
@@ -451,10 +431,7 @@ export function cleanupSettingsApplier(): void {
     unlistenOsLocale()
     unlistenOsLocale = undefined
   }
-  if (adbPathApplyTimeout !== undefined) {
-    clearTimeout(adbPathApplyTimeout)
-    adbPathApplyTimeout = undefined
-  }
+  cancelScheduledAdbConfigPush()
   initialized = false
   log.debug('Settings applier cleaned up')
 }

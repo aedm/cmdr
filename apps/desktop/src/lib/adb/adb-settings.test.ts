@@ -3,14 +3,20 @@
  * "look for `adb` the usual way" rather than a path of spaces.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('$lib/settings', () => ({ getSetting: vi.fn() }))
 vi.mock('$lib/tauri-commands', () => ({ setAdbSettings: vi.fn() }))
 
 import { getSetting } from '$lib/settings'
 import { setAdbSettings } from '$lib/tauri-commands'
-import { ADB_BINARY_PATH_SETTING_KEY, ADB_ENABLED_SETTING_KEY, pushAdbConfigToBackend } from './adb-settings'
+import {
+  ADB_BINARY_PATH_SETTING_KEY,
+  ADB_ENABLED_SETTING_KEY,
+  cancelScheduledAdbConfigPush,
+  pushAdbConfigToBackend,
+  scheduleAdbConfigPush,
+} from './adb-settings'
 
 const mockedGet = getSetting as unknown as ReturnType<typeof vi.fn>
 const mockedPush = setAdbSettings as unknown as ReturnType<typeof vi.fn>
@@ -52,5 +58,42 @@ describe('pushAdbConfigToBackend', () => {
     settings(true, '')
     mockedPush.mockRejectedValueOnce(new Error('the backend said no'))
     await expect(pushAdbConfigToBackend()).resolves.toBeUndefined()
+  })
+})
+
+describe('scheduleAdbConfigPush', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cancelScheduledAdbConfigPush()
+    vi.useRealTimers()
+  })
+
+  it('applies only the final path after 500 ms without another edit', async () => {
+    settings(true, '/a')
+    scheduleAdbConfigPush()
+    await vi.advanceTimersByTimeAsync(300)
+
+    settings(true, '/adb')
+    scheduleAdbConfigPush()
+    await vi.advanceTimersByTimeAsync(499)
+    expect(mockedPush).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(mockedPush).toHaveBeenCalledOnce()
+    expect(mockedPush).toHaveBeenCalledWith(true, '/adb')
+  })
+
+  it('does not repeat an immediate Browse apply when the debounce expires', async () => {
+    settings(true, '/opt/android/platform-tools/adb')
+    scheduleAdbConfigPush()
+
+    await pushAdbConfigToBackend()
+    expect(mockedPush).toHaveBeenCalledOnce()
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mockedPush).toHaveBeenCalledOnce()
   })
 })

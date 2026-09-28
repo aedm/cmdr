@@ -8,9 +8,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const { order, pushAdbConfigToBackend } = vi.hoisted(() => ({
+const { order, pushAdbConfigToBackend, scheduleAdbConfigPush, cancelScheduledAdbConfigPush } = vi.hoisted(() => ({
   order: [] as string[],
   pushAdbConfigToBackend: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+  scheduleAdbConfigPush: vi.fn<() => void>(),
+  cancelScheduledAdbConfigPush: vi.fn<() => void>(),
 }))
 
 /** The change listener the applier registers, captured so the test can fire it. */
@@ -49,7 +51,9 @@ vi.mock('$lib/settings', async (importOriginal) => {
 })
 
 vi.mock('$lib/adb/adb-settings', () => ({
+  cancelScheduledAdbConfigPush,
   pushAdbConfigToBackend,
+  scheduleAdbConfigPush,
 }))
 
 import { initSettingsApplier, cleanupSettingsApplier } from './settings-applier'
@@ -58,6 +62,8 @@ beforeEach(() => {
   order.length = 0
   changeListener = undefined
   pushAdbConfigToBackend.mockClear()
+  scheduleAdbConfigPush.mockClear()
+  cancelScheduledAdbConfigPush.mockClear()
 })
 
 afterEach(() => {
@@ -76,25 +82,11 @@ describe('settings-applier: askCmdr.enabled', () => {
 })
 
 describe('settings-applier: fileOperations.adbBinaryPath', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('applies only the final path after 500 ms without another edit', async () => {
+  it('routes path edits through the debounced ADB push', async () => {
     await initSettingsApplier()
-    pushAdbConfigToBackend.mockClear()
 
     changeListener?.({ id: 'fileOperations.adbBinaryPath', value: '/a' })
-    await vi.advanceTimersByTimeAsync(300)
     changeListener?.({ id: 'fileOperations.adbBinaryPath', value: '/adb' })
-    await vi.advanceTimersByTimeAsync(499)
-    expect(pushAdbConfigToBackend).not.toHaveBeenCalled()
-
-    await vi.advanceTimersByTimeAsync(1)
-    expect(pushAdbConfigToBackend).toHaveBeenCalledTimes(1)
+    expect(scheduleAdbConfigPush).toHaveBeenCalledTimes(2)
   })
 })
