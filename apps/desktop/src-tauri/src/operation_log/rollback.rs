@@ -374,7 +374,7 @@ pub async fn execute_rollback(
         initiator,
         source_volume_id: original.source_volume_id.clone(),
         dest_volume_id: original.dest_volume_id.clone(),
-        item_count: original.items_done,
+        item_count: inverse_planned_item_count(original),
         started_at: super::now_secs(),
         rolls_back_op_id: Some(original.op_id.clone()),
         execution_status: ExecutionStatus::Running,
@@ -509,7 +509,7 @@ pub async fn execute_rollback(
     } else {
         ExecutionStatus::Done
     };
-    finalize_inverse(writer, inverse_op_id, inv_kind, inv_status, acc.totals());
+    finalize_inverse(writer, inverse_op_id, inv_kind, inv_status, acc.totals(original));
 
     let final_state = resolve_final_state(acc.reversed, acc.skipped, canceled);
     if let Err(e) = writer.set_rollback_state(&original.op_id, final_state, None) {
@@ -891,7 +891,7 @@ mod bookkeeping;
 mod order;
 mod runner;
 mod skips;
-use bookkeeping::{InverseTotals, RunAcc, finalize_inverse};
+use bookkeeping::{InverseTotals, RunAcc, finalize_inverse, inverse_planned_item_count};
 pub use order::undo_order;
 use runner::ProgressStand;
 pub use runner::{InverseAct, RollbackProgress, RollbackRunner};

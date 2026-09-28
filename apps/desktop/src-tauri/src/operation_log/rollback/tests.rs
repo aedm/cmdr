@@ -924,12 +924,10 @@ async fn a_directory_a_move_created_is_removed_rather_than_restored_onto_itself(
 }
 
 #[tokio::test]
-async fn the_inverse_operations_header_counts_what_the_reversal_walked() {
-    // The inverse op's `item_count` was seeded from the ORIGINAL's `items_done`,
-    // which counts files only, while its `items_done` counts every row the
-    // reversal walked — directory rows included. A copy of two files into one
-    // created folder therefore finished as "3 of 2 done", which the history dialog
-    // renders verbatim.
+async fn a_folder_copy_and_its_rollback_report_the_same_item_count() {
+    // The copy header counts the two files. Its created-folder row is rollback
+    // housekeeping, not a third item in the inverse operation's user-facing
+    // count.
     let rig = Rig::new();
     let dst = Arc::new(InMemoryVolume::new("Dst"));
     mkdir(&dst, "/album").await;
@@ -984,16 +982,98 @@ async fn the_inverse_operations_header_counts_what_the_reversal_walked() {
     let report = rig.rollback_as("op", "inv").await;
     assert_eq!(report.reversed, 3);
 
+    let original = rig.read_op("op");
     let inverse = rig.read_op("inv");
     assert_eq!(
-        inverse.item_count, 3,
-        "the header counts the rows the reversal walked, dirs included"
+        inverse.item_count, original.item_count,
+        "the copy and its rollback describe the same set of items"
     );
-    assert!(
-        inverse.items_done <= inverse.item_count,
-        "an operation can never finish more items than it had: {} of {}",
-        inverse.items_done,
-        inverse.item_count
+    assert_eq!(inverse.items_done, 2, "the two counted files were reversed");
+}
+
+#[tokio::test]
+async fn a_directory_only_rollback_still_counts_the_directory() {
+    let rig = Rig::new();
+    let dst = Arc::new(InMemoryVolume::new("Dst"));
+    mkdir(&dst, "/empty").await;
+    rig.register("src", Arc::new(InMemoryVolume::new("Src")));
+    rig.register("dst", dst.clone());
+    rig.seed(
+        "op",
+        OpKind::Copy,
+        "src",
+        Some("dst"),
+        RollbackState::Rollbackable,
+        vec![dir_unit(0, "dst", "/empty")],
+    );
+
+    rig.rollback_as("op", "inv").await;
+
+    let original = rig.read_op("op");
+    let inverse = rig.read_op("inv");
+    assert_eq!(inverse.item_count, original.item_count);
+    assert_eq!(inverse.items_done, 1);
+}
+
+#[tokio::test]
+async fn a_housekeeping_directory_does_not_hide_a_skipped_file_in_the_inverse_header() {
+    let rig = Rig::new();
+    let dst = Arc::new(InMemoryVolume::new("Dst"));
+    mkdir(&dst, "/album").await;
+    mkdir(&dst, "/empty").await;
+    put(&dst, "/album/changed.txt", b"changed").await;
+    put(&dst, "/album/removed.txt", b"same").await;
+    rig.register("src", Arc::new(InMemoryVolume::new("Src")));
+    rig.register("dst", dst.clone());
+    rig.writer
+        .open_operation(OpenOperation {
+            op_id: "op".into(),
+            kind: OpKind::Copy,
+            initiator: Initiator::User,
+            source_volume_id: Some("src".into()),
+            dest_volume_id: Some("dst".into()),
+            item_count: 2,
+            started_at: 1,
+            rolls_back_op_id: None,
+            execution_status: ExecutionStatus::Running,
+        })
+        .expect("open");
+    rig.writer
+        .record_items(
+            "op",
+            vec![
+                file_unit(0, "src", "/album/changed.txt", "dst", "/album/changed.txt", 4),
+                file_unit(1, "src", "/album/removed.txt", "dst", "/album/removed.txt", 4),
+                dir_unit(2, "dst", "/empty"),
+                dir_unit(3, "dst", "/album"),
+            ],
+        )
+        .expect("record");
+    rig.writer
+        .finalize_operation(FinalizeOperation {
+            op_id: "op".into(),
+            execution_status: ExecutionStatus::Done,
+            rollback_state: RollbackState::Rollbackable,
+            not_rollbackable_reason: None,
+            archive_subkind: None,
+            search_coverage: SearchCoverage::Full,
+            search_coverage_reason: None,
+            ended_at: 2,
+            item_count: Some(2),
+            items_done: 2,
+            bytes_total: 0,
+            dev_summary: None,
+        })
+        .expect("finalize");
+    rig.writer.flush_blocking().expect("flush");
+
+    rig.rollback_as("op", "inv").await;
+
+    let inverse = rig.read_op("inv");
+    assert_eq!(inverse.item_count, 2);
+    assert_eq!(
+        inverse.items_done, 1,
+        "removing the empty housekeeping directory must not compensate for the drifted file"
     );
 }
 

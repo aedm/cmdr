@@ -400,6 +400,15 @@ The runner carries the loop's three live answers as well as its hands:
   the first one and the one that lands on the total; a cross-volume restore also reports its bytes mid-file, off the
   same callback that carries the stop down to the backend.
 
+The inverse operation's **history header** keeps the original operation's user-facing count unit rather than counting
+every row the rollback engine walks. It plans against the original's completed count, falling back to its planned count
+for instant and directory-only operations that have no file-progress count, then bounds that number by the rollback
+units actually reached. File outcomes consume the file slots first; directory outcomes consume only the remaining
+slots. Therefore a copied folder containing three files and its successful reversal both say three items, while an
+empty-folder copy still says one. A successfully removed housekeeping directory also cannot disguise a skipped file as
+another completed header item. The directory rows remain first-class journal and rollback units; only the summary count
+uses the original operation's vocabulary.
+
 An item that fails while a stop is pending is NOT recorded as a skip: nothing was left behind for a reason the skip
 column exists to explain, and an unrecorded item is one an idempotent retry simply re-attempts.
 

@@ -8,8 +8,8 @@
 use std::path::Path;
 
 use super::super::capture::compute_eligibility;
-use super::super::store::RollbackUnit;
-use super::super::types::{ExecutionStatus, ItemOutcome, OpKind, RowRole, SearchCoverage};
+use super::super::store::{OperationRow, RollbackUnit};
+use super::super::types::{EntryType, ExecutionStatus, ItemOutcome, OpKind, RowRole, SearchCoverage};
 use super::super::writer::{FinalizeOperation, ItemOutcomeUpdate, JournalItem, OperationLogWriter};
 use super::skips::SkipTally;
 use super::{ItemResult, removal_target};
@@ -21,6 +21,8 @@ use super::{ItemResult, removal_target};
 pub(super) struct RunAcc {
     pub(super) reversed: u64,
     pub(super) skipped: u64,
+    files_walked: u64,
+    files_reversed: u64,
     inverse_items: Vec<JournalItem>,
     original_outcomes: Vec<ItemOutcomeUpdate>,
     next_inverse_seq: i64,
@@ -31,11 +33,16 @@ pub(super) struct RunAcc {
 }
 
 impl RunAcc {
-    /// What this run did, for the inverse operation's header.
-    pub(super) fn totals(&self) -> InverseTotals {
+    /// What this run did in the original operation's user-facing count units.
+    pub(super) fn totals(&self, original: &OperationRow) -> InverseTotals {
+        let walked = self.reversed + self.skipped;
+        let item_count = inverse_planned_item_count(original).min(walked);
+        let file_slots = self.files_walked.min(item_count);
+        let dir_slots = item_count - file_slots;
+        let dirs_reversed = self.reversed - self.files_reversed;
         InverseTotals {
-            reversed: self.reversed,
-            walked: self.reversed + self.skipped,
+            item_count,
+            items_done: self.files_reversed.min(file_slots) + dirs_reversed.min(dir_slots),
         }
     }
 
@@ -52,6 +59,12 @@ impl RunAcc {
             self.reversed += 1;
         } else {
             self.skipped += 1;
+        }
+        if unit.entry_type == EntryType::File {
+            self.files_walked += 1;
+            if original_outcome == ItemOutcome::RolledBack {
+                self.files_reversed += 1;
+            }
         }
         if let Some(reason) = skip_reason {
             // Group by reason at the location the undo found the item — the name the
@@ -90,20 +103,24 @@ impl RunAcc {
     }
 }
 
-/// What a reversal did, for the inverse operation's own header.
-///
-/// Both numbers have to come from the same count or the header contradicts
-/// itself. The open-time `item_count` is the ORIGINAL's `items_done`, which
-/// counts files; the reversal walks every `rollback_unit` row, directory rows
-/// included — so a copy of two files into one created folder finished as "3 of 2
-/// done". Finalize therefore restates `item_count` from what the run actually
-/// walked, rather than leaving the open-time guess in place.
+/// The inverse operation plans to reverse what the original completed. Instant
+/// and directory-only operations have no file-progress count, so they retain the
+/// original planned count instead.
+pub(super) fn inverse_planned_item_count(original: &OperationRow) -> u64 {
+    if original.items_done > 0 {
+        original.items_done
+    } else {
+        original.item_count
+    }
+}
+
+/// What a reversal did, measured in the same user-facing units as the original
+/// operation. Created directory rows that only clean up a copied tree do not add
+/// items; a directory still fills a slot when it was itself the operation unit.
 #[derive(Debug, Clone, Copy, Default)]
 pub(super) struct InverseTotals {
-    /// Items reversed (an already-gone item counts: the end state holds).
-    pub(super) reversed: u64,
-    /// Every item the run walked, reversed or skipped.
-    pub(super) walked: u64,
+    pub(super) item_count: u64,
+    pub(super) items_done: u64,
 }
 
 /// Finalize the inverse op's journal row, computing its own eligibility (a
@@ -126,8 +143,8 @@ pub(super) fn finalize_inverse(
         search_coverage: SearchCoverage::Full,
         search_coverage_reason: None,
         ended_at: super::super::now_secs(),
-        item_count: Some(totals.walked),
-        items_done: totals.reversed,
+        item_count: Some(totals.item_count),
+        items_done: totals.items_done,
         bytes_total: 0,
         dev_summary: None,
     }) {
