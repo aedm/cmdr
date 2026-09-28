@@ -78,6 +78,7 @@ pub(super) struct SelectableVolume {
 
 /// Resolves a stable id, or a unique legacy name, against the same rows the switcher receives.
 /// An id wins when both are supplied so stale display copy can never redirect the selection.
+#[cfg(any(target_os = "macos", test))]
 pub(super) fn resolve_volume_selector(
     rows: &[SelectableVolume],
     volume_id: Option<&str>,
