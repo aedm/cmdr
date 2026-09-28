@@ -28,6 +28,7 @@ import {
   openSearchDialog,
   resetSearchDialog,
   setSearchInputValue,
+  showsLiveWalkResult,
 } from './search-helpers.js'
 import {
   createWalkGround,
@@ -39,8 +40,6 @@ import {
 
 const RESULT_ROWS = `${SEARCH_OVERLAY} .result-row`
 const STATUS_TEXT = `${SEARCH_OVERLAY} .status-text`
-/** The walk's own progress, beside the match count. Present only while a walk runs. */
-const STATUS_PROGRESS = `${SEARCH_OVERLAY} .status-progress`
 const STOP_BUTTON = `${SEARCH_OVERLAY} .status-stop`
 const COVERAGE_NOTE = `${SEARCH_OVERLAY} .coverage-note`
 /** The status bar's throttled live region: an inner span, never the bar itself. */
@@ -84,11 +83,14 @@ test.describe('Search dialog: a live search over unindexed ground', () => {
     await openSearchDialog(tauriPage)
     await resetSearchDialog(tauriPage)
 
-    // Take the index away LAST, once the dialog is open and quiet. It reopens holding
-    // the last spec's query and re-runs it, and that run can walk — which would leave
-    // this run's ground already covered and nothing to stream. Forgetting after it has
-    // settled wipes whatever it wrote.
+    // Clear the surviving dialog state before taking the index away, then close so its
+    // in-flight arena preload is cancelled. Forgetting the index while that preload is
+    // still pending can strand the readiness gate waiting for an event the forget made
+    // impossible; the following Enter then does nothing. Reopening against the proven
+    // unindexed state gets the terminal "nothing to load" answer and permits the walk.
+    await closeSearchDialog(tauriPage)
     await makeLocalVolumeUnindexed()
+    await openSearchDialog(tauriPage)
 
     await setSearchInputValue(tauriPage, 'file-*')
     await tauriPage.evaluate(`(function(){
@@ -99,18 +101,7 @@ test.describe('Search dialog: a live search over unindexed ground', () => {
     // Mid-walk, in one snapshot: rows on screen, the run still stoppable, a count that
     // calls itself provisional, and the walk's own progress beside it. An index-served
     // run has none of the last three, whatever it puts in the list.
-    await expect
-      .poll(
-        async () => {
-          const rows = await tauriPage.count(RESULT_ROWS)
-          const stoppable = (await tauriPage.count(STOP_BUTTON)) === 1
-          const status = await textOf(tauriPage, STATUS_TEXT)
-          const progress = await textOf(tauriPage, STATUS_PROGRESS)
-          return rows > 0 && stoppable && status.includes('so far') && progress.includes('scanned')
-        },
-        { timeout: waitBudget(30000) },
-      )
-      .toBe(true)
+    await expect.poll(() => showsLiveWalkResult(tauriPage), { timeout: waitBudget(30000) }).toBe(true)
 
     // The list GROWS. Every level of the chain holds one match, so more rows arriving
     // means the walk is feeding the list rather than having handed it over at once.

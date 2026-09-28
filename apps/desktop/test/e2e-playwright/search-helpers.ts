@@ -66,6 +66,27 @@ export async function resetSearchDialog(tauriPage: PageLike): Promise<void> {
 }
 
 /**
+ * Whether the dialog currently shows a result that arrived while its walk is still running.
+ *
+ * Read every signal in one webview evaluation. The state is transient: a walk can
+ * finish between IPC calls, and combining DOM reads from opposite sides of that
+ * render would miss a live result that really was on screen.
+ */
+export async function showsLiveWalkResult(tauriPage: PageLike): Promise<boolean> {
+  return tauriPage.evaluate<boolean>(`(function(){
+        var overlay = document.querySelector(${JSON.stringify(SEARCH_OVERLAY)});
+        if (!overlay) return false;
+        var status = overlay.querySelector('.status-text');
+        var progress = overlay.querySelector('.status-progress');
+        var text = function(el) { return el ? (el.textContent || '').replace(/\\s+/g, ' ').trim() : ''; };
+        return overlay.querySelector('.result-row') !== null &&
+            overlay.querySelector('.status-stop') !== null &&
+            text(status).includes('so far') &&
+            text(progress).includes('scanned');
+    })()`)
+}
+
+/**
  * Closes the dialog with Escape (the canonical close path) and waits for it to unmount.
  *
  * ❗ Named overlay, and re-pressed: a query dialog spends its first Escape stopping a live
