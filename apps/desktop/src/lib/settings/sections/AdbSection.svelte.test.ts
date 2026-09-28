@@ -28,7 +28,9 @@ vi.mock('$lib/settings/settings-store', () => ({
     if (key === 'fileOperations.adbBinaryPath') return ''
     return undefined
   }),
-  setSetting: (id: string, value: unknown) => { setSetting(id, value); },
+  setSetting: (id: string, value: unknown) => {
+    setSetting(id, value)
+  },
   resetSetting: vi.fn(),
   isModified: vi.fn(() => false),
   onSpecificSettingChange: vi.fn(() => () => {}),
