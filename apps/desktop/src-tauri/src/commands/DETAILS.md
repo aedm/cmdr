@@ -338,9 +338,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   stubs return errors. `read_clipboard_files` returns `ClipboardReadResult { paths, is_cut, is_directory }` where
   `is_directory` is an index-aligned `Vec<Option<bool>>` from a batched off-main-thread `stat_paths_kinds_blocking`, so
   the paste toast can split files vs. folders without walking trees.
-- **`crash_reporter.rs`**: `check_pending_crash_report`, `dismiss_crash_report`, `send_crash_report`. Send skipped in
-  debug builds, E2E builds (`playwright-e2e`, release builds whose reports would otherwise look real), and CI. A send that
-  doesn't land returns the shared `ServerRequestError` and keeps the crash file for the next launch.
+- **`crash_reporter.rs`**: `check_pending_crash_report`, `dismiss_crash_report`, `send_crash_report`. Send reapplies the
+  backend delivery transform after preview and accepts email separately through `AttachedEmail`, so the IPC report
+  cannot restore omitted content or smuggle an embedded address. Network is skipped in debug builds, E2E builds
+  (`playwright-e2e`, release builds whose reports would otherwise look real), and CI. A send that doesn't land returns
+  the shared `ServerRequestError` and keeps the crash file for the next launch.
 - **`beta_signup.rs`**: `beta_signup(email)` POSTs ONLY the email (never an install id) to `POST /beta-signup`. Returns a
   typed `BetaSignupResult` (`subscribed`/`invalidEmail`/`softFailure`). Network, not filesystem, so no
   `blocking_with_timeout` (the `reqwest` client carries its own 10 s timeout). An E2E build answers `subscribed` without
@@ -352,7 +354,7 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   when nothing was auto-sent this run) and `amend_error_report(userNote?, email?)`, which adds a note to that one
   report and so takes no id (it resolves the target from the stash, then supplies
   `error_report_amend_url(id)` the way the send path supplies its own URL). `flow_a_request` is the single place note validation, id reuse, and wrapping an address in
-  `AttachedEmail` happen. Network skipped in dev/CI. The two preview commands are dispatch-only (a `BundleManifest`
+  `AttachedEmail` happen. Uploads use localhost in debug builds and skip network only in CI and E2E builds. The two preview commands are dispatch-only (a `BundleManifest`
   holds a `serde_json::Value`, which specta can't describe), so the frontend reaches them by raw invoke.
 - **`analytics.rs`**: `track_event(name, props_json)`, a thin pass-through to `events::capture` for the open set of
   frontend feature events. No capability entry; the PII-free prop contract lives in `analytics/CLAUDE.md`.

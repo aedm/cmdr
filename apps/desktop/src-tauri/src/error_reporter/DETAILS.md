@@ -70,13 +70,9 @@ Manifest fields (`BundleManifest`):
   `lastUserAction` field (removed); `handleCommandExecute` pushes one on every
   keyboard / palette / menu dispatch. See "Breadcrumbs" below.
 - `userNote` (optional): user-supplied free text. Trimmed; capped at 100 000 chars by the
-  Tauri command layer. For [`BundleKind::Auto`] bundles only, the note is also routed
-  through the report's `RedactionContext` that scrubs every log line. The auto
-  pipeline constructs the note from a raw error message (see [`auto_dispatcher`]) that
-  routinely contains paths (e.g. updater failures embedding `current_exe()`), and the
-  user never previews what ships, so the redactor is the only thing standing between a
-  `/Users/<name>/...` path in the message and the manifest. [`BundleKind::User`] notes
-  are typed by the user, previewed in the dialog, and shipped verbatim.
+  Tauri command layer. [`BundleKind::User`] notes are typed by the user, previewed in the dialog, and shipped verbatim.
+  [`BundleKind::Auto`] carries only a generated typed error count, never an error category or message. Automatic notes
+  still pass through the report's `RedactionContext` as defense for future callers.
 - `diagId` (`diag_<uuid>`): the diagnostics id from [`crate::install_id`], attached at bundle assembly via
   `install_id::diagnostics_id()` (full stdlib here, safe to mint/lock). Groups sequential reports from one install.
   **NEVER the `anal_` analytics id** (see `analytics/CLAUDE.md` § "Two ids that never meet"): the two-id split keeps a
@@ -290,11 +286,11 @@ per-event consent, so the consent has to be up front). When enabled:
 1. The `log_error!` macro routes select call sites through
    `auto_dispatcher::on_error_logged(category, message)` in addition to the normal
    `log::error!` emit.
-2. The first error in a 60 s window captures `(category, first_message, error_count = 1)`
-   and schedules a flush at `now + 60 s ± 10 s of jitter`. Subsequent errors in the same
-   window only bump the counter; the first-call metadata is kept verbatim.
-3. When the timer fires: build a bundle (`BundleKind::Auto`, user note carries the count
-   + first-error preview), trim to a 1 MB tail via `cap_bundle_to_mb`, upload, record what
+2. The first error in a 60 s window captures the typed error count and timestamp and schedules a flush at
+   `now + 60 s ± 10 s of jitter`. Subsequent errors in the same window only bump the counter. Category and message
+   remain in the report-scope-redacted logs; the manifest never copies their arbitrary prose.
+3. When the timer fires: build a bundle (`BundleKind::Auto`, user note carries only the count), trim to a 1 MB tail via
+   `cap_bundle_to_mb`, upload, record what
    went out in `auto_sent`, then emit `error-report-auto-sent` with the ID (the same
    `ERR-XXXXX` the manifest carried; the server validates the shape and echoes it back,
    never regenerates). The frontend listens for that event and shows a confirmation toast
@@ -377,10 +373,9 @@ parseable leading ISO-8601 timestamp, so the backtrace continuation lines surviv
 Flow B reports intact. The redactor scrubs build-machine paths embedded in the symbol
 metadata via the same `redact_line` pass every other log line gets.
 
-The auto-dispatcher's `first_message` (which becomes the manifest's `userNote`) sees
-only the user-supplied message; the trace stays in the log file. So bundle manifests
-stay terse, and triage gets the call site without us having to wire stack-capture into
-each error site individually.
+The automatic manifest note carries only the typed error count. The message and trace stay in the log file, where the
+bundle's report-scoped redactor handles every line. Bundle manifests stay terse, and triage gets the call site without
+wiring stack capture into each error site individually.
 
 `force_capture` ignores `RUST_BACKTRACE`. This is intentional: error report bundles
 need stack context regardless of the user's env.

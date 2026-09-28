@@ -541,6 +541,53 @@ fn sanitize_leaves_a_short_message_unmarked() {
     assert!(!sanitized.ends_with(PANIC_MESSAGE_TRUNCATION_MARKER));
 }
 
+#[test]
+fn delivery_omits_arbitrary_crash_prose_and_redacts_retained_diagnostics() {
+    let mut report = make_test_report();
+    report.short_id = Some("not-a-report-id".to_string());
+    report.diag_id.clear();
+    report.build_mode = Some("PRIVATE-BUILD-MODE".to_string());
+    report.panic_message = Some("PRIVATE PANIC PAYLOAD /Users/alice/Secret/payload.txt".to_string());
+    report.thread_name = Some("PRIVATE THREAD NAME".to_string());
+    report.active_settings.ai_provider = Some("PRIVATE PROVIDER".to_string());
+    report.backtrace_frames = vec!["frame at /Users/alice/Secret/frame.rs".to_string()];
+    report.os_exception = Some("fault at /Users/alice/Secret/fault.bin".to_string());
+    report.os_frames = vec!["image /Users/alice/Secret/image.dylib".to_string()];
+    report.email = Some("explicit-email@example.test".to_string());
+
+    report.prepare_for_delivery();
+    let json = serde_json::to_string(&report).expect("prepared report serializes");
+
+    for private in [
+        "PRIVATE PANIC PAYLOAD",
+        "PRIVATE THREAD NAME",
+        "PRIVATE PROVIDER",
+        "/Users/alice",
+        "Secret",
+    ] {
+        assert!(!json.contains(private), "private value {private:?} survived: {json}");
+    }
+    assert_eq!(report.panic_message, None);
+    assert_eq!(report.thread_name, None);
+    assert_eq!(report.active_settings.ai_provider, None);
+    assert_eq!(report.build_mode, None);
+    assert!(
+        report
+            .short_id
+            .as_deref()
+            .is_some_and(|id| crate::short_id::matches(CRASH_SHORT_ID_PREFIX, id))
+    );
+    assert!(valid_diagnostics_id(&report.diag_id));
+    assert_eq!(report.email, None);
+
+    report.active_settings.ai_provider = Some("local".to_string());
+    report.prepare_for_send(crate::error_reporter::AttachedEmail::from_flow_a_dialog(Some(
+        "explicit-email@example.test".to_string(),
+    )));
+    assert_eq!(report.active_settings.ai_provider.as_deref(), Some("local"));
+    assert_eq!(report.email.as_deref(), Some("explicit-email@example.test"));
+}
+
 // --- App fate: what the next-launch dialog is allowed to claim ---
 
 /// A pending report on disk, `fate` as its recorded [`AppFate`] and a timestamp old

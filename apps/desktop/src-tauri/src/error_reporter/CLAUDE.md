@@ -27,7 +27,8 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
   identities never enter logs or disk; bundle assembly transforms them with that report's context.
 - **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;
   never restore free-form messages, maps, or JSON. Unknown IPC fields fail closed.
-- **Auto notes get redacted; `User` notes ship verbatim**: an auto note is a raw error message nobody previewed.
+- **Automatic manifests carry only a typed error count; `User` notes ship verbatim.** Auto notes still pass through
+  report-scoped redaction as defense for future callers.
 - **One dialog session, one id.** The preview mints it, the send passes it back via `BundleRequest.id`. Skip it and
   the user holds an id no report was filed under. The same ID also rebuilds the same report-scoped redaction context.
 - **Don't gate sending on `cfg!(debug_assertions)`.** Debug builds DO send (`buildMode` tags them `[DEV]`); only `CI`

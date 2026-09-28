@@ -41,8 +41,8 @@ and collects the user's choices.
   from `crash-copy.ts`, never a fixed key. Anything unsettled (`unconfirmed`, a missing `appFate` from an older build)
   falls to the wording that claims least. Don't flip that default: it would tell a user their app crashed on the
   strength of a field that wasn't there. The fate is decided backend-side; `src-tauri/src/crash_reporter/DETAILS.md`.
-- **The report JSON is shown verbatim and is safe to show.** The backend already redacted and capped it before it
-  reached disk. Don't add fields to the displayed payload here or re-sanitize it: `src-tauri/src/crash_reporter/` is the
-  single place that decides what a crash report contains.
+- **The report JSON is shown verbatim and is safe to show.** The backend applies its delivery transform before IPC and
+  reapplies it at send. Don't add fields to the displayed payload here or re-sanitize it:
+  `src-tauri/src/crash_reporter/` is the single place that decides what a crash report contains.
 
 Flows, the dialog's states, and the dialog-gallery fixture: `DETAILS.md`.

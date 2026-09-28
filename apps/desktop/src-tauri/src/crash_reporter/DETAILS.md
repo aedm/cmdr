@@ -62,9 +62,9 @@ Nothing new leaves the machine, and nothing leaves it sooner than the user agree
   opt-in check before touching the dispatcher state. Opt-in off means the panic is logged
   locally and that's all.
 - The payload is the Flow B log-tail bundle that already ships, and Flow B bundles already
-  carry Rust backtraces (`log_error!` emits one per error). The panic message rides the
-  same `sanitize_panic_message` pass that guards the disk write, so the in-session copy
-  can't be less redacted than the file.
+  carry Rust backtraces (`log_error!` emits one per error). The courier logs a fixed headline,
+  the typed crash ID when available, and the frames. It omits the panic payload and caller-chosen
+  thread name because lexical redaction cannot prove arbitrary producer text safe.
 - A user who opted into crash reports but not error reports sees exactly today's behavior.
 
 ### Told once, not twice: `reported_in_session`
@@ -186,7 +186,7 @@ holds; the `warn` goes through `log` from the hook's thread, which the reporting
 because `log` might be what panicked, an argument that doesn't apply to a parser call we
 chose to wrap.
 
-**The `warn` line is a fixed sentence plus the thread name, never the panic message.**
+**The `warn` line is a fixed sentence, never the thread name or panic message.**
 `cmdr.log` rides error reports, and a foreign parser's `expect` formats the object it choked
 on into its message: for `pdf-extract` that is bytes of the user's PDF (an object dump, a
 string from the document). The crash-report sanitizer strips paths, not that, so the message
@@ -205,25 +205,35 @@ all three; nextest never sees the race, so a test green only under nextest is th
 
 ## Crash file lifecycle
 
-1. App crashes; the handler writes `crash-report.json`.
-2. Next launch: `check_pending_crash_report` finds the file and parses it defensively (discards if corrupt).
+1. App crashes; the panic hook writes `crash-report.json`, or the signal handler writes its async-signal-safe
+   `crash-report.raw` artifact.
+2. Next launch: `check_pending_crash_report` finds the file, parses it defensively (discards if corrupt), and runs the
+   common delivery transform before anything reaches the frontend.
 3. If `updates.crashReports` is `true` and it's not a crash loop: auto-send and show a toast.
 4. Otherwise: show a dialog letting the user inspect and choose to send or dismiss. Radical transparency: the dialog
    shows the exact JSON payload before sending.
 5. The file is deleted after send or dismiss.
 
+### Released-build gates
+
+The release workflow invokes Tauri's release build with the desktop crate's default feature set. That means shipped
+builds have `debug_assertions = false` and do not compile with `playwright-e2e`. On an ordinary installed launch they
+therefore use the production endpoint and can send, subject to the crash-report setting and crash-loop dialog gate; an
+explicit runtime `CI` variable still suppresses network. Debug builds capture and preview but skip crash upload, and E2E
+builds skip it too. Error reports intentionally differ: debug builds upload to localhost for developer testing, while CI
+and E2E skip network. Manual error-report preview and debug save use the same `build_bundle` privacy path as upload.
+These are reporter gates, not release-pipeline behavior.
+
 ## What we send
 
-- Full symbolicated backtrace (function names + offsets, not file paths).
+- Full symbolicated backtrace, report-scope-redacted before preview or upload.
 - Exception type + signal, faulting address.
 - App version, macOS version, CPU architecture.
 - App uptime, thread count.
-- Sanitized panic message (`panicMessage`): redacted through `crate::redact`, then capped at
-  `PANIC_MESSAGE_MAX_CHARS` (2,000) with a `… (truncated)` marker. `None` for signal crashes, which carry no payload.
-  The cap exists because the ingestion endpoint rejects a report body over 64 KB, so an uncapped `assert_eq!` dump of a
-  big struct would cost the whole report instead of its own tail. The api server caps again on its side.
-- Active feature flags (booleans/enums only: `indexing.enabled`, `ai.provider`, `developer.mcpEnabled`,
-  `developer.verboseLogging`).
+- No panic payload or thread name. Capture keeps a redacted, capped panic message locally for crash-file diagnostics,
+  but the delivery transform omits both arbitrary text fields because their contents cannot be proven safe.
+- Active feature flags (booleans plus the closed `ai.provider` values `off`, `cloud`, or `local`). An unknown provider
+  value is omitted rather than shipped as open text. Ordinary MCP behavior and its typed enabled flag are unchanged.
 - `buildMode` (`"release"` or `"debug"`, from `cfg!(debug_assertions)`): lets the api server distinguish dev-run crashes
   from production ones in the email summary.
 - `shortId` (`CRASH-XXXXX`): generated at crash-file-write time via `crate::short_id::generate("CRASH")` (shared
@@ -231,8 +241,9 @@ all three; nextest never sees the race, so a test green only under nextest is th
 - `diagId` (`diag_<uuid>`): the diagnostics id from `crate::install_id`, so sequential reports from one install group
   together. See the `CLAUDE.md` invariant on why this is never the `anal_` analytics id and is attached at assembly
   time, not in the signal handler.
-- `email` (optional): a beta tester's contact email, populated only by the dialog at send time when the user ticks the
-  attach-email box. The dialog threads it into `send_crash_report(report)`.
+- `email` (optional): a beta tester's contact email, supplied separately by the dialog at send time when the user ticks
+  the attach-email box. The backend clears any email embedded in the previewed report, reapplies the delivery transform,
+  and then attaches only this typed explicit-consent value verbatim.
 - `systemSnapshot` (optional): the stable machine snapshot from [`crate::diagnostics_snapshot`] — Mac model, CPU counts,
   OS build, total RAM, the data-dir volume's free/total bytes, and drive-index sizes (total plus an unlabeled
   per-database list). Attached at next-launch assembly in `process_pending_crash`, never in the panic hook or signal
@@ -249,6 +260,16 @@ all three; nextest never sees the race, so a test green only under nextest is th
 - `reportedInSession`: always `false` in anything that reaches the server, since a stamped report is deleted rather than
   uploaded (§ Told once, not twice). A bool that carries no information off the machine, kept in the payload only so the
   on-disk file stays self-describing.
+
+### One delivery transform
+
+`CrashReport::prepare_for_delivery` is the boundary shared by panic JSON, converted signal artifacts, next-launch
+preview, automatic send, and manual send. It mints a valid `CRASH-XXXXX` when the stored ID is absent or malformed,
+replaces an invalid diagnostics ID with the current `diag_` ID, drops unknown build-mode/provider strings, omits panic
+payload, thread name, and embedded email, and uses `RedactionContext::for_report(short_id)` for every retained stack and
+macOS exception string. `send_crash_report` reapplies it after the frontend round trip before adding the separately
+supplied `AttachedEmail`, so a changed IPC object cannot restore omitted content. A field that cannot be transformed or
+proven to be closed typed metadata stays out.
 
 ## Where a field is filled in
 

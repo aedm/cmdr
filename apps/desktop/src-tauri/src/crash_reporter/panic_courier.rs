@@ -37,19 +37,12 @@ use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
-/// Log target for a survived panic. Becomes the Flow B window's category, so it reads as
-/// `crash_reporter::panic` in the log and in the report's user note.
+/// Log target for a survived panic. It reads as `crash_reporter::panic` in the report's
+/// redacted log tail; the automatic manifest note contains only an error count.
 pub(super) const PANIC_LOG_TARGET: &str = "cmdr_lib::crash_reporter::panic";
 
-/// Thread name for the courier, so it's identifiable in a later crash report's
-/// `thread_name` and in a debugger.
+/// Thread name for the courier, so it's identifiable in a debugger. Delivery omits thread names.
 const COURIER_THREAD_NAME: &str = "cmdr-panic-courier";
-
-/// Placeholder for a panic whose payload wasn't a string (a custom `panic_any` type).
-const NO_MESSAGE: &str = "(no panic message)";
-
-/// Placeholder for a panic on a thread nobody named.
-const UNNAMED_THREAD: &str = "<unnamed>";
 
 /// True while a courier thread is alive. Doubles as the reentrancy guard: a panic raised
 /// BY the courier re-enters the hook on the courier's own thread, where this is set.
@@ -67,14 +60,9 @@ static COURIERS_STARTED: std::sync::atomic::AtomicUsize = std::sync::atomic::Ato
 #[cfg(test)]
 static LAST_COURIER: std::sync::Mutex<Option<JoinHandle<()>>> = std::sync::Mutex::new(None);
 
-/// What the hook hands over. Every field is already in its final, sendable form: the hook
-/// builds the crash report first and clones out of it, so the courier does no redaction of
-/// its own and can't disagree with what went to disk.
+/// What the hook hands over. Arbitrary panic payload and thread-name text deliberately never
+/// enters this path; a report-scoped bundle can safely retain the symbol frames and typed ID.
 pub(super) struct PanicNotice {
-    /// The panic message, already through `sanitize_panic_message` (redacted, then capped).
-    pub message: Option<String>,
-    /// Name of the thread that panicked, as it goes into the crash report.
-    pub thread_name: Option<String>,
     /// Symbol names from the panicking thread's backtrace, as they go into the crash report.
     pub backtrace_frames: Vec<String>,
     /// `CRASH-XXXXX` of the crash file THIS panic wrote, so a next-launch crash report and
@@ -84,14 +72,12 @@ pub(super) struct PanicNotice {
 }
 
 impl PanicNotice {
-    /// The single error-level line. Carries the short id so triage can pair this with the
-    /// crash report the same panic wrote to disk.
+    /// The fixed error-level line. Carries only the typed short id, when one exists, so triage
+    /// can pair this with the crash report without copying arbitrary panic prose into logs.
     fn headline(&self) -> String {
-        let thread = self.thread_name.as_deref().unwrap_or(UNNAMED_THREAD);
-        let message = self.message.as_deref().unwrap_or(NO_MESSAGE);
         match self.crash_file_short_id.as_deref() {
-            Some(id) => format!("Panic on thread `{thread}` ({id}): {message}"),
-            None => format!("Panic on thread `{thread}`: {message}"),
+            Some(id) => format!("A panic occurred ({id}); payload and thread name withheld"),
+            None => "A panic occurred; payload and thread name withheld".to_string(),
         }
     }
 }

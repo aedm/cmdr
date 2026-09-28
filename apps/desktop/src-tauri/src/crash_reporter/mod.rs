@@ -224,6 +224,66 @@ pub struct CrashReport {
     pub os_frames: Vec<String>,
 }
 
+impl CrashReport {
+    /// Apply the privacy boundary shared by next-launch preview and upload.
+    ///
+    /// Panic payloads and thread names are arbitrary producer text: either can contain user
+    /// data that a lexical redactor cannot recognize, so they stay local and are omitted.
+    /// Retained diagnostic strings are scrubbed with this report's correlation context.
+    pub(crate) fn prepare_for_delivery(&mut self) {
+        let short_id = self
+            .short_id
+            .take()
+            .filter(|id| crate::short_id::matches(CRASH_SHORT_ID_PREFIX, id))
+            .unwrap_or_else(|| crate::short_id::generate(CRASH_SHORT_ID_PREFIX));
+        let redaction = redact::RedactionContext::for_report(&short_id);
+        self.short_id = Some(short_id);
+
+        self.panic_message = None;
+        self.thread_name = None;
+        self.email = None;
+        self.active_settings.ai_provider = self
+            .active_settings
+            .ai_provider
+            .take()
+            .filter(|provider| matches!(provider.as_str(), "off" | "cloud" | "local"));
+        self.backtrace_frames = self
+            .backtrace_frames
+            .iter()
+            .map(|frame| redaction.redact_line(frame).into_owned())
+            .collect();
+        self.os_exception = self
+            .os_exception
+            .as_deref()
+            .map(|exception| redaction.redact_line(exception).into_owned());
+        self.os_frames = self
+            .os_frames
+            .iter()
+            .map(|frame| redaction.redact_line(frame).into_owned())
+            .collect();
+
+        if !matches!(self.build_mode.as_deref(), Some("release" | "debug")) {
+            self.build_mode = None;
+        }
+        if !valid_diagnostics_id(&self.diag_id) {
+            self.diag_id = crate::install_id::diagnostics_id();
+        }
+    }
+
+    /// Reapply the delivery boundary after the frontend preview, then attach only the email
+    /// supplied through the dialog's typed consent path.
+    pub(crate) fn prepare_for_send(&mut self, email: Option<crate::error_reporter::AttachedEmail>) {
+        self.prepare_for_delivery();
+        self.email = email.map(crate::error_reporter::AttachedEmail::into_inner);
+    }
+}
+
+fn valid_diagnostics_id(id: &str) -> bool {
+    id.strip_prefix("diag_")
+        .and_then(|raw| uuid::Uuid::parse_str(raw).ok())
+        .is_some()
+}
+
 /// Points the crash reporter at the app data dir: settings cache, previous session's
 /// pending report, the crash-file path the hook writes to, and the signal handlers.
 ///
@@ -268,7 +328,11 @@ pub fn init<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 pub fn take_pending_crash_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<CrashReport> {
     let data_dir = config::resolved_app_data_dir(app).ok()?;
     let crash_path = data_dir.join(CRASH_FILE_NAME);
-    read_crash_report(&crash_path)
+    let mut report = read_crash_report(&crash_path)?;
+    // Defense in depth if the next-launch rewrite couldn't persist (for example, permissions
+    // changed after the file was created): no preview can bypass the delivery transform.
+    report.prepare_for_delivery();
+    Some(report)
 }
 
 // --- Panic hook ---
@@ -296,15 +360,12 @@ pub fn install_panic_hook() {
     });
 }
 
-/// The one line a contained panic leaves in the log: a fixed sentence plus the thread name,
-/// never the panic message. `cmdr.log` rides error reports, and a foreign parser's `expect`
-/// formats the object it choked on into its message, which for `pdf-extract` is bytes of the
-/// user's PDF. The sanitizer a crash report's message goes through strips paths, not that.
+/// The one fixed line a contained panic leaves in the log. `cmdr.log` rides error reports, and
+/// both the panic payload and a caller-chosen thread name are arbitrary text a lexical redactor
+/// cannot prove safe.
 fn contained_panic_warning(_info: &std::panic::PanicHookInfo<'_>) -> String {
-    format!(
-        "Contained a panic inside a foreign parser on thread {}; the message is withheld because it can quote the file",
-        std::thread::current().name().unwrap_or("<unnamed>")
-    )
+    "Contained a panic inside a foreign parser; payload and thread name withheld because they can contain user data"
+        .to_string()
 }
 
 /// What the hook did with a panic.
@@ -356,8 +417,6 @@ fn handle_panic(
     // follow-on panic has no crash file, and quoting an id for a report nobody will find
     // sends triage after the wrong panic.
     panic_courier::notify(panic_courier::PanicNotice {
-        message: report.panic_message.clone(),
-        thread_name: report.thread_name.clone(),
         backtrace_frames: report.backtrace_frames.clone(),
         crash_file_short_id: wrote_crash_file.then(|| report.short_id.clone()).flatten(),
     });

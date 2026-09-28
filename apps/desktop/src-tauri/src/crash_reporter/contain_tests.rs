@@ -120,7 +120,7 @@ fn a_panic_outside_the_closure_is_still_reported() {
 
 /// `cmdr.log` rides error reports, and a `pdf-extract` panic message can quote bytes of the
 /// PDF's object dump (`expect` on a dictionary lookup formats the object it was looking at).
-/// So the warning names the thread and nothing the file could have put there.
+/// The warning carries neither the payload nor the caller-chosen thread name.
 #[test]
 fn the_contained_panic_warning_carries_no_panic_message() {
     let _serialized = hold_the_hook();
@@ -145,8 +145,8 @@ fn the_contained_panic_warning_carries_no_panic_message() {
     assert_eq!(outcome, None);
     let line = captured.lock().unwrap().clone().expect("the hook saw the panic");
     assert!(
-        line.contains("pdf-parse-worker"),
-        "the thread name is the one thing worth logging: {line}"
+        !line.contains("pdf-parse-worker"),
+        "the thread name is arbitrary producer text: {line}"
     );
     assert!(
         !line.contains("SECRET-OBJECT-DUMP") && !line.contains("/Type"),

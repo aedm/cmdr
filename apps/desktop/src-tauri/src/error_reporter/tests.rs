@@ -272,8 +272,8 @@ fn prepare_user_note_drops_empty_and_whitespace_for_both_kinds() {
 
 #[test]
 fn prepare_user_note_redacts_each_line_of_multiline_auto_note() {
-    // Defensive: auto_dispatcher's format string is single-line, but `state.first_message`
-    // is arbitrary; a multi-line message must still get redacted on every line.
+    // Defensive for any future automatic caller: a multi-line note must still get redacted
+    // on every line.
     let raw = "auto-send: first error\nlocation: /Users/jane/projects/foo\ndetail: also /Users/jane/Documents/x.pdf";
     let redacted = prepare_user_note(raw, BundleKind::Auto, &test_redaction()).expect("non-empty note");
     assert!(

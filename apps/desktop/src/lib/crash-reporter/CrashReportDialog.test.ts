@@ -14,7 +14,7 @@ import { ServerRequestFailure } from '$lib/error-messages/server-request'
 import CrashReportDialog from './CrashReportDialog.svelte'
 
 const { sendCrashReport, dismissCrashReport, logger } = vi.hoisted(() => ({
-  sendCrashReport: vi.fn<(report: unknown) => Promise<void>>(() => Promise.resolve()),
+  sendCrashReport: vi.fn(() => Promise.resolve()),
   dismissCrashReport: vi.fn(() => Promise.resolve()),
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
@@ -92,6 +92,24 @@ describe('CrashReportDialog send', () => {
     const target = await mountDialog()
     await pressSendAndSettle(target)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends an explicitly attached email separately from the previewed report', async () => {
+    const target = await mountDialog()
+    const label = Array.from(target.querySelectorAll('label')).find((candidate) =>
+      candidate.textContent.includes('Attach my email'),
+    )
+    label?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click()
+    await tick()
+    const emailInput = target.querySelector<HTMLInputElement>('input[type="email"]')
+    if (!emailInput) throw new Error('no email input after selecting Attach my email')
+    emailInput.value = 'explicit@example.test'
+    emailInput.dispatchEvent(new InputEvent('input', { bubbles: true }))
+
+    await pressSendAndSettle(target)
+
+    expect(sendCrashReport).toHaveBeenCalledWith(report, 'explicit@example.test')
+    expect(report).not.toHaveProperty('email')
   })
 
   it('stays open when the server can’t be reached, says so, and keeps Send as the retry', async () => {

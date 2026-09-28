@@ -25,7 +25,7 @@ refuse, so only a broken IPC bridge lands there. `pending-crash-report.test.ts` 
 
 `updates.crashReports` defaults to ON. `updates.errorReports` and `updates.attachEmailToReports` default to OFF, and
 that split is a privacy position rather than a preference: a crash report is narrow and stack-shaped (app version, macOS
-version, where the code stopped) and everything in it passes `sanitize_panic_message`, while the error report uploads an
+version, where the code stopped) and passes the backend's delivery transform, while the error report uploads an
 unbounded log bundle and the email attaches a person's identity. `settings-registry.test.ts` pins all three, so the next
 "let's be consistent" pass has to argue with a test.
 
@@ -102,9 +102,9 @@ auto-send. `CrashReportDialog.test.ts` pins both.
   two surfaces and imply it also covers the separate error-reports setting. Renaming the setting itself is the coherent
   fix, and it isn't this component's call.
 - **Report ID line**: only when `report.shortId` is set. Reports written by older app versions have none.
-- **Details block**: collapsed by default, expands to the pretty-printed report JSON with a Copy button. The JSON is
-  already redacted and capped backend-side, which is what makes it safe to show verbatim; `user-select: text` is set so
-  a user can grab part of it.
+- **Details block**: collapsed by default, expands to the pretty-printed report JSON with a Copy button. The JSON has
+  already passed the backend delivery transform, which is what makes it safe to show verbatim; `user-select: text` is
+  set so a user can grab part of it.
 - **Always send**: on send, writes `updates.crashReports = true`. Only ever flips the setting ON, and only from an
   explicit tick; there's no path here that turns it off (that's Settings > Updates).
 - **Attach my email**: `$lib/attach-email`. Always shown, never pre-ticked, sticky across the error-report and feedback

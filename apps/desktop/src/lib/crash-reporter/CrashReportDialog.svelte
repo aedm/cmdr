@@ -56,8 +56,7 @@
                 setSetting('updates.crashReports', true)
             }
             const email = attachEmail.emailToAttach
-            const reportToSend: CrashReport = email ? { ...report, email } : report
-            await sendCrashReport(reportToSend)
+            await sendCrashReport(report, email)
             // Sticky choice and a newly typed address are remembered only now: a
             // half-typed one shouldn't become the reply channel for every report.
             attachEmail.persist()

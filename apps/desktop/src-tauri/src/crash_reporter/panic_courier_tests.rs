@@ -32,8 +32,6 @@ fn lock_couriers() -> MutexGuard<'static, ()> {
 
 fn notice() -> PanicNotice {
     PanicNotice {
-        message: Some("called `unwrap()` on an `Err` value".to_string()),
-        thread_name: Some("mtp-poll".to_string()),
         backtrace_frames: vec!["cmdr_lib::mtp::poll".to_string(), "std::sys::thread".to_string()],
         crash_file_short_id: Some("CRASH-A2345".to_string()),
     }
@@ -121,22 +119,16 @@ fn delivering_a_panic_opens_a_flow_b_window() {
 
     deliver_for_test(&notice());
 
-    let (category, message, count, _scheduled) =
-        snapshot_for_test().expect("a survived panic must open a Flow B window in-session");
-    assert_eq!(category, PANIC_LOG_TARGET);
-    assert!(
-        message.contains("mtp-poll"),
-        "the note names the panicking thread: {message}"
-    );
-    assert!(
-        message.contains("called `unwrap()` on an `Err` value"),
-        "the note carries the sanitized panic message: {message}"
-    );
-    assert!(
-        message.contains("CRASH-A2345"),
-        "the note carries the crash file's short id so the two reports pair up: {message}"
-    );
+    let (count, _scheduled) = snapshot_for_test().expect("a survived panic must open a Flow B window in-session");
     assert_eq!(count, 1);
+    let headline = headline_for_test(&notice());
+    assert!(
+        headline.contains("CRASH-A2345"),
+        "the typed crash id remains: {headline}"
+    );
+    assert!(headline.contains("withheld"), "the omission is explicit: {headline}");
+    assert!(!headline.contains("mtp-poll") && !headline.contains("unwrap"));
+    assert_eq!(PANIC_LOG_TARGET, "cmdr_lib::crash_reporter::panic");
 
     reset_for_test();
 }
@@ -156,14 +148,11 @@ fn delivering_a_panic_sends_nothing_when_error_reports_are_off() {
 }
 
 #[test]
-fn the_headline_falls_back_when_the_panic_carried_no_strings() {
+fn the_headline_without_a_crash_file_id_still_contains_no_arbitrary_text() {
     let bare = PanicNotice {
-        message: None,
-        thread_name: None,
         backtrace_frames: Vec::new(),
         crash_file_short_id: None,
     };
     let headline = headline_for_test(&bare);
-    assert!(headline.contains("<unnamed>"), "{headline}");
-    assert!(headline.contains("(no panic message)"), "{headline}");
+    assert_eq!(headline, "A panic occurred; payload and thread name withheld");
 }

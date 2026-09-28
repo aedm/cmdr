@@ -21,16 +21,17 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 - **On by default.** `updates.crashReports` is `true` (narrow, stack-shaped, sanitized). ❌ Never extend that default
   to `updates.errorReports` (an unbounded log bundle) or `updates.attachEmailToReports` (an identity).
   `$lib/crash-reporter/DETAILS.md` § The three report consents.
-- **No PII, ever.** Panic messages go through `sanitize_panic_message` ([`crate::redact`](../redact/CLAUDE.md), then
-  a 2,000-CHAR cap; a byte-index cut would panic inside the hook). ❌ Never route one to disk or the network on a path
-  that skips it. No paths, usernames, device ids, license keys, env vars, titles, or register/heap contents.
+- **The delivery boundary is `CrashReport::prepare_for_delivery`.** Every previous-session artifact reaches it before
+  preview or upload, and send reapplies it after the frontend round trip. It omits arbitrary panic/thread/provider
+  prose, validates typed fields, and report-scope-redacts retained diagnostic strings. Keep raw capture local.
 - **`system_snapshot` and the macOS crash-report extract attach in `process_pending_crash` at next launch, NEVER in
   the hook or signal handler** (compromised context). The snapshot is always stable-form (`live: None`), since live
   values would describe the fresh process. `../diagnostics_snapshot.rs`.
 - **Attach the diagnostics id (`diag_`), NEVER the analytics id (`anal_`)**: that split (`analytics/CLAUDE.md` § "Two
   ids that never meet") keeps a voluntarily-attached email unjoinable to usage history.
-- **`email` is a send-time field**, set only by the dialog's attach box. ❌ Never read settings or the email in the
-  crash-write path or the handler.
+- **`email` is a typed send-time exception.** Delivery preparation clears embedded email; only
+  `AttachedEmail::from_flow_a_dialog` can add it back after an explicit dialog action. ❌ Never read settings or the
+  email in capture or automatic-send paths.
 - **Dev mode: capture only, never send.** **Crash-loop guard**: a crash file under 5 s old sets `possible_crash_loop`,
   and the frontend asks instead of auto-sending.
 - **Two one-way amendments `survival.rs` makes**, both DETAILS §§ App fate, Told once. ❌ `app_fate` is never a

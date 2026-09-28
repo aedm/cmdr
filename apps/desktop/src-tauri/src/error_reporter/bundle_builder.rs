@@ -149,13 +149,12 @@ pub fn build_bundle<R: tauri::Runtime>(
 /// through the report's redaction context. Split out so the kind-dispatching logic has its
 /// own unit tests without needing a full `tauri::AppHandle`.
 ///
-/// Auto notes get redacted because [`super::auto_dispatcher`] builds them from a raw
-/// error message that may embed paths; the user never previews them. User notes are
-/// typed and previewed, so they ship verbatim.
+/// Automatic notes are generated metadata today, but stay redacted as defense for future
+/// callers because a user never previews them. User notes are typed and previewed, so they
+/// ship verbatim.
 ///
-/// The split-on-`\n` is defensive: `auto_dispatcher`'s format string has no newline, but
-/// `state.first_message` is arbitrary and a multi-line note would otherwise break
-/// `redact_line`'s `\b`-anchored patterns at the line boundary.
+/// The split-on-`\n` is defensive for any future automatic caller: a multi-line note would
+/// otherwise break `redact_line`'s `\b`-anchored patterns at the line boundary.
 pub(super) fn prepare_user_note(note: &str, kind: BundleKind, redaction: &redact::RedactionContext) -> Option<String> {
     let trimmed = note.trim();
     if trimmed.is_empty() {

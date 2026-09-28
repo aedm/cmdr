@@ -41,7 +41,14 @@ pub fn dismiss_crash_report(app: tauri::AppHandle) {
 /// typed [`ServerRequestError`] and decides its log level.
 #[tauri::command]
 #[specta::specta]
-pub async fn send_crash_report(app: tauri::AppHandle, report: CrashReport) -> Result<(), ServerRequestError> {
+pub async fn send_crash_report(
+    app: tauri::AppHandle,
+    mut report: CrashReport,
+    email: Option<String>,
+) -> Result<(), ServerRequestError> {
+    // The report crosses the frontend on its way from preview to send. Reapply the backend
+    // boundary so a mutated IPC payload cannot restore fields deliberately omitted at assembly.
+    report.prepare_for_send(crate::error_reporter::AttachedEmail::from_flow_a_dialog(email));
     let should_skip = cfg!(debug_assertions) || cfg!(feature = "playwright-e2e") || std::env::var("CI").is_ok();
 
     if should_skip {

@@ -1828,8 +1828,8 @@ export const commands = {
    *  A failed send keeps the file, so the report is offered again next launch; the frontend words the
    *  typed [`ServerRequestError`] and decides its log level.
    */
-  sendCrashReport: (report: CrashReport) =>
-    typedError<null, ServerRequestError>(__TAURI_INVOKE('send_crash_report', { report })),
+  sendCrashReport: (report: CrashReport, email: string | null) =>
+    typedError<null, ServerRequestError>(__TAURI_INVOKE('send_crash_report', { report, email })),
   /**
    *  Re-build the bundle and upload it. Returns the report's ID.
    *

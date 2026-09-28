@@ -11,8 +11,8 @@
 //! parallel would race.
 
 use super::auto_dispatcher::{
-    TEST_LOCK, flush_spawned_for_test, jitter_window, pick_jitter_offset_for_test, record_error_for_test,
-    reset_for_test, set_enabled, simulate_late_app_handle_for_test, snapshot_for_test,
+    TEST_LOCK, automatic_note_for_test, flush_spawned_for_test, jitter_window, pick_jitter_offset_for_test,
+    record_error_for_test, reset_for_test, set_enabled, simulate_late_app_handle_for_test, snapshot_for_test,
 };
 use std::time::{Duration, Instant};
 
@@ -39,9 +39,9 @@ fn debounces_within_60s() {
     }
 
     let snapshot = snapshot_for_test().expect("state should still be active");
-    assert_eq!(snapshot.2, 10, "error_count should reflect all calls in the window");
+    assert_eq!(snapshot.0, 10, "error_count should reflect all calls in the window");
     assert_eq!(
-        snapshot.3, scheduled,
+        snapshot.1, scheduled,
         "scheduled time should not shift on subsequent calls"
     );
 
@@ -68,24 +68,28 @@ fn respects_disabled_flag() {
     set_enabled(false);
     let _ = record_error_for_test("cmdr_lib::b", "ignored after disable");
     let snapshot = snapshot_for_test().expect("active state should survive disable");
-    assert_eq!(snapshot.2, 1, "errors logged after disable must not bump the counter");
+    assert_eq!(snapshot.0, 1, "errors logged after disable must not bump the counter");
 
     reset_for_test();
 }
 
 #[test]
-fn metadata_from_first_call() {
+fn automatic_note_keeps_only_the_typed_count() {
     let _guard = lock_and_reset();
     set_enabled(true);
 
-    record_error_for_test("cmdr_lib::network::smb", "first message wins");
-    record_error_for_test("cmdr_lib::other", "second message must NOT overwrite");
-    record_error_for_test("cmdr_lib::yet_another", "third message must NOT overwrite either");
+    record_error_for_test("PRIVATE-CATEGORY", "PRIVATE FIRST MESSAGE");
+    record_error_for_test("PRIVATE-SECOND-CATEGORY", "PRIVATE SECOND MESSAGE");
+    record_error_for_test("PRIVATE-THIRD-CATEGORY", "PRIVATE THIRD MESSAGE");
 
-    let (cat, msg, count, _) = snapshot_for_test().expect("state should be active");
-    assert_eq!(cat, "cmdr_lib::network::smb", "first category should be preserved");
-    assert_eq!(msg, "first message wins", "first message should be preserved");
+    let (count, _) = snapshot_for_test().expect("state should be active");
     assert_eq!(count, 3, "error count should reflect all three calls");
+    let note = automatic_note_for_test(count);
+    assert_eq!(note, "auto-send: 3 errors within 60s");
+    assert!(
+        !note.contains("PRIVATE"),
+        "automatic notes must contain no producer prose"
+    );
 
     reset_for_test();
 }

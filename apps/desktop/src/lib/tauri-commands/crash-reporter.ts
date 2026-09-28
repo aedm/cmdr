@@ -20,7 +20,7 @@ export async function dismissCrashReport(): Promise<void> {
  * Sends the crash report to the server, then deletes the local file. A send that doesn't land
  * throws a `ServerRequestFailure` and keeps the file, so the report comes back next launch.
  */
-export async function sendCrashReport(report: CrashReport): Promise<void> {
-  const result = await commands.sendCrashReport(report)
+export async function sendCrashReport(report: CrashReport, email?: string): Promise<void> {
+  const result = await commands.sendCrashReport(report, email ?? null)
   if (result.status === 'error') throwServerRequestError(result.error)
 }

@@ -48,10 +48,8 @@ fn finish_panic_report(crash_json_path: &Path, report: &mut CrashReport) {
         return;
     }
 
-    let mut dirty = false;
     if is_crash_loop(&report.timestamp) {
         report.possible_crash_loop = true;
-        dirty = true;
     }
     // The panic hook can't know the app's fate, so it writes `Unconfirmed` and `survival.rs`
     // upgrades it from a thread that can only run while the process is alive. Reaching a LATER
@@ -60,7 +58,6 @@ fn finish_panic_report(crash_json_path: &Path, report: &mut CrashReport) {
     // lets the dialog pick its opening sentence from a settled value.
     if report.app_fate == AppFate::Unconfirmed {
         report.app_fate = AppFate::Ended;
-        dirty = true;
     }
     // The panic hook couldn't gather the snapshot (compromised context), so attach the stable form
     // now. Only when missing, so we don't rewrite on every launch the report lingers.
@@ -68,7 +65,6 @@ fn finish_panic_report(crash_json_path: &Path, report: &mut CrashReport) {
         && let Some(dir) = crash_json_path.parent()
     {
         report.system_snapshot = Some(crate::diagnostics_snapshot::SystemSnapshot::collect_stable(dir));
-        dirty = true;
     }
     // A panic that UNWINDS leaves macOS nothing to report, so this usually misses and costs one
     // directory scan. It hits for the aborting kind ("panic in a function that cannot unwind"),
@@ -77,13 +73,11 @@ fn finish_panic_report(crash_json_path: &Path, report: &mut CrashReport) {
     if report.os_exception.is_none()
         && report.os_frames.is_empty()
         && let Some(crash_time) = parse_timestamp(&report.timestamp)
-        && attach_os_crash_report(report, crash_time)
     {
-        dirty = true;
+        attach_os_crash_report(report, crash_time);
     }
-    if dirty {
-        let _ = write_crash_report(crash_json_path, report);
-    }
+    report.prepare_for_delivery();
+    let _ = write_crash_report(crash_json_path, report);
 }
 
 /// Read the async-signal-safe handler's raw file and write a real report in its place.
@@ -165,6 +159,8 @@ fn convert_raw_signal_crash(crash_json_path: &Path, raw_crash_path: &Path) {
     // The report is written unconditionally on the next line either way.
     // allowed-discarded-outcome: nothing on this path branches on whether a report attached
     attach_os_crash_report(&mut report, crash_time);
+
+    report.prepare_for_delivery();
 
     if let Err(e) = write_crash_report(crash_json_path, &report) {
         log::warn!("Crash reporter: couldn't write symbolicated crash report: {e}");

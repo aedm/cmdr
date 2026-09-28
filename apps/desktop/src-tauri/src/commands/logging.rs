@@ -53,20 +53,14 @@ mod tests {
         reset_for_test();
         set_enabled(true);
 
-        let synthetic_message = "synthetic FE bridge failure for the test";
         batch_fe_logs(vec![FrontendLogEntry {
             level: LogLevel::Error,
             category: "viewer".to_string(),
-            message: synthetic_message.to_string(),
+            message: "synthetic FE bridge failure for the test".to_string(),
         }]);
 
-        let snapshot = snapshot_for_test().expect("FE error entry should open a debounce window");
-        assert_eq!(snapshot.0, "FE:viewer", "category should carry the FE: prefix");
-        assert_eq!(
-            snapshot.1, synthetic_message,
-            "first message should be the FE entry's text"
-        );
-        assert!(snapshot.2 >= 1, "error_count should reflect at least one error");
+        let (error_count, _) = snapshot_for_test().expect("FE error entry should open a debounce window");
+        assert_eq!(error_count, 1, "the FE entry should count as one error");
 
         reset_for_test();
     }

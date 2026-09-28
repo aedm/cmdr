@@ -2,8 +2,7 @@
 //!
 //! When the user opts in to `updates.errorReports`, calls to [`crate::log_error!`] route
 //! through [`on_error_logged`]. The first error in a window starts a 60 s ± 10 s debounce
-//! timer; subsequent errors within the window only bump a counter (the first call's
-//! metadata is captured for the user-facing note). When the timer fires, [`flush`] builds
+//! timer; subsequent errors within the window only bump a counter. When the timer fires, [`flush`] builds
 //! a 1 MB-tail bundle and uploads it via the same pipeline Phase 4 uses, records what it sent
 //! in [`super::auto_sent`], then emits an `error-report-auto-sent` Tauri event so the frontend
 //! can show a confirmation toast. The stash comes first: the toast offers to show the report
@@ -78,8 +77,6 @@ static APP_HANDLE: OnceLock<AppHandle<Wry>> = OnceLock::new();
 
 /// Per-window debounce state, captured on the first error in the window.
 struct DebounceState {
-    first_category: String,
-    first_message: String,
     error_count: usize,
     /// Wall-clock target for the flush. Read by the late-spawn path in
     /// [`set_app_handle`] to compute the remaining delay when a window opened before
@@ -215,7 +212,7 @@ fn mark_flush_spawned() -> bool {
 ///
 /// Split out of [`on_error_logged`] so tests can drive the state machine without
 /// needing a Tauri runtime.
-fn record_error(category: &str, message: &str) -> Option<Instant> {
+fn record_error(_category: &str, _message: &str) -> Option<Instant> {
     let mut guard = match STATE.lock() {
         Ok(g) => g,
         Err(poisoned) => poisoned.into_inner(),
@@ -226,8 +223,6 @@ fn record_error(category: &str, message: &str) -> Option<Instant> {
     }
     let scheduled_send_at = Instant::now() + DEBOUNCE_BASE - JITTER + jitter_offset();
     *guard = Some(DebounceState {
-        first_category: category.to_string(),
-        first_message: message.to_string(),
         error_count: 1,
         scheduled_send_at,
         first_error_at: Utc::now(),
@@ -250,14 +245,7 @@ async fn flush(app: AppHandle<Wry>) {
         return;
     };
 
-    let plural = if state.error_count == 1 { "" } else { "s" };
-    let note = format!(
-        "auto-send: {count} error{plural} within 60s, first: {cat} | {msg}",
-        count = state.error_count,
-        plural = plural,
-        cat = state.first_category,
-        msg = state.first_message,
-    );
+    let note = automatic_note(state.error_count);
 
     let scope = BundleScope::Window {
         first_error_at: state.first_error_at,
@@ -332,6 +320,14 @@ async fn flush(app: AppHandle<Wry>) {
     }
 }
 
+/// Manifest note for an automatic report. Only typed aggregate metadata belongs here: the
+/// originating category and message are arbitrary producer text and already exist, under the
+/// report-scoped redaction pass, in the attached logs.
+fn automatic_note(error_count: usize) -> String {
+    let plural = if error_count == 1 { "" } else { "s" };
+    format!("auto-send: {error_count} error{plural} within 60s")
+}
+
 /// Returns a uniformly-distributed `Duration` in `[0, 2 * JITTER]`. The caller adds this
 /// to `DEBOUNCE_BASE - JITTER` so the resulting schedule sits in
 /// `[DEBOUNCE_BASE - JITTER, DEBOUNCE_BASE + JITTER]`.
@@ -375,19 +371,17 @@ pub fn reset_for_test() {
 }
 
 #[cfg(test)]
-pub fn snapshot_for_test() -> Option<(String, String, usize, Instant)> {
+pub fn snapshot_for_test() -> Option<(usize, Instant)> {
     let guard = match STATE.lock() {
         Ok(g) => g,
         Err(p) => p.into_inner(),
     };
-    guard.as_ref().map(|s| {
-        (
-            s.first_category.clone(),
-            s.first_message.clone(),
-            s.error_count,
-            s.scheduled_send_at,
-        )
-    })
+    guard.as_ref().map(|s| (s.error_count, s.scheduled_send_at))
+}
+
+#[cfg(test)]
+pub fn automatic_note_for_test(error_count: usize) -> String {
+    automatic_note(error_count)
 }
 
 /// Test seam: returns `Some(true)` if a window is active and its flush task has been
