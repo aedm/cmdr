@@ -1037,3 +1037,9 @@ still need the `smb_integration_` prefix the same lane filters them by, which `f
 than asks for. The fixture ports come from the environment (`SMB_CONSUMER_GUEST_PORT` and friends, defaulting to smb2's
 own 10480 / 10481 / 10488 / 10493); Cmdr's stack publishes 11480+ so both harnesses coexist, and the check runner
 exports the override. The full container list: `apps/desktop/test/smb-servers/README.md`.
+
+## Diagnostic privacy
+
+SMB watcher and operation-failure diagnostics quote identities under typed keys and retain `smb2::ErrorKind` instead
+of the backend's free-form `Display` prose, which may repeat server/share names. Error mapping still receives the
+original `smb2::Error`, so this changes collected diagnostics without weakening typed behavior.

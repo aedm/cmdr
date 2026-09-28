@@ -347,7 +347,11 @@ pub(super) async fn run_smb_watcher(
     let mut client = match SmbClient::connect(config).await {
         Ok(c) => c,
         Err(e) => {
-            warn!("smb_watcher({}): connect failed: {}", share_name, e);
+            warn!(
+                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during connect",
+                share_name,
+                e.kind()
+            );
             mark_stale();
             return;
         }
@@ -355,7 +359,11 @@ pub(super) async fn run_smb_watcher(
     let tree = match client.connect_share(&share_name).await {
         Ok(t) => t,
         Err(e) => {
-            warn!("smb_watcher({}): tree connect failed: {}", share_name, e);
+            warn!(
+                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during tree connect",
+                share_name,
+                e.kind()
+            );
             mark_stale();
             return;
         }
@@ -367,11 +375,15 @@ pub(super) async fn run_smb_watcher(
     // arrive while we process the previous batch don't fall in a re-arm gap.
     let mut watcher = match client.watch(&tree, "", true).await {
         Ok(w) => {
-            info!("smb_watcher({}): connected, starting watch", share_name);
+            info!("smb_watcher share=\"{}\": connected, starting watch", share_name);
             w
         }
         Err(e) => {
-            warn!("smb_watcher({}): failed to start watch: {}", share_name, e);
+            warn!(
+                "smb_watcher share=\"{}\": backend=smb2, error_kind={:?} during watch start",
+                share_name,
+                e.kind()
+            );
             mark_stale();
             return;
         }

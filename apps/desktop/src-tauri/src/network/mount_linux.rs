@@ -183,7 +183,10 @@ pub(crate) fn mount_share_sync(
         format!("smb://{}/{}", server_part, share)
     };
 
-    debug!("Mounting SMB share via gio: {}", smb_url);
+    debug!(
+        "Mounting SMB share: server=\"{}\", share=\"{}\", backend=gio",
+        server, share
+    );
 
     let output = run_gio_mount(&smb_url, username, password).map_err(|e| MountError::Unexpected {
         server: server.to_string(),
@@ -192,7 +195,14 @@ pub(crate) fn mount_share_sync(
     })?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        log::info!("gio mount of \"{share}\" on {server} answered: {}", stderr.trim());
+        log::info!(
+            "Mount stopped: server=\"{}\", share=\"{}\", source=cli, backend=gio, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+            server,
+            share,
+            output.status.code(),
+            output.stderr.len(),
+            stderr.lines().count()
+        );
         return Err(classify_mount_error(&stderr, server, share, username));
     }
 
@@ -203,7 +213,11 @@ pub(crate) fn mount_share_sync(
         derive_gvfs_path(server, share),
         |path| std::path::Path::new(path).is_dir(),
     ) else {
-        log::warn!("gio mount answered success for {smb_url}, but no mount of \"{share}\" on {server} is there");
+        log::warn!(
+            "Mount missing after success: server=\"{}\", share=\"{}\", source=cli, backend=gio, error_kind=mount_missing",
+            server,
+            share
+        );
         return Err(MountError::MountMissing {
             server: server.to_string(),
             share: share.to_string(),

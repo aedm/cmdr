@@ -321,7 +321,12 @@ impl SftpVolume {
     /// error that caused it.
     async fn remove_partial(&self, session: &crate::transport::SshConnection, remote: &str) {
         if let Err(e) = session.sftp().fs().remove_file(remote).await {
-            debug!("SftpVolume::write_from_stream: couldn't remove the partial {remote}: {e}");
+            let detail = e.to_string();
+            debug!(
+                "SftpVolume::write_from_stream: couldn't remove path=\"{remote}\": source=backend, backend=sftp, operation=remove_partial, omitted_bytes={}, omitted_lines={}",
+                detail.len(),
+                detail.lines().count()
+            );
         }
     }
 }

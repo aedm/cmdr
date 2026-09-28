@@ -366,7 +366,10 @@ async fn open_slots(params: &SmbConnectionParams, n: usize, volume_id: &str) -> 
             Err(e) => {
                 // A rejected Nth session (server session cap) is not fatal: run with
                 // fewer. The dead slot's reconnect (kicked in from_slots) retries.
-                log::debug!("smb scan pool: extra session {i} for '{volume_id}' failed to open ({e})");
+                log::debug!(
+                    "smb scan pool: extra session {i} for volumeId=\"{volume_id}\" stopped: backend=smb2, error_kind={:?}",
+                    e.kind()
+                );
             }
         }
     }

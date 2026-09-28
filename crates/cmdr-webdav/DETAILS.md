@@ -325,6 +325,12 @@ Every connection in `volume::testing` resolves through `fixture_target`, so `CMD
 conformance cells included. The cells that can only be honest against the seeded fixture say so and return; which ones,
 and what the write cells do to a real account, is in `apps/desktop/test/webdav-servers/README.md`.
 
+## Diagnostic privacy
+
+WebDAV logs quote operation paths and retain HTTP status or typed transport kind. `reqwest` prose can include a remote
+name outside a URL, so collected diagnostics keep omitted UTF-8 byte/line counts instead. The original error remains
+available to classification and the typed `VolumeError` path.
+
 ## Not supported, and say so out loud
 
 - Digest authentication (`AuthMethodUnsupported`). OAuth and app-password flows are plain passwords to this backend.

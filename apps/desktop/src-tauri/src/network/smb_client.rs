@@ -119,7 +119,7 @@ async fn list_shares_uncached(
     // (which lists as guest) answers a question the credentials asked.
     let guest = guest.given_credentials(credentials.is_some());
     debug!(
-        "list_shares_uncached: hostname={:?}, ip_address={:?}, port={}, has_creds={}, guest={:?}",
+        "list_shares_uncached: host=\"{}\", ip_address={:?}, port={}, has_creds={}, guest={:?}",
         hostname,
         ip_address,
         port,
@@ -140,11 +140,12 @@ async fn list_shares_uncached(
             // SMB E2E failures where both paths fail and the user only sees
             // the secondary error.
             warn!(
-                "smb2 list_shares failed (host={}, port={}, has_creds={}): ProtocolError({:?}); falling back to smbutil/smbclient",
+                "smb2 share listing stopped: host=\"{}\", port={}, has_creds={}, source=backend, backend=smb2, error_kind=protocol, omitted_bytes={}, omitted_lines={}; falling back to CLI",
                 hostname,
                 port,
                 credentials.is_some(),
-                message,
+                message.len(),
+                message.lines().count(),
             );
             list_shares_smbutil(hostname, ip_address, port).await
         }
@@ -162,7 +163,7 @@ async fn list_shares_smb2(
     timeout: Duration,
 ) -> Result<ShareListResult, ShareListError> {
     debug!(
-        "list_shares_smb2: hostname={:?}, ip={:?}, has_creds={}",
+        "list_shares_smb2: host=\"{}\", ip={:?}, has_creds={}",
         hostname,
         ip_address,
         credentials.is_some()
@@ -181,7 +182,7 @@ async fn list_shares_smb2(
             }
             None => {
                 // allowed-pluralize-noun: `{port}` is a port number, and "wants" is a verb.
-                debug!("{hostname}:{port} wants an account and none was offered; not listing as guest");
+                debug!("host=\"{hostname}\", port={port} wants an account and none was offered; not listing as guest");
                 Err(ShareListError::AuthRequired {
                     message: "An account was set up for this server, so it isn't listed as guest".to_string(),
                 })
@@ -201,7 +202,7 @@ async fn list_shares_smb2(
     )
     .await
     .unwrap_or_else(|_| {
-        warn!("Guest share listing on {hostname}:{port} gave up after {outer_timeout:?}");
+        warn!("Guest share listing on host=\"{hostname}\", port={port} gave up after {outer_timeout:?}");
         Err(smb2::Error::Timeout)
     });
     match guest_attempt {
@@ -212,14 +213,14 @@ async fn list_shares_smb2(
         Err(e) if is_auth_error(&e) => {
             // Guest refused. No credentials reach this leg (they skip guest), so
             // try smbutil, which reads the macOS Keychain itself.
-            debug!("Guest failed with auth error: {e}; no explicit credentials, trying smbutil with Keychain...");
+            debug!("Guest share listing refused: backend=smb2, error_kind=authentication; trying Keychain fallback");
             match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
                 Ok(result) => {
                     debug!("smbutil with Keychain succeeded, got {} shares", result.shares.len());
                     Ok(result)
                 }
-                Err(e) => {
-                    debug!("smbutil with Keychain failed: {:?}, requiring manual login", e);
+                Err(_e) => {
+                    debug!("Keychain share-list fallback stopped; requiring manual login");
                     Err(ShareListError::AuthRequired {
                         message: "This server requires authentication to list shares".to_string(),
                     })
@@ -227,7 +228,13 @@ async fn list_shares_smb2(
             }
         }
         Err(e) => {
-            debug!("Guest failed with non-auth error: {}", e);
+            let detail = e.to_string();
+            debug!(
+                "Guest share listing stopped: source=backend, backend=smb2, error_kind={:?}, omitted_bytes={}, omitted_lines={}",
+                e.kind(),
+                detail.len(),
+                detail.lines().count()
+            );
             Err(classify_error(&e))
         }
     }
@@ -244,7 +251,7 @@ async fn list_authenticated(
     outer_timeout: Duration,
     connect_timeout: Duration,
 ) -> Result<ShareListResult, ShareListError> {
-    debug!("Trying authenticated access with user: {}", user);
+    debug!("Trying authenticated access with user=\"{}\"", user);
 
     match tokio::time::timeout(
         outer_timeout,
@@ -275,7 +282,13 @@ async fn list_authenticated(
                         message: "Invalid username or password".to_string(),
                     }),
                     Err(e) => {
-                        debug!("smb2 authenticated list failed: {}", e);
+                        let detail = e.to_string();
+                        debug!(
+                            "Authenticated share listing stopped: source=backend, backend=smb2, error_kind={:?}, omitted_bytes={}, omitted_lines={}",
+                            e.kind(),
+                            detail.len(),
+                            detail.lines().count()
+                        );
                         // Authenticated context: a rejected session means
                         // wrong credentials, not "authentication required".
                         Err(classify_authenticated_error(&e))
@@ -292,7 +305,7 @@ async fn list_authenticated(
                         Ok(result)
                     }
                     Err(e) => {
-                        debug!("smbclient with auth also failed: {:?}", e);
+                        debug!("Authenticated CLI share-list fallback stopped");
                         Err(e)
                     }
                 }

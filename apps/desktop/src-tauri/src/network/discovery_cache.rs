@@ -106,7 +106,7 @@ impl DiscoveryCache {
     /// A host from config: always evidence. Returns the host to announce.
     pub(crate) fn pinned_found(&mut self, host: NetworkHost) -> NetworkHost {
         debug!(
-            "Host {}: id={}, name={}, ip={:?}, hostname={:?}",
+            "Host {}: serverId=\"{}\", server=\"{}\", ip={:?}, host={:?}",
             if self.hosts.contains_key(&host.id) {
                 "UPDATED"
             } else {
@@ -133,7 +133,7 @@ impl DiscoveryCache {
             return None;
         }
         let entry = self.hosts.entry(host.id.clone()).or_insert_with(|| {
-            debug!("Host ADDED: id={}, name={}", host.id, host.name);
+            debug!("Host ADDED: serverId=\"{}\", server=\"{}\"", host.id, host.name);
             CachedHost {
                 host: host.clone(),
                 evidence: Evidence::Mdns {
@@ -170,7 +170,7 @@ impl DiscoveryCache {
         }
         let mut found_first = None;
         let entry = self.hosts.entry(host_id.to_string()).or_insert_with(|| {
-            debug!("Host RESOLVED before FOUND, creating entry: id={host_id}, name={name}");
+            debug!("Host RESOLVED before FOUND, creating entry: serverId=\"{host_id}\", server=\"{name}\"");
             let host = NetworkHost {
                 id: host_id.to_string(),
                 name: name.to_string(),
@@ -208,7 +208,7 @@ impl DiscoveryCache {
             };
         }
         debug!(
-            "Host RESOLVED: id={host_id}, hostname={:?}, ip={:?}, port={port}",
+            "Host RESOLVED: serverId=\"{host_id}\", host={:?}, ip={:?}, port={port}",
             entry.host.hostname, entry.host.ip_address
         );
         Some((found_first, entry.host.clone()))
@@ -252,7 +252,7 @@ impl DiscoveryCache {
             return false;
         };
         debug!(
-            "Host REMOVED: id={}, name={}, ip={:?}",
+            "Host REMOVED: serverId=\"{}\", server=\"{}\", ip={:?}",
             removed.host.id, removed.host.name, removed.host.ip_address
         );
         true

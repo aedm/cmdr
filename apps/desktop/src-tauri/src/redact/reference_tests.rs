@@ -175,6 +175,52 @@ fn current_name_derived_ids_are_tokenized_only_at_the_diagnostic_boundary() {
 }
 
 #[test]
+fn producer_owned_identity_fields_redact_only_the_six_quoted_keys() {
+    let cases = [
+        (r#"host="Client Nimbus""#, r#"host="<host>""#),
+        (r#"server=Some("Client Nimbus")"#, r#"server=Some("<host>")"#),
+        (r#"share="Private Vault""#, r#"share="<share>""#),
+        (r#"volumeId="legacy-private-volume""#, r#"volumeId="<volume-id>""#),
+        (r#"serverId="private-server""#, r#"serverId="<server-id>""#),
+        (r#"deviceId="private-device""#, r#"deviceId="<device-id>""#),
+    ];
+
+    for (input, expected) in cases {
+        assert_eq!(r(input), expected, "unexpected identity-field rewrite for {input}");
+    }
+
+    let near_matches = r#"hostname="Client Nimbus" host_name="Client Nimbus" share_name="Private Vault" volume_id="private-volume" server_id="private-server" device_id="private-device" name="ordinary prose" id="ordinary-id" host=unquoted"#;
+    assert_eq!(r(near_matches), near_matches);
+}
+
+#[test]
+fn identity_field_keys_are_narrow_and_keep_stable_facts() {
+    let context = context();
+    let redacted = context.redact_line(
+        r#"source=gio backend=smb host="Client Nimbus" share="Private Vault" error_kind=permission_denied code=13 omitted_bytes=91 omitted_lines=2"#,
+    );
+
+    assert!(!redacted.contains("Client Nimbus"), "host survived: {redacted}");
+    assert!(!redacted.contains("Private Vault"), "share survived: {redacted}");
+    for fact in [
+        "source=gio",
+        "backend=smb",
+        "error_kind=permission_denied",
+        "code=13",
+        "omitted_bytes=91",
+        "omitted_lines=2",
+    ] {
+        assert!(redacted.contains(fact), "stable fact {fact:?} was lost: {redacted}");
+    }
+
+    let unchanged = context.redact_line(r#"hostname_count=2 share_count=4 server_state=ready name="ordinary prose""#);
+    assert_eq!(
+        unchanged,
+        r#"hostname_count=2 share_count=4 server_state=ready name="ordinary prose""#
+    );
+}
+
+#[test]
 fn derived_id_tokens_correlate_per_report_but_not_across_identity_domains() {
     let context = context();
     let mtp_device = context.redact_line("mtp-pixel-8-4123456789abcdef");

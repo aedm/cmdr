@@ -2,9 +2,13 @@
 //! front of it. `DETAILS.md` § "Keyed path fields".
 
 use super::RedactionContext;
+use super::context::TokenDomain;
+use super::identity_token;
 use super::names::{split_cmdr_suffix, unescape_debug};
 use super::paths::{dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf};
 use super::redactor_regex;
+use super::references::redact_host;
+use super::whole_len;
 use regex::Captures;
 use std::borrow::Cow;
 
@@ -76,6 +80,27 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
     let redacted = redact_relative_path(&unescaped, context);
     let consumed = head.len() + value.len() + quote.len();
     (format!("{head}{redacted}{quote}"), consumed)
+}
+
+/// Rewrite one producer-owned identity field while retaining its key and optional wrapper.
+pub(super) fn redact_identity_field(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
+    let key = caps.name("if_key").map_or("", |m| m.as_str());
+    let raw = caps.name("if_value").map_or("", |m| m.as_str());
+    let (prefix, value, suffix) = if raw.starts_with("Some(\"") && raw.ends_with("\")") {
+        ("Some(\"", &raw[6..raw.len() - 2], "\")")
+    } else {
+        ("\"", &raw[1..raw.len() - 1], "\"")
+    };
+    let value = unescape_debug(value);
+    let token = match key {
+        "host" | "server" => redact_host(&value, context),
+        "share" => identity_token("share", TokenDomain::Volume, &value, context),
+        "volumeId" => identity_token("volume-id", TokenDomain::VolumeId, &value, context),
+        "serverId" => identity_token("server-id", TokenDomain::ServerId, &value, context),
+        "deviceId" => identity_token("device-id", TokenDomain::DeviceId, &value, context),
+        _ => value.into_owned(),
+    };
+    (format!("{key}={prefix}{token}{suffix}"), whole_len(caps))
 }
 
 /// Where an unquoted field value really ends. The regex takes the rest of the line; the value

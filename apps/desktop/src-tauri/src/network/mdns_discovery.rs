@@ -11,7 +11,7 @@ use crate::network::discovery_cache::{
 };
 use crate::network::{DiscoveryState, HostSource, NetworkHost, service_name_to_id};
 use log::{debug, warn};
-use mdns_sd::{Receiver, ServiceDaemon, ServiceEvent};
+use mdns_sd::{Error as MdnsError, Receiver, ServiceDaemon, ServiceEvent};
 use std::net::IpAddr;
 #[cfg(target_os = "macos")]
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,6 +30,16 @@ const DEFAULT_RESOLVE_TIMEOUT_MS: u64 = 5000;
 /// Every host on the network answers the first query within a second or two; the
 /// margin is for a NAS waking from sleep.
 const SETTLE_AFTER: Duration = Duration::from_secs(10);
+
+fn mdns_error_kind(error: &MdnsError) -> &'static str {
+    match error {
+        MdnsError::Again => "again",
+        MdnsError::DaemonShutdown => "daemon_shutdown",
+        MdnsError::Msg(_) => "message",
+        MdnsError::ParseIpAddr(_) => "invalid_ip",
+        _ => "unknown",
+    }
+}
 
 /// Configured resolve timeout in milliseconds (set by frontend via update_resolve_timeout).
 /// With mdns-sd, browse automatically resolves services. This timeout is only relevant
@@ -72,14 +82,26 @@ pub(super) fn start_browse() -> bool {
     let daemon = match ServiceDaemon::new() {
         Ok(d) => d,
         Err(e) => {
-            warn!("Failed to create mDNS daemon: {}", e);
+            let detail = e.to_string();
+            warn!(
+                "mDNS operation stopped: source=mdns, operation=daemon_create, error_kind={}, omitted_bytes={}, omitted_lines={}",
+                mdns_error_kind(&e),
+                detail.len(),
+                detail.lines().count()
+            );
             return false;
         }
     };
     let receiver = match daemon.browse(SMB_SERVICE_TYPE) {
         Ok(r) => r,
         Err(e) => {
-            warn!("Failed to start mDNS browse: {}", e);
+            let detail = e.to_string();
+            warn!(
+                "mDNS operation stopped: source=mdns, operation=browse_start, error_kind={}, omitted_bytes={}, omitted_lines={}",
+                mdns_error_kind(&e),
+                detail.len(),
+                detail.lines().count()
+            );
             let _ = daemon.shutdown();
             return false;
         }
@@ -91,7 +113,14 @@ pub(super) fn start_browse() -> bool {
         .name("mdns-event-loop".into())
         .spawn(move || process_events(receiver, browse, events_handle))
     {
-        warn!("Couldn't spawn the mDNS event thread: {e}");
+        let detail = e.to_string();
+        warn!(
+            "mDNS operation stopped: source=os, operation=thread_spawn, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+            e.kind(),
+            e.raw_os_error(),
+            detail.len(),
+            detail.lines().count()
+        );
         let _ = daemon.shutdown();
         discovery_cache::end_browse(app_handle);
         return false;
@@ -135,16 +164,16 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
                 // Only transition to Searching before the initial scan is complete.
                 // After that, we stay in Active to avoid resetting the UI spinner.
                 if !initial_scan_complete {
-                    debug!("mDNS SearchStarted: {}", stype);
+                    debug!("mDNS SearchStarted: service=\"{}\"", stype);
                     on_mdns_state_changed(DiscoveryState::Searching, browse, &app_handle);
                 } else {
-                    debug!("mDNS SearchStarted (ignored, already active): {}", stype);
+                    debug!("mDNS SearchStarted (ignored, already active): service=\"{}\"", stype);
                 }
             }
             ServiceEvent::ServiceFound(_, fullname) => {
                 let name = extract_instance_name(&fullname);
                 let id = service_name_to_id(&name);
-                debug!("mDNS ServiceFound: {} (id={})", name, id);
+                debug!("mDNS ServiceFound: server=\"{}\" serverId=\"{}\"", name, id);
 
                 let host = NetworkHost {
                     id,
@@ -175,7 +204,7 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
                 let port = info.get_port();
 
                 debug!(
-                    "mDNS ServiceResolved: {} hostname={:?}, ip={:?}, port={}",
+                    "mDNS ServiceResolved: serverId=\"{}\" host={:?}, ip={:?}, port={}",
                     id, hostname, ip_address, port
                 );
 
@@ -191,15 +220,20 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
             ServiceEvent::ServiceRemoved(_, fullname) => {
                 let name = extract_instance_name(&fullname);
                 let id = service_name_to_id(&name);
-                debug!("mDNS ServiceRemoved: {} (id={})", name, id);
+                debug!("mDNS ServiceRemoved: server=\"{}\" serverId=\"{}\"", name, id);
                 on_mdns_host_lost(&id, browse, &app_handle);
             }
             ServiceEvent::SearchStopped(stype) => {
-                debug!("mDNS SearchStopped: {}", stype);
+                debug!("mDNS SearchStopped: service=\"{}\"", stype);
                 on_mdns_state_changed(DiscoveryState::Idle, browse, &app_handle);
             }
             other => {
-                debug!("mDNS unhandled event: {:?}", other);
+                let detail = format!("{other:?}");
+                debug!(
+                    "mDNS event omitted: source=mdns, operation=unhandled_event, omitted_bytes={}, omitted_lines={}",
+                    detail.len(),
+                    detail.lines().count()
+                );
             }
         }
     }

@@ -184,11 +184,19 @@ fn resolve(kind: SftpErrorKind, message: &str, path: &str, attempted: Attempted,
 fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
     match kind {
         SftpErrorKind::NoSuchFile => {
-            debug!("SFTP {path}: the server reports no such file ({message})");
+            debug!(
+                "SFTP path=\"{path}\": source=backend, backend=sftp, error_kind=no_such_file, omitted_bytes={}, omitted_lines={}",
+                message.len(),
+                message.lines().count()
+            );
             VolumeError::NotFound(path.to_string())
         }
         SftpErrorKind::PermDenied => {
-            debug!("SFTP {path}: the server refused access ({message})");
+            debug!(
+                "SFTP path=\"{path}\": source=backend, backend=sftp, error_kind=permission_denied, omitted_bytes={}, omitted_lines={}",
+                message.len(),
+                message.lines().count()
+            );
             VolumeError::PermissionDenied {
                 path: path.to_string(),
                 raw_os_error: None,

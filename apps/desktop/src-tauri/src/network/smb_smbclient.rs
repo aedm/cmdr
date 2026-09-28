@@ -102,26 +102,18 @@ pub async fn run_smbclient_list(
     );
 
     if !output.status.success() {
-        // Logged at warn! so the raw output is captured at default level,
-        // crucial for diagnosing E2E flakes where smbclient is the last-resort
-        // fallback and its stderr is the only direct window into what the
-        // server actually told us. Truncated to 1 KiB each to avoid log
-        // bloat on pathological output.
-        let port_suffix = if port == 445 {
-            String::new()
-        } else {
-            format!(":{}", port)
-        };
-        // smbclient can reflect a credential-bearing URL in its output, so scrub
-        // stderr/stdout through the redactor before logging.
+        // smbclient output can repeat server, share, and account names in prose
+        // with no typed boundary. Keep only stable process facts in collected logs.
         warn!(
-            "smbclient -L //{}{} failed (exit={:?}, has_creds={}). stderr: {} | stdout: {}",
+            "smbclient share listing stopped: host=\"{}\", port={}, source=cli, backend=smbclient, error_kind=exit, code={:?}, has_creds={}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
             host,
-            port_suffix,
+            port,
             output.status.code(),
             credentials.is_some(),
-            crate::redact::redact_text(&truncate_for_log(&stderr, 1024)),
-            crate::redact::redact_text(&truncate_for_log(&stdout, 1024)),
+            output.stdout.len(),
+            stdout.lines().count(),
+            output.stderr.len(),
+            stderr.lines().count(),
         );
         return Err(classify_smbclient_error(&stdout, &stderr, host, credentials.is_some()));
     }
@@ -195,21 +187,6 @@ fn write_smbclient_auth_file(username: &str, password: &str) -> std::io::Result<
     file.flush()?;
     // `file` (the handle) drops here; `guard` keeps the path alive and unlinks it on drop.
     Ok(guard)
-}
-
-/// Truncates a string to at most `max` bytes for log output, appending an
-/// ellipsis-with-byte-count when the input was longer. Operates on the raw
-/// byte length to keep behaviour deterministic regardless of UTF-8 width.
-fn truncate_for_log(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        return s.to_string();
-    }
-    // Cut at a char boundary at or before `max` so we never split a UTF-8 sequence.
-    let mut end = max;
-    while end > 0 && !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    format!("{}…[truncated, {} bytes total]", &s[..end], s.len())
 }
 
 /// Classifies smbclient error output into a typed error.
@@ -397,27 +374,6 @@ mod tests {
 
         let err = classify_smbclient_error("", "NT_STATUS_LOGON_FAILURE", "host", true);
         assert!(matches!(err, ShareListError::AuthFailed { .. }));
-    }
-
-    #[test]
-    fn truncate_for_log_passes_short_unchanged() {
-        assert_eq!(truncate_for_log("hello", 10), "hello");
-    }
-
-    #[test]
-    fn truncate_for_log_truncates_long() {
-        let s = "a".repeat(2000);
-        let out = truncate_for_log(&s, 1024);
-        assert!(out.starts_with(&"a".repeat(1024)));
-        assert!(out.contains("[truncated, 2000 bytes total]"));
-    }
-
-    #[test]
-    fn truncate_for_log_respects_utf8_boundary() {
-        let s = "abc中文".to_string();
-        let out = truncate_for_log(&s, 4);
-        // Byte 3 is 'c'; byte 4 starts '中' (multi-byte). We must back off to 3.
-        assert_eq!(out, "abc…[truncated, 9 bytes total]");
     }
 
     #[test]

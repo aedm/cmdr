@@ -52,6 +52,7 @@ pub fn save<T: Serialize>(path: &Path, list: &str, store: &T) {
         return;
     };
     if let Err(e) = crate::config::durable_write_json(path, &path.with_extension("json.tmp"), &json) {
-        log::warn!(target: "volume", "couldn't write {list}: {e}");
+        let detail = e.to_string();
+        log::warn!(target: "volume", "couldn't write server list: source=os, error_kind={:?}, code={:?}, list_kind={list}, omitted_bytes={}, omitted_lines={}", e.kind(), e.raw_os_error(), detail.len(), detail.lines().count());
     }
 }

@@ -248,7 +248,10 @@ impl SmbVolumeInner {
             self.host.indexing().resume_after_reconnect(&self.volume_id);
         }
 
-        info!("SmbVolumeInner::attempt_reconnect(share={}): success", self.share_name);
+        info!(
+            "SmbVolumeInner::attempt_reconnect(share=\"{}\"): success",
+            self.share_name
+        );
         Ok(())
     }
 

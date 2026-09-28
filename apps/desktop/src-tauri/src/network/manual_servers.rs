@@ -417,7 +417,7 @@ pub async fn check_reachability(host: &str, port: u16) -> Result<(), String> {
     use tokio::time::{Duration, timeout};
 
     let addr = format!("{}:{}", host, port);
-    debug!("Checking TCP reachability: {}", addr);
+    debug!("Checking TCP reachability: host=\"{}\", port={}", host, port);
 
     // Try to resolve + connect. For hostnames, tokio::net::TcpStream::connect
     // does DNS resolution internally.
@@ -428,15 +428,24 @@ pub async fn check_reachability(host: &str, port: u16) -> Result<(), String> {
     .await
     {
         Ok(Ok(_stream)) => {
-            debug!("Reachable: {}", addr);
+            debug!("Reachable: host=\"{}\", port={}", host, port);
             Ok(())
         }
         Ok(Err(e)) => {
-            debug!("Unreachable: {} ({})", addr, e);
+            let detail = e.to_string();
+            debug!(
+                "Unreachable: host=\"{}\", port={}, source=os, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+                host,
+                port,
+                e.kind(),
+                e.raw_os_error(),
+                detail.len(),
+                detail.lines().count()
+            );
             Err(format!("Couldn't reach {}: {}", addr, e))
         }
         Err(_) => {
-            debug!("Timed out connecting to {}", addr);
+            debug!("Timed out connecting to host=\"{}\", port={}", host, port);
             Err(format!(
                 "Couldn't reach {}: connection timed out after {}s",
                 addr, REACHABILITY_TIMEOUT_SECS
@@ -585,7 +594,7 @@ pub async fn add_manual_server<R: Runtime>(
         crate::network::smb_saved_shares::remember_named_share(&host.name, share, username.as_deref());
     }
 
-    info!("Added manual server: {} (id={})", host.name, host.id);
+    info!("Added manual server: server=\"{}\" serverId=\"{}\"", host.name, host.id);
     // The saved lists changed (the host's account, maybe its name), even where no
     // volume did: the hub re-reads them on `volumes-changed`.
     crate::volume_broadcast::emit_volumes_changed();
@@ -739,7 +748,7 @@ pub fn remove_manual_server<R: Runtime>(server_id: &str, app_handle: &AppHandle<
     // Remove from discovery state and notify frontend
     on_host_lost(server_id, app_handle);
 
-    info!("Removed manual server: {}", server_id);
+    info!("Removed manual server: serverId=\"{}\"", server_id);
     Ok(())
 }
 
@@ -758,7 +767,10 @@ pub fn load_manual_servers<R: Runtime>(app_handle: &AppHandle<R>) {
     for entry in &store.servers {
         let host = create_network_host(&entry.address, entry.port);
         on_host_found(host, app_handle);
-        debug!("Loaded manual server: {} (id={})", entry.display_name, entry.id);
+        debug!(
+            "Loaded manual server: server=\"{}\" serverId=\"{}\"",
+            entry.display_name, entry.id
+        );
     }
 }
 

@@ -159,7 +159,10 @@ where
                 {
                     return Err(e);
                 }
-                log::debug!("Direct connect didn't reach the server ({e}); retrying in {delay:?}");
+                log::debug!(
+                    "Direct connect didn't reach the server: backend=smb2, error_kind={:?}; retrying in {delay:?}",
+                    e.kind()
+                );
                 tokio::time::sleep(delay).await;
             }
         }

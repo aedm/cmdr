@@ -189,7 +189,7 @@ fn redact_host_port(host_port: &str, parsed: Option<&url::Url>, context: Option<
     out
 }
 
-fn redact_host(host: &str, context: Option<&RedactionContext>) -> String {
+pub(super) fn redact_host(host: &str, context: Option<&RedactionContext>) -> String {
     if host.is_empty() {
         return String::new();
     }

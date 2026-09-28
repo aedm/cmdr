@@ -245,6 +245,19 @@ fn redactor_regex() -> &'static Regex {
                   | [^\s"'<>|`\[\](){},;] [^"|`\n]*
                 )
             )
+            # User-controlled identities in producer-owned structured fields. These exact
+            # keys are deliberately narrow: generic `name=` / `id=` occur throughout logs
+            # with non-private meanings and must not become broad word matching.
+            | (?P<identity_field>
+                \b (?P<if_key>
+                    host | server | share | volumeId | serverId | deviceId
+                )
+                =
+                (?P<if_value>
+                    Some\( " (?: [^"\\\n] | \\ . )* " \)
+                  | " (?: [^"\\\n] | \\ . )* "
+                )
+            )
             # Current IDs from `cmdr-fs::volume::ids`: a known scheme and an exact
             # lowercase 16-hex digest. Bound the optional slug to the funnel's 24
             # characters rather than guessing at arbitrary hyphenated prose. MTP may
@@ -379,6 +392,9 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
     }
     if caps.name("path_field").is_some() {
         return redact_path_field(caps, context);
+    }
+    if caps.name("identity_field").is_some() {
+        return redact_identity_field(caps, context);
     }
     if let Some(m) = caps.name("derived_id") {
         return (redact_derived_id(m.as_str(), context), whole_len(caps));

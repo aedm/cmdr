@@ -107,7 +107,8 @@ fn save() {
         return;
     };
     if let Err(e) = crate::config::durable_write_json(path, &path.with_extension("json.tmp"), &json) {
-        log::warn!(target: "volume", "couldn't write the trusted SSH host keys: {e}");
+        let detail = e.to_string();
+        log::warn!(target: "volume", "couldn't write trusted SSH host keys: source=os, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}", e.kind(), e.raw_os_error(), detail.len(), detail.lines().count());
     }
 }
 

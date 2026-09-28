@@ -18,7 +18,10 @@ pub async fn list_shares_smbutil(
     port: u16,
 ) -> Result<ShareListResult, ShareListError> {
     let url = build_smbutil_url(hostname, ip_address, port);
-    debug!("Running smbutil view -G -N {}", url);
+    debug!(
+        "Running smbutil view: host=\"{}\", port={}, backend=smbutil, auth=guest",
+        hostname, port
+    );
 
     let shares = run_smbutil_view(&url, true).await?;
 
@@ -40,7 +43,10 @@ pub async fn list_shares_smbutil_authenticated_from_keychain(
     port: u16,
 ) -> Result<ShareListResult, ShareListError> {
     let url = build_smbutil_url(hostname, ip_address, port);
-    debug!("Running smbutil view -N {} (using Keychain)", url);
+    debug!(
+        "Running smbutil view: host=\"{}\", port={}, backend=smbutil, auth=keychain",
+        hostname, port
+    );
 
     let shares = run_smbutil_view(&url, false).await.map_err(|e| {
         // Convert generic auth errors to Keychain-specific messages
@@ -110,7 +116,10 @@ pub async fn list_shares_smbutil(
 ) -> Result<ShareListResult, ShareListError> {
     use log::debug;
     let host = ip_address.unwrap_or(hostname);
-    debug!("smbutil not available on Linux, trying smbclient -L //{} -N", host);
+    debug!(
+        "Trying share-list fallback: host=\"{}\", port={}, backend=smbclient, auth=guest",
+        host, port
+    );
 
     let shares = super::smb_smbclient::run_smbclient_list(host, port, None).await?;
     Ok(ShareListResult {
@@ -144,8 +153,8 @@ pub async fn list_shares_smbutil_with_auth(
     use log::debug;
     let host = ip_address.unwrap_or(hostname);
     debug!(
-        "smbutil not available on Linux, trying smbclient -L //{} -U {}",
-        host, username
+        "Trying share-list fallback: host=\"{}\", port={}, user=\"{}\", backend=smbclient, auth=credentials",
+        host, port, username
     );
 
     let shares = super::smb_smbclient::run_smbclient_list(host, port, Some((username, password))).await?;
@@ -262,13 +271,13 @@ async fn run_smbutil_view(url: &str, use_guest: bool) -> Result<Vec<ShareInfo>, 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        // The URL is passwordless now, but still scrub stderr/stdout through the redactor as
-        // defense in depth before logging (a server can echo back arbitrary text).
         debug!(
-            "smbutil failed: exit={:?}, stderr={}, stdout={}",
+            "smbutil share listing stopped: source=cli, backend=smbutil, error_kind=exit, code={:?}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
             output.status.code(),
-            crate::redact::redact_text(&stderr),
-            crate::redact::redact_text(&stdout)
+            output.stdout.len(),
+            stdout.lines().count(),
+            output.stderr.len(),
+            stderr.lines().count()
         );
 
         return match classify_smbutil_stderr(&stderr) {

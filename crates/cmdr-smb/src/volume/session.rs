@@ -116,8 +116,8 @@ impl SmbVolume {
                 // On connection loss, transition to Disconnected
                 if matches!(kind, smb2::ErrorKind::ConnectionLost | smb2::ErrorKind::SessionExpired) {
                     warn!(
-                        "SmbVolume::{}(share={}): connection lost ({}), transitioning to Disconnected",
-                        op_name, self.inner.share_name, e
+                        "SmbVolume::{}(share=\"{}\"): source=backend, backend=smb2, error_kind={:?}; transitioning to Disconnected",
+                        op_name, self.inner.share_name, kind
                     );
                     self.inner.transition_to_disconnected();
                 } else if matches!(
@@ -131,9 +131,15 @@ impl SmbVolume {
                     //   fast-path
                     // - `AlreadyExists` for `copy_directory_streaming`'s "create_directory is idempotent for merge"
                     //   path
-                    debug!("SmbVolume::{}(share={}): {}", op_name, self.inner.share_name, e);
+                    debug!(
+                        "SmbVolume::{}(share=\"{}\"): backend=smb2, error_kind={:?}",
+                        op_name, self.inner.share_name, kind
+                    );
                 } else {
-                    warn!("SmbVolume::{}(share={}): {}", op_name, self.inner.share_name, e);
+                    warn!(
+                        "SmbVolume::{}(share=\"{}\"): backend=smb2, error_kind={:?}",
+                        op_name, self.inner.share_name, kind
+                    );
                 }
 
                 Err(map_smb_error(e, &self.to_display_path(smb_path)))

@@ -397,7 +397,11 @@ pub fn mount_share_sync(
         let url_ref =
             core_foundation::url::CFURLCreateWithString(ptr::null(), cf_url_string.as_concrete_TypeRef(), ptr::null());
         if url_ref.is_null() {
-            log::warn!("CFURLCreateWithString rejected the mount URL {url_string}");
+            log::warn!(
+                "Mount URL rejected: server=\"{}\", share=\"{}\", source=netfs, error_kind=invalid_url",
+                target.server,
+                target.share
+            );
             return Err(MountError::Unexpected {
                 server: server.to_string(),
                 share: share.to_string(),
@@ -683,22 +687,36 @@ fn find_mount_path_for_share(target: MountTarget<'_>, hosts: &[NetworkHost]) -> 
 pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
     let mut unmounted = Vec::new();
     for mount_path in crate::network::server_identity::smb_mounts_from(targets) {
-        log::info!("Unmounting SMB share at {}", mount_path);
+        log::info!("Unmounting SMB share at path=\"{}\"", mount_path);
         let output = std::process::Command::new("diskutil")
             .args(["unmount", &mount_path])
             .output();
 
         match output {
             Ok(o) if o.status.success() => {
-                log::info!("Unmounted {}", mount_path);
+                log::info!("Unmounted path=\"{}\"", mount_path);
                 unmounted.push(mount_path);
             }
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
-                log::warn!("Failed to unmount {}: {}", mount_path, stderr.trim());
+                log::warn!(
+                    "Unmount stopped: path=\"{}\", source=cli, backend=diskutil, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    mount_path,
+                    o.status.code(),
+                    o.stderr.len(),
+                    stderr.lines().count()
+                );
             }
             Err(e) => {
-                log::warn!("Failed to run diskutil unmount for {}: {}", mount_path, e);
+                let detail = e.to_string();
+                log::warn!(
+                    "Unmount stopped: path=\"{}\", source=os, backend=diskutil, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    mount_path,
+                    e.kind(),
+                    e.raw_os_error(),
+                    detail.len(),
+                    detail.lines().count()
+                );
             }
         }
     }

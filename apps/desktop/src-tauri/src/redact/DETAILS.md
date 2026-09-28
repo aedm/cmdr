@@ -179,6 +179,13 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 - The key set is deliberately narrow: `name=` stays out because it names hosts and settings too (`Host …: name=NAS`),
   and `target=` because the file viewer uses it for a seek target. A name-bearing site logs under `new_name=` instead.
 
+## Producer-owned identity fields
+
+Bare remote identities have no safe lexical shape. The redactor therefore claims only quoted values under exact typed
+keys: `host`, `server`, `share`, `volumeId`, `serverId`, and `deviceId`. Values may use `Some("…")`. Near matches,
+generic `name=` / `id=`, and unquoted legacy fields are excluded so ordinary diagnostics do not disappear. Producers
+that own an identity must quote it under one of those keys; arbitrary external prose must be omitted upstream.
+
 ## Report-scoped token identity
 
 `RedactionContext::for_report` derives a context key from a process-lifetime random 32-byte secret and the validated
