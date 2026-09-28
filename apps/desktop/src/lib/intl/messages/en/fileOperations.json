@@ -894,6 +894,26 @@
     "screenshot": "conflict-dialog.png"
   },
 
+  "fileOperations.transferProgress.stageCompressing": "Compressing",
+  "@fileOperations.transferProgress.stageCompressing": {
+    "description": "Phase label for a compression operation while Cmdr reads the selected source files and writes their compressed contents into the zip. It appears in the progress dialog, operation queue row, and background operation chip. A determinate source-byte progress bar is visible in this phase. Short present-continuous action, with no trailing punctuation."
+  },
+
+  "fileOperations.transferProgress.stageFinishingCompression": "Finishing compression…",
+  "@fileOperations.transferProgress.stageFinishingCompression": {
+    "description": "Indeterminate phase label shown after every selected source byte has been compressed, while Cmdr closes the zip and durably publishes it locally. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
+  },
+
+  "fileOperations.transferProgress.stageTransferringArchive": "Transferring archive",
+  "@fileOperations.transferProgress.stageTransferringArchive": {
+    "description": "Phase label for a compression operation while Cmdr uploads the completed zip to a remote destination such as a network share or phone. It appears in the progress dialog, operation queue row, and background operation chip. A determinate compressed-output-byte progress bar is visible in this phase. Short present-continuous action, with no trailing punctuation."
+  },
+
+  "fileOperations.transferProgress.stageFinishingTransfer": "Finishing transfer…",
+  "@fileOperations.transferProgress.stageFinishingTransfer": {
+    "description": "Indeterminate phase label shown after every byte of a newly compressed zip has been uploaded, while Cmdr closes the upload and publishes the remote archive. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
+  },
+
   "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to overwrite it with a <strong>file</strong> by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "description": "Red warning shown in the conflict step when a file would replace a same-named folder, deleting the folder's contents. <strong> wraps the emphasized words 'folder' and 'file'. Keep it stark; this is a destructive action.",

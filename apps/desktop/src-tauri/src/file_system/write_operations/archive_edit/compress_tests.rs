@@ -6,6 +6,7 @@
 
 use super::compress::{compress_start, seed_empty_zip};
 use super::test_support::*;
+use crate::file_system::write_operations::WriteOperationPhase;
 use cmdr_archive::bytes_start_with_zip_signature;
 
 /// The seed writes a valid empty archive: the reader opens it with zero entries,
@@ -65,19 +66,25 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
 
     let tmp = tempfile::tempdir().expect("tempdir");
 
-    // A local source volume holding two files at its root.
+    // A local source volume holding two files at its root. Repetition makes the
+    // source-byte workload deliberately asymmetric with the much smaller zip,
+    // so the test catches a progress implementation that measures output bytes
+    // while claiming to measure compression work.
     let src_root = tmp.path().join("src");
     std::fs::create_dir_all(&src_root).expect("mkdir src");
-    std::fs::write(src_root.join("one.txt"), b"first").expect("w1");
-    std::fs::write(src_root.join("two.txt"), b"second").expect("w2");
+    let one = vec![b'a'; 96 * 1024];
+    let two = vec![b'b'; 32 * 1024];
+    let source_bytes = (one.len() + two.len()) as u64;
+    std::fs::write(src_root.join("one.txt"), &one).expect("w1");
+    std::fs::write(src_root.join("two.txt"), &two).expect("w2");
     let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", src_root.clone()));
 
     // The target zip doesn't exist yet — compress must seed it, then add the files.
     let dest = tmp.path().join("bundle.zip");
     assert!(!dest.exists(), "the target must not exist before compress");
 
-    let events = Arc::new(CollectorEventSink::new());
-    compress_start(
+    let events = PhaseGateSink::new(WriteOperationPhase::FinishingCompression);
+    let start = compress_start(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
         source_volume,
         vec![PathBuf::from("one.txt"), PathBuf::from("two.txt")],
@@ -91,18 +98,70 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
     )
     .await
     .expect("start compress");
+    assert_eq!(start.operation_type, WriteOperationType::Compress);
+
+    wait_until_async(Duration::from_secs(5), "finishing-compression phase gate", || {
+        events.entered()
+    })
+    .await;
+    assert!(
+        events.inner.complete.lock_ignore_poison().is_empty(),
+        "completion must wait for ZIP finalization"
+    );
+    {
+        let gated = events.inner.progress.lock_ignore_poison();
+        let finishing = gated
+            .last()
+            .expect("finishing-compression progress before gate release");
+        assert_eq!(finishing.phase, WriteOperationPhase::FinishingCompression);
+        assert_eq!((finishing.files_done, finishing.files_total), (0, 0));
+        assert_eq!((finishing.bytes_done, finishing.bytes_total), (0, 0));
+    }
+    events.release();
 
     wait_until_async(Duration::from_secs(5), "the write-complete event", || {
-        !events.complete.lock_ignore_poison().is_empty()
+        !events.inner.complete.lock_ignore_poison().is_empty()
     })
     .await;
 
     // Both files landed at the archive root with their exact bytes.
-    assert_eq!(read_entry(&dest, "one.txt").as_deref(), Some(b"first".as_slice()));
-    assert_eq!(read_entry(&dest, "two.txt").as_deref(), Some(b"second".as_slice()));
+    assert_eq!(read_entry(&dest, "one.txt").as_deref(), Some(one.as_slice()));
+    assert_eq!(read_entry(&dest, "two.txt").as_deref(), Some(two.as_slice()));
 
-    let complete = events.complete.lock_ignore_poison();
+    let zip_bytes = std::fs::metadata(&dest).expect("zip metadata").len();
+    assert_ne!(source_bytes, zip_bytes, "the two progress axes must be distinguishable");
+    let progress = events.inner.progress.lock_ignore_poison();
+    let compressing = progress
+        .iter()
+        .filter(|event| event.phase == WriteOperationPhase::Compressing)
+        .collect::<Vec<_>>();
+    assert!(
+        !compressing.is_empty(),
+        "compression must have a determinate source-byte phase"
+    );
+    assert!(
+        compressing
+            .iter()
+            .all(|event| event.operation_type == WriteOperationType::Compress),
+        "every compression tick must carry the distinct operation identity"
+    );
+    assert_eq!(compressing.last().expect("compressing tick").bytes_total, source_bytes);
+    assert!(
+        compressing
+            .iter()
+            .all(|event| event.bytes_done < event.bytes_total || event.bytes_total == 0),
+        "the determinate compression phase must not display a false 100% while ZIP finalization remains"
+    );
+    let finishing = progress
+        .iter()
+        .find(|event| event.phase == WriteOperationPhase::FinishingCompression)
+        .expect("finishing-compression phase");
+    assert_eq!((finishing.files_done, finishing.files_total), (0, 0));
+    assert_eq!((finishing.bytes_done, finishing.bytes_total), (0, 0));
+
+    let complete = events.inner.complete.lock_ignore_poison();
     assert!(complete[0].files_skipped == 0, "a clean compress skips nothing");
+    assert_eq!(complete[0].operation_type, WriteOperationType::Compress);
 }
 
 /// ❗ DATA SAFETY: a compress onto a destination Cmdr may not write must refuse

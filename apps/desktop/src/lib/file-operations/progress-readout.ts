@@ -27,6 +27,30 @@
 
 import { bytes, bytesPerSecond, seconds, type ByteCount, type BytesPerSecond, type Seconds } from '$lib/units'
 import type { OpKind, WriteOperationPhase } from '$lib/ipc/bindings'
+import type { MessageKey } from '$lib/intl/keys.gen'
+
+/** Phases with active work but no honest denominator. Every progress surface
+ * uses this one classifier so none falls back to a stale 100% bar. */
+export function isIndeterminateProgressPhase(phase: WriteOperationPhase | null): boolean {
+  return phase === 'scanning' || phase === 'finishing_compression' || phase === 'finishing_transfer'
+}
+
+/** Phase-specific compression wording. `null` leaves non-compress operations
+ * on their ordinary operation-type label. */
+export function compressionPhaseLabelKey(phase: WriteOperationPhase | null): MessageKey | null {
+  switch (phase) {
+    case 'compressing':
+      return 'fileOperations.transferProgress.stageCompressing'
+    case 'finishing_compression':
+      return 'fileOperations.transferProgress.stageFinishingCompression'
+    case 'transferring':
+      return 'fileOperations.transferProgress.stageTransferringArchive'
+    case 'finishing_transfer':
+      return 'fileOperations.transferProgress.stageFinishingTransfer'
+    default:
+      return null
+  }
+}
 
 /**
  * The numbers a `write-progress` event carries, branded.

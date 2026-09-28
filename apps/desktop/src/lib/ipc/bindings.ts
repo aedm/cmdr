@@ -5517,8 +5517,8 @@ export type ArchivePromptMode =
 
 /**
  *  The `archive_edit` subkind, supplied by the capturing driver (compress vs
- *  zip-inner edit), NOT derivable from `WriteOperationType` — both cross IPC
- *  as `ArchiveEdit`. Stored only when `kind = ArchiveEdit`.
+ *  zip-inner edit). Stored only when `kind = ArchiveEdit`; the live operation
+ *  may carry the more specific `WriteOperationType::Compress`.
  */
 export type ArchiveSubkind = 'compress' | 'edit' | 'extract'
 
@@ -10856,10 +10856,10 @@ export type OcrHit = {
 }
 
 /**
- *  The operation taxonomy, mirroring `WriteOperationType`. Archive variants
- *  (compress vs zip-edit vs future extract) share `ArchiveEdit` and are
- *  distinguished by [`ArchiveSubkind`], so a new archive flavor is an
- *  additive subkind, not a new `kind`.
+ *  The durable operation taxonomy. It is deliberately coarser than the live
+ *  `WriteOperationType`: compress and zip edit have distinct progress
+ *  identities but share `ArchiveEdit` here and are distinguished by
+ *  [`ArchiveSubkind`].
  */
 export type OpKind = 'copy' | 'move' | 'delete' | 'trash' | 'rename' | 'createFolder' | 'createFile' | 'archiveEdit'
 
@@ -16338,6 +16338,23 @@ export type WriteOperationPhase =
   | 'scanning'
   // Copying files (for copy and cross-filesystem move)
   | 'copying'
+  // Reading uncompressed source bytes and writing compressed ZIP entries.
+  | 'compressing'
+  /**
+   *  Closing and durably landing the ZIP after all source bytes were consumed.
+   *  Both progress totals are zero because no measurable denominator remains.
+   */
+  | 'finishing_compression'
+  /**
+   *  Uploading a completed archive to a remote destination. These bytes are
+   *  compressed output bytes, not the source bytes reported by `Compressing`.
+   */
+  | 'transferring'
+  /**
+   *  Closing and publishing a fully uploaded remote archive.
+   *  Both progress totals are zero because no measurable denominator remains.
+   */
+  | 'finishing_transfer'
   // Deleting files (for delete, and cleanup phase of cross-filesystem move)
   | 'deleting'
   // Moving items to trash
@@ -16369,10 +16386,10 @@ export type WriteOperationStartResult = {
  *  `rename` / `create_folder` / `create_file` (snake_case).
  *
  *  `ArchiveEdit` is the zip-mutation op (add / delete / rename / mkdir / mkfile
- *  inside a `.zip`, and copy/move INTO one): an O(archive) temp+rename rewrite
- *  that flows through `spawn_managed` with a real progress bar and the parent
- *  drive's lane, NOT the instant path (a rewrite is not a metadata syscall). It
- *  crosses the wire as `archive_edit`.
+ *  inside a `.zip`, and copy/move INTO one), while `Compress` identifies a fresh
+ *  archive built from selected sources. Both are O(archive) temp+rename rewrites
+ *  that flow through `spawn_managed` with a real progress bar and the parent
+ *  drive's lane, NOT the instant path (a rewrite is not a metadata syscall).
  */
 export type WriteOperationType =
   | 'copy'
@@ -16383,6 +16400,7 @@ export type WriteOperationType =
   | 'create_folder'
   | 'create_file'
   | 'archive_edit'
+  | 'compress'
 
 /**
  *  Progress event payload for write operations.

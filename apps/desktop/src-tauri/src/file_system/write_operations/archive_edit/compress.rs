@@ -101,7 +101,7 @@ async fn seed_empty_zip_remote(parent: &dyn Volume, dest_zip_full_path: &Path) -
     // A fresh, never-cancelled state: the seed is a 22-byte write that runs BEFORE
     // the managed op exists, so there is no live cancel to thread through it.
     let state = WriteOperationState::new(Duration::from_millis(0));
-    remote::place_local_file(parent, &local_seed, dest_zip_full_path, &state)
+    remote::place_local_file(parent, &local_seed, dest_zip_full_path, &state, None)
         .await
         .map_err(|e| match e {
             EditError::Cancelled => WriteOperationError::Cancelled {
@@ -176,9 +176,9 @@ impl Drop for SeedTempGuard {
 
 /// Compresses `source_paths` (relative to `source_volume`'s root) into a NEW zip
 /// at `dest_zip_full_path`: seed a valid empty archive, then delegate to
-/// [`route_archive_copy_into`](super::copy_into::route_archive_copy_into) to add the sources as one changeset. Reuses
-/// `WriteOperationType::ArchiveEdit` — compress has no distinct backend op type;
-/// its identity lives in the frontend.
+/// [`route_archive_copy_into`](super::copy_into::route_archive_copy_into) to add
+/// the sources as one changeset. The route carries `WriteOperationType::Compress`
+/// through the managed lifecycle while retaining archive-edit journal semantics.
 #[allow(
     clippy::too_many_arguments,
     reason = "mirrors route_archive_copy_into's cross-volume→archive seam (source handle, paths, dest, parent id, policy)"

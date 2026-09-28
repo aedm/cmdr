@@ -408,12 +408,17 @@ Parameterizing by `operationType` avoids duplication and guarantees UX consisten
 
 ### Compress mode (the Transfer dialog's third operation)
 
-Compress rides the SAME dialog/progress/state components as copy/move via a third `operationType: 'compress'`; its
-"Compress" identity is frontend-only (title, toggle, confirm label, the `file.compress` command). The backend reuses
-`WriteOperationType::ArchiveEdit`; the seed mechanism lives in
+Compress rides the SAME dialog/progress/state components as copy/move via `operationType: 'compress'`. The backend
+carries `WriteOperationType::Compress` through registration, progress, terminal events, and bindings while mapping it to
+archive-edit journal and analytics semantics. The seed mechanism lives in
 `apps/desktop/src-tauri/src/file_system/write_operations/archive_edit/DETAILS.md` § "The driver, op by op". The
 user-visible differences from copy/move:
 
+- **The progress title follows the backend phase.** `Compressing` measures uncompressed source bytes; `Transferring`
+  measures the completed archive's compressed bytes and starts a new ETA. `FinishingCompression` and `FinishingTransfer`
+  have no honest denominator, so the dialog renders a spinner and phase label instead of `TransferProgressReadout`. A
+  local compress has no transfer phase. The queue row and corner chip consume the same `compressionPhaseLabelKey` /
+  `isIndeterminateProgressPhase` rules, so backgrounding cannot change the claim.
 - **The path field is a new FILE, not a destination folder.** It defaults to the other pane's folder plus a suggested
   `<name>.zip` (`initialEditedPath` + `suggestCompressArchiveName`) and stays editable. Suggested name: single source →
   `<basename>.zip`; multiple → `<source-directory-basename>.zip`, falling back to the first selection's basename at a

@@ -18,7 +18,7 @@ use super::super::types::{
     WriteOperationPhase, WriteOperationType, WriteProgressEvent,
 };
 use super::edit_error::EditError;
-use super::remote::pull_apply_upload_swap;
+use super::remote::{RemoteCommitProgress, RemoteProgressObserver, pull_apply_upload_swap};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
 use cmdr_archive::mutator::{MutationError, MutationHooks, MutationProgress};
@@ -41,6 +41,7 @@ pub(super) async fn run_managed_edit<T, F>(
     parent_volume_id: &str,
     archive_path: PathBuf,
     state: Arc<WriteOperationState>,
+    remote_progress: Option<RemoteProgressObserver>,
     plan_and_apply: F,
 ) -> Result<T, EditError>
 where
@@ -63,7 +64,7 @@ where
     }
 
     let parent = parent.expect("is_remote is only true when the parent is registered");
-    pull_apply_upload_swap(parent, archive_path, state, plan_and_apply).await
+    pull_apply_upload_swap(parent, archive_path, state, remote_progress, plan_and_apply).await
 }
 
 /// Maps a mutator failure onto the typed `WriteOperationError` the FE renders.
@@ -111,6 +112,7 @@ pub(super) fn to_write_error(archive_path: &Path, err: MutationError) -> WriteOp
 pub(super) fn emit_archive_terminal(
     events: &dyn OperationEventSink,
     op_id: &str,
+    operation_type: WriteOperationType,
     outcome: Result<(), EditError>,
     skipped_count: usize,
     // What a move INTO an archive left in its source (`copy_into.rs`); `None`
@@ -121,7 +123,7 @@ pub(super) fn emit_archive_terminal(
     match outcome {
         Ok(()) => events.emit_complete(WriteCompleteEvent {
             operation_id: op_id.to_string(),
-            operation_type: WriteOperationType::ArchiveEdit,
+            operation_type,
             files_processed: final_progress.entries_changed,
             files_skipped: skipped_count,
             bytes_processed: final_progress.bytes_total,
@@ -131,16 +133,12 @@ pub(super) fn emit_archive_terminal(
         }),
         Err(EditError::Cancelled) => events.emit_cancelled(WriteCancelledEvent {
             operation_id: op_id.to_string(),
-            operation_type: WriteOperationType::ArchiveEdit,
+            operation_type,
             files_processed: final_progress.entries_done,
             rollback: CancelRollback::none(),
         }),
         Err(EditError::Op(err)) => {
-            events.emit_error(WriteErrorEvent::new(
-                op_id.to_string(),
-                WriteOperationType::ArchiveEdit,
-                err,
-            ));
+            events.emit_error(WriteErrorEvent::new(op_id.to_string(), operation_type, err));
         }
     }
 }
@@ -177,6 +175,10 @@ pub(super) struct MutatorHooks {
     progress_interval: Duration,
     /// Last time a `write-progress` was emitted, for throttling.
     last_emit: Mutex<Option<Instant>>,
+    /// Last transfer-byte event emitted after a remote compression rewrite.
+    /// Kept separate because transfer starts a new byte axis and must emit its
+    /// zero tick even when compression emitted a moment earlier.
+    last_remote_emit: Mutex<Option<Instant>>,
     /// Latest progress snapshot, read by the driver for the terminal event's totals.
     latest: Mutex<MutationProgress>,
     /// The last `entries_done` the E2E pacing slept for, so it sleeps once per entry
@@ -201,6 +203,7 @@ impl MutatorHooks {
             operation_type,
             progress_interval,
             last_emit: Mutex::new(None),
+            last_remote_emit: Mutex::new(None),
             latest: Mutex::new(MutationProgress::default()),
             paced_entries: AtomicUsize::new(usize::MAX),
         }
@@ -209,6 +212,46 @@ impl MutatorHooks {
     /// The latest progress snapshot, for the terminal event's totals.
     pub(super) fn latest_progress(&self) -> MutationProgress {
         *self.latest.lock_ignore_poison()
+    }
+
+    pub(super) fn remote_progress_observer(self: &Arc<Self>) -> Option<RemoteProgressObserver> {
+        if self.operation_type != WriteOperationType::Compress {
+            return None;
+        }
+        let hooks = Arc::clone(self);
+        Some(Arc::new(move |progress| hooks.emit_remote_progress(progress)))
+    }
+
+    fn emit_remote_progress(&self, progress: RemoteCommitProgress) {
+        if let RemoteCommitProgress::Transferring { bytes_done, .. } = progress {
+            let mut last = self.last_remote_emit.lock_ignore_poison();
+            let now = Instant::now();
+            let due = bytes_done == 0 || last.is_none_or(|then| now.duration_since(then) >= self.progress_interval);
+            if !due {
+                return;
+            }
+            *last = Some(now);
+        }
+        let (phase, bytes_done, bytes_total) = match progress {
+            RemoteCommitProgress::Transferring {
+                bytes_done,
+                bytes_total,
+            } => (WriteOperationPhase::Transferring, bytes_done, bytes_total),
+            RemoteCommitProgress::Finishing => (WriteOperationPhase::FinishingTransfer, 0, 0),
+        };
+        self.state.emit_progress_via_sink(
+            &*self.events,
+            WriteProgressEvent::new(
+                self.operation_id.clone(),
+                self.operation_type,
+                phase,
+                None,
+                0,
+                0,
+                bytes_done,
+                bytes_total,
+            ),
+        );
     }
 
     /// Emits `write-progress`, throttled to the op's progress interval, but always
@@ -225,15 +268,33 @@ impl MutatorHooks {
             *last = Some(now);
         }
 
+        let compression_finished = self.operation_type == WriteOperationType::Compress
+            && (is_final || (progress.bytes_total > 0 && progress.bytes_done >= progress.bytes_total));
+        let (phase, files_done, files_total, bytes_done, bytes_total) = if compression_finished {
+            (WriteOperationPhase::FinishingCompression, 0, 0, 0, 0)
+        } else {
+            let phase = if self.operation_type == WriteOperationType::Compress {
+                WriteOperationPhase::Compressing
+            } else {
+                WriteOperationPhase::Copying
+            };
+            (
+                phase,
+                progress.entries_done,
+                progress.entries_total,
+                progress.bytes_done,
+                progress.bytes_total,
+            )
+        };
         let event = WriteProgressEvent::new(
             self.operation_id.clone(),
             self.operation_type,
-            WriteOperationPhase::Copying,
+            phase,
             None,
-            progress.entries_done,
-            progress.entries_total,
-            progress.bytes_done,
-            progress.bytes_total,
+            files_done,
+            files_total,
+            bytes_done,
+            bytes_total,
         );
         self.state.emit_progress_via_sink(&*self.events, event);
     }
@@ -283,6 +344,7 @@ impl MutationHooks for MutatorHooks {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 
     #[test]
     fn paced_sleep_gives_way_to_a_cancel_within_a_slice() {
@@ -302,5 +364,37 @@ mod tests {
         let started = Instant::now();
         sleep_unless_cancelled(Duration::from_millis(30), || false);
         assert!(started.elapsed() >= Duration::from_millis(30));
+    }
+
+    #[test]
+    fn remote_transfer_ticks_keep_the_configured_cadence_but_phase_boundaries_emit() {
+        let events = Arc::new(CollectorEventSink::new());
+        let hooks = MutatorHooks::new(
+            Arc::new(WriteOperationState::new(Duration::from_secs(60))),
+            Arc::clone(&events) as Arc<dyn OperationEventSink>,
+            "compress-cadence".to_string(),
+            WriteOperationType::Compress,
+            Duration::from_secs(60),
+        );
+
+        hooks.emit_remote_progress(RemoteCommitProgress::Transferring {
+            bytes_done: 0,
+            bytes_total: 100,
+        });
+        hooks.emit_remote_progress(RemoteCommitProgress::Transferring {
+            bytes_done: 10,
+            bytes_total: 100,
+        });
+        hooks.emit_remote_progress(RemoteCommitProgress::Transferring {
+            bytes_done: 20,
+            bytes_total: 100,
+        });
+        hooks.emit_remote_progress(RemoteCommitProgress::Finishing);
+
+        let progress = events.progress.lock_ignore_poison();
+        assert_eq!(progress.len(), 2, "intermediate upload chunks must be throttled");
+        assert_eq!(progress[0].phase, WriteOperationPhase::Transferring);
+        assert_eq!(progress[0].bytes_done, 0);
+        assert_eq!(progress[1].phase, WriteOperationPhase::FinishingTransfer);
     }
 }

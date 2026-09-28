@@ -19,7 +19,7 @@ F6 (move), F7 (new folder), F8 / Shift+F8 (trash / delete).
   `tString()` / `<Trans>`; hardcoding one fails `cmdr/no-raw-user-facing-string`. ⚠️ The transfer ERROR prose
   (`transfer-error-messages.ts`) is NOT ICU: it's the `errors.write.*` pipeline (`$lib/error-messages/CLAUDE.md`), keyed
   per operation type, its en output parity-pinned, so a copy edit lands in the catalog AND the test.
-- **One dual-bar readout, two surfaces.** The progress dialog and the queue rows both render
+- **One dual-bar readout, two surfaces.** The progress dialog and queue rows both render
   `TransferProgressReadout.svelte`; its fixed-width cells are why the queue's `MIN_WIDTH` and the dialog's 580 px exist.
 - **The foreground slot is released on EVERY route out of the dialog**, Queue and auto-queue included: that handoff is
   when ambient surfaces start speaking. Use `clearForegroundOperation(id)`, ❌ never a bare

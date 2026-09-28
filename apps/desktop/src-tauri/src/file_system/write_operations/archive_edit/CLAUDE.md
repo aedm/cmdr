@@ -28,9 +28,12 @@ one is an O(archive) temp+rename rewrite of the whole file. Up: `../CLAUDE.md`. 
 - **Routing detection must be PARENT-AWARE**: the seams call the async `VolumeManager::path_is_inside_archive` /
   `path_crosses_archive_boundary`, ❌ never the sync `std::fs`-only predicates, which answer FALSE for an `smb://` /
   `mtp://` path and drop the write onto the parent volume.
-- **The empty-zip seed is LOAD-BEARING for compress**: `ZipArchive::new` rejects a 0-byte file, so a brand-new target
-  gets a valid 22-byte archive first, placed the same way its parent is reached (`seed_empty_zip` local,
-  `seed_empty_zip_remote` through the volume). ❌ Don't "optimize" it away.
+- **The empty-zip seed is LOAD-BEARING for the current compress fallback**: `ZipArchive::new` rejects a 0-byte file,
+  so a brand-new target gets a valid 22-byte archive before the managed rewrite. This means M1 does NOT make creation
+  safe before registration; removing the seed belongs to the dedicated fresh-create path. DETAILS § Compress.
+- **Compress progress has two different byte axes**: `Compressing` is uncompressed source bytes; remote
+  `Transferring` is completed-ZIP bytes. Both finishing phases clear BOTH totals and ETA. Ordinary archive mutation
+  stays `ArchiveEdit` + `Copying`.
 - **Move OUT deletes only what durably landed**: extract first, then ONE batch `{ delete }` rewrite over the sources
   that extracted with ZERO deep skips (a hard error deletes the durable prefix; cancel and rollback delete nothing).
   The copy engine's deep `skipped_file_count` fold is what makes that count honest.

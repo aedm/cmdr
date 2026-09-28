@@ -25,6 +25,7 @@ const WIRE_TO_OP_KIND: Record<WriteOperationType, OpKind> = {
   create_folder: 'createFolder',
   create_file: 'createFile',
   archive_edit: 'archiveEdit',
+  compress: 'archiveEdit',
 }
 
 /**

@@ -188,6 +188,7 @@ pub(crate) async fn archive_edit_start(
                 &parent_volume_id,
                 archive_path.clone(),
                 Arc::clone(&state),
+                None,
                 move |working: &Path| {
                     mutator::apply(working, &changeset, &*hooks_for_blocking).map_err(|e| match e {
                         MutationError::Cancelled => EditError::Cancelled,
@@ -198,7 +199,15 @@ pub(crate) async fn archive_edit_start(
             .await;
 
             let final_progress = hooks.latest_progress();
-            emit_archive_terminal(events.as_ref(), &op_id, result, skipped_count, None, &final_progress);
+            emit_archive_terminal(
+                events.as_ref(),
+                &op_id,
+                WriteOperationType::ArchiveEdit,
+                result,
+                skipped_count,
+                None,
+                &final_progress,
+            );
 
             task_guard.disarm();
             manager::manager().on_settled(&op_id);

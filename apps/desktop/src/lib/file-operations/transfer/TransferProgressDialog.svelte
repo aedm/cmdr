@@ -30,7 +30,7 @@
     import { formatInteger } from '$lib/intl/number-format'
     import type { MessageKey } from '$lib/intl/keys.gen'
     import { stallNoticeFor, waitLineFor } from './transfer-stall'
-    import { progressCountKind } from '../progress-readout'
+    import { compressionPhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
     import {
         inFlightRollbackTooltipKey,
         inFlightRollbackVariant,
@@ -293,6 +293,8 @@
      *  phase: the preview the backend waits on and its own foolproof re-scan
      *  both arrive as `write-progress` in `phase: 'scanning'`. */
     const isScanning = $derived(phase === 'scanning')
+    const isIndeterminate = $derived(isIndeterminateProgressPhase(phase) && !isScanning)
+    const compressPhaseKey = $derived(operationType === 'compress' ? compressionPhaseLabelKey(phase) : null)
 
     /** This view is watching an operation that hasn't said where it is yet: only
      *  an adopted one can be here, and only in a window that has heard nothing
@@ -302,10 +304,10 @@
     const phaseUnknown = $derived(phase === null)
 
     /** The notice renders at the foot of the body, outside the branch that owns
-     *  the bars, so it has to re-state the two phases that branch excludes: a
-     *  scan writes nothing to be stalled about, and a view with no phase yet
-     *  knows too little to accuse anything of being stuck. */
-    const showStall = $derived(stall !== null && !isScanning && !phaseUnknown)
+     *  the bars, so exclude every indeterminate phase: a scan writes nothing to
+     *  be stalled about, compression finishing has no measured transfer, and a
+     *  view with no phase yet knows too little to accuse anything of being stuck. */
+    const showStall = $derived(stall !== null && !isIndeterminateProgressPhase(phase) && !phaseUnknown)
 
     /** With an empty queue you're not queueing behind anything, you're sending
      *  this out of sight, so the button says "Background" instead. It reads the
@@ -415,6 +417,8 @@
                  `scanning` while a cancel issued mid-count winds down, and the
                  title has to name what the dialog is doing NOW. -->
             {scanTitle}
+        {:else if compressPhaseKey !== null}
+            {tString(compressPhaseKey)}
         {:else if phase === 'flushing'}
             {tString('fileOperations.transferProgress.titleFlushing')}
         {:else if isMove && phase === 'deleting'}
@@ -490,6 +494,13 @@
                     {currentFile}
                     paused={isPaused}
                 />
+            </div>
+        {:else if isIndeterminate && compressPhaseKey !== null}
+            <div class="phase-banner" role="status">
+                {#if !isPaused}
+                    <Spinner size="sm" />
+                {/if}
+                <span>{tString(compressPhaseKey)}</span>
             </div>
         {:else if !phaseUnknown}
             <!-- Dual progress bars (size + count) for the active phase. The

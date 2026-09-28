@@ -1,8 +1,7 @@
 # Transfer (copy and move)
 
-Frontend for copy (F5), move (F6), and compress (⌥F5): destination picker, dry-run conflict scan, dual-bar progress
-dialog, error rendering. One set serves all via `operationType`; delete/trash reuse the progress dialog. Backend:
-`apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
+Copy (F5), move (F6), and compress (⌥F5): setup, conflict scan, progress, and errors. Delete/trash reuse progress.
+Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
 
 ## Module map
 

@@ -146,6 +146,7 @@ async fn virtual_mtp_remote_zip_edit_deletes_an_entry_through_the_device() {
         Arc::clone(&vol) as Arc<dyn Volume>,
         archive_path.clone(),
         state,
+        None,
         move |working: &Path| -> Result<(), EditError> {
             let changeset = Changeset {
                 deletes: vec!["a.txt".to_string()],

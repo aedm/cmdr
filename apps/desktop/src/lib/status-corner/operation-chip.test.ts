@@ -90,6 +90,23 @@ describe('pickChipOperation', () => {
     expect(picked?.percent).toBe(0)
   })
 
+  it.each(['finishing_compression', 'finishing_transfer'] as const)(
+    'marks %s as indeterminate rather than exposing a frozen percentage',
+    (phase) => {
+      const picked = pickChipOperation(
+        [
+          row(
+            { operationType: 'compress' },
+            progress({ operationType: 'compress', phase, bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 }),
+          ),
+        ],
+        null,
+      )
+      expect(picked?.indeterminate).toBe(true)
+      expect(picked?.percent).toBe(0)
+    },
+  )
+
   it('reads 0% before the first progress tick', () => {
     const picked = pickChipOperation([row({}, null)], null)
     expect(picked?.percent).toBe(0)

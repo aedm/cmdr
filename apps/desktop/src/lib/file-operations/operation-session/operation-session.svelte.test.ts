@@ -455,6 +455,28 @@ describe('derived read state', () => {
     dispose()
   })
 
+  it('clears the ETA across compression finalization and output transfer boundaries', () => {
+    const { fanout, session, dispose } = harness()
+
+    fanout._testEmit({ kind: 'progress', event: progress('a', { phase: 'compressing', etaSeconds: 60 }) })
+    expect(session.etaSecondsDisplay).toBe(60)
+
+    fanout._testEmit({
+      kind: 'progress',
+      event: progress('a', { phase: 'finishing_compression', bytesTotal: 0, filesTotal: 0, etaSeconds: null }),
+    })
+    expect(session.etaSecondsDisplay).toBeNull()
+
+    fanout._testEmit({ kind: 'progress', event: progress('a', { phase: 'transferring', etaSeconds: 25 }) })
+    expect(session.etaSecondsDisplay).toBe(25)
+    fanout._testEmit({
+      kind: 'progress',
+      event: progress('a', { phase: 'finishing_transfer', bytesTotal: 0, filesTotal: 0, etaSeconds: null }),
+    })
+    expect(session.etaSecondsDisplay).toBeNull()
+    dispose()
+  })
+
   it('drops the scan rates while the operation is paused, and keeps the tallies', () => {
     // A paused walk parks between entries and emits nothing, so the last
     // measured rate would sit on screen describing a scan that is standing

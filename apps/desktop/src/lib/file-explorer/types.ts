@@ -562,15 +562,26 @@ export type WriteOperationType =
   | 'create_folder'
   | 'create_file'
   | 'archive_edit'
+  | 'compress'
 
 /** Transfer-style operations that share the progress UI. `archive_edit` (a zip
  *  temp+rename rewrite) reports progress like a transfer, so it rides this set.
- *  `compress` packs sources into a NEW zip; it's a frontend-only identity over
- *  the same backend archive-edit machinery (no distinct `WriteOperationType`). */
+ *  `compress` packs sources into a NEW zip with distinct backend identity and
+ *  phase-specific source/output byte progress. */
 export type TransferOperationType = 'copy' | 'move' | 'delete' | 'trash' | 'archive_edit' | 'compress'
 
 /** Phase of a write operation. */
-export type WriteOperationPhase = 'scanning' | 'copying' | 'deleting' | 'trashing' | 'rolling_back' | 'flushing'
+export type WriteOperationPhase =
+  | 'scanning'
+  | 'copying'
+  | 'compressing'
+  | 'finishing_compression'
+  | 'transferring'
+  | 'finishing_transfer'
+  | 'deleting'
+  | 'trashing'
+  | 'rolling_back'
+  | 'flushing'
 
 /** How to handle conflicts when destination files already exist. */
 export type ConflictResolution = 'stop' | 'skip' | 'overwrite' | 'rename' | 'overwrite_smaller' | 'overwrite_older'

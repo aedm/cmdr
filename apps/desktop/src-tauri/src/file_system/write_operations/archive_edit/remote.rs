@@ -46,6 +46,14 @@ use super::super::types::WriteOperationError;
 use super::edit_error::EditError;
 use crate::file_system::volume::{LocalPosixVolume, Volume, VolumeError, WriteMode};
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RemoteCommitProgress {
+    Transferring { bytes_done: u64, bytes_total: u64 },
+    Finishing,
+}
+
+pub(crate) type RemoteProgressObserver = Arc<dyn Fn(RemoteCommitProgress) + Send + Sync>;
+
 /// Same-directory temp infix: `foo.zip` uploads as `foo.zip.cmdr-tmp-<uuid>`.
 /// Mirrors the local mutator's convention and the app-wide `.cmdr-` crash-
 /// recoverable-temp prefix. Used to BUILD the upload temp name and to MATCH stale
@@ -81,6 +89,7 @@ pub(crate) async fn pull_apply_upload_swap<T, F>(
     parent: Arc<dyn Volume>,
     archive_path: PathBuf,
     state: Arc<WriteOperationState>,
+    progress: Option<RemoteProgressObserver>,
     plan_and_apply: F,
 ) -> Result<T, EditError>
 where
@@ -120,7 +129,7 @@ where
 
     // 3+4) Upload the edited local copy under a remote TEMP name, then swap it into
     //       place — the only step that touches the original. See `place_local_file`.
-    place_local_file(parent.as_ref(), &working, &archive_path, &state).await?;
+    place_local_file(parent.as_ref(), &working, &archive_path, &state, progress.as_ref()).await?;
 
     Ok(value)
 }
@@ -137,9 +146,18 @@ pub(super) async fn place_local_file(
     local_file: &Path,
     remote_path: &Path,
     state: &WriteOperationState,
+    progress: Option<&RemoteProgressObserver>,
 ) -> Result<(), EditError> {
     let remote_temp = remote_temp_sibling(remote_path);
-    upload_archive(parent, local_file, &remote_temp, state).await?;
+    upload_archive(parent, local_file, &remote_temp, state, progress).await?;
+    // A user can cancel while the backend closes the completed upload, after
+    // its final progress callback but before publication. The temp is ours;
+    // remove it and leave the target untouched instead of turning that cancel
+    // into a successful swap.
+    if is_cancelled(&state.intent) {
+        let _ = parent.delete(&remote_temp).await;
+        return Err(EditError::Cancelled);
+    }
     swap_into_place(parent, &remote_temp, remote_path).await?;
     Ok(())
 }
@@ -187,6 +205,7 @@ async fn upload_archive(
     local_working: &Path,
     remote_temp: &Path,
     state: &WriteOperationState,
+    progress_observer: Option<&RemoteProgressObserver>,
 ) -> Result<(), EditError> {
     let size = std::fs::metadata(local_working)
         .map_err(|e| io_op(&local_working.display().to_string(), &e.to_string()))?
@@ -200,7 +219,23 @@ async fn upload_archive(
         .await
         .map_err(vol_op(local_working))?;
 
-    let progress = |_written: u64, _total: u64| {
+    if let Some(observer) = progress_observer {
+        observer(RemoteCommitProgress::Transferring {
+            bytes_done: 0,
+            bytes_total: size,
+        });
+    }
+    let progress = |written: u64, total: u64| {
+        if let Some(observer) = progress_observer {
+            if written >= total {
+                observer(RemoteCommitProgress::Finishing);
+            } else {
+                observer(RemoteCommitProgress::Transferring {
+                    bytes_done: written,
+                    bytes_total: total,
+                });
+            }
+        }
         if is_cancelled(&state.intent) {
             ControlFlow::Break(())
         } else {
@@ -213,7 +248,12 @@ async fn upload_archive(
         .write_from_stream(remote_temp, WriteMode::CreateOrReplace, size, stream, &progress)
         .await
     {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            if let Some(observer) = progress_observer {
+                observer(RemoteCommitProgress::Finishing);
+            }
+            Ok(())
+        }
         Err(err) => {
             // Remove the partial upload so the user's remote dir isn't left with a
             // stray `.cmdr-tmp-*` (harmless — the original is intact — but tidy).

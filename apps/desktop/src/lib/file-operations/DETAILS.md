@@ -106,9 +106,11 @@ temp+rename rewrite), surfaced through the same transfer/queue UI as any write:
 - **Permanent delete.** There's no Trash inside a zip (the backend rejects trashing an archive-inner path), so
   `openDeleteDialog` forces `isPermanent` + drops `supportsTrash` and passes `isArchive` for a source inside a zip;
   `DeleteDialog` then shows the archive warning banner and hides the "Move to trash" switch.
-- **Presentation.** `archive_edit` is a `WriteOperationType` with the `file-archive` queue glyph (`operation-icon.ts`)
-  and the "Editing archive" `queue.row.label` arm. It has no scan phase, so `TransferProgressDialog`'s `scanTitleMap`
-  excludes it (the `scanTitle` derivation short-circuits for `archive_edit`).
+- **Presentation.** Ordinary mutation is `archive_edit`; fresh compression is the distinct `compress` wire identity.
+  Both use the `file-archive` glyph and map to archive-edit journal semantics, but only `compress` receives the
+  phase-specific labels from `compressionPhaseLabelKey`. It has no scan-title arm. `Compressing` shows source-byte bars,
+  `Transferring` shows completed-archive output bytes, and `FinishingCompression` / `FinishingTransfer` are
+  indeterminate. `isIndeterminateProgressPhase` is the one classifier shared by dialog, queue, and corner.
 
 ## `TransferProgressReadout.svelte`
 
@@ -159,6 +161,9 @@ catalog keys.
   deciding (a pause, an unanswered clash) and those cells empty rather than freezing a stale number; the ETA stays,
   because the backend keeps human-wait time out of its rate window. ❌ Don't reinstate the judgement per surface: the
   dialog once counted down "58s left" over a paused copy whose queue row showed nothing.
+- **A compression phase boundary starts a new estimate.** Source compression and remote transfer have unrelated byte
+  totals, and finalization has no denominator. The operation session resets its smoother on every phase change;
+  finishing phases render a spinner plus phase copy and retain neither bars nor a stale ETA.
 
 ## Foreground-operation slot
 

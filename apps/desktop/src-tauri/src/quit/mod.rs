@@ -161,7 +161,8 @@ pub(crate) fn blocks_quit(snapshot: &OperationSnapshot) -> bool {
         | WriteOperationType::Move
         | WriteOperationType::Delete
         | WriteOperationType::Trash
-        | WriteOperationType::ArchiveEdit => true,
+        | WriteOperationType::ArchiveEdit
+        | WriteOperationType::Compress => true,
         // Instant metadata ops (`manager::run_instant`) finish faster than a
         // human could read a dialog about them.
         WriteOperationType::Rename | WriteOperationType::CreateFolder | WriteOperationType::CreateFile => false,

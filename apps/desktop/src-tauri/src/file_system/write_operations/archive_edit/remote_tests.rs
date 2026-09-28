@@ -130,6 +130,7 @@ async fn run_add_edit(parent: Arc<dyn Volume>, archive_path: PathBuf) -> bool {
         parent,
         archive_path,
         running_state(),
+        None,
         move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
@@ -248,6 +249,7 @@ async fn remote_edit_adds_an_entry_and_swaps_it_into_place() {
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
+        None,
         move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
@@ -292,6 +294,7 @@ async fn remote_edit_cancel_before_swap_leaves_the_original_intact() {
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
+        None,
         move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 adds: vec![add_entry("added.txt", b"fresh bytes")],
@@ -339,6 +342,7 @@ async fn remote_edit_swaps_via_delete_then_rename_on_a_sibling_allowing_backend(
         parent.clone() as Arc<dyn Volume>,
         archive_path.clone(),
         state,
+        None,
         move |working: &Path| -> Result<(), super::EditError> {
             let changeset = Changeset {
                 deletes: vec!["keep.txt".to_string()],

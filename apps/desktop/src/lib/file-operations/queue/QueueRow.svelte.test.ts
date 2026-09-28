@@ -160,6 +160,7 @@ describe('QueueRow', () => {
     expect(operationTypeIcon('trash')).toBe('trash-2')
     // A zip edit gets the dedicated archive glyph, not the move placeholder.
     expect(operationTypeIcon('archive_edit')).toBe('file-archive')
+    expect(operationTypeIcon('compress')).toBe('file-archive')
   })
 
   it('labels instant op rows with their action, not the "Working" fallback', () => {
@@ -168,6 +169,7 @@ describe('QueueRow', () => {
       ['create_folder', 'Creating folder'],
       ['create_file', 'Creating file'],
       ['archive_edit', 'Editing archive'],
+      ['compress', 'Compressing'],
     ]
     for (const [opType, expected] of cases) {
       render({ row: buildRow('running', opType) })
@@ -175,6 +177,25 @@ describe('QueueRow', () => {
       expect(label).toBe(expected)
       if (instance) void unmount(instance)
     }
+  })
+
+  it.each([
+    ['finishing_compression', 'Finishing compression…'],
+    ['finishing_transfer', 'Finishing transfer…'],
+  ] as const)('renders %s as an indeterminate phase without progress bars', (phase, label) => {
+    const event: WriteProgressEvent = {
+      operationId: 'op-1',
+      operationType: 'compress',
+      phase,
+      currentFile: null,
+      filesDone: 0,
+      filesTotal: 0,
+      bytesDone: 0,
+      bytesTotal: 0,
+    }
+    render({ row: buildRow('running', 'compress', event) })
+    expect(target.textContent).toContain(label)
+    expect(target.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
   })
 
   it('offers Rollback only where the backend says the op can be reversed', () => {

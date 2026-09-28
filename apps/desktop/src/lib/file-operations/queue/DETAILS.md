@@ -186,6 +186,16 @@ walking (`apps/desktop/src-tauri/src/file_system/write_operations/scan_bridge.rs
   the row's message doesn't take. The clash wait below is the case that does earn the column, and § "A row parked on a
   clash" is where the line between them is drawn.
 
+## Compression phases
+
+A compression row uses the same operation session and shared readout rules as its foreground dialog. `Compressing` shows
+uncompressed source-byte and source-entry progress. A remote fallback then starts a separate `Transferring` bar whose
+total is the completed ZIP size; the phase change resets the session's ETA smoother. `FinishingCompression` and
+`FinishingTransfer` have no measurable denominator, so the row replaces the dual readout with a spinner and the
+phase-specific label. It never falls back from zero bytes to stale file totals, and it never leaves a 100% bar visible
+while close or publication continues. `progress-readout.ts` owns both the label map and indeterminate classifier used by
+this row, the dialog, and the corner chip.
+
 ## A row parked on a clash
 
 An operation that hits a name clash stops and waits for an answer, and its lifecycle status stays `running` throughout

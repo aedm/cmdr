@@ -34,6 +34,7 @@ const REASON_OPERATION_TYPE: Record<OperationSnapshot['operationType'], Transfer
   delete: 'delete',
   trash: 'trash',
   archive_edit: 'copy',
+  compress: 'compress',
   rename: 'copy',
   create_folder: 'copy',
   create_file: 'copy',

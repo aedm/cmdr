@@ -133,7 +133,38 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   `appearedDuringMove` (the toast's "changed / appeared during the move" sentences). The mechanism and its gaps:
   `../transfer/volume/DETAILS.md` § "Cross-volume move source-delete removes a LEDGER". Pinned by
   `copy_into_drift_tests.rs` (local and remote source).
-- **Compress = seed an empty zip, then copy-into** (`compress.rs`, `compress_start`). Creating a NEW zip and packing the sources into it IS an archive edit, so compress is built ON copy-into rather than as a parallel path: `seed_empty_zip` writes a valid empty archive at the target, then `compress_start` calls `route_archive_copy_into` with `is_move = false`. The seed is the ONLY net-new backend surface — scan, plan-in-closure, progress/ETA, cancel, lane admission, and the mutator's temp+rename durability are all inherited. **The seed is LOAD-BEARING**: `route_archive_copy_into` (and the mutator) open the target with `ZipArchive::new`, which rejects a 0-byte file (`ZipError::InvalidArchive`) — so a brand-new target must already be a valid archive before the copy-into runs. `seed_empty_zip` writes the 22-byte bare end-of-central-directory record (`PK\x05\x06` + 18 zero bytes) — the minimal valid zip, a zero-entry archive that `ZipArchive::new` opens with `len() == 0` and whose first bytes pass `bytes_start_with_zip_signature`. It uses the SAME temp+rename discipline as the mutator (build a `.cmdr-tmp-<uuid>` sibling, fsync, atomic rename over the target, fsync the parent dir), so a crash mid-seed never leaves a torn file and an overwrite is atomic. **Seed matches the parent, local or remote.** `route_archive_copy_into`'s remote path PULLS the existing `.zip` before editing (see the remote-edit contract above), so a local-FS seed would be invisible to a remote parent — the seed must land wherever the copy-into will look for it. So `compress_start` branches on `parent.supports_local_fs_access()`: a LOCAL parent gets the local-FS `seed_empty_zip`; a REMOTE parent (SMB / MTP) gets `seed_empty_zip_remote`, which stages the 22 bytes in a scratch file and places them THROUGH the parent volume via `remote::place_local_file` (the remote edit's own upload-to-temp + atomic-swap commit, generalized to tolerate a MISSING original for a brand-new target). Then the copy-into pulls the seed, adds the sources, and swaps the full archive in. The remote path composes for both swap shapes: SMB's atomic rename-replace and MTP's delete-then-rename (same-name siblings allowed) — MTP needs no compress-specific work beyond the shared remote-edit machinery. **Remote cancel-safety** is inherited, not re-earned: the seed is placed atomically, and a cancel/fault during the copy-into leaves at worst the valid empty seed at the target (`place_local_file` reuses `pull_apply_upload_swap`'s swap, so the target keeps its bytes until the final atomic swap, and any partial upload temp is deleted). `compress_start` reuses `WriteOperationType::ArchiveEdit` (compress has no distinct backend op type — its identity is frontend-only). Pinned by `compress_tests` (local seed validity + atomic overwrite, end-to-end compress of local files and a directory subtree; the seed's load-bearing role is shown by the copy-into failing against a 0-byte target), `compress_remote_tests` (seed-through-volume onto a non-local `InMemoryVolume` for both swap shapes, plus overwrite-replaces-not-merges), and the live-Samba `smb_integration_compress_local_files_onto_the_share`.
+- **Compress is a distinct managed identity over the existing seed + copy-into fallback** (`compress.rs`,
+  `compress_start`). `WriteOperationType::Compress` follows the descriptor, preview bridge, progress, terminal event,
+  quit guard, MCP status, and bindings, while the journal and analytics deliberately retain archive-edit semantics
+  (`OpKind::ArchiveEdit`, `ArchiveSubkind::Compress`, `archive_edit_completed`). Ordinary copy/move/create/delete inside
+  a ZIP remains `WriteOperationType::ArchiveEdit` and never acquires compression phase wording.
+
+  Progress has two byte axes that never share an ETA history. During mutator input, `Compressing` reports uncompressed
+  source bytes and source entries. The final mutator tick becomes `FinishingCompression` with file and byte counters
+  all zero before `ZipWriter::finish`, fsync, metadata preservation, and the local swap. A local destination then goes
+  terminal; it invents no transfer phase. For a remote parent, `remote::upload_archive` starts a fresh `Transferring`
+  phase whose total is the completed local ZIP size and whose done count is bytes acknowledged by
+  `write_from_stream`. At the callback's final byte it switches to `FinishingTransfer`, again with both totals zero,
+  before writer close and `swap_into_place`. Transfer-byte ticks use the operation's configured cadence; phase
+  boundaries always emit. After backend close, publication rechecks cancellation and removes the owned remote temp
+  instead of swapping it. The phase change resets rate and ETA in the status cache and frontend session. Tests use
+  deliberately compressible asymmetric input and condition gates at both finishing phases, including cancellation
+  after backend close, proving that neither a stale 100% event nor success can precede finalization/publication.
+
+  **Current creation limitation.** This fallback still writes the empty seed before the managed operation is
+  registered. `ZipArchive::new` requires that valid 22-byte EOCD seed, and local/remote placement follows the target's
+  parent exactly as described below. The seed write is atomic, but an overwrite can replace the destination before
+  cancellation and progress exist; M1 makes subsequent progress honest, not fresh-creation publication safe. The
+  dedicated fresh-create driver removes this hazard by generating privately and publishing only after its planned
+  reconciliation and validation.
+  Until then, do not describe compress as preserving the previous destination through the entire operation.
+
+  **Seed mechanics.** `seed_empty_zip` writes `PK\x05\x06` plus 18 zero bytes through same-directory temp + fsync +
+  rename; a remote parent uses `seed_empty_zip_remote` and `remote::place_local_file`. The remote copy-into then pulls
+  that seed, mutates its local working copy, uploads a full replacement, and uses the backend's existing swap shape.
+  The writability guard below still runs before the seed. Pinned by `compress_tests`, `compress_remote_tests`, and the
+  live-Samba compression case. Direct-streaming backend follow-ups remain tracked in
+  [WebDAV #315](https://github.com/vdavid/cmdr/issues/315) and [MTP #316](https://github.com/vdavid/cmdr/issues/316).
 - **❗ The writability guard runs BEFORE the seed, and the order is the whole point.** `compress_start`'s first
   statement is `ensure_zip_writable(&dest_zip_full_path, ReadOnlySide::Destination)?`, ahead of both seed branches.
   **Decision/Why**: the seed is a temp+rename OVER the destination, so with the guard only in

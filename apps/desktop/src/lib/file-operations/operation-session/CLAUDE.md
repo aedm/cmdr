@@ -28,6 +28,8 @@ operation is now plus what you can do to it. Views bind and command through it; 
   "Read surface".
 - **❌ No `$derived` in a session** (it outlives the view that created it). Compose in the getter.
 - **A scanning operation reads as live and counting, never 0%**: totals stay 0, so branch on `phase === 'scanning'`.
+- **Every phase change resets ETA history.** Compression source bytes and transfer output bytes are different workloads;
+  finishing phases carry zero totals and therefore expose no ETA. Pinned across all four compression phases.
 - **No command throws, and each says whether it landed**: `false` or a `null` verdict means nothing was sent, so leave
   the screen alone. `togglePause` steers by the snapshot's `LifecycleStatus` it already holds, never a round trip;
   cancel goes through the MANAGER, rollback through the write op.

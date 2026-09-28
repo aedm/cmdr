@@ -370,6 +370,29 @@ describe('OperationChip', () => {
     expect(chip()?.getAttribute('aria-label')).toBe('Copying, scanning. Open the operation queue.')
   })
 
+  it.each([
+    ['finishing_compression', 'Finishing compression…'],
+    ['finishing_transfer', 'Finishing transfer…'],
+  ] as const)('shows %s as a named spinner with no percentage', (phase, label) => {
+    store?._testApplySnapshot([snapshot({ operationType: 'compress' })])
+    emitProgress(
+      progress({
+        operationType: 'compress',
+        phase,
+        filesDone: 0,
+        filesTotal: 0,
+        bytesDone: 0,
+        bytesTotal: 0,
+        etaSeconds: null,
+      }),
+    )
+    renderChip()
+
+    expect(chip()?.querySelector('.chip-label')?.textContent).toBe(label)
+    expect(target.querySelector('[role="progressbar"]')).toBeNull()
+    expect(chip()?.getAttribute('aria-label')).toBe(`${label}. Open the operation queue.`)
+  })
+
   it('goes back to a real bar once the operation starts writing', () => {
     store?._testApplySnapshot([snapshot()])
     emitProgress(progress())

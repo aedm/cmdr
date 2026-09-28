@@ -25,6 +25,7 @@ export function operationTypeIcon(operationType: WriteOperationType): IconName {
       return 'trash-2'
     // A zip edit (add/delete/rename inside, or copy/move into/out of a `.zip`).
     case 'archive_edit':
+    case 'compress':
       return 'file-archive'
   }
 }

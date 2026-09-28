@@ -252,6 +252,7 @@ fn operation_type_token(kind: WriteOperationType) -> &'static str {
         WriteOperationType::CreateFolder => "create_folder",
         WriteOperationType::CreateFile => "create_file",
         WriteOperationType::ArchiveEdit => "archive_edit",
+        WriteOperationType::Compress => "compress",
     }
 }
 

@@ -10,6 +10,7 @@
 use super::compress::compress_start;
 use super::test_support::*;
 use crate::file_system::volume::InMemoryVolume;
+use crate::file_system::write_operations::WriteOperationPhase;
 use uuid::Uuid;
 
 /// Registers a NON-local `InMemoryVolume` (the remote-parent stand-in) with `dir`
@@ -59,12 +60,13 @@ async fn compress_onto_a_remote_parent_seeds_and_packs_local_files() {
     // A local-FS seed at `/share/bundle.zip` is invisible to the remote parent's
     // pull, so pre-seed-through-Volume the copy-into pulls a missing file and the
     // entries never land — this test is RED until the seed goes through the volume.
-    let (_src_tmp, source_volume) = local_source_with(&[("one.txt", b"first"), ("two.txt", b"second")]);
+    let payload = vec![b'z'; 128 * 1024];
+    let (_src_tmp, source_volume) = local_source_with(&[("one.txt", &payload), ("two.txt", b"second")]);
     let archive_path = PathBuf::from("/share/bundle.zip");
     let (parent_id, parent) = register_remote_parent(Path::new("/share"), false).await;
 
-    let events = Arc::new(CollectorEventSink::new());
-    compress_start(
+    let events = PhaseGateSink::new(WriteOperationPhase::FinishingTransfer);
+    let start = compress_start(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
         source_volume,
         vec![PathBuf::from("one.txt"), PathBuf::from("two.txt")],
@@ -78,22 +80,39 @@ async fn compress_onto_a_remote_parent_seeds_and_packs_local_files() {
     )
     .await
     .expect("start remote compress");
+    assert_eq!(start.operation_type, WriteOperationType::Compress);
 
-    wait_until_async(Duration::from_secs(5), "a terminal event (complete or error)", || {
-        !events.complete.lock_ignore_poison().is_empty() || !events.errors.lock_ignore_poison().is_empty()
+    wait_until_async(Duration::from_secs(5), "finishing-transfer phase gate", || {
+        events.entered()
     })
     .await;
     assert!(
-        !events.complete.lock_ignore_poison().is_empty(),
+        events.inner.complete.lock_ignore_poison().is_empty(),
+        "completion must wait for remote publication"
+    );
+    assert!(
+        read_remote_entry(parent.as_ref(), &archive_path, "one.txt")
+            .await
+            .is_none(),
+        "the uploaded archive must stay unpublished while final transfer work is gated"
+    );
+    events.release();
+
+    wait_until_async(Duration::from_secs(5), "a terminal event (complete or error)", || {
+        !events.inner.complete.lock_ignore_poison().is_empty() || !events.inner.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(
+        !events.inner.complete.lock_ignore_poison().is_empty(),
         "remote compress should complete, errors: {:?}",
-        events.errors.lock_ignore_poison()
+        events.inner.errors.lock_ignore_poison()
     );
 
     assert_eq!(
         read_remote_entry(parent.as_ref(), &archive_path, "one.txt")
             .await
             .as_deref(),
-        Some(b"first".as_slice()),
+        Some(payload.as_slice()),
         "the first source must land in the remote zip"
     );
     assert_eq!(
@@ -108,6 +127,100 @@ async fn compress_onto_a_remote_parent_seeds_and_packs_local_files() {
     assert!(
         !names.iter().any(|n| n.contains(".cmdr-tmp-")),
         "no upload temp should remain after the swap, got: {names:?}"
+    );
+
+    let progress = events.inner.progress.lock_ignore_poison();
+    let transferring = progress
+        .iter()
+        .filter(|event| event.phase == WriteOperationPhase::Transferring)
+        .collect::<Vec<_>>();
+    assert!(
+        !transferring.is_empty(),
+        "remote compress must report produced-archive transfer bytes"
+    );
+    assert!(
+        transferring
+            .iter()
+            .all(|event| event.operation_type == WriteOperationType::Compress)
+    );
+    let output_bytes = transferring[0].bytes_total;
+    assert_ne!(
+        output_bytes,
+        (payload.len() + 6) as u64,
+        "transfer total is output, not source bytes"
+    );
+    assert!(
+        transferring
+            .iter()
+            .all(|event| event.bytes_done < event.bytes_total || event.bytes_total == 0),
+        "transfer must become indeterminate before publication instead of displaying 100%"
+    );
+    let finishing = progress
+        .iter()
+        .find(|event| event.phase == WriteOperationPhase::FinishingTransfer)
+        .expect("finishing-transfer phase");
+    assert_eq!((finishing.files_done, finishing.files_total), (0, 0));
+    assert_eq!((finishing.bytes_done, finishing.bytes_total), (0, 0));
+
+    get_volume_manager().unregister(&parent_id);
+}
+
+#[tokio::test]
+async fn cancel_during_remote_close_does_not_publish_or_complete() {
+    let (_src_tmp, source_volume) = local_source_with(&[("one.txt", &[b'x'; 4096])]);
+    let archive_path = PathBuf::from("/share/cancelled.zip");
+    let (parent_id, parent) = register_remote_parent(Path::new("/share"), false).await;
+
+    // `upload_archive` announces FinishingTransfer once on the final write
+    // callback and again after `write_from_stream` has closed successfully. Gate
+    // the second announcement: cancellation here lands after backend close but
+    // before the remote temp is published over the target.
+    let events = PhaseGateSink::new_nth(WriteOperationPhase::FinishingTransfer, 2);
+    let start = compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("one.txt")],
+        archive_path.clone(),
+        parent_id.clone(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start remote compress for close-boundary cancellation");
+
+    wait_until_async(
+        Duration::from_secs(5),
+        "post-close finishing-transfer phase gate",
+        || events.entered(),
+    )
+    .await;
+    crate::file_system::write_operations::manager::cancel_operation(&start.operation_id);
+    events.release();
+
+    wait_until_async(Duration::from_secs(5), "cancelled terminal event", || {
+        !events.inner.cancelled.lock_ignore_poison().is_empty()
+            || !events.inner.complete.lock_ignore_poison().is_empty()
+            || !events.inner.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(
+        events.inner.complete.lock_ignore_poison().is_empty(),
+        "a cancellation after backend close must not publish or report success"
+    );
+    assert_eq!(events.inner.cancelled.lock_ignore_poison().len(), 1);
+    assert!(
+        read_remote_entry(parent.as_ref(), &archive_path, "one.txt")
+            .await
+            .is_none(),
+        "the completed remote temp must remain unpublished after cancellation"
+    );
+    let names = sibling_names(parent.as_ref(), &archive_path).await;
+    assert!(
+        !names.iter().any(|name| name.contains(".cmdr-tmp-")),
+        "cancellation must remove the unpublished remote temp, got: {names:?}"
     );
 
     get_volume_manager().unregister(&parent_id);

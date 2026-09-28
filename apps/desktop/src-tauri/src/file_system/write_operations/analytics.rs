@@ -41,7 +41,7 @@ pub(super) fn emit_completion_analytics(event: &WriteCompleteEvent) {
             let trashed = event.operation_type == WriteOperationType::Trash;
             crate::analytics::events::capture("delete_used", json!({ "trashed": trashed, "item_count": bucket }));
         }
-        WriteOperationType::ArchiveEdit => {
+        WriteOperationType::ArchiveEdit | WriteOperationType::Compress => {
             crate::analytics::events::capture("archive_edit_completed", json!({ "item_count": bucket }));
         }
         // Instant metadata ops (`manager::run_instant`) never reach this function:

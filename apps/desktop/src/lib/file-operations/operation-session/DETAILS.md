@@ -258,7 +258,10 @@ alone cannot tell you.
   human-wait time from the rate window (`write_operations/human_wait.rs`). Deciding all this here rather than
   per-surface is what keeps the dialog, the queue row, and the corner chip saying the same thing: they showed different
   answers to the same paused copy once. Every view renders these three, never `progress.bytesPerSecond` /
-  `progress.filesPerSecond` / `progress.etaSeconds`.
+  `progress.filesPerSecond` / `progress.etaSeconds`. The ETA smoother resets before consuming the first sample of every
+  new phase. Compression makes that boundary observable: `Compressing` counts source bytes, `Transferring` counts
+  compressed output bytes, and both finishing phases carry zero totals. Reusing samples would produce an estimate for
+  the wrong workload.
 - `scan`: the counting readout, including the frontend-computed rates the backend does not emit during a scan.
 - `awaitingAnswer`: the narrower half of `awaitingHuman` — parked on a clash nobody has answered yet, which is a thing
   to DO rather than a thing that was done. It exists so a surface saying "this one needs you" and the surfaces deciding

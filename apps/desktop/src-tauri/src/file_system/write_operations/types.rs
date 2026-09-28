@@ -57,10 +57,10 @@ impl RecoveredOriginal {
 /// `rename` / `create_folder` / `create_file` (snake_case).
 ///
 /// `ArchiveEdit` is the zip-mutation op (add / delete / rename / mkdir / mkfile
-/// inside a `.zip`, and copy/move INTO one): an O(archive) temp+rename rewrite
-/// that flows through `spawn_managed` with a real progress bar and the parent
-/// drive's lane, NOT the instant path (a rewrite is not a metadata syscall). It
-/// crosses the wire as `archive_edit`.
+/// inside a `.zip`, and copy/move INTO one), while `Compress` identifies a fresh
+/// archive built from selected sources. Both are O(archive) temp+rename rewrites
+/// that flow through `spawn_managed` with a real progress bar and the parent
+/// drive's lane, NOT the instant path (a rewrite is not a metadata syscall).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum WriteOperationType {
@@ -72,6 +72,7 @@ pub enum WriteOperationType {
     CreateFolder,
     CreateFile,
     ArchiveEdit,
+    Compress,
 }
 
 /// Phase of the operation (for progress reporting).
@@ -82,6 +83,17 @@ pub enum WriteOperationPhase {
     Scanning,
     /// Copying files (for copy and cross-filesystem move)
     Copying,
+    /// Reading uncompressed source bytes and writing compressed ZIP entries.
+    Compressing,
+    /// Closing and durably landing the ZIP after all source bytes were consumed.
+    /// Both progress totals are zero because no measurable denominator remains.
+    FinishingCompression,
+    /// Uploading a completed archive to a remote destination. These bytes are
+    /// compressed output bytes, not the source bytes reported by `Compressing`.
+    Transferring,
+    /// Closing and publishing a fully uploaded remote archive.
+    /// Both progress totals are zero because no measurable denominator remains.
+    FinishingTransfer,
     /// Deleting files (for delete, and cleanup phase of cross-filesystem move)
     Deleting,
     /// Moving items to trash

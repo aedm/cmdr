@@ -235,7 +235,7 @@ Each point is where the op already stats the item, so journaling is near-zero ma
 - **compress** (`archive_edit`) — spawns directly (not through `start_write_operation`), so `copy_into.rs`'s deferred
   carries its OWN open/finalize bracket. The compress driver supplies the `archive_edit` subkind + a net-new flag
   (probed before the seed overwrites the target) via `ArchiveProvenance` — the journal can't derive them, both compress
-  and zip-inner edit cross IPC as `ArchiveEdit`. A net-new compress records the created archive as its single
+  and zip-inner edit share durable `OpKind::ArchiveEdit`, while live progress identifies compress separately. A net-new compress records the created archive as its single
   `rollback_unit` item (with a size/mtime snapshot for the rollback drift recheck) and finalizes `rollbackable`; an overwrite
   of a prior archive is `not_rollbackable`; a plain into-archive edit journals its header only (not rollbackable in v1).
 

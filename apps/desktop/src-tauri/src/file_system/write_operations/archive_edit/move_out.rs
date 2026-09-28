@@ -267,6 +267,7 @@ pub(crate) async fn route_archive_move_out(
                 &source_volume_id,
                 archive_path.clone(),
                 Arc::clone(&state),
+                None,
                 move |working: &Path| {
                     mutator::apply(working, &changeset, &*hooks_for_blocking).map_err(|e| match e {
                         MutationError::Cancelled => EditError::Cancelled,

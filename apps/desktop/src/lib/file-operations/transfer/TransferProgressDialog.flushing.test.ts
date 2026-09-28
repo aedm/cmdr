@@ -33,6 +33,7 @@ vi.mock('$lib/tauri-commands', () => ({
   moveBetweenVolumes: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
   copyFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
   moveFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+  compressFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'compress' })),
   deleteFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
   trashFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
   onWriteProgress: vi.fn((cb: (e: WriteProgressEvent) => void) => {
@@ -102,7 +103,7 @@ async function flushPromises(): Promise<void> {
   }
 }
 
-type DialogOperationType = 'copy' | 'move' | 'delete'
+type DialogOperationType = 'copy' | 'move' | 'delete' | 'compress'
 
 function flushingEvent(operationType: DialogOperationType): WriteProgressEvent {
   return {
@@ -199,6 +200,31 @@ describe('TransferProgressDialog flushing phase', () => {
     await tick()
 
     expect(target.textContent).toContain('Writing the last piece…')
+    void unmount(component)
+  })
+})
+
+describe('TransferProgressDialog compression finalization', () => {
+  it.each([
+    ['finishing_compression', 'Finishing compression…'],
+    ['finishing_transfer', 'Finishing transfer…'],
+  ] as const)('renders %s as a named indeterminate state', async (phase, label) => {
+    const { component, target } = await mountDialog('compress')
+    if (!progressCb) throw new Error('subscriber never registered')
+
+    progressCb({
+      ...flushingEvent('compress'),
+      operationType: 'compress',
+      phase,
+      filesDone: 0,
+      filesTotal: 0,
+      bytesDone: 0,
+      bytesTotal: 0,
+    })
+    await tick()
+
+    expect(target.textContent).toContain(label)
+    expect(target.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
     void unmount(component)
   })
 })

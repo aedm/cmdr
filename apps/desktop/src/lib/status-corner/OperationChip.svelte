@@ -18,6 +18,7 @@
     import { bindOperationSession } from '$lib/file-operations/operation-session/bind-operation-session.svelte'
     import { rollbackConfirmVariant, reversalLabelKey } from '$lib/file-operations/reversal-wording'
     import { CHIP_SETTLE_MS, destinationName, pickChipState } from './operation-chip'
+    import { compressionPhaseLabelKey } from '$lib/file-operations/progress-readout'
 
     const chipState = $derived(
         pickChipState(getMainWindowOperationRows(), getForegroundOperationId(), getForegroundFailureId()),
@@ -94,12 +95,19 @@
             ? null
             : rollbackConfirmVariant(candidate.row.snapshot.reverses),
     )
+    const compressPhaseKey = $derived(
+        candidate?.row.snapshot.operationType === 'compress'
+            ? compressionPhaseLabelKey(candidate.row.progress?.phase ?? null)
+            : null,
+    )
     const verb = $derived(
         candidate === null
             ? ''
             : reversalVariant !== null
               ? tString(reversalLabelKey(reversalVariant))
-              : tString('queue.row.label', { type: candidate.row.snapshot.operationType }),
+              : compressPhaseKey !== null
+                ? tString(compressPhaseKey)
+                : tString('queue.row.label', { type: candidate.row.snapshot.operationType }),
     )
     const pausedWord = $derived(tString('queue.row.status', { status: 'paused' }))
     /** The same "Couldn't finish" the failed queue row shows, so the two
@@ -115,6 +123,7 @@
      *  counting. Same wording the dialog and the delete confirmation use for
      *  the same moment. */
     const isScanning = $derived(candidate?.scanning === true)
+    const isIndeterminate = $derived(candidate?.indeterminate === true)
     const scanningText = $derived(tString('fileOperations.shared.scanningTooltip'))
 
     /** One sentence for both the tooltip and the spoken label in the failure
@@ -150,6 +159,8 @@
             ? failedText
             : isScanning
               ? tString('queue.chip.scanningAriaLabel', { label: chipLabel })
+              : isIndeterminate
+                ? tString('queue.chip.indeterminateAriaLabel', { label: chipLabel })
               : tString('queue.chip.ariaLabel', { label: chipLabel, percentText }),
     )
 
@@ -162,6 +173,7 @@
         // "Scanning…" over a chip that reads "Paused" is the same walk
         // described two ways, and only one of them is true.
         if (isScanning) return candidate.paused ? ariaLabel : scanningText
+        if (isIndeterminate) return ariaLabel
         const count = candidate.row.progress?.filesTotal ?? 0
         const destination = destinationName(candidate.row.snapshot.destination)
         // `chipLabel`, never `verb`: hovering a chip that reads "Paused" must
@@ -203,11 +215,11 @@
         {/if}
         <span class="chip-label">{chipLabel}</span>
         {#if chipState.kind === 'progress'}
-            {#if chipState.operation.scanning}
-                <!-- Indeterminate: the totals are what the scan is looking for,
-                     so a bar would sit at 0% for the whole walk. A paused walk
-                     gets nothing at all — the spinner is the claim that it's
-                     moving, and the label already says it isn't. -->
+            {#if chipState.operation.indeterminate}
+                <!-- Indeterminate: scanning is discovering its totals, while a
+                     finishing phase has no denominator. A paused operation gets
+                     nothing — the spinner claims movement, and the label says it
+                     is stopped. -->
                 {#if !chipState.operation.paused}
                     <span class="chip-spinner" aria-hidden="true">
                         <Spinner size="sm" />

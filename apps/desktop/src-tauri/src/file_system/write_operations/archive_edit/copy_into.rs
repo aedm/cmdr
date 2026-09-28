@@ -568,6 +568,11 @@ async fn archive_copy_into_start(
     prov: super::super::journal::ArchiveProvenance,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
     let operation_id = crate::operation_log::new_operation_id();
+    let operation_type = if prov.subkind == ArchiveSubkind::Compress {
+        WriteOperationType::Compress
+    } else {
+        WriteOperationType::ArchiveEdit
+    };
     let state = Arc::new(WriteOperationState::new(Duration::from_millis(progress_interval_ms)));
 
     let lane = get_volume_manager()
@@ -580,7 +585,7 @@ async fn archive_copy_into_start(
         .map(|n| n.to_string_lossy().into_owned());
     let descriptor = OperationDescriptor {
         operation_id: operation_id.clone(),
-        operation_type: WriteOperationType::ArchiveEdit,
+        operation_type,
         lanes: vec![lane],
         volume_ids: vec![parent_volume_id.clone()],
         summary: OperationSummaryText {
@@ -606,12 +611,7 @@ async fn archive_copy_into_start(
             let state = state_for_op;
             let task_guard = ManagedTaskGuard::new(op_id.clone());
             let settle_volume = (parent_volume_id != "root").then(|| parent_volume_id.clone());
-            let _settled = WriteSettledGuard::new(
-                Arc::clone(&events),
-                op_id.clone(),
-                WriteOperationType::ArchiveEdit,
-                settle_volume,
-            );
+            let _settled = WriteSettledGuard::new(Arc::clone(&events), op_id.clone(), operation_type, settle_volume);
 
             // Wait out the confirming dialog's scan. The changeset planner
             // walks the sources itself, so this buys serialization rather than
@@ -620,7 +620,7 @@ async fn archive_copy_into_start(
             if crate::file_system::write_operations::scan_bridge::await_claimed_preview(
                 &*events,
                 &op_id,
-                WriteOperationType::ArchiveEdit,
+                operation_type,
                 &state,
             )
             .await
@@ -640,7 +640,7 @@ async fn archive_copy_into_start(
                 Arc::clone(&state),
                 Arc::clone(&events),
                 op_id.clone(),
-                WriteOperationType::ArchiveEdit,
+                operation_type,
                 progress_interval,
             ));
 
@@ -653,8 +653,12 @@ async fn archive_copy_into_start(
                     materialize_sources(&source_volume, &source_paths, src_local_root, is_move, &state).await?;
                 let absolute_sources = materialized.absolute.clone();
 
-                let (should_delete_sources, skipped_count) =
-                    run_managed_edit(&parent_volume_id, archive_path.clone(), Arc::clone(&state), {
+                let (should_delete_sources, skipped_count) = run_managed_edit(
+                    &parent_volume_id,
+                    archive_path.clone(),
+                    Arc::clone(&state),
+                    hooks.remote_progress_observer(),
+                    {
                         let events_for_blocking = Arc::clone(&events);
                         let state_for_blocking = Arc::clone(&state);
                         let op_id_for_blocking = op_id.clone();
@@ -688,8 +692,9 @@ async fn archive_copy_into_start(
                             })?;
                             Ok((should_delete, plan.skipped_count))
                         }
-                    })
-                    .await?;
+                    },
+                )
+                .await?;
 
                 let left = if should_delete_sources {
                     materialized.delete_originals().await
@@ -715,6 +720,7 @@ async fn archive_copy_into_start(
             emit_archive_terminal(
                 events.as_ref(),
                 &op_id,
+                operation_type,
                 outcome.map(|_| ()),
                 skipped_count,
                 appeared_during_move,
@@ -754,6 +760,6 @@ async fn archive_copy_into_start(
 
     Ok(WriteOperationStartResult {
         operation_id,
-        operation_type: WriteOperationType::ArchiveEdit,
+        operation_type,
     })
 }

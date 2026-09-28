@@ -21,7 +21,7 @@
         reversalLabelKey,
     } from '../reversal-wording'
     import { opKindForWireType } from '../op-kind'
-    import { progressCountKind } from '../progress-readout'
+    import { compressionPhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
     import { requestForegroundOperation } from '$lib/tauri-commands'
 
     interface Props {
@@ -132,9 +132,14 @@
      *  back"), ❌ never by the operation type it runs as: undoing a move is
      *  journaled as a move and undoing a copy as a delete, so the plain action
      *  word would tell a person their undo is deleting things. */
+    const compressPhaseLabelKey = $derived(
+        snapshot.operationType === 'compress' ? compressionPhaseLabelKey(progress?.phase ?? null) : null,
+    )
     const label = $derived(
         reversalVariant === null
-            ? tString('queue.row.label', { type: snapshot.operationType })
+            ? compressPhaseLabelKey === null
+                ? tString('queue.row.label', { type: snapshot.operationType })
+                : tString(compressPhaseLabelKey)
             : tString(reversalLabelKey(reversalVariant)),
     )
 
@@ -163,8 +168,9 @@
      *  so their rows stay a single line. A scanning row is excluded on purpose:
      *  `filesTotal` means "what the scan concluded", and during the scan there
      *  is no such thing — the counting line below is what it renders instead. */
+    const isIndeterminate = $derived(isIndeterminateProgressPhase(progress?.phase ?? null))
     const showReadout = $derived(
-        (isRunning || isPaused) && !isScanning && progress !== null && (progress.bytesTotal > 0 || progress.filesTotal > 0),
+        (isRunning || isPaused) && !isIndeterminate && progress !== null && (progress.bytesTotal > 0 || progress.filesTotal > 0),
     )
 
     /** The scan-phase line, on a `queued` row as well as a running one. An

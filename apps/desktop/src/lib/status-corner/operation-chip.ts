@@ -8,6 +8,7 @@
  */
 
 import { isInstantOperation, type OperationRow } from '$lib/file-operations/queue/operations-store.svelte'
+import { isIndeterminateProgressPhase } from '$lib/file-operations/progress-readout'
 
 /**
  * How long an operation has to last before the chip appears for the first time.
@@ -38,6 +39,8 @@ export interface ChipOperation {
    *  Comes from the progress phase, the same signal the queue row and the
    *  progress dialog read. */
   scanning: boolean
+  /** Finalization has active work but no measurable denominator. */
+  indeterminate: boolean
 }
 
 /**
@@ -145,5 +148,6 @@ export function pickChipOperation(rows: OperationRow[], foregroundOperationId: s
     percent: Math.round(fraction * 100),
     paused: row.snapshot.status === 'paused',
     scanning: row.progress?.phase === 'scanning',
+    indeterminate: isIndeterminateProgressPhase(row.progress?.phase ?? null),
   }
 }

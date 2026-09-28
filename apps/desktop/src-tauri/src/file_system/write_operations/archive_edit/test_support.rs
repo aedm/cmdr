@@ -9,13 +9,17 @@ use uuid::Uuid;
 // test_support's own helpers below).
 pub(super) use std::io::{Read, Write};
 pub(super) use std::path::{Path, PathBuf};
-pub(super) use std::sync::Arc;
+pub(super) use std::sync::{Arc, Condvar, Mutex};
 pub(super) use std::time::Duration;
 
 pub(super) use super::super::OperationEventSink;
 pub(super) use super::super::event_sinks::CollectorEventSink;
 pub(super) use super::super::manager::OperationSummaryText;
-pub(super) use super::super::types::{ConflictId, ConflictResolution, WriteOperationError, WriteOperationType};
+pub(super) use super::super::types::{
+    ConflictId, ConflictInfo, ConflictResolution, DryRunResult, ScanProgressEvent, WriteCancelledEvent,
+    WriteCompleteEvent, WriteConflictEvent, WriteConflictResolvedEvent, WriteErrorEvent, WriteOperationError,
+    WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
+};
 pub(super) use crate::file_system::volume::Volume;
 pub(super) use crate::file_system::volume::manager::get_volume_manager;
 pub(super) use crate::ignore_poison::IgnorePoison;
@@ -23,6 +27,110 @@ pub(super) use crate::test_support::wait_until_async;
 pub(super) use cmdr_archive::mutator::Changeset;
 pub(super) use zip::write::SimpleFileOptions;
 pub(super) use zip::{ZipArchive, ZipWriter};
+
+/// Collects every event and blocks the operation exactly when `phase` is
+/// emitted. Tests can inspect the in-flight boundary, then call [`Self::release`]
+/// to let the operation continue. This is a condition gate, not a timing sleep.
+pub(super) struct PhaseGateSink {
+    pub inner: CollectorEventSink,
+    phase: WriteOperationPhase,
+    remaining_matches: Mutex<usize>,
+    entered: Mutex<bool>,
+    released: Mutex<bool>,
+    gate: Condvar,
+}
+
+impl PhaseGateSink {
+    pub(super) fn new(phase: WriteOperationPhase) -> Arc<Self> {
+        Self::new_nth(phase, 1)
+    }
+
+    pub(super) fn new_nth(phase: WriteOperationPhase, occurrence: usize) -> Arc<Self> {
+        assert!(occurrence > 0, "a phase gate occurrence is one-based");
+        Arc::new(Self {
+            inner: CollectorEventSink::new(),
+            phase,
+            remaining_matches: Mutex::new(occurrence),
+            entered: Mutex::new(false),
+            released: Mutex::new(false),
+            gate: Condvar::new(),
+        })
+    }
+
+    pub(super) fn entered(&self) -> bool {
+        *self.entered.lock_ignore_poison()
+    }
+
+    pub(super) fn release(&self) {
+        *self.released.lock_ignore_poison() = true;
+        self.gate.notify_all();
+    }
+}
+
+impl OperationEventSink for PhaseGateSink {
+    fn emit_progress(&self, event: WriteProgressEvent) {
+        let should_gate = event.phase == self.phase && {
+            let mut remaining = self.remaining_matches.lock_ignore_poison();
+            if *remaining == 0 {
+                false
+            } else {
+                *remaining -= 1;
+                *remaining == 0
+            }
+        };
+        self.inner.emit_progress(event);
+        if should_gate {
+            *self.entered.lock_ignore_poison() = true;
+            let mut released = self.released.lock_ignore_poison();
+            while !*released {
+                released = self
+                    .gate
+                    .wait(released)
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+            }
+        }
+    }
+
+    fn emit_complete(&self, event: WriteCompleteEvent) {
+        self.inner.emit_complete(event);
+    }
+
+    fn emit_cancelled(&self, event: WriteCancelledEvent) {
+        self.inner.emit_cancelled(event);
+    }
+
+    fn emit_error(&self, event: WriteErrorEvent) {
+        self.inner.emit_error(event);
+    }
+
+    fn emit_conflict(&self, event: WriteConflictEvent) {
+        self.inner.emit_conflict(event);
+    }
+
+    fn emit_conflict_resolved(&self, event: WriteConflictResolvedEvent) {
+        self.inner.emit_conflict_resolved(event);
+    }
+
+    fn emit_source_item_done(&self, event: WriteSourceItemDoneEvent) {
+        self.inner.emit_source_item_done(event);
+    }
+
+    fn emit_scan_progress(&self, event: ScanProgressEvent) {
+        self.inner.emit_scan_progress(event);
+    }
+
+    fn emit_scan_conflict(&self, conflict: ConflictInfo) {
+        self.inner.emit_scan_conflict(conflict);
+    }
+
+    fn emit_dry_run_complete(&self, result: DryRunResult) {
+        self.inner.emit_dry_run_complete(result);
+    }
+
+    fn emit_settled(&self, event: WriteSettledEvent) {
+        self.inner.emit_settled(event);
+    }
+}
 
 /// Builds a one-entry zip at `path`.
 pub(super) fn write_simple_zip(path: &Path, entry: &str, content: &[u8]) {

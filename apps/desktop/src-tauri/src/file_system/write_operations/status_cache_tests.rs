@@ -311,6 +311,30 @@ fn list_active_operations_percent_is_zero_when_nothing_known() {
 }
 
 #[test]
+fn indeterminate_compress_phases_clear_both_percent_fallback_axes() {
+    let id = unique_id("compress-finishing");
+    register_operation_status(&id, WriteOperationType::Compress, vec![]);
+    for phase in [
+        WriteOperationPhase::FinishingCompression,
+        WriteOperationPhase::FinishingTransfer,
+    ] {
+        update_operation_status(&id, phase, None, 0, 0, 0, 0);
+        let status = get_operation_status(&id).expect("operation status");
+        assert_eq!((status.files_done, status.files_total), (0, 0));
+        assert_eq!((status.bytes_done, status.bytes_total), (0, 0));
+        let summary = list_active_operations()
+            .into_iter()
+            .find(|summary| summary.operation_id == id)
+            .expect("operation summary");
+        assert_eq!(
+            summary.percent_complete, 0,
+            "{phase:?} must not fall back to a completed file axis"
+        );
+    }
+    unregister_operation_status(&id);
+}
+
+#[test]
 fn list_active_operations_percent_clamps_to_100() {
     // Pin the `.min(100.0)` clamp. If bytes_done > bytes_total (which can
     // happen in flight due to over-counting), the UI must never see > 100.

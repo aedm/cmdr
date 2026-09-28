@@ -105,13 +105,13 @@ without a modal in front of it, and clicking it opens (or raises) the queue wind
 - **Nothing else**: no percentage text, no "+N" affix for the operations it isn't showing. Both were considered and cut
   as noise; the queue window is the surface that promises completeness.
 
-### The scanning state
+### Indeterminate states
 
-An operation that is still counting reaches the corner like any other running one, but `barFraction` can only ever
-return 0 for it: bytes and files both have `total == 0` through the whole scan, by design (finding the totals is what
-the scan is for). A bar at 0% for minutes is not honest progress, so the chip swaps it for a `<Spinner>`, and the
-tooltip becomes `fileOperations.shared.scanningTooltip` ("Scanning…") rather than `queue.chip.tooltip`, whose
-`· {percentText}%` clause would be the dishonest part. The visible label stays the verb.
+An operation whose phase has no honest denominator reaches the corner like any other running one, but both totals are
+zero by design. `pickChipOperation` marks scanning, `FinishingCompression`, and `FinishingTransfer` as indeterminate, so
+the chip swaps its bar for a `<Spinner>` rather than falling back from bytes to a stale file total. Scanning keeps its
+dedicated "Scanning…" tooltip. Compression finishing uses the same phase-specific label as the dialog and queue, and its
+spoken label omits percentage text entirely. `progress-readout.ts` owns the shared phase classifier and labels.
 
 A scan can be PAUSED (the walk parks on the operation's own gate — `write_operations/DETAILS.md` § "The park"), and then
 both of those become claims the chip can't make. The spinner goes away entirely: it is the visible assertion that the

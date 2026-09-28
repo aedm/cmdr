@@ -50,10 +50,10 @@ macro_rules! token_enum {
 }
 
 token_enum! {
-    /// The operation taxonomy, mirroring `WriteOperationType`. Archive variants
-    /// (compress vs zip-edit vs future extract) share `ArchiveEdit` and are
-    /// distinguished by [`ArchiveSubkind`], so a new archive flavor is an
-    /// additive subkind, not a new `kind`.
+    /// The durable operation taxonomy. It is deliberately coarser than the live
+    /// `WriteOperationType`: compress and zip edit have distinct progress
+    /// identities but share `ArchiveEdit` here and are distinguished by
+    /// [`ArchiveSubkind`].
     pub enum OpKind {
         Copy => "copy",
         Move => "move",
@@ -68,8 +68,8 @@ token_enum! {
 
 token_enum! {
     /// The `archive_edit` subkind, supplied by the capturing driver (compress vs
-    /// zip-inner edit), NOT derivable from `WriteOperationType` — both cross IPC
-    /// as `ArchiveEdit`. Stored only when `kind = ArchiveEdit`.
+    /// zip-inner edit). Stored only when `kind = ArchiveEdit`; the live operation
+    /// may carry the more specific `WriteOperationType::Compress`.
     pub enum ArchiveSubkind {
         Compress => "compress",
         Edit => "edit",

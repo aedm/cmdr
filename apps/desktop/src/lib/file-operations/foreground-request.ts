@@ -31,6 +31,7 @@ const SHOWABLE_TYPES: Record<OperationSnapshot['operationType'], TransferOperati
   delete: 'delete',
   trash: 'trash',
   archive_edit: 'archive_edit',
+  compress: 'compress',
   rename: null,
   create_folder: null,
   create_file: null,

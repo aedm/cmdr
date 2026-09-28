@@ -1,8 +1,7 @@
 # Operation queue window
 
-The standalone macOS window listing every running, waiting, and couldn't-finish operation: per-row
-pause/resume/cancel/rollback/dismiss, multi-select + "Cancel selected", global pause/resume. Opens from View > Operation
-queue (⌥⌘Q) or the palette. Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
+The standalone macOS window for running, waiting, and couldn't-finish operations. Opens from View > Operation queue
+(⌥⌘Q) or the palette. Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
 
 ## Module map
 

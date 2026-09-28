@@ -29,9 +29,9 @@ holds the chip's pure pick-and-measure rules; `operation-failure-watch.svelte.ts
 - **Both gates are pure, in `operation-chip.ts`** (`pickChipOperation`, `pickChipState`): add and test one there, not in
   the markup. The bar is bytes, falling back to the file count when `bytesTotal` is 0; instant ops are excluded by TYPED
   `operationType`, ❌ never a substring test.
-- **Scanning gets a SPINNER and "Scanning…", never a bar** (both totals 0); a PAUSED queue KEEPS its bar under the label
-  "Paused", since hiding it re-hides the work the chip exists to surface. Both spoken labels lead with that state, ❌
-  never the verb and ❌ never the tooltip's string, so every `queue.chip.tooltip` clause carries its own leading `·`.
+- **Indeterminate phases get a SPINNER, never a bar**: scanning says "Scanning…"; compression finishing uses its phase
+  label. Both totals are zero, so file fallback would lie. A PAUSED determinate op keeps its bar under "Paused". Spoken
+  labels lead with the visible state, ❌ never the tooltip's string.
 - **Render the session's `etaSecondsDisplay`, ❌ never `progress.etaSeconds`**: the raw value once read "8m 12s" in one
   window, "5m 46s" in the other.
 - **The FIRST appearance waits `CHIP_SETTLE_MS`** (blink-long work never flashes the corner, and the beat closes a race
