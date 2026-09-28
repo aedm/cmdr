@@ -541,7 +541,7 @@
       "name": "tab"
     },
     {
-      "description": "Open, focus, close, or confirm a dialog. Open/focus: settings, file-viewer, about, onboarding. Close: any id from cmdr://dialogs/available. confirm (token-gated) accepts an open confirmation. cmdr://state lists what's open.",
+      "description": "Open, focus, close, or confirm a dialog. Open/focus: settings, file-viewer, about, onboarding. Close: any id from cmdr://dialogs/available. confirm accepts an open confirmation. cmdr://state lists what's open.",
       "inputSchema": {
         "properties": {
           "action": {
@@ -829,7 +829,7 @@
       "name": "indexing"
     },
     {
-      "description": "Control the operation queue: pause / resume / cancel one operationId, or pause_all / resume_all. cancel also takes operationIds (array) for several; rollback: true deletes already-copied files (single op, token-gated). See cmdr://state operations for ids.",
+      "description": "Control the operation queue: pause / resume / cancel one operationId, or pause_all / resume_all. cancel also takes operationIds (array) for several; rollback: true deletes already-copied files (single op). See cmdr://state operations for ids.",
       "inputSchema": {
         "properties": {
           "action": {
@@ -855,7 +855,7 @@
             "type": "array"
           },
           "rollback": {
-            "description": "For cancel with a single operationId: delete already-copied files instead of keeping them. Requires the bearer token.",
+            "description": "For cancel with a single operationId: delete already-copied files instead of keeping them.",
             "type": "boolean"
           }
         },
@@ -867,7 +867,7 @@
       "name": "queue"
     },
     {
-      "description": "Answer ONE name clash a running operation is parked on: skip / overwrite / rename that file, applyToAll for the rest. Read cmdr://state operations first for the pendingConflict block. Returns a typed outcome; refuses rather than pretending. Token-gated.",
+      "description": "Answer ONE name clash a running operation is parked on: skip / overwrite / rename that file, applyToAll for the rest. Read cmdr://state operations first for the pendingConflict block. Returns a typed outcome; refuses rather than pretending.",
       "inputSchema": {
         "properties": {
           "applyToAll": {
@@ -904,7 +904,7 @@
       "name": "resolve_conflict"
     },
     {
-      "description": "Answer the archive-password prompt in cmdr://state, naming its archivePath. browse mode: it re-lists and you're in. transfer mode: it stores the password ONLY, since supplying one never starts a write; run copy or move again to extract. Token-gated.",
+      "description": "Answer the archive-password prompt in cmdr://state, naming its archivePath. browse mode: it re-lists and you're in. transfer mode: it stores the password ONLY, since supplying one never starts a write; run copy or move again to extract.",
       "inputSchema": {
         "properties": {
           "archivePath": {
@@ -1199,7 +1199,7 @@
       "inputSchema": {
         "properties": {
           "autoConfirm": {
-            "description": "Must be true to roll back: a rollback writes to disk, so (like copy/move/delete) it requires the bearer token. Returns once the reversal is dispatched; poll operations_get until rollbackState leaves 'rollingBack'.",
+            "description": "Must be true to roll back: a rollback writes to disk. Returns once the reversal is dispatched; poll operations_get until rollbackState leaves 'rollingBack'.",
             "type": "boolean"
           },
           "operationId": {

@@ -5,9 +5,8 @@
 //! backend / thin frontend). It dispatches no FE action and invents no ack — it
 //! calls the backend directly and returns OK (the `connect_to_server` /
 //! `indexing` precedent, so there is no FE action to ack). These are transient runtime actions on a
-//! crash-safe pipeline, so pause / resume / plain cancel are `Open`; only a
-//! `rollback: true` cancel (which DELETES already-copied files) is token-gated
-//! (`TokenGate::IfRollback`).
+//! crash-safe pipeline. A `rollback: true` cancel DELETES already-copied files, so keep the tool
+//! out of the in-process agent view even though authenticated external MCP clients may request it.
 //!
 //! Discovery of operation ids + their status lives in `cmdr://state` under
 //! `operations:` (the two-source join in `resources/operations.rs`).

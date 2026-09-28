@@ -35,7 +35,7 @@ const MAX_LIMIT: u32 = 1000;
 ///
 /// A bare (unfiltered) call reads the recent-operations feed (ordered by start
 /// time, so a still-running op sorts first); any filter routes through the search
-/// query (ordered by end time). Gate `Open`: reading history is not destructive.
+/// query (ordered by end time). Reading history is not destructive.
 pub async fn execute_operations_list<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     let (filters, limit, offset) = parse_list_filters(params)?;
     let use_recent = filters_are_empty(&filters);
@@ -64,7 +64,6 @@ pub async fn execute_operations_list<R: Runtime>(app: &AppHandle<R>, params: &Va
 
 /// One operation's header plus a page of its item rows (full paths, per-item
 /// outcome). The `rollbackState` field here is what a rollback poll loop watches.
-/// Gate `Open`.
 pub async fn execute_operations_get<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     let op_id = required_operation_id(params)?;
     let limit = parse_limit(params, "limit", DEFAULT_ITEM_LIMIT)?;
@@ -95,11 +94,10 @@ pub async fn execute_operations_get<R: Runtime>(app: &AppHandle<R>, params: &Val
 
 /// Reverse a logged operation through the rollback engine.
 ///
-/// Requires `autoConfirm: true`, which the `IfAutoConfirm` gate ties to the bearer
-/// token — the same threat model as copy/move/delete: a rollback writes to the
-/// filesystem, so it must never run unconfirmed. Without a confirmation dialog
-/// (an alpha-UI surface), the only safe path over MCP is the token-gated bypass, so a
-/// call missing `autoConfirm` is refused rather than acting unconfirmed.
+/// Requires `autoConfirm: true`: a rollback writes to the filesystem, so it must never run
+/// through an accidental default. Without a confirmation dialog (an alpha-UI surface), the only
+/// safe path over MCP is an explicit request from an authenticated client, so a call missing
+/// `autoConfirm` is refused rather than acting unconfirmed.
 ///
 /// Returns after DISPATCH: the inverse operation spawns as an async managed op, so
 /// the caller polls `operations_get` until this operation's `rollbackState` leaves
@@ -111,16 +109,15 @@ pub async fn execute_operations_rollback<R: Runtime>(app: &AppHandle<R>, params:
     let auto_confirm = params.get("autoConfirm").and_then(|v| v.as_bool()).unwrap_or(false);
     if !auto_confirm {
         return Err(ToolError::invalid_params(
-            "operations_rollback needs autoConfirm: true. A rollback writes to disk, so \
-             (like copy/move/delete) it requires the bearer token; interactive confirmation \
-             over MCP isn't available yet.",
+            "operations_rollback needs autoConfirm: true. A rollback writes to disk, and \
+             interactive confirmation over MCP isn't available yet.",
         ));
     }
 
     // `dispatch_rollback` opens a read connection and gates synchronously before
     // spawning the async inverse, so run it off the MCP task like every other
-    // blocking DB touch. The token was already validated by the `IfAutoConfirm`
-    // gate in `server.rs` before dispatch reached here.
+    // blocking DB touch. The token was already validated at the HTTP boundary
+    // before dispatch reached here.
     let app = app.clone();
     // The sink is built at the edge like every other managed op's; this edge is
     // generic over the runtime, so it takes the startup-wired handle.

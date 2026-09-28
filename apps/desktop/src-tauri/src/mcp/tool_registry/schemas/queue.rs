@@ -22,7 +22,7 @@ pub fn queue_schema() -> Value {
             },
             "rollback": {
                 "type": "boolean",
-                "description": "For cancel with a single operationId: delete already-copied files instead of keeping them. Requires the bearer token."
+                "description": "For cancel with a single operationId: delete already-copied files instead of keeping them."
             }
         },
         "required": ["action"]

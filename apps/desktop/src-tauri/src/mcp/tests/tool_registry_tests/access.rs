@@ -1,16 +1,13 @@
 //! The two view dimensions: the agent's consumer view, and the no-write access gate.
 
-use crate::mcp::tool_registry::{
-    Access, Consumer, TokenGate, agent_tool_view, get_all_tools, tool_access, tool_available_to, tool_gate,
-};
+use crate::mcp::tool_registry::{Access, Consumer, agent_tool_view, get_all_tools, tool_access, tool_available_to};
 
 // ── Consumer + access dimensions (the no-write gate) ──────
 //
 // One authored registry, two consumer views (agent decisions D49/D59). `consumers` is the exposure
-// axis; `access` is a stronger guarantee than `TokenGate::Open` can give (Open covers
-// destructive-but-prompting ops). These tests pin the agent view to exactly its authored
-// `[agent]` entries AND require every one to be `Access::Read` or `Access::Propose`, never
-// `Access::Write`.
+// axis; `access` is the capability axis. These tests pin the agent view to exactly its authored
+// `[agent]` entries AND require every one to be `Access::Read`, `Access::Propose`, or
+// `Access::Memory`, never `Access::Write`.
 //
 // The agent can propose; only the user can approve. `Propose` widens what the agent may ASK for,
 // never what it may DO — so these tests also pin the hand-authored Propose allowlist and the
@@ -79,11 +76,8 @@ const EXPECTED_MEMORY_TOOL_NAMES: &[&str] = &["memory_write", "memory_edit"];
 
 /// The agent can propose; only the user can approve; and the only thing it writes is its own
 /// notes. Structurally: every tool in the agent's view is `Access::Read`, `Access::Propose`, or
-/// `Access::Memory`, and NEVER `Access::Write`. This is the guarantee `TokenGate::Open` cannot
-/// give — `Open` covers destructive ops that still prompt the user (`copy`/`move`/`delete` with
-/// `autoConfirm` absent carry `IfAutoConfirm`), so a gate-based filter would let a `Write` tool
-/// into the agent's view. The regression anchor for "the agent still can't touch the user's
-/// files, and can now ask and remember".
+/// `Access::Memory`, and NEVER `Access::Write`. The regression anchor for "the agent still can't
+/// touch the user's files, and can now ask and remember".
 #[test]
 fn test_agent_tool_view_never_writes() {
     for tool in agent_tool_view() {
@@ -151,9 +145,8 @@ fn test_propose_tools_are_an_explicit_allowlist() {
 }
 
 /// No proposal path inherits the confirmation bypass. `autoConfirm` (and the `queue` tool's
-/// `rollback`, and `dialog`'s `action: "confirm"`) let a token-holding MCP client skip the user's
-/// confirmation dialog — exactly the approval a proposal must never grant itself. So every tool in
-/// the agent's view carries `TokenGate::Open` (it has no bypass to gate) AND declares no bypass
+/// `rollback`) lets an external MCP client skip the user's confirmation dialog — exactly the
+/// approval a proposal must never grant itself. Every agent tool therefore declares no bypass
 /// parameter in its schema, which is what makes "only the user can approve" true rather than
 /// merely intended.
 #[test]
@@ -161,12 +154,6 @@ fn test_no_agent_tool_reaches_the_confirmation_bypass() {
     let view = agent_tool_view();
     assert!(!view.is_empty(), "an empty agent view would make this vacuous");
     for tool in &view {
-        assert_eq!(
-            tool_gate(&tool.name),
-            Some(TokenGate::Open),
-            "agent-visible tool '{}' carries a non-Open gate — the agent view must contain no bypassable tool",
-            tool.name
-        );
         let properties = tool.input_schema.get("properties");
         for bypass in ["autoConfirm", "rollback"] {
             assert!(

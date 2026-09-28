@@ -73,7 +73,7 @@ read_port_file() {
 # Read the per-instance bearer token the server writes (0o600) next to mcp.port. Required:
 # every /mcp request must carry `Authorization: Bearer <token>` (see mcp/server.rs). A
 # missing token file means the server hasn't written it yet (or crashed) — fail loudly
-# rather than send an unauthenticated request that would 401.
+# rather than send an unauthenticated request that the server will reject.
 read_token_file() {
     local data_dir="$1"
     local token_file="${data_dir}/mcp.token"
@@ -181,7 +181,7 @@ rpc() {
     if [[ "$status" != 2* ]]; then
         echo "Error: the MCP server answered HTTP ${status} at ${BASE_URL}." >&2
         echo "  Response: ${response}" >&2
-        echo "  A 401/403 usually means the token in ${DATA_DIR}/mcp.token is from an older run; restart Cmdr or re-read it." >&2
+        echo "  A 403 usually means the token in ${DATA_DIR}/mcp.token is from an older run; restart Cmdr or re-read it." >&2
         return 22
     fi
     printf '%s' "$response"

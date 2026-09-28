@@ -6,7 +6,7 @@
 use axum::{
     Json, Router,
     extract::State,
-    http::{StatusCode, header},
+    http::{HeaderName, Method, StatusCode, header},
     response::{
         IntoResponse, Response,
         sse::{Event, Sse},
@@ -22,12 +22,12 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Runtime};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use uuid::Uuid;
 
 use super::auth::{
-    auto_confirm_token_required_response, generate_token, get_protocol_version, prefers_sse, set_mcp_token,
-    tool_call_requires_token, validate_accept_header, validate_origin, validate_token,
+    authentication_required_response, generate_token, get_protocol_version, is_localhost_origin, prefers_sse,
+    set_mcp_token, validate_accept_header, validate_origin, validate_token,
 };
 use super::config::McpConfig;
 use super::port_file::{remove_port_file, write_port_file, write_secret_file};
@@ -320,15 +320,7 @@ pub async fn rebind_interactive<R: Runtime + 'static>(
 /// half of a start, shared by the startup and interactive paths.
 fn serve_on<R: Runtime + 'static>(app: AppHandle<R>, listener: tokio::net::TcpListener, port: u16, data_dir: PathBuf) {
     let state = Arc::new(McpState::new(app));
-
-    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
-
-    let router = Router::new()
-        .route("/mcp", post(handle_mcp_post::<R>))
-        .route("/mcp", get(handle_mcp_get))
-        .route("/mcp/health", get(health_check))
-        .layer(cors)
-        .with_state(state);
+    let router = build_router(state);
 
     log::info!("MCP server listening on http://127.0.0.1:{}", port);
 
@@ -399,6 +391,31 @@ fn serve_on<R: Runtime + 'static>(app: AppHandle<R>, listener: tokio::net::TcpLi
     if let Ok(mut guard) = MCP_HANDLE.lock() {
         *guard = Some(handle);
     }
+}
+
+/// Build the complete HTTP surface. Kept as one function so transport-level tests exercise
+/// the exact routes and CORS policy production serves rather than a lookalike test router.
+fn build_router<R: Runtime>(state: Arc<McpState<R>>) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::predicate(|origin, _| {
+            origin.to_str().is_ok_and(is_localhost_origin)
+        }))
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([
+            header::ACCEPT,
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            HeaderName::from_static("mcp-protocol-version"),
+            HeaderName::from_static("mcp-session-id"),
+            HeaderName::from_static("last-event-id"),
+        ]);
+
+    Router::new()
+        .route("/mcp", post(handle_mcp_post::<R>))
+        .route("/mcp", get(handle_mcp_get))
+        .route("/mcp/health", get(health_check))
+        .layer(cors)
+        .with_state(state)
 }
 
 /// Start the MCP server in a fire-and-forget manner (for app startup).
@@ -503,8 +520,9 @@ async fn handle_mcp_get(headers: SafeHeaders) -> Response {
         return *response;
     }
 
-    // No token gate on the SSE stream: GET carries no tool call, so it can't bypass a
-    // confirmation dialog. The token is enforced per-request in the POST handler only.
+    if validate_token(&headers).is_err() {
+        return StatusCode::FORBIDDEN.into_response();
+    }
 
     // For backwards compatibility with 2024-11-05 transport, we send an SSE stream
     // that starts with an 'endpoint' event pointing to the same URL for POST
@@ -579,16 +597,18 @@ async fn handle_mcp_post<R: Runtime>(
         return *response;
     }
 
-    // 1b. Token gate, but only for calls that bypass the user's confirmation dialog
-    // (destructive auto-confirm + programmatic dialog confirm). Reads, nav, search, and
-    // destructive ops that still prompt the user all pass without a token.
-    if tool_call_requires_token(&request.method, &request.params) && validate_token(&headers).is_err() {
-        // Name the gated tool in the rejection (the `name` field of the tools/call
-        // params) so the message describes the ACTUAL tool, not a hardcoded
-        // "destructive file operation" that's wrong for set_setting / indexing / tag /
-        // favorites. Same value for a missing vs a wrong token, so no oracle.
-        let tool_name = request.params.get("name").and_then(|v| v.as_str());
-        return auto_confirm_token_required_response(&state.app, request.id.clone(), tool_name);
+    // Authenticate before protocol/session handling or dispatch. Ordinary requests retain
+    // their JSON-RPC id in an in-band error because supported clients surface that cleanly;
+    // a 401 launches OAuth discovery, which this local token scheme does not implement.
+    // Notifications have no response id, so reject them at HTTP level without manufacturing
+    // a JSON-RPC reply.
+    let is_notification = request.id.is_none() || request.method.starts_with("notifications/");
+    if validate_token(&headers).is_err() {
+        return if is_notification {
+            StatusCode::FORBIDDEN.into_response()
+        } else {
+            authentication_required_response(&state.app, request.id.clone())
+        };
     }
 
     // 2. Validate Accept header (recommended but we're lenient)
@@ -654,7 +674,6 @@ async fn handle_mcp_post<R: Runtime>(
     // 7. Handle notifications (no id) - return 202 Accepted with no body per spec
     // Per MCP spec: "If the input is a JSON-RPC notification: the server MUST return
     // HTTP status code 202 Accepted with no body."
-    let is_notification = request.id.is_none() || request.method.starts_with("notifications/");
     if is_notification {
         // Still process the notification for side effects
         let _ = process_request(&state, request, &client_version).await;
@@ -817,6 +836,10 @@ fn format_tool_result(value: &Value) -> String {
         serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
     }
 }
+
+#[cfg(test)]
+#[path = "tests/server_http_auth.rs"]
+mod server_http_auth;
 
 #[cfg(test)]
 mod tests {

@@ -6,20 +6,20 @@ filesystem access. Streamable HTTP, `127.0.0.1` only, ephemeral port by default.
 
 `server.rs` binds and dispatches, `auth.rs` owns tokens (one-directional: `server` uses `auth`, never the reverse),
 `tool_registry/` is the single source for every AI-callable tool (one `mcp_tools!` table generating the per-consumer
-views and the gate; handlers in `executor/CLAUDE.md`), `resources/` serves the read-only `cmdr://` views over the state
+views; handlers in `executor/CLAUDE.md`), `resources/` serves the read-only `cmdr://` views over the state
 stores (`resources/CLAUDE.md`).
 
 ## Must-knows
 
 - **One registry, two consumer views.** Each entry declares `consumers` + `access`, and each transport dispatches only
   its own view. **The agent can propose; only the user can approve**: `[agent]` entries are `Read`, `Propose`, or
-  `Memory`, never `Write` (pinned structurally). `access` beats `TokenGate::Open`, so tag any mutating tool `Write`.
-  Agent handlers: `../agent/tools/CLAUDE.md`.
+  `Memory`, never `Write` (pinned structurally), so tag any mutating tool `Write`. Agent handlers:
+  `../agent/tools/CLAUDE.md`.
 - **`Access::Memory` is the agent's only write, and it is agent-only.** ❌ Never add one to `Consumer::AiClient`: this
   transport's story is "no filesystem access" (a test pins that).
-- **Auth gates ONLY the calls that bypass the user's confirmation dialog**, via a `TokenGate` per entry, never a
-  hand-list: ❌ don't widen it to reads or nav, ❌ don't narrow it past the bypass. Rejection is an in-band JSON-RPC
-  error at HTTP 200, ❌ never a 401 (that sends clients into OAuth discovery), and ❌ never echoes the token.
+- **Auth covers every `/mcp` request** before session handling or dispatch; only the minimal health endpoint and
+  data-free CORS preflight stay open. Ordinary request rejection is an in-band JSON-RPC error at HTTP 200, ❌ never a
+  401 (that sends clients into OAuth discovery); notification and SSE rejection is HTTP 403. Never echo the token.
 - **A call is checked against its tool's declared schema before a handler sees it** (`tool_registry/params.rs`), so
   author the schema as the truth: a `required` field is enforced, and an AGENT tool must close itself with
   `additionalProperties: false` (a test pins it). Params are camelCase, tool names snake_case; agents pattern-match

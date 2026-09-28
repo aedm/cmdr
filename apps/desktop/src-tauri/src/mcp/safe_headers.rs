@@ -3,11 +3,9 @@
 //! ❗ **Both `/mcp` handlers extract [`SafeHeaders`], never a bare `HeaderMap`,
 //! and that is the whole point.** `HeaderMap`'s own `Debug` prints every value,
 //! so a `{:?}` on one writes `Authorization: Bearer <token>` into `cmdr.log`.
-//! That matters more than a stray log line: `cmdr://logs` is readable with **no**
-//! token (only the auto-confirm bypass is gated) and its redaction covers home
-//! paths, SMB URIs, and emails, never tokens. So a local process could read the
-//! log over the open surface, lift the token, and spend it on exactly the calls
-//! the token exists to keep it out of.
+//! A leaked token can escape through copied logs, reports, or an authenticated
+//! `cmdr://logs` read; the log redactor covers home paths, SMB URIs, and emails,
+//! not arbitrary bearer secrets.
 //!
 //! Both routes had that shape, and the SSE one — where a client typically sends
 //! the header to open the stream — kept it for a while after the POST one was
@@ -79,8 +77,8 @@ mod tests {
 
     #[test]
     fn a_header_dump_never_carries_the_bearer_token() {
-        // `cmdr://logs` needs no token to read, so a token in the log file is a
-        // token anyone on this machine can pick up and spend on the gated calls.
+        // A token in the log file defeats the boundary if those logs are copied, reported, or
+        // viewed through an already authenticated client.
         let dumped = format!("{:?}", headers_with_token());
 
         assert!(!dumped.contains("super-secret"), "{dumped}");

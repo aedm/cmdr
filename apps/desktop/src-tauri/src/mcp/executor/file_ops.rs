@@ -100,10 +100,8 @@ pub(super) fn empty_operation_error(
 pub async fn execute_copy<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     refuse_while_dialog_blocks(app, "copy")?;
     check_operation_has_target(app, "copy")?;
-    // `autoConfirm: true` skips the user's confirmation dialog. This is safe because the
-    // POST-handler boundary gates exactly this case: `tool_call_requires_token` flags
-    // destructive auto-confirm (and the `dialog` confirm action), so any caller that reaches
-    // here already proved filesystem access by reading the 0o600 `<data_dir>/mcp.token`.
+    // `autoConfirm: true` skips the user's confirmation dialog. The explicit flag records that
+    // intent; the transport has already authenticated every external MCP request.
     let auto_confirm = params.get("autoConfirm").and_then(|v| v.as_bool()).unwrap_or(false);
     let on_conflict = params.get("onConflict").and_then(|v| v.as_str()).unwrap_or("skip_all");
 
@@ -142,9 +140,8 @@ pub async fn execute_copy<R: Runtime>(app: &AppHandle<R>, params: &Value) -> Too
 pub async fn execute_move<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     refuse_while_dialog_blocks(app, "move")?;
     check_operation_has_target(app, "move")?;
-    // `autoConfirm: true` skips the user's confirmation dialog; the POST-handler token gate
-    // (`tool_call_requires_token` in `mcp/server.rs`) is what protects this now — it flags
-    // destructive auto-confirm (and the `dialog` confirm action), not the whole server.
+    // `autoConfirm: true` skips the user's confirmation dialog. The explicit flag records that
+    // intent; the transport has already authenticated every external MCP request.
     let auto_confirm = params.get("autoConfirm").and_then(|v| v.as_bool()).unwrap_or(false);
     let on_conflict = params.get("onConflict").and_then(|v| v.as_str()).unwrap_or("skip_all");
 
@@ -190,8 +187,8 @@ pub async fn execute_move<R: Runtime>(app: &AppHandle<R>, params: &Value) -> Too
 pub async fn execute_compress<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     refuse_while_dialog_blocks(app, "compress")?;
     check_operation_has_target(app, "compress")?;
-    // `autoConfirm: true` skips the user's confirmation dialog; the POST-handler token
-    // gate (`tool_call_requires_token` in `mcp/server.rs`) protects this case.
+    // `autoConfirm: true` skips the user's confirmation dialog. The explicit flag records that
+    // intent; the transport has already authenticated every external MCP request.
     let auto_confirm = params.get("autoConfirm").and_then(|v| v.as_bool()).unwrap_or(false);
     // No `onConflict` param, unlike copy/move: compress creates ONE new archive, so
     // there are no inner-file conflicts to resolve, and an existing TARGET archive is
@@ -247,9 +244,8 @@ pub async fn execute_compress<R: Runtime>(app: &AppHandle<R>, params: &Value) ->
 pub async fn execute_delete<R: Runtime>(app: &AppHandle<R>, params: &Value) -> ToolResult {
     refuse_while_dialog_blocks(app, "delete")?;
     check_operation_has_target(app, "delete")?;
-    // `autoConfirm: true` skips the user's confirmation dialog; the POST-handler token gate
-    // (`tool_call_requires_token` in `mcp/server.rs`) is what protects this now — it flags
-    // destructive auto-confirm (and the `dialog` confirm action), not the whole server.
+    // `autoConfirm: true` skips the user's confirmation dialog. The explicit flag records that
+    // intent; the transport has already authenticated every external MCP request.
     let auto_confirm = params.get("autoConfirm").and_then(|v| v.as_bool()).unwrap_or(false);
     let permanent = delete_permanent_from_mode(params)?;
 
@@ -295,7 +291,7 @@ fn delete_permanent_from_mode(params: &Value) -> Result<Option<bool>, ToolError>
 /// - `autoConfirm: false` → a round-trip: the FE moves the cursor to the target
 ///   row and starts the inline rename editor prefilled with `newName` for the
 ///   user to review (the human-review affordance). Acks once the editor is up.
-/// - `autoConfirm: true` (token-gated) → calls the `rename_file` backend directly
+/// - `autoConfirm: true` → calls the `rename_file` backend directly
 ///   with `force: false`; the managed op notifies the listing cache, so the pane
 ///   refreshes on success. Honest errors: name not in the listing, or the target
 ///   already exists.

@@ -1,8 +1,8 @@
 //! Single source of truth for MCP tools.
 //!
 //! Each tool is authored exactly once in the `mcp_tools!` table in `table.rs`, bundling its name,
-//! description, JSON input schema, bearer-token gate, consumer exposure, access class, and
-//! handler. The macro expands that one table into every consumer, so the facets can't drift:
+//! description, JSON input schema, consumer exposure, access class, and handler. The macro
+//! expands that one table into every consumer, so the facets can't drift:
 //!
 //! - [`get_all_tools`] — the AI-client `tools/list` payload (entries whose `consumers` include
 //!   [`Consumer::AiClient`]; non-generic; server + tests read it).
@@ -10,25 +10,20 @@
 //!   [`Consumer::Agent`]): the read (and, once authored, propose) families the chat agent dispatches.
 //! - [`execute_tool`] — the `tools/call` dispatch (generic over `Runtime`), gated to the caller's
 //!   consumer view: a name outside the caller's view is refused before dispatch.
-//! - [`tool_gate`] + [`TokenGate`] — the auth classification `auth.rs` reads.
 //! - [`tool_consumers`] / [`tool_access`] — the two new dimensions, read by the structural tests.
 //!
-//! Adding a tool means adding one entry: you can't add it without supplying a schema, a gate,
-//! consumers, an access class, and a handler, and you can't add a handler the dispatch doesn't
-//! know about. The count and coverage tests are then cheap guards over a property that's true by
-//! construction.
+//! Adding a tool means adding one entry: you can't add it without supplying a schema, consumers,
+//! an access class, and a handler, and you can't add a handler the dispatch doesn't know about.
+//! The count and coverage tests are then cheap guards over a property that's true by construction.
 //!
 //! **Two view dimensions, why both (agent decisions D49/D59):** one authored registry feeds two
 //! consumers. `consumers` is the exposure axis — the agent's dispatch view physically excludes
 //! every tool not tagged `[agent]`, so its write path is absent by construction, not policy.
-//! `access` is a stronger guarantee than the gate can give: [`TokenGate::Open`] covers
-//! destructive-but-prompting ops (`copy`/`move`/`delete` with `autoConfirm` absent carry
-//! `IfAutoConfirm`, effectively open), so a gate-based agent filter would let a destructive tool
-//! into the agent's view. The structural tests pin the agent view to exactly its authored
-//! `[agent]` entries AND require every one to be [`Access::Read`], [`Access::Propose`], or
-//! [`Access::Memory`], never [`Access::Write`]. **The agent can propose; only the user can
-//! approve** — no tool approves a proposal, and the only thing it writes is its own memory
-//! folder.
+//! `access` classifies what a tool can do independently of transport authentication. The
+//! structural tests pin the agent view to exactly its authored `[agent]` entries AND require
+//! every one to be [`Access::Read`], [`Access::Propose`], or [`Access::Memory`], never
+//! [`Access::Write`]. **The agent can propose; only the user can approve** — no tool approves a
+//! proposal, and the only thing it writes is its own memory folder.
 //!
 //! Wire output must stay byte-identical: each schema is the exact `json!` block (hoisted into
 //! [`schemas`] verbatim), and the tool order is the historical category concatenation. The
@@ -40,11 +35,8 @@
 //! `executor` handlers and on `schemas`; `auth` depends on this module. Neither may depend on
 //! `server` or `auth` (that would cycle).
 
-mod gate;
 pub mod params;
 mod schemas;
-
-pub use gate::TokenGate;
 
 use serde_json::Value;
 
@@ -64,8 +56,7 @@ pub enum Consumer {
 }
 
 /// Whether a tool reads, asks, remembers, or mutates. The agent view admits `Read`, `Propose`,
-/// and `Memory`, and must contain zero `Write` tools — this is the guarantee [`TokenGate`] alone
-/// can't give (see the module docs).
+/// and `Memory`, and must contain zero `Write` tools (see the module docs).
 ///
 /// The agent dispatch (`crate::agent::tools`) reads [`tool_access`] as a runtime backstop: it
 /// refuses to execute any tool classified `Write`, so "the agent can't act" holds even against a
@@ -121,10 +112,10 @@ pub fn validate_params(name: &str, params: &Value) -> Result<(), ToolError> {
 }
 
 /// Declarative tool table → the consumers (`get_all_tools`, `agent_tool_view`, `execute_tool`,
-/// `tool_gate`, `tool_consumers`, `tool_access`).
+/// `tool_consumers`, `tool_access`).
 ///
 /// Entry form:
-/// `"name" => { desc, schema, gate, consumers: &[..], access: .., run: <shape> <handler-path> }`.
+/// `"name" => { desc, schema, consumers: &[..], access: .., run: <shape> <handler-path> }`.
 ///
 /// The `run` shape tag selects how the generated dispatch calls the handler, sidestepping
 /// `macro_rules!` hygiene (call-site idents from the table can't bind to the def-site fn params,
@@ -144,7 +135,6 @@ macro_rules! mcp_tools {
     ( $( $name:literal => {
         desc: $desc:expr,
         schema: $schema:expr,
-        gate: $gate:expr,
         consumers: $consumers:expr,
         access: $access:expr,
         run: $shape:tt $path:path
@@ -173,15 +163,6 @@ macro_rules! mcp_tools {
                 }
             )*
             tools
-        }
-
-        /// The bearer-token classification for a tool, or `None` for an unknown name. The
-        /// single source `auth::tool_call_requires_token` reads.
-        pub fn tool_gate(name: &str) -> Option<TokenGate> {
-            match name {
-                $( $name => Some($gate), )*
-                _ => None,
-            }
         }
 
         /// The consumer exposure for a tool, or `None` for an unknown name.
@@ -247,4 +228,4 @@ macro_rules! mcp_tools {
 
 mod table;
 
-pub use table::{agent_tool_view, execute_tool, get_all_tools, tool_access, tool_consumers, tool_gate, tool_schema};
+pub use table::{agent_tool_view, execute_tool, get_all_tools, tool_access, tool_consumers, tool_schema};

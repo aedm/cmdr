@@ -87,22 +87,18 @@ landed and was refused, and the message carries the body.
 `search` and `ai_search` can hold a reply for their whole `maxWaitSeconds` (up to 120), so the script waits 150 s by
 default; `CMDR_MCP_TIMEOUT` moves it.
 
-## Authentication (token-gated tools)
+## Authentication
 
-Most tools (resource reads, nav, search, dialog-prompting ops) need no auth. A bearer token is required ONLY for the
-calls that bypass the user's confirmation dialog: `set_setting`, `delete` / `move` / `copy` with `autoConfirm: true`,
-and `dialog` with `action: "confirm"` (including `quit-confirmation`; the matching `close`, which keeps working, is
-open). `resolve_conflict` and `unlock_archive` are gated too: they answer, with no dialog, a question that was put to
-the user. Calling one of these without the token logs `MCP: rejected request with missing/invalid bearer token` and
-returns a JSON-RPC error pointing at the token file. To get it right on the first try:
+A bearer token is required on every `/mcp` request, including initialization, tool and resource discovery, reads,
+writes, notifications, and GET/SSE. Only the minimal `/mcp/health` response and data-free CORS preflight stay open.
+Calling an ordinary JSON-RPC method without the token returns an actionable in-band response pointing at the token file;
+notifications and GET/SSE return HTTP 403. To get it right on the first try:
 
 - **`./scripts/mcp-call.sh` handles the token for you.** It reads `<data_dir>/mcp.token` (or `CMDR_MCP_TOKEN`) and sends
-  `Authorization: Bearer <token>` on every request. Prefer it for any gated call: `./scripts/mcp-call.sh set_setting …`
-  just works.
-- **The wired-up `mcp__cmdr-*__*` tools can't add headers**, so gated ops through them fail unless you start Cmdr with
-  `CMDR_MCP_TOKEN` exported and add `"headers": { "Authorization": "Bearer ${CMDR_MCP_TOKEN}" }` to the server entry in
-  `.mcp.json`. Without that setup, route gated ops through `mcp-call.sh` instead. Read-only / nav / search tools work
-  through the wired-up tools regardless.
+  `Authorization: Bearer <token>` on every request.
+- **A wired-up external client needs the header at connection time.** Start Cmdr with `CMDR_MCP_TOKEN` exported and add
+  `"headers": { "Authorization": "Bearer ${CMDR_MCP_TOKEN}" }` to the server entry in `.mcp.json`, or configure the
+  equivalent static header in that client. Without it, use `mcp-call.sh`.
 
 Full token model (why a per-launch CSPRNG token, the `CMDR_MCP_TOKEN` override, why rejection is HTTP 200 not 401):
 `apps/desktop/src-tauri/src/mcp/DETAILS.md` § Authentication.
@@ -196,7 +192,7 @@ The reply carries a typed `outcome`: `resolved` (yours is the answer the operati
 answered the same clash first). A refusal carries `data.outcome` instead: `stale_answer` (the operation has moved on,
 re-read `cmdr://state`), `no_pending_conflict`, or `unknown_operation`. Branch on those, never on the sentence.
 `applyToAll: true` answers the rest of the operation's clashes the same way. Both `dialog confirm` and
-`resolve_conflict` are token-gated, so route them through `./scripts/mcp-call.sh`.
+`resolve_conflict` require the authenticated connection, so route them through `./scripts/mcp-call.sh`.
 
 ## Unlocking an encrypted archive
 
@@ -218,7 +214,7 @@ flows:
 
 Copy `archivePath` back verbatim: the tool refuses (`data.outcome: "different_archive"`) rather than answering whatever
 happens to be asking, since another surface may have answered the prompt you read. `no_password_prompt` means nothing is
-asking. The tool is token-gated, so route it through `./scripts/mcp-call.sh`.
+asking. Route the tool through the authenticated `./scripts/mcp-call.sh`.
 
 What happens next depends on `mode`:
 
@@ -250,7 +246,7 @@ still going it does **not** quit: it raises the quit confirmation, starts the 15
 Answer it, either way:
 
 ```bash
-# Quit now, stopping what's running (token-gated, like every dialog confirm).
+# Quit now, stopping what's running.
 ./scripts/mcp-call.sh dialog '{"action":"confirm","type":"quit-confirmation"}'
 
 # Or leave the operations alone. The countdown is deleted, not deferred.
@@ -272,8 +268,8 @@ decide.
 
 `memory_diagnostics` asks the running app about itself: the physical footprint, both allocators' own accounting, the
 Rust heap split into live data and allocator slack, SQLite's page-cache slab, and the kernel's VM map folded by tag.
-Ungated, read-only, macOS only, and it works against a shipped release, which is the only condition the interesting
-numbers appear under.
+Read-only, macOS only, and it works against a shipped release, which is the only condition the interesting numbers
+appear under.
 
 ```bash
 ./scripts/mcp-call.sh memory_diagnostics '{}'

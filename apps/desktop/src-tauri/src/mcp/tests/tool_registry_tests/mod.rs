@@ -2,7 +2,6 @@
 //! group pins:
 //!
 //! - `schemas.rs` — the tool set and every tool's declared JSON schema.
-//! - `gate.rs` — the bearer-token classification (`tool_gate` / `TokenGate`).
 //! - `access.rs` — the consumer and access dimensions: the agent's view, and the no-write gate.
 //! - `schema_gate.rs` — `validate_params`, which refuses a call its tool's schema never allowed.
 //!
@@ -11,7 +10,6 @@
 //! they drive only the public registry surface, so no `super` access is needed.
 
 mod access;
-mod gate;
 mod schema_gate;
 mod schemas;
 

@@ -3,7 +3,7 @@
 use serde_json::json;
 
 use super::{EXPECTED_TOOL_NAMES, tool};
-use crate::mcp::tool_registry::{TokenGate, get_all_tools, tool_gate};
+use crate::mcp::tool_registry::get_all_tools;
 
 #[test]
 fn test_all_tools_count() {
@@ -233,9 +233,6 @@ fn test_indexing_tool_schema() {
     assert_eq!(required.len(), 2);
     assert!(required.contains(&json!("action")));
     assert!(required.contains(&json!("volumeId")));
-
-    // Silent per-drive config mutation with no confirmation dialog → gated.
-    assert_eq!(tool_gate("indexing"), Some(TokenGate::Always));
 }
 
 #[test]
@@ -302,29 +299,24 @@ fn test_operations_list_schema() {
 }
 
 #[test]
-fn test_operations_rollback_schema_and_gate() {
+fn test_operations_rollback_schema() {
     let tools = get_all_tools();
     let schema = &tool(&tools, "operations_rollback").input_schema;
     let props = schema.get("properties").unwrap();
     assert!(props.get("operationId").is_some());
-    // The autoConfirm property is what ties the tool to the IfAutoConfirm gate
-    // (the anti-footgun `test_autoconfirm_tools_are_gated` backstop).
+    // Rollback has no review dialog, so the caller must opt into it explicitly.
     assert!(props.get("autoConfirm").is_some());
 
     let required = schema.get("required").unwrap().as_array().unwrap();
     assert_eq!(required.len(), 1);
     assert!(required.contains(&json!("operationId")));
-
-    assert_eq!(tool_gate("operations_rollback"), Some(TokenGate::IfAutoConfirm));
-    assert_eq!(tool_gate("operations_list"), Some(TokenGate::Open));
-    assert_eq!(tool_gate("operations_get"), Some(TokenGate::Open));
 }
 
 /// The instrument has to be reachable from OUTSIDE the app, which is the whole reason the
 /// tool exists: `get_memory_diagnostics` ships in release builds and had no caller anywhere,
 /// so a running instance could be asked about its panes but never about its own memory.
 #[test]
-fn test_memory_diagnostics_schema_and_gate() {
+fn test_memory_diagnostics_schema() {
     let tools = get_all_tools();
     let schema = &tool(&tools, "memory_diagnostics").input_schema;
     let props = schema.get("properties").unwrap();
@@ -336,5 +328,124 @@ fn test_memory_diagnostics_schema_and_gate() {
     // Nothing is required: the point is that one bare call answers the question.
     assert!(schema.get("required").unwrap().as_array().unwrap().is_empty());
     assert_eq!(schema.get("additionalProperties").unwrap(), &json!(false));
-    assert_eq!(tool_gate("memory_diagnostics"), Some(TokenGate::Open));
+}
+
+#[test]
+fn test_queue_tool_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "queue").input_schema;
+    let props = schema.get("properties").unwrap();
+
+    for key in ["action", "operationId", "operationIds", "rollback"] {
+        assert!(props.get(key).is_some(), "queue schema missing '{key}'");
+    }
+    let actions = props.get("action").unwrap().get("enum").unwrap().as_array().unwrap();
+    for action in ["pause", "resume", "cancel", "pause_all", "resume_all"] {
+        assert!(actions.contains(&json!(action)), "missing action '{action}'");
+    }
+    let required = schema.get("required").unwrap().as_array().unwrap();
+    assert_eq!(required, &[json!("action")]);
+}
+
+#[test]
+fn test_resolve_conflict_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "resolve_conflict").input_schema;
+    let props = schema.get("properties").unwrap();
+    let resolutions = props
+        .get("resolution")
+        .unwrap()
+        .get("enum")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    for resolution in ["skip", "overwrite", "rename", "overwrite_smaller", "overwrite_older"] {
+        assert!(resolutions.contains(&json!(resolution)), "missing '{resolution}'");
+    }
+    assert!(!resolutions.contains(&json!("stop")));
+
+    let required = schema.get("required").unwrap().as_array().unwrap();
+    for param in ["operationId", "conflictId", "resolution"] {
+        assert!(required.contains(&json!(param)), "'{param}' must be required");
+    }
+}
+
+#[test]
+fn test_transfer_tools_offer_the_same_conflict_policies() {
+    let tools = get_all_tools();
+    for tool_name in ["dialog", "copy", "move"] {
+        let policies = tool(&tools, tool_name).input_schema["properties"]["onConflict"]["enum"]
+            .as_array()
+            .unwrap();
+        for policy in [
+            "stop",
+            "skip_all",
+            "overwrite_all",
+            "rename_all",
+            "overwrite_smaller_all",
+            "overwrite_older_all",
+        ] {
+            assert!(
+                policies.contains(&json!(policy)),
+                "{tool_name} is missing policy '{policy}'"
+            );
+        }
+        assert_eq!(policies.len(), 6, "{tool_name}: policy list differs from the rest");
+    }
+}
+
+#[test]
+fn test_rename_tool_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "rename").input_schema;
+    let props = schema.get("properties").unwrap();
+    for key in ["pane", "name", "newName", "autoConfirm"] {
+        assert!(props.get(key).is_some(), "rename schema missing '{key}'");
+    }
+    assert_eq!(schema.get("required").unwrap().as_array().unwrap(), &[json!("newName")]);
+}
+
+#[test]
+fn test_tag_tool_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "tag").input_schema;
+    let props = schema.get("properties").unwrap();
+    for key in ["pane", "action", "names", "colors"] {
+        assert!(props.get(key).is_some(), "tag schema missing '{key}'");
+    }
+    let actions = props["action"]["enum"].as_array().unwrap();
+    for action in ["set", "toggle", "clear"] {
+        assert!(actions.contains(&json!(action)), "missing action '{action}'");
+    }
+    let colors = props["colors"]["items"]["enum"].as_array().unwrap();
+    for color in ["red", "orange", "yellow", "green", "blue", "purple", "gray"] {
+        assert!(colors.contains(&json!(color)), "missing color '{color}'");
+    }
+    assert_eq!(schema.get("required").unwrap().as_array().unwrap(), &[json!("action")]);
+}
+
+#[test]
+fn test_favorites_tool_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "favorites").input_schema;
+    let props = schema.get("properties").unwrap();
+    for key in ["action", "path", "id", "name", "orderedIds"] {
+        assert!(props.get(key).is_some(), "favorites schema missing '{key}'");
+    }
+    let actions = props["action"]["enum"].as_array().unwrap();
+    for action in ["add", "rename", "remove", "reorder"] {
+        assert!(actions.contains(&json!(action)), "missing action '{action}'");
+    }
+    assert_eq!(schema.get("required").unwrap().as_array().unwrap(), &[json!("action")]);
+}
+
+#[test]
+fn test_eject_tool_schema() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "eject").input_schema;
+    assert!(schema["properties"].get("volumeId").is_some());
+    assert_eq!(
+        schema.get("required").unwrap().as_array().unwrap(),
+        &[json!("volumeId")]
+    );
 }

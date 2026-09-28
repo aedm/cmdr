@@ -444,6 +444,10 @@ objc2-io-kit = { version = "0.3.2", default-features = false, features = ["std",
 
 
 [dev-dependencies]
+# Tauri's no-window mock runtime for real HTTP-boundary tests of the MCP router.
+# This is the same package as the production dependency; the feature only publishes
+# `tauri::test` helpers to dev targets and adds no package to the graph.
+tauri = { version = "2", features = ["test"] }
 # Parsing an accelerator string FOR REAL in `menu/accelerators.rs`'s tests. muda is where Tauri
 # parses one, and `tauri::menu::MenuItem::new` is `.parse().ok()`, which throws the error away and
 # builds the item with no key at all — so a converter test that only compares strings is blind to a

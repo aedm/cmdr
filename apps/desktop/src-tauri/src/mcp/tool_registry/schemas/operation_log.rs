@@ -85,7 +85,7 @@ pub fn operations_rollback_schema() -> Value {
             },
             "autoConfirm": {
                 "type": "boolean",
-                "description": "Must be true to roll back: a rollback writes to disk, so (like copy/move/delete) it requires the bearer token. Returns once the reversal is dispatched; poll operations_get until rollbackState leaves 'rollingBack'."
+                "description": "Must be true to roll back: a rollback writes to disk. Returns once the reversal is dispatched; poll operations_get until rollbackState leaves 'rollingBack'."
             }
         },
         "required": ["operationId"]

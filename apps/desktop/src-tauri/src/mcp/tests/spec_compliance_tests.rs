@@ -145,24 +145,24 @@ fn test_origin_validation_rejects_external() {
 }
 
 #[test]
-fn test_origin_validation_allows_null() {
+fn test_origin_validation_rejects_null() {
     use crate::mcp::auth::validate_origin;
     use axum::http::{HeaderMap, HeaderValue, header};
 
-    // null origin is sent by file:// and some non-browser contexts
+    // Opaque browser origins cannot be tied to an intended Cmdr client.
     let mut headers = HeaderMap::new();
     headers.insert(header::ORIGIN, HeaderValue::from_static("null"));
-    assert!(validate_origin(&headers).is_ok());
+    assert!(validate_origin(&headers).is_err());
 }
 
 #[test]
-fn test_origin_validation_allows_tauri() {
+fn test_origin_validation_rejects_tauri() {
     use crate::mcp::auth::validate_origin;
     use axum::http::{HeaderMap, HeaderValue, header};
 
     let mut headers = HeaderMap::new();
     headers.insert(header::ORIGIN, HeaderValue::from_static("tauri://localhost"));
-    assert!(validate_origin(&headers).is_ok());
+    assert!(validate_origin(&headers).is_err());
 }
 
 #[test]
