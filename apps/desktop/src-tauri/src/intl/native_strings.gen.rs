@@ -1847,7 +1847,7 @@ pub(crate) const NATIVE_STRINGS: &[LocaleStrings] = &[
             ("menu.context.share", "分享"),
             ("menu.context.shareLoading", "正在尋找分享選項⋯"),
             ("menu.context.shareNone", "沒有分享選項"),
-            ("menu.context.showInFolder", "在檔案夾中顯示"),
+            ("menu.context.showInFolder", "在資料夾中顯示"),
             ("menu.context.toggleSelection", "切換選取"),
             ("menu.dock.connectToServer", "連接伺服器⋯"),
             ("menu.dock.goToFolder", "前往資料夾⋯"),
