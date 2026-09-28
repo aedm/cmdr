@@ -42,7 +42,7 @@ export function openErrorReportDialog(initialNote?: string): void {
   errorReportFlow.initialNote = initialNote ?? ''
   errorReportFlow.mode = 'compose'
   errorReportFlow.open = true
-  recordBreadcrumb('error-report', 'dialog-opened', initialNote ? { hasInitialNote: true } : undefined)
+  recordBreadcrumb({ type: 'errorReportDialogOpened', hasInitialNote: Boolean(initialNote) })
 }
 
 /**
@@ -54,12 +54,12 @@ export function openErrorReportDialogForAutoSentReport(): void {
   errorReportFlow.initialNote = ''
   errorReportFlow.mode = 'amend'
   errorReportFlow.open = true
-  recordBreadcrumb('error-report', 'amend-dialog-opened')
+  recordBreadcrumb({ type: 'errorReportAmendDialogOpened' })
 }
 
 export function closeErrorReportDialog(): void {
   errorReportFlow.open = false
   errorReportFlow.initialNote = ''
   errorReportFlow.mode = 'compose'
-  recordBreadcrumb('error-report', 'dialog-closed')
+  recordBreadcrumb({ type: 'errorReportDialogClosed' })
 }

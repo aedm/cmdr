@@ -1877,6 +1877,8 @@ export const commands = {
    */
   amendErrorReport: (userNote: string | null, email: string | null) =>
     typedError<AmendResult, ErrorReportSendError>(__TAURI_INVOKE('amend_error_report', { userNote, email })),
+  // Records one closed, diagnostic-safe event for the error-report manifest.
+  recordBreadcrumb: (event: BreadcrumbEvent) => __TAURI_INVOKE<void>('record_breadcrumb', { event }),
   /**
    *  Pushes the FE settings-registry default map to the backend, where it feeds
    *  [`crate::error_reporter::ResolvedSettings::from_settings`] so manifests don't
@@ -5721,6 +5723,20 @@ export type BetaSignupResult =
    *  try-again. Covers a network failure, a non-2xx server response, or a missing-config 500.
    */
   | { kind: 'softFailure' }
+
+/**
+ *  Diagnostic-safe event facts accepted by the breadcrumb buffer.
+ *
+ *  `deny_unknown_fields` is the fail-closed IPC boundary: adding a JSON key or sending
+ *  the former free-form `kind` / `message` / `ctx` shape rejects the whole event.
+ */
+export type BreadcrumbEvent =
+  | { type: 'command'; commandId: string }
+  | { type: 'errorReportDialogOpened'; hasInitialNote: boolean }
+  | { type: 'errorReportAmendDialogOpened' }
+  | { type: 'errorReportDialogClosed' }
+  | { type: 'feedbackDialogOpened' }
+  | { type: 'feedbackDialogClosed' }
 
 /**
  *  Per-column widths plus the code points that had to be estimated.

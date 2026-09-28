@@ -925,7 +925,9 @@ describe('characterization — exempt ids (preamble-then-silent-no-op)', () => {
 
     // Preamble ran: log + breadcrumb.
     expect(logInfo).toHaveBeenCalledExactlyOnceWith(id)
-    expect(invoke).toHaveBeenCalledExactlyOnceWith('record_breadcrumb', { kind: 'command', message: id, ctx: null })
+    expect(invoke).toHaveBeenCalledExactlyOnceWith('record_breadcrumb', {
+      event: { type: 'command', commandId: id },
+    })
     // showCommandPalette(false) is part of the preamble and fires too.
     expect(ctx.dialogs.showCommandPalette).toHaveBeenCalledExactlyOnceWith(false)
     // Silent no-op: no explorer method, no toast.

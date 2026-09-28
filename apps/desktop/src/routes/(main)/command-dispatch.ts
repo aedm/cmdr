@@ -186,10 +186,10 @@ export async function handleCommandExecute<K extends CommandId>(
   // Every keyboard / palette / menu command flows through here. Two channels:
   // - Info-level structured log → LogTape → Rust bridge → fern file chain, so the
   //   line appears alongside backend logs in error-report bundles.
-  // - A `kind: "command"` breadcrumb → the manifest's rolling buffer, so triagers
+  // - A typed command breadcrumb → the manifest's rolling buffer, so triagers
   //   see what the user did right before an error fired.
   log.info(id)
-  recordBreadcrumb('command', id)
+  recordBreadcrumb({ type: 'command', commandId: id })
 
   ctx.dialogs.showCommandPalette(false)
 

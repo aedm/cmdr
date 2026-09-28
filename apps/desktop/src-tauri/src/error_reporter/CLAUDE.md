@@ -23,6 +23,8 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - **Never widen what we send.** No license keys, device IDs, raw paths, volume names, SMB creds, settings beyond the
   resolved flags, or anything outside the log dir. `manifest.system` is the one PII-reviewed exception (sizes and
   coarse machine identity). Add nothing naming a drive, path, or person.
+- **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;
+  never restore free-form messages, maps, or JSON. Unknown IPC fields fail closed.
 - **Auto notes get redacted; `User` notes ship verbatim**: an auto note is a raw error message nobody previewed.
 - **One dialog session, one id.** The preview mints it, the send passes it back via `BundleRequest.id`. Skip it and
   the user holds an id no report was filed under. The same ID also rebuilds the same report-scoped redaction context.

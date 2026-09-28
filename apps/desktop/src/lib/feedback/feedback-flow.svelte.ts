@@ -21,10 +21,10 @@ export const feedbackFlow = $state<FlowState>({
 
 export function openFeedbackDialog(): void {
   feedbackFlow.open = true
-  recordBreadcrumb('feedback', 'dialog-opened')
+  recordBreadcrumb({ type: 'feedbackDialogOpened' })
 }
 
 export function closeFeedbackDialog(): void {
   feedbackFlow.open = false
-  recordBreadcrumb('feedback', 'dialog-closed')
+  recordBreadcrumb({ type: 'feedbackDialogClosed' })
 }

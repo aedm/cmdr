@@ -6,15 +6,13 @@
 //!
 //! ## Why not just use logs?
 //!
-//! Logs are noisy and unstructured. Breadcrumbs are structured (kind + ctx) and
-//! curated (only the kinds we care about during triage). The `kind: "command"`
-//! breadcrumb is the "what did the user just do" signal: `handleCommandExecute`
-//! pushes one on every dispatch, and the most recent such entry is what triagers
-//! read first.
+//! Logs are noisy and unstructured. Breadcrumbs are a closed set of curated events.
+//! The `Command` event is the "what did the user just do" signal:
+//! `handleCommandExecute` pushes one on every dispatch, and the most recent such
+//! entry is what triagers read first.
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
@@ -23,25 +21,36 @@ use std::sync::Mutex;
 /// covers a meaningful window of activity (typically a few minutes of normal use).
 pub const MAX_BREADCRUMBS: usize = 50;
 
-/// Cap on the message field. Guards against the FE accidentally pushing a pasted
-/// blob in. Real breadcrumb messages are short labels.
-pub const MAX_MESSAGE_CHARS: usize = 256;
+/// Cap on the only retained string payload. Command ids are compile-time labels in
+/// the frontend command registry, not user-authored text.
+pub const MAX_COMMAND_ID_CHARS: usize = 128;
 
-/// Cap on the kind field. Real kinds are short ("nav", "command", "dialog", ...).
-pub const MAX_KIND_CHARS: usize = 64;
+/// Diagnostic-safe event facts accepted by the breadcrumb buffer.
+///
+/// `deny_unknown_fields` is the fail-closed IPC boundary: adding a JSON key or sending
+/// the former free-form `kind` / `message` / `ctx` shape rejects the whole event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+pub enum BreadcrumbEvent {
+    Command { command_id: String },
+    ErrorReportDialogOpened { has_initial_note: bool },
+    ErrorReportAmendDialogOpened,
+    ErrorReportDialogClosed,
+    FeedbackDialogOpened,
+    FeedbackDialogClosed,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Breadcrumb {
     /// ISO-8601 UTC timestamp.
     pub at: String,
-    /// Short label for the event category, e.g. "command", "nav", "dialog", "error".
-    pub kind: String,
-    /// Free-form short description.
-    pub message: String,
-    /// Optional structured context (e.g. `{ "from": "...", "to": "..." }`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ctx: Option<Value>,
+    pub event: BreadcrumbEvent,
 }
 
 static BUFFER: Mutex<VecDeque<Breadcrumb>> = Mutex::new(VecDeque::new());
@@ -50,16 +59,18 @@ static BUFFER: Mutex<VecDeque<Breadcrumb>> = Mutex::new(VecDeque::new());
 ///
 /// Silent on overflow / lock poisoning. Breadcrumbs are best-effort instrumentation,
 /// not a feature we'd ever surface a failure for.
-pub fn record(kind: &str, message: &str, ctx: Option<Value>) {
-    if kind.is_empty() || kind.chars().count() > MAX_KIND_CHARS {
-        return;
+pub fn record(event: BreadcrumbEvent) {
+    match &event {
+        BreadcrumbEvent::Command { command_id }
+            if command_id.is_empty() || command_id.chars().count() > MAX_COMMAND_ID_CHARS =>
+        {
+            return;
+        }
+        _ => {}
     }
-    let trimmed_message: String = message.chars().take(MAX_MESSAGE_CHARS).collect();
     let crumb = Breadcrumb {
         at: Utc::now().to_rfc3339(),
-        kind: kind.to_string(),
-        message: trimmed_message,
-        ctx,
+        event,
     };
     let Ok(mut guard) = BUFFER.lock() else {
         return;
@@ -95,16 +106,55 @@ mod tests {
     static SERIAL: Mutex<()> = Mutex::new(());
 
     #[test]
-    fn record_and_snapshot_round_trip() {
+    fn records_only_typed_command_and_boolean_facts() {
         let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
-        record("nav", "to /Users", None);
-        record("command", "open-palette", Some(serde_json::json!({"source": "key"})));
+        record(BreadcrumbEvent::Command {
+            command_id: "pane.switch".to_string(),
+        });
+        record(BreadcrumbEvent::ErrorReportDialogOpened { has_initial_note: true });
+
         let snap = snapshot();
-        assert_eq!(snap.len(), 2);
-        assert_eq!(snap[0].kind, "nav");
-        assert_eq!(snap[1].kind, "command");
-        assert_eq!(snap[1].ctx.as_ref().unwrap()["source"], "key");
+        let serialized = serde_json::to_value(&snap).expect("typed breadcrumbs serialize");
+
+        assert_eq!(
+            serialized[0]["event"],
+            serde_json::json!({ "type": "command", "commandId": "pane.switch" })
+        );
+        assert_eq!(
+            serialized[1]["event"],
+            serde_json::json!({ "type": "errorReportDialogOpened", "hasInitialNote": true })
+        );
+        assert!(serialized[0]["at"].as_str().is_some());
+        assert!(serialized[1]["at"].as_str().is_some());
+    }
+
+    #[test]
+    fn rejects_unknown_fields_and_nested_values_instead_of_serializing_them() {
+        let sentinels = [
+            serde_json::json!({
+                "type": "command",
+                "commandId": "pane.switch",
+                "PRIVATE_KEY_SENTINEL": { "nested": ["PRIVATE_VALUE_SENTINEL"] }
+            }),
+            serde_json::json!({
+                "type": "errorReportDialogOpened",
+                "hasInitialNote": true,
+                "PRIVATE_KEY_SENTINEL": "PRIVATE_VALUE_SENTINEL"
+            }),
+            serde_json::json!({
+                "kind": "command",
+                "message": "PRIVATE_MESSAGE_SENTINEL",
+                "ctx": { "PRIVATE_KEY_SENTINEL": { "nested": "PRIVATE_VALUE_SENTINEL" } }
+            }),
+        ];
+
+        for sentinel in sentinels {
+            assert!(
+                serde_json::from_value::<BreadcrumbEvent>(sentinel).is_err(),
+                "open or unknown breadcrumb shapes must fail closed"
+            );
+        }
     }
 
     #[test]
@@ -112,31 +162,36 @@ mod tests {
         let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
         for i in 0..(MAX_BREADCRUMBS + 5) {
-            record("test", &format!("event-{i}"), None);
+            record(BreadcrumbEvent::Command {
+                command_id: format!("command-{i}"),
+            });
         }
         let snap = snapshot();
         assert_eq!(snap.len(), MAX_BREADCRUMBS);
-        // Oldest 5 should be gone; first remaining is event-5
-        assert_eq!(snap[0].message, "event-5");
-        assert_eq!(snap.last().unwrap().message, format!("event-{}", MAX_BREADCRUMBS + 4));
+        assert_eq!(
+            snap[0].event,
+            BreadcrumbEvent::Command {
+                command_id: "command-5".to_string()
+            }
+        );
+        assert_eq!(
+            snap.last().expect("snapshot is non-empty").event,
+            BreadcrumbEvent::Command {
+                command_id: format!("command-{}", MAX_BREADCRUMBS + 4)
+            }
+        );
     }
 
     #[test]
-    fn rejects_empty_or_oversized_kind() {
+    fn rejects_empty_or_oversized_command_id() {
         let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
-        record("", "x", None);
-        record(&"k".repeat(MAX_KIND_CHARS + 1), "x", None);
+        record(BreadcrumbEvent::Command {
+            command_id: String::new(),
+        });
+        record(BreadcrumbEvent::Command {
+            command_id: "c".repeat(MAX_COMMAND_ID_CHARS + 1),
+        });
         assert!(snapshot().is_empty());
-    }
-
-    #[test]
-    fn message_is_truncated_to_max_chars() {
-        let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
-        reset_for_test();
-        let huge = "a".repeat(MAX_MESSAGE_CHARS * 4);
-        record("k", &huge, None);
-        let snap = snapshot();
-        assert_eq!(snap[0].message.chars().count(), MAX_MESSAGE_CHARS);
     }
 }

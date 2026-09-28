@@ -324,8 +324,8 @@ pub struct BundleManifest {
     /// absence of a debug line in the file means "didn't happen" or "filtered out."
     pub log_levels: LogLevelSnapshot,
     /// Rolling window of recent FE/BE events that led up to the bundle build, oldest
-    /// first. The last entry of `kind: "command"` is the most recent user-driven UI
-    /// command. Empty when nothing was recorded (e.g. very early failures, tests).
+    /// first. The last [`breadcrumbs::BreadcrumbEvent::Command`] is the most recent
+    /// user-driven UI command. Empty when nothing was recorded (e.g. very early failures, tests).
     /// See `breadcrumbs.rs` for the buffer semantics.
     pub breadcrumbs: Vec<breadcrumbs::Breadcrumb>,
     /// Omitted from the wire when absent rather than sent as `null`: the api server treats

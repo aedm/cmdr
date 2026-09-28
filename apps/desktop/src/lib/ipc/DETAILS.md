@@ -244,30 +244,15 @@ Two patterns specta rc.24 can't handle. New code must avoid them; existing exclu
 These commands stay on raw `invoke()` for now. Each call site has:
 `// eslint-disable-next-line cmdr/no-raw-tauri-invoke -- excluded from typed bindings (see ipc/CLAUDE.md); …`
 
-| Command                                                  | Why excluded                                                                                   | Conversion plan                                                                     |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `record_breadcrumb`                                      | Takes `Option<serde_json::Value>` for arbitrary breadcrumb context                             | Keep on raw `invoke()`; free-form value is the point of breadcrumbs                 |
-| `prepare_error_report_preview`                           | Return type includes `Breadcrumb.ctx: Option<serde_json::Value>`, which specta can't represent | Needs a typed `Ctx` struct to replace `Value`, or strip `ctx` from the preview type |
-| `get_auto_sent_report_preview`                           | Same `Breadcrumb.ctx: Option<serde_json::Value>` in the returned manifest                      | Rides along with `prepare_error_report_preview`; the same `Ctx` struct frees both   |
-| `store_font_metrics`                                     | Generic over `<R: tauri::Runtime>`, specta can't collect type info for generic commands        | Keep as-is; font metrics are write-only (no TS type needed for the return value)    |
-| `stream_folder_suggestions`, `cancel_folder_suggestions` | Tauri `Channel<T>` (streaming) isn't specta-friendly yet                                       | Re-evaluate when specta supports `Channel<T>` (track upstream)                      |
+| Command                                                  | Why excluded                                                                            | Conversion plan                                                                  |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `prepare_error_report_preview`                           | `BundleManifest` has serde-elided optional fields, so specta splits its wire type       | Remove elision or wait for specta to support one unified command return type     |
+| `get_auto_sent_report_preview`                           | Returns the same `BundleManifest`                                                       | Rides along with `prepare_error_report_preview`                                  |
+| `store_font_metrics`                                     | Generic over `<R: tauri::Runtime>`, specta can't collect type info for generic commands | Keep as-is; font metrics are write-only (no TS type needed for the return value) |
+| `stream_folder_suggestions`, `cancel_folder_suggestions` | Tauri `Channel<T>` (streaming) isn't specta-friendly yet                                | Re-evaluate when specta supports `Channel<T>` (track upstream)                   |
 
 When specta gets a fix that closes one of these, drop the opt-out comment, add the command to `collect_*_types()`,
 regenerate, migrate the call site to `commands.foo(...)`.
-
-### Future work: decoupling `prepare_error_report_preview` from `record_breadcrumb`
-
-The two commands above are coupled by a single shared type: `BundleManifest.breadcrumbs: Vec<Breadcrumb>` carries
-`Breadcrumb.ctx: Option<serde_json::Value>`. Typing `record_breadcrumb` would unblock both, but free-form `ctx` is the
-point of breadcrumbs and we don't want to lose that.
-
-Cleanest decoupling, if `prepare_error_report_preview` becomes worth typing on its own: introduce
-`BreadcrumbForManifest { at, kind, message, ctx_json: Option<String> }` where `ctx_json` is
-`serde_json::to_string(&ctx).ok()` at manifest-build time. The in-memory ring buffer keeps
-`Breadcrumb { ctx: Option<Value> }` (free-form preserved), the IPC type for `prepare_error_report_preview` becomes
-specta-typeable. The bundle's manifest.json shape changes (nested object → JSON-encoded string), mildly less ergonomic
-for triage but typed. Worth doing if the FE ever wants to render the manifest preview with column-typed `ctx` parsing;
-not worth doing for the IPC discipline alone.
 
 ## specta version-bump procedure
 

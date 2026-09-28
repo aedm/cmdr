@@ -295,10 +295,10 @@ macro_rules! ipc_command_manifest {
                     crate::commands::error_reporter::send_error_report,
                     crate::commands::error_reporter::send_crash_log_report,
                     crate::commands::error_reporter::amend_error_report,
-                    // prepare_error_report_preview and get_auto_sent_report_preview: BundleManifest
-                    // contains Breadcrumb.ctx: Option<Value> which specta can't represent. Excluded;
-                    // they stay in generate_handler![].
-                    // record_breadcrumb takes Option<serde_json::Value>: excluded; stays in generate_handler![].
+                    crate::commands::error_reporter::record_breadcrumb,
+                    // prepare_error_report_preview and get_auto_sent_report_preview stay excluded:
+                    // BundleManifest has serde-elided optional fields, which specta splits into
+                    // incompatible serialize/deserialize shapes.
                     crate::commands::error_reporter::record_settings_defaults,
                     crate::commands::feedback::send_feedback,
                     crate::commands::licensing::get_license_status,
@@ -513,11 +513,10 @@ macro_rules! ipc_command_manifest {
                     // calls these on raw invoke with the documented eslint opt-out.
                     crate::ai::suggestions::stream_folder_suggestions,
                     crate::ai::suggestions::cancel_folder_suggestions,
-                    // Carry a `serde_json::Value` (a free-form breadcrumb payload, and a bundle
-                    // manifest holding one), which specta can't represent.
+                    // Return BundleManifest, whose serde-elided optional fields specta can't export
+                    // as one unified command return type.
                     crate::commands::error_reporter::prepare_error_report_preview,
                     crate::commands::error_reporter::get_auto_sent_report_preview,
-                    crate::commands::error_reporter::record_breadcrumb,
                 ]
             }
             // MTP devices, and the stubs every other target answers with.

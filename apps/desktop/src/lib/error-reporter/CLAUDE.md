@@ -13,8 +13,8 @@ event into a confirmation toast, whose button reopens the SAME report for a note
 - `BundleSavedToastContent.svelte`: dev-only "Save bundle to disk" toast (path + Reveal in Finder).
 - `auto-send-toast.svelte.ts` + `AutoSendToastContent.svelte`: Flow B listener and toast. Both toasts render
   `SentReportToastBody.svelte` (optional title, sentence + id badge, right-aligned actions).
-- `breadcrumbs.ts`: fire-and-forget `recordBreadcrumb(kind, message, ctx?)`; wire from FE handlers to add triage
-  context. Backend semantics in `error_reporter/CLAUDE.md` § Breadcrumbs.
+- `breadcrumbs.ts`: fire-and-forget `recordBreadcrumb(event)` over the generated closed `BreadcrumbEvent` union; its
+  command payload narrows to `CommandId`. Privacy boundary: `apps/desktop/src-tauri/src/error_reporter/DETAILS.md`.
 
 ## Must-knows
 

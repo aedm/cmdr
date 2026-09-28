@@ -6,7 +6,7 @@
 
 use crate::error_reporter::{
     self, AttachedEmail, BundleKind, BundleManifest, BundleRequest, BundleScope, FLOW_A_BUNDLE_CAP_MB,
-    settings_defaults::SettingValue,
+    breadcrumbs::BreadcrumbEvent, settings_defaults::SettingValue,
 };
 use crate::server_request::ServerRequestError;
 use serde::Serialize;
@@ -30,16 +30,11 @@ pub fn record_settings_defaults(defaults: HashMap<String, SettingValue>) {
     error_reporter::settings_defaults::record(defaults);
 }
 
-/// Records a freeform breadcrumb event for the error-report manifest.
-///
-/// Called from FE event handlers (navigation, dialog open/close, command dispatch)
-/// to add triage context. Empty kinds and over-long messages are dropped silently
-/// inside `error_reporter::breadcrumbs::record`. `ctx` is an optional structured
-/// payload.
+/// Records one closed, diagnostic-safe event for the error-report manifest.
 #[tauri::command]
 #[specta::specta]
-pub fn record_breadcrumb(kind: String, message: String, ctx: Option<serde_json::Value>) {
-    error_reporter::breadcrumbs::record(&kind, &message, ctx);
+pub fn record_breadcrumb(event: BreadcrumbEvent) {
+    error_reporter::breadcrumbs::record(event);
 }
 
 #[derive(Debug, Serialize, specta::Type)]

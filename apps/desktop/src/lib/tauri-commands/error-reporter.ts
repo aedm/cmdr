@@ -2,7 +2,13 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { type UnlistenFn } from '@tauri-apps/api/event'
-import { commands, events, type ErrorReportAutoSent, type SystemSnapshot } from '$lib/ipc/bindings'
+import {
+  commands,
+  events,
+  type BreadcrumbEvent,
+  type ErrorReportAutoSent,
+  type SystemSnapshot,
+} from '$lib/ipc/bindings'
 import { throwErrorReportSendError } from '$lib/error-reporter/error-report-send-error'
 import { throwIpcError } from './ipc-types'
 
@@ -20,6 +26,7 @@ export interface BundleManifest {
   osVersion: string
   arch: string
   activeSettings: ActiveSettingsSnapshot
+  breadcrumbs: Array<{ at: string; event: BreadcrumbEvent }>
   userNote?: string
   /** The `diag_<uuid>` diagnostics id. Never the `anal_` analytics id. */
   diagId: string
@@ -52,7 +59,7 @@ export interface PreviewPayload {
  * the previewed manifest reflects exactly what'll ship.
  */
 export async function prepareErrorReportPreview(userNote?: string, email?: string): Promise<PreviewPayload> {
-  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- BundleManifest contains Breadcrumb.ctx: Option<serde_json::Value>, which specta can't represent; excluded from typed bindings
+  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- BundleManifest has serde-elided optional fields, which specta can't export as one command return type
   return invoke<PreviewPayload>('prepare_error_report_preview', { userNote, email })
 }
 
@@ -104,7 +111,7 @@ export async function sendCrashLogReport(crashShortId: string, crashTimestamp: s
  * auto-sent, so there's nothing to add to.
  */
 export async function getAutoSentReportPreview(): Promise<AutoSentReport | null> {
-  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- BundleManifest contains Breadcrumb.ctx: Option<serde_json::Value>, which specta can't represent; excluded from typed bindings
+  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- BundleManifest has serde-elided optional fields, which specta can't export as one command return type
   return invoke<AutoSentReport | null>('get_auto_sent_report_preview')
 }
 

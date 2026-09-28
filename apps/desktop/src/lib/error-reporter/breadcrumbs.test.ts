@@ -1,9 +1,8 @@
 /**
  * Tests for the FE breadcrumb wrapper.
  *
- * The wrapper is intentionally thin: it just calls `invoke('record_breadcrumb', ...)`
- * with a normalised `ctx` (null when undefined) and swallows errors. We assert the
- * IPC contract because callers rely on it (kind, message, ctx shape).
+ * The wrapper is intentionally thin: it forwards the generated closed event type and
+ * swallows errors. The Rust tests own rejection of extra and nested JSON fields.
  */
 
 import { describe, it, vi, expect, beforeEach } from 'vitest'
@@ -22,28 +21,22 @@ describe('recordBreadcrumb', () => {
     mockedInvoke.mockImplementation(() => Promise.resolve())
   })
 
-  it('forwards kind, message, and ctx to the Tauri command', () => {
-    recordBreadcrumb('nav', 'to /Users', { from: '/old', to: '/Users' })
-    expect(mockedInvoke).toHaveBeenCalledWith('record_breadcrumb', {
-      kind: 'nav',
-      message: 'to /Users',
-      ctx: { from: '/old', to: '/Users' },
-    })
-  })
+  it('forwards retained command identity and boolean facts', () => {
+    recordBreadcrumb({ type: 'command', commandId: 'pane.switch' })
+    recordBreadcrumb({ type: 'errorReportDialogOpened', hasInitialNote: true })
 
-  it('passes ctx as null when omitted (Rust expects Option<Value>)', () => {
-    recordBreadcrumb('command', 'app.quit')
-    expect(mockedInvoke).toHaveBeenCalledWith('record_breadcrumb', {
-      kind: 'command',
-      message: 'app.quit',
-      ctx: null,
+    expect(mockedInvoke).toHaveBeenNthCalledWith(1, 'record_breadcrumb', {
+      event: { type: 'command', commandId: 'pane.switch' },
+    })
+    expect(mockedInvoke).toHaveBeenNthCalledWith(2, 'record_breadcrumb', {
+      event: { type: 'errorReportDialogOpened', hasInitialNote: true },
     })
   })
 
   it('swallows errors so breadcrumb failures never break the UI', async () => {
     mockedInvoke.mockRejectedValueOnce(new Error('IPC unavailable'))
     expect(() => {
-      recordBreadcrumb('test', 'will-reject')
+      recordBreadcrumb({ type: 'feedbackDialogClosed' })
     }).not.toThrow()
     // Let the rejection settle on the microtask queue so coverage sees the catch branch.
     await Promise.resolve()

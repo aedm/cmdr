@@ -61,12 +61,12 @@ Manifest fields (`BundleManifest`):
   (live atomic), `fileChain` (always `"debug"`), and `stdoutModuleOverrides` (noise
   suppression + `RUST_LOG` directives in insertion order). Lets a triager tell whether
   the absence of a debug line means "didn't happen" or "filtered out."
-- `breadcrumbs`: rolling window of the most recent ~50 FE/BE events (oldest
-  first). Each entry is `{ at, kind, message, ctx? }`. Populated via the
+- `breadcrumbs`: rolling window of the most recent 50 diagnostic-safe events (oldest
+  first). Each entry is `{ at, event }`, where `event` is a closed tagged enum. Populated via the
   `record_breadcrumb` Tauri command (FE wrapper:
   `apps/desktop/src/lib/error-reporter/breadcrumbs.ts::recordBreadcrumb`).
   Backend code can call `error_reporter::breadcrumbs::record(...)` directly.
-  The most recent `kind: "command"` entry is the equivalent of the old
+  The most recent `Command` event is the equivalent of the old
   `lastUserAction` field (removed); `handleCommandExecute` pushes one on every
   keyboard / palette / menu dispatch. See "Breadcrumbs" below.
 - `userNote` (optional): user-supplied free text. Trimmed; capped at 100 000 chars by the
@@ -162,9 +162,11 @@ SMB URIs, and UNC paths. See the redact module for the full pattern table.
   there's only ever one stashed report.
 
 `prepare_error_report_preview` and `get_auto_sent_report_preview` are absent from
-`bindings.ts` (a `BundleManifest` holds `Breadcrumb.ctx: Option<Value>`, which specta
-can't describe), so the frontend reaches them by raw invoke with the documented eslint
-opt-out. The other two are typed. See `ipc.rs`'s `dispatch_only` lists.
+`bindings.ts` because `BundleManifest` has serde-elided optional fields, which specta
+can't export as one unified command return type. The frontend reaches them by raw invoke
+with the documented eslint opt-out. `record_breadcrumb` has a generated closed payload
+type but its ubiquitous fire-and-forget helper also uses raw invoke so unrelated feature
+tests can keep narrow tauri-command mocks. See `ipc.rs`'s `dispatch_only` lists.
 
 Why the preview and the send re-build rather than building once and caching across IPC:
 the bundle is megabytes of compressed bytes. Holding it in a Tauri-side `OnceLock`
@@ -480,21 +482,23 @@ displayed only (the repo-wide no-string-matching rule covers branching on it; `c
 
 ## Breadcrumbs
 
-A bounded ring buffer (capacity 50) of recent triage events. Each `Breadcrumb`
-is `{ at: ISO-8601, kind: String, message: String, ctx: Option<JSON> }`. The
-buffer's snapshot is included in `BundleManifest::breadcrumbs`. Empty buffers
-are omitted from JSON via `skip_serializing_if = "Vec::is_empty"`.
+A bounded ring buffer (capacity 50) of recent triage events. Each `Breadcrumb` is
+`{ at: ISO-8601, event: BreadcrumbEvent }`; vector order preserves event sequence.
+`BreadcrumbEvent` is a closed internally tagged enum with these retained facts:
 
-Conventions for `kind`:
+- `Command { commandId }`: a command-registry id from keyboard, palette, or menu dispatch.
+- Error-report dialog opened, amend dialog opened, and dialog closed. The ordinary open
+  event retains only `hasInitialNote: boolean`, never the note.
+- Feedback dialog opened and closed. Feedback text and email never enter breadcrumbs.
 
-- `command`: keyboard / palette / menu commands (pushed by `handleCommandExecute`
-  in `routes/(main)/command-dispatch.ts`). The most recent entry of this kind is
-  the equivalent of the old `lastUserAction` field, which was removed once
-  breadcrumbs subsumed it.
-- `nav`: navigation transitions (path or pane change).
-- `dialog`: open/close of major modals.
-- `transfer`: copy / move / delete lifecycle events.
-- `error-shown`: friendly error displayed to the user.
+This enum is the privacy boundary. Serde `deny_unknown_fields` rejects unknown variants,
+extra keys, the former `kind` / `message` / `ctx` shape, and nested values before they can
+reach the ring. Adding a producer therefore requires a reviewed enum variant and explicit
+typed fields; there is no generic map or recursive redaction path. The command id is the
+only string payload, bounded to 128 code points, and the frontend supplies it from its
+closed `CommandId` union. Snapshots are included unchanged in every `BundleManifest`, so
+manual reports, auto reports, previews, saved bundles, and user-triggered crash-log bundles
+all consume the same safe representation. Empty buffers serialize as `[]`.
 
 Wire new event sources from the FE via
 `apps/desktop/src/lib/error-reporter/breadcrumbs.ts::recordBreadcrumb`. Wire
