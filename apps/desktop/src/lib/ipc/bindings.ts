@@ -2421,7 +2421,7 @@ export const commands = {
    *  sidecars), and drop its registry instance, so its badge goes gray and a
    *  future enable does a clean fresh scan rather than resuming a stale DB.
    *
-   *  This is the per-volume sibling of `clear_drive_index` (which is `root`-only):
+   *  This is the per-volume sibling of `clear_drive_index` (which clears every volume):
    *  the user-facing "forget this drive" action for an external (SMB/MTP) index
    *  that's accumulating on disk. Unlike `disable_drive_index` (which preserves the
    *  DB for a fast resume), forget reclaims the disk. A no-op if not indexed. Since

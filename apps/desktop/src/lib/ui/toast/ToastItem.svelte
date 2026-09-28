@@ -84,7 +84,7 @@
         const active = document.activeElement
         focusReturnTarget = active instanceof HTMLElement && active !== document.body ? active : null
         document.addEventListener('focusin', observeDocumentFocus)
-        return () => document.removeEventListener('focusin', observeDocumentFocus)
+        return () => { document.removeEventListener('focusin', observeDocumentFocus); }
     })
 
     function rememberFocusOrigin(event: FocusEvent): void {
