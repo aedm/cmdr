@@ -1,6 +1,6 @@
 use super::bundle_builder::{
-    PreparedFile, build_bundle_streaming, build_zip, email_for_kind, load_and_filter_log_file, prepare_user_note,
-    resolve_bundle_id, zip_dt,
+    PreparedFile, build_bundle_streaming, build_bundle_streaming_to_cap, build_zip, email_for_kind,
+    load_and_filter_log_file, prepare_user_note, resolve_bundle_id, zip_dt,
 };
 use super::bundle_capper::cap_bundle_to_bytes;
 use super::*;
@@ -999,39 +999,47 @@ mod streaming_tests {
         let log = dir.join("cmdr.log");
         let now = Utc::now();
         let mut f = fs::File::create(&log).unwrap();
-        // 50 000 pseudo-random lines, all in-window, ~250 bytes each (incl. timestamp)
-        // ≈ 12 MB raw. Pseudo-random body deflates poorly so the 1 MB cap should
-        // trigger early termination in the streaming pipeline.
-        let line_count = 50_000u32;
+        // 192 KiB of deterministic high-entropy text in realistically sized log lines.
+        // Poor compression crosses the test's 64 KiB compressed cap without making
+        // fixture size or unusually wide regex inputs dominate what this test exercises.
+        let line_count = 1_024u32;
+        let mut state = 0x4d59_5df4_d0f3_3173u64;
+        let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut token = vec![0u8; 192];
         for i in 0..line_count {
             let ts = iso(now - chrono::Duration::seconds((line_count - i) as i64));
-            let token: String = (0..200)
-                .map(|k| {
-                    let n = (i as u64).wrapping_mul(2_654_435_761).wrapping_add(k as u64);
-                    char::from(33u8 + ((n & 0xFF) as u8 % 90))
-                })
-                .collect();
-            writeln!(f, "{ts} INFO body={token}").unwrap();
+            for byte in &mut token {
+                state ^= state >> 12;
+                state ^= state << 25;
+                state ^= state >> 27;
+                let random = state.wrapping_mul(0x2545_f491_4f6c_dd1d);
+                *byte = alphabet[(random >> 58) as usize];
+            }
+            write!(f, "{ts} INFO body=").unwrap();
+            f.write_all(&token).unwrap();
+            writeln!(f).unwrap();
         }
         drop(f);
 
         let cutoff = now - chrono::Duration::hours(2);
-        let bundle = build_bundle_streaming(
+        let cap_bytes = 64 * 1024;
+        let bundle = build_bundle_streaming_to_cap(
             "ERR-CAP".to_string(),
             sample_manifest(),
             vec![log.clone()],
             cutoff,
             SystemTime::now(),
             &test_redaction(),
+            cap_bytes,
         )
         .unwrap();
 
-        // Cap is 1 MB. Allow some overshoot for the deflater's flush buffer + the
-        // central directory; ~1.5 MB is a comfortable upper bound.
-        let cap_bytes = FLOW_A_BUNDLE_CAP_MB * 1024 * 1024;
+        // Allow one extra test-cap window for the deflater's ~64 KiB flush buffer plus
+        // the central directory. With enforcement removed, the whole ~144 KiB
+        // compressed fixture exceeds this ceiling.
         assert!(
-            bundle.zip_bytes.len() <= cap_bytes + 512 * 1024,
-            "expected zip <= cap + 512KB headroom; got {}",
+            bundle.zip_bytes.len() <= cap_bytes * 2,
+            "expected zip <= 2x cap; got {}",
             bundle.zip_bytes.len()
         );
         // And the bundle is a valid zip with manifest + at least one log entry.

@@ -228,8 +228,28 @@ pub(super) fn build_bundle_streaming(
     now_system: SystemTime,
     redaction: &redact::RedactionContext,
 ) -> Result<BuiltBundle, String> {
-    let cap_bytes = FLOW_A_BUNDLE_CAP_MB * 1024 * 1024;
+    build_bundle_streaming_to_cap(
+        id,
+        manifest,
+        files,
+        cutoff,
+        now_system,
+        redaction,
+        FLOW_A_BUNDLE_CAP_MB * 1024 * 1024,
+    )
+}
 
+/// Implements [`build_bundle_streaming`] with an explicit byte cap so the cap behavior
+/// can be tested at unit-test scale without changing the production threshold.
+pub(super) fn build_bundle_streaming_to_cap(
+    id: String,
+    manifest: BundleManifest,
+    files: Vec<PathBuf>,
+    cutoff: DateTime<Utc>,
+    now_system: SystemTime,
+    redaction: &redact::RedactionContext,
+    cap_bytes: usize,
+) -> Result<BuiltBundle, String> {
     let counter = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     let cursor = CountingCursor::new(counter.clone());
 
