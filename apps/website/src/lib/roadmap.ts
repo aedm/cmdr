@@ -640,6 +640,12 @@ export const roadmapSections: RoadmapSection[] = [
             description: 'A dedicated menu for favorites.',
             done: true,
           },
+          {
+            date: '(Sep 25)',
+            title: 'Binary and hex modes in viewer',
+            description: 'Now a good variety of rich and raw modes.',
+            done: true,
+          },
         ],
       },
     ],

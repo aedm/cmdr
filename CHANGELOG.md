@@ -5,6 +5,66 @@ This file holds all notable changes to Cmdr over time.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [0.48.0] - 2026-09-28
+
+The highlights:
+
+1. Hex and binary views in the viewer! Thank you, [Gábor Gyebnár](https://github.com/aedm), for another nice contrib!
+2. Improved data safety in the edge cases of edge cases on weird devices, etc.
+3. Lower idle CPU and RAM use. I'm still working hard on this one. The goal is < 1% baseline CPU use (ideally lower, and
+   we're not far!) and < 200 MB baseline RAM use.
+
+Also a much more capable Servers view, Latin American Spanish, (much) faster search, and more fixes and additions.
+
+### Added
+
+- Add instant Text, Binary, Hex, and Media viewer modes with 0–3 shortcuts (5d08df081, bb161530f, b94780d5a)
+- Add saved SMB shares, named servers, account switching, keyboard actions, and clearer connection management to the
+  Servers view (5ffeb8310, b959aea6d, 2648a44da, 4f7a0d799, 7e88a439a, 18398ee1b, 4e49f4933, 5554da187, 2793a4198,
+  cf7b320ec)
+- Add Latin American Spanish for Macs using regional Spanish locales (2bb7085e4)
+- Reveal search results in their containing folders from the keyboard or right-click menu (a06fb5d4d)
+
+### Changed
+
+- Open right-click menus promptly on slow network shares while slower details load in place (075520f25, 2a0600923)
+- Make busy NAS navigation, renaming, and change reporting more tolerant and responsive (79653507b, 12bd3867f,
+  3e6716d25)
+- Localize elapsed times and ETAs instead of showing English unit abbreviations (090461c31)
+- Improve every translation with consistent terms, native typography, plural agreement, and more natural wording
+  (887a969e1, 369807ed7, 6348c5a56, 4ebb00519, db907bca1, a72e910e3, 37d04a859, eb6895bc5, 775b5b468, 0243b1c7a,
+  4c0dbbdf5, fe747a1fa, b5a2574b2, 5219524b3, 9b875960e, e63555e6c, 343435fc4, 43e35e046, 9e5a332f3, c83c9aafc,
+  83c493e91, 4aab3e111)
+- Speed up broad indexed searches and reduce idle CPU from free-space polling and network discovery (52aeac4f9,
+  b5971bfd1, 782c5a27d, 29179cf14, 97f267178, e9fdec68a)
+
+### Fixed
+
+- Fix cross-volume moves deleting originals, new files, or linked-folder contents changed while the move was running
+  (199d05bc1, 4dea16aac, 9e2f05609, ad846be33, 6ba782b0f, a1b293e21)
+- Fix replacement copies and moves losing the original when canceled or when the replacement fails (1bd8532a1,
+  1a4643f9f, dc6d0d09f, 7648c2036, 8f061efcb)
+- Fix mixed file, folder, and link conflicts being described or skipped incorrectly (34ee635a1, 9179235d6)
+- Fix Quick Look opening slowly or ignoring Escape during fade-in (6e02231b1)
+- Fix locked-file moves giving the wrong advice or hiding that the copy landed, and restore Retry where it can help
+  (35f75c0d8, e4e961abf, 315f8d602, 0955c1e49)
+- Fix a failed folder overwrite treating an unreadable destination as an unused name (dd20782d5)
+- Fix rebuilt or cleared search indexes continuing to show stale results (59c7f1d4d)
+- Keep the volume switcher open while Tab alternates panes (f6d462fc3)
+- Restore pane keyboard focus after dismissing a notification (212844a36)
+- Fix favorite timeouts being reported as invalid paths (de6325f90)
+
+### Security
+
+- Keep SMB paths and file names out of anonymized error bundles and their state snapshots (bd5a2048b, 732d13156)
+
+### Non-app
+
+- Attest release SBOMs correctly with the required CycloneDX serial number (77675a9c2)
+- Add structured translation briefs, terminology checks, locale-specific mechanics, and one-command locale validation
+  (e2c7478f3, da35c7a41, 108a49dae, bc8ce28f9, 69d94c0db, aea72bcf1, d895cd26d)
+- Sign every release tag and verify it before release builds start (96a615d1c)
+
 ## [0.47.0] - 2026-09-24
 
 Tons of fixes, especially around networking and the file viewer. The highlights:
