@@ -23,9 +23,14 @@ pub(super) enum TokenDomain {
     Path,
     Host,
     Userinfo,
+    Credential,
+    Query,
+    Fragment,
     Volume,
-    Server,
     Device,
+    VolumeId,
+    ServerId,
+    DeviceId,
 }
 
 impl TokenDomain {
@@ -34,9 +39,14 @@ impl TokenDomain {
             Self::Path => b"path",
             Self::Host => b"host",
             Self::Userinfo => b"userinfo",
+            Self::Credential => b"credential",
+            Self::Query => b"query",
+            Self::Fragment => b"fragment",
             Self::Volume => b"volume",
-            Self::Server => b"server",
             Self::Device => b"device",
+            Self::VolumeId => b"volume-id",
+            Self::ServerId => b"server-id",
+            Self::DeviceId => b"device-id",
         }
     }
 }

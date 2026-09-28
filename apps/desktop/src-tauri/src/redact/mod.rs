@@ -39,6 +39,9 @@ mod fields;
 mod names;
 mod paths;
 #[cfg(test)]
+mod reference_tests;
+mod references;
+#[cfg(test)]
 mod tests;
 
 pub use context::RedactionContext;
@@ -46,6 +49,7 @@ use context::TokenDomain;
 use fields::*;
 use names::*;
 use paths::*;
+use references::*;
 
 /// Parent directory names we consider safe to keep verbatim in redacted output.
 /// Anything else collapses to `<dir>` to avoid leaking project-like names.
@@ -202,8 +206,10 @@ fn redactor_regex() -> &'static Regex {
             | (?P<media>          / media / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )*
                                   (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
-            | (?P<smb_uri>        smb:// [^\s"'<>|`]+ )
-            | (?P<unc>            \\\\ [A-Za-z0-9_.-]+ (?: \\ [^\\\s"'<>|`]+ (?: \x20 [^\\\s"'<>|`]+ )* )* )
+            | (?P<remote_url>     (?i: sftp | ssh | webdav | http | https | smb ) ://
+                                  [^\s"'<>|`]+ (?: \x20 [^\s"'<>|`]+ )*
+            )
+            | (?P<unc>            \\\\ [^\\\s"'<>|`]+ (?: \\ [^\\\s"'<>|`]+ (?: \x20 [^\\\s"'<>|`]+ )* )* )
             | (?P<url_userinfo>   (?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*) ://
                                   (?P<userinfo>[^\s@/:"'<>|`]+ (?: : [^\s@/"'<>|`]* )? )
                                   @
@@ -239,6 +245,27 @@ fn redactor_regex() -> &'static Regex {
                   | [^\s"'<>|`\[\](){},;] [^"|`\n]*
                 )
             )
+            # Current IDs from `cmdr-fs::volume::ids`: a known scheme and an exact
+            # lowercase 16-hex digest. Bound the optional slug to the funnel's 24
+            # characters rather than guessing at arbitrary hyphenated prose. MTP may
+            # append its numeric storage ID.
+            | (?P<derived_id>
+                \b (?:
+                    (?: smb | sftp | webdav | adb | vol | path ) -
+                    (?: [\p{L}\p{N}] (?: [\p{L}\p{N}-]{0,22} [\p{L}\p{N}] )? - )?
+                    [0-9a-f]{16}
+                  | mtp -
+                    (?: [\p{L}\p{N}] (?: [\p{L}\p{N}-]{0,22} [\p{L}\p{N}] )? - )?
+                    [0-9a-f]{16}
+                    (?: : [0-9]{1,10} )?
+                )
+                \b
+            )
+            # The manual SMB store predates the digest funnel. Its exact generated shape is
+            # `manual-{address-with-dot/colon-as-dash}-{port}`.
+            | (?P<manual_server_id>
+                \b manual- [\p{L}\p{N}_-]+ - [0-9]{1,5} \b
+            )
             | (?P<email>         [A-Za-z0-9][A-Za-z0-9._%+-]* @ [A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,} )
             # Account name in a `key=value` / `key: value` log field. Our SMB paths log the
             # account someone signs in to a share with (`user=david`, `user=Some("david")`,
@@ -258,7 +285,7 @@ fn redactor_regex() -> &'static Regex {
                   | [^\s,;"'()}]+
                 )
             )
-            | (?P<mdns>           [A-Za-z0-9][A-Za-z0-9-]{0,62} \. local\b )
+            | (?P<mdns>           [\p{L}\p{N}][\p{L}\p{N}-]{0,62} \. local\b )
             | (?P<ipv6>
                 (?:
                   # Full 8-group form: a:b:c:d:e:f:g:h (h is required)
@@ -330,47 +357,34 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
         let (path, _) = split_trailing_noise(m.as_str());
         return (redact_media(path, context), path.len());
     }
-    if let Some(m) = caps.name("smb_uri") {
+    if let Some(m) = caps.name("remote_url") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_smb_uri(path, context), path.len());
+        let reference = trim_reference_end(path);
+        return (redact_remote_url(reference, context), reference.len());
     }
     if let Some(m) = caps.name("unc") {
         let (path, _) = split_trailing_noise(m.as_str());
-        return (redact_unc(path, context), path.len());
+        return (redact_remote_unc(path, context), path.len());
     }
     if caps.name("url_userinfo").is_some() {
-        // Preserve scheme and everything after the `@`, redact the userinfo.
-        let scheme = caps.name("scheme").map(|m| m.as_str()).unwrap_or("");
-        let userinfo = caps.name("userinfo").map(|m| m.as_str()).unwrap_or("");
-        let host_rest = caps.name("host_rest").map(|m| m.as_str()).unwrap_or("");
-        return (
-            format!(
-                "{scheme}://{}@{host_rest}",
-                identity_token("userinfo", TokenDomain::Userinfo, userinfo, context)
-            ),
-            whole_len(caps),
-        );
+        let reference = caps.get(0).map_or("", |m| m.as_str());
+        return (redact_remote_url(reference, context), whole_len(caps));
     }
     if let Some(m) = caps.name("bare_userinfo") {
-        // Scheme-less `//user:pass@host`: drop the userinfo, keep the leading delimiter
-        // and everything after the `@`.
         let lead = caps.name("bare_lead").map(|m| m.as_str()).unwrap_or("");
-        let host_rest = caps.name("bare_host_rest").map(|m| m.as_str()).unwrap_or("");
-        let userinfo = m
-            .as_str()
-            .strip_prefix("//")
-            .and_then(|value| value.split_once('@'))
-            .map_or("", |parts| parts.0);
         return (
-            format!(
-                "{lead}//{}@{host_rest}",
-                identity_token("userinfo", TokenDomain::Userinfo, userinfo, context)
-            ),
+            format!("{lead}{}", redact_scheme_less(m.as_str(), context)),
             whole_len(caps),
         );
     }
     if caps.name("path_field").is_some() {
         return redact_path_field(caps, context);
+    }
+    if let Some(m) = caps.name("derived_id") {
+        return (redact_derived_id(m.as_str(), context), whole_len(caps));
+    }
+    if let Some(m) = caps.name("manual_server_id") {
+        return (redact_manual_server_id(m.as_str(), context), whole_len(caps));
     }
     if caps.name("email").is_some() {
         return ("<email>".to_string(), whole_len(caps));
@@ -388,11 +402,7 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
         );
     }
     if let Some(m) = caps.name("mdns") {
-        let host = m.as_str().strip_suffix(".local").unwrap_or(m.as_str());
-        return (
-            format!("{}.local", identity_token("host", TokenDomain::Host, host, context)),
-            whole_len(caps),
-        );
+        return (redact_mdns_host(m.as_str(), context), whole_len(caps));
     }
     if let Some(m) = caps.name("ipv6") {
         return (

@@ -116,63 +116,6 @@ pub(super) fn redact_labeled_mount(
     format!("{prefix_out}/{volume}{}", redact_path_tail(rest, context))
 }
 
-pub(super) fn redact_smb_uri(uri: &str, context: Option<&RedactionContext>) -> String {
-    // `smb://host/share/path/file.ext` → `smb://<host>/<share>/<redacted path>`
-    let after = uri.strip_prefix("smb://").unwrap_or(uri);
-    // split host
-    let (host, rest) = match after.split_once('/') {
-        Some(parts) => parts,
-        None => return format!("smb://{}", server_token(after, context)),
-    };
-    // split share
-    let (share, tail) = match rest.split_once('/') {
-        Some(parts) => (parts.0, format!("/{}", parts.1)),
-        None => return format!("smb://{}/{}", server_token(host, context), volume_token(rest, context)),
-    };
-    format!(
-        "smb://{}/{}{}",
-        server_token(host, context),
-        volume_token(share, context),
-        redact_path_tail(&tail, context)
-    )
-}
-
-pub(super) fn redact_unc(unc: &str, context: Option<&RedactionContext>) -> String {
-    // `\\host\share\path\file.ext` → `\\<host>\<share>\<redacted path>`
-    let after = unc.strip_prefix("\\\\").unwrap_or(unc);
-    // normalize to forward slashes for reuse, then convert back
-    let normalized: String = after.chars().map(|c| if c == '\\' { '/' } else { c }).collect();
-    let parts: Vec<&str> = normalized.splitn(3, '/').collect();
-    match parts.as_slice() {
-        [host] => format!(r"\\{}", server_token(host, context)),
-        [host, share] => format!(r"\\{}\{}", server_token(host, context), volume_token(share, context)),
-        [host, share, tail] => {
-            let redacted = redact_path_tail(&format!("/{tail}"), context);
-            format!(
-                r"\\{}\{}{}",
-                server_token(host, context),
-                volume_token(share, context),
-                redacted.replace('/', "\\")
-            )
-        }
-        _ => r"\\<host>".to_string(),
-    }
-}
-
-fn server_token(value: &str, context: Option<&RedactionContext>) -> String {
-    context.map_or_else(
-        || "<host>".to_string(),
-        |context| format!("<server:{}>", context.token(TokenDomain::Server, value)),
-    )
-}
-
-fn volume_token(value: &str, context: Option<&RedactionContext>) -> String {
-    context.map_or_else(
-        || "<share>".to_string(),
-        |context| format!("<volume:{}>", context.token(TokenDomain::Volume, value)),
-    )
-}
-
 /// Redact the tail of a path (everything after the user/label prefix).
 /// Input starts with `/` (or is empty). Output starts with `/` (or is empty).
 ///

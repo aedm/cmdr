@@ -163,3 +163,6 @@
 23:33:21.604 DEBUG conflict_scan  checking 1 item(s) against path="/trips/2023/summer trip" on volume smb-100-127-48-122-445-media-cca75cc9c09a6fb5
 23:33:23.156 DEBUG indexing::writer  MoveEntryV2: id=3092084 from="kapu méretek.jpg.cmdr-tmp-66381a4a" to="kapu méretek.jpg" (parent_id 11280 → 11280)
 23:22:14.398 DEBUG FE:fileExplorer  [FilePane] loadDirectory called: paneId=right, volumeId=root, path=/private/var/folders, selectName=-Users-alice-projects-git-cmdr, currentLoading=false
+23:40:00.000 INFO  remote  Opened sftp://alice@files.example.test:2222/home/alice/Client%20Nimbus/report.pdf
+23:40:00.001 INFO  remote  WebDAV https://dav.example.test:8443/dav/Client%20Nimbus/report.json?token=secret#customer
+23:40:00.002 INFO  volume  IDs smb-nas-private-445-client-0123456789abcdef and manual-192-168-40-9-1445

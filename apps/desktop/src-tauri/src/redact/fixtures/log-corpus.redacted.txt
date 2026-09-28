@@ -24,15 +24,15 @@
 15:29:46.002 INFO  file_system  Linux mount /media/<volume>/<file>.bin
 15:29:46.003 INFO  file_system  Linux mount /media/<volume>/<dir>/<file>.jpg
 15:29:46.024 INFO  file_system  Linux mount /media/<volume>/Music/<file>.mp3
-15:29:46.055 INFO  network::smb_client  Connecting to smb://<host>/<share>/<file>.txt
-15:29:46.099 INFO  network::smb_client  Connecting to smb://<host>/<share>/<file>.pdf
-15:29:46.118 INFO  network::smb_client  Connecting to smb://<host>/<share>/<dir>/<file>.zip
+15:29:46.055 INFO  network::smb_client  Connecting to smb://<host>.local/<share>/<file>.txt
+15:29:46.099 INFO  network::smb_client  Connecting to smb://<ipv4-private>/<share>/<file>.pdf
+15:29:46.118 INFO  network::smb_client  Connecting to smb://<host>.local/<share>/<dir>/<file>.zip
 15:29:46.120 INFO  network::smb_client  Connecting to smb://<host>/<share>/<file>.mkv
 15:29:47.041 INFO  network::smb_client  Connected to smb://<host>/<share>
 15:29:47.714 INFO  network::smb_client  UNC path: \\<host>\<share>\<file>.txt
-15:29:47.717 INFO  network::smb_client  UNC path: \\<host>\<share>\Documents\<file>.docx
+15:29:47.717 INFO  network::smb_client  UNC path: \\<host>.local\<share>\<dir>\<file>.docx
 15:29:48.306 INFO  network::smb_client  UNC path: \\<host>\<share>\<file>.pdf
-15:29:48.306 INFO  network::smb_client  UNC path: \\<host>\<share>\<dir>\<file>.tar
+15:29:48.306 INFO  network::smb_client  UNC path: \\<ipv4-private>\<share>\<dir>\<file>.tar
 16:29:47.055 INFO  network::mdns  Discovered host: <host>.local
 16:29:48.123 INFO  network::mdns  Discovered host: <host>.local
 16:29:49.456 INFO  network::mdns  Discovered host: <host>.local
@@ -56,12 +56,12 @@
 17:00:02.003 INFO  licensing  Sender <email>
 17:00:02.004 INFO  licensing  Login <email> ok
 17:00:02.005 INFO  licensing  <email> failed login
-17:00:03.000 INFO  net  fetched https://<userinfo>@example.com/path
-17:00:03.001 INFO  net  fetched ftp://<userinfo>@files.example.com/pub
-17:00:03.002 INFO  net  fetched https://<userinfo>@host.example.com/
-17:00:03.003 INFO  net  fetched https://<userinfo>@api.example.com/v1
-17:00:03.004 INFO  net  pushed ssh://<userinfo>@github.com/foo/bar
-17:00:04.000 INFO  net  Two: https://<userinfo>@a.com and https://<userinfo>@b.com
+17:00:03.000 INFO  net  fetched https://<user>:<credential>@<host>/<dir>
+17:00:03.001 INFO  net  fetched ftp://<user>@<host>/<dir>
+17:00:03.002 INFO  net  fetched https://<user>@<host>/
+17:00:03.003 INFO  net  fetched https://<user>:<credential>@<host>/<dir>
+17:00:03.004 INFO  net  pushed ssh://<user>@<host>/<dir>/<dir>
+17:00:04.000 INFO  net  Two: https://<user>:<credential>@<host> and https://<user>:<credential>@<host>
 18:00:00.000 INFO  build  error at /tmp/<dir>/src/<file>.rs:42:5
 18:00:00.001 INFO  build  cache at /tmp/<file>.txt
 18:00:00.002 INFO  build  ipc at /private/<dir>/<dir>
@@ -98,19 +98,19 @@
 21:00:00.007 INFO  redact_test  module path cmdr_lib::redact::tests
 21:00:00.008 INFO  redact_test  version 1.2.3
 22:00:00.000 INFO  combo  Two paths: $HOME/Documents/<file>.txt and $HOME/Downloads/<file>.zip done
-22:00:00.001 INFO  combo  Mixed: /Volumes/<volume>/<file>.txt and smb://<host>/<share>/<file>.txt
+22:00:00.001 INFO  combo  Mixed: /Volumes/<volume>/<file>.txt and smb://<host>.local/<share>/<file>.txt
 22:00:00.002 INFO  combo  Email contact <email> and ip <ipv4>
 22:00:00.003 INFO  combo  Mount mounted at /Volumes/<volume>/<dir>/<file>.gz now
 22:00:00.004 INFO  combo  <host>.local has ip <ipv4>
 22:00:00.005 INFO  combo  Two: <host>.local and <host>.local
-22:00:00.006 INFO  combo  user info https://<userinfo>@a.com and email <email>
+22:00:00.006 INFO  combo  user info https://<user>:<credential>@<host> and email <email>
 22:00:00.007 INFO  combo  Reading $HOME/Documents/<file>.pdf for <email>
 23:00:00.000 INFO  panic  panicked at 'index out of bounds: the len is 5 but the index is 7', $HOME/Documents/<file>.rs:10:5
 23:00:00.001 INFO  panic  thread 'main' panicked at $HOME/<dir>/<dir>/<file>.rs:1:1
 23:00:00.002 INFO  panic  panicked at $HOME\Desktop\<file>.exe
 23:00:00.003 INFO  panic  no path here, just text
 23:00:00.004 INFO  panic  panicked at /tmp/<dir>/src/<file>.rs:99:9
-23:00:00.005 INFO  smb  smb://<host>/<share> connection
+23:00:00.005 INFO  smb  smb://<user>@<host>/<share> connection
 23:00:00.006 INFO  smb  smb://<host> just host
 23:00:00.007 INFO  smb  smb://<host>/<share> just share
 23:00:00.008 INFO  paths  Username only path $HOME ok
@@ -160,6 +160,9 @@
 23:33:23.149 DEBUG smb2::client::tree  tree: renamed from=<dir>\<dir>\<dir>\<file>.jpg.cmdr-tmp-66381a4a to=<dir>\<dir>\<dir>\<file>.jpg
 23:33:52.870 DEBUG smb2::client::tree  tree: deleted file=<dir>\<dir>\<dir>\<file>.jpg
 23:24:40.121 DEBUG smb2::client::tree  tree: created directory=<dir>\<dir>\<dir>
-23:33:21.604 DEBUG conflict_scan  checking 1 item(s) against path="/<dir>/<dir>/<dir>" on volume smb-100-127-48-122-445-media-cca75cc9c09a6fb5
+23:33:21.604 DEBUG conflict_scan  checking 1 item(s) against path="/<dir>/<dir>/<dir>" on volume smb-<volume-id>
 23:33:23.156 DEBUG indexing::writer  MoveEntryV2: id=3092084 from="<file>.jpg.cmdr-tmp-66381a4a" to="<file>.jpg" (parent_id 11280 → 11280)
 23:22:14.398 DEBUG FE:fileExplorer  [FilePane] loadDirectory called: paneId=right, volumeId=root, path=/private/<dir>/<dir>, selectName=<dir>, currentLoading=false
+23:40:00.000 INFO  remote  Opened sftp://<user>@<host>:2222/<dir>/<dir>/<dir>/<file>.pdf
+23:40:00.001 INFO  remote  WebDAV https://<host>:8443/<dir>/<dir>/<file>.json?<query>=<query>#<fragment>
+23:40:00.002 INFO  volume  IDs smb-<volume-id> and manual-<server-id>-1445

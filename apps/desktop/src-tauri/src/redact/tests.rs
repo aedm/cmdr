@@ -368,7 +368,7 @@ fn real_identity_domains_do_not_correlate_the_same_value() {
         token(&context.redact_line("Sentinel.local"), "host"),
         token(&context.redact_line("user=Sentinel"), "user"),
         token(&context.redact_line("/Volumes/Sentinel"), "volume"),
-        token(&context.redact_line("smb://Sentinel"), "server"),
+        token(&context.redact_line("manual-Sentinel-445"), "server-id"),
         token(&context.redact_line("Sentinel's Pixel"), "mtp-owner"),
     ];
 
@@ -427,11 +427,17 @@ fn context_preserves_only_context_proven_home_downloads_role() {
 #[test]
 fn smb_uris() {
     let cases = [
-        ("smb://server.local/share/file.txt", "smb://<host>/<share>/<file>.txt"),
-        ("smb://192.168.1.10/Public/doc.pdf", "smb://<host>/<share>/<file>.pdf"),
+        (
+            "smb://server.local/share/file.txt",
+            "smb://<host>.local/<share>/<file>.txt",
+        ),
+        (
+            "smb://192.168.1.10/Public/doc.pdf",
+            "smb://<ipv4-private>/<share>/<file>.pdf",
+        ),
         (
             "smb://nas.local/backups/2026/jan.zip",
-            "smb://<host>/<share>/<dir>/<file>.zip",
+            "smb://<host>.local/<share>/<dir>/<file>.zip",
         ),
         (
             "Connecting to smb://homer/movies/film.mkv now",
@@ -451,8 +457,7 @@ fn unc_paths() {
         (r"\\server\share\file.txt", r"\\<host>\<share>\<file>.txt"),
         (
             r"\\nas.local\public\Documents\plan.docx",
-            // public is the SMB share, Documents is the parent dir (allowlisted).
-            r"\\<host>\<share>\Documents\<file>.docx",
+            r"\\<host>.local\<share>\<dir>\<file>.docx",
         ),
         (r"\\server\share", r"\\<host>\<share>"),
         (r"\\server", r"\\<host>"),
@@ -462,7 +467,7 @@ fn unc_paths() {
         ),
         (
             r"\\10.0.0.5\backup\daily\snapshot.tar",
-            r"\\<host>\<share>\<dir>\<file>.tar",
+            r"\\<ipv4-private>\<share>\<dir>\<file>.tar",
         ),
     ];
     for (input, expected) in cases {
@@ -535,21 +540,18 @@ fn url_userinfo() {
     let cases = [
         (
             "https://alice:s3cret@example.com/path",
-            "https://<userinfo>@example.com/path",
+            "https://<user>:<credential>@<host>/<dir>",
         ),
-        (
-            "ftp://anon@files.example.com/pub",
-            "ftp://<userinfo>@files.example.com/pub",
-        ),
-        ("https://user@host.example.com/", "https://<userinfo>@host.example.com/"),
+        ("ftp://anon@files.example.com/pub", "ftp://<user>@<host>/<dir>"),
+        ("https://user@host.example.com/", "https://<user>@<host>/"),
         (
             "fetched https://bob:hunter2@api.example.com/v1 ok",
-            "fetched https://<userinfo>@api.example.com/v1 ok",
+            "fetched https://<user>:<credential>@<host>/<dir> ok",
         ),
-        ("ssh://git@github.com/foo/bar", "ssh://<userinfo>@github.com/foo/bar"),
+        ("ssh://git@github.com/foo/bar", "ssh://<user>@<host>/<dir>/<dir>"),
         (
             "https://u:p@a.com and https://x:y@b.com",
-            "https://<userinfo>@a.com and https://<userinfo>@b.com",
+            "https://<user>:<credential>@<host> and https://<user>:<credential>@<host>",
         ),
     ];
     for (input, expected) in cases {
@@ -563,20 +565,24 @@ fn bare_userinfo_no_scheme() {
     // (no scheme). A misbehaving server can reflect them in stderr, so the redactor must
     // strip the userinfo on this scheme-less shape too.
     let cases = [
-        // Host is preserved verbatim, mirroring `url_userinfo` (the host is assumed to be
-        // diagnostically useful; only the secret userinfo is stripped).
-        ("//alice:s3cret@192.168.1.10", "//<userinfo>@192.168.1.10"),
-        ("//bob@nas.example.com/share", "//<userinfo>@nas.example.com/share"),
+        ("//alice:s3cret@192.168.1.10", "//<user>:<credential>@<ipv4-private>"),
+        ("//bob@nas.example.com/share", "//<user>@<host>/<share>"),
         (
             "smbutil failed for //user:pass@host:10480",
-            "smbutil failed for //<userinfo>@host:10480",
+            "smbutil failed for //<user>:<credential>@<host>:10480",
         ),
-        ("stderr: //admin:hunter2@server now", "stderr: //<userinfo>@server now"),
+        (
+            "stderr: //admin:hunter2@server now",
+            "stderr: //<user>:<credential>@<host> now",
+        ),
         // A scheme'd URL must still go through url_userinfo, not double-match the bare tail.
-        ("http://alice:s3cret@example.com/x", "http://<userinfo>@example.com/x"),
+        (
+            "http://alice:s3cret@example.com/x",
+            "http://<user>:<credential>@<host>/<dir>",
+        ),
         (
             "connect //u:p@a and //x:y@b",
-            "connect //<userinfo>@a and //<userinfo>@b",
+            "connect //<user>:<credential>@<host> and //<user>:<credential>@<host>",
         ),
     ];
     for (input, expected) in cases {
@@ -886,7 +892,9 @@ fn replacement_count_histogram() {
         ("<ipv4>", redacted.matches("<ipv4>").count()),
         ("<ipv6>", redacted.matches("<ipv6>").count()),
         ("<email>", redacted.matches("<email>").count()),
-        ("<userinfo>", redacted.matches("<userinfo>").count()),
+        ("<credential>", redacted.matches("<credential>").count()),
+        ("<share>", redacted.matches("<share>").count()),
+        ("<volume-id>", redacted.matches("<volume-id>").count()),
         ("<file>", redacted.matches("<file>").count()),
         ("<dir>", redacted.matches("<dir>").count()),
         ("<mtp-owner>", redacted.matches("<mtp-owner>").count()),

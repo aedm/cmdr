@@ -16,7 +16,7 @@ pub(super) const PATH_BRANCHES: &[&str] = &[
     "unix_system",
     "volumes",
     "media",
-    "smb_uri",
+    "remote_url",
     "unc",
     "url_userinfo",
 ];

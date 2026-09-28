@@ -11,11 +11,13 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unix_system` | `/tmp/`, `/var/`, `/private/`, `/opt/` | prefix kept; tail walked with same shape rules |
 | `volumes` | `/Volumes/<label>/...` (spaces allowed) | `/Volumes/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
 | `media` | `/media/<label>/...` (spaces allowed) | `/media/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
-| `smb_uri` | `smb://host/share/...` | `smb://<host>/<share>/<redacted tail>` |
+| `remote_url` | SFTP/SSH/WebDAV/HTTP(S)/SMB URL, with or without userinfo | scheme + hierarchy + port + address class + conservative extension; identities tokenized |
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
-| `url_userinfo` | `scheme://user[:pass]@host/...` | `scheme://<userinfo>@host/...` (host kept) |
-| `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | `//<userinfo>@host/...` (host kept) |
+| `url_userinfo` | another scheme's `scheme://user[:pass]@host/...` | same complete component redaction as recognized URLs |
+| `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | SMB-shaped component redaction without inventing a scheme |
 | `path_field` | a keyed field: `path=`, `smb_path=`, `from=`, `to=`, `file=`, … (see the regex) | relative value walked in place; absolute value handed to the branches above |
+| `derived_id` | current `smb`/`sftp`/`webdav`/`adb`/`mtp`/`vol`/`path` ID with 16-hex digest | scheme kept, opaque ID tokenized; MTP storage number kept |
+| `manual_server_id` | `manual-<address-derived name>-<port>` | `manual-<server-id>-<port>` |
 | `email` | `local@domain.tld` | `<email>` |
 | `account` | `user=`/`username:` fields | `user=<user>`, `None` untouched |
 | `mdns` | `<label>.local` | `<host>.local` |
@@ -29,15 +31,31 @@ what keeps contractions and module paths out of it. `SAFE_PARENT_DIR_NAMES` is t
 
 ## Pattern overlaps
 
-- **Dispatch order mirrors the regex alternation order.** `smb://user@host/...` matches `smb_uri` first (listed
-  earlier), so it does NOT fall through to `url_userinfo`; the userinfo is dropped with the host. Don't reorder without
+- **Dispatch order mirrors the regex alternation order.** `remote_url` must claim recognized schemes before the generic
+  userinfo branch, and IDs must be claimed before embedded address patterns can split them. Don't reorder without
   re-checking these overlaps.
 - **`bare_userinfo` captures a leading delimiter (`^` or one whitespace) into `bare_lead` and re-emits it.** The regex
   crate has no lookbehind, so this anchoring is how the scheme-less `//user:pass@host` shape (built by the macOS
   `smbutil` / Linux `smbclient` fallbacks) avoids grabbing the `//user@host` tail inside a scheme'd `http://user@host`
-  (handled by the earlier `url_userinfo`). Don't drop the lead capture.
-- **`url_userinfo` preserves the host on purpose** (assumed to be a well-known service URL the dev needs). Revisit if we
-  ever store private hosts in URLs.
+  (handled by the earlier URL branches). Don't drop the lead capture.
+
+## Decision: remote structure survives, remote identities do not
+
+The complete URL/UNC reference is one privacy unit. The rewriter keeps the protocol, explicit port, separators,
+segment count, conservative final extension, and an IP's broad class (loopback, private, link-local, unspecified, or
+public). It tokenizes username, password, hostname/address, SMB share, every path segment, query keys and values, and
+fragment. A `.local` suffix survives because it describes discovery scope, not the host label. Remote `Downloads` and
+other local-folder allowlist words do not survive.
+
+`url::Url` handles valid authorities. Logs also contain malformed-but-recognizable values, so a lexical splitter covers
+the same bounded `scheme://authority/path?query#fragment` shape when standards parsing rejects it. Percent-decoding is
+for token identity and extension recognition only; decoded source text is never emitted. This keeps NFC/NFD and encoded
+spellings correlated without turning malformed input into a raw-data escape hatch.
+
+Derived IDs are redacted only here, at the diagnostic boundary. Current funnel IDs require a known scheme and their
+exact lowercase 16-hex digest; MTP's numeric storage suffix and a manual server's port remain useful. The slug and digest
+become one opaque report token because the slug is deliberately lossy and cannot be safely reverse-parsed into host,
+account, and share. Functional ID generation and ordinary MCP data remain unchanged.
 
 ## Decision: path-shape preservation + allowlist
 
@@ -66,15 +84,13 @@ diagnostic context. The pattern requires both a capitalized possessive AND a mod
 English contractions (`it's a Pixel`) and module paths (`cmdr_lib::mtp::device`) untouched. `That's Pixel 8 Pro` does
 match, accepted as an over-redaction (rare phrasing without an article between `'s` and the model word).
 
-## Decision: account names redacted, share names kept
+## Decision: account names redacted, structured remote shares redacted
 
 An SMB login has three parts in our logs, and they don't carry the same weight. The **account name** is a real
 identifier, as personal as the email pattern, and it appeared verbatim in three places (`commands/network.rs` twice,
-`crates/cmdr-smb/src/connection.rs` once), so `account` collapses it to `<user>`. The **share name** appears in ~40 debug lines
-and is what makes a bundle readable ("which share was this?"); a share is usually a generic label (`media`, `public`,
-`backups`), so it ships as-is. **Hosts** were already handled for the shapes that identify a person or a network
-(`mdns`, `ipv4`, `ipv6`, `smb_uri`); a bare NetBIOS name (`server=NASPOLYA`) still ships, which is the known remaining
-gap here.
+`crates/cmdr-smb/src/connection.rs` once), so `account` collapses it to `<user>`. A share inside an SMB URL or UNC path
+is a recognized identity and gets a report-local `<share>` token. A bare `share=` field still ships because the generic
+field has no typed provenance yet. A bare NetBIOS name (`server=NASPOLYA`) is likewise a known remaining gap.
 
 `None` passes through because it isn't a name, and the difference between "no username in the mount info" and "a
 username we then looked up in the Keychain" is exactly what a triager reads these lines for. That's why this can't be a
@@ -169,8 +185,10 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 report ID. Rebuilding preview and send for one ID in the same process reproduces tokens; another report ID or process
 does not. `for_test` takes an explicit secret, so unit tests never replace global randomness. Tokens are the first six
 SHA-256 bytes rendered as 12 lowercase hex characters. The hash input includes versioned labels and a domain tag to
-separate path, host, userinfo, volume, server, and device identities. A bare-name domain will belong here only when a
-report-scoped bare-name caller exists; the current state snapshot still uses the ordinary unsalted API.
+separate path, host, userinfo, credential, query, fragment, volume, device, volume-ID, server-ID, and device-ID
+identities. A
+bare-name domain will belong here only when a report-scoped bare-name caller exists; the current state snapshot still
+uses the ordinary unsalted API.
 
 Tokens are for spotting repeated normalized names, so identity sees through printing differences. `token` undoes
 `{:?}` escapes and NFC-normalizes before hashing. Cmdr's `.cmdr-tmp-` / `.cmdr-temp-` / `.cmdr-staging-` suffix is split
