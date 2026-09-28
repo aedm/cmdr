@@ -81,6 +81,7 @@ pub(crate) fn forget_volume(volume_id: &str) {
     let gate = load_gate(volume_id);
     let _gate_held = gate.lock_ignore_poison();
     SEARCH_INDICES.lock_ignore_poison().remove(volume_id);
+    // allowed-discarded-outcome: forgetting is unconditional; whether a walk mark existed changes no cleanup.
     take_walked_behind(volume_id);
     log::debug!("Search index dropped for '{volume_id}'");
 }
