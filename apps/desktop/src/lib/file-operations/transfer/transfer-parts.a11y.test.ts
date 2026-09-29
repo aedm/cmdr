@@ -1,7 +1,8 @@
 /**
  * Tier 3 a11y tests for the presentational pieces the transfer dialogs and toasts
  * compose: the compression controls, the direction arrow, the scan-phase body,
- * the variant-derived error copy, and the cancelled-rollback summary.
+ * the variant-derived error copy, the cancelled-rollback summary, and the
+ * progress dialog's Rollback button.
  *
  * One file per component would cost about five times as much: `svelte-tests`
  * charges per test FILE, not per test (`docs/testing.md` § "What a test actually
@@ -57,6 +58,8 @@ import DirectionIndicator from './DirectionIndicator.svelte'
 import FallbackErrorContent from './FallbackErrorContent.svelte'
 import ScanPhaseBody from './ScanPhaseBody.svelte'
 import CancelRollbackToastContent from './CancelRollbackToastContent.svelte'
+import TransferRollbackControls from './TransferRollbackControls.svelte'
+import type { TransferRollback } from './transfer-rollback.svelte'
 
 /** A fresh container, appended to the document and ready to mount into. */
 function container(): HTMLDivElement {
@@ -359,6 +362,44 @@ describe('CancelRollbackToastContent a11y', () => {
           level: 'info',
         },
       },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+})
+
+describe('TransferRollbackControls a11y', () => {
+  /** A controller in one fixed state; the button only reads it. */
+  function rollbackIn(blockedTooltip: string | null): TransferRollback {
+    return {
+      variant: 'stopAndDelete',
+      liveTooltip: 'Stops the copy and deletes what it wrote',
+      blockedTooltip,
+      confirming: false,
+      request: vi.fn(),
+      confirm: vi.fn(),
+      dismiss: vi.fn(),
+    }
+  }
+
+  it.each([
+    ['live', null],
+    ['blocked with a reason', 'This move can’t be rolled back'],
+  ] as const)('has no a11y violations when %s', async (_label, blockedTooltip) => {
+    const target = container()
+    mount(TransferRollbackControls, {
+      target,
+      props: { rollback: rollbackIn(blockedTooltip), isRollingBack: false, disabled: false },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+
+  it('has no a11y violations while rolling back', async () => {
+    const target = container()
+    mount(TransferRollbackControls, {
+      target,
+      props: { rollback: rollbackIn(null), isRollingBack: true, disabled: true },
     })
     await tick()
     await expectNoA11yViolations(target)
