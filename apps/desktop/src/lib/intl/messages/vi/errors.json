@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Tên này không thể nằm trong tệp zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} có tên trỏ ra ngoài tệp zip khi dấu gạch chéo ngược được tính là dấu phân cách thư mục, và các công cụ zip đọc theo đúng cách đó. Khi mở tệp zip, mục này sẽ bị ẩn, và một số công cụ sẽ đặt mục này ra ngoài thư mục mà chúng giải nén vào.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} nằm sâu trong nhiều thư mục hơn mức một tệp zip chứa được an toàn, nên khi mở tệp zip, mục này sẽ bị ẩn.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} có tên trở thành rỗng bên trong tệp zip, nên khi mở tệp zip, mục này sẽ bị ẩn.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Hãy đổi tên mục này hoặc bỏ chọn nó, rồi nén lại.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Hai mục sẽ trùng tên trong tệp zip",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} và {other} sẽ cùng chiếm {archivePath} trong tệp zip, vì các công cụ zip đọc dấu gạch chéo ngược là dấu phân cách thư mục. Khi mở tệp zip, chỉ một trong hai mục được hiển thị.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Hãy đổi tên một trong hai mục hoặc bỏ chọn một mục, rồi nén lại.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Tên tệp không hợp lệ",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

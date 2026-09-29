@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Ce nom ne peut pas figurer dans un zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} porte un nom qui pointe hors du zip dès que la barre oblique inverse sert de séparateur de dossiers, et c’est ainsi que les outils zip la lisent. À l’ouverture du zip, l’élément serait masqué, et certains outils le placeraient hors du dossier d’extraction.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} se trouve dans plus de dossiers qu’un zip ne peut en contenir sans risque, donc l’élément serait masqué à l’ouverture du zip.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} porte un nom qui se réduit à rien dans un zip, donc l’élément serait masqué à l’ouverture du zip.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Renommez l’élément ou retirez-le de la sélection, puis relancez la compression.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Deux éléments auraient le même nom dans le zip",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} et {other} occuperaient le même chemin dans le zip, {archivePath}, car les outils zip lisent la barre oblique inverse comme un séparateur de dossiers. À l’ouverture du zip, un seul des deux éléments serait affiché.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Renommez l’un des deux éléments ou retirez-en un de la sélection, puis relancez la compression.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Nom de fichier invalide",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

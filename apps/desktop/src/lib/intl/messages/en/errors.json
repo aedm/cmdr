@@ -1949,7 +1949,9 @@
   },
   "errors.write.archiveEntryNameRefused.title": "This name can’t go in a zip",
   "@errors.write.archiveEntryNameRefused.title": {
-    "description": "Title of the compress error dialog when one of the selected files has a name that a zip can't hold safely. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU)."
+    "description": "Title of the compress error dialog when one of the selected files has a name that a zip can't hold safely. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU).",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} has a name that points outside the zip once a backslash counts as a folder separator, which is how zip tools read it. Opening the zip would hide it, and some tools would put it outside the folder they extract to.",
   "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
@@ -1958,7 +1960,9 @@
       "entry": {
         "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
       }
-    }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} sits inside more folders than a zip can safely hold, so opening the zip would hide it.",
   "@errors.write.archiveEntryNameRefused.message.tooDeep": {
@@ -1967,7 +1971,9 @@
       "entry": {
         "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
       }
-    }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNameRefused.message.empty": "{entry} has a name that turns into nothing inside a zip, so opening the zip would hide it.",
   "@errors.write.archiveEntryNameRefused.message.empty": {
@@ -1976,15 +1982,21 @@
       "entry": {
         "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
       }
-    }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNameRefused.suggestion": "Rename it, or leave it out of the selection, then compress again.",
   "@errors.write.archiveEntryNameRefused.suggestion": {
-    "description": "Recovery suggestion for any of those three bodies. Plain text. This is a raw errors.* string (no ICU)."
+    "description": "Recovery suggestion for any of those three bodies. Plain text. This is a raw errors.* string (no ICU).",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNamesCollide.title": "Two items would share one name in the zip",
   "@errors.write.archiveEntryNamesCollide.title": {
-    "description": "Title of the compress error dialog when two of the files being compressed would end up at the same place inside the zip, so one would hide the other. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU)."
+    "description": "Title of the compress error dialog when two of the files being compressed would end up at the same place inside the zip, so one would hide the other. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU).",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNamesCollide.message": "{entry} and {other} would both claim {archivePath} inside the zip, because zip tools read a backslash as a folder separator. Opening the zip would show only one of them.",
   "@errors.write.archiveEntryNamesCollide.message": {
@@ -1999,11 +2011,15 @@
       "archivePath": {
         "description": "The one path inside the zip both would take. Inserted verbatim. Do not translate or reformat it."
       }
-    }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.archiveEntryNamesCollide.suggestion": "Rename one of them, or leave one out of the selection, then compress again.",
   "@errors.write.archiveEntryNamesCollide.suggestion": {
-    "description": "Recovery suggestion for that dialog. Plain text. This is a raw errors.* string (no ICU)."
+    "description": "Recovery suggestion for that dialog. Plain text. This is a raw errors.* string (no ICU).",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.invalidName.title": "Invalid file name",
   "errors.write.invalidName.message": "{path} has a name the destination can’t store.",

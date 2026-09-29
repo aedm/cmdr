@@ -556,7 +556,7 @@
     "sources": "macOS Finder (Der Vorgang kann nicht abgeschlossen werden., LA33 … beschädigt oder unvollständig ist.)"
   },
   "compress": {
-    "accept": ["komprimiert", "Komprimierung", "Kompression"],
+    "accept": ["komprimiert", "Komprimierung", "Kompression", "komprimiere"],
     "chosen": "komprimieren",
     "confidence": "high",
     "decision": "Archive-password dialog",

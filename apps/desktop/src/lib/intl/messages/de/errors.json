@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Dieser Name passt nicht in ein Zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} hat einen Namen, der aus dem Zip hinauszeigt, sobald ein Backslash als Ordnertrennzeichen gilt, und so lesen Zip-Programme ihn. Beim Öffnen des Zips wäre das Objekt ausgeblendet, und manche Programme würden es außerhalb des Ordners ablegen, in den sie entpacken.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} liegt in mehr Ordnerebenen, als ein Zip sicher fassen kann. Beim Öffnen des Zips wäre das Objekt deshalb ausgeblendet.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} hat einen Namen, von dem in einem Zip nichts übrig bleibt. Beim Öffnen des Zips wäre das Objekt deshalb ausgeblendet.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Benenne das Objekt um, oder nimm es aus der Auswahl. Komprimiere danach noch einmal.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Zwei Objekte hätten im Zip denselben Namen",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} und {other} würden im Zip beide auf {archivePath} landen, weil Zip-Programme einen Backslash als Ordnertrennzeichen lesen. Beim Öffnen des Zips wäre nur eines der beiden Objekte sichtbar.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Benenne eines der beiden Objekte um, oder nimm eines aus der Auswahl. Komprimiere danach noch einmal.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Ungültiger Dateiname",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

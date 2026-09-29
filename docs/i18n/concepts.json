@@ -105,7 +105,7 @@
     "en": "tool (AI)",
     "match": ["tool", "tools"],
     "note": "Developer tooling (Android platform tools) is not this concept.",
-    "notMatch": ["platform tools", "android tools", "backup tools"],
+    "notMatch": ["platform tools", "android tools", "backup tools", "zip tools", "some tools"],
     "sense": "A function the AI can call (list a folder, search), and its status lines."
   },
   "alias": {
@@ -1965,7 +1965,7 @@
     "distinct": ["share-menu", "network-drive", "server"],
     "en": "share",
     "match": ["share", "shares", "network share", "network shares", "smb share", "shared folder"],
-    "notMatch": ["=share", "share options"],
+    "notMatch": ["=share", "share options", "share one name"],
     "sense": "An SMB shared folder offered by a server or NAS."
   },
   "new-file": {

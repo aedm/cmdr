@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "這個名稱不能放進 zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} 的名稱一旦把反斜線當作資料夾分隔符號，就會指向 zip 之外，而 zip 工具正是這樣讀取的。開啟這個 zip 時，這個項目會被隱藏，有些工具還會把這個項目放到解壓縮目標資料夾之外。",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} 所在的資料夾層級超過 zip 能安全容納的深度，所以開啟這個 zip 時，這個項目會被隱藏。",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} 的名稱在 zip 裡會變成空的，所以開啟這個 zip 時，這個項目會被隱藏。",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "幫這個項目改名，或者取消選取它，然後重新壓縮。",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "兩個項目在 zip 裡會重名",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} 和 {other} 在 zip 裡都會佔用 {archivePath}，因為 zip 工具會把反斜線讀作資料夾分隔符號。開啟這個 zip 時只會顯示其中一個。",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "幫其中一個改名，或者取消選取其中一個，然後重新壓縮。",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "檔名不合用",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

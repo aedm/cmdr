@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Este nome não pode ir para um zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} tem um nome que aponta para fora do zip quando a barra invertida conta como separador de pastas, que é como as ferramentas de zip a leem. Ao abrir o zip, o item ficaria oculto, e algumas ferramentas o extrairiam fora da pasta de destino.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} está dentro de mais pastas do que um zip consegue guardar com segurança, então, ao abrir o zip, o item ficaria oculto.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} tem um nome que vira nada dentro de um zip, então, ao abrir o zip, o item ficaria oculto.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Renomeie o item, ou tire-o da seleção, e depois comprima de novo.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Dois itens ficariam com o mesmo nome no zip",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} e {other} iriam parar em {archivePath} dentro do zip, porque as ferramentas de zip leem a barra invertida como separador de pastas. Ao abrir o zip, só um dos itens apareceria.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Renomeie um dos itens, ou tire um deles da seleção, e depois comprima de novo.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Nome de arquivo inválido",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

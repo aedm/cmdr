@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Det här namnet kan inte ligga i en zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} har ett namn som pekar ut ur zip-filen när ett bakstreck räknas som mappavgränsare, och det är så zip-program läser det. När zip-filen öppnas skulle objektet gömmas, och vissa program skulle lägga det utanför mappen de extraherar till.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} ligger i fler mappar än en zip säkert klarar av, så när zip-filen öppnas skulle objektet gömmas.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} har ett namn som blir ingenting i en zip, så när zip-filen öppnas skulle objektet gömmas.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Byt namn på objektet eller lämna det utanför markeringen, och komprimera sedan igen.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Två objekt skulle få samma namn i zip-filen",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} och {other} skulle båda hamna på {archivePath} i zip-filen, eftersom zip-program läser ett bakstreck som mappavgränsare. När zip-filen öppnas skulle bara det ena objektet visas.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Byt namn på ett av objekten eller lämna ett utanför markeringen, och komprimera sedan igen.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Ogiltigt filnamn",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Deze naam kan niet in een zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} heeft een naam die buiten de zip wijst zodra een backslash als mapscheidingsteken telt, en zo lezen zip-programma's hem. Bij het openen van de zip zou het onderdeel verborgen blijven, en sommige programma's zouden het buiten de map zetten waarin ze uitpakken.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} zit in meer mappen dan een zip veilig aankan, dus bij het openen van de zip zou het onderdeel verborgen blijven.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} heeft een naam die in een zip op niets uitkomt, dus bij het openen van de zip zou het onderdeel verborgen blijven.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Wijzig de naam van het onderdeel, of laat het weg uit de selectie, en comprimeer daarna opnieuw.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Twee onderdelen zouden in de zip dezelfde naam krijgen",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} en {other} zouden in de zip allebei op {archivePath} terechtkomen, omdat zip-programma's een backslash als mapscheidingsteken lezen. Bij het openen van de zip zou je maar één onderdeel zien.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Wijzig de naam van een ervan, of laat er een weg uit de selectie, en comprimeer daarna opnieuw.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Ongeldige bestandsnaam",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"

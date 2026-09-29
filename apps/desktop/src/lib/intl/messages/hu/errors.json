@@ -1353,6 +1353,38 @@
   "@errors.write.nameTooLong.suggestion": {
     "sourceHash": "840936a"
   },
+  "errors.write.archiveEntryNameRefused.title": "Ez a név nem kerülhet zip archívumba",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "sourceHash": "14570b6"
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} neve kimutat az archívumból, ha a fordított perjel mappaelválasztónak számít, márpedig a zipkezelő programok így olvassák. A zip megnyitásakor az elem rejtve maradna, és egyes programok azon a mappán kívülre tennék, ahová kicsomagolnak.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "sourceHash": "9f2ba46"
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} több mappa mélyén van, mint amennyit egy zip biztonságosan kezelni tud, ezért a zip megnyitásakor az elem rejtve maradna.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "sourceHash": "1bf6d16"
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} neve a zipben semmivé válik, ezért a zip megnyitásakor az elem rejtve maradna.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "sourceHash": "01e89c2"
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Nevezd át az elemet, vagy hagyd ki a kijelölésből, aztán tömöríts újra.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "sourceHash": "c306071"
+  },
+  "errors.write.archiveEntryNamesCollide.title": "Két elemnek ugyanaz lenne a neve a zipben",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "sourceHash": "3d59f36"
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} és {other} a zipben ugyanarra a helyre kerülne ({archivePath}), mert a zipkezelő programok a fordított perjelet mappaelválasztónak olvassák. A zip megnyitásakor csak az egyik elem látszana.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "sourceHash": "59d028d"
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Nevezd át az egyik elemet, vagy hagyd ki az egyiket a kijelölésből, aztán tömöríts újra.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "sourceHash": "33fd97c"
+  },
   "errors.write.invalidName.title": "Érvénytelen fájlnév",
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
