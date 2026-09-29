@@ -397,8 +397,8 @@ Two properties are load-bearing:
 - **`auth_required` gets a calm pane, ❌ never the red one.** Behind the sheet it reads "Sign in to open …" with a lock,
   Sign in, and Back, and no Try again (without an account it gets the same answer). `auth_failed` and
   `permission_denied` keep the red "Couldn't mount share" pane: there an answer the person gave was turned away.
-  `PlacesBrowser`'s listing does the same for `auth_required` / `signing_required` ("Sign in to {host}", no Retry).
-  Red is feedback on something the person did (cmdr-reports#10).
+  `PlacesBrowser`'s listing does the same for `auth_required` / `signing_required` ("Sign in to {host}", no Retry). Red
+  is feedback on something the person did (cmdr-reports#10).
 - **Only a credential refusal keeps the sheet open.** A retry that comes back `share_not_found`, `host_unreachable`, or
   `mount_missing` (the system reported the share connected and no mount of it is there:
   `src-tauri/src/network/DETAILS.md` § "A reported mount counts once it's there") answers `handed_off`, closing the

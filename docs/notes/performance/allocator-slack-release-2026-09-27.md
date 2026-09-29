@@ -58,14 +58,14 @@ MiB footprint, pre → peak → +1 / +5 / +15 / +16 min:
 - **`mi_collect(true)` again ~nothing**: −4 MiB at +45 s, −9 at +15 min.
 - **The page walk places mimalloc's slack inside pages, not in free slices.** A `mi_heap_visit_blocks` walk mapped every
   page's span onto the arena and split the residency map (MiB):
-    - A before the bursts: pages span 252, live 91, resident in page spans 173, resident outside any page 26.
-    - A at +45 s: pages 347, live 112, resident in pages 265, outside 46. B (after its collect): pages 421, live 114,
-      resident in pages 349, outside 48.
-    - A at +15 min: pages 435, live 163, resident in pages 335, outside 40; after the collect 423 / 162 / 324 / 42.
-    - So ~150–190 MiB of the slack is dirty memory inside the spans of pages that still exist: free blocks, or memory
-      past a page's initialized capacity that an earlier page on the same slices dirtied. Free slices hold only 40–50
-      MiB. A collect from a helper thread can't touch it: `mi_collect` collects the calling thread's pages plus arena
-      purges, and these pages belong to other threads.
+  - A before the bursts: pages span 252, live 91, resident in page spans 173, resident outside any page 26.
+  - A at +45 s: pages 347, live 112, resident in pages 265, outside 46. B (after its collect): pages 421, live 114,
+    resident in pages 349, outside 48.
+  - A at +15 min: pages 435, live 163, resident in pages 335, outside 40; after the collect 423 / 162 / 324 / 42.
+  - So ~150–190 MiB of the slack is dirty memory inside the spans of pages that still exist: free blocks, or memory past
+    a page's initialized capacity that an earlier page on the same slices dirtied. Free slices hold only 40–50 MiB. A
+    collect from a helper thread can't touch it: `mi_collect` collects the calling thread's pages plus arena purges, and
+    these pages belong to other threads.
 
 ## Round 3 (load average 5–28)
 
@@ -79,12 +79,12 @@ MiB footprint, pre → peak → +1 / +5 / +15 / +16 min:
 - Collect and relief: nothing again (−0.3 MiB and 0 bytes).
 - **The in-page slack splits into empty pages and sparse ones.** The walk now also sums residency in pages with no live
   block (MiB):
-    - A at +45 s: pages 395, live 113, resident in pages 299 (in empty pages **82**), outside pages 29.
-    - B at +45 s, before and after its collect: in empty pages 96 → 91.
-    - A at +15 min: pages 309, live 111, resident in pages 231 (in empty pages **41**), outside 44.
-    - Empty pages are what their owning thread frees when IT collects (mimalloc v3 keeps a retired page per size class
-      per thread until that thread allocates again, and a page freed into from other threads isn't counted empty until
-      the owner collects). The rest (~120 MiB) is sparse pages: a few live blocks holding a 64 KiB–4 MiB page.
+  - A at +45 s: pages 395, live 113, resident in pages 299 (in empty pages **82**), outside pages 29.
+  - B at +45 s, before and after its collect: in empty pages 96 → 91.
+  - A at +15 min: pages 309, live 111, resident in pages 231 (in empty pages **41**), outside 44.
+  - Empty pages are what their owning thread frees when IT collects (mimalloc v3 keeps a retired page per size class per
+    thread until that thread allocates again, and a page freed into from other threads isn't counted empty until the
+    owner collects). The rest (~120 MiB) is sparse pages: a few live blocks holding a 64 KiB–4 MiB page.
 
 ## Round 4: collecting on every tokio worker as it parks (load average 5–13)
 
