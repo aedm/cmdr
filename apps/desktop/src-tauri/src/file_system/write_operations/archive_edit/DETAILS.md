@@ -178,9 +178,13 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   in flight. Tier 2 (`backend_abort`) isn't raced here. Pinned by the `cancel_reaches_*` tests in
   `fresh_compress_tests.rs` (a hung remote source and a destination holding a write in flight).
 
-  The producer emits empty directories/files, clamps deflate level to 1–9, carries characterized DOS timestamps and
-  Unix modes, and sets `large_file(true)` at `zip::ZIP64_BYTES_THR`. Stream local headers cannot be rewritten; only
-  `finish` writes the central directory and returns the writer (verified against installed zip 8.6 source, 2026-09-29).
+  The producer emits empty directories/files, clamps deflate level to 1–9, and carries characterized DOS timestamps
+  and Unix modes. It sets `large_file(true)` when zlib's conservative deflate bound for the planned size
+  (`n + n/8 + n/64 + 5`) reaches `zip::ZIP64_BYTES_THR`: `zip` refuses a non-ZIP64 data descriptor once the COMPRESSED
+  size passes 4 GiB, and incompressible input really grows by up to an eighth at level 1, so the input size alone
+  failed near-4 GiB videos. Entries from about 3.76 GiB up pay a 20-byte ZIP64 extra. Stream local headers cannot be
+  rewritten; only `finish` writes the central directory and returns the writer (verified against installed zip 8.6 and
+  zlib-rs 0.6.5 source, 2026-09-29).
 
   **Validation precedes publication.** After producer close and destination close/sync, producer bytes, writer bytes,
   and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP and its non-quarantined entry count must

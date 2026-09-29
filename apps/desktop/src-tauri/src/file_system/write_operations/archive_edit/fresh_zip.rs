@@ -3,9 +3,10 @@
 //! `zip` 8.6's `ZipWriter::new_stream` writes data descriptors instead of seeking
 //! back into local headers. `finish` writes the central directory and returns the
 //! underlying writer; success is not inferred from output-channel EOF. ZIP64 is
-//! selected per entry at `ZIP64_BYTES_THR` because stream mode cannot repair an
-//! undersized local header after bytes have passed downstream (verified against
-//! installed `zip-8.6.0/src/write.rs`, 2026-09-29).
+//! selected per entry, up front, from deflate's worst-case output for the planned
+//! size, because stream mode cannot repair an undersized local header after bytes
+//! have passed downstream (verified against installed `zip-8.6.0/src/write.rs`
+//! and `types.rs::write_data_descriptor`, 2026-09-29).
 
 use std::future::Future;
 use std::io::{Read, Write};
@@ -549,8 +550,24 @@ fn checkpoint(cancellation: &FreshZipCancellation) -> Result<(), FreshZipError> 
     }
 }
 
+/// Whether an entry of `size` uncompressed bytes could need ZIP64 sizes. Stream
+/// mode commits to the choice in the local header, before a byte is compressed,
+/// and `zip` refuses the data descriptor once the COMPRESSED size passes 4 GiB,
+/// so the decision uses deflate's worst-case growth, not the input size.
 fn needs_zip64(size: u64) -> bool {
-    size >= zip::ZIP64_BYTES_THR
+    deflate_bound(size) >= zip::ZIP64_BYTES_THR
+}
+
+/// zlib's conservative deflate upper bound, valid for any window and memory
+/// setting: `n + ceil(n/8) + ceil(n/64) + 5`. Incompressible input can really
+/// grow by an eighth: level 1 codes literals with 9-bit static Huffman
+/// (verified against `zlib-rs` 0.6.5 `deflate::bound`, the backend `zip` 8.6's
+/// `deflate` feature selects, 2026-09-29). It costs a 20-byte ZIP64 extra on
+/// entries between roughly 3.76 and 4 GiB.
+fn deflate_bound(size: u64) -> u64 {
+    size.saturating_add(size.saturating_add(7) >> 3)
+        .saturating_add(size.saturating_add(63) >> 6)
+        .saturating_add(5)
 }
 
 fn map_zip(error: zip::result::ZipError) -> FreshZipError {
@@ -588,9 +605,33 @@ mod tests {
 
     #[test]
     fn zip64_is_selected_at_the_per_entry_boundary() {
-        assert!(!needs_zip64(zip::ZIP64_BYTES_THR - 1));
         assert!(needs_zip64(zip::ZIP64_BYTES_THR));
         assert!(needs_zip64(zip::ZIP64_BYTES_THR + 1));
+        assert!(
+            !needs_zip64(3 * 1024 * 1024 * 1024),
+            "a 3 GiB entry stays a plain entry"
+        );
+        // The exact switch point: the last size whose worst case still fits.
+        let (mut plain, mut large) = (0, zip::ZIP64_BYTES_THR);
+        while large - plain > 1 {
+            let mid = plain + (large - plain) / 2;
+            if needs_zip64(mid) {
+                large = mid;
+            } else {
+                plain = mid;
+            }
+        }
+        assert!(deflate_bound(plain) < zip::ZIP64_BYTES_THR);
+        assert!(deflate_bound(plain + 1) >= zip::ZIP64_BYTES_THR);
+    }
+
+    #[test]
+    fn an_entry_just_under_4_gib_gets_zip64_because_deflate_can_grow_it() {
+        // Pre-fix, only the UNCOMPRESSED size was compared, so these entries
+        // failed at their data descriptor once incompressible bytes grew past
+        // 4 GiB (a ~4 GiB video).
+        assert!(needs_zip64(zip::ZIP64_BYTES_THR - 1));
+        assert!(needs_zip64(zip::ZIP64_BYTES_THR - zip::ZIP64_BYTES_THR / 10));
     }
 
     #[tokio::test]
