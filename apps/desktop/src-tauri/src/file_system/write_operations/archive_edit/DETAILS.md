@@ -179,7 +179,9 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   archive size. The ZIP writer necessarily retains O(entries) central-directory metadata. Each remote source sends
   explicit completion, and the output sends an explicit `End` only after the central directory is flushed: feeder
   loss, source error, and an output queue that closes without `End` are typed failures, never EOF, so a destination
-  never closes a failed ZIP as a finished file. Coordinator shutdown closes the output endpoint before joining on
+  never closes a failed ZIP as a finished file. A source that GREW since planning (a live log) fails as `CountMismatch` one
+  byte past its planned size, never at EOF: local reads run through `take(size + 1)` and remote chunks are counted as
+  they arrive, so the producer never compresses bytes the plan didn't promise or waits for an end that may not come. Coordinator shutdown closes the output endpoint before joining on
   Tokio's blocking pool; `Drop` only signals cancellation (and only for an unfinished pipeline) and never blocks an
   async thread. Thread-spawn failure is typed too.
 

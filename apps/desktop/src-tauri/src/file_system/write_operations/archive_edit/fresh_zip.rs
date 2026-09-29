@@ -438,6 +438,9 @@ fn produce(
             continue;
         }
         zip.start_file(entry.name.clone(), options).map_err(map_zip)?;
+        // One byte past the plan is enough to know the source grew (a live log):
+        // stop there instead of reading on to an EOF that may never come.
+        let read_limit = entry.size.saturating_add(1);
         let actual = match &mut entry.source {
             FreshZipSource::Local(path) => {
                 let mut file = std::fs::File::open(path).map_err(|error| FreshZipError::Source {
@@ -445,7 +448,7 @@ fn produce(
                     message: error.to_string(),
                 })?;
                 copy_reader(
-                    &mut file,
+                    &mut (&mut file).take(read_limit),
                     &mut zip,
                     &entry.name,
                     cancellation,
@@ -455,7 +458,7 @@ fn produce(
                 )?
             }
             FreshZipSource::Bytes(bytes) => copy_reader(
-                &mut bytes.as_slice(),
+                &mut bytes.as_slice().take(read_limit),
                 &mut zip,
                 &entry.name,
                 cancellation,
@@ -470,6 +473,13 @@ fn produce(
                     match source.rx.blocking_recv() {
                         Some(RemoteSourceMessage::Chunk(Ok(bytes))) => {
                             actual += bytes.len() as u64;
+                            if actual > entry.size {
+                                return Err(FreshZipError::CountMismatch {
+                                    entry: entry.name.clone(),
+                                    expected: entry.size,
+                                    actual,
+                                });
+                            }
                             source_bytes_done += bytes.len() as u64;
                             zip.write_all(&bytes).map_err(map_io)?;
                             report_progress(progress, entries_done, source_bytes_done)?;

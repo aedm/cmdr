@@ -184,6 +184,51 @@ async fn planned_source_count_mismatch_is_terminal_failure() {
 }
 
 #[tokio::test]
+async fn a_source_that_grew_fails_one_byte_past_its_planned_size() {
+    // A live log keeps growing: reading it to EOF compresses bytes the plan
+    // never promised, and may never end.
+    let output = spawn_fresh_zip(
+        vec![FreshZipEntry {
+            name: "live.log".into(),
+            size: 5,
+            source: FreshZipSource::Bytes(vec![b'x'; 4 * CHUNK_BYTES]),
+            is_directory: false,
+            modified: None,
+            unix_mode: None,
+        }],
+        None,
+    )
+    .expect("spawn producer");
+    assert!(matches!(
+        collect(output).await,
+        Err(FreshZipError::CountMismatch {
+            expected: 5,
+            actual: 6,
+            ..
+        })
+    ));
+}
+
+#[tokio::test]
+async fn a_remote_source_that_grew_fails_without_waiting_for_its_end() {
+    let (feeder, output, cancellation) = remote_pipeline(6);
+    feeder
+        .send(Ok(b"prefix".to_vec()), &cancellation)
+        .await
+        .expect("first chunk");
+    feeder
+        .send(Ok(b"and more".to_vec()), &cancellation)
+        .await
+        .expect("a chunk past the planned size");
+    // No `finish`: a growing source may never reach one.
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(1), collect(output))
+        .await
+        .expect("the producer stops at the first byte past the plan");
+    assert!(matches!(outcome, Err(FreshZipError::CountMismatch { expected: 6, .. })));
+    drop(feeder);
+}
+
+#[tokio::test]
 async fn dropping_destination_cancels_a_backpressured_producer() {
     let output = spawn_fresh_zip(
         vec![FreshZipEntry {
