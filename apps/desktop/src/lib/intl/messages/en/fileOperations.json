@@ -901,7 +901,7 @@
 
   "fileOperations.transferProgress.stageFinishingCompression": "Finishing compression…",
   "@fileOperations.transferProgress.stageFinishingCompression": {
-    "description": "Indeterminate phase label shown after every selected source byte has been compressed, while Cmdr closes the zip and durably publishes it locally. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
+    "description": "Indeterminate phase label shown after every selected source byte has been compressed, while Cmdr finishes the zip: it closes the archive, checks it, and puts it in place. When the zip streams straight to a network share or phone, that includes closing the remote file, checking it on the remote, and putting it in place there. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
   },
 
   "fileOperations.transferProgress.stageTransferringArchive": "Transferring archive",
@@ -912,6 +912,42 @@
   "fileOperations.transferProgress.stageFinishingTransfer": "Finishing transfer…",
   "@fileOperations.transferProgress.stageFinishingTransfer": {
     "description": "Indeterminate phase label shown after every byte of a zip has been uploaded to a remote destination (a newly compressed archive, or an existing remote archive Cmdr just edited), while Cmdr closes the upload, checks it, and puts it in place. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
+  },
+
+  "fileOperations.transferProgress.stageCompressingStep": "Step {step, number} of {total, number}: Compressing",
+  "@fileOperations.transferProgress.stageCompressingStep": {
+    "description": "Phase label while Cmdr compresses the selected files into a zip on this Mac as the FIRST of two steps, because the destination (a network share or phone) can't receive the zip as it's being made; step two uploads it. A determinate source-byte progress bar is visible. Same wording as stageCompressing, plus the step. It appears in the progress dialog, operation queue row, and background operation chip. {step} is the current step number and {total} is how many steps there are; today always 1 or 2 of 2. Keep the \"Step {step} of {total}:\" framing so the two steps read as one sequence.",
+    "placeholders": {
+      "step": "the current step number (1)",
+      "total": "the number of steps (2)"
+    }
+  },
+
+  "fileOperations.transferProgress.stageFinishingCompressionStep": "Step {step, number} of {total, number}: Finishing compression…",
+  "@fileOperations.transferProgress.stageFinishingCompressionStep": {
+    "description": "Indeterminate phase label at the end of step one of two: every source byte is compressed and Cmdr closes and checks the zip it made on this Mac before uploading it in step two. Shown beside a spinner, never a percentage or ETA. Same wording as stageFinishingCompression, plus the step; keep the trailing ellipsis. It appears in the progress dialog, operation queue row, and background operation chip. {step} is the current step number and {total} is how many steps there are; today always 1 or 2 of 2. Keep the \"Step {step} of {total}:\" framing so the two steps read as one sequence.",
+    "placeholders": {
+      "step": "the current step number (1)",
+      "total": "the number of steps (2)"
+    }
+  },
+
+  "fileOperations.transferProgress.stageTransferringArchiveStep": "Step {step, number} of {total, number}: Transferring archive",
+  "@fileOperations.transferProgress.stageTransferringArchiveStep": {
+    "description": "Phase label for step two of two: Cmdr uploads the zip it made on this Mac in step one to a network share or phone. A determinate progress bar over the zip's size is visible. Same wording as stageTransferringArchive, plus the step. It appears in the progress dialog, operation queue row, and background operation chip. {step} is the current step number and {total} is how many steps there are; today always 1 or 2 of 2. Keep the \"Step {step} of {total}:\" framing so the two steps read as one sequence.",
+    "placeholders": {
+      "step": "the current step number (2)",
+      "total": "the number of steps (2)"
+    }
+  },
+
+  "fileOperations.transferProgress.stageFinishingTransferStep": "Step {step, number} of {total, number}: Finishing transfer…",
+  "@fileOperations.transferProgress.stageFinishingTransferStep": {
+    "description": "Indeterminate phase label at the end of step two of two: every byte of the zip is uploaded and Cmdr closes the upload, checks it on the remote, and puts it in place. Shown beside a spinner, never a percentage or ETA. Same wording as stageFinishingTransfer, plus the step; keep the trailing ellipsis. It appears in the progress dialog, operation queue row, and background operation chip. {step} is the current step number and {total} is how many steps there are; today always 1 or 2 of 2. Keep the \"Step {step} of {total}:\" framing so the two steps read as one sequence.",
+    "placeholders": {
+      "step": "the current step number (2)",
+      "total": "the number of steps (2)"
+    }
   },
 
   "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to overwrite it with a <strong>file</strong> by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?",

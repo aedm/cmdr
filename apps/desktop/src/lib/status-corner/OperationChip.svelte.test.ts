@@ -393,6 +393,25 @@ describe('OperationChip', () => {
     expect(chip()?.getAttribute('aria-label')).toBe(`${label}. Open the operation queue.`)
   })
 
+  it('says which step a zip-then-upload compress is on', () => {
+    store?._testApplySnapshot([snapshot({ operationType: 'compress' })])
+    emitProgress(
+      progress({
+        operationType: 'compress',
+        phase: 'finishing_transfer',
+        filesDone: 0,
+        filesTotal: 0,
+        bytesDone: 0,
+        bytesTotal: 0,
+        etaSeconds: null,
+        step: { number: 2, total: 2 },
+      }),
+    )
+    renderChip()
+
+    expect(chip()?.querySelector('.chip-label')?.textContent).toBe('Step 2 of 2: Finishing transfer…')
+  })
+
   it('goes back to a real bar once the operation starts writing', () => {
     store?._testApplySnapshot([snapshot()])
     emitProgress(progress())

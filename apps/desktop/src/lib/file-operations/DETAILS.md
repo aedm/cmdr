@@ -110,7 +110,9 @@ temp+rename rewrite), surfaced through the same transfer/queue UI as any write:
   Both use the `file-archive` glyph and map to archive-edit journal semantics. Phase labels come from
   `archivePhaseLabelKey`, keyed on the PHASE alone: the compress phases only ever come from `compress`, and the two
   upload phases also end any edit of a zip on a remote volume (a copy, move, or delete inside it uploads the rewritten
-  archive under the op's own type). It has no scan-title arm. `Compressing` shows source-byte bars, `Transferring` shows
+  archive under the op's own type). When the backend numbers the phase (`WriteProgressEvent.step`, set only when a
+  compress zips locally and then uploads), the label takes its `*Step` variant, "Step 1 of 2: Compressing"; the
+  frontend never decides the step itself. It has no scan-title arm. `Compressing` shows source-byte bars, `Transferring` shows
   completed-archive output bytes, and `FinishingCompression` / `FinishingTransfer` are indeterminate.
   `isIndeterminateProgressPhase` is the one classifier shared by dialog, queue, and corner.
 

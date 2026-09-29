@@ -67,6 +67,7 @@ import type {
 } from '$lib/file-explorer/types'
 import type { TransferCompletePayload } from '$lib/file-explorer/pane/dialog-props'
 import type { ProgressAtStop } from '$lib/tauri-commands'
+import type { ProgressStep } from '$lib/ipc/bindings'
 import { pluralize } from '$lib/utils/pluralize'
 import { getAppLogger } from '$lib/logging/logger'
 import { tString } from '$lib/intl/messages.svelte'
@@ -787,6 +788,11 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     },
     get phase(): WriteOperationPhase | null {
       return phase()
+    },
+    /** Which step of a multi-step operation the phase belongs to, as the
+     *  backend numbered it. `null` for single-step work. */
+    get step(): ProgressStep | null {
+      return bound.current?.progress?.step ?? null
     },
     get currentFile(): string | null {
       return session()?.progress?.currentFile ?? null

@@ -198,6 +198,27 @@ describe('QueueRow', () => {
     expect(target.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
   })
 
+  it.each([
+    ['compressing', 1, 'Step 1 of 2: Compressing'],
+    ['finishing_compression', 1, 'Step 1 of 2: Finishing compression…'],
+    ['transferring', 2, 'Step 2 of 2: Transferring archive'],
+    ['finishing_transfer', 2, 'Step 2 of 2: Finishing transfer…'],
+  ] as const)('numbers the %s phase of a zip-then-upload compress', (phase, number, label) => {
+    const event: WriteProgressEvent = {
+      operationId: 'op-1',
+      operationType: 'compress',
+      phase,
+      currentFile: null,
+      filesDone: 0,
+      filesTotal: 0,
+      bytesDone: 0,
+      bytesTotal: 0,
+      step: { number, total: 2 },
+    }
+    render({ row: buildRow('running', 'compress', event) })
+    expect(target.querySelector('.op-label')?.textContent.trim()).toBe(label)
+  })
+
   it('offers Rollback only where the backend says the op can be reversed', () => {
     render({ row: buildRow('running', 'copy', null, true) })
     expect(rollbackButton()).not.toBeNull()

@@ -386,6 +386,7 @@ pub(super) fn emit_scan_progress(operation_id: &str, counts: ScanCounts) {
         expected_files_total: counts.expected_files_total,
         expected_bytes_total: counts.expected_bytes_total,
         activity: None,
+        step: None,
     };
     #[cfg(test)]
     record_tick_for_test(&event);

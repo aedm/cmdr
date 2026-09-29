@@ -26,7 +26,7 @@
  */
 
 import { bytes, bytesPerSecond, seconds, type ByteCount, type BytesPerSecond, type Seconds } from '$lib/units'
-import type { OpKind, WriteOperationPhase } from '$lib/ipc/bindings'
+import type { OpKind, ProgressStep, WriteOperationPhase } from '$lib/ipc/bindings'
 import type { MessageKey } from '$lib/intl/keys.gen'
 
 /** Phases with active work but no honest denominator. Every progress surface
@@ -35,23 +35,46 @@ export function isIndeterminateProgressPhase(phase: WriteOperationPhase | null):
   return phase === 'scanning' || phase === 'finishing_compression' || phase === 'finishing_transfer'
 }
 
+/** One phase's wording: the plain label, and the one that also says which step
+ * it is ("Step 1 of 2: Compressing"). */
+const ARCHIVE_PHASE_KEYS: Partial<Record<WriteOperationPhase, { plain: MessageKey; stepped: MessageKey }>> = {
+  compressing: {
+    plain: 'fileOperations.transferProgress.stageCompressing',
+    stepped: 'fileOperations.transferProgress.stageCompressingStep',
+  },
+  finishing_compression: {
+    plain: 'fileOperations.transferProgress.stageFinishingCompression',
+    stepped: 'fileOperations.transferProgress.stageFinishingCompressionStep',
+  },
+  transferring: {
+    plain: 'fileOperations.transferProgress.stageTransferringArchive',
+    stepped: 'fileOperations.transferProgress.stageTransferringArchiveStep',
+  },
+  finishing_transfer: {
+    plain: 'fileOperations.transferProgress.stageFinishingTransfer',
+    stepped: 'fileOperations.transferProgress.stageFinishingTransferStep',
+  },
+}
+
+/** A message key plus the params it takes. */
+export interface PhaseLabel {
+  key: MessageKey
+  params?: { step: number; total: number }
+}
+
 /** Wording for the phases that make or move a whole archive: a fresh
  * compress, and the upload that ends any edit of a zip on a remote volume (a
  * copy, move, or delete inside one). The phase alone decides, whatever the
- * operation type. `null` leaves every other phase on the operation-type label. */
-export function archivePhaseLabelKey(phase: WriteOperationPhase | null): MessageKey | null {
-  switch (phase) {
-    case 'compressing':
-      return 'fileOperations.transferProgress.stageCompressing'
-    case 'finishing_compression':
-      return 'fileOperations.transferProgress.stageFinishingCompression'
-    case 'transferring':
-      return 'fileOperations.transferProgress.stageTransferringArchive'
-    case 'finishing_transfer':
-      return 'fileOperations.transferProgress.stageFinishingTransfer'
-    default:
-      return null
-  }
+ * operation type, and the backend's `step` (set only when a compress zips
+ * locally and then uploads) adds "Step n of m". `null` leaves every other phase
+ * on the operation-type label. */
+export function archivePhaseLabel(
+  phase: WriteOperationPhase | null,
+  step: ProgressStep | null | undefined,
+): PhaseLabel | null {
+  const keys = phase === null ? undefined : ARCHIVE_PHASE_KEYS[phase]
+  if (keys === undefined) return null
+  return step ? { key: keys.stepped, params: { step: step.number, total: step.total } } : { key: keys.plain }
 }
 
 /**

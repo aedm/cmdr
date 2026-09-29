@@ -228,6 +228,33 @@ describe('TransferProgressDialog compression finalization', () => {
     void unmount(component)
   })
 
+  it('numbers the steps of a compress that zips locally and then uploads', async () => {
+    const { component, target } = await mountDialog('compress')
+    if (!progressCb) throw new Error('subscriber never registered')
+
+    progressCb({
+      ...flushingEvent('compress'),
+      phase: 'compressing',
+      filesDone: 1,
+      bytesDone: 10,
+      step: { number: 1, total: 2 },
+    })
+    await tick()
+    expect(target.textContent).toContain('Step 1 of 2: Compressing')
+
+    progressCb({
+      ...flushingEvent('compress'),
+      phase: 'transferring',
+      filesDone: 0,
+      filesTotal: 0,
+      bytesDone: 10,
+      step: { number: 2, total: 2 },
+    })
+    await tick()
+    expect(target.textContent).toContain('Step 2 of 2: Transferring archive')
+    void unmount(component)
+  })
+
   it.each(['copy', 'move'] as const)(
     'names the upload tail of a %s into a remote archive instead of a 0-byte bar',
     async (operationType) => {

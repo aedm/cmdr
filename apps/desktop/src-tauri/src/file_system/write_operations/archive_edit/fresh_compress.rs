@@ -263,6 +263,13 @@ async fn run(
     .await?;
     let total_entries = plan.entries.len();
     let total_bytes = plan.source_bytes;
+    let direct = matches!(
+        dest_volume.backend_kind(),
+        BackendKind::Local | BackendKind::Smb | BackendKind::Sftp | BackendKind::Adb
+    ) && dest_volume.supports_unknown_length_writes();
+    if !direct {
+        hooks.number_steps_as_zip_then_upload();
+    }
     MutationHooks::on_progress(
         &*hooks,
         MutationProgress {
@@ -300,10 +307,6 @@ async fn run(
         cancellation_for_progress.is_requested()
     });
 
-    let direct = matches!(
-        dest_volume.backend_kind(),
-        BackendKind::Local | BackendKind::Smb | BackendKind::Sftp | BackendKind::Adb
-    ) && dest_volume.supports_unknown_length_writes();
     let skipped = plan.skipped;
     if direct {
         produce_direct(

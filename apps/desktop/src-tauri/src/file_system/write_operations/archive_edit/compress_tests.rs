@@ -107,6 +107,10 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
         .expect("finishing-compression phase");
     assert_eq!((finishing.files_done, finishing.files_total), (0, 0));
     assert_eq!((finishing.bytes_done, finishing.bytes_total), (0, 0));
+    assert!(
+        progress.iter().all(|event| event.step.is_none()),
+        "a direct compress is one step and never numbers its phases"
+    );
 
     let complete = events.inner.complete.lock_ignore_poison();
     assert!(complete[0].files_skipped == 0, "a clean compress skips nothing");

@@ -80,6 +80,21 @@ pub struct WriteProgressEvent {
     /// and has nothing extra to say, so the UI shows nothing extra.
     #[serde(default)]
     pub activity: Option<TransferActivity>,
+    /// Which step of a multi-step operation this phase belongs to. A fresh
+    /// compress onto a destination that can't take a stream zips locally first
+    /// and then uploads, so it says 1 of 2 while compressing and 2 of 2 while
+    /// transferring. `None` for single-step work, including a direct compress.
+    #[serde(default)]
+    pub step: Option<ProgressStep>,
+}
+
+/// Step `number` of `total` in a multi-step operation. Rides on
+/// [`WriteProgressEvent::step`]; the backend decides it, the frontend only words it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressStep {
+    pub number: u8,
+    pub total: u8,
 }
 
 /// Completion event payload.

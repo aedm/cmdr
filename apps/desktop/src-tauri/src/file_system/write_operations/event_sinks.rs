@@ -59,7 +59,15 @@ impl WriteProgressEvent {
             expected_files_total: None,
             expected_bytes_total: None,
             activity: None,
+            step: None,
         }
+    }
+
+    /// Marks which step of a multi-step operation this event's phase belongs to.
+    #[must_use]
+    pub fn with_step(mut self, step: Option<super::types::ProgressStep>) -> Self {
+        self.step = step;
+        self
     }
 
     /// Attach scanning-phase metadata (current directory, running dirs count,

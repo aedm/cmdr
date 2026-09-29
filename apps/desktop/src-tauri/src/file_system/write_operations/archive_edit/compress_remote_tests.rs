@@ -155,6 +155,21 @@ async fn compress_onto_a_remote_parent_spools_then_packs_local_files() {
     assert_eq!((finishing.files_done, finishing.files_total), (0, 0));
     assert_eq!((finishing.bytes_done, finishing.bytes_total), (0, 0));
 
+    // The spool route is two steps a person can see: zip here, then upload.
+    use crate::file_system::write_operations::types::ProgressStep;
+    for event in progress.iter() {
+        let expected = match event.phase {
+            WriteOperationPhase::Compressing | WriteOperationPhase::FinishingCompression => {
+                Some(ProgressStep { number: 1, total: 2 })
+            }
+            WriteOperationPhase::Transferring | WriteOperationPhase::FinishingTransfer => {
+                Some(ProgressStep { number: 2, total: 2 })
+            }
+            _ => None,
+        };
+        assert_eq!(event.step, expected, "{:?} numbers its step", event.phase);
+    }
+
     get_volume_manager().unregister(&parent_id);
 }
 

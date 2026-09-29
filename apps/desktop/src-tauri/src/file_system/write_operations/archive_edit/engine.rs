@@ -6,7 +6,7 @@
 //! returns is [`EditError`], in its own leaf so `remote` can name it too.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -14,8 +14,8 @@ use super::super::OperationEventSink;
 use super::super::operation_intent::is_cancelled;
 use super::super::state::WriteOperationState;
 use super::super::types::{
-    AppearedDuringMove, CancelRollback, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent, WriteOperationError,
-    WriteOperationPhase, WriteOperationType, WriteProgressEvent,
+    AppearedDuringMove, CancelRollback, ProgressStep, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent,
+    WriteOperationError, WriteOperationPhase, WriteOperationType, WriteProgressEvent,
 };
 use super::edit_error::EditError;
 use super::remote::{RemoteCommitProgress, RemoteProgressObserver, pull_apply_upload_swap};
@@ -184,6 +184,9 @@ pub(super) struct MutatorHooks {
     /// The last `entries_done` the E2E pacing slept for, so it sleeps once per entry
     /// rather than once per chunk. `usize::MAX` until the first tick.
     paced_entries: AtomicUsize,
+    /// Set when a fresh compress takes the spool route (zip here, then upload),
+    /// so its phases say which of the two steps they belong to.
+    zip_then_upload: AtomicBool,
 }
 
 impl MutatorHooks {
@@ -206,6 +209,28 @@ impl MutatorHooks {
             last_remote_emit: Mutex::new(None),
             latest: Mutex::new(MutationProgress::default()),
             paced_entries: AtomicUsize::new(usize::MAX),
+            zip_then_upload: AtomicBool::new(false),
+        }
+    }
+
+    /// Numbers this op's phases as two steps: compressing locally, then
+    /// transferring the archive. Call before the first progress tick.
+    pub(super) fn number_steps_as_zip_then_upload(&self) {
+        self.zip_then_upload.store(true, Ordering::Relaxed);
+    }
+
+    fn step_for(&self, phase: WriteOperationPhase) -> Option<ProgressStep> {
+        if !self.zip_then_upload.load(Ordering::Relaxed) {
+            return None;
+        }
+        match phase {
+            WriteOperationPhase::Compressing | WriteOperationPhase::FinishingCompression => {
+                Some(ProgressStep { number: 1, total: 2 })
+            }
+            WriteOperationPhase::Transferring | WriteOperationPhase::FinishingTransfer => {
+                Some(ProgressStep { number: 2, total: 2 })
+            }
+            _ => None,
         }
     }
 
@@ -250,7 +275,8 @@ impl MutatorHooks {
                 0,
                 bytes_done,
                 bytes_total,
-            ),
+            )
+            .with_step(self.step_for(phase)),
         );
     }
 
@@ -295,7 +321,8 @@ impl MutatorHooks {
             files_total,
             bytes_done,
             bytes_total,
-        );
+        )
+        .with_step(self.step_for(phase));
         self.state.emit_progress_via_sink(&*self.events, event);
     }
 

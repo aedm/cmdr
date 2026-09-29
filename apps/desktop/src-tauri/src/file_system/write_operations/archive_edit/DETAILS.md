@@ -207,7 +207,10 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   publication. Fallback upload starts a fresh `Transferring` axis over completed-ZIP bytes, switches to indeterminate
   `FinishingTransfer` instead of emitting 100%, and stays there through backend close, remote validation, and
   publication. Direct remote generation moves from `Compressing` to indeterminate `FinishingCompression` for the same
-  close, validation, and publication work without inventing a transfer axis. Pause parks source production or spool
+  close, validation, and publication work without inventing a transfer axis. The spool route is two steps a person can
+  see (zip here, then upload), so `MutatorHooks::number_steps_as_zip_then_upload` stamps its compress phases
+  `step: 1 of 2` and its transfer phases `2 of 2` on `WriteProgressEvent::step`; the frontend only words it ("Step 1 of
+  2: Compressing"). A direct stream is one step and carries no `step`. Pause parks source production or spool
   reads at chunk boundaries. Cancel reaches every participant through the one cancellation source above, removes the
   owned stage, and never publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
   publication refusal/recovery, aliases, old-target preservation, remote sources, and same-device MTP fallback.

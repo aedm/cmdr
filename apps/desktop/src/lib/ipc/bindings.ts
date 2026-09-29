@@ -11518,6 +11518,15 @@ export type ProgressAtStop = {
 }
 
 /**
+ *  Step `number` of `total` in a multi-step operation. Rides on
+ *  [`WriteProgressEvent::step`]; the backend decides it, the frontend only words it.
+ */
+export type ProgressStep = {
+  number: number
+  total: number
+}
+
+/**
  *  One answered proposal group: what was asked, over how much, and what the user did.
  *
  *  ⚠️ **Both a stored shape and a wire shape**, like the rest of this module's vocabulary: it
@@ -16457,6 +16466,13 @@ export type WriteProgressEvent = {
    *  and has nothing extra to say, so the UI shows nothing extra.
    */
   activity?: TransferActivity | null
+  /**
+   *  Which step of a multi-step operation this phase belongs to. A fresh
+   *  compress onto a destination that can't take a stream zips locally first
+   *  and then uploads, so it says 1 of 2 while compressing and 2 of 2 while
+   *  transferring. `None` for single-step work, including a direct compress.
+   */
+  step?: ProgressStep | null
 }
 
 /**
