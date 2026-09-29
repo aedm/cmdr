@@ -35,7 +35,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   showing the "Step 1 of 2" line, and name the compress phases in the note.
 - `step` concept: its definition says onboarding, setup guide, or install; widen it to any numbered stage of a
   multi-step operation (the two-step compress-then-upload labels now use it).
-- `zip` has no concept, yet it recurs in prose (`errors.write.archiveEntryName*`, `settings.archives.*`). Register it
-  so each locale's prose form is ruled (de neuter `Zip`, sv `zip-fil`, hu `zip archívum`, zh-Hant `zip`).
+- `zip` has no concept, yet it recurs in prose (`errors.write.archiveEntryName*`, `settings.archives.*`). Register it so
+  each locale's prose form is ruled (de neuter `Zip`, sv `zip-fil`, hu `zip archívum`, zh-Hant `zip`).
 - `errors.write.archiveEntryName*` messages: "some tools", "zip tools", and the verb "share" tripped `ai-tool` and
   `network-share`; `notMatch` entries now cover these, but a sense-aware matcher would stop the next one.
