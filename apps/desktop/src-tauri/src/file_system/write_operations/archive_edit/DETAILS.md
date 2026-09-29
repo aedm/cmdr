@@ -187,8 +187,10 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   zlib-rs 0.6.5 source, 2026-09-29).
 
   **Validation precedes publication.** After producer close and destination close/sync, producer bytes, writer bytes,
-  and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP and its non-quarantined entry count must
-  match the plan. SFTP validates through positioned reads; ADB uses bounded, safely quoted device-side Toybox `dd`
+  and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP, which must read back as exactly the
+  planned tree (`ExpectedIndex`): each planned name run through the reader's own `sanitize_entry_name`, plus the
+  ancestor directories the reader synthesizes, with nothing quarantined. A raw count comparison misfired because the
+  reader treats `\` as a separator, so a macOS file named `a\b.txt` reads back as `a/` + `b.txt`. SFTP validates through positioned reads; ADB uses bounded, safely quoted device-side Toybox `dd`
   windows, so neither downloads the staged archive. Cancellation or any mismatch abandons only the owned stage. Local
   POSIX publishes with its declared atomic replace rename. SMB's force rename deletes first, so despite direct generation it uses the existing tracked
   `DisplacedDestination`: set the original aside, land without force, restore on refusal, and surface

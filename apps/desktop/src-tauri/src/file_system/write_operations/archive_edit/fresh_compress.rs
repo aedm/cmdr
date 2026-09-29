@@ -1,6 +1,7 @@
 //! Managed fresh-archive creation: plan source entries, stream one seedless ZIP
 //! producer into a tracked destination stage, validate it, then publish it.
 
+use std::collections::BTreeSet;
 use std::future::Future;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use cmdr_archive::mutator::{MutationHooks, MutationProgress};
+use cmdr_archive::read::{SanitizedName, sanitize_entry_name};
 use cmdr_archive::{ArchiveFormat, ArchiveIndex, ArchiveVolume};
 use cmdr_fs::volume::host::VolumeHost;
 
@@ -346,7 +348,7 @@ async fn produce_direct(
     progress: FreshZipProgressObserver,
     cancellation: FreshZipCancellation,
 ) -> Result<(), EditError> {
-    let expected_entries = plan.entries.len();
+    let expected = ExpectedIndex::of_plan(&plan);
     let stage = StagedWrite::begin_generated(&state, &archive_path, replace_existing);
     let stage_path = stage.target().to_path_buf();
     let (written, produced) = produce_into(
@@ -370,7 +372,7 @@ async fn produce_direct(
             ));
         }
     };
-    if let Err(error) = validate_stage(&dest_volume, &stage_path, written, produced, expected_entries).await {
+    if let Err(error) = validate_stage(&dest_volume, &stage_path, written, produced, &expected).await {
         stage.abandon(&dest_volume).await;
         return Err(error);
     }
@@ -397,7 +399,7 @@ async fn produce_via_spool(
     progress: FreshZipProgressObserver,
     cancellation: FreshZipCancellation,
 ) -> Result<(), EditError> {
-    let expected_entries = plan.entries.len();
+    let expected = ExpectedIndex::of_plan(&plan);
     let scratch = ScratchDir::new("cmdr-fresh-zip").map_err(|error| io_write_error(&archive_path, error))?;
     let spool_path = PathBuf::from("archive.zip");
     let spool_full = scratch.path().join(&spool_path);
@@ -423,7 +425,7 @@ async fn produce_via_spool(
             ));
         }
     };
-    validate_stage(&spool_volume, &spool_path, written, produced, expected_entries).await?;
+    validate_stage(&spool_volume, &spool_path, written, produced, &expected).await?;
 
     let stage = StagedWrite::begin_generated(&state, &archive_path, replace_existing);
     let stage_path = stage.target().to_path_buf();
@@ -479,7 +481,7 @@ async fn produce_via_spool(
     if let Some(observer) = &transfer_observer {
         observer(super::remote::RemoteCommitProgress::Finishing);
     }
-    if let Err(error) = validate_stage(&dest_volume, &stage_path, uploaded, produced, expected_entries).await {
+    if let Err(error) = validate_stage(&dest_volume, &stage_path, uploaded, produced, &expected).await {
         stage.abandon(&dest_volume).await;
         return Err(error);
     }
@@ -631,12 +633,69 @@ async fn feed_remote(
     Ok(())
 }
 
+/// What a staged ZIP must read back as: every planned entry at the path the
+/// archive reader gives it, plus the ancestor directories the reader
+/// synthesizes. Comparing raw entry counts misfires, because the reader treats
+/// `\` as a separator: a file named `a\b.txt` reads back as `a/` + `b.txt`.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct ExpectedIndex {
+    /// `(path, is_dir)` for every node, root excluded.
+    nodes: BTreeSet<(String, bool)>,
+    /// Planned names the reader would quarantine. Any is a validation failure:
+    /// Cmdr never publishes an archive it can't show in full.
+    quarantined: usize,
+}
+
+impl ExpectedIndex {
+    fn of_plan(plan: &FreshPlan) -> Self {
+        Self::of_names(
+            plan.entries
+                .iter()
+                .map(|entry| (entry.name.as_str(), entry.is_directory)),
+        )
+    }
+
+    fn of_names<'a>(names: impl IntoIterator<Item = (&'a str, bool)>) -> Self {
+        let mut expected = Self::default();
+        for (name, is_dir) in names {
+            let SanitizedName::Accepted(path) = sanitize_entry_name(name) else {
+                expected.quarantined += 1;
+                continue;
+            };
+            let mut ancestor = path.as_str();
+            while let Some((parent, _)) = ancestor.rsplit_once('/') {
+                expected.nodes.insert((parent.to_string(), true));
+                ancestor = parent;
+            }
+            expected.nodes.insert((path, is_dir));
+        }
+        expected
+    }
+
+    fn of_index(index: &ArchiveIndex) -> Self {
+        let mut nodes = BTreeSet::new();
+        let mut stack = vec![String::new()];
+        while let Some(dir) = stack.pop() {
+            for node in index.list(&dir).unwrap_or_default() {
+                if node.is_dir {
+                    stack.push(node.path.clone());
+                }
+                nodes.insert((node.path, node.is_dir));
+            }
+        }
+        Self {
+            nodes,
+            quarantined: index.quarantined().len(),
+        }
+    }
+}
+
 async fn validate_stage(
     volume: &Arc<dyn Volume>,
     path: &Path,
     writer_bytes: u64,
     producer_bytes: u64,
-    expected_entries: usize,
+    expected: &ExpectedIndex,
 ) -> Result<(), EditError> {
     let meta = volume
         .get_metadata(path)
@@ -666,27 +725,13 @@ async fn validate_stage(
         VolumeHost::detached(),
     );
     let index = archive.index().await.map_err(|error| volume_read_error(path, error))?;
-    if !index.quarantined().is_empty() || count_entries(&index) != expected_entries {
+    if expected.quarantined > 0 || ExpectedIndex::of_index(&index) != *expected {
         return Err(EditError::Op(WriteOperationError::WriteError {
             path: path.display().to_string(),
-            message: "the staged ZIP did not validate with the planned entry count".to_string(),
+            message: "the staged ZIP did not read back as the planned entries".to_string(),
         }));
     }
     Ok(())
-}
-
-fn count_entries(index: &ArchiveIndex) -> usize {
-    let mut count = 0;
-    let mut stack = vec![String::new()];
-    while let Some(dir) = stack.pop() {
-        for node in index.list(&dir).unwrap_or_default() {
-            count += 1;
-            if node.is_dir {
-                stack.push(node.path);
-            }
-        }
-    }
-    count
 }
 
 /// Names the CAUSAL failure of a pipeline that didn't finish. A genuine producer

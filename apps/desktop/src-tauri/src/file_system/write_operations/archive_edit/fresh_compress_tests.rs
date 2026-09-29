@@ -623,6 +623,58 @@ async fn read_remote_file(volume: &dyn Volume, path: &Path) -> Vec<u8> {
 }
 
 #[tokio::test]
+async fn a_file_whose_name_holds_a_backslash_compresses_and_validates() {
+    // `\` is an ordinary filename byte on macOS, but the archive reader treats it
+    // as a separator, so `a\b.txt` reads back as `a/` + `b.txt`.
+    let source_dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(source_dir.path().join("a\\b.txt"), b"backslash").expect("write source");
+    let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", source_dir.path().to_path_buf()));
+    let dest_dir = tempfile::tempdir().expect("tempdir");
+    let archive = dest_dir.path().join("odd.zip");
+    let events = Arc::new(CollectorEventSink::new());
+
+    super::super::compress::compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source,
+        vec![PathBuf::from("a\\b.txt")],
+        archive.clone(),
+        super::super::test_support::unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        Initiator::User,
+    )
+    .await
+    .expect("start compress");
+    wait_for_terminal(&events).await;
+
+    assert!(
+        events.errors.lock_ignore_poison().is_empty(),
+        "the archive holds exactly the planned file: {:?}",
+        events.errors.lock_ignore_poison()
+    );
+    assert_eq!(
+        super::super::test_support::read_entry(&archive, "a\\b.txt").as_deref(),
+        Some(b"backslash".as_slice())
+    );
+}
+
+#[test]
+fn the_expected_index_names_what_the_reader_synthesizes() {
+    let expected = ExpectedIndex::of_names([("folder/", true), ("folder/a\\b.txt", false)]);
+    assert_eq!(
+        expected.nodes.into_iter().collect::<Vec<_>>(),
+        vec![
+            ("folder".to_string(), true),
+            ("folder/a".to_string(), true),
+            ("folder/a/b.txt".to_string(), false),
+        ]
+    );
+    assert_eq!(ExpectedIndex::of_names([("../escape.txt", false)]).quarantined, 1);
+}
+
+#[tokio::test]
 async fn validation_rejects_byte_count_drift_before_parsing() {
     let volume: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("stage"));
     volume
@@ -631,7 +683,7 @@ async fn validation_rejects_byte_count_drift_before_parsing() {
         .expect("create stage");
 
     assert!(
-        validate_stage(&volume, Path::new("archive.zip"), 9, 8, 0)
+        validate_stage(&volume, Path::new("archive.zip"), 9, 8, &ExpectedIndex::default())
             .await
             .is_err()
     );
@@ -648,7 +700,7 @@ async fn validation_rejects_corrupt_zip_bytes_even_when_counts_agree() {
 
     let size = corrupt.len() as u64;
     assert!(
-        validate_stage(&volume, Path::new("archive.zip"), size, size, 0)
+        validate_stage(&volume, Path::new("archive.zip"), size, size, &ExpectedIndex::default())
             .await
             .is_err()
     );
