@@ -188,7 +188,7 @@ pub(crate) async fn archive_edit_start(
                 &parent_volume_id,
                 archive_path.clone(),
                 Arc::clone(&state),
-                None,
+                hooks.remote_progress_observer(),
                 move |working: &Path| {
                     mutator::apply(working, &changeset, &*hooks_for_blocking).map_err(|e| match e {
                         MutationError::Cancelled => EditError::Cancelled,

@@ -107,10 +107,12 @@ temp+rename rewrite), surfaced through the same transfer/queue UI as any write:
   `openDeleteDialog` forces `isPermanent` + drops `supportsTrash` and passes `isArchive` for a source inside a zip;
   `DeleteDialog` then shows the archive warning banner and hides the "Move to trash" switch.
 - **Presentation.** Ordinary mutation is `archive_edit`; fresh compression is the distinct `compress` wire identity.
-  Both use the `file-archive` glyph and map to archive-edit journal semantics, but only `compress` receives the
-  phase-specific labels from `compressionPhaseLabelKey`. It has no scan-title arm. `Compressing` shows source-byte bars,
-  `Transferring` shows completed-archive output bytes, and `FinishingCompression` / `FinishingTransfer` are
-  indeterminate. `isIndeterminateProgressPhase` is the one classifier shared by dialog, queue, and corner.
+  Both use the `file-archive` glyph and map to archive-edit journal semantics. Phase labels come from
+  `archivePhaseLabelKey`, keyed on the PHASE alone: the compress phases only ever come from `compress`, and the two
+  upload phases also end any edit of a zip on a remote volume (a copy, move, or delete inside it uploads the rewritten
+  archive under the op's own type). It has no scan-title arm. `Compressing` shows source-byte bars, `Transferring` shows
+  completed-archive output bytes, and `FinishingCompression` / `FinishingTransfer` are indeterminate.
+  `isIndeterminateProgressPhase` is the one classifier shared by dialog, queue, and corner.
 
 ## `TransferProgressReadout.svelte`
 

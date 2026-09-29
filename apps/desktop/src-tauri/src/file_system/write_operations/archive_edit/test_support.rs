@@ -250,6 +250,41 @@ pub(super) async fn register_remote_source(
     (id, source)
 }
 
+/// A remote edit's upload of the rewritten archive speaks for itself: a
+/// `Transferring` axis over the uploaded archive's bytes, then indeterminate
+/// `FinishingTransfer` for close and swap, never a silent tail after 100%.
+pub(super) async fn assert_upload_reported_honestly(
+    events: &CollectorEventSink,
+    parent: &dyn Volume,
+    archive_path: &Path,
+) {
+    let uploaded_size = parent
+        .get_metadata(archive_path)
+        .await
+        .expect("stat the published archive")
+        .size
+        .expect("the archive has a size");
+    let progress = events.progress.lock_ignore_poison();
+    let upload = progress
+        .iter()
+        .filter(|event| event.phase == WriteOperationPhase::Transferring)
+        .collect::<Vec<_>>();
+    assert!(
+        !upload.is_empty(),
+        "the upload of the rewritten archive must report its own bytes"
+    );
+    assert!(
+        upload.iter().all(|event| event.bytes_total == uploaded_size),
+        "the transfer axis is the rewritten archive's size"
+    );
+    assert!(
+        progress
+            .iter()
+            .any(|event| event.phase == WriteOperationPhase::FinishingTransfer),
+        "close and swap read as indeterminate finishing work"
+    );
+}
+
 /// Streams the archive back out of a (remote) parent and returns one entry's bytes.
 pub(super) async fn read_remote_entry(parent: &dyn Volume, archive_path: &Path, name: &str) -> Option<Vec<u8>> {
     let mut stream = parent.open_read_stream(archive_path).await.ok()?;

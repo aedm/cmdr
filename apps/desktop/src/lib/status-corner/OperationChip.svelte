@@ -18,7 +18,7 @@
     import { bindOperationSession } from '$lib/file-operations/operation-session/bind-operation-session.svelte'
     import { rollbackConfirmVariant, reversalLabelKey } from '$lib/file-operations/reversal-wording'
     import { CHIP_SETTLE_MS, destinationName, pickChipState } from './operation-chip'
-    import { compressionPhaseLabelKey } from '$lib/file-operations/progress-readout'
+    import { archivePhaseLabelKey } from '$lib/file-operations/progress-readout'
 
     const chipState = $derived(
         pickChipState(getMainWindowOperationRows(), getForegroundOperationId(), getForegroundFailureId()),
@@ -95,18 +95,16 @@
             ? null
             : rollbackConfirmVariant(candidate.row.snapshot.reverses),
     )
-    const compressPhaseKey = $derived(
-        candidate?.row.snapshot.operationType === 'compress'
-            ? compressionPhaseLabelKey(candidate.row.progress?.phase ?? null)
-            : null,
+    const archivePhaseKey = $derived(
+        candidate === null ? null : archivePhaseLabelKey(candidate.row.progress?.phase ?? null),
     )
     const verb = $derived(
         candidate === null
             ? ''
             : reversalVariant !== null
               ? tString(reversalLabelKey(reversalVariant))
-              : compressPhaseKey !== null
-                ? tString(compressPhaseKey)
+              : archivePhaseKey !== null
+                ? tString(archivePhaseKey)
                 : tString('queue.row.label', { type: candidate.row.snapshot.operationType }),
     )
     const pausedWord = $derived(tString('queue.row.status', { status: 'paused' }))

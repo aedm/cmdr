@@ -137,10 +137,8 @@ where
 /// Durably places a LOCAL file at a REMOTE path via the SAME upload-to-temp + swap
 /// discipline a remote edit commits with: stream the local file to a
 /// `.cmdr-tmp-<uuid>` sibling, then swap it into place. The remote target keeps its
-/// old bytes — or its ABSENCE, for a brand-new target — until the atomic swap, so a
-/// cancel/fault before the swap leaves it untouched with no torn file. Used to SEED
-/// a remote compress target with a valid empty zip (see `compress.rs`), and as
-/// `pull_apply_upload_swap`'s own commit.
+/// old bytes until the swap, so a cancel/fault before the swap leaves it untouched
+/// with no torn file. This is `pull_apply_upload_swap`'s commit.
 pub(super) async fn place_local_file(
     parent: &dyn Volume,
     local_file: &Path,

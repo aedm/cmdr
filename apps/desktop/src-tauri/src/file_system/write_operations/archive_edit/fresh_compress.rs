@@ -438,22 +438,18 @@ async fn produce_via_spool(
         state: Arc::clone(&state),
     });
     let transfer_observer = hooks.remote_progress_observer();
-    if let Some(observer) = &transfer_observer {
-        observer(super::remote::RemoteCommitProgress::Transferring {
-            bytes_done: 0,
-            bytes_total: produced,
-        });
-    }
+    transfer_observer(super::remote::RemoteCommitProgress::Transferring {
+        bytes_done: 0,
+        bytes_total: produced,
+    });
     let callback = |tick: StreamWriteProgress| {
-        if let Some(observer) = &transfer_observer {
-            if tick.bytes_written >= produced {
-                observer(super::remote::RemoteCommitProgress::Finishing);
-            } else {
-                observer(super::remote::RemoteCommitProgress::Transferring {
-                    bytes_done: tick.bytes_written,
-                    bytes_total: produced,
-                });
-            }
+        if tick.bytes_written >= produced {
+            transfer_observer(super::remote::RemoteCommitProgress::Finishing);
+        } else {
+            transfer_observer(super::remote::RemoteCommitProgress::Transferring {
+                bytes_done: tick.bytes_written,
+                bytes_total: produced,
+            });
         }
         continue_unless(&cancellation)
     };
@@ -478,9 +474,7 @@ async fn produce_via_spool(
             return Err(volume_write_error(&stage_path, error));
         }
     };
-    if let Some(observer) = &transfer_observer {
-        observer(super::remote::RemoteCommitProgress::Finishing);
-    }
+    transfer_observer(super::remote::RemoteCommitProgress::Finishing);
     if let Err(error) = validate_stage(&dest_volume, &stage_path, uploaded, produced, &expected).await {
         stage.abandon(&dest_volume).await;
         return Err(error);

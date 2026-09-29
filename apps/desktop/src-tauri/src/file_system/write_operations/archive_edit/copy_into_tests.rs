@@ -617,6 +617,7 @@ async fn copy_into_a_remote_archive_lands_the_file_via_the_pulled_local_copy() {
         Some(b"fresh".as_slice()),
         "the copied file must land in the remote archive"
     );
+    assert_upload_reported_honestly(&events, parent.as_ref(), &archive_path).await;
 
     get_volume_manager().unregister(&parent_id);
 }

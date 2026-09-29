@@ -30,7 +30,7 @@
     import { formatInteger } from '$lib/intl/number-format'
     import type { MessageKey } from '$lib/intl/keys.gen'
     import { stallNoticeFor, waitLineFor } from './transfer-stall'
-    import { compressionPhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
+    import { archivePhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
     import {
         inFlightRollbackTooltipKey,
         inFlightRollbackVariant,
@@ -294,7 +294,7 @@
      *  both arrive as `write-progress` in `phase: 'scanning'`. */
     const isScanning = $derived(phase === 'scanning')
     const isIndeterminate = $derived(isIndeterminateProgressPhase(phase) && !isScanning)
-    const compressPhaseKey = $derived(operationType === 'compress' ? compressionPhaseLabelKey(phase) : null)
+    const archivePhaseKey = $derived(archivePhaseLabelKey(phase))
 
     /** This view is watching an operation that hasn't said where it is yet: only
      *  an adopted one can be here, and only in a window that has heard nothing
@@ -417,8 +417,8 @@
                  `scanning` while a cancel issued mid-count winds down, and the
                  title has to name what the dialog is doing NOW. -->
             {scanTitle}
-        {:else if compressPhaseKey !== null}
-            {tString(compressPhaseKey)}
+        {:else if archivePhaseKey !== null}
+            {tString(archivePhaseKey)}
         {:else if phase === 'flushing'}
             {tString('fileOperations.transferProgress.titleFlushing')}
         {:else if isMove && phase === 'deleting'}
@@ -495,12 +495,12 @@
                     paused={isPaused}
                 />
             </div>
-        {:else if isIndeterminate && compressPhaseKey !== null}
+        {:else if isIndeterminate && archivePhaseKey !== null}
             <div class="phase-banner" role="status">
                 {#if !isPaused}
                     <Spinner size="sm" />
                 {/if}
-                <span>{tString(compressPhaseKey)}</span>
+                <span>{tString(archivePhaseKey)}</span>
             </div>
         {:else if !phaseUnknown}
             <!-- Dual progress bars (size + count) for the active phase. The

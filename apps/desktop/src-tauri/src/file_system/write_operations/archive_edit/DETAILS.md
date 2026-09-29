@@ -57,7 +57,10 @@ The remote ORIGINAL is byte-for-byte untouched until the very last swap:
 2. **Apply** runs the closure on the local copy — the mutator's temp+rename commits onto the scratch file. A cancel/fault
    leaves the scratch file as the pulled original; nothing remote changed.
 3. **Upload** streams the edited copy to a NEW remote name (`foo.zip.cmdr-tmp-<uuid>`) via `write_from_stream`; the
-   original keeps its name and bytes. A cancel/fault deletes the partial temp best-effort.
+   original keeps its name and bytes. A cancel/fault deletes the partial temp best-effort. Every edit route hands
+   `run_managed_edit` its `MutatorHooks::remote_progress_observer`, so the upload reports its own `Transferring` axis
+   over the rewritten archive's bytes, then indeterminate `FinishingTransfer` through close and swap, under the op's
+   own type (the pull stays silent).
 4. **Swap** is the ONLY step that changes the original. Where the backend REJECTS a same-name collision
    (`create_directory_errors_on_existing_dir()` true — SMB, local), existing-archive mutation first asks its force-rename
    operation to replace the name; a backend may implement that as multiple protocol operations. On refusal it falls back

@@ -105,6 +105,35 @@ async fn route_archive_delete_removes_entries_and_completes() {
 }
 
 #[tokio::test]
+async fn deleting_inside_a_remote_archive_reports_its_upload() {
+    let archive_path = PathBuf::from("/device/bundle.zip");
+    let (parent_id, parent) = register_remote_zip(&archive_path, &[("keep.txt", b"keep"), ("drop.txt", b"drop")]).await;
+
+    let events = Arc::new(CollectorEventSink::new());
+    route_archive_delete(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        &[archive_path.join("drop.txt")],
+        &parent_id,
+        0,
+        None,
+    )
+    .await
+    .expect("start delete");
+    wait_until_async(Duration::from_secs(5), "the write-complete event", || {
+        !events.complete.lock_ignore_poison().is_empty()
+    })
+    .await;
+
+    assert!(
+        read_remote_entry(parent.as_ref(), &archive_path, "drop.txt")
+            .await
+            .is_none()
+    );
+    assert_upload_reported_honestly(&events, parent.as_ref(), &archive_path).await;
+    get_volume_manager().unregister(&parent_id);
+}
+
+#[tokio::test]
 async fn route_archive_delete_reports_the_deleted_count_not_the_retained_count() {
     // Deleting ONE entry from a 3-entry zip must report `files_processed == 1`
     // (the number DELETED), not the retained-entry count (2). Pins the archive

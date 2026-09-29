@@ -41,7 +41,7 @@ pub(super) async fn run_managed_edit<T, F>(
     parent_volume_id: &str,
     archive_path: PathBuf,
     state: Arc<WriteOperationState>,
-    remote_progress: Option<RemoteProgressObserver>,
+    remote_progress: RemoteProgressObserver,
     plan_and_apply: F,
 ) -> Result<T, EditError>
 where
@@ -64,7 +64,7 @@ where
     }
 
     let parent = parent.expect("is_remote is only true when the parent is registered");
-    pull_apply_upload_swap(parent, archive_path, state, remote_progress, plan_and_apply).await
+    pull_apply_upload_swap(parent, archive_path, state, Some(remote_progress), plan_and_apply).await
 }
 
 /// Maps a mutator failure onto the typed `WriteOperationError` the FE renders.
@@ -214,12 +214,12 @@ impl MutatorHooks {
         *self.latest.lock_ignore_poison()
     }
 
-    pub(super) fn remote_progress_observer(self: &Arc<Self>) -> Option<RemoteProgressObserver> {
-        if self.operation_type != WriteOperationType::Compress {
-            return None;
-        }
+    /// Reports an upload of a finished archive (a remote edit's rewritten copy,
+    /// or a fresh ZIP's spool) as its own byte axis, then indeterminate
+    /// finishing work, under this op's type.
+    pub(super) fn remote_progress_observer(self: &Arc<Self>) -> RemoteProgressObserver {
         let hooks = Arc::clone(self);
-        Some(Arc::new(move |progress| hooks.emit_remote_progress(progress)))
+        Arc::new(move |progress| hooks.emit_remote_progress(progress))
     }
 
     fn emit_remote_progress(&self, progress: RemoteCommitProgress) {

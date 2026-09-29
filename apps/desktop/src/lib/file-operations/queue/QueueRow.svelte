@@ -21,7 +21,7 @@
         reversalLabelKey,
     } from '../reversal-wording'
     import { opKindForWireType } from '../op-kind'
-    import { compressionPhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
+    import { archivePhaseLabelKey, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
     import { requestForegroundOperation } from '$lib/tauri-commands'
 
     interface Props {
@@ -132,14 +132,12 @@
      *  back"), ❌ never by the operation type it runs as: undoing a move is
      *  journaled as a move and undoing a copy as a delete, so the plain action
      *  word would tell a person their undo is deleting things. */
-    const compressPhaseLabelKey = $derived(
-        snapshot.operationType === 'compress' ? compressionPhaseLabelKey(progress?.phase ?? null) : null,
-    )
+    const archivePhaseKey = $derived(archivePhaseLabelKey(progress?.phase ?? null))
     const label = $derived(
         reversalVariant === null
-            ? compressPhaseLabelKey === null
+            ? archivePhaseKey === null
                 ? tString('queue.row.label', { type: snapshot.operationType })
-                : tString(compressPhaseLabelKey)
+                : tString(archivePhaseKey)
             : tString(reversalLabelKey(reversalVariant)),
     )
 

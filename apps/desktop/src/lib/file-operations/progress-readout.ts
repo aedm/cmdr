@@ -35,9 +35,11 @@ export function isIndeterminateProgressPhase(phase: WriteOperationPhase | null):
   return phase === 'scanning' || phase === 'finishing_compression' || phase === 'finishing_transfer'
 }
 
-/** Phase-specific compression wording. `null` leaves non-compress operations
- * on their ordinary operation-type label. */
-export function compressionPhaseLabelKey(phase: WriteOperationPhase | null): MessageKey | null {
+/** Wording for the phases that make or move a whole archive: a fresh
+ * compress, and the upload that ends any edit of a zip on a remote volume (a
+ * copy, move, or delete inside one). The phase alone decides, whatever the
+ * operation type. `null` leaves every other phase on the operation-type label. */
+export function archivePhaseLabelKey(phase: WriteOperationPhase | null): MessageKey | null {
   switch (phase) {
     case 'compressing':
       return 'fileOperations.transferProgress.stageCompressing'

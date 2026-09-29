@@ -906,12 +906,12 @@
 
   "fileOperations.transferProgress.stageTransferringArchive": "Transferring archive",
   "@fileOperations.transferProgress.stageTransferringArchive": {
-    "description": "Phase label for a compression operation while Cmdr uploads the completed zip to a remote destination such as a network share or phone. It appears in the progress dialog, operation queue row, and background operation chip. A determinate compressed-output-byte progress bar is visible in this phase. Short present-continuous action, with no trailing punctuation."
+    "description": "Phase label while Cmdr uploads a finished zip to a remote destination such as a network share or phone: a newly compressed archive, or an existing remote archive after files were added to, moved into, or deleted from it. It appears in the progress dialog, operation queue row, and background operation chip. A determinate byte progress bar over the zip's size is visible in this phase. Short present-continuous action, with no trailing punctuation."
   },
 
   "fileOperations.transferProgress.stageFinishingTransfer": "Finishing transfer…",
   "@fileOperations.transferProgress.stageFinishingTransfer": {
-    "description": "Indeterminate phase label shown after every byte of a newly compressed zip has been uploaded, while Cmdr closes the upload and publishes the remote archive. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
+    "description": "Indeterminate phase label shown after every byte of a zip has been uploaded to a remote destination (a newly compressed archive, or an existing remote archive Cmdr just edited), while Cmdr closes the upload, checks it, and puts it in place. It appears beside a spinner, never a percentage or ETA, in the progress dialog, operation queue row, and background operation chip. Keep the trailing ellipsis."
   },
 
   "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to overwrite it with a <strong>file</strong> by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?",

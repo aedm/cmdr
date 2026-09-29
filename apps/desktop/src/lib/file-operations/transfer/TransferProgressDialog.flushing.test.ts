@@ -227,6 +227,30 @@ describe('TransferProgressDialog compression finalization', () => {
     expect(target.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
     void unmount(component)
   })
+
+  it.each(['copy', 'move'] as const)(
+    'names the upload tail of a %s into a remote archive instead of a 0-byte bar',
+    async (operationType) => {
+      // A copy or move INTO a zip on a share rewrites it locally, then uploads
+      // it: the upload phases come from the backend under the op's own type.
+      const { component, target } = await mountDialog(operationType)
+      if (!progressCb) throw new Error('subscriber never registered')
+
+      progressCb({
+        ...flushingEvent(operationType),
+        phase: 'finishing_transfer',
+        filesDone: 0,
+        filesTotal: 0,
+        bytesDone: 0,
+        bytesTotal: 0,
+      })
+      await tick()
+
+      expect(target.textContent).toContain('Finishing transfer…')
+      expect(target.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
+      void unmount(component)
+    },
+  )
 })
 
 describe("TransferProgressDialog: a cross-disk move's source sweep", () => {
