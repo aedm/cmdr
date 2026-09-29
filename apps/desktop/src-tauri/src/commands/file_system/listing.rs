@@ -131,6 +131,31 @@ pub async fn destination_exists(volume_id: Option<String>, path: String) -> Time
     exists_on_volume(volume_id, path, Spelling::AnyForm).await
 }
 
+/// Whether a local `stat` error means "not there": only `ENOENT` and `ENOTDIR` do.
+/// Anything else (EIO, ETIMEDOUT, EACCES, ENXIO from a struggling FUSE daemon or a
+/// dying disk) says nothing about the path, so the caller answers "couldn't tell".
+pub(super) fn local_miss_is_definite(err: &std::io::Error) -> bool {
+    matches!(
+        err.kind(),
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+    )
+}
+
+/// Existence on a volume `std::fs` can reach: `Err(())` is "couldn't tell".
+///
+/// ❗ Not `Volume::exists`, which folds every `stat` error into `false`: that's the
+/// right answer for the copy/move conflict checks that call it, and the wrong one
+/// here, where a `false` walks a pane off a slow FUSE mount (pCloud's `pcloudfs`,
+/// cmdr-reports#4) as if the drive were gone. Same `symlink_metadata`, so a broken
+/// symlink still counts as there.
+async fn local_exists(path: PathBuf) -> Result<bool, ()> {
+    match tokio::task::spawn_blocking(move || std::fs::symlink_metadata(path)).await {
+        Ok(Ok(_)) => Ok(true),
+        Ok(Err(e)) if local_miss_is_definite(&e) => Ok(false),
+        _ => Err(()),
+    }
+}
+
 /// Which spellings of a path's name an existence check counts.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Spelling {
@@ -176,7 +201,11 @@ async fn exists_on_volume(volume_id: Option<String>, path: String, spelling: Spe
         let probe = {
             let volume = std::sync::Arc::clone(&volume);
             async move {
-                let exists = volume.exists(&path_for_check).await;
+                let exists = if volume.local_path().is_some() {
+                    local_exists(path_for_check.clone()).await?
+                } else {
+                    volume.exists(&path_for_check).await
+                };
                 if exists || spelling == Spelling::Exact {
                     return Ok(exists);
                 }
@@ -663,3 +692,7 @@ mod destination_exists_test;
 #[cfg(test)]
 #[path = "path_exists_budget_test.rs"]
 mod path_exists_budget_test;
+
+#[cfg(test)]
+#[path = "path_exists_errors_test.rs"]
+mod path_exists_errors_test;

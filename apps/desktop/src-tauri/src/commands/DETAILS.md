@@ -34,7 +34,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   drops returns an immediate `false`, so it re-checks `connection_state()` and reports `timedOut: true` unless the
   session is still live, and a transient blip can't evict the user from a network folder. An id nothing registered but
   something still names answers `timedOut: true` too, never a confident `false`: a phone its device provider lists but
-  nobody dialed, or a saved SFTP / WebDAV server nobody connected (`server_volumes::place_root`). `TimedOut<T>`'s TS twin lives in
+  nobody dialed, or a saved SFTP / WebDAV server nobody connected (`server_volumes::place_root`). On a volume `std::fs`
+  reaches (`local_path()`), both stat it themselves (`listing.rs::local_exists`): only `NotFound` / `NotADirectory` is a
+  "no", and any other error (EIO, ETIMEDOUT, EACCES from a struggling FUSE daemon like pCloud's) is `timedOut: true`,
+  ❌ never a `false` that walks a pane off the drive. `Volume::exists` keeps folding errors into `false` for the copy/move
+  conflict checks. `TimedOut<T>`'s TS twin lives in
   `$lib/tauri-commands/ipc-types.ts`; every typed error enum's twin is generated into `$lib/ipc/bindings.ts`.
 - **`volumes.rs`** (macOS): `list_volumes`, `get_default_volume_id`, `get_volume_space`, `resolve_path_volume`
   (statfs-based, no volume enumeration), `resolve_location`. The latter two share one `resolve_path_to_volume` body
