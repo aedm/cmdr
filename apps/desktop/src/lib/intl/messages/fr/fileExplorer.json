@@ -477,6 +477,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "S’identifier sur {hostName}",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "Ce serveur montre ses partages dès que vous vous identifiez.",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "Aucun partage disponible",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -572,6 +580,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "Impossible de monter le partage",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "S’identifier pour ouvrir « {share} »",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "« {server} » n’ouvre ce partage qu’aux comptes identifiés.",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "Réessayer",
   "@fileExplorer.networkMount.tryAgain": {

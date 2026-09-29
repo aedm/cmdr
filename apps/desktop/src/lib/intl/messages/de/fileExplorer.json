@@ -477,6 +477,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "Bei {hostName} anmelden",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "Dieser Server zeigt seine Freigaben, sobald du dich anmeldest.",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "Keine Freigaben verfügbar",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -572,6 +580,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "Freigabe ließ sich nicht einbinden",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "Anmelden, um „{share}“ zu öffnen",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "„{server}“ öffnet diese Freigabe nur für angemeldete Konten.",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "Erneut versuchen",
   "@fileExplorer.networkMount.tryAgain": {

@@ -477,6 +477,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "Logga in på {hostName}",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "Den här servern visar sina delade mappar så fort du loggar in.",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "Inga delade mappar tillgängliga",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -572,6 +580,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "Det gick inte att montera den delade mappen",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "Logga in för att öppna ”{share}”",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "”{server}” öppnar bara den här delade mappen för inloggade konton.",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "Försök igen",
   "@fileExplorer.networkMount.tryAgain": {

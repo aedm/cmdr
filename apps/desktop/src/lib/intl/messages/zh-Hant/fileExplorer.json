@@ -475,6 +475,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "登入「{hostName}」",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "這個伺服器會在你登入後顯示共享資料夾。",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "沒有可用的共享資料夾",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -570,6 +578,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "無法裝載共享資料夾",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "登入以開啟「{share}」",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "「{server}」只對已登入的帳號開啟這個共享資料夾。",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "再試一次",
   "@fileExplorer.networkMount.tryAgain": {

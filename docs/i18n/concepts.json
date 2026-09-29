@@ -2824,7 +2824,7 @@
   "sign-in": {
     "distinct": ["sign-out", "connect"],
     "en": "sign in",
-    "match": ["sign in", "signs in", "signing in", "signed in", "log in", "logs in", "logged in", "sign-in", "login"],
+    "match": ["sign in", "signs in", "signing in", "signed in", "signed-in", "log in", "logs in", "logged in", "sign-in", "login"],
     "notMatch": ["login items"],
     "sense": "Authenticating to a server or service."
   },

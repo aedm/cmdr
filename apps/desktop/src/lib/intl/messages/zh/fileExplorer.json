@@ -475,6 +475,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "登录 {hostName}",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "这台服务器会在你登录后显示共享。",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "没有可用的共享",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -570,6 +578,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "无法装载共享",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "登录以打开“{share}”",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "“{server}”只对已登录的账户打开这个共享。",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "重试",
   "@fileExplorer.networkMount.tryAgain": {

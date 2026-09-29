@@ -28,3 +28,5 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `list` concept: matches the verb "lists" (Cmdr lists …); add a verb-sense `notMatch` so locales stop needing
   exceptions.
 - `go-back` concept: matches "forward" while its headword is "Go back"; split or rename.
+- `fileExplorer.network.share.signIn{Title,Message}`, `fileExplorer.networkMount.signIn{Title,Message}`: the screenshot
+  is the servers list, not the calm sign-in screen these strings sit on. Capture that pane (with and without the sheet).

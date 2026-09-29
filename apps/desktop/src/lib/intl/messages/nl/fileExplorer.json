@@ -478,6 +478,14 @@
   "@fileExplorer.network.share.connectFailedTitle": {
     "sourceHash": "4c3d88d"
   },
+  "fileExplorer.network.share.signInTitle": "Log in bij {hostName}",
+  "@fileExplorer.network.share.signInTitle": {
+    "sourceHash": "c6ff588"
+  },
+  "fileExplorer.network.share.signInMessage": "Deze server toont zijn gedeelde mappen zodra je inlogt.",
+  "@fileExplorer.network.share.signInMessage": {
+    "sourceHash": "a07c053"
+  },
   "fileExplorer.network.share.noSharesTitle": "Geen gedeelde mappen beschikbaar",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
@@ -573,6 +581,14 @@
   "fileExplorer.networkMount.mountFailedTitle": "Gedeelde map aankoppelen lukte niet",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
+  },
+  "fileExplorer.networkMount.signInTitle": "Log in om ‘{share}’ te openen",
+  "@fileExplorer.networkMount.signInTitle": {
+    "sourceHash": "8e161f1"
+  },
+  "fileExplorer.networkMount.signInMessage": "‘{server}’ opent deze gedeelde map alleen voor ingelogde accounts.",
+  "@fileExplorer.networkMount.signInMessage": {
+    "sourceHash": "bec2bf7"
   },
   "fileExplorer.networkMount.tryAgain": "Probeer opnieuw",
   "@fileExplorer.networkMount.tryAgain": {
