@@ -9,7 +9,7 @@
 
 use super::super::{VolumeError, VolumeReadStream};
 use super::LocalPosixVolume;
-use crate::file_system::volume::WriteMode;
+use crate::file_system::volume::{StreamLength, StreamWriteProgress, WriteMode};
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
@@ -69,8 +69,8 @@ impl VolumeReadStream for LocalPosixReadStream {
         })
     }
 
-    fn total_size(&self) -> crate::file_system::volume::StreamLength {
-        crate::file_system::volume::StreamLength::Known(self.total_size)
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total_size)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -150,9 +150,9 @@ impl LocalPosixVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         let dest_abs = self.resolve(dest);
         Box::pin(async move {
@@ -204,7 +204,11 @@ impl LocalPosixVolume {
 
                 bytes_written += chunk_len;
 
-                if on_progress(bytes_written, size) == std::ops::ControlFlow::Break(()) {
+                if on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: length,
+                }) == std::ops::ControlFlow::Break(())
+                {
                     // Drop the file handle and try to clean up the partial file.
                     drop(file);
                     let partial = dest_abs.clone();

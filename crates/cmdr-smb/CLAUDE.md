@@ -27,6 +27,8 @@ the keychain, mounts, and every human-facing word stay in the app's `network/`.
 - **`write_from_stream` drives an OWNED `FileWriter` on a cloned `Connection`** (❌ never borrowed under the client
   mutex: the QNAP deadlock); on error, `abort()` then delete the partial. Progress is the server-confirmed
   `bytes_written()`.
+- **Unknown-length writes always stream**, never use the buffered compound path; success includes `finish` and reports
+  its server-confirmed count.
 - **One-frame fast paths stop at smb2's quick limits**: a hinted read at `quick_read_limit()` (sized via
   `read_file_compound_sized`), the write promise at `quick_write_limit()`. ❌ A refused one-frame write to a non-scratch
   name never streams (`one_frame_write_limit`).

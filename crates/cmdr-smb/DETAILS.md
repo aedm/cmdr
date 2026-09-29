@@ -886,6 +886,10 @@ The compound fast-path reports differently on purpose: it has no acknowledgement
 frame returns, so it reports bytes buffered during the source drain. That lie is bounded by `max_write_size` and the
 frame either lands whole or creates nothing.
 
+An unknown-length generated stream bypasses the compound drain. It feeds bounded chunks through the owned streaming
+writer, reports `StreamLength::Unknown` with server-confirmed bytes, and succeeds only after `FileWriter::finish` has
+drained, flushed, and closed the handle. Known-length decisions stay unchanged.
+
 **Gotcha/Why**: a test that means to exercise the streaming writer MUST size its file off `negotiated_max_write()`, not
 a literal. The fixture Samba negotiates a `max_write` far above any round number you would reach for, so a "4 MiB,
 surely multi-chunk" file takes the compound path and the test silently exercises nothing. Pinned by

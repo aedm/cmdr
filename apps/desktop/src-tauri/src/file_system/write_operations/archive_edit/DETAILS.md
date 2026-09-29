@@ -182,6 +182,22 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   spelled the parent's way, and a look-alike is refused as `DestinationExists` rather than seeded over or beside. Why
   refused and not replaced: `../DETAILS.md` § "Look-alike names".
 - **Compression level threads from the op config onto the changeset.** `VolumeCopyConfig::compression_level` (frontend-owned, read from the `behavior.archiveCompressionLevel` setting at dispatch) is passed through `compress_start` / `route_archive_copy_into` as an `Option<i64>` param and stored on the `Changeset` (`archive_copy_into_start` sets `plan.changeset.compression_level` before `mutator::apply`). It governs every user-driven zip write uniformly — compress AND copy/move INTO an existing archive — because both funnel through the shared mutator. `None` (no caller opinion, or a non-archive copy) means the crate default (level 6). The level applies to NEWLY added entries only and is clamped 1..=9; the mechanism and the clamp rationale are single-sourced in `crates/cmdr-archive/src/mutation/DETAILS.md` § "Compression level applies to ADDED entries only". Internal zips (crash/error-report bundles) keep their own fixed level and never read this setting.
+
+### Seedless producer
+
+`fresh_zip.rs` owns fresh-archive byte generation. A blocking worker drives `zip` 8.6 `ZipWriter::new_stream`; local
+files are read directly, while remote input and generated output cross separate bounded four-chunk channels. Fixed
+128 KiB chunks bound payload bytes independently of archive size; the ZIP writer retains O(entries) central-directory
+metadata.
+
+Output channel closure is transport state, not success. `FreshZipOutput::finish` awaits a separate typed result and
+joins the worker, so a source failure, ZIP close failure, panic, or dropped destination cannot become successful EOF.
+Dropping output signals cancellation and closes the receiver, releasing output backpressure.
+
+Each planned entry carries its frozen name, kind, size, mtime, and Unix mode. The producer clamps deflate level to
+1–9, emits empty directories and files, stores DOS timestamps in UTC, and calls `large_file(true)` when planned size is
+at least `zip::ZIP64_BYTES_THR`. In `zip` 8.6 stream mode local headers cannot be rewritten; `finish` writes the central
+directory and returns the underlying writer. Verified in the installed zip 8.6 source on 2026-09-29.
 - **Source-side pull for a REMOTE source (SMB / MTP → zip).** A copy/move INTO a zip whose SOURCE volume has no
   `local_path()` can't be walked with `std::fs`, so `archive_copy_into_start` runs a pull stage FIRST, inside the op: it
   streams each source subtree into a `ScratchDir` via the copy engine's `pull_path_to_local` seam (which reuses

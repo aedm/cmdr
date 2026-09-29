@@ -560,6 +560,10 @@ impl Volume for LocalPosixVolume {
         true
     }
 
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
+    }
+
     fn operations_are_local(&self) -> bool {
         // Every operation here is a syscall against a mounted filesystem, so a
         // per-file `get_metadata` is a microsecond `stat` and the cap below is a
@@ -614,18 +618,7 @@ impl Volume for LocalPosixVolume {
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let Some(size) = length.known() else {
-            return Box::pin(async { Err(VolumeError::NotSupported) });
-        };
-        Box::pin(async move {
-            self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
-                on_progress(StreamWriteProgress {
-                    bytes_written,
-                    expected_length: StreamLength::Known(size),
-                })
-            })
-            .await
-        })
+        self.write_from_stream_impl(dest, mode, length, stream, on_progress)
     }
 
     fn scan_for_conflicts<'a>(

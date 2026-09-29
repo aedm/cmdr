@@ -369,9 +369,9 @@ impl SmbVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(cmdr_fs::volume::StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         // Lock-free streaming write path.
         //
@@ -394,8 +394,8 @@ impl SmbVolume {
             let smb_path = self.to_smb_path(dest)?;
 
             debug!(
-                "SmbVolume::write_from_stream: share={}, path={:?}, size={}",
-                self.inner.share_name, smb_path, size
+                "SmbVolume::write_from_stream: share={}, path={:?}, length={length:?}",
+                self.inner.share_name, smb_path
             );
 
             // Acquire a cloned session once, up front. Both the compound
@@ -445,7 +445,8 @@ impl SmbVolume {
                     .map(|p| p.max_write_size as u64)
                     .unwrap_or(ASSUMED_MAX_WRITE);
                 let limit = one_frame_write_limit(dest_is_scratch, max_write, conn.quick_write_limit());
-                if fits_one_compound_write(limit, size) {
+                if length.known().is_some_and(|size| fits_one_compound_write(limit, size)) {
+                    let size = length.known().expect("the compound branch requires a known length");
                     let mut buffer = Vec::with_capacity(size as usize);
                     while let Some(chunk_result) = stream.next_chunk().await {
                         // Compound drain buffers in memory; no writer/handle
@@ -458,7 +459,12 @@ impl SmbVolume {
                         // as the streaming fallback below. Cancel here aborts
                         // before the compound WRITE touches the wire: the
                         // destination never sees a partial file.
-                        if on_progress(buffer.len() as u64, size).is_break() {
+                        if on_progress(cmdr_fs::volume::StreamWriteProgress {
+                            bytes_written: buffer.len() as u64,
+                            expected_length: length,
+                        })
+                        .is_break()
+                        {
                             return Err(VolumeError::Cancelled("Operation cancelled by user".to_string()));
                         }
                     }
@@ -601,7 +607,11 @@ impl SmbVolume {
                     //
                     // Called on EVERY chunk even when the count hasn't moved, because
                     // this is also the cancel poll (`ControlFlow::Break` below).
-                    if on_progress(writer.bytes_written(), size) == std::ops::ControlFlow::Break(()) {
+                    if on_progress(cmdr_fs::volume::StreamWriteProgress {
+                        bytes_written: writer.bytes_written(),
+                        expected_length: length,
+                    }) == std::ops::ControlFlow::Break(())
+                    {
                         // Abort drains in-flight WRITE responses and closes the
                         // handle without the server-side fsync that `finish()`
                         // would force (we're about to delete the partial file
@@ -631,7 +641,10 @@ impl SmbVolume {
                 // window short of its size and never reach 100%. Its `ControlFlow` is
                 // deliberately ignored: the bytes are committed and the handle closed,
                 // so there is nothing left here for a cancel to stop.
-                let _ = on_progress(confirmed, size);
+                let _ = on_progress(cmdr_fs::volume::StreamWriteProgress {
+                    bytes_written: confirmed,
+                    expected_length: length,
+                });
 
                 confirmed
             };

@@ -1,8 +1,7 @@
 # Archive edits
 
-The driver for writing INSIDE a `.zip`: mkdir, mkfile, rename, delete, copy/move into, move out, and compress. Every
-one is an O(archive) temp+rename rewrite of the whole file. Up: `../CLAUDE.md`. The mutation mechanism itself
-(`ArchiveMutator`, safe-overwrite) is the backend crate's: `crates/cmdr-archive/src/mutation/DETAILS.md`.
+The driver for writes inside a `.zip`: mkdir, mkfile, rename, delete, transfer, and compress. Existing-archive writes
+are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-archive/src/mutation/DETAILS.md`.
 
 ## Module map
 
@@ -12,7 +11,7 @@ one is an O(archive) temp+rename rewrite of the whole file. Up: `../CLAUDE.md`. 
   `run_managed_edit`, the local-vs-remote dispatcher, and `remote.rs` its remote leg (pull, apply, upload, swap).
   `edit_error.rs`: `EditError`, the leaf both of them return. `conflicts.rs`: resolution against the archive index.
 - Per-shape routes: `copy_into.rs` (`route_archive_copy_into`, plus the remote-source pull), `move_out.rs`,
-  `compress.rs` (`seed_empty_zip` + `compress_start`). The create and rename routes live with their instant ops in
+  `compress.rs` (current routed fallback), and `fresh_zip.rs` (seedless bounded producer). The create and rename routes live with their instant ops in
   `../create.rs` and `../rename.rs`, and call in here.
 
 ## Must-knows
@@ -31,6 +30,7 @@ one is an O(archive) temp+rename rewrite of the whole file. Up: `../CLAUDE.md`. 
 - **The empty-zip seed is LOAD-BEARING for the current compress fallback**: `ZipArchive::new` rejects a 0-byte file,
   so a brand-new target gets a valid 22-byte archive before the managed rewrite. This means M1 does NOT make creation
   safe before registration; removing the seed belongs to the dedicated fresh-create path. DETAILS § Compress.
+- **`fresh_zip` has explicit terminal status**: EOF is not success. Drain, await `finish`, and join every worker.
 - **Compress progress has two different byte axes**: `Compressing` is uncompressed source bytes; remote
   `Transferring` is completed-ZIP bytes. Both finishing phases clear BOTH totals and ETA. Ordinary archive mutation
   stays `ArchiveEdit` + `Copying`.

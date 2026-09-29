@@ -45,6 +45,7 @@ mod copy_into;
 mod driver;
 mod edit_error;
 mod engine;
+mod fresh_zip;
 mod move_out;
 mod remote;
 mod routing;

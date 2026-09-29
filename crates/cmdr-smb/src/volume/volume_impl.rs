@@ -355,6 +355,10 @@ impl Volume for SmbVolume {
         true
     }
 
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
+    }
+
     /// New names go out composed. Every path still goes out byte-for-byte
     /// (`paths.rs::to_smb_path`); only a name Cmdr is creating gets respelled,
     /// by the caller that knows it's creating it. `DETAILS.md` § "SMB names are
@@ -559,18 +563,7 @@ impl Volume for SmbVolume {
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let Some(size) = length.known() else {
-            return Box::pin(async { Err(VolumeError::NotSupported) });
-        };
-        Box::pin(async move {
-            self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
-                on_progress(StreamWriteProgress {
-                    bytes_written,
-                    expected_length: StreamLength::Known(size),
-                })
-            })
-            .await
-        })
+        self.write_from_stream_impl(dest, mode, length, stream, on_progress)
     }
 
     fn connection_state(&self) -> Option<cmdr_fs::volume::ConnectionState> {

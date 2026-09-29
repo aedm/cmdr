@@ -179,4 +179,6 @@ fn a_read_takes_the_compound_path_up_to_the_quick_read_limit() {
 async fn a_disconnected_share_promises_nothing_about_single_shot_writes() {
     let vol = make_test_volume();
     assert!(!vol.write_is_single_shot(StreamLength::Known(10)).await);
+    assert!(vol.supports_unknown_length_writes());
+    assert!(!vol.write_is_single_shot(StreamLength::Unknown).await);
 }

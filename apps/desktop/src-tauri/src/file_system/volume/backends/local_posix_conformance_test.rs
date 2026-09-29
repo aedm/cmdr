@@ -11,6 +11,7 @@
 //! so a contract it stops keeping is one the whole suite stops noticing.
 
 use super::*;
+use crate::file_system::volume::{StreamLength, WriteMode};
 use crate::test_support::TestDir;
 use std::path::Path;
 
@@ -96,14 +97,39 @@ async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
 }
 
 #[tokio::test]
-async fn unknown_write_honors_the_shared_early_refusal_contract() {
+async fn unknown_write_streams_all_bytes_and_reports_the_accepted_count() {
     let test_dir = TestDir::new("unknown_write_conformance_test");
     let volume = LocalPosixVolume::new("Test", &*test_dir);
-    let original = b"the user's original bytes";
-    volume.create_file(Path::new("notes.txt"), original).await.unwrap();
-
-    cmdr_fs::volume::conformance::assert_unknown_write_is_refused_before_io(&volume, Path::new("notes.txt"), original)
+    let (tx, rx) = tokio::sync::mpsc::channel(1);
+    let (cancel_tx, _cancel_rx) = tokio::sync::oneshot::channel();
+    tx.send(Ok(b"first".to_vec())).await.unwrap();
+    let sender = tokio::spawn(async move {
+        tx.send(Ok(b"-second".to_vec())).await.unwrap();
+    });
+    let progress = std::sync::Mutex::new(Vec::new());
+    let written = volume
+        .write_from_stream(
+            Path::new("notes.txt"),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            Box::new(cmdr_fs::volume::ChannelReadStream::new(
+                rx,
+                cancel_tx,
+                StreamLength::Unknown,
+            )),
+            &|tick| {
+                progress.lock().unwrap().push(tick);
+                std::ops::ControlFlow::Continue(())
+            },
+        )
         .await;
+    sender.await.unwrap();
+
+    assert_eq!(written.unwrap(), 12);
+    assert_eq!(std::fs::read(test_dir.join("notes.txt")).unwrap(), b"first-second");
+    let progress = progress.lock().unwrap();
+    assert_eq!(progress.last().unwrap().bytes_written, 12);
+    assert_eq!(progress.last().unwrap().expected_length, StreamLength::Unknown);
 }
 
 /// The shared `Volume::create_directory_all` honesty assertion, over the trait's
