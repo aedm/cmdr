@@ -31,6 +31,9 @@ var opacityInactiveMarkers = []string{
 	// A gated (locked/paywalled) feature card: its controls are genuinely
 	// inactive while gated, same as `:disabled` (`SectionCard.svelte`).
 	"data-gated",
+	// `inert` is stronger than disabled: the subtree takes no focus or clicks
+	// and is hidden from assistive tech (the locked cloud-AI setup panels).
+	"[inert]",
 }
 
 // opacityInactiveClassWords are class-name STATE WORDS that mark the same

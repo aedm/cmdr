@@ -92,7 +92,8 @@ browser, the thing tier 1 exists to avoid), `opacity_check.go` detects the gap i
 rule with a static `opacity: N < 1` UNLESS it's one of:
 
 - **A disabled or inactive UI component** (`opacityInactiveSelector` in `opacity_check.go`): `:disabled`, `[disabled]`,
-  `aria-disabled`, `data-disabled`, `data-gated`, or a `.disabled` / `.is-disabled*` / `*-disabled` class — plus the
+  `aria-disabled`, `data-disabled`, `data-gated`, `[inert]` (no focus, no clicks, hidden from assistive tech: style the
+  dimming off the attribute itself, so it can't drift from the state), or a `.disabled` / `.is-disabled*` / `*-disabled` class — plus the
   same three shapes for `unavailable` (`.volume-item.is-unavailable`, a device the daemon lists but can't use). WCAG
   1.4.3 explicitly exempts inactive components, and this is where most of the codebase's `opacity` dimming lives.
 - **Transient drag-in-progress feedback** (`opacityIsDraggingFeedback` in `opacity_check.go`): a selector containing

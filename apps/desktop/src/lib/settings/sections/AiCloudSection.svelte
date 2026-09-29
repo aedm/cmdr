@@ -112,7 +112,7 @@
     {#if locked}
         <p class="locked-hint">{tString('settings.ai.cloudConsent.lockedHint')}</p>
     {/if}
-    <div class="cloud-setup" class:locked inert={locked}>
+    <div class="cloud-setup" inert={locked}>
     {#if shouldShow('ai.cloudProvider')}
         <SettingRow
             id="ai.cloudProvider"
@@ -217,9 +217,10 @@
         color: var(--color-text-secondary);
     }
 
-    /* Dimmed and `inert` (no focus, no clicks, hidden from assistive tech) until the user
-       allows cloud AI. */
-    .cloud-setup.locked {
+    /* Dimmed while `inert` (no focus, no clicks, hidden from assistive tech), which it is
+       until the user allows cloud AI. Keyed off the attribute itself, so the dimming can't
+       drift from the state. */
+    .cloud-setup[inert] {
         opacity: 0.5;
     }
 

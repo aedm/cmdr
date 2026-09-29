@@ -15,6 +15,8 @@ func TestAnalyzeOpacity_DisabledStateExempt(t *testing.T) {
 		{File: "SectionCard.svelte", Line: 10, Selector: "[data-gated='true'] .section-card", Classes: []string{"section-card"}, Opacity: 0.5, HasOpacity: true},
 		{File: "filter-popover.css", Line: 10, Selector: ".list-cell.is-disabled-look", Classes: []string{"list-cell", "is-disabled-look"}, Opacity: 0.5, HasOpacity: true},
 		{File: "app-field.css", Line: 10, Selector: ".text-field-disabled", Classes: []string{"text-field-disabled"}, Opacity: 0.5, HasOpacity: true},
+		// `inert` is stronger than disabled: no focus, no clicks, hidden from assistive tech.
+		{File: "AiCloudSection.svelte", Line: 10, Selector: ".cloud-setup[inert]", Classes: []string{"cloud-setup"}, Opacity: 0.5, HasOpacity: true},
 	}
 
 	a := NewAnalyzer(NewVarTable())

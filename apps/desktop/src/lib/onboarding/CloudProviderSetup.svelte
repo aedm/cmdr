@@ -51,7 +51,7 @@
 {#if locked}
     <p class="locked-hint">{tString('settings.ai.cloudConsent.lockedHint')}</p>
 {/if}
-<div class="setup-lock" class:locked inert={locked}>
+<div class="setup-lock" inert={locked}>
 <div class="setup-panel" data-provider-id={controller.providerId}>
     {#if preset}
         <header class="provider-header">
@@ -93,8 +93,9 @@
         color: var(--color-text-secondary);
     }
 
-    /* Dimmed and `inert` until the user allows cloud AI. */
-    .setup-lock.locked {
+    /* Dimmed while `inert`, which it is until the user allows cloud AI. Keyed off the
+       attribute itself, so the dimming can't drift from the state. */
+    .setup-lock[inert] {
         opacity: 0.5;
     }
 
