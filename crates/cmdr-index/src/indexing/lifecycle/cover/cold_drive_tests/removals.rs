@@ -19,6 +19,18 @@ fn holders(volume_id: &str) -> Vec<(HoldKind, usize)> {
     }
 }
 
+/// Wait for what a finished drain signalled but never joins to let go of the drive.
+/// A walker worker or the scan completion can outlive `finish_stopping` by a moment
+/// (`hold.rs`' `HoldKind`), which is exactly why a real stop waits instead of asking
+/// once. Asked with no wait, a loaded CI runner caught one still holding.
+fn let_the_drain_go(volume_id: &str) {
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::from_secs(5)),
+        Release::Released,
+        "the drain's leftover threads let go of the drive"
+    );
+}
+
 /// A stop landing while ANOTHER teardown is draining the drive waits for that
 /// drain. The drain's manager still holds the watcher until it shuts down, so
 /// answering from the published `ShuttingDown` alone let an eject unmount under it.
@@ -41,6 +53,7 @@ fn a_stop_that_meets_a_drain_in_flight_waits_for_it() {
 
     // The window closed with the drain run to its end, so now nothing holds it.
     assert!(!state::is_active(drive.volume_id), "the drain retired the instance");
+    let_the_drain_go(drive.volume_id);
     assert_eq!(
         state::stop_removable_volume(drive.volume_id, Duration::ZERO),
         RemovableStop::NothingToStop,
@@ -68,6 +81,7 @@ fn a_stop_that_lands_during_a_scan_start_waits_for_the_handback() {
         !state::is_active(drive.volume_id),
         "the claimed stop ran at the handback"
     );
+    let_the_drain_go(drive.volume_id);
     assert_eq!(
         state::stop_removable_volume(drive.volume_id, Duration::ZERO),
         RemovableStop::NothingToStop,
