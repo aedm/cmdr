@@ -26,9 +26,11 @@
     import { createPretextMeasure } from '$lib/utils/shorten-middle'
     import {
         computePathPillsLayout,
+        PILL_CHROME_PX,
+        PILL_SEPARATOR_GAP_PX,
         scheduleStableWidthMeasure,
+        splitPath,
         type Layout,
-        type Segment,
     } from './path-pills-layout'
 
     interface Props {
@@ -42,27 +44,6 @@
     }
 
     const { path, onPick }: Props = $props()
-
-    /**
-     * Splits a POSIX-style path into `{ label, fullPath }` segments. Returns one segment
-     * per directory component, each `fullPath` carrying the absolute path up to and
-     * including that segment. Empty input or a bare `/` returns a single "/" pill.
-     */
-    function splitPath(input: string): Segment[] {
-        if (!input) return []
-        const isAbsolute = input.startsWith('/')
-        const parts = input.split('/').filter((p) => p.length > 0)
-        if (parts.length === 0) {
-            return isAbsolute ? [{ label: '/', fullPath: '/' }] : []
-        }
-        const out: Segment[] = []
-        let acc = ''
-        for (const part of parts) {
-            acc = isAbsolute || out.length > 0 ? `${acc}/${part}` : part
-            out.push({ label: part, fullPath: acc })
-        }
-        return out
-    }
 
     const segments = $derived(splitPath(path))
 
@@ -96,17 +77,6 @@
         if (style.font) return style.font
         return `${style.fontSize} ${style.fontFamily}`
     }
-
-    /**
-     * Per-pill chrome budget added on top of the measured text width. 4 px matches the
-     * rendered CSS (`--spacing-xxs` / 2 px each side ≈ 4 px); if a measurement undershoots
-     * by a pixel or two the outer `overflow: hidden` clips cleanly, never wrapping. Don't
-     * raise this budget: a larger value overshoots the actual chrome and makes the strip
-     * collapse even when there's free space.
-     */
-    const PILL_CHROME_PX = 4
-    /** Gap between consecutive pills (`--spacing-xxs` ≈ 2 px on each side of the separator). */
-    const PILL_SEPARATOR_GAP_PX = 4
 
     /**
      * Decide which segments stay visible. Delegates to the pure `computePathPillsLayout`

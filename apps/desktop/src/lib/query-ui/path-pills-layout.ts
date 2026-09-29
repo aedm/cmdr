@@ -48,8 +48,42 @@ export interface LayoutMetrics {
   pillChrome: number
 }
 
+/**
+ * Per-pill chrome budget added on top of the measured text width. 4 px matches the
+ * rendered CSS (`.pill`'s `--spacing-xxs` padding, 2 px each side); if a measurement
+ * undershoots by a pixel or two the outer `overflow: hidden` clips cleanly, never wrapping.
+ * Don't raise this budget: a larger value overshoots the actual chrome and makes the strip
+ * collapse even when there's free space.
+ */
+export const PILL_CHROME_PX = 4
+
+/** Gap between consecutive pills (`--spacing-xxs` ≈ 2 px on each side of the separator). */
+export const PILL_SEPARATOR_GAP_PX = 4
+
+/**
+ * Splits a POSIX-style path into `{ label, fullPath }` segments. Returns one segment
+ * per directory component, each `fullPath` carrying the absolute path up to and
+ * including that segment. Empty input returns no segments; a bare `/` returns one "/" pill.
+ * macOS and Linux only: splits strictly on `/`, no `\` handling.
+ */
+export function splitPath(input: string): Segment[] {
+  if (!input) return []
+  const isAbsolute = input.startsWith('/')
+  const parts = input.split('/').filter((p) => p.length > 0)
+  if (parts.length === 0) {
+    return isAbsolute ? [{ label: '/', fullPath: '/' }] : []
+  }
+  const out: Segment[] = []
+  let acc = ''
+  for (const part of parts) {
+    acc = isAbsolute || out.length > 0 ? `${acc}/${part}` : part
+    out.push({ label: part, fullPath: acc })
+  }
+  return out
+}
+
 /** Sum of pill widths plus separators between them. */
-function totalWidth(labels: string[], measure: (s: string) => number, chrome: number, sep: number): number {
+export function totalWidth(labels: string[], measure: (s: string) => number, chrome: number, sep: number): number {
   let w = 0
   for (let i = 0; i < labels.length; i++) {
     w += measure(labels[i]) + chrome

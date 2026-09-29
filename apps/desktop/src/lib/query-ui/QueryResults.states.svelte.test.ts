@@ -375,13 +375,13 @@ describe('SearchResults column tracks', () => {
     expect(row?.style.gridTemplateColumns).toBe(header?.style.gridTemplateColumns)
   })
 
-  it('falls back to the fixed Name track when text measurement is unavailable', async () => {
+  it('falls back to an even Name / Path split when text measurement is unavailable', async () => {
     // jsdom has no Canvas 2D, so pretext never adopts: the pre-measurement CSS fallback
-    // (identical to the fixed track this replaced) has to render rather than a broken value.
+    // has to render rather than a broken value.
     const target = mountWith({ results: oneRow, hasSearched: true, query: '*.jpg', totalCount: 1 })
     await tick()
     const header = target.querySelector<HTMLElement>('.column-header')
-    expect(header?.style.gridTemplateColumns).toContain('minmax(80px, 22ch)')
+    expect(header?.style.gridTemplateColumns).toBe('24px minmax(80px, 1fr) minmax(120px, 1fr) 10ch 16ch')
   })
 
   it('gives the Name column the flex track when there is no Path column (Selection)', async () => {
