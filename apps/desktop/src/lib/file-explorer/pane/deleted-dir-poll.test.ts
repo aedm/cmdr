@@ -209,7 +209,10 @@ describe('createDeletedDirPoll', () => {
       const poll = createDeletedDirPoll(deps)
       poll.start()
       await tick(2)
-      expect(resolution.resolveValidPath).toHaveBeenCalledWith('/Volumes/Ext/photos', { volumeRoot: '/Volumes/Ext' })
+      expect(resolution.resolveValidPath).toHaveBeenCalledWith('/Volumes/Ext/photos', {
+        volumeRoot: '/Volumes/Ext',
+        keepSilentVolume: true,
+      })
       expect(navigateToFallback).toHaveBeenCalledWith('/Volumes/Ext')
       poll.stop()
     })

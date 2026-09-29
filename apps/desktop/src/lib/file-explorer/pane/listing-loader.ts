@@ -510,10 +510,13 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
                     volumeRoot: deps.getVolumePath(),
                     volumeId,
                     connectionState: deps.getConnectionState(),
+                    // A root that doesn't answer in time is a slow drive, not a gone one:
+                    // stay on it and show this error, ❌ never `~` on another volume.
+                    keepSilentVolume: true,
                   }).then((validPath) => {
                     // ❗ A walk-up that lands back on the path that just failed (a
-                    // volume's own root) or nowhere at all has nothing better to
-                    // offer: navigating would re-list the same failure, forever.
+                    // volume's own root, a silent one included) or nowhere at all has
+                    // nothing better to offer: navigating would re-list the same failure, forever.
                     if (validPath === null || validPath === loadPath) {
                       showListingError()
                       return

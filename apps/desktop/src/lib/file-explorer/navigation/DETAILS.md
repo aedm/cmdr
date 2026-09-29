@@ -134,7 +134,7 @@ own 2s timeout, no frontend wrapper needed).
 ## `path-resolution.ts`
 
 `resolveValidPath(targetPath, options?)`: walks parent tree until an existing directory is found. Accepts optional
-`{ pathExistsFn, timeoutMs, volumeRoot, volumeId, connectionState }`: defaults to Tauri `pathExists` with 1s timeout per
+`{ pathExistsFn, timeoutMs, volumeRoot, volumeId, connectionState, keepSilentVolume }`: defaults to Tauri `pathExists` with 1s timeout per
 step, 11 s on the volume's own rungs when `connectionState` is `direct`. Used both at runtime (with timeouts) and at
 startup via `app-status-store.ts`'s `resolvePersistedPath` wrapper (no timeout, injected `pathExistsFn`). Fallback
 chain: parent dirs → `~` → `/` → `null` (volume unmounted).
@@ -157,6 +157,15 @@ the same way. The rest pass none on purpose:
 "yes" ends it; a parent that didn't answer would re-fail its listing. The gate for "couldn't tell" sits BEFORE the walk:
 the listing error branch and the poll start one only after a confirmed miss, and the leave-the-volume handlers above
 walk precisely because their volume stopped answering.
+
+**A silent volume ROOT is kept, for callers that opt in (`keepSilentVolume`).** When the walk reaches `volumeRoot` and
+the root couldn't tell (the step timeout, or the backend's `timedOut`; the volume's rungs go through
+`pathExistsChecked`, so the flag survives), the walk answers the root instead of going on to `~` / `/`. A root that says
+"gone" still falls through. `listing-loader.ts`'s error branch and `deleted-dir-poll.ts` opt in; the SMB handlers and
+`edge-flow-handlers.ts`'s cancel walk-up don't (they walk to leave, or the user just declined the wait). _Why:_ pCloud's
+FUSE mount at `~/pCloud Drive` answered slower than the 1 s step, the walk skipped its root, `~` answered, and picking
+the drive showed Macintosh HD's home folder as if it were the drive (cmdr-reports#4). With the flag the listing-error
+branch gets its own failed path back and shows the error pane (Retry, Back, Home) on the picked drive.
 
 Lives in its own module so `app-status-store.ts` can import it without forming a cycle; `path-navigation.ts` itself
 imports `getLastUsedPathForVolume` from `app-status-store.ts`.

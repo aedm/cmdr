@@ -11,10 +11,14 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { pathExists } = vi.hoisted(() => ({
+const { pathExists, pathExistsChecked } = vi.hoisted(() => ({
   pathExists: vi.fn((_path: string, _volumeId?: string): Promise<boolean> => Promise.resolve(false)),
+  pathExistsChecked: vi.fn(
+    (_path: string, _volumeId?: string): Promise<{ data: boolean; timedOut: boolean }> =>
+      Promise.resolve({ data: false, timedOut: false }),
+  ),
 }))
-vi.mock('$lib/tauri-commands', () => ({ pathExists }))
+vi.mock('$lib/tauri-commands', () => ({ pathExists, pathExistsChecked }))
 
 import { resolveValidPath } from './path-resolution'
 
@@ -100,9 +104,61 @@ describe('resolveValidPath with a volume root on the same scheme', () => {
   })
 })
 
+/**
+ * A slow FUSE mount (pCloud's `~/pCloud Drive`) whose root doesn't answer in time. Pre-fix
+ * the walk skipped the silent root, `~` answered, and a pick of that drive showed the home
+ * folder on Macintosh HD as if it were the drive (cmdr-reports#4).
+ */
+describe('resolveValidPath on a volume whose root does not answer', () => {
+  const root = '/Users/ada/pCloud Drive'
+  /** The volume's rungs never answer; `~` and `/` do. */
+  const silentVolume = vi.fn((p: string) => (p === '~' || p === '/' ? Promise.resolve(true) : new Promise<boolean>(() => {})))
+
+  it('stays on the volume root when the caller keeps a silent volume', async () => {
+    const resolved = await resolveValidPath(`${root}/Docs`, {
+      pathExistsFn: silentVolume,
+      timeoutMs: 10,
+      volumeRoot: root,
+      keepSilentVolume: true,
+    })
+    expect(resolved).toBe(root)
+  })
+
+  it('stays when the backend says it could not tell, too', async () => {
+    pathExistsChecked.mockImplementation((path) =>
+      Promise.resolve(path === '~' ? { data: true, timedOut: false } : { data: false, timedOut: true }),
+    )
+    const resolved = await resolveValidPath(root, {
+      volumeId: 'pcloud',
+      volumeRoot: root,
+      timeoutMs: 0,
+      keepSilentVolume: true,
+    })
+    expect(resolved).toBe(root)
+  })
+
+  it('still leaves a volume whose root says it is gone', async () => {
+    const goneVolume = vi.fn((p: string) => Promise.resolve(p === '~'))
+    const resolved = await resolveValidPath(`${root}/Docs`, {
+      pathExistsFn: goneVolume,
+      timeoutMs: 10,
+      volumeRoot: root,
+      keepSilentVolume: true,
+    })
+    expect(resolved).toBe('~')
+  })
+
+  it('leaves a silent volume for a caller that walks to leave it (the SMB handlers)', async () => {
+    const resolved = await resolveValidPath(`${root}/Docs`, { pathExistsFn: silentVolume, timeoutMs: 10, volumeRoot: root })
+    expect(resolved).toBe('~')
+  })
+})
+
 describe('resolveValidPath on the volume it was given', () => {
   beforeEach(() => {
     pathExists.mockReset()
+    pathExistsChecked.mockReset()
+    pathExistsChecked.mockResolvedValue({ data: false, timedOut: false })
   })
 
   /**
@@ -111,8 +167,8 @@ describe('resolveValidPath on the volume it was given', () => {
    * landed on the server root instead of the parent that was still there.
    */
   it('lands on the nearest parent that exists there, asking that volume every time', async () => {
-    pathExists.mockImplementation((path, volumeId) =>
-      Promise.resolve(volumeId === 'sftp-nas' && path === 'sftp://ada@nas.local:22/a'),
+    pathExistsChecked.mockImplementation((path, volumeId) =>
+      Promise.resolve({ data: volumeId === 'sftp-nas' && path === 'sftp://ada@nas.local:22/a', timedOut: false }),
     )
     const resolved = await resolveValidPath('sftp://ada@nas.local:22/a/b/c', {
       volumeId: 'sftp-nas',
@@ -120,7 +176,7 @@ describe('resolveValidPath on the volume it was given', () => {
       timeoutMs: 0,
     })
     expect(resolved).toBe('sftp://ada@nas.local:22/a')
-    expect(pathExists.mock.calls).toEqual([
+    expect(pathExistsChecked.mock.calls).toEqual([
       ['sftp://ada@nas.local:22/a/b/c', 'sftp-nas'],
       ['sftp://ada@nas.local:22/a/b', 'sftp-nas'],
       ['sftp://ada@nas.local:22/a', 'sftp-nas'],
@@ -135,5 +191,7 @@ describe('resolveValidPath on the volume it was given', () => {
       timeoutMs: 0,
     })
     expect(resolved).toBe('~')
+    expect(pathExistsChecked).toHaveBeenCalledWith('/Volumes/naspi/gone', 'smb-naspi')
+    expect(pathExists.mock.calls).toEqual([['~']])
   })
 })

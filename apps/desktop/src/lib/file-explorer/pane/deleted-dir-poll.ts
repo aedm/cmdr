@@ -49,7 +49,9 @@ export function createDeletedDirPoll(deps: DeletedDirPollDeps): DeletedDirPoll {
   let notExistsCount = 0
 
   function walkUp(currentPath: string, volumePath: string): void {
-    void resolveValidPath(currentPath, { volumeRoot: volumePath }).then((validPath) => {
+    // The root just answered "there" (`poll`), so one that's slow on the walk's rung is
+    // still there: land on it, ❌ never on `~` of another volume.
+    void resolveValidPath(currentPath, { volumeRoot: volumePath, keepSilentVolume: true }).then((validPath) => {
       deps.navigateToFallback(validPath)
     })
   }

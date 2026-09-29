@@ -7,7 +7,7 @@
  * `getLastUsedPathForVolume`.
  */
 
-import { pathExists } from '$lib/tauri-commands'
+import { pathExists, pathExistsChecked } from '$lib/tauri-commands'
 import { withTimeout } from '$lib/utils/timing'
 import type { ConnectionState } from '../types'
 import { probeTimeoutMs } from './connection-state'
@@ -41,7 +41,19 @@ export interface ResolveValidPathOptions {
    * still there. `~` and `/` always go to the boot disk: they're its rungs.
    */
   volumeId?: string
+  /**
+   * When the walk reaches `volumeRoot` and the root couldn't tell (the step timeout, or the
+   * backend's `timedOut`), answer the root instead of going on to `~` / `/`. For callers
+   * that should STAY on the volume: a slow mount is still there, and leaving it showed the
+   * boot disk's home folder as if it were the picked drive (cmdr-reports#4). A root that
+   * says "gone" still falls through. ❌ Not for the SMB cancel and disconnect handlers,
+   * which walk to LEAVE a volume that stopped answering.
+   */
+  keepSilentVolume?: boolean
 }
+
+/** One rung's answer. `unknown` is a probe that couldn't tell: a timeout, not a "no". */
+type ProbeAnswer = 'yes' | 'no' | 'unknown'
 
 /**
  * The scheme root of a path on a volume with no local mount
@@ -96,35 +108,56 @@ function schemeFloorFor(targetPath: string, volumeRoot: string | undefined): str
  * Returns null if even the root doesn't exist (volume unmounted).
  *
  * ❗ On a `<scheme>://` path the walk stops at the scheme root and RETURNS IT,
- * never `~`, `/`, or `null` (`schemeRootOf`).
+ * never `~`, `/`, or `null` (`schemeRootOf`). With `keepSilentVolume`, a volume
+ * root that couldn't tell is answered too, ❌ never walked past.
  */
-export async function resolveValidPath(targetPath: string, options?: ResolveValidPathOptions): Promise<string | null> {
-  const timeoutMs = options?.timeoutMs ?? 1000
-  const volumeRoot = options?.volumeRoot
-  const volumeId = options?.volumeId
-  const onVolume = options?.pathExistsFn ?? ((p: string) => pathExists(p, volumeId))
-  const onBootDisk = options?.pathExistsFn ?? ((p: string) => pathExists(p))
+export async function resolveValidPath(
+  targetPath: string,
+  options: ResolveValidPathOptions = {},
+): Promise<string | null> {
+  const timeoutMs = options.timeoutMs ?? 1000
+  const volumeRoot = options.volumeRoot
+  const onVolume = volumeProbe(options.pathExistsFn, options.volumeId)
+  const onBootDisk = options.pathExistsFn ?? ((p: string) => pathExists(p))
 
-  const onVolumeTimeoutMs = timeoutMs > 0 ? probeTimeoutMs(options?.connectionState, timeoutMs) : 0
+  const onVolumeTimeoutMs = timeoutMs > 0 ? probeTimeoutMs(options.connectionState, timeoutMs) : 0
 
-  const bounded = (probe: Promise<boolean>, ms = timeoutMs): Promise<boolean> =>
-    ms > 0 ? withTimeout(probe, ms, false) : probe
+  const bounded = <T>(probe: Promise<T>, fallback: T, ms = timeoutMs): Promise<T> =>
+    ms > 0 ? withTimeout(probe, ms, fallback) : probe
 
   const schemeFloor = schemeFloorFor(targetPath, volumeRoot)
 
-  const walked = await walkUp(targetPath, (p) => bounded(onVolume(p), onVolumeTimeoutMs), { volumeRoot, schemeFloor })
+  const walked = await walkUp(targetPath, (p) => bounded(onVolume(p), 'unknown', onVolumeTimeoutMs), {
+    volumeRoot,
+    schemeFloor,
+    keepSilentRoot: options.keepSilentVolume === true,
+  })
   if (walked !== null) return walked
   // A scheme path stops here: `~` is on another volume entirely.
   if (schemeFloor) return schemeFloor
   // Try user home before falling back to root (~ is expanded by the backend)
-  if (await bounded(onBootDisk('~'))) {
+  if (await bounded(onBootDisk('~'), false)) {
     return '~'
   }
   // Check root
-  if (await bounded(onBootDisk('/'))) {
+  if (await bounded(onBootDisk('/'), false)) {
     return '/'
   }
   return null
+}
+
+/**
+ * Asks the volume about one rung. The default keeps the backend's `timedOut` as
+ * `unknown` (`keepSilentVolume` reads it); an injected `pathExistsFn` answers
+ * yes or no.
+ */
+function volumeProbe(
+  pathExistsFn: ((path: string) => Promise<boolean>) | undefined,
+  volumeId: string | undefined,
+): (path: string) => Promise<ProbeAnswer> {
+  if (pathExistsFn) return (p) => pathExistsFn(p).then((exists) => (exists ? 'yes' : 'no'))
+  return (p) =>
+    pathExistsChecked(p, volumeId).then(({ data, timedOut }) => (data ? 'yes' : timedOut ? 'unknown' : 'no'))
 }
 
 /**
@@ -136,23 +169,28 @@ export async function resolveValidPath(targetPath: string, options?: ResolveVali
  * anything under it can answer, while a local volume root that doesn't exist
  * means the volume is gone and the caller's `~` fallback is right.
  *
- * ❗ A probe that couldn't tell (the backend's `timedOut`, which `pathExists`
- * folds to `false`, or the step timeout) is SKIPPED, ❌ never landed on: the
- * answer is where a caller navigates, so only a "yes" may end the walk, and
- * standing on a place that didn't answer re-fails its listing further from where
- * the user was than any parent that did answer. The gate for "couldn't tell" sits
- * BEFORE the walk instead: `listing-loader.ts` and `deleted-dir-poll.ts` start one
- * only after a confirmed miss, and the SMB cancel and disconnect handlers walk to
- * LEAVE a volume that stopped answering, which stopping on it would defeat.
+ * ❗ A probe that couldn't tell (the backend's `timedOut`, or the step timeout)
+ * is SKIPPED, ❌ never landed on: the answer is where a caller navigates, so only
+ * a "yes" may end the walk, and standing on a place that didn't answer re-fails
+ * its listing further from where the user was than any parent that did answer.
+ * The gate for "couldn't tell" sits BEFORE the walk instead: `listing-loader.ts`
+ * and `deleted-dir-poll.ts` start one only after a confirmed miss, and the SMB
+ * cancel and disconnect handlers walk to LEAVE a volume that stopped answering,
+ * which stopping on it would defeat.
+ *
+ * The one opt-in exception is a silent volume ROOT (`keepSilentRoot`, the
+ * caller's `keepSilentVolume`): it's the volume itself, not a parent, and past it
+ * the walk leaves for another drive.
  */
 async function walkUp(
   targetPath: string,
-  check: (path: string) => Promise<boolean>,
-  bounds: { volumeRoot?: string; schemeFloor: string | null },
+  check: (path: string) => Promise<ProbeAnswer>,
+  bounds: { volumeRoot?: string; schemeFloor: string | null; keepSilentRoot: boolean },
 ): Promise<string | null> {
   let path = targetPath
   while (path !== '/' && path !== '') {
-    if (await check(path)) {
+    const answer = await check(path)
+    if (answer === 'yes') {
       return path
     }
     if (bounds.schemeFloor && path === bounds.schemeFloor) {
@@ -160,7 +198,7 @@ async function walkUp(
     }
     // Don't walk above the volume root: that crosses into a different volume
     if (bounds.volumeRoot && path === bounds.volumeRoot) {
-      break
+      return bounds.keepSilentRoot && answer === 'unknown' ? path : null
     }
     // Go to parent
     const lastSlash = path.lastIndexOf('/')

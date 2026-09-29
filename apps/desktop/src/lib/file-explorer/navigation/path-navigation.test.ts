@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('$lib/tauri-commands', () => ({
-  pathExists: vi.fn(),
-  DEFAULT_VOLUME_ID: 'root',
-}))
+vi.mock('$lib/tauri-commands', () => {
+  const pathExists = vi.fn()
+  return {
+    pathExists,
+    // The walk's volume rungs ask the checked variant; it answers what `pathExists` does, never "couldn't tell".
+    pathExistsChecked: vi.fn((path: string, volumeId?: string) =>
+      (pathExists(path, volumeId) as Promise<boolean>).then((data) => ({ data, timedOut: false })),
+    ),
+    DEFAULT_VOLUME_ID: 'root',
+  }
+})
 
 vi.mock('$lib/app-status-store', () => ({
   getLastUsedPathForVolume: vi.fn(),
