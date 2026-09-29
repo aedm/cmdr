@@ -414,8 +414,8 @@
             onResolve={(resolution: ConflictResolution, applyToAll: boolean) => {
                 void progress.handleConflictResolution(resolution, applyToAll)
             }}
-            onCancel={(rollback: boolean) => {
-                if (rollback) {
+            onCancel={(wantsRollback: boolean) => {
+                if (wantsRollback) {
                     rollback.request()
                     return
                 }

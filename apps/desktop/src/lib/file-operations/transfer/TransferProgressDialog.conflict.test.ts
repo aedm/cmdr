@@ -491,4 +491,17 @@ describe('TransferProgressDialog conflict — no way out that is not an answer',
     expect(target.querySelector('.conflict-section')).toBeNull()
     expect(target.querySelector('.modal-close-button')).not.toBeNull()
   })
+
+  it("asks before the conflict body's Rollback reverses anything", async () => {
+    const target = await mountDialogWithConflict(makeEvent())
+    const rollbackButton = Array.from(target.querySelectorAll<HTMLButtonElement>('.conflict-cancel button')).find(
+      (button) => button.textContent.trim() === 'Rollback',
+    )
+    expect(rollbackButton, 'the conflict body offers Rollback').toBeDefined()
+
+    rollbackButton?.click()
+    await tick()
+
+    expect(target.querySelector('#rollback-confirmation-body'), 'the question is up').not.toBeNull()
+  })
 })

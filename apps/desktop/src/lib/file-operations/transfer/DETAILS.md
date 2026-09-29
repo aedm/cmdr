@@ -87,9 +87,9 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
   (`mcp/executor/mod.rs::CONFLICT_POLICIES`), and both callers now log a name this map has never heard of.
 - **The progress dialog's Rollback is a controller plus a button.** `transfer-rollback.svelte.ts` owns the one reversal
   decision (blocked or live, what it promises, the confirmation's asked state) and `TransferRollbackControls.svelte`
-  renders the button in its three readings. It's split that way because the two halves can't share a subtree: the
-  button sits in the dialog's button row, while `RollbackConfirmDialog` stacks over the whole dialog and is also raised
-  from the conflict body, which replaces that row. `../DETAILS.md` § "Rollback asks first".
+  renders the button in its three readings. It's split that way because the two halves can't share a subtree: the button
+  sits in the dialog's button row, while `RollbackConfirmDialog` stacks over the whole dialog and is also raised from
+  the conflict body, which replaces that row. `../DETAILS.md` § "Rollback asks first".
 - **`ScanPhaseBody.svelte` is shared by the progress dialog and the queue row** (`comfortable` and `compact` densities),
   so a change to it lands on both surfaces.
 - **`transfer-complete-toast.ts::composeTransferCompleteToast` splits TOP-LEVEL items by type only** ("Moved 1 file and
