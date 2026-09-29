@@ -15,8 +15,9 @@ in-memory test fixture. Callers never touch the filesystem directly; they call `
 
 ## Key files
 
-- **`mod.rs`**: `Volume` trait (async: most methods return `Pin<Box<dyn Future>>`; sync: `name`, `root`, `supports_*`, `local_path`, `space_poll_interval`) plus the `VolumeReadStream` and `SequentialExtract` sub-traits. Re-exports `types::*` and `ids::*`
-- **`types.rs`**: the data types the trait exchanges (`VolumeError` + its `Display`/`Error` impls and its `from_io_at` / `from_io_without_path` constructors, `SpaceInfo`, `CopyScanResult`, `BatchScanResult`, `ScanConflict`, `SourceItemInfo`, `LaneKey`, `ListingProgress`, `MutationEvent`, `ConnectionState`)
+- **`mod.rs`**: `Volume` trait (async: most methods return `Pin<Box<dyn Future>>`; sync: `name`, `root`, `supports_*`, `local_path`, `space_poll_interval`) plus the `VolumeReadStream` and `SequentialExtract` sub-traits. Re-exports `types::*`, `error::VolumeError`, and `ids::*`
+- **`types.rs`**: the data types the trait exchanges (`StreamLength`, `WriteMode`, `SpaceInfo`, `CopyScanResult`, `BatchScanResult`, `ScanConflict`, `SourceItemInfo`, `LaneKey`, `ListingProgress`, `MutationEvent`)
+- **`error.rs`**: `VolumeError`, the IPC-facing error union, with its `Display`/`Error` impls and its `from_io_at` / `from_io_without_path` constructors
 - **`ids.rs`** (in `cmdr-fs`): the funnel every volume ID is built through (`local_volume_id`, `path_volume_id`,
   `smb_volume_id`, `mtp_device_id`, `is_legacy_volume_id`). Which constructor a macOS mount goes through is
   `crate::volumes::ids`; the Linux twin is `volumes_linux::volume_id_for_mount`
