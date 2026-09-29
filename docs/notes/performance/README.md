@@ -229,6 +229,9 @@ Items that don't move #92's targets, each tracked in its own issue:
 
 Newest first.
 
+- `allocator-slack-release-2026-09-27.md`: neither `mi_collect(true)` nor malloc pressure relief returns the post-burst
+  slack; where mimalloc keeps it (idle threads' empty pages, sparse pages, unpurged slices), park-time collects, and
+  four rounds of mimalloc against the system allocator's settle (median 403 against 241 MiB at +15 min).
 - `search-arena-reload-2026-09-27.md`: the arena reload after a walk set the burst peak (~610 MiB) and put 1.4 s in
   front of the next search, the catch-up that replaced it, and why the settled post-burst footprint comes from big
   listings instead.

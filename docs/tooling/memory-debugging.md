@@ -90,6 +90,12 @@ What the census can't see, all small or off in our build: mimalloc's own metadat
 live, so `liveBytes` leans high. It runs only when the tool is called, walks without stopping the app, and is bounded to
 a million pages. Mechanism and safety argument: `crates/cmdr-fs/src/process_memory/heap_census.rs`.
 
+**Where the post-burst slack sits** (verified on mimalloc v3.3.2, a page walk joined to `mach_vm_page_range_query`,
+2026-09-29): inside the spans of pages that still exist, not in free arena slices. Empty pages idle threads keep until
+they allocate again (30–95 MiB after a burst), sparse pages a few long-lived blocks pin (~120 MiB), and 20–50 MiB of
+free slices not yet purged. `mi_collect(true)` can't reach it: it collects only the CALLING thread's pages plus slices
+already scheduled for purging. Evidence and the harness: `docs/notes/performance/allocator-slack-release-2026-09-27.md`.
+
 ❌ Don't read live bytes off mimalloc's own stats (`MIMALLOC_SHOW_STATS`, `mi_stats_print_out` with `MI_STAT`). In v3
 they're per-thread counters that merge only when a thread collects or exits, and a free on another thread decrements
 that thread's counter: after a 400 MiB search arena was freed they still read 242–265 MiB live (verified on
