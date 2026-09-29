@@ -20,6 +20,10 @@ Subdirs, each with its own docs:
 
 Umbrella-level files:
 
+- `write-operation-types.ts`: the hand-written write-op vocabulary (operation types and phases, conflict policy, start
+  config, the `WriteOperationError` union), re-exported from `$lib/file-explorer/types`, which stays the one import
+  seam. It imports only from `$lib/ipc/bindings`, so that re-export can't close an import cycle. `type-drift` reads it
+  alongside the barrel.
 - `TransferProgressReadout.svelte`: the dual-bar readout shared by the progress dialog and the queue rows (§ below).
 - `scan-throughput.ts`: the rolling-window scan-rate estimator (§ below).
 - `foreground-operation.svelte.ts`: two module-scoped slots naming what the foreground owns — the operation its progress
@@ -111,8 +115,8 @@ temp+rename rewrite), surfaced through the same transfer/queue UI as any write:
   `archivePhaseLabelKey`, keyed on the PHASE alone: the compress phases only ever come from `compress`, and the two
   upload phases also end any edit of a zip on a remote volume (a copy, move, or delete inside it uploads the rewritten
   archive under the op's own type). When the backend numbers the phase (`WriteProgressEvent.step`, set only when a
-  compress zips locally and then uploads), the label takes its `*Step` variant, "Step 1 of 2: Compressing"; the
-  frontend never decides the step itself. It has no scan-title arm. `Compressing` shows source-byte bars, `Transferring` shows
+  compress zips locally and then uploads), the label takes its `*Step` variant, "Step 1 of 2: Compressing"; the frontend
+  never decides the step itself. It has no scan-title arm. `Compressing` shows source-byte bars, `Transferring` shows
   completed-archive output bytes, and `FinishingCompression` / `FinishingTransfer` are indeterminate.
   `isIndeterminateProgressPhase` is the one classifier shared by dialog, queue, and corner.
 

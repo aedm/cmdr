@@ -19,7 +19,12 @@ const RUST_FILES = [
   'src-tauri/src/network/smb_client.rs',
   'src-tauri/src/network/known_shares.rs',
 ]
-const TS_TYPES_FILE = 'src/lib/file-explorer/types.ts'
+// The hand-written barrel and the two vocabularies it re-exports from their owners.
+const TS_TYPES_FILES = [
+  'src/lib/file-explorer/types.ts',
+  'src/lib/file-explorer/network/types.ts',
+  'src/lib/file-operations/write-operation-types.ts',
+]
 
 // Rust types that are internal and don't need TypeScript equivalents
 const INTERNAL_RUST_TYPES = new Set([
@@ -665,8 +670,9 @@ function main(): void {
   console.log(`Found ${String(rustStructs.length)} Rust structs and ${String(rustEnums.length)} enums\n`)
 
   // Read and parse TypeScript file
-  const tsPath = path.resolve(desktopDir, TS_TYPES_FILE)
-  const tsContent = fs.readFileSync(tsPath, 'utf-8')
+  const tsContent = TS_TYPES_FILES.map((relPath) => fs.readFileSync(path.resolve(desktopDir, relPath), 'utf-8')).join(
+    '\n',
+  )
   const tsInterfaces = parseTsInterfaces(tsContent)
   const tsTypeAliases = parseTsTypeAliases(tsContent)
 

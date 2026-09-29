@@ -198,8 +198,10 @@ For the full module map, decisions, and gotchas, see `git/CLAUDE.md`.
 - **PlacesBrowser.svelte**: Lists shares on a selected server
 - **smb-sign-in.ts**: SMB's side of the one sign-in sheet (`$lib/servers`), shared by its three credential sites
 - **network-store.svelte.ts**: Reactive state for discovered servers, selected server/share, and auth mode
-- **`types.ts`** re-exports the wire refusals (`MountError`, `ShareListError`) from `$lib/ipc/bindings` rather than
-  restating them: a hand-written copy had drifted to a `message` field the backend no longer sends
+- **`network/types.ts`** (the network vocabulary: hosts, shares, known shares, mount refusals) is re-exported from
+  `types.ts`, which stays the one import seam. It re-exports the wire refusals (`MountError`, `ShareListError`) from
+  `$lib/ipc/bindings` rather than restating them: a hand-written copy had drifted to a `message` field the backend no
+  longer sends
 
 ## Search-results virtual volume (`pane/SearchResultsView.svelte`)
 
