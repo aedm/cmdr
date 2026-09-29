@@ -376,6 +376,22 @@ describe('PlacesBrowser listing sign-in', () => {
     await unmount(component)
   })
 
+  it('waits for a sign-in calmly behind the sheet, instead of saying it couldn’t connect', async () => {
+    // ❗ A server that wants an account is a normal step, not a failure: no red
+    // icon, no "Couldn't connect", and no Retry, since retrying without an account
+    // gets the same answer (cmdr-reports#10).
+    h.fetchShares.mockRejectedValue(new ShareListFailure({ type: 'auth_required', message: 'Authentication required' }))
+    const { target, component } = mountBrowser(vi.fn())
+
+    const pane = await vi.waitFor(() => must(target.querySelector('.sign-in-state'), 'the sign-in pane'))
+    expect(target.querySelector('.error-state')).toBeNull()
+    expect(must(pane.querySelector('.sign-in-title'), 'the title').textContent.trim()).toBe('Sign in to Naspolya')
+    const labels = [...pane.querySelectorAll('button')].map((b) => b.textContent.trim())
+    expect(labels).toEqual(['Sign in', 'Back'])
+
+    await unmount(component)
+  })
+
   it('offers guest where the host allows one, so a shy share is one click away', async () => {
     // A listing that needs auth on a host whose cached state says guest is allowed.
     h.fetchShares.mockResolvedValueOnce({ shares: [], authMode: 'guest_allowed', fromCache: false })

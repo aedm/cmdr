@@ -154,3 +154,17 @@ const REFUSAL_FIELDS: Record<ConnectRefusalKind, RefusalField> = {
 export function refusalField(kind: ConnectRefusalKind): RefusalField {
   return REFUSAL_FIELDS[kind]
 }
+
+/**
+ * The refusal a sign-in sheet shows the moment it opens, or `null` for a clean form.
+ *
+ * ❗ Red is feedback on something the person did. `needs_credentials` is only the
+ * reason the sheet is asking, which its title already says, so it opens clean and
+ * the sentence waits for a round the person sent (cmdr-reports#10). Every other
+ * kind is about an answer already given (a stored password turned away, an
+ * account the share refused), so it shows from the start.
+ */
+export function refusalShownOnOpen(kind: ConnectRefusalKind | undefined): ConnectRefusalKind | null {
+  if (kind === undefined || kind === 'needs_credentials') return null
+  return kind
+}

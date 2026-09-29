@@ -2888,13 +2888,13 @@
   },
   "errors.mount.authRequired": "Sign in to open “{share}” on “{server}”.",
   "@errors.mount.authRequired": {
-    "description": "Shown when the server doesn't let guests (people who haven't signed in) open this shared folder. A sign-in sheet opens on top of it at the same time, so this is an instruction, not a dead end. Surface: the network pane, after someone opens a shared folder on a network server (SMB) and it doesn't open. The pane replaces the server's list of shares with a \"Couldn't mount share\" title, this sentence under it, and Try again and Back buttons. Plain text, one short sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "description": "Shown when the server doesn't let guests (people who haven't signed in) open this shared folder. Surface: not on screen (the pane shows a calm \"Sign in to open …\" screen with a sign-in sheet on top); this sentence is what AI tools connected to Cmdr read about the pane. Plain text, one short sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
     "placeholders": {
       "share": "the name of the shared folder, as the server spells it",
       "server": "the server's name as the pane shows it (like Naspolya), or its network address (like 192.168.1.20) when it has no name"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't mount share\" title that replaces a server's list of shares when a share doesn't open. That list opens from the servers list pictured here."
+    "screenshotNote": "This one is NOT on screen. It's what AI tools read about the pane while a shared folder waits for a sign-in, in the network flow that starts at the servers list pictured here."
   },
   "errors.mount.authFailed": "That username and password didn’t work on “{server}”. Check them and sign in again.",
   "@errors.mount.authFailed": {
@@ -2990,21 +2990,21 @@
   },
   "errors.shareList.authRequired": "Sign in to see the shares on “{server}”.",
   "@errors.shareList.authRequired": {
-    "description": "Shown when the server won't show its shared folders to someone who hasn't signed in. \"Shares\" means the folders a server makes available over the network. Surface: the network pane, after someone opens a server (SMB) to see its shared folders and the list doesn't load. The pane shows a \"Couldn't connect to …\" title naming the server, this sentence under it, and Retry, Sign in, and Back buttons. The same sentence is the tooltip on that server's row in the servers list. Plain text, one short sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "description": "Shown when the server won't show its shared folders to someone who hasn't signed in. \"Shares\" means the folders a server makes available over the network. Surface: the tooltip on that server's row in the servers list. Plain text, one short sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
     "placeholders": {
       "server": "the server's name as the servers list shows it (like Naspolya)"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't connect to …\" title that replaces a server's list of shares when that list doesn't load. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
+    "screenshotNote": "This one is NOT the error panel. Your string is the tooltip on a server's row in the servers list pictured here."
   },
   "errors.shareList.signingRequired": "“{server}” doesn’t show its shares to guests. Sign in to see them.",
   "@errors.shareList.signingRequired": {
-    "description": "Shown when the server only answers over a secured connection that it gives to signed-in accounts, so guests (people who haven't signed in) can't see its shared folders. Surface: the network pane, after someone opens a server (SMB) to see its shared folders and the list doesn't load. The pane shows a \"Couldn't connect to …\" title naming the server, this sentence under it, and Retry, Sign in, and Back buttons. The same sentence is the tooltip on that server's row in the servers list. Plain text, one or two short sentences, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "description": "Shown when the server only answers over a secured connection that it gives to signed-in accounts, so guests (people who haven't signed in) can't see its shared folders. Surface: the network pane, after someone opens a server (SMB) to see its shared folders. The pane shows a calm \"Sign in to …\" title naming the server, this sentence under it, and Sign in and Back buttons; a sign-in sheet usually sits on top. The same sentence is the tooltip on that server's row in the servers list. Plain text, one or two short sentences, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
     "placeholders": {
       "server": "the server's name as the servers list shows it (like Naspolya)"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't connect to …\" title that replaces a server's list of shares when that list doesn't load. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
+    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the calm \"Sign in to …\" title that replaces a server's list of shares while the server waits for a sign-in. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
   },
   "errors.shareList.authFailed": "That username and password didn’t work on “{server}”. Check them and sign in again.",
   "@errors.shareList.authFailed": {

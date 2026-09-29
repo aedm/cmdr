@@ -262,6 +262,23 @@ describe('NetworkMountView mount-failure auth loop', () => {
     await unmount(component)
   })
 
+  it('waits for the sign-in calmly behind the sheet, instead of saying the mount failed', async () => {
+    // ❗ A share that wants an account is a normal step: no ❌, no "Couldn't mount
+    // share", and no Try again, since trying again without an account gets the
+    // same answer (cmdr-reports#10). The sheet stays up for this check.
+    h.openSignInSheet.mockReturnValue(new Promise(() => {}))
+    h.mountNetworkShare.mockRejectedValue(refused(authRequired))
+    const { target, component } = await mountViewAndActivateShare()
+
+    const pane = await vi.waitFor(() => must(target.querySelector('.mount-sign-in-state'), 'the sign-in pane'))
+    expect(target.querySelector('.mount-error-state')).toBeNull()
+    expect(must(pane.querySelector('.sign-in-title'), 'the title').textContent.trim()).toBe('Sign in to open “naspi”')
+    const labels = [...pane.querySelectorAll('button')].map((b) => b.textContent.trim())
+    expect(labels).toEqual(['Sign in', 'Back'])
+
+    await unmount(component)
+  })
+
   it('asks for a different account when the share refuses the one that signed in', async () => {
     // The account got past sign-in; the SHARE doesn't let it in. The fix is another
     // account, which the sheet takes, so this is its question and not the pane's.

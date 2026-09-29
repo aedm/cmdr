@@ -28,7 +28,13 @@
     import ServerFormFields from './ServerFormFields.svelte'
     import SignInCredentialFields from './SignInCredentialFields.svelte'
     import { addressLooksLike, parseServerAddress } from './address-parser'
-    import { refusalField, wordConnectRefusal, type ConnectRefusalKind, type RefusalField } from './connect-refusals'
+    import {
+        refusalField,
+        refusalShownOnOpen,
+        wordConnectRefusal,
+        type ConnectRefusalKind,
+        type RefusalField,
+    } from './connect-refusals'
     import {
         applyParsedAddress,
         emptyServerForm,
@@ -86,9 +92,9 @@
     let step = $state<Step>(request.mode === 'sign-in' && request.hostKey ? 'host_key' : 'form')
     let hostKeyPrompt = $state<HostKeyPrompt | null>(request.mode === 'sign-in' ? (request.hostKey ?? null) : null)
     let busy = $state(false)
-    // Seeded from the request: the refusal that opened the sheet is why the person
-    // is being asked, and the first round should already say so.
-    let refusal = $state<ConnectRefusalKind | null>(request.mode === 'sign-in' ? (request.refusal ?? null) : null)
+    let refusal = $state<ConnectRefusalKind | null>(
+        request.mode === 'sign-in' ? refusalShownOnOpen(request.refusal) : null,
+    )
     let form = $state<ServerForm>(emptyServerForm())
     /**
      * Sign-in mode's own fields; the add form holds its own.

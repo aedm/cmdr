@@ -610,6 +610,27 @@
             <Spinner size="md" />
             {tString('fileExplorer.network.share.connecting', { hostName: hostLabel })}
         </div>
+    {:else if error && isListingAuthError(error)}
+        <!-- ❗ A server that wants an account is a normal step, not a failure: no red
+             icon, no "Couldn't connect", and no Retry, which without an account
+             gets the same answer (cmdr-reports#10). The sheet sits on top of this. -->
+        <div class="sign-in-state">
+            <div class="sign-in-icon"><Icon name="lock" size={32} aria-hidden="true" /></div>
+            <div class="sign-in-title">
+                {tString('fileExplorer.network.share.signInTitle', { hostName: hostLabel })}
+            </div>
+            <div class="sign-in-message">
+                {error.type === 'auth_required'
+                    ? tString('fileExplorer.network.share.signInMessage')
+                    : renderShareListError(error, hostLabel)}
+            </div>
+            <div class="error-actions">
+                <Button variant="primary" onclick={() => void askForCredentials('needs_credentials')}
+                    >{tString('fileExplorer.network.signIn')}</Button
+                >
+                <Button variant="secondary" onclick={onBack}>{tString('fileExplorer.network.back')}</Button>
+            </div>
+        </div>
     {:else if error}
         <div class="error-state">
             <div class="error-icon"><Icon name="circle-alert" size={32} aria-hidden="true" /></div>
@@ -694,6 +715,7 @@
 
     .loading-state,
     .error-state,
+    .sign-in-state,
     .empty-state {
         display: flex;
         flex-direction: column;
@@ -706,6 +728,7 @@
     }
 
     .error-icon,
+    .sign-in-icon,
     .empty-icon {
         display: inline-flex;
         align-items: center;
@@ -714,11 +737,13 @@
     .error-icon {
         color: var(--color-error);
     }
+    .sign-in-icon,
     .empty-icon {
         color: var(--color-text-tertiary);
     }
 
     .error-title,
+    .sign-in-title,
     .empty-title {
         font-size: var(--font-size-lg);
         font-weight: 500;
@@ -726,6 +751,7 @@
     }
 
     .error-message,
+    .sign-in-message,
     .empty-message {
         font-size: var(--font-size-sm);
         color: var(--color-text-tertiary);

@@ -135,6 +135,44 @@ describe('SignInSheet: where the caret starts', () => {
   })
 })
 
+/**
+ * ❗ Red is feedback on something the person did. A server asking who they are is
+ * the reason the sheet opened, which the title already says, so a sheet that opens
+ * on `needs_credentials` opens clean (cmdr-reports#10).
+ */
+describe('SignInSheet: the refusal it opens with', () => {
+  const attempt = (): Promise<SignInAttemptOutcome> => Promise.resolve({ kind: 'handed_off' })
+  const smbShape = { kind: 'username_password', guestAllowed: false } as const
+
+  it('opens clean when the server only asked for an account', async () => {
+    await renderSheet({
+      mode: 'sign-in',
+      remembered: true,
+      endpoint,
+      shape: smbShape,
+      refusal: 'needs_credentials',
+      attempt,
+    })
+    expect(document.body.querySelector('#sign-in-secret-refusal')).toBeNull()
+    expect(document.body.querySelector('.form-refusal')).toBeNull()
+    expect(document.body.querySelector('#sign-in-secret')?.getAttribute('aria-invalid')).not.toBe('true')
+  })
+
+  it('still says so when a password the person had already given was turned away', async () => {
+    await renderSheet({
+      mode: 'sign-in',
+      remembered: true,
+      endpoint,
+      shape: smbShape,
+      refusal: 'authentication_rejected',
+      attempt,
+    })
+    expect(document.body.querySelector('#sign-in-secret-refusal')?.textContent).toContain(
+      'That password didn’t work for ada',
+    )
+  })
+})
+
 describe('SignInSheet: a refusal', () => {
   it('renders the sentence under the password field and leaves the focus there', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {

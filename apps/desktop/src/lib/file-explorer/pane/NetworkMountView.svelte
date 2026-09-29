@@ -23,6 +23,7 @@
     import { renderMountError } from '../network/mount-error-messages'
     import type { SignInAttemptOutcome } from '$lib/servers/sign-in-contract'
     import Button from '$lib/ui/Button.svelte'
+    import Icon from '$lib/ui/Icon.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
     import { tString } from '$lib/intl/messages.svelte'
     import { eventMatchesCommand } from '$lib/shortcuts'
@@ -442,6 +443,11 @@
         return { kind: 'refused', refusal: refusalForMountError(error) }
     }
 
+    /** The calm sign-in pane's button: asks again, for the share that wanted an account. */
+    function handleMountSignIn() {
+        if (lastMountAttempt && mountError) void askForMountCredentials(lastMountAttempt.share, mountError)
+    }
+
     function handleMountRetry() {
         if (lastMountAttempt) {
             void handleShareSelect(lastMountAttempt.share, lastMountAttempt.credentials)
@@ -562,6 +568,23 @@
             })}</span
         >
     </div>
+{:else if mountError?.type === 'auth_required'}
+    <!-- ❗ A share that wants an account is a normal step, not a failure: no ❌, no
+         "Couldn't mount share", and no Try again, which without an account gets
+         the same answer (cmdr-reports#10). The sheet sits on top of this. -->
+    <div class="mount-sign-in-state">
+        <div class="sign-in-icon"><Icon name="lock" size={32} aria-hidden="true" /></div>
+        <div class="sign-in-title">{tString('fileExplorer.networkMount.signInTitle', { share: mountError.share })}</div>
+        <div class="sign-in-message">
+            {tString('fileExplorer.networkMount.signInMessage', {
+                server: currentHostLabel ?? currentNetworkHost?.name ?? mountError.server,
+            })}
+        </div>
+        <div class="error-actions">
+            <Button variant="primary" onclick={handleMountSignIn}>{tString('fileExplorer.network.signIn')}</Button>
+            <Button variant="secondary" onclick={handleMountErrorBack}>{tString('fileExplorer.networkMount.back')}</Button>
+        </div>
+    </div>
 {:else if mountError}
     <div class="mount-error-state">
         <div class="error-icon">&#x274C;</div>
@@ -609,7 +632,8 @@
         font-size: var(--font-size-sm);
     }
 
-    .mount-error-state {
+    .mount-error-state,
+    .mount-sign-in-state {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -624,13 +648,20 @@
         font-size: 32px;
     }
 
-    .mount-error-state .error-title {
+    .mount-sign-in-state .sign-in-icon {
+        display: inline-flex;
+        color: var(--color-text-tertiary);
+    }
+
+    .mount-error-state .error-title,
+    .mount-sign-in-state .sign-in-title {
         font-size: var(--font-size-lg);
         font-weight: 500;
         color: var(--color-text-primary);
     }
 
-    .mount-error-state .error-message {
+    .mount-error-state .error-message,
+    .mount-sign-in-state .sign-in-message {
         font-size: var(--font-size-sm);
         color: var(--color-text-tertiary);
         text-align: center;
@@ -638,7 +669,8 @@
         padding: 0;
     }
 
-    .mount-error-state .error-actions {
+    .mount-error-state .error-actions,
+    .mount-sign-in-state .error-actions {
         display: flex;
         gap: var(--spacing-sm);
         margin-top: var(--spacing-sm);

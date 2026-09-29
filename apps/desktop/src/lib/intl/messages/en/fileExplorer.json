@@ -721,6 +721,21 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Network (SMB) browsing and connection flow. This shows the servers list it starts from; your string appears here or on the closely related browsing, sign-in, or reconnect states reached from it."
   },
+  "fileExplorer.network.share.signInTitle": "Sign in to {hostName}",
+  "@fileExplorer.network.share.signInTitle": {
+    "description": "Title of the calm, non-error screen shown while a server waits for someone to sign in before it lists its shared folders. A sign-in sheet usually sits on top of it; the screen stays after the sheet is closed, with Sign in and Back buttons. This is a normal step, not a failure, so keep it neutral: no apology, no \"couldn't\".",
+    "placeholders": {
+      "hostName": "the display name of the server"
+    },
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Network (SMB) browsing and connection flow. This shows the servers list it starts from; your string appears here or on the closely related browsing, sign-in, or reconnect states reached from it."
+  },
+  "fileExplorer.network.share.signInMessage": "This server shows its shares once you sign in.",
+  "@fileExplorer.network.share.signInMessage": {
+    "description": "One sentence under the \"Sign in to {hostName}\" title, on the calm screen shown while a server waits for someone to sign in before it lists its shared folders (\"shares\"). Neutral and reassuring, not an error. Plain text, one short sentence.",
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Network (SMB) browsing and connection flow. This shows the servers list it starts from; your string appears here or on the closely related browsing, sign-in, or reconnect states reached from it."
+  },
   "fileExplorer.network.share.noSharesTitle": "No shares available",
   "@fileExplorer.network.share.noSharesTitle": {
     "description": "Empty-state title when a host exposes no accessible shares.",
@@ -880,6 +895,24 @@
   "fileExplorer.networkMount.mountFailedTitle": "Couldn’t mount share",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "description": "Error title shown when mounting a network share failed.",
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown while mounting a network share, in the network flow that starts at the servers list pictured here."
+  },
+  "fileExplorer.networkMount.signInTitle": "Sign in to open “{share}”",
+  "@fileExplorer.networkMount.signInTitle": {
+    "description": "Title of the calm, non-error screen shown while a shared folder on a network server (SMB) waits for someone to sign in before it opens. A sign-in sheet sits on top of it. This is a normal step, not a failure, so keep it neutral: no apology, no \"couldn't\".",
+    "placeholders": {
+      "share": "the shared folder's name, for example \"Photos\""
+    },
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown while mounting a network share, in the network flow that starts at the servers list pictured here."
+  },
+  "fileExplorer.networkMount.signInMessage": "“{server}” opens this share for signed-in accounts only.",
+  "@fileExplorer.networkMount.signInMessage": {
+    "description": "One sentence under the \"Sign in to open …\" title, on the calm screen shown while a shared folder (\"share\") waits for someone to sign in. Says why, without sounding like an error. Plain text, one short sentence.",
+    "placeholders": {
+      "server": "the display name of the server"
+    },
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown while mounting a network share, in the network flow that starts at the servers list pictured here."
   },

@@ -282,7 +282,9 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
 ## The refusal table
 
 - `authentication_rejected`: the credential was offered and refused. Names the account.
-- `needs_credentials`: nothing was ever offered. ❌ Not a rejection.
+- `needs_credentials`: nothing was ever offered. ❌ Not a rejection. ❗ A sheet that OPENS on it opens clean
+  (`refusalShownOnOpen`): it's only the reason the sheet is asking, which the title already says, and red is feedback on
+  something the person did. The sentence shows only after a round the person sent comes back with it (cmdr-reports#10).
 - `account_not_permitted`: the account signed in, and the PLACE turned it away (an SMB share whose TreeConnect answers
   access denied). Names the account and asks for a different one. ❗ Goes under `form`, ❌ never `secret`: the password
   worked, and the `secret` slot marks its field invalid. Produced by SMB's mount (`permission_denied`) and by "Connect
