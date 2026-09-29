@@ -140,12 +140,11 @@ async fn list_shares_uncached(
             // SMB E2E failures where both paths fail and the user only sees
             // the secondary error.
             warn!(
-                "smb2 share listing stopped: host={:?}, port={}, has_creds={}, source=backend, backend=smb2, error_kind=protocol, omitted_bytes={}, omitted_lines={}; falling back to CLI",
+                "smb2 share listing stopped: host={:?}, port={}, has_creds={}, source=backend, backend=smb2, error_kind=protocol, detail={:?}; falling back to CLI",
                 hostname,
                 port,
                 credentials.is_some(),
-                message.len(),
-                message.lines().count(),
+                cmdr_fs::log_detail::LogDetail(message),
             );
             list_shares_smbutil(hostname, ip_address, port).await
         }
@@ -213,14 +212,22 @@ async fn list_shares_smb2(
         Err(e) if is_auth_error(&e) => {
             // Guest refused. No credentials reach this leg (they skip guest), so
             // try smbutil, which reads the macOS Keychain itself.
-            debug!("Guest share listing refused: backend=smb2, error_kind=authentication; trying Keychain fallback");
+            debug!(
+                "Guest share listing refused: backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}; trying Keychain fallback",
+                e.kind(),
+                e.status(),
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
+            );
             match list_shares_smbutil_authenticated_from_keychain(hostname, ip_address, port).await {
                 Ok(result) => {
                     debug!("smbutil with Keychain succeeded, got {} shares", result.shares.len());
                     Ok(result)
                 }
-                Err(_e) => {
-                    debug!("Keychain share-list fallback stopped; requiring manual login");
+                Err(e) => {
+                    debug!(
+                        "Keychain share-list fallback stopped: detail={:?}; requiring manual login",
+                        cmdr_fs::log_detail::LogDetail(&format!("{e:?}"))
+                    );
                     Err(ShareListError::AuthRequired {
                         message: "This server requires authentication to list shares".to_string(),
                     })
@@ -228,12 +235,11 @@ async fn list_shares_smb2(
             }
         }
         Err(e) => {
-            let detail = e.to_string();
             debug!(
-                "Guest share listing stopped: source=backend, backend=smb2, error_kind={:?}, omitted_bytes={}, omitted_lines={}",
+                "Guest share listing stopped: source=backend, backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}",
                 e.kind(),
-                detail.len(),
-                detail.lines().count()
+                e.status(),
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             Err(classify_error(&e))
         }
@@ -282,12 +288,11 @@ async fn list_authenticated(
                         message: "Invalid username or password".to_string(),
                     }),
                     Err(e) => {
-                        let detail = e.to_string();
                         debug!(
-                            "Authenticated share listing stopped: source=backend, backend=smb2, error_kind={:?}, omitted_bytes={}, omitted_lines={}",
+                            "Authenticated share listing stopped: source=backend, backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}",
                             e.kind(),
-                            detail.len(),
-                            detail.lines().count()
+                            e.status(),
+                            cmdr_fs::log_detail::LogDetail(&e.to_string())
                         );
                         // Authenticated context: a rejected session means
                         // wrong credentials, not "authentication required".
@@ -305,7 +310,10 @@ async fn list_authenticated(
                         Ok(result)
                     }
                     Err(e) => {
-                        debug!("Authenticated CLI share-list fallback stopped");
+                        debug!(
+                            "Authenticated CLI share-list fallback stopped: detail={:?}",
+                            cmdr_fs::log_detail::LogDetail(&format!("{e:?}"))
+                        );
                         Err(e)
                     }
                 }

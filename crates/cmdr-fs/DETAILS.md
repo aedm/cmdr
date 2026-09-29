@@ -37,9 +37,11 @@ the next section.
   hash two resident maps key on instead of the path: search's importance weights and the media coverage score cache),
   `git_meta` (what a git portal row's Size cell states), `name_fold.rs` (the ONE "same name, spelled another way" key:
   NFC + lowercase, shared by share IDs, transfer conflict buckets, the SMB spelling resolve, and cursor placement),
-  `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`,
-  `utility_pool.rs` (`UtilityPool`, a keep-alive pool of `Utility`-QoS threads, so background work that comes in
-  streams, like index walks, reuses threads instead of creating one per job).
+  `log_rollup`, `log_detail` (`LogDetail`: external OS/server/CLI text as one Debug-quoted, 1 KiB-capped log field that
+  the app's report pass redacts; see `apps/desktop/src-tauri/src/redact/DETAILS.md`), `tcc_paths`, `ignore_poison`,
+  `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`, `utility_pool.rs` (`UtilityPool`, a keep-alive pool of
+  `Utility`-QoS threads, so background work that comes in streams, like index walks, reuses threads instead of creating
+  one per job).
 - `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; `tcp_proxy.rs` (`TcpProxy`, a
   loopback proxy a network backend's test puts in front of a shared Docker fixture to cut the connection, refused or
   silent, without touching a container other runs lease; its header has the usage); on macOS, `disk_images/` (the

@@ -102,18 +102,21 @@ pub async fn run_smbclient_list(
     );
 
     if !output.status.success() {
-        // smbclient output can repeat server, share, and account names in prose
-        // with no typed boundary. Keep only stable process facts in collected logs.
+        // Logged at warn! so the raw output is captured at default level: when smbclient is
+        // the last-resort fallback, its stderr is the only direct window into what the
+        // server said. `stderr=` / `stdout=` fields stay whole locally; a report redacts
+        // and caps them (`redact/DETAILS.md` § "External-text fields").
         warn!(
-            "smbclient share listing stopped: host={:?}, port={}, source=cli, backend=smbclient, error_kind=exit, code={:?}, has_creds={}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
+            "smbclient share listing stopped: host={:?}, port={}, source=cli, backend=smbclient, error_kind=exit, code={:?}, nt_status={}, has_creds={}, stderr={:?}, stdout={:?}",
             host,
             port,
             output.status.code(),
+            nt_status_token(&stderr)
+                .or_else(|| nt_status_token(&stdout))
+                .unwrap_or("none"),
             credentials.is_some(),
-            output.stdout.len(),
-            stdout.lines().count(),
-            output.stderr.len(),
-            stderr.lines().count(),
+            cmdr_fs::log_detail::LogDetail(&stderr),
+            cmdr_fs::log_detail::LogDetail(&stdout),
         );
         return Err(classify_smbclient_error(&stdout, &stderr, host, credentials.is_some()));
     }
@@ -187,6 +190,17 @@ fn write_smbclient_auth_file(username: &str, password: &str) -> std::io::Result<
     file.flush()?;
     // `file` (the handle) drops here; `guard` keeps the path alive and unlinks it on drop.
     Ok(guard)
+}
+
+/// The first `NT_STATUS_…` code smbclient printed, for the log's machine-readable `nt_status=`
+/// field. Extraction for diagnostics only: classification stays in [`classify_smbclient_error`].
+fn nt_status_token(output: &str) -> Option<&str> {
+    let start = output.find("NT_STATUS_")?;
+    let rest = &output[start..];
+    let end = rest
+        .find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
+        .unwrap_or(rest.len());
+    Some(&rest[..end])
 }
 
 /// Classifies smbclient error output into a typed error.
@@ -374,6 +388,15 @@ mod tests {
 
         let err = classify_smbclient_error("", "NT_STATUS_LOGON_FAILURE", "host", true);
         assert!(matches!(err, ShareListError::AuthFailed { .. }));
+    }
+
+    #[test]
+    fn nt_status_token_takes_the_first_code_whole() {
+        assert_eq!(
+            nt_status_token("session setup failed: NT_STATUS_LOGON_FAILURE\nNT_STATUS_IO_TIMEOUT"),
+            Some("NT_STATUS_LOGON_FAILURE")
+        );
+        assert_eq!(nt_status_token("Connection to nas failed"), None);
     }
 
     #[test]

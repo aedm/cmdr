@@ -272,12 +272,10 @@ async fn run_smbutil_view(url: &str, use_guest: bool) -> Result<Vec<ShareInfo>, 
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         debug!(
-            "smbutil share listing stopped: source=cli, backend=smbutil, error_kind=exit, code={:?}, omitted_stdout_bytes={}, omitted_stdout_lines={}, omitted_stderr_bytes={}, omitted_stderr_lines={}",
+            "smbutil share listing stopped: source=cli, backend=smbutil, error_kind=exit, code={:?}, stderr={:?}, stdout={:?}",
             output.status.code(),
-            output.stdout.len(),
-            stdout.lines().count(),
-            output.stderr.len(),
-            stderr.lines().count()
+            cmdr_fs::log_detail::LogDetail(&stderr),
+            cmdr_fs::log_detail::LogDetail(&stdout)
         );
 
         return match classify_smbutil_stderr(&stderr) {

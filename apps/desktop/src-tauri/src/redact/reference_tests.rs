@@ -254,7 +254,7 @@ fn producer_owned_identity_fields_redact_only_the_six_quoted_keys() {
 fn identity_field_keys_are_narrow_and_keep_stable_facts() {
     let context = context();
     let redacted = context.redact_line(
-        r#"source=gio backend=smb host="Client Nimbus" share="Private Vault" error_kind=permission_denied code=13 omitted_bytes=91 omitted_lines=2"#,
+        r#"source=gio backend=smb host="Client Nimbus" share="Private Vault" error_kind=permission_denied code=13 nt_status=STATUS_ACCESS_DENIED"#,
     );
 
     assert!(!redacted.contains("Client Nimbus"), "host survived: {redacted}");
@@ -264,8 +264,7 @@ fn identity_field_keys_are_narrow_and_keep_stable_facts() {
         "backend=smb",
         "error_kind=permission_denied",
         "code=13",
-        "omitted_bytes=91",
-        "omitted_lines=2",
+        "nt_status=STATUS_ACCESS_DENIED",
     ] {
         assert!(redacted.contains(fact), "stable fact {fact:?} was lost: {redacted}");
     }

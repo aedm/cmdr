@@ -1225,10 +1225,10 @@ The servers themselves: `apps/desktop/test/sftp-servers/README.md`.
 
 ## Diagnostic privacy
 
-SFTP status prose can repeat remote names without a path boundary. Logs debug-escape the operation path, so embedded
-quotes and control characters stay inside the typed field, and retain the typed SFTP error kind where available, or the
-known operation otherwise, plus omitted UTF-8 byte/line counts instead of the server sentence. Error classification
-still receives the original message and returns the same typed `VolumeError`.
+Logs debug-escape the operation path and carry `error_kind=`, `sftp_status=` (the v3 wire number,
+`errors::sftp_status_code`), and the server's own sentence whole in `detail=`. Reports redact and cap that field:
+`apps/desktop/src-tauri/src/redact/DETAILS.md` § "External-text fields". Error classification still receives the
+original message and returns the same typed `VolumeError`.
 
 ## The public surface is capped
 

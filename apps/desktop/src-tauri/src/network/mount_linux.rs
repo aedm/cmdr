@@ -196,12 +196,11 @@ pub(crate) fn mount_share_sync(
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::info!(
-            "Mount stopped: server={:?}, share={:?}, source=cli, backend=gio, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+            "Mount stopped: server={:?}, share={:?}, source=cli, backend=gio, error_kind=exit, code={:?}, stderr={:?}",
             server,
             share,
             output.status.code(),
-            output.stderr.len(),
-            stderr.lines().count()
+            cmdr_fs::log_detail::LogDetail(&stderr)
         );
         return Err(classify_mount_error(&stderr, server, share, username));
     }

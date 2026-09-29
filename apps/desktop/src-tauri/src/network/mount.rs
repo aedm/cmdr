@@ -698,24 +698,20 @@ pub fn unmount_smb_shares_from_host(targets: &[SmbServer]) -> Vec<String> {
                 unmounted.push(mount_path);
             }
             Ok(o) => {
-                let stderr = String::from_utf8_lossy(&o.stderr);
                 log::warn!(
-                    "Unmount stopped: path={:?}, source=cli, backend=diskutil, error_kind=exit, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    "Unmount stopped: path={:?}, source=cli, backend=diskutil, error_kind=exit, code={:?}, stderr={:?}",
                     mount_path,
                     o.status.code(),
-                    o.stderr.len(),
-                    stderr.lines().count()
+                    cmdr_fs::log_detail::LogDetail(&String::from_utf8_lossy(&o.stderr))
                 );
             }
             Err(e) => {
-                let detail = e.to_string();
                 log::warn!(
-                    "Unmount stopped: path={:?}, source=os, backend=diskutil, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+                    "Unmount stopped: path={:?}, source=os, backend=diskutil, error_kind={:?}, code={:?}, detail={:?}",
                     mount_path,
                     e.kind(),
                     e.raw_os_error(),
-                    detail.len(),
-                    detail.lines().count()
+                    cmdr_fs::log_detail::LogDetail(&e.to_string())
                 );
             }
         }

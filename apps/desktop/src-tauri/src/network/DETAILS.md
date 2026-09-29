@@ -1057,11 +1057,10 @@ cycles"; re-measure there before trusting any number.
 ### Diagnostic privacy
 
 Discovery, manual-server, keychain, share-listing, and mount diagnostics put user-controlled identities in debug-escaped
-typed fields (`server={server:?}`, not literal quotes around Display output) recognized by `redact/`. At external-text
-boundaries, mDNS/OS/backend prose and `smbutil`, `smbclient`, `gio`,
-or `diskutil` output can echo names outside a path, so logs retain the known operation, source/backend, typed error
-kind, exit or OS code, and omitted byte/line counts rather than prose. Classification and user-facing typed errors
-still consume the original output.
+typed fields (`server={server:?}`, never literal quotes around Display output) that `redact/` recognizes. OS, mDNS,
+backend, and CLI output (`smbutil`, `smbclient`, `gio`, `diskutil`) is logged whole in `detail=` / `stderr=` /
+`stdout=` fields next to its typed code (`code=`, `nt_status=`, `error_kind=`); reports redact and cap those fields. The
+mechanism: `apps/desktop/src-tauri/src/redact/DETAILS.md` § "External-text fields". Classification and user-facing typed errors still consume the original output.
 
 - **Don't hold mutex during DNS resolution**: `get_host_for_resolution` / `update_host_resolution` extract host info and release the mutex before blocking DNS, then re-acquire to update. Holding the mutex across network calls risks deadlock.
 - **Auth mode is a guess**: `GuestAllowed` means "guest worked, creds might also work." `CredsRequired` means "guest failed, must have creds." Can't detect guest-only vs guest-or-creds without trying both.

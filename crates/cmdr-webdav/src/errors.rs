@@ -126,11 +126,9 @@ pub(crate) fn map_transport_error(err: &reqwest::Error, volume_id: &str, path: &
         return VolumeError::ConnectionTimeout(path.to_string());
     }
     if err.is_connect() || err.is_request() {
-        let detail = err.to_string();
         debug!(
-            "WebDAV path={path:?}: source=backend, backend=webdav, error_kind=disconnected, omitted_bytes={}, omitted_lines={}",
-            detail.len(),
-            detail.lines().count()
+            "WebDAV path={path:?}: source=backend, backend=webdav, error_kind=disconnected, detail={:?}",
+            cmdr_fs::log_detail::LogDetail(&err.to_string())
         );
         return VolumeError::DeviceDisconnected(volume_id.to_string());
     }

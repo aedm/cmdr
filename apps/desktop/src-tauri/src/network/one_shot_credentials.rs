@@ -256,8 +256,7 @@ impl DialOffer {
         )
         .await;
         if let Err(e) = written {
-            let detail = e.to_string();
-            log::warn!(target: "volume", "the secret store wouldn't remember this server: source=secret_store, operation=set, omitted_bytes={}, omitted_lines={}; it'll ask next time", detail.len(), detail.lines().count());
+            log::warn!(target: "volume", "the secret store wouldn't remember this server: source=secret_store, operation=set, error_kind={}, detail={:?}; it'll ask next time", e.kind(), cmdr_fs::log_detail::LogDetail(&e.to_string()));
         }
     }
 }

@@ -800,7 +800,10 @@ fn build_bundle_window_scope_drops_an_old_records_continuations() {
 
     let joined = lines.join("\n");
     assert!(!joined.contains("old_frame"), "{joined}");
-    assert!(joined.contains("NEW header") && joined.contains("new_frame"), "{joined}");
+    assert!(
+        joined.contains("NEW header") && joined.contains("new_frame"),
+        "{joined}"
+    );
 }
 
 /// Sets the file's mtime to `now - age` via the `filetime` crate (already in our dep

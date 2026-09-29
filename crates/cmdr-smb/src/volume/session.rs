@@ -116,8 +116,12 @@ impl SmbVolume {
                 // On connection loss, transition to Disconnected
                 if matches!(kind, smb2::ErrorKind::ConnectionLost | smb2::ErrorKind::SessionExpired) {
                     warn!(
-                        "SmbVolume::{}(share={:?}): source=backend, backend=smb2, error_kind={:?}; transitioning to Disconnected",
-                        op_name, self.inner.share_name, kind
+                        "SmbVolume::{}(share={:?}): source=backend, backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}; transitioning to Disconnected",
+                        op_name,
+                        self.inner.share_name,
+                        kind,
+                        e.status(),
+                        cmdr_fs::log_detail::LogDetail(&e.to_string())
                     );
                     self.inner.transition_to_disconnected();
                 } else if matches!(
@@ -132,13 +136,21 @@ impl SmbVolume {
                     // - `AlreadyExists` for `copy_directory_streaming`'s "create_directory is idempotent for merge"
                     //   path
                     debug!(
-                        "SmbVolume::{}(share={:?}): backend=smb2, error_kind={:?}",
-                        op_name, self.inner.share_name, kind
+                        "SmbVolume::{}(share={:?}): backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}",
+                        op_name,
+                        self.inner.share_name,
+                        kind,
+                        e.status(),
+                        cmdr_fs::log_detail::LogDetail(&e.to_string())
                     );
                 } else {
                     warn!(
-                        "SmbVolume::{}(share={:?}): backend=smb2, error_kind={:?}",
-                        op_name, self.inner.share_name, kind
+                        "SmbVolume::{}(share={:?}): backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}",
+                        op_name,
+                        self.inner.share_name,
+                        kind,
+                        e.status(),
+                        cmdr_fs::log_detail::LogDetail(&e.to_string())
                     );
                 }
 

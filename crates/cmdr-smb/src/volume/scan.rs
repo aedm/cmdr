@@ -348,14 +348,20 @@ impl SmbVolume {
                         let kind = e.kind();
                         if matches!(kind, smb2::ErrorKind::ConnectionLost | smb2::ErrorKind::SessionExpired) {
                             warn!(
-                                "SmbVolume::scan_for_copy_batch(share={:?}): backend=smb2, error_kind={:?}, transitioning to Disconnected",
-                                self.inner.share_name, kind
+                                "SmbVolume::scan_for_copy_batch(share={:?}): backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}, transitioning to Disconnected",
+                                self.inner.share_name,
+                                kind,
+                                e.status(),
+                                cmdr_fs::log_detail::LogDetail(&e.to_string())
                             );
                             self.inner.transition_to_disconnected();
                         } else {
                             warn!(
-                                "SmbVolume::scan_for_copy_batch(share={:?}): backend=smb2, error_kind={:?}",
-                                self.inner.share_name, kind
+                                "SmbVolume::scan_for_copy_batch(share={:?}): backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}",
+                                self.inner.share_name,
+                                kind,
+                                e.status(),
+                                cmdr_fs::log_detail::LogDetail(&e.to_string())
                             );
                         }
                         return Err(map_smb_error(e, &self.to_display_path(&smb_path)));

@@ -432,15 +432,13 @@ pub async fn check_reachability(host: &str, port: u16) -> Result<(), String> {
             Ok(())
         }
         Ok(Err(e)) => {
-            let detail = e.to_string();
             debug!(
-                "Unreachable: host={:?}, port={}, source=os, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+                "Unreachable: host={:?}, port={}, source=os, error_kind={:?}, code={:?}, detail={:?}",
                 host,
                 port,
                 e.kind(),
                 e.raw_os_error(),
-                detail.len(),
-                detail.lines().count()
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             Err(format!("Couldn't reach {}: {}", addr, e))
         }

@@ -7,6 +7,7 @@
 
 use log::debug;
 
+use cmdr_fs::log_detail::LogDetail;
 use cmdr_fs::volume::VolumeError;
 use openssh_sftp_client::Error as SftpError;
 use openssh_sftp_client::error::SftpErrorKind;
@@ -185,17 +186,17 @@ fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
     match kind {
         SftpErrorKind::NoSuchFile => {
             debug!(
-                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=no_such_file, omitted_bytes={}, omitted_lines={}",
-                message.len(),
-                message.lines().count()
+                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=no_such_file, sftp_status={}, detail={:?}",
+                sftp_status_code(kind),
+                LogDetail(message)
             );
             VolumeError::NotFound(path.to_string())
         }
         SftpErrorKind::PermDenied => {
             debug!(
-                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=permission_denied, omitted_bytes={}, omitted_lines={}",
-                message.len(),
-                message.lines().count()
+                "SFTP path={path:?}: source=backend, backend=sftp, error_kind=permission_denied, sftp_status={}, detail={:?}",
+                sftp_status_code(kind),
+                LogDetail(message)
             );
             VolumeError::PermissionDenied {
                 path: path.to_string(),
@@ -207,6 +208,19 @@ fn classify(kind: SftpErrorKind, message: &str, path: &str) -> VolumeError {
             message: message.to_string(),
             raw_os_error: None,
         },
+    }
+}
+
+/// The SFTP v3 wire status number (draft-ietf-secsh-filexfer-02 § 7) for the log's
+/// machine-readable `sftp_status=` field. `0` when the client library didn't know the code.
+pub(crate) fn sftp_status_code(kind: SftpErrorKind) -> u32 {
+    match kind {
+        SftpErrorKind::NoSuchFile => 2,
+        SftpErrorKind::PermDenied => 3,
+        SftpErrorKind::Failure => 4,
+        SftpErrorKind::BadMessage => 5,
+        SftpErrorKind::OpUnsupported => 8,
+        _ => 0,
     }
 }
 

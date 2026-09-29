@@ -82,12 +82,10 @@ pub(super) fn start_browse() -> bool {
     let daemon = match ServiceDaemon::new() {
         Ok(d) => d,
         Err(e) => {
-            let detail = e.to_string();
             warn!(
-                "mDNS operation stopped: source=mdns, operation=daemon_create, error_kind={}, omitted_bytes={}, omitted_lines={}",
+                "mDNS operation stopped: source=mdns, operation=daemon_create, error_kind={}, detail={:?}",
                 mdns_error_kind(&e),
-                detail.len(),
-                detail.lines().count()
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             return false;
         }
@@ -95,12 +93,10 @@ pub(super) fn start_browse() -> bool {
     let receiver = match daemon.browse(SMB_SERVICE_TYPE) {
         Ok(r) => r,
         Err(e) => {
-            let detail = e.to_string();
             warn!(
-                "mDNS operation stopped: source=mdns, operation=browse_start, error_kind={}, omitted_bytes={}, omitted_lines={}",
+                "mDNS operation stopped: source=mdns, operation=browse_start, error_kind={}, detail={:?}",
                 mdns_error_kind(&e),
-                detail.len(),
-                detail.lines().count()
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             let _ = daemon.shutdown();
             return false;
@@ -113,13 +109,11 @@ pub(super) fn start_browse() -> bool {
         .name("mdns-event-loop".into())
         .spawn(move || process_events(receiver, browse, events_handle))
     {
-        let detail = e.to_string();
         warn!(
-            "mDNS operation stopped: source=os, operation=thread_spawn, error_kind={:?}, code={:?}, omitted_bytes={}, omitted_lines={}",
+            "mDNS operation stopped: source=os, operation=thread_spawn, error_kind={:?}, code={:?}, detail={:?}",
             e.kind(),
             e.raw_os_error(),
-            detail.len(),
-            detail.lines().count()
+            cmdr_fs::log_detail::LogDetail(&e.to_string())
         );
         let _ = daemon.shutdown();
         discovery_cache::end_browse(app_handle);
@@ -228,11 +222,9 @@ fn process_events(receiver: Receiver<ServiceEvent>, browse: u64, app_handle: App
                 on_mdns_state_changed(DiscoveryState::Idle, browse, &app_handle);
             }
             other => {
-                let detail = format!("{other:?}");
                 debug!(
-                    "mDNS event omitted: source=mdns, operation=unhandled_event, omitted_bytes={}, omitted_lines={}",
-                    detail.len(),
-                    detail.lines().count()
+                    "mDNS event unhandled: source=mdns, detail={:?}",
+                    cmdr_fs::log_detail::LogDetail(&format!("{other:?}"))
                 );
             }
         }

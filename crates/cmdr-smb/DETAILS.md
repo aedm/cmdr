@@ -1040,7 +1040,8 @@ exports the override. The full container list: `apps/desktop/test/smb-servers/RE
 
 ## Diagnostic privacy
 
-SMB watcher and operation-failure diagnostics debug-escape identities under typed keys and retain `smb2::ErrorKind`
-instead of the backend's free-form `Display` prose, which may repeat server/share names. Debug formatting is
-load-bearing: literal wrapper quotes let a share's own quote or newline escape the redactor's field. Error mapping still
-receives the original `smb2::Error`, so this changes collected diagnostics without weakening typed behavior.
+SMB watcher and operation-failure diagnostics debug-escape identities under typed keys (literal wrapper quotes would let
+a share's own quote or newline escape the redactor's field) and log `error_kind=` (`smb2::ErrorKind`), `nt_status=`
+(`smb2::Error::status`), and the backend's `Display` whole in `detail=`. Reports redact and cap that field, scrubbing
+the line's own `share=` from it: `apps/desktop/src-tauri/src/redact/DETAILS.md` § "External-text fields". Error mapping
+still receives the original `smb2::Error`.

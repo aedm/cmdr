@@ -35,6 +35,9 @@ use std::borrow::Cow;
 use std::sync::OnceLock;
 
 mod context;
+mod detail;
+#[cfg(test)]
+mod detail_tests;
 mod fields;
 mod names;
 mod paths;
@@ -46,10 +49,15 @@ mod tests;
 
 pub use context::RedactionContext;
 use context::TokenDomain;
+use detail::{EchoedIdentity, echoed_identities, redact_detail_field};
 use fields::*;
 use names::*;
 use paths::*;
 use references::*;
+
+/// Report-mode cap for one external-text field (`detail=`, `stderr=`, `stdout=`), in chars
+/// of the redacted, unescaped value including the trailing `…`.
+pub(crate) const REPORT_DETAIL_MAX_CHARS: usize = 200;
 
 /// Parent directory names we consider safe to keep verbatim in redacted output.
 /// Anything else collapses to `<dir>` to avoid leaking project-like names.
@@ -125,13 +133,22 @@ fn redact_with<'a>(line: &'a str, context: Option<&RedactionContext>) -> Cow<'a,
     let re = redactor_regex();
     let mut out: Option<String> = None;
     let mut pos = 0usize;
+    // Collected on the first external-text field only: the whole line's keyed identities,
+    // which that field's prose may repeat bare.
+    let mut echoed: Option<Vec<EchoedIdentity>> = None;
 
     while pos <= line.len() {
         // `captures_at` keeps the whole line as context, so `^` in `bare_lead` still means
         // "start of line" rather than "start of the remaining slice".
         let Some(caps) = re.captures_at(line, pos) else { break };
         let Some(whole) = caps.get(0) else { break };
-        let (replacement, consumed) = dispatch(&caps, context);
+        let (replacement, consumed) = match context {
+            Some(context) if caps.name("detail_field").is_some() => {
+                let echoed = echoed.get_or_insert_with(|| echoed_identities(line, context));
+                redact_detail_field(&caps, context, echoed)
+            }
+            _ => dispatch(&caps, context),
+        };
 
         let buf = out.get_or_insert_with(|| String::with_capacity(line.len()));
         buf.push_str(&line[pos..whole.start()]);
@@ -242,6 +259,14 @@ fn redactor_regex() -> &'static Regex {
                                   [^\s@/:"'<>|`]+ (?: : [^\s@/"'<>|`]* )?
                                   @
                                   (?P<bare_host_rest>[^\s"'<>|`]*)
+            )
+            # Free-form text from outside Cmdr (OS, server, or CLI output) that producers log
+            # in full as `detail={:?}` / `stderr={:?}` / `stdout={:?}`. Debug quoting makes the
+            # value boundary exact. Report mode redacts and caps the whole value (`detail.rs`).
+            | (?P<detail_field>
+                \b (?P<df_key> detail | stderr | stdout )
+                =
+                (?P<df_value> " (?: [^"\\\n] | \\ . )* " )
             )
             # A path in a `key=value` log field, which may be RELATIVE: SMB logs name a file by
             # its share-relative path (`smb_path="docs/a b.pdf"`, and `smb2`'s own unquoted
@@ -443,6 +468,14 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
             format!("{lead}{}", redact_scheme_less(m.as_str(), context)),
             whole_len(caps),
         );
+    }
+    if let Some(m) = caps.name("detail_field") {
+        // Report mode never reaches here: `redact_with` owns that branch, since it needs the
+        // whole line's identities. The compatibility policy scans the prose like any text.
+        return match context {
+            Some(context) => redact_detail_field(caps, context, &[]),
+            None => rescan_inside(m.as_str()),
+        };
     }
     if caps.name("path_field").is_some() {
         return redact_path_field(caps, context);

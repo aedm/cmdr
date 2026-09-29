@@ -15,6 +15,7 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
 | `url_userinfo` | another scheme's `scheme://user[:pass]@host/...` | same complete component redaction as recognized URLs |
 | `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | SMB-shaped component redaction without inventing a scheme |
+| `detail_field` | external text: `detail="…"`, `stderr="…"`, `stdout="…"` (Debug-quoted) | report: redacted, keyed echoes scrubbed, capped (200 chars); unsalted: plain scan |
 | `path_field` | a keyed field: `path=`, `smb_path=`, `from=`, `to=`, `file=`, … (see the regex) | relative value walked in place; absolute value handed to the branches above |
 | `derived_id` | current `smb`/`sftp`/`webdav`/`adb`/`mtp`/`vol`/`path` ID with 16-hex digest | scheme kept, opaque ID tokenized; MTP storage number kept |
 | `manual_server_id` | `manual-<address-derived name>-<port>` | `manual-<server-id>-<port>` |
@@ -162,9 +163,9 @@ shipped. Any future branch that hands text back needs the same treatment, which 
 ### Known gap: a filename repeated in prose
 
 macOS puts the filename in its own error text as well as in the path (`the Trash refused it: “Screenshot ….jpeg”`).
-That copy has no path around it and no pattern claims a bare name, so it still ships. Closing it means a second pass
-that redacts verbatim repeats of a segment already recognized on the same line, keyed on the segment being long enough
-and filename-shaped to be worth matching. Pinned by `trash_refusal_line_redacts_its_path`.
+That copy has no path around it and no pattern claims a bare name, so in ordinary line text it still ships. Pinned by
+`trash_refusal_line_redacts_its_path`. Inside an external-text field the echo scrub below closes it for any name the
+line also logs under a key; the Trash site logs its message as plain text today, so it isn't covered.
 
 ## How to add a new pattern
 
@@ -210,7 +211,30 @@ keys: `host`, `server`, `share`, `volumeId`, `serverId`, and `deviceId`. Values 
 generic `name=` / `id=`, and unquoted legacy fields are excluded so ordinary diagnostics do not disappear. Producers
 that own an identity must emit its Rust debug form under one of those keys (`host={host:?}`), never put literal quotes
 around Display output. The same escape-aware quoted grammar applies to `user` / `username`. Arbitrary external prose
-must be omitted upstream.
+goes in an external-text field (next section), never in a free-form log message.
+
+## External-text fields
+
+OS, server, and CLI output (smbclient/smbutil/diskutil/gio stderr, an SFTP status sentence, an `smb2` or `reqwest`
+error's `Display`) is often the only direct window into what went wrong, and it can repeat names with no path or key
+around them. So it has one mechanism, used at every such site:
+
+- **Producers log it whole** as `detail={:?}` (or `stderr={:?}` / `stdout={:?}`) through `cmdr_fs::log_detail::LogDetail`,
+  which trims, caps at 1 KiB with a `…[N bytes]` marker, and Debug-quotes. Local logs keep it; producers never redact.
+  Next to it they log the machine-readable code wherever one exists as a typed field: `code=` (errno or exit status),
+  `nt_status=` (SMB), `sftp_status=` (SFTP v3 wire number), `error_kind=`.
+- **The report pass (`detail.rs`) treats the quoted value as one unit.** It unescapes it (so a `\"` around a quoted name
+  can't split a path match and strand a bare quote), runs the ordinary scanner with the report's context per line, then
+  scrubs whole-word repeats of every identity the SAME line logs under a key (`host=`, `server=`, `share=`, `user=`,
+  the IDs, a quoted `path=` leaf), reusing that field's token. It caps the result at `REPORT_DETAIL_MAX_CHARS` (200)
+  with a trailing `…` and re-escapes with `{:?}`, so the closing quote stays exact. Idempotent: a capped value sits at
+  the limit.
+- **The echo scrub reads the whole line** (collected once per line, lazily, in `redact_with`), so a key after the field
+  still counts. External-text fields never feed it: prose can't teach it a name. Values under three chars are skipped
+  (too likely to be part of a word), and matches glued to a letter or digit are left alone.
+- **The unsalted API scans the value as ordinary text** and never caps, so MCP's `cmdr://logs` sees what it always did.
+- **What it doesn't promise:** a name the line doesn't key anywhere survives in the prose (pinned by
+  `an_unkeyed_bare_name_in_prose_survives`). The cap bounds exposure; it doesn't anonymize.
 
 ## Report-scoped token identity
 

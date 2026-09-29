@@ -348,9 +348,11 @@ pub(super) async fn run_smb_watcher(
         Ok(c) => c,
         Err(e) => {
             warn!(
-                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during connect",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?} during connect",
                 share_name,
-                e.kind()
+                e.kind(),
+                e.status(),
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             mark_stale();
             return;
@@ -360,9 +362,11 @@ pub(super) async fn run_smb_watcher(
         Ok(t) => t,
         Err(e) => {
             warn!(
-                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during tree connect",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?} during tree connect",
                 share_name,
-                e.kind()
+                e.kind(),
+                e.status(),
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             mark_stale();
             return;
@@ -380,9 +384,11 @@ pub(super) async fn run_smb_watcher(
         }
         Err(e) => {
             warn!(
-                "smb_watcher share={:?}: backend=smb2, error_kind={:?} during watch start",
+                "smb_watcher share={:?}: backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?} during watch start",
                 share_name,
-                e.kind()
+                e.kind(),
+                e.status(),
+                cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
             mark_stale();
             return;

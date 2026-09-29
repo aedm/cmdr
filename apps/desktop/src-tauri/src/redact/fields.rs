@@ -164,16 +164,20 @@ pub(super) fn redact_identity_field(caps: &Captures<'_>, context: Option<&Redact
     } else {
         ("\"", &raw[1..raw.len() - 1], "\"")
     };
-    let value = unescape_debug(value);
-    let token = match key {
-        "host" | "server" => redact_host(&value, context),
-        "share" => identity_token("share", TokenDomain::Volume, &value, context),
-        "volumeId" => identity_token("volume-id", TokenDomain::VolumeId, &value, context),
-        "serverId" => identity_token("server-id", TokenDomain::ServerId, &value, context),
-        "deviceId" => identity_token("device-id", TokenDomain::DeviceId, &value, context),
-        _ => value.into_owned(),
-    };
+    let token = identity_field_token(key, &unescape_debug(value), context);
     (format!("{key}={prefix}{token}{suffix}"), whole_len(caps))
+}
+
+/// The token one identity-field key gives its (unescaped) value.
+pub(super) fn identity_field_token(key: &str, value: &str, context: Option<&RedactionContext>) -> String {
+    match key {
+        "host" | "server" => redact_host(value, context),
+        "share" => identity_token("share", TokenDomain::Volume, value, context),
+        "volumeId" => identity_token("volume-id", TokenDomain::VolumeId, value, context),
+        "serverId" => identity_token("server-id", TokenDomain::ServerId, value, context),
+        "deviceId" => identity_token("device-id", TokenDomain::DeviceId, value, context),
+        _ => value.to_string(),
+    }
 }
 
 /// Where an unquoted field value really ends. The regex takes the rest of the line; the value

@@ -12,6 +12,11 @@ const PRIVACY_REPORT_ID: &str = "ERR-AB23X";
 const EXPLICIT_NOTE: &str = "EXPLICIT-NOTE-SENTINEL: I consent to share /Users/explicit-consent/Exact note.txt";
 const EXPLICIT_EMAIL: &str = "explicit-email-sentinel@example.test";
 const PRIVATE_LOG_PATH: &str = "/Users/private-account/Plans/client secret";
+/// Tool output repeats the line's keyed host bare, next to a path and an address. The report
+/// keeps the sentence and the NT status but not the identities, which the local log (and this
+/// fixture) carry whole.
+const EXTERNAL_STDERR: &str = "do_connect: Connection to PRIVATE-REMOTE-HOST failed (Error NT_STATUS_BAD_NETWORK_NAME) reading \"/Users/private-account/Plans/client secret.txt\" via 10.9.8.7";
+const EXTERNAL_STDOUT_TAIL: &str = "Sharename listing ended early. ";
 const LEGACY_BREADCRUMB_SENTINEL: &str = "PRIVATE-LEGACY-BREADCRUMB-SENTINEL";
 fn privacy_manifest(redaction: &redact::RedactionContext) -> BundleManifest {
     let mut manifest = sample_manifest();
@@ -58,7 +63,10 @@ fn typed_log(now: DateTime<Utc>, suffix: &str) -> String {
             1: std::panicking::try\n\
          {after} WARN  cmdr_smb::volume::session  SmbVolume::read(share=\"PRIVATE-REMOTE-SHARE\"): backend=smb2, error_kind=ConnectionLost\n\
          {after} DEBUG network::discovery_cache  Host ADDED: serverId=\"PRIVATE-CLIENT-ID-{suffix}\", server=\"PRIVATE-CLIENT-NAME-{suffix}\"\n\
+         {after} WARN  network::smb_smbclient  smbclient share listing stopped: host=\"PRIVATE-REMOTE-HOST\", port=445, code=Some(1), nt_status=NT_STATUS_BAD_NETWORK_NAME, stderr={stderr:?}, stdout={stdout:?}\n\
          {after} INFO  privacy_test  SAFE-AFTER-{suffix}\n",
+        stderr = cmdr_fs::log_detail::LogDetail(EXTERNAL_STDERR),
+        stdout = cmdr_fs::log_detail::LogDetail(&EXTERNAL_STDOUT_TAIL.repeat(40)),
     )
 }
 
@@ -117,6 +125,9 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
             format!("cmdr_lib::privacy_test::retained_frame_{suffix}"),
             "std::panicking::try".to_string(),
             "backend=smb2, error_kind=ConnectionLost".to_string(),
+            "code=Some(1), nt_status=NT_STATUS_BAD_NETWORK_NAME, stderr=\"do_connect: Connection to <".to_string(),
+            "failed (Error NT_STATUS_BAD_NETWORK_NAME) reading".to_string(),
+            "stdout=\"Sharename listing ended early.".to_string(),
             "network::discovery_cache  Host ADDED: serverId=\"<server-id:".to_string(),
             format!("SAFE-AFTER-{suffix}"),
         ] {
@@ -125,6 +136,21 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
                 "safe record {retained:?} missing from {file_name}: {log}"
             );
         }
+    }
+
+    for file_name in ["logs/cmdr.log", "logs/cmdr.log.1"] {
+        let log = entries.get(file_name).unwrap_or_else(|| panic!("missing {file_name}"));
+        let line = log
+            .lines()
+            .find(|line| line.contains("smbclient share listing stopped"))
+            .expect("external-text line survives");
+        assert!(!line.contains("10.9.8.7"), "address inside stderr survived: {line}");
+        let stdout = line.split("stdout=\"").nth(1).expect("stdout field");
+        let value_chars = stdout.trim_end_matches('"').chars().count();
+        assert!(
+            value_chars <= redact::REPORT_DETAIL_MAX_CHARS,
+            "stdout must be capped in the report, got a {value_chars}-char value"
+        );
     }
 
     let state = manifest.state_history.first().expect("typed state history");

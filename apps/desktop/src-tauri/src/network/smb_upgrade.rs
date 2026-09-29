@@ -160,8 +160,10 @@ where
                     return Err(e);
                 }
                 log::debug!(
-                    "Direct connect didn't reach the server: backend=smb2, error_kind={:?}; retrying in {delay:?}",
-                    e.kind()
+                    "Direct connect didn't reach the server: backend=smb2, error_kind={:?}, nt_status={:?}, detail={:?}; retrying in {delay:?}",
+                    e.kind(),
+                    e.status(),
+                    cmdr_fs::log_detail::LogDetail(&e.to_string())
                 );
                 tokio::time::sleep(delay).await;
             }

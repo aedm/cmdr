@@ -1,56 +1,43 @@
 # Redact
 
-Path-shape-preserving redactor with separate compatibility and report-delivery policies.
-
-The hot path is one composed regex with named capture groups and one dispatch. Unsalted `redact_line` is the stable
-compatibility sanitizer for ordinary MCP resources. `RedactionContext::redact_line` is the stricter report boundary:
-tokens correlate only within one report and process. Its key derives from an ephemeral process secret plus the report
-ID; neither ships. Tests use `RedactionContext::for_test`. Both APIs borrow no-match lines.
-
-The pattern table and overlap rules are in `DETAILS.md`. Typed diagnostic fields use structured `RedactionContext`
-methods, which consume complete values, fail closed, and retain report correlation.
+Path-shape-preserving redactor: one composed regex with named groups, one dispatch. Unsalted `redact_line` is the stable
+compatibility sanitizer for ordinary MCP resources. `RedactionContext::redact_line` is the stricter report boundary, with
+tokens that correlate only within one report and process (key from an ephemeral process secret plus the report ID;
+neither ships). Typed values use `RedactionContext::redact_path` / `redact_name` / …, which fail closed. Pattern table,
+overlaps, and decisions: `DETAILS.md`.
 
 ## Must-knows
 
 - **Path shape keeps only a fixed mount/home prefix, an allowlisted immediate parent, and a conservative extension.**
-  Everything custom collapses.
-- **Only a home-prefix path proves the Downloads role in report mode.** `$HOME/Downloads` survives at any depth below
-  it; another local or remote segment spelled `Downloads` gets a token. Unsalted callers retain the legacy allowlist.
-- **Extensionless leaves become `<dir>`.** This deliberate directory-first heuristic is in `DETAILS.md`.
-- **Account wrappers and MTP model names stay; identities go.** Exact match rules are in `DETAILS.md`.
-- **A recognized remote reference is redacted as one unit.** SFTP/SSH/WebDAV/HTTP(S)/SMB URLs, scheme-less SMB
-  userinfo, and UNC keep scheme, hierarchy, address class, port, and conservative extension; every identity-bearing
-  component gets its own token **in report mode**. Unsalted callers retain the legacy SMB/UNC transforms and generic
-  userinfo rewrite; newly recognized outer references are rescanned so legacy nested email/IP/mDNS matches still run.
-- **Only exact derived-ID shapes are recognized.** Funnel IDs require a known scheme and 16-hex digest;
-  `manual-…-<port>` follows its legacy constructor. Never guess from arbitrary hyphens.
-- **The path branches over-match on purpose; `split_trailing_noise` finds the real end.** Spaces are legal in labels
-  AND filenames, so the boundary is recovered after the match. ❌ Never anchor continuation words to `[A-Z0-9]` (that
-  shipped ` at 01.13.03 PM-2.jpeg` verbatim), ❌ never use the looser `has_extension_like_suffix` for its forward scan
-  (`.03` in a timestamp halves the name). `DETAILS.md` § "Finding the end of a path".
-- **A relative path is only found by its key** (`path_field`: `path=`, `smb_path=`, `from=`, …). ❗ Log a file path or
-  name as `key={:?}` with a key from that list, never as bare prose, which is invisible to the redactor.
-- **Debug-format producer-owned identities** (`host={host:?}`); literal wrappers let values escape the field.
-- **Tokens key on a domain plus the name, not its printed bytes** (escapes undone, NFC, Cmdr temp suffix split off).
-  Credentials, query/fragment values, and diagnostic IDs have separate domains from the entities they describe.
-- **Typed inputs never trust token-looking syntax.**
+  Only a home-prefix path proves the Downloads role in report mode; extensionless leaves become `<dir>`.
+- **A recognized remote reference is redacted as one unit** in report mode: scheme, hierarchy, address class, port, and
+  extension stay; every identity gets its own token. Unsalted callers keep the legacy transforms.
+- **Only exact derived-ID shapes are recognized** (known scheme + 16-hex digest, legacy `manual-…-<port>`). Never guess
+  from arbitrary hyphens.
+- **Log a relative path or name as `key={:?}` with a key from `path_field`**, and an identity as `host={host:?}` (or
+  `server`, `share`, `user`, the ID keys). Bare prose is invisible to the redactor; literal wrapper quotes let a value
+  escape its field.
+- **External OS/server/CLI text goes in `detail={:?}` / `stderr={:?}` / `stdout={:?}` via `cmdr_fs::log_detail::LogDetail`**,
+  next to its machine code (`code=`, `nt_status=`, `sftp_status=`). Local logs keep it whole; a report redacts it, scrubs
+  the line's own keyed identities from it, and caps it at 200 chars. ❌ Never redact at the log site, never drop the
+  text. `DETAILS.md` § "External-text fields".
+- **The path branches over-match on purpose; `split_trailing_noise` finds the real end.** ❌ Never anchor continuation
+  words to `[A-Z0-9]` (that shipped ` at 01.13.03 PM-2.jpeg`), ❌ never use `has_extension_like_suffix` for its forward
+  scan. `DETAILS.md` § "Finding the end of a path".
+- **Tokens key on a domain plus the normalized name** (escapes undone, NFC, Cmdr temp suffix split off). Typed inputs
+  never trust token-looking syntax.
 - **`redact_with` resumes at `match.start() + consumed`, ❌ never `replace_all`.** A handed-back tail must face the
-  scanner again or nothing else can claim it: one match ate `smb:` and shipped the share and filename. A new branch
-  that hands text back owes `dispatch` a consumed length.
+  scanner again: one match once ate `smb:` and shipped the share and filename. A branch that hands text back owes
+  `dispatch` a consumed length.
 
 ## Gotchas
 
-- **A filename repeated in prose is still not redacted.** macOS names the file again inside its own error text
-  (`the Trash refused it: “Screenshot ….jpeg”`), with no path around it, and no pattern claims a bare name. This gap is
-  pinned by `trash_refusal_line_redacts_its_path`.
-- **Dispatch order mirrors regex alternation order.** Complete recognized URLs must run before legacy generic-userinfo
-  fallback, and derived IDs before scalar IP matching. See `DETAILS.md`.
+- **A filename repeated in plain prose is not redacted** (`the Trash refused it: “Screenshot ….jpeg”`): no pattern
+  claims a bare name. Pinned by `trash_refusal_line_redacts_its_path`.
+- **Dispatch order mirrors regex alternation order.** Complete URLs before generic userinfo, derived IDs before IPs.
 
 ## Files
 
-`mod.rs` (public API, composed regex, dispatch), `context.rs` (report key + token domains), `paths.rs` (path rewriters),
-`references.rs` (remote references + diagnostic IDs), `fields.rs` (keyed fields), `names.rs` (printing normalization),
-`tests.rs` + `reference_tests.rs` (matrix, idempotency, golden corpus, histogram),
-`fixtures/log-corpus.txt` + `.redacted.txt` (golden snapshot).
-
-Full details (decision rationale, how to add a pattern, regex verbose-mode notes): `DETAILS.md`.
+`mod.rs` (API, regex, dispatch), `context.rs` (report key, token domains), `paths.rs`, `references.rs` (remote
+references, derived IDs), `fields.rs` (keyed fields), `detail.rs` (external-text fields), `names.rs` (printing
+normalization); tests in `tests.rs`, `reference_tests.rs`, `detail_tests.rs`, golden corpus in `fixtures/`.

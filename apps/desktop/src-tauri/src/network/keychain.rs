@@ -50,6 +50,17 @@ impl std::fmt::Display for KeychainError {
 
 impl std::error::Error for KeychainError {}
 
+impl KeychainError {
+    /// The variant as a stable log token, next to the full message in `detail=`.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::NotFound(_) => "not_found",
+            Self::AccessDenied(_) => "access_denied",
+            Self::Other(_) => "other",
+        }
+    }
+}
+
 impl From<SecretStoreError> for KeychainError {
     fn from(e: SecretStoreError) -> Self {
         match e {

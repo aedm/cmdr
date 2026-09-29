@@ -327,10 +327,10 @@ and what the write cells do to a real account, is in `apps/desktop/test/webdav-s
 
 ## Diagnostic privacy
 
-WebDAV logs debug-escape operation paths, so embedded quotes and control characters stay inside the typed field, and
-retain HTTP status or typed transport kind. `reqwest` prose can include a remote name outside a URL, so collected
-diagnostics keep omitted UTF-8 byte/line counts instead. The original error remains available to classification and the
-typed `VolumeError` path.
+WebDAV logs debug-escape operation paths and carry the HTTP status (`code=`) or typed transport kind. A transport
+failure's `reqwest` prose goes whole into `detail=`; reports redact and cap it:
+`apps/desktop/src-tauri/src/redact/DETAILS.md` § "External-text fields". The original error remains available to
+classification and the typed `VolumeError` path.
 
 ## Not supported, and say so out loud
 
