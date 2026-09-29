@@ -1982,6 +1982,29 @@
   "@errors.write.archiveEntryNameRefused.suggestion": {
     "description": "Recovery suggestion for any of those three bodies. Plain text. This is a raw errors.* string (no ICU)."
   },
+  "errors.write.archiveEntryNamesCollide.title": "Two items would share one name in the zip",
+  "@errors.write.archiveEntryNamesCollide.title": {
+    "description": "Title of the compress error dialog when two of the files being compressed would end up at the same place inside the zip, so one would hide the other. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU)."
+  },
+  "errors.write.archiveEntryNamesCollide.message": "{entry} and {other} would both claim {archivePath} inside the zip, because zip tools read a backslash as a folder separator. Opening the zip would show only one of them.",
+  "@errors.write.archiveEntryNamesCollide.message": {
+    "description": "Body of that dialog. The usual cause is a macOS file whose name holds a backslash (a\\b.txt) next to a real folder path (a/b.txt). Plain text, raw errors.* string (no ICU): keep {entry}, {other}, and {archivePath} spelled exactly, and reorder them freely.",
+    "placeholders": {
+      "entry": {
+        "description": "One of the two files, as its path inside the zip. Inserted verbatim. Do not translate or reformat it."
+      },
+      "other": {
+        "description": "The other file, as its path inside the zip. Inserted verbatim. Do not translate or reformat it."
+      },
+      "archivePath": {
+        "description": "The one path inside the zip both would take. Inserted verbatim. Do not translate or reformat it."
+      }
+    }
+  },
+  "errors.write.archiveEntryNamesCollide.suggestion": "Rename one of them, or leave one out of the selection, then compress again.",
+  "@errors.write.archiveEntryNamesCollide.suggestion": {
+    "description": "Recovery suggestion for that dialog. Plain text. This is a raw errors.* string (no ICU)."
+  },
   "errors.write.invalidName.title": "Invalid file name",
   "errors.write.invalidName.message": "{path} has a name the destination can’t store.",
   "errors.write.invalidName.suggestion": "Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.",

@@ -218,6 +218,8 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // No Retry: the same name is refused again. The way out is renaming the file
   // or leaving it out of the selection.
   archive_entry_name_refused: { category: 'needs_action', retryHint: false },
+  // No Retry, for the same reason: one of the two has to be renamed or left out.
+  archive_entry_names_collide: { category: 'needs_action', retryHint: false },
   read_only_device: { category: 'needs_action', retryHint: false },
   // No Retry: the same folder refuses again. The way out is another destination.
   destination_not_writable: { category: 'needs_action', retryHint: false },
@@ -539,6 +541,18 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
         title: w('archiveEntryNameRefused.title'),
         message: w(`archiveEntryNameRefused.message.${error.reason}`, { entry: escapeHtml(error.entry) }),
         suggestion: w('archiveEntryNameRefused.suggestion'),
+      }
+    // Both names, plus where they'd meet: the backslash look-alike is the usual
+    // cause, and neither name alone shows the clash.
+    case 'archive_entry_names_collide':
+      return {
+        title: w('archiveEntryNamesCollide.title'),
+        message: w('archiveEntryNamesCollide.message', {
+          entry: escapeHtml(error.entry),
+          other: escapeHtml(error.other),
+          archivePath: escapeHtml(error.archivePath),
+        }),
+        suggestion: w('archiveEntryNamesCollide.suggestion'),
       }
     case 'delete_pending':
       return {

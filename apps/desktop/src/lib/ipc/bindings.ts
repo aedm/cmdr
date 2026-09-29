@@ -16184,6 +16184,19 @@ export type WriteOperationError =
    *  written, so the message can say which file.
    */
   | { type: 'archive_entry_name_refused'; entry: string; reason: ArchiveNameRefusal }
+  /**
+   *  Two planned fresh-ZIP entries read back as one archive path, so one
+   *  would shadow the other (`a\b.txt` next to a real `a/b.txt`: the reader
+   *  treats `\` as a separator). Refused from the plan, before a byte is
+   *  compressed.
+   */
+  | {
+      type: 'archive_entry_names_collide'
+      entry: string
+      other: string
+      // Where both would land inside the archive.
+      archivePath: string
+    }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
   /**

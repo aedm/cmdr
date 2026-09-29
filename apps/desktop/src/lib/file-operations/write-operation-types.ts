@@ -198,6 +198,9 @@ export type WriteOperationError =
   // A fresh zip would hold an entry the archive reader hides: a macOS `..\x`
   // reads as `../x`. Refused from the plan, before anything is compressed.
   | { type: 'archive_entry_name_refused'; entry: string; reason: ArchiveNameRefusal }
+  // Two fresh-zip entries read back as one path (`a\b.txt` beside `a/b.txt`),
+  // so one would hide the other. Refused from the plan.
+  | { type: 'archive_entry_names_collide'; entry: string; other: string; archivePath: string }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
   // `side` is null for a backend session that dropped (MTP, SMB), which has no

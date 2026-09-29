@@ -244,6 +244,16 @@ pub enum WriteOperationError {
         entry: String,
         reason: ArchiveNameRefusal,
     },
+    /// Two planned fresh-ZIP entries read back as one archive path, so one
+    /// would shadow the other (`a\b.txt` next to a real `a/b.txt`: the reader
+    /// treats `\` as a separator). Refused from the plan, before a byte is
+    /// compressed.
+    ArchiveEntryNamesCollide {
+        entry: String,
+        other: String,
+        /// Where both would land inside the archive.
+        archive_path: String,
+    },
     SymlinkLoop {
         path: String,
     },

@@ -2,7 +2,7 @@
 //! the three byte counts agree, and the archive reads back as exactly the
 //! planned tree.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -75,23 +75,63 @@ impl ExpectedIndex {
     }
 }
 
-/// Refuses a plan whose entry names the archive reader would quarantine, before
-/// the producer spawns: otherwise the whole compress (and any upload) runs only
-/// for [`validate_stage`] to reject it, and the message could name no file.
+/// Refuses a plan whose entry names the archive reader would quarantine or
+/// merge, before the producer spawns: otherwise the whole compress (and any
+/// upload) runs only for [`validate_stage`] to reject it, and the message could
+/// name no file.
+///
+/// Two entries collide when they read back as one path (a file `a\b.txt` next to
+/// a real `a/b.txt`), or when one is a FILE at a path another needs as a folder
+/// (`a` next to `a\b.txt`). Two folders at one path merge harmlessly and pass.
+/// ❗ [`validate_stage`]'s set comparison can't catch either: one entry shadows
+/// the other and both read back as a single node.
 pub(super) fn check_entry_names(plan: &FreshPlan) -> Result<(), WriteOperationError> {
+    // Archive path → (the entry that claimed it, is it a folder).
+    let mut claimed: HashMap<String, (&str, bool)> = HashMap::new();
+    let mut accepted = Vec::with_capacity(plan.entries.len());
     for entry in &plan.entries {
-        if let SanitizedName::Quarantined(reason) = sanitize_entry_name(&entry.name) {
-            return Err(WriteOperationError::ArchiveEntryNameRefused {
-                entry: entry.name.trim_end_matches('/').to_string(),
-                reason: match reason {
-                    QuarantineReason::ParentTraversal => ArchiveNameRefusal::ParentTraversal,
-                    QuarantineReason::TooDeep => ArchiveNameRefusal::TooDeep,
-                    QuarantineReason::Empty => ArchiveNameRefusal::Empty,
-                },
-            });
+        let raw = entry.name.trim_end_matches('/');
+        let path = match sanitize_entry_name(&entry.name) {
+            SanitizedName::Accepted(path) => path,
+            SanitizedName::Quarantined(reason) => {
+                return Err(WriteOperationError::ArchiveEntryNameRefused {
+                    entry: raw.to_string(),
+                    reason: match reason {
+                        QuarantineReason::ParentTraversal => ArchiveNameRefusal::ParentTraversal,
+                        QuarantineReason::TooDeep => ArchiveNameRefusal::TooDeep,
+                        QuarantineReason::Empty => ArchiveNameRefusal::Empty,
+                    },
+                });
+            }
+        };
+        match claimed.get(&path) {
+            // Two folders at one path merge.
+            Some(&(_, true)) if entry.is_directory => {}
+            Some(&(other, _)) => return Err(collision(raw, other, &path)),
+            None => {
+                claimed.insert(path.clone(), (raw, entry.is_directory));
+            }
+        }
+        accepted.push((raw, path));
+    }
+    for (raw, path) in &accepted {
+        let mut ancestor = path.as_str();
+        while let Some((parent, _)) = ancestor.rsplit_once('/') {
+            if let Some(&(file, false)) = claimed.get(parent) {
+                return Err(collision(raw, file, parent));
+            }
+            ancestor = parent;
         }
     }
     Ok(())
+}
+
+fn collision(entry: &str, other: &str, archive_path: &str) -> WriteOperationError {
+    WriteOperationError::ArchiveEntryNamesCollide {
+        entry: entry.to_string(),
+        other: other.to_string(),
+        archive_path: archive_path.to_string(),
+    }
 }
 
 pub(super) async fn validate_stage(

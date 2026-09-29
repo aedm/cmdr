@@ -116,6 +116,15 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       reason: 'parentTraversal',
     },
   },
+  archive_entry_names_collide: {
+    operationType: 'compress',
+    error: {
+      type: 'archive_entry_names_collide',
+      entry: 'Reports/a\\b.txt',
+      other: 'Reports/a/b.txt',
+      archivePath: 'Reports/a/b.txt',
+    },
+  },
   symlink_loop: {
     operationType: 'copy',
     error: { type: 'symlink_loop', path: '/Users/david/dev/node_modules/.pnpm/self/node_modules/self' },

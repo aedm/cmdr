@@ -321,6 +321,22 @@ const cases: Case[] = [
     },
   },
   {
+    name: 'archive_entry_names_collide',
+    error: {
+      type: 'archive_entry_names_collide',
+      entry: 'a\\b.txt',
+      other: 'a/b.txt',
+      archivePath: 'a/b.txt',
+    },
+    op: 'compress',
+    expected: {
+      title: 'Two items would share one name in the zip',
+      message:
+        'a\\b.txt and a/b.txt would both claim a/b.txt inside the zip, because zip tools read a backslash as a folder separator. Opening the zip would show only one of them.',
+      suggestion: 'Rename one of them, or leave one out of the selection, then compress again.',
+    },
+  },
+  {
     name: 'io_error (delete)',
     error: { type: 'io_error', path: '/p', message: 'm' },
     op: 'delete',

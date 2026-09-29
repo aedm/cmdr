@@ -724,6 +724,24 @@ async fn a_name_the_archive_reader_would_hide_fails_before_compressing() {
     ));
 }
 
+#[tokio::test]
+async fn two_entries_that_read_back_as_one_path_fail_before_compressing() {
+    // `a\b.txt` and `a/b.txt` are different files on disk and the same entry
+    // to the archive reader: one would silently shadow the other.
+    let source_dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(source_dir.path().join("a\\b.txt"), b"backslash").expect("write the look-alike");
+    std::fs::create_dir(source_dir.path().join("a")).expect("mkdir");
+    std::fs::write(source_dir.path().join("a/b.txt"), b"real").expect("write the real one");
+
+    let (events, dest_dir, _archive) = compress_local_selection(source_dir.path(), &["a\\b.txt", "a"]).await;
+
+    assert_refused_before_producing(&events, dest_dir.path());
+    assert!(matches!(
+        &events.errors.lock_ignore_poison()[0].error,
+        WriteOperationError::ArchiveEntryNamesCollide { archive_path, .. } if archive_path == "a/b.txt"
+    ));
+}
+
 fn plan_of(names: &[&str]) -> FreshPlan {
     FreshPlan {
         source_volume: Arc::new(InMemoryVolume::new("source")),
@@ -762,6 +780,16 @@ fn every_reader_quarantine_reason_is_refused_from_the_plan() {
         );
     }
     assert!(check_entry_names(&plan_of(&["ok.txt", "a\\b.txt"])).is_ok());
+}
+
+#[test]
+fn a_file_where_another_entry_needs_a_folder_collides_but_folders_merge() {
+    assert!(matches!(
+        check_entry_names(&plan_of(&["a", "a\\b.txt"])),
+        Err(WriteOperationError::ArchiveEntryNamesCollide { entry, other, archive_path })
+            if entry == "a\\b.txt" && other == "a" && archive_path == "a"
+    ));
+    assert!(check_entry_names(&plan_of(&["a\\b/", "a/", "a/b/", "a/b/c.txt"])).is_ok());
 }
 
 #[test]
