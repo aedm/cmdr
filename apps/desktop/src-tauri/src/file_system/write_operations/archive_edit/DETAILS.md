@@ -146,7 +146,10 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   Preflight freezes entry names, kinds, sizes, mtimes, and Unix modes; skips symlinks and special files; and rejects
   local canonical/inode aliases plus destinations inside a source. The walk stats only the SELECTED items: every child's
   facts come from its parent's listing, the `scan_walk` shape, because a stat per child cost one network round trip per
-  file on SMB and SFTP and a whole parent listing per file on MTP. Symlinks read off `is_symlink`, and special files
+  file on SMB and SFTP and a whole parent listing per file on MTP. A symlink is skipped wherever it sits, selected or
+  nested, and never followed: a nested one reads off its listing entry's `is_symlink`, and a selected one off
+  `Volume::entry_kind` (an `lstat`) before its stat, because SFTP's `get_metadata` follows the link and would pack its
+  target. That kind check is the one extra round trip per SELECTED item. Special files
   (fifo, socket, device) off the file-type bits of `permissions`: local and ADB listings carry the full `st_mode`,
   SFTP carries the type bits alone (its permission bits stay unset, so copies keep carrying no SFTP mode), and SMB and
   MTP report none, which never reads as special. Opening a FIFO blocks, and on SFTP it blocks the one `sftp-server`

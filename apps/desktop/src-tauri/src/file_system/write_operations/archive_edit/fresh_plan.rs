@@ -11,7 +11,7 @@ use super::super::types::{ConflictResolution, WriteConflictEvent, WriteConflictR
 use super::edit_error::EditError;
 use super::fresh_zip::{FreshZipEntry, FreshZipSource, RemoteZipFeeder, remote_source_bridge};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 
 pub(super) struct RemoteFeed {
     pub(super) path: PathBuf,
@@ -155,6 +155,17 @@ async fn plan_sources_with_context(
             }
         }
         top_names.insert(top_name.clone(), top.clone());
+        // A selected link is skipped like a nested one. Asked with `entry_kind`
+        // (an `lstat`), ❌ never read off `get_metadata`: SFTP's `stat` follows
+        // the link and reports its target.
+        let top_kind = source
+            .entry_kind(top)
+            .await
+            .map_err(|error| volume_read_error(top, error))?;
+        if top_kind == EntryKind::Symlink {
+            skipped += 1;
+            continue;
+        }
         let top_meta = source
             .get_metadata(top)
             .await
@@ -543,11 +554,119 @@ mod tests {
 
         assert_eq!(plan.entries.len(), 22, "two directories and 20 files");
         assert_eq!(plan.source_bytes, 20);
+        // The selected item costs a kind check (`entry_kind`, here the trait
+        // default over `get_metadata`) and a stat; its 21 descendants cost none.
         assert_eq!(
             source.stats.load(std::sync::atomic::Ordering::SeqCst),
-            1,
+            2,
             "children come from their parent's listing, never a stat each"
         );
+    }
+
+    /// A remote whose `get_metadata` FOLLOWS links, the way SFTP's `stat` does:
+    /// `/link` answers as the folder it points at, and only `entry_kind` (an
+    /// `lstat`) says it's a link.
+    struct LinkFollowingStat {
+        inner: InMemoryVolume,
+    }
+
+    impl LinkFollowingStat {
+        fn target(path: &Path) -> PathBuf {
+            match path.strip_prefix("/link") {
+                Ok(rest) => Path::new("/target").join(rest),
+                Err(_) => path.to_path_buf(),
+            }
+        }
+    }
+
+    impl Volume for LinkFollowingStat {
+        fn name(&self) -> &str {
+            self.inner.name()
+        }
+
+        fn root(&self) -> &Path {
+            self.inner.root()
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn list_directory<'a>(
+            &'a self,
+            path: &'a Path,
+            on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+            Box::pin(async move { self.inner.list_directory(&Self::target(path), on_progress).await })
+        }
+
+        fn get_metadata<'a>(
+            &'a self,
+            path: &'a Path,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+            Box::pin(async move { self.inner.get_metadata(&Self::target(path)).await })
+        }
+
+        fn entry_kind<'a>(
+            &'a self,
+            path: &'a Path,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<EntryKind, VolumeError>> + Send + 'a>> {
+            Box::pin(async move {
+                if path == Path::new("/link") {
+                    Ok(EntryKind::Symlink)
+                } else {
+                    self.inner.entry_kind(path).await
+                }
+            })
+        }
+
+        fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+            self.inner.exists(path)
+        }
+
+        fn is_directory<'a>(
+            &'a self,
+            path: &'a Path,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+            self.inner.is_directory(path)
+        }
+
+        fn get_space_info<'a>(
+            &'a self,
+        ) -> std::pin::Pin<
+            Box<dyn Future<Output = Result<crate::file_system::volume::SpaceInfo, VolumeError>> + Send + 'a>,
+        > {
+            self.inner.get_space_info()
+        }
+    }
+
+    #[tokio::test]
+    async fn a_selected_symlink_is_skipped_even_where_stat_follows_links() {
+        // A link inside a selected folder is skipped off its listing entry; a
+        // selected link has to be skipped too, or SFTP (whose `stat` follows)
+        // packs the target that the same link would never pack one level down.
+        let inner = InMemoryVolume::new("remote");
+        inner.create_directory(Path::new("/target")).await.expect("mkdir");
+        inner
+            .create_file(Path::new("/target/inside.txt"), b"x")
+            .await
+            .expect("seed");
+        let source: Arc<dyn Volume> = Arc::new(LinkFollowingStat { inner });
+        let state = Arc::new(WriteOperationState::new(Duration::ZERO));
+
+        let plan = plan_sources_with_context(
+            &source,
+            &[PathBuf::from("/link")],
+            ConflictResolution::Stop,
+            &state,
+            None,
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| panic!("plan"));
+
+        assert!(plan.entries.is_empty(), "the link's target is never packed");
+        assert_eq!(plan.skipped, 1);
     }
 
     #[cfg(unix)]
