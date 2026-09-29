@@ -31,9 +31,6 @@
     "file-explorer/navigation/VolumeBreadcrumb.svelte": {
       "reason": "UI component, depends on Tauri APIs and MTP store"
     },
-    "file-explorer/network/PlacesBrowser.svelte": {
-      "reason": "Network component, needs integration tests (renamed from ShareBrowser.svelte)"
-    },
     "file-explorer/network/network-store.svelte.ts": {
       "reason": "Depends on Tauri APIs"
     },

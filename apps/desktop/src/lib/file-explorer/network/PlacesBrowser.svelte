@@ -43,6 +43,7 @@
     import { handleNavigationShortcut } from '../navigation/keyboard-shortcuts'
     import { eventMatchesCommand } from '$lib/shortcuts'
     import { claimKey } from '$lib/shortcuts/claim-key'
+    import { cursorAfterArrow } from './list-cursor'
     import { updateLeftPaneState, updateRightPaneState, type PaneState, type PaneFileEntry } from '$lib/tauri-commands'
 
     async function notifyIfUsingFileFallback(): Promise<void> {
@@ -502,24 +503,6 @@
         }
     }
 
-    function handleArrowKey(key: string): boolean {
-        const lastIndex = sortedShares.length - 1
-        const newIndex =
-            key === 'ArrowDown'
-                ? Math.min(cursorIndex + 1, lastIndex)
-                : key === 'ArrowUp'
-                  ? Math.max(cursorIndex - 1, 0)
-                  : key === 'ArrowLeft'
-                    ? 0
-                    : key === 'ArrowRight'
-                      ? lastIndex
-                      : null
-        if (newIndex === null) return false
-        cursorIndex = newIndex
-        scrollToIndex(cursorIndex)
-        return true
-    }
-
     /**
      * Escape, Backspace, and `⌘↑` all return to the host list (`share.back`'s
      * registry keys; `⌘↑` mirrors the file list's `⌘↑` = parent). Matched on the
@@ -569,9 +552,11 @@
         // panes) and other modifier supersets belong to the document dispatcher.
         if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
 
-        if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const next = cursorAfterArrow(e.key, cursorIndex, sortedShares.length)
+        if (next !== null) {
             e.preventDefault()
-            handleArrowKey(e.key)
+            cursorIndex = next
+            scrollToIndex(cursorIndex)
             return
         }
 
