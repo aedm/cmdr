@@ -348,6 +348,12 @@ const toc = [
             on <code>127.0.0.1</code> only. Deleting and other actions that skip Cmdr's confirmation need an access
             token; other commands are open to any program on the same Mac.
         </li>
+        <li>
+            Cmdr opens no port that other machines can connect to: everything it listens on is <code>127.0.0.1</code>.
+            The one exception is Bonjour (mDNS, UDP port 5353, over IPv4 and IPv6), which finds SMB servers on the
+            local network. Firewall tools like Little Snitch may list the answers from other devices on the network as
+            incoming connections to Cmdr.
+        </li>
     </ul>
 
     <h2 id="ai">AI features and your files</h2>

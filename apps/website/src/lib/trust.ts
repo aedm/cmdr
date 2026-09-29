@@ -118,7 +118,7 @@ export const networkConnections: NetworkConnection[] = [
     id: 'file-access',
     name: 'Remote files the user opens',
     destination: 'Only servers and devices the user connects to: SMB, SFTP, and WebDAV servers, and phones over USB.',
-    when: 'When the user browses them. To find SMB servers on the local network, Cmdr uses Bonjour (mDNS), which starts only once the user first uses a network feature. After that it runs at every launch while SMB support is on.',
+    when: 'When the user browses them. To find SMB servers on the local network, Cmdr uses Bonjour (mDNS). It runs only while the Servers view is open, while Cmdr looks up the server behind an SMB share it connects to, and for 10 seconds after launch.',
     sends: 'What the protocol needs: credentials the user entered and the file operations the user asked for.',
     control:
       'SMB, phone (MTP), and Android (ADB) support are on by default and each can be turned off in Settings &gt; File systems. Git support is local only and never fetches or pushes.',
