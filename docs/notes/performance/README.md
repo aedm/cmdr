@@ -130,77 +130,80 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
 
 ## Open follow-ups
 
-The single ranked list. Where an issue exists, it's the place to track the work; the rest have none yet. Ranked by
-expected payoff against the targets over effort.
+The single ranked list, and #92's exit condition: #92 closes when it's empty, so it holds only items that plausibly move
+the RAM or CPU targets. Where an issue exists, it's the place to track the work; the rest have none yet. Ranked by
+expected payoff against the targets over effort. Each item's **Effect** line is the expected move against a target, from
+the linked note's numbers.
 
 1. **Settled allocator slack after bursts: ~405–418 MiB against the 300 target.** Big listings keep ~100 MiB, and the
    slack sits in free arena slices mimalloc keeps committed (`search-arena-reload-2026-09-27.md` § "What the settled
    footprint is made of"). A slack-probe effort is running: a forced `mi_collect`, the listing source, and the system
    allocator plus `malloc_zone_pressure_relief`. The allocator choice is David's once the numbers are in. Status: in
-   progress.
+   progress. **Effect**: this is the whole post-burst RAM gap (~105–118 MiB over target, out of ~240 MiB of slack); how
+   much comes back is unknown until the probe's numbers are in.
 2. **Re-measure idle CPU with indexing on, on current `main`.** The 2.2% predates the child-dir index, the space-poll
    fix, and mDNS gating. Use the census recipe (`idle-census-2026-09-27.md`) and say how many FS events/s the machine
-   saw. Status: not started.
-3. **After the next release**: run `memory_diagnostics` (it now includes `rustHeapCensus`) on a long-running prod to
-   explain the rest of the heap (~360 MiB was unexplained at 0.46.1), and run the Cmdr acceptance check for the `smb2`
-   socket fix (mount/unmount cycles leave no sockets). `smb2`'s own consumer suite wasn't run for 0.24.1.
+   saw. Status: not started. **Effect**: none by itself; it decides whether the CPU target is met with indexing on (the
+   indexing-driven share was ~1.1–1.4% before those three fixes).
+3. **Explain the rest of the heap on a long-running prod**: run `memory_diagnostics` (it now includes `rustHeapCensus`)
+   on 0.48.0 or later (~360 MiB was unexplained at 0.46.1). Status: not started. **Effect**: none by itself; what it
+   finds is unknown.
 4. **The search arena's 30 s background refresh still does a full rebuild with the old arena alive**: the same
    three-copies peak, on a timer, while someone keeps searching. Options: catch up on each refresh and rebuild whole
    only every few minutes (the rebuild is what carries deletions), or drop the old arena first
-   (`search-arena-reload-2026-09-27.md` § "Still open"). Status: not started.
+   (`search-arena-reload-2026-09-27.md` § "Still open"). Status: not started. **Effect**: lowers the peak during
+   repeated searches (the catch-up took ~610 MiB off the post-walk peak, and this is the same shape); the effect on the
+   settled footprint is unknown.
 5. **WebContent costs 0.73% of a core with indexing on against 0.11% off**: coalesce the index-driven size updates on
    the frontend side, for rows whose readout doesn't change (`idle-census-2026-09-27.md` § "The levers", lever 5).
-   Estimate: up to −0.5% on a churning machine. Status: not started.
+   Status: not started. **Effect**: up to −0.5% of a core in WebContent on a churning machine (estimate); the main
+   process doesn't move.
 6. **WebContent grows over days** (138 → 262 MB): take a Web Inspector heap snapshot on a long-running build before
-   changing anything. Status: not started.
+   changing anything. Status: not started. **Effect**: unknown until the snapshot; up to the ~120 MB of growth, in
+   WebContent.
 7. **One SMB share reached three ways becomes three volumes.** `smb_volume_id` keys on the address as mounted, so the
    LAN IP, a VPN IP, and the mDNS name make three indexes, writers, and scans
    (`thread-and-connection-inventory-2026-09-22.md`). Fix with an alias-adoption layer, not `same_server*` as a key.
-   Risk: a wrong match merges two indexes. Status: not started; worth a spec.
+   Risk: a wrong match merges two indexes. Status: not started; worth a spec. **Effect**: only on machines that reach
+   one share at 2+ addresses; per extra alias, two writer threads, an FSEvents stream, 32 MiB of page-slab budget, and a
+   duplicate scan over the network. Idle CPU and RAM not measured.
 8. **The root volume can skip `drive_is_listed`'s `getfsstat` on every subtree reconcile**: the boot volume can't be
    unlisted, and the call showed ~470 samples in a churn window (`idle-census-2026-09-27.md` lever 6). Small. Status:
-   not started.
-9. **The CPU half of the diagnostics instrument**: per-thread CPU with names (the census's `proc_pidinfo` recipe) and
-   wakeup counters (`TASK_POWER_INFO`) over MCP, next to `memory_diagnostics`. It would also log thread-count growth
-   over a run. Status: not started.
-10. **A per-chunk memo of ancestor verdicts in the search exclude check.** Non-ASCII ancestor names still fold through
-    `String`s, and one-letter queries still take ~275 ms re-walking the same ancestors for every match
-    (`search-loop-allocations-2026-09-27.md` § "What's left"). Status: not started.
-11. **Load only the active language's messages** (~10–25 MB of WebContent heap and 4 MB of startup parse): issue #134,
-    David's decision.
-12. **A stuck-loop watchdog at the log sink**, plus a `(target, level)` counter. Designed, ~2–2.5 days. Separately,
-    third-party `log::error!` never reaches the error-report flow (Flow B). Status: not started.
-13. **At launch, share lists are prefetched for every discovered SMB host**, even with the Servers view closed
-    (`mdns-browse-gating-2026-09-27.md`). Arguably a product call. Status: not started.
-14. **A sync-status pool thread wedged in a File Provider call** (seen in the prod log). The pool bounds the cost by
-    design; what's open is which provider call never answers. Status: not started.
-15. **Upstream the `mdns-sd` fix.** The PR draft is in `docs/notes/mdns-sd-upstream-pr/pr-draft.md`, unsent. Add a guard
-    that `mdns-sd` resolves from `vendor/`: a dependency bump past 0.20.x would silently drop the `[patch]`. Status:
-    draft ready.
-16. **The direct-symlink EXISTS query has the same O(children) shape** as the child-dir queries (~62 ms on a 92,000-file
-    folder), but runs only when a symlink changes (`dir-children-index-2026-09-27.md` § "Left as it is"). Low priority.
-17. **`SmbClient::close()` (LOGOFF)** was left out of `smb2` on purpose; it needs design calls
-    (`smb2-socket-lifetime-2026-09-23.md` § "Left out on purpose").
-18. **The `bridge*` interface filter for mDNS**: parked (it false-positives on Thunderbolt Bridge).
-19. **Refresh the Finder-style free space reactively when purgeable space changes**: #308, `someday`.
+   not started. **Effect**: small idle CPU under FS churn; unmeasured as a share of a core.
 
 Smaller or already filed, unranked:
 
-- **Take a fresh idle baseline on a quiet machine**, issue #231: largely answered by `idle-census-2026-09-27.md`; what's
-  left is re-ranking the CLIP items against it.
 - **CLIP**: should an idle tower unload itself (#233), the ~400 MB non-GPU compute-unit path (#232), and an fp16 text
   tower (#234). The costs they trade: `crates/cmdr-index/src/media_index/clip/DETAILS.md` § "What holding the towers
-  costs".
-- **Set the rescan-storm threshold from a week of data**: #235.
-- **Drop the `ORDER BY` from `above_threshold` when nobody needs the order**: #237.
-- **A running importance pass ignores the memory watchdog and shutdown**: #230. **Spotlight "last used" sampling cost**:
-  #229.
-- **The SMB importance DB outlives its index DB** after the index is removed
-  (`thread-and-connection-inventory-2026-09-22.md` § "A smaller loose end").
-- **The media live tick's `load_statuses`** reads every stored status on any tick that survives the filter; unmeasured
-  (`live-tick-cost-2026-08-21.md`).
-- **mimalloc's `os_tag` collides with `VM_MEMORY_IOACCELERATOR`**; a non-colliding tag would retire the trap, at the
-  cost of invalidating every doc that explains it (`memory-runaway-rust-heap-2026-07-25.md` § "Still open").
+  costs". **Effect**: only for someone who has run a semantic search since launch; #232 measured ~410 MB against 11.8
+  MB, and #234 would roughly halve the text tower's ~184–246 MB.
+- **Set the rescan-storm threshold from a week of data**: #235. **Effect**: CPU during rescan storms; unknown.
+- **Drop the `ORDER BY` from `above_threshold` when nobody needs the order**: #237. **Effect**: a sort of up to ~90,000
+  folders per call; small.
+- **Spotlight "last used" sampling cost**: #229. **Effect**: CPU per importance pass, probably small; unmeasured.
+- **The media live tick's `load_statuses`** reads every stored status on any tick that survives the filter
+  (`live-tick-cost-2026-08-21.md`). **Effect**: unknown; unmeasured.
+
+## Moved out of #92
+
+Items that don't move #92's targets, each tracked in its own issue:
+
+- #317: the parked `bridge*` interface filter for mDNS (needs a decision).
+- #318: `SmbClient::close()` (LOGOFF) in `smb2`.
+- #319: upstream the `mdns-sd` fix, and guard that `mdns-sd` resolves from `vendor/`.
+- #320: the direct-symlink EXISTS query's O(children) shape.
+- #321: the CPU half of the diagnostics instrument (per-thread CPU and wakeups over MCP).
+- #322: a per-chunk memo of ancestor verdicts in the search exclude check.
+- #323: a stuck-loop watchdog at the log sink, and third-party `log::error!` reaching Flow B.
+- #324: share lists prefetched for every discovered SMB host at launch.
+- #325: a sync-status pool thread wedged in a File Provider call.
+- #326: Cmdr's acceptance check for the `smb2` 0.24.1 socket fix.
+- #327: the SMB importance DB outliving its index DB.
+- #328: mimalloc's `os_tag` colliding with `VM_MEMORY_IOACCELERATOR`.
+- #308: refresh the Finder-style free space when purgeable space changes.
+- #134: load only the active language's messages.
+- #231: a fresh idle baseline on a quiet machine (largely answered by `idle-census-2026-09-27.md`).
+- #230: a running importance pass ignores the memory watchdog and shutdown.
 
 ## Retired: don't reopen
 
