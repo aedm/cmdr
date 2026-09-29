@@ -6,11 +6,11 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::Arc;
 
-use cmdr_archive::read::{SanitizedName, sanitize_entry_name};
+use cmdr_archive::read::{QuarantineReason, SanitizedName, sanitize_entry_name};
 use cmdr_archive::{ArchiveFormat, ArchiveIndex, ArchiveVolume};
 use cmdr_fs::volume::host::VolumeHost;
 
-use super::super::types::WriteOperationError;
+use super::super::types::{ArchiveNameRefusal, WriteOperationError};
 use super::edit_error::EditError;
 use super::fresh_plan::FreshPlan;
 use crate::file_system::volume::{Volume, VolumeError};
@@ -73,6 +73,25 @@ impl ExpectedIndex {
             quarantined: index.quarantined().len(),
         }
     }
+}
+
+/// Refuses a plan whose entry names the archive reader would quarantine, before
+/// the producer spawns: otherwise the whole compress (and any upload) runs only
+/// for [`validate_stage`] to reject it, and the message could name no file.
+pub(super) fn check_entry_names(plan: &FreshPlan) -> Result<(), WriteOperationError> {
+    for entry in &plan.entries {
+        if let SanitizedName::Quarantined(reason) = sanitize_entry_name(&entry.name) {
+            return Err(WriteOperationError::ArchiveEntryNameRefused {
+                entry: entry.name.trim_end_matches('/').to_string(),
+                reason: match reason {
+                    QuarantineReason::ParentTraversal => ArchiveNameRefusal::ParentTraversal,
+                    QuarantineReason::TooDeep => ArchiveNameRefusal::TooDeep,
+                    QuarantineReason::Empty => ArchiveNameRefusal::Empty,
+                },
+            });
+        }
+    }
+    Ok(())
 }
 
 pub(super) async fn validate_stage(

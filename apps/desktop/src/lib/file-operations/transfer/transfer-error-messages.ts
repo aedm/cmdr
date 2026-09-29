@@ -215,6 +215,9 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // No Retry: the same selection can only be refused again. The way out is
   // picking one of the two, or transferring them one at a time.
   duplicate_source_names: { category: 'needs_action', retryHint: false },
+  // No Retry: the same name is refused again. The way out is renaming the file
+  // or leaving it out of the selection.
+  archive_entry_name_refused: { category: 'needs_action', retryHint: false },
   read_only_device: { category: 'needs_action', retryHint: false },
   // No Retry: the same folder refuses again. The way out is another destination.
   destination_not_writable: { category: 'needs_action', retryHint: false },
@@ -528,6 +531,15 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
     // STATUS_DELETE_PENDING: the file is marked for deletion on the server but an
     // open handle is keeping it alive. Transient: retry-after-a-moment. Named,
     // because a move involves two files and "this file" didn't say which.
+    // A zip entry the archive reader would hide. Named, because one entry deep
+    // in a selected folder is the whole problem, and the reason picks the
+    // sentence since each one needs a different picture of what's wrong.
+    case 'archive_entry_name_refused':
+      return {
+        title: w('archiveEntryNameRefused.title'),
+        message: w(`archiveEntryNameRefused.message.${error.reason}`, { entry: escapeHtml(error.entry) }),
+        suggestion: w('archiveEntryNameRefused.suggestion'),
+      }
     case 'delete_pending':
       return {
         title: w('deletePending.title'),

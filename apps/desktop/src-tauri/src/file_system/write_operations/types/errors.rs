@@ -117,6 +117,21 @@ impl PermissionRefusal {
     }
 }
 
+/// Why a name can't be a fresh-ZIP entry, for
+/// [`WriteOperationError::ArchiveEntryNameRefused`]. Mirrors the archive
+/// reader's own quarantine reasons (`cmdr_archive::read::QuarantineReason`), which
+/// decide it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ArchiveNameRefusal {
+    /// A `..` component, once `\` reads as a separator.
+    ParentTraversal,
+    /// Deeper than the reader's component limit.
+    TooDeep,
+    /// Nothing left once separators and `.` components go.
+    Empty,
+}
+
 /// Errors that can occur during write operations.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
@@ -219,6 +234,15 @@ pub enum WriteOperationError {
         name: String,
         first: String,
         second: String,
+    },
+    /// A fresh ZIP would hold an entry the archive reader quarantines: a name
+    /// that climbs out of the archive (a macOS `..\notes.txt` reads as
+    /// `../notes.txt`), nests too deep, or turns into nothing. Refused from the
+    /// plan, before a byte is compressed. `entry` is the name as it would be
+    /// written, so the message can say which file.
+    ArchiveEntryNameRefused {
+        entry: String,
+        reason: ArchiveNameRefusal,
     },
     SymlinkLoop {
         path: String,

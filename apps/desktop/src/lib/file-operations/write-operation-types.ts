@@ -9,7 +9,7 @@
  * import cycle back into `file-explorer/`.
  */
 
-import type { SortColumn, SortOrder, TrashRefusalKind } from '$lib/ipc/bindings'
+import type { ArchiveNameRefusal, SortColumn, SortOrder, TrashRefusalKind } from '$lib/ipc/bindings'
 
 // ============================================================================
 // Write operation types
@@ -195,6 +195,9 @@ export type WriteOperationError =
   | { type: 'destination_full'; path: string }
   | { type: 'destination_inside_source'; source: string; destination: string }
   | { type: 'duplicate_source_names'; name: string; first: string; second: string }
+  // A fresh zip would hold an entry the archive reader hides: a macOS `..\x`
+  // reads as `../x`. Refused from the plan, before anything is compressed.
+  | { type: 'archive_entry_name_refused'; entry: string; reason: ArchiveNameRefusal }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
   // `side` is null for a backend session that dropped (MTP, SMB), which has no

@@ -206,7 +206,11 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP, which must read back as exactly the
   planned tree (`ExpectedIndex`): each planned name run through the reader's own `sanitize_entry_name`, plus the
   ancestor directories the reader synthesizes, with nothing quarantined. A raw count comparison misfired because the
-  reader treats `\` as a separator, so a macOS file named `a\b.txt` reads back as `a/` + `b.txt`. SFTP validates through positioned reads; ADB uses bounded, safely quoted device-side Toybox `dd`
+  reader treats `\` as a separator, so a macOS file named `a\b.txt` reads back as `a/` + `b.txt`. A name the reader
+  would quarantine (a macOS `..\notes.txt` reads as `../notes.txt`, past 256 components, or nothing at all) is refused
+  from the PLAN instead, by `fresh_validate::check_entry_names` before the producer spawns, as a typed
+  `ArchiveEntryNameRefused` naming the entry: otherwise the whole compress and upload ran only for the stage check to
+  reject it without saying which file. The stage check stays as the backstop. SFTP validates through positioned reads; ADB uses bounded, safely quoted device-side Toybox `dd`
   windows, so neither downloads the staged archive. Cancellation or any mismatch abandons only the owned stage. Local
   POSIX publishes with its declared atomic replace rename. SMB's force rename deletes first, so despite direct generation it uses the existing tracked
   `DisplacedDestination`: set the original aside, land without force, restore on refusal, and surface

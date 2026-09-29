@@ -5473,6 +5473,20 @@ export type ArchiveFailureKind =
   // The archive entry could not be read for another archive-specific reason.
   | 'unreadable'
 
+/**
+ *  Why a name can't be a fresh-ZIP entry, for
+ *  [`WriteOperationError::ArchiveEntryNameRefused`]. Mirrors the archive
+ *  reader's own quarantine reasons (`cmdr_archive::read::QuarantineReason`), which
+ *  decide it.
+ */
+export type ArchiveNameRefusal =
+  // A `..` component, once `\` reads as a separator.
+  | 'parentTraversal'
+  // Deeper than the reader's component limit.
+  | 'tooDeep'
+  // Nothing left once separators and `.` components go.
+  | 'empty'
+
 // The live archive-password prompt, as the frontend raised it.
 export type ArchivePasswordPrompt = {
   // The archive's display name, the one the dialog shows (`photos.zip`).
@@ -16162,6 +16176,14 @@ export type WriteOperationError =
    *  Carries both paths, so the message can show which two clashed.
    */
   | { type: 'duplicate_source_names'; name: string; first: string; second: string }
+  /**
+   *  A fresh ZIP would hold an entry the archive reader quarantines: a name
+   *  that climbs out of the archive (a macOS `..\notes.txt` reads as
+   *  `../notes.txt`), nests too deep, or turns into nothing. Refused from the
+   *  plan, before a byte is compressed. `entry` is the name as it would be
+   *  written, so the message can say which file.
+   */
+  | { type: 'archive_entry_name_refused'; entry: string; reason: ArchiveNameRefusal }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
   /**

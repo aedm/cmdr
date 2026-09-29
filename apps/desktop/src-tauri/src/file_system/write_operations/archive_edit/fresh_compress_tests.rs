@@ -5,6 +5,7 @@ use crate::file_system::volume::{InMemoryVolume, ListingProgress, SpaceInfo};
 use crate::file_system::write_operations::archive_edit::fresh_plan::FreshPlan;
 use crate::file_system::write_operations::archive_edit::fresh_zip::{FreshZipEntry, FreshZipSource};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+use crate::file_system::write_operations::types::{ArchiveNameRefusal, WriteOperationPhase};
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::wait_until_async;
 
@@ -658,6 +659,109 @@ async fn a_file_whose_name_holds_a_backslash_compresses_and_validates() {
         super::super::test_support::read_entry(&archive, "a\\b.txt").as_deref(),
         Some(b"backslash".as_slice())
     );
+}
+
+/// Compresses `selected` (relative to `source_dir`) into a new local archive and
+/// waits for the terminal event.
+async fn compress_local_selection(
+    source_dir: &Path,
+    selected: &[&str],
+) -> (Arc<CollectorEventSink>, tempfile::TempDir, PathBuf) {
+    let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", source_dir.to_path_buf()));
+    let dest_dir = tempfile::tempdir().expect("tempdir");
+    let archive = dest_dir.path().join("out.zip");
+    let events = Arc::new(CollectorEventSink::new());
+    super::super::compress::compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source,
+        selected.iter().map(PathBuf::from).collect(),
+        archive.clone(),
+        super::super::test_support::unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        Initiator::User,
+    )
+    .await
+    .expect("start compress");
+    wait_for_terminal(&events).await;
+    (events, dest_dir, archive)
+}
+
+/// The op failed from its plan: no byte was compressed and no stage exists.
+fn assert_refused_before_producing(events: &CollectorEventSink, dest_dir: &Path) {
+    assert_eq!(events.errors.lock_ignore_poison().len(), 1, "the op fails");
+    assert!(
+        !events
+            .progress
+            .lock_ignore_poison()
+            .iter()
+            .any(|event| event.phase == WriteOperationPhase::Compressing),
+        "it fails from the plan, before compressing a byte"
+    );
+    let leftovers = std::fs::read_dir(dest_dir).expect("list dest").count();
+    assert_eq!(leftovers, 0, "nothing lands at the destination, not even a stage");
+}
+
+#[tokio::test]
+async fn a_name_the_archive_reader_would_hide_fails_before_compressing() {
+    // `..\evil.txt` is an ordinary macOS file name; inside a zip it reads as
+    // `../evil.txt`, which the reader quarantines (and other tools may extract
+    // outside the target folder).
+    let source_dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(source_dir.path().join("..\\evil.txt"), b"x").expect("write source");
+
+    let (events, dest_dir, _archive) = compress_local_selection(source_dir.path(), &["..\\evil.txt"]).await;
+
+    assert_refused_before_producing(&events, dest_dir.path());
+    assert!(matches!(
+        &events.errors.lock_ignore_poison()[0].error,
+        WriteOperationError::ArchiveEntryNameRefused {
+            entry,
+            reason: ArchiveNameRefusal::ParentTraversal,
+        } if entry == "..\\evil.txt"
+    ));
+}
+
+fn plan_of(names: &[&str]) -> FreshPlan {
+    FreshPlan {
+        source_volume: Arc::new(InMemoryVolume::new("source")),
+        entries: names
+            .iter()
+            .map(|name| FreshZipEntry {
+                name: (*name).to_string(),
+                source: FreshZipSource::Bytes(Vec::new()),
+                size: 0,
+                is_directory: name.ends_with('/'),
+                modified: None,
+                unix_mode: None,
+            })
+            .collect(),
+        remote_feeds: Vec::new(),
+        source_bytes: 0,
+        skipped: 0,
+    }
+}
+
+#[test]
+fn every_reader_quarantine_reason_is_refused_from_the_plan() {
+    // Past the reader's 256-component limit (`MAX_COMPONENT_DEPTH`).
+    let deep = vec!["d"; 300].join("/");
+    for (name, reason) in [
+        ("x/..\\y.txt", ArchiveNameRefusal::ParentTraversal),
+        (deep.as_str(), ArchiveNameRefusal::TooDeep),
+        ("\\.\\", ArchiveNameRefusal::Empty),
+    ] {
+        assert!(
+            matches!(
+                check_entry_names(&plan_of(&["ok.txt", name])),
+                Err(WriteOperationError::ArchiveEntryNameRefused { reason: got, .. }) if got == reason
+            ),
+            "{reason:?}"
+        );
+    }
+    assert!(check_entry_names(&plan_of(&["ok.txt", "a\\b.txt"])).is_ok());
 }
 
 #[test]

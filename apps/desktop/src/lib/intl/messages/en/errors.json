@@ -1947,6 +1947,41 @@
     "description": "Recovery suggestion when the file name is too long for the destination. Plain text.",
     "screenshot": "transfer-error-name_too_long.png"
   },
+  "errors.write.archiveEntryNameRefused.title": "This name can’t go in a zip",
+  "@errors.write.archiveEntryNameRefused.title": {
+    "description": "Title of the compress error dialog when one of the selected files has a name that a zip can't hold safely. Cmdr refuses before compressing anything. Plain text. This is a raw errors.* string (no ICU)."
+  },
+  "errors.write.archiveEntryNameRefused.message.parentTraversal": "{entry} has a name that points outside the zip once a backslash counts as a folder separator, which is how zip tools read it. Opening the zip would hide it, and some tools would put it outside the folder they extract to.",
+  "@errors.write.archiveEntryNameRefused.message.parentTraversal": {
+    "description": "Body of that dialog when the name contains '..' as a path part once backslashes read as separators (a macOS file named ..\\notes.txt reads as ../notes.txt inside a zip). Plain text, raw errors.* string (no ICU): keep {entry} spelled exactly.",
+    "placeholders": {
+      "entry": {
+        "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
+      }
+    }
+  },
+  "errors.write.archiveEntryNameRefused.message.tooDeep": "{entry} sits inside more folders than a zip can safely hold, so opening the zip would hide it.",
+  "@errors.write.archiveEntryNameRefused.message.tooDeep": {
+    "description": "Body of that dialog when the file is nested more than 256 folders deep. Plain text, raw errors.* string (no ICU): keep {entry} spelled exactly.",
+    "placeholders": {
+      "entry": {
+        "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
+      }
+    }
+  },
+  "errors.write.archiveEntryNameRefused.message.empty": "{entry} has a name that turns into nothing inside a zip, so opening the zip would hide it.",
+  "@errors.write.archiveEntryNameRefused.message.empty": {
+    "description": "Body of that dialog when the name is made only of separators and dots once backslashes read as separators. Plain text, raw errors.* string (no ICU): keep {entry} spelled exactly.",
+    "placeholders": {
+      "entry": {
+        "description": "The file's path inside the zip as Cmdr would have written it, for example folder/..\\notes.txt. Inserted verbatim. Do not translate or reformat it."
+      }
+    }
+  },
+  "errors.write.archiveEntryNameRefused.suggestion": "Rename it, or leave it out of the selection, then compress again.",
+  "@errors.write.archiveEntryNameRefused.suggestion": {
+    "description": "Recovery suggestion for any of those three bodies. Plain text. This is a raw errors.* string (no ICU)."
+  },
   "errors.write.invalidName.title": "Invalid file name",
   "errors.write.invalidName.message": "{path} has a name the destination can’t store.",
   "errors.write.invalidName.suggestion": "Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.",

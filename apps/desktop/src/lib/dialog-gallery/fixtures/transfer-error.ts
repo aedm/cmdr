@@ -108,6 +108,14 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       second: '/Users/david/Documents/2026/invoices',
     },
   },
+  archive_entry_name_refused: {
+    operationType: 'compress',
+    error: {
+      type: 'archive_entry_name_refused',
+      entry: 'Reports/..\\notes.txt',
+      reason: 'parentTraversal',
+    },
+  },
   symlink_loop: {
     operationType: 'copy',
     error: { type: 'symlink_loop', path: '/Users/david/dev/node_modules/.pnpm/self/node_modules/self' },

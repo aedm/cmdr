@@ -300,6 +300,27 @@ const cases: Case[] = [
     },
   },
   {
+    name: 'archive_entry_name_refused (parentTraversal)',
+    error: { type: 'archive_entry_name_refused', entry: 'docs/..\\notes.txt', reason: 'parentTraversal' },
+    op: 'compress',
+    expected: {
+      title: 'This name can’t go in a zip',
+      message:
+        'docs/..\\notes.txt has a name that points outside the zip once a backslash counts as a folder separator, which is how zip tools read it. Opening the zip would hide it, and some tools would put it outside the folder they extract to.',
+      suggestion: 'Rename it, or leave it out of the selection, then compress again.',
+    },
+  },
+  {
+    name: 'archive_entry_name_refused (tooDeep, escapes HTML)',
+    error: { type: 'archive_entry_name_refused', entry: 'a/<b>.txt', reason: 'tooDeep' },
+    op: 'compress',
+    expected: {
+      title: 'This name can’t go in a zip',
+      message: 'a/&lt;b&gt;.txt sits inside more folders than a zip can safely hold, so opening the zip would hide it.',
+      suggestion: 'Rename it, or leave it out of the selection, then compress again.',
+    },
+  },
+  {
     name: 'io_error (delete)',
     error: { type: 'io_error', path: '/p', message: 'm' },
     op: 'delete',

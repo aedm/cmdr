@@ -19,7 +19,7 @@ use super::super::types::{ConflictResolution, WriteOperationError, WriteOperatio
 use super::edit_error::EditError;
 use super::engine::{MutatorHooks, emit_archive_terminal};
 use super::fresh_plan::{FreshPlan, PlanProgress, RemoteFeed, plan_sources, validate_aliases};
-use super::fresh_validate::{ExpectedIndex, validate_stage};
+use super::fresh_validate::{ExpectedIndex, check_entry_names, validate_stage};
 use super::fresh_zip::{FreshZipCancellation, FreshZipError, FreshZipProgressObserver, spawn_fresh_zip_with_progress};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{
@@ -260,6 +260,7 @@ async fn run(
         &report_walk,
     )
     .await?;
+    check_entry_names(&plan).map_err(EditError::Op)?;
     let planned_dirs = plan.entries.iter().filter(|entry| entry.is_directory).count();
     hooks.emit_scan_progress(
         PlanProgress {
