@@ -631,7 +631,7 @@ async fn feed_remote(
 /// archive reader gives it, plus the ancestor directories the reader
 /// synthesizes. Comparing raw entry counts misfires, because the reader treats
 /// `\` as a separator: a file named `a\b.txt` reads back as `a/` + `b.txt`.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 struct ExpectedIndex {
     /// `(path, is_dir)` for every node, root excluded.
     nodes: BTreeSet<(String, bool)>,
@@ -650,7 +650,10 @@ impl ExpectedIndex {
     }
 
     fn of_names<'a>(names: impl IntoIterator<Item = (&'a str, bool)>) -> Self {
-        let mut expected = Self::default();
+        let mut expected = Self {
+            nodes: BTreeSet::new(),
+            quarantined: 0,
+        };
         for (name, is_dir) in names {
             let SanitizedName::Accepted(path) = sanitize_entry_name(name) else {
                 expected.quarantined += 1;

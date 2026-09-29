@@ -683,7 +683,7 @@ async fn validation_rejects_byte_count_drift_before_parsing() {
         .expect("create stage");
 
     assert!(
-        validate_stage(&volume, Path::new("archive.zip"), 9, 8, &ExpectedIndex::default())
+        validate_stage(&volume, Path::new("archive.zip"), 9, 8, &ExpectedIndex::of_names([]))
             .await
             .is_err()
     );
@@ -700,8 +700,14 @@ async fn validation_rejects_corrupt_zip_bytes_even_when_counts_agree() {
 
     let size = corrupt.len() as u64;
     assert!(
-        validate_stage(&volume, Path::new("archive.zip"), size, size, &ExpectedIndex::default())
-            .await
-            .is_err()
+        validate_stage(
+            &volume,
+            Path::new("archive.zip"),
+            size,
+            size,
+            &ExpectedIndex::of_names([])
+        )
+        .await
+        .is_err()
     );
 }
