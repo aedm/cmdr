@@ -1100,12 +1100,12 @@ path, which always says "gone", and the walk lands on the server root instead of
 the volume's `connectionState` (`getConnectionState`), so a live session's rungs wait out a busy NAS's slow `stat`
 instead of skipping a parent that's still there (`../navigation/DETAILS.md` § "Non-blocking navigation pattern"). And
 when `resolveValidPath` comes back with the failed path itself (a volume root, or a scheme path's floor) or with `null`,
-the branch shows the error pane rather than calling `navigateToFallback`, which would re-list the same failure. The
-walk passes `keepSilentVolume`, so a volume root that doesn't answer in time comes back as that root and the error shows
-on the picked drive, ❌ never `~` on the boot disk (`../navigation/DETAILS.md` § `path-resolution.ts`). ❌ Don't
-drop that guard: a phone's pane once re-listed `adb://<serial>` about 15 times a second through exactly that loop. A
-saved server nobody connected, or a phone nobody dialed, answers "couldn't tell", so the branch shows the error without
-walking at all.
+the branch shows the error pane rather than calling `navigateToFallback`, which would re-list the same failure. The walk
+passes `keepSilentVolume`, so a volume root that doesn't answer in time comes back as that root and the error shows on
+the picked drive, ❌ never `~` on the boot disk (`../navigation/DETAILS.md` § `path-resolution.ts`). ❌ Don't drop that
+guard: a phone's pane once re-listed `adb://<serial>` about 15 times a second through exactly that loop. A saved server
+nobody connected, or a phone nobody dialed, answers "couldn't tell", so the branch shows the error without walking at
+all.
 
 _Decision / why:_ assuming the pane's volume still owns the fallback target strands the pane. An SMB share unmounts, its
 volume id is unregistered, the walk-up climbs from `/Volumes/<share>/sub` out to `/Volumes` (owned by the ROOT volume),

@@ -465,8 +465,8 @@ whichever column is still cut off, and neither can hoard space it doesn't need.
 - **Digits are measured as the font's widest digit**: `DateLabel` renders `tabular-nums`, which canvas can't model. It
   over-reserves by a pixel or two, never clips. Same trick as `measure-column-widths.ts`.
 - **Tracks ease between layouts** (`--transition-slow` on `grid-template-columns`, `prefers-reduced-motion` respected),
-  except for the first measured layout, so opening the dialog doesn't animate the columns in. During a dialog resize
-  the template string rarely changes (the flex track absorbs it), so resizing doesn't lag.
+  except for the first measured layout, so opening the dialog doesn't animate the columns in. During a dialog resize the
+  template string rarely changes (the flex track absorbs it), so resizing doesn't lag.
 - **Selection (`showPathColumn: false`) keeps Name as the `1fr` flex track with fixed `10ch` / `16ch` Size and
   Modified.** With no Path column there's nothing to share, and Selection can list a whole folder, so it skips the
   per-row measuring.

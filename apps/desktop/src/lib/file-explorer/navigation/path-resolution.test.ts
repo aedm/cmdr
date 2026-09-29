@@ -13,9 +13,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { pathExists, pathExistsChecked } = vi.hoisted(() => ({
   pathExists: vi.fn((_path: string, _volumeId?: string): Promise<boolean> => Promise.resolve(false)),
-  pathExistsChecked: vi.fn(
-    (_path: string, _volumeId?: string): Promise<{ data: boolean; timedOut: boolean }> =>
-      Promise.resolve({ data: false, timedOut: false }),
+  pathExistsChecked: vi.fn((_path: string, _volumeId?: string): Promise<{ data: boolean; timedOut: boolean }> =>
+    Promise.resolve({ data: false, timedOut: false }),
   ),
 }))
 vi.mock('$lib/tauri-commands', () => ({ pathExists, pathExistsChecked }))
@@ -112,7 +111,9 @@ describe('resolveValidPath with a volume root on the same scheme', () => {
 describe('resolveValidPath on a volume whose root does not answer', () => {
   const root = '/Users/ada/pCloud Drive'
   /** The volume's rungs never answer; `~` and `/` do. */
-  const silentVolume = vi.fn((p: string) => (p === '~' || p === '/' ? Promise.resolve(true) : new Promise<boolean>(() => {})))
+  const silentVolume = vi.fn((p: string) =>
+    p === '~' || p === '/' ? Promise.resolve(true) : new Promise<boolean>(() => {}),
+  )
 
   it('stays on the volume root when the caller keeps a silent volume', async () => {
     const resolved = await resolveValidPath(`${root}/Docs`, {
@@ -149,7 +150,11 @@ describe('resolveValidPath on a volume whose root does not answer', () => {
   })
 
   it('leaves a silent volume for a caller that walks to leave it (the SMB handlers)', async () => {
-    const resolved = await resolveValidPath(`${root}/Docs`, { pathExistsFn: silentVolume, timeoutMs: 10, volumeRoot: root })
+    const resolved = await resolveValidPath(`${root}/Docs`, {
+      pathExistsFn: silentVolume,
+      timeoutMs: 10,
+      volumeRoot: root,
+    })
     expect(resolved).toBe('~')
   })
 })

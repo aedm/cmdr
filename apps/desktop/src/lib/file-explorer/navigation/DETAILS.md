@@ -134,10 +134,10 @@ own 2s timeout, no frontend wrapper needed).
 ## `path-resolution.ts`
 
 `resolveValidPath(targetPath, options?)`: walks parent tree until an existing directory is found. Accepts optional
-`{ pathExistsFn, timeoutMs, volumeRoot, volumeId, connectionState, keepSilentVolume }`: defaults to Tauri `pathExists` with 1s timeout per
-step, 11 s on the volume's own rungs when `connectionState` is `direct`. Used both at runtime (with timeouts) and at
-startup via `app-status-store.ts`'s `resolvePersistedPath` wrapper (no timeout, injected `pathExistsFn`). Fallback
-chain: parent dirs → `~` → `/` → `null` (volume unmounted).
+`{ pathExistsFn, timeoutMs, volumeRoot, volumeId, connectionState, keepSilentVolume }`: defaults to Tauri `pathExists`
+with 1s timeout per step, 11 s on the volume's own rungs when `connectionState` is `direct`. Used both at runtime (with
+timeouts) and at startup via `app-status-store.ts`'s `resolvePersistedPath` wrapper (no timeout, injected
+`pathExistsFn`). Fallback chain: parent dirs → `~` → `/` → `null` (volume unmounted).
 
 **Which volume the walk asks.** Every parent probe goes to `volumeId`; `~` and `/` always go to the boot disk. Without
 an id the backend asks `root`, which says "gone" for every path on a phone or server, and the walk lands on the server

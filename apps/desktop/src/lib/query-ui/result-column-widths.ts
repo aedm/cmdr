@@ -89,7 +89,12 @@ function widestDigit(measure: (text: string) => number): string {
   return best
 }
 
-export function measureColumnDemands({ rows, headers, measureName, measureText }: MeasureColumnDemandsArgs): ColumnDemands {
+export function measureColumnDemands({
+  rows,
+  headers,
+  measureName,
+  measureText,
+}: MeasureColumnDemandsArgs): ColumnDemands {
   const digit = widestDigit(measureText)
   const measureTabular = (text: string): number => measureText(text.replace(/[0-9]/g, digit))
   const separator = measureText('/') + PILL_SEPARATOR_GAP_PX
