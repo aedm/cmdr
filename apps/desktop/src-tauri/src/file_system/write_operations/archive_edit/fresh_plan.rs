@@ -241,8 +241,11 @@ async fn plan_sources_with_context(
 
 /// A symlink (never followed: its target may be an ancestor, or elsewhere in the
 /// selection) or a special file (fifo, socket, device) that a ZIP can't hold.
-/// Local and SFTP listings carry the full `st_mode`, so the file-type bits
-/// answer without a syscall; a mode with no type bits (SMB, MTP) is never special.
+/// Local and ADB listings carry the full `st_mode` in `permissions`, and SFTP
+/// its file-type bits alone (`cmdr-sftp`'s `mapping.rs`), so the type answers
+/// without opening anything. ❗ That matters: a read of a FIFO blocks, and on
+/// SFTP it blocks the one `sftp-server` every operation shares. SMB and MTP have
+/// no special files and report no type bits, which never reads as special.
 fn is_skipped_kind(entry: &FileEntry) -> bool {
     const S_IFMT: u32 = 0o170_000;
     const REPRESENTABLE: [u32; 3] = [0o100_000, 0o040_000, 0o120_000]; // file, directory, symlink

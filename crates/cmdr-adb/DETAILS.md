@@ -60,6 +60,10 @@ instead: no binary means no server to reconnect to, and a machine with no Androi
 warning every 15 s for the whole session. `forget_start_attempt` plus a fresh `track_devices` is how a caller revives it
 after the user installs the tools.
 
+**`FileEntry.permissions` is the whole `st_mode`**, file-type bits included, as a local listing has it
+(`volume/mapping.rs`): a walker skips a FIFO, socket, or device off those bits rather than opening it, and copies carry
+only the low nine bits anyway.
+
 **Sync service** (`sync.rs`): after `sync:` → `OKAY`, binary little-endian packets `[id: 4 ASCII][arg: u32 LE]`.
 
 - `STAT` + len + path → `STAT` + mode + size + mtime (all u32; mode 0 = doesn't exist). `STA2` (feature `stat_v2`) →

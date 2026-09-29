@@ -19,7 +19,10 @@ pub(super) fn stat_to_file_entry(name: &str, app_path: &str, stat: &SyncStat) ->
     let mut entry = FileEntry::new(name.to_string(), app_path.to_string(), is_directory, is_symlink);
     entry.size = if is_directory { None } else { Some(stat.size) };
     entry.modified_at = u64::try_from(stat.mtime).ok();
-    entry.permissions = stat.mode & 0o7777;
+    // The whole `st_mode`, file-type bits included (as a local listing has it),
+    // so a walker can skip a FIFO, socket, or device without opening it.
+    // Copies carry only the low nine bits (`landed_mode`).
+    entry.permissions = stat.mode & 0o177_777;
     entry
 }
 
@@ -31,4 +34,24 @@ pub(super) fn with_link_target(mut entry: FileEntry, target: &SyncStat) -> FileE
         entry.size = None;
     }
     entry
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_fifo_keeps_its_file_type_bits_beside_its_mode() {
+        // A walker that can't tell a FIFO from an empty file opens it, and a
+        // `RECV` of a FIFO waits until something writes into it.
+        let stat = SyncStat {
+            mode: 0o010_644,
+            size: 0,
+            mtime: 0,
+            errno: None,
+        };
+        let entry = stat_to_file_entry("pipe", "adb://s/pipe", &stat);
+        assert_eq!(entry.permissions & 0o170_000, 0o010_000);
+        assert_eq!(entry.permissions & 0o7777, 0o644, "the mode still travels");
+    }
 }

@@ -817,6 +817,12 @@ app sites run one — joined ONTO the root, and strip back to a real, wrong serv
 `apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/sftp_transfer_semantics_test.rs` is the cell
 that would catch it.
 
+**`FileEntry.permissions` carries the file-type bits and nothing else** (`mapping.rs::entry_of_type`). The type is what
+lets a walker (the fresh-ZIP planner) skip a FIFO, socket, or device without opening it: a read of a FIFO blocks the
+single-threaded `sftp-server`, and with it every operation sharing this volume's channel. The permission bits stay unset
+on purpose, because copies carry the low nine as a mode (`landed_mode`) and this backend doesn't report modes
+(`reports_posix_mode` stays `false`).
+
 ❗ **A bare server-absolute path is REFUSED**, not accepted as a courtesy: with the prefix in place the app never spells
 one, so leniency buys only that hole. The three root aliases stay (`/`, `.`, the empty path).
 

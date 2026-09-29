@@ -147,8 +147,10 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   local canonical/inode aliases plus destinations inside a source. The walk stats only the SELECTED items: every child's
   facts come from its parent's listing, the `scan_walk` shape, because a stat per child cost one network round trip per
   file on SMB and SFTP and a whole parent listing per file on MTP. Symlinks read off `is_symlink`, and special files
-  (fifo, socket, device) off the file-type bits of `permissions`, which local and SFTP listings carry as the full
-  `st_mode`; a mode with no type bits (SMB, MTP) is never special. The walk reports itself as the indeterminate
+  (fifo, socket, device) off the file-type bits of `permissions`: local and ADB listings carry the full `st_mode`,
+  SFTP carries the type bits alone (its permission bits stay unset, so copies keep carrying no SFTP mode), and SMB and
+  MTP report none, which never reads as special. Opening a FIFO blocks, and on SFTP it blocks the one `sftp-server`
+  every operation on the volume shares. The walk reports itself as the indeterminate
   `Scanning` phase (files, directories, and bytes found so far, plus the directory being listed), throttled to the
   progress interval, with one final unthrottled tally before `Compressing` starts. On one remote volume it applies the same
   lexical containment rule; unrelated remote volume objects are not rejected merely because they expose no inode API.
