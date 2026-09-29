@@ -31,13 +31,9 @@
     import type { MessageKey } from '$lib/intl/keys.gen'
     import { stallNoticeFor, waitLineFor } from './transfer-stall'
     import { archivePhaseLabel, isIndeterminateProgressPhase, progressCountKind } from '../progress-readout'
-    import {
-        inFlightRollbackTooltipKey,
-        inFlightRollbackVariant,
-        reversalWindowClosed,
-        rollbackConfirmVariant,
-        reversalTitleKey,
-    } from '../reversal-wording'
+    import { rollbackConfirmVariant, reversalTitleKey } from '../reversal-wording'
+    import TransferRollbackControls from './TransferRollbackControls.svelte'
+    import { createTransferRollback } from './transfer-rollback.svelte'
     import { opKindForTransferType } from '../op-kind'
     import { getMainWindowOperationRows } from '$lib/file-operations/queue/main-window-operations.svelte'
     import { hasOtherQueuedWork } from '$lib/file-operations/queue/queue-backlog'
@@ -179,10 +175,6 @@
             sourceVolumeId === (destVolumeId ?? sourceVolumeId),
     )
 
-    const ROLLBACK_UNAVAILABLE_TOOLTIP = $derived(
-        tString('fileOperations.transferProgress.rollbackUnavailableTooltip'),
-    )
-
     // This dialog as a VIEW of one operation: the factory dispatches it, binds
     // its session, and owns what belongs to a piece of UI (the anti-flicker
     // floor, dismissal, the Queue handoff). Everything the operation itself
@@ -210,25 +202,7 @@
         mcpRequestId,
     })
 
-    /** Rollback is asked about before it happens: it undoes everything the
-     *  operation has written or moved, and a file it overwrote has no backup
-     *  either way, so one mis-click on a button that sits beside a harmless
-     *  Cancel is unrecoverable. Both entry points (this dialog's own button and
-     *  the conflict body's) go through `handleCancel(true)`, so the question
-     *  hangs off that one call. `../DETAILS.md` § "Rollback asks first". */
-    let rollbackAsked = $state(false)
-
-    /** What rolling THIS operation back would do to the files, so the question
-     *  matches the operation: stopping a copy deletes what it wrote, stopping a
-     *  move carries back what it moved. ❌ Never a fixed `stopAndDelete` — red
-     *  "this deletes everything" over a move's harmless reversal pushes people
-     *  onto the wrong button. `../reversal-wording.ts`. */
     const opKind = $derived(opKindForTransferType(operationType))
-    const inFlightVariant = $derived(inFlightRollbackVariant(opKind))
-    /** What the live Rollback button promises, which is the whole difference from
-     *  the Cancel beside it: a copy's reversal deletes what it wrote, a move's
-     *  carries it back. */
-    const liveRollbackTooltip = $derived(tString(inFlightRollbackTooltipKey(inFlightVariant)))
 
     // Local aliases over the factory getters so the markup reads the same names
     // it always has. Each tracks reactive state (the view's own, or the
@@ -243,24 +217,17 @@
     const reversalVariant = $derived(reverses === null ? null : rollbackConfirmVariant(reverses))
     const rollbackUnavailable = $derived(progress.rollbackUnavailable)
 
-    /** Why Rollback is switched off right now, or `null` while it really works.
-     *  Two reasons, and they answer different halves of the question:
-     *
-     *  - the operation's STRATEGY can't reverse at all (`supportsRollback` off its
-     *    registry row — the authority wherever it has arrived, and an adopted
-     *    view's only source; the props-only same-volume-move rule stands beside it
-     *    for the frames before the first snapshot lands),
-     *  - or it could, and the moment has passed: a move between filesystems on its
-     *    source-deletion phase has already landed every file
-     *    (`../reversal-wording.ts`).
-     *
-     *  Either way the plain Cancel above stays live and stays accurate, which is
-     *  what the second tooltip points at. */
-    const rollbackBlockedTooltip = $derived.by(() => {
-        if (isSameVolumeMove || rollbackUnavailable) return ROLLBACK_UNAVAILABLE_TOOLTIP
-        if (reversalWindowClosed(opKind, phase))
-            return tString('fileOperations.transferProgress.rollbackAlreadyLandedTooltip')
-        return null
+    /** Rollback is asked about before it happens: it undoes everything the
+     *  operation has written or moved, and a file it overwrote has no backup
+     *  either way, so one mis-click beside a harmless Cancel is unrecoverable.
+     *  The button and the conflict body both ask through `rollback.request`. */
+    const rollback = createTransferRollback({
+        opKind: () => opKind,
+        phase: () => phase,
+        isSameVolumeMove: () => isSameVolumeMove,
+        rollbackUnavailable: () => rollbackUnavailable,
+        operationSettled: () => progress.operationSettled,
+        rollBack: () => void progress.handleCancel(true),
     })
     const isCancelling = $derived(progress.isCancelling)
     const cancelEventReceived = $derived(progress.cancelEventReceived)
@@ -449,7 +416,7 @@
             }}
             onCancel={(rollback: boolean) => {
                 if (rollback) {
-                    rollbackAsked = true
+                    rollback.request()
                     return
                 }
                 void progress.handleCancel(false)
@@ -642,31 +609,11 @@
                  `supportsRollback: false`. A red button here would offer to
                  re-apply what the person just chose to undo. -->
             {#if (isCopy || isMove) && reversalVariant === null}
-                {#if isRollingBack}
-                    <Button variant="danger" disabled>{tString('fileOperations.transferProgress.titleRollingBack')}</Button
-                    >
-                {:else}
-                    <!-- One button, three readings. The two BLOCKED ones are
-                         `aria-disabled` rather than `disabled`: each has a reason
-                         worth reading, and a `disabled` button leaves the tab
-                         order, taking its tooltip with it. The press is guarded
-                         instead, so a blocked click asks nothing. `disabled` stays
-                         right for the scan and the settle window, where nothing
-                         has been written (or the operation is already over) and
-                         there is nothing to explain — and disabled rather than
-                         hidden, so the button row doesn't reshuffle when counting
-                         ends. -->
-                    <Button
-                        variant="danger"
-                        ariaDisabled={rollbackBlockedTooltip !== null}
-                        tooltipContent={rollbackBlockedTooltip ?? liveRollbackTooltip}
-                        onclick={() => {
-                            if (rollbackBlockedTooltip === null) rollbackAsked = true
-                        }}
-                        disabled={isCancelling || operationSettled || isScanning}
-                        >{tString('fileOperations.transferProgress.conflictRollback')}</Button
-                    >
-                {/if}
+                <TransferRollbackControls
+                    {rollback}
+                    {isRollingBack}
+                    disabled={isCancelling || operationSettled || isScanning}
+                />
             {/if}
         </div>
     {/if}
@@ -678,17 +625,8 @@
      operation settles, because there is nothing left to undo — and the moment
      Rollback is blocked, since a move that reaches its source-deletion phase with
      the question up would otherwise still be promising a journey home. -->
-{#if rollbackAsked && !operationSettled && rollbackBlockedTooltip === null}
-    <RollbackConfirmDialog
-        variant={inFlightVariant}
-        onConfirm={() => {
-            rollbackAsked = false
-            void progress.handleCancel(true)
-        }}
-        onCancel={() => {
-            rollbackAsked = false
-        }}
-    />
+{#if rollback.confirming}
+    <RollbackConfirmDialog variant={rollback.variant} onConfirm={rollback.confirm} onCancel={rollback.dismiss} />
 {/if}
 
 <style>
