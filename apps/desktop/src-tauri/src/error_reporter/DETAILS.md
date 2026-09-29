@@ -508,10 +508,15 @@ This enum is the privacy boundary. Serde `deny_unknown_fields` rejects unknown v
 extra keys, the former `kind` / `message` / `ctx` shape, and nested values before they can
 reach the ring. Adding a producer therefore requires a reviewed enum variant and explicit
 typed fields; there is no generic map or recursive redaction path. The command id is the
-only string payload, bounded to 128 code points, and the frontend supplies it from its
-closed `CommandId` union. Snapshots are included unchanged in every `BundleManifest`, so
-manual reports, auto reports, previews, saved bundles, and user-triggered crash-log bundles
-all consume the same safe representation. Empty buffers serialize as `[]`.
+only string payload. It must be at most 128 code points and equal one id in the frontend's
+authoritative `COMMAND_IDS` tuple. `build.rs` parses that tuple into an `OUT_DIR` Rust slice
+at compile time and watches the source file, so the backend boundary does not maintain a
+second registry. A source-shape change fails the build rather than yielding a partial
+allowlist. The generated IPC type deliberately remains `commandId: string`, and
+`apps/desktop/src/lib/error-reporter/breadcrumbs.ts` narrows producers to `CommandId`.
+Snapshots are included unchanged in every `BundleManifest`, so manual reports, auto
+reports, previews, saved bundles, and user-triggered crash-log bundles all consume the
+same safe representation. Empty buffers serialize as `[]`.
 
 Wire new event sources from the FE via
 `apps/desktop/src/lib/error-reporter/breadcrumbs.ts::recordBreadcrumb`. Wire

@@ -101,6 +101,12 @@ CheckDefinition{
   entry EXCLUDES matching paths from the set (including from the globals); it's the only way to make a set too narrow,
   so read `../DETAILS.md` § "Exclusions" before adding one, and give it a test.
 
+`rustEmbeddedInputs` carries non-Rust files compiled into or parsed by the app crate: `CHANGELOG.md`, the shared drive
+figure cases, and the frontend's authoritative `command-ids.ts` tuple. The last one feeds `src-tauri/build.rs`'s
+generated breadcrumb allowlist and the Rust drift test, so editing the registry must invalidate every Rust lane that
+covers the app. `TestRustInputsCoverEveryEmbeddedFile` discovers the test's `include_str!` edge and fails any lane that
+can see the embedding Rust source but not the tuple.
+
 ### The Go lanes split three ways
 
 The ten `scripts-go-*` lanes all walk the same two trees (`GetGoDirectories()`: `scripts/` and `apps/desktop/scripts/`),

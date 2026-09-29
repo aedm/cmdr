@@ -153,7 +153,9 @@ var rustWorkspaceConfigInputs = []string{
 // binary with `include_str!`. `whats_new` embeds the repo-root changelog and a
 // test parses the real thing, so it's a compile-time source like any `.rs` file.
 // The disk-space emit gate's test reads the drive-figure table it shares with the
-// frontend (`space_poller/readout.rs`).
+// frontend (`space_poller/readout.rs`). The breadcrumb validator's generated
+// vocabulary and drift test read the frontend command-id tuple, so a registry edit
+// must invalidate every Rust lane that compiles or scans the app crate.
 //
 // A lane carries this whenever its own set covers the tree that does the
 // embedding, which is what `TestRustInputsCoverEveryEmbeddedFile` walks the whole
@@ -163,6 +165,7 @@ var rustWorkspaceConfigInputs = []string{
 // edits and reported a green describing the previous content.
 var rustEmbeddedInputs = []string{
 	"CHANGELOG.md",
+	"apps/desktop/src/lib/commands/command-ids.ts",
 	"apps/desktop/src/lib/units/drive-figure-cases.json",
 }
 

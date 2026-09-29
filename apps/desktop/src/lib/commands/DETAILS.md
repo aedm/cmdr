@@ -93,6 +93,13 @@ navigation and MCP-only per-pane commands. `app.commandPalette` is `showInPalett
 inside itself makes no sense). `getPaletteCommands()` is the only filter exported; `commands` (the full array) is
 exported too, for shortcut documentation and Settings panes.
 
+`command-ids.ts::COMMAND_IDS` is also the backend's command-breadcrumb vocabulary. `src-tauri/build.rs` parses the tuple
+into an `OUT_DIR` Rust slice, and `error_reporter/breadcrumbs.rs` retains a command event only when its id is in that
+generated slice. The generator fails on unrecognized tuple syntax instead of producing a partial allowlist, and the Rust
+drift test compares the compiled slice back to the authored tuple. This keeps one registry while closing the untrusted
+IPC boundary; the generated Specta payload remains `commandId: string`, and the frontend wrapper narrows it to
+`CommandId`.
+
 `isMacOS()` is called at module load so the registry contains platform-correct names and `showInPalette` values
 (`Get info`, `Quick look`, `Show in Finder` only make sense on macOS), keeping the palette and shortcut systems
 platform-aware without platform checks scattered through the UI.

@@ -3,6 +3,8 @@ fn main() {
     println!("cargo:rerun-if-changed=resources/ai/.version");
     println!("cargo:rerun-if-changed=../scripts/download-llama-server.go");
 
+    generate_command_ids();
+
     // Ensure resources/ai/ is populated before tauri_build::build() validates the
     // resource glob in tauri.conf.json. The Go script is idempotent (skips when
     // .version matches) and symlinks from the main clone in worktrees instead of
@@ -48,6 +50,71 @@ fn main() {
             panic!("tauri-build failed: {error:#}");
         }
     }
+}
+
+/// Compiles the frontend's authoritative command-id tuple into a Rust slice.
+///
+/// Breadcrumb command ids cross an untrusted IPC boundary, so Rust must validate
+/// them without maintaining a second 100+ item registry. The deliberately narrow
+/// parser fails the build if `command-ids.ts` stops being one single-quoted id per
+/// line: a source-shape change must update this generator rather than silently
+/// producing a partial privacy allowlist.
+fn generate_command_ids() {
+    const SOURCE_RELATIVE_TO_MANIFEST: &str = "../src/lib/commands/command-ids.ts";
+    const START: &str = "export const COMMAND_IDS = [";
+    const END: &str = "] as const";
+
+    println!("cargo:rerun-if-changed={SOURCE_RELATIVE_TO_MANIFEST}");
+
+    let manifest_dir = std::path::PathBuf::from(
+        std::env::var_os("CARGO_MANIFEST_DIR").expect("Cargo sets CARGO_MANIFEST_DIR for build scripts"),
+    );
+    let source_path = manifest_dir.join(SOURCE_RELATIVE_TO_MANIFEST);
+    let source = std::fs::read_to_string(&source_path)
+        .unwrap_or_else(|error| panic!("couldn't read {}: {error}", source_path.display()));
+    let body = source
+        .split_once(START)
+        .and_then(|(_, after_start)| after_start.split_once(END).map(|(body, _)| body))
+        .unwrap_or_else(|| panic!("{} must contain `{START}` followed by `{END}`", source_path.display()));
+
+    let mut ids = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (index, line) in body.lines().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+        let id = trimmed
+            .strip_prefix('\'')
+            .and_then(|value| value.strip_suffix("',"))
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}:{} must be a single-quoted command id followed by a comma",
+                    source_path.display(),
+                    index + 1
+                )
+            });
+        assert!(!id.is_empty(), "command ids must not be empty");
+        assert!(
+            id.chars().count() <= 128,
+            "command id `{id}` exceeds the diagnostic boundary's 128-character cap"
+        );
+        assert!(
+            id.chars()
+                .all(|character| character.is_ascii_alphanumeric() || character == '.'),
+            "command id `{id}` contains a character the generated Rust vocabulary does not permit"
+        );
+        assert!(seen.insert(id), "duplicate command id `{id}`");
+        ids.push(id);
+    }
+    assert!(!ids.is_empty(), "the command-id registry must not be empty");
+
+    let generated = format!(
+        "&[\n{}]\n",
+        ids.iter().map(|id| format!("    {id:?},\n")).collect::<String>()
+    );
+    let out_dir = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR for build scripts"));
+    std::fs::write(out_dir.join("command_ids.rs"), generated).expect("the generated command-id vocabulary is writable");
 }
 
 /// Lets macOS 10.15 and 11 run Cmdr on the WebKit a Safari update installed, instead of the one

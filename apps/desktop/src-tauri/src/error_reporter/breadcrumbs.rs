@@ -25,6 +25,10 @@ pub const MAX_BREADCRUMBS: usize = 50;
 /// the frontend command registry, not user-authored text.
 pub const MAX_COMMAND_ID_CHARS: usize = 128;
 
+/// The frontend registry is authoritative. `build.rs` compiles its tuple into
+/// this slice so this privacy boundary cannot drift onto a hand-maintained copy.
+const COMMAND_IDS: &[&str] = include!(concat!(env!("OUT_DIR"), "/command_ids.rs"));
+
 /// Diagnostic-safe event facts accepted by the breadcrumb buffer.
 ///
 /// `deny_unknown_fields` is the fail-closed IPC boundary: adding a JSON key or sending
@@ -55,15 +59,17 @@ pub struct Breadcrumb {
 
 static BUFFER: Mutex<VecDeque<Breadcrumb>> = Mutex::new(VecDeque::new());
 
+fn is_authoritative_command_id(command_id: &str) -> bool {
+    command_id.chars().count() <= MAX_COMMAND_ID_CHARS && COMMAND_IDS.contains(&command_id)
+}
+
 /// Append a breadcrumb. Drops the oldest entry if the buffer is full.
 ///
 /// Silent on overflow / lock poisoning. Breadcrumbs are best-effort instrumentation,
 /// not a feature we'd ever surface a failure for.
 pub fn record(event: BreadcrumbEvent) {
     match &event {
-        BreadcrumbEvent::Command { command_id }
-            if command_id.is_empty() || command_id.chars().count() > MAX_COMMAND_ID_CHARS =>
-        {
+        BreadcrumbEvent::Command { command_id } if !is_authoritative_command_id(command_id) => {
             return;
         }
         _ => {}
@@ -161,9 +167,9 @@ mod tests {
     fn ring_buffer_drops_oldest_when_full() {
         let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
-        for i in 0..(MAX_BREADCRUMBS + 5) {
+        for command_id in COMMAND_IDS.iter().take(MAX_BREADCRUMBS + 5) {
             record(BreadcrumbEvent::Command {
-                command_id: format!("command-{i}"),
+                command_id: (*command_id).to_string(),
             });
         }
         let snap = snapshot();
@@ -171,19 +177,19 @@ mod tests {
         assert_eq!(
             snap[0].event,
             BreadcrumbEvent::Command {
-                command_id: "command-5".to_string()
+                command_id: COMMAND_IDS[5].to_string()
             }
         );
         assert_eq!(
             snap.last().expect("snapshot is non-empty").event,
             BreadcrumbEvent::Command {
-                command_id: format!("command-{}", MAX_BREADCRUMBS + 4)
+                command_id: COMMAND_IDS[MAX_BREADCRUMBS + 4].to_string()
             }
         );
     }
 
     #[test]
-    fn rejects_empty_or_oversized_command_id() {
+    fn rejects_empty_oversized_and_unknown_command_ids() {
         let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
         record(BreadcrumbEvent::Command {
@@ -192,6 +198,66 @@ mod tests {
         record(BreadcrumbEvent::Command {
             command_id: "c".repeat(MAX_COMMAND_ID_CHARS + 1),
         });
+        record(BreadcrumbEvent::Command {
+            command_id: "pane.privateNote".to_string(),
+        });
         assert!(snapshot().is_empty());
+    }
+
+    #[test]
+    fn rust_validator_tracks_every_frontend_command_id_and_rejects_near_misses() {
+        let authored: Vec<&str> = include_str!("../../../src/lib/commands/command-ids.ts")
+            .split_once("export const COMMAND_IDS = [")
+            .and_then(|(_, after_start)| after_start.split_once("] as const").map(|(body, _)| body))
+            .expect("the frontend command-id tuple keeps its documented shape")
+            .lines()
+            .filter_map(|line| {
+                line.trim()
+                    .strip_prefix('\'')
+                    .and_then(|value| value.strip_suffix("',"))
+            })
+            .collect();
+
+        assert_eq!(
+            COMMAND_IDS, authored,
+            "the generated Rust vocabulary must match COMMAND_IDS in order"
+        );
+        for id in authored {
+            assert!(
+                is_authoritative_command_id(id),
+                "Rust must accept frontend command id `{id}`"
+            );
+            let near_miss = format!("{id}.private");
+            assert!(
+                !is_authoritative_command_id(&near_miss),
+                "Rust must reject a near miss of `{id}`"
+            );
+        }
+        assert!(!is_authoritative_command_id("pane.switcH"));
+        assert!(!is_authoritative_command_id("pane.switch "));
+    }
+
+    #[test]
+    fn direct_ipc_command_records_a_registry_id_but_drops_a_short_private_string() {
+        let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+        reset_for_test();
+        for command_id in ["pane.switch", "private medical note"] {
+            let event = serde_json::from_value(serde_json::json!({
+                "type": "command",
+                "commandId": command_id
+            }))
+            .expect("the closed enum still deserializes the command variant at the IPC edge");
+
+            crate::commands::error_reporter::record_breadcrumb(event);
+        }
+
+        let recorded: Vec<BreadcrumbEvent> = snapshot().into_iter().map(|breadcrumb| breadcrumb.event).collect();
+        assert_eq!(
+            recorded,
+            [BreadcrumbEvent::Command {
+                command_id: "pane.switch".to_string()
+            }],
+            "unregistered text must never enter the breadcrumb buffer"
+        );
     }
 }
