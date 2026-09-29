@@ -117,21 +117,13 @@ format and stays `Option<bool>`-shaped for backward compatibility with crash fil
 written by older app versions. Manifests are built fresh per bundle and don't have
 that constraint, so the resolved shape lives in `error_reporter::ResolvedSettings`.
 
-Before log text reaches the zip, `historical_log_filter::filter_and_redact_log_records` groups each timestamped header
-with all following untimestamped continuation lines. It omits complete records from removed producer shapes that could
-carry arbitrary text: the old state-snapshot target; the old literal-query search summaries; and the old backend,
-discovery, OS, CLI, and panic prose templates. Matching is limited to Cmdr-owned persisted targets and fixed templates;
-it does not classify runtime errors. Where an old and current record share a headline, the allow decision starts at the
-producer-owned first structural field (`pattern=` for search and `serverId=` for discovery), then checks the current
-field order. It never searches arbitrary query, identity, or backend prose for a safe marker because that prose can
-spoof one. Current typed replacements remain, then every retained line passes through
-[`crate::redact::redact_line`](../redact/CLAUDE.md), which handles file paths, hostnames, IPs, emails, URL userinfo, SMB
-URIs, and UNC paths. See the redact module for the full pattern table.
+Before log text reaches the zip, every retained line passes through the report's
+[`RedactionContext::redact_line`](../redact/CLAUDE.md), which handles file paths, hostnames, IPs, emails, URL userinfo,
+SMB URIs, UNC paths, and keyed identity fields. See the redact module for the full pattern table. Both ZIP pipelines
+call it per line, so no archive path skips it.
 
-Dropping records rather than YAML fields is load-bearing: state YAML and arbitrary producer text can put bare names or
-prose on continuation lines where lexical redaction has no reliable boundary. Both the streaming and legacy/window ZIP
-builders converge through the same record filter, so no archive path can retain a dropped header's continuation. An
-ordinary panic or backtrace record does not match a removed shape and keeps all of its continuation frames.
+Logs written before the producer-side redaction work carry unkeyed names and raw prose that the line pass can't always
+recognize. Those older records still ship as-is: early beta, and new logs are what matter.
 
 ## What we never send
 
@@ -146,9 +138,8 @@ ordinary panic or backtrace record does not match a removed shape and keeps all 
 
 - **`mod.rs`**: Public surface: types (`BundleKind`, `BundleScope`, `BundleManifest`, `ResolvedSettings`, `BuiltBundle`, `UploadResult`), constants (`FLOW_A_BUNDLE_CAP_MB`, `FLOW_B_BUNDLE_CAP_MB`), `generate_short_id`, `upload`, `save_bundle_to_disk` (debug), the `log_error!` macro, and the `log_level_overrides` + `settings_defaults` submodules. Re-exports `build_bundle` and `cap_bundle_to_mb` from the sibling modules. Also holds the cached-settings + log-level-snapshot helpers that both pipelines need. The OS-version string comes from the shared `crate::platform::os_version()` (also used by the crash reporter and the heartbeat).
 - **`bundle_builder.rs`**: The two build pipelines. `build_bundle` dispatches on scope; `build_bundle_streaming` (Flow A) tail-walks each log file and streams in-window records through a `CountingCursor`-backed `ZipWriter`, stopping at the cap; `build_bundle_legacy_window` (Flow B) reads each file in full, record-filters, and calls `build_zip`. Owns `PreparedFile`, `CountingCursor`, `zip_dt`, and `load_and_filter_log_file`.
-- **`historical_log_filter.rs`**: Parses persisted record headers, groups continuation lines, applies old/current producer-template policy, drops complete unsafe records, and redacts retained lines. Both ZIP pipelines call its single `pub(super)` filter entry.
 - **`bundle_capper.rs`**: `cap_bundle_to_mb` plus its helpers (`split_into_lines`, `take_tail`, `pick_tail_within_budget`, `read_entry_with_mtime`). Trims log content from the head of the newest file and preserves at least `MIN_TAIL_LINES_OF_NEWEST_FILE` (50) lines of the newest file even if it pushes ~10% over the cap.
-- **`tail_walker.rs`**: Reads a log file from the END backward in 64 KB chunks, yields lines newest-first, stops at the timestamp cutoff. Handles long lines that span multiple chunks, lines without leading timestamps (panic continuations), and CRLF defensively. Also owns the leading-timestamp parser shared by the walker and historical-record filter.
+- **`tail_walker.rs`**: Reads a log file from the END backward in 64 KB chunks, yields lines newest-first, stops at the timestamp cutoff. Handles long lines that span multiple chunks, lines without leading timestamps (panic continuations), and CRLF defensively. Also owns the leading-timestamp parser shared by the walker and the legacy window filter.
 - **`tests.rs`**: Unit tests: zip structure, redaction, ID format/uniqueness, capping, streaming pipeline
 - **`auto_dispatcher.rs`**: Flow B: opt-in auto-send on user-visible errors (60 s ± 10 s debounce, 1 MB tail, no retry on failure)
 - **`auto_dispatcher_tests.rs`**: Unit tests: debounce, opt-in flag, first-call wins, jitter band, crash-loop interaction
@@ -236,7 +227,7 @@ The dialog has an extra "Save bundle to disk (debug)" button in dev that calls
   3. Otherwise call `tail_walker::walk_tail`, which reads the file from the END
      backward in 64 KB chunks and yields lines newest-first. The walker stops the
      moment it hits a leading ISO-8601 stamp older than the cutoff.
-  4. Complete records pass through the shared historical-record filter and report `RedactionContext`, then stream
+  4. Each line passes through the report `RedactionContext`, then streams
      into a `ZipWriter` over a `CountingCursor` (a `Cursor<Vec<u8>>` wrapper holding
      an `AtomicU64` of bytes written through it).
   5. After every line, the running compressed-byte counter is polled. The instant
@@ -416,11 +407,10 @@ remains a separate functional interface and is unchanged.
 The archive-level privacy contract is pinned once across both production ZIP pipelines in
 `tests/privacy_tests.rs::both_zip_pipelines_apply_one_report_context_to_every_diagnostic_surface`. Its fixture carries
 raw local paths, remote identities and credentials, names, query/fragment secrets, omitted MCP-only prose, the rejected
-legacy free-form breadcrumb shape, and active plus rotated historical search/discovery records. The historical records
-include fake current-template markers inside user-controlled prose. The local-path fixture has an extensionless
-multiword lowercase leaf. It decompresses every entry and proves those values and each dropped record's continuations
-are absent while report-local correlation, current structural search/discovery diagnostics, typed state facts, and
-explicit user note/email fields survive. The two builds recreate the context independently from one report ID, which
+legacy free-form breadcrumb shape, and active plus rotated typed records around a multi-line backtrace. The local-path
+fixture has an extensionless multiword lowercase leaf. It decompresses every entry and proves those values are absent
+while report-local correlation, typed diagnostics, backtrace continuations, typed state facts, and explicit user
+note/email fields survive. The two builds recreate the context independently from one report ID, which
 also pins preview/send token stability without a test-only global key.
 
 ### AppHandle wiring
@@ -548,14 +538,15 @@ because breadcrumbs are best-effort instrumentation, not a feature.
 - The server uses the client-supplied `id` verbatim and echoes it back. Where that id
   comes from, and why the send has to be handed the preview's one, is the `id` manifest
   field above.
-- The record-timestamp filter (Flow A's tail walker and the shared historical-log filter) relies
+- The record-timestamp filter (Flow A's tail walker and Flow B's window filter) relies
   on the file chain's ISO-8601 stamp format
   (`YYYY-MM-DDTHH:MM:SS.mmm±HH:MM`, see `logging::dispatch::file_timestamp`). Lines
   without a parseable leading timestamp belong to the preceding timestamped record. The
   tail walker tracks the last complete in-window record while reading backward: when an
   older header crosses the cutoff, it removes that header's pending continuations too.
-  This preserves complete in-window panic backtraces without leaking an out-of-window
-  record's suffix.
+  Flow B's window filter drops an out-of-window header's continuations the same way. This
+  preserves complete in-window panic backtraces without shipping an out-of-window record's
+  suffix.
 - **`parse_leading_iso8601` slices by byte, so guard the char boundary.** The leading stamp is
   29 ASCII bytes, but a line reaching the parser need not be one of ours: backtrace frames,
   captured output, and paths with accented or emoji names all flow through `load_and_filter_log_file`'s

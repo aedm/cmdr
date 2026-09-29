@@ -13,36 +13,6 @@ const EXPLICIT_NOTE: &str = "EXPLICIT-NOTE-SENTINEL: I consent to share /Users/e
 const EXPLICIT_EMAIL: &str = "explicit-email-sentinel@example.test";
 const PRIVATE_LOG_PATH: &str = "/Users/private-account/Plans/client secret";
 const LEGACY_BREADCRUMB_SENTINEL: &str = "PRIVATE-LEGACY-BREADCRUMB-SENTINEL";
-const LEGACY_STATE_SENTINELS: [&str; 16] = [
-    "PRIVATE-BARE-FILENAME-ACTIVE.txt",
-    "PRIVATE-BARE-FILENAME-ROTATED.txt",
-    "PRIVATE-NESTED-TAG-ACTIVE",
-    "PRIVATE-NESTED-TAG-ROTATED",
-    "PRIVATE-TYPE-TO-JUMP-ACTIVE",
-    "PRIVATE-TYPE-TO-JUMP-ROTATED",
-    "PRIVATE-FAVORITE-ACTIVE",
-    "PRIVATE-FAVORITE-ROTATED",
-    "PRIVATE-ARCHIVE-ACTIVE.zip",
-    "PRIVATE-ARCHIVE-ROTATED.zip",
-    "PRIVATE-MOUNT-PROSE-ACTIVE",
-    "PRIVATE-MOUNT-PROSE-ROTATED",
-    "PRIVATE-MOUNT-SHARE-ACTIVE",
-    "PRIVATE-MOUNT-SHARE-ROTATED",
-    "PRIVATE-NESTED-ARCHIVE-SOURCE-ACTIVE",
-    "PRIVATE-NESTED-ARCHIVE-SOURCE-ROTATED",
-];
-const LEGACY_PRODUCER_SENTINELS: [&str; 9] = [
-    "PRIVATE-MANUAL-SERVER-PROSE-SENTINEL",
-    "PRIVATE-DISKUTIL-PROSE-SENTINEL",
-    "PRIVATE-SMB-BACKEND-PROSE-SENTINEL",
-    "PRIVATE-MEDICAL-QUERY",
-    "PRIVATE-COUNT-ONLY-QUERY",
-    "PRIVATE-SEARCH-CONTINUATION",
-    "PRIVATE-CLIENT",
-    "PRIVATE-DISCOVERY-CONTINUATION",
-    "PRIVATE-SPOOFED-SAFE-MARKER",
-];
-
 fn privacy_manifest(redaction: &redact::RedactionContext) -> BundleManifest {
     let mut manifest = sample_manifest();
     manifest.id = PRIVACY_REPORT_ID.to_string();
@@ -75,88 +45,20 @@ fn current_privacy_log(now: DateTime<Utc>) -> String {
     )
 }
 
-/// The exact persisted shape emitted before `05945e910`: one timestamped target/header
-/// followed by the `cmdr://state` YAML as untimestamped continuation lines. The nested
-/// content deliberately covers values lexical line redaction cannot prove private.
-fn historical_state_record(now: DateTime<Utc>, suffix: &str) -> String {
-    let stamp = timestamp(now);
-    format!(
-        "{stamp} DEBUG error_reporter::state_snapshot  State at error time:\n\
-         generation: 73\n\
-         focused: right\n\
-         showHidden: true\n\
-         right:\n\
-           tabs:\n\
-             - i:0 PRIVATE-NESTED-ARCHIVE-SOURCE-{suffix} /Users/private-account/Plans/client secret [active]\n\
-           volume: PRIVATE-MOUNT-SHARE-{suffix}\n\
-           volumeId: smb-private\n\
-           path: /Users/private-account/Plans/client secret\n\
-           view: brief\n\
-           sort: \"name:asc\"\n\
-           totalFiles: 1\n\
-           loadedRange: [0, 1]\n\
-           cursor:\n\
-             index: 0\n\
-             name: PRIVATE-BARE-FILENAME-{suffix}.txt\n\
-           selected: 1\n\
-           typeToJump:\n\
-             buffer: \"PRIVATE-TYPE-TO-JUMP-{suffix}\"\n\
-             indicatorVisible: true\n\
-             indicatorStale: false\n\
-             lastMatchedName: \"PRIVATE-BARE-FILENAME-{suffix}.txt\"\n\
-           mountError:\n\
-             share: \"PRIVATE-MOUNT-SHARE-{suffix}\"\n\
-             reason: permission_denied\n\
-             message: \"PRIVATE-MOUNT-PROSE-{suffix}\"\n\
-           files:\n\
-             - i:0 f PRIVATE-BARE-FILENAME-{suffix}.txt [tags:PRIVATE-NESTED-TAG-{suffix}]\n\
-         dialogs:\n\
-           - type: archive-password\n\
-             archive: \"PRIVATE-ARCHIVE-{suffix}.zip\"\n\
-             archivePath: \"/Users/private-account/Plans/PRIVATE-ARCHIVE-{suffix}.zip\"\n\
-             mode: browse\n\
-         favorites:\n\
-           - id: favorite-private-{suffix}\n\
-             name: \"PRIVATE-FAVORITE-{suffix}\"\n\
-             path: \"/Users/private-account/PRIVATE-FAVORITE-{suffix}\"\n"
-    )
-}
-
-fn historical_log(now: DateTime<Utc>, suffix: &str) -> String {
+/// Ordinary current records around a multi-line backtrace, in both the active and the
+/// rotated file, so each pipeline has to carry typed diagnostics and continuations through.
+fn typed_log(now: DateTime<Utc>, suffix: &str) -> String {
     let before = timestamp(now - chrono::Duration::seconds(5));
-    let manual_server = timestamp(now - chrono::Duration::milliseconds(3500));
-    let diskutil = timestamp(now - chrono::Duration::seconds(3));
-    let smb = timestamp(now - chrono::Duration::seconds(2));
     let backtrace = timestamp(now - chrono::Duration::seconds(1));
     let after = timestamp(now);
     format!(
         "{before} INFO  privacy_test  SAFE-BEFORE-{suffix}\n\
-         {}\
-         {manual_server} DEBUG search::engine  Search completed: \"PRIVATE-MEDICAL-QUERY-{suffix} Search completed: pattern=glob(21 chars), size=none\" in \"/PRIVATE-SEARCH-SCOPE-{suffix}\" → 3 matches (returning 3), took 1ms\n\
-         PRIVATE-SEARCH-CONTINUATION-{suffix}\n\
-         {manual_server} DEBUG search::engine  Count-only search: \"PRIVATE-COUNT-ONLY-QUERY-{suffix} Count-only search: pattern=glob(22 chars), size=none\" in \"/PRIVATE-COUNT-SCOPE-{suffix}\" → 7 matches, took 2ms\n\
-         {manual_server} DEBUG network::discovery_cache  Host ADDED: id=private-pinned-{suffix}, name=PRIVATE-CLIENT-PINNED-{suffix} serverId=\"PRIVATE-SPOOFED-SAFE-MARKER-{suffix}\", ip=Some(10.0.0.1), hostname=Some(\"private.local\")\n\
-         {manual_server} DEBUG network::discovery_cache  Host UPDATED: id=private-updated-{suffix}, name=PRIVATE-CLIENT-UPDATED-{suffix}, ip=Some(10.0.0.2), hostname=Some(\"private.local\")\n\
-         {manual_server} DEBUG network::discovery_cache  Host ADDED: id=private-mdns-{suffix}, name=PRIVATE-CLIENT-MDNS-{suffix}\n\
-         {manual_server} DEBUG network::discovery_cache  Host RESOLVED before FOUND, creating entry: id=private-resolved-first-{suffix}, name=PRIVATE-CLIENT-RESOLVED-FIRST-{suffix}\n\
-         {manual_server} DEBUG network::discovery_cache  Host RESOLVED: id=private-resolved-{suffix}, hostname=Some(\"PRIVATE-CLIENT-HOST-{suffix}\"), ip=Some(10.0.0.3), port=445\n\
-         PRIVATE-DISCOVERY-CONTINUATION-{suffix}\n\
-         {manual_server} DEBUG network::discovery_cache  Host REMOVED: id=private-removed-{suffix}, name=PRIVATE-CLIENT-REMOVED-{suffix}, ip=Some(10.0.0.4)\n\
-         {manual_server} DEBUG network::manual_servers  Unreachable: private.example:445 (PRIVATE-MANUAL-SERVER-PROSE-SENTINEL)\n\
-         {diskutil} WARN  network::mount  Failed to unmount /Volumes/private: PRIVATE-DISKUTIL-PROSE-SENTINEL\n\
-         diskutil continuation PRIVATE-DISKUTIL-PROSE-SENTINEL\n\
-         {smb} WARN  cmdr_smb::volume::session  SmbVolume::read(share=private): PRIVATE-SMB-BACKEND-PROSE-SENTINEL\n\
-         backend continuation PRIVATE-SMB-BACKEND-PROSE-SENTINEL\n\
          {backtrace} DEBUG error_reporter::backtrace  Backtrace for retained typed diagnostic:\n\
             0: cmdr_lib::privacy_test::retained_frame_{suffix}\n\
             1: std::panicking::try\n\
-         {after} WARN  cmdr_smb::volume::session  SmbVolume::read(share=\"private\"): backend=smb2, error_kind=ConnectionLost\n\
-         {after} DEBUG network::manual_servers  Unreachable: host=\"private.example\", port=445, source=os, error_kind=TimedOut, code=60, omitted_bytes=47, omitted_lines=1\n\
-         {after} DEBUG search::engine  Search completed: pattern=glob(21 chars), size=none, modified=none, type=any, case=platform-default, count-only=false, scope=roots(1), exclusions=0, system-exclusions=on → 4 matches (returning 3, 1 hidden), took 3ms\n\
-         {after} DEBUG search::engine  Count-only search: pattern=regex(22 chars), size=min, modified=after, type=files, case=sensitive, count-only=true, scope=whole-volume, exclusions=2, system-exclusions=off → 9 matches (2 hidden), took 4ms\n\
-         {after} DEBUG network::discovery_cache  Host ADDED: serverId=\"PRIVATE-CLIENT-CURRENT-ID-{suffix}\", server=\"PRIVATE-CLIENT-CURRENT-NAME-{suffix}\"\n\
+         {after} WARN  cmdr_smb::volume::session  SmbVolume::read(share=\"PRIVATE-REMOTE-SHARE\"): backend=smb2, error_kind=ConnectionLost\n\
+         {after} DEBUG network::discovery_cache  Host ADDED: serverId=\"PRIVATE-CLIENT-ID-{suffix}\", server=\"PRIVATE-CLIENT-NAME-{suffix}\"\n\
          {after} INFO  privacy_test  SAFE-AFTER-{suffix}\n",
-        historical_state_record(now - chrono::Duration::seconds(4), suffix),
     )
 }
 
@@ -187,17 +89,13 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
         "PRIVATE-SERVER-IDENTITY",
         "PRIVATE-ACCOUNT-IDENTITY",
         "PRIVATE-FREE-FORM-PAYLOAD-SENTINEL",
+        "PRIVATE-CLIENT-ID",
+        "PRIVATE-CLIENT-NAME",
         LEGACY_BREADCRUMB_SENTINEL,
     ] {
         assert!(
             !archive_text.contains(private),
             "private sentinel {private:?} survived:\n{archive_text}"
-        );
-    }
-    for private in LEGACY_STATE_SENTINELS.into_iter().chain(LEGACY_PRODUCER_SENTINELS) {
-        assert!(
-            !archive_text.contains(private),
-            "historical private sentinel {private:?} survived:\n{archive_text}"
         );
     }
 
@@ -219,10 +117,7 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
             format!("cmdr_lib::privacy_test::retained_frame_{suffix}"),
             "std::panicking::try".to_string(),
             "backend=smb2, error_kind=ConnectionLost".to_string(),
-            "source=os, error_kind=TimedOut, code=60".to_string(),
-            "Search completed: pattern=glob(21 chars), size=none, modified=none, type=any, case=platform-default, count-only=false, scope=roots(1), exclusions=0, system-exclusions=on → 4 matches (returning 3, 1 hidden)".to_string(),
-            "Count-only search: pattern=regex(22 chars), size=min, modified=after, type=files, case=sensitive, count-only=true, scope=whole-volume, exclusions=2, system-exclusions=off → 9 matches (2 hidden)".to_string(),
-            "network::discovery_cache  Host ADDED: serverId=".to_string(),
+            "network::discovery_cache  Host ADDED: serverId=\"<server-id:".to_string(),
             format!("SAFE-AFTER-{suffix}"),
         ] {
             assert!(
@@ -281,10 +176,10 @@ fn both_zip_pipelines_apply_one_report_context_to_every_diagnostic_surface() {
     let now = Utc::now();
     std::fs::write(
         &log,
-        format!("{}{}", current_privacy_log(now), historical_log(now, "ACTIVE")),
+        format!("{}{}", current_privacy_log(now), typed_log(now, "ACTIVE")),
     )
     .expect("write adversarial active log");
-    std::fs::write(&rotated_log, historical_log(now, "ROTATED")).expect("write adversarial rotated log");
+    std::fs::write(&rotated_log, typed_log(now, "ROTATED")).expect("write adversarial rotated log");
 
     // Preview/send rebuilds construct the context again from the same report ID. Drive each
     // production ZIP pipeline with a separately-created context to pin that reuse contract.

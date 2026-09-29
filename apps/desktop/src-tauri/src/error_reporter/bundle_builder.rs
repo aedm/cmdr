@@ -10,7 +10,6 @@
 //! the sibling [`super::bundle_capper`] module. Flow A enforces the cap inline; Flow B
 //! relies on a post-build trim from the auto-dispatcher.
 
-use super::historical_log_filter::filter_and_redact_log_records;
 use super::tail_walker;
 use super::{
     AttachedEmail, BuildMode, BuiltBundle, BundleKind, BundleManifest, BundleScope, FLOW_A_BUNDLE_CAP_MB, breadcrumbs,
@@ -333,8 +332,8 @@ pub(super) fn build_bundle_streaming_to_cap(
             continue;
         }
 
-        let filtered_lines = filter_and_redact_log_records(walk.lines, None, redaction);
-        for redacted in filtered_lines {
+        for line in walk.lines {
+            let redacted = redaction.redact_line(&line).into_owned();
             if writer.write_all(redacted.as_bytes()).is_err() || writer.write_all(b"\n").is_err() {
                 budget_exhausted = true;
                 break;
@@ -548,10 +547,20 @@ pub(super) fn load_and_filter_log_file(
     };
     let reader = BufReader::new(file);
 
-    // Scope and legacy privacy decisions happen per complete record, not per physical
-    // line. That keeps a dropped header's YAML/backend prose continuations from leaking.
-    let record_cutoff = matches!(scope, BundleScope::Window { .. }).then_some(lower_bound);
-    let lines = filter_and_redact_log_records(reader.lines().map_while(Result::ok), record_cutoff, redaction);
+    // Record-level filter for the Flow B window: a timestamped line older than
+    // `lower_bound` drops, and so do the untimestamped continuation lines after it (a
+    // panic backtrace belongs to its header). Continuations before any header pass.
+    let is_window = matches!(scope, BundleScope::Window { .. });
+    let mut in_window = true;
+    let mut lines: Vec<String> = Vec::new();
+    for line in reader.lines().map_while(Result::ok) {
+        if is_window && let Some(line_ts) = tail_walker::parse_leading_iso8601(&line) {
+            in_window = line_ts >= lower_bound;
+        }
+        if in_window {
+            lines.push(redaction.redact_line(&line).into_owned());
+        }
+    }
 
     Some((lines, mtime))
 }

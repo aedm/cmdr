@@ -7,7 +7,6 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 
 - `mod.rs`: public types, `upload`, the endpoint URLs, the `log_error!` macro.
 - `bundle_builder.rs` / `bundle_capper.rs` / `tail_walker.rs`: ZIP pipelines, cap pass, and read-from-end walker.
-  `historical_log_filter.rs`: complete-record historical policy and redaction shared by both ZIP pipelines.
 - `auto_dispatcher.rs`: Flow B. `auto_sent.rs`: what the last auto-send shipped, plus the amend call.
   `breadcrumbs.rs`: ring buffer of triage events. `state_history.rs`: process-local typed state ring and report transform.
 
@@ -23,9 +22,6 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - **Never widen what we send.** No license keys, device IDs, raw paths, volume names, SMB creds, settings beyond the
   resolved flags, or anything outside the log dir. `manifest.system` is the one PII-reviewed exception (sizes and
   coarse machine identity). Add nothing naming a drive, path, or person.
-- **Filter persisted logs as complete records before redaction.** Known-unsafe historical state/prose records are
-  omitted with every continuation. Distinguish current typed replacements by producer-owned leading structure, never
-  marker text that user/backend prose can spoof. Ordinary backtraces stay intact. See `DETAILS.md`.
 - **Diagnostic state stays typed and process-local.** Keep at most eight captures at a 30-second cadence. Raw
   identities never enter logs or disk; bundle assembly transforms them with that report's context.
 - **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;

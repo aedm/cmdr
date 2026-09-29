@@ -768,6 +768,41 @@ fn build_bundle_window_scope_trims_old_lines() {
     );
 }
 
+/// A continuation belongs to the record above it, so an out-of-window header takes its
+/// backtrace frames with it, and an in-window one keeps them.
+#[test]
+fn build_bundle_window_scope_drops_an_old_records_continuations() {
+    let dir = TestDir::new("error-reporter-window-records");
+    let now_utc = Utc::now();
+    let first_error_at = now_utc - chrono::Duration::minutes(5);
+    let too_old = first_error_at - chrono::Duration::hours(2);
+    let inside = first_error_at - chrono::Duration::minutes(1);
+    let fmt = "%Y-%m-%dT%H:%M:%S%.3f%:z";
+    let log_path = dir.join("cmdr.log");
+    std::fs::write(
+        &log_path,
+        format!(
+            "{old} OLD header\n   0: old_frame\n{ok} NEW header\n   0: new_frame\n",
+            old = too_old.with_timezone(&chrono::Local).format(fmt),
+            ok = inside.with_timezone(&chrono::Local).format(fmt),
+        ),
+    )
+    .expect("write log");
+
+    let (lines, _) = load_and_filter_log_file(
+        &log_path,
+        BundleScope::Window { first_error_at },
+        now_utc,
+        SystemTime::now(),
+        &test_redaction(),
+    )
+    .expect("file should be loaded");
+
+    let joined = lines.join("\n");
+    assert!(!joined.contains("old_frame"), "{joined}");
+    assert!(joined.contains("NEW header") && joined.contains("new_frame"), "{joined}");
+}
+
 /// Sets the file's mtime to `now - age` via the `filetime` crate (already in our dep
 /// tree via `file-rotate`). Cross-platform; tests stay dependency-free relative to
 /// what the production crate already pulls in.

@@ -10,10 +10,10 @@
 //! buffering everything older too, wasting CPU when 99 %+ of the file is outside the
 //! window. Reading backward from the end lets us bail the instant we cross the cutoff.
 //!
-//! ## Multi-line entries (panic backtraces, state YAML)
+//! ## Multi-line entries (panic backtraces)
 //!
 //! Lines without a parseable leading timestamp are continuation lines of a multi-line
-//! record (panic backtraces, state-snapshot YAML). They pass through with their in-window
+//! record (panic backtraces). They pass through with their in-window
 //! header. Because the walker encounters continuations before their header, it remembers
 //! the last complete-record boundary and rolls back those lines if that header is outside
 //! the window. This prevents a dropped header from leaving an orphaned continuation leak.
