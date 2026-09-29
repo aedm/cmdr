@@ -2959,6 +2959,13 @@
     "confidence": "confirmed",
     "sources": "AP-TW = AP-HK, MS, DOL, THU"
   },
+  "step": {
+    "chosen": "步",
+    "accept": ["步驟"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → 第 1 步（共 2 步）：X (the AI install steps); the onboarding counter reads 第 1 步，共 2 步; the standalone noun is 步驟 (MS terminology)",
+    "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting); MS terminology (step → 步驟)"
+  },
   "stop": {
     "accept": ["停"],
     "chosen": "停止",

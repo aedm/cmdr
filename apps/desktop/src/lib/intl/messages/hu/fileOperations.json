@@ -521,6 +521,22 @@
   "@fileOperations.transferProgress.stageFinishingTransfer": {
     "sourceHash": "6c39b41"
   },
+  "fileOperations.transferProgress.stageCompressingStep": "{step, number}/{total, number}. lépés: Tömörítés",
+  "@fileOperations.transferProgress.stageCompressingStep": {
+    "sourceHash": "7451fa9"
+  },
+  "fileOperations.transferProgress.stageFinishingCompressionStep": "{step, number}/{total, number}. lépés: Tömörítés befejezése…",
+  "@fileOperations.transferProgress.stageFinishingCompressionStep": {
+    "sourceHash": "6f40fb0"
+  },
+  "fileOperations.transferProgress.stageTransferringArchiveStep": "{step, number}/{total, number}. lépés: Archívum átvitele",
+  "@fileOperations.transferProgress.stageTransferringArchiveStep": {
+    "sourceHash": "0d9a25c"
+  },
+  "fileOperations.transferProgress.stageFinishingTransferStep": "{step, number}/{total, number}. lépés: Átvitel befejezése…",
+  "@fileOperations.transferProgress.stageFinishingTransferStep": {
+    "sourceHash": "1f28724"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "A cél létezik, és egy <strong>mappa</strong>. Egy azonos nevű <strong>fájllal</strong> készülsz felülírni. A célmappa teljes tartalma törlődne, és a fájl lépne a helyébe. Mi legyen?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

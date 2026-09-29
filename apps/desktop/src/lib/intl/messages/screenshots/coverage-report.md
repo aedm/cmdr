@@ -16,7 +16,7 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2577 / 3749 keys have a screenshot (69%):** 1402 direct (37%) and 1175 representative (31%). 1008 remain
+**Total: 2586 / 3758 keys have a screenshot (69%):** 1402 direct (37%) and 1184 representative (32%). 1008 remain
 uncoupled, and 164 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
@@ -33,7 +33,7 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | errors         |     98 |            404 |         0 |      0 |   502 |  100% |
 | feedback       |      7 |              5 |         1 |      0 |    13 |   92% |
 | fileExplorer   |    111 |             74 |       228 |      0 |   413 |   45% |
-| fileOperations |    107 |             58 |        69 |      0 |   234 |   71% |
+| fileOperations |    107 |             66 |        69 |      0 |   242 |   71% |
 | goToPath       |      5 |              6 |         2 |      0 |    13 |   85% |
 | indexing       |     33 |             16 |        18 |      0 |    67 |   73% |
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
@@ -45,7 +45,7 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | onboarding     |     96 |             38 |        20 |      0 |   154 |   87% |
 | operationLog   |     26 |             26 |         0 |      0 |    52 |  100% |
 | queryUi        |     44 |            128 |         0 |      0 |   172 |  100% |
-| queue          |     25 |             10 |         1 |      0 |    36 |   97% |
+| queue          |     25 |             11 |         1 |      0 |    37 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
 | servers        |     55 |             21 |        50 |      0 |   126 |   60% |
@@ -62,17 +62,18 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 
 The run captured 165 surfaces. This section is regenerated every run, so it stays true as the UI changes.
 
-### No unique keys (23)
+### No unique keys (24)
 
 Every key on these surfaces also renders on another captured surface, so dropping one costs no coverage: its keys would
 simply couple to whichever surface keeps them. Worth considering, NOT an automatic delete. A surface can be the clearest
 picture of a key several surfaces share, and being the clearest is reason enough to keep it. To drop one, remove its
 staging (or add it to `DROPPED_GALLERY_STATES` for a gallery state) in `test/e2e-playwright/`.
 
-- `search-dialog` (96 keys, none unique)
-- `select-dialog` (89 keys, none unique)
-- `transfer-confirmation-copy` (82 keys, none unique)
-- `onboarding-optional` (81 keys, none unique)
+- `search-dialog` (95 keys, none unique)
+- `select-dialog` (88 keys, none unique)
+- `transfer-confirmation-copy` (83 keys, none unique)
+- `onboarding-optional` (82 keys, none unique)
+- `transfer-dialog` (76 keys, none unique)
 - `bulk-rename-review-all-allowed` (72 keys, none unique)
 - `onboarding-fda-notgranted` (71 keys, none unique)
 - `onboarding-fda-denied` (71 keys, none unique)
@@ -80,17 +81,17 @@ staging (or add it to `DROPPED_GALLERY_STATES` for a gallery state) in `test/e2e
 - `mkdir-confirmation-empty` (65 keys, none unique)
 - `delete-confirm` (62 keys, none unique)
 - `trash-confirm` (62 keys, none unique)
-- `onboarding-fda` (61 keys, none unique)
-- `expiration` (61 keys, none unique)
+- `onboarding-fda` (62 keys, none unique)
 - `new-folder-dialog` (60 keys, none unique)
 - `new-file-dialog` (60 keys, none unique)
+- `expiration` (60 keys, none unique)
 - `server-sign-in-sign-in` (59 keys, none unique)
 - `expiration-organization` (59 keys, none unique)
 - `transfer-error-source_not_found` (58 keys, none unique)
 - `favorites-menu-empty` (57 keys, none unique)
 - `alert-long` (55 keys, none unique)
 - `main-window` (53 keys, none unique)
-- `indexing-status` (53 keys, none unique)
+- `empty-pane` (49 keys, none unique)
 - `viewer-encoding` (17 keys, none unique)
 
 ### Captured at a reduced UI zoom (1)

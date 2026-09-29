@@ -255,7 +255,9 @@
     "description": "Screen-reader label for the small background-operation chip while compression or remote-transfer finalization is active but has no honest percentage. The visible label already names the exact phase, for example “Finishing compression…”, so do not add a percentage or a second state word. Keep the closing promise that pressing the chip opens the operation queue.",
     "placeholders": {
       "label": "the exact visible phase label, such as Finishing compression… or Finishing transfer…"
-    }
+    },
+    "screenshot": "operation-chip.png",
+    "screenshotNote": "The operation chip in the corner of the main window, pictured here. Your string is never shown: a screen reader speaks it for the chip while an operation is still scanning."
   },
 
   "queue.chip.tooltip": "{label}{count, plural, =0 {} one { · {countText} item} other { · {countText} items}}{hasDestination, select, yes { · to {destination}} other {}} · {percentText}%{hasDetail, select, yes { · {detail}} other {}}",

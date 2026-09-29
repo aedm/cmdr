@@ -30,3 +30,8 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `go-back` concept: matches "forward" while its headword is "Go back"; split or rename.
 - `fileExplorer.network.share.signIn{Title,Message}`, `fileExplorer.networkMount.signIn{Title,Message}`: the screenshot
   is the servers list, not the calm sign-in screen these strings sit on. Capture that pane (with and without the sheet).
+- `fileOperations.transferProgress.stage*` (compress and archive-upload phases, and their `*Step` variants): coupled to
+  `transfer-dialog.png`, whose note lists only scanning/paused/queued/finishing. Capture a compress-to-remote run showing
+  the "Step 1 of 2" line, and name the compress phases in the note.
+- `step` concept: its definition says onboarding, setup guide, or install; widen it to any numbered stage of a
+  multi-step operation (the two-step compress-then-upload labels now use it).

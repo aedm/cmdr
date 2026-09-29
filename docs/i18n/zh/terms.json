@@ -2599,6 +2599,13 @@
     "forms": "queue status words 等待中 / 进行中 / 已暂停 / 已完成 / 已取消 / 无法完成",
     "sources": "macOS"
   },
+  "step": {
+    "chosen": "步",
+    "accept": ["步骤"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → 第 1 步，共 2 步：X; the standalone noun is 步骤 (MS terminology)",
+    "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting); MS terminology (step → 步骤)"
+  },
   "stop": {
     "accept": ["停下"],
     "chosen": "停止",

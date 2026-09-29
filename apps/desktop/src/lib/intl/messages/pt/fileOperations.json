@@ -521,6 +521,22 @@
   "@fileOperations.transferProgress.stageFinishingTransfer": {
     "sourceHash": "6c39b41"
   },
+  "fileOperations.transferProgress.stageCompressingStep": "Etapa {step, number} de {total, number}: Comprimindo",
+  "@fileOperations.transferProgress.stageCompressingStep": {
+    "sourceHash": "7451fa9"
+  },
+  "fileOperations.transferProgress.stageFinishingCompressionStep": "Etapa {step, number} de {total, number}: Concluindo a compressão…",
+  "@fileOperations.transferProgress.stageFinishingCompressionStep": {
+    "sourceHash": "6f40fb0"
+  },
+  "fileOperations.transferProgress.stageTransferringArchiveStep": "Etapa {step, number} de {total, number}: Transferindo arquivo compactado",
+  "@fileOperations.transferProgress.stageTransferringArchiveStep": {
+    "sourceHash": "0d9a25c"
+  },
+  "fileOperations.transferProgress.stageFinishingTransferStep": "Etapa {step, number} de {total, number}: Concluindo a transferência…",
+  "@fileOperations.transferProgress.stageFinishingTransferStep": {
+    "sourceHash": "1f28724"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "O destino já existe e é uma <strong>pasta</strong>. Você está prestes a substituí-la por um <strong>arquivo</strong> com o mesmo nome. Todo o conteúdo da pasta de destino seria apagado e substituído pelo arquivo. O que você quer fazer?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

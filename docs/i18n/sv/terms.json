@@ -2479,6 +2479,13 @@
     "forms": "compounds close up: synkstatus, statussida, statusfält",
     "sources": "macOS System Settings (Status)"
   },
+  "step": {
+    "chosen": "steg",
+    "accept": ["Steg"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Steg 1 av 2: X",
+    "sources": "MS terminology (step → steg); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "stop": {
     "accept": ["stannar", "slutar", "sluta", "stanna", "stoppades"],
     "chosen": "stoppa",

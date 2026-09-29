@@ -1335,6 +1335,12 @@
     "confidence": "tentative",
     "sources": "literal"
   },
+  "step": {
+    "chosen": "lépés",
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → 1/2. lépés: X (the AI install steps); the onboarding counter reads Lépés: 1/2",
+    "sources": "MS terminology (step → lépés); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "worktree": {
     "chosen": "worktree",
     "forms": "suffix with a hyphen: worktree-eket; {countText} csatolt worktree",

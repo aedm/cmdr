@@ -521,6 +521,22 @@
   "@fileOperations.transferProgress.stageFinishingTransfer": {
     "sourceHash": "6c39b41"
   },
+  "fileOperations.transferProgress.stageCompressingStep": "Steg {step, number} av {total, number}: Komprimerar",
+  "@fileOperations.transferProgress.stageCompressingStep": {
+    "sourceHash": "7451fa9"
+  },
+  "fileOperations.transferProgress.stageFinishingCompressionStep": "Steg {step, number} av {total, number}: Slutför komprimeringen…",
+  "@fileOperations.transferProgress.stageFinishingCompressionStep": {
+    "sourceHash": "6f40fb0"
+  },
+  "fileOperations.transferProgress.stageTransferringArchiveStep": "Steg {step, number} av {total, number}: Överför arkivet",
+  "@fileOperations.transferProgress.stageTransferringArchiveStep": {
+    "sourceHash": "0d9a25c"
+  },
+  "fileOperations.transferProgress.stageFinishingTransferStep": "Steg {step, number} av {total, number}: Slutför överföringen…",
+  "@fileOperations.transferProgress.stageFinishingTransferStep": {
+    "sourceHash": "1f28724"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "Målet finns och är en <strong>mapp</strong>. Du är på väg att skriva över det med en <strong>fil</strong> med samma namn. Allt innehåll i målmappen skulle raderas och ersättas av filen. Vad vill du göra?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

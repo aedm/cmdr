@@ -2509,6 +2509,13 @@
     "confidence": "high",
     "sources": "macOS (Startup Disk → Opstartschijf)"
   },
+  "step": {
+    "chosen": "stap",
+    "accept": ["Stap"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Stap 1 van 2: X",
+    "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "stop": {
     "accept": ["stoppen", "gestopt", "stopt"],
     "avoid": [

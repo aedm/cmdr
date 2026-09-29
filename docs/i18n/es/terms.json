@@ -2377,6 +2377,19 @@
     "sources": "Network.appex (CONNECTION_STATUS_LABEL Estado)",
     "decision": "La tabla del hub de servidores y sus comandos"
   },
+  "step": {
+    "chosen": "paso",
+    "accept": ["Paso"],
+    "avoid": [
+      {
+        "form": "etapa",
+        "why": "MS terminology’s word, but the catalog says Paso in the onboarding and the AI install steps; one word per concept"
+      }
+    ],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Paso 1 de 2: X",
+    "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting); MS terminology gives etapa (tiebreak only)"
+  },
   "stop": {
     "chosen": "Detener",
     "accept": ["deten", "detien", "detuv", "dejar de", "deja de", "dejará de", "dejó de", "dejes de"],

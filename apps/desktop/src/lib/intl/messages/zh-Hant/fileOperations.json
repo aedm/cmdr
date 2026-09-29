@@ -519,6 +519,22 @@
   "@fileOperations.transferProgress.stageFinishingTransfer": {
     "sourceHash": "6c39b41"
   },
+  "fileOperations.transferProgress.stageCompressingStep": "第 {step, number} 步（共 {total, number} 步）：正在壓縮",
+  "@fileOperations.transferProgress.stageCompressingStep": {
+    "sourceHash": "7451fa9"
+  },
+  "fileOperations.transferProgress.stageFinishingCompressionStep": "第 {step, number} 步（共 {total, number} 步）：正在完成壓縮⋯",
+  "@fileOperations.transferProgress.stageFinishingCompressionStep": {
+    "sourceHash": "6f40fb0"
+  },
+  "fileOperations.transferProgress.stageTransferringArchiveStep": "第 {step, number} 步（共 {total, number} 步）：正在傳輸封存檔",
+  "@fileOperations.transferProgress.stageTransferringArchiveStep": {
+    "sourceHash": "0d9a25c"
+  },
+  "fileOperations.transferProgress.stageFinishingTransferStep": "第 {step, number} 步（共 {total, number} 步）：正在完成傳輸⋯",
+  "@fileOperations.transferProgress.stageFinishingTransferStep": {
+    "sourceHash": "1f28724"
+  },
   "fileOperations.transferProgress.warningFileOverFolder": "目標已經存在，而且是一個<strong>資料夾</strong>。你正要用同名的<strong>檔案</strong>覆寫它。目標資料夾的全部內容會被刪除，由這個檔案取代。要怎麼做？",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"

@@ -1183,6 +1183,12 @@
     "confidence": "high",
     "sources": "macOS Finder („Informationen“)"
   },
+  "step": {
+    "chosen": "Schritt",
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Schritt 1 von 2: X (the X keeps its standalone form)",
+    "sources": "MS terminology (step → Schritt); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "working-tree": {
     "chosen": "Arbeitsbaum",
     "confidence": "high",

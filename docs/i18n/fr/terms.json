@@ -2617,6 +2617,13 @@
     "forms": "columns and labels → État (keep the accent on the capital), État Git; the drive’s colored indicator → le statut jaune",
     "sources": "Feedback Assistant CommonStrings.loctable (STATUS_SECTION_TITLE → État); Bluetooth settings (État : %@)"
   },
+  "step": {
+    "chosen": "étape",
+    "accept": ["Étape"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Étape 1 sur 2 : x (no-break space before the colon; the phase continues lowercase, as in ai.local.installStepExtracting)",
+    "sources": "MS terminology (step → étape); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "stop": {
     "accept": ["arrêt", "cesse"],
     "avoid": [

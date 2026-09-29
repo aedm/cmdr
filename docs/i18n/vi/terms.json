@@ -1395,6 +1395,13 @@
     "forms": "tool labels Đang xem bên trong tệp / Đã xem bên trong tệp",
     "sources": "catalog (bên trong), sibling tool labels"
   },
+  "step": {
+    "chosen": "bước",
+    "accept": ["Bước"],
+    "confidence": "high",
+    "forms": "Step 1 of 2: X → Bước 1/2: X (the AI install steps); the onboarding counter reads Bước 1 trên 2",
+    "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
   "this-mac": {
     "chosen": "máy Mac",
     "confidence": "high",
