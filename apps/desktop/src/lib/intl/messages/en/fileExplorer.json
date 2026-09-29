@@ -1334,7 +1334,7 @@
   "fileExplorer.dirSize.unknownTooltip": "Size unknown: this folder hasn’t been scanned yet.",
   "@fileExplorer.dirSize.unknownTooltip": {
     "description": "Hover tooltip on a folder whose recursive size is unknown (shown as an em dash —) because nothing in its subtree has been scanned. Distinct from a genuinely-empty folder, which shows 0 bytes.",
-    "screenshot": "operation-failure.png"
+    "screenshot": "empty-pane.png"
   },
   "fileExplorer.dirSize.staleLine": "These sizes are from an earlier scan and may be out of date.",
   "@fileExplorer.dirSize.staleLine": {

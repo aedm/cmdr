@@ -405,7 +405,7 @@
       "free": "available space, already formatted (e.g. 12 GB)",
       "total": "total volume size, already formatted (e.g. 500 GB)"
     },
-    "screenshot": "conflict-dialog.png"
+    "screenshot": "transfer-dialog.png"
   },
   "fileOperations.transferDialog.spaceInfoUnbounded": "{used} used, no size limit",
   "@fileOperations.transferDialog.spaceInfoUnbounded": {

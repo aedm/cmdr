@@ -2894,7 +2894,7 @@
       "server": "the server's name as the pane shows it (like Naspolya), or its network address (like 192.168.1.20) when it has no name"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT on screen. It's what AI tools read about the pane while a shared folder waits for a sign-in, in the network flow that starts at the servers list pictured here."
+    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't mount share\" title that replaces a server's list of shares when a share doesn't open. That list opens from the servers list pictured here."
   },
   "errors.mount.authFailed": "That username and password didn’t work on “{server}”. Check them and sign in again.",
   "@errors.mount.authFailed": {
@@ -2995,7 +2995,7 @@
       "server": "the server's name as the servers list shows it (like Naspolya)"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT the error panel. Your string is the tooltip on a server's row in the servers list pictured here."
+    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't connect to …\" title that replaces a server's list of shares when that list doesn't load. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
   },
   "errors.shareList.signingRequired": "“{server}” doesn’t show its shares to guests. Sign in to see them.",
   "@errors.shareList.signingRequired": {
@@ -3004,7 +3004,7 @@
       "server": "the server's name as the servers list shows it (like Naspolya)"
     },
     "screenshot": "servers-hub.png",
-    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the calm \"Sign in to …\" title that replaces a server's list of shares while the server waits for a sign-in. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
+    "screenshotNote": "This one is NOT the error panel. Your string is the one sentence under the \"Couldn't connect to …\" title that replaces a server's list of shares when that list doesn't load. That list opens from the servers list pictured here, and the same sentence is the tooltip on that server's row in it."
   },
   "errors.shareList.authFailed": "That username and password didn’t work on “{server}”. Check them and sign in again.",
   "@errors.shareList.authFailed": {
