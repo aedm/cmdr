@@ -14,9 +14,10 @@
 //! `cargo nextest run smb_integration --run-ignored all`.
 
 use super::network_archive_test_support::{
-    a_cancel_before_the_swap_keeps_the_original_zip, a_compress_onto_the_server_lands_a_valid_zip,
-    a_remote_zip_edit_deletes_an_entry_on_the_server, a_zip_inner_path_on_the_server_routes_as_inside_the_archive,
-    a_zip_on_the_server_browses_and_extracts, local_files_copied_into_a_zip_on_the_server_join_it,
+    a_cancel_before_the_swap_keeps_the_original_zip, a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip,
+    a_compress_onto_the_server_lands_a_valid_zip, a_remote_zip_edit_deletes_an_entry_on_the_server,
+    a_zip_inner_path_on_the_server_routes_as_inside_the_archive, a_zip_on_the_server_browses_and_extracts,
+    local_files_copied_into_a_zip_on_the_server_join_it,
 };
 use super::smb_test_support::fixture;
 
@@ -60,4 +61,11 @@ async fn smb_integration_local_files_copied_into_a_zip_on_the_share_join_it() {
 async fn smb_integration_compress_local_files_onto_the_share() {
     let (remote, dir) = fixture().await;
     a_compress_onto_the_server_lands_a_valid_zip(remote, dir, true).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_compress_share_files_onto_the_same_share() {
+    let (remote, dir) = fixture().await;
+    a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip(remote, dir).await;
 }

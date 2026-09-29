@@ -164,7 +164,9 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   producer streams directly to a tracked same-directory stage with `CreateNew`. WebDAV and MTP receive the same
   producer into a private local spool, then a known-length staged upload. This sequencing makes same-device MTP
   source→destination finish the read/spool leg before any upload begins, avoiding its serialized-session reentrancy.
-  No direct route materializes source trees or an archive-sized local file.
+  No direct route materializes source trees or an archive-sized local file. Same-server SFTP and SMB compress reads and
+  writes concurrently over the one volume's connection, which both multiplex (SFTP on one channel, SMB on one session);
+  pinned live by `a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip` in both Docker suites.
 
   `fresh_zip.rs` drives `zip` 8.6 `ZipWriter::new_stream` on one OS worker. Local files are read directly; one remote
   feeder is live at a time. Remote input and generated output cross separate four-chunk Tokio channels (the worker

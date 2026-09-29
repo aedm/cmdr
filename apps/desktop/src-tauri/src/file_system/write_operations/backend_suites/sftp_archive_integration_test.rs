@@ -8,10 +8,10 @@
 //! `smb_transfer_semantics_test.rs` / `smb_look_alike_test.rs`.
 
 use super::network_archive_test_support::{
-    a_cancel_before_the_swap_keeps_the_original_zip, a_compress_onto_the_server_lands_a_valid_zip,
-    a_compress_replaces_a_look_alike_archive_in_place, a_remote_zip_edit_deletes_an_entry_on_the_server,
-    a_zip_inner_path_on_the_server_routes_as_inside_the_archive, a_zip_on_the_server_browses_and_extracts,
-    local_files_copied_into_a_zip_on_the_server_join_it,
+    a_cancel_before_the_swap_keeps_the_original_zip, a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip,
+    a_compress_onto_the_server_lands_a_valid_zip, a_compress_replaces_a_look_alike_archive_in_place,
+    a_remote_zip_edit_deletes_an_entry_on_the_server, a_zip_inner_path_on_the_server_routes_as_inside_the_archive,
+    a_zip_on_the_server_browses_and_extracts, local_files_copied_into_a_zip_on_the_server_join_it,
 };
 use super::sftp_test_support::{SftpFixture, fixture, fixture_on};
 
@@ -64,6 +64,13 @@ async fn sftp_integration_local_files_copied_into_a_zip_on_the_server_join_it() 
 async fn sftp_integration_a_compress_onto_the_server_lands_a_valid_zip() {
     let (remote, dir) = fixture("compress").await;
     a_compress_onto_the_server_lands_a_valid_zip(remote, dir, true).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip() {
+    let (remote, dir) = fixture("compress-same-server").await;
+    a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip(remote, dir).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

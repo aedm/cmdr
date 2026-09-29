@@ -375,6 +375,44 @@ pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(
     registered.leave();
 }
 
+/// COMPRESS files ON the server into a new zip on the SAME server, over the one
+/// volume (so one connection): the direct pipeline reads the sources and writes
+/// the stage concurrently, with output past every bounded queue, and must neither
+/// deadlock nor mix the two streams up.
+pub(super) async fn a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip(
+    remote: Arc<dyn Volume>,
+    dir: PathBuf,
+) {
+    let registered = Registered::new(&remote, "compress-same-server");
+    let first = incompressible_bytes(700_003, 0x1357_9bdf_2468_ace0);
+    let second = incompressible_bytes(300_007, 0x0f1e_2d3c_4b5a_6978);
+    let sources = dir.join("src");
+    seed(remote.as_ref(), &sources, &[("one.bin", &first), ("two.bin", &second)]).await;
+    let one = sources.join("one.bin");
+    let two = sources.join("two.bin");
+    let one = one.to_string_lossy();
+    let two = two.to_string_lossy();
+
+    let events = compress_onto(&remote, &[&one, &two], dir.join("bundle.zip"), &registered.id).await;
+
+    assert!(
+        !events.progress.lock_ignore_poison().iter().any(|event| {
+            matches!(
+                event.phase,
+                WriteOperationPhase::Transferring | WriteOperationPhase::FinishingTransfer
+            )
+        }),
+        "a same-server compress streams directly, with no spool upload"
+    );
+    let back = read_server_zip(remote.as_ref(), &dir.join("bundle.zip")).await;
+    assert_eq!(back.get("one.bin").map(Vec::as_slice), Some(first.as_slice()));
+    assert_eq!(back.get("two.bin").map(Vec::as_slice), Some(second.as_slice()));
+    assert_no_staging_litter(remote.as_ref(), &dir, "a same-server compress").await;
+
+    clean_deep(remote.as_ref(), &dir).await;
+    registered.leave();
+}
+
 /// A compress onto a name the server holds in the other Unicode spelling: the
 /// dialog's probe (`destination_exists`) says it's there, `path_exists` stays
 /// byte-exact, and the compress replaces THAT archive in place, so the folder
