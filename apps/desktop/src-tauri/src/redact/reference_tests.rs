@@ -15,6 +15,55 @@ fn context() -> RedactionContext {
     RedactionContext::for_test(TEST_PROCESS_SECRET, "ERR-REMOTE")
 }
 
+fn report_shape(input: &str) -> String {
+    let output = context().redact_line(input);
+    let token = Regex::new(r"<([a-z0-9-]+):[0-9a-f]{12}>").expect("valid report-token regex");
+    token.replace_all(&output, "<$1>").into_owned()
+}
+
+/// `redact_line` is also the compatibility sanitizer for ordinary MCP resources. These
+/// outputs are the byte-for-byte behavior from `b94ca0962^`, before report delivery learned
+/// complete remote references, structured identities, and name-derived IDs.
+#[test]
+fn unsalted_api_preserves_pre_report_policy_bytes() {
+    let cases = [
+        ("/Users/alice/Secret Project/report.pdf", "$HOME/<dir>/<file>.pdf"),
+        (
+            "smb://ada:secret@nas.local:1445/Finance/Downloads/report.pdf?token=secret#customer",
+            "smb://<host>/<share>/Downloads/<dir>",
+        ),
+        (
+            r"\\nas.local\Finance\Downloads\report.pdf",
+            r"\\<host>\<share>\Downloads\<file>.pdf",
+        ),
+        (
+            "sftp://ada:secret@files.example.test:2222/home/ada/Client/report.pdf?token=secret#customer",
+            "sftp://<userinfo>@files.example.test:2222/home/ada/Client/report.pdf?token=secret#customer",
+        ),
+        (
+            "webdav://nas.local/dav/ada/report.pdf?owner=ada@example.test#customer",
+            "webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer",
+        ),
+        (
+            "https://10.24.8.3/customer/acme/report.json?owner=ada@example.test#customer",
+            "https://<ipv4>/customer/acme/report.json?owner=<email>#customer",
+        ),
+        (
+            r#"host="Client Nimbus" share="Private Vault""#,
+            r#"host="Client Nimbus" share="Private Vault""#,
+        ),
+        (r#"host="nas.local" user="ada""#, r#"host="<host>.local" user="<user>""#),
+        (
+            "IDs smb-nas-private-445-client-0123456789abcdef manual-192-168-40-9-1445",
+            "IDs smb-nas-private-445-client-0123456789abcdef manual-192-168-40-9-1445",
+        ),
+    ];
+
+    for (input, expected) in cases {
+        assert_eq!(r(input), expected, "legacy compatibility changed for {input:?}");
+    }
+}
+
 fn token(output: &str, kind: &str) -> String {
     let prefix = format!("<{kind}:");
     output
@@ -55,7 +104,7 @@ fn complete_remote_urls_redact_every_identity_but_keep_diagnostic_shape() {
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -81,7 +130,7 @@ fn remote_urls_without_userinfo_and_inside_quotes_are_complete() {
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -115,7 +164,7 @@ fn unc_scheme_less_and_malformed_but_recognizable_references_are_safe() {
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -170,7 +219,7 @@ fn current_name_derived_ids_are_tokenized_only_at_the_diagnostic_boundary() {
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(&input), expected, "input: {input:?}");
+        assert_eq!(report_shape(&input), expected, "input: {input:?}");
     }
 }
 
@@ -186,11 +235,15 @@ fn producer_owned_identity_fields_redact_only_the_six_quoted_keys() {
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "unexpected identity-field rewrite for {input}");
+        assert_eq!(
+            report_shape(input),
+            expected,
+            "unexpected identity-field rewrite for {input}"
+        );
     }
 
     let near_matches = r#"hostname="Client Nimbus" host_name="Client Nimbus" share_name="Private Vault" volume_id="private-volume" server_id="private-server" device_id="private-device" name="ordinary prose" id="ordinary-id" host=unquoted"#;
-    assert_eq!(r(near_matches), near_matches);
+    assert_eq!(context().redact_line(near_matches), near_matches);
 }
 
 #[test]
@@ -287,8 +340,9 @@ fn remote_and_id_lookalikes_remain_unchanged() {
         "// this is a comment, not a remote reference",
     ];
 
+    let context = context();
     for input in unchanged {
-        assert_eq!(r(input), input, "should be unchanged: {input:?}");
+        assert_eq!(context.redact_line(input), input, "should be unchanged: {input:?}");
     }
 }
 
@@ -302,8 +356,9 @@ fn remote_references_and_derived_ids_are_idempotent() {
         "manual-192-168-40-9-1445",
     ];
 
+    let context = context();
     for input in inputs {
-        let once = r(input);
-        assert_eq!(r(&once), once, "not idempotent for {input:?}");
+        let once = context.redact_line(input);
+        assert_eq!(context.redact_line(&once), once, "not idempotent for {input:?}");
     }
 }

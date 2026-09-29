@@ -5,9 +5,9 @@ use crate::mcp::resources::logs::{
     LOG_DEFAULT_LIMIT, LOG_MAX_LIMIT, LogOptions, line_timestamp_passes_since, parse_log_options, select_log_lines,
 };
 
-/// The `cmdr://logs` resource must redact PII before returning, matching the
-/// crash + error reporters. A loopback caller with no filesystem read
-/// shouldn't be able to lift home paths, emails, or SMB URIs out of the log.
+/// The `cmdr://logs` resource must apply its compatibility sanitizer before returning. A
+/// loopback caller with no filesystem read shouldn't be able to lift home paths, emails, or
+/// SMB URIs out of the log.
 #[test]
 fn select_log_lines_redacts_pii() {
     let opts = LogOptions {
@@ -31,6 +31,25 @@ fn select_log_lines_redacts_pii() {
     // Non-PII log structure survives.
     assert!(out.contains("INFO listing"), "log structure dropped: {out}");
     assert!(out.contains("WARN contact"), "log structure dropped: {out}");
+}
+
+#[test]
+fn select_log_lines_keeps_pre_report_remote_and_id_policy() {
+    let opts = LogOptions {
+        since_iso: None,
+        filter: None,
+        limit: LOG_DEFAULT_LIMIT,
+    };
+    let raw = "2026-05-31T08:30:02.000+02:00 INFO sftp://ada:secret@files.example.test:2222/home/ada/report.pdf?token=secret#customer\n\
+               2026-05-31T08:30:03.000+02:00 WARN webdav://nas.local/dav/ada/report.pdf?owner=ada@example.test#customer\n\
+               2026-05-31T08:30:04.000+02:00 INFO volume smb-nas-private-445-client-0123456789abcdef";
+
+    assert_eq!(
+        select_log_lines(raw, false, &opts),
+        "2026-05-31T08:30:02.000+02:00 INFO sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\n\
+         2026-05-31T08:30:03.000+02:00 WARN webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer\n\
+         2026-05-31T08:30:04.000+02:00 INFO volume smb-nas-private-445-client-0123456789abcdef"
+    );
 }
 
 #[test]

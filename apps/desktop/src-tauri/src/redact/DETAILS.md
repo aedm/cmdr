@@ -41,7 +41,7 @@ what keeps contractions and module paths out of it. `SAFE_PARENT_DIR_NAMES` is t
 
 ## Decision: remote structure survives, remote identities do not
 
-The complete URL/UNC reference is one privacy unit. The rewriter keeps the protocol, explicit port, separators,
+Report delivery treats the complete URL/UNC reference as one privacy unit. The rewriter keeps the protocol, explicit port, separators,
 segment count, conservative final extension, and an IP's broad class (loopback, private, link-local, unspecified, or
 public). It tokenizes username, password, hostname/address, SMB share, every path segment, query keys and values, and
 fragment. A `.local` suffix survives because it describes discovery scope, not the host label. Remote `Downloads` and
@@ -56,6 +56,19 @@ Derived IDs are redacted only here, at the diagnostic boundary. Current funnel I
 exact lowercase 16-hex digest; MTP's numeric storage suffix and a manual server's port remain useful. The slug and digest
 become one opaque report token because the slug is deliberately lossy and cannot be safely reverse-parsed into host,
 account, and share. Functional ID generation and ordinary MCP data remain unchanged.
+
+## Decision: the unsalted API is an MCP compatibility boundary
+
+`redact_line` preserves the scanner contract ordinary MCP resources exposed before report delivery gained complete
+remote references, structured identities, and derived IDs. It still collapses SMB authority/share with the legacy
+path-tail heuristic, rewrites UNC to generic host/share tokens, and replaces generic URL userinfo while preserving the
+rest byte for byte. It does not specially redact structured identity fields or derived IDs. New outer patterns do not
+make their contents invisible: compatibility dispatch advances one character and rescans, so an email, IP address, or
+`.local` host that the old scanner recognized inside an SFTP/WebDAV/HTTP(S) reference still redacts.
+
+This is a policy split over one regex and pattern table, not two mutable scanners. Crash and error report builders must
+hold a `RedactionContext`; ordinary MCP logs, operation summaries, and listing failures must call unsalted
+`redact_line`. Direct characterization tests pin both sides.
 
 Typed report structures call `RedactionContext::redact_path`, `redact_name`, `redact_volume_name`, and
 `redact_volume_id` instead of converting themselves to prose. They preserve report-scoped token domains, and an

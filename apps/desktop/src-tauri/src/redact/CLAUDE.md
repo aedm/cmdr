@@ -1,12 +1,11 @@
 # Redact
 
-Path-shape-preserving redactor shared by the crash reporter and the error reporter.
+Path-shape-preserving redactor with separate compatibility and report-delivery policies.
 
-The hot path is `redact_line`, called once per log line: one composed regex with named capture groups, single pass, a
-dispatch calling the matched group's rewriter. `Cow::Borrowed` for no-match lines (zero alloc).
-`RedactionContext::redact_line` is the report mode: tokens carry 12 lowercase hex characters and correlate only for
-one report in one process. Its key derives from an ephemeral process secret plus the report ID; neither key nor secret
-ships. Tests use `RedactionContext::for_test`, never process-global overrides.
+The hot path is one composed regex with named capture groups and one dispatch. Unsalted `redact_line` is the stable
+compatibility sanitizer for ordinary MCP resources. `RedactionContext::redact_line` is the stricter report boundary:
+tokens correlate only within one report and process. Its key derives from an ephemeral process secret plus the report
+ID; neither ships. Tests use `RedactionContext::for_test`. Both APIs borrow no-match lines.
 
 The pattern table and overlap rules are in `DETAILS.md`. Typed diagnostic fields use structured `RedactionContext`
 methods, which consume complete values, fail closed, and retain report correlation.
@@ -21,9 +20,10 @@ methods, which consume complete values, fail closed, and retain report correlati
 - **Account wrappers and MTP model names stay; identities go.** Exact match rules are in `DETAILS.md`.
 - **A recognized remote reference is redacted as one unit.** SFTP/SSH/WebDAV/HTTP(S)/SMB URLs, scheme-less SMB
   userinfo, and UNC keep scheme, hierarchy, address class, port, and conservative extension; every identity-bearing
-  component gets its own token. Valid URLs use `url`; recognizable malformed forms use the same bounded splitter.
-- **Only exact current derived-ID shapes are recognized.** `smb`/`sftp`/`webdav`/`adb`/`mtp`/`vol`/`path` require the
-  ID funnel's 16-hex digest; `manual-…-<port>` follows its legacy constructor. Never guess from arbitrary hyphens.
+  component gets its own token **in report mode**. Unsalted callers retain the legacy SMB/UNC transforms and generic
+  userinfo rewrite; newly recognized outer references are rescanned so legacy nested email/IP/mDNS matches still run.
+- **Only exact derived-ID shapes are recognized.** Funnel IDs require a known scheme and 16-hex digest;
+  `manual-…-<port>` follows its legacy constructor. Never guess from arbitrary hyphens.
 - **The path branches over-match on purpose; `split_trailing_noise` finds the real end.** Spaces are legal in labels
   AND filenames, so the boundary is recovered after the match. ❌ Never anchor continuation words to `[A-Z0-9]` (that
   shipped ` at 01.13.03 PM-2.jpeg` verbatim), ❌ never use the looser `has_extension_like_suffix` for its forward scan

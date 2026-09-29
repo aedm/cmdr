@@ -466,24 +466,30 @@ async fn build_state_yaml<R: Runtime>(app: &tauri::AppHandle<R>, opts: &StateOpt
 
     if opts.includes("recentErrors") {
         let errors = super::listing_errors::snapshot();
-        if errors.is_empty() {
-            yaml.push_str("recentErrors: []\n");
-        } else {
-            yaml.push_str("recentErrors:\n");
-            for e in &errors {
-                // `path` / `message` come from failed directory listings and can
-                // carry SMB URIs or home paths the user never saw rendered.
-                // Redact them so `cmdr://state` matches the same contract as
-                // `cmdr://logs` and the crash/error reporters.
-                let path = crate::redact::redact_line(&e.path);
-                let message = crate::redact::redact_line(&e.message);
-                yaml.push_str(&format!(
-                    "  - atUnixMs: {}\n    listingId: {}\n    volumeId: {}\n    path: {:?}\n    message: {:?}\n",
-                    e.at_unix_ms, e.listing_id, e.volume_id, path, message
-                ));
-            }
-        }
+        yaml.push_str(&build_recent_errors_yaml(&errors));
     }
 
     Ok(yaml)
+}
+
+/// Pure YAML builder for the `recentErrors:` section. The identifiers remain functional
+/// MCP values; only the path and diagnostic prose pass through the compatibility sanitizer.
+pub(crate) fn build_recent_errors_yaml(errors: &[super::listing_errors::RecentListingError]) -> String {
+    if errors.is_empty() {
+        return "recentErrors: []\n".to_string();
+    }
+
+    let mut yaml = String::from("recentErrors:\n");
+    for error in errors {
+        // `path` / `message` come from failed directory listings and can carry SMB URIs or
+        // home paths the user never saw rendered. Ordinary MCP deliberately uses the
+        // unsalted compatibility policy, not the report-delivery policy.
+        let path = crate::redact::redact_line(&error.path);
+        let message = crate::redact::redact_line(&error.message);
+        yaml.push_str(&format!(
+            "  - atUnixMs: {}\n    listingId: {}\n    volumeId: {}\n    path: {:?}\n    message: {:?}\n",
+            error.at_unix_ms, error.listing_id, error.volume_id, path, message
+        ));
+    }
+    yaml
 }

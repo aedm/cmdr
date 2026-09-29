@@ -52,10 +52,9 @@ pub(super) const SYSTEM_ROOTS: &[&str] = &[
 
 /// Rewrite a `key=value` path field. Returns (replacement, bytes consumed).
 ///
-/// A quoted value has a producer-owned boundary and is redacted here as one complete typed
-/// value. An unquoted absolute value one of the path branches recognizes is handed back:
-/// `redact_with` resumes at the value so the prose scanner can determine where it ends.
-/// Everything else is walked here segment by segment, which reaches a share-relative path.
+/// Report mode treats a quoted value as one complete typed value. Compatibility mode keeps
+/// the historical scanner behavior: any recognized absolute value is handed back so its
+/// path branch claims it, while other values are walked as relative paths.
 pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
     let key = caps.name("pf_key").map_or("", |m| m.as_str());
     let raw = caps.name("pf_value").map_or("", |m| m.as_str());
@@ -71,15 +70,16 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
     if value.is_empty() || value == "None" {
         return (head.clone(), head.len());
     }
-    if quoted {
+    if quoted && context.is_some() {
         let redacted = redact_typed_path(&unescape_debug(value), context);
         return (format!("{head}{redacted}{quote}"), whole_len(caps));
     }
-    if claimed_by_path_branch(value) {
+    if claimed_by_path_branch(value, context.is_some()) {
         return (head.clone(), head.len());
     }
 
-    let redacted = redact_relative_path(value, context);
+    let unescaped = if quoted { unescape_debug(value) } else { value.into() };
+    let redacted = redact_relative_path(&unescaped, context);
     let consumed = head.len() + value.len() + quote.len();
     (format!("{head}{redacted}{quote}"), consumed)
 }
@@ -207,9 +207,24 @@ pub(super) fn starts_with_field_key(s: &str) -> bool {
 }
 
 /// Whether a path branch matches `value` from its very first byte.
-pub(super) fn claimed_by_path_branch(value: &str) -> bool {
+pub(super) fn claimed_by_path_branch(value: &str, report_policy: bool) -> bool {
     redactor_regex().captures(value).is_some_and(|caps| {
-        caps.get(0).is_some_and(|m| m.start() == 0) && PATH_BRANCHES.iter().any(|g| caps.name(g).is_some())
+        if !caps.get(0).is_some_and(|m| m.start() == 0) {
+            return false;
+        }
+        if report_policy {
+            return PATH_BRANCHES.iter().any(|g| caps.name(g).is_some());
+        }
+        caps.name("win_home").is_some()
+            || caps.name("unix_home").is_some()
+            || caps.name("unix_system").is_some()
+            || caps.name("volumes").is_some()
+            || caps.name("media").is_some()
+            || caps.name("unc").is_some()
+            || caps.name("url_userinfo").is_some()
+            || caps
+                .name("remote_url")
+                .is_some_and(|reference| reference.as_str().starts_with("smb://") || reference.as_str().contains('@'))
     })
 }
 

@@ -19,6 +19,12 @@ fn context(report_id: &str) -> RedactionContext {
     RedactionContext::for_test(TEST_PROCESS_SECRET, report_id)
 }
 
+fn report_shape(input: &str) -> String {
+    let output = context("ERR-SHAPE").redact_line(input);
+    let token = Regex::new(r"<([a-z0-9-]+):[0-9a-f]{12}>").expect("valid report-token regex");
+    token.replace_all(&output, "<$1>").into_owned()
+}
+
 fn token(output: &str, kind: &str) -> String {
     let prefix = format!("<{kind}:");
     output
@@ -476,7 +482,7 @@ fn smb_uris() {
         ("smb://homer/share", "smb://<host>/<share>"),
     ];
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -500,7 +506,7 @@ fn unc_paths() {
         ),
     ];
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -584,7 +590,7 @@ fn url_userinfo() {
         ),
     ];
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -615,7 +621,7 @@ fn bare_userinfo_no_scheme() {
         ),
     ];
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "input: {input:?}");
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
     }
 }
 
@@ -921,9 +927,8 @@ fn replacement_count_histogram() {
         ("<ipv4>", redacted.matches("<ipv4>").count()),
         ("<ipv6>", redacted.matches("<ipv6>").count()),
         ("<email>", redacted.matches("<email>").count()),
-        ("<credential>", redacted.matches("<credential>").count()),
+        ("<userinfo>", redacted.matches("<userinfo>").count()),
         ("<share>", redacted.matches("<share>").count()),
-        ("<volume-id>", redacted.matches("<volume-id>").count()),
         ("<file>", redacted.matches("<file>").count()),
         ("<dir>", redacted.matches("<dir>").count()),
         ("<mtp-owner>", redacted.matches("<mtp-owner>").count()),

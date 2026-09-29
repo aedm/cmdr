@@ -81,12 +81,10 @@ pub fn read_log_tail(opts: &LogOptions) -> Result<String, String> {
 /// file fit in the window, so the first line is intact) and `true` otherwise
 /// (we read mid-file, so the leading line may be truncated).
 ///
-/// **Redaction is mandatory.** The MCP logs resource is a third consumer of the
-/// same log data the crash + error reporters scrub, so it must honor the same
-/// contract: a loopback caller without filesystem read shouldn't be able to
-/// exfiltrate home paths, SMB URIs, emails, or device names through
-/// `cmdr://logs`. `redact_line` is a per-line `Cow` hot path (zero alloc on the
-/// no-PII case), built for exactly this. Pure (no I/O), so it's unit-testable.
+/// **Redaction is mandatory.** A loopback caller without filesystem read shouldn't be able
+/// to exfiltrate the home paths, SMB URIs, emails, or device names the compatibility policy
+/// has always removed through `cmdr://logs`. Ordinary MCP deliberately uses unsalted
+/// `redact_line`, not the stricter report-local policy. Pure (no I/O), so it's unit-testable.
 pub fn select_log_lines(text: &str, skip_partial_first: bool, opts: &LogOptions) -> String {
     let mut lines: Vec<&str> = if skip_partial_first {
         text.lines().skip(1).collect()

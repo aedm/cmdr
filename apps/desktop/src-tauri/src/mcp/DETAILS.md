@@ -334,8 +334,8 @@ Directory module split by test category:
 - `protocol_tests.rs`: tool name validation, schema checks, tool count
 - `tool_registry_tests/`: the `mcp_tools!` table's structural tests, one file per property pinned — `schemas.rs` (the tool set and each declared schema), `gate.rs` (the token classification), `access.rs` (the consumer views and the no-write gate), `schema_gate.rs` (`validate_params`). Kept out of `tool_registry/` so the authored table stays lean
 - `resource_tests.rs`: resource URI validation, count, mime types (the public `get_all_resources` surface)
-- `resource_state_tests.rs`: `cmdr://state` builder — URI/query parsing, pane/tab/file formatting
-- `resource_log_tests.rs`: `cmdr://logs` builder — option parsing, line selection, `since` filter, the PII-redaction contract
+- `resource_state_tests.rs`: `cmdr://state` builder — URI/query parsing, pane/tab/file formatting, and exact compatibility-policy bytes for recent listing failures
+- `resource_log_tests.rs`: `cmdr://logs` builder — option parsing, line selection, `since` filter, and exact compatibility-policy bytes
 - `resource_indexing_tests.rs`: `cmdr://indexing` builder — duration/number formatting helpers
 - `resource_operations_tests.rs`: `cmdr://state` `operations:` builder — running/paused/queued formatting
 - `tool_category_tests.rs`: tool existence by category, schema checks
@@ -345,6 +345,14 @@ Directory module split by test category:
 - `spec_compliance_tests.rs`: MCP spec 2025-11-25 compliance, origin validation, SSE events
 
 ## Key decisions
+
+### Ordinary resources do not inherit report-delivery policy
+
+The ordinary MCP resources are a functional interface whose redacted text is observable output. They use unsalted
+`crate::redact::redact_line`, whose legacy scanner semantics are pinned at the complete builder seams for logs,
+operations, and recent listing failures. Uploaded crash/error reports cross a different trust boundary and use
+`RedactionContext` for complete remote-reference, structured-identity, and derived-ID coverage with report-local
+tokens. The canonical policy and rationale live in `resources/DETAILS.md` and `../redact/DETAILS.md`.
 
 ### MCP action tools wait for backend ack before returning success
 

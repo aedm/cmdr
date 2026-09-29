@@ -110,6 +110,39 @@ fn running_op_shows_status_progress_speed_and_eta() {
 }
 
 #[test]
+fn operation_paths_keep_pre_report_remote_and_id_policy() {
+    let mut operation = snapshot("op-remote", LifecycleStatus::Running);
+    operation.source =
+        Some("sftp://ada:secret@files.example.test:2222/home/ada/report.pdf?token=secret#customer".to_string());
+    operation.destination = Some("webdav://nas.local/dav/ada/report.pdf?owner=ada@example.test#customer".to_string());
+    let mut live = progress("op-remote", LifecycleStatus::Running, 0, 0, 0, 0);
+    live.current_file = Some("smb-nas-private-445-client-0123456789abcdef".to_string());
+    let yaml = build_operations_yaml(
+        &[OperationRow {
+            snapshot: operation,
+            progress: Some(live),
+            pending_conflict: None,
+        }],
+        10_500,
+    );
+
+    assert_eq!(
+        yaml,
+        concat!(
+            "operations:\n",
+            "  - operationId: op-remote\n",
+            "    type: copy\n",
+            "    status: running\n",
+            "    source: \"sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\"\n",
+            "    destination: \"webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer\"\n",
+            "    progress: scanning\n",
+            "    currentFile: \"smb-nas-private-445-client-0123456789abcdef\"\n",
+            "    elapsedSeconds: 0\n",
+        )
+    );
+}
+
+#[test]
 fn paused_op_keeps_its_progress_but_reports_paused() {
     let mb = 1_024 * 1_024;
     let rows = vec![OperationRow {

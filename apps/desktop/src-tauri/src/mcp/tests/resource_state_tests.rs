@@ -2,11 +2,12 @@
 //! formatting. The public-API checks (resource count, URIs, mime types) live in
 //! `resource_tests.rs`.
 
+use crate::mcp::listing_errors::RecentListingError;
 use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo};
 use crate::mcp::resources::panes::{
     build_pane_yaml_with_options, format_file_compact, format_tab_compact, tags_marker,
 };
-use crate::mcp::resources::{StateOptions, parse_state_options, split_uri};
+use crate::mcp::resources::{StateOptions, build_recent_errors_yaml, parse_state_options, split_uri};
 use crate::search::format_size;
 
 #[test]
@@ -49,6 +50,43 @@ fn split_uri_with_query() {
     let (base, q) = split_uri("cmdr://state?include=panes&compact=true");
     assert_eq!(base, "cmdr://state");
     assert_eq!(q, Some("include=panes&compact=true"));
+}
+
+#[test]
+fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
+    let errors = [
+        RecentListingError {
+            at_unix_ms: 1_789_000_000_001,
+            listing_id: "listing-private-server".to_string(),
+            volume_id: "smb-nas-private-445-client-0123456789abcdef".to_string(),
+            path: "sftp://ada:secret@files.example.test:2222/home/ada/report.pdf?token=secret#customer".to_string(),
+            message: r#"host="Client Nimbus" share="Private Vault" source=https://10.24.8.3/acme?owner=ada@example.test#customer"#.to_string(),
+        },
+        RecentListingError {
+            at_unix_ms: 1_789_000_000_002,
+            listing_id: "listing-webdav".to_string(),
+            volume_id: "manual-192-168-40-9-1445".to_string(),
+            path: "webdav://nas.local/dav/ada/report.json?owner=ada@example.test#customer".to_string(),
+            message: r"Could not list \\nas.local\Finance\Downloads\report.pdf".to_string(),
+        },
+    ];
+
+    assert_eq!(
+        build_recent_errors_yaml(&errors),
+        concat!(
+            "recentErrors:\n",
+            "  - atUnixMs: 1789000000001\n",
+            "    listingId: listing-private-server\n",
+            "    volumeId: smb-nas-private-445-client-0123456789abcdef\n",
+            "    path: \"sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\"\n",
+            "    message: \"host=\\\"Client Nimbus\\\" share=\\\"Private Vault\\\" source=https://<ipv4>/acme?owner=<email>#customer\"\n",
+            "  - atUnixMs: 1789000000002\n",
+            "    listingId: listing-webdav\n",
+            "    volumeId: manual-192-168-40-9-1445\n",
+            "    path: \"webdav://<host>.local/dav/ada/report.json?owner=<email>#customer\"\n",
+            "    message: \"Could not list \\\\\\\\<host>\\\\<share>\\\\Downloads\\\\<file>.pdf\"\n",
+        )
+    );
 }
 
 #[test]

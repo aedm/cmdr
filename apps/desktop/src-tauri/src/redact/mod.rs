@@ -67,13 +67,13 @@ const SAFE_PARENT_DIR_NAMES: &[&str] = &[
     "Application Support",
 ];
 
-/// Redact one log line. Hot path: called per line by the error reporter.
+/// Redact one line with the stable unsalted compatibility policy used by ordinary MCP.
 ///
 /// Returns a [`Cow::Borrowed`] when no redaction was needed so we don't allocate
 /// on lines like `"Reconciler: switched to live mode"` that have no PII at all.
 ///
-/// Bare `<dir>` / `<file>` tokens. Report builders use [`RedactionContext::redact_line`]
-/// for report-local correlation.
+/// Produces bare `<dir>` / `<file>` tokens. Report builders use
+/// [`RedactionContext::redact_line`] for stricter coverage and report-local correlation.
 pub fn redact_line(line: &str) -> Cow<'_, str> {
     redact_with(line, None)
 }
@@ -388,20 +388,53 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
         return (redact_media(path, context), path.len());
     }
     if let Some(m) = caps.name("remote_url") {
+        if context.is_none() && !m.as_str().starts_with("smb://") {
+            if remote_authority_has_userinfo(m.as_str()) {
+                return (redact_legacy_url_userinfo(m.as_str()), whole_len(caps));
+            }
+            return rescan_inside(m.as_str());
+        }
         let (path, _) = split_trailing_noise(m.as_str());
         let reference = trim_reference_end(path);
+        if context.is_none() {
+            return (redact_legacy_smb_url(reference), reference.len());
+        }
         return (redact_remote_url(reference, context), reference.len());
     }
     if let Some(m) = caps.name("unc") {
         let (path, _) = split_trailing_noise(m.as_str());
+        if context.is_none() {
+            let host = path
+                .strip_prefix(r"\\")
+                .unwrap_or(path)
+                .split('\\')
+                .next()
+                .unwrap_or_default();
+            if !host
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'))
+            {
+                return rescan_inside(m.as_str());
+            }
+            return (redact_legacy_unc(path), path.len());
+        }
         return (redact_remote_unc(path, context), path.len());
     }
     if caps.name("url_userinfo").is_some() {
+        if context.is_none() {
+            let scheme = caps.name("scheme").map_or("", |m| m.as_str());
+            let host_rest = caps.name("host_rest").map_or("", |m| m.as_str());
+            return (format!("{scheme}://<userinfo>@{host_rest}"), whole_len(caps));
+        }
         let reference = caps.get(0).map_or("", |m| m.as_str());
         return (redact_remote_url(reference, context), whole_len(caps));
     }
     if let Some(m) = caps.name("bare_userinfo") {
         let lead = caps.name("bare_lead").map(|m| m.as_str()).unwrap_or("");
+        if context.is_none() {
+            let host_rest = caps.name("bare_host_rest").map_or("", |m| m.as_str());
+            return (format!("{lead}//<userinfo>@{host_rest}"), whole_len(caps));
+        }
         return (
             format!("{lead}{}", redact_scheme_less(m.as_str(), context)),
             whole_len(caps),
@@ -410,13 +443,22 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
     if caps.name("path_field").is_some() {
         return redact_path_field(caps, context);
     }
-    if caps.name("identity_field").is_some() {
+    if let Some(m) = caps.name("identity_field") {
+        if context.is_none() {
+            return rescan_inside(m.as_str());
+        }
         return redact_identity_field(caps, context);
     }
     if let Some(m) = caps.name("derived_id") {
+        if context.is_none() {
+            return rescan_inside(m.as_str());
+        }
         return (redact_derived_id(m.as_str(), context), whole_len(caps));
     }
     if let Some(m) = caps.name("manual_server_id") {
+        if context.is_none() {
+            return rescan_inside(m.as_str());
+        }
         return (redact_manual_server_id(m.as_str(), context), whole_len(caps));
     }
     if caps.name("email").is_some() {
@@ -435,6 +477,9 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
         );
     }
     if let Some(m) = caps.name("mdns") {
+        if context.is_none() && !m.as_str().is_ascii() {
+            return rescan_inside(m.as_str());
+        }
         return (redact_mdns_host(m.as_str(), context), whole_len(caps));
     }
     if let Some(m) = caps.name("ipv6") {
@@ -462,6 +507,39 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
 /// Byte length of the whole match, for the branches that consume all of it.
 fn whole_len(caps: &Captures<'_>) -> usize {
     caps.get(0).map_or(0, |m| m.len())
+}
+
+/// Leave a report-only outer match in front of the compatibility scanner one character at
+/// a time. This preserves legacy nested matches instead of either applying the new policy or
+/// returning the whole reference raw (for example, `.local`, IP, and email inside WebDAV).
+fn rescan_inside(value: &str) -> (String, usize) {
+    value
+        .chars()
+        .next()
+        .map_or_else(|| (String::new(), 0), |first| (first.to_string(), first.len_utf8()))
+}
+
+fn redact_legacy_url_userinfo(reference: &str) -> String {
+    let Some((scheme, remainder)) = reference.split_once("://") else {
+        return reference.to_string();
+    };
+    let Some((_, host_rest)) = remainder.split_once('@') else {
+        return reference.to_string();
+    };
+    format!("{scheme}://<userinfo>@{host_rest}")
+}
+
+fn remote_authority_has_userinfo(reference: &str) -> bool {
+    reference
+        .split_once("://")
+        .map(|(_, remainder)| {
+            remainder
+                .split(['/', '?', '#'])
+                .next()
+                .unwrap_or_default()
+                .contains('@')
+        })
+        .unwrap_or(false)
 }
 
 fn identity_token(kind: &str, domain: TokenDomain, value: &str, context: Option<&RedactionContext>) -> String {
