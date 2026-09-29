@@ -13,11 +13,10 @@
 //! ## Multi-line entries (panic backtraces, state YAML)
 //!
 //! Lines without a parseable leading timestamp are continuation lines of a multi-line
-//! record (panic backtraces, state-snapshot YAML). They MUST pass through untouched, and
-//! the cut boundary must land on a *timestamped* line, otherwise we'd ship a partial
-//! backtrace prefix without its header. Concretely: when the walker sees a non-timestamped
-//! line, it yields it without making a cutoff decision; the very next timestamped line is
-//! what the cutoff is checked against.
+//! record (panic backtraces, state-snapshot YAML). They pass through with their in-window
+//! header. Because the walker encounters continuations before their header, it remembers
+//! the last complete-record boundary and rolls back those lines if that header is outside
+//! the window. This prevents a dropped header from leaving an orphaned continuation leak.
 //!
 //! ## Long lines spanning multiple chunks
 //!
@@ -77,6 +76,9 @@ pub fn walk_tail(path: &Path, cutoff: DateTime<Utc>) -> std::io::Result<TailWalk
 
     // Newest-first scratch list. Reversed at the end.
     let mut newest_first: Vec<String> = Vec::new();
+    // End of the records whose timestamped headers have already been accepted. Any later
+    // entries in `newest_first` are continuations waiting for their older header.
+    let mut complete_records_end = 0;
     let mut hit_cutoff = false;
 
     // `pending` holds bytes we've read but haven't split into a complete line yet. It's
@@ -112,7 +114,13 @@ pub fn walk_tail(path: &Path, cutoff: DateTime<Utc>) -> std::io::Result<TailWalk
                 Some(nl_idx) => {
                     let line_bytes = &combined[nl_idx + 1..end];
                     end = nl_idx;
-                    if !try_emit_line(line_bytes, cutoff, &mut newest_first, &mut hit_cutoff) {
+                    if !try_emit_line(
+                        line_bytes,
+                        cutoff,
+                        &mut newest_first,
+                        &mut complete_records_end,
+                        &mut hit_cutoff,
+                    ) {
                         break 'outer;
                     }
                 }
@@ -132,7 +140,13 @@ pub fn walk_tail(path: &Path, cutoff: DateTime<Utc>) -> std::io::Result<TailWalk
     if !pending.is_empty() && !hit_cutoff {
         // Doesn't matter what the function returns here; we're at file start, the loop
         // is going to exit anyway.
-        let _ = try_emit_line(&pending, cutoff, &mut newest_first, &mut hit_cutoff);
+        let _ = try_emit_line(
+            &pending,
+            cutoff,
+            &mut newest_first,
+            &mut complete_records_end,
+            &mut hit_cutoff,
+        );
     }
 
     newest_first.reverse();
@@ -148,7 +162,13 @@ pub fn walk_tail(path: &Path, cutoff: DateTime<Utc>) -> std::io::Result<TailWalk
 ///
 /// `kept` is appended to (newest-first order); `hit_cutoff` is set to `true` once the
 /// cutoff fires.
-fn try_emit_line(raw: &[u8], cutoff: DateTime<Utc>, kept: &mut Vec<String>, hit_cutoff: &mut bool) -> bool {
+fn try_emit_line(
+    raw: &[u8],
+    cutoff: DateTime<Utc>,
+    kept: &mut Vec<String>,
+    complete_records_end: &mut usize,
+    hit_cutoff: &mut bool,
+) -> bool {
     let mut bytes = raw;
     if bytes.last() == Some(&b'\r') {
         bytes = &bytes[..bytes.len() - 1];
@@ -164,15 +184,21 @@ fn try_emit_line(raw: &[u8], cutoff: DateTime<Utc>, kept: &mut Vec<String>, hit_
     // downstream; we don't want to drop lines for that).
     let line = String::from_utf8_lossy(bytes).into_owned();
 
-    if let Some(line_ts) = parse_leading_iso8601(&line)
+    let line_timestamp = parse_leading_iso8601(&line);
+    if let Some(line_ts) = line_timestamp
         && line_ts < cutoff
     {
-        // Cut here. Don't include this line: it's older than the window.
+        // The untimestamped lines encountered since the last accepted header belong to
+        // this out-of-window record. Remove them with the header so no partial record ships.
+        kept.truncate(*complete_records_end);
         *hit_cutoff = true;
         return false;
     }
 
     kept.push(line);
+    if line_timestamp.is_some() {
+        *complete_records_end = kept.len();
+    }
     true
 }
 
@@ -304,6 +330,25 @@ mod tests {
         assert!(joined.contains("frame 1"));
         assert!(joined.contains("recovered"));
         std::fs::remove_dir_all(p.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn cutoff_removes_an_old_records_continuations_but_keeps_a_new_backtrace() {
+        let now = Utc::now();
+        let body = format!(
+            "{old}\nprivate YAML continuation\nprivate nested continuation\n{new}\n   safe frame 0\n   safe frame 1\n",
+            old = iso_line(now - ChronoDuration::hours(2), "DEBUG old record"),
+            new = iso_line(now - ChronoDuration::minutes(1), "DEBUG backtrace"),
+        );
+        let (_dir, p) = write_tmp("record-cutoff", body.as_bytes());
+        let result = walk_tail(&p, now - ChronoDuration::hours(1)).unwrap();
+        let joined = result.lines.join("\n");
+        assert!(result.hit_cutoff);
+        assert!(!joined.contains("private YAML"));
+        assert!(!joined.contains("private nested"));
+        assert!(joined.contains("DEBUG backtrace"));
+        assert!(joined.contains("safe frame 0"));
+        assert!(joined.contains("safe frame 1"));
     }
 
     #[test]

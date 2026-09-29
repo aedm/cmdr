@@ -117,9 +117,18 @@ format and stays `Option<bool>`-shaped for backward compatibility with crash fil
 written by older app versions. Manifests are built fresh per bundle and don't have
 that constraint, so the resolved shape lives in `error_reporter::ResolvedSettings`.
 
-Every log line is run through [`crate::redact::redact_line`](../redact/CLAUDE.md) before
-it hits the zip. The redactor handles file paths, hostnames, IPs, emails, URL userinfo,
-SMB URIs, and UNC paths. See the redact module for the full pattern table.
+Before log text reaches the zip, `bundle_builder::filter_and_redact_log_records` groups each timestamped header with
+all following untimestamped continuation lines. It omits complete records from removed producer shapes that could carry
+arbitrary text: the old state-snapshot target and the old backend/OS/CLI prose templates in network, SMB, SFTP, WebDAV,
+and panic logging. Matching is limited to Cmdr-owned persisted targets and fixed templates; it does not classify
+runtime errors. The filter recognizes current typed replacements and keeps them. It then runs every line in each
+retained record through [`crate::redact::redact_line`](../redact/CLAUDE.md), which handles file paths, hostnames, IPs,
+emails, URL userinfo, SMB URIs, and UNC paths. See the redact module for the full pattern table.
+
+Dropping records rather than YAML fields is load-bearing: state YAML and arbitrary producer text can put bare names or
+prose on continuation lines where lexical redaction has no reliable boundary. Both the streaming and legacy/window ZIP
+builders converge through the same record filter, so no archive path can retain a dropped header's continuation. An
+ordinary panic or backtrace record does not match a removed shape and keeps all of its continuation frames.
 
 ## What we never send
 
@@ -133,7 +142,7 @@ SMB URIs, and UNC paths. See the redact module for the full pattern table.
 ## Files
 
 - **`mod.rs`**: Public surface: types (`BundleKind`, `BundleScope`, `BundleManifest`, `ResolvedSettings`, `BuiltBundle`, `UploadResult`), constants (`FLOW_A_BUNDLE_CAP_MB`, `FLOW_B_BUNDLE_CAP_MB`), `generate_short_id`, `upload`, `save_bundle_to_disk` (debug), the `log_error!` macro, and the `log_level_overrides` + `settings_defaults` submodules. Re-exports `build_bundle` and `cap_bundle_to_mb` from the sibling modules. Also holds the cached-settings + log-level-snapshot helpers that both pipelines need. The OS-version string comes from the shared `crate::platform::os_version()` (also used by the crash reporter and the heartbeat).
-- **`bundle_builder.rs`**: The two build pipelines. `build_bundle` dispatches on scope; `build_bundle_streaming` (Flow A) tail-walks each log file and streams in-window lines through a `CountingCursor`-backed `ZipWriter`, stopping at the cap; `build_bundle_legacy_window` (Flow B) reads each file in full, line-filters, and calls `build_zip`. Owns `PreparedFile`, `CountingCursor`, `zip_dt`, and `load_and_filter_log_file`.
+- **`bundle_builder.rs`**: The two build pipelines. `build_bundle` dispatches on scope; `build_bundle_streaming` (Flow A) tail-walks each log file and streams in-window records through a `CountingCursor`-backed `ZipWriter`, stopping at the cap; `build_bundle_legacy_window` (Flow B) reads each file in full, record-filters, and calls `build_zip`. Owns `PreparedFile`, `CountingCursor`, `zip_dt`, and `load_and_filter_log_file`.
 - **`bundle_capper.rs`**: `cap_bundle_to_mb` plus its helpers (`split_into_lines`, `take_tail`, `pick_tail_within_budget`, `read_entry_with_mtime`). Trims log content from the head of the newest file and preserves at least `MIN_TAIL_LINES_OF_NEWEST_FILE` (50) lines of the newest file even if it pushes ~10% over the cap.
 - **`tail_walker.rs`**: Reads a log file from the END backward in 64 KB chunks, yields lines newest-first, stops at the timestamp cutoff. Handles long lines that span multiple chunks, lines without leading timestamps (panic continuations), and CRLF defensively. Also owns the shared `parse_leading_iso8601` parser used by `bundle_builder`.
 - **`tests.rs`**: Unit tests: zip structure, redaction, ID format/uniqueness, capping, streaming pipeline
@@ -223,7 +232,7 @@ The dialog has an extra "Save bundle to disk (debug)" button in dev that calls
   3. Otherwise call `tail_walker::walk_tail`, which reads the file from the END
      backward in 64 KB chunks and yields lines newest-first. The walker stops the
      moment it hits a leading ISO-8601 stamp older than the cutoff.
-  4. Each line is redacted on the fly via the report's `RedactionContext` and streamed straight
+  4. Complete records pass through the shared historical-record filter and report `RedactionContext`, then stream
      into a `ZipWriter` over a `CountingCursor` (a `Cursor<Vec<u8>>` wrapper holding
      an `AtomicU64` of bytes written through it).
   5. After every line, the running compressed-byte counter is polled. The instant
@@ -239,9 +248,9 @@ The dialog has an extra "Save bundle to disk (debug)" button in dev that calls
 
 - `BundleScope::Window { first_error_at }`: Flow B. The window is
   `[first_error_at - 30 min, now]`. Files whose mtime is older than the lower bound are
-  skipped; surviving files are line-filtered by parsing the leading ISO-8601 timestamp
+  skipped; surviving files are record-filtered by parsing the leading ISO-8601 timestamp
   the file chain writes (see `logging::dispatch::file_timestamp`). Uses the legacy
-  "read whole file → redact → BTreeMap → `build_zip` → `cap_bundle_to_mb`" pipeline,
+  "read whole file → filter and redact → BTreeMap → `build_zip` → `cap_bundle_to_mb`" pipeline,
   unchanged from the pre-streaming era. Auto-send runs in a debounced background task
   off the user's hot path, so the simpler shape is fine here.
 
@@ -368,9 +377,9 @@ the backtrace always lands in the log file (and therefore in error report bundle
 stdout chain's Info default drops it on the floor, keeping the terminal clean. The
 error-level message stays a single readable line (pre-fix-* code emitted backtrace as
 continuation lines on the error record itself, which spammed the terminal even when no
-report was being built). The bundle's per-line window-trim passes through lines without a
-parseable leading ISO-8601 timestamp, so the backtrace continuation lines survive into
-Flow B reports intact. The redactor scrubs build-machine paths embedded in the symbol
+report was being built). The bundle's record-aware window trim associates lines without a
+parseable leading ISO-8601 timestamp with their preceding header, so retained backtrace continuation lines survive
+into Flow B reports intact. The redactor scrubs build-machine paths embedded in the symbol
 metadata via the same `redact_line` pass every other log line gets.
 
 The automatic manifest note carries only the typed error count. The message and trace stay in the log file, where the
@@ -528,13 +537,14 @@ because breadcrumbs are best-effort instrumentation, not a feature.
 - The server uses the client-supplied `id` verbatim and echoes it back. Where that id
   comes from, and why the send has to be handed the preview's one, is the `id` manifest
   field above.
-- The line-timestamp filter (Flow A's tail walker AND Flow B's per-line filter) relies
+- The record-timestamp filter (Flow A's tail walker and the shared builder filter) relies
   on the file chain's ISO-8601 stamp format
   (`YYYY-MM-DDTHH:MM:SS.mmm±HH:MM`, see `logging::dispatch::file_timestamp`). Lines
-  without a parseable leading timestamp pass through untouched; they're treated as
-  continuation lines of a multi-line record (panic backtraces, state-snapshot YAML).
-  The cut boundary always lands on a timestamped line so we never ship a partial
-  panic prefix.
+  without a parseable leading timestamp belong to the preceding timestamped record. The
+  tail walker tracks the last complete in-window record while reading backward: when an
+  older header crosses the cutoff, it removes that header's pending continuations too.
+  This preserves complete in-window panic backtraces without leaking an out-of-window
+  record's suffix.
 - **`parse_leading_iso8601` slices by byte, so guard the char boundary.** The leading stamp is
   29 ASCII bytes, but a line reaching the parser need not be one of ours: backtrace frames,
   captured output, and paths with accented or emoji names all flow through `load_and_filter_log_file`'s
