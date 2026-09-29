@@ -20,8 +20,9 @@
 //!   and the post-commit source deletion.
 //! - [`remote`]: the REMOTE leg of existing-archive mutation (pull, apply
 //!   locally, upload to a temp name, swap).
-//! - `fresh_plan` + `fresh_compress` + `fresh_zip`: fresh-source planning and
-//!   identity checks, the managed seedless driver, and its bounded producer.
+//! - `fresh_plan` + `fresh_compress` + `fresh_zip` + `fresh_validate`: fresh-source
+//!   planning and identity checks, the managed seedless driver, its bounded
+//!   producer, and the staged-ZIP validation that gates publication.
 //! - [`edit_error`]: `EditError`, the cancel-vs-fault split every stage returns.
 //! - [`conflicts`]: how a copy/move-into collision resolves (pre-resolved policy
 //!   or interactive Stop-mode prompt).
@@ -49,6 +50,7 @@ mod edit_error;
 mod engine;
 mod fresh_compress;
 mod fresh_plan;
+mod fresh_validate;
 mod fresh_zip;
 mod move_out;
 mod remote;

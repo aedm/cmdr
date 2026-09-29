@@ -1,0 +1,127 @@
+//! Structural validation of a staged fresh ZIP before it may be published:
+//! the three byte counts agree, and the archive reads back as exactly the
+//! planned tree.
+
+use std::collections::BTreeSet;
+use std::path::Path;
+use std::sync::Arc;
+
+use cmdr_archive::read::{SanitizedName, sanitize_entry_name};
+use cmdr_archive::{ArchiveFormat, ArchiveIndex, ArchiveVolume};
+use cmdr_fs::volume::host::VolumeHost;
+
+use super::super::types::WriteOperationError;
+use super::edit_error::EditError;
+use super::fresh_plan::FreshPlan;
+use crate::file_system::volume::{Volume, VolumeError};
+
+/// What a staged ZIP must read back as: every planned entry at the path the
+/// archive reader gives it, plus the ancestor directories the reader
+/// synthesizes. Comparing raw entry counts misfires, because the reader treats
+/// `\` as a separator: a file named `a\b.txt` reads back as `a/` + `b.txt`.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct ExpectedIndex {
+    /// `(path, is_dir)` for every node, root excluded.
+    pub(super) nodes: BTreeSet<(String, bool)>,
+    /// Planned names the reader would quarantine. Any is a validation failure:
+    /// Cmdr never publishes an archive it can't show in full.
+    pub(super) quarantined: usize,
+}
+
+impl ExpectedIndex {
+    pub(super) fn of_plan(plan: &FreshPlan) -> Self {
+        Self::of_names(
+            plan.entries
+                .iter()
+                .map(|entry| (entry.name.as_str(), entry.is_directory)),
+        )
+    }
+
+    pub(super) fn of_names<'a>(names: impl IntoIterator<Item = (&'a str, bool)>) -> Self {
+        let mut expected = Self {
+            nodes: BTreeSet::new(),
+            quarantined: 0,
+        };
+        for (name, is_dir) in names {
+            let SanitizedName::Accepted(path) = sanitize_entry_name(name) else {
+                expected.quarantined += 1;
+                continue;
+            };
+            let mut ancestor = path.as_str();
+            while let Some((parent, _)) = ancestor.rsplit_once('/') {
+                expected.nodes.insert((parent.to_string(), true));
+                ancestor = parent;
+            }
+            expected.nodes.insert((path, is_dir));
+        }
+        expected
+    }
+
+    fn of_index(index: &ArchiveIndex) -> Self {
+        let mut nodes = BTreeSet::new();
+        let mut stack = vec![String::new()];
+        while let Some(dir) = stack.pop() {
+            for node in index.list(&dir).unwrap_or_default() {
+                if node.is_dir {
+                    stack.push(node.path.clone());
+                }
+                nodes.insert((node.path, node.is_dir));
+            }
+        }
+        Self {
+            nodes,
+            quarantined: index.quarantined().len(),
+        }
+    }
+}
+
+pub(super) async fn validate_stage(
+    volume: &Arc<dyn Volume>,
+    path: &Path,
+    writer_bytes: u64,
+    producer_bytes: u64,
+    expected: &ExpectedIndex,
+) -> Result<(), EditError> {
+    let meta = volume
+        .get_metadata(path)
+        .await
+        .map_err(|error| volume_read_error(path, error))?;
+    let stat_bytes = meta.size.unwrap_or(u64::MAX);
+    if writer_bytes != producer_bytes || stat_bytes != producer_bytes {
+        return Err(EditError::Op(WriteOperationError::WriteError {
+            path: path.display().to_string(),
+            message: format!(
+                "ZIP byte counts disagree (producer {producer_bytes}, writer {writer_bytes}, destination {stat_bytes})"
+            ),
+        }));
+    }
+    let reader_path = volume
+        .supports_local_fs_access()
+        .then(|| volume.local_path())
+        .flatten()
+        .map_or_else(
+            || path.to_path_buf(),
+            |root| cmdr_fs::volume::root_anchored(&root, path),
+        );
+    let archive = ArchiveVolume::new(
+        Arc::clone(volume),
+        reader_path,
+        ArchiveFormat::Zip,
+        VolumeHost::detached(),
+    );
+    let index = archive.index().await.map_err(|error| volume_read_error(path, error))?;
+    if expected.quarantined > 0 || ExpectedIndex::of_index(&index) != *expected {
+        return Err(EditError::Op(WriteOperationError::WriteError {
+            path: path.display().to_string(),
+            message: "the staged ZIP did not read back as the planned entries".to_string(),
+        }));
+    }
+    Ok(())
+}
+
+fn volume_read_error(path: &Path, error: VolumeError) -> EditError {
+    EditError::Op(WriteOperationError::ReadError {
+        path: path.display().to_string(),
+        message: error.to_string(),
+    })
+}
