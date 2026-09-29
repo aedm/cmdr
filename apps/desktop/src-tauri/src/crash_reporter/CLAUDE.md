@@ -5,9 +5,10 @@ reporter's Flow B. Everything else: `error_reporter/`.
 
 ## Module map
 
-- **`mod.rs`**: hook, file I/O, report/send boundary. **`next_launch.rs`**: previous-session assembly. **`contain.rs`**:
-  parser exemption. **`panic_courier.rs`** / **`survival.rs`**: survived-panic delivery and amendments.
-  **`signal_handler.rs`** / **`symbolicate.rs`** / **`os_crash_report.rs`**: native crash evidence. Tests are siblings.
+- **`mod.rs`**: report type, privacy transform, hook, and file I/O. **`next_launch.rs`**: previous-session assembly.
+  **`pending_delivery.rs`**: authoritative pending-file send and dismissal. **`contain.rs`**: parser exemption.
+  **`panic_courier.rs`** / **`survival.rs`**: survived-panic delivery and amendments. **`signal_handler.rs`** /
+  **`symbolicate.rs`** / **`os_crash_report.rs`**: native crash evidence. Tests are siblings.
 - IPC: `commands/crash_reporter.rs`. Frontend: `src/lib/crash-reporter/`.
 
 Both paths write `crash-report.json` in the app data dir: the hook with full stdlib, the handler async-signal-safe.

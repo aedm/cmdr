@@ -14,10 +14,10 @@ import { listDirectoryStart } from '$lib/tauri-commands/file-listing' // wrong: 
 `favorites.ts`, `icons.ts`, `app-state.ts`, `write-operations.ts`, `rename.ts`, `storage.ts`, `networking.ts`, `mtp.ts`,
 `licensing.ts`, `settings.ts`, `tab.ts`, `function-key-bar.ts`, `clipboard-files.ts`, `git.ts`, `go-to-path.ts`,
 `tags.ts`, `updates.ts`, `debug.ts`, `usage.ts`, `dock.ts`, `crash-reporter.ts`, plus mostly-event modules (several also
-carry a few commands): `indexing.ts`, `ai.ts`, `appearance.ts`, `menu-events.ts`, `directory-watcher.ts`, `native-drag.ts`,
-`quick-look.ts`, `downloads.ts`, `reveal.ts`, `restricted-paths.ts`, `dialog-events.ts`. `ipc-types.ts` holds
-`TimedOut<T>` and the last-resort `throwIpcError`. DETAILS.md has the per-file contents and the "where to put a new
-command" routing map.
+carry a few commands): `indexing.ts`, `ai.ts`, `appearance.ts`, `menu-events.ts`, `directory-watcher.ts`,
+`native-drag.ts`, `quick-look.ts`, `downloads.ts`, `reveal.ts`, `restricted-paths.ts`, `dialog-events.ts`.
+`ipc-types.ts` holds `TimedOut<T>` and the last-resort `throwIpcError`. DETAILS.md has the per-file contents and the
+"where to put a new command" routing map.
 
 ## Must-knows (invariants and guardrails)
 
