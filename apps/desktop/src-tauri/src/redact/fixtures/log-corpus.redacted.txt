@@ -61,7 +61,7 @@
 17:00:03.002 INFO  net  fetched https://<userinfo>@host.example.com/
 17:00:03.003 INFO  net  fetched https://<userinfo>@api.example.com/v1
 17:00:03.004 INFO  net  pushed ssh://<userinfo>@github.com/foo/bar
-17:00:04.000 INFO  net  Two: https://<userinfo>@a.com and https://x:y@b.com
+17:00:04.000 INFO  net  Two: https://<userinfo>@a.com and https://<userinfo>@b.com
 18:00:00.000 INFO  build  error at /tmp/<dir>/src/<file>.rs:42:5
 18:00:00.001 INFO  build  cache at /tmp/<file>.txt
 18:00:00.002 INFO  build  ipc at /private/<dir>/<dir>
@@ -103,7 +103,7 @@
 22:00:00.003 INFO  combo  Mount mounted at /Volumes/<volume>/<dir>/<file>.gz now
 22:00:00.004 INFO  combo  <host>.local has ip <ipv4>
 22:00:00.005 INFO  combo  Two: <host>.local and <host>.local
-22:00:00.006 INFO  combo  user info https://<userinfo>@a.com and email a@b.com
+22:00:00.006 INFO  combo  user info https://<userinfo>@a.com and email <email>
 22:00:00.007 INFO  combo  Reading $HOME/Documents/<file>.pdf for <email>
 23:00:00.000 INFO  panic  panicked at 'index out of bounds: the len is 5 but the index is 7', $HOME/Documents/<file>.rs:10:5
 23:00:00.001 INFO  panic  thread 'main' panicked at $HOME/<dir>/<dir>/<file>.rs:1:1

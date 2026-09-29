@@ -33,6 +33,7 @@ methods, which consume complete values, fail closed, and retain report correlati
 - **Debug-format producer-owned identities** (`host={host:?}`); literal wrappers let values escape the field.
 - **Tokens key on a domain plus the name, not its printed bytes** (escapes undone, NFC, Cmdr temp suffix split off).
   Credentials, query/fragment values, and diagnostic IDs have separate domains from the entities they describe.
+- **Typed inputs never trust token-looking syntax.**
 - **`redact_with` resumes at `match.start() + consumed`, ❌ never `replace_all`.** A handed-back tail must face the
   scanner again or nothing else can claim it: one match ate `smb:` and shipped the share and filename. A new branch
   that hands text back owes `dispatch` a consumed length.

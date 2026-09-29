@@ -89,7 +89,7 @@ impl RedactionContext {
     /// The caller supplies the value boundary, so this path never applies prose-boundary
     /// heuristics or returns a suffix unredacted.
     pub fn redact_path(&self, path: &str) -> String {
-        redact_typed_path(path, Some(self))
+        redact_typed_path(path, Some(self), false)
     }
 
     /// Redact a typed file or folder name with this report's correlation key.
@@ -390,7 +390,11 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
     if let Some(m) = caps.name("remote_url") {
         if context.is_none() && !m.as_str().starts_with("smb://") {
             if remote_authority_has_userinfo(m.as_str()) {
-                return (redact_legacy_url_userinfo(m.as_str()), whole_len(caps));
+                // `remote_url` allows spaces for report-mode URL paths, but legacy
+                // `url_userinfo` ended at the first whitespace. Consume only that original
+                // span so the compatibility scanner can redact anything after it.
+                let reference = legacy_url_span(m.as_str());
+                return (redact_legacy_url_userinfo(reference), reference.len());
             }
             return rescan_inside(m.as_str());
         }
@@ -527,6 +531,12 @@ fn redact_legacy_url_userinfo(reference: &str) -> String {
         return reference.to_string();
     };
     format!("{scheme}://<userinfo>@{host_rest}")
+}
+
+fn legacy_url_span(reference: &str) -> &str {
+    reference
+        .find(char::is_whitespace)
+        .map_or(reference, |end| &reference[..end])
 }
 
 fn remote_authority_has_userinfo(reference: &str) -> bool {

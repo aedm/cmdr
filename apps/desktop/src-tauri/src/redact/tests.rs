@@ -460,6 +460,39 @@ fn typed_paths_consume_extensionless_multiword_leaves_as_complete_values() {
 }
 
 #[test]
+fn typed_raw_paths_never_trust_caller_supplied_token_syntax() {
+    let context = context("ERR-TYPED-RAW");
+    let cases = [
+        (
+            "/mnt/<alice-smith>/<file:abcdef>/secret.txt",
+            ["<alice-smith>", "<file:abcdef>"],
+        ),
+        (
+            "https://<raw-user>@<raw-host>/<raw-folder>/secret.txt",
+            ["<raw-user>", "<raw-host>"],
+        ),
+    ];
+
+    for (input, hostile_tokens) in cases {
+        let output = context.redact_path(input);
+        for hostile_token in hostile_tokens {
+            assert!(
+                !output.contains(hostile_token),
+                "caller token {hostile_token:?} survived typed redaction for {input:?}: {output}"
+            );
+        }
+    }
+
+    let line = r#"path="/mnt/alice-smith/secret.txt""#;
+    let once = context.redact_line(line);
+    assert_eq!(
+        context.redact_line(&once),
+        once,
+        "transformed report lines must stay idempotent"
+    );
+}
+
+#[test]
 fn smb_uris() {
     let cases = [
         (

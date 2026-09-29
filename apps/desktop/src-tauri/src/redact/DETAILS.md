@@ -62,9 +62,11 @@ account, and share. Functional ID generation and ordinary MCP data remain unchan
 `redact_line` preserves the scanner contract ordinary MCP resources exposed before report delivery gained complete
 remote references, structured identities, and derived IDs. It still collapses SMB authority/share with the legacy
 path-tail heuristic, rewrites UNC to generic host/share tokens, and replaces generic URL userinfo while preserving the
-rest byte for byte. It does not specially redact structured identity fields or derived IDs. New outer patterns do not
-make their contents invisible: compatibility dispatch advances one character and rescans, so an email, IP address, or
-`.local` host that the old scanner recognized inside an SFTP/WebDAV/HTTP(S) reference still redacts.
+rest byte for byte. Its URL-userinfo span ends at the first whitespace, even though the report-only complete-reference
+matcher can continue through spaces; the scanner resumes there so a following path still gets its historical rewrite.
+It does not specially redact structured identity fields or derived IDs. New outer patterns do not make their contents
+invisible: compatibility dispatch advances one character and rescans, so an email, IP address, or `.local` host that
+the old scanner recognized inside an SFTP/WebDAV/HTTP(S) reference still redacts.
 
 This is a policy split over one regex and pattern table, not two mutable scanners. Crash and error report builders must
 hold a `RedactionContext`; ordinary MCP logs, operation summaries, and listing failures must call unsalted
@@ -74,8 +76,10 @@ Typed report structures call `RedactionContext::redact_path`, `redact_name`, `re
 `redact_volume_id` instead of converting themselves to prose. They preserve report-scoped token domains, and an
 unrecognized or relative path fails closed by tokenizing every non-structural segment. A typed path owns its complete
 value boundary: it dispatches directly to the home, mount, remote-reference, UNC, or relative rewriter and never calls
-the prose scanner or `split_trailing_noise`. These methods are lexical only: bundle assembly performs no filesystem or
-network lookup.
+the prose scanner or `split_trailing_noise`. Raw typed values treat every token-looking segment as untrusted input and
+tokenize it again. Only a quoted path reached through `RedactionContext::redact_line` preserves existing generated
+tokens, because that scanner can be reprocessing its own output and must remain idempotent. These methods are lexical
+only: bundle assembly performs no filesystem or network lookup.
 
 ## Decision: path-shape preservation + allowlist
 

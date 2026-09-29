@@ -71,7 +71,9 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
         return (head.clone(), head.len());
     }
     if quoted && context.is_some() {
-        let redacted = redact_typed_path(&unescape_debug(value), context);
+        // This value came from a line the scanner may already have transformed. Preserve
+        // generated tokens so report-line redaction remains idempotent.
+        let redacted = redact_typed_path(&unescape_debug(value), context, true);
         return (format!("{head}{redacted}{quote}"), whole_len(caps));
     }
     if claimed_by_path_branch(value, context.is_some()) {
@@ -79,7 +81,7 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
     }
 
     let unescaped = if quoted { unescape_debug(value) } else { value.into() };
-    let redacted = redact_relative_path(&unescaped, context);
+    let redacted = redact_relative_path(&unescaped, context, true);
     let consumed = head.len() + value.len() + quote.len();
     (format!("{head}{redacted}{quote}"), consumed)
 }
@@ -87,7 +89,13 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
 /// Redact one complete typed path or URL. Unlike the prose scanner, this function owns the
 /// supplied value boundary and therefore never calls `split_trailing_noise` or trims URL
 /// punctuation. Extensionless multiword leaves remain one segment all the way to tokenization.
-pub(super) fn redact_typed_path(path: &str, context: Option<&RedactionContext>) -> String {
+/// `preserve_redacted_segments` is only for values reached through an already-transformed
+/// line; raw typed callers must not trust token-looking input.
+pub(super) fn redact_typed_path(
+    path: &str,
+    context: Option<&RedactionContext>,
+    preserve_redacted_segments: bool,
+) -> String {
     let bytes = path.as_bytes();
     if bytes.first().is_some_and(u8::is_ascii_alphabetic)
         && bytes.get(1) == Some(&b':')
@@ -124,7 +132,7 @@ pub(super) fn redact_typed_path(path: &str, context: Option<&RedactionContext>) 
     }) {
         return redact_scheme_less(path, context);
     }
-    redact_relative_path(path, context)
+    redact_relative_path(path, context, preserve_redacted_segments)
 }
 
 fn is_supported_remote_url(path: &str) -> bool {
@@ -231,8 +239,13 @@ pub(super) fn claimed_by_path_branch(value: &str, report_policy: bool) -> bool {
 /// Redact a path no branch has a prefix rule for: share-relative (`docs/a b.pdf`,
 /// `docs\a b.pdf`), volume-relative (`/docs/a b.pdf`), or a bare name. Same shape rules as
 /// every other path: the leaf keeps its extension, an allowlisted parent keeps its name, the
-/// rest collapse. Segments that are already tokens pass through, which keeps it idempotent.
-pub(super) fn redact_relative_path(value: &str, context: Option<&RedactionContext>) -> String {
+/// rest collapse. Scanner-owned transformed values may preserve existing tokens for
+/// idempotence; raw typed values never do.
+pub(super) fn redact_relative_path(
+    value: &str,
+    context: Option<&RedactionContext>,
+    preserve_redacted_segments: bool,
+) -> String {
     let sep = if value.contains('/') || !value.contains('\\') {
         '/'
     } else {
@@ -248,7 +261,9 @@ pub(super) fn redact_relative_path(value: &str, context: Option<&RedactionContex
         if i > 0 {
             out.push(sep);
         }
-        let keep = seg.is_empty() || is_redacted_segment(seg) || (absolute && i == 1 && SYSTEM_ROOTS.contains(seg));
+        let keep = seg.is_empty()
+            || (preserve_redacted_segments && is_redacted_segment(seg))
+            || (absolute && i == 1 && SYSTEM_ROOTS.contains(seg));
         if keep {
             out.push_str(seg);
         } else if i == leaf_idx {

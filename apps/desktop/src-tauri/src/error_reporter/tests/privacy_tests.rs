@@ -11,6 +11,7 @@ use std::time::SystemTime;
 const PRIVACY_REPORT_ID: &str = "ERR-AB23X";
 const EXPLICIT_NOTE: &str = "EXPLICIT-NOTE-SENTINEL: I consent to share /Users/explicit-consent/Exact note.txt";
 const EXPLICIT_EMAIL: &str = "explicit-email-sentinel@example.test";
+const PRIVATE_LOG_PATH: &str = "/Users/private-account/Plans/client secret";
 const LEGACY_BREADCRUMB_SENTINEL: &str = "PRIVATE-LEGACY-BREADCRUMB-SENTINEL";
 const LEGACY_STATE_SENTINELS: [&str; 16] = [
     "PRIVATE-BARE-FILENAME-ACTIVE.txt",
@@ -63,7 +64,7 @@ fn current_privacy_log(now: DateTime<Utc>) -> String {
         "{stamp} INFO path={path:?}\n\
          {stamp} INFO smb://PRIVATE-REMOTE-USER:PRIVATE-REMOTE-PASSWORD@PRIVATE-REMOTE-HOST.local/PRIVATE-REMOTE-SHARE/{name}?PRIVATE-QUERY-KEY=PRIVATE-QUERY-SECRET#PRIVATE-FRAGMENT-SECRET\n\
          {stamp} INFO server=Some(\"PRIVATE-SERVER-IDENTITY\") user=PRIVATE-ACCOUNT-IDENTITY\n",
-        path = state_history::PRIVACY_TEST_RAW_PATH,
+        path = PRIVATE_LOG_PATH,
         name = state_history::PRIVACY_TEST_RAW_NAME,
     )
 }
@@ -149,8 +150,10 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
         .join("\n");
     for private in [
         "private-account",
+        "alice-smith",
         "client secret",
         " secret",
+        PRIVATE_LOG_PATH,
         state_history::PRIVACY_TEST_RAW_NAME,
         state_history::PRIVACY_TEST_RAW_PATH,
         state_history::PRIVACY_TEST_EXTERNAL_PROSE,

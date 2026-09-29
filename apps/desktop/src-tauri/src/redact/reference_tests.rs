@@ -41,6 +41,10 @@ fn unsalted_api_preserves_pre_report_policy_bytes() {
             "sftp://<userinfo>@files.example.test:2222/home/ada/Client/report.pdf?token=secret#customer",
         ),
         (
+            "https://u@host.example/a then /Users/alice/secret.txt",
+            "https://<userinfo>@host.example/a then $HOME/<file>.txt",
+        ),
+        (
             "webdav://nas.local/dav/ada/report.pdf?owner=ada@example.test#customer",
             "webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer",
         ),
