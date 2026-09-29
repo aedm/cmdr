@@ -7,19 +7,18 @@
 //! undersized local header after bytes have passed downstream (verified against
 //! installed `zip-8.6.0/src/write.rs`, 2026-09-29).
 
-#![allow(
-    dead_code,
-    reason = "the dedicated fresh-create driver consumes this reusable producer in the next change"
-)]
-
+use std::future::Future;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tokio::sync::{mpsc, oneshot};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
+
+use crate::file_system::volume::{StreamLength, VolumeError, VolumeReadStream};
 
 const CHANNEL_CHUNKS: usize = 4;
 const CHUNK_BYTES: usize = 128 * 1024;
@@ -31,11 +30,16 @@ pub(super) enum FreshZipSource {
 }
 
 pub(super) struct RemoteZipSource {
-    rx: std::sync::mpsc::Receiver<Result<Vec<u8>, FreshZipError>>,
+    rx: std::sync::mpsc::Receiver<RemoteSourceMessage>,
 }
 
 pub(super) struct RemoteZipFeeder {
-    tx: std::sync::mpsc::SyncSender<Result<Vec<u8>, FreshZipError>>,
+    tx: std::sync::mpsc::SyncSender<RemoteSourceMessage>,
+}
+
+enum RemoteSourceMessage {
+    Chunk(Result<Vec<u8>, FreshZipError>),
+    Complete,
 }
 
 pub(super) fn remote_source_bridge() -> (RemoteZipFeeder, RemoteZipSource) {
@@ -45,8 +49,30 @@ pub(super) fn remote_source_bridge() -> (RemoteZipFeeder, RemoteZipSource) {
 
 impl RemoteZipFeeder {
     pub(super) async fn send(&self, chunk: Result<Vec<u8>, FreshZipError>) -> Result<(), FreshZipError> {
+        match chunk {
+            Ok(bytes) => {
+                for bounded in bytes.chunks(CHUNK_BYTES) {
+                    self.send_message(RemoteSourceMessage::Chunk(Ok(bounded.to_vec())))
+                        .await?;
+                }
+                Ok(())
+            }
+            Err(error) => self.send_message(RemoteSourceMessage::Chunk(Err(error))).await,
+        }
+    }
+
+    async fn send_message(&self, message: RemoteSourceMessage) -> Result<(), FreshZipError> {
         let tx = self.tx.clone();
-        tokio::task::spawn_blocking(move || tx.send(chunk))
+        tokio::task::spawn_blocking(move || tx.send(message))
+            .await
+            .map_err(|_| FreshZipError::ProducerPanicked)?
+            .map_err(|_| FreshZipError::Cancelled)
+    }
+
+    /// Marks the source as successfully exhausted. Dropping the feeder without
+    /// this marker is channel loss, never EOF.
+    pub(super) async fn finish(self) -> Result<(), FreshZipError> {
+        tokio::task::spawn_blocking(move || self.tx.send(RemoteSourceMessage::Complete))
             .await
             .map_err(|_| FreshZipError::ProducerPanicked)?
             .map_err(|_| FreshZipError::Cancelled)
@@ -62,6 +88,41 @@ pub(super) struct FreshZipEntry {
     pub unix_mode: Option<u32>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) struct FreshZipProgress {
+    pub entries_done: usize,
+    pub source_bytes_done: u64,
+}
+
+/// Returns `true` when the producer must stop after reporting this boundary.
+pub(super) type FreshZipProgressObserver = Arc<dyn Fn(FreshZipProgress) -> bool + Send + Sync>;
+
+#[derive(Clone)]
+pub(super) struct FreshZipCancellation {
+    cancelled: Arc<AtomicBool>,
+    wake: Option<Arc<dyn Fn() + Send + Sync>>,
+}
+
+impl FreshZipCancellation {
+    pub(super) fn new(wake: Option<Arc<dyn Fn() + Send + Sync>>) -> Self {
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+            wake,
+        }
+    }
+
+    pub(super) fn request(&self) {
+        self.cancelled.store(true, Ordering::Release);
+        if let Some(wake) = &self.wake {
+            wake();
+        }
+    }
+
+    pub(super) fn is_requested(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum FreshZipError {
     Cancelled,
@@ -69,72 +130,154 @@ pub(super) enum FreshZipError {
     CountMismatch { entry: String, expected: u64, actual: u64 },
     Zip(String),
     OutputClosed,
+    SourceChannelClosed,
+    WorkerStart(String),
     ProducerPanicked,
 }
 
 pub(super) struct FreshZipOutput {
+    stream: FreshZipStream,
+    completion: FreshZipCompletion,
+}
+
+pub(super) struct FreshZipStream {
     rx: mpsc::Receiver<Vec<u8>>,
+    bytes_read: u64,
+    cancellation: FreshZipCancellation,
+}
+
+pub(super) struct FreshZipCompletion {
     terminal: oneshot::Receiver<Result<u64, FreshZipError>>,
     join: Option<std::thread::JoinHandle<()>>,
-    cancelled: Arc<AtomicBool>,
+    cancellation: FreshZipCancellation,
 }
 
 impl FreshZipOutput {
+    #[cfg(test)]
     pub(super) async fn next_chunk(&mut self) -> Option<Vec<u8>> {
-        self.rx.recv().await
+        self.stream.next_chunk_raw().await
     }
 
     /// Waits for the explicit producer outcome and joins its blocking worker.
     /// A closed terminal channel is a producer failure, never successful EOF.
-    pub(super) async fn finish(mut self) -> Result<u64, FreshZipError> {
-        let terminal = (&mut self.terminal)
-            .await
-            .map_err(|_| FreshZipError::ProducerPanicked)?;
-        if let Some(join) = self.join.take() {
-            tokio::task::spawn_blocking(move || join.join())
-                .await
-                .map_err(|_| FreshZipError::ProducerPanicked)?
-                .map_err(|_| FreshZipError::ProducerPanicked)?;
-        }
-        terminal
+    #[cfg(test)]
+    pub(super) async fn finish(self) -> Result<u64, FreshZipError> {
+        self.completion.finish().await
+    }
+
+    /// Separates the destination-consumed stream from the producer's explicit
+    /// terminal result. The coordinator retains the latter while a backend owns
+    /// the former, so destination EOF can never stand in for producer success.
+    pub(super) fn into_parts(self) -> (FreshZipStream, FreshZipCompletion) {
+        (self.stream, self.completion)
     }
 }
 
-impl Drop for FreshZipOutput {
+impl FreshZipStream {
+    async fn next_chunk_raw(&mut self) -> Option<Vec<u8>> {
+        let chunk = self.rx.recv().await?;
+        self.bytes_read += chunk.len() as u64;
+        Some(chunk)
+    }
+}
+
+impl VolumeReadStream for FreshZipStream {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move { self.next_chunk_raw().await.map(Ok) })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Unknown
+    }
+
+    fn bytes_read(&self) -> u64 {
+        self.bytes_read
+    }
+}
+
+impl Drop for FreshZipStream {
     fn drop(&mut self) {
-        self.cancelled.store(true, Ordering::Release);
+        self.cancellation.request();
         self.rx.close();
-        if let Some(join) = self.join.take() {
-            let _ = join.join();
-        }
     }
 }
 
-pub(super) fn spawn_fresh_zip(entries: Vec<FreshZipEntry>, level: Option<i64>) -> FreshZipOutput {
+impl FreshZipCompletion {
+    pub(super) async fn finish(mut self) -> Result<u64, FreshZipError> {
+        let terminal = (&mut self.terminal).await;
+        let joined = match self.join.take() {
+            Some(join) => tokio::task::spawn_blocking(move || join.join())
+                .await
+                .map_err(|_| FreshZipError::ProducerPanicked)
+                .and_then(|outcome| outcome.map_err(|_| FreshZipError::ProducerPanicked)),
+            None => Ok(()),
+        };
+        joined?;
+        terminal.map_err(|_| FreshZipError::ProducerPanicked)?
+    }
+
+    /// Cancels a producer whose destination stopped consuming, closes that
+    /// endpoint first so a full bounded queue wakes, then joins off the runtime.
+    #[cfg(test)]
+    pub(super) async fn shutdown(self, stream: FreshZipStream) -> Result<u64, FreshZipError> {
+        self.cancellation.request();
+        drop(stream);
+        self.finish().await
+    }
+}
+
+impl Drop for FreshZipCompletion {
+    fn drop(&mut self) {
+        self.cancellation.request();
+        // Joining may block and `Drop` can run on an async worker. The managed
+        // coordinator owns explicit `finish` / `shutdown`; Drop only requests
+        // cancellation and never performs async cleanup synchronously.
+    }
+}
+
+#[cfg(test)]
+pub(super) fn spawn_fresh_zip(
+    entries: Vec<FreshZipEntry>,
+    level: Option<i64>,
+) -> Result<FreshZipOutput, FreshZipError> {
+    spawn_fresh_zip_with_progress(entries, level, None, FreshZipCancellation::new(None))
+}
+
+pub(super) fn spawn_fresh_zip_with_progress(
+    entries: Vec<FreshZipEntry>,
+    level: Option<i64>,
+    progress: Option<FreshZipProgressObserver>,
+    cancellation: FreshZipCancellation,
+) -> Result<FreshZipOutput, FreshZipError> {
     let (output_tx, output_rx) = mpsc::channel(CHANNEL_CHUNKS);
     let (terminal_tx, terminal_rx) = oneshot::channel();
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let worker_cancelled = Arc::clone(&cancelled);
+    let worker_cancellation = cancellation.clone();
     let join = std::thread::Builder::new()
         .name("fresh-zip-producer".into())
         .spawn(move || {
-            let result = produce(entries, level, output_tx, &worker_cancelled);
+            let result = produce(entries, level, output_tx, &worker_cancellation, progress.as_ref());
             let _ = terminal_tx.send(result);
         })
-        .expect("the OS can create the bounded ZIP producer worker");
-    FreshZipOutput {
-        rx: output_rx,
-        terminal: terminal_rx,
-        join: Some(join),
-        cancelled,
-    }
+        .map_err(|error| FreshZipError::WorkerStart(error.to_string()))?;
+    Ok(FreshZipOutput {
+        stream: FreshZipStream {
+            rx: output_rx,
+            bytes_read: 0,
+            cancellation: cancellation.clone(),
+        },
+        completion: FreshZipCompletion {
+            terminal: terminal_rx,
+            join: Some(join),
+            cancellation,
+        },
+    })
 }
 
 struct ChannelWriter {
     tx: mpsc::Sender<Vec<u8>>,
     pending: Vec<u8>,
     written: u64,
-    cancelled: Arc<AtomicBool>,
+    cancellation: FreshZipCancellation,
 }
 
 impl ChannelWriter {
@@ -142,7 +285,7 @@ impl ChannelWriter {
         if self.pending.is_empty() {
             return Ok(());
         }
-        if self.cancelled.load(Ordering::Acquire) {
+        if self.cancellation.is_requested() {
             return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled"));
         }
         let chunk = std::mem::replace(&mut self.pending, Vec::with_capacity(CHUNK_BYTES));
@@ -177,17 +320,20 @@ fn produce(
     entries: Vec<FreshZipEntry>,
     level: Option<i64>,
     tx: mpsc::Sender<Vec<u8>>,
-    cancelled: &Arc<AtomicBool>,
+    cancellation: &FreshZipCancellation,
+    progress: Option<&FreshZipProgressObserver>,
 ) -> Result<u64, FreshZipError> {
     let output = ChannelWriter {
         tx,
         pending: Vec::with_capacity(CHUNK_BYTES),
         written: 0,
-        cancelled: Arc::clone(cancelled),
+        cancellation: cancellation.clone(),
     };
     let mut zip = ZipWriter::new_stream(output);
+    let mut source_bytes_done = 0;
+    let mut entries_done = 0;
     for mut entry in entries {
-        checkpoint(cancelled)?;
+        checkpoint(cancellation)?;
         let mut options = SimpleFileOptions::default()
             .compression_method(CompressionMethod::Deflated)
             .compression_level(level.map(|value| value.clamp(1, 9)))
@@ -201,6 +347,8 @@ fn produce(
         if entry.is_directory {
             zip.add_directory(entry.name.trim_end_matches('/'), options)
                 .map_err(map_zip)?;
+            entries_done += 1;
+            report_progress(progress, entries_done, source_bytes_done)?;
             continue;
         }
         zip.start_file(entry.name.clone(), options).map_err(map_zip)?;
@@ -210,21 +358,42 @@ fn produce(
                     entry: entry.name.clone(),
                     message: error.to_string(),
                 })?;
-                copy_reader(&mut file, &mut zip, &entry.name, cancelled)?
+                copy_reader(
+                    &mut file,
+                    &mut zip,
+                    &entry.name,
+                    cancellation,
+                    &mut source_bytes_done,
+                    entries_done,
+                    progress,
+                )?
             }
-            FreshZipSource::Bytes(bytes) => copy_reader(&mut bytes.as_slice(), &mut zip, &entry.name, cancelled)?,
+            FreshZipSource::Bytes(bytes) => copy_reader(
+                &mut bytes.as_slice(),
+                &mut zip,
+                &entry.name,
+                cancellation,
+                &mut source_bytes_done,
+                entries_done,
+                progress,
+            )?,
             FreshZipSource::Remote(source) => {
                 let mut actual = 0;
                 loop {
-                    checkpoint(cancelled)?;
+                    checkpoint(cancellation)?;
                     match source.rx.recv_timeout(std::time::Duration::from_millis(20)) {
-                        Ok(Ok(bytes)) => {
+                        Ok(RemoteSourceMessage::Chunk(Ok(bytes))) => {
                             actual += bytes.len() as u64;
+                            source_bytes_done += bytes.len() as u64;
                             zip.write_all(&bytes).map_err(map_io)?;
+                            report_progress(progress, entries_done, source_bytes_done)?;
                         }
-                        Ok(Err(error)) => return Err(error),
+                        Ok(RemoteSourceMessage::Chunk(Err(error))) => return Err(error),
+                        Ok(RemoteSourceMessage::Complete) => break,
                         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                            return Err(FreshZipError::SourceChannelClosed);
+                        }
                     }
                 }
                 actual
@@ -237,6 +406,8 @@ fn produce(
                 actual,
             });
         }
+        entries_done += 1;
+        report_progress(progress, entries_done, source_bytes_done)?;
     }
     let mut output = zip.finish().map_err(map_zip)?.into_inner();
     output.flush_pending().map_err(map_io)?;
@@ -247,12 +418,15 @@ fn copy_reader(
     reader: &mut dyn Read,
     output: &mut impl Write,
     entry: &str,
-    cancelled: &Arc<AtomicBool>,
+    cancellation: &FreshZipCancellation,
+    source_bytes_done: &mut u64,
+    entries_done: usize,
+    progress: Option<&FreshZipProgressObserver>,
 ) -> Result<u64, FreshZipError> {
     let mut buffer = [0u8; CHUNK_BYTES];
     let mut total = 0;
     loop {
-        checkpoint(cancelled)?;
+        checkpoint(cancellation)?;
         let count = reader.read(&mut buffer).map_err(|error| FreshZipError::Source {
             entry: entry.to_string(),
             message: error.to_string(),
@@ -261,12 +435,30 @@ fn copy_reader(
             return Ok(total);
         }
         total += count as u64;
+        *source_bytes_done += count as u64;
         output.write_all(&buffer[..count]).map_err(map_io)?;
+        report_progress(progress, entries_done, *source_bytes_done)?;
     }
 }
 
-fn checkpoint(cancelled: &AtomicBool) -> Result<(), FreshZipError> {
-    if cancelled.load(Ordering::Acquire) {
+fn report_progress(
+    observer: Option<&FreshZipProgressObserver>,
+    entries_done: usize,
+    source_bytes_done: u64,
+) -> Result<(), FreshZipError> {
+    if let Some(observer) = observer
+        && observer(FreshZipProgress {
+            entries_done,
+            source_bytes_done,
+        })
+    {
+        return Err(FreshZipError::Cancelled);
+    }
+    Ok(())
+}
+
+fn checkpoint(cancellation: &FreshZipCancellation) -> Result<(), FreshZipError> {
+    if cancellation.is_requested() {
         Err(FreshZipError::Cancelled)
     } else {
         Ok(())
@@ -337,7 +529,9 @@ mod tests {
                 unix_mode: Some(0o640),
             },
         ];
-        let bytes = collect(spawn_fresh_zip(entries, Some(1))).await.expect("produce");
+        let bytes = collect(spawn_fresh_zip(entries, Some(1)).expect("spawn producer"))
+            .await
+            .expect("produce");
         let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("valid zip");
         assert_eq!(archive.len(), 2);
         assert_eq!(archive.by_index(0).expect("dir").name(), "folder/");
@@ -361,7 +555,8 @@ mod tests {
                 unix_mode: None,
             }],
             None,
-        );
+        )
+        .expect("spawn producer");
         tokio::task::yield_now().await;
         let bytes = collect(output)
             .await
@@ -389,7 +584,8 @@ mod tests {
                 unix_mode: None,
             }],
             None,
-        );
+        )
+        .expect("spawn producer");
         feeder.send(Ok(b"prefix".to_vec())).await.expect("first chunk");
         feeder
             .send(Err(FreshZipError::Source {
@@ -400,6 +596,27 @@ mod tests {
             .expect("late error");
         drop(feeder);
         assert!(matches!(collect(output).await, Err(FreshZipError::Source { .. })));
+    }
+
+    #[tokio::test]
+    async fn remote_channel_loss_is_not_successful_eof_even_at_the_planned_size() {
+        let (feeder, source) = remote_source_bridge();
+        let output = spawn_fresh_zip(
+            vec![FreshZipEntry {
+                name: "remote.bin".into(),
+                size: 6,
+                source: FreshZipSource::Remote(source),
+                is_directory: false,
+                modified: None,
+                unix_mode: None,
+            }],
+            None,
+        )
+        .expect("spawn producer");
+        feeder.send(Ok(b"prefix".to_vec())).await.expect("first chunk");
+        drop(feeder);
+
+        assert!(matches!(collect(output).await, Err(FreshZipError::SourceChannelClosed)));
     }
 
     #[tokio::test]
@@ -414,7 +631,8 @@ mod tests {
                 unix_mode: None,
             }],
             None,
-        );
+        )
+        .expect("spawn producer");
         assert!(matches!(
             collect(output).await,
             Err(FreshZipError::CountMismatch {
@@ -437,7 +655,112 @@ mod tests {
                 unix_mode: None,
             }],
             None,
-        );
-        drop(output);
+        )
+        .expect("spawn producer");
+        let (stream, completion) = output.into_parts();
+        let outcome = tokio::time::timeout(std::time::Duration::from_secs(1), completion.shutdown(stream))
+            .await
+            .expect("shutdown must unblock a producer whose output queue is full");
+        assert!(matches!(
+            outcome,
+            Err(FreshZipError::Cancelled | FreshZipError::OutputClosed)
+        ));
+    }
+
+    #[tokio::test]
+    async fn shutdown_joins_a_producer_waiting_on_a_live_remote_feeder() {
+        let (_feeder, source) = remote_source_bridge();
+        let output = spawn_fresh_zip(
+            vec![FreshZipEntry {
+                name: "remote.bin".into(),
+                size: 1,
+                source: FreshZipSource::Remote(source),
+                is_directory: false,
+                modified: None,
+                unix_mode: None,
+            }],
+            None,
+        )
+        .expect("spawn producer");
+        let (stream, completion) = output.into_parts();
+        let outcome = tokio::time::timeout(std::time::Duration::from_secs(1), completion.shutdown(stream))
+            .await
+            .expect("shutdown must wake a producer waiting for remote source bytes");
+        assert!(matches!(outcome, Err(FreshZipError::Cancelled)));
+    }
+
+    #[tokio::test]
+    async fn dropping_completion_cancels_a_producer_with_a_live_remote_feeder() {
+        let (feeder, source) = remote_source_bridge();
+        let output = spawn_fresh_zip(
+            vec![FreshZipEntry {
+                name: "remote.bin".into(),
+                size: 1,
+                source: FreshZipSource::Remote(source),
+                is_directory: false,
+                modified: None,
+                unix_mode: None,
+            }],
+            None,
+        )
+        .expect("spawn producer");
+        let (stream, completion) = output.into_parts();
+
+        drop(completion);
+        let feeder_outcome = tokio::time::timeout(std::time::Duration::from_secs(1), feeder.finish())
+            .await
+            .expect("completion drop must cancel a producer waiting on a live feeder");
+        assert!(matches!(feeder_outcome, Err(FreshZipError::Cancelled)));
+        drop(stream);
+    }
+
+    #[tokio::test]
+    async fn dropping_completion_and_stream_never_blocks_on_a_full_output_queue() {
+        let output = spawn_fresh_zip(
+            vec![FreshZipEntry {
+                name: "large.bin".into(),
+                size: (CHUNK_BYTES * 20) as u64,
+                source: FreshZipSource::Bytes(vec![3; CHUNK_BYTES * 20]),
+                is_directory: false,
+                modified: None,
+                unix_mode: None,
+            }],
+            None,
+        )
+        .expect("spawn producer");
+        let (stream, completion) = output.into_parts();
+        tokio::task::yield_now().await;
+
+        tokio::time::timeout(std::time::Duration::from_secs(1), async move {
+            drop(completion);
+            drop(stream);
+        })
+        .await
+        .expect("drop must signal cancellation without joining on the runtime");
+    }
+
+    #[tokio::test]
+    async fn destination_refusal_drops_its_stream_before_joining_the_producer() {
+        let output = spawn_fresh_zip(
+            vec![FreshZipEntry {
+                name: "large.bin".into(),
+                size: (CHUNK_BYTES * 20) as u64,
+                source: FreshZipSource::Bytes(vec![3; CHUNK_BYTES * 20]),
+                is_directory: false,
+                modified: None,
+                unix_mode: None,
+            }],
+            None,
+        )
+        .expect("spawn producer");
+        let (stream, completion) = output.into_parts();
+        drop(stream); // the backend returned early without consuming the source
+        let outcome = tokio::time::timeout(std::time::Duration::from_secs(1), completion.finish())
+            .await
+            .expect("joining after backend refusal must not block the runtime");
+        assert!(matches!(
+            outcome,
+            Err(FreshZipError::Cancelled | FreshZipError::OutputClosed)
+        ));
     }
 }

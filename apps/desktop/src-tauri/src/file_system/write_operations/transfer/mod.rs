@@ -29,6 +29,11 @@ pub(super) mod transfer_probe;
 /// code calls, and every module under it is private to that directory.
 pub(super) mod volume;
 
+// Fresh archive creation is a generated cross-volume write and uses the same
+// tracked sibling staging as ordinary files rather than growing a parallel temp
+// lifecycle in `archive_edit`.
+pub(super) use staged_write::StagedWrite;
+
 // Re-export for the nested integration tests below (and to mirror the
 // pre-split `write_operations::CopyTransaction` test path).
 #[cfg(test)]

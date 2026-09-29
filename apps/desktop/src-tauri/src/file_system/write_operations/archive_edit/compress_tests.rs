@@ -1,65 +1,10 @@
-//! Compress: seed a valid empty zip at a target, then pack sources into it. The
-//! seed is the net-new surface (the copy-into machinery is covered by
-//! `copy_into_tests`), so these tests pin the seed's validity, that it's
-//! load-bearing (a compress against a 0-byte target would fail), and one end-to-end
-//! compress of local files.
+//! Fresh compression lifecycle, output, progress, metadata, and journaling.
 
-use super::compress::{compress_start, seed_empty_zip};
+use super::compress::compress_start;
 use super::test_support::*;
 use crate::file_system::write_operations::WriteOperationPhase;
-use cmdr_archive::bytes_start_with_zip_signature;
 
-/// The seed writes a valid empty archive: the reader opens it with zero entries,
-/// and its first bytes pass the shared zip-signature check. Pre-fix (a 0-byte
-/// stub) `ZipArchive::new` errors here, so this test is RED until the real
-/// 22-byte EOCD seed lands.
-#[test]
-fn seed_empty_zip_writes_a_valid_zero_entry_archive() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let target = tmp.path().join("out.zip");
-
-    seed_empty_zip(&target).expect("seed");
-
-    // The reader opens it as a real, empty archive.
-    let file = std::fs::File::open(&target).expect("open seeded zip");
-    let archive = ZipArchive::new(file).expect("a 0-byte file would fail here; the seed must be a valid empty zip");
-    assert_eq!(archive.len(), 0, "a fresh seed holds zero entries");
-
-    // The magic check the routing/boundary layer uses accepts the seed.
-    let mut header = [0u8; 4];
-    let mut f = std::fs::File::open(&target).expect("reopen");
-    f.read_exact(&mut header).expect("read header");
-    assert!(
-        bytes_start_with_zip_signature(&header),
-        "the seed's first bytes must pass the shared zip-signature check"
-    );
-}
-
-/// The seed replaces any existing file at the target atomically (temp+rename), so
-/// an overwrite lands a clean empty archive, never a torn one, and leaves no temp.
-#[test]
-fn seed_empty_zip_overwrites_an_existing_file_atomically() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let target = tmp.path().join("out.zip");
-    std::fs::write(&target, b"stale bytes that are not a zip").expect("pre-write");
-
-    seed_empty_zip(&target).expect("seed over existing");
-
-    let file = std::fs::File::open(&target).expect("open");
-    let archive = ZipArchive::new(file).expect("the overwrite must leave a valid empty zip");
-    assert_eq!(archive.len(), 0);
-    // No temp sibling left behind after the atomic rename.
-    let leftover = std::fs::read_dir(tmp.path())
-        .expect("read_dir")
-        .filter_map(Result::ok)
-        .any(|e| e.file_name().to_string_lossy().contains(".cmdr-tmp-"));
-    assert!(!leftover, "the temp sibling must be gone after the rename");
-}
-
-/// End-to-end: compress two local files into a new zip at a target and read both
-/// entries back. This is where the seed being load-bearing shows — with the 0-byte
-/// stub, `route_archive_copy_into`'s in-closure `ZipArchive::new` fails and neither
-/// entry lands. (Manually verified RED by temporarily skipping the seed.)
+/// End-to-end: compress two local files into a new ZIP and read both entries back.
 #[tokio::test]
 async fn compress_start_packs_local_files_into_a_new_zip() {
     use crate::file_system::volume::backends::LocalPosixVolume;
@@ -79,7 +24,7 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
     std::fs::write(src_root.join("two.txt"), &two).expect("w2");
     let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", src_root.clone()));
 
-    // The target zip doesn't exist yet — compress must seed it, then add the files.
+    // The target ZIP doesn't exist yet; it must remain absent until publication.
     let dest = tmp.path().join("bundle.zip");
     assert!(!dest.exists(), "the target must not exist before compress");
 
@@ -104,6 +49,10 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
         events.entered()
     })
     .await;
+    assert!(
+        !dest.exists(),
+        "fresh compression must stay on its staged name until ZIP close and validation finish"
+    );
     assert!(
         events.inner.complete.lock_ignore_poison().is_empty(),
         "completion must wait for ZIP finalization"
@@ -164,16 +113,190 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
     assert_eq!(complete[0].operation_type, WriteOperationType::Compress);
 }
 
+#[tokio::test]
+async fn a_name_taken_after_start_is_not_replaced_or_reported_complete() {
+    use crate::file_system::volume::backends::LocalPosixVolume;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let src_root = tmp.path().join("src");
+    std::fs::create_dir_all(&src_root).expect("mkdir src");
+    std::fs::write(src_root.join("new.txt"), b"new archive bytes").expect("write source");
+    let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", src_root));
+    let dest = tmp.path().join("bundle.zip");
+    let raced_bytes = b"a file created after the compression was approved";
+    let events = PhaseGateSink::new(WriteOperationPhase::FinishingCompression);
+
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("new.txt")],
+        dest.clone(),
+        unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start net-new compress");
+    wait_until_async(Duration::from_secs(5), "finishing-compression phase gate", || {
+        events.entered()
+    })
+    .await;
+
+    std::fs::write(&dest, raced_bytes).expect("race a file into the free target name");
+    events.release();
+    wait_until_async(Duration::from_secs(5), "the late-conflict terminal event", || {
+        !events.inner.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+
+    assert_eq!(std::fs::read(&dest).expect("read raced destination"), raced_bytes);
+    assert!(events.inner.complete.lock_ignore_poison().is_empty());
+}
+
+#[tokio::test]
+async fn stop_policy_prompts_for_duplicate_source_names_and_honors_overwrite() {
+    use crate::file_system::volume::backends::LocalPosixVolume;
+    use crate::file_system::write_operations::resolve_write_conflict;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let src_root = tmp.path().join("src");
+    std::fs::create_dir_all(src_root.join("first")).expect("mkdir first");
+    std::fs::create_dir_all(src_root.join("second")).expect("mkdir second");
+    std::fs::write(src_root.join("first/report.txt"), b"first").expect("write first");
+    std::fs::write(src_root.join("second/report.txt"), b"second").expect("write second");
+    let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", src_root));
+    let dest = tmp.path().join("bundle.zip");
+    let events = Arc::new(CollectorEventSink::new());
+
+    let started = compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("first/report.txt"), PathBuf::from("second/report.txt")],
+        dest.clone(),
+        unique_lane_id(),
+        ConflictResolution::Stop,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start duplicate-name compress");
+
+    wait_until_async(Duration::from_secs(5), "duplicate-name conflict", || {
+        !events.conflicts.lock_ignore_poison().is_empty() || !events.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(events.errors.lock_ignore_poison().is_empty());
+    let clash = events.conflicts.lock_ignore_poison()[0].conflict_id;
+    resolve_write_conflict(&started.operation_id, clash, ConflictResolution::Overwrite, false);
+    wait_until_async(Duration::from_secs(5), "duplicate-name compress completion", || {
+        !events.complete.lock_ignore_poison().is_empty()
+    })
+    .await;
+
+    assert_eq!(read_entry(&dest, "report.txt").as_deref(), Some(b"second".as_slice()));
+}
+
+#[tokio::test]
+async fn an_existing_local_archive_stays_byte_exact_until_publication() {
+    use crate::file_system::volume::backends::LocalPosixVolume;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let src_root = tmp.path().join("src");
+    std::fs::create_dir_all(&src_root).expect("mkdir src");
+    std::fs::write(src_root.join("new.txt"), b"new bytes").expect("write source");
+    let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", src_root));
+    let dest = tmp.path().join("bundle.zip");
+    let original = zip_bytes(&[("old.txt", b"original bytes")]);
+    std::fs::write(&dest, &original).expect("write original archive");
+
+    let events = PhaseGateSink::new(WriteOperationPhase::FinishingCompression);
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("new.txt")],
+        dest.clone(),
+        unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start replacement compress");
+
+    wait_until_async(Duration::from_secs(5), "finishing-compression phase gate", || {
+        events.entered()
+    })
+    .await;
+    assert_eq!(std::fs::read(&dest).expect("read original"), original);
+    events.release();
+    wait_until_async(Duration::from_secs(5), "write-complete", || {
+        !events.inner.complete.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert_eq!(read_entry(&dest, "new.txt").as_deref(), Some(b"new bytes".as_slice()));
+    assert!(read_entry(&dest, "old.txt").is_none());
+}
+
+#[tokio::test]
+async fn local_alias_and_destination_inside_source_are_refused_before_registration() {
+    use crate::file_system::volume::backends::LocalPosixVolume;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let source_dir = tmp.path().join("source");
+    std::fs::create_dir_all(&source_dir).expect("mkdir source");
+    let source_archive = source_dir.join("source.zip");
+    std::fs::write(&source_archive, b"source").expect("write source");
+    let alias = tmp.path().join("alias.zip");
+    std::fs::hard_link(&source_archive, &alias).expect("hard link alias");
+    let source_volume: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", "/"));
+    let events = Arc::new(CollectorEventSink::new());
+
+    let alias_result = compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        Arc::clone(&source_volume),
+        vec![source_archive],
+        alias,
+        unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await;
+    assert!(matches!(
+        alias_result,
+        Err(WriteOperationError::DestinationInsideSource { .. })
+    ));
+
+    let inside_result = compress_start(
+        events,
+        source_volume,
+        vec![source_dir.clone()],
+        source_dir.join("nested.zip"),
+        unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await;
+    assert!(matches!(
+        inside_result,
+        Err(WriteOperationError::DestinationInsideSource { .. })
+    ));
+}
+
 /// ❗ DATA SAFETY: a compress onto a destination Cmdr may not write must refuse
 /// BEFORE it touches that file, leaving the original byte-for-byte intact.
-///
-/// The seed is an atomic temp+rename OVER the destination, and the writability
-/// guard used to run inside `route_archive_copy_into`, several steps later. So
-/// compressing onto an existing `report.docx` (or a `.tar`, or a `.7z`) replaced
-/// it with a 22-byte empty zip and THEN refused: the user consented to making an
-/// archive and got a destroyed document and no archive. Atomicity is no defense
-/// here — the swap was atomic, it just landed before anyone asked whether the
-/// target could be written at all.
 ///
 /// The assertion that matters is byte-level equality of the original file, not
 /// merely that the call returned an error.
@@ -279,8 +402,8 @@ async fn compress_journals_subkind_and_net_new_from_the_driver() {
     .await
     .expect("start compress");
 
-    // Poll the journal itself (not just the complete event, which fires before
-    // finalize) until the op is durably finalized.
+    // Poll the journal itself so this cell asserts the persisted status and not
+    // only the terminal event's in-memory observation.
     let op_id = start.operation_id.clone();
     let jdb_poll = jdb.clone();
     wait_until_async(

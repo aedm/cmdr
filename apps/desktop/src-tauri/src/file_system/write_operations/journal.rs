@@ -481,16 +481,6 @@ impl ArchiveProvenance {
             initiator,
         }
     }
-
-    /// A compress: create a NEW archive and pack the sources in. Rollbackable iff
-    /// `net_new` (and, at rollback time, unchanged — the rollback engine rechecks).
-    pub(crate) fn compress(net_new: bool, initiator: Initiator) -> Self {
-        Self {
-            subkind: ArchiveSubkind::Compress,
-            net_new,
-            initiator,
-        }
-    }
 }
 
 /// Open an archive-edit managed op in the journal. Unlike [`open_local_op`] this

@@ -42,7 +42,7 @@ use crate::ignore_poison::IgnorePoison;
 /// `cleanup.rs::reap_stale_transfer_temps` does NOT match (it reaps `.cmdr-tmp-`
 /// only), so an aside nothing could put back survives for the user to find.
 #[must_use = "an aside nobody settles stays under its scratch name until the next launch's sweep"]
-pub(super) struct DisplacedDestination {
+pub(in crate::file_system::write_operations) struct DisplacedDestination {
     aside: StagingTemp,
     original: PathBuf,
     /// Whether it's a FOLDER, which only a cross-type Overwrite sets aside and
@@ -78,7 +78,7 @@ impl std::fmt::Debug for DisplacedDestination {
 /// paths are the destination volume's own, and a direct SMB session's `/photos`
 /// is not this Mac's. `RecordHome::volume_space` is what keeps the sweep's
 /// `std::fs` off them.
-pub(super) async fn displace_destination(
+pub(in crate::file_system::write_operations) async fn displace_destination(
     state: &Arc<WriteOperationState>,
     volume: &Arc<dyn Volume>,
     original: &Path,
@@ -133,7 +133,7 @@ impl DisplacedDestination {
     ///
     /// A folder goes as a tree, and only here: the user answered Overwrite on a
     /// prompt naming both types, and what replaced it has fully landed.
-    pub(super) async fn discard(self, volume: &Arc<dyn Volume>) {
+    pub(in crate::file_system::write_operations) async fn discard(self, volume: &Arc<dyn Volume>) {
         let removed = if self.is_directory {
             remove_tree(volume, self.aside.path(), TreeRemoval::UserChoseOverwriteAcrossTypes)
                 .await
@@ -163,7 +163,7 @@ impl DisplacedDestination {
     /// nothing landed at all, still the aside's), and the caller has to name
     /// that path in the failure the user reads, because it is the only place
     /// their file is.
-    pub(super) async fn restore(self, volume: &Arc<dyn Volume>) -> Option<PathBuf> {
+    pub(in crate::file_system::write_operations) async fn restore(self, volume: &Arc<dyn Volume>) -> Option<PathBuf> {
         match volume.rename(self.aside.path(), &self.original, false).await {
             Ok(()) => {
                 retire(&self.state, self.record.as_ref());

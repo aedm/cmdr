@@ -564,6 +564,10 @@ impl Volume for LocalPosixVolume {
         true
     }
 
+    fn supports_atomic_replace_rename(&self) -> bool {
+        true
+    }
+
     fn operations_are_local(&self) -> bool {
         // Every operation here is a syscall against a mounted filesystem, so a
         // per-file `get_metadata` is a microsecond `stat` and the cap below is a

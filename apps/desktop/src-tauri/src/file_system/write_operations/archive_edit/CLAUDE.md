@@ -5,21 +5,20 @@ are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-
 
 ## Module map
 
-- `routing.rs`: the shared primitives every route builds on — inner-path helpers, `ensure_zip_writable` (the one
-  write-side chokepoint refusing tar/7z), `archive_inner_exists` (the duplicate pre-check), the instant-op sink builder.
-- `driver.rs`: `archive_edit_start` (the managed op's whole lifecycle) plus `route_archive_delete`. `engine.rs`:
-  `run_managed_edit`, the local-vs-remote dispatcher, and `remote.rs` its remote leg (pull, apply, upload, swap).
-  `edit_error.rs`: `EditError`, the leaf both of them return. `conflicts.rs`: resolution against the archive index.
-- Per-shape routes: `copy_into.rs` (`route_archive_copy_into`, plus the remote-source pull), `move_out.rs`,
-  `compress.rs` (current routed fallback), and `fresh_zip.rs` (seedless bounded producer). The create and rename routes live with their instant ops in
-  `../create.rs` and `../rename.rs`, and call in here.
+- `routing.rs`: inner-path helpers, the tar/7z write guard, duplicate pre-check, and instant-op sink builder.
+- `driver.rs`: managed lifecycle and delete routing. `engine.rs`: local/remote dispatch; `remote.rs`: pull, apply,
+  upload, swap. `edit_error.rs`: shared error leaf. `conflicts.rs`: archive-index resolution.
+- Per-shape routes: `copy_into.rs` (`route_archive_copy_into`, plus the remote-source pull), `move_out.rs`, and
+  `compress.rs`. Fresh creation uses `fresh_plan.rs` (sources/identity), `fresh_compress.rs` (managed driver), and
+  `fresh_zip.rs` (bounded producer). Create and rename routes live with their instant ops in `../create.rs` and
+  `../rename.rs`.
 
 ## Must-knows
 
 - **An archive edit is MANAGED, never instant**: it goes through `spawn_managed`, takes the PARENT drive's lane, and
   marks that drive busy. A `create` / `rename` returns an operation id, ❌ not a path.
-- **Every apply site runs through `engine::run_managed_edit`**, ❌ never a bare `spawn_blocking(mutator::apply(...))` —
-  that dispatcher is what makes one closure work for both a local and a remote parent.
+- **Every existing-archive apply site runs through `engine::run_managed_edit`**, ❌ never a bare
+  `spawn_blocking(mutator::apply(...))`. Fresh compression never enters the mutator.
 - **❌ No in-place remote edit.** A remote parent (direct SMB / MTP) goes pull → apply locally → upload to a temp name →
   swap, and the remote ORIGINAL keeps its bytes until that final swap. Keep the four steps in that order and keep the
   cleanup on every early exit; the swap's shape depends on whether the backend allows same-name siblings. DETAILS §
@@ -27,10 +26,13 @@ are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-
 - **Routing detection must be PARENT-AWARE**: the seams call the async `VolumeManager::path_is_inside_archive` /
   `path_crosses_archive_boundary`, ❌ never the sync `std::fs`-only predicates, which answer FALSE for an `smb://` /
   `mtp://` path and drop the write onto the parent volume.
-- **The empty-zip seed is LOAD-BEARING for the current compress fallback**: `ZipArchive::new` rejects a 0-byte file,
-  so a brand-new target gets a valid 22-byte archive before the managed rewrite. This means M1 does NOT make creation
-  safe before registration; removing the seed belongs to the dedicated fresh-create path. DETAILS § Compress.
-- **`fresh_zip` has explicit terminal status**: EOF is not success. Drain, await `finish`, and join every worker.
+- **Fresh compression is seedless and publish-last**: reserve source + destination lanes, stream into a tracked stage,
+  reconcile writer/producer/stat counts, parse it through `ArchiveVolume`, then publish. Local and SMB generate direct;
+  other backends use the same producer into a private local spool. DETAILS § Compress.
+- **Fresh-source name collisions honor the requested policy inside the registered op**: Stop prompts through its
+  conflict slot; Skip, Rename, Overwrite, and conditional variants retain their ordinary meanings.
+- **`fresh_zip` has explicit terminal status**: EOF is not success. Drop/close the stream endpoint before shutdown,
+  then await the typed result and join off the async runtime. Remote feeder errors are messages, never channel EOF.
 - **Compress progress has two different byte axes**: `Compressing` is uncompressed source bytes; remote
   `Transferring` is completed-ZIP bytes. Both finishing phases clear BOTH totals and ETA. Ordinary archive mutation
   stays `ArchiveEdit` + `Copying`.
@@ -43,9 +45,8 @@ are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-
   front would break a remote edit. Stop-mode prompts per FILE (dirs merge silently), storing the sender BEFORE the emit.
 - **The terminal `files_processed` is `MutationProgress::entries_changed`**, ❌ not `entries_total`: deleting one file
   from a 3-entry zip reports 1.
-- **Compression level rides on the `Changeset`** (from the `behavior.archiveCompressionLevel` setting) and applies to
-  newly ADDED entries only; `None` means the crate default.
+- **Compression level comes from `behavior.archiveCompressionLevel`**: fresh creation passes it to `new_stream`;
+  existing mutation carries it on the `Changeset`. It applies only to newly written entries; `None` is level six.
 
-Routing detail, the remote-edit contract and its stale-temp reap, the per-op changesets, compress, move-out, conflicts,
-and the mutation-test coverage: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
-reorganizing, or advising.
+Routing, remote-edit safety, changesets, compress, move-out, conflicts, and test coverage: `DETAILS.md`. Read it before
+non-trivial work here.

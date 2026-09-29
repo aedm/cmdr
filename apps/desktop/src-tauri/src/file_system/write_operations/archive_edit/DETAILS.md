@@ -59,9 +59,10 @@ The remote ORIGINAL is byte-for-byte untouched until the very last swap:
 3. **Upload** streams the edited copy to a NEW remote name (`foo.zip.cmdr-tmp-<uuid>`) via `write_from_stream`; the
    original keeps its name and bytes. A cancel/fault deletes the partial temp best-effort.
 4. **Swap** is the ONLY step that changes the original. Where the backend REJECTS a same-name collision
-   (`create_directory_errors_on_existing_dir()` true — SMB, local), it tries an atomic rename-overwrite first (SMB with
-   `ReplaceIfExists`); on refusal it falls back to delete-then-rename. A backend that ALLOWS same-name siblings (MTP,
-   flag false) goes STRAIGHT to delete-then-rename — a rename onto the live name would DUPLICATE, not replace. The
+   (`create_directory_errors_on_existing_dir()` true — SMB, local), existing-archive mutation first asks its force-rename
+   operation to replace the name; a backend may implement that as multiple protocol operations. On refusal it falls back
+   to delete-then-rename. A backend that ALLOWS same-name siblings (MTP, flag false) goes STRAIGHT to
+   delete-then-rename — a rename onto the live name would DUPLICATE, not replace. The
    delete-then-rename path has exactly ONE crash window (between the delete and the rename): the NEW, fully-uploaded data
    survives under the temp name — never lost, only briefly misnamed.
 
@@ -133,71 +134,63 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   `appearedDuringMove` (the toast's "changed / appeared during the move" sentences). The mechanism and its gaps:
   `../transfer/volume/DETAILS.md` § "Cross-volume move source-delete removes a LEDGER". Pinned by
   `copy_into_drift_tests.rs` (local and remote source).
-- **Compress is a distinct managed identity over the existing seed + copy-into fallback** (`compress.rs`,
-  `compress_start`). `WriteOperationType::Compress` follows the descriptor, preview bridge, progress, terminal event,
-  quit guard, MCP status, and bindings, while the journal and analytics deliberately retain archive-edit semantics
-  (`OpKind::ArchiveEdit`, `ArchiveSubkind::Compress`, `archive_edit_completed`). Ordinary copy/move/create/delete inside
-  a ZIP remains `WriteOperationType::ArchiveEdit` and never acquires compression phase wording.
+- **Fresh compress is its own managed driver** (`compress.rs` → `fresh_compress.rs`), not an archive mutation. It
+  reserves source and destination lanes and registers `WriteOperationType::Compress` before any write. Journal and
+  analytics retain `OpKind::ArchiveEdit`, `ArchiveSubkind::Compress`, and `archive_edit_completed`; `net_new` retains
+  rollback eligibility and overwrite semantics. Existing-archive copy/move/create/delete continues through
+  `ArchiveMutator` unchanged.
 
-  Progress has two byte axes that never share an ETA history. During mutator input, `Compressing` reports uncompressed
-  source bytes and source entries. The final mutator tick becomes `FinishingCompression` with file and byte counters
-  all zero before `ZipWriter::finish`, fsync, metadata preservation, and the local swap. A local destination then goes
-  terminal; it invents no transfer phase. For a remote parent, `remote::upload_archive` starts a fresh `Transferring`
-  phase whose total is the completed local ZIP size and whose done count is bytes acknowledged by
-  `write_from_stream`. At the callback's final byte it switches to `FinishingTransfer`, again with both totals zero,
-  before writer close and `swap_into_place`. Transfer-byte ticks use the operation's configured cadence; phase
-  boundaries always emit. After backend close, publication rechecks cancellation and removes the owned remote temp
-  instead of swapping it. The phase change resets rate and ETA in the status cache and frontend session. Tests use
-  deliberately compressible asymmetric input and condition gates at both finishing phases, including cancellation
-  after backend close, proving that neither a stale 100% event nor success can precede finalization/publication.
+  Preflight freezes entry names, kinds, sizes, mtimes, and Unix modes; skips symlinks and local special files; and
+  rejects local canonical/inode aliases plus destinations inside a source. On one remote volume it applies the same
+  lexical containment rule; unrelated remote volume objects are not rejected merely because they expose no inode API.
+  One matching remote spelling is replaced under its stored name, several matches are ambiguous and refused, and a
+  new name uses the backend's preferred spelling.
 
-  **Current creation limitation.** This fallback still writes the empty seed before the managed operation is
-  registered. `ZipArchive::new` requires that valid 22-byte EOCD seed, and local/remote placement follows the target's
-  parent exactly as described below. The seed write is atomic, but an overwrite can replace the destination before
-  cancellation and progress exist; M1 makes subsequent progress honest, not fresh-creation publication safe. The
-  dedicated fresh-create driver removes this hazard by generating privately and publishing only after its planned
-  reconciliation and validation.
-  Until then, do not describe compress as preserving the previous destination through the entire operation.
+  Two selected sources with the same top-level name are a collision inside the fresh plan, not an unconditional
+  preflight refusal. Skip retains the first, Rename numbers the later source, Overwrite replaces the first plan, and
+  the conditional policies compare the two source metadata records. Stop uses the registered operation's conflict
+  slot, announces the human wait, and applies the answer (including apply-to-all) before any destination write.
 
-  **Seed mechanics.** `seed_empty_zip` writes `PK\x05\x06` plus 18 zero bytes through same-directory temp + fsync +
-  rename; a remote parent uses `seed_empty_zip_remote` and `remote::place_local_file`. The remote copy-into then pulls
-  that seed, mutates its local working copy, uploads a full replacement, and uses the backend's existing swap shape.
-  The writability guard below still runs before the seed. Pinned by `compress_tests`, `compress_remote_tests`, and the
-  live-Samba compression case. Direct-streaming backend follow-ups remain tracked in
-  [WebDAV #315](https://github.com/vdavid/cmdr/issues/315) and [MTP #316](https://github.com/vdavid/cmdr/issues/316).
-- **❗ The writability guard runs BEFORE the seed, and the order is the whole point.** `compress_start`'s first
-  statement is `ensure_zip_writable(&dest_zip_full_path, ReadOnlySide::Destination)?`, ahead of both seed branches.
-  **Decision/Why**: the seed is a temp+rename OVER the destination, so with the guard only in
-  `route_archive_copy_into` (several steps later) a compress onto an existing `report.docx`, `foo.tar`, or `foo.7z`
-  replaced the user's file with the 22-byte empty zip and THEN refused — a destroyed document and no archive, from an
-  action the user asked for. Note what this rules out: **temp+rename does not help here**, because the swap was already
-  atomic; the bug was that it landed before anything asked whether the target could be written at all. Durability
-  machinery can't answer a permission question. The guard is a pure name check with no I/O, so asking first is free,
-  and it refuses exactly the set it always refused. Any future path that writes at the destination before the copy-into
-  owes the same up-front check. Pinned by
-  `compress_tests::compress_refuses_a_read_only_destination_without_touching_its_bytes`, which asserts the
-  destination's BYTES are unchanged — "the file still exists" would have passed against the bug, since what it left
-  behind was a valid zip.
-- **A remote target the parent doesn't hold byte for byte is a NEW name** (`new_archive_path`, also before the seed):
-  spelled the parent's way, and a look-alike is refused as `DestinationExists` rather than seeded over or beside. Why
-  refused and not replaced: `../DETAILS.md` § "Look-alike names".
-- **Compression level threads from the op config onto the changeset.** `VolumeCopyConfig::compression_level` (frontend-owned, read from the `behavior.archiveCompressionLevel` setting at dispatch) is passed through `compress_start` / `route_archive_copy_into` as an `Option<i64>` param and stored on the `Changeset` (`archive_copy_into_start` sets `plan.changeset.compression_level` before `mutator::apply`). It governs every user-driven zip write uniformly — compress AND copy/move INTO an existing archive — because both funnel through the shared mutator. `None` (no caller opinion, or a non-archive copy) means the crate default (level 6). The level applies to NEWLY added entries only and is clamped 1..=9; the mechanism and the clamp rationale are single-sourced in `crates/cmdr-archive/src/mutation/DETAILS.md` § "Compression level applies to ADDED entries only". Internal zips (crash/error-report bundles) keep their own fixed level and never read this setting.
+  **One producer, two destination routes.** Local POSIX and SMB accept unknown-length writes, so the producer streams
+  directly to a tracked same-directory stage with `CreateNew`. Every other backend receives the same producer into a
+  private local spool, then a known-length staged upload. This sequencing makes same-device MTP source→destination
+  finish the read/spool leg before any upload begins, avoiding its serialized-session reentrancy. Neither direct route
+  materializes source trees or an archive-sized local file.
 
-### Seedless producer
+  `fresh_zip.rs` drives `zip` 8.6 `ZipWriter::new_stream` on one OS worker. Local files are read directly; one remote
+  feeder is live at a time. Remote input and generated output cross separate four-chunk channels, split into 128 KiB
+  payloads, so queued bytes are bounded independently of archive size. The ZIP writer necessarily retains O(entries)
+  central-directory metadata. Each source sends explicit completion; feeder loss, source error, and output closure are
+  typed failures, never EOF. Coordinator shutdown closes the output endpoint before joining on Tokio's blocking pool;
+  `Drop` only signals cancellation and never blocks an async thread. Thread-spawn failure is typed too.
 
-`fresh_zip.rs` owns fresh-archive byte generation. A blocking worker drives `zip` 8.6 `ZipWriter::new_stream`; local
-files are read directly, while remote input and generated output cross separate bounded four-chunk channels. Fixed
-128 KiB chunks bound payload bytes independently of archive size; the ZIP writer retains O(entries) central-directory
-metadata.
+  The producer emits empty directories/files, clamps deflate level to 1–9, carries characterized DOS timestamps and
+  Unix modes, and sets `large_file(true)` at `zip::ZIP64_BYTES_THR`. Stream local headers cannot be rewritten; only
+  `finish` writes the central directory and returns the writer (verified against installed zip 8.6 source, 2026-09-29).
 
-Output channel closure is transport state, not success. `FreshZipOutput::finish` awaits a separate typed result and
-joins the worker, so a source failure, ZIP close failure, panic, or dropped destination cannot become successful EOF.
-Dropping output signals cancellation and closes the receiver, releasing output backpressure.
+  **Validation precedes publication.** After producer close and destination close/sync, producer bytes, writer bytes,
+  and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP and its non-quarantined entry count must
+  match the plan. Cancellation or any mismatch abandons only the owned stage. Local POSIX publishes with its declared
+  atomic replace rename. SMB's force rename deletes first, so despite direct generation it uses the existing tracked
+  `DisplacedDestination`: set the original aside, land without force, restore on refusal, and surface
+  `OriginalsKeptAside` if the shared rescue had to keep it under a stable ` (recovered)` name. Other fallback backends
+  use the same aside path. Stage and aside recovery records carry the real destination volume ID and remain live until
+  landing, deletion, or rescue settles. No sole good copy remains in reapable temp space. After publication, the
+  driver notifies the final archive path (never the hidden stage) and journals that same target.
 
-Each planned entry carries its frozen name, kind, size, mtime, and Unix mode. The producer clamps deflate level to
-1–9, emits empty directories and files, stores DOS timestamps in UTC, and calls `large_file(true)` when planned size is
-at least `zip::ZIP64_BYTES_THR`. In `zip` 8.6 stream mode local headers cannot be rewritten; `finish` writes the central
-directory and returns the underlying writer. Verified in the installed zip 8.6 source on 2026-09-29.
+  Progress has two unrelated byte axes. `Compressing` counts uncompressed source bytes/entries. The last source tick
+  becomes indeterminate `FinishingCompression` before ZIP close, count reconciliation, validation, and local
+  publication. Fallback upload starts a fresh `Transferring` axis over completed-ZIP bytes, switches to indeterminate
+  `FinishingTransfer` instead of emitting 100%, and stays there through backend close, remote validation, and
+  publication. Pause parks source production or spool reads at chunk boundaries; cancel closes safely and never
+  publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
+  publication refusal/recovery, aliases, old-target preservation, remote sources, and same-device MTP fallback.
+
+- **The writability guard precedes registration and every write.** `compress_start` first calls
+  `ensure_zip_writable`, so document containers and read-only archive formats are refused with their bytes unchanged.
+- **Compression level has two owners with one setting.** Fresh creation passes
+  `VolumeCopyConfig::compression_level` directly to `new_stream`; existing-archive additions carry it on the
+  `Changeset`. `None` means level six, values clamp to 1–9, and internal diagnostic ZIPs keep their own fixed level.
 - **Source-side pull for a REMOTE source (SMB / MTP → zip).** A copy/move INTO a zip whose SOURCE volume has no
   `local_path()` can't be walked with `std::fs`, so `archive_copy_into_start` runs a pull stage FIRST, inside the op: it
   streams each source subtree into a `ScratchDir` via the copy engine's `pull_path_to_local` seam (which reuses

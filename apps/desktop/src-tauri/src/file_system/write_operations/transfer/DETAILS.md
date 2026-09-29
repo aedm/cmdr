@@ -386,6 +386,13 @@ again would just yield a `foo.cmdr-tmp-A.cmdr-tmp-B`. Every other write stages h
 `volume::strategy::staging_for(&replace_after_write, landing)`, so there is one rule, not four. Both write sites then run
 that choice through `resolve_staging`, the single place a staged write can become `SingleShot`.
 
+**Generated validated files reuse the same ownership.** `StagedWrite::begin_generated` always mints and
+records a sibling stage. A publisher whose volume declares `supports_atomic_replace_rename()` lands it with one force
+rename. Other publishers call `commit_with_displaced_original`: move the old destination to the existing tracked
+`DisplacedDestination`, land without force, discard the aside on success, or restore it on refusal. If restoration also
+refuses, the shared rescue gives the original a stable ` (recovered)` name and the typed failure names it; the sole good
+copy never remains under a reapable `.cmdr-tmp-*` name.
+
 **Landing** (`staged_write::land`) renames FIRST and only clears the final name if that rename said something is in the
 way. `finalize_safe_replace` is the other way round because there the original is known to be in the way; here it
 usually isn't, and a speculative delete would burn one extra round trip per file. The name can still be taken (a

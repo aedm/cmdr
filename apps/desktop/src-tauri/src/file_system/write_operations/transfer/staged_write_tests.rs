@@ -367,6 +367,35 @@ async fn a_refused_landing_takes_its_temp_away_and_stops_tracking_it() {
     assert!(state.in_flight_temps.lock_ignore_poison().is_empty());
 }
 
+/// Generated-file replacement first tries to set the old destination aside.
+/// If that rename refuses, the old bytes are still authoritative and the
+/// completed stage is ordinary disposable output: remove it and retire its
+/// record immediately rather than leaving cleanup to a later sweep.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_displacement_preserves_the_original_and_cleans_the_generated_stage() {
+    let state = state();
+    let inner =
+        Arc::new(InMemoryVolume::new("dest").with_rename_failing(VolumeError::DeviceDisconnected("blip".to_string())));
+    let dest: Arc<dyn Volume> = Arc::clone(&inner) as Arc<dyn Volume>;
+    inner
+        .create_file(Path::new("/notes.txt"), b"THE USER'S FILE")
+        .await
+        .unwrap();
+    let staged = StagedWrite::begin_generated(&state, Path::new("/notes.txt"), true);
+    let temp = staged.target().to_path_buf();
+    inner.create_file(&temp, b"NEW").await.unwrap();
+
+    let outcome = staged.commit_with_displaced_original(&dest).await;
+
+    assert!(outcome.is_err());
+    assert_eq!(size_of(&inner, "/notes.txt").await, Some(15));
+    assert!(!inner.exists(&temp).await, "the completed but unpublished stage goes");
+    assert!(
+        state.in_flight_temps.lock_ignore_poison().is_empty(),
+        "a stage deleted after displacement refusal must not remain recovery-owned"
+    );
+}
+
 /// A destination whose `rename` never answers: the landing a cancel (or the
 /// concurrent driver dropping its window) abandons midway.
 struct RenameNeverAnswers {

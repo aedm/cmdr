@@ -1,187 +1,44 @@
-//! Compress: create a NEW zip at a target and pack the sources into it.
-//!
-//! Mechanically this IS an archive edit — seed a valid empty zip at the
-//! destination, then reuse [`route_archive_copy_into`](super::copy_into::route_archive_copy_into) (`is_move = false`) to add
-//! the sources as one changeset. So compress inherits everything the copy-into
-//! flow already earns: the scan, plan-inside-the-op, the mutator's temp+rename
-//! durability, progress/ETA, cancel, and lane admission.
-//!
-//! The seed is LOAD-BEARING. `route_archive_copy_into` (and the mutator it drives)
-//! opens the target with `ZipArchive::new`, which rejects a 0-byte file with
-//! `ZipError::InvalidArchive`. A brand-new compress target has no bytes, so it
-//! MUST be seeded with a valid empty archive first — otherwise the copy-into fails
-//! before adding anything.
+//! Fresh ZIP routing. The managed seedless creator owns creation; existing ZIP
+//! mutation continues through the archive mutator's separate routes.
 
-use std::fs::File;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 use super::super::OperationEventSink;
 use super::super::look_alike::{LookAlike, look_alike_in, spelled_new_path};
-use super::super::scratch_dir::ScratchDir;
-use super::super::state::WriteOperationState;
 use super::super::transfer::volume::{PathRole, map_volume_error};
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult};
-use super::copy_into::route_archive_copy_into_with_provenance;
-use super::edit_error::EditError;
-use super::remote;
-use crate::file_system::staging::StagingTemp;
 use crate::file_system::volume::Volume;
 use crate::file_system::volume::manager::get_volume_manager;
 
-/// The bytes of a valid empty zip: a bare end-of-central-directory record. The
-/// four-byte EOCD signature `PK\x05\x06` followed by 18 zero bytes (disk numbers,
-/// entry counts, central-directory size and offset, and comment length all zero).
-/// `bytes_start_with_zip_signature` accepts the signature, and `ZipArchive::new`
-/// opens it as a zero-entry archive.
-fn empty_zip_bytes() -> [u8; 22] {
-    let mut bytes = [0u8; 22];
-    bytes[..4].copy_from_slice(b"PK\x05\x06");
-    bytes
-}
-
-/// Writes a valid empty zip at `path` via temp+rename safe-overwrite, mirroring
-/// the mutator's discipline so a crash mid-seed never leaves a torn file under
-/// `path`: build into a same-directory temp, fsync it, atomically rename over
-/// `path`, then fsync the parent dir. Any early return removes the temp and
-/// leaves `path` untouched.
-pub(crate) fn seed_empty_zip(path: &Path) -> Result<(), WriteOperationError> {
-    let write_err = |e: std::io::Error| WriteOperationError::WriteError {
-        path: path.display().to_string(),
-        message: e.to_string(),
-    };
-
-    // Build into a same-directory temp, then atomically rename over `path`. A crash
-    // mid-write leaves only the temp (removed by the guard on any early return), so
-    // `path` is never a torn half-seed — the rename is the single instant it appears.
-    // `staged` lives to the end of this function, keeping the temp out of the
-    // pane while the seed is written and until the rename lands it.
-    let staged = StagingTemp::mint(path, None);
-    let temp_path = staged.path().to_path_buf();
-    let mut guard = SeedTempGuard {
-        path: temp_path.clone(),
-        armed: true,
-    };
-
-    let mut file = File::create(&temp_path).map_err(write_err)?;
-    file.write_all(&empty_zip_bytes()).map_err(write_err)?;
-    // fsync the bytes before the swap so a power loss can't surface an empty temp.
-    file.sync_all().map_err(write_err)?;
-    drop(file);
-
-    std::fs::rename(&temp_path, path).map_err(write_err)?;
-    guard.disarm();
-
-    // Best-effort: fsync the parent dir so the rename itself survives a power loss.
-    fsync_parent_dir(path);
-    Ok(())
-}
-
-/// Seeds a valid empty zip at a REMOTE target THROUGH the parent volume. The
-/// remote copy-into path (`route_archive_copy_into` -> `pull_apply_upload_swap`)
-/// PULLS the target before editing, so a local-FS seed would be invisible to it —
-/// the seed must be a real file on the remote. Writes the 22-byte empty zip to a
-/// local scratch file, then places it at `dest_zip_full_path` via the remote
-/// edit's own durable upload+swap (temp sibling -> atomic swap), so a crash never
-/// leaves a torn seed at the user's destination and an overwrite is atomic.
-async fn seed_empty_zip_remote(parent: &dyn Volume, dest_zip_full_path: &Path) -> Result<(), WriteOperationError> {
-    // Stage the 22 bytes in a private scratch dir; its `Drop` removes the file.
-    let scratch = ScratchDir::new("cmdr-compress-seed").map_err(|e| WriteOperationError::WriteError {
-        path: dest_zip_full_path.display().to_string(),
-        message: e.to_string(),
-    })?;
-    let local_seed = scratch.path().join("seed.zip");
-    std::fs::write(&local_seed, empty_zip_bytes()).map_err(|e| WriteOperationError::WriteError {
-        path: local_seed.display().to_string(),
-        message: e.to_string(),
-    })?;
-
-    // A fresh, never-cancelled state: the seed is a 22-byte write that runs BEFORE
-    // the managed op exists, so there is no live cancel to thread through it.
-    let state = WriteOperationState::new(Duration::from_millis(0));
-    remote::place_local_file(parent, &local_seed, dest_zip_full_path, &state, None)
-        .await
-        .map_err(|e| match e {
-            EditError::Cancelled => WriteOperationError::Cancelled {
-                message: "the compress seed was cancelled".to_string(),
-            },
-            EditError::Op(w) => w,
-        })
-}
-
-/// Where a compress lands its archive on a remote parent, and whether something
-/// was already there: the target itself when the parent holds it byte for byte;
-/// else the one entry holding it under another Unicode spelling (`look_alike.rs`),
-/// replaced in place under ITS spelling; else a new name, spelled the way the
-/// parent wants new names.
-///
-/// Replacing a look-alike is what the user agreed to: the dialog's overwrite
-/// warning asks `destination_exists`, which counts one, so it warned about this
-/// archive. Seeding beside it would plant an identical-looking twin. Two or more
-/// look-alikes, none spelled as asked, are refused: which one to replace would be
-/// a guess.
+/// Picks the concrete remote spelling that the overwrite warning referred to.
+/// One equivalent spelling is the target; several are ambiguous and refused.
 async fn archive_landing(parent: &dyn Volume, target: PathBuf) -> Result<(PathBuf, bool), WriteOperationError> {
     if parent.exists(&target).await {
         return Ok((target, true));
     }
-    let (Some(dir), Some(name)) = (target.parent(), target.file_name().and_then(|n| n.to_str())) else {
+    let (Some(dir), Some(name)) = (target.parent(), target.file_name().and_then(|name| name.to_str())) else {
         return Ok((target, false));
     };
     match look_alike_in(parent, dir, name).await {
         Ok(LookAlike::None) => Ok((spelled_new_path(parent, &target), false)),
-        Ok(LookAlike::One(entry)) => Ok((dir.join(&entry.name), true)),
+        Ok(LookAlike::One(entry)) => Ok((dir.join(entry.name), true)),
         Ok(LookAlike::Several) => Err(WriteOperationError::DestinationExists {
             path: target.display().to_string(),
         }),
-        Err(e) => Err(map_volume_error(
+        Err(error) => Err(map_volume_error(
             &target.display().to_string(),
             PathRole::Destination,
-            e,
+            error,
         )),
     }
 }
 
-/// fsyncs the target's parent directory so a just-completed rename is durable.
-/// Best-effort (opening a dir read-only can fail on some filesystems).
-fn fsync_parent_dir(path: &Path) {
-    if let Some(parent) = path.parent()
-        && let Ok(dir) = File::open(parent)
-    {
-        let _ = dir.sync_all();
-    }
-}
-
-/// Removes the in-progress temp on any early return, so a failed seed never leaves
-/// a half-built sibling. The happy path disarms it right after the atomic rename.
-struct SeedTempGuard {
-    path: PathBuf,
-    armed: bool,
-}
-
-impl SeedTempGuard {
-    fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for SeedTempGuard {
-    fn drop(&mut self) {
-        if self.armed {
-            let _ = std::fs::remove_file(&self.path);
-        }
-    }
-}
-
-/// Compresses `source_paths` (relative to `source_volume`'s root) into a NEW zip
-/// at `dest_zip_full_path`: seed a valid empty archive, then delegate to
-/// [`route_archive_copy_into`](super::copy_into::route_archive_copy_into) to add
-/// the sources as one changeset. The route carries `WriteOperationType::Compress`
-/// through the managed lifecycle while retaining archive-edit journal semantics.
+/// Starts one managed fresh compression. Nothing at the destination changes
+/// until the producer has closed, byte counts agree, and the staged ZIP parses.
 #[allow(
     clippy::too_many_arguments,
-    reason = "mirrors route_archive_copy_into's cross-volume→archive seam (source handle, paths, dest, parent id, policy)"
+    reason = "command seam carries both endpoints, operation settings, preview ownership, and provenance"
 )]
 pub(crate) async fn compress_start(
     events: Arc<dyn OperationEventSink>,
@@ -195,46 +52,27 @@ pub(crate) async fn compress_start(
     preview_id: Option<String>,
     initiator: crate::operation_log::types::Initiator,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
-    // ❗ Refuse an unwritable destination BEFORE touching it. The seed below is a
-    // temp+rename OVER `dest_zip_full_path`, and `route_archive_copy_into` runs
-    // this same guard several steps later — which is too late: compressing onto an
-    // existing `report.docx` or `foo.tar` replaced the user's file with a 22-byte
-    // empty zip and THEN refused, so they lost a document and got no archive.
-    // Atomicity is no defense; the swap was atomic, it just landed before anyone
-    // asked whether the target may be written. Pure name check, no I/O, so it
-    // costs nothing to ask first.
     super::routing::ensure_zip_writable(&dest_zip_full_path, crate::file_system::ReadOnlySide::Destination)?;
-
-    // Seed a valid empty zip at the target so the copy-into has a real archive to
-    // open. The seed must be visible to `route_archive_copy_into`'s parent-aware
-    // path: a LOCAL parent edits the file in place, so a local-FS seed works; a
-    // REMOTE parent PULLS the target before editing (`pull_apply_upload_swap`), so
-    // its seed must be a real file ON the remote, written THROUGH the parent volume.
-    //
-    // Probe whether the target already existed BEFORE seeding (the seed always
-    // creates/overwrites it): a net-new archive is rollbackable (delete it), an
-    // overwrite of a prior archive is not (the prior bytes aren't retained). This
-    // `net_new` flag is the driver-supplied fact the journal can't derive (Finding
-    // 3), passed into finalize via [`ArchiveProvenance`]. A remote target lands
-    // on the entry holding its name in any spelling, or as a new name
-    // (`archive_landing`); a local parent's lookups go through the macOS kernel,
-    // which finds a name in any Unicode form.
-    let (net_new, dest_zip_full_path) = match get_volume_manager().get(&parent_volume_id) {
+    let (dest_zip_full_path, existed) = match get_volume_manager().get(&parent_volume_id) {
         Some(parent) if !parent.supports_local_fs_access() => {
-            let (dest_zip_full_path, existed) = archive_landing(parent.as_ref(), dest_zip_full_path).await?;
-            seed_empty_zip_remote(parent.as_ref(), &dest_zip_full_path).await?;
-            (!existed, dest_zip_full_path)
+            archive_landing(parent.as_ref(), dest_zip_full_path).await?
         }
-        // Local parent, or an unregistered id (`route_archive_copy_into` falls back
-        // to a local in-place edit for it) — seed the local filesystem.
-        _ => {
-            let existed = std::fs::symlink_metadata(&dest_zip_full_path).is_ok();
-            seed_empty_zip(&dest_zip_full_path)?;
-            (!existed, dest_zip_full_path)
+        Some(parent) => {
+            let existed = parent.exists(&dest_zip_full_path).await;
+            (dest_zip_full_path, existed)
+        }
+        None => {
+            let probe_path = dest_zip_full_path.clone();
+            let existed = tokio::task::spawn_blocking(move || std::fs::symlink_metadata(probe_path).is_ok())
+                .await
+                .map_err(|error| WriteOperationError::IoError {
+                    path: dest_zip_full_path.display().to_string(),
+                    message: error.to_string(),
+                })?;
+            (dest_zip_full_path, existed)
         }
     };
-
-    route_archive_copy_into_with_provenance(
+    super::fresh_compress::start(
         events,
         source_volume,
         source_paths,
@@ -242,10 +80,10 @@ pub(crate) async fn compress_start(
         parent_volume_id,
         conflict,
         progress_interval_ms,
-        false,
         compression_level,
         preview_id,
-        super::super::journal::ArchiveProvenance::compress(net_new, initiator),
+        !existed,
+        initiator,
     )
     .await
 }

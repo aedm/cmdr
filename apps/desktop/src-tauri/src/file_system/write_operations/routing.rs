@@ -371,14 +371,13 @@ pub(crate) async fn start_volume_move(
     .await
 }
 
-/// Compresses `source_paths` into a NEW zip at `dest_zip_path` on
-/// `dest_volume_id`. Seeds a valid empty zip, then copies the sources in as one
-/// changeset. The destination may be LOCAL or REMOTE (SMB/MTP).
+/// Compresses `source_paths` into a fresh ZIP at `dest_zip_path` on
+/// `dest_volume_id`. The destination may be local or remote.
 ///
-/// ⚠️ **An existing archive at the target is overwritten, deliberately.** The seed
-/// is unconditional, and a compress that replaced a prior archive is the one
-/// transfer this engine can't reverse (the prior bytes aren't retained). That is a
-/// fact to DISCLOSE before someone approves it, ❌ never a refusal here: if a
+/// ⚠️ **An existing archive at the target is overwritten, deliberately.** The
+/// validated fresh ZIP replaces it only at publication. Such a replacement is the
+/// one transfer this engine can't reverse after completion (the prior bytes aren't
+/// retained). Disclose that before approval, ❌ never refuse it here: if a
 /// person can do it from the dialog, an operation they approved does the same
 /// thing.
 pub(crate) async fn start_volume_compress(
@@ -397,8 +396,8 @@ pub(crate) async fn start_volume_compress(
         return Err(source_volume_missing(&source_volume_id, &source_paths).await);
     };
 
-    // The new `.zip` doesn't exist yet, so `resolve` returns the PARENT drive volume
-    // (nothing routes for a non-existent path) — the drive the seed is written to. `compress_start` bypasses the archive-boundary resolve on its own.
+    // A new `.zip` resolves to its PARENT drive (nothing routes through an archive
+    // that does not exist). `compress_start` owns staging and publication there.
     let Some(dest_volume) = get_volume_manager()
         .resolve(&dest_volume_id, Path::new(&dest_zip_path))
         .await

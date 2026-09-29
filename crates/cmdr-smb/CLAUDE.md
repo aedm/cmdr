@@ -29,6 +29,8 @@ the keychain, mounts, and every human-facing word stay in the app's `network/`.
   `bytes_written()`.
 - **Unknown-length writes always stream**, never use the buffered compound path; success includes `finish` and reports
   its server-confirmed count.
+- **SMB force-rename deletes first**, so its atomic-replace capability stays false; publishers use tracked
+  aside/restore.
 - **One-frame fast paths stop at smb2's quick limits**: a hinted read at `quick_read_limit()` (sized via
   `read_file_compound_sized`), the write promise at `quick_write_limit()`. ❌ A refused one-frame write to a non-scratch
   name never streams (`one_frame_write_limit`).

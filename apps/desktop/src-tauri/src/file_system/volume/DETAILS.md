@@ -310,6 +310,8 @@ At-a-glance view of which capabilities each current volume opts into. Use this w
 | Mutations (create/delete/rename) | yes | yes | yes | yes | no: read-only (mutation planned) |
 | `supports_export` | yes | yes | yes | yes | yes |
 | `supports_streaming` | yes | yes | yes | yes | yes |
+| `supports_unknown_length_writes` | yes | no | yes | no | no |
+| `supports_atomic_replace_rename` | yes | no | no | no | no |
 | `open_read_stream` | yes: spawn_blocking | yes: owned download | yes: channel-backed | yes: in-memory | yes: core `ArchiveEntryReader` |
 | `write_from_stream` | yes: spawn_blocking | yes: streaming | yes: streaming | yes: in-memory | no (mutation planned) |
 | `can_watch_listings` | yes: FSEvents/inotify | no (own USB watcher) | no (own smb2 CHANGE_NOTIFY watcher) | no | no (own content watch on the `.zip`) |

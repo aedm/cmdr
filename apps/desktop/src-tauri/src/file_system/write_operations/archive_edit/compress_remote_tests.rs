@@ -1,11 +1,7 @@
-//! Compress onto a REMOTE parent (SMB / MTP, modeled by a non-local
-//! `InMemoryVolume`). The net-new surface here is the SEED: a remote target must
-//! be seeded THROUGH the parent volume, because `route_archive_copy_into`'s remote
-//! path PULLS the target before editing — a local-FS seed would be invisible to
-//! it. These pin: a fresh remote target gets seeded and packed, an overwrite
-//! replaces the remote file with a fresh zip (never merges into it), the MTP swap
-//! shape (delete-then-rename over a brand-new target) works, and no temp debris is
-//! left at the user's destination.
+//! Fresh compression onto a remote parent (SMB / MTP, modeled by a non-local
+//! `InMemoryVolume`). These pin private spool production followed by staged
+//! upload, fresh replacement rather than mutation, backend-specific publication,
+//! and cleanup of unpublished stages.
 
 use super::compress::compress_start;
 use super::test_support::*;
@@ -56,10 +52,7 @@ async fn sibling_names(parent: &dyn Volume, archive_path: &Path) -> Vec<String> 
 }
 
 #[tokio::test]
-async fn compress_onto_a_remote_parent_seeds_and_packs_local_files() {
-    // A local-FS seed at `/share/bundle.zip` is invisible to the remote parent's
-    // pull, so pre-seed-through-Volume the copy-into pulls a missing file and the
-    // entries never land — this test is RED until the seed goes through the volume.
+async fn compress_onto_a_remote_parent_spools_then_packs_local_files() {
     let payload = vec![b'z'; 128 * 1024];
     let (_src_tmp, source_volume) = local_source_with(&[("one.txt", &payload), ("two.txt", b"second")]);
     let archive_path = PathBuf::from("/share/bundle.zip");
@@ -171,10 +164,9 @@ async fn cancel_during_remote_close_does_not_publish_or_complete() {
     let archive_path = PathBuf::from("/share/cancelled.zip");
     let (parent_id, parent) = register_remote_parent(Path::new("/share"), false).await;
 
-    // `upload_archive` announces FinishingTransfer once on the final write
-    // callback and again after `write_from_stream` has closed successfully. Gate
-    // the second announcement: cancellation here lands after backend close but
-    // before the remote temp is published over the target.
+    // The first finishing event replaces the final 100% transfer tick; the
+    // second starts after `write_from_stream` has closed successfully.
+    // Cancellation at that gate must leave the completed stage unpublished.
     let events = PhaseGateSink::new_nth(WriteOperationPhase::FinishingTransfer, 2);
     let start = compress_start(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
@@ -230,7 +222,7 @@ async fn cancel_during_remote_close_does_not_publish_or_complete() {
 async fn compress_onto_a_remote_parent_overwrites_an_existing_zip_with_a_fresh_archive() {
     // The target already holds a zip on the remote. Compress-overwrite REPLACES it
     // with a fresh archive of just the sources — it never merges into the old one
-    // (the seed clears it to empty before the copy-into).
+    // because the dedicated producer contains only the selected sources.
     let (_src_tmp, source_volume) = local_source_with(&[("new.txt", b"brand new")]);
     let archive_path = PathBuf::from("/share/existing.zip");
     let (parent_id, parent) = register_remote_zip(&archive_path, &[("stale.txt", b"old content")]).await;
@@ -279,11 +271,64 @@ async fn compress_onto_a_remote_parent_overwrites_an_existing_zip_with_a_fresh_a
 }
 
 #[tokio::test]
-async fn compress_onto_an_mtp_style_remote_parent_seeds_and_packs() {
+async fn a_publication_refusal_recovers_and_names_the_displaced_original() {
+    let (_src_tmp, source_volume) = local_source_with(&[("new.txt", b"brand new")]);
+    let archive_path = PathBuf::from("/share/existing.zip");
+    let (parent_id, parent) = register_remote_zip(&archive_path, &[("old.txt", b"only old copy")]).await;
+    parent.set_rename_to_failing(&archive_path);
+    let events = Arc::new(CollectorEventSink::new());
+
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source_volume,
+        vec![PathBuf::from("new.txt")],
+        archive_path.clone(),
+        parent_id.clone(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start publication-failure compress");
+    wait_until_async(Duration::from_secs(5), "publication failure", || {
+        !events.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+
+    let recovered_path = {
+        let errors = events.errors.lock_ignore_poison();
+        let WriteOperationError::OriginalsKeptAside { recovered, .. } = &errors[0].error else {
+            panic!(
+                "publication failure must name the recovered original: {:?}",
+                errors[0].error
+            );
+        };
+        assert_eq!(recovered.len(), 1);
+        PathBuf::from(&recovered[0].kept_at)
+    };
+    assert_eq!(
+        read_remote_entry(parent.as_ref(), &recovered_path, "old.txt")
+            .await
+            .as_deref(),
+        Some(b"only old copy".as_slice())
+    );
+    assert!(
+        sibling_names(parent.as_ref(), &archive_path)
+            .await
+            .iter()
+            .all(|name| !name.contains(".cmdr-tmp-") && !name.contains(".cmdr-aside-")),
+        "the only surviving original must have a stable, non-reapable name"
+    );
+    get_volume_manager().unregister(&parent_id);
+}
+
+#[tokio::test]
+async fn compress_onto_an_mtp_style_remote_parent_spools_and_packs() {
     // An MTP-shaped parent allows same-name siblings, so its swap is
-    // delete-then-rename, not the atomic rename-replace. The seed's swap over a
-    // BRAND-NEW target must tolerate the missing original (nothing to delete) — this
-    // exercises that path without a virtual MTP device.
+    // delete-then-rename, not atomic rename-replace. Publication over a brand-new
+    // target must tolerate there being no original to displace.
     let (_src_tmp, source_volume) = local_source_with(&[("photo.raw", b"pixels")]);
     let archive_path = PathBuf::from("/device/DCIM/album.zip");
     let (parent_id, parent) = register_remote_parent(Path::new("/device/DCIM"), true).await;
@@ -327,6 +372,91 @@ async fn compress_onto_an_mtp_style_remote_parent_seeds_and_packs() {
     );
 
     get_volume_manager().unregister(&parent_id);
+}
+
+#[tokio::test]
+async fn a_remote_source_streams_into_a_direct_local_archive() {
+    let (source_id, source) = register_remote_source(&[("folder/remote.bin", &[b'r'; 192 * 1024])]).await;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let dest = tmp.path().join("remote-source.zip");
+    let events = Arc::new(CollectorEventSink::new());
+
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source as Arc<dyn Volume>,
+        vec![PathBuf::from("/folder")],
+        dest.clone(),
+        unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start remote-source compress");
+    wait_until_async(Duration::from_secs(5), "remote-source compress terminal", || {
+        !events.complete.lock_ignore_poison().is_empty() || !events.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(events.errors.lock_ignore_poison().is_empty());
+    assert_eq!(
+        read_entry(&dest, "folder/remote.bin").as_deref(),
+        Some([b'r'; 192 * 1024].as_slice())
+    );
+    get_volume_manager().unregister(&source_id);
+}
+
+#[tokio::test]
+async fn same_device_mtp_source_finishes_spooling_before_the_upload_path() {
+    use crate::file_system::volume::BackendKind;
+
+    let id = format!("mtp-same-device-{}", Uuid::new_v4());
+    let volume = Arc::new(
+        InMemoryVolume::new("Phone")
+            .with_backend_kind(BackendKind::Mtp)
+            .with_sibling_duplicates_allowed()
+            .with_lane_key(id.clone()),
+    );
+    volume.create_directory(Path::new("/DCIM")).await.expect("create DCIM");
+    volume
+        .create_file(Path::new("/DCIM/photo.raw"), &[b'p'; 192 * 1024])
+        .await
+        .expect("create source");
+    get_volume_manager().register(&id, Arc::clone(&volume) as Arc<dyn Volume>);
+    let events = Arc::new(CollectorEventSink::new());
+    let archive = PathBuf::from("/DCIM/photos.zip");
+
+    compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        Arc::clone(&volume) as Arc<dyn Volume>,
+        vec![PathBuf::from("/DCIM/photo.raw")],
+        archive.clone(),
+        id.clone(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        crate::operation_log::types::Initiator::User,
+    )
+    .await
+    .expect("start same-device MTP compress");
+    wait_until_async(Duration::from_secs(5), "same-device MTP terminal", || {
+        !events.complete.lock_ignore_poison().is_empty() || !events.errors.lock_ignore_poison().is_empty()
+    })
+    .await;
+    assert!(
+        events.errors.lock_ignore_poison().is_empty(),
+        "fallback must avoid an unknown-length destination write: {:?}",
+        events.errors.lock_ignore_poison()
+    );
+    assert_eq!(
+        read_remote_entry(volume.as_ref(), &archive, "photo.raw")
+            .await
+            .as_deref(),
+        Some([b'p'; 192 * 1024].as_slice())
+    );
+    get_volume_manager().unregister(&id);
 }
 
 const CAFE_ZIP_NFC: &str = "caf\u{e9}.zip";
@@ -450,7 +580,7 @@ async fn a_compress_whose_composed_name_the_share_holds_replaces_that_archive() 
 }
 
 /// Two archives fit the target and neither is spelled as asked: which one to
-/// replace is a guess, so the compress refuses before anything is seeded.
+/// replace is a guess, so compression refuses before writing.
 #[tokio::test]
 async fn a_compress_two_stored_archives_fit_is_refused_and_leaves_both_alone() {
     let composed = "\u{e9}l\u{151}.zip";

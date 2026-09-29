@@ -52,6 +52,7 @@ pub use copy::{copy_between_volumes, scan_for_volume_copy};
 pub use r#move::move_between_volumes;
 
 pub(crate) use copy::copy_volumes_with_progress;
+pub(in crate::file_system::write_operations) use displaced_destination::displace_destination;
 /// The cross-volume copy body, reused as the extract phase of an out-of-zip
 /// move (`archive_edit`).
 pub(crate) use item_identity::is_the_same_item;
@@ -69,7 +70,7 @@ pub(in crate::file_system::write_operations) use strategy::pull_path_to_local;
 pub(in crate::file_system::write_operations) use transfer_error::unregistered_volume_error;
 /// The one place a `VolumeError` becomes a typed `WriteOperationError`; the
 /// delete walker maps its own volume failures through it too.
-pub(in crate::file_system::write_operations) use transfer_error::{PathRole, map_volume_error};
+pub(in crate::file_system::write_operations) use transfer_error::{PathRole, map_finalize_failure, map_volume_error};
 
 // Driven directly by the SMB/MTP integration suites and the volume-journal
 // capture tests, which bypass the Tauri command layer.

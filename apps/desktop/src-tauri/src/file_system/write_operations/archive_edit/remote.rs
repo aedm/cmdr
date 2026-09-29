@@ -289,9 +289,8 @@ async fn swap_into_place(parent: &dyn Volume, remote_temp: &Path, archive_path: 
         return Ok(());
     }
 
-    // Delete-then-rename. Tolerate a MISSING original: a brand-new seed target has
-    // nothing to delete (and `place_local_file` reaches here for MTP, which allows
-    // same-name siblings). Any OTHER delete fault is real. The crash window (between
+    // Delete-then-rename. Tolerate a MISSING original: `place_local_file` can publish
+    // a brand-new target on MTP, which allows same-name siblings. Any OTHER delete fault is real. The crash window (between
     // the two) leaves the NEW, fully-uploaded data under the temp name: recoverable,
     // never lost.
     match parent.delete(archive_path).await {

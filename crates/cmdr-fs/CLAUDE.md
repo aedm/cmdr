@@ -27,6 +27,8 @@ paths (`crate::file_system::volume::VolumeError`); other crates use `cmdr_fs::‚Ä
   contract to green a test. Cross-backend promises live in `volume::conformance`.
 - **Stream length is explicit**: real files use `StreamLength::Known`; generated output may use `Unknown`. A backend
   that has not opted into unknown writes must reject before opening the destination or polling the source.
+- **Atomic replacement is explicit**: `supports_atomic_replace_rename` means force-rename is one replacement step.
+  Delete-then-rename backends keep the conservative default and need tracked aside/restore publication.
 - **‚ùå Never build a volume ID by hand, or by stripping characters.** `volume::ids` is the one funnel; an ID keys the
   index DB, `lastUsedPaths`, tab state, and routing, so a lossy one hands two disks one identity and sends deletes to
   the wrong one.

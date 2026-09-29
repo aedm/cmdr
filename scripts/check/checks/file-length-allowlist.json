@@ -92,6 +92,10 @@
       "lines": 805,
       "reason": "TODO: the `onListingError` handler inside `loadDirectory` (the MTP fallback, the archive-password prompt, the not-connected refusal, and the deleted-path existence probe plus walk-up, about 110 lines) is one decision, what a failed listing turns into, and reads only the load's captured `volumeId` / `loadPath` plus a handful of deps. Move it to `listing-error-outcome.ts` as a function taking those, beside `listing-loader.outcomes.test.ts`, which already tests exactly that branch."
     },
+    "apps/desktop/src/lib/file-explorer/types.ts": {
+      "lines": 810,
+      "reason": "TODO: this barrel has become three vocabularies. Keep the listing, sorting, and selection types here, move the network discovery, share, known-share, and mount types (roughly lines 435-548) to `network/types.ts`, and move write-operation configuration and error unions (roughly lines 550-789) beside `file-operations/`. Re-export both groups here so consumers keep one stable seam while each owner maintains its own vocabulary."
+    },
     "apps/desktop/src/lib/file-explorer/views/BriefList.svelte": {
       "lines": 1111,
       "reason": "TODO: Brief is the only view that still inlines what Full has already factored out. Its roughly 830-line script holds the prefetch buffer (`cachedEntries`, `cachedRange`, `isFetching`, `parentDirStats`, `fetchVisibleRange`, `visibleColumns`, and the hard-reset/soft-refresh `$effect`, about 220 lines) and the whole `handleMouseDown` drag-payload decision plus `handleClick`, `handleDoubleClick`, and `maybeStartClickToRename` (about 120 lines), while `FullList` reaches the same behavior through `full-list-cache.svelte.ts` and `full-list-mouse.ts`. Mirror those two: a `brief-list-cache.svelte.ts` wrapping the `file-list-utils.ts` helpers it already calls, and a `brief-list-mouse.ts` with a `planRowMouseDown` twin, then move `buildDirTooltip` and `buildNameTooltip` (about 40 lines) beside the `full-list-utils.ts` building blocks they compose. Markup (about 150) and `\u003cstyle\u003e` (about 170) are already lean and stay put."
@@ -103,6 +107,10 @@
     "apps/desktop/src/lib/file-operations/transfer/TransferDialog.svelte": {
       "lines": 976,
       "reason": "TODO: Script 562 / markup 247 / style 228, with the script already orchestration only (`transfer-scan-state.svelte.ts`, `transfer-conflict-check.svelte.ts`, `transfer-dest-exists.svelte.ts`, and `transfer-dialog-logic.ts` hold the logic). Two presentational blocks can follow the `ScanPhaseBody.svelte` and `CompressEstimateLine.svelte` precedent in the same directory: a `TransferScanTallies.svelte` for the `.scan-stats` row plus the `scan.scanFailure` retry notice (about 45 markup and 50 style), and a `TransferConflictsSection.svelte` for the `isCheckingConflicts` to `conflictCheckUnknown` to merge-info, summary, `RadioGroup`, and type-mismatch chain (about 70 markup and 55 style). That is roughly 220 lines out, leaving `handleConfirm` and `handleCancel`, whose dense rationale comments are the part of this file worth protecting."
+    },
+    "apps/desktop/src/lib/file-operations/transfer/TransferProgressDialog.svelte": {
+      "lines": 805,
+      "reason": "TODO: the 369-line script mixes operation-shell wiring with rollback-confirmation presentation. Extract the rollback request, tooltip, disabled-state, and confirm/cancel handlers plus their markup and styles into a `TransferRollbackControls.svelte` child driven by the existing progress state. The dialog keeps session lifecycle, foreground handoff, conflict resolution, and close/queue behavior, while the child owns the one reversal decision surface."
     },
     "apps/desktop/src/lib/file-operations/transfer/transfer-progress-state.svelte.ts": {
       "lines": 803,
@@ -151,6 +159,10 @@
     "crates/cmdr-fs/src/volume/mod.rs": {
       "lines": 1680,
       "reason": "Over half its 1,680 lines are doc comments, because this is the `Volume` trait definition, the vocabulary every storage backend in Cmdr speaks, plus the two small stream traits its methods hand back (`VolumeReadStream`, `SequentialExtract`). Rust needs a trait in one block, and the prose is the deliverable: contracts like `delete` refusing to recurse and `rename(force: false)` refusing an existing destination are stated here and enforced by the shared assertions in `conformance.rs`. Everything that could leave already has, as the module declarations at the foot of the file show: `types`, `ids`, `capabilities`, `in_memory`, `mkdir_all`, `patching`, `scan_walk`, `host/`, and a dozen more."
+    },
+    "crates/cmdr-fs/src/volume/types.rs": {
+      "lines": 820,
+      "reason": "TODO: split the IPC-facing error vocabulary from the operational value types. Move `VolumeError`, its `Display`/`Error` implementations, `from_io_at`, and their sibling tests (roughly lines 533-820) to `volume/error.rs`, re-exporting it from `volume`. What stays is the capability and operation vocabulary (`StreamLength`, `WriteMode`, `LaneKey`, scan results, space and access types), while the new file owns the discriminated error union and its conversion contract."
     },
     "crates/cmdr-index/src/indexing/aggregator/mod.rs": {
       "lines": 810,

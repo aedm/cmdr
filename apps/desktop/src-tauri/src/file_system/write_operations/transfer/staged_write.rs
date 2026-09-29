@@ -100,7 +100,7 @@ pub(super) enum LandingName {
 
 /// One file write's staging: where the bytes go, and how they get their final
 /// name.
-pub(super) struct StagedWrite {
+pub(in crate::file_system::write_operations) struct StagedWrite {
     /// `Some(temp)` when we staged this write ourselves, `None` under
     /// [`WriteStaging::AlreadyStaged`] and [`WriteStaging::SingleShot`].
     ///
@@ -136,6 +136,21 @@ pub(super) struct StagedWrite {
 }
 
 impl StagedWrite {
+    /// Begins a tracked sibling stage for validated generated output. A target
+    /// observed absent stays `ExpectedFree`, so a racing file is never cleared.
+    pub(in crate::file_system::write_operations) fn begin_generated(
+        state: &Arc<WriteOperationState>,
+        final_path: &Path,
+        replace_existing: bool,
+    ) -> Self {
+        let staging = if replace_existing {
+            WriteStaging::StageOntoClaimedName
+        } else {
+            WriteStaging::Stage
+        };
+        Self::begin(state, final_path, staging)
+    }
+
     /// Picks the staging path and, when we own it, records it as an in-flight
     /// partial on the operation so an abandoned task's litter can be found.
     pub(super) fn begin(state: &Arc<WriteOperationState>, final_path: &Path, staging: WriteStaging) -> Self {
@@ -181,7 +196,7 @@ impl StagedWrite {
     }
 
     /// Where the streaming writer must put the bytes.
-    pub(super) fn target(&self) -> &Path {
+    pub(in crate::file_system::write_operations) fn target(&self) -> &Path {
         self.temp.as_ref().map_or(&self.final_path, StagingTemp::path)
     }
 
@@ -219,7 +234,10 @@ impl StagedWrite {
     /// delete), so it can't stage at all; the caller may fall back to writing at
     /// the final name, and `land` has already taken the temp away. No production
     /// backend takes that branch.
-    pub(super) async fn commit(mut self, dest_volume: &Arc<dyn Volume>) -> Result<(), FinalizeFailure> {
+    pub(in crate::file_system::write_operations) async fn commit(
+        mut self,
+        dest_volume: &Arc<dyn Volume>,
+    ) -> Result<(), FinalizeFailure> {
         let Some(temp) = self.temp.take() else {
             // Nothing of ours to land: the caller stages and lands its own temp,
             // and a single-shot write already sits at its final name.
@@ -239,6 +257,92 @@ impl StagedWrite {
         land(dest_volume, temp.path(), &self.final_path, self.landing, &release).await
     }
 
+    /// Atomically replaces the final name with a completed generated file.
+    ///
+    /// Fresh ZIP creation uses this only on backends whose rename-with-force is
+    /// one atomic replacement primitive (local POSIX). The original is
+    /// therefore never removed in a separate operation. A refusal leaves the
+    /// original intact and abandons the staged bytes; an ambiguous reply may
+    /// have landed the new file, but cleanup still names only the distinct temp.
+    pub(in crate::file_system::write_operations) async fn commit_atomic_replace(
+        mut self,
+        dest_volume: &Arc<dyn Volume>,
+    ) -> Result<(), VolumeError> {
+        let Some(temp) = self.temp.take() else {
+            return Err(VolumeError::NotSupported);
+        };
+        match dest_volume.rename(temp.path(), &self.final_path, true).await {
+            Ok(()) => {
+                self.deregister(temp.path());
+                Ok(())
+            }
+            Err(error) => {
+                if dest_volume.delete(temp.path()).await.is_ok() {
+                    self.deregister(temp.path());
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// Publishes on a backend without atomic replacement while keeping the old
+    /// destination recoverable under a tracked aside. This is the MTP-safe
+    /// fallback: the old file is restored if the final rename refuses, and is
+    /// discarded only after the new file has its final name.
+    pub(in crate::file_system::write_operations) async fn commit_with_displaced_original(
+        mut self,
+        dest_volume: &Arc<dyn Volume>,
+    ) -> Result<(), super::super::types::WriteOperationError> {
+        let Some(temp) = self.temp.take() else {
+            return Err(super::super::types::WriteOperationError::WriteError {
+                path: self.final_path.display().to_string(),
+                message: "generated output was not staged".to_string(),
+            });
+        };
+        let displaced =
+            match super::volume::displace_destination(&self.state, dest_volume, &self.final_path, false).await {
+                Ok(displaced) => displaced,
+                Err(error) => {
+                    if dest_volume.delete(temp.path()).await.is_ok() {
+                        self.deregister(temp.path());
+                    }
+                    return Err(error);
+                }
+            };
+        match dest_volume.rename(temp.path(), &self.final_path, false).await {
+            Ok(()) => {
+                self.deregister(temp.path());
+                if let Some(displaced) = displaced {
+                    displaced.discard(dest_volume).await;
+                }
+                Ok(())
+            }
+            Err(error) => {
+                let recovered = match displaced {
+                    Some(displaced) => displaced
+                        .restore(dest_volume)
+                        .await
+                        .map(|kept_at| vec![super::super::types::RecoveredOriginal::new(&self.final_path, &kept_at)]),
+                    None => None,
+                };
+                if dest_volume.delete(temp.path()).await.is_ok() {
+                    self.deregister(temp.path());
+                }
+                let cause = super::super::types::WriteOperationError::WriteError {
+                    path: self.final_path.display().to_string(),
+                    message: error.to_string(),
+                };
+                Err(match recovered {
+                    Some(recovered) => super::super::types::WriteOperationError::OriginalsKeptAside {
+                        cause: Box::new(cause),
+                        recovered,
+                    },
+                    None => cause,
+                })
+            }
+        }
+    }
+
     /// The write FAILED: the staged bytes are a partial, so remove them.
     ///
     /// Best-effort — the backend usually deleted its own partial already, and a
@@ -249,7 +353,7 @@ impl StagedWrite {
     /// attempt is the backend's job (it is the only layer that can tell "the
     /// server created the file and then refused the bytes" from "the file was
     /// already there and we never touched it").
-    pub(super) async fn abandon(mut self, dest_volume: &Arc<dyn Volume>) {
+    pub(in crate::file_system::write_operations) async fn abandon(mut self, dest_volume: &Arc<dyn Volume>) {
         let Some(temp) = self.temp.take() else {
             return;
         };

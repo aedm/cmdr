@@ -1181,6 +1181,16 @@ pub trait Volume: Send + Sync {
         false
     }
 
+    /// Whether `rename(from, to, force = true)` replaces an existing file at
+    /// `to` atomically, without first removing or moving it in a separate step.
+    ///
+    /// Callers publishing validated generated output use this to choose between
+    /// one atomic replacement and a tracked aside/restore sequence. The default
+    /// is conservative because many protocols implement force by deleting first.
+    fn supports_atomic_replace_rename(&self) -> bool {
+        false
+    }
+
     /// Whether `create_directory` reliably returns `VolumeError::AlreadyExists`
     /// when a directory of the same name already exists at the path.
     ///
