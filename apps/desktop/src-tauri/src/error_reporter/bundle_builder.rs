@@ -585,6 +585,51 @@ fn has_legacy_prefix(message: &str, prefixes: &[&str]) -> bool {
     prefixes.iter().any(|prefix| message.starts_with(prefix))
 }
 
+/// The current search summary starts with producer-owned structural fields. The old
+/// template started with a quoted literal query (or a filter summary), so user text can
+/// contain these markers but cannot occupy the producer-owned first field.
+fn is_current_search_diagnostic(message: &str, prefix: &str, outcome_fields: &[&str]) -> bool {
+    let Some(mut rest) = message.strip_prefix(prefix) else {
+        return false;
+    };
+    for field in [
+        ", size=",
+        ", modified=",
+        ", type=",
+        ", case=",
+        ", count-only=",
+        ", scope=",
+        ", exclusions=",
+        ", system-exclusions=",
+        " → ",
+    ] {
+        let Some((_, after)) = rest.split_once(field) else {
+            return false;
+        };
+        rest = after;
+    }
+    outcome_fields.iter().all(|field| {
+        let Some((_, after)) = rest.split_once(field) else {
+            return false;
+        };
+        rest = after;
+        true
+    })
+}
+
+fn is_current_discovery_cache_diagnostic(message: &str) -> bool {
+    [
+        "Host ADDED: serverId=",
+        "Host UPDATED: serverId=",
+        "Host RESOLVED before FOUND, creating entry: serverId=",
+        "Host RESOLVED: serverId=",
+        "Host REMOVED: serverId=",
+    ]
+    .iter()
+    // allowed-error-string-match: recognizes producer-owned field names at the start of current discovery templates; old identity values cannot spoof that position
+    .any(|prefix| message.starts_with(prefix))
+}
+
 fn is_known_unsafe_historical_record(target: &str, message: &str) -> bool {
     if target == "error_reporter::state_snapshot" {
         // The removed target wrote `State at error time:` followed by arbitrary MCP YAML,
@@ -593,6 +638,24 @@ fn is_known_unsafe_historical_record(target: &str, message: &str) -> bool {
     }
 
     match target {
+        "search::engine" => {
+            if has_legacy_prefix(message, &["Search completed: "]) {
+                !is_current_search_diagnostic(
+                    message,
+                    "Search completed: pattern=",
+                    &[" matches (returning ", " hidden), took "],
+                )
+            } else if has_legacy_prefix(message, &["Count-only search: "]) {
+                !is_current_search_diagnostic(
+                    message,
+                    "Count-only search: pattern=",
+                    &[" matches (", " hidden), took "],
+                )
+            } else {
+                false
+            }
+        }
+        "network::discovery_cache" => !is_current_discovery_cache_diagnostic(message),
         "volume" => {
             has_legacy_prefix(
                 message,

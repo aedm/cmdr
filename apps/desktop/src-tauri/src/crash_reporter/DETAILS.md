@@ -273,9 +273,12 @@ macOS exception string.
 
 Preview is not an authority handoff. `pending_delivery.rs` accepts only the preview's id and optional email, then
 reloads the pending artifact and reapplies the transform before adding the separately supplied `AttachedEmail`. It
-rejects a stale id before upload, and rechecks the current file's id after upload before deletion. Thus a frontend
-mutation cannot alter any payload field, and a replacement file cannot be sent or deleted under consent for its
-predecessor. A field that cannot be transformed or proven to be closed typed metadata stays out.
+rejects a stale id before upload, so a frontend mutation cannot alter any payload field or send the replacement under
+consent for its predecessor. After upload it rechecks the current file's id before deletion, which preserves a
+replacement already present at that check. The read-ID/remove pair is not atomic: a replacement written between those
+operations can still be removed. That pre-existing TOCTOU does not weaken upload authority, but this lifecycle must not
+be described as guaranteeing every in-flight replacement survives. A field that cannot be transformed or proven to be
+closed typed metadata stays out.
 
 ## Where a field is filled in
 

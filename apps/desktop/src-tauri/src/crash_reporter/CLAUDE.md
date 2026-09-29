@@ -28,8 +28,9 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 - **`email` is a typed send-time exception.** Delivery preparation clears embedded email; only
   `AttachedEmail::from_flow_a_dialog` can add it back after an explicit dialog action. ❌ Never read settings or the
   email in capture or automatic-send paths.
-- **The report id binds consent and deletion.** A stale id neither uploads nor deletes a replacement pending file; an
-  accepted upload rechecks the current file's id before deleting it, so an in-flight replacement survives.
+- **The report id binds consent and narrows deletion.** A stale id at send neither uploads nor deletes the current
+  file. After upload, an id recheck preserves a replacement present then; the following remove is not
+  atomic with that read, so it does not close the pre-existing replacement race. DETAILS § One delivery transform.
 - **Dev mode: capture only, never send.** **Crash-loop guard**: a crash file under 5 s old sets `possible_crash_loop`,
   and the frontend asks instead of auto-sending.
 - **`survival.rs` makes two one-way amendments.** ❌ `app_fate` is not a `bool`: `false` would misclassify old files.

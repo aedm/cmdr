@@ -717,7 +717,7 @@ async fn a_failed_upload_retains_the_pending_file() {
 }
 
 #[tokio::test]
-async fn an_upload_never_deletes_a_replacement_that_arrives_in_flight() {
+async fn post_upload_id_recheck_preserves_a_replacement_already_present() {
     let dir = crate::test_support::TestDir::new("crash-send-replaced-in-flight");
     let path = dir.join(CRASH_FILE_NAME);
     let mut original = make_test_report();

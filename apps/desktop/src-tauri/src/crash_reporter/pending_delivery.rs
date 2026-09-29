@@ -24,8 +24,9 @@ pub fn dismiss_pending_crash_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>
 ///
 /// The frontend supplies consent, not report contents. Reloading here makes the file authoritative;
 /// comparing its id before upload prevents a stale preview from sending a replacement report, and
-/// comparing again before deletion preserves a newer report that appeared while the upload was in
-/// flight. A request that doesn't land keeps the original file for the next launch.
+/// comparing again before deletion preserves a replacement already present at that check. The check
+/// and remove are not atomic, so they narrow rather than eliminate the replacement race. A request
+/// that doesn't land keeps the original file for the next launch.
 pub async fn send_pending_crash_report<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     report_id: &str,
@@ -70,7 +71,7 @@ where
     }
 
     // The upload may have yielded long enough for another pending artifact to replace this one.
-    // Delete only the file carrying the id that was accepted above.
+    // Preserve a replacement already visible now. This read and the remove are not atomic.
     if pending_report_id(crash_path).as_deref() == Some(report_id) {
         let _ = std::fs::remove_file(crash_path);
     }

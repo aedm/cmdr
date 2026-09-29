@@ -119,11 +119,14 @@ that constraint, so the resolved shape lives in `error_reporter::ResolvedSetting
 
 Before log text reaches the zip, `bundle_builder::filter_and_redact_log_records` groups each timestamped header with
 all following untimestamped continuation lines. It omits complete records from removed producer shapes that could carry
-arbitrary text: the old state-snapshot target and the old backend/OS/CLI prose templates in network, SMB, SFTP, WebDAV,
-and panic logging. Matching is limited to Cmdr-owned persisted targets and fixed templates; it does not classify
-runtime errors. The filter recognizes current typed replacements and keeps them. It then runs every line in each
-retained record through [`crate::redact::redact_line`](../redact/CLAUDE.md), which handles file paths, hostnames, IPs,
-emails, URL userinfo, SMB URIs, and UNC paths. See the redact module for the full pattern table.
+arbitrary text: the old state-snapshot target; the old literal-query search summaries; and the old backend, discovery,
+OS, CLI, and panic prose templates. Matching is limited to Cmdr-owned persisted targets and fixed templates; it does
+not classify runtime errors. Where an old and current record share a headline, the allow decision starts at the
+producer-owned first structural field (`pattern=` for search and `serverId=` for discovery), then checks the current
+field order. It never searches arbitrary query, identity, or backend prose for a safe marker because that prose can
+spoof one. Current typed replacements remain, then every retained line passes through
+[`crate::redact::redact_line`](../redact/CLAUDE.md), which handles file paths, hostnames, IPs, emails, URL userinfo, SMB
+URIs, and UNC paths. See the redact module for the full pattern table.
 
 Dropping records rather than YAML fields is load-bearing: state YAML and arbitrary producer text can put bare names or
 prose on continuation lines where lexical redaction has no reliable boundary. Both the streaming and legacy/window ZIP
@@ -411,11 +414,13 @@ remains a separate functional interface and is unchanged.
 
 The archive-level privacy contract is pinned once across both production ZIP pipelines in
 `tests/privacy_tests.rs::both_zip_pipelines_apply_one_report_context_to_every_diagnostic_surface`. Its fixture carries
-raw local paths, remote identities and credentials, names, query/fragment secrets, omitted MCP-only prose, and the
-rejected legacy free-form breadcrumb shape. The local-path fixture has an extensionless multiword lowercase leaf. It
-decompresses every entry and proves those values are absent while
-report-local correlation, typed state facts, and explicit user note/email fields survive. The two builds recreate the
-context independently from one report ID, which also pins preview/send token stability without a test-only global key.
+raw local paths, remote identities and credentials, names, query/fragment secrets, omitted MCP-only prose, the rejected
+legacy free-form breadcrumb shape, and active plus rotated historical search/discovery records. The historical records
+include fake current-template markers inside user-controlled prose. The local-path fixture has an extensionless
+multiword lowercase leaf. It decompresses every entry and proves those values and each dropped record's continuations
+are absent while report-local correlation, current structural search/discovery diagnostics, typed state facts, and
+explicit user note/email fields survive. The two builds recreate the context independently from one report ID, which
+also pins preview/send token stability without a test-only global key.
 
 ### AppHandle wiring
 

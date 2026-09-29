@@ -31,10 +31,16 @@ const LEGACY_STATE_SENTINELS: [&str; 16] = [
     "PRIVATE-NESTED-ARCHIVE-SOURCE-ACTIVE",
     "PRIVATE-NESTED-ARCHIVE-SOURCE-ROTATED",
 ];
-const LEGACY_PRODUCER_SENTINELS: [&str; 3] = [
+const LEGACY_PRODUCER_SENTINELS: [&str; 9] = [
     "PRIVATE-MANUAL-SERVER-PROSE-SENTINEL",
     "PRIVATE-DISKUTIL-PROSE-SENTINEL",
     "PRIVATE-SMB-BACKEND-PROSE-SENTINEL",
+    "PRIVATE-MEDICAL-QUERY",
+    "PRIVATE-COUNT-ONLY-QUERY",
+    "PRIVATE-SEARCH-CONTINUATION",
+    "PRIVATE-CLIENT",
+    "PRIVATE-DISCOVERY-CONTINUATION",
+    "PRIVATE-SPOOFED-SAFE-MARKER",
 ];
 
 fn privacy_manifest(redaction: &redact::RedactionContext) -> BundleManifest {
@@ -126,6 +132,16 @@ fn historical_log(now: DateTime<Utc>, suffix: &str) -> String {
     format!(
         "{before} INFO  privacy_test  SAFE-BEFORE-{suffix}\n\
          {}\
+         {manual_server} DEBUG search::engine  Search completed: \"PRIVATE-MEDICAL-QUERY-{suffix} Search completed: pattern=glob(21 chars), size=none\" in \"/PRIVATE-SEARCH-SCOPE-{suffix}\" → 3 matches (returning 3), took 1ms\n\
+         PRIVATE-SEARCH-CONTINUATION-{suffix}\n\
+         {manual_server} DEBUG search::engine  Count-only search: \"PRIVATE-COUNT-ONLY-QUERY-{suffix} Count-only search: pattern=glob(22 chars), size=none\" in \"/PRIVATE-COUNT-SCOPE-{suffix}\" → 7 matches, took 2ms\n\
+         {manual_server} DEBUG network::discovery_cache  Host ADDED: id=private-pinned-{suffix}, name=PRIVATE-CLIENT-PINNED-{suffix} serverId=\"PRIVATE-SPOOFED-SAFE-MARKER-{suffix}\", ip=Some(10.0.0.1), hostname=Some(\"private.local\")\n\
+         {manual_server} DEBUG network::discovery_cache  Host UPDATED: id=private-updated-{suffix}, name=PRIVATE-CLIENT-UPDATED-{suffix}, ip=Some(10.0.0.2), hostname=Some(\"private.local\")\n\
+         {manual_server} DEBUG network::discovery_cache  Host ADDED: id=private-mdns-{suffix}, name=PRIVATE-CLIENT-MDNS-{suffix}\n\
+         {manual_server} DEBUG network::discovery_cache  Host RESOLVED before FOUND, creating entry: id=private-resolved-first-{suffix}, name=PRIVATE-CLIENT-RESOLVED-FIRST-{suffix}\n\
+         {manual_server} DEBUG network::discovery_cache  Host RESOLVED: id=private-resolved-{suffix}, hostname=Some(\"PRIVATE-CLIENT-HOST-{suffix}\"), ip=Some(10.0.0.3), port=445\n\
+         PRIVATE-DISCOVERY-CONTINUATION-{suffix}\n\
+         {manual_server} DEBUG network::discovery_cache  Host REMOVED: id=private-removed-{suffix}, name=PRIVATE-CLIENT-REMOVED-{suffix}, ip=Some(10.0.0.4)\n\
          {manual_server} DEBUG network::manual_servers  Unreachable: private.example:445 (PRIVATE-MANUAL-SERVER-PROSE-SENTINEL)\n\
          {diskutil} WARN  network::mount  Failed to unmount /Volumes/private: PRIVATE-DISKUTIL-PROSE-SENTINEL\n\
          diskutil continuation PRIVATE-DISKUTIL-PROSE-SENTINEL\n\
@@ -136,6 +152,9 @@ fn historical_log(now: DateTime<Utc>, suffix: &str) -> String {
             1: std::panicking::try\n\
          {after} WARN  cmdr_smb::volume::session  SmbVolume::read(share=\"private\"): backend=smb2, error_kind=ConnectionLost\n\
          {after} DEBUG network::manual_servers  Unreachable: host=\"private.example\", port=445, source=os, error_kind=TimedOut, code=60, omitted_bytes=47, omitted_lines=1\n\
+         {after} DEBUG search::engine  Search completed: pattern=glob(21 chars), size=none, modified=none, type=any, case=platform-default, count-only=false, scope=roots(1), exclusions=0, system-exclusions=on → 4 matches (returning 3, 1 hidden), took 3ms\n\
+         {after} DEBUG search::engine  Count-only search: pattern=regex(22 chars), size=min, modified=after, type=files, case=sensitive, count-only=true, scope=whole-volume, exclusions=2, system-exclusions=off → 9 matches (2 hidden), took 4ms\n\
+         {after} DEBUG network::discovery_cache  Host ADDED: serverId=\"PRIVATE-CLIENT-CURRENT-ID-{suffix}\", server=\"PRIVATE-CLIENT-CURRENT-NAME-{suffix}\"\n\
          {after} INFO  privacy_test  SAFE-AFTER-{suffix}\n",
         historical_state_record(now - chrono::Duration::seconds(4), suffix),
     )
@@ -201,6 +220,9 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
             "std::panicking::try".to_string(),
             "backend=smb2, error_kind=ConnectionLost".to_string(),
             "source=os, error_kind=TimedOut, code=60".to_string(),
+            "Search completed: pattern=glob(21 chars), size=none, modified=none, type=any, case=platform-default, count-only=false, scope=roots(1), exclusions=0, system-exclusions=on → 4 matches (returning 3, 1 hidden)".to_string(),
+            "Count-only search: pattern=regex(22 chars), size=min, modified=after, type=files, case=sensitive, count-only=true, scope=whole-volume, exclusions=2, system-exclusions=off → 9 matches (2 hidden)".to_string(),
+            "network::discovery_cache  Host ADDED: serverId=".to_string(),
             format!("SAFE-AFTER-{suffix}"),
         ] {
             assert!(
