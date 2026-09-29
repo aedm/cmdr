@@ -50,6 +50,7 @@ pub mod auto_sent;
 pub mod breadcrumbs;
 pub(crate) mod bundle_builder;
 pub(crate) mod bundle_capper;
+mod historical_log_filter;
 mod state_history;
 mod tail_walker;
 

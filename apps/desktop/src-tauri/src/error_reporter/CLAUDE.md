@@ -6,8 +6,8 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 ## Module map
 
 - `mod.rs`: public types, `upload`, the endpoint URLs, the `log_error!` macro.
-- `bundle_builder.rs` / `bundle_capper.rs` / `tail_walker.rs`: the two build pipelines, the cap pass, the
-  read-from-end log walker.
+- `bundle_builder.rs` / `bundle_capper.rs` / `tail_walker.rs`: ZIP pipelines, cap pass, and read-from-end walker.
+  `historical_log_filter.rs`: complete-record historical policy and redaction shared by both ZIP pipelines.
 - `auto_dispatcher.rs`: Flow B. `auto_sent.rs`: what the last auto-send shipped, plus the amend call.
   `breadcrumbs.rs`: ring buffer of triage events. `state_history.rs`: process-local typed state ring and report transform.
 
