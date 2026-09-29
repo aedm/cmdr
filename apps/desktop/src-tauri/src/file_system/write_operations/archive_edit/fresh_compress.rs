@@ -362,7 +362,12 @@ async fn produce_direct(
         (Ok(written), Ok(produced)) => (written, produced),
         (write, producer) => {
             stage.abandon(&dest_volume).await;
-            return Err(prefer_pipeline_error(write, producer, &stage_path));
+            return Err(prefer_pipeline_error(
+                write,
+                producer,
+                &stage_path,
+                operation_cancelled(&state),
+            ));
         }
     };
     if let Err(error) = validate_stage(&dest_volume, &stage_path, written, produced, expected_entries).await {
@@ -410,7 +415,12 @@ async fn produce_via_spool(
     let (written, produced) = match (written, produced) {
         (Ok(written), Ok(produced)) => (written, produced),
         (write, producer) => {
-            return Err(prefer_pipeline_error(write, producer, &spool_full));
+            return Err(prefer_pipeline_error(
+                write,
+                producer,
+                &spool_full,
+                operation_cancelled(&state),
+            ));
         }
     };
     validate_stage(&spool_volume, &spool_path, written, produced, expected_entries).await?;
@@ -458,7 +468,9 @@ async fn produce_via_spool(
         Ok(bytes) => bytes,
         Err(error) => {
             stage.abandon(&dest_volume).await;
-            if state.stop_or_park_async().await {
+            // Classify without parking: a paused op whose upload failed reports
+            // that failure now, not after someone presses Resume.
+            if operation_cancelled(&state) {
                 return Err(EditError::Cancelled);
             }
             return Err(volume_write_error(&stage_path, error));
@@ -515,6 +527,12 @@ fn continue_unless(cancellation: &FreshZipCancellation) -> ControlFlow<()> {
     } else {
         ControlFlow::Continue(())
     }
+}
+
+/// Whether a PERSON (or the quit gate) stopped this op, as opposed to the
+/// pipeline stopping itself. Only this makes a failure read as a cancel.
+fn operation_cancelled(state: &WriteOperationState) -> bool {
+    super::super::state::is_cancelled(&state.intent)
 }
 
 /// Runs one producer into one unknown-length destination write and joins every
@@ -671,29 +689,31 @@ fn count_entries(index: &ArchiveIndex) -> usize {
     count
 }
 
+/// Names the CAUSAL failure of a pipeline that didn't finish. A genuine producer
+/// failure (source read, ZIP, count drift) wins, then a genuine destination
+/// failure. What's left is derivative: one side stopped because the other did.
+/// That reads as a cancel only when the operation itself was cancelled; a writer
+/// that quit early on its own is a write failure, never a silent user cancel.
 fn prefer_pipeline_error(
     writer: Result<u64, VolumeError>,
     producer: Result<u64, FreshZipError>,
     path: &Path,
+    operation_cancelled: bool,
 ) -> EditError {
+    let derivative = |error: &FreshZipError| matches!(error, FreshZipError::Cancelled | FreshZipError::OutputClosed);
     match (writer, producer) {
-        (Err(VolumeError::Cancelled(_)), Err(FreshZipError::Cancelled | FreshZipError::OutputClosed)) => {
-            EditError::Cancelled
-        }
-        (Err(error), Err(FreshZipError::Cancelled | FreshZipError::OutputClosed)) => volume_write_error(path, error),
-        (_, Err(FreshZipError::Cancelled)) => EditError::Cancelled,
-        (_, Err(error)) => fresh_error(path, error),
-        (Err(error), Ok(_)) => volume_write_error(path, error),
-        (Ok(_), Ok(_)) => EditError::Op(WriteOperationError::WriteError {
+        (_, Err(error)) if !derivative(&error) => fresh_error(path, error),
+        (Err(error), _) if !matches!(error, VolumeError::Cancelled(_)) => volume_write_error(path, error),
+        _ if operation_cancelled => EditError::Cancelled,
+        _ => EditError::Op(WriteOperationError::WriteError {
             path: path.display().to_string(),
-            message: "the ZIP pipeline ended without a complete result".to_string(),
+            message: "the ZIP pipeline stopped before the archive was complete".to_string(),
         }),
     }
 }
 
 fn fresh_error(path: &Path, error: FreshZipError) -> EditError {
     match error {
-        FreshZipError::Cancelled | FreshZipError::OutputClosed => EditError::Cancelled,
         FreshZipError::Source { entry, message } => {
             EditError::Op(WriteOperationError::ReadError { path: entry, message })
         }

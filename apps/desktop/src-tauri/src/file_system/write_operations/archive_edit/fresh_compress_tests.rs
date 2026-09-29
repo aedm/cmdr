@@ -136,16 +136,49 @@ async fn backend_refusal_unblocks_a_producer_parked_by_pause() {
     );
 }
 
-/// A direct-capable (SMB-shaped) destination that holds its first acknowledged
-/// write in flight until the test opens `gate`, the shape of a server that is
-/// slow to answer one request. It leaves its partial behind on every exit, so
-/// only the coordinator's own cleanup can remove it.
+/// What a [`GatedDestination`] does once its first chunk has landed.
+#[derive(Clone, Copy)]
+enum AfterFirstChunk {
+    /// Hold the acknowledgement until the gate opens, then report progress.
+    HoldThenReport,
+    /// Stop reading and claim success: a writer bug.
+    ClaimSuccess,
+    /// Hold until the gate opens, then fail like a dropped connection.
+    HoldThenFail,
+}
+
+/// A destination that holds its first acknowledged write in flight until the
+/// test opens `gate`, the shape of a server that is slow to answer one request.
+/// It leaves its partial behind on every exit, so only the coordinator's own
+/// cleanup can remove it. `direct` decides whether it accepts unknown-length
+/// writes (the direct route) or only known-length ones (the spool route).
 struct GatedDestination {
     inner: InMemoryVolume,
     gate: tokio::sync::watch::Receiver<bool>,
+    direct: bool,
+    script: AfterFirstChunk,
     at_gate: std::sync::atomic::AtomicBool,
     stopped_by_break: std::sync::atomic::AtomicBool,
     closed_on_eof: std::sync::atomic::AtomicBool,
+}
+
+impl GatedDestination {
+    fn new(
+        inner: InMemoryVolume,
+        gate: tokio::sync::watch::Receiver<bool>,
+        direct: bool,
+        script: AfterFirstChunk,
+    ) -> Self {
+        Self {
+            inner,
+            gate,
+            direct,
+            script,
+            at_gate: Default::default(),
+            stopped_by_break: Default::default(),
+            closed_on_eof: Default::default(),
+        }
+    }
 }
 
 impl Volume for GatedDestination {
@@ -216,7 +249,7 @@ impl Volume for GatedDestination {
     }
 
     fn supports_unknown_length_writes(&self) -> bool {
-        true
+        self.direct
     }
 
     fn write_from_stream<'a>(
@@ -241,8 +274,17 @@ impl Volume for GatedDestination {
                     self.inner.create_file(dest, &chunk).await?;
                 }
                 written += chunk.len() as u64;
+                if matches!(self.script, AfterFirstChunk::ClaimSuccess) {
+                    return Ok(written);
+                }
                 self.at_gate.store(true, Ordering::SeqCst);
                 let _ = gate.wait_for(|open| *open).await;
+                if matches!(self.script, AfterFirstChunk::HoldThenFail) {
+                    return Err(VolumeError::IoError {
+                        message: "injected connection loss".to_string(),
+                        raw_os_error: None,
+                    });
+                }
                 if on_progress(StreamWriteProgress {
                     bytes_written: written,
                     expected_length: length,
@@ -375,78 +417,147 @@ async fn wait_for_terminal(events: &CollectorEventSink) {
     .await;
 }
 
+const ORIGINAL_ARCHIVE: &[u8] = b"the original archive bytes";
+
+/// A registered SMB-shaped share holding `/share/archive.zip` (placeholder
+/// bytes the compress must never touch unless it publishes) behind a
+/// [`GatedDestination`], plus a started compress of one 3 MiB local file onto it.
+struct GatedRun {
+    id: String,
+    destination: Arc<GatedDestination>,
+    open_gate: tokio::sync::watch::Sender<bool>,
+    events: Arc<CollectorEventSink>,
+    operation_id: String,
+    _source_dir: tempfile::TempDir,
+}
+
+impl GatedRun {
+    async fn start(direct: bool, script: AfterFirstChunk) -> Self {
+        let source_dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(source_dir.path().join("big.bin"), incompressible(3 * 1024 * 1024)).expect("write source");
+        let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", source_dir.path().to_path_buf()));
+        let id = format!("gated-share-{}", uuid::Uuid::new_v4());
+        let inner = InMemoryVolume::new("Share")
+            .with_lane_key(id.clone())
+            .with_backend_kind(BackendKind::Smb);
+        inner.create_directory(Path::new("/share")).await.expect("seed dir");
+        inner
+            .create_file(Path::new("/share/archive.zip"), ORIGINAL_ARCHIVE)
+            .await
+            .expect("seed original");
+        let (open_gate, gate) = tokio::sync::watch::channel(false);
+        let destination = Arc::new(GatedDestination::new(inner, gate, direct, script));
+        get_volume_manager().register(&id, Arc::clone(&destination) as Arc<dyn Volume>);
+        let events = Arc::new(CollectorEventSink::new());
+        let start = super::super::compress::compress_start(
+            Arc::clone(&events) as Arc<dyn OperationEventSink>,
+            source,
+            vec![PathBuf::from("big.bin")],
+            PathBuf::from("/share/archive.zip"),
+            id.clone(),
+            ConflictResolution::Overwrite,
+            0,
+            None,
+            None,
+            Initiator::User,
+        )
+        .await
+        .expect("start gated compress");
+        Self {
+            id,
+            destination,
+            open_gate,
+            events,
+            operation_id: start.operation_id,
+            _source_dir: source_dir,
+        }
+    }
+
+    async fn wait_at_gate(&self) {
+        wait_until_async(Duration::from_secs(5), "the destination holding a write", || {
+            self.destination.at_gate.load(std::sync::atomic::Ordering::SeqCst)
+        })
+        .await;
+    }
+
+    fn open_gate(&self) {
+        let _ = self.open_gate.send(true);
+    }
+
+    /// The original stays byte-exact and no stage survives, then unregisters.
+    async fn assert_destination_untouched_and_finish(self) {
+        assert_eq!(
+            read_remote_file(&self.destination.inner, Path::new("/share/archive.zip")).await,
+            ORIGINAL_ARCHIVE,
+            "the original archive stays byte-exact"
+        );
+        let listing = self
+            .destination
+            .inner
+            .list_directory(Path::new("/share"), None)
+            .await
+            .expect("list share");
+        assert!(sibling_temps(&listing).is_empty(), "the stage is removed: {listing:?}");
+        get_volume_manager().unregister(&self.id);
+    }
+}
+
 #[tokio::test]
 async fn cancel_reaches_a_direct_write_held_by_a_gated_destination() {
     use std::sync::atomic::Ordering;
-    let source_dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(source_dir.path().join("big.bin"), incompressible(3 * 1024 * 1024)).expect("write source");
-    let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", source_dir.path().to_path_buf()));
+    let run = GatedRun::start(true, AfterFirstChunk::HoldThenReport).await;
+    run.wait_at_gate().await;
+    manager::cancel_operation(&run.operation_id);
+    run.open_gate();
+    wait_for_terminal(&run.events).await;
 
-    let id = format!("gated-share-{}", uuid::Uuid::new_v4());
-    let inner = InMemoryVolume::new("Share")
-        .with_lane_key(id.clone())
-        .with_backend_kind(BackendKind::Smb);
-    inner.create_directory(Path::new("/share")).await.expect("seed dir");
-    let original = b"the original archive bytes".to_vec();
-    inner
-        .create_file(Path::new("/share/archive.zip"), &original)
-        .await
-        .expect("seed original");
-    let (open_gate, gate) = tokio::sync::watch::channel(false);
-    let destination = Arc::new(GatedDestination {
-        inner,
-        gate,
-        at_gate: Default::default(),
-        stopped_by_break: Default::default(),
-        closed_on_eof: Default::default(),
-    });
-    get_volume_manager().register(&id, Arc::clone(&destination) as Arc<dyn Volume>);
-    let events = Arc::new(CollectorEventSink::new());
-
-    let start = super::super::compress::compress_start(
-        Arc::clone(&events) as Arc<dyn OperationEventSink>,
-        source,
-        vec![PathBuf::from("big.bin")],
-        PathBuf::from("/share/archive.zip"),
-        id.clone(),
-        ConflictResolution::Overwrite,
-        0,
-        None,
-        None,
-        Initiator::User,
-    )
-    .await
-    .expect("start gated compress");
-    wait_until_async(Duration::from_secs(5), "the destination holding a write", || {
-        destination.at_gate.load(Ordering::SeqCst)
-    })
-    .await;
-    manager::cancel_operation(&start.operation_id);
-    let _ = open_gate.send(true);
-    wait_for_terminal(&events).await;
-
-    assert_eq!(events.cancelled.lock_ignore_poison().len(), 1, "the op ends cancelled");
-    assert!(events.complete.lock_ignore_poison().is_empty());
+    assert_eq!(
+        run.events.cancelled.lock_ignore_poison().len(),
+        1,
+        "the op ends cancelled"
+    );
+    assert!(run.events.complete.lock_ignore_poison().is_empty());
     assert!(
-        destination.stopped_by_break.load(Ordering::SeqCst),
+        run.destination.stopped_by_break.load(Ordering::SeqCst),
         "the backend must hear the cancel at its next acknowledgement"
     );
     assert!(
-        !destination.closed_on_eof.load(Ordering::SeqCst),
+        !run.destination.closed_on_eof.load(Ordering::SeqCst),
         "a cancelled ZIP must never reach the backend as a complete stream"
     );
-    assert_eq!(
-        read_remote_file(&destination.inner, Path::new("/share/archive.zip")).await,
-        original,
-        "the original archive stays byte-exact"
+    run.assert_destination_untouched_and_finish().await;
+}
+
+#[tokio::test]
+async fn a_destination_that_stops_reading_early_is_a_write_error_not_a_cancel() {
+    let run = GatedRun::start(true, AfterFirstChunk::ClaimSuccess).await;
+    wait_for_terminal(&run.events).await;
+
+    assert!(
+        run.events.cancelled.lock_ignore_poison().is_empty(),
+        "nobody cancelled: a writer that quits early must not read as a user cancel"
     );
-    let listing = destination
-        .inner
-        .list_directory(Path::new("/share"), None)
-        .await
-        .expect("list share");
-    assert!(sibling_temps(&listing).is_empty(), "the stage is removed: {listing:?}");
-    get_volume_manager().unregister(&id);
+    assert_eq!(run.events.errors.lock_ignore_poison().len(), 1);
+    assert!(run.events.complete.lock_ignore_poison().is_empty());
+    run.assert_destination_untouched_and_finish().await;
+}
+
+#[tokio::test]
+async fn an_upload_failure_while_paused_reports_without_waiting_for_resume() {
+    let run = GatedRun::start(false, AfterFirstChunk::HoldThenFail).await;
+    run.wait_at_gate().await;
+    let _ = manager::pause_operation(&run.operation_id);
+    run.open_gate();
+    wait_for_terminal(&run.events).await;
+    let _ = manager::resume_operation(&run.operation_id);
+
+    assert_eq!(
+        run.events.errors.lock_ignore_poison().len(),
+        1,
+        "the upload's own failure is the answer, paused or not"
+    );
+    assert!(run.events.cancelled.lock_ignore_poison().is_empty());
+    run.assert_destination_untouched_and_finish().await;
 }
 
 #[tokio::test]
