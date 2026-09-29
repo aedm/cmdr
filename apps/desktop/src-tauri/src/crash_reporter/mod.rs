@@ -54,6 +54,8 @@ pub(crate) const CRASH_SHORT_ID_PREFIX: &str = "CRASH";
 const PANIC_MESSAGE_MAX_CHARS: usize = 2_000;
 /// Appended when [`cap_panic_message`] trims, so a truncated message never reads as complete.
 const PANIC_MESSAGE_TRUNCATION_MARKER: &str = "… (truncated)";
+/// Cap for a thread name in a crash report or log line, in chars.
+const THREAD_NAME_MAX_CHARS: usize = 100;
 
 /// `"release"` or `"debug"` resolved at compile time. Same shape the error reporter
 /// already ships in its manifest, so the api server can store both report types
@@ -234,9 +236,10 @@ pub struct CrashReport {
 impl CrashReport {
     /// Apply the privacy boundary shared by next-launch preview and upload.
     ///
-    /// Panic payloads and thread names are arbitrary producer text: either can contain user
-    /// data that a lexical redactor cannot recognize, so they stay local and are omitted.
-    /// Retained diagnostic strings are scrubbed with this report's correlation context.
+    /// Every retained string is scrubbed with this report's correlation context. The panic
+    /// message and thread name ship (triage starts from them), re-redacted and re-capped here
+    /// because the hook's unsalted pass may predate this report, or the file may be old.
+    /// Idempotent, since send re-applies it to the file next-launch already rewrote.
     pub(crate) fn prepare_for_delivery(&mut self) {
         let short_id = self
             .short_id
@@ -246,8 +249,14 @@ impl CrashReport {
         let redaction = redact::RedactionContext::for_report(&short_id);
         self.short_id = Some(short_id);
 
-        self.panic_message = None;
-        self.thread_name = None;
+        self.panic_message = self
+            .panic_message
+            .as_deref()
+            .map(|message| cap_panic_message(redact_multiline(message, &redaction)));
+        self.thread_name = self
+            .thread_name
+            .as_deref()
+            .map(|name| cap_chars(redaction.redact_line(name).into_owned(), THREAD_NAME_MAX_CHARS));
         self.email = None;
         self.active_settings.ai_provider = self
             .active_settings
@@ -283,6 +292,14 @@ impl CrashReport {
         self.prepare_for_delivery();
         self.email = email.map(crate::error_reporter::AttachedEmail::into_inner);
     }
+}
+
+/// Redact each line of a multi-line message with a report's context.
+fn redact_multiline(message: &str, redaction: &redact::RedactionContext) -> String {
+    message
+        .split_inclusive('\n')
+        .map(|line| redaction.redact_line(line))
+        .collect()
 }
 
 fn valid_diagnostics_id(id: &str) -> bool {
@@ -367,12 +384,17 @@ pub fn install_panic_hook() {
     });
 }
 
-/// The one fixed line a contained panic leaves in the log. `cmdr.log` rides error reports, and
-/// both the panic payload and a caller-chosen thread name are arbitrary text a lexical redactor
-/// cannot prove safe.
+/// The one line a contained panic leaves in the log: a fixed sentence plus the sanitized thread
+/// name, never the panic message. `cmdr.log` rides error reports, and a foreign parser's `expect`
+/// formats the object it choked on into its message, which for `pdf-extract` is bytes of the
+/// user's PDF. The redactor strips paths and identities, not that.
 fn contained_panic_warning(_info: &std::panic::PanicHookInfo<'_>) -> String {
-    "Contained a panic inside a foreign parser; payload and thread name withheld because they can contain user data"
-        .to_string()
+    format!(
+        "Contained a panic inside a foreign parser on thread {}; the message is withheld because it can quote the file",
+        std::thread::current()
+            .name()
+            .map_or_else(|| "<unnamed>".to_string(), sanitize_thread_name)
+    )
 }
 
 /// What the hook did with a panic.
@@ -424,6 +446,8 @@ fn handle_panic(
     // follow-on panic has no crash file, and quoting an id for a report nobody will find
     // sends triage after the wrong panic.
     panic_courier::notify(panic_courier::PanicNotice {
+        message: report.panic_message.clone(),
+        thread_name: report.thread_name.clone(),
         backtrace_frames: report.backtrace_frames.clone(),
         crash_file_short_id: wrote_crash_file.then(|| report.short_id.clone()).flatten(),
     });
@@ -478,7 +502,7 @@ fn build_panic_report(info: &std::panic::PanicHookInfo<'_>) -> CrashReport {
     let sanitized_message = message.map(|m| sanitize_panic_message(&m));
 
     let thread = std::thread::current();
-    let thread_name = thread.name().map(String::from);
+    let thread_name = thread.name().map(sanitize_thread_name);
 
     CrashReport {
         version: CRASH_FILE_VERSION,
@@ -538,6 +562,23 @@ fn extract_panic_message(info: &std::panic::PanicHookInfo<'_>) -> Option<String>
 fn sanitize_panic_message(message: &str) -> String {
     let redacted = redact::redact_panic_message(message);
     cap_panic_message(redacted)
+}
+
+/// A thread name through the same redactor, capped at [`THREAD_NAME_MAX_CHARS`]. Most are
+/// fixed (`tokio-runtime-worker`), but a caller may name one after what it works on.
+fn sanitize_thread_name(name: &str) -> String {
+    cap_chars(redact::redact_line(name).into_owned(), THREAD_NAME_MAX_CHARS)
+}
+
+/// At most `max` chars, the last one `…` when anything was cut. Idempotent: a capped value sits
+/// at the limit, so delivery's second pass leaves it alone.
+fn cap_chars(text: String, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text;
+    }
+    let mut capped: String = text.chars().take(max - 1).collect();
+    capped.push('…');
+    capped
 }
 
 /// Cap a redacted panic message. `assert_eq!` on large structs yields multi-KB payloads,

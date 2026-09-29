@@ -62,9 +62,10 @@ Nothing new leaves the machine, and nothing leaves it sooner than the user agree
   opt-in check before touching the dispatcher state. Opt-in off means the panic is logged
   locally and that's all.
 - The payload is the Flow B log-tail bundle that already ships, and Flow B bundles already
-  carry Rust backtraces (`log_error!` emits one per error). The courier logs a fixed headline,
-  the typed crash ID when available, and the frames. It omits the panic payload and caller-chosen
-  thread name because lexical redaction cannot prove arbitrary producer text safe.
+  carry Rust backtraces (`log_error!` emits one per error). The courier's headline is
+  ``Panic on thread `<name>` (CRASH-XXXXX): <message>`` with the same sanitized message and thread
+  name the crash file holds, so the in-session copy can't be less redacted than the file; the
+  report pass then redacts that log line with the report's context.
 - A user who opted into crash reports but not error reports sees exactly today's behavior.
 
 ### Told once, not twice: `reported_in_session`
@@ -186,7 +187,7 @@ holds; the `warn` goes through `log` from the hook's thread, which the reporting
 because `log` might be what panicked, an argument that doesn't apply to a parser call we
 chose to wrap.
 
-**The `warn` line is a fixed sentence, never the thread name or panic message.**
+**The `warn` line is a fixed sentence plus the sanitized thread name, never the panic message.**
 `cmdr.log` rides error reports, and a foreign parser's `expect` formats the object it choked
 on into its message: for `pdf-extract` that is bytes of the user's PDF (an object dump, a
 string from the document). The crash-report sanitizer strips paths, not that, so the message
@@ -232,8 +233,12 @@ These are reporter gates, not release-pipeline behavior.
 - Exception type + signal, faulting address.
 - App version, macOS version, CPU architecture.
 - App uptime, thread count.
-- No panic payload or thread name. Capture keeps a redacted, capped panic message locally for crash-file diagnostics,
-  but the delivery transform omits both arbitrary text fields because their contents cannot be proven safe.
+- Panic message (`panicMessage`) and thread name (`threadName`). The hook stores them through `sanitize_panic_message`
+  / `sanitize_thread_name` (the shared `crate::redact` pipeline, then a 2,000-char / 100-char cap; a byte-index cut
+  would panic inside the hook). Delivery re-redacts both with the report's context and re-caps. `None` for signal
+  crashes, which carry no payload. The cap exists because the ingestion endpoint rejects a report body over 64 KB, so an
+  uncapped `assert_eq!` dump would cost the whole report. Redaction catches paths and identities, not arbitrary words
+  a panic message may quote.
 - Active feature flags (booleans plus the closed `ai.provider` values `off`, `cloud`, or `local`). An unknown provider
   value is omitted rather than shipped as open text. Ordinary MCP behavior and its typed enabled flag are unchanged.
 - `buildMode` (`"release"` or `"debug"`, from `cfg!(debug_assertions)`): lets the api server distinguish dev-run crashes
@@ -267,9 +272,10 @@ These are reporter gates, not release-pipeline behavior.
 
 `CrashReport::prepare_for_delivery` is the boundary shared by panic JSON, converted signal artifacts, next-launch
 preview, automatic send, and manual send. It mints a valid `CRASH-XXXXX` when the stored ID is absent or malformed,
-replaces an invalid diagnostics ID with the current `diag_` ID, drops unknown build-mode/provider strings, omits panic
-payload, thread name, and embedded email, and uses `RedactionContext::for_report(short_id)` for every retained stack and
-macOS exception string.
+replaces an invalid diagnostics ID with the current `diag_` ID, drops unknown build-mode/provider strings and embedded
+email, and uses `RedactionContext::for_report(short_id)` for the panic message, thread name (both re-capped), and every
+stack and macOS exception string. It's idempotent, so next launch rewrites the pending file in its delivered form and
+send re-applies it safely.
 
 Preview is not an authority handoff. `pending_delivery.rs` accepts only the preview's id and optional email, then
 reloads the pending artifact and reapplies the transform before adding the separately supplied `AttachedEmail`. It

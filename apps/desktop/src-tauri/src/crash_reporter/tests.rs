@@ -542,13 +542,16 @@ fn sanitize_leaves_a_short_message_unmarked() {
 }
 
 #[test]
-fn delivery_omits_arbitrary_crash_prose_and_redacts_retained_diagnostics() {
+fn delivery_keeps_a_redacted_capped_panic_message_and_thread_name() {
     let mut report = make_test_report();
     report.short_id = Some("not-a-report-id".to_string());
     report.diag_id.clear();
     report.build_mode = Some("PRIVATE-BUILD-MODE".to_string());
-    report.panic_message = Some("PRIVATE PANIC PAYLOAD /Users/alice/Secret/payload.txt".to_string());
-    report.thread_name = Some("PRIVATE THREAD NAME".to_string());
+    report.panic_message = Some(format!(
+        "called `Result::unwrap()` on an `Err` value: Os {{ code: 2 }} at /Users/alice/Secret/payload.txt {}",
+        "x".repeat(PANIC_MESSAGE_MAX_CHARS * 2)
+    ));
+    report.thread_name = Some("smb-watcher /Volumes/Private Share".to_string());
     report.active_settings.ai_provider = Some("PRIVATE PROVIDER".to_string());
     report.backtrace_frames = vec!["frame at /Users/alice/Secret/frame.rs".to_string()];
     report.os_exception = Some("fault at /Users/alice/Secret/fault.bin".to_string());
@@ -558,17 +561,19 @@ fn delivery_omits_arbitrary_crash_prose_and_redacts_retained_diagnostics() {
     report.prepare_for_delivery();
     let json = serde_json::to_string(&report).expect("prepared report serializes");
 
-    for private in [
-        "PRIVATE PANIC PAYLOAD",
-        "PRIVATE THREAD NAME",
-        "PRIVATE PROVIDER",
-        "/Users/alice",
-        "Secret",
-    ] {
+    for private in ["PRIVATE PROVIDER", "/Users/alice", "Secret", "Private Share"] {
         assert!(!json.contains(private), "private value {private:?} survived: {json}");
     }
-    assert_eq!(report.panic_message, None);
-    assert_eq!(report.thread_name, None);
+    let message = report.panic_message.as_deref().expect("the panic message ships");
+    assert!(
+        message.starts_with("called `Result::unwrap()` on an `Err` value: Os { code: 2 } at $HOME/<dir:"),
+        "the message keeps its prose and gets report tokens: {message}"
+    );
+    assert!(message.contains(">.txt"), "{message}");
+    assert!(message.ends_with(PANIC_MESSAGE_TRUNCATION_MARKER), "capped: {message}");
+    assert!(message.chars().count() <= PANIC_MESSAGE_MAX_CHARS + PANIC_MESSAGE_TRUNCATION_MARKER.chars().count());
+    let thread = report.thread_name.as_deref().expect("the thread name ships");
+    assert!(thread.starts_with("smb-watcher /Volumes/<volume:"), "{thread}");
     assert_eq!(report.active_settings.ai_provider, None);
     assert_eq!(report.build_mode, None);
     assert!(
@@ -580,12 +585,25 @@ fn delivery_omits_arbitrary_crash_prose_and_redacts_retained_diagnostics() {
     assert!(valid_diagnostics_id(&report.diag_id));
     assert_eq!(report.email, None);
 
+    // A second pass (send re-applies the transform to the rewritten file) changes nothing.
+    let once = serde_json::to_string(&report).expect("serializes");
+    report.prepare_for_delivery();
+    assert_eq!(serde_json::to_string(&report).expect("serializes"), once);
+
     report.active_settings.ai_provider = Some("local".to_string());
     report.prepare_for_send(crate::error_reporter::AttachedEmail::from_flow_a_dialog(Some(
         "explicit-email@example.test".to_string(),
     )));
     assert_eq!(report.active_settings.ai_provider.as_deref(), Some("local"));
     assert_eq!(report.email.as_deref(), Some("explicit-email@example.test"));
+}
+
+#[test]
+fn the_hook_stores_a_sanitized_thread_name() {
+    assert_eq!(sanitize_thread_name("tokio-runtime-worker"), "tokio-runtime-worker");
+    let redacted = sanitize_thread_name("copy /Users/alice/Secret/a.txt");
+    assert!(!redacted.contains("alice") && !redacted.contains("Secret"), "{redacted}");
+    assert!(sanitize_thread_name(&"t".repeat(500)).chars().count() <= THREAD_NAME_MAX_CHARS + 1);
 }
 
 #[tokio::test]
