@@ -4,6 +4,9 @@ use super::*;
 use crate::file_system::volume::{InMemoryVolume, ListingProgress, SpaceInfo};
 use crate::file_system::write_operations::archive_edit::fresh_plan::FreshPlan;
 use crate::file_system::write_operations::archive_edit::fresh_zip::{FreshZipEntry, FreshZipSource};
+use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+use crate::ignore_poison::IgnorePoison;
+use crate::test_support::wait_until_async;
 
 struct RefuseAfterProducerProgress {
     inner: InMemoryVolume,
@@ -119,11 +122,9 @@ async fn backend_refusal_unblocks_a_producer_parked_by_pause() {
             plan,
             destination,
             PathBuf::from("archive.zip"),
-            StreamLength::Unknown,
             None,
             progress,
             cancellation,
-            None,
         ),
     )
     .await;
@@ -133,6 +134,381 @@ async fn backend_refusal_unblocks_a_producer_parked_by_pause() {
         outcome.is_ok(),
         "destination refusal must wake and join the paused producer"
     );
+}
+
+/// A direct-capable (SMB-shaped) destination that holds its first acknowledged
+/// write in flight until the test opens `gate`, the shape of a server that is
+/// slow to answer one request. It leaves its partial behind on every exit, so
+/// only the coordinator's own cleanup can remove it.
+struct GatedDestination {
+    inner: InMemoryVolume,
+    gate: tokio::sync::watch::Receiver<bool>,
+    at_gate: std::sync::atomic::AtomicBool,
+    stopped_by_break: std::sync::atomic::AtomicBool,
+    closed_on_eof: std::sync::atomic::AtomicBool,
+}
+
+impl Volume for GatedDestination {
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn root(&self) -> &Path {
+        self.inner.root()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn lane_key(&self) -> LaneKey {
+        self.inner.lane_key()
+    }
+
+    fn backend_kind(&self) -> BackendKind {
+        self.inner.backend_kind()
+    }
+
+    fn is_writable(&self) -> bool {
+        self.inner.is_writable()
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        path: &'a Path,
+        on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<crate::file_system::listing::FileEntry>, VolumeError>> + Send + 'a>>
+    {
+        self.inner.list_directory(path, on_progress)
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<crate::file_system::listing::FileEntry, VolumeError>> + Send + 'a>> {
+        self.inner.get_metadata(path)
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        self.inner.exists(path)
+    }
+
+    fn is_directory<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+        self.inner.is_directory(path)
+    }
+
+    fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        self.inner.delete(path)
+    }
+
+    fn open_read_stream<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn VolumeReadStream>, VolumeError>> + Send + 'a>> {
+        self.inner.open_read_stream(path)
+    }
+
+    fn get_space_info<'a>(&'a self) -> Pin<Box<dyn Future<Output = Result<SpaceInfo, VolumeError>> + Send + 'a>> {
+        self.inner.get_space_info()
+    }
+
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
+    }
+
+    fn write_from_stream<'a>(
+        &'a self,
+        dest: &'a Path,
+        _mode: WriteMode,
+        length: StreamLength,
+        mut stream: Box<dyn VolumeReadStream>,
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
+    ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        use std::sync::atomic::Ordering;
+        Box::pin(async move {
+            let mut written = 0u64;
+            let mut gate = self.gate.clone();
+            loop {
+                let Some(chunk) = stream.next_chunk().await else {
+                    self.closed_on_eof.store(true, Ordering::SeqCst);
+                    return Ok(written);
+                };
+                let chunk = chunk?;
+                if written == 0 {
+                    self.inner.create_file(dest, &chunk).await?;
+                }
+                written += chunk.len() as u64;
+                self.at_gate.store(true, Ordering::SeqCst);
+                let _ = gate.wait_for(|open| *open).await;
+                if on_progress(StreamWriteProgress {
+                    bytes_written: written,
+                    expected_length: length,
+                })
+                .is_break()
+                {
+                    self.stopped_by_break.store(true, Ordering::SeqCst);
+                    return Err(VolumeError::Cancelled(dest.display().to_string()));
+                }
+            }
+        })
+    }
+}
+
+/// A remote source whose file opens fine and then never answers a read: the
+/// shape of a share that went quiet mid-transfer.
+struct HungSource {
+    inner: InMemoryVolume,
+    reading: Arc<std::sync::atomic::AtomicBool>,
+}
+
+struct NeverAnsweringStream {
+    reading: Arc<std::sync::atomic::AtomicBool>,
+    size: u64,
+}
+
+impl VolumeReadStream for NeverAnsweringStream {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        self.reading.store(true, std::sync::atomic::Ordering::SeqCst);
+        Box::pin(std::future::pending())
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.size)
+    }
+
+    fn bytes_read(&self) -> u64 {
+        0
+    }
+}
+
+impl Volume for HungSource {
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn root(&self) -> &Path {
+        self.inner.root()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn lane_key(&self) -> LaneKey {
+        self.inner.lane_key()
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        path: &'a Path,
+        on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<crate::file_system::listing::FileEntry>, VolumeError>> + Send + 'a>>
+    {
+        self.inner.list_directory(path, on_progress)
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<crate::file_system::listing::FileEntry, VolumeError>> + Send + 'a>> {
+        self.inner.get_metadata(path)
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        self.inner.exists(path)
+    }
+
+    fn is_directory<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+        self.inner.is_directory(path)
+    }
+
+    fn get_space_info<'a>(&'a self) -> Pin<Box<dyn Future<Output = Result<SpaceInfo, VolumeError>> + Send + 'a>> {
+        self.inner.get_space_info()
+    }
+
+    fn open_read_stream<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn VolumeReadStream>, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let size = self.inner.get_metadata(path).await?.size.unwrap_or(0);
+            Ok(Box::new(NeverAnsweringStream {
+                reading: Arc::clone(&self.reading),
+                size,
+            }) as Box<dyn VolumeReadStream>)
+        })
+    }
+}
+
+/// Bytes deflate can't shrink, so the ZIP outgrows every bounded queue.
+fn incompressible(len: usize) -> Vec<u8> {
+    let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+    (0..len)
+        .map(|_| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed as u8
+        })
+        .collect()
+}
+
+fn sibling_temps(dir: &[crate::file_system::listing::FileEntry]) -> Vec<String> {
+    dir.iter()
+        .map(|entry| entry.name.clone())
+        .filter(|name| name.contains(".cmdr-tmp-"))
+        .collect()
+}
+
+async fn wait_for_terminal(events: &CollectorEventSink) {
+    wait_until_async(Duration::from_secs(5), "a terminal event", || {
+        !events.complete.lock_ignore_poison().is_empty()
+            || !events.errors.lock_ignore_poison().is_empty()
+            || !events.cancelled.lock_ignore_poison().is_empty()
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn cancel_reaches_a_direct_write_held_by_a_gated_destination() {
+    use std::sync::atomic::Ordering;
+    let source_dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(source_dir.path().join("big.bin"), incompressible(3 * 1024 * 1024)).expect("write source");
+    let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("src", source_dir.path().to_path_buf()));
+
+    let id = format!("gated-share-{}", uuid::Uuid::new_v4());
+    let inner = InMemoryVolume::new("Share")
+        .with_lane_key(id.clone())
+        .with_backend_kind(BackendKind::Smb);
+    inner.create_directory(Path::new("/share")).await.expect("seed dir");
+    let original = b"the original archive bytes".to_vec();
+    inner
+        .create_file(Path::new("/share/archive.zip"), &original)
+        .await
+        .expect("seed original");
+    let (open_gate, gate) = tokio::sync::watch::channel(false);
+    let destination = Arc::new(GatedDestination {
+        inner,
+        gate,
+        at_gate: Default::default(),
+        stopped_by_break: Default::default(),
+        closed_on_eof: Default::default(),
+    });
+    get_volume_manager().register(&id, Arc::clone(&destination) as Arc<dyn Volume>);
+    let events = Arc::new(CollectorEventSink::new());
+
+    let start = super::super::compress::compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source,
+        vec![PathBuf::from("big.bin")],
+        PathBuf::from("/share/archive.zip"),
+        id.clone(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        Initiator::User,
+    )
+    .await
+    .expect("start gated compress");
+    wait_until_async(Duration::from_secs(5), "the destination holding a write", || {
+        destination.at_gate.load(Ordering::SeqCst)
+    })
+    .await;
+    manager::cancel_operation(&start.operation_id);
+    let _ = open_gate.send(true);
+    wait_for_terminal(&events).await;
+
+    assert_eq!(events.cancelled.lock_ignore_poison().len(), 1, "the op ends cancelled");
+    assert!(events.complete.lock_ignore_poison().is_empty());
+    assert!(
+        destination.stopped_by_break.load(Ordering::SeqCst),
+        "the backend must hear the cancel at its next acknowledgement"
+    );
+    assert!(
+        !destination.closed_on_eof.load(Ordering::SeqCst),
+        "a cancelled ZIP must never reach the backend as a complete stream"
+    );
+    assert_eq!(
+        read_remote_file(&destination.inner, Path::new("/share/archive.zip")).await,
+        original,
+        "the original archive stays byte-exact"
+    );
+    let listing = destination
+        .inner
+        .list_directory(Path::new("/share"), None)
+        .await
+        .expect("list share");
+    assert!(sibling_temps(&listing).is_empty(), "the stage is removed: {listing:?}");
+    get_volume_manager().unregister(&id);
+}
+
+#[tokio::test]
+async fn cancel_reaches_a_producer_waiting_on_a_hung_remote_source() {
+    use std::sync::atomic::Ordering;
+    let lane = format!("hung-source-{}", uuid::Uuid::new_v4());
+    let inner = InMemoryVolume::new("HungSource").with_lane_key(lane);
+    inner
+        .create_file(Path::new("/stuck.bin"), &[b's'; 4096])
+        .await
+        .expect("seed source");
+    let reading = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let source: Arc<dyn Volume> = Arc::new(HungSource {
+        inner,
+        reading: Arc::clone(&reading),
+    });
+    let dest_dir = tempfile::tempdir().expect("tempdir");
+    let archive = dest_dir.path().join("archive.zip");
+    let original = b"the original archive bytes".to_vec();
+    std::fs::write(&archive, &original).expect("seed original");
+    let events = Arc::new(CollectorEventSink::new());
+
+    let start = super::super::compress::compress_start(
+        Arc::clone(&events) as Arc<dyn OperationEventSink>,
+        source,
+        vec![PathBuf::from("/stuck.bin")],
+        archive.clone(),
+        super::super::test_support::unique_lane_id(),
+        ConflictResolution::Overwrite,
+        0,
+        None,
+        None,
+        Initiator::User,
+    )
+    .await
+    .expect("start hung-source compress");
+    wait_until_async(Duration::from_secs(5), "the source read in flight", || {
+        reading.load(Ordering::SeqCst)
+    })
+    .await;
+    manager::cancel_operation(&start.operation_id);
+    wait_for_terminal(&events).await;
+
+    assert_eq!(events.cancelled.lock_ignore_poison().len(), 1, "the op ends cancelled");
+    assert!(events.complete.lock_ignore_poison().is_empty());
+    assert_eq!(std::fs::read(&archive).expect("read original"), original);
+    let leftovers = std::fs::read_dir(dest_dir.path())
+        .expect("list dest")
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name != "archive.zip")
+        .collect::<Vec<_>>();
+    assert!(leftovers.is_empty(), "the stage is removed: {leftovers:?}");
+}
+
+async fn read_remote_file(volume: &dyn Volume, path: &Path) -> Vec<u8> {
+    let mut stream = volume.open_read_stream(path).await.expect("open");
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next_chunk().await {
+        bytes.extend(chunk.expect("chunk"));
+    }
+    bytes
 }
 
 #[tokio::test]

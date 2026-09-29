@@ -273,7 +273,13 @@ async fn run(
     let hooks_for_progress = Arc::clone(&hooks);
     let state_for_progress = Arc::clone(&state);
     let state_for_wake = Arc::clone(&state);
-    let cancellation = FreshZipCancellation::new(Some(Arc::new(move || state_for_wake.pause_gate.wake())));
+    // One source for every stop: the op's tier-1 cancel plus the pipeline's own
+    // internal requests. ❌ Never race a write against it; it reaches the backend
+    // through the write callback, so the backend removes its own partial.
+    let cancellation = FreshZipCancellation::for_operation(
+        &state.backend_cancel,
+        Some(Arc::new(move || state_for_wake.pause_gate.wake())),
+    );
     let cancellation_for_progress = cancellation.clone();
     let progress: FreshZipProgressObserver = Arc::new(move |tick| {
         MutationHooks::on_progress(
@@ -286,13 +292,10 @@ async fn run(
                 bytes_total: total_bytes,
             },
         );
-        if super::super::state::is_cancelled(&state_for_progress.intent) {
-            return true;
-        }
-        state_for_progress.pause_gate.wait_while_paused_sync_until(&|| {
-            super::super::state::is_cancelled(&state_for_progress.intent) || cancellation_for_progress.is_requested()
-        });
-        super::super::state::is_cancelled(&state_for_progress.intent) || cancellation_for_progress.is_requested()
+        state_for_progress
+            .pause_gate
+            .wait_while_paused_sync_until(&|| cancellation_for_progress.is_requested());
+        cancellation_for_progress.is_requested()
     });
 
     let direct = matches!(
@@ -350,11 +353,9 @@ async fn produce_direct(
         plan,
         Arc::clone(&dest_volume),
         stage_path.clone(),
-        StreamLength::Unknown,
         level,
         progress,
         cancellation,
-        None,
     )
     .await;
     let (written, produced) = match (written, produced) {
@@ -401,16 +402,16 @@ async fn produce_via_spool(
         plan,
         Arc::clone(&spool_volume),
         spool_path.clone(),
-        StreamLength::Unknown,
         level,
         progress,
-        cancellation,
-        None,
+        cancellation.clone(),
     )
     .await;
     let (written, produced) = match (written, produced) {
         (Ok(written), Ok(produced)) => (written, produced),
-        (write, producer) => return Err(prefer_pipeline_error(write, producer, &spool_full)),
+        (write, producer) => {
+            return Err(prefer_pipeline_error(write, producer, &spool_full));
+        }
     };
     validate_stage(&spool_volume, &spool_path, written, produced, expected_entries).await?;
 
@@ -442,7 +443,7 @@ async fn produce_via_spool(
                 });
             }
         }
-        ControlFlow::Continue(())
+        continue_unless(&cancellation)
     };
     let uploaded = dest_volume
         .write_from_stream(
@@ -505,34 +506,50 @@ async fn publish_stage(
     Ok(())
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "the bounded pipeline seam joins its plan, destination writer contract, lifecycle, and progress callback"
-)]
+/// Breaks a destination write at its next acknowledgement once the pipeline's
+/// one cancellation source fires; that callback is how SFTP, SMB, and ADB hear a
+/// cancel mid-write.
+fn continue_unless(cancellation: &FreshZipCancellation) -> ControlFlow<()> {
+    if cancellation.is_requested() {
+        ControlFlow::Break(())
+    } else {
+        ControlFlow::Continue(())
+    }
+}
+
+/// Runs one producer into one unknown-length destination write and joins every
+/// participant: the writer, the producer thread, and the remote feed task.
 async fn produce_into(
     plan: FreshPlan,
     dest_volume: Arc<dyn Volume>,
     dest_path: PathBuf,
-    length: StreamLength,
     level: Option<i64>,
     progress: FreshZipProgressObserver,
     cancellation: FreshZipCancellation,
-    on_write: Option<Arc<dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Send + Sync>>,
 ) -> (Result<u64, VolumeError>, Result<u64, FreshZipError>) {
     let source_volume = Arc::clone(&plan.source_volume);
-    let output = match spawn_fresh_zip_with_progress(plan.entries, level, Some(progress), cancellation) {
+    let output = match spawn_fresh_zip_with_progress(plan.entries, level, Some(progress), cancellation.clone()) {
         Ok(output) => output,
         Err(error) => return (Err(VolumeError::NotSupported), Err(error)),
     };
     let (stream, completion) = output.into_parts();
-    let feed_task = tokio::spawn(feed_remote(plan.remote_feeds, source_volume));
-    let default_progress = |_tick: StreamWriteProgress| ControlFlow::Continue(());
-    let callback: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync) =
-        on_write.as_deref().unwrap_or(&default_progress);
+    let feed_task = tokio::spawn(feed_remote(plan.remote_feeds, source_volume, cancellation.clone()));
+    let callback = |_tick: StreamWriteProgress| continue_unless(&cancellation);
     let written = dest_volume
-        .write_from_stream(&dest_path, WriteMode::CreateNew, length, Box::new(stream), callback)
+        .write_from_stream(
+            &dest_path,
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            Box::new(stream),
+            &callback,
+        )
         .await;
     let produced = completion.finish().await;
+    if produced.is_err() {
+        // A producer that ended early leaves the feed nothing to feed; stop a
+        // source read that may never answer instead of awaiting it.
+        cancellation.request();
+    }
     let feed_result = feed_task
         .await
         .map_err(|_| FreshZipError::ProducerPanicked)
@@ -544,8 +561,22 @@ async fn produce_into(
     (written, produced)
 }
 
-async fn feed_remote(feeds: Vec<RemoteFeed>, source_volume: Arc<dyn Volume>) -> Result<(), FreshZipError> {
+/// Feeds each remote entry's bytes through its bridge, one entry at a time.
+///
+/// Every source read races the pipeline's cancellation: a `ChannelReadStream`
+/// read is a queue wait, and dropping the stream is the backend's documented
+/// stop. Opening a stream is one protocol round trip and is allowed to finish,
+/// as the copy engine does. Returning drops every remaining feeder, which is
+/// what wakes a producer parked on the bridge.
+async fn feed_remote(
+    feeds: Vec<RemoteFeed>,
+    source_volume: Arc<dyn Volume>,
+    cancellation: FreshZipCancellation,
+) -> Result<(), FreshZipError> {
     for feed in feeds {
+        if cancellation.is_requested() {
+            return Err(FreshZipError::Cancelled);
+        }
         let mut stream = match source_volume.open_read_stream(&feed.path).await {
             Ok(stream) => stream,
             Err(error) => {
@@ -553,11 +584,17 @@ async fn feed_remote(feeds: Vec<RemoteFeed>, source_volume: Arc<dyn Volume>) -> 
                     entry: feed.entry_name.clone(),
                     message: error.to_string(),
                 };
-                feed.feeder.send(Err(source_error.clone())).await?;
+                feed.feeder.send(Err(source_error.clone()), &cancellation).await?;
                 return Err(source_error);
             }
         };
-        while let Some(chunk) = stream.next_chunk().await {
+        loop {
+            let chunk = tokio::select! {
+                biased;
+                () = cancellation.cancelled() => return Err(FreshZipError::Cancelled),
+                chunk = stream.next_chunk() => chunk,
+            };
+            let Some(chunk) = chunk else { break };
             let bytes = match chunk {
                 Ok(bytes) => bytes,
                 Err(error) => {
@@ -565,13 +602,13 @@ async fn feed_remote(feeds: Vec<RemoteFeed>, source_volume: Arc<dyn Volume>) -> 
                         entry: feed.entry_name.clone(),
                         message: error.to_string(),
                     };
-                    feed.feeder.send(Err(source_error.clone())).await?;
+                    feed.feeder.send(Err(source_error.clone()), &cancellation).await?;
                     return Err(source_error);
                 }
             };
-            feed.feeder.send(Ok(bytes)).await?;
+            feed.feeder.send(Ok(bytes), &cancellation).await?;
         }
-        feed.feeder.finish().await?;
+        feed.feeder.finish(&cancellation).await?;
     }
     Ok(())
 }

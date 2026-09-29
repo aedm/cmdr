@@ -31,8 +31,9 @@ are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-
   generate direct; WebDAV and MTP spool locally. DETAILS § Compress.
 - **Fresh-source name collisions honor the requested policy inside the registered op**: Stop prompts through its
   conflict slot; Skip, Rename, Overwrite, and conditional variants retain their ordinary meanings.
-- **`fresh_zip` has explicit terminal status**: EOF is not success. Drop/close the stream endpoint before shutdown,
-  then await the typed result and join off the async runtime. Remote feeder errors are messages, never channel EOF.
+- **`fresh_zip`: EOF is never success** on either queue (`Complete` in, `End` out); join off the async runtime. ONE
+  cancellation source (a child of `backend_cancel`) reaches producer, feed, stream, and write callback (`Break`). ❌
+  Never race a write against it.
 - **Compress progress has two different byte axes**: `Compressing` is uncompressed source bytes; remote
   `Transferring` is completed-ZIP bytes. Both finishing phases clear BOTH totals and ETA. Ordinary archive mutation
   stays `ArchiveEdit` + `Copying`.

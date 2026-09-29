@@ -158,11 +158,25 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   No direct route materializes source trees or an archive-sized local file.
 
   `fresh_zip.rs` drives `zip` 8.6 `ZipWriter::new_stream` on one OS worker. Local files are read directly; one remote
-  feeder is live at a time. Remote input and generated output cross separate four-chunk channels, split into 128 KiB
-  payloads, so queued bytes are bounded independently of archive size. The ZIP writer necessarily retains O(entries)
-  central-directory metadata. Each source sends explicit completion; feeder loss, source error, and output closure are
-  typed failures, never EOF. Coordinator shutdown closes the output endpoint before joining on Tokio's blocking pool;
-  `Drop` only signals cancellation and never blocks an async thread. Thread-spawn failure is typed too.
+  feeder is live at a time. Remote input and generated output cross separate four-chunk Tokio channels (the worker
+  parks in `blocking_recv` / `blocking_send`), split into 128 KiB payloads, so queued bytes are bounded independently of
+  archive size. The ZIP writer necessarily retains O(entries) central-directory metadata. Each remote source sends
+  explicit completion, and the output sends an explicit `End` only after the central directory is flushed: feeder
+  loss, source error, and an output queue that closes without `End` are typed failures, never EOF, so a destination
+  never closes a failed ZIP as a finished file. Coordinator shutdown closes the output endpoint before joining on
+  Tokio's blocking pool; `Drop` only signals cancellation (and only for an unfinished pipeline) and never blocks an
+  async thread. Thread-spawn failure is typed too.
+
+  **One cancellation source.** `FreshZipCancellation` is a child of the op's tier-1 `backend_cancel`, so a user's
+  Cancel and every internal stop (the destination dropping its stream, a producer failure, coordinator shutdown) land
+  on one token, and every participant watches it. The producer checks it per chunk and while paused. The feed task
+  races each source read against it; on cancel it returns and drops every feeder, and that channel close is what wakes
+  a producer parked in `blocking_recv` on a source that stopped answering. The output stream answers the next pull
+  with `Cancelled`, and the destination's write callback returns `Break` at its next acknowledgement, which is the only
+  way SFTP, SMB, and ADB hear a cancel mid-write (they then remove their own partial). Two waits are deliberately
+  left to finish: opening a source stream (one protocol round trip, as in the copy engine) and a backend write already
+  in flight. Tier 2 (`backend_abort`) isn't raced here. Pinned by the `cancel_reaches_*` tests in
+  `fresh_compress_tests.rs` (a hung remote source and a destination holding a write in flight).
 
   The producer emits empty directories/files, clamps deflate level to 1–9, carries characterized DOS timestamps and
   Unix modes, and sets `large_file(true)` at `zip::ZIP64_BYTES_THR`. Stream local headers cannot be rewritten; only
@@ -185,7 +199,8 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   `FinishingTransfer` instead of emitting 100%, and stays there through backend close, remote validation, and
   publication. Direct remote generation moves from `Compressing` to indeterminate `FinishingCompression` for the same
   close, validation, and publication work without inventing a transfer axis. Pause parks source production or spool
-  reads at chunk boundaries; cancel closes safely and never publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
+  reads at chunk boundaries. Cancel reaches every participant through the one cancellation source above, removes the
+  owned stage, and never publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
   publication refusal/recovery, aliases, old-target preservation, remote sources, and same-device MTP fallback.
 
 - **The writability guard precedes registration and every write.** `compress_start` first calls
