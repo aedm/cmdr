@@ -63,7 +63,7 @@ async fn sftp_integration_local_files_copied_into_a_zip_on_the_server_join_it() 
 #[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
 async fn sftp_integration_a_compress_onto_the_server_lands_a_valid_zip() {
     let (remote, dir) = fixture("compress").await;
-    a_compress_onto_the_server_lands_a_valid_zip(remote, dir).await;
+    a_compress_onto_the_server_lands_a_valid_zip(remote, dir, true).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

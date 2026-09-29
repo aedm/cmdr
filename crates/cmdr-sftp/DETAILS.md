@@ -171,6 +171,8 @@ tuning.
 - **A source's chunk size is its own business.** `take_chunk` coalesces whatever arrives (SMB pipelines ~512 KB, a local
   read hands over less) into pieces the server takes in one request.
 - **Progress reports bytes that LANDED**, never bytes issued, or the bar would finish long before the file.
+- **Length stays explicit.** Known and unknown inputs use this same bounded writer; every progress tick carries the
+  caller's `StreamLength`, and success returns the exact count accepted by the server without inventing a zero total.
 - ❗ **Cancellation arrives only as `Break` from the progress callback.** There is no token on this path, so a backend
   that never called back would be uncancelable.
 - ❗ **The close is part of the write, and only the last clone may await it.** `File::close()` is awaited and its answer
@@ -860,6 +862,8 @@ Beyond the four required methods, `volume_impl.rs` states these deliberately:
   there.
 - **`supports_streaming` → true**, with `open_read_stream`, `open_read_stream_for_scan`, and `read_range` behind it (§
   "The read window"). The other read overrides deliberately keep their defaults, and that section says why.
+- **`supports_unknown_length_writes` → true.** Generated output uses the ordinary write window and awaited close; it
+  does not need a declared total or an archive-sized buffer.
 - **`supports_export` → true**, and ❗ **it is a SEPARATE answer from implementing the read path**. The trait default is
   `false`, `copy_between_volumes` refuses a source that answers `false` before it opens anything (synchronously, with no
   log line), and the same answer reaches the frontend as `VolumeCapabilities.can_export` and greys out copy-from in the

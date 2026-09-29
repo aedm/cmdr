@@ -1,7 +1,6 @@
 # `cmdr-sftp`
 
-Everything Cmdr says to an SFTP server: one SSH connection per volume, one SFTP channel on it. No `tauri`, no
-user-facing words.
+Cmdr's SFTP backend: one SSH connection and one SFTP channel per volume. No `tauri` or user-facing words.
 
 ## Module map
 

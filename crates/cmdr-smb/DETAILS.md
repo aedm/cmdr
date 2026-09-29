@@ -890,10 +890,10 @@ An unknown-length generated stream bypasses the compound drain. It feeds bounded
 writer, reports `StreamLength::Unknown` with server-confirmed bytes, and succeeds only after `FileWriter::finish` has
 drained, flushed, and closed the handle. Known-length decisions stay unchanged.
 
-SMB does not opt into `supports_atomic_replace_rename()`: `rename(force = true)` calls
-`clear_rename_destination` before the server rename. A validated-file publisher must therefore set the old target aside
-through the shared tracked recovery primitive and land with `force = false`; treating the force flag itself as an
-atomicity promise would leave the final name empty if the second step refused.
+SMB does not opt into `supports_atomic_replace_rename()`: `rename(force = true)` calls `clear_rename_destination` before
+the server rename. A validated-file publisher must therefore set the old target aside through the shared tracked
+recovery primitive and land with `force = false`; treating the force flag itself as an atomicity promise would leave the
+final name empty if the second step refused.
 
 **Gotcha/Why**: a test that means to exercise the streaming writer MUST size its file off `negotiated_max_write()`, not
 a literal. The fixture Samba negotiates a `max_write` far above any round number you would reach for, so a "4 MiB,

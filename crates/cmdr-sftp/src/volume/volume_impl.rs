@@ -280,20 +280,14 @@ impl Volume for SftpVolume {
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let Some(size) = length.known() else {
-            return Box::pin(async { Err(VolumeError::NotSupported) });
-        };
         Box::pin(async move {
-            self.noting(
-                self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
-                    on_progress(StreamWriteProgress {
-                        bytes_written,
-                        expected_length: StreamLength::Known(size),
-                    })
-                }),
-            )
-            .await
+            self.noting(self.write_from_stream_impl(dest, mode, length, stream, on_progress))
+                .await
         })
+    }
+
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
     }
 
     /// ❗ There is no watcher here, so this patch is the ONLY thing that keeps a

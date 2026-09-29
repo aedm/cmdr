@@ -27,8 +27,8 @@ are O(archive) temp+rename rewrites. Up: `../CLAUDE.md`; mutation: `crates/cmdr-
   `path_crosses_archive_boundary`, ❌ never the sync `std::fs`-only predicates, which answer FALSE for an `smb://` /
   `mtp://` path and drop the write onto the parent volume.
 - **Fresh compression is seedless and publish-last**: reserve source + destination lanes, stream into a tracked stage,
-  reconcile writer/producer/stat counts, parse it through `ArchiveVolume`, then publish. Local and SMB generate direct;
-  other backends use the same producer into a private local spool. DETAILS § Compress.
+  reconcile writer/producer/stat counts, parse it through `ArchiveVolume`, then publish. Local, SMB, SFTP, and ADB
+  generate direct; WebDAV and MTP spool locally. DETAILS § Compress.
 - **Fresh-source name collisions honor the requested policy inside the registered op**: Stop prompts through its
   conflict slot; Skip, Rename, Overwrite, and conditional variants retain their ordinary meanings.
 - **`fresh_zip` has explicit terminal status**: EOF is not success. Drop/close the stream endpoint before shutdown,

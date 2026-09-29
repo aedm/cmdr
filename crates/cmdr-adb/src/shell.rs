@@ -68,6 +68,26 @@ pub fn command_line(argv: &[&str]) -> String {
 
 /// Runs `argv` on the device and collects its output and exit code.
 pub async fn run(endpoint: &AdbEndpoint, serial: &str, argv: &[&str]) -> Result<ShellOutcome, AdbError> {
+    run_inner(endpoint, serial, argv, None).await
+}
+
+/// Runs `argv`, rejecting stdout beyond `max_stdout` before allocating its
+/// frame. Used when the command itself promises a bounded binary window.
+pub async fn run_bounded(
+    endpoint: &AdbEndpoint,
+    serial: &str,
+    argv: &[&str],
+    max_stdout: usize,
+) -> Result<ShellOutcome, AdbError> {
+    run_inner(endpoint, serial, argv, Some(max_stdout)).await
+}
+
+async fn run_inner(
+    endpoint: &AdbEndpoint,
+    serial: &str,
+    argv: &[&str],
+    max_stdout: Option<usize>,
+) -> Result<ShellOutcome, AdbError> {
     let mut conn = endpoint.connect().await.map_err(connect_as_transport)?;
     conn.bind_device(serial).await?;
     conn.request(&format!("shell,v2,raw:{}", command_line(argv))).await?;
@@ -80,6 +100,14 @@ pub async fn run(endpoint: &AdbEndpoint, serial: &str, argv: &[&str]) -> Result<
         let mut id = [0u8; 1];
         conn.read_exact(&mut id).await?;
         let len = conn.read_u32_le().await? as usize;
+        if let Some(limit) = max_stdout
+            && id[0] == ID_STDOUT
+            && len > limit.saturating_sub(outcome.stdout.len())
+        {
+            return Err(AdbError::Protocol(format!(
+                "shell stdout exceeded its {limit}-byte bound"
+            )));
+        }
         let mut payload = vec![0u8; len];
         conn.read_exact(&mut payload).await?;
         match id[0] {

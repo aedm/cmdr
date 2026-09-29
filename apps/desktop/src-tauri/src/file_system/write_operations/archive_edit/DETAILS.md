@@ -151,11 +151,11 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   the conditional policies compare the two source metadata records. Stop uses the registered operation's conflict
   slot, announces the human wait, and applies the answer (including apply-to-all) before any destination write.
 
-  **One producer, two destination routes.** Local POSIX and SMB accept unknown-length writes, so the producer streams
-  directly to a tracked same-directory stage with `CreateNew`. Every other backend receives the same producer into a
-  private local spool, then a known-length staged upload. This sequencing makes same-device MTP source→destination
-  finish the read/spool leg before any upload begins, avoiding its serialized-session reentrancy. Neither direct route
-  materializes source trees or an archive-sized local file.
+  **One producer, two destination routes.** Local POSIX, SMB, SFTP, and ADB accept unknown-length writes, so the
+  producer streams directly to a tracked same-directory stage with `CreateNew`. WebDAV and MTP receive the same
+  producer into a private local spool, then a known-length staged upload. This sequencing makes same-device MTP
+  source→destination finish the read/spool leg before any upload begins, avoiding its serialized-session reentrancy.
+  No direct route materializes source trees or an archive-sized local file.
 
   `fresh_zip.rs` drives `zip` 8.6 `ZipWriter::new_stream` on one OS worker. Local files are read directly; one remote
   feeder is live at a time. Remote input and generated output cross separate four-chunk channels, split into 128 KiB
@@ -170,8 +170,9 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
 
   **Validation precedes publication.** After producer close and destination close/sync, producer bytes, writer bytes,
   and staged stat size must agree. `ArchiveVolume` then parses the staged ZIP and its non-quarantined entry count must
-  match the plan. Cancellation or any mismatch abandons only the owned stage. Local POSIX publishes with its declared
-  atomic replace rename. SMB's force rename deletes first, so despite direct generation it uses the existing tracked
+  match the plan. SFTP validates through positioned reads; ADB uses bounded, safely quoted device-side Toybox `dd`
+  windows, so neither downloads the staged archive. Cancellation or any mismatch abandons only the owned stage. Local
+  POSIX publishes with its declared atomic replace rename. SMB's force rename deletes first, so despite direct generation it uses the existing tracked
   `DisplacedDestination`: set the original aside, land without force, restore on refusal, and surface
   `OriginalsKeptAside` if the shared rescue had to keep it under a stable ` (recovered)` name. Other fallback backends
   use the same aside path. Stage and aside recovery records carry the real destination volume ID and remain live until
@@ -182,8 +183,9 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   becomes indeterminate `FinishingCompression` before ZIP close, count reconciliation, validation, and local
   publication. Fallback upload starts a fresh `Transferring` axis over completed-ZIP bytes, switches to indeterminate
   `FinishingTransfer` instead of emitting 100%, and stays there through backend close, remote validation, and
-  publication. Pause parks source production or spool reads at chunk boundaries; cancel closes safely and never
-  publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
+  publication. Direct remote generation moves from `Compressing` to indeterminate `FinishingCompression` for the same
+  close, validation, and publication work without inventing a transfer axis. Pause parks source production or spool
+  reads at chunk boundaries; cancel closes safely and never publishes. Pinned by `fresh_zip` tests plus local/remote compress tests for backpressure, late source failure,
   publication refusal/recovery, aliases, old-target preservation, remote sources, and same-device MTP fallback.
 
 - **The writability guard precedes registration and every write.** `compress_start` first calls

@@ -193,6 +193,21 @@ impl Volume for AdbVolume {
         }))
     }
 
+    /// Uses a bounded device-side `dd` window; unlike resumed `RECV`, this does
+    /// not transfer and discard the file prefix.
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn read_range<'a>(
+        &'a self,
+        path: &'a Path,
+        offset: u64,
+        len: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.read_range_impl(path, offset, len)))
+    }
+
     // ── The write path ───────────────────────────────────────────────
 
     /// Every mutation below is implemented, so New folder, New file, Rename,
@@ -263,20 +278,12 @@ impl Volume for AdbVolume {
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let Some(size) = length.known() else {
-            return Box::pin(async { Err(VolumeError::NotSupported) });
-        };
-        Box::pin(async move {
-            self.noting(
-                self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
-                    on_progress(StreamWriteProgress {
-                        bytes_written,
-                        expected_length: StreamLength::Known(size),
-                    })
-                }),
-            )
-            .await
-        })
+        let write = self.write_from_stream_impl(dest, mode, length, stream, on_progress);
+        Box::pin(async move { self.noting(write).await })
+    }
+
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
     }
 
     fn copy_within<'a>(

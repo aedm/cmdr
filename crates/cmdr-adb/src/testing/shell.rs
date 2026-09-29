@@ -271,3 +271,39 @@ pub fn run_fake_shell(tree: &Mutex<FakeTree>, argv: &[String]) -> (u8, String, S
         ),
     }
 }
+
+/// Binary-output twin used by the fake server. `dd` returns file bytes; the
+/// ordinary verbs retain their text implementation above.
+pub(super) fn run_fake_shell_bytes(tree: &Mutex<FakeTree>, argv: &[String]) -> (u8, Vec<u8>, Vec<u8>) {
+    if argv.first().is_some_and(|arg| arg == "dd") {
+        let value = |name: &str| argv[1..].iter().find_map(|arg| arg.strip_prefix(name));
+        let Some(path) = value("if=") else {
+            return (1, Vec::new(), b"dd: missing input\n".to_vec());
+        };
+        let parsed = value("bs=")
+            .zip(value("skip="))
+            .zip(value("count="))
+            .and_then(|((bs, skip), count)| {
+                Some((
+                    bs.parse::<usize>().ok()?,
+                    skip.parse::<usize>().ok()?,
+                    count.parse::<usize>().ok()?,
+                ))
+            });
+        let Some((bs, skip, count)) = parsed else {
+            return (1, Vec::new(), b"dd: invalid bounds\n".to_vec());
+        };
+        let tree = tree.lock_ignore_poison();
+        return match tree.get(path) {
+            Some(FakeNode::File { data, .. }) => {
+                let start = skip.saturating_mul(bs).min(data.len());
+                let end = start.saturating_add(count.saturating_mul(bs)).min(data.len());
+                (0, data[start..end].to_vec(), Vec::new())
+            }
+            Some(_) => (1, Vec::new(), b"dd: input is a directory\n".to_vec()),
+            None => (1, Vec::new(), b"dd: input does not exist\n".to_vec()),
+        };
+    }
+    let (status, stdout, stderr) = run_fake_shell(tree, argv);
+    (status, stdout.into_bytes(), stderr.into_bytes())
+}

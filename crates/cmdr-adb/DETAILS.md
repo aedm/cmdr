@@ -81,7 +81,11 @@ without `shell_v2` (pre-Android 7, 2016) is refused with `AdbConnectError::Devic
 legacy `shell:` service has no exit code, and inferring one from output would be string-matching control flow. Every
 argument is single-quoted (`'` → `'\''`). Verbs (`volume/writes.rs`): `mkdir -p`, `rmdir` for a directory and `rm -f`
 for anything else (strictly one node, so `delete` never recurses), `mv -f`, `cp -f` for `copy_within`, and
-`df -k <path>` (space info; parsed as data, never as an error signal). Shell reference: `adb/shell_protocol.h`
+`df -k <path>` (space info; parsed as data, never as an error signal). `read_range` uses
+`dd if=<path> bs=65536 skip=<block> count=<blocks>`: Toybox 0.8.9–0.8.13 lacks GNU byte flags, but its block skip calls
+`lseek` on regular files and falls back to discard only on unseekable inputs (verified by reading each release's
+`toys/pending/dd.c`, 2026-09-29). The offset aligns down, the host trims the prefix, and `shell::run_bounded` rejects
+stdout beyond the requested range plus one block before allocation. Shell reference: `adb/shell_protocol.h`
 (platform-tools 35).
 
 ## The `Volume` answers, and why
@@ -119,12 +123,12 @@ The volume is device-anchored, the same shape MTP has, and every answer below fo
   whatever `/storage` lists besides `emulated` and `self`, ❌ never a hardcoded card name. Every other directory keeps
   its row unwalked, `/proc`, `/sys`, `/data`, and the two second paths onto primary storage included. ❗ Primary storage
   is indexed under `/sdcard/…` only, so a pane on `/storage/emulated/0/…` shows no folder sizes.
-- **`supports_export` → true, `is_writable` → true, `supports_streaming` → true.** Every read and write path is
-  implemented; the conformance assertions hold each declaration to what the device accepts. The conflict scan is
-  `scan_walk::scan_conflicts`, which lists the destination through this backend's own `scan_list` and matches with
-  `conflicts_against`, so a conflict dialog gets the same shape here as anywhere; a destination that isn't there yet
-  answers an empty list rather than `NotFound`, per `Volume::scan_for_conflicts`. A read-only mount answers `ReadOnly`
-  per path when the shell's `EROFS` says so, not volume-wide.
+- **`supports_export` → true, `is_writable` → true, `supports_streaming` → true, unknown-length writes → true.** Every
+  read and write path is implemented; the conformance assertions hold each declaration to what the device accepts. The
+  conflict scan is `scan_walk::scan_conflicts`, which lists the destination through this backend's own `scan_list` and
+  matches with `conflicts_against`, so a conflict dialog gets the same shape here as anywhere; a destination that isn't
+  there yet answers an empty list rather than `NotFound`, per `Volume::scan_for_conflicts`. A read-only mount answers
+  `ReadOnly` per path when the shell's `EROFS` says so, not volume-wide.
 - **`can_watch_listings` → false, `listing_watch_coverage` → `None`.** There is no watcher, so ❌ nothing here may claim
   an authoritative listing; the pane, and the phone's drive index behind the app's listing host, stay honest through
   `notify_mutation`, called once per changed directory by every mutation, `write_from_stream` included. The patch itself
@@ -141,10 +145,12 @@ The volume is device-anchored, the same shape MTP has, and every answer below fo
 - **`supports_local_fs_access`, `paths_are_os_visible`, `operations_are_local` → false; `local_path` → `None`.** Nothing
   on the host can open a device path.
 - **`create_directory_errors_on_existing_dir` → false.** `mkdir -p` is the verb, and it is idempotent by design.
-- **Streams**: `open_read_stream` is one `RECV` socket per file, chunk by chunk; `write_from_stream` is one `SEND`
-  socket per file into a staging sibling (`<dir>/<name>.cmdr-tmp-<pid>-<n>`, the house `STAGING_TEMP_MARKER`, so a
-  leftover is filtered from every pane), then `mv -f` via the shell; any failure removes the staging name. ❌ Never
-  collect a file into a `Vec<u8>`.
+- **Streams**: `open_read_stream` is one `RECV` socket per file, chunk by chunk; `read_range` is one bounded device-side
+  `dd` window rather than an archive-sized prefix transfer; `write_from_stream` is one `SEND` socket per file into a
+  staging sibling (`<dir>/<name>.cmdr-tmp-<pid>-<n>`, the house `STAGING_TEMP_MARKER`, so a leftover is filtered from
+  every pane), then `mv -f` via the shell. Both `Known` and `Unknown` lengths stream through the same path and report
+  bytes actually sent with the caller's explicit expected length. Any failure removes the staging name. ❌ Never collect
+  a whole file into a `Vec<u8>`.
 - **Two accepted TOCTOU windows**: `create_file` and a `force = false` rename each `stat` the destination first and
   refuse on a hit. Neither can be atomic on this protocol: `SEND` truncates unconditionally and `mv -n` exits 0 whether
   it moved or not (verified on Android 14 `toybox 0.8.9`, 2026-09-01). The window is one round trip on a device only
@@ -250,9 +256,9 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
 
 ## Known gaps and follow-ups
 
-- **No ranged read on the wire.** `RECV` has no offset; `open_read_stream_at_offset` reads and discards up to it. A
-  resumed pane read on a phone is rare, and a resume from the middle of a 2 GB file re-reads the first half. If it
-  matters, `shell dd` with `skip=`/`bs=` is the fallback, at the cost of the sync service's throughput.
+- **No ranged read in the sync service.** `RECV` has no offset; `open_read_stream_at_offset` reads and discards up to
+  it. A resumed pane read on a phone is rare, and a resume from the middle of a 2 GB file re-reads the first half. If it
+  matters, route resumable streams through the bounded `read_range` primitive instead.
 - **`sendrecv_v2` compression flags** (brotli, lz4, zstd) are off on purpose; measure before enabling, since the device
   does the compressing.
 - **Wireless debugging** (`adb pair`) is out of scope: the server owns pairing, and a paired device appears in

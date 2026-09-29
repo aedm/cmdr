@@ -32,7 +32,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use cmdr_fs::volume::{VolumeError, VolumeReadStream, WriteMode};
+use cmdr_fs::volume::{StreamLength, StreamWriteProgress, VolumeError, VolumeReadStream, WriteMode};
 use futures_util::StreamExt;
 use futures_util::stream::FuturesUnordered;
 use log::debug;
@@ -189,11 +189,11 @@ impl SftpVolume {
         &self,
         dest: &Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
-        self.upload(dest, mode, size, stream, WRITE_WINDOW_DEPTH, on_progress)
+        self.upload(dest, mode, length, stream, WRITE_WINDOW_DEPTH, on_progress)
             .await
     }
 
@@ -203,10 +203,10 @@ impl SftpVolume {
         &self,
         dest: &Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
         depth: usize,
-        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
         let remote = self.to_remote_path(dest)?;
         // ❗ Cloned out from under a short read guard, and the guard released
@@ -214,7 +214,7 @@ impl SftpVolume {
         // operation on the one channel, which is exactly the concurrency the
         // channel exists to provide.
         let session = self.clone_session().await?;
-        debug!("SftpVolume::write_from_stream: {remote}, size={size}");
+        debug!("SftpVolume::write_from_stream: {remote}, length={length:?}");
 
         // `CreateOrReplace` truncates: the transfer layer's staging name, which a
         // retried attempt writes onto after its predecessor. `CreateNew` is
@@ -235,7 +235,7 @@ impl SftpVolume {
         let writer = RemoteWrite::new(file, Arc::from(remote.as_str()));
 
         match self
-            .pump(&mut stream, writer.clone(), &remote, size, depth, on_progress)
+            .pump(&mut stream, writer.clone(), &remote, length, depth, on_progress)
             .await
         {
             Ok(written) => {
@@ -268,9 +268,9 @@ impl SftpVolume {
         stream: &mut Box<dyn VolumeReadStream>,
         writer: RemoteWrite,
         remote: &str,
-        size: u64,
+        length: StreamLength,
         depth: usize,
-        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
         #[allow(
             clippy::type_complexity,
@@ -303,7 +303,12 @@ impl SftpVolume {
             // ❗ Cancellation arrives ONLY here. There is no token on this path:
             // the transfer engine says stop by answering `Break`, and a backend
             // that never called back would be uncancelable.
-            if on_progress(written, size).is_break() {
+            if on_progress(StreamWriteProgress {
+                bytes_written: written,
+                expected_length: length,
+            })
+            .is_break()
+            {
                 return Err(VolumeError::Cancelled(remote.to_string()));
             }
         }

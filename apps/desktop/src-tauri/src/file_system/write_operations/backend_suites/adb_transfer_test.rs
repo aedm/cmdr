@@ -26,6 +26,7 @@ use super::super::VolumeScanError;
 use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::super::state::WriteOperationState;
 use super::super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
+use super::network_archive_test_support::a_compress_onto_the_server_lands_a_valid_zip;
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
     a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
@@ -135,6 +136,12 @@ fn moves_on_the_device(fake: &FakeAdbServer) -> Vec<(String, String)> {
 }
 
 // ── Local ↔ phone, file and tree ─────────────────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_fresh_zip_streams_directly_onto_a_phone_and_opens_with_valid_contents() {
+    let phone = dialed_phone("R58M-Zip-Direct", "zip-direct").await;
+    a_compress_onto_the_server_lands_a_valid_zip(Arc::clone(&phone.volume), phone.dir.clone(), true).await;
+}
 
 /// A file copied onto a phone lands whole, and ❗ the phone's writer never
 /// streams at the name it lands on: `SEND` truncates on open, so it sends to

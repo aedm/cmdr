@@ -295,8 +295,10 @@ async fn run(
         super::super::state::is_cancelled(&state_for_progress.intent) || cancellation_for_progress.is_requested()
     });
 
-    let direct = matches!(dest_volume.backend_kind(), BackendKind::Local | BackendKind::Smb)
-        && dest_volume.supports_unknown_length_writes();
+    let direct = matches!(
+        dest_volume.backend_kind(),
+        BackendKind::Local | BackendKind::Smb | BackendKind::Sftp | BackendKind::Adb
+    ) && dest_volume.supports_unknown_length_writes();
     let skipped = plan.skipped;
     if direct {
         produce_direct(

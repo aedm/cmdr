@@ -29,9 +29,10 @@ words.
   missing file's name. `errors::volume_error_from_errno` takes the path for that reason.
 - **❗ Paths are `adb://<serial>/…` both ways; `volume/paths.rs` is the ONLY translation.** ❌ A bare `/sdcard` or a
   `..` above `/` is refused, never anchored.
-- **❌ Never collect a file into a `Vec<u8>`.** `RECV` and `SEND` are one socket per file, chunk by chunk.
+- **❌ Never collect a file into a `Vec<u8>`.** `RECV`/`SEND` stream chunkwise; `read_range` runs bounded, quoted
+  device-side `dd`, never prefix-discard `RECV`.
 - **❗ Every write lands under a staging name (`<name>.cmdr-tmp-<pid>-<n>`) and is `mv -f`ed into place.** `SEND`
-  truncates on open, so a direct write is a torn file the moment the cable pulls.
+  accepts known or unknown length but truncates on open, so direct writes stage.
 - **❗ Every mutation calls `notify_mutation`.** There is no watcher; `can_watch_listings` is `false` and stays so.
 - **❗ The walk and the listing patch come from `cmdr_fs::volume::{scan_walk, patching}`**, ❌ never a copy here. But ❌
   do NOT adopt `MakesDirectories`: the shell's native `mkdir -p` is one verb at any depth, where that walk costs a

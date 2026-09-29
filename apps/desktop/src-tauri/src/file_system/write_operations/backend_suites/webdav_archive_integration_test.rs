@@ -71,7 +71,7 @@ async fn webdav_integration_local_files_copied_into_a_zip_on_the_server_join_it(
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
 async fn webdav_integration_a_compress_onto_the_server_lands_a_valid_zip() {
     let (remote, dir) = fixture().await;
-    a_compress_onto_the_server_lands_a_valid_zip(remote, dir).await;
+    a_compress_onto_the_server_lands_a_valid_zip(remote, dir, false).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

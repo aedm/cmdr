@@ -59,5 +59,5 @@ async fn smb_integration_local_files_copied_into_a_zip_on_the_share_join_it() {
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_compress_local_files_onto_the_share() {
     let (remote, dir) = fixture().await;
-    a_compress_onto_the_server_lands_a_valid_zip(remote, dir).await;
+    a_compress_onto_the_server_lands_a_valid_zip(remote, dir, true).await;
 }

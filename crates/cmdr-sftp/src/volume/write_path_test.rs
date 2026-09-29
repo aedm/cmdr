@@ -113,6 +113,77 @@ async fn progress_counts_up_to_the_whole_file() {
     clean_scratch(&volume, &dir).await;
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn an_unknown_length_multichunk_write_streams_and_reports_its_actual_count() {
+    let (volume, dir) = scratch_on("OPENSSH", 12480, "write-unknown").await;
+    let path = format!("{dir}/generated.zip");
+    let bytes = fixture_large_bytes(PAYLOAD);
+    let reported = Mutex::new(Vec::new());
+
+    assert!(volume.supports_unknown_length_writes());
+    let written = volume
+        .write_from_stream(
+            Path::new(&path),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            unknown_source(bytes.clone()),
+            &|progress| {
+                reported
+                    .lock()
+                    .expect("no cell panics holding this")
+                    .push((progress.bytes_written, progress.expected_length));
+                ControlFlow::Continue(())
+            },
+        )
+        .await
+        .expect(FIXTURE);
+
+    assert_eq!(
+        written,
+        bytes.len() as u64,
+        "the writer returns bytes the server accepted"
+    );
+    assert_same_bytes(&read_whole(&volume, &path).await, &bytes, "an unknown-length write");
+    let reported = reported.into_inner().expect("no cell panics holding this");
+    assert!(reported.len() > 1, "the payload crosses both source and writer buffers");
+    assert!(
+        reported.iter().all(|(_, expected)| *expected == StreamLength::Unknown),
+        "unknown length stays explicit on every tick"
+    );
+    assert_eq!(reported.last().map(|(done, _)| *done), Some(bytes.len() as u64));
+    clean_scratch(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn an_unknown_length_create_new_refuses_and_preserves_an_existing_file() {
+    let (volume, dir) = scratch_on("OPENSSH", 12480, "write-unknown-refusal").await;
+    let path = format!("{dir}/kept.bin");
+    volume
+        .create_file(Path::new(&path), b"the user's bytes")
+        .await
+        .expect(FIXTURE);
+
+    let outcome = volume
+        .write_from_stream(
+            Path::new(&path),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            unknown_source(fixture_large_bytes(PAYLOAD)),
+            &|_| ControlFlow::Continue(()),
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::AlreadyExists(_))), "got {outcome:?}");
+    assert_same_bytes(
+        &read_whole(&volume, &path).await,
+        b"the user's bytes",
+        "the refused destination",
+    );
+    clean_scratch(&volume, &dir).await;
+}
+
 // ── Every failure takes its partial with it ──────────────────────────
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -128,8 +199,8 @@ async fn a_cancelled_write_leaves_nothing_behind() {
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            StreamLength::Known(PAYLOAD as u64),
-            source(fixture_large_bytes(PAYLOAD)),
+            StreamLength::Unknown,
+            unknown_source(fixture_large_bytes(PAYLOAD)),
             &|_| ControlFlow::Break(()),
         )
         .await;
@@ -159,8 +230,8 @@ async fn a_source_that_stops_partway_takes_the_partial_with_it() {
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            StreamLength::Known(PAYLOAD as u64),
-            failing_source(fixture_large_bytes(PAYLOAD)),
+            StreamLength::Unknown,
+            failing_unknown_source(fixture_large_bytes(PAYLOAD)),
             &|_| ControlFlow::Continue(()),
         )
         .await;
@@ -493,6 +564,7 @@ async fn read_whole(volume: &SftpVolume, path: &str) -> Vec<u8> {
 struct ScriptedSource {
     bytes: Vec<u8>,
     at: usize,
+    length: StreamLength,
     /// Where the source gives up, for the cells about a far side that went away.
     fails_at: Option<usize>,
 }
@@ -516,7 +588,7 @@ impl VolumeReadStream for ScriptedSource {
     }
 
     fn total_size(&self) -> StreamLength {
-        StreamLength::Known(self.bytes.len() as u64)
+        self.length
     }
 
     fn bytes_read(&self) -> u64 {
@@ -525,14 +597,30 @@ impl VolumeReadStream for ScriptedSource {
 }
 
 fn source(bytes: Vec<u8>) -> Box<dyn VolumeReadStream> {
+    let length = StreamLength::Known(bytes.len() as u64);
     Box::new(ScriptedSource {
         bytes,
         at: 0,
+        length,
         fails_at: None,
     })
 }
 
-fn failing_source(bytes: Vec<u8>) -> Box<dyn VolumeReadStream> {
+fn unknown_source(bytes: Vec<u8>) -> Box<dyn VolumeReadStream> {
+    Box::new(ScriptedSource {
+        bytes,
+        at: 0,
+        length: StreamLength::Unknown,
+        fails_at: None,
+    })
+}
+
+fn failing_unknown_source(bytes: Vec<u8>) -> Box<dyn VolumeReadStream> {
     let fails_at = Some(bytes.len() / 3);
-    Box::new(ScriptedSource { bytes, at: 0, fails_at })
+    Box::new(ScriptedSource {
+        bytes,
+        at: 0,
+        length: StreamLength::Unknown,
+        fails_at,
+    })
 }

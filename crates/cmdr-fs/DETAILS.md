@@ -455,12 +455,11 @@ cumulative progress and its denominator named rather than relying on two confusa
 write, every update carries the original `Known` length and existing mismatch and cancellation behavior remains
 unchanged.
 
-`supports_atomic_replace_rename()` is a separate publication capability. It means
-`rename(from, to, force = true)` replaces `to` in one atomic filesystem operation, not that rename merely accepts a
-force flag. Local POSIX opts in. SMB deliberately does not: its force implementation clears the destination before the
-server rename. Generated-file publishers therefore use one rename locally and the tracked displaced-destination
-aside/restore flow everywhere else. The conservative default prevents a new backend from turning delete-then-rename
-into an accidental data-loss window.
+`supports_atomic_replace_rename()` is a separate publication capability. It means `rename(from, to, force = true)`
+replaces `to` in one atomic filesystem operation, not that rename merely accepts a force flag. Local POSIX opts in. SMB
+deliberately does not: its force implementation clears the destination before the server rename. Generated-file
+publishers therefore use one rename locally and the tracked displaced-destination aside/restore flow everywhere else.
+The conservative default prevents a new backend from turning delete-then-rename into an accidental data-loss window.
 
 ## The faults `InMemoryVolume` can be told to have
 

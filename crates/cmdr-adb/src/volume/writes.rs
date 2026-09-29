@@ -28,7 +28,7 @@
 
 use std::path::Path;
 
-use cmdr_fs::volume::{DirectoryCreation, VolumeError, WriteMode};
+use cmdr_fs::volume::{DirectoryCreation, StreamLength, VolumeError, WriteMode};
 use log::debug;
 
 use super::AdbVolume;
@@ -58,9 +58,13 @@ impl AdbVolume {
             return Err(VolumeError::AlreadyExists(device));
         }
         let stream = Box::new(super::streams::BytesReadStream::new(content.to_vec()));
-        self.write_from_stream_impl(path, WriteMode::CreateNew, content.len() as u64, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        self.write_from_stream_impl(
+            path,
+            WriteMode::CreateNew,
+            StreamLength::Known(content.len() as u64),
+            stream,
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
         .await?;
         Ok(())
     }

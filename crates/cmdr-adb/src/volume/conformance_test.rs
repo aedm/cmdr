@@ -3,11 +3,13 @@
 //!
 //! No `#[ignore]`: the fake is in-process, so these run in every lane.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use cmdr_fs::staging::is_staging_temp_name;
 use cmdr_fs::volume::conformance;
-use cmdr_fs::volume::{DirectoryCreation, StreamLength, Volume, VolumeError};
+use cmdr_fs::volume::{DirectoryCreation, StreamLength, Volume, VolumeError, VolumeReadStream};
 
 use super::AdbVolume;
 use super::testing::{FIXTURE_SERIAL, connect_fake, fixture_path};
@@ -169,17 +171,129 @@ async fn a_write_lands_through_a_staging_sibling_and_leaves_no_partial() {
     );
 }
 
+struct ChunkedSource {
+    chunks: std::collections::VecDeque<Result<Vec<u8>, VolumeError>>,
+    read: u64,
+}
+
+impl ChunkedSource {
+    fn unknown(bytes: &[u8], chunk: usize) -> Self {
+        Self {
+            chunks: bytes.chunks(chunk).map(|piece| Ok(piece.to_vec())).collect(),
+            read: 0,
+        }
+    }
+
+    fn failing_unknown(bytes: &[u8], chunk: usize) -> Self {
+        let mut source = Self::unknown(bytes, chunk);
+        source.chunks.push_back(Err(VolumeError::DeviceDisconnected(
+            "the scripted source stopped".to_string(),
+        )));
+        source
+    }
+}
+
+impl VolumeReadStream for ChunkedSource {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move {
+            let next = self.chunks.pop_front()?;
+            if let Ok(bytes) = &next {
+                self.read += bytes.len() as u64;
+            }
+            Some(next)
+        })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Unknown
+    }
+
+    fn bytes_read(&self) -> u64 {
+        self.read
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_unknown_length_multichunk_write_streams_and_reports_its_actual_count() {
+    let (server, volume) = seeded().await;
+    let payload: Vec<u8> = (0..300_007u32).map(|i| (i % 251) as u8).collect();
+    let seen = std::sync::Mutex::new(Vec::new());
+
+    assert!(volume.supports_unknown_length_writes());
+    let written = volume
+        .write_from_stream(
+            &fixture_path("/sdcard/generated.zip"),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            Box::new(ChunkedSource::unknown(&payload, 37_003)),
+            &|progress| {
+                seen.lock()
+                    .unwrap()
+                    .push((progress.bytes_written, progress.expected_length));
+                std::ops::ControlFlow::Continue(())
+            },
+        )
+        .await
+        .expect("the unknown-length upload must land");
+
+    assert_eq!(written, payload.len() as u64);
+    assert_eq!(
+        server
+            .tree()
+            .lock()
+            .unwrap()
+            .file_bytes("/sdcard/generated.zip")
+            .as_deref(),
+        Some(payload.as_slice())
+    );
+    let seen = seen.lock().unwrap();
+    assert!(seen.len() > 1, "the source must cross several writer callbacks");
+    assert!(seen.iter().all(|(_, expected)| *expected == StreamLength::Unknown));
+    assert_eq!(seen.last().map(|(done, _)| *done), Some(payload.len() as u64));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_unknown_length_create_new_refuses_and_preserves_an_existing_file() {
+    let (server, volume) = seeded().await;
+    let payload = vec![19u8; 200_003];
+
+    let outcome = volume
+        .write_from_stream(
+            &fixture_path("/sdcard/target.txt"),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            Box::new(ChunkedSource::unknown(&payload, 31_003)),
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::AlreadyExists(_))), "{outcome:?}");
+    let tree = server.tree();
+    let tree = tree.lock().unwrap();
+    assert_eq!(
+        tree.file_bytes("/sdcard/target.txt").as_deref(),
+        Some(&b"the user's target file"[..])
+    );
+    assert!(
+        !tree
+            .paths()
+            .iter()
+            .any(|p| p.rsplit('/').next().is_some_and(is_staging_temp_name)),
+        "the refused stage must be removed: {:?}",
+        tree.paths()
+    );
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_cancelled_write_removes_its_partial() {
     let (server, volume) = seeded().await;
     let payload = vec![7u8; 100_000];
-    let source = Box::new(super::streams::BytesReadStream::new(payload.clone()));
     let outcome = volume
         .write_from_stream(
             &fixture_path("/sdcard/never.bin"),
             WriteMode::CreateOrReplace,
-            StreamLength::Known(payload.len() as u64),
-            source,
+            StreamLength::Unknown,
+            Box::new(ChunkedSource::unknown(&payload, 17_003)),
             &|_| std::ops::ControlFlow::Break(()),
         )
         .await;
@@ -193,6 +307,37 @@ async fn a_cancelled_write_removes_its_partial() {
             .iter()
             .any(|p| p.rsplit('/').next().is_some_and(is_staging_temp_name)),
         "{:?}",
+        tree.paths()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_unknown_length_source_failure_removes_its_partial_and_keeps_the_cause() {
+    let (server, volume) = seeded().await;
+    let payload = vec![11u8; 150_003];
+    let outcome = volume
+        .write_from_stream(
+            &fixture_path("/sdcard/source-failed.bin"),
+            WriteMode::CreateNew,
+            StreamLength::Unknown,
+            Box::new(ChunkedSource::failing_unknown(&payload, 31_003)),
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
+        .await;
+
+    assert!(
+        matches!(outcome, Err(VolumeError::DeviceDisconnected(_))),
+        "{outcome:?}"
+    );
+    let tree = server.tree();
+    let tree = tree.lock().unwrap();
+    assert!(tree.get("/sdcard/source-failed.bin").is_none());
+    assert!(
+        !tree
+            .paths()
+            .iter()
+            .any(|p| p.rsplit('/').next().is_some_and(is_staging_temp_name)),
+        "the partial stage must be removed: {:?}",
         tree.paths()
     );
 }
@@ -249,6 +394,30 @@ async fn cancelling_a_read_mid_file_releases_the_socket_and_the_volume_keeps_wor
     }
     assert_eq!(&tail[..], &big[100_000..]);
     assert_eq!(resumed.total_size(), StreamLength::Known(big.len() as u64));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_bounded_range_read_seeks_on_device_and_returns_only_the_requested_window() {
+    let mut tree = seeded_tree();
+    let bytes: Vec<u8> = (0..350_009u32).map(|i| (i % 251) as u8).collect();
+    tree.add_file("/sdcard/a 'quoted' archive.zip", &bytes);
+    let server = FakeAdbServer::start(tree).await;
+    let (volume, _) = connect_fake(&server, FIXTURE_SERIAL).await;
+    let path = fixture_path("/sdcard/a 'quoted' archive.zip");
+
+    let window = volume.read_range(&path, 65_539, 200_003).await.expect("range");
+    assert_eq!(window, bytes[65_539..265_542]);
+    assert_eq!(
+        volume.read_range(&path, 349_990, 100).await.expect("short range"),
+        bytes[349_990..]
+    );
+    assert!(
+        volume
+            .read_range(&path, 400_000, 4096)
+            .await
+            .expect("past EOF")
+            .is_empty()
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

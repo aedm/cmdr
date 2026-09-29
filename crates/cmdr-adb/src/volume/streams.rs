@@ -11,7 +11,7 @@ use std::ops::ControlFlow;
 use std::path::Path;
 
 use cmdr_fs::staging::STAGING_TEMP_MARKER;
-use cmdr_fs::volume::{ChannelReadStream, StreamLength, VolumeError, VolumeReadStream, WriteMode};
+use cmdr_fs::volume::{ChannelReadStream, StreamLength, StreamWriteProgress, VolumeError, VolumeReadStream, WriteMode};
 use log::debug;
 
 use super::AdbVolume;
@@ -23,6 +23,10 @@ use crate::sync::{MAX_DATA_CHUNK, SyncEntryKind, SyncSession};
 /// Chunks buffered between the producer and the consumer. Peak memory per
 /// stream is `this * MAX_DATA_CHUNK`, regardless of file size.
 const STREAM_CHANNEL_CAPACITY: usize = 4;
+
+/// Device-side `dd` range reads align down to this block. Toybox seeks over
+/// skipped regular-file blocks, then performs at most one extra block of I/O.
+const RANGE_BLOCK_BYTES: u64 = 64 * 1024;
 
 /// The mode a fresh file lands with: `rw-rw----`, what `adb push` uses.
 const NEW_FILE_MODE: u32 = 0o100660;
@@ -72,6 +76,59 @@ impl AdbVolume {
         ))
     }
 
+    /// Reads one bounded range without `RECV` downloading the prefix.
+    ///
+    /// Android's Toybox `dd` supports block `skip`/`count` and seeks on regular
+    /// files, but does not support GNU's byte flags. Aligning down keeps both
+    /// device I/O and shell stdout bounded to the requested range plus one
+    /// block; the host trims that leading block fragment.
+    pub(super) async fn read_range_impl(&self, path: &Path, offset: u64, len: usize) -> Result<Vec<u8>, VolumeError> {
+        let device = self.to_device_path(path)?;
+        let prefix = (offset % RANGE_BLOCK_BYTES) as usize;
+        let requested = u64::try_from(len).map_err(|_| invalid_range(&device))?;
+        let covered = u64::try_from(prefix)
+            .ok()
+            .and_then(|prefix| prefix.checked_add(requested))
+            .ok_or_else(|| invalid_range(&device))?;
+        let count = covered.div_ceil(RANGE_BLOCK_BYTES);
+        let max_stdout = count
+            .checked_mul(RANGE_BLOCK_BYTES)
+            .and_then(|bytes| usize::try_from(bytes).ok())
+            .ok_or_else(|| invalid_range(&device))?;
+        let input = format!("if={device}");
+        let block = format!("bs={RANGE_BLOCK_BYTES}");
+        let skip = format!("skip={}", offset / RANGE_BLOCK_BYTES);
+        let count = format!("count={count}");
+        let outcome = crate::shell::run_bounded(
+            &self.inner.endpoint,
+            &self.inner.serial,
+            &["dd", &input, &block, &skip, &count],
+            max_stdout,
+        )
+        .await
+        .map_err(|error| self.inner.map_adb_error(error, &device))?;
+        if !outcome.succeeded() {
+            let metadata = self.get_metadata_impl(path).await?;
+            if metadata.is_directory {
+                return Err(VolumeError::IsADirectory(device));
+            }
+            debug!(
+                "AdbVolume::read_range: dd exited {} for {device}: {}",
+                outcome.exit_code,
+                outcome.stderr_text().trim()
+            );
+            return Err(VolumeError::IoError {
+                message: format!("device-side range read exited {}", outcome.exit_code),
+                raw_os_error: None,
+            });
+        }
+        if outcome.stdout.len() <= prefix {
+            return Ok(Vec::new());
+        }
+        let end = prefix.saturating_add(len).min(outcome.stdout.len());
+        Ok(outcome.stdout[prefix..end].to_vec())
+    }
+
     /// Streams `stream` onto `dest` through a staging sibling, then moves it
     /// into place.
     ///
@@ -89,17 +146,17 @@ impl AdbVolume {
         &self,
         dest: &Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
         let device = self.to_device_path(dest)?;
         let staging = staging_name_for(&device);
-        debug!("AdbVolume::write_from_stream: {device} via {staging}, size={size}");
+        debug!("AdbVolume::write_from_stream: {device} via {staging}, length={length:?}");
 
         let mut session = self.open_sync(&device).await?;
         let pumped = self
-            .pump(&mut session, &staging, &device, size, &mut stream, on_progress)
+            .pump(&mut session, &staging, &device, length, &mut stream, on_progress)
             .await;
         session.quit().await;
 
@@ -130,9 +187,9 @@ impl AdbVolume {
         session: &mut SyncSession,
         staging: &str,
         device: &str,
-        size: u64,
+        length: StreamLength,
         stream: &mut Box<dyn VolumeReadStream>,
-        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &(dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
         let map = |e| self.inner.map_adb_error(e, device);
         session.send_start(staging, NEW_FILE_MODE).await.map_err(map)?;
@@ -143,7 +200,12 @@ impl AdbVolume {
                 session.send_chunk(piece).await.map_err(map)?;
                 written += piece.len() as u64;
             }
-            if on_progress(written, size).is_break() {
+            if on_progress(StreamWriteProgress {
+                bytes_written: written,
+                expected_length: length,
+            })
+            .is_break()
+            {
                 return Err(VolumeError::Cancelled(device.to_string()));
             }
         }
@@ -164,6 +226,13 @@ impl AdbVolume {
         if let Err(e) = crate::shell::run(&self.inner.endpoint, &self.inner.serial, &["rm", "-f", staging]).await {
             debug!("AdbVolume::write_from_stream: couldn't remove the partial {staging}: {e:?}");
         }
+    }
+}
+
+fn invalid_range(path: &str) -> VolumeError {
+    VolumeError::IoError {
+        message: format!("range is too large for {path}"),
+        raw_os_error: None,
     }
 }
 

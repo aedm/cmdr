@@ -287,10 +287,10 @@ async fn write_prefix(volume: &SftpVolume, depth: usize, name: &str) -> u64 {
         .upload(
             std::path::Path::new(name),
             cmdr_fs::volume::WriteMode::CreateOrReplace,
-            BENCH_BYTES,
+            cmdr_fs::volume::StreamLength::Known(BENCH_BYTES),
             source,
             depth,
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .expect("the bench server's export is writable")

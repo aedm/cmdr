@@ -26,7 +26,7 @@ use cmdr_fs::volume::host::VolumeHost;
 
 use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::super::state::WriteOperationState;
-use super::super::types::ConflictResolution;
+use super::super::types::{ConflictResolution, WriteOperationPhase};
 use super::super::{EditError, OperationIntent, compress_start, pull_apply_upload_swap, route_archive_copy_into};
 use super::network_look_alike_test_support::{CAFE_NFC, CAFE_NFD, RESUME_NFC, RESUME_NFD, assert_composes_new_names};
 use super::network_safety_test_support::Registered;
@@ -296,7 +296,12 @@ pub(super) async fn local_files_copied_into_a_zip_on_the_server_join_it(remote: 
 }
 
 /// Runs one compress of `sources` (on `source`) into `dest_zip` on the server.
-async fn compress_onto(source: &Arc<dyn Volume>, sources: &[&str], dest_zip: PathBuf, parent_id: &str) {
+async fn compress_onto(
+    source: &Arc<dyn Volume>,
+    sources: &[&str],
+    dest_zip: PathBuf,
+    parent_id: &str,
+) -> Arc<CollectorEventSink> {
     let events = Arc::new(CollectorEventSink::new());
     compress_start(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
@@ -313,26 +318,57 @@ async fn compress_onto(source: &Arc<dyn Volume>, sources: &[&str], dest_zip: Pat
     .await
     .expect("start the compress");
     await_archive_op(&events, "the compress onto the server").await;
+    events
+}
+
+/// Deterministic high-entropy bytes, so deflate cannot shrink this fixture below
+/// the producer's four × 128 KiB output queue.
+fn incompressible_bytes(len: usize, mut state: u64) -> Vec<u8> {
+    (0..len)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state as u8
+        })
+        .collect()
 }
 
 /// COMPRESS onto the server: local files packed into a NEW zip that lands on the
 /// server through the seed-through-volume path, parses, holds the sources, and
 /// leaves no upload staging.
-pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(remote: Arc<dyn Volume>, dir: PathBuf) {
+pub(super) async fn a_compress_onto_the_server_lands_a_valid_zip(
+    remote: Arc<dyn Volume>,
+    dir: PathBuf,
+    expect_direct: bool,
+) {
     let registered = Registered::new(&remote, "compress");
     let (_local_dir, local) = local_volume("compress");
+    let first = incompressible_bytes(700_003, 0x0123_4567_89ab_cdef);
+    let second = incompressible_bytes(300_007, 0xfedc_ba98_7654_3210);
     seed(
         local.as_ref(),
         Path::new(""),
-        &[("one.txt", b"first"), ("two.txt", b"second")],
+        &[("one.bin", &first), ("two.bin", &second)],
     )
     .await;
 
-    compress_onto(&local, &["one.txt", "two.txt"], dir.join("bundle.zip"), &registered.id).await;
+    let events = compress_onto(&local, &["one.bin", "two.bin"], dir.join("bundle.zip"), &registered.id).await;
+
+    let used_transfer_phase = events.progress.lock_ignore_poison().iter().any(|event| {
+        matches!(
+            event.phase,
+            WriteOperationPhase::Transferring | WriteOperationPhase::FinishingTransfer
+        )
+    });
+    assert_eq!(
+        used_transfer_phase, !expect_direct,
+        "a direct fresh ZIP has no completed-spool transfer phase"
+    );
 
     let back = read_server_zip(remote.as_ref(), &dir.join("bundle.zip")).await;
-    assert_eq!(back.get("one.txt").map(Vec::as_slice), Some(&b"first"[..]));
-    assert_eq!(back.get("two.txt").map(Vec::as_slice), Some(&b"second"[..]));
+    assert_eq!(back.get("one.bin").map(Vec::as_slice), Some(first.as_slice()));
+    assert_eq!(back.get("two.bin").map(Vec::as_slice), Some(second.as_slice()));
     assert_no_staging_litter(remote.as_ref(), &dir, "a compress onto the server").await;
 
     clean_deep(remote.as_ref(), &dir).await;

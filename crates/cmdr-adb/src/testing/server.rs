@@ -21,7 +21,7 @@ use crate::server::AdbEndpoint;
 use crate::sync::MAX_DATA_CHUNK;
 use crate::transport::hex_message;
 
-use super::shell::{run_fake_shell, split_argv};
+use super::shell::{run_fake_shell_bytes, split_argv};
 use super::tree::{DEFAULT_MTIME, FakeNode, FakeTree};
 use super::{FAKE_FEATURES, fake_device};
 
@@ -486,13 +486,13 @@ fn shell_frame(id: u8, payload: &[u8]) -> Vec<u8> {
 
 async fn serve_shell(stream: &mut TcpStream, shared: &Shared, cmd: &str) -> std::io::Result<()> {
     let argv = split_argv(cmd);
-    let (exit_code, stdout, stderr) = run_fake_shell(&shared.tree, &argv);
+    let (exit_code, stdout, stderr) = run_fake_shell_bytes(&shared.tree, &argv);
     let mut out = Vec::new();
     if !stdout.is_empty() {
-        out.extend_from_slice(&shell_frame(1, stdout.as_bytes()));
+        out.extend_from_slice(&shell_frame(1, &stdout));
     }
     if !stderr.is_empty() {
-        out.extend_from_slice(&shell_frame(2, stderr.as_bytes()));
+        out.extend_from_slice(&shell_frame(2, &stderr));
     }
     out.extend_from_slice(&shell_frame(3, &[exit_code]));
     stream.write_all(&out).await?;
