@@ -12,7 +12,7 @@ import { ServerRequestFailure } from '$lib/error-messages/server-request'
 const { api, getSetting, addToast, logger } = vi.hoisted(() => ({
   api: {
     checkPendingCrashReport: vi.fn<() => Promise<CrashReport | null>>(),
-    sendCrashReport: vi.fn<(report: CrashReport) => Promise<void>>(),
+    sendCrashReport: vi.fn<(reportId: string) => Promise<void>>(),
   },
   getSetting: vi.fn<(id: string) => unknown>(),
   addToast: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock('./CrashReportToastContent.svelte', () => ({ default: {} }))
 import { checkForPendingCrashReport } from './pending-crash-report'
 
 function aReport(possibleCrashLoop = false): CrashReport {
-  return { possibleCrashLoop } as unknown as CrashReport
+  return { possibleCrashLoop, shortId: 'CRASH-A2345' } as unknown as CrashReport
 }
 
 const showDialog = vi.fn<(report: CrashReport) => void>()
@@ -51,7 +51,7 @@ describe('checkForPendingCrashReport', () => {
     const report = aReport()
     api.checkPendingCrashReport.mockResolvedValue(report)
     await checkForPendingCrashReport(showDialog)
-    expect(api.sendCrashReport).toHaveBeenCalledWith(report)
+    expect(api.sendCrashReport).toHaveBeenCalledWith('CRASH-A2345')
     expect(addToast).toHaveBeenCalledOnce()
     expect(showDialog).not.toHaveBeenCalled()
   })

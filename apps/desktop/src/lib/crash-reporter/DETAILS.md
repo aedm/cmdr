@@ -9,8 +9,9 @@ Everything starts in `pending-crash-report.ts`, which `routes/(main)/+layout.sve
 load (the auto-send branch reads `updates.crashReports`, so running earlier would read the registry default):
 
 1. `checkPendingCrashReport()` over IPC. It returns `null` on the normal path, so a clean launch does nothing further.
-2. A report came back. With `updates.crashReports` on AND `possibleCrashLoop` false, `sendCrashReport(report)` fires and
-   `CrashReportToastContent` goes up as a persistent info toast. The user is told, not asked.
+2. A report came back. With `updates.crashReports` on AND `possibleCrashLoop` false, `sendCrashReport(report.shortId)`
+   fires and `CrashReportToastContent` goes up as a persistent info toast. The user is told, not asked. Only the id
+   crosses back; Rust reloads the backend-owned pending report.
 3. Otherwise `CrashReportDialog` mounts with the report. That covers both the not-opted-in case and the crash-loop case,
    which is why the condition is an AND rather than the setting alone: an app crashing on launch would otherwise mail a
    report every single time, and the user would have no way to intervene.
@@ -78,10 +79,10 @@ the crash and saying that private info is anonymized first. That press calls `se
 
 ## Dialog states and choices
 
-`CrashReportDialog` renders one report and calls the IPC itself. A send that lands closes it through `onClose()`. One
-that doesn't keeps it open with a `role="alert"` line (`crashReporter.dialog.notSent` plus the typed reason from
-`$lib/error-messages/server-request.ts`), Send stays the retry, and the log level follows the same split as the
-auto-send. `CrashReportDialog.test.ts` pins both.
+`CrashReportDialog` renders one report and calls the IPC itself with its `shortId` and optional email, never with the
+preview payload. A send that lands closes it through `onClose()`. One that doesn't keeps it open with a `role="alert"`
+line (`crashReporter.dialog.notSent` plus the typed reason from `$lib/error-messages/server-request.ts`), Send stays the
+retry, and the log level follows the same split as the auto-send. `CrashReportDialog.test.ts` pins both.
 
 - **Opening sentence**: `crashDialogBodyKey(report)` picks one of `crashReporter.dialog.body.ended` / `.keptRunning` /
   `.unknown`. `ended` is the old fixed string; `keptRunning` says the app carried on and deliberately says "a report"

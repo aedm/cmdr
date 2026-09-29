@@ -48,6 +48,7 @@ const report = {
   uptimeSecs: 120,
   activeSettings: { indexingEnabled: true, aiProvider: 'off', mcpEnabled: false, verboseLogging: false },
   possibleCrashLoop: false,
+  shortId: 'CRASH-A2345',
 }
 
 let mounted: { target: HTMLElement; instance: ReturnType<typeof mount> } | undefined
@@ -108,7 +109,7 @@ describe('CrashReportDialog send', () => {
 
     await pressSendAndSettle(target)
 
-    expect(sendCrashReport).toHaveBeenCalledWith(report, 'explicit@example.test')
+    expect(sendCrashReport).toHaveBeenCalledWith('CRASH-A2345', 'explicit@example.test')
     expect(report).not.toHaveProperty('email')
   })
 

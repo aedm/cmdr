@@ -5,14 +5,10 @@ reporter's Flow B. Everything else: `error_reporter/`.
 
 ## Module map
 
-- **`mod.rs`** (hook install, crash file I/O, the `CrashReport` shape), **`next_launch.rs`** (reading the previous
-  session's evidence and assembling a report: fate, snapshot, crash-loop, the macOS extract),
-  **`contain.rs`** (the one exemption),
-  **`panic_courier.rs`** (in-session delivery of a survived panic), **`survival.rs`** (amendments only a live process
-  can make), **`signal_handler.rs`** (the async-signal-safe path + raw file format), **`symbolicate.rs`** (its
-  addresses), **`os_crash_report.rs`** (macOS's own exception line and stack). Tests in `*_tests.rs` siblings.
-- IPC: `commands/crash_reporter.rs`. Frontend: `src/lib/crash-reporter/`, from `(main)/+layout.svelte` after settings
-  load.
+- **`mod.rs`**: hook, file I/O, report/send boundary. **`next_launch.rs`**: previous-session assembly. **`contain.rs`**:
+  parser exemption. **`panic_courier.rs`** / **`survival.rs`**: survived-panic delivery and amendments.
+  **`signal_handler.rs`** / **`symbolicate.rs`** / **`os_crash_report.rs`**: native crash evidence. Tests are siblings.
+- IPC: `commands/crash_reporter.rs`. Frontend: `src/lib/crash-reporter/`.
 
 Both paths write `crash-report.json` in the app data dir: the hook with full stdlib, the handler async-signal-safe.
 
@@ -21,22 +17,22 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 - **On by default.** `updates.crashReports` is `true` (narrow, stack-shaped, sanitized). ❌ Never extend that default
   to `updates.errorReports` (an unbounded log bundle) or `updates.attachEmailToReports` (an identity).
   `$lib/crash-reporter/DETAILS.md` § The three report consents.
-- **The delivery boundary is `CrashReport::prepare_for_delivery`.** Every previous-session artifact reaches it before
-  preview or upload, and send reapplies it after the frontend round trip. It omits arbitrary panic/thread/provider
-  prose, validates typed fields, and report-scope-redacts retained diagnostic strings. Keep raw capture local.
-- **`system_snapshot` and the macOS crash-report extract attach in `process_pending_crash` at next launch, NEVER in
-  the hook or signal handler** (compromised context). The snapshot is always stable-form (`live: None`), since live
-  values would describe the fresh process. `../diagnostics_snapshot.rs`.
+- **The pending file is authoritative at send.** Preview returns a prepared `CrashReport`, but send accepts only its
+  `short_id` plus optional email, reloads the file, checks the id, and applies `prepare_for_delivery` again. It omits
+  arbitrary panic/thread/provider prose, validates typed fields, and report-scope-redacts retained strings.
+- **`system_snapshot` and the macOS extract attach in `process_pending_crash`, NEVER in the compromised hook or
+  handler.** The snapshot is stable-only (`live: None`), since live values describe the new process.
 - **Attach the diagnostics id (`diag_`), NEVER the analytics id (`anal_`)**: that split (`analytics/CLAUDE.md` § "Two
   ids that never meet") keeps a voluntarily-attached email unjoinable to usage history.
 - **`email` is a typed send-time exception.** Delivery preparation clears embedded email; only
   `AttachedEmail::from_flow_a_dialog` can add it back after an explicit dialog action. ❌ Never read settings or the
   email in capture or automatic-send paths.
+- **The report id binds consent and deletion.** A stale id neither uploads nor deletes a replacement pending file; an
+  accepted upload rechecks the current file's id before deleting it, so an in-flight replacement survives.
 - **Dev mode: capture only, never send.** **Crash-loop guard**: a crash file under 5 s old sets `possible_crash_loop`,
   and the frontend asks instead of auto-sending.
-- **Two one-way amendments `survival.rs` makes**, both DETAILS §§ App fate, Told once. ❌ `app_fate` is never a
-  `bool`: a `false` default would claim "the app quit" about every older file. ❌ `reported_in_session` means
-  DELIVERED, so stamp it only from `auto_dispatcher::flush`'s successful `upload`.
+- **`survival.rs` makes two one-way amendments.** ❌ `app_fate` is not a `bool`: `false` would misclassify old files.
+  ❌ `reported_in_session` means DELIVERED, so stamp it only after `auto_dispatcher::flush` uploads.
 - ❌ **Nothing in the panic hook may be able to panic**, and `catch_unwind` can't help (a panic inside a hook aborts
   before unwinding). Hence the courier thread; DETAILS § Two delivery paths.
 - **`contain_panics(|| …)` is the ONE reporting exemption** (a foreign parser that panics on untrusted input): one

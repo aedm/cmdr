@@ -338,11 +338,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   stubs return errors. `read_clipboard_files` returns `ClipboardReadResult { paths, is_cut, is_directory }` where
   `is_directory` is an index-aligned `Vec<Option<bool>>` from a batched off-main-thread `stat_paths_kinds_blocking`, so
   the paste toast can split files vs. folders without walking trees.
-- **`crash_reporter.rs`**: `check_pending_crash_report`, `dismiss_crash_report`, `send_crash_report`. Send reapplies the
-  backend delivery transform after preview and accepts email separately through `AttachedEmail`, so the IPC report
-  cannot restore omitted content or smuggle an embedded address. Network is skipped in debug builds, E2E builds
-  (`playwright-e2e`, release builds whose reports would otherwise look real), and CI. A send that doesn't land returns
-  the shared `ServerRequestError` and keeps the crash file for the next launch.
+- **`crash_reporter.rs`**: `check_pending_crash_report`, `dismiss_crash_report`, `send_crash_report`. Send passes only
+  the preview's report id and optional `AttachedEmail` into `crash_reporter`, which reloads and transforms the
+  backend-owned pending file, verifies the id, uploads, and conditionally deletes it. Network is skipped in debug
+  builds, E2E builds (`playwright-e2e`, release builds whose reports would otherwise look real), and CI. A send that
+  doesn't land returns the shared `ServerRequestError` and keeps the crash file for the next launch.
 - **`beta_signup.rs`**: `beta_signup(email)` POSTs ONLY the email (never an install id) to `POST /beta-signup`. Returns a
   typed `BetaSignupResult` (`subscribed`/`invalidEmail`/`softFailure`). Network, not filesystem, so no
   `blocking_with_timeout` (the `reqwest` client carries its own 10 s timeout). An E2E build answers `subscribed` without

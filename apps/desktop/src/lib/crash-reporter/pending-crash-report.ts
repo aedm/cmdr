@@ -33,7 +33,7 @@ export async function checkForPendingCrashReport(showDialog: (report: CrashRepor
   }
 
   try {
-    await sendCrashReport(report)
+    await sendCrashReport(report.shortId ?? '')
     addToast(CrashReportToastContent, {
       id: 'crash-report-sent',
       level: 'info',

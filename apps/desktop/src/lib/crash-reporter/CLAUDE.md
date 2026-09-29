@@ -31,6 +31,8 @@ and collects the user's choices.
   to the setting alone.
 - **The dialog owns the send, `pending-crash-report.ts` the auto-send.** Both call `sendCrashReport`, and only the
   dialog path can attach an email or flip `updates.crashReports` on. Adding a send path means deciding both again.
+- **Send only the preview's `shortId`, never its `CrashReport`.** The backend reloads the authoritative pending file and
+  binds consent and deletion to that id. The preview remains display-only.
 - **Attach-email comes from `$lib/attach-email`**, shared with the error-report and feedback dialogs; `persist()` runs
   only after `sendCrashReport` resolves. Don't hand-roll the checkbox or add a crash-specific copy of the label. The
   control's own rules: `apps/desktop/src/lib/attach-email/CLAUDE.md`.
@@ -41,8 +43,8 @@ and collects the user's choices.
   from `crash-copy.ts`, never a fixed key. Anything unsettled (`unconfirmed`, a missing `appFate` from an older build)
   falls to the wording that claims least. Don't flip that default: it would tell a user their app crashed on the
   strength of a field that wasn't there. The fate is decided backend-side; `src-tauri/src/crash_reporter/DETAILS.md`.
-- **The report JSON is shown verbatim and is safe to show.** The backend applies its delivery transform before IPC and
-  reapplies it at send. Don't add fields to the displayed payload here or re-sanitize it:
+- **The report JSON is shown verbatim and is safe to show.** The backend applies its delivery transform before IPC; send
+  reloads and transforms the file rather than trusting this copy. Don't add fields or re-sanitize it here:
   `src-tauri/src/crash_reporter/` is the single place that decides what a crash report contains.
 
 Flows, the dialog's states, and the dialog-gallery fixture: `DETAILS.md`.

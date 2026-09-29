@@ -77,7 +77,9 @@ fn finish_panic_report(crash_json_path: &Path, report: &mut CrashReport) {
         attach_os_crash_report(report, crash_time);
     }
     report.prepare_for_delivery();
-    let _ = write_crash_report(crash_json_path, report);
+    if let Err(e) = write_crash_report(crash_json_path, report) {
+        log::warn!("Crash reporter: couldn't update pending crash report: {e}");
+    }
 }
 
 /// Read the async-signal-safe handler's raw file and write a real report in its place.
@@ -157,7 +159,6 @@ fn convert_raw_signal_crash(crash_json_path: &Path, raw_crash_path: &Path) {
     // The payoff for the signal path. `backtrace_frames` above are bare addresses; this is the same
     // stack with names on it, system frames included.
     // The report is written unconditionally on the next line either way.
-    // allowed-discarded-outcome: nothing on this path branches on whether a report attached
     attach_os_crash_report(&mut report, crash_time);
 
     report.prepare_for_delivery();
@@ -167,19 +168,19 @@ fn convert_raw_signal_crash(crash_json_path: &Path, raw_crash_path: &Path) {
     }
 }
 
-/// Attach macOS's own view of this crash, if it wrote one. Returns whether anything was attached.
+/// Attach macOS's own view of this crash, if it wrote one.
 ///
 /// Best-effort by design: a miss is normal (the report may not be written yet when someone
 /// relaunches quickly, the directory may be unreadable, or the crash may be a panic that unwound
 /// and produced no OS report at all), and the crash report is still worth sending without it.
 #[cfg(target_os = "macos")]
-fn attach_os_crash_report(report: &mut CrashReport, crash_time: std::time::SystemTime) -> bool {
+fn attach_os_crash_report(report: &mut CrashReport, crash_time: std::time::SystemTime) {
     let Some(process_name) = current_process_name() else {
-        return false;
+        return;
     };
     let Some(extracted) = super::os_crash_report::extract_near(&process_name, crash_time) else {
         log::debug!("Crash reporter: no matching macOS crash report for this crash");
-        return false;
+        return;
     };
     log::info!(
         "Crash reporter: attached macOS crash report ({} symbolicated frames)",
@@ -187,7 +188,6 @@ fn attach_os_crash_report(report: &mut CrashReport, crash_time: std::time::Syste
     );
     report.os_exception = extracted.exception;
     report.os_frames = extracted.frames;
-    true
 }
 
 /// `.ips` files are macOS's, so everywhere else there is nothing to attach and the report ships
@@ -195,9 +195,7 @@ fn attach_os_crash_report(report: &mut CrashReport, crash_time: std::time::Syste
 /// `os_crash_report` module is gated too: leaving its parser compiled-but-unreachable here is what
 /// made the Linux build fail on dead code.
 #[cfg(not(target_os = "macos"))]
-fn attach_os_crash_report(_report: &mut CrashReport, _crash_time: std::time::SystemTime) -> bool {
-    false
-}
+fn attach_os_crash_report(_report: &mut CrashReport, _crash_time: std::time::SystemTime) {}
 
 /// The name macOS files our crash reports under: the executable's own file stem (`Cmdr` in a
 /// shipped build). Taken from `current_exe` rather than hardcoded so a dev build, whose binary is

@@ -212,7 +212,9 @@ all three; nextest never sees the race, so a test green only under nextest is th
 3. If `updates.crashReports` is `true` and it's not a crash loop: auto-send and show a toast.
 4. Otherwise: show a dialog letting the user inspect and choose to send or dismiss. Radical transparency: the dialog
    shows the exact JSON payload before sending.
-5. The file is deleted after send or dismiss.
+5. Send returns only that preview's `shortId` and optional explicitly attached email. The backend reloads the pending
+   file, rejects an id mismatch, transforms the backend-owned report, uploads it, and deletes the file only if it still
+   carries the same id. Dismiss deletes without sending.
 
 ### Released-build gates
 
@@ -267,9 +269,13 @@ These are reporter gates, not release-pipeline behavior.
 preview, automatic send, and manual send. It mints a valid `CRASH-XXXXX` when the stored ID is absent or malformed,
 replaces an invalid diagnostics ID with the current `diag_` ID, drops unknown build-mode/provider strings, omits panic
 payload, thread name, and embedded email, and uses `RedactionContext::for_report(short_id)` for every retained stack and
-macOS exception string. `send_crash_report` reapplies it after the frontend round trip before adding the separately
-supplied `AttachedEmail`, so a changed IPC object cannot restore omitted content. A field that cannot be transformed or
-proven to be closed typed metadata stays out.
+macOS exception string.
+
+Preview is not an authority handoff. `send_crash_report` accepts only the preview's id and optional email, then reloads
+the pending artifact and reapplies the transform before adding the separately supplied `AttachedEmail`. It rejects a
+stale id before upload, and rechecks the current file's id after upload before deletion. Thus a frontend mutation cannot
+alter any payload field, and a replacement file cannot be sent or deleted under consent for its predecessor. A field
+that cannot be transformed or proven to be closed typed metadata stays out.
 
 ## Where a field is filled in
 

@@ -588,6 +588,171 @@ fn delivery_omits_arbitrary_crash_prose_and_redacts_retained_diagnostics() {
     assert_eq!(report.email.as_deref(), Some("explicit-email@example.test"));
 }
 
+#[tokio::test]
+async fn send_reloads_every_payload_field_from_disk_and_attaches_only_explicit_email() {
+    let dir = crate::test_support::TestDir::new("crash-send-authoritative");
+    let path = dir.join(CRASH_FILE_NAME);
+    let mut stored = make_test_report();
+    stored.short_id = Some("CRASH-A2345".to_string());
+    stored.timestamp = "2026-09-13T10:00:00Z".to_string();
+    stored.signal = Some("disk-signal".to_string());
+    stored.panic_message = Some("embedded disk panic".to_string());
+    stored.backtrace_frames = vec!["disk bare frame prose".to_string()];
+    stored.thread_name = Some("embedded disk thread".to_string());
+    stored.thread_count = 17;
+    stored.app_version = "disk-app-version".to_string();
+    stored.os_version = "disk-os-version".to_string();
+    stored.arch = "disk-arch".to_string();
+    stored.uptime_secs = 41.25;
+    stored.active_settings = ActiveSettings {
+        indexing_enabled: Some(true),
+        ai_provider: Some("local".to_string()),
+        mcp_enabled: Some(false),
+        verbose_logging: Some(true),
+    };
+    stored.possible_crash_loop = true;
+    stored.app_fate = AppFate::Ended;
+    stored.reported_in_session = false;
+    stored.build_mode = Some("release".to_string());
+    stored.diag_id = "diag_12345678-1234-4234-8234-1234567890ab".to_string();
+    stored.email = Some("embedded@example.test".to_string());
+    stored.system_snapshot = None;
+    stored.image_base = Some("0x1111".to_string());
+    stored.os_exception = Some("disk exception prose".to_string());
+    stored.os_frames = vec!["disk OS frame prose".to_string()];
+    write_crash_report(&path, &stored).unwrap();
+
+    // Model a hostile frontend copy: every payload field it can see differs from the file. Only
+    // the report id crosses the send boundary, so none of these values can reach the uploader.
+    let mut frontend = stored.clone();
+    frontend.version = 999;
+    frontend.timestamp = "PRIVATE FRONTEND TIMESTAMP".to_string();
+    frontend.signal = Some("PRIVATE FRONTEND SIGNAL".to_string());
+    frontend.panic_message = Some("PRIVATE FRONTEND PANIC".to_string());
+    frontend.backtrace_frames = vec!["PRIVATE BARE FRAME PROSE".to_string()];
+    frontend.thread_name = Some("PRIVATE FRONTEND THREAD".to_string());
+    frontend.thread_count = 999;
+    frontend.app_version = "PRIVATE FRONTEND APP VERSION".to_string();
+    frontend.os_version = "PRIVATE FRONTEND OS VERSION".to_string();
+    frontend.arch = "PRIVATE FRONTEND ARCH".to_string();
+    frontend.uptime_secs = 999.5;
+    frontend.active_settings = ActiveSettings {
+        indexing_enabled: Some(false),
+        ai_provider: Some("cloud".to_string()),
+        mcp_enabled: Some(true),
+        verbose_logging: Some(false),
+    };
+    frontend.possible_crash_loop = false;
+    frontend.app_fate = AppFate::KeptRunning;
+    frontend.reported_in_session = true;
+    frontend.build_mode = Some("debug".to_string());
+    frontend.diag_id = "diag_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_string();
+    frontend.email = Some("embedded-frontend@example.test".to_string());
+    frontend.system_snapshot = Some(crate::diagnostics_snapshot::SystemSnapshot::collect_stable(&dir));
+    frontend.image_base = Some("0xffff".to_string());
+    frontend.os_exception = Some("PRIVATE FRONTEND EXCEPTION".to_string());
+    frontend.os_frames = vec!["PRIVATE FRONTEND OS FRAME".to_string()];
+
+    let mut expected = stored;
+    expected.prepare_for_send(crate::error_reporter::AttachedEmail::from_flow_a_dialog(Some(
+        " explicit@example.test ".to_string(),
+    )));
+    let expected_json = serde_json::to_value(expected).unwrap();
+    let report_id = frontend.short_id.expect("the preview has a report id");
+
+    send_pending_crash_report_from_path(
+        &path,
+        &report_id,
+        crate::error_reporter::AttachedEmail::from_flow_a_dialog(Some(" explicit@example.test ".to_string())),
+        false,
+        |posted| async move {
+            assert_eq!(serde_json::to_value(posted).unwrap(), expected_json);
+            Ok(())
+        },
+    )
+    .await
+    .expect("the authoritative report uploads");
+
+    assert!(!path.exists(), "an accepted upload deletes the report it sent");
+}
+
+#[tokio::test]
+async fn a_stale_report_id_cannot_send_or_delete_a_replacement() {
+    let dir = crate::test_support::TestDir::new("crash-send-stale-id");
+    let path = dir.join(CRASH_FILE_NAME);
+    let mut replacement = make_test_report();
+    replacement.short_id = Some("CRASH-B2345".to_string());
+    write_crash_report(&path, &replacement).unwrap();
+    let upload_called = std::sync::Arc::new(AtomicBool::new(false));
+    let called = upload_called.clone();
+
+    let result = send_pending_crash_report_from_path(&path, "CRASH-A2345", None, false, move |_| async move {
+        called.store(true, Ordering::SeqCst);
+        Ok(())
+    })
+    .await;
+
+    assert!(matches!(result, Err(ServerRequestError::Unexpected { .. })));
+    assert!(!upload_called.load(Ordering::SeqCst), "a stale consent must not upload");
+    assert_eq!(pending_report_id(&path).as_deref(), Some("CRASH-B2345"));
+}
+
+#[tokio::test]
+async fn a_failed_upload_retains_the_pending_file() {
+    let dir = crate::test_support::TestDir::new("crash-send-failure");
+    let path = dir.join(CRASH_FILE_NAME);
+    let mut report = make_test_report();
+    report.short_id = Some("CRASH-A2345".to_string());
+    write_crash_report(&path, &report).unwrap();
+
+    let result = send_pending_crash_report_from_path(&path, "CRASH-A2345", None, false, |_| async {
+        Err(ServerRequestError::Unreachable {
+            detail: "offline".to_string(),
+        })
+    })
+    .await;
+
+    assert!(matches!(result, Err(ServerRequestError::Unreachable { .. })));
+    assert!(path.exists(), "a retryable report stays pending");
+}
+
+#[tokio::test]
+async fn an_upload_never_deletes_a_replacement_that_arrives_in_flight() {
+    let dir = crate::test_support::TestDir::new("crash-send-replaced-in-flight");
+    let path = dir.join(CRASH_FILE_NAME);
+    let mut original = make_test_report();
+    original.short_id = Some("CRASH-A2345".to_string());
+    write_crash_report(&path, &original).unwrap();
+    let replacement_path = path.clone();
+
+    send_pending_crash_report_from_path(&path, "CRASH-A2345", None, false, move |_| async move {
+        let mut replacement = make_test_report();
+        replacement.short_id = Some("CRASH-B2345".to_string());
+        write_crash_report(&replacement_path, &replacement).unwrap();
+        Ok(())
+    })
+    .await
+    .expect("the original upload landed");
+
+    assert_eq!(pending_report_id(&path).as_deref(), Some("CRASH-B2345"));
+}
+
+#[tokio::test]
+async fn post_crash_report_preserves_server_refusals() {
+    use wiremock::matchers::{method, path as request_path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(request_path("/crash-report"))
+        .respond_with(ResponseTemplate::new(400))
+        .mount(&server)
+        .await;
+
+    let result = post_crash_report(&format!("{}/crash-report", server.uri()), &make_test_report()).await;
+    assert!(matches!(result, Err(ServerRequestError::Refused { status: 400, .. })));
+}
+
 // --- App fate: what the next-launch dialog is allowed to claim ---
 
 /// A pending report on disk, `fate` as its recorded [`AppFate`] and a timestamp old

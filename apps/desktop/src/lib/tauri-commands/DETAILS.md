@@ -149,6 +149,8 @@ commands, and notable non-obvious placements.
   `addCmdrToDock`. Both turn an unreachable backend into a typed answer rather than a throw — `preferencesUnreadable`
   and `timedOut` — because their callers are a startup gate and a toast button, neither of which can hold an exception.
   `../../../src-tauri/src/dock/CLAUDE.md`.
+- **`crash-reporter.ts`**: next-launch crash preview, dismiss, and send. Send crosses IPC with the preview's report id
+  and separately consented optional email only; the backend-owned pending file remains the payload authority.
 
 ## Where to put new commands
 
