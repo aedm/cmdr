@@ -10,6 +10,7 @@ use super::super::state::WriteOperationState;
 use super::super::types::{ConflictResolution, WriteConflictEvent, WriteConflictResolvedEvent, WriteOperationError};
 use super::edit_error::EditError;
 use super::fresh_zip::{FreshZipEntry, FreshZipSource, RemoteZipFeeder, remote_source_bridge};
+use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{Volume, VolumeError};
 
 pub(super) struct RemoteFeed {
@@ -26,6 +27,19 @@ pub(super) struct FreshPlan {
     pub(super) skipped: usize,
 }
 
+/// How far the planning walk has got: what it has found so far and the
+/// directory it's listing. The walk has no denominator, so the op reports it
+/// as the indeterminate `Scanning` phase.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct PlanProgress<'a> {
+    pub(super) files: usize,
+    pub(super) dirs: usize,
+    pub(super) bytes: u64,
+    pub(super) current_dir: &'a Path,
+}
+
+pub(super) type PlanProgressObserver<'a> = &'a (dyn Fn(PlanProgress<'_>) + Sync);
+
 #[derive(Clone, Copy)]
 struct PlanConflictContext<'a> {
     events: &'a dyn OperationEventSink,
@@ -33,6 +47,10 @@ struct PlanConflictContext<'a> {
     archive_path: &'a Path,
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the planning seam carries the selection, its conflict policy and prompt context, and the walk's progress observer"
+)]
 pub(super) async fn plan_sources(
     source: &Arc<dyn Volume>,
     source_paths: &[PathBuf],
@@ -41,6 +59,7 @@ pub(super) async fn plan_sources(
     events: &dyn OperationEventSink,
     operation_id: &str,
     archive_path: &Path,
+    on_progress: PlanProgressObserver<'_>,
 ) -> Result<FreshPlan, EditError> {
     plan_sources_with_context(
         source,
@@ -52,16 +71,26 @@ pub(super) async fn plan_sources(
             operation_id,
             archive_path,
         }),
+        Some(on_progress),
     )
     .await
 }
 
+/// Walks the selection into a frozen plan.
+///
+/// ❗ Only the SELECTED items are stat'ed; every child comes from its parent's
+/// listing, which already carries its kind, size, mtime, and mode. A stat per
+/// child was one network round trip per file on SMB and SFTP, and a whole
+/// parent listing per file on MTP. Symlinks and special files are skipped from
+/// the same listing facts (`is_skipped_kind`), so there's no local syscall per
+/// entry either. Same shape as `cmdr_fs::volume::scan_walk`.
 async fn plan_sources_with_context(
     source: &Arc<dyn Volume>,
     source_paths: &[PathBuf],
     conflict: ConflictResolution,
     state: &Arc<WriteOperationState>,
     conflict_context: Option<PlanConflictContext<'_>>,
+    on_progress: Option<PlanProgressObserver<'_>>,
 ) -> Result<FreshPlan, EditError> {
     let mut entries: Vec<FreshZipEntry> = Vec::new();
     let mut remote_feeds: Vec<RemoteFeed> = Vec::new();
@@ -69,6 +98,9 @@ async fn plan_sources_with_context(
     let mut skipped = 0usize;
     let mut top_names = HashMap::<String, PathBuf>::new();
     let mut duplicate_latch = None;
+    // Found-so-far tallies for the scan readout only. A duplicate top name
+    // resolved to Overwrite drops entries from the plan; these don't go back.
+    let (mut files, mut dirs) = (0usize, 0usize);
     let local_root = source.supports_local_fs_access().then(|| source.local_path()).flatten();
 
     for top in source_paths {
@@ -123,40 +155,18 @@ async fn plan_sources_with_context(
             }
         }
         top_names.insert(top_name.clone(), top.clone());
-        let mut stack = vec![(top.clone(), top_name)];
-        while let Some((path, inner)) = stack.pop() {
+        let top_meta = source
+            .get_metadata(top)
+            .await
+            .map_err(|error| volume_read_error(top, error))?;
+        let mut stack = vec![(top.clone(), top_name, top_meta)];
+        while let Some((path, inner, meta)) = stack.pop() {
             if state.stop_or_park_async().await {
                 return Err(EditError::Cancelled);
             }
-            let meta = source
-                .get_metadata(&path)
-                .await
-                .map_err(|error| volume_read_error(&path, error))?;
-            if meta.is_symlink {
+            if is_skipped_kind(&meta) {
                 skipped += 1;
                 continue;
-            }
-            if let Some(root) = &local_root {
-                let local_path = if path.is_absolute() {
-                    path.clone()
-                } else {
-                    root.join(&path)
-                };
-                let is_special = tokio::task::spawn_blocking(move || {
-                    std::fs::symlink_metadata(local_path)
-                        .is_ok_and(|metadata| !metadata.file_type().is_file() && !metadata.file_type().is_dir())
-                })
-                .await
-                .map_err(|error| {
-                    EditError::Op(WriteOperationError::ReadError {
-                        path: path.display().to_string(),
-                        message: error.to_string(),
-                    })
-                })?;
-                if is_special {
-                    skipped += 1;
-                    continue;
-                }
             }
             let modified = meta
                 .modified_at
@@ -178,8 +188,11 @@ async fn plan_sources_with_context(
                     .list_directory(&path, None)
                     .await
                     .map_err(|error| volume_read_error(&path, error))?;
+                dirs += 1;
+                report(on_progress, files, dirs, source_bytes, &path);
                 for child in children.into_iter().rev() {
-                    stack.push((path.join(&child.name), format!("{inner}/{}", child.name)));
+                    let child_inner = format!("{inner}/{}", child.name);
+                    stack.push((path.join(&child.name), child_inner, child));
                 }
             } else {
                 let size = meta.size.ok_or_else(|| {
@@ -212,6 +225,8 @@ async fn plan_sources_with_context(
                     modified,
                     unix_mode,
                 });
+                files += 1;
+                report(on_progress, files, dirs, source_bytes, path.parent().unwrap_or(&path));
             }
         }
     }
@@ -222,6 +237,28 @@ async fn plan_sources_with_context(
         source_bytes,
         skipped,
     })
+}
+
+/// A symlink (never followed: its target may be an ancestor, or elsewhere in the
+/// selection) or a special file (fifo, socket, device) that a ZIP can't hold.
+/// Local and SFTP listings carry the full `st_mode`, so the file-type bits
+/// answer without a syscall; a mode with no type bits (SMB, MTP) is never special.
+fn is_skipped_kind(entry: &FileEntry) -> bool {
+    const S_IFMT: u32 = 0o170_000;
+    const REPRESENTABLE: [u32; 3] = [0o100_000, 0o040_000, 0o120_000]; // file, directory, symlink
+    let kind = entry.permissions & S_IFMT;
+    entry.is_symlink || (kind != 0 && !REPRESENTABLE.contains(&kind))
+}
+
+fn report(on_progress: Option<PlanProgressObserver<'_>>, files: usize, dirs: usize, bytes: u64, current_dir: &Path) {
+    if let Some(observer) = on_progress {
+        observer(PlanProgress {
+            files,
+            dirs,
+            bytes,
+            current_dir,
+        });
+    }
 }
 
 async fn prompt_duplicate_source(
@@ -389,6 +426,8 @@ fn volume_read_error(path: &Path, error: VolumeError) -> EditError {
 
 #[cfg(test)]
 mod tests {
+    use std::future::Future;
+
     use super::*;
     use crate::file_system::volume::{InMemoryVolume, LocalPosixVolume};
 
@@ -414,6 +453,130 @@ mod tests {
         ));
     }
 
+    /// A remote-shaped source that counts its single-entry stats, each one a
+    /// network round trip on SMB and SFTP (and a whole parent listing on MTP).
+    struct CountingStats {
+        inner: InMemoryVolume,
+        stats: std::sync::atomic::AtomicUsize,
+    }
+
+    impl Volume for CountingStats {
+        fn name(&self) -> &str {
+            self.inner.name()
+        }
+
+        fn root(&self) -> &Path {
+            self.inner.root()
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn list_directory<'a>(
+            &'a self,
+            path: &'a Path,
+            on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+            self.inner.list_directory(path, on_progress)
+        }
+
+        fn get_metadata<'a>(
+            &'a self,
+            path: &'a Path,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+            self.stats.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.inner.get_metadata(path)
+        }
+
+        fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+            self.inner.exists(path)
+        }
+
+        fn is_directory<'a>(
+            &'a self,
+            path: &'a Path,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+            self.inner.is_directory(path)
+        }
+
+        fn get_space_info<'a>(
+            &'a self,
+        ) -> std::pin::Pin<
+            Box<dyn Future<Output = Result<crate::file_system::volume::SpaceInfo, VolumeError>> + Send + 'a>,
+        > {
+            self.inner.get_space_info()
+        }
+    }
+
+    #[tokio::test]
+    async fn planning_a_remote_tree_stats_only_the_selected_items() {
+        let inner = InMemoryVolume::new("remote");
+        inner.create_directory(Path::new("/tree")).await.expect("mkdir");
+        inner.create_directory(Path::new("/tree/sub")).await.expect("mkdir sub");
+        for index in 0..20 {
+            inner
+                .create_file(&PathBuf::from(format!("/tree/sub/f{index}.txt")), b"x")
+                .await
+                .expect("seed file");
+        }
+        let source = Arc::new(CountingStats {
+            inner,
+            stats: Default::default(),
+        });
+        let as_volume: Arc<dyn Volume> = Arc::clone(&source) as Arc<dyn Volume>;
+        let state = Arc::new(WriteOperationState::new(Duration::ZERO));
+
+        let plan = plan_sources_with_context(
+            &as_volume,
+            &[PathBuf::from("/tree")],
+            ConflictResolution::Stop,
+            &state,
+            None,
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| panic!("plan"));
+
+        assert_eq!(plan.entries.len(), 22, "two directories and 20 files");
+        assert_eq!(plan.source_bytes, 20);
+        assert_eq!(
+            source.stats.load(std::sync::atomic::Ordering::SeqCst),
+            1,
+            "children come from their parent's listing, never a stat each"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn planning_skips_local_symlinks_and_special_files_without_a_stat_each() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(temp.path().join("tree")).expect("mkdir");
+        std::fs::write(temp.path().join("tree/real.txt"), b"real").expect("write");
+        std::os::unix::fs::symlink("real.txt", temp.path().join("tree/link")).expect("symlink");
+        let _socket =
+            std::os::unix::net::UnixListener::bind(temp.path().join("tree/sock")).expect("bind a socket file");
+        let source: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("source", temp.path().to_path_buf()));
+        let state = Arc::new(WriteOperationState::new(Duration::ZERO));
+
+        let plan = plan_sources_with_context(
+            &source,
+            &[PathBuf::from("tree")],
+            ConflictResolution::Stop,
+            &state,
+            None,
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| panic!("plan"));
+
+        assert_eq!(
+            plan.entries.iter().map(|entry| entry.name.as_str()).collect::<Vec<_>>(),
+            vec!["tree/", "tree/real.txt"]
+        );
+        assert_eq!(plan.skipped, 2, "the symlink and the socket are skipped, never lost");
+    }
+
     #[tokio::test]
     async fn duplicate_top_names_honor_rename_and_skip_policies() {
         let temp = tempfile::tempdir().expect("tempdir");
@@ -425,7 +588,7 @@ mod tests {
         let paths = [PathBuf::from("a/report.txt"), PathBuf::from("b/report.txt")];
         let state = Arc::new(WriteOperationState::new(Duration::ZERO));
 
-        let renamed = plan_sources_with_context(&source, &paths, ConflictResolution::Rename, &state, None)
+        let renamed = plan_sources_with_context(&source, &paths, ConflictResolution::Rename, &state, None, None)
             .await
             .unwrap_or_else(|_| panic!("rename plan"));
         assert_eq!(
@@ -437,7 +600,7 @@ mod tests {
             vec!["report.txt", "report (1).txt"]
         );
 
-        let skipped = plan_sources_with_context(&source, &paths, ConflictResolution::Skip, &state, None)
+        let skipped = plan_sources_with_context(&source, &paths, ConflictResolution::Skip, &state, None, None)
             .await
             .unwrap_or_else(|_| panic!("skip plan"));
         assert_eq!(skipped.entries.len(), 1);

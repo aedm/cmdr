@@ -179,6 +179,9 @@ pub(super) struct MutatorHooks {
     /// Kept separate because transfer starts a new byte axis and must emit its
     /// zero tick even when compression emitted a moment earlier.
     last_remote_emit: Mutex<Option<Instant>>,
+    /// Last scanning tick a fresh compress's planning walk emitted; its own
+    /// clock, so a throttled walk never swallows the first compression tick.
+    last_scan_emit: Mutex<Option<Instant>>,
     /// Latest progress snapshot, read by the driver for the terminal event's totals.
     latest: Mutex<MutationProgress>,
     /// The last `entries_done` the E2E pacing slept for, so it sleeps once per entry
@@ -207,10 +210,42 @@ impl MutatorHooks {
             progress_interval,
             last_emit: Mutex::new(None),
             last_remote_emit: Mutex::new(None),
+            last_scan_emit: Mutex::new(None),
             latest: Mutex::new(MutationProgress::default()),
             paced_entries: AtomicUsize::new(usize::MAX),
             zip_then_upload: AtomicBool::new(false),
         }
+    }
+
+    /// Reports a planning walk as the indeterminate `Scanning` phase: what it has
+    /// found so far and where it is. Throttled to the op's progress interval
+    /// unless `force` (the walk's final tally).
+    pub(super) fn emit_scan_progress(
+        &self,
+        tally: super::fresh_plan::PlanProgress<'_>,
+        current_dir: Option<&Path>,
+        force: bool,
+    ) {
+        {
+            let mut last = self.last_scan_emit.lock_ignore_poison();
+            let now = Instant::now();
+            if !force && last.is_some_and(|then| now.duration_since(then) < self.progress_interval) {
+                return;
+            }
+            *last = Some(now);
+        }
+        let event = WriteProgressEvent::new(
+            self.operation_id.clone(),
+            self.operation_type,
+            WriteOperationPhase::Scanning,
+            None,
+            tally.files,
+            0,
+            tally.bytes,
+            0,
+        )
+        .with_scan_meta(current_dir.map(|dir| dir.display().to_string()), tally.dirs, None);
+        self.state.emit_progress_via_sink(&*self.events, event);
     }
 
     /// Numbers this op's phases as two steps: compressing locally, then

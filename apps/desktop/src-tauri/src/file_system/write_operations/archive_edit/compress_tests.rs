@@ -111,6 +111,24 @@ async fn compress_start_packs_local_files_into_a_new_zip() {
         progress.iter().all(|event| event.step.is_none()),
         "a direct compress is one step and never numbers its phases"
     );
+    let first_compressing = progress
+        .iter()
+        .position(|event| event.phase == WriteOperationPhase::Compressing)
+        .expect("a compressing tick");
+    let scanning = progress[..first_compressing]
+        .iter()
+        .rfind(|event| event.phase == WriteOperationPhase::Scanning)
+        .expect("planning reports its walk before compression starts");
+    assert_eq!(
+        (scanning.files_done, scanning.bytes_done),
+        (2, source_bytes),
+        "the last scanning tick names everything the walk found"
+    );
+    assert_eq!(
+        (scanning.files_total, scanning.bytes_total),
+        (0, 0),
+        "a scan has no denominator"
+    );
 
     let complete = events.inner.complete.lock_ignore_poison();
     assert!(complete[0].files_skipped == 0, "a clean compress skips nothing");

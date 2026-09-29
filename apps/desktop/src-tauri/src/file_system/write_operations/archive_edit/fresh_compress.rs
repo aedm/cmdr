@@ -22,7 +22,7 @@ use super::super::transfer::StagedWrite;
 use super::super::types::{ConflictResolution, WriteOperationError, WriteOperationStartResult, WriteOperationType};
 use super::edit_error::EditError;
 use super::engine::{MutatorHooks, emit_archive_terminal};
-use super::fresh_plan::{FreshPlan, RemoteFeed, plan_sources, validate_aliases};
+use super::fresh_plan::{FreshPlan, PlanProgress, RemoteFeed, plan_sources, validate_aliases};
 use super::fresh_zip::{FreshZipCancellation, FreshZipError, FreshZipProgressObserver, spawn_fresh_zip_with_progress};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{
@@ -251,6 +251,7 @@ async fn run(
     events: &dyn OperationEventSink,
     operation_id: &str,
 ) -> Result<usize, EditError> {
+    let report_walk = |tick: PlanProgress<'_>| hooks.emit_scan_progress(tick, Some(tick.current_dir), false);
     let plan = plan_sources(
         &source_volume,
         &source_paths,
@@ -259,8 +260,20 @@ async fn run(
         events,
         operation_id,
         &archive_path,
+        &report_walk,
     )
     .await?;
+    let planned_dirs = plan.entries.iter().filter(|entry| entry.is_directory).count();
+    hooks.emit_scan_progress(
+        PlanProgress {
+            files: plan.entries.len() - planned_dirs,
+            dirs: planned_dirs,
+            bytes: plan.source_bytes,
+            current_dir: &archive_path,
+        },
+        None,
+        true,
+    );
     let total_entries = plan.entries.len();
     let total_bytes = plan.source_bytes;
     let direct = matches!(
