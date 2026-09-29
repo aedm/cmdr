@@ -85,7 +85,9 @@ async fn read_prefix(volume: &SftpVolume, depth: usize) -> u64 {
         .await
         .expect("the bench server exports large.bin");
     assert!(
-        cmdr_fs::volume::VolumeReadStream::total_size(&stream) >= BENCH_BYTES,
+        cmdr_fs::volume::VolumeReadStream::total_size(&stream)
+            .known()
+            .is_some_and(|size| size >= BENCH_BYTES),
         "the bench server's large.bin is smaller than the measurement wants; raise LARGE_MB"
     );
     let mut total = 0u64;
@@ -263,8 +265,8 @@ impl cmdr_fs::volume::VolumeReadStream for GeneratedSource {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> cmdr_fs::volume::StreamLength {
+        cmdr_fs::volume::StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {

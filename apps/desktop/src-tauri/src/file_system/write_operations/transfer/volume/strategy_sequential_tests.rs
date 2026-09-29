@@ -20,7 +20,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::file_system::volume::{InMemoryVolume, Volume, VolumeError};
+use crate::file_system::volume::{InMemoryVolume, StreamLength, StreamWriteProgress, Volume, VolumeError};
 use cmdr_archive::{ArchiveFormat, ArchiveVolume, TarCodec};
 use cmdr_fs::volume::host::VolumeHost;
 
@@ -330,7 +330,8 @@ impl Volume for StopAfterFirstWrite {
     forward_volume_methods!(inner =>
         name, root, list_directory, get_metadata, exists, is_directory, create_file, create_directory,
         create_directory_all, delete, rename, get_space_info, supports_streaming, supports_export,
-        operations_are_local, max_concurrent_ops, scan_for_copy, open_read_stream, write_is_single_shot,
+        operations_are_local, max_concurrent_ops, scan_for_copy, open_read_stream, supports_unknown_length_writes,
+        write_is_single_shot,
         create_directory_errors_on_existing_dir,
     );
 
@@ -342,14 +343,14 @@ impl Volume for StopAfterFirstWrite {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             let written = self
                 .inner
-                .write_from_stream(dest, mode, size, stream, on_progress)
+                .write_from_stream(dest, mode, length, stream, on_progress)
                 .await?;
             if self.writes.fetch_add(1, Ordering::SeqCst) == 0 {
                 (self.on_first)();

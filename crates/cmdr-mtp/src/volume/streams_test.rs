@@ -9,7 +9,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use cmdr_fs::volume::{VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{StreamLength, VolumeError, VolumeReadStream};
 
 use crate::volume::volume_read_stream_to_chunk_stream;
 
@@ -38,8 +38,8 @@ async fn volume_read_stream_to_chunk_stream_calls_on_progress_per_chunk() {
                 })
             })
         }
-        fn total_size(&self) -> u64 {
-            self.total
+        fn total_size(&self) -> StreamLength {
+            StreamLength::Known(self.total)
         }
         fn bytes_read(&self) -> u64 {
             self.read
@@ -93,8 +93,8 @@ async fn volume_read_stream_to_chunk_stream_surfaces_cancellation() {
                 Some(Ok(vec![0u8; 64]))
             })
         }
-        fn total_size(&self) -> u64 {
-            self.total
+        fn total_size(&self) -> StreamLength {
+            StreamLength::Known(self.total)
         }
         fn bytes_read(&self) -> u64 {
             self.read

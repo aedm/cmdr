@@ -17,7 +17,7 @@ use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{
     CopyScanResult, DirectoryCreation, InMemoryVolume, ListingProgress, ScanConflict, SourceItemInfo, SpaceInfo,
-    VolumeReadStream,
+    StreamLength, StreamWriteProgress, VolumeReadStream,
 };
 use std::future::Future;
 use std::pin::Pin as StdPin;
@@ -59,8 +59,8 @@ impl VolumeReadStream for GatedChunkStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -319,10 +319,13 @@ impl Volume for IncrementalDest {
         &'a self,
         dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> StdPin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         Box::pin(async move {
             let mut data: Vec<u8> = Vec::new();
             // Publish an empty file up front, like a `File::create` / SMB CREATE
@@ -333,7 +336,12 @@ impl Volume for IncrementalDest {
                 data.extend_from_slice(&chunk);
                 self.publish(dest, &data).await?;
                 self.written.store(data.len() as u64, Ordering::SeqCst);
-                if on_progress(data.len() as u64, size).is_break() {
+                if on_progress(StreamWriteProgress {
+                    bytes_written: data.len() as u64,
+                    expected_length: StreamLength::Known(size),
+                })
+                .is_break()
+                {
                     // What every real backend does on cancel: drop the handle and
                     // remove the partial at the WRITE path.
                     let _ = self.inner.delete(dest).await;

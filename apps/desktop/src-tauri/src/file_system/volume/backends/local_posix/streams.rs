@@ -69,8 +69,8 @@ impl VolumeReadStream for LocalPosixReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total_size
+    fn total_size(&self) -> crate::file_system::volume::StreamLength {
+        crate::file_system::volume::StreamLength::Known(self.total_size)
     }
 
     fn bytes_read(&self) -> u64 {

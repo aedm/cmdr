@@ -381,11 +381,12 @@ pub(super) async fn stream_pipe_file(
             () = state.backend_abort.cancelled() => return Err(hard_abort_error(source_path).into()),
             opened = source_volume.open_read_stream_with_hint(source_path, source_facts.size) => opened?,
         };
-        let size = stream.total_size();
+        let size = stream.total_size().known().ok_or(VolumeError::NotSupported)?;
+        let length = crate::file_system::volume::StreamLength::Known(size);
         // ONE probe, two consumers: the staging decision below and the
         // destination-side foreground yield's floor exemption (handed to the
         // `CheckpointStream`). See `resolve_staging`.
-        let write_is_single_shot = dest_volume.write_is_single_shot(size).await;
+        let write_is_single_shot = dest_volume.write_is_single_shot(length).await;
         let resolved_staging = resolve_staging(staging, write_is_single_shot);
         let staged = StagedWrite::begin(state, dest_path, resolved_staging);
         note_pending_for_local_dest(dest_volume, staged.target());
@@ -440,8 +441,10 @@ pub(super) async fn stream_pipe_file(
         // Cost on the happy path: two already-live atomics polled per wakeup of
         // the write future. No allocation, no timer, no syscall, and no change to
         // any backend.
+        let write_progress =
+            |progress: crate::file_system::volume::StreamWriteProgress| on_file_progress(progress.bytes_written, size);
         let write_fut =
-            dest_volume.write_from_stream(staged.target(), staged.write_mode(), size, stream, on_file_progress);
+            dest_volume.write_from_stream(staged.target(), staged.write_mode(), length, stream, &write_progress);
         let outcome = tokio::select! {
             biased;
             () = state.backend_abort.cancelled() => WriteAttemptOutcome::HardAborted,

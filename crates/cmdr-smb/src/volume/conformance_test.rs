@@ -12,6 +12,7 @@
 
 use super::test_support::*;
 use super::*;
+use cmdr_fs::volume::StreamLength;
 
 /// The shared `Volume::delete` non-recursion assertion, against a real SMB
 /// server. Docker-gated like the rest of this file, because SMB has no
@@ -119,7 +120,7 @@ async fn smb_integration_write_from_stream_create_new_honors_the_shared_no_clobb
         .await
         .unwrap();
     assert!(
-        smb_vol.write_is_single_shot(3).await,
+        smb_vol.write_is_single_shot(StreamLength::Known(3)).await,
         "fixture precondition: the write under test must take the single-shot compound path"
     );
 

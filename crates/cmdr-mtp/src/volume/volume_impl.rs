@@ -9,8 +9,8 @@ use super::streams::{MtpReadStream, mtp_read_window, volume_read_stream_to_chunk
 use crate::connection::{MtpConnectionError, MtpDeleteScope};
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::{
-    BatchScanResult, CopyScanResult, LaneKey, MutationEvent, ScanConflict, SourceItemInfo, SpaceInfo, Volume,
-    VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
+    BatchScanResult, CopyScanResult, LaneKey, MutationEvent, ScanConflict, SourceItemInfo, SpaceInfo, StreamLength,
+    StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
 };
 use log::debug;
 use std::future::Future;
@@ -690,11 +690,20 @@ impl Volume for MtpVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         Box::pin(async move {
+            let report_progress = |bytes_written, _| {
+                on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                })
+            };
             if mode == WriteMode::CreateNew && self.exists(dest).await {
                 return Err(VolumeError::AlreadyExists(dest.display().to_string()));
             }
@@ -708,7 +717,7 @@ impl Volume for MtpVolume {
                 })?
                 .to_string();
 
-            let chunk_stream = volume_read_stream_to_chunk_stream(stream, size, on_progress);
+            let chunk_stream = volume_read_stream_to_chunk_stream(stream, size, &report_progress);
             let chunk_stream = Box::pin(chunk_stream);
 
             let bytes_written = self

@@ -413,6 +413,9 @@ everywhere, which is the point.
   `crates/cmdr-mtp/DETAILS.md` § "The no-clobber rename is check-then-act".
 - `assert_create_file_refuses_to_clobber` — the New File command renders the refusal as "that name is taken", so a
   clobbering backend silently empties a file and reports success.
+- `assert_unknown_write_is_refused_before_io` — a backend without unknown-length support returns `NotSupported`
+  before polling the source or touching an existing destination, and never calls that write single-shot. This is the
+  safety boundary that lets callers ask the capability question without racing it against destructive I/O.
 - `assert_create_directory_all_reports_an_existing_dir_honestly` — `Created` promises the leaf was empty, and the
   transfer driver spends it by skipping the per-file destination conflict probe inside. Only the dangerous direction is
   pinned; answering `AlreadyExisted` for a leaf you did create is merely slower, which is what the trait means by "when
@@ -437,6 +440,20 @@ run every one (InMemory's writability cell sits in `capabilities_test.rs`, next 
 contract needs. `ArchiveVolume` is read-only: it runs the three that don't mutate and pins the rest of the ground with
 `every_mutation_is_unsupported`, and it is deliberately outside the conflict-scan one, since nothing copies INTO an
 archive through the volume. A backend that adds a mutation adds the matching call.
+
+### Stream lengths and write progress
+
+`StreamLength::{Known, Unknown}` is shared by `VolumeReadStream::total_size`, `Volume::write_is_single_shot`, and
+`Volume::write_from_stream`. Real-file streams remain `Known`; generated streams use `Unknown` because zero means an
+empty stream, not an absent length. Keeping the distinction at the writer boundary lets a backend decide before I/O
+whether its protocol can frame the body. `supports_unknown_length_writes()` defaults to `false`, and every backend
+keeps that answer until its writer can consume to EOF without a declared total. An unsupported `Unknown` is refused
+before opening or truncating the destination and before polling the source. Unknown writes are never single-shot.
+
+Write callbacks receive one `StreamWriteProgress { bytes_written, expected_length }` value. The structured payload
+keeps cumulative progress and its denominator named rather than relying on two confusable positional `u64`s. For a
+known write, every update carries the original `Known` length and existing mismatch and cancellation behavior remains
+unchanged.
 
 ## The faults `InMemoryVolume` can be told to have
 

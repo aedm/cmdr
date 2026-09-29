@@ -1,7 +1,6 @@
 # Volume abstraction
 
-The `Volume` trait's app-side wiring: backends, the `VolumeManager` registry, eject. Every file system operation goes
-through a `Volume`, **relative to the volume root**.
+App-side backend, registry, and eject wiring. Every operation goes through a `Volume`, **relative to its root**.
 
 ## Module map
 
@@ -35,6 +34,7 @@ through a `Volume`, **relative to the volume root**.
 - **Cross-volume copy flows only through `open_read_stream` / `write_from_stream`, chunk by chunk**, ❌ never draining
   a `VolumeReadStream` or collecting a remote file into a `Vec<u8>`. Every mutation must call `notify_mutation`,
   `write_from_stream` included: its default is a no-op and SMB/MTP events are lossy, so skipping it strands the pane.
+- **Generated streams use `StreamLength::Unknown`, never `Known(0)`; unopted backends refuse before I/O.**
 - **Capability flags default conservative** (`Err(NotSupported)` / `false`), so a backend opts in; several break
   silently when answered wrong (`is_writable` is button state). `capabilities()` is a pure fold, ❌ never overridden.
 - **Two more rules each own a `DETAILS.md` section; read it before touching that area**: a row a pane sees that no

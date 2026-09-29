@@ -29,13 +29,16 @@ fn make_stream_from_chunks(
     // Drop chunk_tx so recv returns None after draining.
     drop(chunk_tx);
 
-    (ChannelReadStream::new(chunk_rx, cancel_tx, total_size), cancel_rx)
+    (
+        ChannelReadStream::new(chunk_rx, cancel_tx, StreamLength::Known(total_size)),
+        cancel_rx,
+    )
 }
 
 #[tokio::test]
 async fn smb_read_stream_empty_file() {
     let (mut stream, _cancel_rx) = make_stream_from_chunks(vec![], 0);
-    assert_eq!(stream.total_size(), 0);
+    assert_eq!(stream.total_size(), StreamLength::Known(0));
     assert_eq!(stream.bytes_read(), 0);
     assert!(stream.next_chunk().await.is_none());
 }
@@ -44,7 +47,7 @@ async fn smb_read_stream_empty_file() {
 async fn smb_read_stream_yields_chunks_in_order() {
     let (mut stream, _cancel_rx) =
         make_stream_from_chunks(vec![Ok(vec![1u8; 100]), Ok(vec![2u8; 50]), Ok(vec![3u8; 30])], 180);
-    assert_eq!(stream.total_size(), 180);
+    assert_eq!(stream.total_size(), StreamLength::Known(180));
 
     let c1 = stream.next_chunk().await.unwrap().unwrap();
     assert_eq!(c1, vec![1u8; 100]);
@@ -175,5 +178,5 @@ fn a_read_takes_the_compound_path_up_to_the_quick_read_limit() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_disconnected_share_promises_nothing_about_single_shot_writes() {
     let vol = make_test_volume();
-    assert!(!vol.write_is_single_shot(10).await);
+    assert!(!vol.write_is_single_shot(StreamLength::Known(10)).await);
 }

@@ -21,7 +21,9 @@ use cmdr_fs::volume::host::activity::BusyVolumes;
 
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{ListingProgress, Volume, VolumeError, VolumeReadStream};
+use crate::file_system::volume::{
+    ListingProgress, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream,
+};
 use crate::ignore_poison::IgnorePoison;
 
 /// The share this double is uploading to. One id, because one double serves one
@@ -163,18 +165,23 @@ impl Volume for ForegroundBusyDest {
             BUSY_DEST_QUIET_WINDOW,
         ))
     }
-    fn write_is_single_shot<'a>(&'a self, size: u64) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-        let single_shot = fits_one_compound_write(self.max_write, size);
+    fn write_is_single_shot<'a>(&'a self, length: StreamLength) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        let single_shot = length
+            .known()
+            .is_some_and(|size| fits_one_compound_write(self.max_write, size));
         Box::pin(async move { single_shot })
     }
     fn write_from_stream<'a>(
         &'a self,
         _dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let written = Arc::clone(&self.written);
         let single_shot = fits_one_compound_write(self.max_write, size);
         Box::pin(async move {
@@ -195,7 +202,12 @@ impl Volume for ForegroundBusyDest {
                 } else {
                     written.lock_ignore_poison().extend_from_slice(&chunk);
                 }
-                if on_progress(bytes_written, size).is_break() {
+                if on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                })
+                .is_break()
+                {
                     return Err(VolumeError::Cancelled("Operation cancelled by user".to_string()));
                 }
             }
@@ -274,10 +286,13 @@ impl Volume for PanicIfProbedDest {
         &'a self,
         _dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let written = Arc::clone(&self.written);
         Box::pin(async move {
             let mut bytes_written = 0u64;
@@ -285,7 +300,12 @@ impl Volume for PanicIfProbedDest {
                 let chunk = chunk?;
                 written.lock_ignore_poison().extend_from_slice(&chunk);
                 bytes_written += chunk.len() as u64;
-                if on_progress(bytes_written, size).is_break() {
+                if on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                })
+                .is_break()
+                {
                     return Err(VolumeError::Cancelled("Operation cancelled by user".to_string()));
                 }
             }

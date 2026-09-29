@@ -245,12 +245,18 @@ async fn stream_one_file(volume: &dyn Volume, source_path: &Path, dest_path: &Pa
         .open_read_stream(source_path)
         .await
         .map_err(|e| FulfillError::from_volume_error(&e, dest_path))?;
-    let size = size_hint.unwrap_or_else(|| stream.total_size());
+    let size = match size_hint {
+        Some(size) => size,
+        None => stream
+            .total_size()
+            .known()
+            .ok_or_else(|| FulfillError::from_volume_error(&VolumeError::NotSupported, dest_path))?,
+    };
 
     // No cancel from this path in v1 (Finder owns the gesture, no progress UI);
     // always Continue. App-quit / device-disconnect aborts arrive as the source
     // stream dropping mid-flight or `next_chunk` erroring, handled by cleanup.
-    let on_progress = &|_done: u64, _total: u64| std::ops::ControlFlow::<()>::Continue(());
+    let on_progress = &|_: crate::file_system::volume::StreamWriteProgress| std::ops::ControlFlow::<()>::Continue(());
 
     write_to_local_dest(dest_path, size, stream, on_progress)
         .await
@@ -267,13 +273,19 @@ async fn write_to_local_dest(
     dest_path: &Path,
     size: u64,
     stream: Box<dyn VolumeReadStream>,
-    on_progress: &(dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+    on_progress: &(dyn Fn(crate::file_system::volume::StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
 ) -> Result<u64, VolumeError> {
     let local = crate::file_system::volume::LocalPosixVolume::new("Local", PathBuf::from("/"));
     // Finder created `dest_path` as a placeholder for us to fill, so it's ours
     // to replace.
     local
-        .write_from_stream(dest_path, WriteMode::CreateOrReplace, size, stream, on_progress)
+        .write_from_stream(
+            dest_path,
+            WriteMode::CreateOrReplace,
+            crate::file_system::volume::StreamLength::Known(size),
+            stream,
+            on_progress,
+        )
         .await
 }
 
@@ -429,8 +441,8 @@ mod tests {
                 }
             })
         }
-        fn total_size(&self) -> u64 {
-            self.total
+        fn total_size(&self) -> crate::file_system::volume::StreamLength {
+            crate::file_system::volume::StreamLength::Known(self.total)
         }
         fn bytes_read(&self) -> u64 {
             if self.first_chunk_sent { 1024 } else { 0 }

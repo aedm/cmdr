@@ -24,6 +24,7 @@
 //! from `super::smb_test_support`.
 
 use super::smb_test_support::*;
+use crate::file_system::volume::StreamLength;
 use cmdr_smb::volume::*;
 use std::sync::atomic::AtomicBool;
 
@@ -298,12 +299,16 @@ async fn smb_integration_many_files_at_full_concurrency_land_intact() {
         .expect("a live session reports its negotiated params");
     let large_bytes = usize::try_from(max_write + 64 * 1024).expect("max_write fits usize on any host we run on");
     assert!(
-        !smb_vol.write_is_single_shot(large_bytes as u64).await,
+        !smb_vol
+            .write_is_single_shot(StreamLength::Known(large_bytes as u64))
+            .await,
         "a {large_bytes}-byte write must NOT fit one compound write against max_write={max_write}, \
          or this batch never exercises the staged streaming path"
     );
     assert!(
-        smb_vol.write_is_single_shot(SMALL_FILE_BYTES as u64).await,
+        smb_vol
+            .write_is_single_shot(StreamLength::Known(SMALL_FILE_BYTES as u64))
+            .await,
         "a {SMALL_FILE_BYTES}-byte write must fit one compound write against max_write={max_write}, \
          or the batch is all one path and the size mix proves nothing"
     );

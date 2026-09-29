@@ -19,7 +19,9 @@ use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Duration;
 
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{ListingProgress, Volume, VolumeError, VolumeReadStream};
+use crate::file_system::volume::{
+    ListingProgress, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream,
+};
 use crate::ignore_poison::IgnorePoison;
 
 pub(super) fn make_state() -> Arc<WriteOperationState> {
@@ -73,8 +75,8 @@ impl VolumeReadStream for SlowChunkedStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -204,10 +206,13 @@ impl Volume for FailOnceStaleDest {
         &'a self,
         _dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         _stream: Box<dyn VolumeReadStream>,
-        _on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        _on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let attempt = self.calls.fetch_add(1, Ordering::SeqCst);
         Box::pin(async move {
             if attempt == 0 {
@@ -323,10 +328,13 @@ impl Volume for FlakyDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let eligible = self.fail_only_named.as_ref().is_none_or(|name| {
             dest.file_name()
                 .is_some_and(|n| n.to_string_lossy().starts_with(name.as_str()))
@@ -340,7 +348,7 @@ impl Volume for FlakyDest {
             if attempt >= self.fail_writes {
                 return self
                     .inner
-                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .write_from_stream(dest, mode, StreamLength::Known(size), stream, on_progress)
                     .await;
             }
             // Drain one chunk and leave it on disk, unremoved: a wedged backend
@@ -455,7 +463,7 @@ impl Volume for UndeletableSource {
         get_space_info,
         open_read_stream,
         create_directory_errors_on_existing_dir,
-        write_from_stream,
+        supports_unknown_length_writes, write_from_stream,
         supports_export,
         operations_are_local,
         supports_local_fs_access,
@@ -579,17 +587,20 @@ impl Volume for WedgedThenWorkingDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let attempt = self.calls.fetch_add(1, Ordering::SeqCst);
         let wedged = Arc::clone(&self.wedged);
         Box::pin(async move {
             if attempt > 0 {
                 return self
                     .inner
-                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .write_from_stream(dest, mode, StreamLength::Known(size), stream, on_progress)
                     .await;
             }
             wedged.store(true, Ordering::SeqCst);
@@ -739,10 +750,13 @@ impl Volume for TierOneWitnessDest {
         &'a self,
         dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         Box::pin(async move {
             let mut data: Vec<u8> = Vec::new();
             self.publish(dest, &data).await?;
@@ -750,7 +764,12 @@ impl Volume for TierOneWitnessDest {
                 data.extend_from_slice(&chunk?);
                 self.publish(dest, &data).await?;
                 self.written.store(data.len() as u64, Ordering::SeqCst);
-                if on_progress(data.len() as u64, size).is_break() {
+                if on_progress(StreamWriteProgress {
+                    bytes_written: data.len() as u64,
+                    expected_length: StreamLength::Known(size),
+                })
+                .is_break()
+                {
                     // What every real backend does on a cooperative cancel: drop
                     // the handle and remove the partial it was writing.
                     let _ = self.inner.delete(dest).await;
@@ -832,8 +851,8 @@ impl VolumeReadStream for ReleasingStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        REL_TOTAL as u64
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(REL_TOTAL as u64)
     }
 
     fn bytes_read(&self) -> u64 {

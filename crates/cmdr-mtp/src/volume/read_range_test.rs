@@ -11,7 +11,7 @@
 
 use std::path::Path;
 
-use cmdr_fs::volume::Volume;
+use cmdr_fs::volume::{StreamLength, Volume};
 
 use crate::testing::{
     ConnectedDevice, connect_fixture, device_lock, test_connection_manager as connection_manager, volume_for,
@@ -157,7 +157,7 @@ async fn bounded_window_read_assembles_byte_exact() {
         .await
         .expect("open_read_stream should succeed");
 
-    assert_eq!(stream.total_size(), payload.len() as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(payload.len() as u64));
 
     let mut assembled = Vec::new();
     let mut windows = 0;

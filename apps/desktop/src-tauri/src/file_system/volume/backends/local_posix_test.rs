@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{ListingProgress, UnwritableReason, WriteAccess};
+use crate::file_system::volume::{ListingProgress, StreamLength, UnwritableReason, WriteAccess};
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::TestDir;
 use std::path::Path;
@@ -464,7 +464,7 @@ async fn test_open_read_stream_single_file() {
 
     let volume = LocalPosixVolume::new("Test", src_dir.to_str().unwrap());
     let mut stream = volume.open_read_stream(Path::new("source.txt")).await.unwrap();
-    assert_eq!(stream.total_size(), 12);
+    assert_eq!(stream.total_size(), StreamLength::Known(12));
 
     let mut content = Vec::new();
     while let Some(chunk) = stream.next_chunk().await {
@@ -510,7 +510,7 @@ async fn test_write_from_stream_creates_file() {
             WriteMode::CreateOrReplace,
             size,
             stream,
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .unwrap();
@@ -551,7 +551,7 @@ async fn test_write_from_stream_multichunk_is_durable_and_correct() {
             WriteMode::CreateOrReplace,
             size,
             stream,
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .unwrap();
@@ -854,7 +854,7 @@ async fn a_stream_onto_a_read_only_filesystem_is_read_only() {
             WriteMode::CreateOrReplace,
             size,
             stream,
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .expect_err("the sealed system volume takes no writes");

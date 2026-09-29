@@ -7,7 +7,9 @@
 use super::SmbVolume;
 use super::mapping::map_smb_error;
 use super::session::update_state_on_smb_error;
-use cmdr_fs::volume::{ChannelReadStream, MutationEvent, Volume, VolumeError, VolumeReadStream, WriteMode};
+use cmdr_fs::volume::{
+    ChannelReadStream, MutationEvent, StreamLength, Volume, VolumeError, VolumeReadStream, WriteMode,
+};
 use log::{debug, warn};
 use std::path::Path;
 use std::pin::Pin;
@@ -176,8 +178,8 @@ impl VolumeReadStream for InlineReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total_size
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total_size)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -317,7 +319,11 @@ impl SmbVolume {
             }
         };
 
-        Ok(ChannelReadStream::new(chunk_rx, cancel_tx, total_size))
+        Ok(ChannelReadStream::new(
+            chunk_rx,
+            cancel_tx,
+            StreamLength::Known(total_size),
+        ))
     }
 
     /// The negotiated `max_write_size` for the live session, or `None` when

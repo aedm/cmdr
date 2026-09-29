@@ -10,8 +10,8 @@ use super::tests::make_state;
 use super::*;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{
-    DirectoryCreation, InMemoryVolume, ListingProgress, ScanConflict, SourceItemInfo, SpaceInfo, Volume,
-    VolumeReadStream,
+    DirectoryCreation, InMemoryVolume, ListingProgress, ScanConflict, SourceItemInfo, SpaceInfo, StreamLength,
+    StreamWriteProgress, Volume, VolumeReadStream,
 };
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::test_support::TestOperationGuard;
@@ -145,10 +145,13 @@ impl Volume for FlakyMergeDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> StdPin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let eligible = dest
             .file_name()
             .is_some_and(|n| n.to_string_lossy().starts_with(self.name.as_str()));
@@ -161,7 +164,7 @@ impl Volume for FlakyMergeDest {
             if attempt >= self.fail_writes {
                 return self
                     .inner
-                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .write_from_stream(dest, mode, StreamLength::Known(size), stream, on_progress)
                     .await;
             }
             // Leave the partial behind, like a backend that never reached its own

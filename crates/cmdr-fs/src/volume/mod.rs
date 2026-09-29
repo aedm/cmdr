@@ -36,8 +36,8 @@ pub trait VolumeReadStream: Send {
     )]
     fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>>;
 
-    /// Total size of the file in bytes.
-    fn total_size(&self) -> u64;
+    /// Final byte length, when it is known before the stream reaches EOF.
+    fn total_size(&self) -> StreamLength;
 
     /// Bytes read so far (for progress tracking).
     fn bytes_read(&self) -> u64;
@@ -1172,6 +1172,15 @@ pub trait Volume: Send + Sync {
         false
     }
 
+    /// Whether this backend can consume a stream whose final length is unknown.
+    ///
+    /// This is separate from [`supports_streaming`](Self::supports_streaming): a
+    /// protocol may stream ordinary files while still requiring an exact length
+    /// before it opens a destination. The default is conservative.
+    fn supports_unknown_length_writes(&self) -> bool {
+        false
+    }
+
     /// Whether `create_directory` reliably returns `VolumeError::AlreadyExists`
     /// when a directory of the same name already exists at the path.
     ///
@@ -1533,20 +1542,20 @@ pub trait Volume: Send + Sync {
     /// atomic (SMB's `FileCreate`), never a check before the write.
     ///
     /// `false` (the default): every write to this volume stages.
-    fn write_is_single_shot<'a>(&'a self, size: u64) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-        let _ = size;
+    fn write_is_single_shot<'a>(&'a self, length: StreamLength) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        let _ = length;
         Box::pin(async { false })
     }
 
     /// Writes data from a stream to the given path.
     ///
-    /// `on_progress(bytes_written, total_size)` is called after each chunk is
+    /// `on_progress` receives structured byte progress after each chunk is
     /// written. Return `ControlFlow::Break(())` to cancel the transfer.
     ///
     /// # Arguments
     /// * `dest` - Destination path
     /// * `mode` - What to do with a file already at `dest` ([`WriteMode`])
-    /// * `size` - Total size in bytes (required for protocols like MTP)
+    /// * `length` - Exact total size, or unknown for generated output
     /// * `stream` - Source data stream
     /// * `on_progress` - Progress callback; return `ControlFlow::Break(())` to cancel
     ///
@@ -1579,11 +1588,11 @@ pub trait Volume: Send + Sync {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let _ = (dest, mode, size, stream, on_progress);
+        let _ = (dest, mode, length, stream, on_progress);
         Box::pin(async { Err(VolumeError::NotSupported) })
     }
 

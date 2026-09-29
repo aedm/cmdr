@@ -27,6 +27,7 @@ use super::tests::{make_state, make_volumes};
 use super::*;
 use crate::file_system::volume::InMemoryVolume;
 use crate::file_system::volume::WriteMode;
+use crate::file_system::volume::{StreamLength, StreamWriteProgress};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::state::cancel_write_operation;
 use crate::file_system::write_operations::test_support::TestOperationGuard;
@@ -83,7 +84,7 @@ impl Volume for WindowWatchingDest {
         inner => name, root, lane_key, list_directory, get_metadata, exists, is_directory, create_file,
         create_directory_all, delete, rename, get_space_info, supports_streaming, supports_export,
         create_directory_errors_on_existing_dir, scan_for_copy, scan_for_copy_batch, open_read_stream,
-        write_is_single_shot,
+        supports_unknown_length_writes, write_is_single_shot,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -116,9 +117,9 @@ impl Volume for WindowWatchingDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn crate::file_system::volume::VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             let live = self.live.fetch_add(1, Ordering::Relaxed) + 1;
@@ -131,7 +132,7 @@ impl Volume for WindowWatchingDest {
             }
             let result = self
                 .inner
-                .write_from_stream(dest, mode, size, stream, on_progress)
+                .write_from_stream(dest, mode, length, stream, on_progress)
                 .await;
             self.live.fetch_sub(1, Ordering::Relaxed);
             result
@@ -151,7 +152,7 @@ impl Volume for PoisonedLeafSource {
         inner => name, root, lane_key, list_directory, get_metadata, exists, is_directory, create_file,
         create_directory, create_directory_all, delete, rename, get_space_info, supports_streaming,
         supports_export, operations_are_local, max_concurrent_ops, create_directory_errors_on_existing_dir,
-        scan_for_copy, scan_for_copy_batch, write_from_stream, write_is_single_shot,
+        scan_for_copy, scan_for_copy_batch, supports_unknown_length_writes, write_from_stream, write_is_single_shot,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {

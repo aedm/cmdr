@@ -36,7 +36,7 @@ use super::super::faulty_volume::forward_volume_methods;
 use super::test_support::make_state;
 use super::*;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{InMemoryVolume, VolumeError};
+use crate::file_system::volume::{InMemoryVolume, StreamLength, StreamWriteProgress, VolumeError};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 
 /// How long a leaf lingers inside `write_from_stream` waiting for siblings to
@@ -83,7 +83,7 @@ impl Volume for TablePhotographingDest {
         inner => name, root, lane_key, list_directory, get_metadata, exists, is_directory, create_file,
         create_directory, create_directory_all, delete, rename, get_space_info, supports_streaming, supports_export,
         create_directory_errors_on_existing_dir, scan_for_copy, scan_for_copy_batch, open_read_stream,
-        write_is_single_shot,
+        supports_unknown_length_writes, write_is_single_shot,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -102,9 +102,9 @@ impl Volume for TablePhotographingDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn crate::file_system::volume::VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             self.live.fetch_add(1, Ordering::Relaxed);
@@ -118,7 +118,7 @@ impl Volume for TablePhotographingDest {
             }
             let result = self
                 .inner
-                .write_from_stream(dest, mode, size, stream, on_progress)
+                .write_from_stream(dest, mode, length, stream, on_progress)
                 .await;
             self.live.fetch_sub(1, Ordering::Relaxed);
             result

@@ -225,7 +225,9 @@ async fn upload_archive(
             bytes_total: size,
         });
     }
-    let progress = |written: u64, total: u64| {
+    let progress = |progress: crate::file_system::volume::StreamWriteProgress| {
+        let written = progress.bytes_written;
+        let total = size;
         if let Some(observer) = progress_observer {
             if written >= total {
                 observer(RemoteCommitProgress::Finishing);
@@ -245,7 +247,13 @@ async fn upload_archive(
 
     // `remote_temp` is a `.cmdr-tmp-*` we just minted, so it's ours to replace.
     match parent
-        .write_from_stream(remote_temp, WriteMode::CreateOrReplace, size, stream, &progress)
+        .write_from_stream(
+            remote_temp,
+            WriteMode::CreateOrReplace,
+            crate::file_system::volume::StreamLength::Known(size),
+            stream,
+            &progress,
+        )
         .await
     {
         Ok(_) => {

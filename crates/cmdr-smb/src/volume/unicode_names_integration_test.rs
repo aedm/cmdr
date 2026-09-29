@@ -21,8 +21,8 @@ use super::test_support::*;
 use super::*;
 use cmdr_fs::volume::DirectoryChange;
 use cmdr_fs::volume::InMemoryVolume;
-use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::host::listings::{ListingHost, RecordingListings};
+use cmdr_fs::volume::{StreamLength, StreamWriteProgress, WriteMode};
 
 /// `fotók`, composed: the album directory, spelled the way the NAS stores it.
 const NFC_DIR: &str = "fot\u{f3}k";
@@ -178,7 +178,7 @@ async fn a_decomposed_file_copies_off_the_share_and_within_it() {
 
     // Off the share, the way a copy to a local disk streams it.
     let elsewhere = InMemoryVolume::new("Elsewhere");
-    let no_progress = &|_: u64, _: u64| std::ops::ControlFlow::Continue(());
+    let no_progress = &|_: StreamWriteProgress| std::ops::ControlFlow::Continue(());
     let exported = async {
         let stream = vol.open_read_stream(&file).await?;
         let dest = PathBuf::from("/").join(NFD_FILE);
@@ -186,7 +186,7 @@ async fn a_decomposed_file_copies_off_the_share_and_within_it() {
             .write_from_stream(
                 &dest,
                 WriteMode::CreateOrReplace,
-                PAYLOAD.len() as u64,
+                StreamLength::Known(PAYLOAD.len() as u64),
                 stream,
                 no_progress,
             )
@@ -202,7 +202,7 @@ async fn a_decomposed_file_copies_off_the_share_and_within_it() {
         vol.write_from_stream(
             &dest,
             WriteMode::CreateOrReplace,
-            PAYLOAD.len() as u64,
+            StreamLength::Known(PAYLOAD.len() as u64),
             stream,
             no_progress,
         )

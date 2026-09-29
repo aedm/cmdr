@@ -19,7 +19,7 @@ use std::time::Duration;
 use cmdr_fs::staging::is_staging_temp_name;
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::credentials::InMemoryCredentials;
-use cmdr_fs::volume::{Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{StreamLength, Volume, VolumeError, VolumeReadStream};
 use tokio_util::sync::CancellationToken;
 
 use super::testing::*;
@@ -124,8 +124,8 @@ impl VolumeReadStream for BufferSource {
             Some(Ok(chunk))
         })
     }
-    fn total_size(&self) -> u64 {
-        self.bytes.len() as u64
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.bytes.len() as u64)
     }
     fn bytes_read(&self) -> u64 {
         self.at as u64
@@ -186,9 +186,13 @@ async fn assert_no_staging_leftovers(volume: &WebdavVolume, dir: &Path, what: &s
 async fn write(volume: &WebdavVolume, path: &Path, bytes: Vec<u8>) -> Result<u64, VolumeError> {
     let size = bytes.len() as u64;
     volume
-        .write_from_stream(path, WriteMode::CreateOrReplace, size, source(bytes), &|_, _| {
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            path,
+            WriteMode::CreateOrReplace,
+            StreamLength::Known(size),
+            source(bytes),
+            &|_| ControlFlow::Continue(()),
+        )
         .await
 }
 
@@ -298,7 +302,7 @@ async fn a_whole_file_stream_is_byte_exact_and_knows_its_size_up_front() {
         .expect(FIXTURE);
     // The transfer layer draws its progress bar from `total_size()` before the
     // first chunk lands: that is `Content-Length`, and Apache always sends it.
-    let size = stream.total_size();
+    let size = stream.total_size().known().expect("WebDAV content length is known");
     assert_eq!(size, 4 * 1024 * 1024);
 
     let mut read = Vec::new();
@@ -432,7 +436,7 @@ async fn a_resumed_stream_skips_locally_when_the_server_ignores_the_header() {
 
     // The progress bar's denominator, which is the FILE's size on both answers:
     // a 206 reads it off `Content-Range`, a 200 off `Content-Length`.
-    assert_eq!(stream.total_size(), whole);
+    assert_eq!(stream.total_size(), StreamLength::Known(whole));
     let mut read = Vec::new();
     while let Some(chunk) = stream.next_chunk().await {
         read.extend_from_slice(&chunk.expect(FIXTURE));
@@ -494,9 +498,13 @@ async fn a_source_that_ends_early_never_reaches_the_users_filename() {
     let promised = bytes.len() as u64 + 40_000;
 
     let refused = volume
-        .write_from_stream(&path, WriteMode::CreateOrReplace, promised, source(bytes), &|_, _| {
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            &path,
+            WriteMode::CreateOrReplace,
+            StreamLength::Known(promised),
+            source(bytes),
+            &|_| ControlFlow::Continue(()),
+        )
         .await;
 
     assert!(
@@ -536,9 +544,13 @@ async fn a_source_that_overruns_its_promise_never_reaches_the_users_filename() {
     let promised = 150_000;
 
     let refused = volume
-        .write_from_stream(&path, WriteMode::CreateOrReplace, promised, source(bytes), &|_, _| {
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            &path,
+            WriteMode::CreateOrReplace,
+            StreamLength::Known(promised),
+            source(bytes),
+            &|_| ControlFlow::Continue(()),
+        )
         .await;
 
     assert!(
@@ -576,9 +588,9 @@ async fn a_source_that_overruns_on_a_piece_boundary_never_reaches_the_users_file
         .write_from_stream(
             &path,
             WriteMode::CreateOrReplace,
-            promised,
+            StreamLength::Known(promised),
             source_in_pieces(bytes, 50_000),
-            &|_, _| ControlFlow::Continue(()),
+            &|_| ControlFlow::Continue(()),
         )
         .await;
 
@@ -615,13 +627,19 @@ async fn a_cancelled_upload_leaves_neither_the_destination_nor_a_temp() {
     // The transfer engine's Cancel: `Break`, once bytes are actually moving, so
     // the cancel lands mid-body rather than before the first one.
     let cancelled = volume
-        .write_from_stream(&path, WriteMode::CreateOrReplace, size, source, &|sent, _| {
-            if sent > 0 {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        })
+        .write_from_stream(
+            &path,
+            WriteMode::CreateOrReplace,
+            StreamLength::Known(size),
+            source,
+            &|progress| {
+                if progress.bytes_written > 0 {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+        )
         .await;
 
     assert!(

@@ -24,7 +24,9 @@
 //! are.
 
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{DirectoryCreation, ListingProgress, Volume, VolumeError, VolumeReadStream};
+use crate::file_system::volume::{
+    DirectoryCreation, ListingProgress, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream,
+};
 use crate::ignore_poison::IgnorePoison;
 use std::collections::HashMap;
 use std::future::Future;
@@ -154,6 +156,11 @@ macro_rules! forward_volume_methods {
             self.$inner.supports_streaming()
         }
     };
+    (@one $inner:ident, supports_unknown_length_writes) => {
+        fn supports_unknown_length_writes(&self) -> bool {
+            self.$inner.supports_unknown_length_writes()
+        }
+    };
     (@one $inner:ident, supports_export) => {
         fn supports_export(&self) -> bool {
             self.$inner.supports_export()
@@ -217,16 +224,16 @@ macro_rules! forward_volume_methods {
             &'a self,
             dest: &'a ::std::path::Path,
             mode: $crate::file_system::volume::WriteMode,
-            size: u64,
+            length: $crate::file_system::volume::StreamLength,
             stream: Box<dyn $crate::file_system::volume::VolumeReadStream>,
-            on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+            on_progress: &'a (dyn Fn($crate::file_system::volume::StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
         ) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = Result<u64, $crate::file_system::volume::VolumeError>> + Send + 'a>> {
-            self.$inner.write_from_stream(dest, mode, size, stream, on_progress)
+            self.$inner.write_from_stream(dest, mode, length, stream, on_progress)
         }
     };
     (@one $inner:ident, write_is_single_shot) => {
-        fn write_is_single_shot<'a>(&'a self, size: u64) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = bool> + Send + 'a>> {
-            self.$inner.write_is_single_shot(size)
+        fn write_is_single_shot<'a>(&'a self, length: $crate::file_system::volume::StreamLength) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = bool> + Send + 'a>> {
+            self.$inner.write_is_single_shot(length)
         }
     };
 }
@@ -349,7 +356,7 @@ impl<V: Volume + 'static> Volume for FaultyVolume<V> {
         scan_for_copy,
         scan_for_copy_batch,
         scan_for_conflicts,
-        write_is_single_shot,
+        supports_unknown_length_writes, write_is_single_shot,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -496,13 +503,13 @@ impl<V: Volume + 'static> Volume for FaultyVolume<V> {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         match self.fault_for(FaultyOp::WriteFromStream) {
             Some(e) => Box::pin(async move { Err(e) }),
-            None => self.inner.write_from_stream(dest, mode, size, stream, on_progress),
+            None => self.inner.write_from_stream(dest, mode, length, stream, on_progress),
         }
     }
 }

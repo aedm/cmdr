@@ -19,7 +19,9 @@ use std::sync::Mutex as StdMutex;
 
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{InMemoryVolume, ListingProgress, Volume, VolumeError, VolumeReadStream};
+use crate::file_system::volume::{
+    InMemoryVolume, ListingProgress, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream,
+};
 use crate::ignore_poison::IgnorePoison;
 
 /// A destination that reports single-shot writes up to `limit` and records every
@@ -101,18 +103,23 @@ impl Volume for SingleShotDest {
             Ok(())
         })
     }
-    fn write_is_single_shot<'a>(&'a self, size: u64) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-        let limit = self.limit;
-        Box::pin(async move { limit.is_some_and(|limit| size > 0 && size <= limit) })
+    fn write_is_single_shot<'a>(&'a self, length: StreamLength) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        let answer = length
+            .known()
+            .is_some_and(|size| self.limit.is_some_and(|limit| size > 0 && size <= limit));
+        Box::pin(async move { answer })
     }
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         let writes = Arc::clone(&self.writes);
         let recorded = dest.to_path_buf();
         Box::pin(async move {
@@ -120,7 +127,12 @@ impl Volume for SingleShotDest {
             let mut written = 0u64;
             while let Some(chunk) = stream.next_chunk().await {
                 written += chunk?.len() as u64;
-                if on_progress(written, size).is_break() {
+                if on_progress(StreamWriteProgress {
+                    bytes_written: written,
+                    expected_length: StreamLength::Known(size),
+                })
+                .is_break()
+                {
                     return Err(VolumeError::Cancelled("Operation cancelled by user".to_string()));
                 }
             }

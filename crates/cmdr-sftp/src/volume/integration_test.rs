@@ -474,7 +474,7 @@ async fn a_stream_knows_its_size_before_it_yields_a_byte() {
         .open_read_stream(Path::new(FIXTURE_LARGE_FILE))
         .await
         .expect(FIXTURE);
-    let size = stream.total_size();
+    let size = stream.total_size().known().expect("SFTP file size is known");
     assert!(size >= 1024 * 1024);
 
     let mut read = Vec::new();
@@ -539,7 +539,7 @@ async fn dropping_a_read_stream_early_leaves_the_session_usable() {
     let first = stream.next_chunk().await.expect(FIXTURE).expect(FIXTURE);
     assert!(!first.is_empty());
     assert!(
-        stream.bytes_read() < stream.total_size(),
+        stream.bytes_read() < stream.total_size().known().expect("SFTP file size is known"),
         "the cell is only meaningful if the file is still mid-read"
     );
     drop(stream);

@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
 use cmdr_fs::staging::is_staging_temp_name;
-use cmdr_fs::volume::{SpaceInfo, Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{SpaceInfo, StreamLength, Volume, VolumeError, VolumeReadStream};
 use reqwest::header::{CONTENT_TYPE, RANGE};
 use reqwest::{Body, Method, StatusCode};
 
@@ -98,8 +98,8 @@ impl VolumeReadStream for BufferSource {
             Some(Ok(chunk))
         })
     }
-    fn total_size(&self) -> u64 {
-        self.bytes.len() as u64
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.bytes.len() as u64)
     }
     fn bytes_read(&self) -> u64 {
         self.at as u64
@@ -134,12 +134,12 @@ async fn the_write_path_lands_a_file_byte_exact_on_sabre_dav() {
         .write_from_stream(
             &path,
             WriteMode::CreateOrReplace,
-            bytes.len() as u64,
+            StreamLength::Known(bytes.len() as u64),
             Box::new(BufferSource {
                 bytes: bytes.clone(),
                 at: 0,
             }),
-            &|_, _| ControlFlow::Continue(()),
+            &|_| ControlFlow::Continue(()),
         )
         .await
         .expect(FIXTURE);
@@ -234,12 +234,12 @@ async fn a_ranged_get_is_answered_with_a_window_rather_than_the_whole_file() {
         .write_from_stream(
             &dir.join(name),
             WriteMode::CreateOrReplace,
-            bytes.len() as u64,
+            StreamLength::Known(bytes.len() as u64),
             Box::new(BufferSource {
                 bytes: bytes.clone(),
                 at: 0,
             }),
-            &|_, _| ControlFlow::Continue(()),
+            &|_| ControlFlow::Continue(()),
         )
         .await
         .expect(FIXTURE);

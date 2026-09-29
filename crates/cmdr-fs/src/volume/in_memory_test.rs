@@ -248,6 +248,15 @@ async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
 }
 
 #[tokio::test]
+async fn unknown_write_honors_the_shared_early_refusal_contract() {
+    let volume = InMemoryVolume::new("Test");
+    let original = b"the user's original bytes";
+    volume.create_file(Path::new("/notes.txt"), original).await.unwrap();
+
+    conformance::assert_unknown_write_is_refused_before_io(&volume, Path::new("/notes.txt"), original).await;
+}
+
+#[tokio::test]
 async fn create_directory_all_honors_the_shared_honesty_contract() {
     let volume = InMemoryVolume::new("Test");
     volume.create_directory(Path::new("/album")).await.unwrap();

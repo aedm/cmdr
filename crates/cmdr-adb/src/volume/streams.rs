@@ -11,7 +11,7 @@ use std::ops::ControlFlow;
 use std::path::Path;
 
 use cmdr_fs::staging::STAGING_TEMP_MARKER;
-use cmdr_fs::volume::{ChannelReadStream, VolumeError, VolumeReadStream, WriteMode};
+use cmdr_fs::volume::{ChannelReadStream, StreamLength, VolumeError, VolumeReadStream, WriteMode};
 use log::debug;
 
 use super::AdbVolume;
@@ -65,7 +65,11 @@ impl AdbVolume {
             .runtime()
             .spawn(async move { produce(inner, session, device, offset, chunk_tx, cancel_rx).await });
 
-        Ok(ChannelReadStream::new(chunk_rx, cancel_tx, total_size))
+        Ok(ChannelReadStream::new(
+            chunk_rx,
+            cancel_tx,
+            StreamLength::Known(total_size),
+        ))
     }
 
     /// Streams `stream` onto `dest` through a staging sibling, then moves it
@@ -266,8 +270,8 @@ impl VolumeReadStream for BytesReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {

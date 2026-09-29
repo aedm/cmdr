@@ -21,6 +21,7 @@ use super::test_support::*;
 use super::*;
 use cmdr_fs::volume::InMemoryVolume;
 use cmdr_fs::volume::WriteMode;
+use cmdr_fs::volume::{StreamLength, StreamWriteProgress};
 use std::pin::Pin;
 
 #[tokio::test]
@@ -37,12 +38,12 @@ async fn smb_integration_write_from_stream() {
     source.create_file(Path::new("/payload.bin"), &data).await.unwrap();
 
     let stream = source.open_read_stream(Path::new("/payload.bin")).await.unwrap();
-    let no_progress = &|_: u64, _: u64| std::ops::ControlFlow::Continue(());
+    let no_progress = &|_: StreamWriteProgress| std::ops::ControlFlow::Continue(());
     let bytes = vol
         .write_from_stream(
             Path::new(&format!("{}/payload.bin", dir)),
             WriteMode::CreateOrReplace,
-            50_000,
+            StreamLength::Known(50_000),
             stream,
             no_progress,
         )
@@ -86,12 +87,12 @@ async fn smb_integration_write_from_stream_with_progress() {
         .write_from_stream(
             Path::new(&format!("{}/big.bin", dir)),
             WriteMode::CreateOrReplace,
-            200_000,
+            StreamLength::Known(200_000),
             stream,
-            &|bytes_done, total| {
+            &|progress| {
                 progress_calls.fetch_add(1, Ordering::Relaxed);
-                last_bytes.store(bytes_done, Ordering::Relaxed);
-                assert_eq!(total, 200_000);
+                last_bytes.store(progress.bytes_written, Ordering::Relaxed);
+                assert_eq!(progress.expected_length, StreamLength::Known(200_000));
                 std::ops::ControlFlow::Continue(())
             },
         )
@@ -140,9 +141,9 @@ async fn smb_integration_write_from_stream_cancel() {
         .write_from_stream(
             Path::new(&format!("{}/big.bin", dir)),
             WriteMode::CreateOrReplace,
-            500_000,
+            StreamLength::Known(500_000),
             stream,
-            &|_, _| {
+            &|_| {
                 let n = call_count.fetch_add(1, Ordering::Relaxed);
                 if n >= 1 {
                     std::ops::ControlFlow::Break(())
@@ -182,9 +183,9 @@ async fn smb_integration_cross_volume_streaming_copy() {
         .write_from_stream(
             Path::new(&format!("{}/photo.bin", dir)),
             WriteMode::CreateOrReplace,
-            100_000,
+            StreamLength::Known(100_000),
             stream,
-            &|_, _| {
+            &|_| {
                 progress_calls.fetch_add(1, Ordering::Relaxed);
                 std::ops::ControlFlow::Continue(())
             },
@@ -237,12 +238,12 @@ async fn smb_integration_write_from_stream_streams_large_file() {
         .write_from_stream(
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
-            size as u64,
+            StreamLength::Known(size as u64),
             stream,
-            &|done, total| {
+            &|progress| {
                 progress_calls.fetch_add(1, Ordering::Relaxed);
-                last_bytes.store(done, Ordering::Relaxed);
-                assert_eq!(total, size as u64);
+                last_bytes.store(progress.bytes_written, Ordering::Relaxed);
+                assert_eq!(progress.expected_length, StreamLength::Known(size as u64));
                 std::ops::ControlFlow::Continue(())
             },
         )
@@ -297,9 +298,9 @@ async fn smb_integration_write_from_stream_cancel_mid_write() {
         .write_from_stream(
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
-            size as u64,
+            StreamLength::Known(size as u64),
             stream,
-            &|_, _| {
+            &|_| {
                 let n = call_count.fetch_add(1, Ordering::Relaxed);
                 if n >= 1 {
                     std::ops::ControlFlow::Break(())
@@ -350,8 +351,8 @@ impl VolumeReadStream for ErroringReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total_size
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total_size)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -390,9 +391,9 @@ async fn smb_integration_write_from_stream_source_error_deletes_partial() {
         .write_from_stream(
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             Box::new(stream),
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await;
 
@@ -448,7 +449,7 @@ async fn smb_integration_write_progress_reports_confirmed_bytes_not_queued_ones(
         .expect("a connected volume has negotiated params");
     let size = max_write + 64 * 1024;
     assert!(
-        !vol.write_is_single_shot(size).await,
+        !vol.write_is_single_shot(StreamLength::Known(size)).await,
         "this test only means something on the streaming writer"
     );
 
@@ -463,11 +464,11 @@ async fn smb_integration_write_progress_reports_confirmed_bytes_not_queued_ones(
         .write_from_stream(
             Path::new(&format!("{}/pipelined.bin", dir)),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             stream,
-            &|bytes_done, total| {
-                assert_eq!(total, size);
-                reported.lock().unwrap().push(bytes_done);
+            &|progress| {
+                assert_eq!(progress.expected_length, StreamLength::Known(size));
+                reported.lock().unwrap().push(progress.bytes_written);
                 std::ops::ControlFlow::Continue(())
             },
         )

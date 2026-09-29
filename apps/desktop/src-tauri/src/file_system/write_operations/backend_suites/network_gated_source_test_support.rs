@@ -58,8 +58,8 @@ impl VolumeReadStream for GatedChunks {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.bytes.len() as u64
+    fn total_size(&self) -> crate::file_system::volume::StreamLength {
+        crate::file_system::volume::StreamLength::Known(self.bytes.len() as u64)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -209,7 +209,7 @@ impl VolumeReadStream for GatedLiveStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
+    fn total_size(&self) -> crate::file_system::volume::StreamLength {
         self.inner.total_size()
     }
 

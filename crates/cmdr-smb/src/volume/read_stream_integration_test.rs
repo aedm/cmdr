@@ -16,6 +16,7 @@
 
 use super::test_support::*;
 use super::*;
+use cmdr_fs::volume::StreamLength;
 
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
@@ -34,7 +35,7 @@ async fn smb_integration_open_read_stream() {
         .open_read_stream(Path::new(&format!("{}/read.txt", dir)))
         .await
         .unwrap();
-    assert_eq!(stream.total_size(), data.len() as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(data.len() as u64));
 
     let mut reassembled = Vec::new();
     while let Some(Ok(chunk)) = stream.next_chunk().await {
@@ -70,7 +71,7 @@ async fn smb_integration_open_read_stream_large_file_spans_many_chunks() {
     // 32-byte hex pair instead of a 20 MB `Vec<u8>` diff. Also avoids
     // the 20 MB reassembly allocation.
     let mut stream = vol.open_read_stream(Path::new(&smb_path)).await.unwrap();
-    assert_eq!(stream.total_size(), size as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(size as u64));
 
     let mut hasher = blake3::Hasher::new();
     let mut chunks_seen = 0usize;
@@ -118,7 +119,7 @@ async fn smb_integration_read_stream_large_file_multi_chunk() {
     // Hash chunks as they arrive (see the sibling large-file test for
     // why we avoid `assert_eq!` on 20 MB `Vec<u8>`s).
     let mut stream = vol.open_read_stream(Path::new(&smb_path)).await.unwrap();
-    assert_eq!(stream.total_size(), size as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(size as u64));
 
     let mut chunks_seen = 0usize;
     let mut hasher = blake3::Hasher::new();

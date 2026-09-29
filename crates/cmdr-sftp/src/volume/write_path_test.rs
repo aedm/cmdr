@@ -12,7 +12,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::Mutex;
 
-use cmdr_fs::volume::{DirectoryChange, DirectoryCreation, Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{DirectoryChange, DirectoryCreation, StreamLength, Volume, VolumeError, VolumeReadStream};
 
 use super::SftpVolume;
 use super::testing::*;
@@ -90,13 +90,13 @@ async fn progress_counts_up_to_the_whole_file() {
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             source(bytes),
-            &|done, total| {
+            &|progress| {
                 reported
                     .lock()
                     .expect("no cell panics holding this")
-                    .push((done, total));
+                    .push((progress.bytes_written, progress.expected_length));
                 ControlFlow::Continue(())
             },
         )
@@ -106,7 +106,7 @@ async fn progress_counts_up_to_the_whole_file() {
     let reported = reported.into_inner().expect("no cell panics holding this");
     assert!(reported.len() > 1, "a multi-chunk write reports more than once");
     assert!(
-        reported.iter().all(|(_, total)| *total == size),
+        reported.iter().all(|(_, total)| *total == StreamLength::Known(size)),
         "every tick carries the size the caller promised"
     );
     assert_eq!(reported.last().map(|(done, _)| *done), Some(size), "and it reaches it");
@@ -128,9 +128,9 @@ async fn a_cancelled_write_leaves_nothing_behind() {
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            PAYLOAD as u64,
+            StreamLength::Known(PAYLOAD as u64),
             source(fixture_large_bytes(PAYLOAD)),
-            &|_, _| ControlFlow::Break(()),
+            &|_| ControlFlow::Break(()),
         )
         .await;
 
@@ -159,9 +159,9 @@ async fn a_source_that_stops_partway_takes_the_partial_with_it() {
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            PAYLOAD as u64,
+            StreamLength::Known(PAYLOAD as u64),
             failing_source(fixture_large_bytes(PAYLOAD)),
-            &|_, _| ControlFlow::Continue(()),
+            &|_| ControlFlow::Continue(()),
         )
         .await;
 
@@ -468,9 +468,9 @@ async fn write(volume: &SftpVolume, path: &str, bytes: Vec<u8>) -> Result<u64, V
         .write_from_stream(
             Path::new(path),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             source(bytes),
-            &|_, _| ControlFlow::Continue(()),
+            &|_| ControlFlow::Continue(()),
         )
         .await
 }
@@ -515,8 +515,8 @@ impl VolumeReadStream for ScriptedSource {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.bytes.len() as u64
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.bytes.len() as u64)
     }
 
     fn bytes_read(&self) -> u64 {

@@ -30,7 +30,9 @@ use crate::file_system::write_operations::types::ConflictResolution;
 
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{CopyScanResult, ListingProgress, SpaceInfo, VolumeReadStream};
+use crate::file_system::volume::{
+    CopyScanResult, ListingProgress, SpaceInfo, StreamLength, StreamWriteProgress, VolumeReadStream,
+};
 use std::pin::Pin as StdPin;
 
 /// A `VolumeReadStream` that yields exactly one chunk, then fails. Models a
@@ -53,8 +55,8 @@ impl VolumeReadStream for FailAfterOneChunkStream {
             }
         })
     }
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
     }
     fn bytes_read(&self) -> u64 {
         // Best-effort: 4 once the single chunk has been handed out, else 0.
@@ -381,11 +383,11 @@ impl Volume for RenameFailsDestVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> StdPin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, length, stream, on_progress)
     }
     /// The whole point of this double: the finalize rename onto `fails_onto`
     /// fails. Every other rename (the staged landing of the batch's other files)

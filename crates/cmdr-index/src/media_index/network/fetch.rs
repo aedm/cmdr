@@ -597,8 +597,8 @@ mod tests {
                     }
                 })
             }
-            fn total_size(&self) -> u64 {
-                4096
+            fn total_size(&self) -> cmdr_fs::volume::StreamLength {
+                cmdr_fs::volume::StreamLength::Known(4096)
             }
             fn bytes_read(&self) -> u64 {
                 if self.sent { 1024 } else { 0 }

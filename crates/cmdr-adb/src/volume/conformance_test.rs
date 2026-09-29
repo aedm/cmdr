@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use cmdr_fs::staging::is_staging_temp_name;
 use cmdr_fs::volume::conformance;
-use cmdr_fs::volume::{DirectoryCreation, Volume, VolumeError};
+use cmdr_fs::volume::{DirectoryCreation, StreamLength, Volume, VolumeError};
 
 use super::AdbVolume;
 use super::testing::{FIXTURE_SERIAL, connect_fake, fixture_path};
@@ -136,10 +136,12 @@ async fn a_write_lands_through_a_staging_sibling_and_leaves_no_partial() {
         .write_from_stream(
             &fixture_path("/sdcard/big.bin"),
             WriteMode::CreateOrReplace,
-            payload.len() as u64,
+            StreamLength::Known(payload.len() as u64),
             source,
-            &|done, total| {
-                seen.lock().unwrap().push((done, total));
+            &|progress| {
+                seen.lock()
+                    .unwrap()
+                    .push((progress.bytes_written, progress.expected_length));
                 std::ops::ControlFlow::Continue(())
             },
         )
@@ -161,7 +163,10 @@ async fn a_write_lands_through_a_staging_sibling_and_leaves_no_partial() {
     );
     let seen = seen.lock().unwrap();
     assert!(!seen.is_empty(), "progress must be reported");
-    assert_eq!(seen.last(), Some(&(payload.len() as u64, payload.len() as u64)));
+    assert_eq!(
+        seen.last(),
+        Some(&(payload.len() as u64, StreamLength::Known(payload.len() as u64)))
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -173,9 +178,9 @@ async fn a_cancelled_write_removes_its_partial() {
         .write_from_stream(
             &fixture_path("/sdcard/never.bin"),
             WriteMode::CreateOrReplace,
-            payload.len() as u64,
+            StreamLength::Known(payload.len() as u64),
             source,
-            &|_, _| std::ops::ControlFlow::Break(()),
+            &|_| std::ops::ControlFlow::Break(()),
         )
         .await;
     assert!(matches!(outcome, Err(VolumeError::Cancelled(_))), "{outcome:?}");
@@ -222,7 +227,7 @@ async fn cancelling_a_read_mid_file_releases_the_socket_and_the_volume_keeps_wor
         .open_read_stream(&fixture_path("/sdcard/big.bin"))
         .await
         .expect("open");
-    assert_eq!(stream.total_size(), big.len() as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(big.len() as u64));
     let first = stream.next_chunk().await.expect("a first chunk").expect("no error");
     assert_eq!(&first[..], &big[..first.len()]);
     stream.cancel_and_release().await;
@@ -243,7 +248,7 @@ async fn cancelling_a_read_mid_file_releases_the_socket_and_the_volume_keeps_wor
         tail.extend_from_slice(&chunk.unwrap());
     }
     assert_eq!(&tail[..], &big[100_000..]);
-    assert_eq!(resumed.total_size(), big.len() as u64);
+    assert_eq!(resumed.total_size(), StreamLength::Known(big.len() as u64));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

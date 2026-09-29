@@ -27,7 +27,9 @@ use super::test_support::make_state;
 use super::*;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{InMemoryVolume, ListingProgress, Volume, VolumeError, VolumeReadStream};
+use crate::file_system::volume::{
+    InMemoryVolume, ListingProgress, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream,
+};
 use crate::file_system::write_operations::state::OperationIntent;
 
 /// A volume that can copy inside itself, and counts who asked.
@@ -82,7 +84,7 @@ impl Volume for ServerCopyVolume {
         scan_for_copy,
         scan_for_copy_batch,
         scan_for_conflicts,
-        write_is_single_shot,
+        supports_unknown_length_writes, write_is_single_shot,
         list_directory,
         get_metadata,
         is_directory,
@@ -105,12 +107,12 @@ impl Volume for ServerCopyVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         self.streamed.fetch_add(1, Ordering::SeqCst);
-        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, length, stream, on_progress)
     }
 
     fn copy_within<'a>(
@@ -125,14 +127,20 @@ impl Volume for ServerCopyVolume {
                 return Err(VolumeError::NotSupported);
             }
             let stream = self.inner.open_read_stream(from).await?;
-            let size = stream.total_size();
+            let size = stream.total_size().known().expect("stored files have a known length");
             // A conforming backend reports its own stop as `Cancelled`, the way
             // the chunk loop of a real `copy-data` does.
             if on_progress(0, size).is_break() {
                 return Err(VolumeError::Cancelled(to.display().to_string()));
             }
             self.inner
-                .write_from_stream(to, WriteMode::CreateOrReplace, size, stream, on_progress)
+                .write_from_stream(
+                    to,
+                    WriteMode::CreateOrReplace,
+                    StreamLength::Known(size),
+                    stream,
+                    &|progress| on_progress(progress.bytes_written, size),
+                )
                 .await
         })
     }

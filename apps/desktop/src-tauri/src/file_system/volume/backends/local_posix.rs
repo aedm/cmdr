@@ -14,7 +14,7 @@ use super::{
     CopyScanResult, ScanConflict, SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
 };
 use crate::file_system::listing::{FileEntry, ListingTally, get_single_entry, list_directory_core_with_tally};
-use crate::file_system::volume::{EntryKind, ListingProgress, WriteMode};
+use crate::file_system::volume::{EntryKind, ListingProgress, StreamLength, StreamWriteProgress, WriteMode};
 #[cfg(feature = "playwright-e2e")]
 use crate::ignore_poison::IgnorePoison;
 use std::future::Future;
@@ -610,11 +610,22 @@ impl Volume for LocalPosixVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.write_from_stream_impl(dest, mode, size, stream, on_progress)
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
+        Box::pin(async move {
+            self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
+                on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                })
+            })
+            .await
+        })
     }
 
     fn scan_for_conflicts<'a>(

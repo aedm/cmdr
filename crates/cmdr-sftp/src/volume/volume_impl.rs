@@ -17,8 +17,8 @@ use cmdr_fs::volume::patching;
 use cmdr_fs::volume::scan_walk;
 use cmdr_fs::volume::{
     BatchScanResult, CopyScanResult, DirectoryCreation, EntryKind, LaneKey, ListingProgress, MutationEvent, Retirement,
-    ScanBoundary, ScanConflict, SignInShape, SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream,
-    WatchCoverage, WriteMode,
+    ScanBoundary, ScanConflict, SignInShape, SourceItemInfo, SpaceInfo, StreamLength, StreamWriteProgress, Volume,
+    VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
 };
 
 use crate::auth::AuthRungUsed;
@@ -276,11 +276,24 @@ impl Volume for SftpVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        Box::pin(self.noting(self.write_from_stream_impl(dest, mode, size, stream, on_progress)))
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
+        Box::pin(async move {
+            self.noting(
+                self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
+                    on_progress(StreamWriteProgress {
+                        bytes_written,
+                        expected_length: StreamLength::Known(size),
+                    })
+                }),
+            )
+            .await
+        })
     }
 
     /// ❗ There is no watcher here, so this patch is the ONLY thing that keeps a

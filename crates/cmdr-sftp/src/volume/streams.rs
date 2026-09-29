@@ -25,7 +25,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use cmdr_fs::volume::{ChannelReadStream, VolumeError};
+use cmdr_fs::volume::{ChannelReadStream, StreamLength, VolumeError};
 use futures_util::StreamExt;
 use futures_util::stream::FuturesOrdered;
 use log::debug;
@@ -239,7 +239,11 @@ impl SftpVolume {
             Err(_) => return Err(VolumeError::DeviceDisconnected(self.inner.volume_id.clone())),
         };
 
-        Ok(ChannelReadStream::new(chunk_rx, cancel_tx, total_size))
+        Ok(ChannelReadStream::new(
+            chunk_rx,
+            cancel_tx,
+            StreamLength::Known(total_size),
+        ))
     }
 
     /// Exactly `[offset, offset + len)`, filled from as few round trips as the

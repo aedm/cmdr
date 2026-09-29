@@ -3,7 +3,7 @@
 
 use std::pin::Pin;
 
-use super::{VolumeError, VolumeReadStream};
+use super::{StreamLength, VolumeError, VolumeReadStream};
 
 /// A [`VolumeReadStream`] a background producer feeds through a bounded channel.
 ///
@@ -19,7 +19,7 @@ use super::{VolumeError, VolumeReadStream};
 pub struct ChannelReadStream {
     rx: tokio::sync::mpsc::Receiver<Result<Vec<u8>, VolumeError>>,
     cancel: Option<tokio::sync::oneshot::Sender<()>>,
-    total_size: u64,
+    total_size: StreamLength,
     bytes_read: u64,
 }
 
@@ -33,7 +33,7 @@ impl ChannelReadStream {
     pub fn new(
         rx: tokio::sync::mpsc::Receiver<Result<Vec<u8>, VolumeError>>,
         cancel: tokio::sync::oneshot::Sender<()>,
-        total_size: u64,
+        total_size: StreamLength,
     ) -> Self {
         Self {
             rx,
@@ -65,7 +65,7 @@ impl VolumeReadStream for ChannelReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
+    fn total_size(&self) -> StreamLength {
         self.total_size
     }
 

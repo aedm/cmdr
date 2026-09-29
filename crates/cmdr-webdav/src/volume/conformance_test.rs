@@ -95,6 +95,19 @@ async fn write_from_stream_create_new_refuses_to_clobber() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn unknown_write_is_refused_before_io() {
+    let (volume, dir) = stock_server_with_scratch().await;
+    let notes = dir.join("notes.txt");
+    let original = b"the user's notes";
+    volume.create_file(&notes, original).await.expect(FIXTURE);
+
+    conformance::assert_unknown_write_is_refused_before_io(&volume, &notes, original).await;
+
+    clean(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
 async fn create_directory_all_reports_an_existing_directory_honestly() {
     // ❗ `Created` is a promise the transfer driver SPENDS: on it, it skips the
     // per-file destination conflict probe for everything it writes inside.

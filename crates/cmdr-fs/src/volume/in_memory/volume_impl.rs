@@ -8,8 +8,8 @@ use crate::entry::FileEntry;
 use crate::ignore_poison::IgnorePoison;
 use crate::ignore_poison::RwLockIgnorePoison;
 use crate::volume::{
-    BackendKind, ConnectionState, CopyScanResult, IndexWalk, LaneKey, ScanConflict, SourceItemInfo, SpaceInfo, Volume,
-    VolumeError, VolumeReadStream, WriteAccess, WriteMode,
+    BackendKind, ConnectionState, CopyScanResult, IndexWalk, LaneKey, ScanConflict, SourceItemInfo, SpaceInfo,
+    StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WriteAccess, WriteMode,
 };
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -43,8 +43,8 @@ impl VolumeReadStream for InMemoryReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.data.len() as u64
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.data.len() as u64)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -518,12 +518,14 @@ impl Volume for InMemoryVolume {
         &'a self,
         dest: &'a Path,
         _mode: WriteMode,
-        _size: u64,
+        length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
         Box::pin(async move {
-            let total_size = stream.total_size();
             let mut data = Vec::new();
             let mut bytes_written = 0u64;
 
@@ -532,7 +534,11 @@ impl Volume for InMemoryVolume {
                 bytes_written += chunk.len() as u64;
                 data.extend_from_slice(&chunk);
 
-                if on_progress(bytes_written, total_size) == std::ops::ControlFlow::Break(()) {
+                if on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                }) == std::ops::ControlFlow::Break(())
+                {
                     return Err(VolumeError::IoError {
                         message: "Operation cancelled".into(),
                         raw_os_error: None,

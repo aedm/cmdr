@@ -33,7 +33,8 @@ impl Volume for FailReadForPath {
     forward_volume_methods!(inner =>
         name, root, list_directory, get_metadata, exists, is_directory, create_file, create_directory,
         create_directory_all, delete, rename, get_space_info, supports_streaming, supports_export,
-        operations_are_local, max_concurrent_ops, scan_for_copy, write_from_stream, local_path,
+        operations_are_local, max_concurrent_ops, scan_for_copy, supports_unknown_length_writes,
+        write_from_stream, local_path,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {

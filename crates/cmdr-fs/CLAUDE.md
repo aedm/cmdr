@@ -25,6 +25,8 @@ paths (`crate::file_system::volume::VolumeError`); other crates use `cmdr_fs::�
 - **`InMemoryVolume` is the oracle for the `Volume` contracts data safety leans on**, and LIES on request
   (`set_stat_failing`, `with_delete_failing`, …) so a defense against a hostile backend is testable. ❌ Never relax a
   contract to green a test. Cross-backend promises live in `volume::conformance`.
+- **Stream length is explicit**: real files use `StreamLength::Known`; generated output may use `Unknown`. A backend
+  that has not opted into unknown writes must reject before opening the destination or polling the source.
 - **❌ Never build a volume ID by hand, or by stripping characters.** `volume::ids` is the one funnel; an ID keys the
   index DB, `lastUsedPaths`, tab state, and routing, so a lossy one hands two disks one identity and sends deletes to
   the wrong one.

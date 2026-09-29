@@ -45,6 +45,21 @@ async fn rename_honors_the_shared_no_clobber_contract() {
     device.teardown(test_connection_manager()).await;
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn unknown_write_honors_the_shared_early_refusal_contract() {
+    let _guard = device_lock().await;
+    let (device, volume) = connect_primed_volume(Some("/Documents")).await;
+
+    cmdr_fs::volume::conformance::assert_unknown_write_is_refused_before_io(
+        &volume,
+        Path::new("/Documents/notes.txt"),
+        b"Meeting notes: discuss MTP E2E test strategy.\n",
+    )
+    .await;
+
+    device.teardown(test_connection_manager()).await;
+}
+
 /// The shared `Volume::create_directory_all` honesty assertion, over a real
 /// `MtpVolume` — the backend the honesty question was written for.
 ///

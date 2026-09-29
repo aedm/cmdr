@@ -76,6 +76,7 @@ use std::collections::HashMap;
 
 use super::*;
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::StreamLength;
 use crate::file_system::volume::{
     BatchScanResult, CopyScanResult, LaneKey, ListingProgress, LocalPosixVolume, SpaceInfo, VolumeReadStream,
     smb_volume_id,
@@ -731,7 +732,10 @@ async fn concurrency_bench_sweep_window_against_wall_clock() {
         // Prove the shape really is the write path it claims to be, before
         // spending minutes measuring it. A "large" file that still fits one
         // compound frame would silently benchmark the fast path twice.
-        let single_shot = target.volume.write_is_single_shot(corpus.file_len).await;
+        let single_shot = target
+            .volume
+            .write_is_single_shot(StreamLength::Known(corpus.file_len))
+            .await;
         assert_eq!(
             single_shot,
             shape != Shape::Large,

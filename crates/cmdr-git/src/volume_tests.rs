@@ -14,7 +14,7 @@ use crate::test_fixtures::{EntryKind, Fixture, cleanup, git_cli_capture, temp_di
 use crate::volume::GitPortalVolume;
 use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::host::VolumeHost;
-use cmdr_fs::volume::{DirectoryCreation, InMemoryVolume, SpaceInfo, Volume, VolumeError};
+use cmdr_fs::volume::{DirectoryCreation, InMemoryVolume, SpaceInfo, StreamWriteProgress, Volume, VolumeError};
 
 /// A repo with one commit on `main` (a plain file and an executable one), a
 /// second branch, and a tag, plus the portal volume serving it.
@@ -311,16 +311,20 @@ async fn a_copy_out_of_a_snapshot_carries_the_bytes_and_the_executable_bit() {
 
     let dest_rel = Path::new("run.sh");
     let counter = AtomicU64::new(0);
-    let on_progress = |bytes: u64, _total: u64| -> ControlFlow<()> {
-        counter.store(bytes, Ordering::SeqCst);
+    let on_progress = |progress: StreamWriteProgress| -> ControlFlow<()> {
+        counter.store(progress.bytes_written, Ordering::SeqCst);
         ControlFlow::Continue(())
     };
     let written = dst
         .write_from_stream(dest_rel, WriteMode::CreateOrReplace, total, stream, &on_progress)
         .await
         .expect("write_from_stream");
-    assert_eq!(written, total);
-    assert_eq!(counter.load(Ordering::SeqCst), total, "progress reports every byte");
+    assert_eq!(written, total.known().expect("git blobs have a known length"));
+    assert_eq!(
+        counter.load(Ordering::SeqCst),
+        total.known().unwrap(),
+        "progress reports every byte"
+    );
 
     // What landed has to be what `git show main:scripts/run.sh` prints.
     let mut landed = dst.open_read_stream(dest_rel).await.expect("read the copy back");

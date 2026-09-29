@@ -51,8 +51,8 @@ impl VolumeReadStream for GitBlobReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total_size
+    fn total_size(&self) -> cmdr_fs::volume::StreamLength {
+        cmdr_fs::volume::StreamLength::Known(self.total_size)
     }
 
     fn bytes_read(&self) -> u64 {
@@ -76,7 +76,10 @@ mod tests {
     async fn yields_whole_blob_in_chunks() {
         let data: Vec<u8> = (0..(CHUNK_SIZE * 2 + 17)).map(|i| (i % 256) as u8).collect();
         let mut stream = GitBlobReadStream::new(data.clone());
-        assert_eq!(stream.total_size(), data.len() as u64);
+        assert_eq!(
+            stream.total_size(),
+            cmdr_fs::volume::StreamLength::Known(data.len() as u64)
+        );
         let drained = drain(&mut stream).await;
         assert_eq!(drained, data);
         assert_eq!(stream.bytes_read(), data.len() as u64);

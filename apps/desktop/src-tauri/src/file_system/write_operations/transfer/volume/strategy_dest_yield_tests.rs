@@ -35,6 +35,7 @@ use super::test_support::{
     AutoYieldTuningGuard, REL_CHUNK, REL_TOTAL, RelLog, ReleasingSource, make_state, park_holds_at, rel_expected_bytes,
 };
 use super::*;
+use crate::file_system::volume::StreamLength;
 use crate::file_system::write_operations::state::cancel_write_operation;
 use crate::file_system::write_operations::test_support::TestOperationGuard;
 use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
@@ -272,7 +273,7 @@ async fn single_shot_upload_stands_aside_even_below_the_min_progress_floor() {
     let waits = Arc::clone(&busy_dest.waits);
     let dest: Arc<dyn Volume> = busy_dest;
     assert!(
-        dest.write_is_single_shot(REL_TOTAL as u64).await,
+        dest.write_is_single_shot(StreamLength::Known(REL_TOTAL as u64)).await,
         "the double must land this file in ONE compound frame; otherwise the test proves nothing"
     );
 
@@ -502,7 +503,7 @@ async fn a_streaming_upload_below_the_floor_still_does_not_yield() {
     let waits = Arc::clone(&busy_dest.waits);
     let dest: Arc<dyn Volume> = busy_dest;
     assert!(
-        !dest.write_is_single_shot(REL_TOTAL as u64).await,
+        !dest.write_is_single_shot(StreamLength::Known(REL_TOTAL as u64)).await,
         "the double must take the STREAMING path; otherwise the test proves nothing"
     );
     share.takes_a_lease(BUSY_DEST_SHARE);

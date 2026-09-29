@@ -71,6 +71,7 @@ impl Volume for EditSourceAtLanding {
         scan_for_copy_batch,
         scan_for_conflicts,
         open_read_stream,
+        supports_unknown_length_writes,
         write_from_stream,
         write_is_single_shot,
     );

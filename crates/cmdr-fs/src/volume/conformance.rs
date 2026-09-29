@@ -11,13 +11,16 @@
 //! backing dir plus a rescan, SMB needs a share. What the assertion checks is
 //! identical everywhere, which is the point.
 
+use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::scan_stop::TestScanStop;
 use super::{
-    DirectoryCreation, InMemoryVolume, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, Volume, VolumeError,
-    WriteMode,
+    DirectoryCreation, InMemoryVolume, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, StreamLength, Volume,
+    VolumeError, WriteMode,
 };
 
 /// The size `path` reports right now, for a fixture precondition or an
@@ -237,10 +240,102 @@ async fn write_new(volume: &dyn Volume, dest: &Path, content: &[u8]) -> Result<u
         .await
         .expect("opening the in-memory source");
     volume
-        .write_from_stream(dest, WriteMode::CreateNew, content.len() as u64, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            dest,
+            WriteMode::CreateNew,
+            StreamLength::Known(content.len() as u64),
+            stream,
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
         .await
+}
+
+struct PollCountingUnknownStream {
+    polls: Arc<AtomicUsize>,
+    emitted: bool,
+}
+
+impl super::VolumeReadStream for PollCountingUnknownStream {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        self.polls.fetch_add(1, Ordering::SeqCst);
+        Box::pin(async move {
+            if self.emitted {
+                None
+            } else {
+                self.emitted = true;
+                Some(Ok(b"replacement bytes".to_vec()))
+            }
+        })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Unknown
+    }
+
+    fn bytes_read(&self) -> u64 {
+        0
+    }
+}
+
+async fn read_all(volume: &dyn Volume, path: &Path) -> Vec<u8> {
+    let mut stream = volume
+        .open_read_stream(path)
+        .await
+        .unwrap_or_else(|e| panic!("{} must be readable, got {e:?}", path.display()));
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next_chunk().await {
+        bytes.extend(chunk.unwrap_or_else(|e| panic!("reading {} failed: {e:?}", path.display())));
+    }
+    bytes
+}
+
+/// A backend that does not advertise unknown-length writes refuses one before
+/// touching either endpoint.
+///
+/// `path` must already contain `expected`. The assertion verifies that the
+/// refusal is typed, the source is never polled, the existing destination stays
+/// byte-for-byte intact, and unknown writes never qualify as single-shot.
+pub async fn assert_unknown_write_is_refused_before_io(volume: &dyn Volume, path: &Path, expected: &[u8]) {
+    assert!(
+        !volume.supports_unknown_length_writes(),
+        "this conformance cell is for conservative backends"
+    );
+    assert!(
+        !volume.write_is_single_shot(StreamLength::Unknown).await,
+        "an unknown-length write must never be single-shot"
+    );
+    assert_eq!(
+        read_all(volume, path).await,
+        expected,
+        "fixture precondition: {} must contain the expected bytes",
+        path.display()
+    );
+
+    let polls = Arc::new(AtomicUsize::new(0));
+    let outcome = volume
+        .write_from_stream(
+            path,
+            WriteMode::CreateOrReplace,
+            StreamLength::Unknown,
+            Box::new(PollCountingUnknownStream {
+                polls: polls.clone(),
+                emitted: false,
+            }),
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
+        .await;
+
+    assert!(
+        matches!(outcome, Err(VolumeError::NotSupported)),
+        "an unsupported unknown-length write must return NotSupported, got {outcome:?}"
+    );
+    assert_eq!(polls.load(Ordering::SeqCst), 0, "the refused source must not be polled");
+    assert_eq!(
+        read_all(volume, path).await,
+        expected,
+        "the refused write changed {}",
+        path.display()
+    );
 }
 
 /// [`Volume::create_directory_all`]

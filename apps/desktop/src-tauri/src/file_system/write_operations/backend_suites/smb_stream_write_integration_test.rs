@@ -15,7 +15,7 @@ use std::sync::atomic::Ordering;
 use cmdr_fs::testing::TestDir;
 
 use super::smb_test_support::*;
-use crate::file_system::volume::WriteMode;
+use crate::file_system::volume::{StreamLength, WriteMode};
 
 /// A multi-MB local file streams onto the share through `LocalPosixVolume`'s
 /// `open_read_stream` into `SmbVolume`'s `write_from_stream`: progress fires more
@@ -44,18 +44,18 @@ async fn smb_integration_write_from_stream_local_source_large_file() {
     let last_bytes = AtomicU64::new(0);
 
     let stream = local_vol.open_read_stream(Path::new("import-large.bin")).await.unwrap();
-    assert_eq!(stream.total_size(), size as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(size as u64));
 
     let bytes = vol
         .write_from_stream(
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
-            size as u64,
+            StreamLength::Known(size as u64),
             stream,
-            &|done, total| {
+            &|progress| {
                 progress_calls.fetch_add(1, Ordering::Relaxed);
-                last_bytes.store(done, Ordering::Relaxed);
-                assert_eq!(total, size as u64);
+                last_bytes.store(progress.bytes_written, Ordering::Relaxed);
+                assert_eq!(progress.expected_length, StreamLength::Known(size as u64));
                 std::ops::ControlFlow::Continue(())
             },
         )

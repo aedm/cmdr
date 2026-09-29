@@ -356,7 +356,7 @@ impl crate::file_system::volume::VolumeReadStream for CountingStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
+    fn total_size(&self) -> crate::file_system::volume::StreamLength {
         self.inner.total_size()
     }
 

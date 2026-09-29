@@ -26,7 +26,7 @@
 use super::streams::InlineReadStream;
 use super::test_support::*;
 use super::*;
-use cmdr_fs::volume::WriteMode;
+use cmdr_fs::volume::{StreamLength, WriteMode};
 
 /// `(requests_sent, compound_requests_sent)` on the volume's main connection.
 async fn request_counts(vol: &SmbVolume) -> (u64, u64) {
@@ -275,7 +275,7 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
     let data = vec![0xABu8; 4096];
     let size = data.len() as u64;
     assert!(
-        vol.write_is_single_shot(size).await,
+        vol.write_is_single_shot(StreamLength::Known(size)).await,
         "4 KiB fits one WRITE on every SMB2 dialect"
     );
 
@@ -285,9 +285,9 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
         .write_from_stream(
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             Box::new(InlineReadStream::new(data.clone())),
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .unwrap();
@@ -349,19 +349,19 @@ async fn smb_integration_a_cold_connection_promises_one_shot_up_to_one_upload_ch
     );
 
     assert!(
-        vol.write_is_single_shot(chunk).await,
+        vol.write_is_single_shot(StreamLength::Known(chunk)).await,
         "one chunk is one WRITE either way"
     );
     assert!(
-        !vol.write_is_single_shot(chunk + 1).await,
+        !vol.write_is_single_shot(StreamLength::Known(chunk + 1)).await,
         "a cold connection streams anything over one chunk, so the transfer stages it"
     );
     assert!(
-        !vol.write_is_single_shot(max_write).await,
+        !vol.write_is_single_shot(StreamLength::Known(max_write)).await,
         "one WRITE's worth is no promise until the uplink has shown it moves that fast"
     );
     assert!(
-        !vol.write_is_single_shot(0).await,
+        !vol.write_is_single_shot(StreamLength::Known(0)).await,
         "an empty file has no WRITE to compound with; it takes the streaming writer"
     );
 }
@@ -397,9 +397,9 @@ async fn smb_integration_a_staged_write_over_the_quick_write_limit_streams() {
         .write_from_stream(
             Path::new(&temp),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             Box::new(InlineReadStream::new(data.clone())),
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .unwrap();
@@ -439,9 +439,9 @@ async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_
     vol.write_from_stream(
         Path::new(&temp),
         WriteMode::CreateOrReplace,
-        warm.len() as u64,
+        StreamLength::Known(warm.len() as u64),
         Box::new(InlineReadStream::new(warm)),
-        &|_, _| std::ops::ControlFlow::Continue(()),
+        &|_| std::ops::ControlFlow::Continue(()),
     )
     .await
     .unwrap();
@@ -449,7 +449,7 @@ async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_
     let data: Vec<u8> = (0..=240u8).cycle().take(4 * 1024 * 1024).collect();
     let size = data.len() as u64;
     assert!(
-        vol.write_is_single_shot(size).await,
+        vol.write_is_single_shot(StreamLength::Known(size)).await,
         "a warm loopback uplink moves 4 MiB in well under 250 ms"
     );
 
@@ -459,9 +459,9 @@ async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_
         .write_from_stream(
             Path::new(&path),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             Box::new(InlineReadStream::new(data.clone())),
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .unwrap();
@@ -618,11 +618,11 @@ async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_strea
         "5 MiB fits one WRITE by size alone; only the credits rule it out"
     );
     assert!(
-        !vol.write_is_single_shot(size).await,
+        !vol.write_is_single_shot(StreamLength::Known(size)).await,
         "a frame the window can't fund is no single shot"
     );
     assert!(
-        vol.write_is_single_shot(4096).await,
+        vol.write_is_single_shot(StreamLength::Known(4096)).await,
         "a small file still fits one frame"
     );
 
@@ -636,9 +636,9 @@ async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_strea
         .write_from_stream(
             Path::new(&temp),
             WriteMode::CreateOrReplace,
-            size,
+            StreamLength::Known(size),
             Box::new(InlineReadStream::new(data.clone())),
-            &|_, _| std::ops::ControlFlow::Continue(()),
+            &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
         .expect("a staged write streams through a small window");
@@ -676,9 +676,9 @@ async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() 
             .write_from_stream(
                 Path::new(&final_name),
                 mode,
-                data.len() as u64,
+                StreamLength::Known(data.len() as u64),
                 Box::new(InlineReadStream::new(data)),
-                &|_, _| std::ops::ControlFlow::Continue(()),
+                &|_| std::ops::ControlFlow::Continue(()),
             )
             .await;
 
@@ -730,9 +730,9 @@ async fn smb_integration_a_refused_frame_to_a_taken_final_name_leaves_the_file_t
             .write_from_stream(
                 Path::new(&final_name),
                 mode,
-                data.len() as u64,
+                StreamLength::Known(data.len() as u64),
                 Box::new(InlineReadStream::new(data)),
-                &|_, _| std::ops::ControlFlow::Continue(()),
+                &|_| std::ops::ControlFlow::Continue(()),
             )
             .await;
 
@@ -768,7 +768,7 @@ async fn smb_integration_a_create_new_temp_the_window_cant_frame_streams_without
         .unwrap();
     let data: Vec<u8> = (0..=250u8).cycle().take(5 * 1024 * 1024).collect();
     assert!(
-        !vol.write_is_single_shot(data.len() as u64).await,
+        !vol.write_is_single_shot(StreamLength::Known(data.len() as u64)).await,
         "fixture precondition: 5 MiB must not fit one frame through the capped window"
     );
 

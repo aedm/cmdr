@@ -32,7 +32,7 @@ impl Volume for RenameRefusesOne {
     forward_volume_methods!(inner =>
         name, root, list_directory, get_metadata, exists, is_directory, create_file,
         create_directory, delete, get_space_info, supports_streaming, open_read_stream,
-        write_from_stream,
+        supports_unknown_length_writes, write_from_stream,
     );
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -208,7 +208,7 @@ impl Volume for DeleteRefusesOne {
         create_directory, create_directory_all, rename, get_space_info, local_path, supports_streaming,
         supports_export, supports_local_fs_access, operations_are_local, max_concurrent_ops,
         create_directory_errors_on_existing_dir, scan_for_copy, scan_for_copy_batch, scan_for_conflicts,
-        open_read_stream, write_from_stream, write_is_single_shot,
+        open_read_stream, supports_unknown_length_writes, write_from_stream, write_is_single_shot,
     );
     fn as_any(&self) -> &dyn std::any::Any {
         self

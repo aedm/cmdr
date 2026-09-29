@@ -4,7 +4,7 @@
 
 use super::mapping::map_mtp_error;
 use crate::connection::{MtpConnectionManager, MtpReadSession};
-use cmdr_fs::volume::{VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{StreamLength, VolumeError, VolumeReadStream};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -87,8 +87,8 @@ impl VolumeReadStream for MtpReadStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.session.total_size()
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.session.total_size())
     }
 
     fn bytes_read(&self) -> u64 {

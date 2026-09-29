@@ -16,7 +16,8 @@ use cmdr_fs::entry::FileEntry;
 
 use cmdr_fs::volume::{
     BatchScanResult, ConnectionLiveness, CopyScanResult, LaneKey, MutationEvent, ScanBoundary, ScanConflict,
-    SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
+    SourceItemInfo, SpaceInfo, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WatchCoverage,
+    WriteMode,
 };
 use cmdr_fs::volume::{ListingProgress, Retirement};
 use log::debug;
@@ -543,7 +544,10 @@ impl Volume for SmbVolume {
     /// final name instead of staging it on a `.cmdr-tmp-*`. Answers with the
     /// SAME condition `write_from_stream_impl`'s fast path branches on
     /// (`streams::fits_one_compound_write`); the two must never drift apart.
-    fn write_is_single_shot<'a>(&'a self, size: u64) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+    fn write_is_single_shot<'a>(&'a self, length: StreamLength) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        let Some(size) = length.known() else {
+            return Box::pin(async { false });
+        };
         Box::pin(self.write_is_single_shot_impl(size))
     }
 
@@ -551,11 +555,22 @@ impl Volume for SmbVolume {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.write_from_stream_impl(dest, mode, size, stream, on_progress)
+        let Some(size) = length.known() else {
+            return Box::pin(async { Err(VolumeError::NotSupported) });
+        };
+        Box::pin(async move {
+            self.write_from_stream_impl(dest, mode, size, stream, &|bytes_written, _| {
+                on_progress(StreamWriteProgress {
+                    bytes_written,
+                    expected_length: StreamLength::Known(size),
+                })
+            })
+            .await
+        })
     }
 
     fn connection_state(&self) -> Option<cmdr_fs::volume::ConnectionState> {

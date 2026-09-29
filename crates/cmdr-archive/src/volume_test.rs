@@ -17,7 +17,7 @@ use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::testing::TestDir;
 use cmdr_fs::volume::InMemoryVolume;
 use cmdr_fs::volume::WriteMode;
-use cmdr_fs::volume::{ListingProgress, Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{ListingProgress, StreamLength, Volume, VolumeError, VolumeReadStream};
 
 /// A zip written into a scratch dir, cleaned up on drop. Hands out
 /// `ArchiveVolume`s backed by a configurable parent (default: a plain
@@ -306,7 +306,7 @@ async fn open_read_stream_decompresses_an_entry_end_to_end() {
     let volume = archive.volume();
 
     let mut stream = volume.open_read_stream(Path::new("big.bin")).await.unwrap();
-    assert_eq!(stream.total_size(), content.len() as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(content.len() as u64));
     let data = drain(stream.as_mut()).await.unwrap();
     assert_eq!(data, content);
     assert_eq!(stream.bytes_read(), content.len() as u64);
@@ -324,7 +324,7 @@ async fn open_read_stream_at_offset_yields_the_tail() {
         .await
         .unwrap();
     // `total_size` stays the full file; `bytes_read` counts only this segment.
-    assert_eq!(stream.total_size(), content.len() as u64);
+    assert_eq!(stream.total_size(), StreamLength::Known(content.len() as u64));
     let data = drain(stream.as_mut()).await.unwrap();
     assert_eq!(data, content[offset as usize..]);
     assert_eq!(stream.bytes_read(), content.len() as u64 - offset);
@@ -425,9 +425,13 @@ async fn every_mutation_is_unsupported() {
     mem.create_file(Path::new("/src"), b"hi").await.unwrap();
     let source = mem.open_read_stream(Path::new("/src")).await.unwrap();
     let result = volume
-        .write_from_stream(Path::new("dest"), WriteMode::CreateOrReplace, 2, source, &|_, _| {
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("dest"),
+            WriteMode::CreateOrReplace,
+            StreamLength::Known(2),
+            source,
+            &|_| ControlFlow::Continue(()),
+        )
         .await;
     assert!(matches!(result, Err(VolumeError::NotSupported)));
 }

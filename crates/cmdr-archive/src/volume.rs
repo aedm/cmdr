@@ -715,8 +715,8 @@ impl VolumeReadStream for ArchiveVolumeReadStream {
 
     /// The entry's FULL uncompressed size (not the remaining tail), so a resumed
     /// transfer's progress stays anchored to the whole file, per the trait.
-    fn total_size(&self) -> u64 {
-        self.reader.total_size()
+    fn total_size(&self) -> cmdr_fs::volume::StreamLength {
+        cmdr_fs::volume::StreamLength::Known(self.reader.total_size())
     }
 
     fn bytes_read(&self) -> u64 {
@@ -804,8 +804,8 @@ impl VolumeReadStream for MemberStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> cmdr_fs::volume::StreamLength {
+        cmdr_fs::volume::StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {

@@ -19,7 +19,9 @@ use super::tests::make_state;
 use super::*;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::WriteMode;
-use crate::file_system::volume::{CopyScanResult, InMemoryVolume, ListingProgress, SpaceInfo, VolumeReadStream};
+use crate::file_system::volume::{
+    CopyScanResult, InMemoryVolume, ListingProgress, SpaceInfo, StreamLength, StreamWriteProgress, VolumeReadStream,
+};
 use crate::file_system::write_operations::types::{ConflictResolution, VolumeCopyConfig, WriteOperationError};
 use std::future::Future;
 use std::pin::Pin;
@@ -193,14 +195,14 @@ impl Volume for CaseFoldingDest {
         &'a self,
         dest: &'a Path,
         _mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             let folded = self.fold(dest).await;
             self.inner
-                .write_from_stream(&folded, WriteMode::CreateOrReplace, size, stream, on_progress)
+                .write_from_stream(&folded, WriteMode::CreateOrReplace, length, stream, on_progress)
                 .await
         })
     }
@@ -528,11 +530,11 @@ impl Volume for LateArrivalDest {
         &'a self,
         dest: &'a Path,
         mode: WriteMode,
-        size: u64,
+        length: StreamLength,
         stream: Box<dyn VolumeReadStream>,
-        on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, length, stream, on_progress)
     }
     fn open_read_stream<'a>(
         &'a self,

@@ -125,7 +125,9 @@ impl VolumeReadStream for CheckpointStream {
             match self.inner.next_chunk().await {
                 Some(Ok(chunk)) => {
                     self.bytes_yielded += chunk.len() as u64;
-                    set_task_bytes(self.bytes_yielded, self.inner.total_size());
+                    if let Some(total) = self.inner.total_size().known() {
+                        set_task_bytes(self.bytes_yielded, total);
+                    }
                     Some(Ok(chunk))
                 }
                 other => other,
@@ -133,7 +135,7 @@ impl VolumeReadStream for CheckpointStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
+    fn total_size(&self) -> crate::file_system::volume::StreamLength {
         self.inner.total_size()
     }
 
@@ -223,7 +225,12 @@ impl CheckpointStream {
             return; // cancel owns teardown; never start a yield while cancelled
         }
         // At EOF there's nothing left to yield for; let the copy finish.
-        if self.bytes_yielded >= self.inner.total_size() {
+        if self
+            .inner
+            .total_size()
+            .known()
+            .is_some_and(|total| self.bytes_yielded >= total)
+        {
             return;
         }
         // Min-progress floor: after a resume, transfer at least `min_progress_floor`
@@ -311,7 +318,12 @@ impl CheckpointStream {
         }
         // At EOF there's nothing left to write; let the copy finalize (the
         // safe-replace rename must not wait behind a park).
-        if self.bytes_yielded >= self.inner.total_size() {
+        if self
+            .inner
+            .total_size()
+            .known()
+            .is_some_and(|total| self.bytes_yielded >= total)
+        {
             return;
         }
         // Min-progress floor: after a resume, write at least `min_progress_floor`

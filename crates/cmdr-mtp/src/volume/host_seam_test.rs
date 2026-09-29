@@ -30,7 +30,7 @@ use std::sync::Arc;
 
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::listings::{ListingHost, RecordingListings};
-use cmdr_fs::volume::{DirectoryChange, SourceItemInfo, Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{DirectoryChange, SourceItemInfo, StreamLength, Volume, VolumeError, VolumeReadStream};
 
 use crate::connection::MtpConnectionManager;
 use crate::connection::events::no_device_events;
@@ -86,9 +86,9 @@ async fn a_walk_over_a_directory_reports_nothing_however_many_entries_it_holds()
             .write_from_stream(
                 &dir.join(format!("file-{i:03}.txt")),
                 WriteMode::CreateOrReplace,
-                1,
+                StreamLength::Known(1),
                 Box::new(BytesStream::new(b"x".to_vec())),
-                &|_bytes, _total| ControlFlow::Continue(()),
+                &|_| ControlFlow::Continue(()),
             )
             .await
             .expect("seeding a file on the device");
@@ -206,8 +206,8 @@ impl VolumeReadStream for BytesStream {
         })
     }
 
-    fn total_size(&self) -> u64 {
-        self.total
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
     }
 
     fn bytes_read(&self) -> u64 {
