@@ -444,6 +444,7 @@ mod tests {
 
     use super::*;
     use crate::file_system::volume::{InMemoryVolume, LocalPosixVolume};
+    use crate::file_system::write_operations::transfer::volume::forward_volume_methods;
 
     #[tokio::test]
     async fn distinct_handles_for_one_remote_resource_still_reject_containment() {
@@ -475,24 +476,10 @@ mod tests {
     }
 
     impl Volume for CountingStats {
-        fn name(&self) -> &str {
-            self.inner.name()
-        }
-
-        fn root(&self) -> &Path {
-            self.inner.root()
-        }
+        forward_volume_methods!(inner => name, root, list_directory, exists, is_directory, get_space_info);
 
         fn as_any(&self) -> &dyn std::any::Any {
             self
-        }
-
-        fn list_directory<'a>(
-            &'a self,
-            path: &'a Path,
-            on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
-        ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
-            self.inner.list_directory(path, on_progress)
         }
 
         fn get_metadata<'a>(
@@ -501,25 +488,6 @@ mod tests {
         ) -> std::pin::Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
             self.stats.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             self.inner.get_metadata(path)
-        }
-
-        fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-            self.inner.exists(path)
-        }
-
-        fn is_directory<'a>(
-            &'a self,
-            path: &'a Path,
-        ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
-            self.inner.is_directory(path)
-        }
-
-        fn get_space_info<'a>(
-            &'a self,
-        ) -> std::pin::Pin<
-            Box<dyn Future<Output = Result<crate::file_system::volume::SpaceInfo, VolumeError>> + Send + 'a>,
-        > {
-            self.inner.get_space_info()
         }
     }
 
@@ -580,13 +548,7 @@ mod tests {
     }
 
     impl Volume for LinkFollowingStat {
-        fn name(&self) -> &str {
-            self.inner.name()
-        }
-
-        fn root(&self) -> &Path {
-            self.inner.root()
-        }
+        forward_volume_methods!(inner => name, root, exists, is_directory, get_space_info);
 
         fn as_any(&self) -> &dyn std::any::Any {
             self
@@ -618,25 +580,6 @@ mod tests {
                     self.inner.entry_kind(path).await
                 }
             })
-        }
-
-        fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-            self.inner.exists(path)
-        }
-
-        fn is_directory<'a>(
-            &'a self,
-            path: &'a Path,
-        ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
-            self.inner.is_directory(path)
-        }
-
-        fn get_space_info<'a>(
-            &'a self,
-        ) -> std::pin::Pin<
-            Box<dyn Future<Output = Result<crate::file_system::volume::SpaceInfo, VolumeError>> + Send + 'a>,
-        > {
-            self.inner.get_space_info()
         }
     }
 
