@@ -55,8 +55,12 @@ const REDACTOR_KEY_BY_PLACEHOLDER: Record<string, string> = {
   host: 'host',
   server: 'server',
   share: 'share',
-  // External text (an error message, a server's answer): redacted and capped in a report.
+  // External text (an error message, a server's answer, a stringified typed error): redacted
+  // and capped in a report, with identity-keyed JSON pairs tokenized.
   detail: 'detail',
+  error: 'detail',
+  err: 'detail',
+  result: 'detail',
 }
 
 /** Quote like Rust's `{:?}`, which is the escaping the redactor's quoted-value grammar reads. */

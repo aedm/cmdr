@@ -239,6 +239,10 @@ around them. So it has one mechanism, used at every such site:
   the IDs, a quoted `path=` leaf), reusing that field's token. It caps the result at `REPORT_DETAIL_MAX_CHARS` (200)
   with a trailing `…` and re-escapes with `{:?}`, so the closing quote stays exact. Idempotent: a capped value sits at
   the limit.
+- **Identity-keyed JSON pairs inside the value are tokenized first** (`"server":"…"`, `"share"`, `"username"`, `"path"`,
+  `"name"`, …): the frontend logs a typed error as `JSON.stringify(error)`, and its keys say what each value is, in a
+  spelling the line's own keyed fields may not share. `error`, `err`, `result`, and `detail` placeholders all render
+  as `detail=` fields (`log-bridge.ts`).
 - **Absolute paths under any prefix are tokenized inside the value** (`/srv/data/…`, `/mnt/…`), after the ordinary scan:
   a server or frontend error names paths the line scanner has no prefix rule for. Already-rewritten segments keep their
   tokens, which keeps it idempotent.

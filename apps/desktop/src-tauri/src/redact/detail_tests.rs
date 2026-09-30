@@ -163,6 +163,31 @@ fn an_unkeyed_bare_name_in_prose_survives() {
     assert!(redacted.contains("Unkeyed Share"), "{redacted}");
 }
 
+/// The frontend logs typed errors as `JSON.stringify(error)`, so identities arrive as
+/// `"server":"…"` pairs, in a spelling the line's keyed fields may not share.
+#[test]
+fn report_mode_tokenizes_identity_pairs_in_json_inside_detail() {
+    let context = context();
+    let json = r#"{"type":"authFailed","message":"kept","server":"NASPOLYA","share":"Private Share","username":"anna","path":"/srv/Private Share/x.txt"}"#;
+    let line = format!("Mount of share=\"Private Share\" on host=\"Naspolya\" did not go through: detail={json:?}");
+    let redacted = context.redact_line(&line).into_owned();
+    for private in ["NASPOLYA", "Naspolya", "Private Share", "anna"] {
+        assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
+    }
+    for kept in [r#"\"type\":\"authFailed\""#, r#"\"message\":\"kept\""#, r#"\"server\":\"<host:"#] {
+        assert!(redacted.contains(kept), "{kept:?} lost: {redacted}");
+    }
+    let host_token = Regex::new(r#"host="(<host:[0-9a-f]{12}>)""#)
+        .expect("valid regex")
+        .captures(&redacted)
+        .expect("host token")[1]
+        .to_string();
+    assert!(
+        redacted.contains(&format!(r#"\"server\":\"{host_token}\""#)),
+        "the JSON server correlates with the keyed host, case aside: {redacted}"
+    );
+}
+
 /// A server or frontend error names paths under any prefix (`/srv`, `/data`, `/mnt`), which the
 /// line scanner has no rule for. Inside external text, every absolute path is tokenized.
 #[test]

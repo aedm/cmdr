@@ -197,7 +197,7 @@ describe('log-bridge', () => {
       ],
     })
     expect(message).toBe(
-      'Listing l-1 on volumeId="smb-nas-0123456789abcdef" failed for path="docs/Client \\"Plans\\"\\\\2026\\nnext" (tries: 3): boom',
+      'Listing l-1 on volumeId="smb-nas-0123456789abcdef" failed for path="docs/Client \\"Plans\\"\\\\2026\\nnext" (tries: 3): detail="boom"',
     )
   })
 
@@ -207,6 +207,15 @@ describe('log-bridge', () => {
       message: ['calling listDirectoryStart: volumeId=', 'root', ', path=', '/Users/ada/Plans', ''],
     })
     expect(message).toBe('calling listDirectoryStart: volumeId="root", path="/Users/ada/Plans"')
+  })
+
+  it('renders error, err, and result values as detail fields', async () => {
+    expect(
+      await renderedMessage({
+        rawMessage: 'Mount failed: {error}; retry: {err}; answer: {result}',
+        message: ['Mount failed: ', '{"server":"NAS"}', '; retry: ', 'boom', '; answer: ', '{"ok":true}', ''],
+      }),
+    ).toBe('Mount failed: detail="{\\"server\\":\\"NAS\\"}"; retry: detail="boom"; answer: detail="{\\"ok\\":true}"')
   })
 
   it('maps names to the redactor vocabulary and leaves a template array as plain text', async () => {

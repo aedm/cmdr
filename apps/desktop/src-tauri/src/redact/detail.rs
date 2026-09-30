@@ -5,7 +5,7 @@
 
 use super::context::TokenDomain;
 use super::fields::identity_field_token;
-use super::fields::redact_typed_path;
+use super::fields::{is_redacted_segment, redact_typed_path};
 use super::names::unescape_debug;
 use super::paths::{has_extension_like_suffix, redact_leaf};
 use super::{
@@ -89,6 +89,7 @@ pub(super) fn redact_detail_field(
     let raw = caps.name("df_value").map_or("", |m| m.as_str());
     let text = unescape_debug(quoted_value(raw));
 
+    let text = redact_json_identity_pairs(&text, context);
     let mut redacted = String::with_capacity(text.len());
     for line in text.split_inclusive('\n') {
         redacted.push_str(&redact_with(line, Some(context)));
@@ -98,6 +99,37 @@ pub(super) fn redact_detail_field(
         redacted = replace_whole_word(&redacted, &identity.raw, &identity.token);
     }
     (format!("{key}={:?}", cap_chars(&redacted)), whole_len(caps))
+}
+
+/// Tokenize the values of identity-keyed JSON pairs (`"server":"NASPOLYA"`): the frontend logs
+/// a typed error as `JSON.stringify(error)`, whose keys say what each value is, in whatever
+/// spelling the error carried. Runs before the ordinary scan, which then leaves the tokens be.
+fn redact_json_identity_pairs(text: &str, context: &RedactionContext) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(
+            r#""(?P<key>server|host|hostname|share|volumeName|volumeId|serverId|deviceId|user|username|path|name)"\s*:\s*"(?P<value>(?:[^"\\]|\\.)*)""#,
+        )
+        .expect("valid JSON identity-pair regex")
+    });
+    re.replace_all(text, |caps: &Captures<'_>| {
+        let key = caps.name("key").map_or("", |m| m.as_str());
+        let value = caps.name("value").map_or("", |m| m.as_str());
+        if value.is_empty() || is_redacted_segment(value) {
+            // Already a report token (a second pass): keep it, which keeps this idempotent.
+            return caps[0].to_string();
+        }
+        let token = match key {
+            "server" | "host" | "hostname" => identity_field_token("host", value, Some(context)),
+            "share" => identity_field_token("share", value, Some(context)),
+            "user" | "username" => identity_token("user", TokenDomain::Userinfo, value, Some(context)),
+            "path" => redact_typed_path(value, Some(context), true),
+            "name" => redact_leaf(value, has_extension_like_suffix(value), Some(context)),
+            _ => identity_field_token(key, value, Some(context)),
+        };
+        format!(r#""{key}":"{token}""#)
+    })
+    .into_owned()
 }
 
 /// Tokenize every absolute path the line scanner left alone: a server or a frontend error names
