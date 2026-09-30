@@ -66,7 +66,7 @@ pub async fn try_list_shares_authenticated(
     timeout: Duration,
 ) -> Result<Vec<smb2::ShareInfo>, smb2::Error> {
     let addr = build_addr(hostname, ip_address, port);
-    debug!("try_list_shares_authenticated: addr={}, user={}", addr, username);
+    debug!("try_list_shares_authenticated: addr={}, user={:?}", addr, username);
 
     let config = ClientConfig {
         addr,

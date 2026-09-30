@@ -252,7 +252,7 @@ pub(crate) async fn connect_directly(volume_id: &str) -> UpgradeResult {
         let hint = info.username.clone();
         return credentials_needed(info, display_name, hint, CredentialsNeededReason::NoCredential);
     };
-    log::info!("Found Keychain credentials for user={}", username);
+    log::info!("Found Keychain credentials for user={:?}", username);
 
     let upgraded = try_smb_upgrade(&info, &mount_path, Some(&username), Some(&password), volume_id).await;
     match upgraded {

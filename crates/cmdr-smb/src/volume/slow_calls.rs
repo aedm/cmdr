@@ -60,7 +60,7 @@ impl SlowCallLog {
         let took = elapsed.as_millis();
         Some(if batch.is_rolled_up() {
             format!(
-                "SMB metadata calls were slow: share={share} ×{} over {} s in {}s, slowest {} ms, latest {op} {took} ms. \
+                "SMB metadata calls were slow: share={share:?} ×{} over {} s in {}s, slowest {} ms, latest {op} {took} ms. \
                  The server held them; check its load (a busy NAS does this under heavy writes)",
                 batch.count,
                 SLOW_CALL.as_secs(),
@@ -69,7 +69,7 @@ impl SlowCallLog {
             )
         } else {
             format!(
-                "SMB metadata call was slow: share={share} {op} took {took} ms. \
+                "SMB metadata call was slow: share={share:?} {op} took {took} ms. \
                  The server held it; check its load (a busy NAS does this under heavy writes)"
             )
         })

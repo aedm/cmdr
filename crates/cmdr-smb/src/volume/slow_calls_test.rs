@@ -24,7 +24,8 @@ fn the_first_stall_on_a_share_is_logged_at_once() {
         .line_at(SHARE, "get_metadata", ms(3_210), Instant::now())
         .expect("a 3.2 s stat is worth a line");
     assert!(line.contains("get_metadata"), "{line}");
-    assert!(line.contains("share=naspi"), "{line}");
+    // Quoted, so the report redactor sees the share as an identity field.
+    assert!(line.contains(r#"share="naspi""#), "{line}");
     assert!(line.contains("3210 ms"), "{line}");
 }
 
