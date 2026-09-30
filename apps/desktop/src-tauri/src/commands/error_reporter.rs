@@ -135,7 +135,7 @@ pub async fn prepare_error_report_preview(
     email: Option<String>,
 ) -> Result<PreviewPayload, String> {
     let request = flow_a_request(None, user_note, email).map_err(|e| e.to_string())?;
-    let bundle = error_reporter::build_bundle(&app, request)?;
+    let bundle = error_reporter::build_bundle(&app, request).await?;
     let capped = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     Ok(PreviewPayload {
         id: bundle.id,
@@ -160,6 +160,7 @@ pub async fn send_error_report(
     id: Option<String>,
 ) -> Result<SendResult, ErrorReportSendError> {
     let bundle = error_reporter::build_bundle(&app, flow_a_request(id, user_note, email)?)
+        .await
         .map_err(|detail| ErrorReportSendError::BundleUnavailable { detail })?;
     let capped = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     let result = error_reporter::upload(capped, &bundle.manifest, &error_reporter::error_report_url()).await?;
@@ -229,7 +230,7 @@ pub async fn save_error_report_to_disk(
     id: Option<String>,
 ) -> Result<String, String> {
     let request = flow_a_request(id, user_note, email).map_err(|e| e.to_string())?;
-    let mut bundle = error_reporter::build_bundle(&app, request)?;
+    let mut bundle = error_reporter::build_bundle(&app, request).await?;
     bundle.zip_bytes = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     let path = error_reporter::save_bundle_to_disk(&app, &bundle)?;
     log::info!(
@@ -291,6 +292,7 @@ pub async fn send_crash_log_report(
         email: None,
     };
     let bundle = error_reporter::build_bundle(&app, request)
+        .await
         .map_err(|detail| ErrorReportSendError::BundleUnavailable { detail })?;
     let capped = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     let result = error_reporter::upload(capped, &bundle.manifest, &error_reporter::error_report_url()).await?;

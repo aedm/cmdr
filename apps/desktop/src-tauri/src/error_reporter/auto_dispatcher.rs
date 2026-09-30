@@ -270,7 +270,7 @@ async fn flush(app: AppHandle<Wry>) {
         user_note: Some(note),
         email: None,
     };
-    let bundle = match error_reporter::build_bundle(&app, request) {
+    let bundle = match error_reporter::build_bundle(&app, request).await {
         Ok(b) => b,
         Err(e) => {
             log::warn!(

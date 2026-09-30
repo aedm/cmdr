@@ -87,7 +87,7 @@ pub struct BundleRequest {
 /// The auto-dispatcher then runs `cap_bundle_to_mb` on the result. This path is left
 /// unchanged because the auto-send flow runs off the user's hot path and the simpler
 /// code is easier to reason about for that flow.
-pub fn build_bundle<R: tauri::Runtime>(
+pub async fn build_bundle<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     request: BundleRequest,
 ) -> Result<BuiltBundle, String> {
@@ -103,6 +103,8 @@ pub fn build_bundle<R: tauri::Runtime>(
     let now_system = SystemTime::now();
 
     let redaction = redact::RedactionContext::for_report(&id);
+    // Every report carries at least the state at report time, whatever the failure logged at.
+    super::state_history::capture_for_report(app).await;
     let files = match logging::log_dir() {
         Some(dir) => logging::list_recent_log_files(dir),
         None => Vec::new(),

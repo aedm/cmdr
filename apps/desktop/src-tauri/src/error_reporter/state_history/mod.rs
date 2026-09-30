@@ -52,6 +52,14 @@ impl StateHistory {
         Some(sequence)
     }
 
+    /// A sequence for a report's own capture: no throttle, and the error throttle's clock is
+    /// left alone, so the next error still captures on its usual cadence.
+    fn reserve_for_report(&mut self) -> u64 {
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.saturating_add(1);
+        sequence
+    }
+
     fn store(&mut self, snapshot: RawStateSnapshot) {
         let insertion = self
             .snapshots
@@ -97,6 +105,17 @@ pub(super) fn capture_if_due(app: tauri::AppHandle<tauri::Wry>) {
         };
         HISTORY.lock_ignore_poison().store(snapshot);
     });
+}
+
+/// Capture the state now, for the report being built. The ring otherwise only fills on
+/// `log_error!`, and plenty of reported failures log below error level, which left their
+/// reports without any state at all.
+pub(super) async fn capture_for_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    let sequence = HISTORY.lock_ignore_poison().reserve_for_report();
+    let volumes = crate::mcp::resources::volumes::snapshot_volumes().await;
+    if let Some(snapshot) = capture(app, sequence, Utc::now(), &volumes) {
+        HISTORY.lock_ignore_poison().store(snapshot);
+    }
 }
 
 /// Transform the current process's history with one report's correlation context.

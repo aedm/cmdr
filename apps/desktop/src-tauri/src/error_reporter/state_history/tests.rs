@@ -81,6 +81,28 @@ fn raw(sequence: u64) -> RawStateSnapshot {
     }
 }
 
+/// A report takes its own capture even inside the error throttle, so a failure that logged
+/// below error level still ships the state at report time. It leaves the throttle alone.
+#[test]
+fn a_report_capture_bypasses_the_throttle_and_keeps_order() {
+    let mut history = StateHistory::default();
+    let start = Instant::now();
+    assert!(history.record(start, raw(0)));
+
+    let report_sequence = history.reserve_for_report();
+    let mut snapshot = raw(50);
+    snapshot.sequence = report_sequence;
+    history.store(snapshot);
+
+    assert!(!history.record(start + Duration::from_secs(29), raw(1)), "the error throttle still holds");
+    assert!(history.record(start + Duration::from_secs(30), raw(2)));
+    assert_eq!(
+        history.snapshot().iter().map(|s| s.generation).collect::<Vec<_>>(),
+        vec![40, 90, 42],
+        "oldest first, the report capture in its reserved place"
+    );
+}
+
 #[test]
 fn history_throttles_at_thirty_seconds_caps_at_eight_and_stays_oldest_first() {
     let mut history = StateHistory::default();

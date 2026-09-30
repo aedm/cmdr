@@ -389,7 +389,9 @@ need stack context regardless of the user's env.
 ### State snapshot at error time
 
 `auto_dispatcher::on_error_logged` (called from every `log_error!`) reserves a capture in
-`state_history` at most once every 30 seconds. The capture runs off the logging caller and
+`state_history` at most once every 30 seconds, and `build_bundle` takes one more capture for the report it builds
+(`capture_for_report`, outside the throttle), so a failure that logged below error level still ships the state at
+report time. The capture runs off the logging caller and
 clones typed in-memory facts into an eight-entry, oldest-first ring:
 
 - **Panes**: path, volume, backend, connection, view/sort, counts, the cursor entry, selection split.
