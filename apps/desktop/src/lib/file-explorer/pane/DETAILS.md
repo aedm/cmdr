@@ -40,6 +40,11 @@ carry live here:
   state and deliberately skips network + search-results panes (`ServersHub` owns the MCP push for the network view and
   would get clobbered; a snapshot is local dialog state, not a directory agents query), while `tab-mcp-sync.svelte.ts`
   debounce-mirrors each pane's tab structure via `updatePaneTabs`.
+- **Two drags, two controllers, and they never meet**: `drag-drop-controller.svelte.ts` is the native FILE drag (Tauri's
+  drop events), while a TAB drag is `../tabs/tab-drag-controller.svelte.ts` on plain pointer events. `DualPaneExplorer`
+  creates both, hands each `TabBar` its `forPane()` face, and mounts `TabDragOverlay`; a tab drop lands in
+  `tab-operations.ts::handleTabDrop`. ❌ Don't grow tab logic into the file controller. Detail: `../tabs/DETAILS.md` §
+  Moving a tab.
 - **The pane mirror fetches its visible range in ONE `getFileRange`**, capped at `MAX_MIRRORED_ROWS`. A row at a time
   was ~100 IPC round trips per sync, and the app stopped answering IPC on a big directory
   (`docs/notes/listing-row-fetch-quadratic-2026-08-22.md`). ⚠️ The gate is `syncsToMcp`, a pane-KIND capability, so this
@@ -1158,7 +1163,8 @@ single module — A5 is per concern, not per call shape):
   That's tab CRUD — a separate surface. The subscriber owns active-tab NAV-state + focus; `tab-operations` owns tab
   structure. Both write `app-status.json` tab keys through `savePaneTabs`, but a nav change and a tab-bar action are
   distinct triggers. The same split applies to the MCP `tab` tool's CRUD branches in `handleMcpTabAction` (close /
-  close_others / set_pinned), which keep their own `saveTabsForPaneSide`.
+  close_others / set_pinned), which keep their own `saveTabsForPaneSide`. A tab MOVE (a drag, or MCP `tab move`)
+  persists from `moveTabToPane`: both panes when the tab crossed over, one for a reorder.
 - **The MCP backend mirror** (`syncTabsToBackend` / `updatePaneTabs` / `updateFocusedPane`, L8): the Rust state store
   for MCP, a different target and debounce (100 ms), NOT disk persistence. Untouched.
 - **Dotfile visibility**: the `listing.showHiddenFiles` SETTING, not pane state and not `app-status`. Both panes read
@@ -1785,7 +1791,7 @@ pushed for it (`src-tauri/src/services_menu/DETAILS.md` § "The right-click menu
 Two of this directory's modules are analytics chokepoints, and they're chokepoints on purpose — a per-call-site event
 drifts the moment a fourth trigger appears. A third module reaches one that lives elsewhere.
 
-- `tab-operations.ts` emits the four `tab_*` events. It's the layer every trigger funnels through (the tab bar, the File
+- `tab-operations.ts` emits the five `tab_*` events. It's the layer every trigger funnels through (the tab bar, the File
   menu, the keyboard, the palette, the MCP `tab` tool), and the pure `tabs/tab-state-manager.svelte.ts` beneath it is
   deliberately left alone: unit tests drive it directly, so emitting there would fire events from the test suite.
 - `drag-drop-controller.svelte.ts::handleDrop` emits `drop_received` on EVERY arm, refusals included.
