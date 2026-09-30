@@ -30,11 +30,8 @@ Usage (adding logging, `RUST_LOG` recipes, the verbose toggle): `docs/tooling/lo
   is discarded at the IPC boundary and reaches neither the log file nor a bundle. `cmdr/no-unrendered-log-fields`
   enforces it at every level (`debug` and `info` drop properties the same way). Note `String(obj)` renders
   `[object Object]`, so interpolate a field you can read: `{error.message}`, or a pre-stringified value.
-- **Name a path or identity placeholder from the bridge's key map** (`{path}`, `{dir}`, `{name}`, `{volumeId}`,
-  `{volumeName}`, `{host}`, `{server}`, `{share}`, `{deviceId}`, …; `REDACTOR_KEY_BY_PLACEHOLDER` in `log-bridge.ts`).
-  The bridge renders those as `path="…"` / `volumeId="…"` fields, which the local log keeps whole and an error report
-  tokenizes. ❌ Don't log one under a generic name (`{vol}`, `{value}`) or splice it into the template string: the
-  report redactor can't recognize a relative path, a bare name, or an ID in prose.
+- **Name a path or identity placeholder from `REDACTOR_KEY_BY_PLACEHOLDER`** (`{path}`, `{name}`, `{volumeId}`, …): the
+  bridge renders it as a `key="…"` field that a report tokenizes. ❌ Never a generic name (`{vol}`) or spliced in.
 - **The bridge dedups and throttles to protect against infinite-loop log floods.** Consecutive identical messages get
   ` (×N, deduplicated)` appended. Above 200 FE logs/s the excess is dropped with an "Excessive frontend logging
   detected" warning naming the top three dropped-from categories. Don't remove these guards; an unthrottled FE loop
