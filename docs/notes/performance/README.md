@@ -58,7 +58,8 @@ the switch" there):
   (0.13–0.17%), after the space-poll fix (`space-poll-cost-2026-09-27.md`). Met.
 - **Indexing on: 2.2%** main process, WebContent 0.73%, GPU helper 0.31% (`idle-census-2026-09-27.md` § "Idle CPU").
   Measured before the child-dir index, the space-poll fix, and mDNS gating, under ~160 FS events/s from sibling agents'
-  builds; the indexing-driven share was ~1.1–1.4%. Not yet re-measured.
+  builds; the indexing-driven share was ~1.1–1.4%. Prod 0.48.0 (all three fixes in) reads **0.8–1.2%** in Activity
+  Monitor (David, 2026-09-29–30): at the target line, not yet attributed per thread.
 - **No hotspot**: the cost is spread over many threads at a few hundredths of a percent each, so each remaining item
   below shaves a thread or two.
 - **The allocator doesn't move it**: indexing off, MCP on, one 240 s window side by side, the system allocator 0.229%
@@ -157,10 +158,11 @@ the RAM or CPU targets. Where an issue exists, it's the place to track the work;
 expected payoff against the targets over effort. Each item's **Effect** line is the expected move against a target, from
 the linked note's numbers.
 
-1. **Re-measure idle CPU with indexing on, on current `main`.** The 2.2% predates the child-dir index, the space-poll
-   fix, and mDNS gating. Use the census recipe (`idle-census-2026-09-27.md`) and say how many FS events/s the machine
-   saw. Status: not started. **Effect**: none by itself; it decides whether the CPU target is met with indexing on (the
-   indexing-driven share was ~1.1–1.4% before those three fixes).
+1. **Get idle CPU with indexing on reliably under 1%.** David's prod 0.48.0 reads 0.8–1.2% (Activity Monitor, observed
+   2026-09-29–30), so it straddles the target. Next step: attribute it per thread on the running prod, read-only
+   (`proc_pidinfo` deltas, the census recipe in `idle-census-2026-09-27.md`), note the FS events/s, and rank what's
+   left. Status: not started. **Effect**: decides the last target; the indexing-driven share was ~1.1–1.4% before the
+   child-dir index, the space-poll fix, and mDNS gating.
 2. **Explain the rest of the heap on a long-running prod**: run `memory_diagnostics` on a long-running prod (~360 MiB
    was unexplained at 0.46.1). 0.48.0 carries the mimalloc census (`rustHeapCensus`); a later, system-allocator release
    reports the default zone's live and reserved bytes instead, with no census. Status: not started. **Effect**: none by
