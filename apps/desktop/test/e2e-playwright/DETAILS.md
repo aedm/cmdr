@@ -1154,6 +1154,13 @@ Toasts auto-dismiss after 4 seconds if `dismissal: 'transient'` (the default), o
 
 ## Gotchas
 
+**Gotcha**: a raw `window.__TAURI_INTERNALS__.invoke('<command>', {...})` inside an `evaluate()` string is invisible to
+tsc, so a parameter the Rust command gains or renames reaches the suite only as a red run (`missing required key …`),
+and only on the platform that runs the spec. **Why**: the typed `commands.*` wrappers in `src/lib/ipc/bindings.ts` live
+in the webview bundle, out of a spec's reach, and nothing compares a spec's argument keys against them. When a command
+changes, grep the suite for its snake_case name. Keep one command's raw calls behind one spec-local function and type
+the VALUES from the generated bindings (`import type`), as `listSharesOverIpc` in `smb.spec.ts` does.
+
 **Gotcha**: selecting a volume reopens the folder last used on it, so a bare `mcpSelectVolume` lands wherever an EARLIER
 test left that volume. **Why**: `determineNavigationPath` restores the remembered path when the volume says it still
 exists, asking the volume itself, and one app instance serves every test on the shard. Phones and servers answer that

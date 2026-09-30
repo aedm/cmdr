@@ -49,6 +49,7 @@ import {
   mcpAwaitPath,
 } from '../e2e-shared/mcp-client.js'
 import { ensureAppReady, expectAndDismissToast, getFixtureRoot, pollUntil, isStateClean } from './helpers.js'
+import type { CredentialSource, ShareListResult } from '../../src/lib/ipc/bindings.js'
 
 import os from 'os'
 
@@ -167,6 +168,46 @@ async function shareExistsInPane(tauriPage: Parameters<typeof pollUntil>[0], sha
         }
         return false;
     })()`)
+}
+
+/** What a listing signs in with. `username: null` is guest, as it is in the sign-in sheet's answer. */
+interface ListingSignIn {
+  username: string | null
+  password: string | null
+  credentialSource: CredentialSource
+}
+
+/** Guest, the way "Use guest" and the sheet's guest choice ask for it. */
+const AS_GUEST: ListingSignIn = { username: null, password: null, credentialSource: 'typed' }
+
+/**
+ * Lists a host's shares with `list_shares_with_credentials`, the command the sign-in sheet's attempt runs, skipping
+ * the UI for the real Samba round-trip.
+ *
+ * ❗ The argument keys mirror `commands.listSharesWithCredentials` in `src/lib/ipc/bindings.ts`. tsc can't see inside
+ * the evaluated string, so a parameter the Rust command gains or renames reaches this spec only as a red run; keeping
+ * every call behind this one function makes that a one-place fix. The value types are the generated ones.
+ *
+ * A unique `hostId` per call keeps a cached listing from answering.
+ */
+async function listSharesOverIpc(
+  tauriPage: Parameters<typeof pollUntil>[0],
+  host: { idPrefix: string; hostname: string; port: number },
+  signIn: ListingSignIn,
+): Promise<ShareListResult> {
+  return tauriPage.evaluate<ShareListResult>(`
+    window.__TAURI_INTERNALS__.invoke('list_shares_with_credentials', {
+      hostId: ${JSON.stringify(host.idPrefix)} + Date.now(),
+      hostname: ${JSON.stringify(host.hostname)},
+      ipAddress: null,
+      port: ${String(host.port)},
+      username: ${JSON.stringify(signIn.username)},
+      password: ${JSON.stringify(signIn.password)},
+      credentialSource: ${JSON.stringify(signIn.credentialSource)},
+      timeoutMs: 30000,
+      cacheTtlMs: 5000,
+    })
+  `)
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -480,20 +521,12 @@ describeSmb('SMB authentication', () => {
   test('listing shares with valid credentials returns private share', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
 
-    // Call the Tauri IPC command directly: the same command the sign-in sheet's
-    // attempt runs. A unique hostId bypasses any cached results.
-    const result = await tauriPage.evaluate<{ shares: { name: string }[]; authMode: string }>(`
-      window.__TAURI_INTERNALS__.invoke('list_shares_with_credentials', {
-        hostId: 'smb-e2e-auth-valid-' + Date.now(),
-        hostname: ${JSON.stringify(SMB_AUTH_HOST)},
-        ipAddress: undefined,
-        port: ${String(SMB_AUTH_PORT)},
-        username: ${JSON.stringify(SMB_AUTH_USERNAME)},
-        password: ${JSON.stringify(SMB_AUTH_PASSWORD)},
-        timeoutMs: 30000,
-        cacheTtlMs: 5000,
-      })
-    `)
+    // What the sign-in sheet sends when someone types the account in.
+    const result = await listSharesOverIpc(
+      tauriPage,
+      { idPrefix: 'smb-e2e-auth-valid-', hostname: SMB_AUTH_HOST, port: SMB_AUTH_PORT },
+      { username: SMB_AUTH_USERNAME, password: SMB_AUTH_PASSWORD, credentialSource: 'typed' },
+    )
 
     const shareNames = result.shares.map((s) => s.name)
     expect(shareNames).toContain(SMB_AUTH_SHARE)
@@ -511,18 +544,11 @@ describeSmb('SMB 50-share server', () => {
     await ensureAppReady(tauriPage)
 
     // List shares via IPC (bypasses UI, tests the backend share listing path)
-    const result = await tauriPage.evaluate<{ shares: { name: string }[] }>(`
-      window.__TAURI_INTERNALS__.invoke('list_shares_with_credentials', {
-        hostId: 'smb-e2e-50shares-' + Date.now(),
-        hostname: ${JSON.stringify(SMB_50SHARES_HOST)},
-        ipAddress: undefined,
-        port: ${String(SMB_50SHARES_PORT)},
-        username: '',
-        password: '',
-        timeoutMs: 30000,
-        cacheTtlMs: 5000,
-      })
-    `)
+    const result = await listSharesOverIpc(
+      tauriPage,
+      { idPrefix: 'smb-e2e-50shares-', hostname: SMB_50SHARES_HOST, port: SMB_50SHARES_PORT },
+      AS_GUEST,
+    )
 
     // smb2's consumer 50-shares container creates 50 shares
     expect(result.shares.length).toBeGreaterThanOrEqual(50)
@@ -551,18 +577,11 @@ describeSmb('SMB unicode server', () => {
     await ensureAppReady(tauriPage)
 
     // List shares via IPC
-    const result = await tauriPage.evaluate<{ shares: { name: string }[] }>(`
-      window.__TAURI_INTERNALS__.invoke('list_shares_with_credentials', {
-        hostId: 'smb-e2e-unicode-' + Date.now(),
-        hostname: ${JSON.stringify(SMB_UNICODE_HOST)},
-        ipAddress: undefined,
-        port: ${String(SMB_UNICODE_PORT)},
-        username: '',
-        password: '',
-        timeoutMs: 30000,
-        cacheTtlMs: 5000,
-      })
-    `)
+    const result = await listSharesOverIpc(
+      tauriPage,
+      { idPrefix: 'smb-e2e-unicode-', hostname: SMB_UNICODE_HOST, port: SMB_UNICODE_PORT },
+      AS_GUEST,
+    )
 
     // smb2's unicode container has shares with CJK, emoji, and accented names
     expect(result.shares.length).toBeGreaterThan(0)
