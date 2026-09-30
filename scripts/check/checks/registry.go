@@ -781,6 +781,20 @@ var AllChecks = []CheckDefinition{
 		Run: RunFixtureLaneCoverage,
 	},
 	{
+		ID:          "desktop-rust-clippy-linux",
+		CpuWeight:   8,
+		Nickname:    "clippy-linux",
+		DisplayName: "clippy (Linux)",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		IsSlow:      true,
+		NotInCI:     "CI's desktop-rust job already runs the same clippy natively on a Linux runner; this check exists to lint the Linux target from a Mac",
+		// After the host clippy, whose `--fix` may still be rewriting shared sources.
+		DependsOn: []string{"desktop-rust-clippy"},
+		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),
+		Run:       RunClippyLinux,
+	},
+	{
 		ID:          "desktop-rust-tests-linux",
 		CpuWeight:   6,
 		Nickname:    "rust-tests-linux",
@@ -789,9 +803,11 @@ var AllChecks = []CheckDefinition{
 		Tech:        "🦀 Rust",
 		IsSlow:      true,
 		NotInCI:     "CI's desktop-rust job already runs the same tests natively on a Linux runner; this check exists to run them from a Mac",
-		DependsOn:   []string{"desktop-rust-clippy"},
-		Inputs:      rustCompileInputs,
-		Run:         RunRustTestsLinux,
+		// Linters before tests, and the two share one target volume: the dependency is
+		// also what keeps their containers from contending for its build-directory lock.
+		DependsOn: []string{"desktop-rust-clippy-linux"},
+		Inputs:    rustCompileInputs,
+		Run:       RunRustTestsLinux,
 	},
 	// The real-API provider smokes. One lane per provider whose key we hold, because a
 	// decommission or a contract break at ANY of them should surface here rather than in a
