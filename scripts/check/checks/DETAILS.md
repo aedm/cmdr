@@ -1035,7 +1035,8 @@ Who stays out, and why it's not an oversight:
 - **`desktop-rust-tests-linux`** builds in its container's own `CARGO_TARGET_DIR`, and deliberately omits the feature:
   that lane is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't
   differ by platform.
-- **`desktop-rust-rustdoc`** owns a private target dir. **`desktop-rust-cargo-udeps`** runs on the pinned nightly, whose
+- **`desktop-rust-rustdoc`** and **`desktop-rust-clippy-mimalloc`** own private target dirs (the latter because its
+  `cmdr-fs` feature flip would rebuild every workspace crate above it twice per run). **`desktop-rust-cargo-udeps`** runs on the pinned nightly, whose
   artifacts can't be shared with stable anyway.
 
 ### Why the feature set is `virtual-mtp`
@@ -1796,7 +1797,8 @@ notices file.
 
 Checks by app and tech:
 
-- **Desktop / Rust**: rustfmt, clippy, rustdoc (`cargo doc --all-features --document-private-items` over every
+- **Desktop / Rust**: rustfmt, clippy, clippy-mimalloc (slow, macOS only, not in CI; clippy with `cmdr/mimalloc` in a
+  private target dir, so the global-allocator path macOS doesn't ship can't rot), rustdoc (`cargo doc --all-features --document-private-items` over every
   first-party member, with every doc lint in `rustdocDeniedLints` denied and any leftover warning failing the check too;
   the vendored fork is skipped because `--all-features` turns on two mutually exclusive arms there), cargo-audit,
   cargo-deny, cargo-machete, cargo-udeps (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro,

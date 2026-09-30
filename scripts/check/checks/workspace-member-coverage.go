@@ -101,6 +101,7 @@ var rustScannerJurisdictions = map[string]ScannerJurisdiction{
 var rustCargoLanes = map[string]string{
 	"desktop-rust-rustfmt":           "`cargo fmt --all`",
 	"desktop-rust-clippy":            "`--workspace` via CargoSelectionArgs",
+	"desktop-rust-clippy-mimalloc":   "`--workspace` via CargoSelectionArgs, with `cmdr/mimalloc` in a private target dir",
 	"desktop-rust-rustdoc":           "every first-party member named explicitly; the vendored fork is skipped, since `--all-features` turns on two mutually exclusive arms there",
 	"desktop-rust-cargo-deny":        "reads the whole `cargo metadata` graph from the workspace root",
 	"desktop-rust-cargo-audit":       "reads the workspace `Cargo.lock`",

@@ -15,6 +15,11 @@ publish = false  # Private application, not for crates.io
 workspace = true
 
 [features]
+# mimalloc as the global allocator on macOS too (Linux runs on it either way; macOS
+# defaults to the system allocator). `cmdr-fs` owns the choice and the type `main.rs`
+# installs: `crates/cmdr-fs/DETAILS.md` § "Which global allocator". A check lane
+# builds and clippies this feature so the unused path can't rot.
+mimalloc = ["cmdr-fs/mimalloc"]
 # Playwright E2E testing plugin (socket bridge to real webview). Never enable in production builds.
 playwright-e2e = ["dep:tauri-plugin-playwright", "cmdr-fs/playwright-e2e"]
 # Virtual MTP device for E2E testing (registers a fake Android device). Never enable in production builds.
@@ -194,8 +199,6 @@ fern = "0.7.1"
 # so we own the rotation now. 0.8.0 (latest stable, ~14 months old, MIT). Pulls in
 # `chrono`/`filetime`/`flate2` are all already in our dep tree.
 file-rotate = "0.8.0"
-# Memory allocator: returns memory to OS faster than system malloc, reduces fragmentation
-mimalloc = "0.1"
 # HTTP client for API server validation and AI downloads
 reqwest = { version = "0.13", features = ["json", "rustls", "stream", "multipart"], default-features = false }
 # MCP server
@@ -515,13 +518,6 @@ proptest = "1.11.0"
 # present on chat/completions, omitted on /v1/responses) and parsing without burning
 # real API quota. Pinned at 0.6.5 (latest stable, published 2025-08-24).
 wiremock = "0.6.5"
-
-[target.'cfg(target_os = "macos")'.dev-dependencies]
-# `commands/memory_diagnostics.rs` tests the heap census against a block allocated through
-# `mi_malloc` directly: the test harness runs on the system allocator (only `main.rs` sets
-# mimalloc as the global one), so a `Vec` would never reach the heap the census walks. No new
-# package in the graph: `cmdr-fs` already links this exact crate for the census itself.
-libmimalloc-sys = { version = "0.1.49", features = ["extended"] }
 
 [[example]]
 name = "smb_compose"

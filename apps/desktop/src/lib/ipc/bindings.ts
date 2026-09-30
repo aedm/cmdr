@@ -4723,7 +4723,7 @@ export const commands = {
    */
   openSystemSettingsUrl: (url: string) => typedError<null, string>(__TAURI_INVOKE('open_system_settings_url', { url })),
   /**
-   *  Snapshot this process's memory: the footprint, both allocators' own accounting,
+   *  Snapshot this process's memory: the footprint, the allocators' own accounting,
    *  SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag
    *  region-size histogram.
    *
@@ -8016,6 +8016,19 @@ export type GitSubscribeError =
       detail: string
     }
 
+// The allocator behind every Rust allocation in the shipped app.
+export type GlobalAllocator =
+  /**
+   *  mimalloc. Its arenas sit under VM tag 100 (`IOAccelerator`), outside every malloc
+   *  zone, so the zone APIs can't see the Rust heap.
+   */
+  | 'mimalloc'
+  /**
+   *  The platform's `malloc`. On macOS the Rust heap shares the default malloc zone with
+   *  Objective-C and C code, and shows as the `MALLOC_*` VM tags.
+   */
+  | 'system'
+
 /**
  *  Result of [`set_global_go_to_latest_shortcut`]: the new status the Settings row
  *  should display. The FE caches this until the next register/unregister, so
@@ -8364,12 +8377,18 @@ export type IndexMemoryWarningEvent = {
    */
   residentBytes: number
   /**
-   *  Bytes mimalloc (our global allocator, so all Rust allocation including
-   *  indexing) has committed.
+   *  The global allocator the two figures below come from. Their meaning
+   *  depends on it, so a report carries it rather than leaving a reader to guess.
+   */
+  globalAllocator: GlobalAllocator
+  /**
+   *  Bytes the global allocator holds for the Rust heap (all Rust allocation,
+   *  indexing included): mimalloc's committed bytes, or the default malloc
+   *  zone's reserved bytes, which it shares with Objective-C and C code.
    */
   rustHeapBytes: number
   /**
-   *  Bytes the system malloc zones hold: WebKit, Objective-C, and C libraries.
+   *  Bytes the other malloc zones hold: WebKit, Objective-C, and C libraries.
    *  Does NOT include the Rust heap above.
    */
   systemMallocBytes: number
@@ -9890,35 +9909,28 @@ export type MemoryDiagnostics = {
    */
   residentBytes: number
   /**
-   *  What mimalloc — our global allocator, so essentially every Rust allocation — has
-   *  committed from the OS.
+   *  The Rust heap, tagged by the global allocator that holds it (`allocator`). Read its
+   *  numbers only in that allocator's terms.
    */
-  rustHeapCommittedBytes: number
-  // The high-water mark of `rustHeapCommittedBytes`.
-  rustHeapPeakCommittedBytes: number
+  rustHeap: RustHeapDiagnostics
   /**
-   *  What the registered macOS malloc zones report as handed out: WebKit,
-   *  Objective-C, and C-library allocations. ❌ Never the Rust heap.
+   *  What the malloc zones BEYOND the Rust heap report as handed out: WebKit,
+   *  Objective-C, and C-library allocations. Under mimalloc that's every registered
+   *  zone; under the system allocator every zone but the default one, which is
+   *  `rustHeap`'s. ❌ Never overlaps `rustHeap`.
    */
   systemZonesInUseBytes: number
   // What those zones hold from the OS, in use or not.
   systemZonesReservedBytes: number
-  // How many zones were registered at snapshot time.
+  // How many zones those two fields count.
   systemZoneCount: number
-  // The biggest registered zone by in-use bytes, as `[name, bytes]`.
+  // The biggest of those zones by in-use bytes.
   largestSystemZone: SystemZone | null
   /**
-   *  SQLite's process-wide page memory, which belongs to no allocator above:
-   *  the slab is a leaked Rust allocation, so it's a fixed 64 MiB sitting
-   *  INSIDE `rustHeapCommittedBytes` that nothing else here names.
+   *  SQLite's process-wide page memory, which no allocator reading names: the slab
+   *  is a leaked Rust allocation, so it's a fixed 64 MiB sitting INSIDE `rustHeap`.
    */
   sqlitePageCache: SqlitePageCache
-  /**
-   *  How much of the Rust heap is live data, and how much is allocator slack: a census of
-   *  every mimalloc page, read against the heap's resident size. The one field that can
-   *  tell "the program holds this" from "mimalloc holds this".
-   */
-  rustHeapCensus: RustHeapCensus
   /**
    *  The kernel's VM map folded by tag, biggest dirty total first. Empty if the walk
    *  failed or timed out.
@@ -12317,7 +12329,7 @@ export type RowBeside = 'previous' | 'next'
 export type RowRole = 'rollbackUnit' | 'searchOnly'
 
 /**
- *  The Rust heap split into live data and allocator slack.
+ *  The mimalloc heap split into live data and allocator slack.
  *
  *  `liveBytes` is what the program holds; `residentBytes` is what the heap costs (its VM
  *  tag's dirty plus swapped bytes). The gap, `slackBytes`, is memory mimalloc keeps that
@@ -12351,6 +12363,47 @@ export type RustHeapCensus = {
   // False when the census stopped at its page ceiling, so the totals are a floor.
   complete: boolean
 }
+
+// The Rust heap, as its global allocator accounts for it. `allocator` says which one.
+export type RustHeapDiagnostics =
+  // mimalloc: its own committed total, plus a census of its pages.
+  | {
+      allocator: 'mimalloc'
+      // What mimalloc has committed from the OS: live data plus its slack.
+      committedBytes: number
+      // The high-water mark of `committedBytes`.
+      peakCommittedBytes: number
+      /**
+       *  How much of the heap is live data, and how much is allocator slack. The one
+       *  field that can tell "the program holds this" from "mimalloc holds this".
+       */
+      census: RustHeapCensus
+    }
+  /**
+   *  The system allocator: the default malloc zone, which the Rust heap shares with
+   *  Objective-C and C code. No page census exists for it: nothing in the zone tells a
+   *  Rust block from theirs, so the live/slack split below spans every zone.
+   */
+  | {
+      allocator: 'system'
+      // Bytes in live blocks in the default zone: the Rust heap plus Objective-C and C.
+      inUseBytes: number
+      /**
+       *  What the default zone holds from the OS, in use or free. The zone keeps no
+       *  high-water mark.
+       */
+      reservedBytes: number
+      /**
+       *  Dirty plus swapped bytes under every `MALLOC_*` VM tag, across every zone: what
+       *  malloc costs resident. `0` when the VM walk failed.
+       */
+      mallocResidentBytes: number
+      /**
+       *  `mallocResidentBytes` minus every zone's live bytes, floored at zero: what malloc
+       *  holds beyond live data, in every zone together.
+       */
+      mallocSlackBytes: number
+    }
 
 /**
  *  One mountable thing under an account: an SFTP or WebDAV root, later an S3

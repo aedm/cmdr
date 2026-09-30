@@ -18,11 +18,11 @@
 //! trips, a full `MemorySnapshot` goes into the log so a rare event carries real
 //! diagnostic context, not a bare number.
 //!
-//! **The snapshot reads BOTH allocators, and says which one holds the bytes.**
-//! mimalloc (our global allocator, so the whole Rust heap) is invisible to the
-//! macOS malloc-zone APIs, so a zone-only reading under-reports the heap the
-//! watchdog polices by orders of magnitude. `cmdr_fs::process_memory` owns that
-//! gotcha and the readers; `MemoryAttribution` here turns the numbers into the
+//! **The snapshot reads the Rust heap and the other malloc zones apart, and
+//! says which one holds the bytes.** Under mimalloc the Rust heap is invisible
+//! to the macOS malloc-zone APIs, so a zone-only reading under-reports the heap
+//! the watchdog polices by orders of magnitude; under the system allocator it's
+//! the default zone. `cmdr_fs::process_memory` owns that split and the readers; `MemoryAttribution` here turns the numbers into the
 //! log's verdict, so the claim can never contradict the figures beside it.
 //!
 //! **The budget is GLOBAL, not per-volume** (plan rabbit hole #8, resolved by
@@ -322,7 +322,7 @@ fn mb(bytes: u64) -> f64 {
 #[cfg(target_os = "macos")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MemoryAttribution {
-    /// mimalloc, our global allocator: every Rust allocation, indexing included.
+    /// The Rust heap: every Rust allocation, indexing included.
     RustHeap,
     /// The system malloc zones: WebKit, Objective-C, C libraries.
     SystemMalloc,
@@ -358,7 +358,7 @@ impl MemoryAttribution {
     fn explanation(self) -> &'static str {
         match self {
             MemoryAttribution::RustHeap => {
-                "the Rust heap (mimalloc) holds most of it, so this IS backend memory: indexing, media, or another Rust subsystem"
+                "the Rust heap holds most of it, so this IS backend memory: indexing, media, or another Rust subsystem"
             }
             MemoryAttribution::SystemMalloc => {
                 "the system malloc zones hold most of it, so this is WebKit / Objective-C, not the Rust backend"
@@ -371,9 +371,9 @@ impl MemoryAttribution {
     }
 }
 
-/// `phys_footprint` minus what both allocators account for. Saturating: mimalloc
-/// can hold committed pages the footprint no longer counts, so the allocators
-/// can sum past `phys_footprint`.
+/// `phys_footprint` minus what both readings account for. Saturating: an
+/// allocator can hold pages the footprint no longer counts (mimalloc's committed
+/// pages, a zone's reserved ones), so the readings can sum past `phys_footprint`.
 #[cfg(target_os = "macos")]
 fn untracked_bytes(phys_footprint: u64, rust_heap: u64, system_malloc: u64) -> u64 {
     phys_footprint.saturating_sub(rust_heap.saturating_add(system_malloc))
@@ -396,17 +396,15 @@ struct MemorySnapshot {
     resident_size: u64,
     /// High-water mark of RSS.
     resident_size_max: u64,
-    /// Bytes mimalloc has committed: the Rust heap, where indexing lives.
-    rust_heap: u64,
-    /// High-water mark of the above.
-    rust_heap_peak: u64,
-    /// Bytes the SYSTEM malloc zones hold. Disjoint from `rust_heap`.
+    /// The Rust heap, where indexing lives, as the global allocator reports it.
+    rust_heap: cmdr_fs::process_memory::RustHeap,
+    /// Bytes the malloc zones beyond the Rust heap hold. Disjoint from `rust_heap`.
     system_malloc_in_use: u64,
     /// Bytes those zones reserved from the OS (in use + free).
     system_malloc_reserved: u64,
-    /// Number of system malloc zones.
+    /// Number of those zones.
     zone_count: u32,
-    /// The largest system zone by in-use bytes: `(name, in_use)`.
+    /// The largest of those zones by in-use bytes: `(name, in_use)`.
     largest_zone: Option<(String, u64)>,
     /// Live FSEvents processed so far (a cheap indexing-internal pressure
     /// signal already tracked in this module's `super`).
@@ -424,7 +422,7 @@ impl MemorySnapshot {
     fn capture() -> Option<MemorySnapshot> {
         let vm = cmdr_fs::process_memory::query_task_vm_info()?;
         let basic = cmdr_fs::process_memory::query_basic_info();
-        let rust_heap = cmdr_fs::process_memory::query_mimalloc_heap();
+        let rust_heap = cmdr_fs::process_memory::query_rust_heap();
         let zones = cmdr_fs::process_memory::query_system_malloc_zones();
 
         Some(MemorySnapshot {
@@ -432,8 +430,7 @@ impl MemorySnapshot {
             phys_footprint_peak: vm.phys_footprint_peak,
             resident_size: basic.as_ref().map_or(vm.resident_size, |b| b.resident_size),
             resident_size_max: basic.as_ref().map_or(0, |b| b.resident_size_max),
-            rust_heap: rust_heap.committed,
-            rust_heap_peak: rust_heap.peak_committed,
+            rust_heap,
             system_malloc_in_use: zones.in_use,
             system_malloc_reserved: zones.reserved,
             zone_count: zones.zone_count,
@@ -444,12 +441,20 @@ impl MemorySnapshot {
 
     /// `phys_footprint` neither allocator accounts for.
     fn untracked(&self) -> u64 {
-        untracked_bytes(self.phys_footprint, self.rust_heap, self.system_malloc_in_use)
+        untracked_bytes(
+            self.phys_footprint,
+            self.rust_heap.held_bytes(),
+            self.system_malloc_in_use,
+        )
     }
 
     /// Where the bulk of the footprint actually is.
     fn attribution(&self) -> MemoryAttribution {
-        MemoryAttribution::classify(self.phys_footprint, self.rust_heap, self.system_malloc_in_use)
+        MemoryAttribution::classify(
+            self.phys_footprint,
+            self.rust_heap.held_bytes(),
+            self.system_malloc_in_use,
+        )
     }
 
     /// A multi-line breakdown for the log. Deliberately verbose: this fires
@@ -465,28 +470,52 @@ impl MemorySnapshot {
             Some((name, bytes)) => format!(" (largest: {} {:.0} MB)", name, mb(*bytes)),
             None => String::new(),
         };
+        let (rust_heap, other_zones, vmmap_hint) = match self.rust_heap {
+            cmdr_fs::process_memory::RustHeap::Mimalloc {
+                committed,
+                peak_committed,
+            } => (
+                format!(
+                    "{:.0} MB committed (peak {:.0} MB) — mimalloc, OUR global allocator: all Rust allocation, indexing included",
+                    mb(committed),
+                    mb(peak_committed)
+                ),
+                "WebKit / Objective-C / C only; blind to the Rust heap above",
+                "mimalloc tags its arenas with VM tag 100, which macOS names VM_MEMORY_IOACCELERATOR, so `IOAccelerator` rows ARE this Rust heap, not GPU memory",
+            ),
+            cmdr_fs::process_memory::RustHeap::System { in_use, reserved } => (
+                format!(
+                    "{:.0} MB in use, {:.0} MB reserved — the default malloc zone, OUR global allocator: all Rust allocation, indexing included, plus Objective-C and C",
+                    mb(in_use),
+                    mb(reserved)
+                ),
+                "the other zones: WebKit and framework allocations, excluding the Rust heap above",
+                "the Rust heap is in the `Malloc *` rows, shared with Objective-C and C",
+            ),
+        };
         format!(
             "  phys_footprint:  {:.2} GB{} — the metric macOS keys memory pressure and jetsam on (Activity Monitor's \"Memory\"); the thresholds key on this\n\
              \x20 resident_size:   {:.2} GB (max {:.2} GB) — RSS; counts graphics and shared mappings phys_footprint excludes\n\
-             \x20 Rust heap:       {:.0} MB committed (peak {:.0} MB) — mimalloc, OUR global allocator: all Rust allocation, indexing included\n\
-             \x20 system malloc:   {:.0} MB in use, {:.0} MB reserved across {} zone(s){} — WebKit / Objective-C / C only; blind to the Rust heap above\n\
-             \x20 untracked:       {:.0} MB — phys_footprint minus both allocators: graphics surfaces, mapped files, thread stacks\n\
+             \x20 Rust heap:       {}\n\
+             \x20 system malloc:   {:.0} MB in use, {:.0} MB reserved across {} zone(s){} — {}\n\
+             \x20 untracked:       {:.0} MB — phys_footprint minus both readings: graphics surfaces, mapped files, thread stacks\n\
              \x20 verdict:         {}\n\
              \x20 live FSEvents:   {} processed\n\
-             \x20 Reading vmmap next? mimalloc tags its arenas with VM tag 100, which macOS names VM_MEMORY_IOACCELERATOR, so `IOAccelerator` rows ARE this Rust heap, not GPU memory.",
+             \x20 Reading vmmap next? {}.",
             gb(self.phys_footprint),
             peak,
             gb(self.resident_size),
             gb(self.resident_size_max),
-            mb(self.rust_heap),
-            mb(self.rust_heap_peak),
+            rust_heap,
             mb(self.system_malloc_in_use),
             mb(self.system_malloc_reserved),
             self.zone_count,
             largest,
+            other_zones,
             mb(self.untracked()),
             self.attribution().explanation(),
             grouped(self.live_event_count),
+            vmmap_hint,
         )
     }
 
@@ -500,7 +529,8 @@ impl MemorySnapshot {
         crate::IndexEvent::MemoryWarning {
             phys_footprint_bytes: phys_footprint,
             resident_bytes: snapshot.map_or(phys_footprint, |s| s.resident_size),
-            rust_heap_bytes: snapshot.map_or(0, |s| s.rust_heap),
+            global_allocator: cmdr_fs::process_memory::GLOBAL_ALLOCATOR,
+            rust_heap_bytes: snapshot.map_or(0, |s| s.rust_heap.held_bytes()),
             system_malloc_bytes: snapshot.map_or(0, |s| s.system_malloc_in_use),
             untracked_bytes: snapshot.map_or(0, MemorySnapshot::untracked),
             action,
@@ -521,10 +551,11 @@ mod tests {
         let snapshot = MemorySnapshot::capture().expect("snapshot should capture on macOS");
         assert!(snapshot.phys_footprint > 0, "phys_footprint should be positive");
         assert!(snapshot.resident_size > 0, "resident_size should be positive");
-        assert!(snapshot.rust_heap > 0, "the Rust heap should be positive");
-        assert!(
-            snapshot.system_malloc_in_use > 0,
-            "the system malloc zones should be positive"
+        assert!(snapshot.rust_heap.held_bytes() > 0, "the Rust heap should be positive");
+        assert_eq!(
+            snapshot.rust_heap.allocator(),
+            cmdr_fs::process_memory::GLOBAL_ALLOCATOR,
+            "the heap is read from the allocator the build installs"
         );
 
         let report = snapshot.report();
@@ -556,8 +587,10 @@ mod tests {
             phys_footprint_peak: Some(16 * GB + GB / 2),
             resident_size: 16 * GB + GB / 2,
             resident_size_max: 16 * GB + GB / 2,
-            rust_heap: 15 * GB,
-            rust_heap_peak: 15 * GB,
+            rust_heap: cmdr_fs::process_memory::RustHeap::Mimalloc {
+                committed: 15 * GB,
+                peak_committed: 15 * GB,
+            },
             system_malloc_in_use: GB + GB / 2,
             system_malloc_reserved: 2 * GB,
             zone_count: 4,
@@ -587,6 +620,32 @@ mod tests {
         assert!(
             report.contains("IS backend memory"),
             "the verdict should name the Rust heap; got:\n{report}"
+        );
+    }
+
+    /// The same runaway under the system allocator: the heap is the default zone, so the
+    /// report sends a `vmmap` reader to the `Malloc *` rows, never to `IOAccelerator`.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_system_allocator_runaway_points_vmmap_at_the_malloc_rows() {
+        let snapshot = MemorySnapshot {
+            rust_heap: cmdr_fs::process_memory::RustHeap::System {
+                in_use: 14 * GB,
+                reserved: 15 * GB,
+            },
+            ..incident_snapshot()
+        };
+        assert_eq!(snapshot.attribution(), MemoryAttribution::RustHeap);
+
+        let report = snapshot.report();
+        assert!(report.contains("default malloc zone"), "names the zone; got:\n{report}");
+        assert!(
+            report.contains("`Malloc *` rows"),
+            "and where vmmap shows it; got:\n{report}"
+        );
+        assert!(
+            !report.contains("IOAccelerator"),
+            "tag 100 isn't the heap in this build; got:\n{report}"
         );
     }
 
@@ -622,7 +681,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn untracked_bytes_never_underflow_when_the_allocators_overshoot() {
-        // mimalloc can hold committed pages phys_footprint no longer counts.
+        // An allocator can hold pages phys_footprint no longer counts.
         assert_eq!(untracked_bytes(4 * GB, 5 * GB, GB), 0);
         assert_eq!(untracked_bytes(0, 0, 0), 0);
         assert_eq!(MemoryAttribution::classify(0, 0, 0), MemoryAttribution::Mixed);

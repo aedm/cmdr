@@ -360,10 +360,12 @@ thread_local! {
 
 /// The test binary's allocator: `System`, plus a thread-local live-bytes counter.
 ///
-/// Installed only under `cfg(test)`; the shipping binary keeps mimalloc (`main.rs`).
+/// Installed only under `cfg(test)`; the shipping binary installs
+/// `cmdr_fs::process_memory::GLOBAL_ALLOC` (`main.rs`): the system allocator on macOS, mimalloc
+/// on Linux or with the `mimalloc` feature.
 ///
 /// Note for anyone comparing memory baselines: Rust test-run numbers are measured under THIS
-/// allocator, not mimalloc, so they aren't comparable with production figures.
+/// allocator, with a counter on every call, so they aren't comparable with production figures.
 struct CountingAllocator;
 
 // SAFETY: every method forwards its arguments unchanged to `System`, whose `GlobalAlloc` impl is

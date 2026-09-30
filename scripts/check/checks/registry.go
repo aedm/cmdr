@@ -42,6 +42,21 @@ var AllChecks = []CheckDefinition{
 		Run:         RunClippy,
 	},
 	{
+		ID:          "desktop-rust-clippy-mimalloc",
+		CpuWeight:   8,
+		Nickname:    "clippy-mimalloc",
+		DisplayName: "clippy with mimalloc on macOS",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		// A periodic gate: it guards a build nobody ships today, in a build
+		// directory of its own, so a plain `pnpm check` shouldn't pay for it.
+		IsSlow:    true,
+		NotInCI:   "every CI runner is ubuntu, where mimalloc is the default and the plain clippy step covers it; the macOS-only mimalloc readers need a Mac",
+		DependsOn: []string{"desktop-rust-clippy"},
+		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),
+		Run:       RunClippyMimalloc,
+	},
+	{
 		ID:          "desktop-rust-rustdoc",
 		CpuWeight:   4,
 		Nickname:    "rustdoc",

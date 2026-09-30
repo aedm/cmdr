@@ -287,9 +287,12 @@ pub enum IndexEvent {
         phys_footprint_bytes: u64,
         /// Resident set size, which counts mappings `phys_footprint` excludes.
         resident_bytes: u64,
-        /// Bytes our global allocator has committed.
+        /// The global allocator the two figures below come from.
+        global_allocator: cmdr_fs::process_memory::GlobalAllocator,
+        /// Bytes the global allocator holds for the Rust heap: mimalloc's committed
+        /// bytes, or the default malloc zone's reserved bytes.
         rust_heap_bytes: u64,
-        /// Bytes the system malloc zones hold, disjoint from the figure above.
+        /// Bytes the other malloc zones hold, disjoint from the figure above.
         system_malloc_bytes: u64,
         /// `phys_footprint` minus both allocators.
         untracked_bytes: u64,
@@ -706,6 +709,7 @@ pub fn one_of_every_kind() -> Vec<IndexEvent> {
         IndexEvent::MemoryWarning {
             phys_footprint_bytes: 1,
             resident_bytes: 2,
+            global_allocator: cmdr_fs::process_memory::GlobalAllocator::System,
             rust_heap_bytes: 3,
             system_malloc_bytes: 4,
             untracked_bytes: 5,
