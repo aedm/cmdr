@@ -242,12 +242,15 @@ The repo-wide worktree workflow is in `AGENTS.md` § Workflow. Desktop-specific 
   — a self-contained copy, so the worktree also works bind-mounted into the Linux-E2E Docker container), else downloads.
   So raw `cargo check` works in a fresh worktree.
 
-When FF-ing `main`, tear the worktree down with `~/.claude/scripts/remove-worktree.sh <slug>`, which takes the three
-pieces together: the worktree directory, the `worktree-<slug>` branch, and the dev state that lives OUTSIDE the repo as
+When FF-ing `main`, tear the worktree down with `~/.claude/scripts/remove-worktree.sh <slug>`, which takes the pieces
+together: the worktree directory, the `worktree-<slug>` branch, the dev state that lives OUTSIDE the repo as
 `~/Library/{Application Support,Preferences,Caches}/com.veszelovszki.cmdr-dev-<slug>` (the data dir is often ~1 GB once
-its drive index builds). Git never sees that third piece, and nothing else collects it, so by-hand teardowns pile it up.
-Both scripts also run this repo's worktree hooks, which seed a new worktree's Linux build cache from the main clone's
-and hand a merged worktree's back (`scripts/worktree-hooks/CLAUDE.md`).
+its drive index builds), and the Docker cache volumes labelled with the worktree's path. Git never sees the last two,
+and nothing else collects them, so by-hand teardowns pile them up.
+
+Both `new-worktree.sh` and `remove-worktree.sh` run this repo's worktree hooks (`scripts/worktree-hooks/CLAUDE.md`):
+creation seeds the worktree's Linux build volume from the main clone's, and a merged worktree's teardown hands its
+volume back to the main clone before the label sweep reaps it.
 
 Doing the three by hand also has a trap: `git worktree remove` unregisters the worktree BEFORE deleting its directory,
 and the delete can still fail with "Directory not empty" (a cloned `target/` is enough). That leaves the worst state —

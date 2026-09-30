@@ -23,4 +23,8 @@ This file holds the decisions behind the hook mechanism itself.
 2026-09-30, OrbStack, a tree with every source file's mtime set to "now" (what `git worktree add` produces) against a
 reflink seed of a warm volume: `clippy-linux`'s cargo run took 47 s (the 13 workspace crates rechecked, every
 third-party crate fresh), against about 90 s cold and under 1 s warm. Cargo judges a path crate by source mtime, and a
-fresh checkout's mtimes are all newer than the seeded fingerprints, so a seed can't make the workspace crates fresh.
+fresh checkout's mtimes are all newer than the seeded fingerprints, so a seed can't make the workspace crates fresh. End
+to end, the same day: a worktree from `new-worktree.sh` (seeded in 0.8 s) ran `pnpm check clippy-linux` in 47 s.
+
+Resetting unchanged files' mtimes to the main clone's would make the workspace crates fresh too, but the host `target/`
+clone has the same trait, so if that's ever done, it belongs in one place serving both.

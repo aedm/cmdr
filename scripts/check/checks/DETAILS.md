@@ -1404,10 +1404,13 @@ compiles only what changed. Order: `clippy` → `clippy-linux` → `rust-tests-l
 - **The main clone owns one volume, and worktrees hand it on** (`scripts/check/linux-cache/handoff.go`, run by the hooks
   in `scripts/worktree-hooks/CLAUDE.md`, with the names, labels, and stale sweep exported from
   `desktop-rust-linux-container.go`). A new worktree is SEEDED with a copy of the main clone's volume for its channel
-  (none there: it builds cold). A worktree torn down after merging PROMOTES its volume into the main clone's, since
-  after the fast-forward its tree is the main clone's tree; "merged" is its HEAD being an ancestor of the main clone's,
-  with no uncommitted tracked changes. A promotion also drops the main clone's volumes of other channels. Both
-  directions copy, so the source keeps its volume until its own reaper takes it.
+  (none there: it builds cold). A seed makes every third-party crate fresh, but the workspace crates still recheck:
+  cargo judges a path crate by source mtime, and a new checkout's files are all newer than the seeded fingerprints
+  (numbers: `scripts/worktree-hooks/DETAILS.md` § "What seeding buys, measured"). So a seeded first run is roughly half
+  a cold one, not the ~1 s of a warm no-change run. A worktree torn down after merging PROMOTES its volume into the main
+  clone's, since after the fast-forward its tree is the main clone's tree; "merged" is its HEAD being an ancestor of the
+  main clone's, with no uncommitted tracked changes. A promotion also drops the main clone's volumes of other channels.
+  Both directions copy, so the source keeps its volume until its own reaper takes it.
 - **A handoff is a btrfs reflink, swapped in whole**: one container mounts both volumes, takes every cargo lock on both
   sides with `flock -n` (busy means a build is running: skip, keep the old cache), clones into `/to/.incoming` with
   `cp --reflink=always`, then swaps each top-level entry in with `mv --exchange` (`renameat2`), so no path ever holds a
