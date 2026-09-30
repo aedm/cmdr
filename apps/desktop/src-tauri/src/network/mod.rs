@@ -170,7 +170,7 @@ pub async fn mount_share(
         }),
         Err(_timeout) => {
             log::warn!(
-                "Mounting \"{}\" on {} didn't finish within {} s",
+                "Mounting share={:?} on server={:?} didn't finish within {} s",
                 attempt.share(),
                 attempt.server(),
                 timeout_duration.as_secs()

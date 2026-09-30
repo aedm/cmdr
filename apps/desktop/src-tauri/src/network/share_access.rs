@@ -160,7 +160,7 @@ pub(crate) async fn clarify_share_not_found(
     let limit = budget.min(PROBE_LIMIT);
     if limit.is_zero() {
         log::info!(
-            "NetFS found no share \"{}\" on {}, and the mount's budget is spent, so the server isn't asked why",
+            "NetFS found no share={:?} on server={:?}, and the mount's budget is spent, so the server isn't asked why",
             attempt.params.share_name,
             attempt.params.server
         );
@@ -178,10 +178,11 @@ pub(crate) async fn clarify_share_not_found(
         Err(error) => error.to_string(),
     };
     log::info!(
-        "NetFS found no share \"{}\" on {} as {:?}; asked directly, the server answered {answer} ({verdict:?})",
+        "NetFS found no share={:?} on server={:?} as {:?}; asked directly, the server answered detail={:?} ({verdict:?})",
         attempt.params.share_name,
         attempt.params.server,
         attempt.identity,
+        cmdr_fs::log_detail::LogDetail(&answer),
     );
     clarified(original, attempt, verdict)
 }

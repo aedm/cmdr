@@ -272,7 +272,7 @@ mod tests {
     fn mutex_capture_logger_routes_known_prefixes() {
         // Format mirrors the real `log::debug!` sites in `clone_session`.
         let mutex_msg = format!(
-            "client-mutex: waiting ticket={} caller=clone_session share={}",
+            "client-mutex: waiting ticket={} caller=clone_session share={:?}",
             7, "Public"
         );
         let recv_msg = "recv: smb2 frame 0x10 mid=42";

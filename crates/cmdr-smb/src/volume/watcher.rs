@@ -172,7 +172,7 @@ async fn process_event_batch_with<Stat, StatFuture>(
     for (parent_path, events) in &events_by_dir {
         if events.len() > WATCHER_BATCH_THRESHOLD {
             debug!(
-                "smb_watcher: {} events for {}, emitting FullRefresh",
+                "smb_watcher: {} events for path={:?}, emitting FullRefresh",
                 events.len(),
                 parent_path.display()
             );
@@ -199,7 +199,7 @@ async fn process_event_batch_with<Stat, StatFuture>(
                         }
                         None => {
                             debug!(
-                                "smb_watcher: couldn't stat added file {}, skipping",
+                                "smb_watcher: couldn't stat added file path={:?}, skipping",
                                 entry_path.display()
                             );
                         }
@@ -218,7 +218,7 @@ async fn process_event_batch_with<Stat, StatFuture>(
                         }
                         None => {
                             debug!(
-                                "smb_watcher: couldn't stat modified file {}, skipping",
+                                "smb_watcher: couldn't stat modified file path={:?}, skipping",
                                 entry_path.display()
                             );
                         }
@@ -399,9 +399,9 @@ pub(super) async fn run_smb_watcher(
         let events_result = tokio::select! {
             result = watcher.next_events() => result,
             _ = &mut cancel_rx => {
-                debug!("smb_watcher({}): cancelled, closing watcher", share_name);
+                debug!("smb_watcher(share={:?}): cancelled, closing watcher", share_name);
                 if let Err(e) = watcher.close().await {
-                    debug!("smb_watcher({}): error closing watcher: {}", share_name, e);
+                    debug!("smb_watcher(share={:?}): error closing watcher: {}", share_name, e);
                 }
                 return;
             }
@@ -463,9 +463,9 @@ pub(super) async fn run_smb_watcher(
                         _ = &mut cancel_rx => {
                             // Process what we have, then exit
                             process_event_batch(&host, events_by_dir, &volume_id, &share, &anchor).await;
-                            debug!("smb_watcher({}): cancelled during debounce, closing", share_name);
+                            debug!("smb_watcher(share={:?}): cancelled during debounce, closing", share_name);
                             if let Err(e) = watcher.close().await {
-                                debug!("smb_watcher({}): error closing watcher: {}", share_name, e);
+                                debug!("smb_watcher(share={:?}): error closing watcher: {}", share_name, e);
                             }
                             return;
                         }
@@ -496,7 +496,7 @@ pub(super) async fn run_smb_watcher(
 
                 let total_events: usize = events_by_dir.values().map(|v| v.len()).sum();
                 debug!(
-                    "smb_watcher({}): processing {} event(s) across {} dir(s)",
+                    "smb_watcher(share={:?}): processing {} event(s) across {} dir(s)",
                     share_name,
                     total_events,
                     events_by_dir.len()
@@ -514,7 +514,7 @@ pub(super) async fn run_smb_watcher(
 
                 if is_enum_dir {
                     debug!(
-                        "smb_watcher({}): STATUS_NOTIFY_ENUM_DIR, emitting FullRefresh for share root",
+                        "smb_watcher(share={:?}): STATUS_NOTIFY_ENUM_DIR, emitting FullRefresh for share root",
                         share_name
                     );
                     host.listings()
@@ -539,7 +539,7 @@ pub(super) async fn run_smb_watcher(
                 // SmbVolume reconnect cycle will respawn us with a fresh
                 // session.
                 warn!(
-                    "smb_watcher({}): next_events failed: {} — bailing, SmbVolume reconnect will respawn",
+                    "smb_watcher(share={:?}): next_events failed: {} — bailing, SmbVolume reconnect will respawn",
                     share_name, e
                 );
                 // Index freshness: the live watch broke, so a Fresh index can no

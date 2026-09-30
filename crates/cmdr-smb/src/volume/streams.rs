@@ -232,7 +232,7 @@ impl SmbVolume {
                 Err(e) => {
                     update_state_on_smb_error(&host, &state_arc, &retirement, &volume_id, &e);
                     warn!(
-                        "SmbVolume::download(share={}, path={}): {}",
+                        "SmbVolume::download(share={:?}, path={:?}): {}",
                         share_name, smb_path_owned, e
                     );
                     let _ = size_tx.send(Err(map_smb_error(e, &display_path)));
@@ -254,7 +254,7 @@ impl SmbVolume {
                     biased;
                     _ = &mut cancel_rx => {
                         debug!(
-                            "SmbVolume::download(share={}, path={}): cancelled after {} bytes",
+                            "SmbVolume::download(share={:?}, path={:?}): cancelled after {} bytes",
                             share_name, smb_path_owned, download.bytes_received()
                         );
                         break;
@@ -275,7 +275,7 @@ impl SmbVolume {
                         Some(Err(e)) => {
                             update_state_on_smb_error(&host, &state_arc, &retirement, &volume_id, &e);
                             warn!(
-                                "SmbVolume::download(share={}, path={}): chunk error: {}",
+                                "SmbVolume::download(share={:?}, path={:?}): chunk error: {}",
                                 share_name, smb_path_owned, e
                             );
                             let _ = chunk_tx.send(Err(map_smb_error(e, &display_path))).await;
@@ -297,7 +297,7 @@ impl SmbVolume {
                 // A dead connection still counts for the volume's state.
                 update_state_on_smb_error(&host, &state_arc, &retirement, &volume_id, &e);
                 debug!(
-                    "SmbVolume::download(share={}, path={}): CLOSE after the last byte: {}",
+                    "SmbVolume::download(share={:?}, path={:?}): CLOSE after the last byte: {}",
                     share_name, smb_path_owned, e
                 );
             }
@@ -394,7 +394,7 @@ impl SmbVolume {
             let smb_path = self.to_smb_path(dest)?;
 
             debug!(
-                "SmbVolume::write_from_stream: share={}, path={:?}, length={length:?}",
+                "SmbVolume::write_from_stream: share={:?}, path={:?}, length={length:?}",
                 self.inner.share_name, smb_path
             );
 

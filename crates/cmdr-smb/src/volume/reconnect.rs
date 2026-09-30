@@ -124,7 +124,7 @@ impl SmbVolumeInner {
 
         if self.connection_state() == ConnectionState::Direct {
             debug!(
-                "SmbVolumeInner::attempt_reconnect(share={}): already Direct, skipping",
+                "SmbVolumeInner::attempt_reconnect(share={:?}): already Direct, skipping",
                 self.share_name
             );
             return Ok(());
@@ -142,7 +142,7 @@ impl SmbVolumeInner {
         // First try: stored credentials (the ones that worked at original connect).
         let params_snapshot = { self.params.read().await.clone() };
         info!(
-            "SmbVolumeInner::attempt_reconnect(share={}): trying with cached credentials",
+            "SmbVolumeInner::attempt_reconnect(share={:?}): trying with cached credentials",
             self.share_name
         );
 
@@ -152,7 +152,7 @@ impl SmbVolumeInner {
             Err(err) if crate::is_auth_error(&err) => {
                 // Cached creds may be stale. Re-pull from the secret store and retry once.
                 info!(
-                    "SmbVolumeInner::attempt_reconnect(share={}): cached credentials rejected, re-pulling from secret store",
+                    "SmbVolumeInner::attempt_reconnect(share={:?}): cached credentials rejected, re-pulling from secret store",
                     self.share_name
                 );
                 match refresh_credentials_from_store(&self.host, &params_snapshot).await {
@@ -170,7 +170,7 @@ impl SmbVolumeInner {
                             }
                             Err(e2) => {
                                 warn!(
-                                    "SmbVolumeInner::attempt_reconnect(share={}): refreshed credentials also failed: {}",
+                                    "SmbVolumeInner::attempt_reconnect(share={:?}): refreshed credentials also failed: {}",
                                     self.share_name, e2
                                 );
                                 // The password on the server changed and what we have
@@ -184,7 +184,7 @@ impl SmbVolumeInner {
                     _ => {
                         // No fresh creds available, or they're identical to the cached ones.
                         warn!(
-                            "SmbVolumeInner::attempt_reconnect(share={}): no fresh credentials available; giving up on this attempt",
+                            "SmbVolumeInner::attempt_reconnect(share={:?}): no fresh credentials available; giving up on this attempt",
                             self.share_name
                         );
                         self.emit_state_change_for_id(VolumeConnection::NeedsCredentials);
@@ -194,7 +194,7 @@ impl SmbVolumeInner {
             }
             Err(e) => {
                 warn!(
-                    "SmbVolumeInner::attempt_reconnect(share={}): connect failed: {}",
+                    "SmbVolumeInner::attempt_reconnect(share={:?}): connect failed: {}",
                     self.share_name, e
                 );
                 return Err(map_smb_error(e, &share_root));
@@ -281,7 +281,7 @@ impl SmbVolumeInner {
             // Non-fatal: the in-memory params below still carry the creds for this
             // reconnect; only the "silent next time" guarantee is lost.
             warn!(
-                "SmbVolumeInner::reconnect_with_credentials(share={}): the secret store didn't take the credentials",
+                "SmbVolumeInner::reconnect_with_credentials(share={:?}): the secret store didn't take the credentials",
                 self.share_name
             );
         }

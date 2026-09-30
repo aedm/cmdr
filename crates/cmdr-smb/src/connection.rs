@@ -123,7 +123,7 @@ pub async fn try_open_share(params: &SmbConnectionParams, timeout: Duration) -> 
     // the tree anyway.
     if let Err(e) = client.disconnect_share(&tree).await {
         debug!(
-            "try_open_share: tree disconnect from {} didn't go through: {}",
+            "try_open_share: tree disconnect from share={:?} didn't go through: {}",
             params.share_name, e
         );
     }

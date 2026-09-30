@@ -34,6 +34,8 @@ use regex::{Captures, Regex};
 use std::borrow::Cow;
 use std::sync::OnceLock;
 
+#[cfg(test)]
+mod consistency_tests;
 mod context;
 mod detail;
 #[cfg(test)]
@@ -340,7 +342,16 @@ fn redactor_regex() -> &'static Regex {
                   | [^\s,;"'()}]+
                 )
             )
-            | (?P<mdns>           [\p{L}\p{N}][\p{L}\p{N}-]{0,62} \. local\b )
+            # DNS-SD: a Bonjour service instance (`Naspolya._smb._tcp.local.`, whose first label
+            # is the user's own device name) and a bare service type (`_smb._tcp.local.`, public).
+            # Both before `mdns`, whose labels can't start with `_` and would split the name off.
+            | (?P<bonjour_instance>
+                [\p{L}\p{N}][\p{L}\p{N}_-]* \. _[A-Za-z0-9-]+ \. _(?: tcp | udp ) \. local \b \.?
+            )
+            | (?P<bonjour_service> _[A-Za-z0-9-]+ \. _(?: tcp | udp ) \. local \b \.? )
+            # A `.local` hostname, every label of it (`nas.home-lab.local`). Unbounded `*`, not
+            # `{0,62}`: counted repeats of Unicode classes blow the regex size limit.
+            | (?P<mdns>           [\p{L}\p{N}][\p{L}\p{N}-]* (?: \. [\p{L}\p{N}][\p{L}\p{N}-]* )* \. local\b )
             | (?P<ipv6>
                 (?:
                   # Full 8-group form: a:b:c:d:e:f:g:h (h is required)
@@ -513,8 +524,23 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
             whole_len(caps),
         );
     }
+    if let Some(m) = caps.name("bonjour_instance") {
+        if context.is_none() {
+            return rescan_inside(m.as_str());
+        }
+        return (redact_host(m.as_str(), context), whole_len(caps));
+    }
+    if let Some(m) = caps.name("bonjour_service") {
+        if context.is_none() {
+            return rescan_inside(m.as_str());
+        }
+        return (m.as_str().to_string(), whole_len(caps));
+    }
     if let Some(m) = caps.name("mdns") {
-        if context.is_none() && !m.as_str().is_ascii() {
+        // The compatibility policy only ever claimed the last label; stepping past a
+        // multi-label start lets the scanner reach it, as before.
+        let multi_label = m.as_str().trim_end_matches(".local").contains('.');
+        if context.is_none() && (!m.as_str().is_ascii() || multi_label) {
             return rescan_inside(m.as_str());
         }
         return (redact_mdns_host(m.as_str(), context), whole_len(caps));

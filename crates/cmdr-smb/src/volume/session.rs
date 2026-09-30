@@ -56,14 +56,14 @@ impl SmbVolume {
         // for hung-test triage (it sets max-level Trace). Real lock contention escalates
         // via `held_for`/`waited` at higher verbosity; bump with `RUST_LOG=…smb=trace`.
         log::trace!(
-            "client-mutex: waiting ticket={} caller=clone_session share={}",
+            "client-mutex: waiting ticket={} caller=clone_session share={:?}",
             ticket,
             self.inner.share_name
         );
         let conn = {
             let mut guard = self.inner.client.lock().await;
             log::trace!(
-                "client-mutex: acquired ticket={} caller=clone_session share={} waited={:?}",
+                "client-mutex: acquired ticket={} caller=clone_session share={:?} waited={:?}",
                 ticket,
                 self.inner.share_name,
                 start.elapsed()

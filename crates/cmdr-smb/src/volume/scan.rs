@@ -104,7 +104,7 @@ impl SmbVolume {
             let smb_path = self.to_smb_path(path)?;
 
             debug!(
-                "SmbVolume::scan_for_copy: share={}, path={:?}",
+                "SmbVolume::scan_for_copy: share={:?}, path={:?}",
                 self.inner.share_name, smb_path
             );
 
@@ -216,7 +216,7 @@ impl SmbVolume {
 
                 if !leftover_indices.is_empty() {
                     debug!(
-                        "SmbVolume::scan_for_copy_batch: share={}, oracle resolved {}/{} paths; pipelining stats for {}",
+                        "SmbVolume::scan_for_copy_batch: share={:?}, oracle resolved {}/{} paths; pipelining stats for {}",
                         self.inner.share_name,
                         paths.len() - leftover_indices.len(),
                         paths.len(),
@@ -251,7 +251,7 @@ impl SmbVolume {
                 .collect::<Result<_, VolumeError>>()?;
 
             debug!(
-                "SmbVolume::scan_for_copy_batch: share={}, {} paths leftover for pipelined stats (oracle handled {})",
+                "SmbVolume::scan_for_copy_batch: share={:?}, {} paths leftover for pipelined stats (oracle handled {})",
                 self.inner.share_name,
                 smb_paths.len(),
                 paths.len() - smb_paths.len()

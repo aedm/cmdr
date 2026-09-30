@@ -192,7 +192,7 @@ impl Volume for SmbVolume {
     fn note_root_mount_gone(&self) {
         self.mount_root_gone.store(true, Ordering::Relaxed);
         debug!(
-            "SmbVolume for {}: the mount at {} is gone; still browsing over smb2, but its paths are no longer OS-openable",
+            "SmbVolume share={:?}: the mount at path={:?} is gone; still browsing over smb2, but its paths are no longer OS-openable",
             self.inner.share_name,
             self.mount_path.display()
         );
@@ -397,7 +397,7 @@ impl Volume for SmbVolume {
             let smb_path = self.to_smb_path(path)?;
 
             debug!(
-                "SmbVolume::open_read_stream: share={}, path={:?}",
+                "SmbVolume::open_read_stream: share={:?}, path={:?}",
                 self.inner.share_name, smb_path
             );
 
@@ -443,7 +443,7 @@ impl Volume for SmbVolume {
                 let (tree, mut conn) = self.clone_session().await?;
                 if fits_one_compound_read(conn.quick_read_limit(), size) {
                     debug!(
-                        "SmbVolume::open_read_stream_with_hint: share={}, path={:?}, size={}; using compound fast-path",
+                        "SmbVolume::open_read_stream_with_hint: share={:?}, path={:?}, size={}; using compound fast-path",
                         self.inner.share_name, smb_path, size
                     );
                     match tree.read_file_compound_sized(&mut conn, &smb_path, size).await {
@@ -483,7 +483,7 @@ impl Volume for SmbVolume {
             }
 
             debug!(
-                "SmbVolume::open_read_stream_with_hint: share={}, path={:?}; using streaming path",
+                "SmbVolume::open_read_stream_with_hint: share={:?}, path={:?}; using streaming path",
                 self.inner.share_name, smb_path
             );
             let stream = self.open_smb_download_stream(&smb_path).await?;
@@ -513,7 +513,7 @@ impl Volume for SmbVolume {
             }
             let smb_path = self.to_smb_path(path)?;
             debug!(
-                "SmbVolume::read_range: share={}, path={:?}, offset={}, len={}",
+                "SmbVolume::read_range: share={:?}, path={:?}, offset={}, len={}",
                 self.inner.share_name, smb_path, offset, len
             );
 
@@ -653,7 +653,7 @@ impl Volume for SmbVolume {
         self.inner.retirement.retire();
         self.inner.stop_watcher();
         debug!(
-            "SmbVolume for {}: superseded by a newer instance; session left up for in-flight work",
+            "SmbVolume share={:?}: superseded by a newer instance; session left up for in-flight work",
             self.inner.share_name
         );
     }
@@ -677,7 +677,7 @@ impl Volume for SmbVolume {
             && let Some(cancel_tx) = guard.take()
         {
             let _ = cancel_tx.send(());
-            debug!("SmbVolume cleanup for {}: watcher cancel sent", self.inner.share_name);
+            debug!("SmbVolume cleanup share={:?}: watcher cancel sent", self.inner.share_name);
         }
 
         // Tear down any live scan pool: a member session must not keep walking an
@@ -705,7 +705,7 @@ impl Volume for SmbVolume {
         }
         self.inner.live_connection.replace(None);
 
-        debug!("SmbVolume cleanup for {}: smb2 session dropped", self.inner.share_name);
+        debug!("SmbVolume cleanup share={:?}: smb2 session dropped", self.inner.share_name);
     }
 }
 

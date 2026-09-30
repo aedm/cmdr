@@ -384,7 +384,7 @@ pub(crate) async fn register_smb_volume(
     // anyway can only burn the resolver timeout and report a failure that isn't
     // one. The pass that runs once discovery goes active resolves it and connects.
     let ServerAddress::Connectable(resolved_server) = resolve_server_address(server) else {
-        log::debug!("Leaving {mount_path} on the kernel mount for now: {server} isn't discovered yet");
+        log::debug!("Leaving {mount_path} on the kernel mount for now: server={server:?} isn't discovered yet");
         return;
     };
 
@@ -428,12 +428,12 @@ pub(crate) async fn register_smb_volume(
     // the one the choice was saved under. A share that stays on the OS mount never
     // dials, so it never fails, and never raises a fallback notice either.
     if !crate::network::known_shares::direct_connection_enabled(&[server, &resolved_server], share) {
-        log::debug!("{share} on {server} is set to stay on the macOS mount; not upgrading {volume_id}");
+        log::debug!("share={share:?} on server={server:?} is set to stay on the macOS mount; not upgrading {volume_id}");
         return;
     }
 
     log::debug!(
-        "Establishing smb2 connection for SmbVolume: {}:{}/{}",
+        "Establishing smb2 connection for SmbVolume: host={:?}, port={}, share={:?}",
         resolved_server,
         port,
         share
@@ -583,7 +583,7 @@ pub(crate) async fn try_smb_upgrade(
     let ServerAddress::Connectable(resolved_server) = resolve_server_address(server) else {
         log::info!(
             target: "smb_fallback",
-            "{server}/{share} can't be dialed: mDNS hasn't discovered it, so there's no address for it yet."
+            "server={server:?}, share={share:?} can't be dialed: mDNS hasn't discovered it, so there's no address for it yet."
         );
         return Err(UpgradeError::Network {
             reason: UpgradeFailure::Unreachable,

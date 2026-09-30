@@ -153,11 +153,11 @@ pub(crate) fn announce_os_mount_fallback(
         .admit(notice, server, volume_id, &hosts)
     {
         if notice == FallbackNotice::StayQuiet {
-            log::debug!("Leaving {server}/{share} on the kernel mount without a notice: nobody asked about it");
+            log::debug!("Leaving server={server:?}, share={share:?} on the kernel mount without a notice: nobody asked about it");
         }
         return;
     }
-    log::debug!("Telling the frontend about the kernel-mount fallback on {server}/{share}");
+    log::debug!("Telling the frontend about the kernel-mount fallback on server={server:?}, share={share:?}");
     emit_fell_back_to_os_mount(volume_id, share, reason);
 }
 

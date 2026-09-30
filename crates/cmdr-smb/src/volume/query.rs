@@ -37,7 +37,7 @@ impl SmbVolume {
         // the throttled `network_scanner: scanning…` DEBUG heartbeat. Bump back with
         // `RUST_LOG=cmdr_smb::volume=trace` when chasing a listing bug.
         trace!(
-            "SmbVolume::list_directory: share={}, input={:?}, smb_path={:?}",
+            "SmbVolume::list_directory: share={:?}, input={:?}, smb_path={:?}",
             self.inner.share_name, path, smb_path
         );
 
@@ -98,7 +98,7 @@ impl SmbVolume {
         let smb_path = self.to_smb_path(path)?;
 
         debug!(
-            "SmbVolume::get_metadata: share={}, input={:?}, smb_path={:?}",
+            "SmbVolume::get_metadata: share={:?}, input={:?}, smb_path={:?}",
             self.inner.share_name, path, smb_path
         );
 
@@ -129,7 +129,7 @@ impl SmbVolume {
                 && let Some(delay) = backoff.next()
             {
                 debug!(
-                    "SmbVolume::get_metadata(share={}): {e}; asking again in {delay:?}",
+                    "SmbVolume::get_metadata(share={:?}): {e}; asking again in {delay:?}",
                     self.inner.share_name
                 );
                 tokio::time::sleep(*delay).await;

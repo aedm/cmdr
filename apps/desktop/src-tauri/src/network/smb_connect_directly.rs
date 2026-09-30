@@ -233,7 +233,7 @@ pub(crate) async fn connect_directly(volume_id: &str) -> UpgradeResult {
         Err(answer) => return answer,
     };
     log::info!(
-        "Upgrading volume {} to SmbVolume: server={}, share={}, user={:?}",
+        "Upgrading volume {} to SmbVolume: server={:?}, share={:?}, user={:?}",
         volume_id,
         info.server,
         info.share,

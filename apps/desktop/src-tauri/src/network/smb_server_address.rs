@@ -82,7 +82,7 @@ pub(crate) async fn discover_server(server: &str, timeout: Duration) -> Discover
         answer = known();
     }
     if waits && answer.is_none() {
-        log::debug!("Discovery didn't vouch for {server} within {timeout:?}; proceeding without");
+        log::debug!("Discovery didn't vouch for server={server:?} within {timeout:?}; proceeding without");
     }
     DiscoveredServer {
         hostname: answer.flatten(),
@@ -127,7 +127,7 @@ pub(crate) fn resolve_server_address(server: &str) -> ServerAddress {
         return ServerAddress::Connectable(server.to_string());
     }
     if let Some(address) = service_address(server) {
-        log::debug!("Resolved mDNS service name {server} to {address}");
+        log::debug!("Resolved mDNS service name server={server:?} to host={address:?}");
         return ServerAddress::Connectable(address);
     }
 
@@ -136,7 +136,7 @@ pub(crate) fn resolve_server_address(server: &str) -> ServerAddress {
     // connects. Handing the unresolved name to the dialer instead is what turned
     // this into a visible failure.
     log::debug!(
-        "mDNS service name {} isn't discovered yet, so there's nothing to dial for it",
+        "mDNS service name server={:?} isn't discovered yet, so there's nothing to dial for it",
         server
     );
     ServerAddress::UndiscoveredService
@@ -243,19 +243,24 @@ pub(crate) async fn get_keychain_password(
             };
             // Try share-level credentials first (more specific)
             if let Ok(creds) = keychain::get_credentials(server, Some(&share)) {
-                log::debug!("Found Keychain credentials via {}/{}", server, share);
+                log::debug!("Found Keychain credentials via server={:?}, share={:?}", server, share);
                 note(server);
                 return Some((creds.username, creds.password));
             }
             // Try server-level credentials
             if let Ok(creds) = keychain::get_credentials(server, None) {
-                log::debug!("Found Keychain credentials via {} (server-level)", server);
+                log::debug!("Found Keychain credentials via server={:?} (server-level)", server);
                 note(server);
                 return Some((creds.username, creds.password));
             }
         }
 
-        log::debug!("No Keychain credentials for {:?} / {}", servers_to_try, share);
+        let tried = servers_to_try
+            .iter()
+            .map(|server| format!("server={server:?}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        log::debug!("No Keychain credentials for [{tried}], share={share:?}");
         None
     })
     .await

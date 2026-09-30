@@ -235,7 +235,7 @@ impl SmbVolume {
             match match_component(names.iter().map(String::as_str), wanted) {
                 ComponentMatch::Folded(stored) => {
                     debug!(
-                        "SmbVolume::find_stored_spelling(share={}): {:?} in {:?} is stored as {:?}",
+                        "SmbVolume::find_stored_spelling(share={:?}): {:?} in {:?} is stored as {:?}",
                         self.inner.share_name, wanted, parent, stored
                     );
                     self.inner.spellings.remember(&parent, wanted, &stored);

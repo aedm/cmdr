@@ -158,13 +158,13 @@ pub(crate) fn mount_share_sync(
     port: u16,
 ) -> Result<MountResult, MountError> {
     if !is_gio_available() {
-        log::warn!("Can't mount \"{share}\" on {server}: `gio` isn't installed (the gvfs-smb package provides it)");
+        log::warn!("Can't mount share={share:?} on server={server:?}: `gio` isn't installed (the gvfs-smb package provides it)");
         return Err(MountError::GvfsMissing);
     }
 
     // Check if already mounted
     if let Some(mount_path) = find_existing_mount(server, share) {
-        debug!("Share already mounted at {}", mount_path);
+        debug!("Share already mounted at path={:?}", mount_path);
         return Ok(MountResult {
             mount_path,
             already_mounted: true,

@@ -528,7 +528,7 @@ pub fn mount_share_sync(
     let settled = settle_netfs_answer(result, target, sightings, &hosts);
     if matches!(settled, Err(MountError::MountMissing { .. })) {
         log::warn!(
-            "NetFS answered {result} for {url_string} and named {reported_path:?} as the mount point, but no mount of \"{share}\" on {server} is there"
+            "NetFS answered {result} for {url_string} and named {reported_path:?} as the mount point, but no mount of share={share:?} on server={server:?} is there"
         );
     }
     settled

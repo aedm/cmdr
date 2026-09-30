@@ -252,16 +252,16 @@ pub(crate) fn log_direct_connect_failure(
         match outcome {
             DirectConnectOutcome::StaysOnKernelMount => log::warn!(
                 target: "smb_fallback",
-                "Couldn't establish an smb2 connection for {server}/{share} ({reason:?}): {err}. Staying on the macOS kernel mount."
+                "Couldn't establish an smb2 connection for server={server:?}, share={share:?} ({reason:?}): {err}. Staying on the macOS kernel mount."
             ),
             DirectConnectOutcome::SurfacedToCaller => log::warn!(
                 target: "smb_fallback",
-                "Couldn't establish an smb2 connection for {server}/{share} ({reason:?}): {err}"
+                "Couldn't establish an smb2 connection for server={server:?}, share={share:?} ({reason:?}): {err}"
             ),
         }
         return;
     };
-    let who = username.map_or_else(|| "a guest".to_string(), |name| format!("\"{name}\""));
+    let who = username.map_or_else(|| "a guest".to_string(), |name| format!("user={name:?}"));
     let step = match refusal.at {
         RefusedAt::SignIn => "sign-in",
         RefusedAt::Share => "the share",
@@ -270,11 +270,11 @@ pub(crate) fn log_direct_connect_failure(
     match outcome {
         DirectConnectOutcome::StaysOnKernelMount => log::warn!(
             target: "smb_fallback",
-            "{server}/{share} turned {who} away at {step} ({err}), so it stays on the macOS kernel mount: slower, and Cmdr can't manage the connection. {advice}"
+            "server={server:?}, share={share:?} turned {who} away at {step} ({err}), so it stays on the macOS kernel mount: slower, and Cmdr can't manage the connection. {advice}"
         ),
         DirectConnectOutcome::SurfacedToCaller => log::info!(
             target: "smb_fallback",
-            "{server}/{share} turned {who} away at {step} ({err}); asking for a sign-in. {advice}"
+            "server={server:?}, share={share:?} turned {who} away at {step} ({err}); asking for a sign-in. {advice}"
         ),
     }
 }

@@ -226,17 +226,40 @@ pub(super) fn redact_host(host: &str, context: Option<&RedactionContext>) -> Str
         return String::new();
     }
     let decoded = decode_identity(host);
+    // A fully qualified `.local.` keeps its root dot.
+    let (decoded, root_dot) = decoded
+        .strip_suffix('.')
+        .map_or((decoded.as_str(), false), |host| (host, true));
     let (identity, local) = decoded
         .strip_suffix(".local")
         .or_else(|| decoded.strip_suffix(".LOCAL"))
-        .map_or((decoded.as_str(), false), |host| (host, true));
+        .map_or((decoded, false), |host| (host, true));
     let folded = identity.to_lowercase();
+    // A Bonjour instance (`naspolya._smb._tcp`): the device's own name is the identity, and the
+    // service type after it is public, so `server="naspolya"` and the instance share a token.
+    let (folded, service) = match bonjour_service_split(&folded) {
+        Some((instance, service)) => (instance.to_string(), service),
+        None => (folded.clone(), String::new()),
+    };
     let kind = folded.parse::<IpAddr>().map_or("host", |address| address_kind(address));
     let mut out = identity_token(kind, TokenDomain::Host, &folded, context);
+    out.push_str(&service);
     if local {
         out.push_str(".local");
     }
+    if root_dot {
+        out.push('.');
+    }
     out
+}
+
+/// Split `instance._svc._tcp` into (`instance`, `._svc._tcp`); `None` for anything else.
+fn bonjour_service_split(host: &str) -> Option<(&str, String)> {
+    let without_proto = host.strip_suffix("._tcp").or_else(|| host.strip_suffix("._udp"))?;
+    let proto = &host[without_proto.len()..];
+    let (instance, service) = without_proto.rsplit_once("._")?;
+    let valid_service = !service.is_empty() && service.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    (valid_service && !instance.is_empty()).then(|| (instance, format!("._{service}{proto}")))
 }
 
 pub(super) fn redact_mdns_host(host: &str, context: Option<&RedactionContext>) -> String {

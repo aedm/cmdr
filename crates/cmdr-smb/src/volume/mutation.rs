@@ -21,7 +21,7 @@ impl SmbVolume {
         let data = content.to_vec();
 
         debug!(
-            "SmbVolume::create_file: share={}, path={:?}",
+            "SmbVolume::create_file: share={:?}, path={:?}",
             self.inner.share_name, smb_path
         );
 
@@ -52,7 +52,7 @@ impl SmbVolume {
         let smb_path = self.to_smb_path(path)?;
 
         debug!(
-            "SmbVolume::create_directory: share={}, path={:?}",
+            "SmbVolume::create_directory: share={:?}, path={:?}",
             self.inner.share_name, smb_path
         );
 
@@ -71,7 +71,7 @@ impl SmbVolume {
         let smb_path = self.to_smb_path(path)?;
 
         debug!(
-            "SmbVolume::delete: share={}, path={:?}",
+            "SmbVolume::delete: share={:?}, path={:?}",
             self.inner.share_name, smb_path
         );
 
@@ -115,7 +115,7 @@ impl SmbVolume {
         let smb_to = self.to_smb_path(to)?;
 
         debug!(
-            "SmbVolume::rename: share={}, from={:?}, to={:?}, force={}",
+            "SmbVolume::rename: share={:?}, from={:?}, to={:?}, force={}",
             self.inner.share_name, smb_from, smb_to, force
         );
 
@@ -264,7 +264,7 @@ impl SmbVolume {
                     }
                     Err(e) => {
                         warn!(
-                            "SmbVolume::notify_mutation: couldn't stat {}: {}",
+                            "SmbVolume::notify_mutation: couldn't stat path={:?}: {}",
                             entry_path.display(),
                             e
                         );
@@ -289,7 +289,7 @@ impl SmbVolume {
                     }
                     Err(e) => {
                         warn!(
-                            "SmbVolume::notify_mutation: couldn't stat renamed entry {}: {}",
+                            "SmbVolume::notify_mutation: couldn't stat renamed entry path={:?}: {}",
                             new_path.display(),
                             e
                         );
