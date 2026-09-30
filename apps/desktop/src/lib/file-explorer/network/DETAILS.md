@@ -395,8 +395,8 @@ transfer. The manual "Connect directly" path is deliberately NOT a source here: 
 the person who clicked it. Nor is the startup pass over mounts macOS already made: nobody asked, and a notice at launch
 reads as something breaking.
 
-**The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share, reason }` at most once per SERVER per app
-run, and only for a caller that says someone is watching (who speaks, the ledger, and the rationale:
+**The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share, reason, displayName }` at most once per
+SERVER per app run, and only for a caller that says someone is watching (who speaks, the ledger, and the rationale:
 `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount fallback"). `os-mount-notice-bridge.ts`,
 mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns it into a persistent INFO toast
 rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
@@ -408,6 +408,15 @@ answer and a button could only fail; the copy sends the reader to the server ins
 the toast: the component's question is "is there anything to offer", and every other variant answers it the same way.
 Which reasons are which, and the two look-alikes that never arrive as this one: `src-tauri/src/network/DETAILS.md` §
 "Telling the user about a kernel-mount fallback".
+
+**This Mac blocked the connection.** For `blockedByThisMac` (the backend's evidence rule and the ERR-XGS9X incident:
+`src-tauri/src/network/DETAILS.md` § "This Mac refusing the route") the bridge also passes `blockedServer` (the event's
+`displayName`), and the notice swaps its sentence for `directConnectionBlockedByThisMacToast` (names the server and the
+OS-localized `systemStrings.localNetwork`), leads with an "Open {localNetwork} settings" button
+(`openLocalNetworkSettings` in `$lib/tauri-commands`, the same opener Settings > Network uses), and keeps the retry
+beside it as the secondary button: the switch works at once, so pressing the retry right after is the whole fix.
+"Connect directly" words the same answer through `LocalNetworkBlockedToastContent.svelte` (sentence plus the settings
+button), raised by `announceNoUpgrade` instead of a plain string toast, so the sign-in sheet's rounds get it too.
 
 **Dismissal watches the volume list, not the button.** A share can reach a direct session five ways: this notice's
 button, the chip's yellow dot, the switcher's direct-connection switch or its "Connect directly now" fix, and the pane's

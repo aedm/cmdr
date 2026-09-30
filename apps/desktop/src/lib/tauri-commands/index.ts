@@ -226,6 +226,7 @@ export {
   getMacosMajorVersion,
   openPrivacySettings,
   openSystemSettingsUrl,
+  openLocalNetworkSettings,
   openAppearanceSettings,
 } from './storage'
 export type { Location, PathVolumeResolution, ResolveLocationResult, SpaceInfo, VolumeContextAction } from './storage'

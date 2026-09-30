@@ -5158,7 +5158,15 @@ export type AddServerError =
   // The address isn't one this reads (`ParseError`), with why, for the log.
   | { type: 'invalid_address'; message: string }
   // Nothing answered on the address's SMB port within the probe's budget.
-  | { type: 'unreachable'; message: string }
+  | {
+      type: 'unreachable'
+      message: string
+      /**
+       *  Something besides the server worth checking, when the way the probe
+       *  failed points at one.
+       */
+      hint: UnreachableHint | null
+    }
 
 // The wire form of [`AgentErrorKind`] — the frontend renders each honestly.
 export type AgentErrorKindView =
@@ -13968,6 +13976,12 @@ export type SmbFellBackToOsMount = {
    *  certain to land on the same answer.
    */
   reason: UpgradeFailure
+  /**
+   *  The server's friendly name (mDNS hostname, else the address), for the
+   *  sentence that names the server: `BlockedByThisMac` says what Cmdr couldn't
+   *  connect to.
+   */
+  displayName: string
 }
 
 /**
@@ -14860,6 +14874,19 @@ export type UndoReport = {
 }
 
 /**
+ *  What else to check when the reachability probe didn't get through. Word-free:
+ *  the Add sheet words it under the "couldn't reach" sentence.
+ */
+export type UnreachableHint =
+  /**
+   *  This Mac refused the route to a LAN address (`EHOSTUNREACH` /
+   *  `ENETUNREACH`), which is also how a stuck macOS Local Network permission
+   *  shows (ERR-XGS9X). Only a hint: with no mount to compare against, a server
+   *  that's off can answer the same.
+   */
+  'local_network_permission'
+
+/**
  *  Why a folder takes no writes ([`WriteAccess::Unwritable`]).
  *
  *  Read-only and no-permission are different truths with different fixes, so a
@@ -14914,6 +14941,13 @@ export type UpgradeFailure =
   | 'shareNotOnServer'
   // It answered and then something we can't act on went wrong.
   | 'unexpected'
+  /**
+   *  Something on this Mac refused Cmdr's own route to a server the Mac itself
+   *  can reach: the macOS Local Network permission (stuck on in ERR-XGS9X, fixed
+   *  by switching it off and on), or a firewall app. Read by [`Self::of_dial`],
+   *  ❌ never from the errno alone.
+   */
+  | 'blockedByThisMac'
 
 /**
  *  Where a "Connect directly" left the volume.
