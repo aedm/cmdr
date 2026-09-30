@@ -94,3 +94,16 @@ fn a_leaf_with_a_space_gets_one_token_in_every_path_shape() {
         redacted[2]
     );
 }
+
+/// A real folder can be named `<anna-kovacs>`; only a token with its hash (or a bare legacy
+/// placeholder word) counts as already redacted.
+#[test]
+fn a_folder_named_like_a_token_without_a_hash_is_still_tokenized() {
+    let context = context();
+    let redacted = context
+        .redact_line(r#"listing path="docs/<anna-kovacs>/<dir>/plan.pdf" failed"#)
+        .into_owned();
+    assert!(!redacted.contains("anna-kovacs"), "{redacted}");
+    assert!(redacted.contains("/<dir>/"), "a bare legacy placeholder stays: {redacted}");
+    assert_eq!(context.redact_line(&redacted), redacted, "idempotent");
+}

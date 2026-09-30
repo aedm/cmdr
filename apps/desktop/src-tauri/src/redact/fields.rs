@@ -298,6 +298,11 @@ pub(super) fn redact_relative_path(
     out
 }
 
+/// The hash-free placeholders the unsalted policy writes (`<dir>`, `<file>.pdf`, …).
+const BARE_PLACEHOLDERS: &[&str] = &[
+    "dir", "file", "volume", "host", "share", "user", "userinfo", "email", "ipv4", "ipv6", "mtp-owner",
+];
+
 /// Whether a path segment is already redacted (`<dir>`, `<file:ab12cd>.pdf`, `$HOME`) or
 /// carries nothing to redact (`.`, `..`).
 pub(super) fn is_redacted_segment(seg: &str) -> bool {
@@ -312,8 +317,13 @@ pub(super) fn is_redacted_segment(seg: &str) -> bool {
     let (label, tail) = (&rest[..close], &rest[close + 1..]);
     let (kind, hash) = label.split_once(':').unwrap_or((label, ""));
     let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_lowercase() || c == '-');
-    let hash_ok =
-        hash.is_empty() || ((hash.len() == 6 || hash.len() == 12) && hash.chars().all(|c| c.is_ascii_hexdigit()));
+    // A token carries its hash. Only the unsalted policy's bare placeholders go without one;
+    // a real folder named `<anna-kovacs>` is not a token and must not ship as one.
+    let hash_ok = if hash.is_empty() {
+        BARE_PLACEHOLDERS.contains(&kind)
+    } else {
+        (hash.len() == 6 || hash.len() == 12) && hash.chars().all(|c| c.is_ascii_hexdigit())
+    };
     let tail_ok = tail.is_empty()
         || tail
             .strip_prefix('.')
