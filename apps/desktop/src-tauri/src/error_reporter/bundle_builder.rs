@@ -104,7 +104,7 @@ pub async fn build_bundle<R: tauri::Runtime>(
 
     let redaction = redact::RedactionContext::for_report(&id);
     // Every report carries at least the state at report time, whatever the failure logged at.
-    super::state_history::capture_for_report(app).await;
+    super::state_history::capture_for_report(app, &id).await;
     let files = match logging::log_dir() {
         Some(dir) => logging::list_recent_log_files(dir),
         None => Vec::new(),

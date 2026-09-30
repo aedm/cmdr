@@ -35,6 +35,8 @@ struct StateHistory {
     last_capture_at: Option<Instant>,
     next_sequence: u64,
     snapshots: VecDeque<RawStateSnapshot>,
+    /// Report ids that already took their capture, newest last, bounded like the ring.
+    captured_reports: VecDeque<String>,
 }
 
 impl StateHistory {
@@ -52,12 +54,20 @@ impl StateHistory {
         Some(sequence)
     }
 
-    /// A sequence for a report's own capture: no throttle, and the error throttle's clock is
-    /// left alone, so the next error still captures on its usual cadence.
-    fn reserve_for_report(&mut self) -> u64 {
+    /// A sequence for a report's own capture, once per report id: preview and send rebuild one
+    /// report, and the send must ship the capture the preview showed, in one ring slot. No
+    /// throttle, and the error throttle's clock is left alone.
+    fn reserve_for_report(&mut self, report_id: &str) -> Option<u64> {
+        if self.captured_reports.iter().any(|id| id == report_id) {
+            return None;
+        }
+        self.captured_reports.push_back(report_id.to_string());
+        while self.captured_reports.len() > CAPACITY {
+            self.captured_reports.pop_front();
+        }
         let sequence = self.next_sequence;
         self.next_sequence = self.next_sequence.saturating_add(1);
-        sequence
+        Some(sequence)
     }
 
     fn store(&mut self, snapshot: RawStateSnapshot) {
@@ -110,8 +120,10 @@ pub(super) fn capture_if_due(app: tauri::AppHandle<tauri::Wry>) {
 /// Capture the state now, for the report being built. The ring otherwise only fills on
 /// `log_error!`, and plenty of reported failures log below error level, which left their
 /// reports without any state at all.
-pub(super) async fn capture_for_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    let sequence = HISTORY.lock_ignore_poison().reserve_for_report();
+pub(super) async fn capture_for_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>, report_id: &str) {
+    let Some(sequence) = HISTORY.lock_ignore_poison().reserve_for_report(report_id) else {
+        return;
+    };
     let volumes = crate::mcp::resources::volumes::snapshot_volumes().await;
     if let Some(snapshot) = capture(app, sequence, Utc::now(), &volumes) {
         HISTORY.lock_ignore_poison().store(snapshot);

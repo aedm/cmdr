@@ -89,7 +89,7 @@ fn a_report_capture_bypasses_the_throttle_and_keeps_order() {
     let start = Instant::now();
     assert!(history.record(start, raw(0)));
 
-    let report_sequence = history.reserve_for_report();
+    let report_sequence = history.reserve_for_report("ERR-AB23X").expect("the first build of a report captures");
     let mut snapshot = raw(50);
     snapshot.sequence = report_sequence;
     history.store(snapshot);
@@ -104,6 +104,16 @@ fn a_report_capture_bypasses_the_throttle_and_keeps_order() {
         vec![40, 90, 42],
         "oldest first, the report capture in its reserved place"
     );
+}
+
+/// Preview and send rebuild one report under one id; the send must carry the capture the
+/// preview showed, and one report takes one ring slot.
+#[test]
+fn a_report_captures_once_per_id() {
+    let mut history = StateHistory::default();
+    assert!(history.reserve_for_report("ERR-AB23X").is_some(), "the preview captures");
+    assert!(history.reserve_for_report("ERR-AB23X").is_none(), "the send reuses it");
+    assert!(history.reserve_for_report("ERR-CD45Y").is_some(), "another report captures");
 }
 
 #[test]

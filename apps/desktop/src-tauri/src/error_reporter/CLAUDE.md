@@ -23,7 +23,7 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
   resolved flags, or anything outside the log dir. `manifest.system` is the one PII-reviewed exception (sizes and
   coarse machine identity). Add nothing naming a drive, path, or person.
 - **Diagnostic state stays typed and process-local.** At most eight captures: one per 30 s of errors, plus one per
-  built report. Raw
+  report id (preview and send share it). Raw
   identities never enter logs or disk; bundle assembly transforms them with that report's context.
 - **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;
   never restore free-form messages, maps, or JSON. Unknown IPC fields fail closed, and command events retain only ids
