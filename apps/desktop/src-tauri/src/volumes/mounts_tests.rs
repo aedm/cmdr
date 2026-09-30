@@ -315,7 +315,7 @@ fn a_network_mount_another_account_made_keeps_its_row() {
         let share = mounted_by(MountedBy::AnotherUser, mount("/Volumes/share", fs_type, source, false));
         assert!(
             build_attached_location(&share, forbidden_resolver).is_some(),
-            "{fs_type} stays as it was"
+            "another account's {fs_type} mount should keep its row"
         );
     }
 }
