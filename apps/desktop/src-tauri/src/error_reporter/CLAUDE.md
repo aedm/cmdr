@@ -8,7 +8,7 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - `mod.rs`: public types, `upload`, the endpoint URLs, the `log_error!` macro.
 - `bundle_builder.rs` / `bundle_capper.rs` / `tail_walker.rs`: ZIP pipelines, cap pass, and read-from-end walker.
 - `auto_dispatcher.rs`: Flow B. `auto_sent.rs`: what the last auto-send shipped, plus the amend call.
-  `breadcrumbs.rs`: ring buffer of triage events. `state_history.rs`: process-local typed state ring and report transform.
+  `breadcrumbs.rs`: ring buffer of triage events. `state_history/`: process-local typed state ring (panes, operations, volumes, listing failures) and report transform.
 
 ## Must-knows
 

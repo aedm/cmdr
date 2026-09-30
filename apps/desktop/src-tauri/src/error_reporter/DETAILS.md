@@ -147,6 +147,7 @@ recognize. Those older records still ship as-is: early beta, and new logs are wh
 - **`auto_sent.rs`**: the stash of what the last Flow B send shipped, plus `amend` (`POST /error-report/{id}/amend`). See "Amending an auto-sent report" below.
 - **`auto_sent_tests.rs`**: Unit tests: stash contents, overwrite-on-second-send, `can_amend`, the two ways an amend gives up before the network
 - **`breadcrumbs.rs`**: Bounded ring buffer of recent FE/BE triage events (capacity 50). Snapshot is shipped in the manifest.
+- **`state_history/`**: `mod.rs` (the ring, capture, and report transform), `report_types.rs` (the manifest's closed shape), `tests.rs`.
 
 ## The command surface (rationale)
 
@@ -389,13 +390,24 @@ need stack context regardless of the user's env.
 
 `auto_dispatcher::on_error_logged` (called from every `log_error!`) reserves a capture in
 `state_history` at most once every 30 seconds. The capture runs off the logging caller and
-clones typed in-memory pane, volume, operation, and listing-failure facts into an eight-entry,
-oldest-first ring. Sequence numbers preserve reservation order when asynchronous captures
+clones typed in-memory facts into an eight-entry, oldest-first ring:
+
+- **Panes**: path, volume, backend, connection, view/sort, counts, the cursor entry, selection split.
+- **Operations**: type, lifecycle, phase, source/destination, current file, progress counts.
+- **Volumes**: every row `mcp::resources::volumes::snapshot_volumes` lists (the app's own volume pipeline,
+  timeout-guarded), with kind, connection state, and device readiness read back from its wire words
+  (`from_token`, unknown ones absent; a test pins the round trip).
+- **Recent listing failures**: the newest five from `mcp::listing_errors`, each with its timestamp, volume, the
+  backend serving it at capture, the `ListingErrorReason` variant name (its serde tag, never its fields), the
+  `ErrorCategory`, and the path. Never the raw message: the typed reason is what the user saw.
+
+ Sequence numbers preserve reservation order when asynchronous captures
 complete out of order. Collection always runs regardless of Flow B opt-in, but the ring exists
 only for this process: it is never logged, serialized independently, or restored after relaunch.
 
 Bundle assembly snapshots the ring and transforms identity-bearing fields with the same
-`RedactionContext` used for that report's logs. Paths, URLs, names, volume labels, and
+`RedactionContext` used for that report's logs, so one volume or path carries one token across panes, volumes,
+listing failures, and log lines. Paths, URLs, names, volume labels, and
 name-derived volume IDs become report-local tokens, while typed pane/backend/connection/
 operation states, counts, roles, and genuine UUIDv7 operation IDs remain useful. Typed paths
 are complete values, so an extensionless multiword leaf cannot be mistaken for prose and

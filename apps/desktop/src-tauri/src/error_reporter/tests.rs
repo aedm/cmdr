@@ -106,7 +106,9 @@ fn manifest_with_diagnostic_history() -> BundleManifest {
             bytes_done: 11,
             bytes_total: 23,
         }],
+        volumes: Vec::new(),
         recent_listing_error_count: 5,
+        recent_listing_failures: Vec::new(),
     }];
     manifest
 }

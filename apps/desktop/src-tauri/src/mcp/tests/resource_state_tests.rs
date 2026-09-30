@@ -61,6 +61,8 @@ fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
             volume_id: "smb-nas-private-445-client-0123456789abcdef".to_string(),
             path: "sftp://ada:secret@files.example.test:2222/home/ada/report.pdf?token=secret#customer".to_string(),
             message: r#"host="Client Nimbus" share="Private Vault" source=https://10.24.8.3/acme?owner=ada@example.test#customer"#.to_string(),
+            reason: None,
+            category: None,
         },
         RecentListingError {
             at_unix_ms: 1_789_000_000_002,
@@ -68,6 +70,8 @@ fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
             volume_id: "manual-192-168-40-9-1445".to_string(),
             path: "webdav://nas.local/dav/ada/report.json?owner=ada@example.test#customer".to_string(),
             message: r"Could not list \\nas.local\Finance\Downloads\report.pdf".to_string(),
+            reason: None,
+            category: None,
         },
     ];
 

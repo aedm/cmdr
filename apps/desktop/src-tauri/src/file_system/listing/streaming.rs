@@ -386,6 +386,7 @@ pub async fn list_directory_start_streaming(
                     &volume_id_owned,
                     &path_for_error.to_string_lossy(),
                     &message,
+                    Some(&listing_error),
                 );
                 // One line per failed listing, carrying the TYPED reason, so a log
                 // answers "why did this listing fail" without reading code.
@@ -717,7 +718,13 @@ pub(crate) async fn read_directory_with_progress(
         && let Some(listing_error) = listing_error_for_restricted_empty_root(volume_id, path)
     {
         let message = listing_error.raw_detail.clone();
-        crate::mcp::listing_errors::record(listing_id, volume_id, &path.to_string_lossy(), &message);
+        crate::mcp::listing_errors::record(
+            listing_id,
+            volume_id,
+            &path.to_string_lossy(),
+            &message,
+            Some(&listing_error),
+        );
         events.emit_error(listing_id, message, Some(listing_error));
         return Ok(());
     }

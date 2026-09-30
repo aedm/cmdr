@@ -4,23 +4,29 @@
 //! private input structs and are transformed with the bundle's [`RedactionContext`] when the
 //! manifest is assembled. Nothing here writes to logs or disk.
 
-use crate::file_system::volume::{BackendKind, ConnectionState};
+use crate::file_system::volume::friendly_error::{ErrorCategory, ListingErrorReason};
 use crate::file_system::write_operations::{
     LifecycleStatus, WriteOperationPhase, WriteOperationType, get_operation_status, list_operations,
 };
 use crate::ignore_poison::IgnorePoison;
 use crate::mcp::PaneStateStore;
+use crate::mcp::listing_errors::RecentListingError;
 use crate::mcp::pane_state::PaneState;
+use crate::mcp::resources::volumes::VolumeSummary;
 use crate::redact::RedactionContext;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
+mod report_types;
+pub use report_types::*;
+
 const CAPACITY: usize = 8;
 const THROTTLE: Duration = Duration::from_secs(30);
+/// The newest listing failures each capture keeps (the MCP ring holds 20).
+const LISTING_FAILURES_PER_CAPTURE: usize = 5;
 
 static HISTORY: LazyLock<Mutex<StateHistory>> = LazyLock::new(|| Mutex::new(StateHistory::default()));
 
@@ -83,7 +89,10 @@ pub(super) fn capture_if_due(app: tauri::AppHandle<tauri::Wry>) {
         sequence
     };
     tauri::async_runtime::spawn(async move {
-        let Some(snapshot) = capture(&app, sequence, Utc::now()) else {
+        // The same volume pipeline `cmdr://state` reads, timeout-guarded inside, so a hung
+        // mount can't wedge this task.
+        let volumes = crate::mcp::resources::volumes::snapshot_volumes().await;
+        let Some(snapshot) = capture(&app, sequence, Utc::now(), &volumes) else {
             return;
         };
         HISTORY.lock_ignore_poison().store(snapshot);
@@ -100,10 +109,12 @@ fn capture<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     sequence: u64,
     captured_at: DateTime<Utc>,
+    volumes: &[VolumeSummary],
 ) -> Option<RawStateSnapshot> {
     let store = app.try_state::<PaneStateStore>()?;
     let left = store.get_left();
     let right = store.get_right();
+    let listing_errors = crate::mcp::listing_errors::snapshot();
     Some(RawStateSnapshot {
         sequence,
         captured_at,
@@ -115,8 +126,52 @@ fn capture<R: tauri::Runtime>(
             capture_pane(PaneSide::Right, &right),
         ],
         operations: capture_operations(),
-        recent_listing_error_count: crate::mcp::listing_errors::snapshot().len(),
+        volumes: volumes.iter().map(capture_volume).collect(),
+        recent_listing_error_count: listing_errors.len(),
+        recent_listing_failures: listing_errors
+            .iter()
+            .rev()
+            .take(LISTING_FAILURES_PER_CAPTURE)
+            .rev()
+            .map(capture_listing_failure)
+            .collect(),
     })
+}
+
+fn capture_volume(volume: &VolumeSummary) -> RawVolumeSnapshot {
+    RawVolumeSnapshot {
+        id: volume.id.clone(),
+        name: volume.name.clone(),
+        kind: Some(volume.kind.into()),
+        connection: volume.connection_state.and_then(ReportConnectionState::from_token),
+        readiness: volume.device_readiness.and_then(ReportDeviceReadiness::from_token),
+    }
+}
+
+/// One listing failure, minus its raw message: the typed reason and category say what the
+/// user saw, and the message can quote OS prose the typed fields already classify.
+fn capture_listing_failure(failure: &RecentListingError) -> RawListingFailure {
+    let backend = crate::file_system::volume::manager::get_volume_manager()
+        .get(&failure.volume_id)
+        .map(|volume| volume.backend_kind().into());
+    RawListingFailure {
+        at: DateTime::from_timestamp_millis(i64::try_from(failure.at_unix_ms).unwrap_or(i64::MAX)),
+        volume_id: failure.volume_id.clone(),
+        backend,
+        reason: failure.reason.as_ref().and_then(reason_token),
+        category: failure.category,
+        path: failure.path.clone(),
+    }
+}
+
+/// The serde tag of a listing reason (`permissionDenied`, `connectionTimedOutErrno`, …): the
+/// variant alone, never its fields, which can carry the path.
+fn reason_token(reason: &ListingErrorReason) -> Option<String> {
+    serde_json::to_value(reason)
+        .ok()?
+        .get("reason")?
+        .as_str()
+        .map(str::to_string)
 }
 
 fn capture_pane(side: PaneSide, pane: &PaneState) -> RawPaneSnapshot {
@@ -257,7 +312,30 @@ fn redact_snapshots(snapshots: &[RawStateSnapshot], redaction: &RedactionContext
                     bytes_total: operation.bytes_total,
                 })
                 .collect(),
+            volumes: snapshot
+                .volumes
+                .iter()
+                .map(|volume| DiagnosticVolumeSnapshot {
+                    volume_id: redaction.redact_volume_id(&volume.id),
+                    name: redaction.redact_volume_name(&volume.name),
+                    kind: volume.kind,
+                    connection: volume.connection,
+                    readiness: volume.readiness,
+                })
+                .collect(),
             recent_listing_error_count: snapshot.recent_listing_error_count,
+            recent_listing_failures: snapshot
+                .recent_listing_failures
+                .iter()
+                .map(|failure| DiagnosticListingFailure {
+                    at: failure.at.map(|at| at.to_rfc3339()),
+                    volume_id: redaction.redact_volume_id(&failure.volume_id),
+                    backend: failure.backend,
+                    reason: failure.reason.clone(),
+                    category: failure.category,
+                    path: redaction.redact_path(&failure.path),
+                })
+                .collect(),
         })
         .collect()
 }
@@ -271,7 +349,28 @@ struct RawStateSnapshot {
     show_hidden: bool,
     panes: Vec<RawPaneSnapshot>,
     operations: Vec<RawOperationSnapshot>,
+    volumes: Vec<RawVolumeSnapshot>,
     recent_listing_error_count: usize,
+    recent_listing_failures: Vec<RawListingFailure>,
+}
+
+#[derive(Debug, Clone)]
+struct RawVolumeSnapshot {
+    id: String,
+    name: String,
+    kind: Option<ReportVolumeKind>,
+    connection: Option<ReportConnectionState>,
+    readiness: Option<ReportDeviceReadiness>,
+}
+
+#[derive(Debug, Clone)]
+struct RawListingFailure {
+    at: Option<DateTime<Utc>>,
+    volume_id: String,
+    backend: Option<ReportBackend>,
+    reason: Option<String>,
+    category: Option<ErrorCategory>,
+    path: String,
 }
 
 #[derive(Debug, Clone)]
@@ -315,197 +414,6 @@ struct RawOperationSnapshot {
     files_total: usize,
     bytes_done: u64,
     bytes_total: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagnosticStateSnapshot {
-    pub captured_at: String,
-    pub generation: u64,
-    pub focused: Option<PaneSide>,
-    pub show_hidden: bool,
-    pub panes: Vec<DiagnosticPaneSnapshot>,
-    pub operations: Vec<DiagnosticOperationSnapshot>,
-    pub recent_listing_error_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagnosticPaneSnapshot {
-    pub side: PaneSide,
-    pub path: String,
-    pub volume_id: Option<String>,
-    pub volume_name: Option<String>,
-    pub backend: Option<ReportBackend>,
-    pub connection: Option<ReportConnectionState>,
-    pub view: Option<PaneView>,
-    pub sort_field: Option<PaneSortField>,
-    pub sort_order: Option<PaneSortOrder>,
-    pub total_files: usize,
-    pub loaded_count: usize,
-    pub cursor_index: usize,
-    pub cursor: Option<DiagnosticEntryIdentity>,
-    pub selected_count: usize,
-    pub selected_files: usize,
-    pub selected_folders: usize,
-    pub tab_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagnosticEntryIdentity {
-    pub name: String,
-    pub path: String,
-    pub role: EntryRole,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagnosticOperationSnapshot {
-    pub operation_id: Option<String>,
-    pub operation_type: WriteOperationType,
-    pub lifecycle: LifecycleStatus,
-    pub phase: Option<WriteOperationPhase>,
-    pub source: Option<String>,
-    pub destination: Option<String>,
-    pub current_file: Option<String>,
-    pub files_done: usize,
-    pub files_total: usize,
-    pub bytes_done: u64,
-    pub bytes_total: u64,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum PaneSide {
-    Left,
-    Right,
-}
-
-impl PaneSide {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "left" => Some(Self::Left),
-            "right" => Some(Self::Right),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum EntryRole {
-    File,
-    Folder,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum PaneView {
-    Brief,
-    Full,
-}
-
-impl PaneView {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "brief" => Some(Self::Brief),
-            "full" => Some(Self::Full),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum PaneSortField {
-    Name,
-    Extension,
-    Size,
-    Modified,
-    Relevance,
-}
-
-impl PaneSortField {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "name" => Some(Self::Name),
-            "extension" => Some(Self::Extension),
-            "size" => Some(Self::Size),
-            "modified" => Some(Self::Modified),
-            "relevance" => Some(Self::Relevance),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum PaneSortOrder {
-    Ascending,
-    Descending,
-}
-
-impl PaneSortOrder {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "asc" => Some(Self::Ascending),
-            "desc" => Some(Self::Descending),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum ReportBackend {
-    Local,
-    Smb,
-    Sftp,
-    Webdav,
-    Mtp,
-    Adb,
-    Archive,
-    GitPortal,
-}
-
-impl From<BackendKind> for ReportBackend {
-    fn from(value: BackendKind) -> Self {
-        match value {
-            BackendKind::Local => Self::Local,
-            BackendKind::Smb => Self::Smb,
-            BackendKind::Sftp => Self::Sftp,
-            BackendKind::Webdav => Self::Webdav,
-            BackendKind::Mtp => Self::Mtp,
-            BackendKind::Adb => Self::Adb,
-            BackendKind::Archive => Self::Archive,
-            BackendKind::GitPortal => Self::GitPortal,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum ReportConnectionState {
-    Direct,
-    OsMount,
-    Disconnected,
-    NeedsSignIn,
-    NeedsHostKeyApproval,
-    Saved,
-}
-
-impl From<ConnectionState> for ReportConnectionState {
-    fn from(value: ConnectionState) -> Self {
-        match value {
-            ConnectionState::Direct => Self::Direct,
-            ConnectionState::OsMount => Self::OsMount,
-            ConnectionState::Disconnected => Self::Disconnected,
-            ConnectionState::NeedsSignIn => Self::NeedsSignIn,
-            ConnectionState::NeedsHostKeyApproval => Self::NeedsHostKeyApproval,
-            ConnectionState::Saved => Self::Saved,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -594,133 +502,28 @@ pub(super) fn privacy_fixture_for_test(redaction: &RedactionContext) -> Vec<Diag
             bytes_done: 11,
             bytes_total: 23,
         }],
+        volumes: vec![RawVolumeSnapshot {
+            id: "smb-private-host-private-share-0123456789abcdef".to_string(),
+            name: "PRIVATE-VOLUME-NAME-SENTINEL".to_string(),
+            kind: Some(ReportVolumeKind::Smb),
+            connection: Some(ReportConnectionState::NeedsSignIn),
+            readiness: None,
+        }],
         recent_listing_error_count: 5,
+        recent_listing_failures: vec![capture_listing_failure(&RecentListingError {
+            at_unix_ms: 1_800_000_000_000,
+            listing_id: "listing-1".to_string(),
+            volume_id: "smb-private-host-private-share-0123456789abcdef".to_string(),
+            path: PRIVACY_TEST_RAW_PATH.to_string(),
+            message: PRIVACY_TEST_EXTERNAL_PROSE.to_string(),
+            reason: Some(ListingErrorReason::PermissionDenied {
+                path: PRIVACY_TEST_RAW_PATH.to_string(),
+            }),
+            category: Some(ErrorCategory::NeedsAction),
+        })],
     };
     redact_snapshots(&[raw], redaction)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::file_system::write_operations::{LifecycleStatus, WriteOperationPhase, WriteOperationType};
-    use crate::redact::RedactionContext;
-    use chrono::{TimeZone, Utc};
-    use std::time::{Duration, Instant};
-
-    const RAW_NAME: &str = "PRIVATE-NAME-ASYMMETRIC";
-    const RAW_PATH: &str = "/Users/private/Projects/PRIVATE-NAME-ASYMMETRIC/report.pdf";
-    const OPERATION_ID: &str = "0199a2e7-47d8-7c31-a897-c58f415f4f91";
-
-    fn raw(sequence: u64) -> RawStateSnapshot {
-        RawStateSnapshot {
-            sequence,
-            captured_at: Utc.timestamp_opt(1_800_000_000 + sequence as i64, 0).unwrap(),
-            generation: 40 + sequence,
-            focused: Some(PaneSide::Right),
-            show_hidden: true,
-            panes: vec![RawPaneSnapshot {
-                side: PaneSide::Right,
-                path: RAW_PATH.to_string(),
-                volume_id: Some(format!("smb-{RAW_NAME}-0123456789abcdef")),
-                volume_name: Some(RAW_NAME.to_string()),
-                backend: Some(ReportBackend::Smb),
-                connection: Some(ReportConnectionState::NeedsSignIn),
-                view: Some(PaneView::Full),
-                sort_field: Some(PaneSortField::Size),
-                sort_order: Some(PaneSortOrder::Descending),
-                total_files: 91,
-                loaded_count: 17,
-                cursor_index: 13,
-                cursor: Some(RawEntryIdentity {
-                    name: RAW_NAME.to_string(),
-                    path: RAW_PATH.to_string(),
-                    role: EntryRole::File,
-                }),
-                selected_count: 5,
-                selected_files: 2,
-                selected_folders: 3,
-                tab_count: 4,
-            }],
-            operations: vec![RawOperationSnapshot {
-                operation_id: Some(OPERATION_ID.to_string()),
-                operation_type: WriteOperationType::Copy,
-                lifecycle: LifecycleStatus::Paused,
-                phase: Some(WriteOperationPhase::Copying),
-                source: Some(RAW_PATH.to_string()),
-                destination: Some(format!("smb://{RAW_NAME}/share/out")),
-                current_file: Some(RAW_NAME.to_string()),
-                files_done: 7,
-                files_total: 19,
-                bytes_done: 11,
-                bytes_total: 23,
-            }],
-            recent_listing_error_count: 5,
-        }
-    }
-
-    #[test]
-    fn history_throttles_at_thirty_seconds_caps_at_eight_and_stays_oldest_first() {
-        let mut history = StateHistory::default();
-        let start = Instant::now();
-        for i in 0..10 {
-            let at = start + Duration::from_secs(i * 30);
-            assert!(history.record(at, raw(i)), "the exact 30-second boundary is due");
-            assert!(!history.record(at + Duration::from_secs(29), raw(100 + i)));
-        }
-
-        let snapshots = history.snapshot();
-        assert_eq!(snapshots.len(), 8);
-        assert_eq!(
-            snapshots.iter().map(|s| s.sequence).collect::<Vec<_>>(),
-            (2..10).collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn report_transform_correlates_within_one_report_separates_reports_and_keeps_typed_facts() {
-        let first = RedactionContext::for_test([0x11; 32], "ERR-FIRST");
-        let second = RedactionContext::for_test([0x11; 32], "ERR-SECOND");
-        let first_report = redact_snapshots(&[raw(1), raw(2)], &first);
-        let second_report = redact_snapshots(&[raw(1)], &second);
-
-        let first_json = serde_json::to_string(&first_report).unwrap();
-        let second_json = serde_json::to_string(&second_report).unwrap();
-        assert!(!first_json.contains(RAW_NAME));
-        assert!(!first_json.contains(RAW_PATH));
-        assert!(!second_json.contains(RAW_NAME));
-        assert!(!second_json.contains(RAW_PATH));
-        assert_eq!(first_report[0].panes[0].path, first_report[1].panes[0].path);
-        assert_ne!(first_report[0].panes[0].path, second_report[0].panes[0].path);
-
-        let pane = &first_report[0].panes[0];
-        assert_eq!(pane.backend, Some(ReportBackend::Smb));
-        assert_eq!(pane.connection, Some(ReportConnectionState::NeedsSignIn));
-        assert_eq!(pane.selected_files, 2);
-        assert_eq!(pane.selected_folders, 3);
-        let operation = &first_report[0].operations[0];
-        assert_eq!(operation.operation_id.as_deref(), Some(OPERATION_ID));
-        assert_eq!(operation.lifecycle, LifecycleStatus::Paused);
-        assert_eq!(operation.files_done, 7);
-        assert_eq!(operation.bytes_total, 23);
-    }
-
-    #[test]
-    fn unknown_strings_and_non_random_operation_ids_fail_closed() {
-        assert_eq!(PaneView::parse("PRIVATE VIEW"), None);
-        assert_eq!(PaneSortField::parse("PRIVATE SORT"), None);
-        assert_eq!(PaneSortOrder::parse("PRIVATE ORDER"), None);
-        assert_eq!(PaneSide::parse("PRIVATE SIDE"), None);
-        assert_eq!(keep_operation_id("copy-PRIVATE-NAME-ASYMMETRIC"), None);
-        assert_eq!(keep_operation_id(OPERATION_ID).as_deref(), Some(OPERATION_ID));
-    }
-
-    #[test]
-    fn a_new_process_history_starts_empty_instead_of_loading_a_previous_session() {
-        let mut old_process = StateHistory::default();
-        assert!(old_process.record(Instant::now(), raw(1)));
-        assert_eq!(old_process.snapshot().len(), 1);
-
-        let new_process = StateHistory::default();
-        assert!(new_process.snapshot().is_empty());
-    }
-}
+mod tests;

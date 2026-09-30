@@ -8,6 +8,7 @@
 //! Ring-buffered to 20 entries: enough to triage a problem, small enough that
 //! every `cmdr://state` read pays a bounded YAML cost.
 
+use crate::file_system::volume::friendly_error::{ErrorCategory, ListingError, ListingErrorReason};
 use std::collections::VecDeque;
 use std::sync::{LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,6 +23,10 @@ pub struct RecentListingError {
     pub path: String,
     /// Raw error text. Matches what the FE sees on the `listing-error` event.
     pub message: String,
+    /// The typed classification the FE rendered from, when the emitter had one. Error
+    /// reports read these instead of `message`.
+    pub reason: Option<ListingErrorReason>,
+    pub category: Option<ErrorCategory>,
 }
 
 const CAPACITY: usize = 20;
@@ -31,7 +36,7 @@ static BUFFER: LazyLock<Mutex<VecDeque<RecentListingError>>> =
 
 /// Record a listing error. Called from the streaming event sink right after it
 /// emits the `listing-error` Tauri event, so MCP sees what the FE saw.
-pub fn record(listing_id: &str, volume_id: &str, path: &str, message: &str) {
+pub fn record(listing_id: &str, volume_id: &str, path: &str, message: &str, classified: Option<&ListingError>) {
     let at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -42,6 +47,8 @@ pub fn record(listing_id: &str, volume_id: &str, path: &str, message: &str) {
         volume_id: volume_id.to_string(),
         path: path.to_string(),
         message: message.to_string(),
+        reason: classified.map(|error| error.reason.clone()),
+        category: classified.map(|error| error.category),
     };
     let mut buf = match BUFFER.lock() {
         Ok(b) => b,
@@ -94,8 +101,8 @@ mod tests {
     fn record_pushes_to_buffer_and_snapshot_returns_in_order() {
         let _guard = TEST_LOCK.lock_ignore_poison();
         clear_for_test();
-        record("l1", "v1", "/a", "boom");
-        record("l2", "v1", "/b", "kaboom");
+        record("l1", "v1", "/a", "boom", None);
+        record("l2", "v1", "/b", "kaboom", None);
         let snap = snapshot();
         assert_eq!(snap.len(), 2);
         assert_eq!(snap[0].listing_id, "l1");
@@ -107,7 +114,7 @@ mod tests {
         let _guard = TEST_LOCK.lock_ignore_poison();
         clear_for_test();
         for i in 0..(CAPACITY + 5) {
-            record(&format!("l{i}"), "v", "/p", "err");
+            record(&format!("l{i}"), "v", "/p", "err", None);
         }
         let snap = snapshot();
         assert_eq!(snap.len(), CAPACITY);
@@ -121,7 +128,7 @@ mod tests {
     fn snapshot_since_filters_by_timestamp() {
         let _guard = TEST_LOCK.lock_ignore_poison();
         clear_for_test();
-        record("l1", "v", "/p", "err");
+        record("l1", "v", "/p", "err", None);
         let mid = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
         // Sleep just past the millisecond boundary so the next `record` definitely
         // gets a strictly later timestamp than `mid` (otherwise the test is flaky
@@ -130,7 +137,7 @@ mod tests {
         // allowed-test-sleep: crossing a millisecond boundary is the subject. `record` stamps with
         // the wall clock, so only elapsed real time can make `l2` strictly later than `mid`
         std::thread::sleep(std::time::Duration::from_millis(2));
-        record("l2", "v", "/p", "err");
+        record("l2", "v", "/p", "err", None);
         let recent = snapshot_since(mid);
         assert_eq!(recent.len(), 1);
         assert_eq!(recent[0].listing_id, "l2");
