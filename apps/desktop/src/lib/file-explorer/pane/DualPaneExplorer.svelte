@@ -32,6 +32,8 @@
 
     import { canGoBack } from '../navigation/navigation-history'
     import TabBar from '../tabs/TabBar.svelte'
+    import TabDragOverlay from '../tabs/TabDragOverlay.svelte'
+    import { createTabDragController } from '../tabs/tab-drag-controller.svelte'
     import { getActiveTab, getAllTabs, pushHistoryEntry, trimClosedStack, MAX_TABS_PER_PANE } from '../tabs/tab-state-manager.svelte'
     import type { TabId } from '../tabs/tab-types'
     import {
@@ -48,6 +50,8 @@
         syncPinTabMenuForPane,
         cycleTab as tabOpsCycleTab,
         switchToTab as tabOpsSwitchToTab,
+        handleTabDrop as tabOpsHandleTabDrop,
+        type TabMoveDeps,
     } from './tab-operations'
     import { initNetworkDiscovery, cleanupNetworkDiscovery } from '../network/network-store.svelte'
     import type { HubRow } from '../network/servers-hub-rows'
@@ -376,6 +380,18 @@
     // Panes and tabs on a connected place follow an edit that moved its root or start folder.
     const volumeRootFollow = createVolumeRootFollow({ getTabMgr, navigate: navigateIntent, saveTabs: saveTabsForPaneSide })
 
+    // Dragging a TAB to reorder it or move it to the other pane's bar. One controller
+    // above both bars, since each `TabBar` sees only its own pane; pointer events, so
+    // it never meets the native file-drop band below.
+    const tabMoveDeps: TabMoveDeps = { getTabMgr, getPaneRef, getFocusedPane: () => focusedPane }
+    const tabDrag = createTabDragController({
+        getTabs: (pane) => getAllTabs(getTabMgr(pane)),
+        maxTabs: MAX_TABS_PER_PANE,
+        onDrop: (drop) => {
+            tabOpsHandleTabDrop(drop, tabMoveDeps)
+        },
+    })
+
     // Native drag-and-drop band: drop-target highlight state, the drag handlers,
     // the three Tauri drag listeners, and the folder-highlight effect. The effect
     // is created synchronously inside the factory (L3); `init()`/`cleanup()` run
@@ -637,6 +653,7 @@
         cleanupVolumeBusyStore()
         cleanupNetworkDiscovery()
         dragDrop.cleanup()
+        tabDrag.destroy()
         window.removeEventListener('resize', handleResizeForDevTools) // No-op in non-dev, safe to always call
     })
 
@@ -1261,6 +1278,7 @@
             activeTabId={tabMgr.activeTabId}
             {paneId}
             maxTabs={MAX_TABS_PER_PANE}
+            drag={tabDrag.forPane(paneId)}
             onTabSwitch={(tabId: TabId) => {
                 switchToTab(paneId, tabId)
             }}
@@ -1379,6 +1397,7 @@
 </div>
 
 <DragOverlay />
+<TabDragOverlay view={tabDrag.view} />
 
 <DialogManager
     onDialogRenderError={(error: unknown) => {
