@@ -1091,8 +1091,9 @@ that would mean racing every per-file transfer against a timeout, which risks ki
 deliberately not done here.
 
 Pinned by `volume/copy_cancel_tests.rs`: cancel and rollback each reach a driver parked on genuinely wedged tasks and
-return, rollback undoes the file that already landed, and a task that never winds down is abandoned at the deadline
-with nothing left at a real name.
+return, rollback undoes the file that already landed, a task that never winds down is abandoned at the deadline
+with nothing left at a real name, and a conflict prompt refused mid-copy (the resolver's `Cancelled`, reaching the
+post-loop through `ConcurrentOutcome`) sweeps the wedged tasks' partials and fires `write-cancelled`.
 
 ## Key decisions
 
@@ -1162,7 +1163,7 @@ Our chunked copy (1 MB read/write chunks) provides: identical speed for non-clon
 **Gotcha**: Cross-type Overwrite (file↔folder) is neither a merge nor a safe-replace: the destination goes ASIDE for the rest of the operation.
 **Why**: A type swap can't stage the new side (a folder lands leaf by leaf), so `apply_volume_conflict_resolution` renames the dest to a `.cmdr-temp-<uuid>` sibling and the operation settles it when it ends. `volume/DETAILS.md` § "A cross-type Overwrite renames the destination ASIDE". Same-type dir-vs-dir never reaches `apply_volume_conflict_resolution` for the folder — it short-circuits to merge in `resolve_volume_conflict` before any policy dispatch.
 
-**Test harness: the conflict responder is an event sink, prompt counts come from the sink.** The folder-merge suites (`volume/merge_tests.rs`, `volume/rename_merge_tests.rs`) drive Stop-mode prompts with `ConflictResponderSink` (`conflict_responder_test_support.rs`): it wraps a `CollectorEventSink`, forwards every event, and the instant it observes a `write-conflict` it answers `state.conflict_slot` with the scripted response. This works because the Stop branch arms the slot BEFORE emitting the event (`volume/conflict.rs`), so the answer can't miss. Assertions derive the prompt count from the recorded conflicts via the shared counters in `conflict_responder_test_support.rs` — `file_conflict_count`, plus `folder_conflict_count_both_dirs` (source AND dest are dirs; pins the copy-side "dirs never prompt" contract) and `folder_conflict_count_any_dir` (source OR dest is a dir; pins the rename-merge contract) — race-free once the op future returns, never from a side-channel counter. The pattern is order-independent by design, so there's no polling loop and no answer-accounting race to defend.
+**Test harness: the conflict responder is an event sink, prompt counts come from the sink.** The folder-merge suites (`volume/merge_tests.rs`, `volume/rename_merge_tests.rs`) drive Stop-mode prompts with `ConflictResponderSink` (`conflict_responder_test_support.rs`): it wraps a `CollectorEventSink`, forwards every event, and the instant it observes a `write-conflict` it answers `state.conflict_slot` with the scripted response, or (`ConflictResponderSink::cancelling`) refuses the prompt by cancelling the operation, the dialog's Cancel. This works because the Stop branch arms the slot BEFORE emitting the event (`volume/conflict.rs`), so the answer can't miss. Assertions derive the prompt count from the recorded conflicts via the shared counters in `conflict_responder_test_support.rs` — `file_conflict_count`, plus `folder_conflict_count_both_dirs` (source AND dest are dirs; pins the copy-side "dirs never prompt" contract) and `folder_conflict_count_any_dir` (source OR dest is a dir; pins the rename-merge contract) — race-free once the op future returns, never from a side-channel counter. The pattern is order-independent by design, so there's no polling loop and no answer-accounting race to defend.
 
 ## Gotcha: a skip-guard `return` above a macOS-only block breaks the Linux lane
 
