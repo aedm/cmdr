@@ -94,7 +94,12 @@ suite:
   COMMITS the new path (`sync-path`): skipping it on the network view left a pane that came from a share on that share's
   path, and its header read "Servers ▸ /Volumes/public". The resync first tells the backend the setting
   (`setListingIncludeHidden`), which picks the row space of the pane's `directory-diff`s and which changes reach it at
-  all (`src-tauri/src/file_system/listing/DETAILS.md` § "Diffs speak the pane's rows").
+  all (`src-tauri/src/file_system/listing/DETAILS.md` § "Diffs speak the pane's rows"). It runs whenever a listing
+  lands, not only on a toggle, and spans three IPC round trips, so it can be OVERTAKEN: by a navigation (which ends the
+  old listing in the same tick it clears the pane's id) or by a newer resync. An overtaken run stops at its next await
+  and writes nothing, and a read that rejects once overtaken is the expected "Listing not found", swallowed. ❗ Overtaken
+  is read off the pane's current listing id plus a per-pane run counter (`createHiddenFilesResync`), ❌ never off the
+  rejection's message; a failure on the listing the pane still shows keeps rejecting.
 - `entries-snapshot.ts`: the Selection dialog's entry list and the operation's selected-names snapshot. Both adapt a
   search snapshot's rows; the Selection list keeps the search engine's BASENAME in `name` (a mask like `*.txt` has to
   mean the filename), unlike `SearchResultsView`'s own adapter, which synthesizes the `~`-shortened full path for the

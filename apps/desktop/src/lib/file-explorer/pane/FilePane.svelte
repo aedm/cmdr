@@ -102,7 +102,7 @@
     import { createDeletedDirPoll } from './deleted-dir-poll'
     import { fetchEntriesSnapshot, fetchSelectedNames } from './entries-snapshot'
     import { resolveInitialPathAction, shouldReloadAfterReachable } from './path-sync'
-    import { resyncAfterHiddenFilesToggle } from './hidden-files-resync'
+    import { createHiddenFilesResync } from './hidden-files-resync'
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
@@ -1604,8 +1604,8 @@
         return friendlyError !== null || unreachable !== null
     }
 
-    // When includeHidden changes, cancel rename and re-sync the count + cursor
-    // (`hidden-files-resync.ts`).
+    // A listing landed or includeHidden changed: cancel rename, re-sync count + cursor (`hidden-files-resync.ts`).
+    const resyncAfterHiddenFilesToggle = createHiddenFilesResync(() => listingId)
     $effect(() => {
         if (listingId && !loading) {
             // Cancel rename on hidden files toggle (spec: sort change / toggle hidden = cancel)
