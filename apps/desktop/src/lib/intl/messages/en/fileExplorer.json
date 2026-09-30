@@ -1097,6 +1097,10 @@
   "@fileExplorer.tabs.limitReached": {
     "description": "Warning toast when the user tries to open another tab but the per-pane tab limit is already reached."
   },
+  "fileExplorer.tabs.onlyTabStays": "A pane’s only tab stays where it is",
+  "@fileExplorer.tabs.onlyTabStays": {
+    "description": "Warning toast when the user drags a tab to the other pane's tab bar, but it's the only tab its own pane has. Each pane always keeps at least one tab, so the tab doesn't move."
+  },
   "fileExplorer.tabs.closePinnedConfirm": "This tab is pinned. Close it anyway?",
   "@fileExplorer.tabs.closePinnedConfirm": {
     "description": "Confirmation dialog message before closing a pinned tab (pinned tabs are meant to stay open)."

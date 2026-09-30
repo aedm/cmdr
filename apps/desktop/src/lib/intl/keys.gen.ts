@@ -1588,6 +1588,7 @@ export type MessageKey =
   | 'fileExplorer.tabs.closePinnedConfirm'
   | 'fileExplorer.tabs.closePinnedTitle'
   | 'fileExplorer.tabs.limitReached'
+  | 'fileExplorer.tabs.onlyTabStays'
   | 'fileExplorer.typeToJump.ariaLabel'
   | 'fileExplorer.typeToJump.prefix'
   | 'fileExplorer.unreachable.detailGaveUp'
