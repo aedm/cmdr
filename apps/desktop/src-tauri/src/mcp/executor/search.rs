@@ -432,7 +432,10 @@ mod tests {
         let line = translated_query_for_log(&query);
         assert!(!line.contains("kovacs") && !line.contains("medical"), "{line}");
         assert!(line.starts_with("pattern=glob(21 chars)"), "{line}");
-        assert!(line.contains(r#"path="/srv/data/Anna""#), "the scope stays tokenizable: {line}");
+        assert!(
+            line.contains(r#"path="/srv/data/Anna""#),
+            "the scope stays tokenizable: {line}"
+        );
     }
 
     #[test]

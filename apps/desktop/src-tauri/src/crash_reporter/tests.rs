@@ -558,7 +558,11 @@ fn a_missing_report_id_is_derived_the_same_on_every_read() {
     let mut other = on_disk;
     other.timestamp = "2026-09-30T05:00:00Z".to_string();
     other.prepare_for_delivery();
-    assert_ne!(other.short_id.as_deref(), Some(id.as_str()), "another crash, another id");
+    assert_ne!(
+        other.short_id.as_deref(),
+        Some(id.as_str()),
+        "another crash, another id"
+    );
 }
 
 #[test]

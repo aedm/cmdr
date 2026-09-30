@@ -300,7 +300,17 @@ pub(super) fn redact_relative_path(
 
 /// The hash-free placeholders the unsalted policy writes (`<dir>`, `<file>.pdf`, …).
 const BARE_PLACEHOLDERS: &[&str] = &[
-    "dir", "file", "volume", "host", "share", "user", "userinfo", "email", "ipv4", "ipv6", "mtp-owner",
+    "dir",
+    "file",
+    "volume",
+    "host",
+    "share",
+    "user",
+    "userinfo",
+    "email",
+    "ipv4",
+    "ipv6",
+    "mtp-owner",
 ];
 
 /// Whether a path segment is already redacted (`<dir>`, `<file:ab12cd>.pdf`, `$HOME`) or

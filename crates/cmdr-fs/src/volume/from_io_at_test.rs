@@ -122,6 +122,9 @@ fn raw_os_error_reads_the_errno_a_variant_carries() {
 #[test]
 fn the_errno_field_renders_bare_and_only_when_present() {
     let denied = VolumeError::from_io_at(&io::Error::from_raw_os_error(libc::EACCES), AT);
-    assert_eq!(format!("x{}", denied.errno_field()), format!("x, errno={}", libc::EACCES));
+    assert_eq!(
+        format!("x{}", denied.errno_field()),
+        format!("x, errno={}", libc::EACCES)
+    );
     assert_eq!(format!("x{}", VolumeError::NotFound(AT.to_string()).errno_field()), "x");
 }

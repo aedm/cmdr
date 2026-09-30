@@ -272,7 +272,15 @@ pub(super) fn has_extension_like_suffix(seg: &str) -> bool {
 
 /// Longer extensions common enough to keep; anything else over five chars is more likely the
 /// tail of a name (`Anna.Kovacs`) than a file type.
-const KNOWN_LONG_EXTENSIONS: &[&str] = &["sqlite", "sqlite3", "numbers", "keynote", "torrent", "download", "crdownload"];
+const KNOWN_LONG_EXTENSIONS: &[&str] = &[
+    "sqlite",
+    "sqlite3",
+    "numbers",
+    "keynote",
+    "torrent",
+    "download",
+    "crdownload",
+];
 
 /// The segment's extension, when it's conservatively one: after a dot that isn't the first char
 /// (no `.ssh`), with at least one letter (no `minutes.2026`), and either lowercase alnum up to
@@ -282,13 +290,15 @@ const KNOWN_LONG_EXTENSIONS: &[&str] = &["sqlite", "sqlite3", "numbers", "keynot
 pub(super) fn conservative_extension(seg: &str) -> Option<&str> {
     let dot = seg.rfind('.').filter(|&dot| dot > 0)?;
     let ext = &seg[dot + 1..];
-    if ext.is_empty() || !ext.chars().all(|c| c.is_ascii_alphanumeric()) || !ext.chars().any(|c| c.is_ascii_alphabetic()) {
+    if ext.is_empty()
+        || !ext.chars().all(|c| c.is_ascii_alphanumeric())
+        || !ext.chars().any(|c| c.is_ascii_alphabetic())
+    {
         return None;
     }
     let lower = ext.chars().all(|c| !c.is_ascii_uppercase());
     let upper = ext.chars().all(|c| !c.is_ascii_lowercase());
-    let keep = (lower && ext.len() <= 5)
-        || (upper && ext.len() <= 4)
-        || (lower && KNOWN_LONG_EXTENSIONS.contains(&ext));
+    let keep =
+        (lower && ext.len() <= 5) || (upper && ext.len() <= 4) || (lower && KNOWN_LONG_EXTENSIONS.contains(&ext));
     keep.then_some(ext)
 }

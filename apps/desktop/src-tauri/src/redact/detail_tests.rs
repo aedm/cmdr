@@ -174,7 +174,11 @@ fn report_mode_tokenizes_identity_pairs_in_json_inside_detail() {
     for private in ["NASPOLYA", "Naspolya", "Private Share", "anna"] {
         assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
     }
-    for kept in [r#"\"type\":\"authFailed\""#, r#"\"message\":\"kept\""#, r#"\"server\":\"<host:"#] {
+    for kept in [
+        r#"\"type\":\"authFailed\""#,
+        r#"\"message\":\"kept\""#,
+        r#"\"server\":\"<host:"#,
+    ] {
         assert!(redacted.contains(kept), "{kept:?} lost: {redacted}");
     }
     let host_token = Regex::new(r#"host="(<host:[0-9a-f]{12}>)""#)
