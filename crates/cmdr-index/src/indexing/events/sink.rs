@@ -289,8 +289,7 @@ pub enum IndexEvent {
         resident_bytes: u64,
         /// The global allocator the two figures below come from.
         global_allocator: cmdr_fs::process_memory::GlobalAllocator,
-        /// Bytes the global allocator holds for the Rust heap: mimalloc's committed
-        /// bytes, or the default malloc zone's reserved bytes.
+        /// Bytes the global allocator holds for the Rust heap (committed, or reserved).
         rust_heap_bytes: u64,
         /// Bytes the other malloc zones hold, disjoint from the figure above.
         system_malloc_bytes: u64,

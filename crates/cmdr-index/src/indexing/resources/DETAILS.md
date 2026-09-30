@@ -32,35 +32,35 @@ of proportionate alerts instead of one per 5 s tick (a 16→40 GB climb produces
 `stop_all_indexing` in case a volume registered again. It says plainly that the stop didn't hold, so the growth is not
 (only) the index scan. Dropping back under the warn line logs a recovery and clears the record, re-arming the stop.
 
-### What the snapshot measures, and the mimalloc blindness
+### What the snapshot measures, and which allocator it reads
 
 **The threshold basis is `phys_footprint`, not `resident_size` (RSS).** RSS counts graphics and shared mappings that
 aren't real memory pressure; `phys_footprint` is what macOS keys memory pressure and jetsam on and what Activity
 Monitor's "Memory" column shows. Keying the stop on RSS would let graphics trip a machine-protection stop.
 
-**Gotcha: the macOS malloc-zone APIs cannot see the Rust heap.** Cmdr sets mimalloc as the global allocator in
-`main.rs`, and mimalloc registers no malloc zone, so `malloc_zone_statistics` and `malloc_get_all_zones` report WebKit,
-Objective-C, and C-library allocations only. The snapshot used to read exactly those zones and label the result "the
-real Rust/C heap; indexing lives here"; in the runaway that printed "malloc heap 1.6 GB" against a 16.5 GB
-`phys_footprint`. `crate::process_memory` is the canonical home for this and for all four readers (`query_task_vm_info`,
-`query_basic_info`, `query_mimalloc_heap`, `query_system_malloc_zones`); the watchdog holds policy only.
+**The Rust heap comes from whichever allocator is global** (`crates/cmdr-fs/DETAILS.md` § "Which global allocator"): the
+default malloc zone's reserved bytes under the system allocator (macOS by default), mimalloc's committed bytes under
+mimalloc. `query_rust_heap` returns an enum naming which, and `query_system_malloc_zones` reads the zones beyond it, so
+the two never overlap. `crate::process_memory` is the canonical home for the readers (`query_task_vm_info`,
+`query_basic_info`, `query_rust_heap`, `query_system_malloc_zones`); the watchdog holds policy only.
 
-`query_mimalloc_heap` calls `mi_process_info` through a direct `libmimalloc-sys` dependency (the `mimalloc` wrapper
-crate doesn't re-export its `ffi` module) for `current_commit` / `peak_commit`. Committed, not in-use: mimalloc exposes
-no cheap process-wide in-use total, and committed is what tracks the arenas. Note that `#[global_allocator]` lives in
-`main.rs`, so the unit-test harness does NOT run on mimalloc; the blindness test allocates via `mi_malloc` directly to
-stay meaningful there.
+**Gotcha, mimalloc builds: the macOS malloc-zone APIs cannot see the Rust heap.** mimalloc registers no malloc zone, so
+`malloc_zone_statistics` and `malloc_get_all_zones` report WebKit, Objective-C, and C-library allocations only. The
+snapshot used to read exactly those zones and label the result "the real Rust/C heap; indexing lives here"; in the
+runaway that printed "malloc heap 1.6 GB" against a 16.5 GB `phys_footprint`.
 
-**Gotcha: `vmmap`'s `IOAccelerator` rows are the Rust heap.** mimalloc `mmap`s its arenas with `os_tag` 100, and macOS
-defines `VM_MEMORY_IOACCELERATOR = 100`, so `vmmap` / `footprint` label every 128 MB mimalloc arena `IOAccelerator`
-(verified with `MallocStackLogging=1` + `vmmap -fullStacks`: each region backtraces to `mmap` ← `_mi_prim_alloc` ←
-`mi_arena_reserve`; commenting out the `#[global_allocator]` collapses those rows to 64 KB and the same memory reappears
-as `MALLOC_*`, macOS 15, 2026-07). Reading those rows as GPU memory is what sent three investigations into the frontend.
-Any older analysis that split "GPU vs heap" off a zone-only heap reading inherits this error.
+**Gotcha, mimalloc builds: `vmmap`'s `IOAccelerator` rows are the Rust heap.** mimalloc `mmap`s its arenas with `os_tag`
+100, and macOS defines `VM_MEMORY_IOACCELERATOR = 100`, so `vmmap` / `footprint` label every 128 MB mimalloc arena
+`IOAccelerator` (verified with `MallocStackLogging=1` + `vmmap -fullStacks`: each region backtraces to `mmap` ←
+`_mi_prim_alloc` ← `mi_arena_reserve`; on the system allocator those rows collapse to 64 KB and the same memory
+reappears as `MALLOC_*`, macOS 15, 2026-07). Reading those rows as GPU memory is what sent three investigations into the
+frontend. Any older analysis that split "GPU vs heap" off a zone-only heap reading inherits this error. The report's
+last line tells a `vmmap` reader which rows hold the heap in the running build.
 
-When a threshold trips, the watchdog captures a `MemorySnapshot` — `phys_footprint` (+ ledger peak), RSS (+ max), the
-mimalloc heap (+ peak), the system malloc zones (in use + reserved, zone count, largest zone), the `untracked`
-remainder, and `live_event_count` — and logs it as a multi-line breakdown where every line states what its number MEANS.
+When a threshold trips, the watchdog captures a `MemorySnapshot` (`memory_snapshot.rs`) — `phys_footprint` (+ ledger
+peak), RSS (+ max), the Rust heap (mimalloc's committed + peak, or the default zone's in use + reserved), the other
+malloc zones (in use + reserved, zone count, largest zone), the `untracked` remainder, and `live_event_count` — and logs
+it as a multi-line breakdown where every line states what its number MEANS.
 
 **Decision (why the verdict is derived, not asserted).** The old report ended with "a large resident−phys_footprint
 delta usually means WebView/GPU memory, not the indexing heap", printed unconditionally. In the runaway that delta was
@@ -70,9 +70,9 @@ over the same figures the report prints: whichever source holds a majority wins 
 `Unattributed`), otherwise `Mixed`. Graphics is only ever named when neither allocator claims the majority. If you add a
 hint here, derive it from the numbers or leave it out.
 
-The `index-memory-warning` event carries the five figures in bytes plus a typed `MemoryWatchdogAction`; see
-`../events/DETAILS.md`. TODO (tracked in the snapshot's `live_event_count` comment): surface writer-channel depth and
-reconciler `pending_events` len once they're atomics.
+The `index-memory-warning` event carries the five figures in bytes, the `GlobalAllocator` they came from, and a typed
+`MemoryWatchdogAction`; see `../events/DETAILS.md`. TODO (tracked in the snapshot's `live_event_count` comment): surface
+writer-channel depth and reconciler `pending_events` len once they're atomics.
 
 ### The shared ceiling (subsystem_stop.rs)
 
