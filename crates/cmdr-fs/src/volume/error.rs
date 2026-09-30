@@ -245,6 +245,16 @@ impl VolumeError {
             raw_os_error: err.raw_os_error(),
         }
     }
+
+    /// The errno this error carries, if its variant keeps one. For diagnostics: EACCES and
+    /// EPERM read the same to a user but point at different fixes (POSIX/ACL versus TCC).
+    #[must_use]
+    pub fn raw_os_error(&self) -> Option<i32> {
+        match self {
+            Self::PermissionDenied { raw_os_error, .. } | Self::IoError { raw_os_error, .. } => *raw_os_error,
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

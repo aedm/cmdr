@@ -104,3 +104,14 @@ fn kinds_without_a_typed_home_keep_their_errno() {
         );
     }
 }
+
+/// A listing failure logs `errno=` from this, and EACCES vs EPERM is what separates a POSIX
+/// or ACL refusal from a TCC one.
+#[test]
+fn raw_os_error_reads_the_errno_a_variant_carries() {
+    let denied = VolumeError::from_io_at(&io::Error::from_raw_os_error(libc::EPERM), AT);
+    assert_eq!(denied.raw_os_error(), Some(libc::EPERM));
+    let io_error = VolumeError::from_io_without_path(&io::Error::from_raw_os_error(libc::EIO));
+    assert_eq!(io_error.raw_os_error(), Some(libc::EIO));
+    assert_eq!(VolumeError::NotFound(AT.to_string()).raw_os_error(), None);
+}
