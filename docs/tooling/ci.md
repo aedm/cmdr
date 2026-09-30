@@ -76,7 +76,8 @@ with a reason.** When you rename one, CI fails until every workflow catches up. 
 Always runs (no change gate). Holds the checks whose inputs no per-app filter can cover:
 
 - `oxfmt` formats the whole monorepo (docs, configs, workflows). Before the hygiene job, a docs-only commit ran zero CI,
-  so unformatted markdown could land on main and fail the next unrelated PR's CI.
+  so unformatted markdown could land on main and fail the next unrelated PR's CI. Locally, the git hooks apply all three
+  formatters at commit and push time: `docs/tooling/git-hooks.md`.
 - `changelog-commit-links` (previously duplicated across three jobs; needs `fetch-depth: 0`).
 - `workflows-hardening`, `workflows-rustup`, and `ci-coverage` — the workflow files they scan are no app's territory.
 

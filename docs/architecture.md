@@ -568,6 +568,7 @@ Dev workflow docs and external service references. All in `docs/tooling/`.
 - `tooling/mcp.md`: MCP servers (`cmdr`, `tauri`) for agent-driven app testing
 - `tooling/instance-isolation.md`: `CMDR_INSTANCE_ID` primer: per-resource isolation for parallel dev / E2E
 - `tooling/css-health-checks.md`: Stylelint + Go-based unused CSS checker
+- `tooling/git-hooks.md`: the `pre-commit` and `pre-push` hooks that apply `oxfmt`, `rustfmt`, and `gofmt` automatically
 - `tooling/index-query.md`: `index_query`: query index DB with `platform_case` collation (`sqlite3` can't)
 
 The check runner and E2E testing docs live colocated with their code:
