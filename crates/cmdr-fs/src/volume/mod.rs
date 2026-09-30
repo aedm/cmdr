@@ -1728,7 +1728,7 @@ pub use capabilities::VolumeCapabilities;
 pub use channel_stream::ChannelReadStream;
 pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavailableReason, SignInShape};
 pub use entry_kind::EntryKind;
-pub use error::VolumeError;
+pub use error::{ErrnoField, VolumeError};
 pub use ids::*;
 pub use in_memory::InMemoryVolume;
 pub use mkdir_all::{MadeDirectories, MakesDirectories};

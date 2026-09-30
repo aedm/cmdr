@@ -391,10 +391,10 @@ pub async fn list_directory_start_streaming(
                 // One line per failed listing, carrying the TYPED reason, so a log
                 // answers "why did this listing fail" without reading code.
                 log::debug!(
-                    "listing {listing_id_for_cleanup} on volume {volume_id_owned} ended in error: {:?} ({:?}), errno={:?}",
+                    "listing {listing_id_for_cleanup} on volume {volume_id_owned} ended in error: {:?} ({:?}){}",
                     listing_error.reason,
                     listing_error.category,
-                    e.raw_os_error(),
+                    e.errno_field(),
                 );
                 events_for_error.emit_error(&listing_id_for_cleanup, message, Some(listing_error));
             }

@@ -255,6 +255,25 @@ impl VolumeError {
             _ => None,
         }
     }
+
+    /// `, errno=13` for a log line when the variant carries an errno, and nothing otherwise.
+    #[must_use]
+    pub fn errno_field(&self) -> ErrnoField {
+        ErrnoField(self.raw_os_error())
+    }
+}
+
+/// [`VolumeError::errno_field`]'s rendering: the bare number, or no field at all.
+#[derive(Debug, Clone, Copy)]
+pub struct ErrnoField(Option<i32>);
+
+impl std::fmt::Display for ErrnoField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(errno) => write!(f, ", errno={errno}"),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
