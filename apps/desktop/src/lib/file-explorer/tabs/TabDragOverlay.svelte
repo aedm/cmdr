@@ -28,7 +28,7 @@
             ></div>
         {/if}
         <div
-            class="ghost"
+            class="ghost is-dragging"
             class:cannot-drop={view.overPane === null || view.refused}
             style:left="{view.ghost.left}px"
             style:top="{view.ghost.top}px"
@@ -79,10 +79,16 @@
         pointer-events: none;
     }
 
+    /* See-through, because the ghost sits right on the landing line and an opaque one
+       hides it. `is-dragging` marks it as drag feedback for the contrast checker. */
+    .ghost.is-dragging {
+        opacity: 0.6;
+    }
+
     /* Off the bars a release cancels, and a bar can refuse the tab: either way the ghost
-       fades to say it has nowhere to land. */
+       fades further to say it has nowhere to land. */
     .ghost.cannot-drop {
-        opacity: 0.5;
+        opacity: 0.3;
     }
 
     .ghost-label {

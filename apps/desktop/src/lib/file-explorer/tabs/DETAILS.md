@@ -173,12 +173,13 @@ wrapper: it toasts a refused drop (full pane, only tab); the MCP path returns th
   armed and eat the next real click. Two things disarm it: a `pointermove` with no button down, and any fresh
   `pointerdown`.
 
-`TabDragOverlay.svelte` draws the drag from the controller's `view`: a ghost copy of the tab that follows the pointer
-(locked to a bar's row while over one, free and faded off the bars), a 2px accent line on the landing slot, and the
-cursor. Its layer covers the whole window for the length of the drag, which is what keeps hover states and tooltips
-asleep and gives the "not allowed" cursor one owner. The dragged tab itself stays in its slot, dimmed; `TabBar` also
-nulls its tooltips while `isDragging`, so a tooltip whose delay started before the press can't fire mid-drag. The
-`is-dragging` / `cannot-drop` class names are the ones the contrast checker exempts as drag feedback.
+`TabDragOverlay.svelte` draws the drag from the controller's `view`: a see-through ghost copy of the tab that follows
+the pointer (locked to a bar's row while over one, free and fainter off the bars; it's never opaque, because it sits on
+the landing line and would hide it), a 2px accent line on the landing slot, and the cursor. Its layer covers the whole
+window for the length of the drag, which is what keeps hover states and tooltips asleep and gives the "not allowed"
+cursor one owner. The dragged tab itself stays in its slot, dimmed; `TabBar` also nulls its tooltips while `isDragging`,
+so a tooltip whose delay started before the press can't fire mid-drag. The `is-dragging` / `cannot-drop` class names are
+the ones the contrast checker exempts as drag feedback.
 
 **MCP** (`tab` with `action: move`): `pane` is where the tab is now, `tabId` defaults to that pane's active tab,
 `toPane` defaults to `pane` (a reorder), and `toIndex` defaults to the end; at least one of `toPane` / `toIndex` is
