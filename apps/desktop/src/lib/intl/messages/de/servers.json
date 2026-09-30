@@ -97,6 +97,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} Server in der Nähe gefunden} other {{countText} Server in der Nähe gefunden}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "Die Suche im lokalen Netzwerk ist ausgeschaltet.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

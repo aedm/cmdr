@@ -96,6 +96,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} servidor encontrado por perto} many {{countText} servidores encontrados por perto} other {{countText} servidores encontrados por perto}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "A descoberta na rede local está desativada.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

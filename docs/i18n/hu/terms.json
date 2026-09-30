@@ -1394,6 +1394,12 @@
     "confidence": "high",
     "sources": "catalog (ai.toast.gotIt, updates.moveToApplicationsDialog.gotIt, main.oldMacos.gotIt)"
   },
+  "group": {
+    "chosen": "csoport",
+    "confidence": "high",
+    "forms": "a named group takes the name bare before it (a Hálózat csoport); the servers found nearby → A közelben felfedezett szerverek csoportja",
+    "sources": "macOS Finder MenuBar (Use Groups → Csoportok használata), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "vendég",
     "forms": "Connect as guest → Csatlakozás vendégként; as guest → vendégként (pairs with {username} felhasználóként); Use guest → Váltás vendégre; guest access → vendéghozzáférés",

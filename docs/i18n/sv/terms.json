@@ -1179,6 +1179,12 @@
     "forms": "the user's action → ge (ge Cmdr åtkomst); a status → beviljad",
     "sources": "macOS (bevilja); ge reads warmer in body copy"
   },
+  "group": {
+    "chosen": "grupp",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after the definite form (gruppen Nätverk) or compounds with a hyphen (Nätverk-grupp); the servers found nearby → Grupp med servrar i närheten",
+    "sources": "macOS Finder MenuBar (Use Groups → Använd grupper), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "gäst",
     "confidence": "high",

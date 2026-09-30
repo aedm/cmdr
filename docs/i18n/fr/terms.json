@@ -1246,6 +1246,12 @@
     "decision": "Un mot anglais, un mot français : la revue de dérive",
     "sources": "macOS fr (Got It → D'accord, verified on macOS 26.6.2, 2026-08-30)"
   },
+  "group": {
+    "chosen": "groupe",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (votre groupe Réseau); the servers found nearby → Groupe des serveurs à proximité",
+    "sources": "macOS Finder MenuBar (Use Groups → Utiliser les groupes), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "invité",
     "confidence": "high",

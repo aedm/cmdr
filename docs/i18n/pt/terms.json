@@ -1112,6 +1112,12 @@
     "confidence": "high",
     "sources": "shipped pt catalog"
   },
+  "group": {
+    "chosen": "grupo",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (seu grupo Rede); the servers found nearby → Grupo de servidores por perto",
+    "sources": "macOS Finder pt-BR MenuBar (Use Groups → Usar Grupos), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "convidado",
     "confidence": "confirmed",

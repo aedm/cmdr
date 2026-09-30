@@ -97,6 +97,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} server gevonden in de buurt} other {{countText} servers gevonden in de buurt}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "Lokale netwerkdetectie staat uit.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

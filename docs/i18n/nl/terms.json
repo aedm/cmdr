@@ -1159,6 +1159,12 @@
     "confidence": "high",
     "sources": "macOS (Begrepen)"
   },
+  "group": {
+    "chosen": "groep",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (je groep Netwerk); the servers found nearby → Groep servers in de buurt",
+    "sources": "macOS Finder MenuBar (Use Groups → Gebruik groepen), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "accept": ["gasten", "gasttoegang"],
     "chosen": "gast",

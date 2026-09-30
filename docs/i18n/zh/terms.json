@@ -1204,6 +1204,18 @@
     "forms": "知道了",
     "sources": "catalog"
   },
+  "group": {
+    "avoid": [
+      {
+        "form": "群组",
+        "why": "Finder has both (使用群组, 分组方式); the catalog settled on 分组 for a group of rows"
+      }
+    ],
+    "chosen": "分组",
+    "confidence": "tentative",
+    "forms": "a named group takes the quoted name before it (“网络”分组); the servers found nearby → 附近服务器分组",
+    "sources": "catalog (servers.pinHint.title); macOS Finder zh-CN MenuBar (Group By → 分组方式, Use Groups → 使用群组), verified on macOS 27.0 (26A428), live bundle, 2026-09-30"
+  },
   "guest": {
     "avoid": [
       {

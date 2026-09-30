@@ -1237,6 +1237,12 @@
     "confidence": "high",
     "sources": "macOS de (Got It → Alles klar), verified on macOS 26.6.2, 2026-08-30"
   },
+  "group": {
+    "chosen": "Gruppe",
+    "confidence": "high",
+    "forms": "a named group takes the name quoted after it (die Gruppe „Netzwerk“); the servers found nearby → Gruppe der Server in der Nähe",
+    "sources": "macOS Finder MenuBar (Use Groups → Gruppen verwenden), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "accept": ["Gäste", "Gastzugriff"],
     "chosen": "Gast",

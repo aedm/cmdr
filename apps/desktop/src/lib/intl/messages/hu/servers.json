@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {A közelben felfedezve: {countText} szerver} other {A közelben felfedezve: {countText} szerver}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "A helyi hálózati felderítés ki van kapcsolva.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

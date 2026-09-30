@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, other {在附近发现 {countText} 台服务器}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "本地网络发现已关闭。",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

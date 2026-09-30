@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, other {在附近找到 {countText} 部伺服器}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "區域網路探索已關閉。",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"

@@ -1113,6 +1113,12 @@
     "confidence": "high",
     "sources": "catalog (ai.toast.gotIt, main.oldMacos.gotIt, updates.moveToApplicationsDialog.gotIt)"
   },
+  "group": {
+    "chosen": "nhóm",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (nhóm Mạng); the servers found nearby → Nhóm máy chủ ở gần",
+    "sources": "macOS Finder MenuBar (Use Groups → Sử dụng Nhóm), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "khách",
     "confidence": "high",

@@ -39,3 +39,5 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   each locale's prose form is ruled (de neuter `Zip`, sv `zip-fil`, hu `zip archívum`, zh-Hant `zip`).
 - `errors.write.archiveEntryName*` messages: "some tools", "zip tools", and the verb "share" tripped `ai-tool` and
   `network-share`; `notMatch` entries now cover these, but a sense-aware matcher would stop the next one.
+- `servers.hub.nearbyGroup`: no screenshot, and the description doesn't say whether a count-last shape is fine (hu, zh,
+  and zh-Hant lead with "found nearby"). Recapture the hub with the group header showing, and say the order is free.

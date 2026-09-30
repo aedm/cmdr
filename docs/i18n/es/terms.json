@@ -1150,6 +1150,12 @@
     "confidence": "high",
     "sources": "catalog"
   },
+  "group": {
+    "chosen": "grupo",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (tu grupo Red); the servers found nearby → Grupo de servidores encontrados cerca",
+    "sources": "macOS Finder MenuBar (Use Groups → Usar grupos), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
+  },
   "guest": {
     "chosen": "invitado",
     "forms": "guest access → acceso como invitado; Conectarse como invitado",

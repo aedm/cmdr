@@ -96,6 +96,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} serveur découvert à proximité} many {{countText} serveurs découverts à proximité} other {{countText} serveurs découverts à proximité}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "La découverte du réseau local est désactivée.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
