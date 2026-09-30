@@ -58,6 +58,9 @@ pub(super) fn build_folder_heavy_index(
 
     let store = IndexStore::open(path).expect("open index");
     let conn = store.read_conn();
+    // One transaction for the whole tree: tens of thousands of autocommits cost seconds in
+    // a debug build, which pushed the tests on this fixture past the 8 s cap on CI.
+    conn.execute_batch("BEGIN").expect("begin fixture txn");
     let mut next_id = ROOT_ID + 1;
     let insert = |parent_id: i64, name: &str, id: i64, is_directory: bool| {
         IndexStore::insert_entry_v2_with_id(
@@ -100,6 +103,7 @@ pub(super) fn build_folder_heavy_index(
             }
         }
     }
+    conn.execute_batch("COMMIT").expect("commit fixture txn");
     "/Users/test".to_string()
 }
 
