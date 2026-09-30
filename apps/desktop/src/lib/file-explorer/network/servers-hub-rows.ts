@@ -101,7 +101,7 @@ export interface HubRowSources {
 
 /**
  * Rank groups, most urgent first: a live session, then one asking something of
- * the user, then the rest of what they saved, then what is merely nearby.
+ * the user, then the rest of what they saved, then what mDNS is seeing.
  */
 const STATUS_RANK: Record<HubRowStatus, number> = {
   connected: 0,
@@ -237,6 +237,16 @@ function matchingHosts(server: SavedServer, hosts: NetworkHost[]): NetworkHost[]
  */
 export function savedSmbHostIds(saved: SavedServer[], hosts: NetworkHost[]): Set<string> {
   return new Set(saved.flatMap((server) => matchingHosts(server, hosts)).map((host) => host.id))
+}
+
+/**
+ * Whether the row is a host Cmdr only FOUND: no saved server, no saved share,
+ * nothing the person added. The hub folds these into one group under the saved
+ * servers (`servers-hub-items.ts`), and nothing lists their shares until the
+ * person opens one (`network-store.svelte.ts`).
+ */
+export function isNearbyOnly(row: HubRow): boolean {
+  return row.saved === null
 }
 
 /**
@@ -413,8 +423,16 @@ function hostAddress(host: NetworkHost | null): string | null {
   return address.includes(':') ? `[${address}]:${String(host.port)}` : `${address}:${String(host.port)}`
 }
 
-/** Live first, then what's asking for you, then saved, then nearby. */
+/**
+ * What the person saved first (live, then what's asking for them, then idle, then
+ * the ones mDNS also sees), then the hosts Cmdr only found.
+ *
+ * ❗ The found-only hosts stay CONTIGUOUS at the end, whatever their recency or
+ * name: the hub's group header sits in front of the first one.
+ */
 function compareRows(a: HubRow, b: HubRow): number {
+  const byOwnership = Number(isNearbyOnly(a)) - Number(isNearbyOnly(b))
+  if (byOwnership !== 0) return byOwnership
   const byStatus = STATUS_RANK[a.status] - STATUS_RANK[b.status]
   if (byStatus !== 0) return byStatus
   const byRecency = recency(b) - recency(a)

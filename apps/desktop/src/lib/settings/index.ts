@@ -14,6 +14,7 @@ export type {
   FileSizeFormat,
   FileSizeUnit,
   FullDiskAccessChoice,
+  NearbyServersGroupChoice,
   SettingId,
   SettingsValues,
   SizeColorsPalette,

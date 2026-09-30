@@ -116,6 +116,14 @@
       "name": "the share name, like Container"
     }
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} server found nearby} other {{countText} servers found nearby}}",
+  "@servers.hub.nearbyGroup": {
+    "description": "Header row in the servers hub, below the servers the user saved. It groups the servers Cmdr found on the local network that the user never saved, and it opens and collapses that group; collapsed, this line is all that shows of them. The rows under it carry the status \"Found nearby\", so use the same wording for \"found nearby\" here.",
+    "placeholders": {
+      "count": "the number of servers in the group, for choosing the plural form",
+      "countText": "the number as the user’s locale writes it, like \"12\""
+    }
+  },
   "servers.hub.discoveryOff": "Local network discovery is off.",
   "@servers.hub.discoveryOff": {
     "description": "One line in the servers hub, in place of the list of servers found nearby, when the user has turned local network discovery off in Settings. Saved servers still work and are still listed; this line is only about the nearby ones."

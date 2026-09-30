@@ -14,6 +14,17 @@
 
 import type { PaneFileEntry, PaneState } from '$lib/tauri-commands'
 import type { HubRow } from './servers-hub-rows'
+import { fullIndexOf, type HubItem } from './servers-hub-items'
+
+/**
+ * The nearby group's header, as an agent sees it: English whatever the locale,
+ * like the status tokens. `move_cursor` finds it by this name, and
+ * `open_under_cursor` on it opens or collapses the group.
+ */
+export const NEARBY_GROUP_MCP_NAME = 'Found nearby'
+
+/** Where the group's header points. A sentinel: it leads nowhere. */
+export const NEARBY_GROUP_MCP_PATH = 'smb://nearby'
 
 /** The add row's name, as an agent sees it. */
 export const ADD_SERVER_MCP_NAME = '+ Add server…'
@@ -35,10 +46,17 @@ export interface HubMcpLookups {
   shareCountOf?: (row: HubRow) => number | undefined
 }
 
-/** The hub as the pane state MCP mirrors: its rows, then the add row, and the cursor. */
+/**
+ * The hub as the pane state MCP mirrors: every item, then the add row, and the cursor.
+ *
+ * ❗ `items` is the FULL list and `visibleCursorIndex` counts what is on screen:
+ * the servers a collapsed group hides are still listed (an agent asking which
+ * servers exist gets the truth, and the group's `state=` says they're folded
+ * away), so the cursor is re-counted over the list the agent indexes into.
+ */
 export function hubPaneState(
-  rows: HubRow[],
-  cursorIndex: number,
+  items: HubItem[],
+  visibleCursorIndex: number,
   volumeName: string,
   lookups: HubMcpLookups,
 ): PaneState {
@@ -46,21 +64,27 @@ export function hubPaneState(
     path: 'smb://',
     volumeId: 'network',
     volumeName,
-    files: hubMcpEntries(rows, lookups),
-    cursorIndex,
+    files: hubMcpEntries(items, lookups),
+    cursorIndex: fullIndexOf(items, visibleCursorIndex),
     viewMode: 'full',
     selectedIndices: [],
-    totalFiles: rows.length,
+    totalFiles: items.length,
     loadedStart: 0,
-    loadedEnd: rows.length,
+    loadedEnd: items.length,
   }
 }
 
-/** One entry per row, then the add row. */
-export function hubMcpEntries(rows: HubRow[], lookups: HubMcpLookups): PaneFileEntry[] {
-  const entries = rows.map((row) => entryFor(row, lookups))
+/** One entry per item, then the add row. */
+export function hubMcpEntries(items: HubItem[], lookups: HubMcpLookups): PaneFileEntry[] {
+  const entries = items.map((item) => (item.kind === 'row' ? entryFor(item.row, lookups) : groupEntry(item)))
   entries.push(emptyEntry(ADD_SERVER_MCP_NAME, ADD_SERVER_MCP_PATH, false))
   return entries
+}
+
+/** The nearby group's header: whether it's open, and how many servers it holds. */
+function groupEntry(group: Extract<HubItem, { kind: 'nearby_group' }>): PaneFileEntry {
+  const tokens = ['kind=group', `state=${group.expanded ? 'expanded' : 'collapsed'}`, `servers=${String(group.count)}`]
+  return emptyEntry(`${NEARBY_GROUP_MCP_NAME}  ${tokens.join('  ')}`, NEARBY_GROUP_MCP_PATH, false)
 }
 
 function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {

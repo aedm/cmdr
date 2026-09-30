@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildHubRows, openMoveFor, savedSmbHostIds } from './servers-hub-rows'
+import { buildHubRows, isNearbyOnly, openMoveFor, savedSmbHostIds } from './servers-hub-rows'
 import type { SavedServer } from '$lib/tauri-commands'
 import type { NetworkHost, VolumeInfo } from '../types'
 import type { SignedInAs } from './signed-in-as'
@@ -322,6 +322,22 @@ describe('buildHubRows: order', () => {
       volumes: [],
     })
     expect(rows.map((r) => r.name)).toEqual(['Alpha', 'zeta'])
+  })
+
+  /**
+   * The hub folds the hosts nobody saved into one group at the end
+   * (`servers-hub-items.ts`), so they have to be contiguous there. Both rows
+   * below read "Found nearby" and neither was ever used, so the status rank and
+   * the recency tie, and the name alone would put the unsaved one first.
+   */
+  it('puts a host nobody saved after every saved server, even one mDNS also sees', () => {
+    const rows = buildHubRows({
+      saved: [smbServer({ id: 'manual-zed', displayName: 'Zed', address: 'zed.local' })],
+      hosts: [host({ id: 'h-alpha', name: 'Alpha' }), host({ id: 'h-zed', name: 'Zed', hostname: 'zed.local' })],
+      volumes: [],
+    })
+    expect(rows.map((r) => r.name)).toEqual(['Zed', 'Alpha'])
+    expect(rows.map(isNearbyOnly)).toEqual([false, true])
   })
 })
 

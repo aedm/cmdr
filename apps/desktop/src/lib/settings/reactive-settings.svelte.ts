@@ -15,6 +15,7 @@ import {
   type SizeDisplayMode,
   type BriefColumnWidthMode,
   type AppColor,
+  type NearbyServersGroupChoice,
   densityMappings,
 } from '$lib/settings'
 import { formatDateForDisplay, type FormattedDate } from './format-utils'
@@ -43,6 +44,7 @@ let showTags = $state<boolean>(true)
 let briefColumnWidthMode = $state<BriefColumnWidthMode>('paneWidth')
 let briefColumnWidthMaxPx = $state<number>(400)
 let networkEnabled = $state<boolean>(true)
+let nearbyServersGroup = $state<NearbyServersGroupChoice>('auto')
 let typeToJumpResetDelay = $state<number>(1000)
 let driveIndexingEnabled = $state<boolean>(true)
 let mediaIndexEnabled = $state<boolean>(false)
@@ -100,6 +102,7 @@ async function runInit(options?: { restrictedWindow?: boolean }): Promise<void> 
     briefColumnWidthMode = getSetting('listing.briefColumnWidthMode')
     briefColumnWidthMaxPx = getSetting('listing.briefColumnWidthMaxPx')
     networkEnabled = getSetting('network.enabled')
+    nearbyServersGroup = nearbyServersGroupChoiceOf(getSetting('network.nearbyServersGroup'))
     typeToJumpResetDelay = getSetting('fileExplorer.typeToJump.resetDelay')
     driveIndexingEnabled = getSetting('indexing.enabled')
     mediaIndexEnabled = getSetting('mediaIndex.enabled')
@@ -186,6 +189,9 @@ function applySettingChange(id: string, value: unknown): void {
       break
     case 'network.enabled':
       networkEnabled = value as boolean
+      break
+    case 'network.nearbyServersGroup':
+      nearbyServersGroup = nearbyServersGroupChoiceOf(value)
       break
     case 'fileExplorer.typeToJump.resetDelay':
       typeToJumpResetDelay = value as number
@@ -344,6 +350,19 @@ export function getBriefColumnWidthMaxPx(): number {
 /** Get whether networking (SMB discovery + connections) is enabled. */
 export function getNetworkEnabled(): boolean {
   return networkEnabled
+}
+
+/**
+ * Whether the servers hub's "found nearby" group is open: `expanded` or
+ * `collapsed` once the person toggled it, `auto` before.
+ */
+export function getNearbyServersGroupChoice(): NearbyServersGroupChoice {
+  return nearbyServersGroup
+}
+
+/** A stored `string` nothing validates: anything but the two choices reads as "never chose". */
+function nearbyServersGroupChoiceOf(value: unknown): NearbyServersGroupChoice {
+  return value === 'expanded' || value === 'collapsed' ? value : 'auto'
 }
 
 /**

@@ -24,8 +24,27 @@ Lifecycle:
 Resolution → prefetch pipeline (fire-and-forget):
 
 1. `startResolution(host)`: calls `resolveNetworkHost`, updates host, then calls `startPrefetchShares`.
-2. `startPrefetchShares(host)`: calls `prefetchSharesCmd` (backend caches result), then `fetchSharesSilent` to populate
-   `shareStates`.
+2. `startPrefetchShares(host)`: for a host the person SAVED, calls `prefetchSharesCmd` (backend caches result), then
+   `fetchSharesSilent` to populate `shareStates`. For any other host it does nothing.
+
+❗ **A host Cmdr only found is listed when the person opens it, and at no other time** (#324). Listing a host's shares
+means connecting to it and signing in, as a guest where it lets one in, so prefetching every resolved host made each
+launch sign in to every SMB machine on the network, and the hub then labelled a machine the person never touched "as
+guest". Three places hold the line, and a fourth caller of `listSharesOnHost` has to hold it too:
+
+- `startPrefetchShares`: no prefetch.
+- `refreshAllStaleShares` (entering the Servers view): a saved host's stale list is re-read; a found host's is DROPPED,
+  so opening it reads a fresh one (`PlacesBrowser` shows a cached list without asking how old it is).
+- The hub's refresh (`ServersHub.handleRefreshClick`, ⌘R): every host's list is dropped, and only the saved ones are
+  re-read.
+
+"Saved" is one question with one answer: `servers-hub-rows.ts::savedSmbHostIds`, the match the hub's merge makes, so a
+host that gets no prefetch is exactly a host the hub puts in its nearby group. The store reads `listSavedServers()`
+fresh per decision (`readSavedServers`, one read shared by every host that asks while it's out), because a host becomes
+the person's the moment they add it or mount one of its shares, and nothing tells the store when. A read that breaks
+answers "none saved": not knowing whose a host is must never be what signs Cmdr in to it. Pinned by
+`network-store.prefetch.test.ts`. The backend has no other caller: `smb_client::list_shares` is reached only through the
+three listing commands, all frontend-invoked (verified by reading its call sites, 2026-09-30).
 
 Key exported functions: `getNetworkHosts()` (sorted copy), `fetchShares(host)` (explicit, throws on error),
 `refreshSharesIfStale(host)`, `refreshAllStaleShares()` (call on entering network view),
@@ -37,9 +56,13 @@ Key exported functions: `getNetworkHosts()` (sorted copy), `fetchShares(host)` (
 ## `ServersHub.svelte`
 
 The pane state behind the switcher's "Servers" row: a table of Name, Type, Address, Status, and Last used over every
-server the user saved plus every host mDNS is seeing, with an "Add server…" pseudo-row at the bottom (keyboard
-navigable, "+" icon, italic), firing `onConnectToServer`. Total navigable items = `rows.length + 1`. Keyboard nav via
-`handleNavigationShortcut` (`../navigation/keyboard-shortcuts`); Left/Right jump to first/last.
+server the user saved, then the hosts mDNS is seeing that they didn't, folded into one group (§ "The nearby group"),
+with an "Add server…" pseudo-row at the bottom (keyboard navigable, "+" icon, italic), firing `onConnectToServer`.
+Keyboard nav via `handleNavigationShortcut` (`../navigation/keyboard-shortcuts`); Left/Right jump to first/last.
+
+❗ **The hub lists nothing until its first read of the saved list answers** (`servers-hub-list.svelte.ts`). Which
+servers are saved decides where every row goes, so listing the discovered hosts first would put them all in the nearby
+group, open it, and leave the cursor on a row that then moves. A read that breaks counts as answered, with none saved.
 
 Three inputs, and one of them is a command rather than a store: `listSavedServers()` (re-read whenever the volume list
 is reassigned, which every pin, forget, connect, and disconnect causes through `volumes-changed`), the discovery store's
@@ -70,7 +93,36 @@ either way.
 `servers-hub-rows.ts::openMoveFor` is the one place that decides which of these a row gets; the component only carries
 it out.
 
-### The three pure modules beside it
+### The nearby group
+
+A host Cmdr only FOUND (no saved server, no saved share, nothing the person added: `servers-hub-rows.ts::isNearbyOnly`)
+sits under one header row, below everything saved. The reason: a saved server and a machine that happens to be on the
+same Wi-Fi had the same weight in the list, and most people never connect to the second kind. A saved host that mDNS
+also sees stays among the saved ones with its "Found nearby" status.
+
+- **Open or collapsed** (`servers-hub-items.ts::isNearbyGroupExpanded`): what the person last chose, else collapsed for
+  someone with a saved server and expanded for someone with none, for whom the nearby servers are the whole view. The
+  choice lives in the hidden `network.nearbyServersGroup` setting (`auto` until the first toggle), read reactively
+  through `getNearbyServersGroupChoice`, so the two panes' hubs fold together.
+- ❗ **An untoggled group goes by whether a server was saved when the view OPENED, ❌ not by the live count.** A first
+  save (Add, or mounting a found host's share) would otherwise fold the group away under the person looking at it. The
+  next visit opens collapsed.
+- **Keys**: the header is a row to the cursor. Enter and Space toggle it (Space only there), a click toggles it and
+  takes the cursor, and Left/Right stay the list's first-and-last jump, as on every row. F8, ⌃⏎, and the palette's
+  server commands find no row on it (`getRowUnderCursor()` is `null`), like on "Add server…".
+- ❗ **Two index spaces** (`servers-hub-items.ts`). The cursor counts what is ON SCREEN (`visibleHubItems`), so no key
+  can land it on a hidden row. `cmdr://state`, `findItemIndex`, `setCursorIndex`, and `getItemCount` count the FULL list
+  (`hubItems`), which keeps the nearby servers whatever the group's state: an agent asking which servers exist gets the
+  truth, and the group's entry says `state=collapsed`. `setCursorIndex` onto a hidden server opens the group for this
+  view (`nearbyRevealed`) and ❌ doesn't record a choice; `selectServer` goes the same way.
+- **A group that collapses over the cursor** (the other pane's hub toggled it, `set_setting` did) puts the cursor on the
+  header: `servers-hub-keys.ts::cursorAcrossRebuild` treats the hidden row as one that left.
+- **The status bar still counts every server**, hidden ones included; the header says how many of those are nearby.
+- **Discovery off** empties the discovery list, so there is no group and the "discovery is off" line stands where it
+  would be. **Searching** shows its line under an open group or when nothing was found yet; a collapsed group shows a
+  spinner on its header instead.
+
+### The pure modules beside it
 
 `ServersHub.svelte` is the table, the cursor, and the keys. Everything that can go quietly wrong lives next door and is
 unit-tested:
@@ -82,10 +134,12 @@ unit-tested:
   files the same machine under its Bonjour name. Status comes off the VOLUME LIST, ❌ never off `SavedPlace.connected`,
   which is a snapshot from when the listing was built; the switcher's dot reads the same field, and two surfaces
   disagreeing about whether a server is up is worse than either being briefly stale. Order: live sessions, then the ones
-  asking something of the user (`signed_out`, `waiting_for_key`), then the rest of what they saved by recency, then what
-  is merely nearby. ❗ A saved SMB host is "Found nearby" only when a DISCOVERED host matches it, ❌ never because of
-  its own manual entry in the discovery list: Cmdr injects every typed-in host there at startup, reachable or not. The
-  Address column carries the port off 445 (`localhost:11482`), and `savedHostFor` reads it back when mDNS sees nothing.
+  asking something of the user (`signed_out`, `waiting_for_key`), then the rest of what they saved by recency, then the
+  hosts Cmdr only found, which stay contiguous at the end whatever their name or recency because the nearby group's
+  header sits in front of the first one. ❗ A saved SMB host is "Found nearby" only when a DISCOVERED host matches it,
+  ❌ never because of its own manual entry in the discovery list: Cmdr injects every typed-in host there at startup,
+  reachable or not. The Address column carries the port off 445 (`localhost:11482`), and `savedHostFor` reads it back
+  when mDNS sees nothing.
 
   ❗ **A saved SMB share is a row right under its host** (`kind: 'share'`, id `share:<volume id>`, the account it opens
   as in `account`), placed AFTER the sort so it never drifts from its server. Its status comes off the volume list by
@@ -114,12 +168,20 @@ unit-tested:
   one. `primaryHost` then picks the DISCOVERED one for the row's name and address, because a manual host is named after
   the address that was typed.
 
+- **`servers-hub-list.svelte.ts`**: the one stateful sibling. `createHubList()` holds what a hub lists as live state
+  (the saved servers it read, the rows and items built from them, whether the nearby group is open), one instance per
+  hub, so the component keeps only the cursor and the keys.
+- **`servers-hub-items.ts`** (+ `servers-hub-keys.ts`): the list as the cursor walks it, over the rows: the nearby
+  group's header, which items are on screen, the two index spaces, and where the cursor goes across a rebuild (§ "The
+  nearby group").
 - **`servers-hub-mcp.ts`**: the `name` encoding. MCP's `PaneFileEntry` has only `name` / `path` / `isDirectory`, so the
-  columns are encoded as `protocol=` / `status=` / `address=` tokens (plus `shares=` on an SMB host, which is what
-  `smb.spec.ts` polls on). ❗ The status token is locale-independent even though the column beside it is translated: an
-  agent parses these strings and a translation landing in the wire would break both silently. A one-place row's path is
-  the place's `appRoot` (from `SavedPlace`, which Rust mints in one function); an SMB host keeps the `smb://<address>`
-  spelling the host list publishes; the add row is `+ Add server…` at `smb://add`.
+  columns are encoded as `protocol=` / `status=` / `address=` tokens (plus `shares=` on an SMB host whose shares were
+  listed, which is what `smb.spec.ts` polls on). The nearby group's header is an entry too:
+  `Found nearby  kind=group  state=<expanded|collapsed>  servers=<n>` at `smb://nearby`, which `move_cursor` finds by
+  that name and `open_under_cursor` toggles. ❗ The status token is locale-independent even though the column beside it
+  is translated: an agent parses these strings and a translation landing in the wire would break both silently. A
+  one-place row's path is the place's `appRoot` (from `SavedPlace`, which Rust mints in one function); an SMB host keeps
+  the `smb://<address>` spelling the host list publishes; the add row is `+ Add server…` at `smb://add`.
 - **`servers-hub-actions.ts`**: F8, the two row menus, and the SMB host menu's answers, behind live getters (❌ never
   snapshots: the rows change under a menu that is still open). ❗ A one-place row and an SMB host take different paths
   at every branch, which is why they live in one unit: a one-place row is a PLACE the servers family speaks for, an SMB
@@ -162,9 +224,9 @@ answer, `runHostAction` finds the row by that exact id (a row gone meanwhile get
 host picked the first, so "Edit server…" on the second row saved into the first (QA 2026-09-25).
 
 Exports for parent: `setCursorIndex(index)`, `findItemIndex(name)`, `handleKeyDown(e)`, `refresh()`,
-`getHostUnderCursor()`, `getRowUnderCursor()`, `getItemCount()`, `openCursorItem()`. `refresh()` is `pane.refresh`'s
-entry point from the command layer and is the same body ⌘R runs locally, which is why the local branch stops propagation
-(see § Gotchas).
+`getHostUnderCursor()`, `getRowUnderCursor()`, `getItemCount()`, `openCursorItem()`. The three that speak in indexes
+count the full list (§ "The nearby group"). `refresh()` is `pane.refresh`'s entry point from the command layer and is
+the same body ⌘R runs locally, which is why the local branch stops propagation (see § Gotchas).
 
 ## `PlacesBrowser.svelte`
 
@@ -254,12 +316,12 @@ so a separate flag could only disagree with it.
 App startup
   └─ initNetworkDiscovery() → listNetworkHosts() + event listeners
        └─ startResolution() → resolveNetworkHost()
-            └─ startPrefetchShares() → prefetchSharesCmd() → fetchSharesSilent()
+            └─ startPrefetchShares() → a saved host only: prefetchSharesCmd() → fetchSharesSilent()
 
 User opens the Servers volume → ServersHub mounts → listSavedServers() + refreshAllStaleShares()
 
 User double-clicks an SMB host → PlacesBrowser mounts → loadShares()
-       ├─ cache hit → render
+       ├─ cache hit → render (a saved host's prefetch, or an earlier visit)
        └─ auth required → tryStoredCredentials() → the sign-in sheet if needed
 
 User activates a one-place server → onVolumeChange → the pane lands on a `saved`
@@ -507,6 +569,9 @@ the hosts it found, so a view opens on them at once and the fresh browse adds an
 - **Resolution and share prefetch are fire-and-forget**: hosts come and go, so a timeout / unreachable during prefetch
   is normal, not worth surfacing. The UI shows "Not checked" / "Waiting..." until data arrives; only user-initiated
   actions surface errors.
+- **Prefetch is for saved servers only** (#324's option (b), David's call): their share lists stay instant, and the
+  first open of a host Cmdr only found waits for its listing. The trade is that wait against a file manager that signs
+  in to every SMB machine on the network at each launch.
 - **State via getters, not raw `$state` exports**: raw exports lose reactivity when imported from a plain `.ts`; getters
   work everywhere and make the API boundary explicit.
 - **`tryStoredCredentials` skips the `hasSmbCredentials` pre-check**: two Keychain calls = two system prompts; one
