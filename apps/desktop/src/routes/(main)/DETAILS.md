@@ -289,6 +289,15 @@ Waiting on it made nine MTP E2E tests fail deterministically with "Superseded by
 then landed on top of the next `nav_to_path`. An open dialog doesn't hold the select back: it runs behind one, like
 every MCP pane command (§ The dialog gate).
 
+### `mcp-tab` replies only for a move
+
+Every `tab` action rides `tab.mcpAction`. Six are fire-and-forget (the backend waits on a generation ack), and the
+handler forwards them to `explorerRef.handleMcpTabAction`. `move` is the exception, because it can be refused and the
+frontend owns the rules: its args carry `toPane`, `toIndex`, and `mcpRequestId`, and the handler returns `moveTabForMcp`
+(`mcp-tab-move.ts`), which calls `explorerRef.moveTab`, flushes both panes' tab lists to the backend (`syncTabsToMcp`)
+when the tab moved, and replies with a typed `outcome`. A move never calls `setFocusedPane`: pane focus doesn't follow a
+tab. The rules and the reply's vocabulary: `apps/desktop/src/lib/file-explorer/tabs/DETAILS.md` § Moving a tab.
+
 ### Focus follows the navigated pane
 
 The nav-family handlers that take a `pane` (`mcp-nav-to-path`, `mcp-scroll-to`, `mcp-select`, `mcp-select-names`) call

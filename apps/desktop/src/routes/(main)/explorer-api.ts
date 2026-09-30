@@ -5,6 +5,8 @@
 
 import type { ViewMode } from '$lib/app-status-store'
 import type { McpSelectMode, McpTabAction, ConfirmDialogType } from '$lib/commands'
+import type { TabMoveRequest } from '$lib/file-explorer/pane/tab-operations'
+import type { MoveTabResult } from '$lib/file-explorer/tabs/tab-state-manager.svelte'
 import type { QuickLookKeyEventPayload } from '$lib/file-explorer/quick-look/quick-look-state.svelte'
 import type { FileEntry, FriendlyError, NetworkHost, TransferOperationType } from '$lib/file-explorer/types'
 import type { AdoptedOperationData, ForegroundOperationVerdict } from '$lib/file-explorer/pane/dialog-props'
@@ -185,6 +187,14 @@ export interface ExplorerAPI {
    * optionally a specific tab), unlike the focused-pane `newTab`/`cycleTab`/etc.
    */
   handleMcpTabAction: (pane: 'left' | 'right', action: McpTabAction, tabId?: string, pinned?: boolean) => void
+  /**
+   * Moves a tab to another slot or to the other pane, under the same rules as a tab
+   * drag, and says what happened. The MCP `tab move` action; the mouse goes through the
+   * tab drag controller instead.
+   */
+  moveTab: (request: TabMoveRequest) => MoveTabResult
+  /** Push both panes' tab lists to the backend now, past the mirror's debounce. */
+  syncTabsToMcp: () => Promise<void>
   startRename: (options?: StartRenameOptions) => void
   openCopyDialog: (args?: OpenTransferDialogArgs) => Promise<void>
   /** Copies the focused pane's selection (or cursor item) into the folder it

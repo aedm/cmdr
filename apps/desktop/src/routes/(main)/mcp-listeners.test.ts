@@ -92,7 +92,7 @@ describe('parseSelectMode', () => {
 
 describe('parseTabAction', () => {
   it('accepts every tab action', () => {
-    for (const action of ['new', 'close', 'close_others', 'activate', 'reopen', 'set_pinned'] as const) {
+    for (const action of ['new', 'close', 'close_others', 'activate', 'reopen', 'set_pinned', 'move'] as const) {
       expect(parseTabAction(action)).toBe(action)
     }
   })
@@ -240,6 +240,67 @@ describe('mcp-refresh listener (round-trip)', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(emit).not.toHaveBeenCalled()
+  })
+})
+
+describe('mcp-tab listener', () => {
+  it('dispatches a fire-and-forget action with its tab and pin state', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(handlers, 'mcp-tab')({ payload: { pane: 'left', action: 'set_pinned', tabId: 't1', pinned: true } })
+
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith('tab.mcpAction', {
+      pane: 'left',
+      action: 'set_pinned',
+      tabId: 't1',
+      pinned: true,
+    })
+  })
+
+  it('dispatches a move with its target and the request id the reply rides on', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(
+      handlers,
+      'mcp-tab',
+    )({ payload: { pane: 'left', action: 'move', tabId: 't1', toPane: 'right', toIndex: 2, requestId: 'req-9' } })
+
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith('tab.mcpAction', {
+      pane: 'left',
+      action: 'move',
+      tabId: 't1',
+      toPane: 'right',
+      toIndex: 2,
+      mcpRequestId: 'req-9',
+    })
+  })
+
+  it('leaves the index out of a move that named none, so the tab goes to the end', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(handlers, 'mcp-tab')({ payload: { pane: 'left', action: 'move', tabId: 't1', toPane: 'left' } })
+
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith('tab.mcpAction', {
+      pane: 'left',
+      action: 'move',
+      tabId: 't1',
+      toPane: 'left',
+      toIndex: undefined,
+      mcpRequestId: undefined,
+    })
+  })
+
+  it('drops a move with no tab or no target pane', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(handlers, 'mcp-tab')({ payload: { pane: 'left', action: 'move', toPane: 'right' } })
+    getHandler(handlers, 'mcp-tab')({ payload: { pane: 'left', action: 'move', tabId: 't1', toPane: 'up' } })
+
+    expect(dispatch).not.toHaveBeenCalled()
   })
 })
 

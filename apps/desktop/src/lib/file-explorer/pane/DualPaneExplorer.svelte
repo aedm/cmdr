@@ -34,7 +34,14 @@
     import TabBar from '../tabs/TabBar.svelte'
     import TabDragOverlay from '../tabs/TabDragOverlay.svelte'
     import { createTabDragController } from '../tabs/tab-drag-controller.svelte'
-    import { getActiveTab, getAllTabs, pushHistoryEntry, trimClosedStack, MAX_TABS_PER_PANE } from '../tabs/tab-state-manager.svelte'
+    import {
+        getActiveTab,
+        getAllTabs,
+        pushHistoryEntry,
+        trimClosedStack,
+        MAX_TABS_PER_PANE,
+        type MoveTabResult,
+    } from '../tabs/tab-state-manager.svelte'
     import type { TabId } from '../tabs/tab-types'
     import {
         saveTabsForPane,
@@ -51,7 +58,9 @@
         cycleTab as tabOpsCycleTab,
         switchToTab as tabOpsSwitchToTab,
         handleTabDrop as tabOpsHandleTabDrop,
+        moveTabToPane as tabOpsMoveTabToPane,
         type TabMoveDeps,
+        type TabMoveRequest,
     } from './tab-operations'
     import { initNetworkDiscovery, cleanupNetworkDiscovery } from '../network/network-store.svelte'
     import type { HubRow } from '../network/servers-hub-rows'
@@ -1250,6 +1259,16 @@
      */
     export function handleMcpTabAction(pane: 'left' | 'right', action: McpTabAction, tabId?: string, pinned?: boolean) {
         mcpTab.handleMcpTabAction(pane, action, tabId, pinned)
+    }
+
+    /** A tab move from the MCP `tab` tool: the same operation a tab drag ends in, minus the toast. */
+    export function moveTab(request: TabMoveRequest): MoveTabResult {
+        return tabOpsMoveTabToPane(request, tabMoveDeps)
+    }
+
+    /** Pushes both panes' tab lists to the MCP backend now, so a reply that follows reads fresh. */
+    export async function syncTabsToMcp(): Promise<void> {
+        await tabMcpSync.syncTabsNow()
     }
 
     function syncPinTabMenu() {

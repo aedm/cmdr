@@ -184,7 +184,7 @@ mcp_tools! {
 
     // ── Tabs ────────────────────────────────────────────────────────────────
     "tab" => {
-        desc: "Manage a pane's tabs: new, close, close_others, activate, set_pinned, or reopen (restore the last-closed tab). tabId defaults to the active tab where it applies; see each pane's tabs in cmdr://state.",
+        desc: "Manage a pane's tabs: new, close, close_others, activate, set_pinned, reopen (restore the last-closed tab), or move (reorder with toIndex, or send to the other pane with toPane). tabId defaults to the active tab where it applies; see each pane's tabs in cmdr://state.",
         schema: schemas::tab_schema(),
         consumers: &[Consumer::AiClient],
         access: Access::Write,

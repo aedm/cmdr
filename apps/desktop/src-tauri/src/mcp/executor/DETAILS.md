@@ -167,8 +167,8 @@ react faster than a full pane state push).
 When the backend can't fully validate preconditions (or has to wait on the OS), the tool emits an event with a
 `requestId` and waits for the FE to reply via `mcp-response` carrying `{ requestId, ok, error? }`. One helper,
 `mcp_round_trip_parsed`, owns the id + listener + timeout for all of them; each caller brings the parser that says what
-its reply is allowed to mean (`parse_mcp_response`, `parse_operation_start_response`, `parse_nav_response` — all pure
-and unit-tested in `mod.rs`). Per-tool:
+its reply is allowed to mean (`parse_mcp_response`, `parse_operation_start_response`, `parse_nav_response` in `mod.rs`,
+`parse_tab_move_response` in `app.rs`, all pure and unit-tested). Per-tool:
 
 - `move_cursor`, `set_setting` (5 s). The FE verifies the cursor actually landed (filename found, index in range), then
   (move_cursor) flushes the MCP state push (`syncStateToMcpNow`) before replying, so a follow-up `copy`/`move`/`delete`
@@ -194,6 +194,13 @@ and unit-tested in `mod.rs`). Per-tool:
   `mcpRequestId`). The bus lets MCP through behind an open dialog, so the select runs there; only the tools that start
   a file operation refuse (`refuse_while_dialog_blocks`). Why: `apps/desktop/src/routes/(main)/DETAILS.md` § The
   dialog gate.
+- `tab` with `action: move` (5 s, on `mcp-tab` like the other tab actions, which stay on the generation ack): a move
+  can be refused, and the frontend owns the rules, so the reply carries a typed `outcome` that `parse_tab_move_response`
+  reads into `TabMoveAck` and `tab_move_result` words (both in `app.rs`). A refusal is an `invalid_params` error whose
+  `data.reason` is `tabPinned` / `onlyTab` / `tabLimitReached` / `tabNotFound`; `unchanged` is an `OK`. The FE flushes
+  both panes' tab lists before replying, so `cmdr://state` is current when the tool returns. The backend checks only
+  what it can see without the rules (the tab exists in `pane`, and at least one of `toPane` / `toIndex` was given).
+  Rules: `apps/desktop/src/lib/file-explorer/tabs/DETAILS.md` § Moving a tab.
 - `open_under_cursor`: 5 s via `mcp_round_trip_with_timeout`; opening a file delegates to the OS default app, so neither
   `GenerationAdvanced` nor `WindowAppeared` would fire.
 - Resources that need FE data use `resource_round_trip` (same pattern, returns the `data` field). Used by

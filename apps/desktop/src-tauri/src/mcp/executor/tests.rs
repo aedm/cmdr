@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+use super::app::{TabMoveAck, TabMoveRefusal, parse_tab_move_response, tab_move_result};
 use super::nav::{SelectableVolume, nav_result, resolve_volume_selector, select_volume_result};
 use super::search::parse_human_size;
 use super::*;
@@ -754,4 +755,88 @@ fn a_started_operation_passes_its_id_through() {
     )
     .expect("a start is an OK");
     assert_eq!(started, Some("op-42".to_string()));
+}
+
+// === parse_tab_move_response + tab_move_result: a tab move names what it did ===
+//
+// The frontend owns a move's rules (one `moveTab`, shared with the tab drag), so its
+// reply carries a typed outcome and the backend only words it.
+
+#[test]
+fn parse_tab_move_response_reads_the_outcome_the_frontend_reported() {
+    let moved = r#"{"requestId":"r-1","ok":true,"outcome":"moved","toIndex":2}"#;
+    assert_eq!(
+        parse_tab_move_response(moved, "r-1"),
+        Some(Ok(TabMoveAck::Moved { to_index: 2 }))
+    );
+
+    let unchanged = r#"{"requestId":"r-1","ok":true,"outcome":"unchanged"}"#;
+    assert_eq!(
+        parse_tab_move_response(unchanged, "r-1"),
+        Some(Ok(TabMoveAck::Unchanged))
+    );
+
+    for (outcome, refusal) in [
+        ("pinned", TabMoveRefusal::Pinned),
+        ("onlyTab", TabMoveRefusal::OnlyTab),
+        ("targetFull", TabMoveRefusal::TargetFull),
+        ("notFound", TabMoveRefusal::NotFound),
+    ] {
+        let payload = format!(r#"{{"requestId":"r-1","ok":false,"outcome":"{outcome}"}}"#);
+        assert_eq!(
+            parse_tab_move_response(&payload, "r-1"),
+            Some(Ok(TabMoveAck::Refused(refusal))),
+            "{outcome}"
+        );
+    }
+}
+
+#[test]
+fn parse_tab_move_response_ignores_a_reply_meant_for_another_request() {
+    let payload = r#"{"requestId":"r-2","ok":true,"outcome":"moved","toIndex":0}"#;
+    assert_eq!(parse_tab_move_response(payload, "r-1"), None);
+    assert_eq!(parse_tab_move_response("not json", "r-1"), None);
+}
+
+#[test]
+fn parse_tab_move_response_keeps_a_pre_move_decline_verbatim() {
+    let payload = r#"{"requestId":"r-1","ok":false,"error":"Explorer is not ready"}"#;
+    assert_eq!(
+        parse_tab_move_response(payload, "r-1"),
+        Some(Err("Explorer is not ready".to_string()))
+    );
+}
+
+#[test]
+fn parse_tab_move_response_never_turns_a_malformed_reply_into_an_ok() {
+    // An `ok` that doesn't say what happened, and a "moved" that doesn't say where.
+    let no_outcome = r#"{"requestId":"r-1","ok":true}"#;
+    assert!(matches!(parse_tab_move_response(no_outcome, "r-1"), Some(Err(_))));
+
+    let no_index = r#"{"requestId":"r-1","ok":true,"outcome":"moved"}"#;
+    assert!(matches!(parse_tab_move_response(no_index, "r-1"), Some(Err(_))));
+}
+
+#[test]
+fn tab_move_result_says_where_the_tab_landed() {
+    let moved = tab_move_result("t1", "left", "right", TabMoveAck::Moved { to_index: 3 }).expect("a move is OK");
+    assert_eq!(moved, json!("OK: Moved tab t1 to index 3 in right pane"));
+
+    let unchanged = tab_move_result("t1", "left", "left", TabMoveAck::Unchanged).expect("a no-op is OK");
+    assert!(unchanged.as_str().is_some_and(|text| text.starts_with("OK:")));
+}
+
+#[test]
+fn tab_move_result_refuses_with_a_typed_reason() {
+    for (refusal, reason) in [
+        (TabMoveRefusal::Pinned, "tabPinned"),
+        (TabMoveRefusal::OnlyTab, "onlyTab"),
+        (TabMoveRefusal::TargetFull, "tabLimitReached"),
+        (TabMoveRefusal::NotFound, "tabNotFound"),
+    ] {
+        let err =
+            tab_move_result("t1", "left", "right", TabMoveAck::Refused(refusal)).expect_err("a refusal is an error");
+        assert_eq!(err.code, INVALID_PARAMS);
+        assert_eq!(err.data, Some(json!({ "reason": reason })));
+    }
 }

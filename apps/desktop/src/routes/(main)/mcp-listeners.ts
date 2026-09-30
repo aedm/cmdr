@@ -96,14 +96,15 @@ export function parseNames(value: unknown): string[] | undefined {
   return value.every((v): v is string => typeof v === 'string') ? value : undefined
 }
 
-/** Tab action. */
-export function parseTabAction(value: unknown): McpTabAction | undefined {
+/** Tab action. `move` is the one that replies (`mcp-tab-move.ts`); the rest are fire-and-forget. */
+export function parseTabAction(value: unknown): McpTabAction | 'move' | undefined {
   return value === 'new' ||
     value === 'close' ||
     value === 'close_others' ||
     value === 'activate' ||
     value === 'reopen' ||
-    value === 'set_pinned'
+    value === 'set_pinned' ||
+    value === 'move'
     ? value
     : undefined
 }
@@ -699,6 +700,16 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
     const action = parseTabAction(raw.action)
     if (!pane || !action) return
     const tabId = typeof raw.tabId === 'string' ? raw.tabId : undefined
+    if (action === 'move') {
+      // Round-trip through the bus, like `mcp-volume-select`: the request id rides the
+      // command args and the handler replies with what the move did.
+      const toPane = parsePane(raw.toPane)
+      if (tabId === undefined || !toPane) return
+      const toIndex = typeof raw.toIndex === 'number' ? raw.toIndex : undefined
+      const mcpRequestId = typeof raw.requestId === 'string' ? raw.requestId : undefined
+      void dispatch(tabMcpActionCommand, { pane, action, tabId, toPane, toIndex, mcpRequestId })
+      return
+    }
     const pinned = typeof raw.pinned === 'boolean' ? raw.pinned : undefined
     void dispatch(tabMcpActionCommand, { pane, action, tabId, pinned })
   })
