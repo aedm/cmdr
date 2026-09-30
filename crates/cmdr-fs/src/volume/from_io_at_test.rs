@@ -107,6 +107,7 @@ fn kinds_without_a_typed_home_keep_their_errno() {
 
 /// A listing failure logs `errno=` from this, and EACCES vs EPERM is what separates a POSIX
 /// or ACL refusal from a TCC one.
+#[cfg(target_os = "macos")]
 #[test]
 fn raw_os_error_reads_the_errno_a_variant_carries() {
     let denied = VolumeError::from_io_at(&io::Error::from_raw_os_error(libc::EPERM), AT);

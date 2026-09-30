@@ -33,10 +33,17 @@ fn a_bonjour_instance_name_is_a_host_token_and_the_service_type_stays() {
         assert!(!line.to_lowercase().contains("naspolya"), "{line}");
         assert!(!line.contains("Multimedia"), "{line}");
     }
-    assert!(prose.contains("<host:") && prose.contains(">._smb._tcp.local. now"), "{prose}");
+    assert!(
+        prose.contains("<host:") && prose.contains(">._smb._tcp.local. now"),
+        "{prose}"
+    );
     assert!(keyed.contains(">._smb._tcp.local\""), "{keyed}");
     let token = hashes(&bare_host)[0].clone();
-    assert_eq!(hashes(&prose)[0], token, "the instance name correlates with the host: {prose}");
+    assert_eq!(
+        hashes(&prose)[0],
+        token,
+        "the instance name correlates with the host: {prose}"
+    );
     assert_eq!(hashes(&keyed)[0], token, "{keyed}");
 }
 
@@ -61,7 +68,10 @@ fn a_leaf_with_a_space_gets_one_token_in_every_path_shape() {
         format!("ended in error: PermissionDenied {{ path: {url:?} }} (NeedsAction)"),
         format!("loadDirectory called: path={url:?}, currentLoading=false"),
     ];
-    let redacted: Vec<String> = lines.iter().map(|line| context.redact_line(line).into_owned()).collect();
+    let redacted: Vec<String> = lines
+        .iter()
+        .map(|line| context.redact_line(line).into_owned())
+        .collect();
     for line in &redacted {
         for private in ["Anna", "Kovacs", "Medical", "records", "ada"] {
             assert!(!line.contains(private), "{private:?} survived: {line}");

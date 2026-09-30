@@ -40,5 +40,6 @@ overlaps, and decisions: `DETAILS.md`.
 ## Files
 
 `mod.rs` (API, regex, dispatch), `context.rs` (report key, token domains), `paths.rs`, `references.rs` (remote
-references, derived IDs), `fields.rs` (keyed fields), `detail.rs` (external-text fields), `names.rs` (printing
-normalization); tests in `tests.rs`, `reference_tests.rs`, `detail_tests.rs`, golden corpus in `fixtures/`.
+references, derived IDs), `fields.rs` (keyed fields), `detail.rs` (external-text fields), `path_end.rs` (where a
+prose path ends), `names.rs` (printing normalization); tests in `tests.rs`, `reference_tests.rs`, `detail_tests.rs`,
+`consistency_tests.rs`, golden corpus in `fixtures/`.

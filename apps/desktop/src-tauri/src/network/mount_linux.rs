@@ -158,7 +158,9 @@ pub(crate) fn mount_share_sync(
     port: u16,
 ) -> Result<MountResult, MountError> {
     if !is_gio_available() {
-        log::warn!("Can't mount share={share:?} on server={server:?}: `gio` isn't installed (the gvfs-smb package provides it)");
+        log::warn!(
+            "Can't mount share={share:?} on server={server:?}: `gio` isn't installed (the gvfs-smb package provides it)"
+        );
         return Err(MountError::GvfsMissing);
     }
 

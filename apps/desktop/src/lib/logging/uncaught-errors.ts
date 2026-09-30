@@ -46,7 +46,6 @@ function describe(value: unknown): { detail: string; stack: string } {
   }
 }
 
-
 let registered = false
 
 /**

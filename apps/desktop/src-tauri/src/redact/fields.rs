@@ -9,9 +9,9 @@ use super::paths::{
     dir_token, has_extension_like_suffix, keeps_parent_name, redact_leaf, redact_media, redact_unix_home,
     redact_unix_system, redact_volumes, redact_windows_home,
 };
-use super::{redactor_regex, split_trailing_noise_with};
 use super::references::{redact_host, redact_remote_unc, redact_remote_url, redact_scheme_less};
 use super::whole_len;
+use super::{redactor_regex, split_trailing_noise_with};
 use regex::Captures;
 
 /// Path-branch groups: a value one of these claims from its first byte is an absolute path

@@ -177,6 +177,9 @@ fn report_mode_tokenizes_absolute_paths_with_any_prefix_inside_detail() {
         assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
     }
     assert!(redacted.contains("Permission denied: /<dir:"), "{redacted}");
-    assert!(redacted.contains("$HOME/Downloads/<file:"), "the home role survives: {redacted}");
+    assert!(
+        redacted.contains("$HOME/Downloads/<file:"),
+        "the home role survives: {redacted}"
+    );
     assert_eq!(context.redact_line(&redacted), redacted, "idempotent");
 }

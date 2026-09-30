@@ -453,7 +453,16 @@ fn context_preserves_every_well_known_home_folder_role() {
     ] {
         let redacted = context.redact_line(input);
         assert!(redacted.starts_with(role), "{input} → {redacted}");
-        for private in ["alice", "client", "Trip", "Band", "Taxes", "Caches", "CloudDocs", "GoogleDrive"] {
+        for private in [
+            "alice",
+            "client",
+            "Trip",
+            "Band",
+            "Taxes",
+            "Caches",
+            "CloudDocs",
+            "GoogleDrive",
+        ] {
             assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
         }
     }

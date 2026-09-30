@@ -94,7 +94,10 @@ fn a_report_capture_bypasses_the_throttle_and_keeps_order() {
     snapshot.sequence = report_sequence;
     history.store(snapshot);
 
-    assert!(!history.record(start + Duration::from_secs(29), raw(1)), "the error throttle still holds");
+    assert!(
+        !history.record(start + Duration::from_secs(29), raw(1)),
+        "the error throttle still holds"
+    );
     assert!(history.record(start + Duration::from_secs(30), raw(2)));
     assert_eq!(
         history.snapshot().iter().map(|s| s.generation).collect::<Vec<_>>(),

@@ -677,7 +677,10 @@ impl Volume for SmbVolume {
             && let Some(cancel_tx) = guard.take()
         {
             let _ = cancel_tx.send(());
-            debug!("SmbVolume cleanup share={:?}: watcher cancel sent", self.inner.share_name);
+            debug!(
+                "SmbVolume cleanup share={:?}: watcher cancel sent",
+                self.inner.share_name
+            );
         }
 
         // Tear down any live scan pool: a member session must not keep walking an
@@ -705,7 +708,10 @@ impl Volume for SmbVolume {
         }
         self.inner.live_connection.replace(None);
 
-        debug!("SmbVolume cleanup share={:?}: smb2 session dropped", self.inner.share_name);
+        debug!(
+            "SmbVolume cleanup share={:?}: smb2 session dropped",
+            self.inner.share_name
+        );
     }
 }
 

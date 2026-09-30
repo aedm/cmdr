@@ -4,8 +4,8 @@
 //! [`REPORT_DETAIL_MAX_CHARS`]. `DETAILS.md` § "External-text fields".
 
 use super::context::TokenDomain;
-use super::fields::redact_typed_path;
 use super::fields::identity_field_token;
+use super::fields::redact_typed_path;
 use super::names::unescape_debug;
 use super::paths::{has_extension_like_suffix, redact_leaf};
 use super::{
@@ -120,7 +120,9 @@ fn redact_any_absolute_path(text: &str, context: &RedactionContext) -> String {
     let mut out = String::with_capacity(text.len());
     let mut pos = 0;
     while let Some(caps) = re.captures_at(text, pos) {
-        let (Some(lead), Some(path)) = (caps.name("lead"), caps.name("path")) else { break };
+        let (Some(lead), Some(path)) = (caps.name("lead"), caps.name("path")) else {
+            break;
+        };
         let (path_text, _) = split_trailing_noise_with(path.as_str(), false);
         if path_text.is_empty() {
             out.push_str(&text[pos..=path.start()]);

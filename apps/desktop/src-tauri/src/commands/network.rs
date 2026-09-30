@@ -1,7 +1,7 @@
 //! Tauri commands for network host discovery and SMB share listing.
 
-use crate::network::smb_sign_in_diagnostics::{CredentialSource, log_sign_in_refusal};
 use crate::file_system::volume::reconnect_error::ReconnectError;
+use crate::network::smb_sign_in_diagnostics::{CredentialSource, log_sign_in_refusal};
 use crate::network::{
     AuthMode, DiscoveryState, NetworkHost, ShareListError, ShareListResult, cached_discovered_hosts,
     get_discovery_state_value, get_host_for_resolution, resolve_host_ip, service_name_to_hostname, smb_client,

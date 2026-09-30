@@ -153,7 +153,9 @@ pub(crate) fn announce_os_mount_fallback(
         .admit(notice, server, volume_id, &hosts)
     {
         if notice == FallbackNotice::StayQuiet {
-            log::debug!("Leaving server={server:?}, share={share:?} on the kernel mount without a notice: nobody asked about it");
+            log::debug!(
+                "Leaving server={server:?}, share={share:?} on the kernel mount without a notice: nobody asked about it"
+            );
         }
         return;
     }

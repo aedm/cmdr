@@ -428,7 +428,9 @@ pub(crate) async fn register_smb_volume(
     // the one the choice was saved under. A share that stays on the OS mount never
     // dials, so it never fails, and never raises a fallback notice either.
     if !crate::network::known_shares::direct_connection_enabled(&[server, &resolved_server], share) {
-        log::debug!("share={share:?} on server={server:?} is set to stay on the macOS mount; not upgrading {volume_id}");
+        log::debug!(
+            "share={share:?} on server={server:?} is set to stay on the macOS mount; not upgrading {volume_id}"
+        );
         return;
     }
 

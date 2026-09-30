@@ -1410,9 +1410,8 @@ survive the rebuild on the Rust side, so they aren't in that list.
   failed listing with a plain `Error`.** The loader marks every rejection handled (a listing error is already on screen
   as the pane's error state), so the callers that fire and forget (the cancel flow's return trip, a `navigate()` whose
   `settled` nobody reads) raise no unhandled rejection while one that awaits (MCP `nav_to_path`) still sees which. An
-  unhandled one once logged the raw listing message, path and all, under `FE:uncaught`. A
-  cancel rejects BEFORE the return trip starts, or the awaiting caller would read it as superseded. Check with
-  `instanceof`, ❌ never the message.
+  unhandled one once logged the raw listing message, path and all, under `FE:uncaught`. A cancel rejects BEFORE the
+  return trip starts, or the awaiting caller would read it as superseded. Check with `instanceof`, ❌ never the message.
 - **A listing lookup can outlive its listing.** `abandonListing` ends the backend listing the moment the pane walks
   away, so a `findFileIndex` still in flight answers refused, and one that succeeded names rows no longer on screen. A
   caller that fires and forgets compares the pane's listing id before and after, ❌ never the refusal's message:
