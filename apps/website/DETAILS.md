@@ -305,6 +305,22 @@ and stripped of file names, paths, queries, and prompts by allowlist. See
   a daily-hashed IP (bot hits dropped). The download button carries `?src=website` so the endpoint can tag it as a
   website download (vs Homebrew or direct links). The `heartbeat` table holds the desktop DAU beats.
 
+### Post-download popup
+
+`DownloadStartedPopup.astro` (mounted in `Layout.astro`) opens once per visitor, on their first click of any
+`[data-umami-event="download"]` link, and asks for a GitHub star plus a release-email signup, with Discord as a footer
+link. Decision/why: the Discord-first version converted at about 5% (21 joins out of about 430 people who interacted
+with it, PostHog autocapture, 2026-07-03 to 2026-09-30), and this audience mostly isn't on Discord. A star moves Cmdr
+toward the 225 that a self-submitted cask needs for Homebrew's main catalog, and an email is the one way back to someone
+who tries Cmdr once and drifts off.
+
+- The star count comes from `src/lib/github-stars.ts` at build time, so visitors never call GitHub. When the fetch
+  fails, the popup drops the number and the progress bar instead of showing a stale one.
+- The email block reads the newsletter's localStorage flags when the popup opens: subscribers see a thank-you line,
+  visitors who clicked "Not interested" anywhere see no email block, and everyone else sees the form.
+- Clicks carry Umami events `download-popup-star` and `download-popup-discord`; the form's signups show in the
+  dashboard's Listmonk column and in PostHog autocapture under `.download-popup`.
+
 ### First-touch attribution (`ref`), storage-free
 
 An inline script in `Layout.astro` attributes downloads to the channel a visitor first arrived from (a UTM
