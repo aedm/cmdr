@@ -8,7 +8,12 @@ This area is pure path arithmetic, deliberately separate from the lifecycle/regi
 the component-aware prefix test. The read query surface (`../read/DETAILS.md`) and the progress reporter
 (`../events/DETAILS.md`) both depend on these.
 
-## `IndexPathSpace` — the mount-relative local pipeline (`routing.rs`)
+**Decision/Why `IndexPathSpace` has its own file, apart from `routing.rs`:** the two have different callers and
+different inputs. The scan / reconcile / live pipeline HOLDS a space (built once per scan or loop, threaded through the
+scanner, reconciler, watcher, and scan completion); the read side has only a volume id and ASKS `routing.rs`. Neither
+calls the other: they meet only at the shared `transports::smb::watch::index_relative_path` strip.
+
+## `IndexPathSpace` — the mount-relative local pipeline (`path_space.rs`)
 
 The LOCAL scan/reconcile/live-event pipeline (the guarded walker + FSEvents) had only ever run on `root`, where an
 absolute FS path already equals the index-relative path (`ROOT_ID` = `/`). A `LocalExternal` drive is the first
