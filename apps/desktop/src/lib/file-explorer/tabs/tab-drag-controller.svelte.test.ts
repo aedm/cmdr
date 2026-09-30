@@ -149,6 +149,17 @@ describe('tab drag controller', () => {
       expect(h.drops).toEqual([])
     })
 
+    it("ignores a pane's only tab, which has nowhere to go", () => {
+      h.controller.destroy()
+      document.body.innerHTML = ''
+      h = harness({ left: [makeTab('a')], right: [makeTab('x')] })
+
+      dragTo(h, 'left', 'a', 560)
+      expect(h.controller.view).toBeNull()
+      pointer('pointerup', 560)
+      expect(h.drops).toEqual([])
+    })
+
     it('becomes a drag once the pointer has moved past the threshold', () => {
       dragTo(h, 'left', 'a', 16)
       expect(h.controller.view).toMatchObject({ fromPane: 'left', tabId: 'a', label: 'a' })
@@ -254,19 +265,13 @@ describe('tab drag controller', () => {
       expect(h.controller.view).toMatchObject({ overPane: 'right', line: null, refused: true })
     })
 
-    it("marks the other bar refused for a pane's only tab", () => {
-      h.controller.destroy()
-      document.body.innerHTML = ''
-      h = harness({ left: [makeTab('a')], right: [makeTab('x')] })
-
-      dragTo(h, 'left', 'a', 560)
-      expect(h.controller.view).toMatchObject({ overPane: 'right', refused: true })
-    })
-
     it('stops refusing once the pointer is back over its own bar', () => {
       h.controller.destroy()
       document.body.innerHTML = ''
-      h = harness({ left: [makeTab('a')], right: [makeTab('x')] })
+      h = harness({
+        left: [makeTab('a'), makeTab('b')],
+        right: Array.from({ length: 10 }, (_, i) => makeTab(`x${String(i)}`)),
+      })
 
       dragTo(h, 'left', 'a', 560)
       pointer('pointermove', 50)

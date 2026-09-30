@@ -148,7 +148,7 @@ counted with the tab already taken out, which is why the drag needs the conversi
 both panes on a cross-pane move and one on a reorder, report `tab_moved`, and re-sync the Pin tab menu when the focused
 pane's active tab left. An active tab that leaves takes its cursor filename along, read from its `FilePane` before the
 move, so it shows the same row when it's next opened. Pane focus is never touched. `handleTabDrop` is the mouse's
-wrapper: it toasts a refused drop (full pane, only tab); the MCP path returns the refusal instead.
+wrapper: it toasts a drop on a full pane, the one refusal a drag can reach; the MCP path returns every refusal instead.
 
 **The drag** (`tab-drag-controller.svelte.ts`):
 
@@ -157,8 +157,8 @@ wrapper: it toasts a refused drop (full pane, only tab); the MCP path returns th
   `draggedTabId`, `isDragging`.
 - **Decision**: pointer events on `window`. **Why**: HTML5 drag and drop belongs to Tauri's native file-drop handler
   (`../pane/drag-drop-controller.svelte.ts`, which is for FILE drags and holds no tab logic).
-- A press becomes a drag after 5px of travel on the primary button; below that it's a plain click. Pinned tabs and the
-  close button never start one.
+- A press becomes a drag after 5px of travel on the primary button; below that it's a plain click. A pinned tab, a
+  pane's only tab (it has nowhere to go), and the close button never start one.
 - The pointer picks a SLOT: a bar with `n` tabs has `n + 1`, and everything past the last tab's middle (the empty strip,
   the "+" button) is the append slot. `tab-drop-slot.ts` is that arithmetic, pure: `dropSlotAt`, `slotLineX`, and
   `resolveDrop`, which turns a slot into `moveTab`'s index. The two same-pane slots touching the dragged tab both mean

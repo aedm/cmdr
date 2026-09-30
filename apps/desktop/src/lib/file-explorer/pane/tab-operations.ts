@@ -497,15 +497,14 @@ export function moveTabToPane(request: TabMoveRequest, deps: TabMoveDeps): MoveT
 }
 
 /**
- * A tab dropped on a tab bar. The "not allowed" cursor already showed during the drag; the
- * toast says why. The MCP tool skips this: its caller gets the refusal as a typed error.
+ * A tab dropped on a tab bar. A full pane is the one refusal a drag can reach (a pinned tab
+ * and a pane's only tab never start one): the "not allowed" cursor already showed during
+ * the drag, and the toast says why. The MCP tool skips this: its caller gets the refusal as
+ * a typed error.
  */
 export function handleTabDrop(request: TabMoveRequest, deps: TabMoveDeps): void {
   const result = moveTabToPane(request, deps)
-  if (result.moved) return
-  if (result.reason === 'targetFull') {
+  if (!result.moved && result.reason === 'targetFull') {
     addToast(tString('fileExplorer.tabs.limitReached'), { level: 'warn' })
-  } else if (result.reason === 'onlyTab') {
-    addToast(tString('fileExplorer.tabs.onlyTabStays'), { level: 'warn' })
   }
 }

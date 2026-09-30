@@ -39,30 +39,26 @@ export interface DropQuery {
   slot: number
   /** The dragged tab's index in its own pane. */
   sourceIndex: number
-  sourceCount: number
   targetCount: number
   samePane: boolean
   maxTabs: number
 }
 
-export type DropResolution =
-  | { kind: 'move'; toIndex: number }
-  | { kind: 'unchanged' }
-  | { kind: 'refused'; reason: 'onlyTab' | 'targetFull' }
+export type DropResolution = { kind: 'move'; toIndex: number } | { kind: 'unchanged' } | { kind: 'refused' }
 
 /**
  * What releasing on `slot` does. `toIndex` is the index the tab holds AFTER the move,
- * which is what `moveTab` takes.
+ * which is what `moveTab` takes. A full pane is the only refusal: a pane's only tab never
+ * gets as far as a drag.
  */
 export function resolveDrop(query: DropQuery): DropResolution {
-  const { slot, sourceIndex, sourceCount, targetCount, samePane, maxTabs } = query
+  const { slot, sourceIndex, targetCount, samePane, maxTabs } = query
   if (samePane) {
     // Taking the tab out shifts every later slot down by one, so the two slots that
     // touch it (its own and the one right after) both mean "stay".
     const toIndex = slot > sourceIndex ? slot - 1 : slot
     return toIndex === sourceIndex ? { kind: 'unchanged' } : { kind: 'move', toIndex }
   }
-  if (sourceCount <= 1) return { kind: 'refused', reason: 'onlyTab' }
-  if (targetCount >= maxTabs) return { kind: 'refused', reason: 'targetFull' }
+  if (targetCount >= maxTabs) return { kind: 'refused' }
   return { kind: 'move', toIndex: slot }
 }

@@ -59,9 +59,9 @@ describe('slotLineX', () => {
 
 describe('resolveDrop', () => {
   const within = (slot: number, sourceIndex: number, count = 4) =>
-    resolveDrop({ slot, sourceIndex, sourceCount: count, targetCount: count, samePane: true, maxTabs: 10 })
-  const across = (slot: number, sourceCount: number, targetCount: number) =>
-    resolveDrop({ slot, sourceIndex: 0, sourceCount, targetCount, samePane: false, maxTabs: 10 })
+    resolveDrop({ slot, sourceIndex, targetCount: count, samePane: true, maxTabs: 10 })
+  const across = (slot: number, targetCount: number) =>
+    resolveDrop({ slot, sourceIndex: 0, targetCount, samePane: false, maxTabs: 10 })
 
   describe('within one pane', () => {
     it('changes nothing on either slot that touches the dragged tab', () => {
@@ -80,9 +80,10 @@ describe('resolveDrop', () => {
     })
 
     it('ignores the cap: a reorder adds no tab', () => {
-      expect(
-        resolveDrop({ slot: 0, sourceIndex: 9, sourceCount: 10, targetCount: 10, samePane: true, maxTabs: 10 }),
-      ).toEqual({ kind: 'move', toIndex: 0 })
+      expect(resolveDrop({ slot: 0, sourceIndex: 9, targetCount: 10, samePane: true, maxTabs: 10 })).toEqual({
+        kind: 'move',
+        toIndex: 0,
+      })
     })
 
     it("changes nothing for a pane's only tab", () => {
@@ -93,16 +94,12 @@ describe('resolveDrop', () => {
 
   describe('to the other pane', () => {
     it('uses the slot as the index', () => {
-      expect(across(0, 3, 2)).toEqual({ kind: 'move', toIndex: 0 })
-      expect(across(2, 3, 2)).toEqual({ kind: 'move', toIndex: 2 })
-    })
-
-    it("refuses a pane's only tab", () => {
-      expect(across(0, 1, 2)).toEqual({ kind: 'refused', reason: 'onlyTab' })
+      expect(across(0, 2)).toEqual({ kind: 'move', toIndex: 0 })
+      expect(across(2, 2)).toEqual({ kind: 'move', toIndex: 2 })
     })
 
     it('refuses a pane at the cap', () => {
-      expect(across(0, 3, 10)).toEqual({ kind: 'refused', reason: 'targetFull' })
+      expect(across(0, 10)).toEqual({ kind: 'refused', reason: 'targetFull' })
     })
   })
 })

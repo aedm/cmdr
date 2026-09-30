@@ -36,7 +36,7 @@ export interface TabDragDeps {
   maxTabs: number
   /**
    * A release on a bar, unless it would leave the tab where it is. Fires for a drop the
-   * bar refuses too (a full pane, a pane's only tab), so the refusal can be explained.
+   * bar refuses too (a full pane), so the refusal can be explained.
    */
   onDrop: (drop: TabDrop) => void
 }
@@ -126,7 +126,6 @@ export function createTabDragController(deps: TabDragDeps): TabDragController {
       const resolution = resolveDrop({
         slot,
         sourceIndex: sourceTabs.findIndex((tab) => tab.id === current.tabId),
-        sourceCount: sourceTabs.length,
         targetCount: deps.getTabs(pane).length,
         samePane: pane === current.pane,
         maxTabs: deps.maxTabs,
@@ -278,8 +277,11 @@ export function createTabDragController(deps: TabDragDeps): TabDragController {
     if (event.button !== 0 || !event.isPrimary) return
     // The close button is its own click target: a press there never drags the tab.
     if (event.target instanceof Element && event.target.closest('.close-btn')) return
-    const tab = deps.getTabs(pane).find((candidate) => candidate.id === tabId)
-    if (!tab || tab.pinned) return
+    const tabs = deps.getTabs(pane)
+    const tab = tabs.find((candidate) => candidate.id === tabId)
+    // A pinned tab stays put, and a pane's only tab has nowhere to go: it can't leave its
+    // pane and has nothing to reorder against. Neither press ever becomes a drag.
+    if (!tab || tab.pinned || tabs.length <= 1) return
     if (!(event.currentTarget instanceof HTMLElement)) return
 
     stop()

@@ -215,9 +215,10 @@ describe('handleTabDrop', () => {
     expect(addToastSpy).toHaveBeenCalledExactlyOnceWith('Tab limit reached', { level: 'warn' })
   })
 
-  it("explains why a pane's only tab stays", () => {
-    const { deps } = setup({ left: managerOf(['a']), right: managerOf(['x']) })
+  it("says nothing about a pane's only tab, which the mouse can't pick up in the first place", () => {
+    const { deps, left } = setup({ left: managerOf(['a']), right: managerOf(['x']) })
     handleTabDrop({ fromPane: 'left', tabId: 'a', toPane: 'right' }, deps)
-    expect(addToastSpy).toHaveBeenCalledExactlyOnceWith('A pane’s only tab stays where it is', { level: 'warn' })
+    expect(addToastSpy).not.toHaveBeenCalled()
+    expect(left.tabs.map((tab) => tab.id)).toEqual(['a'])
   })
 })
