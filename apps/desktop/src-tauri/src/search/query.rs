@@ -88,7 +88,7 @@ pub(crate) fn summarize_query(query: &SearchQuery) -> String {
 /// `src/lib/search/search-runners.ts`), so a search that found nothing on a drive full of hits
 /// looks identical in the log to a search of a genuinely empty drive. `ERR-FCAXU` was exactly
 /// that, and cost an afternoon.
-pub(super) fn summarize_query_for_diagnostics(query: &SearchQuery) -> String {
+pub(crate) fn summarize_query_for_diagnostics(query: &SearchQuery) -> String {
     let pattern = match query.name_pattern.as_deref().filter(|pattern| !pattern.is_empty()) {
         Some(pattern) => {
             let mode = match query.pattern_type {

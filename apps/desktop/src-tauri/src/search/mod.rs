@@ -49,4 +49,4 @@ pub(crate) use live::{
 
 // query.rs
 pub use query::SYSTEM_DIR_EXCLUDES;
-pub(crate) use query::{format_size, format_timestamp, parse_scope, summarize_query};
+pub(crate) use query::{format_size, format_timestamp, parse_scope, summarize_query, summarize_query_for_diagnostics};

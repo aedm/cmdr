@@ -310,8 +310,9 @@ pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, par
     let scope_str = params.get("scope").and_then(|v| v.as_str());
     let total_t = std::time::Instant::now();
     log::info!(
-        "MCP ai_search: handler entered, query ({} chars), limit={limit}, scope={scope_str:?}",
-        natural_query.chars().count()
+        "MCP ai_search: handler entered, query ({} chars), limit={limit}, scope: {}",
+        natural_query.chars().count(),
+        scope_str.map_or_else(|| "none".to_string(), |scope| format!("path={scope:?}"))
     );
 
     // ── Translate query ──────────────────────────────────────────────
@@ -322,9 +323,8 @@ pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, par
         match crate::commands::search::translate_search_query_with(app, natural_query.to_string(), None).await {
             Ok(tr) => {
                 log::info!(
-                    "MCP ai_search: translate_search_query succeeded in {:.1}s, pattern={:?}",
-                    t.elapsed().as_secs_f64(),
-                    tr.query.name_pattern
+                    "MCP ai_search: translate_search_query succeeded in {:.1}s",
+                    t.elapsed().as_secs_f64()
                 );
                 tr
             }
@@ -335,6 +335,7 @@ pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, par
         };
 
     let query = build_search_query_from_translate(&translate_result, scope_str, limit);
+    log::info!("MCP ai_search: translated to {}", translated_query_for_log(&query));
 
     // One budget for the whole call, however many searches it takes: the caller
     // is waiting on ONE tool call, and a fallback that got its own full budget
@@ -369,8 +370,8 @@ pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, par
             .is_some_and(|p| !p.is_empty())
     {
         log::info!(
-            "MCP ai_search: returned 0 results with searchPaths {:?}, retrying full-drive search",
-            translate_result.query.include_paths
+            "MCP ai_search: returned 0 results with {}, retrying full-drive search",
+            translated_query_for_log(&query)
         );
         let mut fallback_query = query;
         fallback_query.include_paths = None;
@@ -407,10 +408,32 @@ pub async fn execute_ai_search<R: tauri::Runtime>(app: &tauri::AppHandle<R>, par
     })
 }
 
+/// A translated query for the log: its shape and a scope the report redactor tokenizes, never
+/// the pattern text, which is the user's own words (`search::summarize_query_for_diagnostics`).
+fn translated_query_for_log(query: &SearchQuery) -> String {
+    search::summarize_query_for_diagnostics(query)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// The translated query's words are the user's own; the log carries its shape and a scope
+    /// the report redactor tokenizes, never the pattern text.
+    #[test]
+    fn the_translated_query_logs_its_shape_not_its_words() {
+        let query: SearchQuery = serde_json::from_value(json!({
+            "namePattern": "*anna kovacs medical*",
+            "includePaths": ["/srv/data/Anna"],
+            "minSize": null, "maxSize": null, "modifiedAfter": null, "modifiedBefore": null, "isDirectory": null
+        }))
+        .expect("valid query");
+        let line = translated_query_for_log(&query);
+        assert!(!line.contains("kovacs") && !line.contains("medical"), "{line}");
+        assert!(line.starts_with("pattern=glob(21 chars)"), "{line}");
+        assert!(line.contains(r#"path="/srv/data/Anna""#), "the scope stays tokenizable: {line}");
+    }
 
     #[test]
     fn the_wait_budget_defaults_and_clamps() {
