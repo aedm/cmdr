@@ -18,7 +18,7 @@
 //! by seconds or never fires without a forced sync (measured in
 //! <https://github.com/i-am-logger/macos-liquid-glass/blob/master/MEASUREMENTS.md>). The user
 //! can only move the slider while System Settings is frontmost, so we re-read on
-//! `NSApplicationDidBecomeActive` — coming back to Cmdr is the moment the value can have
+//! `NSApplicationDidBecomeActive` (on the default center) — coming back to Cmdr is the moment the value can have
 //! changed — after a `CFPreferencesAppSynchronize`, without which this process keeps serving
 //! its cached copy.
 
@@ -111,8 +111,8 @@ fn record_if_changed(tint: Option<f32>) -> bool {
 /// Starts re-reading the slider whenever the app becomes active, and emits
 /// `glass-tint-changed` when the value moved.
 pub fn observe_glass_tint_changes<R: Runtime>(app_handle: AppHandle<R>) {
-    use objc2_app_kit::{NSApplicationDidBecomeActiveNotification, NSWorkspace};
-    use objc2_foundation::NSNotification;
+    use objc2_app_kit::NSApplicationDidBecomeActiveNotification;
+    use objc2_foundation::{NSNotification, NSNotificationCenter};
 
     let initial = read_glass_tint();
     // allowed-discarded-outcome: seeds the baseline; the frontend reads the start value itself.
@@ -125,6 +125,7 @@ pub fn observe_glass_tint_changes<R: Runtime>(app_handle: AppHandle<R>) {
         tauri::async_runtime::spawn_blocking(move || {
             let amount = read_glass_tint();
             if !record_if_changed(amount) {
+                debug!(target: "glass_tint", "App became active; Liquid Glass tint unchanged: {amount:?}");
                 return;
             }
             info!(target: "glass_tint", "Liquid Glass tint changed: {amount:?}");
@@ -134,20 +135,20 @@ pub fn observe_glass_tint_changes<R: Runtime>(app_handle: AppHandle<R>) {
         });
     });
 
-    // SAFETY: `NSApplicationDidBecomeActiveNotification` is a valid notification name constant
-    // (rebroadcast through the workspace center, as `restricted_paths` relies on too), `center`
-    // is the live `NSWorkspace` notification center, and `block` is a live `RcBlock` with the
-    // expected `(NonNull<NSNotification>) -> ()` signature. The center retains the observer for
-    // the app's lifetime; we never remove it because we want updates for the whole session.
+    // ❗ The DEFAULT center: `NSApplication` posts its own activation there. The `NSWorkspace`
+    // center never delivers it, so an observer there silently never fires.
+    // SAFETY: `NSApplicationDidBecomeActiveNotification` is a valid notification name constant,
+    // the default center is live for the process's lifetime, and `block` is a live `RcBlock`
+    // with the expected `(NonNull<NSNotification>) -> ()` signature. The center retains the
+    // observer for the app's lifetime; we never remove it because we want updates for the
+    // whole session.
     unsafe {
-        NSWorkspace::sharedWorkspace()
-            .notificationCenter()
-            .addObserverForName_object_queue_usingBlock(
-                Some(NSApplicationDidBecomeActiveNotification),
-                None,
-                None,
-                &block,
-            );
+        NSNotificationCenter::defaultCenter().addObserverForName_object_queue_usingBlock(
+            Some(NSApplicationDidBecomeActiveNotification),
+            None,
+            None,
+            &block,
+        );
     }
 }
 
