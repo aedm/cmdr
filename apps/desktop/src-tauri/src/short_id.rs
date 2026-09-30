@@ -36,6 +36,34 @@ pub fn generate(prefix: &str) -> String {
     out
 }
 
+/// A short ID derived from `seed` instead of drawn at random: the same seed always yields the
+/// same `{prefix}-XXXXX`. For a report whose stored id is missing, so every read of the same
+/// file agrees on one id. Rejection sampling over SHA-256 output, like [`generate`].
+pub fn derive(prefix: &str, seed: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let alphabet_len = ALPHABET.len();
+    let max_unbiased = 256 - (256 % alphabet_len);
+    let mut out = String::with_capacity(prefix.len() + 1 + SUFFIX_LEN);
+    out.push_str(prefix);
+    out.push('-');
+    let mut remaining = SUFFIX_LEN;
+    let mut block = Sha256::digest(seed);
+    let mut index = 0;
+    while remaining > 0 {
+        if index == block.len() {
+            block = Sha256::digest(block);
+            index = 0;
+        }
+        let byte = block[index];
+        index += 1;
+        if (byte as usize) < max_unbiased {
+            out.push(ALPHABET[(byte as usize) % alphabet_len] as char);
+            remaining -= 1;
+        }
+    }
+    out
+}
+
 /// True when `candidate` is exactly `{prefix}-XXXXX` with every suffix character drawn
 /// from [`ALPHABET`].
 ///

@@ -541,6 +541,26 @@ fn sanitize_leaves_a_short_message_unmarked() {
     assert!(!sanitized.ends_with(PANIC_MESSAGE_TRUNCATION_MARKER));
 }
 
+/// A pending file with no id, whose next-launch rewrite couldn't persist, is prepared again
+/// on every read: preview and send must still land on one id, or the send reads as "changed".
+#[test]
+fn a_missing_report_id_is_derived_the_same_on_every_read() {
+    let mut on_disk = make_test_report();
+    on_disk.short_id = None;
+    let mut preview = on_disk.clone();
+    let mut send = on_disk.clone();
+    preview.prepare_for_delivery();
+    send.prepare_for_delivery();
+    let id = preview.short_id.clone().expect("an id is minted");
+    assert!(crate::short_id::matches(CRASH_SHORT_ID_PREFIX, &id), "{id}");
+    assert_eq!(send.short_id.as_deref(), Some(id.as_str()));
+
+    let mut other = on_disk;
+    other.timestamp = "2026-09-30T05:00:00Z".to_string();
+    other.prepare_for_delivery();
+    assert_ne!(other.short_id.as_deref(), Some(id.as_str()), "another crash, another id");
+}
+
 #[test]
 fn delivery_keeps_a_redacted_capped_panic_message_and_thread_name() {
     let mut report = make_test_report();

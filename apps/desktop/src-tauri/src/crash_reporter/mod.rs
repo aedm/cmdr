@@ -245,7 +245,9 @@ impl CrashReport {
             .short_id
             .take()
             .filter(|id| crate::short_id::matches(CRASH_SHORT_ID_PREFIX, id))
-            .unwrap_or_else(|| crate::short_id::generate(CRASH_SHORT_ID_PREFIX));
+            // Derived, not random: when the next-launch rewrite couldn't persist a minted id,
+            // every read of this file prepares it again, and preview and send must agree.
+            .unwrap_or_else(|| crate::short_id::derive(CRASH_SHORT_ID_PREFIX, &self.id_seed()));
         let redaction = redact::RedactionContext::for_report(&short_id);
         self.short_id = Some(short_id);
 
@@ -300,6 +302,14 @@ fn redact_multiline(message: &str, redaction: &redact::RedactionContext) -> Stri
         .split_inclusive('\n')
         .map(|line| redaction.redact_line(line))
         .collect()
+}
+
+impl CrashReport {
+    /// What identifies this crash on disk, for [`crate::short_id::derive`]: its capture time,
+    /// signal, and app version, read before delivery transforms anything.
+    fn id_seed(&self) -> Vec<u8> {
+        format!("{}\u{0}{:?}\u{0}{}", self.timestamp, self.signal, self.app_version).into_bytes()
+    }
 }
 
 fn valid_diagnostics_id(id: &str) -> bool {

@@ -271,7 +271,7 @@ These are reporter gates, not release-pipeline behavior.
 ### One delivery transform
 
 `CrashReport::prepare_for_delivery` is the boundary shared by panic JSON, converted signal artifacts, next-launch
-preview, automatic send, and manual send. It mints a valid `CRASH-XXXXX` when the stored ID is absent or malformed,
+preview, automatic send, and manual send. It derives a valid `CRASH-XXXXX` from the crash (`short_id::derive` over timestamp, signal, and version, so every read of an unrewritable file agrees) when the stored ID is absent or malformed,
 replaces an invalid diagnostics ID with the current `diag_` ID, drops unknown build-mode/provider strings and embedded
 email, and uses `RedactionContext::for_report(short_id)` for the panic message, thread name (both re-capped), and every
 stack and macOS exception string. It's idempotent, so next launch rewrites the pending file in its delivered form and
