@@ -547,13 +547,21 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
         }
         return (redact_mdns_host(m.as_str(), context), whole_len(caps));
     }
+    // Report mode labels a bare address by its class, as a keyed `host=` does (`redact_host`),
+    // so one address reads the same in every field. The unsalted policy keeps `<ipv4>`.
     if let Some(m) = caps.name("ipv6") {
+        if context.is_some() {
+            return (redact_host(m.as_str(), context), whole_len(caps));
+        }
         return (
             identity_token("ipv6", TokenDomain::Host, m.as_str(), context),
             whole_len(caps),
         );
     }
     if let Some(m) = caps.name("ipv4") {
+        if context.is_some() {
+            return (redact_host(m.as_str(), context), whole_len(caps));
+        }
         return (
             identity_token("ipv4", TokenDomain::Host, m.as_str(), context),
             whole_len(caps),

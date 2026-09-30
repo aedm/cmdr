@@ -95,6 +95,22 @@ fn a_leaf_with_a_space_gets_one_token_in_every_path_shape() {
     );
 }
 
+/// One address reads the same whether a keyed field or bare prose carries it.
+#[test]
+fn an_address_gets_one_label_in_every_field() {
+    let context = context();
+    let redacted = context
+        .redact_line(r#"list: host="127.0.0.1", ip_address=Some("127.0.0.1"), addr=127.0.0.1:445, peer fe80::1"#)
+        .into_owned();
+    let labels: Vec<&str> = redacted.matches("<ipv4-loopback:").collect();
+    assert_eq!(labels.len(), 3, "{redacted}");
+    assert!(!redacted.contains("<ipv4:"), "{redacted}");
+    assert!(redacted.contains("<ipv6-link-local:"), "{redacted}");
+    let tokens = hashes(&redacted);
+    assert_eq!(tokens[0], tokens[1], "{redacted}");
+    assert_eq!(tokens[0], tokens[2], "{redacted}");
+}
+
 /// A dot in a name isn't an extension: `Anna.Kovacs` must not keep `.Kovacs`. Short lowercase
 /// extensions, camera-style uppercase ones, and a few known long ones stay.
 #[test]

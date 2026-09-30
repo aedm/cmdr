@@ -24,8 +24,8 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `bonjour_instance` | `Name._smb._tcp.local.` (DNS-SD instance) | report: `<host:T>._smb._tcp.local.`, T shared with `server="name"` |
 | `bonjour_service` | `_smb._tcp.local.` (a public service type) | report: kept verbatim |
 | `mdns` | `<label>.local`, every label (`nas.home.local`) | `<host>.local` (unsalted: last label only, as before) |
-| `ipv4` | dotted-quad, valid octet ranges | `<ipv4>` |
-| `ipv6` | full + compact forms (`::1`, `fe80::1`) | `<ipv6>` |
+| `ipv4` | dotted-quad, valid octet ranges | report: `<ipv4-private:T>` (class label, as keyed `host=`); unsalted: `<ipv4>` |
+| `ipv6` | full + compact forms (`::1`, `fe80::1`) | report: `<ipv6-link-local:T>` etc.; unsalted: `<ipv6>` |
 | `mtp_owner` | `<Owner>'s <Model>` device names | `<mtp-owner>'s <Model>` (model kept) |
 
 `mtp_owner` needs a known model word (`iPhone | iPad | Pixel | Galaxy | OnePlus | …`) right after the `'s `, which is
