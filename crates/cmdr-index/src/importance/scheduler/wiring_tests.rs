@@ -18,6 +18,7 @@ use super::wiring::wire_volume;
 use super::*;
 use crate::IndexVolumeKind;
 use crate::importance::store::{RECOMPUTE_GENERATION_KEY, SCORING_POLICY_KEY, open_read_connection, read_meta_value};
+use crate::indexing::lifecycle::lifecycle_bus;
 
 /// How long a spawned full pass gets to land before the test calls it a failure.
 /// Generous on purpose: the pass runs on a background blocking task, and a loaded
@@ -155,4 +156,54 @@ fn wire_volume_does_not_kick_a_pass_for_an_already_scored_volume() {
     );
 
     crate::indexing::read::enrichment::uninstall_read_pool(SCORED_VOLUME_ID);
+}
+
+/// A volume's listeners last exactly as long as the life of the volume they were
+/// wired for.
+///
+/// Every start of a volume publishes a registration, so every start wires the volume
+/// again: a share that reconnects, a drive turned off and back on, the master switch
+/// toggled. Pre-fix the listeners outlived their volume, so they piled up one set per
+/// start, and each set carries its own hourly full-refresh timer: a share that had
+/// reconnected ten times was rescored in full ten times an hour. The buses' receiver
+/// counts are the observable, since a listener holds its receiver for as long as it
+/// runs.
+#[test]
+fn a_volumes_listeners_end_when_the_volume_stops() {
+    const VOLUME_ID: &str = "wiring-listeners-end";
+    /// The scan-completion, home-coverage, and dir-changed subscriptions.
+    const LISTENING: usize = 3;
+
+    let dir = tempfile::tempdir().expect("temp dir");
+    let scheduler = Arc::new(ImportanceScheduler::new(dir.path().to_path_buf()));
+    let volume_root = CancellationToken::new();
+
+    wire_volume(
+        Arc::clone(&scheduler),
+        VOLUME_ID.to_string(),
+        IndexVolumeKind::Local,
+        volume_root.child_token(),
+    );
+    assert_eq!(
+        lifecycle_bus::subscriber_count_for_test(VOLUME_ID),
+        LISTENING,
+        "a wired volume is listened to"
+    );
+
+    // The volume stops: its root signal fires, and the wiring's child with it.
+    volume_root.cancel();
+    wait_until(
+        Duration::from_secs(5),
+        "the stopped volume's listeners to let go of its buses",
+        || lifecycle_bus::subscriber_count_for_test(VOLUME_ID) == 0,
+    );
+
+    // It starts again, which wires it again: one set of listeners, not two.
+    wire_volume(
+        Arc::clone(&scheduler),
+        VOLUME_ID.to_string(),
+        IndexVolumeKind::Local,
+        CancellationToken::new(),
+    );
+    assert_eq!(lifecycle_bus::subscriber_count_for_test(VOLUME_ID), LISTENING);
 }

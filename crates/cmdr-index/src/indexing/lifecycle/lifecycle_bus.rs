@@ -267,6 +267,16 @@ pub(crate) fn subscribe_registrations() -> broadcast::Receiver<RegisteredVolume>
     REGISTRATION_BUS.subscribe()
 }
 
+/// How many receivers a volume's three per-volume buses (scan, home coverage,
+/// dir-changed) hold between them: for a test that pins how long a subscriber keeps
+/// listening.
+#[cfg(test)]
+pub(crate) fn subscriber_count_for_test(volume_id: &str) -> usize {
+    with_sender(volume_id, |sender| sender.receiver_count())
+        + with_home_sender(volume_id, |sender| sender.receiver_count())
+        + with_dir_sender(volume_id, |sender| sender.receiver_count())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

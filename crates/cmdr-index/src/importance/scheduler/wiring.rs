@@ -167,15 +167,17 @@ pub(super) fn should_enqueue_full_pass(
 /// unreachable in production and both the no-generation initial pass and the
 /// scoring-policy re-arm silently never fire.
 ///
-/// Idempotent per volume in practice: the coalescing coordinator collapses a
-/// re-wire's duplicate recompute into the running one, and the underlying `watch`
-/// buses are per-volume, so re-subscribing spawns a second listener but each drives
-/// the same coalesced pass. A volume is wired from at most two places (the sweep
-/// and one registration), so no unbounded listener growth.
-///
 /// `stop` is a child of the volume's root token, handed over with the volume by
 /// whoever found it (`indexing/host/DETAILS.md` § Cancellation: handed down, never
-/// looked up). Every pass over this volume runs under it from here on.
+/// looked up). It scopes everything this call sets up to ONE LIFE of the volume:
+/// every pass runs under it from here on, and the listeners below end when it fires.
+///
+/// That second half is what keeps a re-wire from piling up. Every start of a volume
+/// registers it, so a share that reconnects (or a drive turned off and on) is wired
+/// once per start, and each wiring carries its own hourly refresh timer. Tied to the
+/// life they were made for, the previous life's listeners are gone before the next
+/// one's exist. Within one life a volume is wired from at most two places (the sweep
+/// and its registration); the coalescing coordinator collapses the duplicate pass.
 pub(super) fn wire_volume(
     scheduler: Arc<ImportanceScheduler>,
     volume_id: String,
@@ -192,7 +194,7 @@ pub(super) fn wire_volume(
     };
 
     // Before anything below can request a pass, so none starts without its signal.
-    scheduler.adopt_stop(&volume_id, stop);
+    scheduler.adopt_stop(&volume_id, stop.clone());
 
     // The initial full pass, when the store can't be trusted. Wiring alone only sets
     // up subscriptions (a Fresh-at-launch volume's retained bus value stays
@@ -203,11 +205,11 @@ pub(super) fn wire_volume(
     // Incremental recompute: rescore only the touched subtrees + capped ancestor
     // chains as live listing changes land. Full-volume recompute
     // stays the scan-completion default below.
-    start_incremental(Arc::clone(&scheduler), volume_id.clone(), available);
+    start_incremental(Arc::clone(&scheduler), volume_id.clone(), available, &stop);
 
     // And a slow full pass, which is what BOUNDS the staleness the incremental path
     // deliberately accepts (see below).
-    start_periodic_full_refresh(Arc::clone(&scheduler), volume_id.clone(), available);
+    start_periodic_full_refresh(Arc::clone(&scheduler), volume_id.clone(), available, &stop);
 
     // Subscribe to the scan bus for this volume; a subscription retains the last
     // state, so a ScanCompleted fired before this line is still observed
@@ -221,7 +223,7 @@ pub(super) fn wire_volume(
     let sub_volume = volume_id.clone();
     let mut rx = lifecycle_bus::subscribe(&volume_id);
     let mut home_rx = lifecycle_bus::subscribe_home_covered(&volume_id);
-    crate::indexing::host::runtime::spawn(async move {
+    spawn_for_this_life(&stop, async move {
         // Observe the retained values first (covers a signal fired before subscribe,
         // and a sweep-ready volume that already loaded Completed).
         if matches!(*rx.borrow_and_update(), lifecycle_bus::ScanState::Completed { .. }) || *home_rx.borrow_and_update()
@@ -242,6 +244,18 @@ pub(super) fn wire_volume(
                 Some(false) => {}
             }
         }
+    });
+}
+
+/// Spawn one of a volume's listeners, to run until that life of the volume ends.
+///
+/// The listeners wait on process-global buses and timers that never close, so
+/// nothing else would ever end them. Dropping one mid-wait is safe: each only awaits
+/// a channel or a timer, and hands the work itself to a run that stops on its own.
+fn spawn_for_this_life(stop: &CancellationToken, listener: impl Future<Output = ()> + Send + 'static) {
+    let stop = stop.clone();
+    crate::indexing::host::runtime::spawn(async move {
+        stop.run_until_cancelled_owned(listener).await;
     });
 }
 
@@ -272,14 +286,19 @@ pub(super) fn wire_volume(
 /// 17.6% of a 10.5-hour session's wall clock.
 const FULL_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
-/// Run a full recompute every [`FULL_REFRESH_INTERVAL`], forever.
+/// Run a full recompute every [`FULL_REFRESH_INTERVAL`], for this life of the volume.
 ///
 /// Deliberately fires on the interval rather than at once: the scan-completion
 /// subscription in [`wire_volume`] already covers startup, so an immediate tick would
 /// only duplicate it. [`spawn_recompute`] coalesces on the full-pass key, so a tick
 /// landing inside a running pass is absorbed rather than queued.
-fn start_periodic_full_refresh(scheduler: Arc<ImportanceScheduler>, volume_id: String, available: SignalSet) {
-    crate::indexing::host::runtime::spawn(async move {
+fn start_periodic_full_refresh(
+    scheduler: Arc<ImportanceScheduler>,
+    volume_id: String,
+    available: SignalSet,
+    stop: &CancellationToken,
+) {
+    spawn_for_this_life(stop, async move {
         loop {
             tokio::time::sleep(FULL_REFRESH_INTERVAL).await;
             log::debug!(target: "importance", "periodic full refresh for '{volume_id}'");
@@ -292,9 +311,14 @@ fn start_periodic_full_refresh(scheduler: Arc<ImportanceScheduler>, volume_id: S
 /// for each batch of live listing changes. Coalesces overlapping
 /// batches per volume (accumulating their paths) so a burst of FSEvents collapses
 /// to one pass plus at most one re-run, never a pass per event.
-fn start_incremental(scheduler: Arc<ImportanceScheduler>, volume_id: String, available: SignalSet) {
+fn start_incremental(
+    scheduler: Arc<ImportanceScheduler>,
+    volume_id: String,
+    available: SignalSet,
+    stop: &CancellationToken,
+) {
     let mut rx = lifecycle_bus::subscribe_dirs_changed(&volume_id);
-    crate::indexing::host::runtime::spawn(async move {
+    spawn_for_this_life(stop, async move {
         // The retained initial value is the empty batch (nothing published yet);
         // `borrow_and_update` marks it seen so the first real change triggers.
         rx.borrow_and_update();

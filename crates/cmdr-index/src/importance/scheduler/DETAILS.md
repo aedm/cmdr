@@ -29,8 +29,10 @@ arriving mid-pass sets a single re-run flag rather than starting a second pass (
 `ScanCompleted` collapse to one pass, then at most one re-run). The recompute itself is full-volume: walk the index tree
 through the read pool (`get_read_pool_for`), assemble a `FolderSignals` per folder (`signals::signals_for_dir`), run the
 pure scorer, and write every row at a freshly-bumped generation. It runs on a blocking background task (SQLite plus
-scoring), never on the IPC thread; a `None` read pool (index not registered) is a no-op. Wiring a volume twice is
-harmless: the coordinator collapses the duplicate pass, and a volume is wired from at most two places.
+scoring), never on the IPC thread; a `None` read pool (index not registered) is a no-op. Wiring a volume twice within
+one life of it is harmless: the coordinator collapses the duplicate pass, and a life is wired from at most two places
+(the sweep and its registration). Across lives nothing piles up, because a wiring ends with the life it was made for (§
+"How a pass stops").
 
 ## Generation semantics
 
@@ -138,19 +140,26 @@ couldn't be stopped doesn't start.
 It is a bare token, not a `VolumeWork`, on purpose: a pass reads the local index database and never the drive, so it
 must not hold the volume against an eject.
 
-**Three things fire it:**
+**Two things fire it, and quitting isn't one of them:**
 
 - **The volume stopping** (disabled, ejected, failed, torn down, cleared). Its root token fires and the child with it.
 - **`stop_all_indexing`**, through the scheduler's subsystem stop hook (`wiring::stop_hook_for`), which fires every
   wired volume's signal. Its two callers are the memory watchdog's emergency stop and the master indexing switch going
   off. The hooks run BEFORE the per-volume drains (seconds apiece, one after another), so every pass hears an emergency
   stop at once, and the hook still reaches a pass whose own volume's stop was deferred or failed.
-- Nothing else. ⚠️ **Quitting the app fires nothing**: no exit path stops the index, so a pass running at quit dies with
-  the process. That is safe for the same reason a crash is (below), and it is why "is redone later" can't depend on
-  anything a stop writes.
+- ⚠️ **Quitting the app fires nothing**: no exit path stops the index, so a pass running at quit dies with the process.
+  That is safe for the same reason a crash is (below), and it is why "is redone later" can't depend on anything a stop
+  writes.
 
 A volume the hook stopped stays stopped here until it registers again, the rule `media_index` follows: a pass that was
 stopped doesn't quietly resume.
+
+**The signal scopes the LISTENERS too, not only the passes.** `wire_volume`'s three listeners (scan completion plus home
+coverage, dir-changed, the hourly refresh timer) wait on process-global buses and timers that never close, so
+`spawn_for_this_life` ends each one when the signal fires. Every start of a volume registers it, and so wires it again:
+without this a share that reconnected ten times carried ten hourly refresh timers, each driving its own full pass.
+`a_volumes_listeners_end_when_the_volume_stops` pins it through the buses' receiver counts. ❌ Don't spawn a per-volume
+listener any other way.
 
 **Where a pass looks.** Every loop that can run long polls through `stop::StopPoll`: both row streams of the full walk
 (the store's `for_each_*` callbacks return `ControlFlow`, so a stopped walk stops FETCHING), the two propagations, the
