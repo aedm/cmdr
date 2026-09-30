@@ -117,14 +117,14 @@ pnpm test:e2e:playwright:build
 # this app and nothing else. `wait` keeps the terminal attached to the app's
 # output exactly as a foreground launch would.
 CMDR_E2E_MODE=1 CMDR_DATA_DIR=/tmp/cmdr-e2e-data CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures \
-    CMDR_MCP_ENABLED=true CMDR_MCP_PORT=18473 /path/to/target/.../release/Cmdr &
+    CMDR_MCP_ENABLED=true CMDR_MCP_PORT=27614 /path/to/target/.../release/Cmdr &
 echo $! > /tmp/cmdr-e2e-app.pid && wait
 
 # Run the tests (app must be running with socket at /tmp/tauri-playwright.sock).
 # Chain the `kill` so the manually-launched app is torn down when the run
 # finishes — tauri-playwright doesn't manage app lifecycle (it just talks to the
 # socket), so without this you leak a Cmdr process every run.
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 ```
 
@@ -157,11 +157,11 @@ form swallows the following positional and the run dies with `Project(s) "<spec-
 cd apps/desktop
 
 # By file path
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     test/e2e-playwright/brief-cursor-visibility.spec.ts ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 
 # By test-name substring (matches `test('...')` and `describe('...')` titles)
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     --grep "cursor stays in view" ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 ```
 
