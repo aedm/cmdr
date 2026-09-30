@@ -123,7 +123,7 @@ fn a_walk_whose_volume_stops_mid_read_leaves_without_reading_the_rest() {
     let whole_walk_ticks = ticks.load(Ordering::Relaxed);
     assert!(
         whole_walk_ticks > 1_000,
-        "the index has to be big enough for 'mid-read' to mean something (got {whole_walk_ticks} ticks)"
+        "the index has to be big enough for 'mid-read' to mean something (tick count: {whole_walk_ticks})"
     );
 
     // Now stop the volume halfway through.
@@ -158,8 +158,8 @@ fn a_walk_whose_volume_stops_mid_read_leaves_without_reading_the_rest() {
     let was_left = whole_walk_ticks - stop_at;
     assert!(
         ran_after_the_stop * 4 < was_left,
-        "the walk read on for {ran_after_the_stop} ticks after its volume stopped, of the {was_left} that were \
-         left: it has to leave at its next look, not finish the stream"
+        "the walk read on after its volume stopped (tick count: {ran_after_the_stop}, with {was_left} left): \
+         it has to leave at its next look, not finish the stream"
     );
 }
 
@@ -195,7 +195,7 @@ fn scoring_stops_at_its_next_look_and_returns_no_rows() {
     assert_eq!(rows.err(), Some(PassError::Cancelled));
     assert_eq!(
         scored, STOP_CHECK_INTERVAL as usize,
-        "scoring ran to its next look and no further (of {total} folders)"
+        "scoring ran to its next look and no further (folder count: {total})"
     );
 }
 
