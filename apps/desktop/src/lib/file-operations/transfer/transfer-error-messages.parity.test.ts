@@ -108,6 +108,19 @@ const cases: Case[] = [
     },
   },
   {
+    // One sentence for copy and move: the refusal comes before either writes.
+    // It has to name the FILE, which is often not the folder the user typed.
+    name: 'destination_not_a_folder',
+    error: { type: 'destination_not_a_folder', path: '/photos/2026' },
+    op: 'move',
+    expected: {
+      title: 'A file is in the way',
+      message:
+        'Cmdr couldn’t create the destination folder, because there’s a file at /photos/2026, where a folder needs to be. Nothing was written, and the originals are untouched.',
+      suggestion: 'Pick another destination, or rename or move that file and try again.',
+    },
+  },
+  {
     name: 'destination_exists',
     error: { type: 'destination_exists', path: '/p' },
     expected: {

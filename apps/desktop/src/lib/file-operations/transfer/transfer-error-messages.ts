@@ -203,6 +203,9 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // No Retry: the folder is missing, so the identical request can only fail
   // again. The way out is picking another destination or restoring the folder.
   destination_not_found: { category: 'needs_action', retryHint: false },
+  // No Retry: the file is still in the way, so the identical request can only
+  // meet it again. The way out is another destination, or moving the file.
+  destination_not_a_folder: { category: 'needs_action', retryHint: false },
   // No Retry: the same request refuses again until the phone or server is
   // opened in a pane, which is what the suggestion asks for.
   source_not_connected: { category: 'needs_action', retryHint: false },
@@ -530,6 +533,16 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
       return readOnlyMessage(error)
     case 'destination_not_writable':
       return destinationNotWritableMessage(error)
+    // A file sits where the destination folder, or one above it, has to be.
+    // `error.path` is that FILE, which is often not the folder the user typed,
+    // so naming it is the message's whole job. One sentence for copy and move
+    // alike: it's refused before either writes anything.
+    case 'destination_not_a_folder':
+      return {
+        title: w('destinationNotAFolder.title'),
+        message: w('destinationNotAFolder.message', { path: escapeHtml(error.path) }),
+        suggestion: w('destinationNotAFolder.suggestion'),
+      }
     // STATUS_DELETE_PENDING: the file is marked for deletion on the server but an
     // open handle is keeping it alive. Transient: retry-after-a-moment. Named,
     // because a move involves two files and "this file" didn't say which.

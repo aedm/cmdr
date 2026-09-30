@@ -134,6 +134,13 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   missing destination (and its ancestors) can never materialize a folder inside a source. The volume-aware pipelines
   mirror both the behavior and the order with `Volume::create_directory_all(dest)`; see `../volume/DETAILS.md`
   § "Recursive destination create".
+- **A file in the way of the destination folder is `WriteOperationError::DestinationNotAFolder { path }`**, from both
+  engines, refused before anything is written. `path` is the FILE, which is often a level or more above the folder the
+  user typed, and naming it is the variant's whole job: as `DestinationNotFound` the dialog blamed a folder Cmdr was
+  asked to create, and as an `IoError` it offered a Retry that could only meet the same file again. The volume engines
+  get it from `VolumeError::NotADirectory` (`create_directory_all`, every backend); the local one looks upward for the
+  file only after the OS refused (`validation.rs::file_in_the_way`), since `ENOTDIR` and `EEXIST` name only the path
+  that was asked about. A destination reached through a link to a folder is a folder to both.
 - **`validation.rs::validate_source_names_are_distinct` refuses a copy or move whose top-level items share a name**,
   with the typed `WriteOperationError::DuplicateSourceNames` (carrying the name plus both paths, so the dialog can show
   which two clashed). Two same-named sources both want `<destination>/<name>` and neither engine has an answer: the

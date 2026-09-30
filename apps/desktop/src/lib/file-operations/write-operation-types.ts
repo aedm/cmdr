@@ -172,6 +172,8 @@ export type PermissionRefusal = 'folderPermissions' | 'systemProtected' | 'uncla
 export type WriteOperationError =
   | { type: 'source_not_found'; path: string }
   | { type: 'destination_not_found'; path: string }
+  // `path` is the FILE in the way, often a level above the folder the user picked.
+  | { type: 'destination_not_a_folder'; path: string }
   | { type: 'source_not_connected'; path: string }
   | { type: 'destination_not_connected'; path: string }
   | { type: 'destination_exists'; path: string }

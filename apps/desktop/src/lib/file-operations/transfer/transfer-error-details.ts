@@ -10,6 +10,7 @@ import { formatByteSize } from '$lib/units'
 const pathOnlyTypes = new Set<WriteOperationError['type']>([
   'source_not_found',
   'destination_not_found',
+  'destination_not_a_folder',
   'source_not_connected',
   'destination_not_connected',
   'destination_exists',

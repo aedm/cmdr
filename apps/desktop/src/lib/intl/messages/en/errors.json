@@ -1621,6 +1621,29 @@
     "description": "Recovery suggestion when the destination folder is missing, shown in the copy/move error dialog. Plain text. Names the three things that actually cause it (renamed, removed, drive disconnected) and the two ways out.",
     "screenshot": "transfer-error-destination_not_found.png"
   },
+  "errors.write.destinationNotAFolder.title": "A file is in the way",
+  "errors.write.destinationNotAFolder.message": "Cmdr couldn’t create the destination folder, because there’s a file at {path}, where a folder needs to be. Nothing was written, and the originals are untouched.",
+  "errors.write.destinationNotAFolder.suggestion": "Pick another destination, or rename or move that file and try again.",
+  "@errors.write.destinationNotAFolder.title": {
+    "description": "Title of the copy/move error dialog when the destination folder couldn't be created because a file sits where that folder, or one of the folders above it, has to be. Plain text. Nothing was copied or moved.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.destinationNotAFolder.message": {
+    "description": "Body of the copy/move error dialog when a file sits where the destination folder, or a folder above it, has to be, so Cmdr stopped before writing anything. Plain text, a raw errors.* string (no ICU). The same sentence serves copy and move, so keep it neutral about which one it was. The last sentence is load-bearing reassurance: nothing was changed, so keep that promise explicit.",
+    "placeholders": {
+      "path": {
+        "description": "The full path of the file that is in the way, inserted verbatim. It can be a level or more above the folder the person picked. Do not translate or reformat it."
+      }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "description": "Recovery suggestion when a file is in the way of the destination folder, shown in the copy/move error dialog. Plain text. \"That file\" is the one the explanation above names. The two ways out: a different destination, or getting the file out of the way first.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.notConnected.title": "Not connected yet",
   "errors.write.notConnected.message.source": "Cmdr hasn’t connected to the phone or server holding these files yet, so nothing has changed.",
   "errors.write.notConnected.message.destination": "Cmdr hasn’t connected to the destination phone or server yet, so nothing has changed. Your files are untouched.",

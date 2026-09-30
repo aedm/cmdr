@@ -149,3 +149,43 @@ async fn a_destination_that_cannot_be_addressed_is_never_reported_as_a_missing_s
         failure.error
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_file_where_the_destination_folder_should_be_is_named_and_nothing_is_written() {
+    // `/photos/2026` is a FILE, and the copy is told to land in it and then in
+    // a folder below it. Both used to go wrong quietly: the first read the file
+    // as "the folder is already there" and failed per item afterwards, the
+    // second reported the folder it was asked to CREATE as missing.
+    for destination in ["/photos/2026", "/photos/2026/trip"] {
+        let (source, dest) = make_volumes();
+        source.create_file(Path::new("/report.pdf"), b"payload").await.unwrap();
+        dest.create_directory(Path::new("/photos")).await.unwrap();
+        dest.create_file(Path::new("/photos/2026"), b"the user's file")
+            .await
+            .unwrap();
+
+        let failure = copy_volumes_with_progress(
+            Arc::new(CollectorEventSink::new()),
+            "test-op-dest-file-in-the-way",
+            &make_state(),
+            Arc::clone(&source),
+            &[PathBuf::from("/report.pdf")],
+            Arc::clone(&dest),
+            Path::new(destination),
+            &VolumeCopyConfig::default(),
+        )
+        .await
+        .expect_err("a file where the destination folder should be must fail the copy");
+
+        assert!(
+            matches!(&failure.error, WriteOperationError::DestinationNotAFolder { path } if path == "/photos/2026"),
+            "copy into {destination}: expected DestinationNotAFolder naming the file, got: {:?}",
+            failure.error
+        );
+        let in_the_way = dest.get_metadata(Path::new("/photos/2026")).await.unwrap();
+        assert!(
+            !in_the_way.is_directory && in_the_way.size == Some(15),
+            "the file in the way must be left exactly as it was"
+        );
+    }
+}

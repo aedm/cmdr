@@ -49,6 +49,12 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
     // is on a NAS that stopped being able to address the folder mid-transfer.
     error: { type: 'destination_not_found', path: '/Volumes/Naspolya/media/photos/2026' },
   },
+  destination_not_a_folder: {
+    operationType: 'copy',
+    // The path is the FILE in the way, a level above the folder the copy was
+    // told to create (`…/photos/2026/trip`).
+    error: { type: 'destination_not_a_folder', path: '/Volumes/Naspolya/media/photos/2026' },
+  },
   source_not_connected: {
     operationType: 'delete',
     // A phone the switcher lists that nobody has opened in a pane yet.

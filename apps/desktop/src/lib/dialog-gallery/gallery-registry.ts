@@ -190,6 +190,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
     states: [
       { id: 'source_not_found', label: 'Source not found' },
       { id: 'destination_not_found', label: 'Destination not found' },
+      { id: 'destination_not_a_folder', label: 'A file is in the way of the destination' },
       { id: 'source_not_connected', label: 'Source not connected yet' },
       { id: 'destination_not_connected', label: 'Destination not connected yet' },
       { id: 'destination_exists', label: 'Destination exists' },

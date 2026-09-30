@@ -16204,6 +16204,20 @@ export type WriteOperationError =
    */
   | { type: 'destination_not_found'; path: string }
   /**
+   *  The destination folder couldn't be created because something that isn't
+   *  a folder sits where it, or one of the folders above it, has to be.
+   *  Refused before anything is written, by the volume engines
+   *  (`VolumeError::NotADirectory` out of `create_directory_all`) and the
+   *  local one (`ensure_destination_dir`) alike.
+   *
+   *  ❗ `path` is the thing IN THE WAY, which is often an ancestor of the
+   *  folder the user typed. It is the whole point of the variant: as a
+   *  `DestinationNotFound` or a generic `IoError` the dialog named the folder
+   *  Cmdr was asked to create, or nothing, and the file to move aside was
+   *  never mentioned.
+   */
+  | { type: 'destination_not_a_folder'; path: string }
+  /**
    *  The volume holding the sources is a phone its provider lists, or a saved
    *  server, that nothing has connected yet, so no volume answers for it.
    *  Refused before anything is read. `path` is the first source as the

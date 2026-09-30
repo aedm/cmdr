@@ -825,6 +825,7 @@ describe('getErrorDisplayMeta', () => {
   const cases: Array<{ error: WriteOperationError; category: string; retryHint: boolean }> = [
     { error: { type: 'source_not_found', path: '/p' }, category: 'needs_action', retryHint: false },
     { error: { type: 'destination_exists', path: '/p' }, category: 'needs_action', retryHint: false },
+    { error: { type: 'destination_not_a_folder', path: '/p' }, category: 'needs_action', retryHint: false },
     {
       error: {
         type: 'permission_denied',
