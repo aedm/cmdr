@@ -267,16 +267,16 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
   does the compressing.
 - **Bulk writes run at `adb push` speed; small files pay about 260 ms EACH.** `SEND` frames at the protocol's 64 KiB
   maximum with no per-chunk round trip, so one large file lands as fast as the CLI does (about 28 MB/s through Cmdr
-  against 31 to 35 MB/s for `adb push`, same cable, same minute). A copy of many small files is another story: 200
-  files of 20 KB took 52 s where `adb push` of the folder took under 10 s for those plus 300 MB. The cost is round
-  trips, not bytes: each file is staged TWICE and moved twice. The transfer engine streams into its own
-  `<name>.cmdr-tmp-<uuid>`; `write_from_stream` stages that AGAIN as `<name>.cmdr-tmp-<uuid>.cmdr-tmp-<pid>-<n>`, stats
-  the target, and `mv -f`s it onto the engine's temp (about 135 ms); then the engine's landing rename stats and
-  `mv`s once more (about 125 ms). A device shell round trip is about 60 ms, and every stat opens its own sync socket.
-  (Measured on a Pixel 9 Pro XL over USB, dev build, 2026-09-30.) The inner stage is redundant when the caller is
-  already writing to a staging name, which would save one `mv` and one stat per file. It stays for now because telling
-  "the caller staged this" from the NAME is the inference `cmdr_fs::staging` warns against; the clean fix is for the
-  caller to say so (a write mode, or a capability the engine reads), which touches the `Volume` trait.
+  against 31 to 35 MB/s for `adb push`, same cable, same minute). A copy of many small files is another story: 200 files
+  of 20 KB took 52 s where `adb push` of the folder took under 10 s for those plus 300 MB. The cost is round trips, not
+  bytes: each file is staged TWICE and moved twice. The transfer engine streams into its own `<name>.cmdr-tmp-<uuid>`;
+  `write_from_stream` stages that AGAIN as `<name>.cmdr-tmp-<uuid>.cmdr-tmp-<pid>-<n>`, stats the target, and `mv -f`s
+  it onto the engine's temp (about 135 ms); then the engine's landing rename stats and `mv`s once more (about 125 ms). A
+  device shell round trip is about 60 ms, and every stat opens its own sync socket. (Measured on a Pixel 9 Pro XL over
+  USB, dev build, 2026-09-30.) The inner stage is redundant when the caller is already writing to a staging name, which
+  would save one `mv` and one stat per file. It stays for now because telling "the caller staged this" from the NAME is
+  the inference `cmdr_fs::staging` warns against; the clean fix is for the caller to say so (a write mode, or a
+  capability the engine reads), which touches the `Volume` trait.
 - **Wireless debugging** (`adb pair`) is out of scope: the server owns pairing, and a paired device appears in
   `track-devices` like any other.
 - **Real-device pass pending**: the authorize prompt, an `unauthorized` → `device` transition mid-session, a 2 GB `RECV`

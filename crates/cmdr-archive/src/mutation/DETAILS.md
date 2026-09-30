@@ -25,11 +25,12 @@ sink, pause gate, cancel intent via the `MutationHooks` seam, and the remote pul
 - **Every new entry's time is written twice, by `with_entry_mtime`** (the one place, which the host's fresh-ZIP producer
   calls too, so the two writers can't drift apart again):
   - The header's MS-DOS date and time, decomposed in LOCAL time. The field carries no zone and every tool (`unzip -l`,
-    Finder, Explorer) shows it as wall-clock time, so a UTC decompose reads hours off: a file modified at 09:44 in
-    UTC+2 listed as 07:44. 2-second granularity, 1980–2107; outside that it stays at the format's zero.
+    Finder, Explorer) shows it as wall-clock time, so a UTC decompose reads hours off: a file modified at 09:44 in UTC+2
+    listed as 07:44. 2-second granularity, 1980–2107; outside that it stays at the format's zero.
   - The Info-ZIP extended-timestamp extra field (`UT`, `0x5455`), the exact UTC second, in the local header and the
-    central directory. Tools prefer it over the DOS field, and so does `rc-zip`, our reader, which is what keeps an mtime
-    stable across write-then-reparse in any zone. Written when the time fits the field's signed 32 bits (1970–2038).
+    central directory. Tools prefer it over the DOS field, and so does `rc-zip`, our reader, which is what keeps an
+    mtime stable across write-then-reparse in any zone. Written when the time fits the field's signed 32 bits
+    (1970–2038).
   - ❗ `SimpleFileOptions::default()` dates an entry 1980-01-01: `zip`'s "now" default needs its `time` feature, which
     this workspace doesn't enable (verified on `zip` 8.6.0, `DateTime::default_for_write`, 2026-09-30). ❌ Never hand
     `start_file` / `add_directory` bare default options.

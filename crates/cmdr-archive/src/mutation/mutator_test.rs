@@ -877,7 +877,11 @@ fn an_entry_time_is_local_in_the_dos_field_and_exact_utc_in_the_extended_one() {
     // 07:44:03 UTC is 09:44:03 in UTC+2, which is what `unzip -l` must show there.
     // Pre-fix the DOS field said 07:44 and there was no extended field.
     let east = stamp_and_read_back((2026, 9, 30, 7, 44, 3), 2);
-    assert_eq!(east.dos, (2026, 9, 30, 9, 44, 2), "local wall clock, on a 2-second grid");
+    assert_eq!(
+        east.dos,
+        (2026, 9, 30, 9, 44, 2),
+        "local wall clock, on a 2-second grid"
+    );
     assert_eq!(east.extended, Some(1_790_754_243));
     assert!(east.local_header_has_extended);
 
