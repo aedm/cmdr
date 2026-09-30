@@ -471,6 +471,12 @@ fn a_bulk_skipped_source_reports_itself_as_skipped() {
 /// Copies one file through `copy_single_item` and hands back the ledger it
 /// recorded into, so a test can ask what the copy claims to have written.
 fn copy_one_file(source: &Path, dest_dir: &Path) -> CopyTransaction {
+    copy_one_file_knowing(source, dest_dir, &mut HashSet::new())
+}
+
+/// [`copy_one_file`] over a caller-held `created_dirs`, the operation's set of
+/// directories it has already proven or made.
+fn copy_one_file_knowing(source: &Path, dest_dir: &Path, created_dirs: &mut HashSet<PathBuf>) -> CopyTransaction {
     let events = Arc::new(CollectorEventSink::new());
     let state = make_state(200);
     let config = WriteOperationConfig::default();
@@ -499,7 +505,7 @@ fn copy_one_file(source: &Path, dest_dir: &Path) -> CopyTransaction {
         &config,
         &mut transaction,
         &mut ApplyToAll::default(),
-        &mut HashSet::new(),
+        created_dirs,
         &mut HashMap::new(),
         &mut HashSet::new(),
         &mut HashSet::new(),
@@ -507,6 +513,27 @@ fn copy_one_file(source: &Path, dest_dir: &Path) -> CopyTransaction {
     .expect("the copy should land");
 
     transaction
+}
+
+/// A file landing DIRECTLY in the destination root leaves the root in
+/// `created_dirs`, which is what lets the next file skip the parent checks. The
+/// link-aware chain walk looks only BELOW the root, so without this a flat copy
+/// of many files paid a stat of the same folder per file.
+#[test]
+fn a_file_landing_in_the_destination_root_proves_the_root_once() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let dest_dir = tmp.path().join("dst");
+    fs::create_dir_all(&dest_dir).unwrap();
+    let source = tmp.path().join("a.txt");
+    fs::write(&source, "A").unwrap();
+    let mut created_dirs = HashSet::new();
+
+    copy_one_file_knowing(&source, &dest_dir, &mut created_dirs);
+
+    assert!(
+        created_dirs.contains(&dest_dir),
+        "the root must be known after its first file, got {created_dirs:?}"
+    );
 }
 
 /// The ledger entry for a copied file identifies the file that landed: the same

@@ -370,6 +370,12 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
                 transaction.record_dir(created_dir.clone());
                 created_dirs.insert(created_dir);
             }
+        } else {
+            // Standing, and the walk above proved every level below
+            // `dest_root`, so this only adds the root itself (the walk never
+            // looks at it). Without it every file landing directly in the root
+            // re-enters this block and stats the same folder again.
+            created_dirs.insert(parent.to_path_buf());
         }
     }
 

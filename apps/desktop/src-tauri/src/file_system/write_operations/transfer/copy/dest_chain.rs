@@ -24,7 +24,8 @@ use crate::file_system::write_operations::types::WriteOperationError;
 ///
 /// `known_dirs` is the operation's set of directories already proven real or
 /// created by it. Each level proven here joins it, so a tree costs one `lstat`
-/// per directory. An `lstat` that can't answer fails the item; ❌ never read it
+/// per directory; the root is the caller's to add (`copy_single_item` does,
+/// once its first file lands there). An `lstat` that can't answer fails the item; ❌ never read it
 /// as "nothing there".
 pub(in crate::file_system::write_operations::transfer) fn leaf_in_the_way(
     root: &Path,
