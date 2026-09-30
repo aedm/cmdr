@@ -40,22 +40,6 @@ const LATE_VOLUME_ID: &str = "wiring-late-registration";
 /// parallelism.
 const SCORED_VOLUME_ID: &str = "wiring-already-scored";
 
-/// Build an index DB for `volume_id` over the canonical synthetic home and route
-/// the volume's read pool at it, so a spawned pass has something real to walk.
-/// Without a pool, a pass reads nothing and writes nothing, and a test asserting
-/// "no pass ran" would pass for the wrong reason.
-fn install_index_for(data_dir: &std::path::Path, volume_id: &str) {
-    let index_path = data_dir.join(format!("index-{volume_id}.db"));
-    build_index_from_home(
-        &index_path,
-        &crate::importance::fixtures::SyntheticHome::canonical(1_000_000_000),
-    );
-    crate::indexing::read::enrichment::install_read_pool(
-        volume_id,
-        Arc::new(crate::indexing::read::enrichment::ReadPool::new(index_path).expect("read pool")),
-    );
-}
-
 /// One meta value from the volume's store, or `None` when the file or the key is
 /// absent. Read-only, so polling it never contends with the writer thread that's
 /// mid-pass.
@@ -108,6 +92,7 @@ fn wire_volume_probes_for_a_full_pass_for_a_volume_that_registers_after_start() 
         Arc::clone(&scheduler),
         LATE_VOLUME_ID.to_string(),
         IndexVolumeKind::Local,
+        CancellationToken::new(),
     );
 
     wait_until(
@@ -158,6 +143,7 @@ fn wire_volume_does_not_kick_a_pass_for_an_already_scored_volume() {
         Arc::clone(&scheduler),
         SCORED_VOLUME_ID.to_string(),
         IndexVolumeKind::Local,
+        CancellationToken::new(),
     );
 
     // allowed-test-sleep: the settle IS the subject — the assertion is that NOTHING happens in it.

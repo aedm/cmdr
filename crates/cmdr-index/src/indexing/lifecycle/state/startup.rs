@@ -332,8 +332,10 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
     // M4 late-registering volumes). The kind rides along so the consumer branches
     // typed (score Local + SMB, exclude MTP), never on the id string. Published
     // once, right after the reservation wins, so an early scan completion still
-    // arrives on the (already-subscribed) scan bus afterwards.
-    lifecycle_bus::publish_volume_registered(volume_id, kind);
+    // arrives on the (already-subscribed) scan bus afterwards. A child of this
+    // start's stop signal rides along too, so whatever the subscriber starts for
+    // the volume ends with this life of it.
+    lifecycle_bus::publish_volume_registered(volume_id, kind, reservation.child_token());
 
     let mut manager = match IndexManager::new_for_kind(
         volume_id.to_string(),

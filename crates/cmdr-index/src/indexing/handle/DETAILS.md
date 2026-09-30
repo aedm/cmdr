@@ -239,7 +239,8 @@ parent). A grant of "one item" for such a type is `RootPromises` moving by one a
 - **`replay_buffered_changes`, `discard_buffered_changes`, `replay_buffered_mtp_changes`,
   `discard_buffered_mtp_changes`** — re-exported at the root, called only from `lifecycle/network_scan.rs`, which is
   inside the index.
-- **`register_subsystem_stop_hook`** — `pub`, and the only caller is `media_index/scheduler/lifecycle.rs`, also inside.
+- **`register_subsystem_stop_hook`** — `pub`, and its only callers are the `media_index` and `importance` schedulers,
+  both inside.
 - **`enrich_entries_with_index`** — see above.
 
 ### Modules

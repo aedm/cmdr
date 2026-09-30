@@ -28,9 +28,8 @@ Three reasons, in priority order. When a decision here is ambiguous, resolve it 
    "The three exceptions, named". Typing the causes inside `lifecycle/state.rs` and `read/queries.rs` is still open
    work. The house error style is in `apps/desktop/src-tauri/CLAUDE.md`.
 4. **Long-running work is cancelable** through one primitive (`tokio_util::sync::CancellationToken`), with cancellation
-   observable from outside: a cancelled operation returns a distinct error variant, never a silent early return. One
-   subsystem doesn't meet this yet: an `importance` recompute holds no token and no stop hook, so nothing stops it
-   mid-walk. That gap and its entry point are in `src/indexing/host/DETAILS.md` § Cancellation.
+   observable from outside: a cancelled operation returns a distinct error variant, never a silent early return. The
+   topology is in `src/indexing/host/DETAILS.md` § Cancellation.
 5. **Everything long-running reports progress** as structured values through a caller-supplied sink.
 6. **A handle, not a global.** The public API is methods on an `Index` the host constructs and owns.
 7. **The house lint set is replicated, not weakened**, via `lints.workspace = true`, plus `#![deny(missing_docs)]`.

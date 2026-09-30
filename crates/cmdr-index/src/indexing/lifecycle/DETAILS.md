@@ -27,7 +27,8 @@ concurrently without corrupting each other. Every invariant below holds independ
   - `scan_control.rs` — `force_scan`, `stop_scan`, `trigger_verification`, plus `off_the_registry` and the
     `DetachedManager` guard behind it: the ONE place a live volume's manager comes out for blocking work.
   - `queries.rs` — the read-only surface: `is_active`, `is_failed`, `index_failure`, `awaits_its_first_scan`,
-    `ready_volumes_with_kind`, `all_registered_volume_ids`, `volume_kind`, `registered_mtp_volume_ids_for_device`.
+    `ready_volumes_with_kind`, `ready_volumes_to_wire`, `all_registered_volume_ids`, `volume_kind`,
+    `registered_mtp_volume_ids_for_device`.
   - `freshness_bridge.rs` — the registry ↔ `freshness.rs` wiring (`apply_freshness_event` vs `..._on`, which is LOCK
     DISCIPLINE, not style) plus `bump_current_epoch_for` / `get_freshness`.
   - `supervisor.rs` — `spawn_failure_supervisor` + `fail_index`, the `Failed`-phase transition (the signal itself is
@@ -1005,11 +1006,14 @@ direction). This is the single canonical home for the mechanism; consumer docs p
   `generation` so a consumer can coalesce a repeat.
 - **The startup sweep is the bus's companion, not part of it.** A volume already Fresh at launch never re-fires
   `ScanCompleted`, so `state::ready_volumes_with_kind()` snapshots the volumes that are `Fresh` right now (with each
-  volume's typed `IndexVolumeKind`) for the scheduler to enqueue once at startup.
+  volume's typed `IndexVolumeKind`) for the scheduler to enqueue once at startup. `ready_volumes_to_wire()` is the same
+  snapshot in the registration bus's shape, stop signal included.
 - **A registration `broadcast`** (`publish_volume_registered` / `subscribe_registrations`) carries late-registering
   volumes (a share mounted AFTER startup), published from `start_indexing_for` right after a volume wins its
-  `Initializing` reservation, carrying the id AND its typed kind. A lagged receiver only misses a registration the next
-  `ScanCompleted` still covers, so a miss self-heals.
+  `Initializing` reservation, carrying the id, its typed kind, AND a child of the volume's root stop signal
+  (`RegisteredVolume`), so per-volume work a subscriber starts ends with that life of the volume (`../host/DETAILS.md` §
+  Cancellation). A lagged receiver only misses a registration the next `ScanCompleted` still covers, so a miss
+  self-heals.
 - **A `dir-changed` channel** (`publish_dirs_changed` / `subscribe_dirs_changed`, a per-volume `watch<DirsChanged>` in a
   separate `DIR_BUS` map) carries live listing changes from the live event loop and the per-navigation verifier — the
   importance scheduler's incremental-recompute trigger and the media index's live-tick trigger. Being a `watch`, a burst

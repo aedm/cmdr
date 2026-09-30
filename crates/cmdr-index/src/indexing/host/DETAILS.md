@@ -182,8 +182,8 @@ it down.
 ## Cancellation
 
 One primitive, `tokio_util::sync::CancellationToken`, from the `Volume` trait in `cmdr-fs` up through every long walk
-`indexing/` and `media_index/` run. It replaced five kinds of `Arc<AtomicBool>` plus a `Notify`, none of which could
-compose. `importance/` is the gap, not a third topology (below).
+`indexing/`, `media_index/`, and `importance/` run. It replaced five kinds of `Arc<AtomicBool>` plus a `Notify`, none of
+which could compose.
 
 **The topology is a tree, rooted per volume.** The reservation mints the volume's root `VolumeWork` (`../hold.rs`: a
 stop signal paired with a share of the volume's hold), held by BOTH the registry `IndexInstance` (`work`) and its
@@ -216,12 +216,13 @@ re-enabling installs a FRESH token rather than un-cancelling — a token is one-
 stopped must not quietly resume. Per-volume media cancellation would be a new feature, not a rewiring: nothing today
 scopes an enrichment pass to a volume's token.
 
-**`importance` has no cancellation at all**: the honest exception, and a gap rather than a decision. Nothing under
-`importance/` holds a token, and its scheduler registers no `register_subsystem_stop_hook`, so `stop_all_indexing`
-(watchdog stop, shutdown) doesn't reach a running recompute: it walks the whole index to the end. Tolerable because that
-walk is 5.5–6.4 s over real 391k / 611k-folder indexes (measured 2026-07-29), not because anything stops it. The
-`TODO(importance)` on `importance/scheduler/recompute.rs`'s `recompute_folders` is the entry point for closing it; the
-fix is a child of the volume token, threaded in from whoever starts the pass, plus a stop hook — not a new primitive.
+**`importance` is in the tree, holding a bare token.** A volume reaches the importance scheduler with a child of its
+root token already attached (`lifecycle_bus::RegisteredVolume.stop`, minted at the registration funnel and, for the
+startup sweep, under the registry lock in `state::ready_volumes_to_wire`), so it is handed down like every other child.
+It is deliberately NOT a `VolumeWork`: a pass reads the local index database and never the drive, so it must not hold
+the volume against an eject. The scheduler also registers a `register_subsystem_stop_hook`, so `stop_all_indexing`
+reaches every pass at once. How a pass polls, and what a stopped one leaves behind: `importance/scheduler/DETAILS.md` §
+"How a pass stops".
 
 ## Cancellation is observable, as a typed error
 

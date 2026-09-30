@@ -621,12 +621,15 @@ pub fn clear_every_index() -> Result<(), String> {
 /// per-drive intent survives and the master switch can restore it (see
 /// `master::drives_to_resume`).
 pub(crate) fn stop_all_indexing() {
+    // Tell shared-resident-pool subsystems (media_index enrichment, the importance
+    // scheduler) to yield to the SAME 16 GB ceiling, rather than a second independent
+    // budget over one pool. FIRST, because the hooks only fire signals and return,
+    // while each volume stop below drains for up to seconds: run last, a subsystem
+    // working on the fifth volume would keep allocating through four drains.
+    crate::indexing::resources::subsystem_stop::run_subsystem_stop_hooks();
     for volume_id in all_registered_volume_ids() {
         if let Err(e) = stop_indexing(&volume_id) {
             log::warn!("stop_all_indexing: stop_indexing('{volume_id}') failed: {e}");
         }
     }
-    // Tell shared-resident-pool subsystems (media_index enrichment) to yield to the
-    // SAME 16 GB ceiling, rather than a second independent budget over one pool.
-    crate::indexing::resources::subsystem_stop::run_subsystem_stop_hooks();
 }

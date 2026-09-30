@@ -66,7 +66,10 @@ fn a_poisoned_registry_still_reports_its_ready_volumes() {
     ]);
     poison(&registry);
 
-    let mut candidates = ready_candidates_on(&registry);
+    let mut candidates: Vec<_> = ready_candidates_on(&registry)
+        .into_iter()
+        .map(|(candidate, fresh)| (candidate.volume_id, candidate.kind, fresh))
+        .collect();
     candidates.sort_by(|a, b| a.0.cmp(&b.0));
 
     // The kind and the freshness both survive: neither can be torn by a panic, so

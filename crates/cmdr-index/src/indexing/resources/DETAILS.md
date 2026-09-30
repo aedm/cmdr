@@ -76,12 +76,18 @@ writer-channel depth and reconciler `pending_events` len once they're atomics.
 
 ### The shared ceiling (subsystem_stop.rs)
 
-That one budget covers OTHER resident-pool subsystems too: a subsystem (image enrichment in `media_index/`, which
-decodes HEIC/RAW and can spike RAM) calls `register_subsystem_stop_hook` once at startup, and `stop_all_indexing` runs
-`run_subsystem_stop_hooks` alongside stopping indexing. This is deliberate — a second independent 16 GB ceiling over the
-same pool would let the two sum to ~2× real headroom. `STOP_HOOKS` is a process-global, append-only `Vec` (a subsystem
-registers once and never unregisters; it lives for the process). Hooks run inline in the stop path, so they must be
-cheap and non-blocking (flip an atomic cancel flag).
+That one budget covers OTHER resident-pool subsystems too: a subsystem calls `register_subsystem_stop_hook` once at
+startup, and `stop_all_indexing` runs `run_subsystem_stop_hooks` alongside stopping indexing. Two register today: image
+enrichment in `media_index/` (it decodes HEIC/RAW and can spike RAM), and the `importance/` scheduler (a full pass holds
+a transient ~166 MB on a big volume). This is deliberate — a second independent 16 GB ceiling over the same pool would
+let the two sum to ~2× real headroom. `STOP_HOOKS` is a process-global, append-only `Vec` (a subsystem registers once
+and never unregisters; it lives for the process). Hooks run inline in the stop path, so they must be cheap and
+non-blocking (fire a cancellation token).
+
+**The hooks run FIRST, before any volume is stopped.** Each `stop_indexing` drains its volume for up to seconds, one
+after another, and a hook only fires a signal and returns. Run last, a subsystem busy on the fifth volume would keep
+allocating through four drains of an emergency stop. ❌ Don't move them back behind the drains, and don't let a hook
+block: it would delay every volume's stop.
 
 ## Index retention and cleanup (retention.rs)
 

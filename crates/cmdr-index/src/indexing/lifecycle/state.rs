@@ -66,7 +66,7 @@ pub(crate) use queries::is_watching_for_test;
 pub(crate) use queries::registered_mtp_volume_ids_for_device;
 pub(crate) use queries::{
     all_registered_volume_ids, awaits_its_first_scan, index_failure, is_active_and_staying, is_being_torn_down,
-    ready_volumes_with_kind, volume_kind,
+    ready_volumes_to_wire, ready_volumes_with_kind, volume_kind,
 };
 pub use queries::{is_active, is_failed};
 #[cfg(any(test, feature = "testing"))]

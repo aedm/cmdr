@@ -221,7 +221,6 @@ Items that don't move the targets, each tracked in its own issue:
 - #308: refresh the Finder-style free space when purgeable space changes.
 - #134: load only the active language's messages.
 - #231: a fresh idle baseline on a quiet machine (largely answered by `idle-census-2026-09-27.md`).
-- #230: a running importance pass ignores the memory watchdog and shutdown.
 
 ## Retired: don't reopen
 
