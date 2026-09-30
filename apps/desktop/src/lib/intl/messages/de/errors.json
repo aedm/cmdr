@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Eine Datei steht im Weg",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr konnte den Zielordner nicht erstellen, weil unter {path} eine Datei liegt, wo ein Ordner sein muss. Es wurde nichts geschrieben, und die Originale sind unberührt.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Wähle ein anderes Ziel, oder benenne diese Datei um oder bewege sie woandershin und versuche es dann noch einmal.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Noch nicht verbunden",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "„{path}“ ist ein Ordner, keine Datei.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Unter „{path}“ liegt eine Datei, wo ein Ordner sein muss.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Das Ziel kann diesen Namen nicht speichern. Wähle einen anderen.",
   "@errors.volume.invalidName": {

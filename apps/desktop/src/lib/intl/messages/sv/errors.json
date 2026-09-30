@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "En fil står i vägen",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr kunde inte skapa målmappen eftersom det ligger en fil på {path}, där det behöver finnas en mapp. Inget har skrivits och originalen är orörda.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Välj ett annat mål, eller byt namn på filen eller flytta den och försök igen.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Inte ansluten än",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "”{path}” är en mapp, inte en fil.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Det ligger en fil på ”{path}”, där det behöver finnas en mapp.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Målet kan inte lagra det namnet. Välj ett annat.",
   "@errors.volume.invalidName": {

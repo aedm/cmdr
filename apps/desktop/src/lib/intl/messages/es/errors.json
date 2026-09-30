@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Hay un archivo en medio",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr no ha podido crear la carpeta de destino porque hay un archivo en {path}, donde tiene que haber una carpeta. No se ha escrito nada y los originales están intactos.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Elige otro destino, o renombra o mueve ese archivo e inténtalo de nuevo.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Aún no conectado",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "“{path}” es una carpeta, no un archivo.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Hay un archivo en “{path}”, donde tiene que haber una carpeta.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "El destino no puede guardar ese nombre. Elige otro.",
   "@errors.volume.invalidName": {

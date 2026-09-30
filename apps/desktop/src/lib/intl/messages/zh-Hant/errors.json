@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "有個檔案占了位置",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr 無法建立目標資料夾，因為 {path} 是個檔案，但那裡需要一個資料夾。什麼都沒有寫入，原本的檔案完全沒有被動過。",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "換一個目標位置，或者把那個檔案改名或移走，然後再試一次。",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "尚未連線",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "「{path}」是資料夾，不是檔案。",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "「{path}」是個檔案，但那裡需要一個資料夾。",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "目標位置存不下這個名稱。請換一個。",
   "@errors.volume.invalidName": {

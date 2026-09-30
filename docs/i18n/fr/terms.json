@@ -1838,6 +1838,13 @@
     "forms": "identical to English on the popover and carries sameAsSourceJustification",
     "sources": "standard FR"
   },
+  "original": {
+    "accept": ["originaux"],
+    "chosen": "original",
+    "confidence": "high",
+    "forms": "the originals → les originaux",
+    "sources": "macOS Finder PE117 (…the original could not be deleted): l’original; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
+  },
   "outdated": {
     "accept": ["obsolescence"],
     "chosen": "obsolète",
@@ -2946,6 +2953,13 @@
     },
     "forms": "reach → joindre; can’t reach X → X est injoignable / Impossible de joindre X; an unreachable resource → inaccessible",
     "sources": "catalog (directConnectionUnreachableToast, onboarding.cloudSetup.status.connectionError)"
+  },
+  "untouched": {
+    "accept": ["intacts", "intacte", "intactes"],
+    "chosen": "intact",
+    "confidence": "high",
+    "forms": "the originals are untouched → les originaux sont intacts",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): conserver le fichier tel quel"
   },
   "update": {
     "accept": ["à jour"],

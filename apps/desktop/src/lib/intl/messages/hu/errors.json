@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Egy fájl útban van",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "A Cmdr nem tudta létrehozni a célmappát, mert egy fájl van itt, ahol mappának kellene lennie: {path}. Semmi sem íródott ki, és az eredetiek érintetlenek.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Válassz másik célt, vagy nevezd át vagy helyezd át azt a fájlt, és próbáld újra.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Még nincs csatlakoztatva",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "„{path}” mappa, nem fájl.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Egy fájl van itt, ahol mappának kellene lennie: „{path}”.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Ez a név nem használható a célhelyen. Válassz másikat.",
   "@errors.volume.invalidName": {

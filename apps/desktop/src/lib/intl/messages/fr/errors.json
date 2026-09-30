@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Un fichier occupe la place",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr n’a pas pu créer le dossier de destination, car un fichier se trouve à {path}, là où il faut un dossier. Rien n’a été écrit et les originaux sont intacts.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Choisissez une autre destination, ou renommez ou déplacez ce fichier, puis réessayez.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Pas encore connecté",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "« {path} » est un dossier, pas un fichier.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Un fichier se trouve à « {path} », là où il faut un dossier.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "La destination ne peut pas stocker ce nom. Choisissez-en un autre.",
   "@errors.volume.invalidName": {

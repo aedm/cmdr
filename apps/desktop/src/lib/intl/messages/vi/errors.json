@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Có một tệp đang chắn chỗ",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr không thể tạo thư mục đích, vì có một tệp ở {path}, nơi cần có một thư mục. Không có gì được ghi và các bản gốc vẫn nguyên vẹn.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Hãy chọn đích khác, hoặc đổi tên hay di chuyển tệp đó rồi thử lại.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Chưa kết nối",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "“{path}” là thư mục, không phải tệp.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Có một tệp ở “{path}”, nơi cần có một thư mục.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Đích không dùng được tên đó. Hãy chọn một tên khác.",
   "@errors.volume.invalidName": {

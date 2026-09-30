@@ -1810,6 +1810,13 @@
     },
     "sources": "macOS (Options → Opties)"
   },
+  "original": {
+    "accept": ["originelen"],
+    "chosen": "origineel",
+    "confidence": "high",
+    "forms": "the originals → de originelen",
+    "sources": "macOS Finder PE117 (…the original could not be deleted): het origineel; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
+  },
   "outdated": {
     "chosen": "verouderd",
     "confidence": "high",
@@ -2787,6 +2794,12 @@
     "chosen": "onbereikbaar",
     "confidence": "high",
     "sources": "standard NL; catalog (servers.refusal.unreachable)"
+  },
+  "untouched": {
+    "chosen": "onaangeroerd",
+    "confidence": "high",
+    "forms": "the originals are untouched → de originelen zijn onaangeroerd",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): het bestand ongewijzigd laten, the verb-side form"
   },
   "update": {
     "accept": ["updates", "bijwerken", "bijgewerkt", "bij te werken", "werkt"],

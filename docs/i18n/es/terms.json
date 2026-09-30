@@ -2677,6 +2677,13 @@
     "confidence": "high",
     "sources": "catalog (reach → acceder a)"
   },
+  "untouched": {
+    "accept": ["intactos", "intacta", "intactas"],
+    "chosen": "intacto",
+    "confidence": "high",
+    "forms": "the originals are untouched → los originales están intactos",
+    "sources": "macOS AppKit Document (To keep the file unchanged…): dejar el archivo intacto; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
+  },
   "update": {
     "chosen": "actualización",
     "accept": ["actualiz", "al día", "actualic"],

@@ -299,6 +299,10 @@
   "@errors.write.destinationNotFound.title": {
     "sourceHash": "e7b89c1"
   },
+  "errors.write.destinationNotAFolder.message": "Cmdr no pudo crear la carpeta de destino porque hay un archivo en {path}, donde tiene que haber una carpeta. No se escribió nada y los originales están intactos.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "cf862c6"
+  },
   "errors.write.symlinkLoop.title": "Se detectó un bucle de enlaces",
   "@errors.write.symlinkLoop.title": {
     "sourceHash": "76fafe1"

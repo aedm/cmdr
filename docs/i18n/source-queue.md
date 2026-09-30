@@ -41,3 +41,8 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   `network-share`; `notMatch` entries now cover these, but a sense-aware matcher would stop the next one.
 - `servers.hub.nearbyGroup`: no screenshot, and the description doesn't say whether a count-last shape is fine (hu, zh,
   and zh-Hant lead with "found nearby"). Recapture the hub with the group header showing, and say the order is free.
+- `errors.write.destinationNotAFolder.message` leaves `{path}` bare while its one-line twin
+  `errors.volume.notADirectory` quotes it (“{path}”). If the dialog styles the path itself, say so in the description;
+  otherwise quote it in both.
+- `pnpm i18n:brief --keys a b c` (space-separated) silently briefs only `a` (header says "1 key"). Reject stray
+  positional args, or accept both separators.

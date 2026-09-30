@@ -3297,6 +3297,13 @@
     "confidence": "high",
     "sources": "macOS Finder (NE7 nem érhető el többé)"
   },
+  "untouched": {
+    "accept": ["érintetlenek", "érintetlenül"],
+    "chosen": "érintetlen",
+    "confidence": "high",
+    "forms": "the originals are untouched → az eredetiek érintetlenek",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): nem szeretné módosítani, the verb-side form"
+  },
   "update": {
     "chosen": "frissítés",
     "accept": ["frissít", "frissül"],

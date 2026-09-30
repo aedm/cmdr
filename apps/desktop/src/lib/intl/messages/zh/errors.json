@@ -1112,6 +1112,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "有个文件占了位置",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr 无法创建目标文件夹，因为 {path} 是个文件，但那里需要一个文件夹。什么都没有写入，原文件没有被动过。",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "换一个目标位置，或者把那个文件改名或移到别处，然后再试一次。",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "尚未连接",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1835,6 +1847,10 @@
   "errors.volume.isADirectory": "“{path}”是文件夹，不是文件。",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "“{path}”是个文件，但那里需要一个文件夹。",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "目标位置存不下这个名称。请换一个名称。",
   "@errors.volume.invalidName": {

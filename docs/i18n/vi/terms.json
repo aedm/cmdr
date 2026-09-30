@@ -1683,6 +1683,13 @@
     "confidence": "high",
     "sources": "MS terminology"
   },
+  "original": {
+    "accept": ["gốc"],
+    "chosen": "bản gốc",
+    "confidence": "high",
+    "forms": "the originals → các bản gốc; the original file → tệp gốc (Finder)",
+    "sources": "macOS Finder PE117 (…the original could not be deleted): tệp gốc; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
+  },
   "outdated": {
     "chosen": "lỗi thời",
     "confidence": "tentative",
@@ -2614,6 +2621,12 @@
     "confidence": "tentative",
     "forms": "a bare status → Không tới được; reaching a SERVER → không kết nối được tới; reaching a PATH or drive → không thể truy cập; a USB device → truy cập",
     "sources": "catalog (errors.listing.networkUnreachable.title); no pile string"
+  },
+  "untouched": {
+    "chosen": "nguyên vẹn",
+    "confidence": "high",
+    "forms": "the originals are untouched → các bản gốc vẫn nguyên vẹn",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): không bị thay đổi, the verb-side form"
   },
   "update": {
     "chosen": "cập nhật",

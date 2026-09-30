@@ -1898,6 +1898,13 @@
     "confidence": "high",
     "sources": "MS terminology"
   },
+  "original": {
+    "accept": ["Originale"],
+    "chosen": "Original",
+    "confidence": "high",
+    "forms": "the originals → die Originale",
+    "sources": "macOS Finder PE117 (…the original could not be deleted): das Original; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
+  },
   "outdated": {
     "accept": ["nicht mehr aktuell", "aktuell"],
     "chosen": "veraltet",
@@ -3003,6 +3010,12 @@
     "chosen": "nicht erreichbar",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "untouched": {
+    "chosen": "unberührt",
+    "confidence": "high",
+    "forms": "the originals are untouched → die Originale sind unberührt",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): unverändert lassen, the verb-side form"
   },
   "update": {
     "accept": ["Updates", "aktualisier", "Aktualisierung", "Softwareupdate"],

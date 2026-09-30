@@ -1113,6 +1113,18 @@
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
   },
+  "errors.write.destinationNotAFolder.title": "Er staat een bestand in de weg",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr kon de doelmap niet aanmaken, omdat er op {path} een bestand staat waar een map moet staan. Er is niets geschreven en de originelen zijn onaangeroerd.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Kies een andere bestemming, of wijzig de naam van dat bestand of verplaats het, en probeer het opnieuw.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
+  },
   "errors.write.notConnected.title": "Nog niet verbonden",
   "@errors.write.notConnected.title": {
     "sourceHash": "8985693"
@@ -1836,6 +1848,10 @@
   "errors.volume.isADirectory": "‘{path}’ is een map, geen bestand.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Er staat een bestand op ‘{path}’, waar een map moet staan.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "De bestemming kan die naam niet opslaan. Kies een andere.",
   "@errors.volume.invalidName": {
