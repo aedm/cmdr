@@ -199,8 +199,12 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 - **Bare** (`smb2`'s own `tree: renamed from=a\b c.jpg to=…`) over-matches to the end of the line, and
   `end_of_bare_value` cuts at the first `: ` seam, `, `, or ` key=`, then drops an unbalanced `)`. A comma-space inside
   a bare name ends it early and leaks the rest; `{:?}` values can't hit that, which is why our own sites use it.
-- **An unquoted absolute value** that a path branch claims from its first byte is handed back (`key=` consumed, value
-  re-scanned), because only prose heuristics can find its end. Anything else is walked here by `redact_relative_path`:
+- **An unquoted absolute value** that a path branch claims from its first byte: report mode redacts it as a typed path
+  ending where `split_trailing_noise_with(value, false)` says, which is every rule except the lowercase prose run (the
+  key already says it's a path, so `…/Medical records` stays one leaf and matches its quoted spelling's token). The
+  unsalted policy hands it back (`key=` consumed, value re-scanned).
+- **`{:?}`-printed structs** use `key: "…"` (`PermissionDenied { path: "…" }`); a quoted value after `: ` is the same
+  complete typed value. `path: ` before anything else is prose and gets rescanned. Anything else is walked here by `redact_relative_path`:
   same leaf and allowlist rules, the first segment of an absolute value kept if it's a system root (`/private`,
   `/Applications`), and already-redacted segments left alone, which keeps it idempotent.
 - The key set is deliberately narrow: `name=` stays out because it names hosts and settings too (`Host …: name=NAS`),

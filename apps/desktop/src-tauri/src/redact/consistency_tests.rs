@@ -51,3 +51,36 @@ fn a_bare_service_type_and_multi_label_local_hosts_redact_whole() {
     assert!(!multi.contains("nas") && !multi.contains("home-lab"), "{multi}");
     assert!(multi.contains(".local:445"), "{multi}");
 }
+
+#[test]
+fn a_leaf_with_a_space_gets_one_token_in_every_path_shape() {
+    let context = context();
+    let url = "sftp://ada@127.0.0.1:12480/srv/data/Anna Kovacs/Medical records";
+    let lines = [
+        format!("read_directory_with_progress: listing_id=l-1, path={url}"),
+        format!("ended in error: PermissionDenied {{ path: {url:?} }} (NeedsAction)"),
+        format!("loadDirectory called: path={url:?}, currentLoading=false"),
+    ];
+    let redacted: Vec<String> = lines.iter().map(|line| context.redact_line(line).into_owned()).collect();
+    for line in &redacted {
+        for private in ["Anna", "Kovacs", "Medical", "records", "ada"] {
+            assert!(!line.contains(private), "{private:?} survived: {line}");
+        }
+    }
+    let leaf = |line: &str| hashes(line).last().cloned();
+    assert_eq!(leaf(&redacted[0]), leaf(&redacted[1]), "{redacted:?}");
+    assert_eq!(leaf(&redacted[0]), leaf(&redacted[2]), "{redacted:?}");
+
+    // The typed SFTP path (no scheme) shares every segment token with the URL form.
+    let typed = context
+        .redact_line(r#"SFTP path="/srv/data/Anna Kovacs/Medical records": error_kind=permission_denied"#)
+        .into_owned();
+    let typed_hashes = hashes(&typed);
+    let url_hashes = hashes(&redacted[2]);
+    assert_eq!(
+        typed_hashes,
+        url_hashes[url_hashes.len() - typed_hashes.len()..].to_vec(),
+        "{typed} vs {}",
+        redacted[2]
+    );
+}

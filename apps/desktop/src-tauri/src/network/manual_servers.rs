@@ -592,7 +592,12 @@ pub async fn add_manual_server<R: Runtime>(
         crate::network::smb_saved_shares::remember_named_share(&host.name, share, username.as_deref());
     }
 
-    info!("Added manual server: server={:?} serverId={:?}", host.name, host.id);
+    // The address, never `host.name` (a `host:port` display form) or the typed display name:
+    // `Loaded manual server` logs the same address, so one server reads as one token.
+    info!(
+        "Added manual server: host={:?}, port={}, serverId={:?}",
+        parsed.host, parsed.port, host.id
+    );
     // The saved lists changed (the host's account, maybe its name), even where no
     // volume did: the hub re-reads them on `volumes-changed`.
     crate::volume_broadcast::emit_volumes_changed();
@@ -766,8 +771,8 @@ pub fn load_manual_servers<R: Runtime>(app_handle: &AppHandle<R>) {
         let host = create_network_host(&entry.address, entry.port);
         on_host_found(host, app_handle);
         debug!(
-            "Loaded manual server: server={:?} serverId={:?}",
-            entry.display_name, entry.id
+            "Loaded manual server: host={:?}, port={}, serverId={:?}",
+            entry.address, entry.port, entry.id
         );
     }
 }

@@ -9,7 +9,7 @@ use super::paths::{
     dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf, redact_media, redact_unix_home,
     redact_unix_system, redact_volumes, redact_windows_home,
 };
-use super::redactor_regex;
+use super::{redactor_regex, split_trailing_noise_with};
 use super::references::{redact_host, redact_remote_unc, redact_remote_url, redact_scheme_less};
 use super::whole_len;
 use regex::Captures;
@@ -57,10 +57,16 @@ pub(super) const SYSTEM_ROOTS: &[&str] = &[
 /// path branch claims it, while other values are walked as relative paths.
 pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String, usize) {
     let key = caps.name("pf_key").map_or("", |m| m.as_str());
+    // `=` in our own fields, `: ` in a `{:?}`-printed struct (`PermissionDenied { path: "…" }`).
+    let sep = caps.name("pf_sep").map_or("=", |m| m.as_str());
     let raw = caps.name("pf_value").map_or("", |m| m.as_str());
     let quoted = raw.len() >= 2 && raw.starts_with('"') && raw.ends_with('"');
     let quote = if quoted { "\"" } else { "" };
-    let head = format!("{key}={quote}");
+    let head = format!("{key}{sep}{quote}");
+    // `path: ` before anything but a quote is prose ("the path: …"), not a field.
+    if sep != "=" && !quoted {
+        return super::rescan_inside(caps.get(0).map_or("", |m| m.as_str()));
+    }
 
     let value = if quoted {
         &raw[1..raw.len() - 1]
@@ -77,6 +83,16 @@ pub(super) fn redact_path_field(caps: &Captures<'_>, context: Option<&RedactionC
         return (format!("{head}{redacted}{quote}"), whole_len(caps));
     }
     if claimed_by_path_branch(value, context.is_some()) {
+        // Report mode: the key says this is a path, so it ends where the path grammar ends,
+        // lowercase last word included, and gets the same tokens as its quoted spelling.
+        if context.is_some() {
+            let (path, _) = split_trailing_noise_with(value, false);
+            let path = super::references::trim_reference_end(path);
+            if !path.is_empty() {
+                let redacted = redact_typed_path(path, context, true);
+                return (format!("{head}{redacted}"), head.len() + path.len());
+            }
+        }
         return (head.clone(), head.len());
     }
 

@@ -283,7 +283,7 @@ fn redactor_regex() -> &'static Regex {
                     smb_path | path | input | from | to | file | directory | dir | parent
                   | src | dest | dst | destination | selectName | new_name | old_name
                 )
-                =
+                (?P<pf_sep> = | :\x20 )
                 (?P<pf_value>
                     " (?: [^"\\\n] | \\ . )* "
                   | [^\s"'<>|`\[\](){},;] [^"|`\n]*
@@ -692,6 +692,14 @@ fn redact_mtp_owner(s: &str, context: Option<&RedactionContext>) -> String {
 ///   last `/`, which is what keeps `/Volumes/naspi and then it failed` down to `naspi`. It
 ///   never runs when the path reaches the seam: the seam already said where it ends.
 fn split_trailing_noise(s: &str) -> (&str, &str) {
+    split_trailing_noise_with(s, true)
+}
+
+/// [`split_trailing_noise`], optionally without its last rule (the lowercase prose run). A keyed
+/// field's value is a path by declaration, so a lowercase last word there (`Medical records`)
+/// is part of the name: trimming it split one folder into a token plus a bare word, and gave
+/// the same folder a different token than its quoted spelling on the next line.
+pub(super) fn split_trailing_noise_with(s: &str, trim_prose_run: bool) -> (&str, &str) {
     let bytes = s.as_bytes();
     let mut end = bytes.len();
 
@@ -746,7 +754,7 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
     // however lowercase it looks, so `/Volumes/naspi and then it failed` keeps `naspi`.
     // An extension ends the run on the spot, because a word carrying one is part of the
     // filename, not prose — that is what holds `my secret notes.txt` together.
-    if seam != Some(end) {
+    if trim_prose_run && seam != Some(end) {
         let floor = s[..end].rfind('/').map_or(0, |i| i + 1);
         loop {
             let mut i = end;
