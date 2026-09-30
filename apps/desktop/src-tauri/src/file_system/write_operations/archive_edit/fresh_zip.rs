@@ -427,9 +427,10 @@ fn produce(
         if let Some(mode) = entry.unix_mode {
             options = options.unix_permissions(mode);
         }
-        if let Some(modified) = entry.modified.and_then(system_time_to_zip_datetime) {
-            options = options.last_modified_time(modified);
-        }
+        // A source with no mtime is dated now; the helper owns the ZIP convention
+        // (local DOS time plus the exact UTC second), shared with the mutator.
+        let modified = entry.modified.unwrap_or_else(std::time::SystemTime::now);
+        let options = cmdr_archive::mutator::with_entry_mtime(options, modified);
         if entry.is_directory {
             zip.add_directory(entry.name.trim_end_matches('/'), options)
                 .map_err(map_zip)?;
@@ -590,14 +591,6 @@ fn map_io(error: std::io::Error) -> FreshZipError {
         std::io::ErrorKind::BrokenPipe => FreshZipError::OutputClosed,
         _ => FreshZipError::Zip(error.to_string()),
     }
-}
-
-fn system_time_to_zip_datetime(time: std::time::SystemTime) -> Option<zip::DateTime> {
-    use chrono::{Datelike, Timelike};
-    let dt: chrono::DateTime<chrono::Utc> = time.into();
-    let date = (dt.year().try_into().ok()?, dt.month() as u8, dt.day() as u8);
-    let clock = (dt.hour() as u8, dt.minute() as u8, dt.second() as u8);
-    zip::DateTime::from_date_and_time(date.0, date.1, date.2, clock.0, clock.1, clock.2).ok()
 }
 
 #[cfg(test)]
