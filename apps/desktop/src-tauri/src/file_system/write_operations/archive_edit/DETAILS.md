@@ -178,6 +178,14 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   writes concurrently over the one volume's connection, which both multiplex (SFTP on one channel, SMB on one session);
   pinned live by `a_compress_of_server_files_onto_the_same_server_lands_a_valid_zip` in both Docker suites.
 
+  **A dev build compresses about nine times slower than a release one, and that is the whole gap.** Deflate runs at
+  opt-level 0 under `pnpm dev` (`[profile.dev]` optimizes no dependency, `zlib-rs` included): 319 MB of mixed data
+  (random, text, binary) took 34.4 s through the bare `zip` writer in dev (9.3 MB/s of source) against 4.1 s in release
+  (78.5 MB/s). In the dev app the same data took 36.7 s onto the local disk and 35.6 s onto a phone over ADB, so the
+  destination isn't the limit there; `adb push` of the finished 154 MB ZIP ran at 35 MB/s. ❌ Don't read a dev-build
+  compress rate as the product's. (Measured on an M3 MacBook Pro, `zip` 8.6.0 + `zlib-rs` 0.6.5, level 6, Pixel 9 Pro
+  XL over USB, 2026-09-30.) In a release build the phone's link is the likelier limit on incompressible data.
+
   `fresh_zip.rs` drives `zip` 8.6 `ZipWriter::new_stream` on one OS worker. Local files are read directly; one remote
   feeder is live at a time. Remote input and generated output cross separate four-chunk Tokio channels (the worker
   parks in `blocking_recv` / `blocking_send`), split into 128 KiB payloads, so queued bytes are bounded independently of
