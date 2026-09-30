@@ -6,10 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use super::dest_chain::leaf_in_the_way;
 use crate::file_system::write_operations::ledger::CopyTransaction;
 use crate::file_system::write_operations::state::WriteOperationState;
 use crate::file_system::write_operations::types::WriteOperationError;
-use crate::file_system::write_operations::validation::path_exists_or_is_symlink;
 
 /// Creates destination directories for the scanned source dirs the per-file
 /// loop didn't materialize. The loop creates directories only as FILE parents,
@@ -25,9 +25,10 @@ use crate::file_system::write_operations::validation::path_exists_or_is_symlink;
 /// transaction for rollback.
 ///
 /// Data-safety: a dest path that already holds ANYTHING is left untouched — a
-/// same-named dir is a merge (nothing to create), and a same-named file is a
-/// type clash where silently replacing user data with an empty directory would
-/// be worse than skipping.
+/// same-named dir is a merge (nothing to create), and a same-named file or link
+/// is a type clash where silently replacing user data with an empty directory
+/// would be worse than skipping. Nothing is created THROUGH a link either
+/// (`dest_chain.rs`).
 pub(in crate::file_system::write_operations::transfer) fn create_scanned_dirs_at_destination(
     scanned_dirs: &[PathBuf],
     sources: &[PathBuf],
@@ -51,7 +52,23 @@ pub(in crate::file_system::write_operations::transfer) fn create_scanned_dirs_at
             continue;
         };
         let dest = super::apply_dir_remap(&dest, dir_remap);
-        if created_dirs.contains(&dest) || path_exists_or_is_symlink(&dest) {
+        // A LEAF stands at this path or above it, below the destination: a
+        // file, or a link whatever it points at. It stays, and nothing lands at
+        // or under it. Under a file that's a folder→file clash that ended in
+        // Skip (creating would fail ENOTDIR and take the operation down over a
+        // clash it already settled). Under a link, creating would make the
+        // directory inside the link's TARGET, a folder the user never picked.
+        if let Some(kept) = leaf_in_the_way(destination, &dest, created_dirs)? {
+            log::debug!(
+                "copy: not landing {} at or under the kept {}",
+                dest.display(),
+                kept.display()
+            );
+            continue;
+        }
+        // Standing already: made by the file loop, or a real directory the
+        // walk above just proved (a merge, nothing to create).
+        if created_dirs.contains(&dest) {
             continue;
         }
         // Collect the missing ancestors first so rollback records exactly what
@@ -64,18 +81,6 @@ pub(in crate::file_system::write_operations::transfer) fn create_scanned_dirs_at
                 Some(p) => walk = p.to_path_buf(),
                 None => break,
             }
-        }
-        // The nearest existing ancestor is a FILE: this directory sits under a
-        // folder→file clash that ended in Skip, so the file stays and nothing
-        // lands under it. Creating here would fail with ENOTDIR and take the
-        // whole operation down over a clash it already settled.
-        if walk.exists() && !walk.is_dir() {
-            log::debug!(
-                "copy: not landing {} under the kept file {} (skipped folder→file clash)",
-                dest.display(),
-                walk.display()
-            );
-            continue;
         }
         fs::create_dir_all(&dest).map_err(|e| WriteOperationError::IoError {
             path: dest.display().to_string(),

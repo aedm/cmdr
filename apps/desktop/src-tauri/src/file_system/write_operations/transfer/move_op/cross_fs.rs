@@ -202,6 +202,7 @@ pub(super) fn move_with_staging(
             let verdict = copy_single_item(
                 &file_info.path,
                 file_info.dest_path(&staging_dir),
+                &staging_dir,
                 // Phase 3 renames the staging tree into place, so the journal
                 // records where each file will live, not where it's written.
                 Some(JournalDestUnder {

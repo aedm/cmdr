@@ -483,6 +483,7 @@ fn copy_one_file(source: &Path, dest_dir: &Path) -> CopyTransaction {
     copy_single_item(
         source,
         dest_dir.join(source.file_name().unwrap()),
+        dest_dir,
         None,
         is_symlink,
         write_weight,
