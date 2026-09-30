@@ -271,13 +271,12 @@ fn summarize_empty_name_pattern() {
 // ── Diagnostic-safe summary ──────────────────────────────────────
 
 #[test]
-fn diagnostic_summary_keeps_shape_without_private_query_material() {
+fn diagnostic_summary_keeps_shape_and_a_report_tokenizable_scope() {
     const PATTERN_SENTINEL: &str = "Q🔒.*private-pattern";
-    const SCOPE_SENTINEL_A: &str = "/Users/private-person/secret-scope-a";
+    const SCOPE_SENTINEL_A: &str = "/Users/private-person/Downloads/secret scope a";
     const SCOPE_SENTINEL_B: &str = "/Volumes/private-drive/secret-scope-b";
     const EXCLUDE_SENTINEL_A: &str = "private-exclusion-a";
     const EXCLUDE_SENTINEL_B: &str = "private-exclusion-b";
-
     let mut q = make_query(
         Some(PATTERN_SENTINEL),
         PatternType::Regex,
@@ -293,24 +292,40 @@ fn diagnostic_summary_keeps_shape_without_private_query_material() {
     q.case_sensitive = Some(false);
     q.exclude_system_dirs = Some(false);
 
+    // The local log keeps the scope whole: a 0-match line means nothing without it.
     let summary = summarize_query_for_diagnostics(&q);
-
-    for private in [
-        PATTERN_SENTINEL,
-        SCOPE_SENTINEL_A,
-        SCOPE_SENTINEL_B,
-        EXCLUDE_SENTINEL_A,
-        EXCLUDE_SENTINEL_B,
-    ] {
-        assert!(
-            !summary.contains(private),
-            "diagnostic summary leaked {private:?}: {summary}"
-        );
-    }
+    assert!(!summary.contains(PATTERN_SENTINEL), "the pattern literal never logs: {summary}");
     assert_eq!(
         summary,
-        "pattern=regex(19 chars/22 bytes), size=min+max, modified=after+before, type=files, case=insensitive, count-only=true, scope=roots(2), exclusions=2, system-exclusions=off"
+        format!(
+            "pattern=regex(19 chars/22 bytes), size=min+max, modified=after+before, type=files, case=insensitive, count-only=true, scope=roots(2) [path={SCOPE_SENTINEL_A:?}, path={SCOPE_SENTINEL_B:?}], exclusions=2 [dir={EXCLUDE_SENTINEL_A:?}, dir={EXCLUDE_SENTINEL_B:?}], system-exclusions=off"
+        )
     );
+
+    // A report tokenizes every root and exclusion, and keeps the Downloads role.
+    let report = crate::redact::RedactionContext::for_test([0x11; 32], "ERR-SCOPE")
+        .redact_line(&summary)
+        .into_owned();
+    for private in ["private-person", "secret scope", "private-drive", "secret-scope-b", "private-exclusion"] {
+        assert!(!report.contains(private), "report leaked {private:?}: {report}");
+    }
+    assert!(report.contains("scope=roots(2) [path=\"$HOME/Downloads/<dir:"), "{report}");
+    assert!(report.contains("path=\"/Volumes/<volume:"), "{report}");
+    assert!(report.contains("exclusions=2 [dir=\"<dir:"), "{report}");
+}
+
+#[test]
+fn diagnostic_scope_names_at_most_three_roots() {
+    let mut q = make_query(None, PatternType::Glob, None, None, None, None, None);
+    q.include_paths = Some((1..=5).map(|i| format!("/tmp/root-{i}")).collect());
+
+    let summary = summarize_query_for_diagnostics(&q);
+
+    assert!(
+        summary.contains(r#"scope=roots(5) [path="/tmp/root-1", path="/tmp/root-2", path="/tmp/root-3", +2 more]"#),
+        "{summary}"
+    );
+    assert!(summary.contains("scope=") && !summary.contains("root-4"), "{summary}");
 }
 
 #[test]

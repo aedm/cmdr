@@ -76,11 +76,18 @@ pub(crate) fn summarize_query(query: &SearchQuery) -> String {
     }
 }
 
-/// Describe a query's useful shape without putting user-authored material in diagnostics.
+/// Describe a query for the two engine log lines: its shape, plus where it was allowed to match.
 ///
-/// This intentionally does not transform, normalize, hash, or sample the pattern,
-/// paths, or exclusion names: each would retain a fingerprint without helping triage.
-/// `summarize_query` stays literal because MCP returns it as functional user data.
+/// The pattern shows only its mode and length: a literal query is the user's own words, and no
+/// redactor can tell which of them are private. The scope roots and `!name` exclusions log
+/// whole, as `path={:?}` / `dir={:?}` fields that a report tokenizes (`$HOME/Downloads` keeps its
+/// role). `summarize_query` stays literal because MCP returns it as functional user data.
+///
+/// Why the scope is there: a 0-match line is uninterpretable without it. An empty scope box in
+/// the dialog is NOT "everywhere" (it resolves to the focused pane's folder, see
+/// `src/lib/search/search-runners.ts`), so a search that found nothing on a drive full of hits
+/// looks identical in the log to a search of a genuinely empty drive. `ERR-FCAXU` was exactly
+/// that, and cost an afternoon.
 pub(super) fn summarize_query_for_diagnostics(query: &SearchQuery) -> String {
     let pattern = match query.name_pattern.as_deref().filter(|pattern| !pattern.is_empty()) {
         Some(pattern) => {
@@ -125,9 +132,14 @@ pub(super) fn summarize_query_for_diagnostics(query: &SearchQuery) -> String {
     };
     let scope = match query.include_paths.as_deref() {
         None | Some([]) => "whole-volume".to_string(),
-        Some(paths) => format!("roots({})", paths.len()),
+        Some(paths) => format!("roots({}) {}", paths.len(), keyed_list("path", paths)),
     };
-    let exclusions = query.exclude_dir_names.as_ref().map_or(0, Vec::len);
+    // The user's own `!name` exclusions only. The `SYSTEM_DIR_EXCLUDES` baseline is added later,
+    // in `ExcludeRules::from_query`, so it never reaches the query and would be noise on every line.
+    let exclusions = match query.exclude_dir_names.as_deref() {
+        None | Some([]) => "0".to_string(),
+        Some(names) => format!("{} {}", names.len(), keyed_list("dir", names)),
+    };
     let system_exclusions = if query.exclude_system_dirs == Some(false) {
         "off"
     } else {
@@ -138,6 +150,18 @@ pub(super) fn summarize_query_for_diagnostics(query: &SearchQuery) -> String {
         "pattern={pattern}, size={size}, modified={modified}, type={entry_type}, case={case}, count-only={}, scope={scope}, exclusions={exclusions}, system-exclusions={system_exclusions}",
         query.count_only
     )
+}
+
+/// `[key="a", key="b", key="c", +2 more]`: enough values to recognize the scope, without letting
+/// a 40-path scope own the line.
+fn keyed_list(key: &str, values: &[String]) -> String {
+    const MAX_SHOWN: usize = 3;
+    let mut items: Vec<String> = values.iter().take(MAX_SHOWN).map(|v| format!("{key}={v:?}")).collect();
+    let rest = values.len().saturating_sub(MAX_SHOWN);
+    if rest > 0 {
+        items.push(format!("+{rest} more"));
+    }
+    format!("[{}]", items.join(", "))
 }
 
 pub(crate) fn format_size(bytes: u64) -> String {

@@ -107,13 +107,17 @@ pure.
 - **Unscoped**: the boot volume, whole-volume, not `from_scope`. It's the MCP default (the dialog always sends a scope);
   an agent that wants a different volume names it.
 
-**The engine's two diagnostic lines carry query SHAPE, never query MATERIAL.**
+**The engine's two diagnostic lines carry the query's SHAPE plus its SCOPE, never the pattern text.**
 `query.rs::summarize_query_for_diagnostics` reports pattern mode and length (character count, plus byte count when they
-differ), filter kinds, count-only mode, whole-volume versus root count, exclusion count, and the system-exclusion flag.
-`engine.rs` adds matched/returned/hidden counts and timing. It never includes or derives a fingerprint from pattern
-text, regex/glob syntax, scope roots, or exclusion names: debug logs enter error-report bundles, and the shared path
-redactor cannot identify arbitrary filename prose. Scope kind and root count retain the distinction that made
-`ERR-FCAXU` diagnosable without naming the folders involved.
+differ), filter kinds, count-only mode, the scope (`whole-volume`, or `roots(N)` followed by up to three
+`path={:?}` roots and `+N more`), the user's exclusions as `dir={:?}` fields, and the system-exclusion flag.
+`engine.rs` adds matched/returned/hidden counts and timing. The local log keeps roots and exclusions whole; a report
+tokenizes them through the keyed `path=` / `dir=` fields (`$HOME/Downloads` keeps its role). The pattern text never
+logs: a query is the user's own words, and no redactor can tell which of them are private.
+
+Why the scope is there: an empty scope box in the dialog is NOT "everywhere" (it resolves to the focused pane's folder),
+so a 0-match search of the wrong folder reads exactly like a search of an empty drive without it. `ERR-FCAXU` was that,
+and cost an afternoon.
 
 Keep this separate from `summarize_query`: MCP returns that literal text as `interpreted_query`, where it is functional
 user data, so changing it for diagnostic privacy would corrupt the tool response rather than protect a log sink.

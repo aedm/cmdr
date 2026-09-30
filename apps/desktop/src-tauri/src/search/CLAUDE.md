@@ -24,8 +24,8 @@ hold data/operations; `history.rs` owns recents; `ai/` translates NL (`ai/CLAUDE
 - **Non-root indices are mount-relative**: PREFIX the mount root onto read paths, STRIP it from scopes. Mount root is
   the `volume_path` meta OR the live registry, ❌ never assume the meta is set.
 - **Honesty is TYPED, diagnostics are structural**: `uncovered_scopes`, `unresolved_scopes`, and `SearchRunCoverage`.
-  `summarize_query_for_diagnostics` never logs literal pattern/scope/exclusion text; `summarize_query` stays literal
-  for MCP `interpreted_query`. A resolved scope can't distinguish a typo from not-yet-walked ground.
+  `summarize_query_for_diagnostics` logs the pattern's shape only, and scope roots / exclusions as keyed
+  `path=` / `dir=` fields a report tokenizes; `summarize_query` stays literal for MCP `interpreted_query`. A resolved scope can't distinguish a typo from not-yet-walked ground.
 - **`prepare_search_index`'s `loading` says whether an event is COMING**; `loading: false, ready: false` is the terminal
   "no index here", or a machine that declined indexing waits forever.
 - **A directory's size filter applies BEFORE ranking** (`dir_sizes_for`), ❌ never after, and ❌ never fall back to "no
