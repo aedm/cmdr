@@ -260,6 +260,12 @@ registry lives below `commands/` rather than inside the chat command.
   tracked on scroll), so streaming follows but loading older doesn't jump. Page-boundary caveat: `buildRailMessages`
   folds each loaded page independently, so a tool result split across a page seam may render unfolded — negligible in
   practice (threads sit under the ~40 soft cap, well below a 50-message page, so paging rarely fires at all).
+- **Only the latest thread load may touch the rail** (`latestThreadLoad` in `ask-cmdr-trigger.svelte.ts`). Every read is
+  its own command, so the first one asked can be the last one answered: picking thread A and then B must leave B on
+  screen whichever answers second, and a late answer must not repaint a chat the user cleared with "new chat". An
+  overtaken load writes nothing, the `loadingHistory` flag included (the newer load owns ending it). "Load earlier"
+  drops its page the same way when any thread load happened since it asked, because its offset tiled against a list that
+  is no longer on screen. ❌ Don't add a read that writes thread state after an `await` without this check.
 
 ## Attachments by reference
 
