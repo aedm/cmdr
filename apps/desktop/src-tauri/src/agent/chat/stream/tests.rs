@@ -266,3 +266,42 @@ fn a_wake_brackets_its_thread_with_started_and_discarded() {
         json!({ "type": "discarded" })
     );
 }
+
+/// A decision is the one event that arrives outside a turn, straight from the path that wrote
+/// its timeline row. The row's id rides along so a rail that both loaded the row and heard the
+/// event shows one line, and the decision crosses as the verbs and counts the history view
+/// carries, never as the English line the model reads.
+#[test]
+fn a_decision_crosses_with_its_row_and_no_authored_sentence() {
+    use crate::agent::types::{ProposalDecision, ProposalOutcomeKind, ProposalVerb};
+
+    let event = AskCmdrStreamEvent::ProposalDecided {
+        message_id: 12,
+        seq: 4,
+        decision: ProposalDecision {
+            verb: ProposalVerb::Trash,
+            what: "/Users/dana/Downloads/*.dmg".to_string(),
+            ops: 3,
+            outcome: ProposalOutcomeKind::Ran {
+                done: 2,
+                skipped: 1,
+                failed: 0,
+            },
+        },
+    };
+
+    assert_eq!(
+        serde_json::to_value(event).expect("serializes"),
+        json!({
+            "type": "proposalDecided",
+            "messageId": 12,
+            "seq": 4,
+            "decision": {
+                "verb": "trash",
+                "what": "/Users/dana/Downloads/*.dmg",
+                "ops": 3,
+                "outcome": { "kind": "ran", "done": 2, "skipped": 1, "failed": 0 },
+            },
+        })
+    );
+}

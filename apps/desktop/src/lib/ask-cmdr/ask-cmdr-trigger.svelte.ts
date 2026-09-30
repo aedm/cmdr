@@ -20,7 +20,7 @@ import { refreshRailGate } from './ask-cmdr-gate.svelte'
 import { buildRailMessages } from './ask-cmdr-history'
 import { discardRenameReview } from './ask-cmdr-rename-review.svelte'
 import { askCmdrState, hasOlderMessages, MESSAGE_PAGE, RAIL_MAX_WIDTH, RAIL_MIN_WIDTH } from './ask-cmdr-state.svelte'
-import { stopStreaming } from './ask-cmdr-stream.svelte'
+import { settleDecisionsHeardWhileLoading, stopStreaming } from './ask-cmdr-stream.svelte'
 import { growMainWindowForRail, shrinkMainWindowForRail } from './rail-window'
 import {
   getAskCmdrConversation,
@@ -162,8 +162,16 @@ async function bootstrapActiveThread(): Promise<void> {
   } catch (e) {
     log.warn('bootstrapping the active thread failed: {error}', { error: String(e) })
   } finally {
-    askCmdrState.loadingHistory = false
+    endThreadLoad()
   }
+}
+
+/** A thread load is over, whether or not it put anything on screen. Decisions the rail heard
+ * meanwhile go back in here, because the load replaced the list they were shown in (or the
+ * rail wasn't on their thread yet) and its read may have been too early to include them. */
+function endThreadLoad(): void {
+  askCmdrState.loadingHistory = false
+  settleDecisionsHeardWhileLoading()
 }
 
 /** Load a thread's most recent page into the rail (tail-first). One probe fetch learns
@@ -193,7 +201,7 @@ async function loadConversation(id: number): Promise<void> {
         }
       : null
   } finally {
-    askCmdrState.loadingHistory = false
+    endThreadLoad()
   }
 }
 

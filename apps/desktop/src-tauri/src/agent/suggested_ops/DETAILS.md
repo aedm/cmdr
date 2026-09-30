@@ -143,6 +143,16 @@ an answer. But nobody expressed an opinion about the proposal by pressing Escape
 something the user never said, and the follow-up turn it would earn lands in whatever thread they had open, because
 that sweep's `conversation_id` is the RAIL conversation.
 
+**Decision: writing the timeline row announces it, on the turn transport, from the same function
+(`outcomes::record_in_thread`).**
+**Why**: a rail with that thread open has to show the line, and the row is persisted with nothing streaming it. Emitting
+`AskCmdrStreamEvent::ProposalDecided` where the row is written makes the announcement and the row one fact: it carries
+the conversation the row went into and the row's id, a failed write announces nothing, and so does every case that
+writes no row (a dismissal, a sweep with no thread, a thread deleted from under its sweep). ❌ Don't route this through
+`SuggestionsChanged` instead: that says `Approved` at the claim, before the settle writes the line, so a listener would
+look and find nothing. What the rail does with it: `apps/desktop/src/lib/ask-cmdr/DETAILS.md` § How an open thread
+stays current.
+
 What the follow-up turn itself does, and why it is coalesced per sweep: `../wake/DETAILS.md` § The turn a rejection
 earns.
 

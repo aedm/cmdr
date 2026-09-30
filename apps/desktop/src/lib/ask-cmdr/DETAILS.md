@@ -74,6 +74,7 @@ stays simple:
   turn (the backend dedupes). Live-stream only, deliberately NOT persisted: it describes one assembly, not thread
   content, so reloading the thread doesn't replay it. Rationale (why the drop must be loud at all):
   `src-tauri/src/agent/chat/DETAILS.md` § Budget enforcement.
+- `proposalDecided` → not a turn event at all, and handled before the reducer: § How an open thread stays current.
 
 Every terminal path uses the same assistant finalizer. It clears thinking/stalled state and removes tool rows that never
 received `toolCallFinished`, while retaining completed tool history. This also covers local cancellation, the
@@ -112,6 +113,7 @@ the point of having one.
 
 **Live, the digest arrives on the next load, not mid-turn.** `userPersisted` carries an id and no content, so a rail
 opened onto a wake already in flight shows the answer streaming above an empty spot until the thread is re-read.
+Widening that event to carry the block is the fix if it ever matters.
 
 ## What the user answered about a suggestion
 
@@ -128,15 +130,44 @@ many decisions are in the list.
 behind a fingerprint mismatch, and the outcome the store records is what SETTLED, not what was claimed. Hiding a partial
 run would leave the user believing their files moved.
 
-**Live, a decision arrives on the next load**, the same limitation the digest above has and for the same reason: the
-line is a persisted row, and nothing streams it. `SuggestionsChanged` does fire on every approve and reject, so a rail
-that wanted the line to appear under an open thread could refetch on it; it deliberately doesn't yet, because the fetch
-would run for every decision whether or not it concerns the thread on screen.
-
 The seven verb names are a spelled-out `Record`, ❌ not a key built from the verb token at runtime:
 `desktop-message-keys-unused` reads a runtime-built key as dead translation work unless it is on that check's closed
-dynamic-prefix allowlist, and seven literals are cheaper than an allowlist entry. Widening that event to carry the block
-is the fix if it ever matters.
+dynamic-prefix allowlist, and seven literals are cheaper than an allowlist entry.
+
+### How an open thread stays current
+
+The single-decision row is announced as it is written: `agent/outcomes.rs` emits `proposalDecided` on the turn
+transport, under the conversation the row went into, carrying the row's id and the decision. `handleTurnEvent` takes it
+before any turn rule applies and `showDecision` adds ONE line to the thread on screen. Each case has a test in
+`ask-cmdr-turn-stream.test.ts`.
+
+**Decision: the rail patches from the event's payload, it doesn't re-read the thread.** **Why**: a re-read replaces the
+whole message list. That throws away an answer that is mid-stream (its text isn't persisted until `done`) and the older
+pages the user loaded, and its reply can come back after the user moved to another thread. A patch is synchronous, so
+the conversation filter is the whole guard and there is nothing to arrive late.
+
+**Decision: the signal is its own event, ❌ not `suggestions-changed`.** **Why**: that event says the PENDING SET moved,
+which is a different fact at the one moment it matters. It says `approved` at the claim, while an approval's line is
+written when the operation settles (`agent/suggested_ops/DETAILS.md` § What the user's answer teaches the agent), so a
+rail listening to it would look before there is anything to see. It also fires for a dismissed review, which writes no
+line, and it goes to every window under a rule that it carries no display text. Emitting where the row is written makes
+the other cases fall out: a sweep with no thread (or a deleted one) writes no row and so announces nothing, and "reject
+all" over a sweep is one row and one line per group, in whichever thread each group's sweep belongs to.
+
+What the reducer has to get right:
+
+- **It is the one event that isn't part of a turn.** It never sets `streaming`, never hands a fresh chat an id (only
+  `started` does), and a thread on the stopped list still shows it.
+- **It goes above a bubble that is still streaming.** The streaming bubble has to stay last, or the next chunk opens a
+  second one and splits the answer.
+- **One row is one line, by row id.** The row is written before the event is emitted, so a thread load can return the
+  row and the event still follow.
+- **A decision heard during a thread load is held and put back when the load ends** (`endThreadLoad` →
+  `settleDecisionsHeardWhileLoading`). The load's read can be a moment older than the decision, and it replaces the list
+  the line was shown in, or the rail isn't on that thread yet.
+
+The sweep-wide `user`-role row still arrives on the next load, exactly like the digest: it opens a turn, and
+`userPersisted` carries no content.
 
 ## The staged-proposal toast
 

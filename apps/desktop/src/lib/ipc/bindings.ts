@@ -5633,6 +5633,19 @@ export type AskCmdrStreamEvent =
    */
   | { type: 'contextUsage'; estimatedTokens: number; budgetTokens: number; elidedResults: number }
   /**
+   *  The user answered a suggestion this thread made, and the line saying so just landed in
+   *  its timeline. The persisted event row's identity rides along, so a subscriber that also
+   *  loaded the row shows it once.
+   *
+   *  ⚠️ **The one event here that is not part of a turn.** A decision lands when the user
+   *  says no, or when an approved operation settles, which is usually with no turn running
+   *  at all, so a subscriber must NOT read it as proof one is. It rides this transport
+   *  anyway because this is the one keyed by conversation: emitted from the single place
+   *  that writes the row (`agent/outcomes.rs`), it reaches exactly the thread the row went
+   *  into, and a decision with no thread to land in emits nothing.
+   */
+  | { type: 'proposalDecided'; messageId: number; seq: number; decision: ProposalDecision }
+  /**
    *  The thread this turn ran in is GONE: a wake looked, found nothing worth raising, and
    *  took its thread with it (`agent/wake/quiet.rs`).
    *
