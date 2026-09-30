@@ -112,15 +112,21 @@ fn the_offer_is_gone_once_the_attempt_is_over() {
     );
 }
 
-/// The offer carries the switch the sign-in sheet showed, so the wiring above
-/// decides where the secret goes rather than guessing from the shape.
+/// The offer reads the shape the sign-in sheet sends over IPC, switch included,
+/// so the wiring decides where the secret goes from what the person chose.
 #[test]
-fn an_offer_says_whether_to_remember_it() {
-    let offer = SecretOffer {
-        secret: "typed-just-now".to_string(),
-        remember: false,
-    };
-    assert!(!offer.remember);
+fn an_offer_reads_the_sign_in_sheets_wire_shape() {
+    for remember in [true, false] {
+        let offer: SecretOffer =
+            serde_json::from_value(serde_json::json!({ "secret": "typed-just-now", "remember": remember }))
+                .expect("the sheet's payload deserializes");
+        assert_eq!(offer.secret, "typed-just-now");
+        assert_eq!(offer.remember, remember, "the switch arrives as the sheet showed it");
+    }
+    assert!(
+        serde_json::from_value::<SecretOffer>(serde_json::json!({ "secret": "typed-just-now" })).is_err(),
+        "❗ a payload without the switch is refused, never read as a default"
+    );
 }
 
 /// ❗ **A remembered offer is written only once the dial went through.** It used to

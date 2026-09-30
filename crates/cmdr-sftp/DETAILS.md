@@ -1195,7 +1195,9 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
   `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "The network transfer suites".
 
 The suites' prelude is `volume/test_support.rs`, ❌ not a `use super::*` glob out of `mod.rs`: what a glob pulls in
-isn't determinable without building, which is what made the SMB extraction's suites impossible to size in advance.
+isn't determinable without building, which is what made the SMB extraction's suites impossible to size in advance. Its
+session-free volume is `volume::testing::offline_volume`, public behind the `testing` feature so an app-side cell that
+downcasts to `SftpVolume` (the disconnect wiring) gets a real one without a server.
 
 **❗ Every `#[ignore]`d test in this crate is a Docker cell**, by construction: `desktop-rust-integration-tests` runs
 `--run-ignored only` over the whole package, so an ignored test here runs in CI whatever it's called. Something that

@@ -19,15 +19,20 @@ afterAll(() => {
   _setLocaleForTests(null)
 })
 
-/** One value per `ConnectionState`. Adding a state makes this fail to typecheck. */
-const STATES: ConnectionState[] = [
-  'direct',
-  'os_mount',
-  'disconnected',
-  'needs_sign_in',
-  'needs_host_key_approval',
-  'saved',
-]
+/**
+ * One key per `ConnectionState`. ❗ A `Record` over the union, so adding a state
+ * without listing it here fails to typecheck; an array literal typed
+ * `ConnectionState[]` would stay green with the new state missing.
+ */
+const COVERED: Record<ConnectionState, true> = {
+  direct: true,
+  os_mount: true,
+  disconnected: true,
+  needs_sign_in: true,
+  needs_host_key_approval: true,
+  saved: true,
+}
+const STATES = Object.keys(COVERED) as ConnectionState[]
 
 describe('getConnectionTooltip', () => {
   it('gives every state a sentence, and no two states the same one', () => {

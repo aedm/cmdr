@@ -544,6 +544,41 @@ async fn forgetting_a_server_nothing_saved_is_a_plain_no() {
     clippy::await_holding_lock,
     reason = "the lock serializes the process-global broadcast recorders for the whole cell; holding it across the await IS the point"
 )]
+async fn disconnecting_a_connected_place_tells_the_panes_and_keeps_it_saved() {
+    let _recorder = crate::volume_broadcast::recorder_test_lock();
+    let host = "192.0.2.73";
+    sftp_known_servers::remember(sftp_entry(host, true));
+    let volume_id = cmdr_fs::volume::sftp_volume_id(host, 2222, "ada");
+    // A real `SftpVolume` with no session behind it: the wiring downcasts to the
+    // concrete type, so an `InMemoryVolume` stand-in would have nothing to drop.
+    let volume = cmdr_sftp::volume::testing::offline_volume(
+        "stand-in",
+        SftpConnectionParams::new(host, 2222, "ada", "/srv/data"),
+        cmdr_sftp::auth::AuthRungUsed::Agent,
+        cmdr_fs::volume::host::VolumeHost::detached(),
+    );
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    manager.register(&volume_id, std::sync::Arc::new(volume));
+
+    assert!(disconnect_place(volume_id.clone()).await, "there was a session to drop");
+
+    let (gone_id, _) = crate::volume_broadcast::last_volume_gone().expect("❗ the panes were told");
+    assert_eq!(gone_id, volume_id);
+    assert!(manager.get(&volume_id).is_none(), "the volume left the registry");
+    let place = crate::server_volumes::server_places()
+        .into_iter()
+        .find(|place| place.id == volume_id)
+        .expect("❗ a disconnect never forgets the place");
+    assert_eq!(place.state, cmdr_fs::volume::ConnectionState::Saved);
+}
+
+/// A place with no session has nothing to drop, and a spurious
+/// `VolumeUnmounted` would send a pane home for no reason.
+#[tokio::test]
+#[allow(
+    clippy::await_holding_lock,
+    reason = "the lock serializes the process-global broadcast recorders for the whole cell; holding it across the await IS the point"
+)]
 async fn disconnecting_a_place_that_has_no_session_announces_nothing() {
     let _recorder = crate::volume_broadcast::recorder_test_lock();
     let host = "192.0.2.42";
