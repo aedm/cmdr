@@ -211,9 +211,15 @@ fn rescan_scanner_for_kind(kind: IndexVolumeKind) -> RescanScanner {
 /// predicate stays unchanged — a NAS rescan is slow, so keeping the partial visible
 /// is worth more there, and network partials are small.)
 ///
+/// `predates_policy`: rows written under an older exclusion policy
+/// (`scanner::index_predates_exclusion_policy`) are never reconciled over. A
+/// reconcile doesn't re-stamp the policy (it can't clear what an older one let
+/// in), so the index would stay distrusted, and every launch would route it back
+/// here. Only the truncating rebuild re-stamps it.
+///
 /// Pure so the boundary is unit-testable without an `AppHandle`.
-fn local_rescan_reconciles(entry_count: u64, prior_scan_completed: bool) -> bool {
-    entry_count > 1 && prior_scan_completed
+fn local_rescan_reconciles(entry_count: u64, prior_scan_completed: bool, predates_policy: bool) -> bool {
+    entry_count > 1 && prior_scan_completed && !predates_policy
 }
 
 /// Whether `resume_or_scan`'s local branch should replay the FSEvents journal on
@@ -453,9 +459,10 @@ impl IndexManager {
         };
         let journal_gap_too_wide = current_id > 0 && current_id > last_event_id + JOURNAL_GAP_THRESHOLD;
 
+        let has_rows = IndexStore::get_entry_count(read_conn).is_ok_and(|count| count > 1);
         let route = launch_route::launch_route(&launch_route::IndexOnDisk {
             scan_completed: status.scan_completed_at.is_some(),
-            has_rows: IndexStore::get_entry_count(read_conn).is_ok_and(|count| count > 1),
+            has_rows,
             has_covered_branches: branches::any_persisted(read_conn),
             journal_replayable,
             journal_gap_too_wide,
@@ -464,6 +471,7 @@ impl IndexManager {
             // deleted from can look perfectly finished. ❗ A read that FAILED counts as
             // set: `deletes::marker_reads_as_set` owns that call and says why.
             needs_rebuild: deletes::marker_reads_as_set(IndexStore::index_needs_rebuild(read_conn), &self.volume_id),
+            predates_exclusion_policy: has_rows && scanner::index_predates_exclusion_policy(read_conn),
         });
 
         match route {

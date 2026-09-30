@@ -163,10 +163,10 @@ impl IndexManager {
         let populated = IndexStore::get_entry_count(self.store.read_conn()).is_ok_and(|count| count > 1);
         let why = if !populated {
             None
-        } else if start == PhasedStart::RebuildFirst {
-            Some("it has rows but no record of which ground they cover")
         } else if index_predates_exclusion_policy(self.store.read_conn()) {
             Some("it predates this build's exclusion policy, so nothing in it counts as covered")
+        } else if start == PhasedStart::RebuildFirst {
+            Some("it has rows but no record of which ground they cover, or it's marked for a rebuild")
         } else {
             None
         };

@@ -978,6 +978,10 @@ from files the user really removed — so the index records that it may be short
   SET** (`deletes::marker_reads_as_set`): a marker nobody could read is ❌ never "no marker", because this one row
   outranks every other cell and no other cell can see the holes. A spurious rebuild costs one rescan; a skipped one
   carries the holes for the life of the index.
+- **A stale exclusion-policy stamp takes the same row** (`IndexOnDisk::predates_exclusion_policy`, populated indexes
+  only). An index built under an older policy looks finished while holding rows today's policy cuts, and only a
+  truncating walk re-stamps the policy: a journal replay or an in-place reconcile would keep the rows and leave coverage
+  distrusted for good. With the phases off, `start_scan` truncates it (`local_rescan_reconciles`' `predates_policy`).
 - **Cleared where the index it condemns is replaced**: the phased `RebuildFirst` truncate (in the same writer batch, so
   a death in between leaves the marker standing) and `start_scan`, beside `scan_completed_at`. ❌ Never `clear_index`,
   which deletes the database and the per-drive intent markers in it.

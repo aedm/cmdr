@@ -458,8 +458,9 @@ impl IndexManager {
         // (see `local_rescan_reconciles` for the completeness gate). Read the entry
         // count from the live read connection BEFORE any truncate. (NOTE: the network
         // predicate in `lifecycle/network_scan.rs` is intentionally left unchanged.)
+        let predates_policy = scanner::index_predates_exclusion_policy(self.store.read_conn());
         let reconcile = IndexStore::get_entry_count(self.store.read_conn())
-            .map(|n| local_rescan_reconciles(n, prior_scan_completed))
+            .map(|n| local_rescan_reconciles(n, prior_scan_completed, predates_policy))
             .unwrap_or(false);
 
         // Step 0: Capture this scan's calibration BEFORE truncating.
