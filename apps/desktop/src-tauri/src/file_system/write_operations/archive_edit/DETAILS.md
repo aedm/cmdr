@@ -117,9 +117,8 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   retained-rewrite count) — deleting one file from a 3-entry zip reports 1, not 2.
 - **Every `write-progress` is mirrored into the status cache.** `MutatorHooks::emit` is the one emit site (scan ticks,
   mutator ticks, the remote upload axis), and it pairs the event with `update_operation_status`, as the transfer
-  driver's `emit_progress_and_status` does. The cache is all a query API reads (the MCP `cmdr://state` resource, the
-  journal's header totals): an op that only emitted showed there as `scanning` with no bytes from start to finish,
-  paused or not. ❌ Don't call `emit_progress_via_sink` directly from an archive route. Pinned by
+  driver's `emit_progress_and_status` does. The cache is all a query API reads (the MCP `cmdr://state` resource): an
+  op that only emitted showed there as `scanning` with no bytes from start to finish, paused or not. ❌ Don't call `emit_progress_via_sink` directly from an archive route. Pinned by
   `every_emitted_phase_of_a_compress_reaches_the_status_cache`.
 - **E2E pacing.** Under `set_test_throttle` / `CMDR_E2E_COPY_THROTTLE_MS`, `MutatorHooks::on_progress` sleeps once per
   finished entry for the copy throttle's value, in 10 ms slices that return the moment the op is cancelled. It sleeps
