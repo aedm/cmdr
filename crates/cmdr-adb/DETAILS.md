@@ -222,6 +222,14 @@ may be localized. So a non-zero exit is read through what the sync service says 
 panel. The probe classifies, ❌ never guards: asked before, it is a TOCTOU window (the two the backend accepts on
 purpose are listed under the `Volume` answers).
 
+**`create_directory_all` names a file in the way** as `NotADirectory(device_path)`, the contract every backend keeps
+(`conformance::assert_create_directory_all_refuses_a_file_in_the_way`). `mkdir -p` says "File exists" or "Not a
+directory" only on stderr, so both halves are the probe's: the leaf stat that already decides `AlreadyExisted` refuses a
+leaf that isn't a folder, and an ancestor is looked for only after the verb has refused, walking up to the nearest thing
+that exists (`file_above`). The probe follows links, so a path through a link to a folder is created into, which on a
+phone is most paths: `/sdcard` is one. The fake's `mkdir -p` resolves links and refuses a file the way a kernel does
+(`testing/tree.rs`), or neither cell would mean anything.
+
 **What a variant carries.** `VolumeError::NotFound` and `PermissionDenied` are defined to carry the PATH
 (`crates/cmdr-fs/src/volume/types.rs`), and the transfer layer forwards it straight into what the frontend renders as
 the missing file's name. The mapper takes the path it is mapping a failure for, so a pathless `NotFound` is not

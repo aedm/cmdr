@@ -396,7 +396,12 @@ Per operation, the primitive and the cell it lands in:
   `TakingAName`. This is what lets `create_directory_errors_on_existing_dir` answer `true`.
 - **`create_directory_all`** runs the leaf's mkdir first (one round trip when the parent is already there) and reads
   `AlreadyExists` back as `AlreadyExisted`. ❗ Only a `NotFound` earns the ancestor walk; anything else fails the same
-  way at every level.
+  way at every level. A FILE in the way is `NotADirectory(path)`, which the table above can't produce: `TakingAName`
+  answers `AlreadyExists` for a file and a directory alike, and a mkdir UNDER a file answers `SSH_FX_NO_SUCH_FILE`
+  (OpenSSH folds `ENOTDIR` into it; verified against `sftp-fixture-openssh` by the Docker cell, 2026-09-30). So the
+  shared walk asks `MakesDirectories::leads_to` after the refusal, and ❗ that one is `SSH_FXP_STAT`, which follows
+  links, ❌ never `probe`'s `LSTAT`: a link to a folder is a folder to a `mkdir -p`, and the lstat answer would refuse
+  every destination reached through one. Both halves are conformance cells. The walk: `cmdr_fs::volume::mkdir_all`.
 - **`delete`** sends `SSH_FXP_REMOVE`, then `SSH_FXP_RMDIR` if that refused, so a bulk delete of files spends one round
   trip each rather than a stat plus a remove. When both refuse it probes once: a directory means the rmdir's refusal
   describes the path (`RemovingANode`), anything else means the FILE delete's own refusal is the honest answer —

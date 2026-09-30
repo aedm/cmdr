@@ -15473,6 +15473,20 @@ export type VolumeError =
   // The path is a directory, not a file (for example, SMB STATUS_FILE_IS_A_DIRECTORY).
   | { type: 'isADirectory'; data: string }
   /**
+   *  Something that isn't a directory sits where a directory has to be: a file,
+   *  or a link that leads to anything but a folder. Carries the path of the
+   *  thing IN THE WAY, which for a `mkdir -p` is often an ancestor of the path
+   *  that was asked for.
+   *
+   *  [`Volume::create_directory_all`](super::Volume::create_directory_all)
+   *  raises it, on every backend. ❌ Never [`AlreadyExists`](Self::AlreadyExists),
+   *  which callers of a `mkdir -p` read as "the folder is there, carry on", and
+   *  ❌ never [`NotFound`](Self::NotFound), which names a folder the user asked
+   *  Cmdr to CREATE as the thing that's missing. A link that leads to a folder
+   *  is a folder here: see `mkdir_all` § "A link to a folder is a folder".
+   */
+  | { type: 'notADirectory'; data: string }
+  /**
    *  The destination can't hold this name, whatever it's asked to do with it.
    *
    *  Distinct from [`NotFound`](Self::NotFound): the backend never got as far as

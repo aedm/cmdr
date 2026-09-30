@@ -56,6 +56,20 @@ policy has the reasoning; it is the same here). Transport errors: timeout → `C
 10 min on MOVE, COPY, DELETE, MKCOL, and `create_file`'s in-memory PUT (`MUTATION_BUDGET`); the streaming PUT and GET
 have none (`transport.rs` has the `read_timeout` reasoning, `streams.rs` the download idle budget).
 
+**A file where a folder should be can't be read off a status.** A MKCOL on a name a FILE holds, and one on a path under
+that file, answer differently per server, and neither answer says "file":
+
+- sabre/dav answers by the book: 405 on the file's own name, 409 under it (verified on Nextcloud 34.0.2, by `curl` and
+  by the Docker cell, 2026-09-30). Those read as "already there" and "parent missing".
+- Apache `mod_dav` answers **400 to everything addressed under a file**, a PROPFIND included, and to the file's own name
+  when the URL carries the trailing slash a collection takes, which is how `mkcol` spells it (verified on httpd 2.4.68,
+  same way, same date). That is an unclassified `IoError`.
+
+So `create_directory_all` asks: `MakesDirectories::leads_to` is one `Depth: 0` PROPFIND, sent only after a MKCOL was
+refused, and the shared walk turns a non-collection at or above the failed level into `NotADirectory(path)`. The walk
+reads an unclassified answer to that PROPFIND as "look one level up", which is what gets past Apache's 400. Both servers
+are held to it (`conformance_test.rs`, `nextcloud_test.rs`); the walk itself: `cmdr_fs::volume::mkdir_all`.
+
 A `multistatus` entity (`&amp;`) reaches the parser as its own `Event::GeneralRef`, never inside a text node, so
 `propfind.rs` resolves it there; a text-level `unescape` would silently drop the character.
 

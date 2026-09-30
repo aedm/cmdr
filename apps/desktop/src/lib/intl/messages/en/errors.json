@@ -2742,6 +2742,15 @@
     "screenshot": "mkdir-confirmation-too-long.png",
     "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
   },
+  "errors.volume.notADirectory": "There’s a file at “{path}”, where a folder needs to be.",
+  "@errors.volume.notADirectory": {
+    "description": "Shown when Cmdr needs a folder at a path (to create it, or to create something inside it) and finds a file there instead, so it stopped without changing anything. The file can sit one or more levels above the folder the person asked for, which is why the path is spelled out. Inline one-line message under the name field in Cmdr's Rename / New folder / New file flow, or in a brief toast. Plain text, one sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "placeholders": {
+      "path": "the full path of the file that is in the way (uncontrolled user text; keep it verbatim in quotes)"
+    },
+    "screenshot": "mkdir-confirmation-too-long.png",
+    "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
+  },
   "errors.volume.invalidName": "The destination can’t hold that name. Pick a different one.",
   "@errors.volume.invalidName": {
     "description": "Shown when a file server or filesystem rejects the name itself (a reserved name, a name that's too long, or a character it can't store). The fix is always a different name, never a retry, so keep that clear. Inline one-line message under the name field in Cmdr's Rename / New folder / New file flow, or in a brief toast. Plain text, one sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",

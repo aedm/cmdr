@@ -376,6 +376,10 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
             path,
             message: "Is a directory".to_string(),
         },
+        VolumeError::NotADirectory(path) => WriteOperationError::IoError {
+            path,
+            message: "Not a directory".to_string(),
+        },
         // The destination refused the name itself, so the transfer can only
         // succeed under a different one. It must stay typed all the way to the
         // dialog: as an `IoError` the user gets "couldn't copy the file" plus a

@@ -83,6 +83,35 @@ async fn create_directory_all_reports_an_existing_directory_honestly() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn create_directory_all_refuses_a_file_in_the_way() {
+    // `mkdir -p` names the problem only on stderr ("File exists", "Not a
+    // directory"), which nothing here may read, so the answer is the probe's.
+    let (_server, volume) = seeded().await;
+    conformance::assert_create_directory_all_refuses_a_file_in_the_way(
+        volume.as_ref(),
+        &fixture_path("/sdcard/notes.txt"),
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn create_directory_all_goes_through_a_link_to_a_folder() {
+    // ❗ `/sdcard` is itself a link on a real phone, so a refusal that judged an
+    // occupied name without following it would refuse the whole shared storage.
+    let mut tree = seeded_tree();
+    tree.add_symlink("/sdcard/link", "/sdcard/album");
+    let server = FakeAdbServer::start(tree).await;
+    let (volume, _) = connect_fake(&server, FIXTURE_SERIAL).await;
+
+    conformance::assert_create_directory_all_goes_through_a_link_to_a_folder(
+        volume.as_ref(),
+        &fixture_path("/sdcard/link"),
+        &fixture_path("/sdcard/album"),
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn delete_leaves_a_non_empty_directory_intact() {
     let (_server, volume) = seeded().await;
     conformance::assert_delete_leaves_a_non_empty_dir_intact(

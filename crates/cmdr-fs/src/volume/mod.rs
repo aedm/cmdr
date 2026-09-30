@@ -447,20 +447,32 @@ pub trait Volume: Send + Sync {
     /// SMB, MTP, in-memory), matching the local-FS `ensure_destination_dir`.
     ///
     /// The default walks `path`'s ancestors leaf→root, stopping at the first one
-    /// that already `exists()` (or at the volume root), then creates the missing
-    /// ones shallowest-first via `create_directory`. Probing existence per
-    /// ancestor before creating means it never calls `create_directory` on a dir
-    /// that's already there, so backends whose `create_directory` can't signal a
+    /// that leads to a directory (or at the volume root), then creates the
+    /// missing ones shallowest-first via `create_directory`. Probing per ancestor
+    /// before creating means it never calls `create_directory` on a dir that's
+    /// already there, so backends whose `create_directory` can't signal a
     /// collision (`MtpVolume`, `create_directory_errors_on_existing_dir() ==
     /// false`) never make a duplicate sibling. An `AlreadyExists` from
     /// `create_directory` (a concurrent op won a race) is also treated as
     /// success. These are network/IPC round-trips, so the leaf-first walk keeps
     /// them minimal: when the parent already exists (the common "new folder name
-    /// under an existing dir" case), it's one `exists()` plus one
-    /// `create_directory`.
+    /// under an existing dir" case), it's one probe plus one `create_directory`.
     ///
     /// Backends override only if they have a cheaper native recursive mkdir;
     /// SMB and MTP don't, so the per-component loop is the right shape there.
+    ///
+    /// **A file in the way is refused, by name.** A path that exists and doesn't
+    /// lead to a directory (a file, or a link to anything but a folder), at
+    /// `path` itself or at an ancestor, answers [`VolumeError::NotADirectory`]
+    /// carrying the path of the thing in the way, and nothing is created. ❌
+    /// Never `Ok(AlreadyExisted)` for it, and ❌ never the `NotFound` of the
+    /// level below it. A link that leads to a folder IS a folder here, and the
+    /// walk creates through it. Every mutable backend runs
+    /// `conformance::assert_create_directory_all_refuses_a_file_in_the_way`, and
+    /// the ones with links run
+    /// `conformance::assert_create_directory_all_goes_through_a_link_to_a_folder`.
+    /// Why a link is fine here and not in a merge: `mkdir_all.rs` § "A link to a
+    /// folder is a folder".
     ///
     /// Reports whether the LEAF was created here or was already there
     /// ([`DirectoryCreation`]). An overriding backend MUST answer that honestly:
@@ -483,15 +495,19 @@ pub trait Volume: Send + Sync {
             // one that already exists (or run out). A component with no file
             // name (the volume root `/`, an empty path, or `.`) has nothing to
             // create above it — the root always exists — so it stops the walk.
+            // ❗ "Exists" has to mean "leads to a directory": a bare `exists()`
+            // stops at a FILE just as happily, and the walk then answers
+            // `AlreadyExisted` for it or fails one level below it.
             let mut missing: Vec<PathBuf> = Vec::new();
             for ancestor in path.ancestors() {
                 if ancestor.file_name().is_none() {
                     break;
                 }
-                if self.exists(ancestor).await {
-                    break;
+                match mkdir_all::volume_path_leads_to(self, ancestor).await {
+                    LeadsTo::Directory => break,
+                    LeadsTo::NotADirectory => return Err(VolumeError::NotADirectory(ancestor.display().to_string())),
+                    LeadsTo::Nothing => missing.push(ancestor.to_path_buf()),
                 }
-                missing.push(ancestor.to_path_buf());
             }
 
             // `ancestors()` yields leaf→root, so `missing[0]` is the leaf and
@@ -505,11 +521,16 @@ pub trait Volume: Send + Sync {
                             leaf = DirectoryCreation::Created;
                         }
                     }
-                    // A concurrent op created it between our `exists()` check and
-                    // this call. Treat as success to keep the create idempotent —
-                    // but NOT as ours: somebody else's directory may already have
-                    // something in it.
-                    Err(VolumeError::AlreadyExists(_)) => {}
+                    // A concurrent op created it between our probe and this call.
+                    // Treat as success to keep the create idempotent — but NOT as
+                    // ours: somebody else's directory may already have something
+                    // in it. And only a DIRECTORY is success: what won the race
+                    // can be a file.
+                    Err(VolumeError::AlreadyExists(_)) => {
+                        if mkdir_all::volume_path_leads_to(self, dir).await == LeadsTo::NotADirectory {
+                            return Err(VolumeError::NotADirectory(dir.display().to_string()));
+                        }
+                    }
                     Err(e) => return Err(e),
                 }
             }
@@ -1731,7 +1752,7 @@ pub use entry_kind::EntryKind;
 pub use error::{ErrnoField, VolumeError};
 pub use ids::*;
 pub use in_memory::InMemoryVolume;
-pub use mkdir_all::{MadeDirectories, MakesDirectories};
+pub use mkdir_all::{LeadsTo, MadeDirectories, MakesDirectories};
 pub use patching::{PatchSource, patch_created, patch_deleted, patch_mutation, patch_renamed};
 pub use retirement::{Retirement, Retires, SelfHandle};
 pub use scan_boundary::{ScanBoundary, stopped as scan_stopped};

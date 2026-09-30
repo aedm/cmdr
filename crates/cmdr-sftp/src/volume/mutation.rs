@@ -27,7 +27,7 @@ use std::sync::Arc;
 
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::host::listings::ListingHost;
-use cmdr_fs::volume::mkdir_all::{self, MakesDirectories};
+use cmdr_fs::volume::mkdir_all::{self, LeadsTo, MakesDirectories};
 use cmdr_fs::volume::patching::{PatchSource, patch_created, patch_deleted, patch_renamed};
 use cmdr_fs::volume::scan_walk::Walking;
 use cmdr_fs::volume::{DirectoryCreation, VolumeError};
@@ -355,6 +355,30 @@ impl MakesDirectories for SftpVolume {
         Box::pin(async move {
             let session = self.clone_session().await?;
             self.create_one_directory(&session, remote).await
+        })
+    }
+
+    /// One `SSH_FXP_STAT`, which follows links. ❌ Never `probe`: that one is an
+    /// `LSTAT`, right for "is the name taken" and wrong here, where a link to a
+    /// folder is a folder.
+    fn leads_to<'a>(&'a self, remote: &'a str) -> Walking<'a, LeadsTo> {
+        Box::pin(async move {
+            let session = self.clone_session().await?;
+            match session.sftp().fs().metadata(remote).await {
+                Ok(meta) => Ok(match meta.file_type() {
+                    Some(kind) if !kind.is_dir() => LeadsTo::NotADirectory,
+                    // ❗ A server that declines to say the type gets the benefit
+                    // of the doubt. Refusing a folder that IS one locks the user
+                    // out of it; letting a file through only brings back the
+                    // vaguer refusal of whatever is written next.
+                    _ => LeadsTo::Directory,
+                }),
+                Err(e) => match map_sftp_error(&e, remote) {
+                    // No such name, or a link to nothing.
+                    VolumeError::NotFound(_) => Ok(LeadsTo::Nothing),
+                    other => Err(other),
+                },
+            }
         })
     }
 }

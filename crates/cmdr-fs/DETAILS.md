@@ -26,8 +26,8 @@ the next section.
   stat-and-listing backend gets for free); `remote_paths.rs` (a server tree's `<scheme>://user@host:port` app spelling,
   and the ONE translation); `friendly_error/` (typed, word-free classification); `usb_speed.rs` (❗ its doc comment
   reaches `bindings.ts`); `in_memory.rs` (the store and its knobs; `in_memory/volume_impl.rs` is its `impl Volume`);
-  `conformance.rs`; and `host/` (what a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md`
-  before writing a backend).
+  `conformance.rs` (+ `conformance/directory_creation.rs`, the three `create_directory_all` promises); and `host/` (what
+  a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md` before writing a backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
 - `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, and the
   one way a database file is deleted. `src/sqlite_util/thread_conn_cache.rs` is the per-thread read-connection cache and
@@ -456,8 +456,18 @@ everywhere, which is the point.
   transfer driver spends it by skipping the per-file destination conflict probe inside. Only the dangerous direction is
   pinned; answering `AlreadyExisted` for a leaf you did create is merely slower, which is what the trait means by "when
   in doubt, answer `AlreadyExisted`". MTP is the backend this matters most for: it answers
-  `create_directory_errors_on_existing_dir() == false`, so the default walk learns "already there" from its `exists`
-  probe rather than from a collision error.
+  `create_directory_errors_on_existing_dir() == false`, so the default walk learns "already there" from its probe rather
+  than from a collision error.
+- `assert_create_directory_all_refuses_a_file_in_the_way` — a FILE at the path, or at an ancestor of it, is refused with
+  `VolumeError::NotADirectory` carrying the file's path, and stays untouched. A taken name reads the same whatever holds
+  it on most protocols, so a walk that never asks answers `AlreadyExisted` for the file itself (and the transfer goes on
+  to write into it) and the `NotFound` of the level below it for anything deeper, naming a folder the user asked Cmdr to
+  create as the thing that's missing. Before this cell, every mutable backend did one or both. Run by local, SMB, MTP,
+  SFTP, WebDAV (Apache and Nextcloud), ADB, and the in-memory double.
+- `assert_create_directory_all_goes_through_a_link_to_a_folder` — the other side of that refusal: a link that LEADS to a
+  folder is a folder to a `mkdir -p`, so the link's own path answers `AlreadyExisted` and a path below it is created
+  inside the target. Run by the backends that have links (local, SFTP, ADB). Why this differs from the merge engines'
+  "not a directory in its own right": `src/volume/mkdir_all.rs` § "A link to a folder is a folder".
 - `assert_conflict_scan_reads_a_missing_destination_as_empty` — a destination that isn't there yet holds nothing, so
   `scan_for_conflicts` answers an empty list rather than the `NotFound` its listing hit. `scan_volume_copy` propagates
   what comes back, so the wrong answer isn't an odd conflict entry: it's the whole copy preview refusing to open, on the
@@ -620,7 +630,12 @@ modules under `volume/` carry the arithmetic, each behind a trait the backend im
 - **`mkdir_all.rs`** (`MakesDirectories`) answers `create_directory_all`, leaf first so the common case costs one
   request. ❗ Its `DirectoryCreation` answer is the load-bearing part: the transfer driver spends a `Created` by
   skipping its per-file destination conflict probe, so anything short of certainty (a lost race included) answers
-  `AlreadyExisted`. It also reports the SHALLOWEST directory it created, which is the one listing worth patching.
+  `AlreadyExisted`. It also reports the SHALLOWEST directory it created, which is the one listing worth patching. A
+  taken name isn't a folder until somebody looks, so the trait's third method (`leads_to`, one stat that follows links)
+  is what turns a file in the way into `NotADirectory`. ❗ It is asked only after a create was refused, so a walk that
+  works pays nothing for it; when each look happens, and why an unclassified answer means "look further up", is in the
+  module docs. The trait's DEFAULT `create_directory_all` (local, SMB, MTP, the double) keeps the same promise through
+  `volume_path_leads_to`, which replaces its per-ancestor `exists()` at the same cost.
 - **`patching.rs`** (`PatchSource`) answers `notify_mutation` and the created / deleted / renamed patches around it. A
   patch is a courtesy and ❌ never fails the mutation that earned it, so every function returns `()`. A rename across
   directories is two changes, ❗ never one `Renamed`.

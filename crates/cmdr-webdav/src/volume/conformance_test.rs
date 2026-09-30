@@ -124,6 +124,22 @@ async fn create_directory_all_reports_an_existing_directory_honestly() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn create_directory_all_refuses_a_file_in_the_way() {
+    // `MKCOL` answers 405 for ANY occupied name, file or collection, and 409
+    // for a path under a file. Read as "already there" and "parent missing",
+    // those walk straight past the file and report the folder the user asked
+    // Cmdr to create as not found.
+    let (volume, dir) = stock_server_with_scratch().await;
+    let notes = dir.join("notes");
+    volume.create_file(&notes, b"the user's notes").await.expect(FIXTURE);
+
+    conformance::assert_create_directory_all_refuses_a_file_in_the_way(&volume, &notes).await;
+
+    clean(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
 async fn delete_leaves_a_non_empty_directory_intact() {
     // ❗ `DELETE` on a collection is recursive by protocol (`Depth: infinity` is
     // the only depth it accepts), so this refusal is entirely the backend's.
