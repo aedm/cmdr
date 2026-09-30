@@ -36,6 +36,10 @@ COPY --from=builder /app/apps/website/dist /usr/share/nginx/html
 COPY apps/website/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/website/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
+# The access log dir (see nginx.conf). Production bind-mounts a host dir over it; this keeps a plain
+# `docker run` writable too.
+RUN mkdir -p /var/log/nginx/site && chown nginx:nginx /var/log/nginx/site
+
 # Expose port 80
 EXPOSE 80
 
