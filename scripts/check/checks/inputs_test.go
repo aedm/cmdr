@@ -416,9 +416,10 @@ var realTreeReadingTests = map[string][]string{
 	"TestGoTestsInputsCoverTheRealTreeItsTestsRead":            {"scripts/check/checks"},
 	// `.mise.toml` is the single source for the Go toolchain version; these three
 	// assert that whatever needs a Go version reads it from there.
-	"TestLinuxContainerProvisionsTheMisePinnedGo":              {".mise.toml"},
+	"TestLinuxContainerProvisionsTheMisePinnedGo":              {".mise.toml", "rust-toolchain.toml"},
 	"TestMiseGoVersionReadsThePin":                             {".mise.toml"},
-	"TestProvisionScriptStopsBeforeRunningTests":               {".mise.toml"},
+	"TestLinuxImageProvisionsThePinnedTools":                   {".mise.toml", "rust-toolchain.toml"},
+	"TestCheckoutCacheKeyMatchesTheE2ELinuxScript":             {"apps/desktop/scripts/e2e-linux.sh"},
 	"TestModuleCyclesAllowlistMatchesPinnedVersion":            {"scripts/check/checks/module-cycles-allowlist.json"},
 	"TestModuleCyclesPackagesAreTheLibraryMembers":             {"Cargo.toml", "crates/cmdr-fs/Cargo.toml"},
 	"TestNoFrontendSourceLoadsAgentDocs":                       {"apps/desktop/src", "apps/desktop/test", "apps/desktop/scripts", "apps/desktop/eslint-plugins", "eslint-plugins"},
