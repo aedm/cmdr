@@ -158,6 +158,60 @@ fn wire_volume_does_not_kick_a_pass_for_an_already_scored_volume() {
     crate::indexing::read::enrichment::uninstall_read_pool(SCORED_VOLUME_ID);
 }
 
+/// Forgetting a share deletes its importance database out from under the writer
+/// thread the scheduler keeps per volume, so the scheduler has to let go FIRST.
+///
+/// Two things go wrong when it doesn't, and both are pinned here. The writer's
+/// connection keeps the unlinked file's blocks allocated (tens of MB on a big
+/// share) for the rest of the session. And the writer stays in the registry, so
+/// when the share is indexed again every write goes into that unlinked file: the
+/// new database on disk never receives a row.
+#[test]
+fn a_forgotten_volumes_writer_lets_go_of_its_database() {
+    use crate::volume_files::{self, Removal, VolumeStore};
+    const VOLUME_ID: &str = "smb-wiring-forgotten";
+
+    let dir = tempfile::tempdir().expect("temp dir");
+    let scheduler = Arc::new(ImportanceScheduler::new(dir.path().to_path_buf()));
+    wiring::hold_the_importance_store(&scheduler);
+    let importance_db = importance_db_path(dir.path(), VOLUME_ID);
+    let visits = |db: &std::path::Path| -> i64 {
+        open_read_connection(db)
+            .and_then(|conn| Ok(conn.query_row("SELECT COUNT(*) FROM visits", [], |row| row.get(0))?))
+            .unwrap_or(-1)
+    };
+
+    let first = scheduler.writer_for(VOLUME_ID).expect("writer");
+    first.record_visit("/share/photos", 1).expect("visit");
+    first.flush_blocking().expect("flush");
+    let files = cmdr_fs::sqlite_util::database_files(&importance_db);
+    assert!(
+        files.iter().all(|file| file.exists()),
+        "test setup: a live writer keeps the database, its WAL, and its SHM on disk"
+    );
+
+    let index_db = VolumeStore::Index.db_path(dir.path(), VOLUME_ID);
+    volume_files::remove(&index_db, VOLUME_ID, Removal::Forgotten).expect("forget");
+
+    for file in &files {
+        assert!(!file.exists(), "{} must be gone", file.display());
+    }
+    assert!(
+        first.record_visit("/share/photos", 2).is_err(),
+        "the old writer is shut down, so nothing can write into the unlinked file"
+    );
+
+    // The share is indexed again: a new writer, on a new database.
+    let second = scheduler.writer_for(VOLUME_ID).expect("a fresh writer");
+    second.record_visit("/share/music", 3).expect("visit");
+    second.flush_blocking().expect("flush");
+    assert_eq!(
+        visits(&importance_db),
+        1,
+        "the new database holds the new visit and nothing of the forgotten one"
+    );
+}
+
 /// A volume's listeners last exactly as long as the life of the volume they were
 /// wired for.
 ///

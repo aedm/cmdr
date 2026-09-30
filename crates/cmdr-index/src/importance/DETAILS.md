@@ -179,11 +179,18 @@ and moves on; the recompute callers `let _ =` the result, so a checkpoint hiccup
 
 The one-writer-per-DB invariant must hold in spirit, not be papered over by WAL busy-timeouts: both `record_visit` and
 every recompute write to a volume's `importance.db`. `WriterRegistry` (owned by the `ImportanceScheduler`, in Tauri
-managed state) hands both a SHARED long-lived `ImportanceWriter` per volume, created lazily on first use and living for
-the process. `record_visit` reaches it via `app.try_state::<Arc<ImportanceScheduler>>()`; the scheduler's recompute
-reaches it via `writer_for`. Creation reserves the slot then builds outside the map lock, so two concurrent first-uses
-can't race two threads onto one DB. Keyed by volume id and independent of the index registry, so a writer outlives an
-unmount and a late `record_visit` or queued recompute still has one writer to go through.
+managed state) hands both a SHARED long-lived `ImportanceWriter` per volume, created lazily on first use and living
+until the volume's importance database is removed. `record_visit` reaches it via
+`app.try_state::<Arc<ImportanceScheduler>>()`; the scheduler's recompute reaches it via `writer_for`. Creation reserves
+the slot then builds outside the map lock, so two concurrent first-uses can't race two threads onto one DB. Keyed by
+volume id and independent of the index registry, so a writer outlives an unmount and a late `record_visit` or queued
+recompute still has one writer to go through.
+
+**The one thing that ends a writer early is its database being deleted.** The scheduler registers as the importance
+store's holder, and a removal (a forgotten or evicted volume) calls `WriterRegistry::retire` first: the thread is shut
+down and joined, and the next `writer_for` builds a fresh one on a fresh database. A pass looks at its stop signal right
+before it asks for a writer, because asking CREATES the database and a forgotten volume has just had its one deleted.
+The whole mechanism: `crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door they leave by".
 
 ## Synthetic-home fixture generator (`fixtures.rs`, `cfg(test)`)
 

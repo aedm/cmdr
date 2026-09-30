@@ -10,7 +10,8 @@ these cap the WHOLE indexing pool.
 - **memory_snapshot.rs** — the breakdown a trip logs (macOS), and its derived verdict.
 - **subsystem_stop.rs** — the stop-hook registry the watchdog runs beside the index stop.
 - **retention.rs** — the external-index-DB count cap with LRU eviction, plus `sweep_legacy_scheme_dbs` (one shot from
-  `Index::start_root_at_launch`: deletes databases keyed by a retired volume-ID scheme, which nothing can open again).
+  `Index::start_root_at_launch`: deletes every store's files keyed by a retired volume-ID scheme). Both remove through
+  `crate::volume_files`, ❌ never an unlink of their own.
 
 ## Must-knows
 

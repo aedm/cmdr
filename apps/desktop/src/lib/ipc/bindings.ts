@@ -2419,9 +2419,10 @@ export const commands = {
   disableDriveIndex: (volumeId: string) =>
     typedError<null, string>(__TAURI_INVOKE('disable_drive_index', { volumeId })),
   /**
-   *  Forget a drive's index entirely: stop it, DELETE its index DB (plus WAL/SHM
-   *  sidecars), and drop its registry instance, so its badge goes gray and a
-   *  future enable does a clean fresh scan rather than resuming a stale DB.
+   *  Forget a drive's index entirely: stop it, DELETE its index DB and the
+   *  folder-importance DB that scores it (each with its WAL/SHM sidecars), and
+   *  drop its registry instance, so its badge goes gray and a future enable does a
+   *  clean fresh scan rather than resuming a stale DB. The media index stays.
    *
    *  This is the per-volume sibling of `clear_drive_index` (which clears every volume):
    *  the user-facing "forget this drive" action for an external (SMB/MTP) index

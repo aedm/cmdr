@@ -216,7 +216,6 @@ Items that don't move the targets, each tracked in its own issue:
 - #324: share lists prefetched for every discovered SMB host at launch.
 - #325: a sync-status pool thread wedged in a File Provider call.
 - #326: Cmdr's acceptance check for the `smb2` 0.24.1 socket fix.
-- #327: the SMB importance DB outliving its index DB.
 - #328: mimalloc's `os_tag` colliding with `VM_MEMORY_IOACCELERATOR`.
 - #308: refresh the Finder-style free space when purgeable space changes.
 - #134: load only the active language's messages.

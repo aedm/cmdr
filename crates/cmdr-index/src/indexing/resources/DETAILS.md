@@ -102,21 +102,30 @@ rewritten on every scan/live write), and calls the pure, filesystem-free
 
 SAFETY, enforced by the selector and unit-tested: a candidate whose volume id is in the registry snapshot
 (`all_registered_volume_ids`) is dropped before any eviction decision, so a `Running`/`Initializing` volume's DB is
-never evicted no matter how old its mtime; `root` is excluded too. Eviction is a plain unlink of the DB + WAL/SHM (the
-volume is offline, no writer to drain), mirroring `clear_index`'s file deletion, and logs what it evicted. Deliberately
-simple: not a byte budget, not an access-time LRU — `TODO(retention)` in `select_evictions` flags those if
-abandoned-drive accumulation ever proves to need more.
+never evicted no matter how old its mtime; `root` is excluded too. An evicted volume is a FORGOTTEN one: its files go
+through `volume_files::remove` with `Removal::Forgotten`, the same door `clear_index` uses, so the importance database
+beside the index goes with it and the importance writer lets go first (the volume is offline, so there is no index
+writer to drain). ❌ Never unlink an `index-{id}.db` here by hand. Deliberately simple: not a byte budget, not an
+access-time LRU — `TODO(retention)` in `select_evictions` flags those if abandoned-drive accumulation ever proves to
+need more.
+
+`sweep_legacy_scheme_dbs` is the other automatic removal, one shot per launch: every store's files keyed by a volume ID
+from the retired scheme, removed as `Removal::Unreachable`. It reads the ids from every store's files and never from the
+index's alone, so a sibling whose index an earlier forget already took is swept too. Which stores each reason takes, and
+why: `crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door they leave by".
 
 The user-facing forget/disable/clear paths and the prune→Disabled model live in `../lifecycle/DETAILS.md` (`clear_index`
 / `forget_drive_index` / `disable_drive_index`); retention here is the automatic bounded-accumulation backstop.
 
 ### What it all takes up, and clearing it (the settings screen)
 
-`total_index_db_bytes` and `volume_ids_on_disk` answer over the same enumeration the cap uses, `root` included. They
-exist because the REGISTRY can't answer either question: a database a search's walk built has no instance behind it the
-moment the app restarts, and neither does the index of a drive whose indexing the user turned off. Those are exactly the
-bytes a person is entitled to see and reclaim, so the settings row and its Clear button read the files
-(`Index::disk_footprint`, `Index::forget_all_volumes`).
+`total_index_db_bytes` and `volume_ids_on_disk` answer over the files of every store a forgotten volume loses
+(`volume_files::volume_ids_on_disk` with `Removal::Forgotten`), `root` included. They exist because the REGISTRY can't
+answer either question: a database a search's walk built has no instance behind it the moment the app restarts, and
+neither does the index of a drive whose indexing the user turned off. Those are exactly the bytes a person is entitled
+to see and reclaim, so the settings row and its Clear button read the files (`Index::disk_footprint`,
+`Index::forget_all_volumes`). Both read the SAME set, so the number shown is the number a clear takes to zero, and it
+includes an importance database whose index is already gone.
 
 There is **no size cap** on any of it, by decision (`docs/specs/unindexed-search-plan.md` Decision 17): the answer to
 disk use is that the size and the Clear button work with drive indexing off, not a byte budget. If people complain about

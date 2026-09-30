@@ -247,7 +247,7 @@ impl Index {
         // Ordered before the record below, because the rebuild deletes the database
         // the marker lives in.
         if state::is_failed(volume_id) {
-            self.forget_volume(volume_id)?;
+            state::clear_index(volume_id, crate::volume_files::Removal::IndexRebuild)?;
         }
         // ⚠️ **Before the transport dispatch below, deliberately.** A share that's
         // asleep, off the network, or wanting credentials refuses at its own gate,
@@ -319,8 +319,12 @@ impl Index {
 
     /// Forget a volume's index entirely: stop it and delete its database, so the
     /// disk comes back and a future start does a clean first walk.
+    ///
+    /// The folder-importance database goes with it, since it scores the folders of
+    /// the index being forgotten. The media index stays: what it holds is hours of
+    /// work, and turning the drive's indexing back on picks it up again.
     pub fn forget_volume(&self, volume_id: &str) -> Result<(), IndexError> {
-        state::clear_index(volume_id).map_err(Into::into)
+        state::clear_index(volume_id, crate::volume_files::Removal::Forgotten).map_err(Into::into)
     }
 
     /// Forget every volume's index: stop whatever is running and delete every
@@ -397,7 +401,9 @@ impl Index {
     }
 
     /// How many bytes every index database occupies on disk right now, across all
-    /// volumes and including WAL sidecars.
+    /// volumes and including WAL sidecars, along with the folder-importance
+    /// databases that [`forget_all_volumes`](Self::forget_all_volumes) removes with
+    /// them. It is exactly what that call gives back.
     ///
     /// Reads the files, not the pool, because that's the only honest answer: a
     /// database a search's walk built is on disk with nothing registered for it

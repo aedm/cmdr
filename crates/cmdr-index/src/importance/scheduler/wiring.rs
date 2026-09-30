@@ -36,6 +36,7 @@ pub(super) fn build_and_wire() -> Option<Arc<ImportanceScheduler>> {
     let scheduler = Arc::new(ImportanceScheduler::new(data_dir));
 
     crate::indexing::resources::subsystem_stop::register_subsystem_stop_hook(stop_hook_for(&scheduler));
+    hold_the_importance_store(&scheduler);
 
     // Subscribe to registrations FIRST (before the sweep), so a volume that
     // registers during the sweep isn't dropped in the gap. Each registration
@@ -89,6 +90,24 @@ pub(super) fn stop_hook_for(scheduler: &Arc<ImportanceScheduler>) -> Box<dyn Fn(
             scheduler.stop_every_pass();
         }
     })
+}
+
+/// Register the scheduler as what holds each volume's importance database open,
+/// so a removal of that database asks it to let go first
+/// (`crate::volume_files::register_holder`).
+///
+/// Weak, for the same reason as the stop hook: the registry lives for the process,
+/// and must not keep alive a scheduler its host dropped.
+pub(super) fn hold_the_importance_store(scheduler: &Arc<ImportanceScheduler>) {
+    let scheduler = Arc::downgrade(scheduler);
+    crate::volume_files::register_holder(
+        crate::volume_files::VolumeStore::Importance,
+        Box::new(move |data_dir, volume_id| {
+            if let Some(scheduler) = scheduler.upgrade() {
+                scheduler.let_go_of(data_dir, volume_id);
+            }
+        }),
+    );
 }
 
 /// For a volume being wired, enqueue a full recompute IFF its store can't be trusted:

@@ -273,6 +273,13 @@ volume routes `None`, so no reader can still be holding — or can still open �
 This is also why the `Failed` phase needs no read-path special case: a `Failed` instance stays registered for the badge,
 but `fail_index` withdrew its handles before flipping the phase, so reads already skip.
 
+The withdrawal also retires the connections threads have already cached to the volume's databases
+(`volume_files::retire_read_connections`), so a stopped share stops being held open by every blocking thread that read
+it. And `clear_index(vid, why)` deletes nothing itself: the files go through `volume_files::remove`, where `why` (a
+forget or an index rebuild) decides which stores go with the index. A clear that lands on a `Detached` volume carries
+its reason in `TeardownClaim::Cleared`, so the handback takes exactly what an immediate clear would have. Both
+mechanisms: `crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door they leave by".
+
 **Freeing a slot and withdrawing its handles is ONE critical section** (`remove_instance_and_handles`, the start-up
 failure path). The two orders are not equivalent: withdraw-then-free is safe because the key still exists while the
 withdrawal runs, so no competing start can reserve yet; free-then-withdraw is NOT, because a competing

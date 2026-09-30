@@ -374,7 +374,9 @@ impl ImportanceIndex {
     ) -> Result<T, ImportanceStoreError> {
         // Generation `0`: importance reads have no invalidation generation (a
         // recompute rewrites rows in place, it never swaps the DB file), so the
-        // cache keys on the path alone.
+        // cache keys on the path alone. The two things that DO take the file away
+        // (a forgotten volume, a schema wipe) go through
+        // `sqlite_util::delete_database`, which retires the cached connections.
         READ_CONNS.with(|cell| cell.borrow_mut().with(&self.db_path, 0, open_read_connection, f))?
     }
 }

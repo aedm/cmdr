@@ -220,7 +220,7 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
     // launch, a reconnect, and a start recorded while the volume was still dying.
     if super::is_failed(volume_id) {
         log::info!("start_indexing: '{volume_id}' has a dead index; clearing it so this start can rebuild");
-        if let Err(e) = super::clear_index(volume_id) {
+        if let Err(e) = super::clear_index(volume_id, crate::volume_files::Removal::IndexRebuild) {
             log::warn!("start_indexing: clearing the failed index for '{volume_id}' failed: {e}");
         }
     }

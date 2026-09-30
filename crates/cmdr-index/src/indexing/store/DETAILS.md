@@ -440,7 +440,8 @@ that tracks nothing semantic, so it looks like the better lever. It isn't reacha
 `max_blocking_threads` (512 by default; `../../media_index/coverage/scores.rs` records the episode where the app
 actually reached it). Lowering that risks deadlocking blocking work against itself, and the honest alternative —
 retiring thread-local read connections on a timer, or pooling them — is a read-path restructure, not a budget change. So
-the count stays free and the per-connection number carries the bound.
+the count stays free and the per-connection number carries the bound. (A database that goes away IS retired, which is a
+different thing: `crates/cmdr-fs/DETAILS.md` § "Retiring cached read connections".)
 
 **The budget is watched, not enforced.** Nothing bounds the connection count structurally, so
 `sqlite_util::live_read_connections` counts what the `ThreadConnCache`s hold and the first crossing of

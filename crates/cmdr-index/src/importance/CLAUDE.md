@@ -41,9 +41,9 @@ Top-level leaves this file owns: `classify.rs` (the shared categorical classifie
 - **A classifier change is INERT until `store::SCORING_POLICY_KEY` re-arms stores** (a full pass runs once, an
   incremental only touches changed folders). It hashes the lists plus `SCORING_RULES_VERSION`; bump the latter by hand
   for a rule no list can see.
-- **`importance-{volume_id}.db` is a disposable cache**: a `SCHEMA_VERSION` mismatch delete-and-recreates it, no
-  migrations. ONE long-lived `ImportanceWriter` per volume through `writer_registry`; visits AND recomputes both route
-  through it. ❌ Never a second writer thread on one DB.
+- **`importance-{volume_id}.db` is a disposable cache**: a `SCHEMA_VERSION` mismatch delete-and-recreates it (no
+  migrations), and a forgotten volume takes it along, writer retired first. ONE `ImportanceWriter` per volume through
+  `writer_registry`, for visits AND recomputes. ❌ Never a second writer thread on one DB.
 - **Volume kind ⇒ policy, TYPED** (`scheduler::ScoringPolicy::for_kind`): Local and SMB scored, **MTP excluded** at
   every entry point. ❌ NEVER a filesystem syscall against an SMB or MTP mount — read the local index DB only.
 - **A pass stops with its volume** (its `CancellationToken`'s child, plus a `stop_all_indexing` hook).

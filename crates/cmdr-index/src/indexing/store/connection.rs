@@ -115,20 +115,9 @@ impl IndexStore {
 
     /// Delete the DB file and create a fresh one.
     fn delete_and_recreate(db_path: &Path) -> Result<Self, IndexStoreError> {
-        // Remove the main DB file
-        if db_path.exists() {
-            std::fs::remove_file(db_path)?;
-        }
-        // Always attempt to remove WAL and SHM sidecars (they can be stale even
-        // if the base DB was already deleted).
-        let wal = db_path.with_extension("db-wal");
-        let shm = db_path.with_extension("db-shm");
-        if wal.exists() {
-            let _ = std::fs::remove_file(&wal);
-        }
-        if shm.exists() {
-            let _ = std::fs::remove_file(&shm);
-        }
+        // The main file and its WAL and SHM sidecars, which can be stale even when
+        // the main file is already gone.
+        cmdr_fs::sqlite_util::delete_database(db_path)?;
 
         let conn = cmdr_fs::sqlite_util::open(db_path)?;
         register_platform_case_collation(&conn)?;

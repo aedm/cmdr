@@ -8,14 +8,15 @@ with no host at all.
 
 ## Module map
 
-- `lib.rs`: the crate's whole public surface, in one file. If it isn't re-exported here, a host can't rely on it.
+- `lib.rs`: the crate's whole public surface. If it isn't re-exported here, a host can't rely on it.
 - `indexing/`: the file index. Scans volumes into per-volume SQLite databases, keeps them fresh against filesystem
   events, and answers recursive-size and freshness questions. Private at the root: everything it promises is re-exported
   from `lib.rs`. Its `CLAUDE.md` routes to the twelve areas inside.
 - `media_index/`: OCR, Vision tags, and CLIP embeddings over the images the file index found, with ANN search on top.
 - `importance/`: a deterministic, cheap "which folders matter" score that expensive features consult before spending.
-- `benches/index_benchmarks.rs`: the enrichment and dir-stats hot paths, plus the aggregate roll-up. They compile
-  against this crate as an EXTERNAL one, so they only reach what a host can.
+- `volume_files.rs`: names each volume's files; the ONE door they're removed by (`DETAILS.md`).
+- `benches/index_benchmarks.rs`: the enrichment, dir-stats, and roll-up hot paths, compiled as an EXTERNAL crate, so
+  they reach only what a host can.
 
 ## Must-knows
 
@@ -37,9 +38,9 @@ with no host at all.
 - **Nothing here produces user-facing prose.** The index emits typed values; the host renders every word a human reads.
   Diagnostic strings for `log::` are fine and stay English. `DETAILS.md` names the two deliberate exceptions.
 - **We never build a runtime.** The host injects a `tokio::runtime::Handle`. A second thread pool would compete for the
-  same cores and split the thread-QoS story that lets indexing run in-process at all.
-- **Rebuild, don't migrate.** All three databases are disposable caches; a format or scope change invalidates and
-  rescans. ❌ Don't build machinery to preserve them without David's say-so for a specific case.
+  same cores and split the thread-QoS story that lets indexing run in-process.
+- **Rebuild, don't migrate.** All three databases are disposable caches; a format or scope change rescans. ❌ No
+  machinery to preserve them without David's say-so.
 
 Why the crate exists, what each subsystem owes the others, the two gated surfaces, and the traps that have already
 fired: `DETAILS.md`. Read it before moving anything across the boundary in either direction.

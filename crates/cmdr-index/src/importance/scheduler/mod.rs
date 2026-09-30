@@ -362,6 +362,27 @@ impl ImportanceScheduler {
         }
     }
 
+    /// Let go of a volume's importance database, which is about to be deleted:
+    /// what the scheduler registers with `volume_files` as the store's holder.
+    ///
+    /// Its writer thread is the one thing here that keeps the file open, so it is
+    /// shut down and joined, and the batch awaiting a rescore goes with the rows it
+    /// was about. `data_dir` says whose volume it is: two hosts in one process
+    /// (tests) can share a volume id, and only the scheduler over that data dir
+    /// holds that database.
+    ///
+    /// The removal reaches here after the volume's stop signal has fired (a live
+    /// volume is drained first, an evicted one has no pass to run), which is why
+    /// nothing re-creates the writer behind it: a pass looks at its signal right
+    /// before it asks for one.
+    fn let_go_of(&self, data_dir: &std::path::Path, volume_id: &str) {
+        if data_dir != self.data_dir {
+            return;
+        }
+        self.pending_incremental.lock_ignore_poison().remove(volume_id);
+        self.writers.retire(volume_id);
+    }
+
     /// Accumulate `paths` into the volume's pending incremental set (union).
     fn pending_incremental_paths(&self, volume_id: &str, paths: Vec<String>) {
         let mut pending = self.pending_incremental.lock_ignore_poison();
@@ -482,6 +503,10 @@ impl ImportanceScheduler {
         let read_elapsed = read_started.elapsed();
 
         let write_started = Instant::now();
+        // Right before the writer, not only at the top: asking for one CREATES the
+        // database, and a volume forgotten while the sample above ran has just had
+        // its database deleted.
+        check(stop)?;
         let writer = self.writer_for(volume_id)?;
         let outcome = recompute_folders(
             &RecomputeInputs {
@@ -575,6 +600,8 @@ impl ImportanceScheduler {
         // next full pass.
 
         let visits = load_visits(&self.data_dir, volume_id);
+        // Asking for the writer creates the database, so look first: see the full pass.
+        check(stop)?;
         let writer = self.writer_for(volume_id)?;
 
         let outcome = incremental_rescore(

@@ -133,11 +133,14 @@ Added 2026-08-05, the same effort's last milestone. Once a search walks, a machi
 index databases nobody asked for, so the settings screen has to be able to show and reclaim them. Two calls, both about
 files rather than volumes, and `HandleMethods` 38 → 40 with no new root promise:
 
-- **`disk_footprint()`** — the bytes every index database occupies, sidecars included. It reads the data dir, ❌ never
-  the registry: the whole point is the database a walk built that nothing re-registered after a restart, which
-  `status(volume_id)` reports as absent because it asks the live instance.
+- **`disk_footprint()`** — the bytes every index database occupies, sidecars included, plus the importance databases a
+  forget removes with them. It reads the data dir, ❌ never the registry: the whole point is the database a walk built
+  that nothing re-registered after a restart, which `status(volume_id)` reports as absent because it asks the live
+  instance.
 - **`forget_all_volumes()`** — the whole-index sibling of `forget_volume`, reaching those same unregistered databases.
   Each volume still goes through `clear_index`, so a live one drains its writer and withdraws its read handles first.
+  What a forget takes beside the index: `crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door they leave
+  by".
 
 Why not one call per volume from the host: the host would have to enumerate `index-{volume_id}.db` itself, which is this
 crate's private file convention (`../resources/retention.rs` owns it), and `volume_ids()` reports the REGISTERED

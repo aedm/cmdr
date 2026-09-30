@@ -10,8 +10,10 @@ dep on the store. The agent and media-ML plans point here rather than restating 
 `READ_CONNS` is a small per-thread LRU (`sqlite_util::ThreadConnCache`, three slots), not one connection: a thread that
 reads two volumes' weights would otherwise reopen on every alternation and lose the connection's `prepare_cached`
 statements. It passes generation `0` — importance reads have no invalidation generation, because a recompute rewrites
-rows in place and never swaps the DB file. Why more open connections is affordable: `indexing/store/DETAILS.md` §
-"SQLite page memory is one process-wide slab".
+rows in place and never swaps the DB file. The two things that do take the file away (a forgotten volume, a schema wipe)
+delete it through `sqlite_util::delete_database`, which retires the cached connections; without that a thread would keep
+answering from the unlinked file. Why more open connections is affordable: `indexing/store/DETAILS.md` § "SQLite page
+memory is one process-wide slab".
 
 `open(data_dir, volume_id, available)` doesn't touch the DB until the first read, so it's cheap and never fails on a
 missing file. `open_at(db_path, available)` serves a caller that already has a path (the dev tuning surface).
