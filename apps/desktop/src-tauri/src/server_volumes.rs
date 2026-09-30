@@ -158,7 +158,8 @@ fn landing_under(root: &RemoteRoot, remote_root: &str, start_folder: Option<&str
     saved_server_fields::start_folder_under_root(remote_root, start_folder)
         .ok()
         .flatten()
-        .map(|folder| root.to_app_path(&folder).to_string_lossy().into_owned())
+        .and_then(|folder| root.to_app_path(&folder))
+        .map(|landing| landing.to_string_lossy().into_owned())
 }
 
 /// The row a place becomes.

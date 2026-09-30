@@ -96,11 +96,11 @@ impl SftpVolume {
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| self.name.clone());
-        Ok(metadata_to_file_entry(
-            &name,
-            &self.root.to_app_path(&remote).to_string_lossy(),
-            &meta,
-        ))
+        let app_path = self
+            .root
+            .to_app_path(&remote)
+            .ok_or_else(|| VolumeError::NotFound(path.to_string_lossy().into_owned()))?;
+        Ok(metadata_to_file_entry(&name, &app_path.to_string_lossy(), &meta))
     }
 
     /// What is AT `path`, with a link reported as the link: one `lstat`.
@@ -132,7 +132,7 @@ impl SftpVolume {
 }
 
 /// One directory entry as a `FileEntry`, or `None` for the two the protocol
-/// includes and a pane never shows.
+/// includes and a pane never shows, and for a name that would land off the root.
 fn file_entry(root: &RemoteRoot, entry: &DirEntry, parent: &str) -> Option<FileEntry> {
     let name = entry.filename().to_string_lossy().into_owned();
     if name == "." || name == ".." {
@@ -143,9 +143,10 @@ fn file_entry(root: &RemoteRoot, entry: &DirEntry, parent: &str) -> Option<FileE
     } else {
         format!("{parent}/{name}")
     };
+    let app_path = root.to_app_path(&remote_path)?;
     Some(metadata_to_file_entry(
         &name,
-        &root.to_app_path(&remote_path).to_string_lossy(),
+        &app_path.to_string_lossy(),
         &entry.metadata(),
     ))
 }

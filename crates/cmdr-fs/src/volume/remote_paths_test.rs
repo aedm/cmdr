@@ -62,9 +62,34 @@ fn a_prefixed_and_a_relative_path_land_on_the_same_server_path() {
     assert_eq!(from_prefix, "/srv/data/photos");
     assert_eq!(from_relative, from_prefix);
     assert_eq!(
-        root.to_app_path(&from_prefix),
-        Path::new("sftp://ada@nas.local:22/srv/data/photos"),
+        root.to_app_path(&from_prefix).as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/srv/data/photos")),
         "`to_app_path` is the exact inverse, so a round trip is the identity"
+    );
+}
+
+/// ❗ **A server answer outside the root has no app path.** A misbehaving server
+/// (a WebDAV `href` above the collection, a `..` for a name) would otherwise
+/// mint a path off this volume, which the way back then refuses. Containment is
+/// checked both ways, the same way: by whole components, after `..`.
+#[test]
+fn a_server_path_outside_the_root_has_no_app_path() {
+    let root = rooted_at("/srv/data");
+    assert_eq!(
+        root.to_app_path("/srv/data/photos/trip.jpg").as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/srv/data/photos/trip.jpg"))
+    );
+    assert_eq!(root.to_app_path("/srv"), None, "an href above the collection");
+    assert_eq!(root.to_app_path("/etc/passwd"), None, "somewhere else entirely");
+    assert_eq!(
+        root.to_app_path("/srv/data/.."),
+        None,
+        "`..` is resolved before the check"
+    );
+    assert_eq!(
+        root.to_app_path("/srv/data-1/photos"),
+        None,
+        "a sibling sharing the root's string prefix"
     );
 }
 
@@ -168,8 +193,8 @@ fn a_volume_at_the_server_root_reaches_everything_through_the_prefix() {
     );
     assert_eq!(root.to_remote_path(Path::new("/")).as_deref(), Some("/"));
     assert_eq!(
-        root.to_app_path("/"),
-        Path::new("sftp://ada@nas.local:22/"),
+        root.to_app_path("/").as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/")),
         "the root round-trips to the app root"
     );
 }

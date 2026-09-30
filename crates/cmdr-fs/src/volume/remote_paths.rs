@@ -15,7 +15,9 @@
 //! minted beside the volume id in [`super::ids`] (`sftp_app_root`,
 //! `webdav_app_root`, `adb_app_root`) and the tree under it is the server's own. [`RemoteRoot`]
 //! holds both and is the ONLY translation: `to_remote_path` going down,
-//! `to_app_path` coming back.
+//! `to_app_path` coming back. ❗ Both refuse a path off the root, by the same
+//! component-wise check after `..`: coming back, the input is a server's answer,
+//! and a misbehaving server must not mint an app path off the volume.
 //!
 //! ❗ **A bare server-absolute path is REFUSED, not anchored.** Five app sites
 //! run a path through [`super::root_anchored`] before the volume sees it, and
@@ -115,8 +117,17 @@ impl RemoteRoot {
     ///
     /// This is what a backend's `display_path_for` answers, so the listing-cache
     /// patcher spells paths the way the panes hold them.
-    pub fn to_app_path(&self, remote: &str) -> PathBuf {
-        PathBuf::from(format!("{}{remote}", self.prefix))
+    ///
+    /// ❗ `None` when `remote` isn't under this volume's root, checked the way
+    /// `to_remote_path` checks: by whole components, after `..`. The input is a
+    /// SERVER's answer here, and a misbehaving one (an `href` above the
+    /// collection, `..` for a name) would otherwise mint an app path off this
+    /// volume. A caller drops that entry.
+    pub fn to_app_path(&self, remote: &str) -> Option<PathBuf> {
+        let normalized = normalize_remote_path(Path::new(remote));
+        normalized
+            .starts_with(&self.remote)
+            .then(|| PathBuf::from(format!("{}{}", self.prefix, normalized.to_string_lossy())))
     }
 }
 
