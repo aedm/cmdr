@@ -29,8 +29,9 @@ the next section.
   `conformance.rs`; and `host/` (what a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md`
   before writing a backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
-- `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, the
-  per-thread read-connection cache, and the one way a database file is deleted.
+- `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, and the
+  one way a database file is deleted. `src/sqlite_util/thread_conn_cache.rs` is the per-thread read-connection cache and
+  its retirement, re-exported from it.
 - `staging.rs`: `StagingTemp`, the ONLY way to name a scratch file.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
