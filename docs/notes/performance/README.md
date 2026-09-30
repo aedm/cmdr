@@ -192,8 +192,6 @@ Smaller or already filed, unranked:
   costs". **Effect**: only for someone who has run a semantic search since launch; #232 measured ~410 MB against 11.8
   MB, and #234 would roughly halve the text tower's ~184–246 MB.
 - **Set the rescan-storm threshold from a week of data**: #235. **Effect**: CPU during rescan storms; unknown.
-- **Drop the `ORDER BY` from `above_threshold` when nobody needs the order**: #237. **Effect**: a sort of up to ~90,000
-  folders per call; small.
 - **Spotlight "last used" sampling cost**: #229. **Effect**: CPU per importance pass, probably small; unmeasured.
 - **The media live tick's `load_statuses`** reads every stored status on any tick that survives the filter
   (`live-tick-cost-2026-08-21.md`). **Effect**: unknown; unmeasured.

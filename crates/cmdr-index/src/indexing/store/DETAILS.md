@@ -418,10 +418,11 @@ pages, so `pcache1FetchStage2`'s "abort when nearly full" step (which tests `nMa
 ⚠️ **`cache_size` also sets the SORTER's budget**, which is the one non-obvious cost here. `vdbesort.c` takes
 `mxPmaSize = MAX(SQLITE_SORTER_PMASZ x page_size, cache_size)`, and `SQLITE_SORTER_PMASZ` defaults to 250 pages, so the
 floor is 1 MiB. A read connection running a big `ORDER BY` now sorts against that floor rather than against 8 MiB: more
-PMAs written to the temp file, more runs to merge. The query that reaches it is `ImportanceIndex::above_threshold(0.0)`
-over every scored folder, and that one is already cached behind `../../media_index/coverage/scores.rs`, so it runs once
-per volume rather than once per UI query. Any read budget at or below 1 MiB gives the identical sorter budget, so this
-is the price of a per-connection number small enough to bound at all, not of 128 KiB specifically.
+PMAs written to the temp file, more runs to merge. No read today sorts a big result: `ImportanceIndex::above_threshold`
+reads every scored folder unordered, and the ranked importance reads (`top_n`, `top_above_threshold`) carry a `LIMIT`.
+❌ Don't add an `ORDER BY` over a whole table on a read connection without weighing this. Any read budget at or below 1
+MiB gives the identical sorter budget, so this is the price of a per-connection number small enough to bound at all, not
+of 128 KiB specifically.
 
 **Measured** (`crates/cmdr-fs/src/sqlite_util/page_cache_probe.rs`'s `page_cache_probe`, release build, M1 Max,
 2026-08-21), 132 read connections — the profiled prod count — scanning a 16 MB database continuously:

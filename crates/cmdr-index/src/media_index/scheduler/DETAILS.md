@@ -125,7 +125,7 @@ full-row shape.
 ## Importance-prioritized scheduling
 
 The local `run_pass_blocking` and the network `should_enrich` read `importance/`'s `ImportanceIndex`
-(`MediaScheduler::folder_scores` → `above_threshold(threshold)`), the SAME signal the importance slider sets. The
+(`MediaScheduler::folder_scores` → `coverage::importance_scores`), the SAME signal the importance slider sets. The
 scheduler:
 
 - **orders** the walk by folder importance descending (`enrich::prioritized`), so high-importance folders enrich first;

@@ -28,10 +28,11 @@ home-relative; defaults to `$HOME`); `with_weights` overrides the weights `expla
   the reason (`nameDenylisted` / `hiddenOrSystem` / `underFlooredAncestor`, in that precedence) is derived live from the
   path — the single derivation `explain`'s floored breakdown also uses. A caller that only wants the number can use
   `WeightLookup::score()`, which flattens floored and unscored to `0.0`.
-- `top_n(n)` / `above_threshold(t)` / `top_above_threshold(n, t)` — ranked folders (score DESC, ties by path ASC).
-  `above_threshold` is INCLUSIVE at the bound (a folder exactly at `t` is returned); `top_above_threshold` combines the
-  `LIMIT` and `WHERE score >= t` in one bounded query, which is how the MCP resource's capped threshold read fetches
-  `cap + 1` to detect truncation without loading the whole tail. The agent's summary gate and media-ML's
+- `top_n(n)` / `top_above_threshold(n, t)` — ranked folders (score DESC, ties by path ASC). `above_threshold(t)` — every
+  folder at or above `t`, UNORDERED: its callers build a lookup table, so a sort of every scored folder would buy
+  nothing. Both threshold reads are INCLUSIVE at the bound (a folder exactly at `t` is returned); `top_above_threshold`
+  combines the `LIMIT` and `WHERE score >= t` in one bounded query, which is how the MCP resource's capped threshold
+  read fetches `cap + 1` to detect truncation without loading the whole tail. The agent's summary gate and media-ML's
   enrich-important-first.
 - `scored_folder_count()` — the `weights` row count (a `COUNT(*)`, no deserialization), for the overview surface.
 - `for_each_nonzero_weight(visit)` — STREAMS every `(path, score)` with a non-zero score (floored folders omitted), for
