@@ -1093,6 +1093,15 @@ injected accessors (the `type-to-jump-controller` idiom, not a state-owning `.sv
 `adoptListing` share `loadGeneration`, so they live in the loader too. `cleanup()` (called from FilePane's `onDestroy`)
 owns the full listing teardown (`cancelListing` + `listDirectoryEnd` + `evictPerPathIconsForDir` + the six `unlisten*`).
 
+**Fast navigation never paints an empty loading frame.** `listing-presentation.svelte.ts` keeps the last settled
+`listingId` and row count for 100 ms after the next load starts. If that load settles inside the grace period, the
+loading screen never mounts; if it outlasts the threshold, the ordinary cancellable `LoadingIcon` takes over. The old
+rows are presentation only: a transparent shield blocks pointer input, while `FilePane.isLoading()` keeps keyboard and
+command paths blocked. Once the listing lands, Brief and Full fetch the new visible range and atomically replace the old
+rows rather than clearing first. Startup still shows loading immediately because there is no settled listing to
+preserve. The timer and snapshot contract are pinned in `listing-presentation.svelte.test.ts`; the atomic swap and a
+late old-range response are pinned in `../views/full-list-cache.test.ts`.
+
 **No pane hosts a credential form.** Every credential ask in the app is the one modal sign-in sheet
 (`$lib/servers/sign-in-sheet-state.svelte.ts`), raised for SMB through `../network/smb-sign-in.ts`. A pane that could
 render one made "which pane hosts it right now" a question the app had to answer for anything app-global (the OS-mount

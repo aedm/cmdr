@@ -31,6 +31,8 @@ their helper siblings are listed in `DETAILS.md` § File map.
   listing.
 - **`DualPaneExplorer.svelte` / `FilePane.svelte` are at their size cap**: cross-cutting state → a `*.svelte.ts`
   factory, pure logic → a `*.ts` helper, ❌ never a child component.
+- **A sub-100 ms navigation keeps the last settled rows visible** (`listing-presentation.svelte.ts`), and the list
+  caches replace them only after the new visible range lands. ❌ Don't clear rows at navigation start.
 - **Five behaviors each carry a guardrail that reads like a tidy-up, so read the `DETAILS.md` section before touching
   one**: birth context (a read-only `hasBirthContext()` for flow modules, ❌ never a writer), first-run pane layout,
   Escape during a load (return to what the pane last SHOWED, ❌ never a guess from history), select-same-kind (`⌥⇧=`,
