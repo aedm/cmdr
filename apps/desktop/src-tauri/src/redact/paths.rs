@@ -214,14 +214,9 @@ fn redact_leaf_in_domain(seg: &str, is_file: bool, context: Option<&RedactionCon
             token_for("dir", seg, context, domain)
         };
     }
-    // File: try to keep the extension.
-    if let Some(dot) = seg.rfind('.') {
-        let ext = &seg[dot + 1..];
-        // Only preserve "sane" extensions: <= 8 ASCII chars, alnum. Otherwise it's probably
-        // a filename with a dot in the stem (e.g., `my.secret.project`), not an extension.
-        if !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric()) && dot > 0 {
-            return format!("{}.{ext}", token_for("file", seg, context, domain));
-        }
+    // File: keep the extension when it's conservatively one (`conservative_extension`).
+    if let Some(ext) = conservative_extension(seg) {
+        return format!("{}.{ext}", token_for("file", seg, context, domain));
     }
     token_for("file", seg, context, domain)
 }
@@ -272,11 +267,28 @@ pub(super) fn ends_sentence(token: &str) -> bool {
 }
 
 pub(super) fn has_extension_like_suffix(seg: &str) -> bool {
-    if let Some(dot) = seg.rfind('.') {
-        let ext = &seg[dot + 1..];
-        // dot not at position 0 (no `.ssh`) and ext is alnum, <= 8 chars.
-        dot > 0 && !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric())
-    } else {
-        false
+    conservative_extension(seg).is_some()
+}
+
+/// Longer extensions common enough to keep; anything else over five chars is more likely the
+/// tail of a name (`Anna.Kovacs`) than a file type.
+const KNOWN_LONG_EXTENSIONS: &[&str] = &["sqlite", "sqlite3", "numbers", "keynote", "torrent", "download", "crdownload"];
+
+/// The segment's extension, when it's conservatively one: after a dot that isn't the first char
+/// (no `.ssh`), with at least one letter (no `minutes.2026`), and either lowercase alnum up to
+/// five chars, uppercase alnum up to four (camera-style `JPG`, `HEIC`), or a known long one. A
+/// dot inside a name (`Anna.Kovacs`) keeps nothing, so the name's tail can't ship as an
+/// "extension".
+pub(super) fn conservative_extension(seg: &str) -> Option<&str> {
+    let dot = seg.rfind('.').filter(|&dot| dot > 0)?;
+    let ext = &seg[dot + 1..];
+    if ext.is_empty() || !ext.chars().all(|c| c.is_ascii_alphanumeric()) || !ext.chars().any(|c| c.is_ascii_alphabetic()) {
+        return None;
     }
+    let lower = ext.chars().all(|c| !c.is_ascii_uppercase());
+    let upper = ext.chars().all(|c| !c.is_ascii_lowercase());
+    let keep = (lower && ext.len() <= 5)
+        || (upper && ext.len() <= 4)
+        || (lower && KNOWN_LONG_EXTENSIONS.contains(&ext));
+    keep.then_some(ext)
 }

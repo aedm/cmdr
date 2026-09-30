@@ -105,6 +105,11 @@ the broad historical allowlist for compatibility with non-report callers.
 (`id_rsa`, `README`, `Makefile`) is mislabeled `<dir>`. Accepted: Cmdr's logs are dominated by directory listings, so
 guessing `<dir>` is right far more often on real triage data than the reverse.
 
+What counts as an extension is deliberately narrow (`paths.rs::conservative_extension`): at least one letter, and
+lowercase alnum up to five chars, uppercase up to four (camera-style `JPG`, `HEIC`), or a short list of known long ones
+(`sqlite3`, `numbers`, …). A dot inside a name (`Anna.Kovacs`, `minutes.2026`) keeps nothing, so the tail of a name
+can't ship as its "extension".
+
 ## Decision: MTP owner names redacted, model names kept
 
 `mtp_owner` catches the common `<Owner>'s <Model>` shape (`John's Pixel 8 Pro`). The owner becomes `<mtp-owner>`; the

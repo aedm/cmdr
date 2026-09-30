@@ -95,6 +95,31 @@ fn a_leaf_with_a_space_gets_one_token_in_every_path_shape() {
     );
 }
 
+/// A dot in a name isn't an extension: `Anna.Kovacs` must not keep `.Kovacs`. Short lowercase
+/// extensions, camera-style uppercase ones, and a few known long ones stay.
+#[test]
+fn only_conservative_extensions_survive() {
+    let context = context();
+    for (name, kept) in [
+        ("Anna.Kovacs", None),
+        ("minutes.2026", None),
+        ("report.docx", Some(".docx")),
+        ("IMG_0001.JPG", Some(".JPG")),
+        ("library.sqlite3", Some(".sqlite3")),
+        ("budget.numbers", Some(".numbers")),
+        ("archive.tar.gz", Some(".gz")),
+    ] {
+        let redacted = context.redact_line(&format!(r#"x path="docs/{name}""#)).into_owned();
+        match kept {
+            Some(extension) => assert!(redacted.ends_with(&format!(">{extension}\"")), "{name} → {redacted}"),
+            None => {
+                let after = name.split('.').nth(1).unwrap_or_default();
+                assert!(!redacted.contains(after), "{name} → {redacted}");
+            }
+        }
+    }
+}
+
 /// A real folder can be named `<anna-kovacs>`; only a token with its hash (or a bare legacy
 /// placeholder word) counts as already redacted.
 #[test]
