@@ -354,7 +354,7 @@ async function attemptAddSmb(
     // parse is a typo, not a server that's asleep.
     const typed = asAddServerError(e)
     if (typed?.type === 'invalid_address') return { kind: 'refused', refusal: 'invalid_url' }
-    if (typed) return { kind: 'refused', refusal: 'unreachable' }
+    if (typed) return { kind: 'refused', refusal: 'unreachable', hint: typed.hint ?? undefined }
     // The host, ❌ never the typed address: `smb://user:password@host` is a
     // spelling people paste, and this line reaches error-report bundles.
     const parsed = parseServerAddress(submission.address)

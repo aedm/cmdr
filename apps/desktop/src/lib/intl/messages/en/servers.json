@@ -229,6 +229,13 @@
       "host": "the server’s hostname or address, like \"nas.local\""
     }
   },
+  "servers.refusal.localNetworkHint": "If the server is on, check that Cmdr is allowed under {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "description": "A softer second line under \"Cmdr couldn’t reach {host}.\" (\"servers.refusal.unreachable\") in the Add server form, shown only when this Mac itself refused the route to a local-network address. That is also how a stuck macOS Local Network privacy permission shows, but a server that’s switched off can look the same, so this only suggests checking. \"Cmdr\" is the product name.",
+    "placeholders": {
+      "localNetwork": "the OS-localized macOS \"Local Network\" permission name, as System Settings shows it under Privacy & Security, injected at runtime (it follows the Mac’s system language, which can differ from Cmdr’s, so it may arrive in English)"
+    }
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr hasn’t trusted the key for {host} yet.",
   "@servers.refusal.hostKeyUntrusted": {
     "description": "Shown in the pane when an SSH server presents a host key this Mac hasn’t approved. \"Key\" is the server’s SSH host key, the fingerprint a person checks before trusting the server.",

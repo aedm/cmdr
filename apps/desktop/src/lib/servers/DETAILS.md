@@ -295,7 +295,12 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
   backend work (GitHub [#173](https://github.com/vdavid/cmdr/issues/173)).
 - `not_a_webdav_server`: the address answers HTTP but not WebDAV. The one refusal with a remedy button.
 - `invalid_url`: the saved address isn't a usable web address.
-- `timed_out` and `unreachable`: about the SERVER, so they name the host rather than the account.
+- `timed_out` and `unreachable`: about the SERVER, so they name the host rather than the account. An `unreachable` from
+  the Add probe may carry a `RefusalHint` (`local_network_permission`: this Mac refused the route to a LAN address,
+  which is also how a stuck Local Network permission shows, ERR-XGS9X). The sheet renders it as a softer second line
+  (`#server-address-hint`, `wordRefusalHint`) under the same sentence, only while the refusal it came with is on screen,
+  and Add anyway stays: a server that's off looks the same to the probe. Backend rule:
+  `src-tauri/src/network/DETAILS.md` § "This Mac refusing the route".
 - `host_key_untrusted` (from `needs_host_key_approval`): the sheet's key step is where the fingerprint is shown and
   approved.
 - `host_key_revoked`: deliberately final. No button can safely undo a revocation the user's own `known_hosts` records.

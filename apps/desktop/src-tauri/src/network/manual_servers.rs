@@ -143,15 +143,46 @@ pub enum AddServerError {
     /// The address isn't one this reads (`ParseError`), with why, for the log.
     InvalidAddress { message: String },
     /// Nothing answered on the address's SMB port within the probe's budget.
-    Unreachable { message: String },
+    Unreachable {
+        message: String,
+        /// Something besides the server worth checking, when the way the probe
+        /// failed points at one.
+        hint: Option<UnreachableHint>,
+    },
 }
 
 impl std::fmt::Display for AddServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidAddress { message } | Self::Unreachable { message } => f.write_str(message),
+            Self::InvalidAddress { message } | Self::Unreachable { message, .. } => f.write_str(message),
         }
     }
+}
+
+/// What else to check when the reachability probe didn't get through. Word-free:
+/// the Add sheet words it under the "couldn't reach" sentence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum UnreachableHint {
+    /// This Mac refused the route to a LAN address (`EHOSTUNREACH` /
+    /// `ENETUNREACH`), which is also how a stuck macOS Local Network permission
+    /// shows (ERR-XGS9X). Only a hint: with no mount to compare against, a server
+    /// that's off can answer the same.
+    LocalNetworkPermission,
+}
+
+/// The hint for a probe that failed with `err` after dialing `peers`: the Local
+/// Network permission when the kernel refused the route and every address is on
+/// the LAN (RFC 1918, link-local, or IPv6 unique-local), which is all that
+/// permission gates. Read by io kind, ❌ never the message.
+fn unreachable_hint(err: &std::io::Error, peers: &[std::net::SocketAddr]) -> Option<UnreachableHint> {
+    use std::io::ErrorKind as Io;
+    let refused_route = matches!(err.kind(), Io::HostUnreachable | Io::NetworkUnreachable);
+    let on_lan = |peer: &std::net::SocketAddr| match peer.ip() {
+        IpAddr::V4(ip) => ip.is_private() || ip.is_link_local(),
+        IpAddr::V6(ip) => ip.is_unique_local() || ip.is_unicast_link_local(),
+    };
+    (refused_route && !peers.is_empty() && peers.iter().all(on_lan)).then_some(UnreachableHint::LocalNetworkPermission)
 }
 
 /// Whether an add probes the server before saving it.
@@ -411,42 +442,56 @@ pub fn create_network_host(address: &str, port: u16) -> NetworkHost {
 // TCP reachability
 // ---------------------------------------------------------------------------
 
-/// Checks that the host:port is reachable via TCP with a timeout.
-pub async fn check_reachability(host: &str, port: u16) -> Result<(), String> {
+/// Checks that the host:port is reachable via TCP with a timeout, answering
+/// [`AddServerError::Unreachable`] (with a hint when the failure points at one)
+/// when it isn't.
+pub async fn check_reachability(host: &str, port: u16) -> Result<(), AddServerError> {
     use tokio::net::TcpStream;
     use tokio::time::{Duration, timeout};
 
     let addr = format!("{}:{}", host, port);
     debug!("Checking TCP reachability: host={host:?}, port={port}");
+    let unreachable = |message: String, hint| AddServerError::Unreachable { message, hint };
 
-    // Try to resolve + connect. For hostnames, tokio::net::TcpStream::connect
-    // does DNS resolution internally.
-    match timeout(
-        Duration::from_secs(REACHABILITY_TIMEOUT_SECS),
-        TcpStream::connect(&addr),
-    )
-    .await
-    {
-        Ok(Ok(_stream)) => {
+    // Resolve first, so the hint can tell which addresses were dialed, then try
+    // each in turn, the same thing `TcpStream::connect(&addr)` does internally.
+    let probe = async {
+        let peers: Vec<std::net::SocketAddr> = match tokio::net::lookup_host(&addr).await {
+            Ok(found) => found.collect(),
+            // A name that doesn't resolve dialed nothing: no peers to hint about.
+            Err(e) => return Err((e, Vec::new())),
+        };
+        match TcpStream::connect(&peers[..]).await {
+            Ok(_stream) => Ok(()),
+            Err(e) => Err((e, peers)),
+        }
+    };
+    match timeout(Duration::from_secs(REACHABILITY_TIMEOUT_SECS), probe).await {
+        Ok(Ok(())) => {
             debug!("Reachable: host={host:?}, port={port}");
             Ok(())
         }
-        Ok(Err(e)) => {
+        Ok(Err((e, peers))) => {
+            let hint = unreachable_hint(&e, &peers);
             debug!(
-                "Unreachable: host={:?}, port={}, source=os, error_kind={:?}, code={:?}, detail={:?}",
+                "Unreachable: host={:?}, port={}, source=os, error_kind={:?}, code={:?}, hint={:?}, detail={:?}",
                 host,
                 port,
                 e.kind(),
                 e.raw_os_error(),
+                hint,
                 cmdr_fs::log_detail::LogDetail(&e.to_string())
             );
-            Err(format!("Couldn't reach {}: {}", addr, e))
+            Err(unreachable(format!("Couldn't reach {}: {}", addr, e), hint))
         }
         Err(_) => {
             debug!("Timed out connecting to host={host:?}, port={port}");
-            Err(format!(
-                "Couldn't reach {}: connection timed out after {}s",
-                addr, REACHABILITY_TIMEOUT_SECS
+            Err(unreachable(
+                format!(
+                    "Couldn't reach {}: connection timed out after {}s",
+                    addr, REACHABILITY_TIMEOUT_SECS
+                ),
+                None,
             ))
         }
     }
@@ -717,9 +762,7 @@ pub fn name_manual_server<R: Runtime>(
 async fn checked_parse(input: &str, reachability: Reachability) -> Result<ParsedAddress, AddServerError> {
     let parsed = parse_server_address(input).map_err(|e| AddServerError::InvalidAddress { message: e.to_string() })?;
     if reachability == Reachability::Check {
-        check_reachability(&parsed.host, parsed.port)
-            .await
-            .map_err(|message| AddServerError::Unreachable { message })?;
+        check_reachability(&parsed.host, parsed.port).await?;
     }
     Ok(parsed)
 }

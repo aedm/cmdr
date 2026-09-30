@@ -728,6 +728,17 @@ describe('add mode: Add, Add and open, and Add anyway', () => {
     })
     expect(await attemptOf(request)(smb)).toEqual({ kind: 'refused', refusal: 'unreachable' })
 
+    // ERR-XGS9X: this Mac refused the route to a LAN address, which a stuck Local
+    // Network permission does too. Still `unreachable` (Add anyway stays), plus the hint.
+    ipc.mock('connect_to_server', () => {
+      throw { type: 'unreachable', message: "Couldn't reach nas:445", hint: 'local_network_permission' }
+    })
+    expect(await attemptOf(request)(smb)).toEqual({
+      kind: 'refused',
+      refusal: 'unreachable',
+      hint: 'local_network_permission',
+    })
+
     ipc.mock('connect_to_server', () => {
       throw { type: 'invalid_address', message: 'Enter a server address' }
     })

@@ -13,6 +13,8 @@
 
 import { tString } from '$lib/intl/messages.svelte'
 import type { MessageKey } from '$lib/intl/keys.gen'
+import type { UnreachableHint } from '$lib/ipc/bindings'
+import { systemStrings } from '$lib/system-strings.svelte'
 
 /**
  * Why a connect stopped, in the vocabulary the app words.
@@ -100,6 +102,23 @@ export interface RefusalSubject {
 /** The one sentence a refusal says. */
 export function wordConnectRefusal(kind: ConnectRefusalKind, subject: RefusalSubject): string {
   return tString(REFUSAL_KEYS[kind], { host: subject.host, username: subject.username })
+}
+
+/**
+ * Something besides the server worth checking, which the backend reads off how a
+ * probe failed. Rendered as a softer line under the refusal, ❌ never instead of
+ * it: a hint only suggests (a stuck Local Network permission and a server that's
+ * off look the same to the Add probe).
+ */
+export type RefusalHint = UnreachableHint
+
+const HINT_KEYS: Record<RefusalHint, MessageKey> = {
+  local_network_permission: 'servers.refusal.localNetworkHint',
+}
+
+/** The softer line under a refusal. The permission's name is the one System Settings shows. */
+export function wordRefusalHint(hint: RefusalHint): string {
+  return tString(HINT_KEYS[hint], { localNetwork: systemStrings.localNetwork })
 }
 
 /**

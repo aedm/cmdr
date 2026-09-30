@@ -65,6 +65,8 @@
         identityHint?: string
         /** The sentence under the address field, when the last attempt was refused. */
         addressRefusal?: string
+        /** A softer line under that sentence: something besides the server worth checking. */
+        addressRefusalHint?: string
         /** The sentence under the address field when it looks like another protocol than the selected one. */
         addressWarning?: string
         /** Offered on `not_a_webdav_server`: appends the Nextcloud collection path. Nobody knows that path. */
@@ -108,6 +110,7 @@
         identityEditable,
         identityHint,
         addressRefusal,
+        addressRefusalHint,
         addressWarning,
         onTryNextcloudAddress,
         onAddAnyway,
@@ -137,7 +140,7 @@
     const asksForCredentials = $derived(form.protocol !== 'smb')
     /** Which sentence sits under the address: a refusal outranks a warning, which outranks the help line. */
     const addressDescribedBy = $derived.by(() => {
-        if (addressRefusal) return 'server-address-refusal'
+        if (addressRefusal) return addressRefusalHint ? 'server-address-refusal server-address-hint' : 'server-address-refusal'
         if (addressWarning) return 'server-address-warning'
         if (identityEditable) return 'server-address-help'
         return asksForCredentials ? undefined : 'server-address-locked'
@@ -191,6 +194,9 @@
     />
     {#if addressRefusal}
         <p id="server-address-refusal" class="field-refusal" role="alert">{addressRefusal}</p>
+        {#if addressRefusalHint}
+            <p id="server-address-hint" class="field-help">{addressRefusalHint}</p>
+        {/if}
         {#if onTryNextcloudAddress}
             <div class="remedy-row">
                 <Button size="mini" onclick={onTryNextcloudAddress} {disabled}>
