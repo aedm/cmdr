@@ -432,6 +432,7 @@ describe('PlacesBrowser listing sign-in', () => {
       445,
       'david',
       'hunter2',
+      'typed',
       5000,
       30000,
     )
@@ -480,6 +481,7 @@ describe('PlacesBrowser listing sign-in', () => {
       445,
       null,
       null,
+      'typed',
       5000,
       30000,
     )
@@ -594,6 +596,7 @@ describe('PlacesBrowser: the account it is signed in as', () => {
       'testpass',
       expect.anything(),
       expect.anything(),
+      expect.anything(),
     )
     expect(onBack).not.toHaveBeenCalled()
     // ❗ The choice sticks: it becomes the server's account, so later listings sign in as it.
@@ -630,6 +633,7 @@ describe('PlacesBrowser: the account it is signed in as', () => {
       host.port,
       null,
       null,
+      expect.anything(),
       expect.anything(),
       expect.anything(),
     )

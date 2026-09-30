@@ -3836,6 +3836,8 @@ export const commands = {
    *  * `port` - SMB port
    *  * `username` - Username for authentication (or None for guest)
    *  * `password` - Password for authentication (or None for guest)
+   *  * `credential_source` - Whether the credentials were typed for this attempt or read from a
+   *    saved entry, for the refusal log line
    *  * `timeout_ms` - Optional timeout in milliseconds (default: 15000)
    *  * `cache_ttl_ms` - Optional cache TTL in milliseconds (default: 30000)
    */
@@ -3846,6 +3848,7 @@ export const commands = {
     port: number,
     username: string | null,
     password: string | null,
+    credentialSource: CredentialSource,
     timeoutMs: number | null,
     cacheTtlMs: number | null,
   ) =>
@@ -3857,6 +3860,7 @@ export const commands = {
         port,
         username,
         password,
+        credentialSource,
         timeoutMs,
         cacheTtlMs,
       }),
@@ -6600,6 +6604,13 @@ export type CrashReport = {
    */
   osFrames?: string[]
 }
+
+// Where the credentials a listing signs in with came from.
+export type CredentialSource =
+  // Typed into the sign-in sheet for this attempt.
+  | 'typed'
+  // A saved entry: the Keychain, or this session's copy of one.
+  | 'saved'
 
 /**
  *  Why "Connect directly" needs a credential.

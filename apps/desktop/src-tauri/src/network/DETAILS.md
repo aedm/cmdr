@@ -1062,6 +1062,11 @@ backend, and CLI output (`smbutil`, `smbclient`, `gio`, `diskutil`) is logged wh
 `stdout=` fields next to its typed code (`code=`, `nt_status=`, `error_kind=`); reports redact and cap those fields. The
 mechanism: `apps/desktop/src-tauri/src/redact/DETAILS.md` § "External-text fields". Classification and user-facing typed errors still consume the original output.
 
+A share listing that signed in and was refused logs one WARN line (`smb_sign_in_diagnostics.rs`, target `smb_sign_in`)
+from the command layer: host, port, `refusal=auth_failed|auth_required`, `source=Typed|Saved` (the sheet versus a
+Keychain entry or its session copy; the frontend passes `credentialSource` to `list_shares_with_credentials`), and the
+credential's shape (`user_empty`, `user_domain=none|backslash|at`, `password_empty`). Never a value or a length.
+
 - **Don't hold mutex during DNS resolution**: `get_host_for_resolution` / `update_host_resolution` extract host info and release the mutex before blocking DNS, then re-acquire to update. Holding the mutex across network calls risks deadlock.
 - **Auth mode is a guess**: `GuestAllowed` means "guest worked, creds might also work." `CredsRequired` means "guest failed, must have creds." Can't detect guest-only vs guest-or-creds without trying both.
 - **NetFS error 17 (EEXIST) is success** (macOS): the share is already mounted, so `already_mounted: true`, once `statfs` finds that mount (§ "A reported mount counts once it's there").

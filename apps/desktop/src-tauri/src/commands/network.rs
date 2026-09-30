@@ -1,5 +1,6 @@
 //! Tauri commands for network host discovery and SMB share listing.
 
+use crate::network::smb_sign_in_diagnostics::{CredentialSource, log_sign_in_refusal};
 use crate::file_system::volume::reconnect_error::ReconnectError;
 use crate::network::{
     AuthMode, DiscoveryState, NetworkHost, ShareListError, ShareListResult, cached_discovered_hosts,
@@ -90,17 +91,21 @@ pub async fn list_shares_on_host(
     app_handle: tauri::AppHandle,
 ) -> Result<ShareListResult, ShareListError> {
     let (guest, account) = account_listing_for(&app_handle, &hostname, ip_address.as_deref(), port);
-    smb_client::list_shares(
+    let credentials = account.as_ref().map(|c| (c.username.as_str(), c.password.as_str()));
+    let result = smb_client::list_shares(
         &host_id,
         &hostname,
         ip_address.as_deref(),
         port,
-        account.as_ref().map(|c| (c.username.as_str(), c.password.as_str())),
+        credentials,
         guest,
         timeout_ms,
         cache_ttl_ms,
     )
-    .await
+    .await;
+    // The account's password is this session's copy of a saved entry.
+    log_sign_in_refusal(&hostname, port, credentials, CredentialSource::Saved, &result);
+    result
 }
 
 /// How a listing that got no credentials signs in: guest first, unless the person set
@@ -326,6 +331,8 @@ pub fn is_using_credential_file_fallback() -> bool {
 /// * `port` - SMB port
 /// * `username` - Username for authentication (or None for guest)
 /// * `password` - Password for authentication (or None for guest)
+/// * `credential_source` - Whether the credentials were typed for this attempt or read from a
+///   saved entry, for the refusal log line
 /// * `timeout_ms` - Optional timeout in milliseconds (default: 15000)
 /// * `cache_ttl_ms` - Optional cache TTL in milliseconds (default: 30000)
 #[tauri::command]
@@ -341,6 +348,7 @@ pub async fn list_shares_with_credentials(
     port: u16,
     username: Option<String>,
     password: Option<String>,
+    credential_source: CredentialSource,
     timeout_ms: Option<u64>,
     cache_ttl_ms: Option<u64>,
     app_handle: tauri::AppHandle,
@@ -349,18 +357,21 @@ pub async fn list_shares_with_credentials(
         (Some(u), Some(p)) => Some((u, p)),
         _ => None,
     };
+    let credentials = credentials.as_ref().map(|(u, p)| (u.as_str(), p.as_str()));
 
-    smb_client::list_shares(
+    let result = smb_client::list_shares(
         &host_id,
         &hostname,
         ip_address.as_deref(),
         port,
-        credentials.as_ref().map(|(u, p)| (u.as_str(), p.as_str())),
+        credentials,
         guest_attempt_for(&app_handle, &hostname, ip_address.as_deref(), port),
         timeout_ms,
         cache_ttl_ms,
     )
-    .await
+    .await;
+    log_sign_in_refusal(&hostname, port, credentials, credential_source, &result);
+    result
 }
 
 // --- Mount Commands ---

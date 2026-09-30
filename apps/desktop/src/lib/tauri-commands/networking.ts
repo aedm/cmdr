@@ -7,6 +7,7 @@ import { throwMountError } from '$lib/file-explorer/network/mount-error'
 import { throwShareListError } from '$lib/file-explorer/network/share-list-error'
 import { throwReconnectError } from '$lib/file-explorer/network/reconnect-error'
 import type {
+  CredentialSource,
   DirectConnectionSwitch,
   MountResult,
   NetworkHostContextAction,
@@ -307,6 +308,7 @@ export async function deleteSmbCredentials(server: string, share: string | null)
  * @param port SMB port
  * @param username Username for authentication (null for guest)
  * @param password Password for authentication (null for guest)
+ * @param credentialSource `typed` for the sign-in sheet, `saved` for a Keychain entry (logged on a refusal)
  * @param timeoutMs Optional timeout in milliseconds (default: 15000)
  * @param cacheTtlMs Optional cache TTL in milliseconds (default: 30000)
  * @throws ShareListFailure carrying the typed `ShareListError`; `shareListErrorOf` gets it back
@@ -318,6 +320,7 @@ export async function listSharesWithCredentials(
   port: number,
   username: string | null,
   password: string | null,
+  credentialSource: CredentialSource,
   timeoutMs?: number,
   cacheTtlMs?: number,
 ): Promise<ShareListResult> {
@@ -328,6 +331,7 @@ export async function listSharesWithCredentials(
     port,
     username,
     password,
+    credentialSource,
     timeoutMs ?? null,
     cacheTtlMs ?? null,
   )

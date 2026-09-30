@@ -66,6 +66,7 @@ pub mod server_identity;
 // it through `mount_share` below.
 pub(crate) mod share_access;
 pub mod smb_client;
+pub mod smb_sign_in_diagnostics;
 // Why an smb2 connect didn't get in: who was refused, and at which step. Shared by
 // `share_access` and both upgrade paths, so they read one answer one way.
 pub(crate) mod smb_connect_failure;

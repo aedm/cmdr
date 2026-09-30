@@ -303,7 +303,7 @@
                 label: hostLabel,
                 guestAllowed: authMode === 'guest_allowed',
                 refusal,
-                attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember),
+                attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember, 'typed'),
             })
             if (result.kind === 'cancelled') onBack?.()
         } finally {
@@ -327,7 +327,7 @@
                 label: hostLabel,
                 guestAllowed: false,
                 initialUsername: listedAccount?.kind === 'user' ? listedAccount.username : undefined,
-                attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember),
+                attempt: (answer) => listWithCredentials(answer.username, answer.password, answer.remember, 'typed'),
             })
         } finally {
             signingIn = false
@@ -338,7 +338,7 @@
     async function useGuest() {
         // ❗ The account goes FIRST: while it's set, the backend never lists this server as guest.
         await setSmbAccountPreference(host.name, null).catch(() => false)
-        await listWithCredentials(null, null, false)
+        await listWithCredentials(null, null, false, 'typed')
     }
 
     /** Try to use stored credentials. Returns true if shares were loaded. */
@@ -351,7 +351,7 @@
             const creds = await getSmbCredentials(serverName, null)
             // Store credentials in memory for mounting later
             authenticatedCredentials = { username: creds.username, password: creds.password }
-            await listWithCredentials(creds.username, creds.password, false)
+            await listWithCredentials(creds.username, creds.password, false, 'saved')
             // `listWithCredentials` never throws; it answers an outcome. Only
             // report success if shares were actually loaded.
             return shares.length > 0
@@ -373,6 +373,7 @@
         username: string | null,
         password: string | null,
         rememberInKeychain: boolean,
+        credentialSource: 'typed' | 'saved',
     ): Promise<SignInAttemptOutcome> {
         try {
             // Clear cached state to force refetch
@@ -385,6 +386,7 @@
                 host.port,
                 username,
                 password,
+                credentialSource,
                 getNetworkTimeoutMs(),
                 getShareCacheTtlMs(),
             )
