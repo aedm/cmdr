@@ -265,9 +265,9 @@ report ID. Rebuilding preview and send for one ID in the same process reproduces
 does not. `for_test` takes an explicit secret, so unit tests never replace global randomness. Tokens are the first six
 SHA-256 bytes rendered as 12 lowercase hex characters. The hash input includes versioned labels and a domain tag to
 separate path, host, userinfo, credential, query, fragment, volume, device, volume-ID, server-ID, and device-ID
-identities. A
-bare-name domain will belong here only when a report-scoped bare-name caller exists; the current state snapshot still
-uses the ordinary unsalted API.
+identities. Every report surface uses the same context: the log line pass, the automatic note, the crash report's
+strings, and the state history (whose typed names and paths go through `redact_name` / `redact_path`, so a cursor name
+and the same leaf in a log line share a token).
 
 Tokens are for spotting repeated normalized names, so identity sees through printing differences. `token` undoes
 `{:?}` escapes and NFC-normalizes before hashing. Cmdr's `.cmdr-tmp-` / `.cmdr-temp-` / `.cmdr-staging-` suffix is split

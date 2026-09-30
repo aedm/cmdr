@@ -1,7 +1,9 @@
 //! Shared, path-shape-preserving redactor for log lines, panic messages, and error bundles.
 //!
-//! The hot path is [`redact_line`], called once per log line by the error reporter.
-//! The crash reporter uses [`redact_panic_message`] (a thin alias kept for test parity).
+//! The hot path is [`RedactionContext::redact_line`], called once per log line by the error
+//! reporter's bundle pass with that report's context. Unsalted [`redact_line`] is the MCP
+//! resources' compatibility policy, and the crash hook's local sanitizer uses
+//! [`redact_panic_message`] (the same policy over each line of a multi-line message).
 //!
 //! # Design
 //!
