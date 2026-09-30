@@ -12,7 +12,7 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
   policy, backend, and mid-merge cancel/rollback/retry. Assert it through `safety_oracle.rs`, ❌ never inline; new cells:
   `safety_grid_tests.rs`.
 - **Dir-vs-dir is NEVER a conflict**, and only for REAL dirs: ask `rename_merge::merges_as_a_directory` (an entry)
-  or `Volume::entry_kind` (a path), ❌ never `Volume::is_directory` (may follow links). `transfer/DETAILS.md` §
+  or `Volume::entry_kind` (a path), ❌ never `is_directory`, an entry's or the volume's (both follow links). `transfer/DETAILS.md` §
   "Symlinks are opaque to a move".
 - **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
   ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`); an
