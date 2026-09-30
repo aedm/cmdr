@@ -99,7 +99,7 @@ describe('resolveDrop', () => {
     })
 
     it('refuses a pane at the cap', () => {
-      expect(across(0, 10)).toEqual({ kind: 'refused', reason: 'targetFull' })
+      expect(across(0, 10)).toEqual({ kind: 'refused' })
     })
   })
 })

@@ -318,9 +318,14 @@ describe('tab drag controller', () => {
     it('still hands a refused drop on, so the refusal can be explained', () => {
       h.controller.destroy()
       document.body.innerHTML = ''
-      h = harness({ left: [makeTab('a')], right: [makeTab('x')] })
+      h = harness({
+        left: [makeTab('a'), makeTab('b')],
+        right: Array.from({ length: 10 }, (_, i) => makeTab(`x${String(i)}`)),
+      })
 
+      // Past the full right bar's first middle (550): slot 1.
       dragTo(h, 'left', 'a', 560)
+      expect(h.controller.view).toMatchObject({ refused: true })
       pointer('pointerup', 560)
       expect(h.drops).toEqual([{ fromPane: 'left', tabId: 'a', toPane: 'right', toIndex: 1 }])
     })
