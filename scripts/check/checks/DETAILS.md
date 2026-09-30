@@ -1032,9 +1032,9 @@ Who stays out, and why it's not an oversight:
   is compiled by the test lane and linted by nothing.
   `cargo clippy --workspace --all-targets --features cmdr/virtual-mtp` passes clean today, so closing that is available
   whenever someone wants it.)
-- **`desktop-rust-tests-linux`** builds in its container's own `CARGO_TARGET_DIR`, and deliberately omits the feature:
-  that lane is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't
-  differ by platform.
+- **`desktop-rust-tests-linux`** builds on its per-worktree Docker volume, and deliberately omits the feature: that lane
+  is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't differ by
+  platform.
 - **`desktop-rust-rustdoc`** and **`desktop-rust-clippy-mimalloc`** own private target dirs (the latter because its
   `cmdr-fs` feature flip would rebuild every workspace crate above it twice per run). **`desktop-rust-cargo-udeps`**
   runs on the pinned nightly, whose artifacts can't be shared with stable anyway.
@@ -1230,9 +1230,9 @@ belongs to nobody's branch either.)
 ### The Docker lane re-runs inside its own container
 
 `desktop-rust-tests-linux` starts its container **detached** (PID 1 is a bounded `sleep`) and execs each phase into it:
-provision, test run, then any contention re-run. That's the whole reason for the detached shape. A re-run in a fresh
-`docker run` would re-provision and recompile the workspace from a cold `CARGO_TARGET_DIR`, costing tens of minutes and
-making the mechanism unaffordable; execing back into the live container costs seconds.
+the test run, then any contention re-run. That's the whole reason for the detached shape: the re-run lands in the same
+container, with the same toolchain and the same build state, so it costs seconds. The image and the build cache are
+shared with `clippy-linux` (§ "The Linux Docker lanes share an image and a build cache").
 
 - **The container is removed on every exit path** (deferred `docker rm -f`, bounded by `dockerControlTimeout`). The
   `sleep` cap (`containerKeepAlive`, 4 h) exists only for the case where the check runner is hard-killed and never runs
@@ -1351,7 +1351,8 @@ That's every compiling lane, including the ones named for macOS: CI's "Desktop (
 
 **Gotcha: the Docker lane computes its selection for `linux`, not for the host.** `desktop-rust-tests-linux` runs cargo
 inside a container from a Mac, so `HostCargoSelectionArgs` would answer for the wrong OS.
-`TestProvisionScriptSelectsForTheContainerNotTheHost` pins it.
+`TestTheContainerRunSelectsForTheContainerNotTheHost` pins it for the tests lane, `TestLinuxClippyAsksCIsQuestion` for
+`desktop-rust-clippy-linux`.
 
 Feature specs are package-qualified (`cmdr/virtual-mtp`). A bare `--features virtual-mtp` changes meaning once more than
 one package is selected.
@@ -1377,6 +1378,54 @@ for reading its output:
   `go run .`, and killing the wrapper orphans the whole tree of Playwright, Docker, and cargo children, which then keep
   competing with whatever you start next. Kill `go-build.*/check` and `go run \. --include-slow`, then confirm with `ps`
   before drawing conclusions from the next run.
+
+## The Linux Docker lanes share an image and a build cache
+
+`desktop-rust-clippy-linux` and `desktop-rust-tests-linux` answer CI's two Linux questions (clippy, then the suite) from
+a Mac. Both run from one image and build into one per-worktree volume (`desktop-rust-linux-container.go`), so a warm run
+compiles only what changed. Order: `clippy` → `clippy-linux` → `rust-tests-linux`.
+
+- **The image is the provisioning**: `cmdr-rust-linux:<sha256[0..12]>` of the rendered Dockerfile plus
+  `rust-toolchain.toml`, built on a miss and the older tags pruned (the E2E lane's `cmdr-e2e-base:<hash>` pattern). It
+  carries the GTK/WebKit dev libraries, the `.mise.toml` Go, the pinned nextest, and the pinned toolchain's components
+  and targets. The base is `rust:<channel>` from `rust-toolchain.toml`, so the container compiles with exactly the
+  repo's toolchain; over `rust:latest`, rustup re-synced it on every cold container. Cold build: 38 s (2026-09-30).
+- **The target volume is per checkout**: `cmdr-rust-linux-target-<checkout key>-<channel>`, the key being the E2E
+  script's `CHECKOUT_KEY` (`TestCheckoutCacheKeyMatchesTheE2ELinuxScript` runs the script's own lines against the Go
+  copy). Per checkout because the repo bind mount is what the artifacts belong to: two checkouts sharing one would have
+  cargo compare this tree's mtimes against another tree's rlibs (`apps/desktop/test/e2e-linux/DETAILS.md` has the
+  failure). The channel is in the name because cargo keys artifacts by rustc: a toolchain bump starts a fresh volume and
+  drops this checkout's old one.
+- **Cleanup rides the E2E lane's labels** (`com.cmdr.e2e-linux-cache=1`, `com.cmdr.e2e-linux-checkout=<abs path>`,
+  applied at `docker volume create`, which must precede any `docker run -v`). `remove-worktree.sh` removes every volume
+  labelled with the worktree's path, and `e2e-linux.sh`'s reaper removes any whose checkout is gone. Nothing prunes a
+  LIVE checkout's volume, so the main clone's (only made under `--allow-main`) stays until removed by hand.
+- **`CARGO_HOME` is one machine-wide volume** (`cmdr-rust-linux-cargo-home`, unlabelled, ~0.65 GB), mounted WHOLE:
+  cargo's package-cache lock lives in `CARGO_HOME` itself, so a shared `registry/` alone would let two containers unpack
+  one crate at once.
+- **Concurrency is cargo's**: the volume sits in one VM kernel, so `flock` holds across containers. Verified 2026-09-30
+  with two concurrent `cargo clippy` containers on one volume: the second printed
+  `Blocking waiting for file lock on package cache`, then `… on build directory`, then found everything fresh. Within a
+  run, `DependsOn` keeps the two lanes apart, which is why neither declares an `Exclusive` resource.
+- **Size**: ~18.6 GB after one clippy plus one test build (about 8 GB `incremental/`, 8 GB `deps/`; the workspace dev
+  profile is already `line-tables-only`). Per worktree, reaped at teardown. `CARGO_INCREMENTAL=0` would roughly halve it
+  at the cost of slower one-file rebuilds; unmeasured.
+- **A lint failure reads as clippy's**: its own check, message `clippy found issues on Linux`, with cargo's progress
+  lines stripped (`trimCargoProgress`) so the `--> file:line:col` diagnostic is what shows. It never runs `--fix`: host
+  `clippy` already fixed what the two targets share.
+
+**Gotcha: a worktree whose `resources/ai/` only the container ever prepared rebuilds `cmdr` on every run.** `build.rs`
+watches `resources/ai/.version`, and `download-llama-server.go` on Linux writes only a 0-byte `llama-server`
+placeholder, no marker, so cargo sees a missing watched file and reruns the build script (~30 s of clippy per run). A
+normal run never hits it, because host `clippy` runs the script on the Mac first and populates the real files. Running
+the Linux lanes by name in a fresh worktree does; `cd apps/desktop && go run scripts/download-llama-server.go` fixes it.
+
+Timings, 2026-09-30, OrbStack on 16 cores, host load 5–13 (shared machine):
+
+- **Cold** (fresh volumes): clippy 2m7s including the image build, tests 3m28s. The lane's September median before the
+  cache was 335 s per run, p90 650 s.
+- **Warm, no change**: clippy ~1 s, tests ~40 s (the suite itself).
+- **Warm, one `cmdr-fs` file touched**: clippy 32 s (12 crates), tests 1m50s.
 
 ## Rust module cycles
 
@@ -1842,7 +1891,8 @@ Checks by app and tech:
   one cell lived its whole life that way, and it was the sole caller of the crate extraction's one sanctioned
   public-surface widening — see § "Fixture lane coverage"), tests, integration-tests (Docker network fixtures),
   disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+ disk images, see § "The
-  disk-image lane"), tests-linux (slow)
+  disk-image lane"), clippy-linux (slow, not in CI; CI's clippy command against the Linux target, run from a Mac in
+  Docker), tests-linux (slow; both in § "The Linux Docker lanes share an image and a build cache")
 
 Four of those scanners share one region tracker, `rustTestModState` / `advanceTestModRegion`
 (`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test
@@ -1973,8 +2023,8 @@ doubles as production code.
 ## The single source for the Go version
 
 `.mise.toml`'s `go` entry is the only place the repo names a Go toolchain. Renovate bumps it weekly, every CI job runs
-`mise install`, and `MiseGoVersion(rootDir)` (in `go-version-single-source.go`) is how code reads it. The Linux Rust
-test container provisions from that call, so its Go can't drift from the host's.
+`mise install`, and `MiseGoVersion(rootDir)` (in `go-version-single-source.go`) is how code reads it. The Linux Docker
+lanes' image provisions from that call, so its Go can't drift from the host's.
 
 It used to drift. `desktop-rust-tests-linux.go` carried `const goVersion = "1.25.7"` under a comment saying it must
 match `.mise.toml`, nothing enforced that, and a Renovate bump to 1.27 left the container two minors behind, testing
@@ -2371,13 +2421,7 @@ toolchain, then execs the x86 nextest binary and OrbStack crashes with
 `Dynamic loader not found: /lib64/ld-linux-x86-64.so.2`. The fix is `dpkg --print-architecture` → `linux` for amd64 and
 `linux-arm` for arm64, matching the Go tarball selection.
 
-**Decision**: silence apt/dpkg at the source, not via a post-hoc denylist. **Why**: `provisionScript` redirects both apt
-commands to a log file under `DEBIAN_FRONTEND=noninteractive` + `-qq`, so on a successful provision the check's stdout
-gets zero apt lines. The log lives on a per-run host directory (`/tmp/cmdr-rust-tests-linux-<unix-ts>/provision.log`)
-bind-mounted into the container at `/cmdr-logs`, so it survives the container's `--rm` and is discoverable from the
-check's Success/failure message. On apt failure, the script dumps the full log to stderr (captured by Go) so the user
-sees what went wrong without having to fish for the file. Redirection at source is bulletproof and zero-maint vs a
-denylist treadmill: every Debian version adds new dpkg verbs (`Setting up`, `Unpacking`, `Processing triggers`, …),
-continuation lines from multi-line apt prompts have no stable shape, and `apt-get -qq` alone doesn't propagate to dpkg's
-per-package chatter. `trimBuildNoise` now only cuts everything before the last `Compiling …` line; when no such line
-exists (provisioning died before cargo ran), the output is returned verbatim.
+**Decision**: apt/dpkg output never reaches a Linux lane's result. **Why**: provisioning happens in `docker build`,
+whose output is captured whole and shown only when the build fails, so there's no denylist treadmill (every Debian
+version adds new dpkg verbs, and multi-line apt prompts have no stable shape). `trimBuildNoise` only cuts everything
+before the last `Compiling …` line; when no such line exists, the output is returned verbatim.
