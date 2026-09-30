@@ -16,8 +16,7 @@ pub struct MountEntry {
     pub mountpoint: String,
     /// The filesystem type (for example, `ext4`, `nfs`, `cifs`)
     pub fstype: String,
-    /// Mount options (for example, `rw,relatime`)
-    #[allow(dead_code, reason = "Structural field from /proc/mounts")]
+    /// Mount options (for example, `rw,relatime`, or a FUSE mount's `user_id=1000,allow_other`)
     pub options: String,
 }
 

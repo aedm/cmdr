@@ -26,8 +26,9 @@ DO (`supports_eviction`), which is why the enum sits in `file_system/` rather th
 
 **Decision**: `is_user_facing_mount` admits a mount when the OS doesn't mark it `MNT_DONTBROWSE`, or when
 `provider_for_mount` recognizes who serves it (path pattern or fs type: `pcloudfs`, `macfuse` / `osxfuse`,
-`/Volumes/pCloudDrive`, `/Volumes/veracrypt*`, `~/.CMVolumes`), wherever it's mounted. It still drops the boot volume (which has its own row), a dot-prefixed mount, and anything
-under `~/Library/CloudStorage` (the cloud arm publishes those, and a second row would be a duplicate).
+`/Volumes/pCloudDrive`, `/Volumes/veracrypt*`, `~/.CMVolumes`), wherever it's mounted. It still drops the boot volume (which has its own row), a dot-prefixed mount, anything
+under `~/Library/CloudStorage` (the cloud arm publishes those, and a second row would be a duplicate), and another
+account's own mount, recognized provider or not (§ "Another account's mounts").
 
 **Why the flag**: `MNT_DONTBROWSE` is the same bit Finder reads to decide what belongs in its sidebar, so it separates
 drives from plumbing without this module naming a single system path. Measured on a stock macOS 27 machine: `/dev`,
@@ -53,9 +54,57 @@ cloud storage, so it gets a row in VOLUMES. Gating admission on `is_cloud_storag
 split. The one family where this arm could overlap the cloud arm is iCloud Drive's folder: a mount exactly there shares
 the cloud arm's path, and `list_locations` dedupes on path.
 
-**What this does NOT decide**: whether a path can be OPENED. The volume registry sweeps the whole mount table regardless
-(`file_system/volume/DETAILS.md` § "Registration covers the whole mount table"); a mount dropped here is still
-navigable, it just has no row of its own.
+**What this does NOT decide**: whether a path can be OPENED. The volume registry sweeps every mount this account can
+reach regardless (`file_system/volume/DETAILS.md` § "Registration covers the whole mount table"); a mount dropped here
+is still navigable, it just has no row of its own. The one mount the registry skips too is another account's own, next.
+
+## Another account's mounts
+
+**Decision**: a mount is another account's own, and hidden, when its mount-table row says someone else mounted it
+(`f_owner` is neither this process's uid nor 0), it isn't a disk (`f_mntfromname` doesn't start with `/dev/`), and it
+isn't a network filesystem (`is_network_fs_type`). `MountEntry::is_private_to_another_user` in `mounts.rs` is the one
+rule; `MountedBy` is the owner as a type.
+
+**Why**: on a Mac with two accounts that both run pCloud, the kernel table lists both `pCloud Drive` mounts, one per
+home folder, and Cmdr gave each a row. The other account's drive can't be opened from this one: its icon lookups
+answered `No such file or directory`, the row showed as unavailable, and picking it dropped the pane in the home
+folder (reported against 0.48.0). Nothing in discovery looked at who owned a mount.
+
+**What each consumer of the mount table does with such a mount**:
+
+- **The switcher** (`get_attached_volumes`, through `is_user_facing_mount`): no row, so also no local enrichment (NSURL,
+  icon, DiskArbitration) against it, and no space poll, since the poller only watches what a pane shows.
+- **The registry sweep** (`registrable_mount_roots`): not registered.
+- **The mount watcher** (`handle_volume_mounted`, asking `is_private_to_another_user`): no registration, no
+  `volume-mounted`, no refresh. An unmount can't be asked about (the row is gone), and finds nothing to remove.
+- **The index** (`mount_roots`): STILL listed. The boot scan cuts at every mount inside the boot tree, and it has to
+  stop at one it can't enter as well. ❌ Never point the index at `registrable_mount_roots`.
+- **Table facts** (`is_mount_point`, `mount_identity_at`, `has_mount_identity`, `mount_sources`, `smb_mounts`):
+  unfiltered. They answer what the kernel lists, and the rule excludes disks and network mounts anyway.
+- **Adoption** (`mount_registration::adopt_mount_serving`): untouched, so a path inside such a mount that `statfs` does
+  answer for still gets its volume on first listing, and the pane shows the real refusal.
+
+**Why the disk exception**: a drive plugged in, or an image attached, while someone else was logged in is "mounted by"
+them, and every account can still use it. `/Volumes/Amp`, mounted from `/dev/disk5s1`, carries the mounting user's uid
+with a `drwxr-xr-x` root (verified on macOS 27.0 26A428, a C probe printing `f_owner` per `getmntinfo` row, 2026-09-30).
+
+**Why root's mounts stay**: `f_owner` 0 is every system mount, and a FUSE daemon running as root mounts for everyone.
+
+**Why the row and no access probe**: a probe is a syscall per mount that can hang on a dead share (§ "Hung mounts"),
+and the drive this rule exists for answered an ambiguous "not there" instead of a refusal. `f_owner` rides in the same
+`getfsstat(MNT_NOWAIT)` snapshot as everything else, at no syscall. It's what `mount` prints as "mounted by <name>",
+for exactly the rows whose owner isn't 0 (verified with the same probe beside `mount`'s output, 2026-09-30).
+
+**Why network mounts are left alone**: whether another account's SMB, NFS, WebDAV, or AFP mount is usable from this one
+is unverified, and hiding a share someone can reach is worse than showing one they can't. The test Mac has one account,
+so nothing could be tried from a second. What's known: an SMB mount's root is `drwx------` and owned by the mounting
+user (`/Volumes/naspi`, macOS 27.0, `stat`, 2026-09-30), which suggests another account can't enter it. To widen the
+rule, mount a share as one account, fast-user-switch, and list it from the other; if it refuses, drop the
+`is_network_fs_type` clause and its test. ❗ `is_network_fs_type` also picks the volume-ID derivation and which mounts
+skip blocking enrichment: this rule only reads it.
+
+Linux has the same rule for FUSE, read off the mount options: `volumes_linux/DETAILS.md` § "Another account's FUSE
+mounts".
 
 ## Location IDs (two cross-file sync points)
 

@@ -911,8 +911,8 @@ their own path) and would need re-pointing if a `LocalExternal` disk ever showed
 
 ### Registration covers the whole mount table
 
-**Decision**: `mount_registration::register_every_mount` registers EVERY row of the kernel's mount table at startup,
-unfiltered, and it is the only way a mount becomes a registered volume (the mount watcher and the listing's adoption
+**Decision**: `mount_registration::register_every_mount` registers every row of the kernel's mount table this account
+can reach at startup, browsable or not, and it is the only way a mount becomes a registered volume (the mount watcher and the listing's adoption
 path go through the same module). What the volume SWITCHER publishes stays a separate, stricter question that
 `volumes/mounts.rs` answers.
 
@@ -928,6 +928,12 @@ while skipping one that resolution can name costs the user their folder. So the 
 registration is an insert plus the arrival listeners, and `register_if_absent` keeps every incumbent, so it can't
 downgrade an upgraded `smb2` session or rename a switcher row (discovery re-registers those with their pretty names
 right after).
+
+**The one row the sweep leaves out** is another account's own mount (a second user's cloud or FUSE drive), which this
+account can't open, so resolution has no business naming it either. The platform's `registrable_mount_roots` draws that
+line, and the mount watcher asks the same question; adoption below still covers the case where `statfs` does answer for
+a path inside one. The rule and its evidence: `volumes/DETAILS.md` § "Another account's mounts" (Linux:
+`volumes_linux/DETAILS.md` § "Another account's FUSE mounts").
 
 **Adoption**, the net under the sweep: a listing whose ID nothing serves asks whether the mount under its path derives
 exactly that ID, and registers it if so (`adopt_mount_serving`). It covers the two gaps a startup sweep can't: a

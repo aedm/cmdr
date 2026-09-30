@@ -16,7 +16,7 @@ badges). The leaves beside them:
   filesystem identity (`f_fsid` on macOS, `major:minor` from `/proc/self/mountinfo` on Linux), ❌ never by root path: a
   rename moves a mounted drive's root while the drive stays mounted. `index_provider/real_image.rs` pins that on real
   APFS and HFS+ images (`crates/cmdr-index/src/indexing/host/DETAILS.md` § "The volume seam"). `mount_points` hands
-  the index the same table, unfiltered, which it cuts the boot scan at.
+  the index the same table, unfiltered (another account's mounts included), which it cuts the boot scan at.
 - `backend_settings.rs`: live per-backend knobs.
 - `cloud_actions.rs`: iCloud download and eviction. `cloud_provider.rs`: who owns a path, and what they can do.
 - `google_drive/`: Drive item links, with `mirror_db.rs` as the mirror-mode fallback.

@@ -116,6 +116,8 @@ impl VolumeProvider for AppVolumeProvider {
     }
 
     fn mount_points(&self) -> Option<Vec<std::path::PathBuf>> {
+        // The whole table, ❌ never `registrable_mount_roots`: the boot scan has to
+        // stop at another account's mount too, which the registry leaves out.
         #[cfg(target_os = "macos")]
         let roots = crate::volumes::mount_roots();
         #[cfg(target_os = "linux")]

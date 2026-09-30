@@ -163,6 +163,14 @@ pub(crate) fn volume_path_from_notification(notification: &NSNotification) -> Op
 /// Public for tests so the handler logic can be exercised without posting
 /// real `NSWorkspace` notifications.
 pub(crate) fn handle_volume_mounted(volume_path: &str) {
+    // Another account's own mount is nothing this account can open, so it's not
+    // news here: no registration, no event, no refresh. The startup sweep and
+    // discovery skip the same rows (`mounts::MountEntry::is_private_to_another_user`).
+    if super::is_private_to_another_user(volume_path) {
+        debug!("Another account's mount appeared; leaving it alone: {}", volume_path);
+        return;
+    }
+
     debug!("Volume mounted: {}", volume_path);
 
     // Same funnel the startup sweep uses, so a drive that arrives now and one

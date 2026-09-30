@@ -37,7 +37,10 @@ pub use fs_type::{is_network_fs_type, is_smb_fs_type, supports_trash_for_fs_type
 pub(crate) use ids::{volume_id_for, volume_id_for_mount};
 pub use live_space::{expect_space_change, live_volume_space};
 pub use mounts::get_attached_volumes;
-pub(crate) use mounts::{has_mount_identity, is_mount_point, mount_identity_at, mount_roots, smb_mounts};
+pub(crate) use mounts::{
+    has_mount_identity, is_mount_point, is_private_to_another_user, mount_identity_at, mount_roots,
+    registrable_mount_roots, smb_mounts,
+};
 pub use nsurl::get_volume_space;
 pub(crate) use nsurl::{
     get_icon_for_path, get_volume_name, get_volume_uuid, get_volume_uuid_for_path, is_volume_ejectable,
