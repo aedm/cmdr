@@ -294,6 +294,27 @@ impl Service {
                 self.pool.worker_count()
             );
         }
+        // Once per wedge: which call, on which path. The path names the provider too, since
+        // each domain lives under its own root (`~/Library/CloudStorage/<provider>…`, or
+        // `~/Library/Mobile Documents` for iCloud Drive).
+        for stuck in self.pool.newly_wedged() {
+            match stuck.activity {
+                Some(activity) => log::warn!(
+                    target: "sync_status",
+                    "{} has been inside {} for {:?}, on {}",
+                    stuck.thread,
+                    activity.call,
+                    stuck.busy_for,
+                    activity.subject
+                ),
+                None => log::warn!(
+                    target: "sync_status",
+                    "{} has been inside a probe for {:?} before it named its call",
+                    stuck.thread,
+                    stuck.busy_for
+                ),
+            }
+        }
         log::debug!(
             target: "sync_status",
             "starting a batch of {} paths ({} pool threads, {} queued)",
