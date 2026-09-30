@@ -671,13 +671,12 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     const landed = new Promise<void>((resolve, reject) => {
       pendingLoadResolve = resolve
       pendingLoadReject = (reason: Error) => {
-        // A newer navigation taking over, or a cancel, is expected, so it's marked
-        // handled: a caller that fires and forgets (the cancel flow's return trip, a
-        // `navigate()` whose `settled` nobody reads) raises no unhandled rejection.
-        // One that awaits still gets `NavigationSuperseded` / `NavigationCancelled`.
-        if (reason instanceof NavigationSuperseded || reason instanceof NavigationCancelled) {
-          void landed.catch(() => {})
-        }
+        // Every outcome is marked handled: a newer navigation or a cancel is expected, and a
+        // listing error is already on screen as the pane's error state. A caller that fires
+        // and forgets (the cancel flow's return trip, a `navigate()` whose `settled` nobody
+        // reads) raises no unhandled rejection, which would log the raw listing message under
+        // `FE:uncaught`. One that awaits still gets the error.
+        void landed.catch(() => {})
         reject(reason)
       }
     })

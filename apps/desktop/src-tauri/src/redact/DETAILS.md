@@ -236,6 +236,9 @@ around them. So it has one mechanism, used at every such site:
   the IDs, a quoted `path=` leaf), reusing that field's token. It caps the result at `REPORT_DETAIL_MAX_CHARS` (200)
   with a trailing `…` and re-escapes with `{:?}`, so the closing quote stays exact. Idempotent: a capped value sits at
   the limit.
+- **Absolute paths under any prefix are tokenized inside the value** (`/srv/data/…`, `/mnt/…`), after the ordinary scan:
+  a server or frontend error names paths the line scanner has no prefix rule for. Already-rewritten segments keep their
+  tokens, which keeps it idempotent.
 - **The echo scrub reads the whole line** (collected once per line, lazily, in `redact_with`), so a key after the field
   still counts. External-text fields never feed it: prose can't teach it a name. Values under three chars are skipped
   (too likely to be part of a word), and matches glued to a letter or digit are left alone.

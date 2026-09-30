@@ -55,6 +55,8 @@ const REDACTOR_KEY_BY_PLACEHOLDER: Record<string, string> = {
   host: 'host',
   server: 'server',
   share: 'share',
+  // External text (an error message, a server's answer): redacted and capped in a report.
+  detail: 'detail',
 }
 
 /** Quote like Rust's `{:?}`, which is the escaping the redactor's quoted-value grammar reads. */

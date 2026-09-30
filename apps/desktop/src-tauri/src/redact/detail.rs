@@ -4,11 +4,16 @@
 //! [`REPORT_DETAIL_MAX_CHARS`]. `DETAILS.md` § "External-text fields".
 
 use super::context::TokenDomain;
+use super::fields::redact_typed_path;
 use super::fields::identity_field_token;
 use super::names::unescape_debug;
 use super::paths::{has_extension_like_suffix, redact_leaf};
-use super::{REPORT_DETAIL_MAX_CHARS, RedactionContext, identity_token, redact_with, redactor_regex, whole_len};
-use regex::Captures;
+use super::{
+    REPORT_DETAIL_MAX_CHARS, RedactionContext, identity_token, redact_with, redactor_regex, split_trailing_noise_with,
+    whole_len,
+};
+use regex::{Captures, Regex};
+use std::sync::OnceLock;
 
 /// Shortest keyed value worth scrubbing from prose by its spelling. Shorter ones (`tv`, `pi`)
 /// are too likely to be part of an ordinary word.
@@ -88,10 +93,46 @@ pub(super) fn redact_detail_field(
     for line in text.split_inclusive('\n') {
         redacted.push_str(&redact_with(line, Some(context)));
     }
+    redacted = redact_any_absolute_path(&redacted, context);
     for identity in echoed {
         redacted = replace_whole_word(&redacted, &identity.raw, &identity.token);
     }
     (format!("{key}={:?}", cap_chars(&redacted)), whole_len(caps))
+}
+
+/// Tokenize every absolute path the line scanner left alone: a server or a frontend error names
+/// paths under any prefix (`/srv/data/…`, `/mnt/…`), and the scanner only knows the local mount
+/// and home prefixes. Only inside external text, where prose is untrusted anyway; a path the
+/// scanner already rewrote keeps its tokens (`redact_typed_path` preserves them), which keeps
+/// this idempotent. The end ignores the lowercase prose-run rule, so a trailing word goes with
+/// the path rather than out of the report bare.
+fn redact_any_absolute_path(text: &str, context: &RedactionContext) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(
+            r#"(?x)
+            (?P<lead> ^ | [\s"'(=:,\[] )
+            (?P<path> / [^/\s"'<>|`()]+ (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`(][^/\s"'<>|`]* )* )+ )
+            "#,
+        )
+        .expect("valid absolute-path regex")
+    });
+    let mut out = String::with_capacity(text.len());
+    let mut pos = 0;
+    while let Some(caps) = re.captures_at(text, pos) {
+        let (Some(lead), Some(path)) = (caps.name("lead"), caps.name("path")) else { break };
+        let (path_text, _) = split_trailing_noise_with(path.as_str(), false);
+        if path_text.is_empty() {
+            out.push_str(&text[pos..=path.start()]);
+            pos = path.start() + 1;
+            continue;
+        }
+        out.push_str(&text[pos..lead.end()]);
+        out.push_str(&redact_typed_path(path_text, Some(context), true));
+        pos = path.start() + path_text.len();
+    }
+    out.push_str(&text[pos.min(text.len())..]);
+    out
 }
 
 /// Replace `needle` wherever it isn't glued to a neighboring letter or digit, so a share named

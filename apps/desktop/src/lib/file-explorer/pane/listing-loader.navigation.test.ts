@@ -223,6 +223,40 @@ describe('createListingLoader — navigateToFallback / handleCancelLoading / nav
     }
   })
 
+  it('a failed navigateToPath that nobody awaits raises no unhandled rejection', async () => {
+    // The pane already shows the listing error. An unhandled rejection on top of it logged
+    // the raw message under `FE:uncaught`, path and all, bypassing every typed log site.
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    try {
+      const { loader, state } = makeHarness({ loading: false })
+      void loader.navigateToPath({ path: '/srv/data/Private Person/Medical records' })
+      await vi.waitFor(() => {
+        expect(state.listingId).not.toBe('')
+      })
+      loader.resetLoadingState('Permission denied: /srv/data/Private Person/Medical records')
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(unhandled).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', unhandled)
+    }
+  })
+
+  it('an awaiting navigateToPath still sees the listing error', async () => {
+    const { loader, state } = makeHarness({ loading: false })
+    const outcome = loader.navigateToPath({ path: '/a/locked' }).then(
+      () => 'landed',
+      (e: unknown) => e,
+    )
+    await vi.waitFor(() => {
+      expect(state.listingId).not.toBe('')
+    })
+    loader.resetLoadingState('Permission denied')
+    const error = await outcome
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe('Permission denied')
+  })
+
   it('navigateToParent returns false at the volume root', async () => {
     const { loader } = makeHarness({ currentPath: '/', volumePath: '/' })
     await expect(loader.navigateToParent()).resolves.toBe(false)

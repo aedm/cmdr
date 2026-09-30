@@ -218,6 +218,14 @@ describe('log-bridge', () => {
     ).toBe('Volume not found: volumeName="Client Share" on server="nas", file file="a.pdf"')
 
     vi.mocked(invoke).mockClear()
+    expect(
+      await renderedMessage({
+        rawMessage: 'Unhandled promise rejection: {detail}',
+        message: ['Unhandled promise rejection: ', 'Error: denied /srv/x', ''],
+      }),
+    ).toBe('Unhandled promise rejection: detail="Error: denied /srv/x"')
+
+    vi.mocked(invoke).mockClear()
     const template = Object.assign(['Loaded ', ' items'], { raw: ['Loaded ', ' items'] })
     expect(await renderedMessage({ rawMessage: template, message: ['Loaded ', 42, ' items'] })).toBe('Loaded 42 items')
   })

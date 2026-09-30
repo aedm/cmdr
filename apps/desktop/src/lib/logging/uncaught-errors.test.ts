@@ -48,9 +48,24 @@ describe('uncaught error logging', () => {
     boom.stack = 'flush@app.js:1:17123\n@app.js:1:6396'
     window.dispatchEvent(new ErrorEvent('error', { error: boom, message: '', filename: 'app.js', lineno: 1, colno: 1 }))
 
-    const [, ctx] = h.error.mock.calls[0] as [string, { detail: string }]
-    expect(ctx.detail).toContain('each_key_duplicate')
-    expect(ctx.detail).toContain('flush@app.js')
+    const [, ctx] = h.error.mock.calls[0] as [string, { detail: string; stack: string }]
+    expect(ctx.detail).toBe('Error: each_key_duplicate')
+    expect(ctx.stack).toContain('flush@app.js')
+  })
+
+  it('puts the message in {detail} and the frames in {stack}, so a report redacts and caps the message', () => {
+    // `{detail}` renders as a `detail="…"` field, which the report pass redacts (paths with any
+    // prefix included) and caps. The frames are the app bundle's own URLs.
+    const event = new Event('unhandledrejection') as Event & { reason: unknown }
+    const reason = new Error('Permission denied: /srv/data/Private Person/Medical records')
+    reason.stack = 'Error: Permission denied: /srv/data/Private Person/Medical records\n    at load (app.js:1:2)'
+    event.reason = reason
+    window.dispatchEvent(event)
+
+    const [template, ctx] = h.error.mock.calls[0] as [string, { detail: string; stack: string }]
+    expect(template).toBe('Unhandled promise rejection: {detail}\n{stack}')
+    expect(ctx.detail).toBe('Error: Permission denied: /srv/data/Private Person/Medical records')
+    expect(ctx.stack).toBe('    at load (app.js:1:2)')
   })
 
   it('logs an unhandled rejection', () => {

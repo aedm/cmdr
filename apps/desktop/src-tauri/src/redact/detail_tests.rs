@@ -162,3 +162,21 @@ fn an_unkeyed_bare_name_in_prose_survives() {
     let redacted = context().redact_line(&line).into_owned();
     assert!(redacted.contains("Unkeyed Share"), "{redacted}");
 }
+
+/// A server or frontend error names paths under any prefix (`/srv`, `/data`, `/mnt`), which the
+/// line scanner has no rule for. Inside external text, every absolute path is tokenized.
+#[test]
+fn report_mode_tokenizes_absolute_paths_with_any_prefix_inside_detail() {
+    let context = context();
+    let line = format!(
+        "FE:uncaught Unhandled promise rejection: detail={:?}",
+        "Error: Permission denied: /srv/data/Anna Kovacs/Medical records (and /Users/ada/Downloads/a.pdf)"
+    );
+    let redacted = context.redact_line(&line).into_owned();
+    for private in ["srv/data", "Anna", "Kovacs", "Medical", "records", "ada"] {
+        assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
+    }
+    assert!(redacted.contains("Permission denied: /<dir:"), "{redacted}");
+    assert!(redacted.contains("$HOME/Downloads/<file:"), "the home role survives: {redacted}");
+    assert_eq!(context.redact_line(&redacted), redacted, "idempotent");
+}

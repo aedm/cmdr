@@ -1406,9 +1406,11 @@ survive the rebuild on the Rust side, so they aren't in that list.
   overlay while `use:trapFocus` (see `lib/ui/DETAILS.md` § "Focus trapping") pulls it back — an endless focus ping-pong
   of microtasks that starves the event loop and freezes the webview. Pinned by the "rename to existing name is rejected
   on MTP" E2E. Focus containment inside a dialog is the trap's job; the guard only corrals pane chrome.
-- **A superseded `navigateToPath` rejects with `NavigationSuperseded`, a cancelled one with `NavigationCancelled`.** The
-  loader marks both handled, so the callers that fire and forget (the cancel flow's return trip, a `navigate()` whose
-  `settled` nobody reads) raise no unhandled rejection while one that awaits (MCP `nav_to_path`) still sees which. A
+- **A superseded `navigateToPath` rejects with `NavigationSuperseded`, a cancelled one with `NavigationCancelled`, a
+  failed listing with a plain `Error`.** The loader marks every rejection handled (a listing error is already on screen
+  as the pane's error state), so the callers that fire and forget (the cancel flow's return trip, a `navigate()` whose
+  `settled` nobody reads) raise no unhandled rejection while one that awaits (MCP `nav_to_path`) still sees which. An
+  unhandled one once logged the raw listing message, path and all, under `FE:uncaught`. A
   cancel rejects BEFORE the return trip starts, or the awaiting caller would read it as superseded. Check with
   `instanceof`, ❌ never the message.
 - **A listing lookup can outlive its listing.** `abandonListing` ends the backend listing the moment the pane walks

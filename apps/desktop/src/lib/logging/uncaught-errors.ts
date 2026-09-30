@@ -19,30 +19,33 @@ import { getAppLogger } from './logger'
 const log = getAppLogger('uncaught')
 
 /**
- * Renders a thrown value for the log: an `Error` keeps its stack, anything else
- * stringifies.
+ * Splits a thrown value into its message (`Name: message`) and its frames.
  *
- * ❗ **The message is put back in front of the stack when the engine left it
- * out.** WebKit's `error.stack` is FRAMES ONLY, where V8's opens with
- * `Name: message`. Cmdr ships on WKWebView, so taking the stack verbatim logged
- * every uncaught error as an anonymous pile of minified offsets — which is
- * exactly what a Svelte flush throw in the servers hub looked like, and it cost a
- * real diagnosis. (verified on macOS 26.6.2 / WKWebView and Linux WebKitGTK,
+ * The message goes to `{detail}`, which the log bridge renders as a `detail="…"` field: an
+ * error report redacts it (paths under any prefix included) and caps it, because an error
+ * message can quote a path or a name. The frames are the app bundle's own URLs.
+ *
+ * ❗ **The message is always there, whatever the engine put in the stack.** WebKit's
+ * `error.stack` is FRAMES ONLY, where V8's opens with `Name: message`. Cmdr ships on
+ * WKWebView, so taking the stack verbatim logged every uncaught error as an anonymous pile of
+ * minified offsets — which is exactly what a Svelte flush throw in the servers hub looked like,
+ * and it cost a real diagnosis. (verified on macOS 26.6.2 / WKWebView and Linux WebKitGTK,
  * reading E2E logs, 2026-09-07)
  */
-function describe(value: unknown): string {
+function describe(value: unknown): { detail: string; stack: string } {
   if (value instanceof Error) {
-    const header = `${value.name}: ${value.message}`
-    if (!value.stack) return header
-    return value.stack.startsWith(value.name) ? value.stack : `${header}\n${value.stack}`
+    const detail = `${value.name}: ${value.message}`
+    const stack = value.stack ?? ''
+    return { detail, stack: stack.startsWith(detail) ? stack.slice(detail.length).replace(/^\n/, '') : stack }
   }
   try {
-    return typeof value === 'string' ? value : JSON.stringify(value)
+    return { detail: typeof value === 'string' ? value : JSON.stringify(value), stack: '' }
   } catch {
     // A value that won't stringify (a cycle, a Proxy that throws) still deserves a line.
-    return String(value)
+    return { detail: String(value), stack: '' }
   }
 }
+
 
 let registered = false
 
@@ -65,13 +68,15 @@ export function registerUncaughtErrorLogging(): void {
     const thrown: unknown = event.error ?? null
     if (thrown === null && !event.message) return
     const { filename, lineno, colno } = event
-    log.error('Uncaught error at {source}: {detail}', {
-      source: filename ? `${filename}:${String(lineno)}:${String(colno)}` : 'unknown',
-      detail: thrown !== null ? describe(thrown) : event.message,
-    })
+    const source = filename ? `${filename}:${String(lineno)}:${String(colno)}` : 'unknown'
+    const { detail, stack } = thrown !== null ? describe(thrown) : { detail: event.message, stack: '' }
+    if (stack) log.error('Uncaught error at {source}: {detail}\n{stack}', { source, detail, stack })
+    else log.error('Uncaught error at {source}: {detail}', { source, detail })
   })
 
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
-    log.error('Unhandled promise rejection: {detail}', { detail: describe(event.reason) })
+    const { detail, stack } = describe(event.reason)
+    if (stack) log.error('Unhandled promise rejection: {detail}\n{stack}', { detail, stack })
+    else log.error('Unhandled promise rejection: {detail}', { detail })
   })
 }
