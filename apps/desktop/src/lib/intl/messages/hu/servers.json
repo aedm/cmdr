@@ -175,6 +175,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "Ha a szerver be van kapcsolva, ellenőrizd, hogy a Cmdr engedélyezve van-e itt: {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "A Cmdr még nem tekinti megbízhatónak {host} kulcsát.",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

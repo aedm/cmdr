@@ -1983,6 +1983,19 @@
     "confidence": "high",
     "sources": "catalog (servers.hub.emptyMessage, onboarding.stepOptional.networking.desc, settings.network.smbConcurrency.description, errors.listing.hostDown.suggestion all keep Latin NAS, spaced)"
   },
+  "native": {
+    "accept": ["系統連線"],
+    "avoid": [
+      {
+        "form": "原生",
+        "why": "0 hits in macOS zh-TW, which writes 內建 (內建顯示器); zh converged on 内建 the same way"
+      }
+    ],
+    "chosen": "內建",
+    "confidence": "high",
+    "forms": "first mention macOS 內建的 SMB 網路連線 (fileExplorer.network.osMountFallback.*); later the short 系統連線 (the directConnection*Toast family, smbNativeNote)",
+    "sources": "AP-TW 內建顯示器 (3 hits, 0 for 原生); catalog: 系統連線 in 11 keys"
+  },
   "navigate": {
     "accept": ["跳至", "跳到", "前往", "回到", "瀏覽", "進入", "離開"],
     "avoid": [

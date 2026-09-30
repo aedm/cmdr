@@ -175,6 +175,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "Si el servidor está encendido, comprueba que Cmdr tenga permiso en {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr todavía no confía en la clave de {host}.",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

@@ -46,3 +46,9 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   otherwise quote it in both.
 - `pnpm i18n:brief --keys a b c` (space-separated) silently briefs only `a` (header says "1 key"). Reject stray
   positional args, or accept both separators.
+- Tooling: `sync-locale-keys.ts --restamp` skips overlays (`es-419`), so a new overlay fork's `sourceHash` (the hash of
+  the `es` value it overrides) had to be computed by hand with `sourceHash()` for
+  `fileExplorer.pane.openLocalNetworkSettings`. Let `--restamp` (or a `--fork`) stamp overlay keys too.
+- `{localNetwork}` keys (`fileExplorer.pane.directConnectionBlockedByThisMacToast`, `.openLocalNetworkSettings`,
+  `servers.refusal.localNetworkHint`): no screenshot of the toast or the Add server hint. Capture both so translators
+  can judge the button's width and whether the pane name reads better quoted (zh and zh-Hant quote it, the rest don't).

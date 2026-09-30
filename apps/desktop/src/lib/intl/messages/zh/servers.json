@@ -175,6 +175,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "如果服务器开着，请确认已在“{localNetwork}”里允许 Cmdr。",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr 还没有信任 {host} 的主机密钥。",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

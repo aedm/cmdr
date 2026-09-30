@@ -7,6 +7,10 @@
   "@fileExplorer.pane.disconnectFailedToast": {
     "sourceHash": "dedbdef"
   },
+  "fileExplorer.pane.openLocalNetworkSettings": "Abrir la configuración de {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "6d40280"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} tardó demasiado en responder, así que este recurso compartido sigue usando la conexión del sistema.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "2794ba6"

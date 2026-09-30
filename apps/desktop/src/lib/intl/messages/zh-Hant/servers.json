@@ -175,6 +175,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "如果伺服器開著，請確認已在「{localNetwork}」裡允許 Cmdr。",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr 還沒有信任 {host} 的主機金鑰。",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

@@ -175,6 +175,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "Nếu máy chủ đang bật, hãy kiểm tra xem Cmdr có được phép trong {localNetwork} không.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr chưa tin cậy khóa của {host}.",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

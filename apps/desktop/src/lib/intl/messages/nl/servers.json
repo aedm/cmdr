@@ -178,6 +178,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
   },
+  "servers.refusal.localNetworkHint": "Als de server aanstaat, controleer dan of Cmdr onder {localNetwork} is toegestaan.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
   "servers.refusal.hostKeyUntrusted": "Cmdr vertrouwt de sleutel van {host} nog niet.",
   "@servers.refusal.hostKeyUntrusted": {
     "sourceHash": "83dc719"

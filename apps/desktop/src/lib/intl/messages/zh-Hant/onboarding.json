@@ -504,7 +504,7 @@
   "@onboarding.stepOptional.mtp.title": {
     "sourceHash": "473e8e9"
   },
-  "onboarding.stepOptional.mtp.summary": "能連 Android 手機之類的裝置，會壓下 macOS 原生的處理程序",
+  "onboarding.stepOptional.mtp.summary": "能連 Android 手機之類的裝置，會壓下 macOS 內建的處理程序",
   "@onboarding.stepOptional.mtp.summary": {
     "sourceHash": "d5b9a6e"
   },
