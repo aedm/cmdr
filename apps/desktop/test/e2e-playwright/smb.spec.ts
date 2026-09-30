@@ -48,7 +48,14 @@ import {
   mcpAwaitItem,
   mcpAwaitPath,
 } from '../e2e-shared/mcp-client.js'
-import { ensureAppReady, expectAndDismissToast, getFixtureRoot, pollUntil, isStateClean } from './helpers.js'
+import {
+  ensureAppReady,
+  escapeOverlayUntilGone,
+  expectAndDismissToast,
+  getFixtureRoot,
+  pollUntil,
+  isStateClean,
+} from './helpers.js'
 import type { CredentialSource, ShareListResult } from '../../src/lib/ipc/bindings.js'
 
 import os from 'os'
@@ -148,15 +155,38 @@ test.afterEach(() => {
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
-/** Checks whether a host name appears in the servers hub's row list. */
-async function hostExistsInPane(tauriPage: Parameters<typeof pollUntil>[0], hostName: string): Promise<boolean> {
-  return tauriPage.evaluate<boolean>(`(function() {
-        var rows = document.querySelectorAll('.server-row .col-name');
-        for (var i = 0; i < rows.length; i++) {
-            if (rows[i].textContent.indexOf(${JSON.stringify(hostName)}) >= 0) return true;
-        }
-        return false;
-    })()`)
+/**
+ * The servers hub's entry for a host in `cmdr://state` (`<name>  protocol=smb  status=…`), or `undefined`.
+ *
+ * ❗ Read off the state, ❌ not the DOM: the hosts Cmdr only found sit in a group that starts collapsed once a server is
+ * saved (which the mounts in this file do), and a collapsed group renders none of them. The state lists them either
+ * way, and `move_cursor` onto one opens the group.
+ */
+async function hostEntryInHub(hostName: string): Promise<string | undefined> {
+  const state = await mcpReadResource('cmdr://state')
+  return state.split('\n').find((line) => line.includes(`${hostName}  protocol=`))
+}
+
+/** Checks whether the servers hub lists a host. */
+async function hostExistsInPane(hostName: string): Promise<boolean> {
+  return (await hostEntryInHub(hostName)) !== undefined
+}
+
+/**
+ * Opens a host from the hub, waits for its share list, and comes back to the hub.
+ *
+ * A host Cmdr only found has its shares listed when someone opens it, and at no other time (#324), so this is what
+ * puts a `shares=` count on its hub entry.
+ */
+async function openHostAndComeBack(tauriPage: Parameters<typeof pollUntil>[0], hostName: string): Promise<void> {
+  await mcpCall('move_cursor', { pane: 'left', filename: hostName })
+  await mcpCall('open_under_cursor', {})
+  await expect
+    .poll(async () => tauriPage.evaluate<number>(`document.querySelectorAll('.share-row').length`), {
+      timeout: waitBudget(30000),
+    })
+    .toBeGreaterThan(0)
+  await mcpSelectVolume('left', 'Servers')
 }
 
 /** Checks whether a share name appears in the share browser's share list. */
@@ -228,30 +258,25 @@ describeSmb('SMB host discovery', () => {
     // Wait for virtual hosts to appear (injected by smb-e2e feature).
     // 30s: defensive bound. Hosts typically appear within 1-3 s; longer budget covers
     // mDNS discovery latency variance on Linux Docker.
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(30000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(30000) }).toBeTruthy()
 
-    const hasGuest = await hostExistsInPane(tauriPage, 'SMB Test (Guest)')
-    const hasAuth = await hostExistsInPane(tauriPage, 'SMB Test (Auth)')
+    const hasGuest = await hostExistsInPane('SMB Test (Guest)')
+    const hasAuth = await hostExistsInPane('SMB Test (Auth)')
     expect(hasGuest).toBe(true)
     expect(hasAuth).toBe(true)
   })
 
-  test('guest host shows share count after discovery', async ({ tauriPage }) => {
+  test('guest host shows share count once it has been opened', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(30000) }).toBeTruthy()
 
-    // Wait for the guest host to appear and its shares to be prefetched
+    await openHostAndComeBack(tauriPage, 'SMB Test (Guest)')
     await expect
-      .poll(
-        async () => {
-          const state = await mcpReadResource('cmdr://state')
-          return state.includes('SMB Test (Guest)') && state.includes('shares=1')
-        },
-        { timeout: waitBudget(30000) },
-      )
+      .poll(async () => (await hostEntryInHub('SMB Test (Guest)'))?.includes('shares=1'), {
+        timeout: waitBudget(30000),
+      })
       .toBeTruthy()
   })
 })
@@ -301,9 +326,7 @@ describeSmb('SMB share browsing', () => {
 
     // Switch to Network, wait for hosts
     await mcpSelectVolume('left', 'Servers')
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(15000) }).toBeTruthy()
 
     // Move cursor to guest host and open it
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
@@ -326,9 +349,7 @@ describeSmb('SMB share browsing', () => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(15000) }).toBeTruthy()
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
     await mcpCall('open_under_cursor', {})
     await expect
@@ -338,9 +359,7 @@ describeSmb('SMB share browsing', () => {
     // The tool itself polls for the volume name, so a no-op surfaces as a timeout here.
     await mcpSelectVolume('left', 'Servers')
 
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(15000) }).toBeTruthy()
     expect(await shareExistsInPane(tauriPage, SMB_GUEST_SHARE)).toBe(false)
   })
 
@@ -351,9 +370,7 @@ describeSmb('SMB share browsing', () => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(15000) }).toBeTruthy()
 
     const answer = await mcpCallRaw('nav_to_path', {
       pane: 'left',
@@ -361,7 +378,7 @@ describeSmb('SMB share browsing', () => {
     })
     expect(answer.error, 'an smb:// path must be refused, not acked').toBeDefined()
     // Still the host list, and no share list opened behind the refusal.
-    expect(await hostExistsInPane(tauriPage, 'SMB Test (Guest)')).toBe(true)
+    expect(await hostExistsInPane('SMB Test (Guest)')).toBe(true)
   })
 })
 
@@ -374,9 +391,7 @@ describeSmb('SMB mounting and file browsing', () => {
 
     // Switch to Network → open guest host → select share
     await mcpSelectVolume('left', 'Servers')
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Guest)'), { timeout: waitBudget(15000) }).toBeTruthy()
 
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
     await mcpCall('open_under_cursor', {})
@@ -490,32 +505,32 @@ describeSmb('SMB cross-storage copy', () => {
 
 // ── Authentication tests ─────────────────────────────────────────────────────
 //
-// The auth Docker container (smb-auth, `guest ok = no`) allows guest share
-// LISTING via IPC$ (Samba default: `map to guest = bad user`). Only share
-// ACCESS (mounting) requires credentials, so opening the auth host lands
-// straight on its share list and asks for nothing.
+// The auth Docker container (smb-auth, `guest ok = no`) turns a guest's share
+// listing away, so opening the auth host asks for a sign-in. Nothing lists it
+// before that: a host Cmdr only found is listed when someone opens it (#324).
 //
-// These tests verify the auth host's share discovery and the share listing via
-// IPC with credentials, which is the command the sign-in sheet's own attempt
-// runs. The sheet itself is covered by the unit tests, which can drive its
-// `attempt` directly; here the fixture's value is the real Samba round-trip.
+// These tests verify that ask, and the share listing via IPC with credentials,
+// which is the command the sign-in sheet's own attempt runs. The sheet itself is
+// covered by the unit tests, which can drive its `attempt` directly; here the
+// fixture's value is the real Samba round-trip.
 
 describeSmb('SMB authentication', () => {
-  test('auth host shows share count after discovery', async ({ tauriPage }) => {
+  test('opening the auth host asks for a sign-in, and cancelling returns to the host list', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
+    const sheet = '[data-dialog-id="server-sign-in"]'
 
     await mcpSelectVolume('left', 'Servers')
+    await expect.poll(async () => hostExistsInPane('SMB Test (Auth)'), { timeout: waitBudget(30000) }).toBeTruthy()
+    // Found, and not listed: no share count on its entry until someone opens it.
+    expect(await hostEntryInHub('SMB Test (Auth)')).not.toContain('shares=')
 
-    // Wait for the auth host to appear and its shares to be prefetched
-    await expect
-      .poll(
-        async () => {
-          const state = await mcpReadResource('cmdr://state')
-          return state.includes('SMB Test (Auth)') && state.includes('shares=1')
-        },
-        { timeout: waitBudget(30000) },
-      )
-      .toBeTruthy()
+    await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Auth)' })
+    await mcpCall('open_under_cursor', {})
+    await expect.poll(async () => tauriPage.isVisible(sheet), { timeout: waitBudget(30000) }).toBeTruthy()
+
+    // "Not now" leaves nothing to read on this host, so the pane goes back to the hub.
+    await escapeOverlayUntilGone(tauriPage, sheet)
+    await expect.poll(async () => hostExistsInPane('SMB Test (Auth)'), { timeout: waitBudget(15000) }).toBeTruthy()
   })
 
   test('listing shares with valid credentials returns private share', async ({ tauriPage }) => {
@@ -558,16 +573,13 @@ describeSmb('SMB 50-share server', () => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
+    await expect.poll(async () => hostExistsInPane('SMB Test (50 Shares)'), { timeout: waitBudget(30000) }).toBeTruthy()
 
-    // Wait for the 50-shares host to appear and prefetch shares
+    await openHostAndComeBack(tauriPage, 'SMB Test (50 Shares)')
     await expect
-      .poll(
-        async () => {
-          const state = await mcpReadResource('cmdr://state')
-          return state.includes('SMB Test (50 Shares)') && state.includes('shares=50')
-        },
-        { timeout: waitBudget(30000) },
-      )
+      .poll(async () => (await hostEntryInHub('SMB Test (50 Shares)'))?.includes('shares=50'), {
+        timeout: waitBudget(30000),
+      })
       .toBeTruthy()
   })
 })
@@ -596,9 +608,7 @@ describeSmb('SMB unicode server', () => {
 
     // Switch to Network, open unicode host
     await mcpSelectVolume('left', 'Servers')
-    await expect
-      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Unicode)'), { timeout: waitBudget(15000) })
-      .toBeTruthy()
+    await expect.poll(async () => hostExistsInPane('SMB Test (Unicode)'), { timeout: waitBudget(15000) }).toBeTruthy()
 
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Unicode)' })
     await mcpCall('open_under_cursor', {})

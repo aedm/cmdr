@@ -154,9 +154,12 @@ fn guest_attempt_for(
     }
 }
 
-/// Prefetches shares for a host (for example, on hover).
+/// Prefetches shares for a host, so its share list is cached by the time someone opens it.
 /// Same as list_shares_on_host but designed for prefetching - errors are silently ignored.
 /// Returns immediately if shares are already cached.
+///
+/// Listing signs in to the host (as a guest, where it lets one in), so the frontend calls
+/// this for servers the user saved and never for one that was only discovered.
 #[tauri::command]
 #[specta::specta]
 #[allow(

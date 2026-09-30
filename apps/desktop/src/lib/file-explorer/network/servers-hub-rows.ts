@@ -143,7 +143,7 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
   }
 
   for (const server of sources.saved) {
-    const hosts = server.protocol === 'smb' ? matchingHosts(server, sources.hosts) : []
+    const hosts = matchingHosts(server, sources.hosts)
     for (const host of hosts) claimed.add(host.id)
     add(savedRow(server, primaryHost(hosts), states))
   }
@@ -219,6 +219,7 @@ function shareRow(
  * same NAS.
  */
 function matchingHosts(server: SavedServer, hosts: NetworkHost[]): NetworkHost[] {
+  if (server.protocol !== 'smb') return []
   const address = server.address.toLowerCase()
   const name = server.displayName.toLowerCase()
   return hosts.filter(
@@ -228,6 +229,14 @@ function matchingHosts(server: SavedServer, hosts: NetworkHost[]): NetworkHost[]
       host.name.toLowerCase() === name ||
       host.hostname?.toLowerCase() === address,
   )
+}
+
+/**
+ * The ids of the discovery list's hosts that ARE one of the saved servers, by the
+ * same match the hub's merge makes. Every other host is one Cmdr merely found.
+ */
+export function savedSmbHostIds(saved: SavedServer[], hosts: NetworkHost[]): Set<string> {
+  return new Set(saved.flatMap((server) => matchingHosts(server, hosts)).map((host) => host.id))
 }
 
 /**

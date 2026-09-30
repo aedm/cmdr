@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildHubRows, openMoveFor } from './servers-hub-rows'
+import { buildHubRows, openMoveFor, savedSmbHostIds } from './servers-hub-rows'
 import type { SavedServer } from '$lib/tauri-commands'
 import type { NetworkHost, VolumeInfo } from '../types'
 import type { SignedInAs } from './signed-in-as'
@@ -322,6 +322,22 @@ describe('buildHubRows: order', () => {
       volumes: [],
     })
     expect(rows.map((r) => r.name)).toEqual(['Alpha', 'zeta'])
+  })
+})
+
+describe('savedSmbHostIds', () => {
+  it('names every discovered host a saved SMB server claims, and no other', () => {
+    const ids = savedSmbHostIds(
+      [smbServer({ id: 'manual-10-0-0-4-445', displayName: 'Attic NAS', address: '10.0.0.4' }), sftpServer()],
+      [
+        host({ id: 'manual-10-0-0-4-445', name: '10.0.0.4', source: 'manual' }),
+        host({ id: 'bonjour-attic', name: 'Attic NAS' }),
+        host({ id: 'bonjour-printer', name: 'Printer' }),
+        // Same name as the SFTP server, which claims no SMB host.
+        host({ id: 'bonjour-naspolya', name: 'Naspolya' }),
+      ],
+    )
+    expect([...ids].sort()).toEqual(['bonjour-attic', 'manual-10-0-0-4-445'])
   })
 })
 
