@@ -1036,8 +1036,8 @@ Who stays out, and why it's not an oversight:
   that lane is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't
   differ by platform.
 - **`desktop-rust-rustdoc`** and **`desktop-rust-clippy-mimalloc`** own private target dirs (the latter because its
-  `cmdr-fs` feature flip would rebuild every workspace crate above it twice per run). **`desktop-rust-cargo-udeps`** runs on the pinned nightly, whose
-  artifacts can't be shared with stable anyway.
+  `cmdr-fs` feature flip would rebuild every workspace crate above it twice per run). **`desktop-rust-cargo-udeps`**
+  runs on the pinned nightly, whose artifacts can't be shared with stable anyway.
 
 ### Why the feature set is `virtual-mtp`
 
@@ -1798,38 +1798,38 @@ notices file.
 Checks by app and tech:
 
 - **Desktop / Rust**: rustfmt, clippy, clippy-mimalloc (slow, macOS only, not in CI; clippy with `cmdr/mimalloc` in a
-  private target dir, so the global-allocator path macOS doesn't ship can't rot), rustdoc (`cargo doc --all-features --document-private-items` over every
-  first-party member, with every doc lint in `rustdocDeniedLints` denied and any leftover warning failing the check too;
-  the vendored fork is skipped because `--all-features` turns on two mutually exclusive arms there), cargo-audit,
-  cargo-deny, cargo-machete, cargo-udeps (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro,
-  macos-availability (no call to a selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"),
-  macos-framework-floor (no framework in the BUILT binary's load commands newer than that same floor, which is the half
-  no runtime gate can save; § "macOS framework floor"), sqlite-open-direct (every SQLite connection opens through
-  `crate::sqlite_util`, so the process-wide shared page cache is always installed before SQLite initializes),
-  error-string-match, write-ops-isolation (the write engine may not name the `agent` module: an approved operation is an
-  ordinary operation, and an engine that can see the agent grows a second execution path; per-source outcomes reach a
-  caller through the injected `OperationEventSink` instead), lock-poison (two lanes: an error-level one for an
-  acquisition that records no poison-handling choice, and a warn-only one for a failure that's silently discarded, on a
-  per-file ratchet), test-sleep (flags a fixed `thread::sleep` / `tokio::time::sleep` in test code, where a
-  condition-based `wait_until` belongs; opt out a genuine sleep-is-the-subject site with
-  `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on `std::env::temp_dir()`, where every
-  process on the machine shares the path and two suite runs delete each other's live fixtures; the sanctioned fixture is
-  `crate::test_support::TestDir`, and a site where the temp root is load bearing opts out with
-  `// allowed-fixed-temp-dir: <reason>`), no-hand-rolled-fixture (bans a struct literal of `CachedScanResult` /
-  `SourceHint` / `VolumePreflight` / `WrittenFile` in test code, so a fixture can only be one of the shapes a named
-  constructor actually builds; it ships with ZERO findings on purpose and is a regression fence rather than a finder —
-  the shapes are already clean, and the point is that the next test author can't undo that by copy-pasting an old
-  literal), derive-default-justified (every `#[derive(..., Default, ...)]` under `file_system/` and `cmdr-fs` carries a
-  `// DEFAULT-OK: <why>` line, because a zero value on a fact-carrying type isn't "no information", it's a claim about
-  the disk that nobody made), probe-unwrap-justified (flags `\.is_directory(…).await.unwrap_or(…)` in production
-  `file_system/` code, where a probe that COULDN'T answer gets collapsed into a confident "no" and picks the branch that
-  deletes; opt out with `// allowed-probe-unwrap: <why the guess is truthful>`), discarded-outcome (a function that
-  returns NOTHING while dropping a typed answer from the free function it delegates to; three of these shipped before it
-  existed, and each ended as an IPC command or MCP tool inventing a success. `Result` and `Option` returns are
-  deliberately out of scope: `Result` is `#[must_use]`, so the compiler already warns, and an `Option` discard is the
-  map/set idiom. That leaves exactly the gap the compiler can't see, a bare `bool` or a named outcome type. Every
-  ambiguity resolves to "don't flag" — an unresolvable name, two definitions disagreeing on their return type, a method
-  call — because a check people learn to ignore is worse than none. Opt out with
+  private target dir, so the global-allocator path macOS doesn't ship can't rot), rustdoc
+  (`cargo doc --all-features --document-private-items` over every first-party member, with every doc lint in
+  `rustdocDeniedLints` denied and any leftover warning failing the check too; the vendored fork is skipped because
+  `--all-features` turns on two mutually exclusive arms there), cargo-audit, cargo-deny, cargo-machete, cargo-udeps
+  (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a
+  selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework
+  in the BUILT binary's load commands newer than that same floor, which is the half no runtime gate can save; § "macOS
+  framework floor"), sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide
+  shared page cache is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write
+  engine may not name the `agent` module: an approved operation is an ordinary operation, and an engine that can see the
+  agent grows a second execution path; per-source outcomes reach a caller through the injected `OperationEventSink`
+  instead), lock-poison (two lanes: an error-level one for an acquisition that records no poison-handling choice, and a
+  warn-only one for a failure that's silently discarded, on a per-file ratchet), test-sleep (flags a fixed
+  `thread::sleep` / `tokio::time::sleep` in test code, where a condition-based `wait_until` belongs; opt out a genuine
+  sleep-is-the-subject site with `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on
+  `std::env::temp_dir()`, where every process on the machine shares the path and two suite runs delete each other's live
+  fixtures; the sanctioned fixture is `crate::test_support::TestDir`, and a site where the temp root is load bearing
+  opts out with `// allowed-fixed-temp-dir: <reason>`), no-hand-rolled-fixture (bans a struct literal of
+  `CachedScanResult` / `SourceHint` / `VolumePreflight` / `WrittenFile` in test code, so a fixture can only be one of
+  the shapes a named constructor actually builds; it ships with ZERO findings on purpose and is a regression fence
+  rather than a finder — the shapes are already clean, and the point is that the next test author can't undo that by
+  copy-pasting an old literal), derive-default-justified (every `#[derive(..., Default, ...)]` under `file_system/` and
+  `cmdr-fs` carries a `// DEFAULT-OK: <why>` line, because a zero value on a fact-carrying type isn't "no information",
+  it's a claim about the disk that nobody made), probe-unwrap-justified (flags `\.is_directory(…).await.unwrap_or(…)` in
+  production `file_system/` code, where a probe that COULDN'T answer gets collapsed into a confident "no" and picks the
+  branch that deletes; opt out with `// allowed-probe-unwrap: <why the guess is truthful>`), discarded-outcome (a
+  function that returns NOTHING while dropping a typed answer from the free function it delegates to; three of these
+  shipped before it existed, and each ended as an IPC command or MCP tool inventing a success. `Result` and `Option`
+  returns are deliberately out of scope: `Result` is `#[must_use]`, so the compiler already warns, and an `Option`
+  discard is the map/set idiom. That leaves exactly the gap the compiler can't see, a bare `bool` or a named outcome
+  type. Every ambiguity resolves to "don't flag" — an unresolvable name, two definitions disagreeing on their return
+  type, a method call — because a check people learn to ignore is worse than none. Opt out with
   `// allowed-discarded-outcome: <why nobody above needs the answer>`), mtp-dropping-timeout, mtp-no-transport-reset,
   bindings-fresh, ipc-enum-camelcase, the five `<provider>-smoke` lanes (CI-only: one `--lib` module each against a live
   provider, self-skipping without its key; `gemini-smoke` additionally has a warn-level "inconclusive" outcome — see §
@@ -2029,9 +2029,10 @@ the check could not be green in both places at once, and wasn't from the day it 
 the file instead of leaving the choice to the host. The checksums cargo-about wants alongside a pin don't guard
 themselves: a stale one yields a warning, exit code 0, and a silent fall back to scanning, which is the exact behavior
 being removed. So `verifyClarifications` compares each pinned crate's resolved `source_path` against the pin and fails
-when they differ, naming the `shasum` command that fixes it. Every text also carries its `Text from:` file into the
-generated notices, so the next crate to develop this ambiguity surfaces as a diff line naming a file rather than as a
-license count that moved for no visible reason.
+when they differ, naming the `shasum` command that fixes it. A pinned crate absent from the shipped graph is skipped,
+not failed: the default macOS build runs on the system allocator and ships no `libmimalloc-sys`, and its pin stays for a
+build that does. Every text also carries its `Text from:` file into the generated notices, so the next crate to develop
+this ambiguity surfaces as a diff line naming a file rather than as a license count that moved for no visible reason.
 
 **Gotcha**: a clarification REPLACES the crate's declared license expression, so `crateClarification.license` repeats
 that expression verbatim (`miniz_oxide` is `MIT OR Zlib OR Apache-2.0`, not the single `MIT` whose text is pinned).

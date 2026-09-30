@@ -712,12 +712,6 @@
       "url": "https://github.com/RustCrypto/utils"
     },
     {
-      "name": "cty",
-      "version": "0.2.2",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/japaric/cty"
-    },
-    {
       "name": "curve25519-dalek",
       "version": "5.0.0",
       "license": "BSD-3-Clause",
@@ -2056,12 +2050,6 @@
       "url": "https://github.com/rust-lang/libc"
     },
     {
-      "name": "libmimalloc-sys",
-      "version": "0.1.49",
-      "license": "MIT",
-      "url": "https://github.com/purpleprotocol/mimalloc_rust/tree/master/libmimalloc-sys"
-    },
-    {
       "name": "libsqlite3-sys",
       "version": "0.38.1",
       "license": "MIT",
@@ -2180,12 +2168,6 @@
       "version": "0.9.11",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/RazrFalcon/memmap2-rs"
-    },
-    {
-      "name": "mimalloc",
-      "version": "0.1.52",
-      "license": "MIT",
-      "url": "https://github.com/purpleprotocol/mimalloc_rust"
     },
     {
       "name": "mime",
