@@ -69,7 +69,7 @@ use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::transfer_error::{PathRole, map_volume_error};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 /// Context threaded through the recursive rename-merge so each level can resolve
@@ -406,8 +406,14 @@ async fn apply_child_decision(
         // dest usually fails before reaching here. This is the transient-fault
         // residue, and defense in depth on the last destructive branch of the
         // family.)
-        let write_path_is_dir = match ctx.volume.is_directory(&write_path).await {
-            Ok(is_dir) => is_dir,
+        //
+        // `entry_kind`, ❌ never `is_directory`: a LINK that took the name since
+        // the resolver freed it is not a directory to merge into, and a
+        // following backend's `is_directory` says it is. Merging renames the
+        // source's files into the link's target. The rename below refuses the
+        // taken name instead.
+        let write_path_is_dir = match ctx.volume.entry_kind(&write_path).await {
+            Ok(kind) => kind == EntryKind::Directory,
             Err(VolumeError::NotFound(_)) => false,
             Err(e) => return Err(map_rename_error(&write_path, e)),
         };

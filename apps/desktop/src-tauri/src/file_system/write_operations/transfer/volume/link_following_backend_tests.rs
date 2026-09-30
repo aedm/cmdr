@@ -39,6 +39,10 @@ use tempfile::TempDir;
 /// `is_directory` is true for a link to a folder (with `is_symlink` beside it).
 struct LinkFollowingVolume {
     inner: LocalPosixVolume,
+    /// `Some((name, target))` stages a race: the moment `name` is renamed away
+    /// (a conflict resolution setting it aside), a link to `target` takes the
+    /// freed name, as another writer could between the resolver and the landing.
+    link_takes_freed_name: Option<(PathBuf, PathBuf)>,
 }
 
 impl Volume for LinkFollowingVolume {
@@ -79,7 +83,15 @@ impl Volume for LinkFollowingVolume {
         to: &'a Path,
         force: bool,
     ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
-        self.inner.rename(from, to, force)
+        Box::pin(async move {
+            self.inner.rename(from, to, force).await?;
+            if let Some((name, target)) = &self.link_takes_freed_name
+                && from == name
+            {
+                std::os::unix::fs::symlink(target, self.inner.root().join(name)).expect("racing symlink");
+            }
+            Ok(())
+        })
     }
     fn create_directory<'a>(
         &'a self,
@@ -118,8 +130,58 @@ fn following_volume() -> (Arc<dyn Volume>, TempDir) {
     let dir = TempDir::new().unwrap();
     let volume: Arc<dyn Volume> = Arc::new(LinkFollowingVolume {
         inner: LocalPosixVolume::new("V", dir.path().to_path_buf()),
+        link_takes_freed_name: None,
     });
     (volume, dir)
+}
+
+/// A same-volume merge's folder child answered Overwrite against a FILE: the
+/// resolver sets the file aside, and before the folder lands a LINK to a folder
+/// takes the freed name. The landing must not read that link as "a directory is
+/// here now, merge into it": that renames the source's files into its target.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_link_racing_into_a_freed_name_is_never_merged_into() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path();
+    let volume: Arc<dyn Volume> = Arc::new(LinkFollowingVolume {
+        inner: LocalPosixVolume::new("V", root.to_path_buf()),
+        link_takes_freed_name: Some((PathBuf::from("dst/album/thing"), root.join("outside/target"))),
+    });
+    plant_target(root);
+    write_file(root, "src/album/thing/mine.txt", b"MINE");
+    write_file(root, "dst/album/thing", b"THE USER'S FILE");
+    let state = make_state();
+    let events = Arc::new(ConflictResponderSink::new(&state, ConflictResolution::Overwrite, false));
+
+    let result = move_within_same_volume_with_progress(
+        events,
+        "op-follow-racing-link",
+        &state,
+        Arc::clone(&volume),
+        &[PathBuf::from("src/album")],
+        Path::new("dst"),
+        &config(ConflictResolution::Stop),
+    )
+    .await;
+
+    assert!(is_link(root, "dst/album/thing"), "the race was staged: {result:?}");
+    assert_eq!(read(root, "outside/target/inside.txt"), b"OUTSIDE THE SELECTION");
+    assert!(
+        !exists(root, "outside/target/mine.txt"),
+        "nothing may land in the link's target, got {result:?}"
+    );
+    assert_eq!(
+        read(root, "src/album/thing/mine.txt"),
+        b"MINE",
+        "the folder that couldn't land stays home"
+    );
+    assert!(result.is_err(), "the taken name refuses the landing, got {result:?}");
+    let kept = std::fs::read_dir(root.join("dst/album"))
+        .expect("list dst/album")
+        .map(|e| e.expect("entry").path())
+        .filter(|p| std::fs::symlink_metadata(p).is_ok_and(|m| m.is_file()))
+        .any(|p| std::fs::read(p).expect("read") == b"THE USER'S FILE");
+    assert!(kept, "the file that was set aside is still in the folder");
 }
 
 /// The shared fixture: a target folder holding one file, OUTSIDE the selection.
