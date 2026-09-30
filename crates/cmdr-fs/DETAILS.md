@@ -139,12 +139,13 @@ The 64-bit digest also bounds the length, which is load-bearing: an ID is a file
 stop at 255 bytes. It's the reason a fully-injective escaping scheme (percent-encode the path) was rejected: reversible
 and elegant, but unbounded, and it renders a mount path with spaces unreadable anyway.
 
-The funnel also mints the APP-ROOT PREFIX of every remote volume (`sftp_app_root`, `webdav_app_root`), beside the id and
-from the same tuple. That is what makes a path and an id agree by construction: a `sftp://ada@nas:22/...` path resolves
-to exactly the id `sftp_volume_id` mints for that account, so a saved row and the volume it becomes share one identity
-across a dial and a restored tab finds its way home. The prefix, the translation between an app path and a server path,
-and why a bare server-absolute path is REFUSED rather than anchored: `src/volume/remote_paths.rs`'s module doc, which is
-canonical for all of it.
+Every remote volume's APP-ROOT PREFIX (`sftp_app_root`, `webdav_app_root`, `adb_app_root`, and the splits back,
+`server_of_path` and `adb_serial_of_path`) is minted from the same tuple as its id, in `remote_paths.rs` beside the
+translation it feeds, and re-exported from `volume` like the ids. That is what makes a path and an id agree by
+construction: a `sftp://ada@nas:22/...` path resolves to exactly the id `sftp_volume_id` mints for that account, so a
+saved row and the volume it becomes share one identity across a dial and a restored tab finds its way home. The prefix,
+the translation between an app path and a server path, and why a bare server-absolute path is REFUSED rather than
+anchored: `src/volume/remote_paths.rs`'s module doc, which is canonical for all of it.
 
 Nothing enforces the funnel in the type system. An ID crosses IPC as a `String` in ~3,600 Rust and ~1,600 TypeScript
 sites, so a `VolumeId` newtype would be a very large refactor for a property one module already guarantees; the

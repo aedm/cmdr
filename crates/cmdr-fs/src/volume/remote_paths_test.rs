@@ -220,3 +220,31 @@ fn a_path_anchored_by_the_app_still_lands_where_the_pane_says() {
         "a path the pane already holds is anchored to itself, never doubled"
     );
 }
+
+// ── The app-path schemes ─────────────────────────────────────────────
+
+#[test]
+fn an_adb_prefix_keeps_the_serial_exactly_as_the_server_names_it() {
+    // The ADB server keys on the exact serial, so a folded prefix would dial a
+    // device nobody listed. The id folds its slug; the prefix never does.
+    assert_eq!(adb_app_root("46061FDAS000A4"), "adb://46061FDAS000A4");
+    assert_eq!(adb_app_root("192.168.1.5:5555"), "adb://192.168.1.5:5555");
+    assert_ne!(adb_app_root("R58M1"), adb_app_root("r58m1"));
+}
+
+#[test]
+fn a_phone_path_names_its_serial_exactly_as_the_prefix_spelled_it() {
+    // The index routes a pane's `adb://…` path to its phone by this serial, so
+    // it must read back exactly what `adb_app_root` wrote, port and case included.
+    assert_eq!(adb_serial_of_path(&adb_app_root("ZY22ABC")), Some("ZY22ABC"));
+    assert_eq!(adb_serial_of_path("adb://ZY22ABC/sdcard/DCIM"), Some("ZY22ABC"));
+    assert_eq!(
+        adb_serial_of_path("adb://192.168.1.5:5555/sdcard"),
+        Some("192.168.1.5:5555")
+    );
+    assert_eq!(adb_serial_of_path("adb://"), None);
+    assert_eq!(adb_serial_of_path("adb:///sdcard"), None);
+    assert_eq!(adb_serial_of_path("mtp://dev/1"), None);
+    // A bare device path is the Mac's boot disk in the app's vocabulary.
+    assert_eq!(adb_serial_of_path("/sdcard/DCIM"), None);
+}

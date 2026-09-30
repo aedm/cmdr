@@ -1751,9 +1751,12 @@ pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavai
 pub use entry_kind::EntryKind;
 pub use error::{ErrnoField, VolumeError};
 pub use ids::*;
+// The app-path schemes live beside the translation they feed; re-exported here
+// so callers keep `volume::sftp_app_root` and friends.
 pub use in_memory::InMemoryVolume;
 pub use mkdir_all::{LeadsTo, MadeDirectories, MakesDirectories};
 pub use patching::{PatchSource, patch_created, patch_deleted, patch_mutation, patch_renamed};
+pub use remote_paths::{ServerPath, adb_app_root, adb_serial_of_path, server_of_path, sftp_app_root, webdav_app_root};
 pub use retirement::{Retirement, Retires, SelfHandle};
 pub use scan_boundary::{ScanBoundary, stopped as scan_stopped};
 pub use scan_stop::{ScanStop, ScanStopSignal};
