@@ -1055,12 +1055,14 @@ what a sign-in sheet just collected) and hand it to `host_for_dial`, which answe
 against:
 
 - **No offer**: the app's ordinary host. Every connect that isn't answering a sign-in.
-- **`remember: true`**: `keychain::save_credentials` first, on a blocking task with the same 15 s deadline the secret
-  commands use, then the ordinary host. The dial reads it back the way it reads every stored secret, so a
-  save-then-connect round-trip from the frontend is one round-trip shorter and means exactly the same thing.
-- **`remember: false`**: `VolumeHost::with_credentials(OneShotCredentials)`, which answers this one `(service, scope)`
-  from memory, forwards every other key to the real store, and ❗ never writes (`save_credentials` answers
-  `CredentialsNotStored`, the documented "the store said no" every backend already logs and carries on from).
+- **An offer**: `VolumeHost::with_credentials(OneShotCredentials)`, which answers this one `(service, scope)` from
+  memory, forwards every other key to the real store, and ❗ never writes while the offer is live (`save_credentials`
+  answers `CredentialsNotStored`, the documented "the store said no" every backend already logs and carries on from).
+  Once the offer is forgotten it forwards writes too, so a volume opened without remembering can still save later.
+- **`remember: true`** additionally files the secret with `keychain::save_credentials`, on a blocking task with the same
+  15 s deadline the secret commands use, ❗ only once the dial WENT THROUGH (`DialOffer::went_through`). Writing it
+  before the dial left a password in the store for an Add the person cancelled at the host-key step, or one the server
+  refused.
 
 ❗ **The wrapper wins over a stored entry for the same key.** A person typing a password is correcting the one that is
 saved, and letting the stale one answer first is how a dial gets refused with the password the user just replaced.
@@ -1071,9 +1073,8 @@ comes later reads the real (empty) store and asks a person. That IS what the swi
 (`crates/cmdr-sftp/DETAILS.md` § "The two switches"). The wiring holds it as `let (host, _offer) = …`, so it goes when
 the connect function returns, however it returns.
 
-❗ **A store that declines the write falls back to the wrapper.** The user typed a secret and this dial has to use it;
-all that's lost is "silent next time". Dialing without it would answer `needs_credentials` to someone who just entered
-their password.
+❗ **A store that declines the `remember: true` write is logged and carried on from.** The place is connected; all
+that's lost is "silent next time".
 
 ## The one edge that must not come back
 

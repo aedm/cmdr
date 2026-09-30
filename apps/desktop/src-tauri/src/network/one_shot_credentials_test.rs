@@ -50,11 +50,11 @@ fn every_other_key_forwards_to_the_real_store() {
     );
 }
 
-/// ❗ **The wrapper never writes.** A `remember: false` dial exists so nothing is
-/// persisted, and a backend that decided to save what it authenticated with
-/// would defeat exactly that.
+/// ❗ **The wrapper never writes while the offer is live.** A `remember: false`
+/// dial exists so nothing is persisted, and a backend that decided to save what
+/// it authenticated with would defeat exactly that.
 #[test]
-fn the_wrapper_never_writes() {
+fn the_wrapper_never_writes_while_the_offer_is_live() {
     let inner = Arc::new(InMemoryCredentials::new());
     let wrapper = OneShotCredentials::new(inner.clone(), SERVICE, Some(ACCOUNT), offered());
 
@@ -65,6 +65,25 @@ fn the_wrapper_never_writes() {
     assert!(
         inner.credentials(SERVICE, Some(ACCOUNT)).is_none(),
         "❗ and nothing reached the durable store behind it"
+    );
+}
+
+/// Once the offer is over, the wrapper is the real store again, writes included:
+/// a volume opened once without remembering must still be able to save a
+/// password a person later asks it to keep.
+#[test]
+fn a_forgotten_offer_saves_through_to_the_real_store() {
+    let inner = Arc::new(InMemoryCredentials::new());
+    let wrapper = OneShotCredentials::new(inner.clone(), SERVICE, Some(ACCOUNT), offered());
+
+    wrapper.forget();
+    wrapper
+        .save_credentials(SERVICE, Some(ACCOUNT), &offered())
+        .expect("with no live offer, a save is the real store's answer");
+    assert_eq!(
+        inner.credentials(SERVICE, Some(ACCOUNT)).map(|c| c.secret),
+        Some("typed-just-now".to_string()),
+        "the save reached the durable store"
     );
 }
 
