@@ -38,6 +38,7 @@ fn system_paths_without_firmlink_are_skipped() {
 /// the boot disk's: the live loop drops it rather than writing a row, or climbing
 /// to the nearest indexed ancestor and rebuilding into the mount from there.
 #[test]
+#[cfg(target_os = "macos")]
 fn events_under_a_mount_inside_the_boot_tree_are_skipped() {
     use crate::indexing::host::volumes::{self, FakeVolumeProvider, MountIdentity};
     let _serialized = crate::indexing::handle::test_lock();

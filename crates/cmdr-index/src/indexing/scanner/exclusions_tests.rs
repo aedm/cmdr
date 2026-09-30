@@ -280,6 +280,7 @@ fn a_stamp_from_a_different_policy_re_arms_the_walk() {
 /// what the mount-rooted fingerprint still reads) predates the policy and gets
 /// rebuilt, while every external drive's index keeps its stamp and its rows.
 #[test]
+#[cfg(target_os = "macos")]
 fn the_boot_tree_mount_rule_re_arms_only_the_boot_index() {
     assert_ne!(
         exclusion_policy_fingerprint(ExclusionTier::BootDisk),

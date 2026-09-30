@@ -151,6 +151,11 @@ image or an NFS share mounted in the home folder, an rclone / sshfs / macFUSE mo
 `~/Library/Developer/CoreDevice/DeviceFS`. `/Volumes/` always got this by prefix; `boot_tree_mounts` extends it to every
 other mount point.
 
+- **macOS only** (`CUTS_AT_BOOT_TREE_MOUNTS`). On Linux the rule would also cut a separate `/home` partition (Fedora
+  Workstation mounts `/home` as its own btrfs subvolume), and nothing else indexes it, since only `/mnt` and `/media`
+  mounts get their own indexes. So Linux keeps walking into mounts inside its tree, and its `BootDisk` fingerprint
+  doesn't carry the rule (no rebuild there).
+
 - **Where it lives: inside `should_exclude`'s `BootDisk` tier**, after the prefix checks. That's the one gate every
   boot-disk path already asks (the walker per child, the reconciler's listing and live events, the verifier, FSEvents
   verification, enrichment), so none of them needed its own check. A mount-rooted scope never asks: the mount's own

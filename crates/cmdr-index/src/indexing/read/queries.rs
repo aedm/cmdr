@@ -595,6 +595,7 @@ mod tests {
     /// so its status and sizes come from its own volume id, which reads "not indexed"
     /// honestly instead of `root`'s `fresh` over rows `root` doesn't hold.
     #[test]
+    #[cfg(target_os = "macos")]
     fn a_mount_inside_the_boot_tree_routes_to_its_own_volume() {
         let mount_root = "/Users/statustest/mnt/share";
         let provider = FakeVolumeProvider::shared();

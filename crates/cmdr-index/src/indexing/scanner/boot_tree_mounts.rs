@@ -102,7 +102,12 @@ impl BootTreeMounts {
 
 /// Whether the boot-disk index stops at filesystems mounted inside its tree on
 /// this platform.
-const CUTS_AT_BOOT_TREE_MOUNTS: bool = true;
+///
+/// macOS only, for now. On Linux the same rule would cut a separate `/home`
+/// partition (Fedora Workstation mounts `/home` as its own btrfs subvolume), and
+/// nothing else indexes it: only `/mnt` and `/media` mounts get their own indexes.
+/// Linux keeps walking into mounts inside its tree until that has an answer.
+pub(super) const CUTS_AT_BOOT_TREE_MOUNTS: bool = cfg!(target_os = "macos");
 
 /// What the cache holds between reads.
 struct Cached {
@@ -192,6 +197,26 @@ pub(in crate::indexing) fn is_inside_a_mount(path: &str) -> bool {
         .is_some_and(|cached| cached.mounts.covering(path).is_some())
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 #[path = "boot_tree_mounts_tests.rs"]
 mod tests;
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod off_macos_tests {
+    use super::*;
+
+    /// Off macOS the boot disk still walks into what's mounted inside its tree
+    /// ([`CUTS_AT_BOOT_TREE_MOUNTS`]), so a separate `/home` stays indexed.
+    #[test]
+    fn nothing_mounted_inside_the_boot_tree_is_cut() {
+        let set = BootTreeMounts::from_mount_table(
+            [
+                "/".to_string(),
+                "/home".to_string(),
+                "/home/someone/mnt/sshfs".to_string(),
+            ],
+            super::super::exclusions::excluded_by_boot_prefixes,
+        );
+        assert!(set.is_empty());
+    }
+}

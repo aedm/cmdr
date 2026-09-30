@@ -274,6 +274,7 @@ fn verify_detects_new_directory() {
 /// the mount's own drive, so navigating past it doesn't write it into `root`'s
 /// index, nor walk into it.
 #[test]
+#[cfg(target_os = "macos")]
 fn verify_skips_a_mount_inside_the_boot_tree() {
     use crate::indexing::host::volumes::{self, FakeVolumeProvider, MountIdentity};
     let _pool_guard = READ_POOL_TEST_MUTEX.lock().unwrap();

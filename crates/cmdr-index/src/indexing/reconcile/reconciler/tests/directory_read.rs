@@ -7,6 +7,7 @@ use super::*;
 /// full rescan-in-place neither walks into the mount nor keeps a row for it (a
 /// listing that lacks a child is what the diff deletes a stale row on).
 #[test]
+#[cfg(target_os = "macos")]
 fn the_reconcile_read_drops_a_mount_inside_the_boot_tree() {
     use crate::indexing::host::volumes::{self, FakeVolumeProvider, MountIdentity};
     let _serialized = crate::indexing::handle::test_lock();

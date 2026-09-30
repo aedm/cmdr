@@ -394,7 +394,7 @@ pub(in crate::indexing) fn exclusion_policy_fingerprint(tier: ExclusionTier) -> 
         parts.push("firmlinked");
         parts.extend_from_slice(FIRMLINKED_SYSTEM_PREFIXES);
     }
-    if tier == ExclusionTier::BootDisk {
+    if tier == ExclusionTier::BootDisk && super::boot_tree_mounts::CUTS_AT_BOOT_TREE_MOUNTS {
         parts.push("cut_at_boot_tree_mounts");
     }
     crate::fingerprint::fingerprint_of(&parts)
