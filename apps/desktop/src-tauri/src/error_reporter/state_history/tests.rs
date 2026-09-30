@@ -170,9 +170,18 @@ fn report_transform_tokenizes_volumes_and_listing_failures_and_keeps_typed_facts
     assert_eq!(failure.reason.as_deref(), Some("permissionDenied"));
     assert_eq!(failure.category, Some(ErrorCategory::NeedsAction));
     assert!(failure.at.as_deref().is_some_and(|at| at.starts_with("2027-01-15T")));
-    assert_eq!(failure.volume_id, smb.volume_id, "one volume, one token across the snapshot");
-    assert_eq!(failure.volume_id, snapshot.panes[0].volume_id.clone().unwrap_or_default());
-    assert_eq!(failure.path, snapshot.panes[0].path, "one path, one token across the snapshot");
+    assert_eq!(
+        failure.volume_id, smb.volume_id,
+        "one volume, one token across the snapshot"
+    );
+    assert_eq!(
+        failure.volume_id,
+        snapshot.panes[0].volume_id.clone().unwrap_or_default()
+    );
+    assert_eq!(
+        failure.path, snapshot.panes[0].path,
+        "one path, one token across the snapshot"
+    );
 }
 
 #[test]
@@ -215,7 +224,10 @@ fn volume_wire_words_read_back_to_report_enums_and_unknown_ones_are_absent() {
     }
     for (readiness, expected) in [
         (R::Ready, ReportDeviceReadiness::Ready),
-        (R::WaitingForAuthorization, ReportDeviceReadiness::WaitingForAuthorization),
+        (
+            R::WaitingForAuthorization,
+            ReportDeviceReadiness::WaitingForAuthorization,
+        ),
         (
             R::Unavailable { reason: Why::Offline },
             ReportDeviceReadiness::UnavailableOffline,

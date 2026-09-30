@@ -10,12 +10,11 @@
 //! process-global (atomic flag + `Mutex<Option<DebounceState>>`). Running them in
 //! parallel would race.
 
-use super::auto_dispatcher::{
-    TEST_LOCK, flush_spawned_for_test, jitter_window, pick_jitter_offset_for_test,
-    note_for_test, record_error_for_test, reset_for_test, set_enabled, simulate_late_app_handle_for_test,
-    snapshot_for_test,
-};
 use super::BundleKind;
+use super::auto_dispatcher::{
+    TEST_LOCK, flush_spawned_for_test, jitter_window, note_for_test, pick_jitter_offset_for_test,
+    record_error_for_test, reset_for_test, set_enabled, simulate_late_app_handle_for_test, snapshot_for_test,
+};
 use super::bundle_builder::prepare_user_note;
 use std::time::{Duration, Instant};
 
@@ -81,7 +80,10 @@ fn automatic_note_carries_the_first_category_and_a_report_redacted_message() {
     let _guard = lock_and_reset();
     set_enabled(true);
 
-    record_error_for_test("cmdr_lib::network::smb", "couldn't open /Users/alice/Secret/a.txt on nas.local");
+    record_error_for_test(
+        "cmdr_lib::network::smb",
+        "couldn't open /Users/alice/Secret/a.txt on nas.local",
+    );
     record_error_for_test("cmdr_lib::other", "second message must NOT overwrite");
     record_error_for_test("cmdr_lib::yet_another", "third message must NOT overwrite either");
 
@@ -98,7 +100,9 @@ fn automatic_note_carries_the_first_category_and_a_report_redacted_message() {
         assert!(!shipped.contains(private), "{private:?} survived: {shipped}");
     }
     assert!(
-        shipped.starts_with("auto-send: 3 errors within 60s, first: cmdr_lib::network::smb detail=\"couldn't open $HOME/<dir:"),
+        shipped.starts_with(
+            "auto-send: 3 errors within 60s, first: cmdr_lib::network::smb detail=\"couldn't open $HOME/<dir:"
+        ),
         "the category and the message's shape ship: {shipped}"
     );
 
@@ -115,8 +119,15 @@ fn automatic_note_caps_a_long_first_message_in_the_report() {
     let note = note_for_test().expect("state should be active");
     let redaction = crate::redact::RedactionContext::for_test([0x42; 32], "ERR-NOTE2");
     let shipped = prepare_user_note(&note, BundleKind::Auto, &redaction).expect("non-empty note");
-    let detail = shipped.split("detail=\"").nth(1).expect("detail field").trim_end_matches('"');
-    assert!(detail.chars().count() <= crate::redact::REPORT_DETAIL_MAX_CHARS, "{shipped}");
+    let detail = shipped
+        .split("detail=\"")
+        .nth(1)
+        .expect("detail field")
+        .trim_end_matches('"');
+    assert!(
+        detail.chars().count() <= crate::redact::REPORT_DETAIL_MAX_CHARS,
+        "{shipped}"
+    );
 
     reset_for_test();
 }

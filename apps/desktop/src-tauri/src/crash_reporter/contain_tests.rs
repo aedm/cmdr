@@ -144,7 +144,10 @@ fn the_contained_panic_warning_carries_no_panic_message() {
 
     assert_eq!(outcome, None);
     let line = captured.lock().unwrap().clone().expect("the hook saw the panic");
-    assert!(line.contains("pdf-parse-worker"), "the thread name locates the parser: {line}");
+    assert!(
+        line.contains("pdf-parse-worker"),
+        "the thread name locates the parser: {line}"
+    );
     assert!(
         !line.contains("SECRET-OBJECT-DUMP") && !line.contains("/Type"),
         "the panic message must never reach the log: {line}"

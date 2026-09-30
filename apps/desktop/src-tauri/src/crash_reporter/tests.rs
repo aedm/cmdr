@@ -602,7 +602,10 @@ fn delivery_keeps_a_redacted_capped_panic_message_and_thread_name() {
 fn the_hook_stores_a_sanitized_thread_name() {
     assert_eq!(sanitize_thread_name("tokio-runtime-worker"), "tokio-runtime-worker");
     let redacted = sanitize_thread_name("copy /Users/alice/Secret/a.txt");
-    assert!(!redacted.contains("alice") && !redacted.contains("Secret"), "{redacted}");
+    assert!(
+        !redacted.contains("alice") && !redacted.contains("Secret"),
+        "{redacted}"
+    );
     assert!(sanitize_thread_name(&"t".repeat(500)).chars().count() <= THREAD_NAME_MAX_CHARS + 1);
 }
 

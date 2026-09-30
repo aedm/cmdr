@@ -21,8 +21,8 @@ fn report_shape(input: &str) -> String {
     token.replace_all(&output, "<$1>").into_owned()
 }
 
-/// `redact_line` is also the compatibility sanitizer for ordinary MCP resources. These
-/// outputs are the byte-for-byte behavior from `b94ca0962^`, before report delivery learned
+/// `redact_line` is also the compatibility sanitizer for ordinary MCP resources. These outputs
+/// pin its byte-for-byte policy, which deliberately stops short of the report-mode handling of
 /// complete remote references, structured identities, and name-derived IDs.
 #[test]
 fn unsalted_api_preserves_pre_report_policy_bytes() {
@@ -261,7 +261,13 @@ fn volume_name_field_shares_the_volume_token_domain() {
     assert_eq!(tokens.len(), 1, "volumeName gets a volume token: {redacted}");
     let token = |key: &str| {
         let start = redacted.find(&format!("{key}=\"<")).expect("field") + key.len() + 2;
-        redacted[start..].split('"').next().unwrap_or_default().split(':').nth(1).map(str::to_string)
+        redacted[start..]
+            .split('"')
+            .next()
+            .unwrap_or_default()
+            .split(':')
+            .nth(1)
+            .map(str::to_string)
     };
     assert_eq!(token("volumeName"), token("share"), "{redacted}");
 }

@@ -18,10 +18,9 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 - **On by default.** `updates.crashReports` is `true` (narrow, stack-shaped, sanitized). ❌ Never extend that default
   to `updates.errorReports` (an unbounded log bundle) or `updates.attachEmailToReports` (an identity).
   `$lib/crash-reporter/DETAILS.md` § The three report consents.
-- **The pending file is authoritative at send.** Preview returns a prepared `CrashReport`, but send accepts only its
-  `short_id` plus optional email, reloads the file, checks the id, and applies `prepare_for_delivery` again. It
-  validates typed fields, drops unknown provider strings, and report-scope-redacts and caps every retained string,
-  panic message and thread name included.
+- **The pending file is authoritative at send.** Send takes only the preview's `short_id` plus optional email, reloads
+  the file, checks the id, and reapplies `prepare_for_delivery` (typed-field validation, report-scoped redaction and
+  caps on every string, panic message and thread name included).
 - **`system_snapshot` and the macOS extract attach in `process_pending_crash`, NEVER in the compromised hook or
   handler.** The snapshot is stable-only (`live: None`), since live values describe the new process.
 - **Attach the diagnostics id (`diag_`), NEVER the analytics id (`anal_`)**: that split (`analytics/CLAUDE.md` § "Two

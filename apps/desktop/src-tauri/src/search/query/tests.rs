@@ -294,7 +294,10 @@ fn diagnostic_summary_keeps_shape_and_a_report_tokenizable_scope() {
 
     // The local log keeps the scope whole: a 0-match line means nothing without it.
     let summary = summarize_query_for_diagnostics(&q);
-    assert!(!summary.contains(PATTERN_SENTINEL), "the pattern literal never logs: {summary}");
+    assert!(
+        !summary.contains(PATTERN_SENTINEL),
+        "the pattern literal never logs: {summary}"
+    );
     assert_eq!(
         summary,
         format!(
@@ -306,10 +309,19 @@ fn diagnostic_summary_keeps_shape_and_a_report_tokenizable_scope() {
     let report = crate::redact::RedactionContext::for_test([0x11; 32], "ERR-SCOPE")
         .redact_line(&summary)
         .into_owned();
-    for private in ["private-person", "secret scope", "private-drive", "secret-scope-b", "private-exclusion"] {
+    for private in [
+        "private-person",
+        "secret scope",
+        "private-drive",
+        "secret-scope-b",
+        "private-exclusion",
+    ] {
         assert!(!report.contains(private), "report leaked {private:?}: {report}");
     }
-    assert!(report.contains("scope=roots(2) [path=\"$HOME/Downloads/<dir:"), "{report}");
+    assert!(
+        report.contains("scope=roots(2) [path=\"$HOME/Downloads/<dir:"),
+        "{report}"
+    );
     assert!(report.contains("path=\"/Volumes/<volume:"), "{report}");
     assert!(report.contains("exclusions=2 [dir=\"<dir:"), "{report}");
 }

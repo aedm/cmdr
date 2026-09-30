@@ -181,7 +181,7 @@ describe('log-bridge', () => {
 
   it('renders path and identity placeholders as keyed, Debug-quoted fields the report redactor reads', async () => {
     const message = await renderedMessage({
-      rawMessage: 'Listing {listingId} on {volumeId} failed for {path} ({count} tries): {error}',
+      rawMessage: 'Listing {listingId} on {volumeId} failed for {path} (tries: {count}): {error}',
       message: [
         'Listing ',
         'l-1',
@@ -189,15 +189,15 @@ describe('log-bridge', () => {
         'smb-nas-0123456789abcdef',
         ' failed for ',
         'docs/Client "Plans"\\2026\nnext',
-        ' (',
+        ' (tries: ',
         3,
-        ' tries): ',
+        '): ',
         'boom',
         '',
       ],
     })
     expect(message).toBe(
-      'Listing l-1 on volumeId="smb-nas-0123456789abcdef" failed for path="docs/Client \\"Plans\\"\\\\2026\\nnext" (3 tries): boom',
+      'Listing l-1 on volumeId="smb-nas-0123456789abcdef" failed for path="docs/Client \\"Plans\\"\\\\2026\\nnext" (tries: 3): boom',
     )
   })
 
@@ -219,9 +219,7 @@ describe('log-bridge', () => {
 
     vi.mocked(invoke).mockClear()
     const template = Object.assign(['Loaded ', ' items'], { raw: ['Loaded ', ' items'] })
-    expect(await renderedMessage({ rawMessage: template, message: ['Loaded ', 42, ' items'] })).toBe(
-      'Loaded 42 items',
-    )
+    expect(await renderedMessage({ rawMessage: template, message: ['Loaded ', 42, ' items'] })).toBe('Loaded 42 items')
   })
 
   it('silently drops entries when invoke fails', async () => {

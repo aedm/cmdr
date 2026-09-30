@@ -160,7 +160,10 @@ fn assert_privacy_archive(bundle: &BuiltBundle) -> BundleManifest {
     assert_eq!(state.recent_listing_error_count, 5);
     let volume = state.volumes.first().expect("volume state");
     assert_eq!(volume.kind, Some(state_history::ReportVolumeKind::Smb));
-    assert_eq!(volume.connection, Some(state_history::ReportConnectionState::NeedsSignIn));
+    assert_eq!(
+        volume.connection,
+        Some(state_history::ReportConnectionState::NeedsSignIn)
+    );
     let failure = state.recent_listing_failures.first().expect("typed listing failure");
     assert_eq!(failure.reason.as_deref(), Some("permissionDenied"));
     assert_eq!(failure.volume_id, volume.volume_id, "one volume, one token");

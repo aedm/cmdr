@@ -41,7 +41,9 @@ mod tests {
     //! in statics, so running these alongside any other test that drives it would race
     //! on the shared `STATE` and `ENABLED` flag.
     use super::*;
-    use crate::error_reporter::auto_dispatcher::{TEST_LOCK, note_for_test, reset_for_test, set_enabled, snapshot_for_test};
+    use crate::error_reporter::auto_dispatcher::{
+        TEST_LOCK, note_for_test, reset_for_test, set_enabled, snapshot_for_test,
+    };
 
     /// Regression: a frontend log entry at `Error` level must trip the auto-dispatcher
     /// the same way a Rust-side `log_error!` would. Before the FE-bridge migration to
