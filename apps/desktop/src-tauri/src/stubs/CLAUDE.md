@@ -2,8 +2,8 @@
 
 Compilation stubs for platform-specific modules on platforms that aren't macOS and aren't Linux. Never compiled on
 macOS. Most sub-modules are gated `#[cfg(not(target_os = "linux"))]` since Linux has real implementations (volumes,
-MTP, network, accent color, permissions); `text_size.rs` is gated `#[cfg(not(target_os = "macos"))]` because the
-Accessibility text-size signal is macOS-only.
+MTP, network, accent color, permissions); `text_size.rs`, `reduce_transparency.rs`, and `glass_tint.rs` are gated
+`#[cfg(not(target_os = "macos"))]` because those signals are macOS-only.
 
 ## Module map
 
@@ -12,6 +12,8 @@ Accessibility text-size signal is macOS-only.
   stubs returning empty/success values; types mirror the macOS shapes for JSON compatibility.
 - **`text_size.rs`**: non-macOS `get_system_text_size_multiplier` returns `1.0`. The in-app `appearance.textSize`
   slider still works on every platform.
+- **`reduce_transparency.rs`** / **`glass_tint.rs`**: report "don't reduce" and "no Liquid Glass slider"; their
+  observers are no-ops.
 
 Per-stub behavior is cataloged in `DETAILS.md`.
 

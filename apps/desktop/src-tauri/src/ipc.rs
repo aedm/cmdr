@@ -105,8 +105,8 @@ use crate::quick_look::{QuickLookClosed, QuickLookKeyEvent};
 use crate::quit::{QuitCalledOff, QuitRequested};
 use crate::restricted_paths::RestrictedPathsChangedPayload;
 use crate::system_events::{
-    AccentColorChanged, DragImageSize, DragModifiers, MenuBarRebuilt, OsLocalesChanged, ReduceTransparencyChanged,
-    SessionCompleteEvent, SessionStartedEvent, SystemTextSizeChanged,
+    AccentColorChanged, DragImageSize, DragModifiers, GlassTintChanged, MenuBarRebuilt, OsLocalesChanged,
+    ReduceTransparencyChanged, SessionCompleteEvent, SessionStartedEvent, SystemTextSizeChanged,
 };
 
 /// Public greeting used by the example webview surface; kept here as the
@@ -812,6 +812,19 @@ macro_rules! ipc_command_manifest {
                 ]
                 dispatch_only: []
             }
+            // Liquid Glass slider.
+            cfg(target_os = "macos") {
+                typed: [
+                    crate::glass_tint::get_glass_tint_amount,
+                ]
+                dispatch_only: []
+            }
+            cfg(not(target_os = "macos")) {
+                typed: [
+                    crate::stubs::glass_tint::get_glass_tint_amount,
+                ]
+                dispatch_only: []
+            }
             // System text size.
             cfg(target_os = "macos") {
                 typed: [
@@ -1142,6 +1155,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // `system_events` because their emit sites are macOS-gated.
             AccentColorChanged,
             ReduceTransparencyChanged,
+            GlassTintChanged,
             SystemTextSizeChanged,
             MenuBarRebuilt,
             OsLocalesChanged,

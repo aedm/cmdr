@@ -76,6 +76,8 @@ mod install_id;
 // which must not disagree about it. macOS-only, like both of them and the `running_bundle()` it
 // asks.
 #[cfg(target_os = "macos")]
+mod glass_tint;
+#[cfg(target_os = "macos")]
 mod install_location;
 mod instance_lock;
 mod intl;
@@ -535,6 +537,12 @@ pub fn run() {
             reduce_transparency::observe_reduce_transparency_changes(app.handle().clone());
             #[cfg(not(target_os = "macos"))]
             stubs::reduce_transparency::observe_reduce_transparency_changes(app.handle().clone());
+
+            // Follow the macOS 27 Appearance > Liquid Glass slider
+            #[cfg(target_os = "macos")]
+            glass_tint::observe_glass_tint_changes(app.handle().clone());
+            #[cfg(not(target_os = "macos"))]
+            stubs::glass_tint::observe_glass_tint_changes(app.handle().clone());
 
             // Watch the mouse's back / forward navigation. macOS only: the mouse's own
             // driver decides what the press becomes, and a Logi Options+ mouse posts a

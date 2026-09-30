@@ -507,10 +507,12 @@ export {
 } from './ai'
 export type { CloudAiConsentStatus } from './ai'
 
-// Appearance / system-environment (accent color, reduce-transparency, text-size, localized strings)
+// Appearance / system-environment (accent color, reduce-transparency, Liquid Glass tint, text-size, localized strings)
 export {
   getAccentColor,
   getShouldReduceTransparency,
+  getGlassTintAmount,
+  onGlassTintChanged,
   getSystemTextSizeMultiplier,
   getLocalizedSystemStrings,
   getOsLocales,

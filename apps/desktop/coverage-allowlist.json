@@ -115,9 +115,6 @@
     "query-ui/PathPills.svelte": {
       "reason": "Pure split semantics are covered by PathPills.svelte.test.ts; the overflow-collapse layout depends on `@chenglou/pretext` canvas measurement + ResizeObserver, neither of which runs in jsdom. The visible layout is exercised via the MCP-driven manual verification in the search-fixup pass."
     },
-    "reduce-transparency.ts": {
-      "reason": "Depends on Tauri invoke (getShouldReduceTransparency) and listen (reduceTransparencyChanged) APIs; just toggles the reduce-transparency html class"
-    },
     "settings/components/SettingsContent.svelte": {
       "reason": "UI layout component"
     },

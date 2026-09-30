@@ -4673,6 +4673,11 @@ export const commands = {
    *  channel fails.
    */
   getShouldReduceTransparency: () => __TAURI_INVOKE<boolean>('get_should_reduce_transparency'),
+  /**
+   *  Tauri command: the Liquid Glass slider value in `0.0..=1.0`, or `None` when macOS doesn't
+   *  report one.
+   */
+  getGlassTintAmount: () => __TAURI_INVOKE<number | null>('get_glass_tint_amount'),
   // Tauri command: returns the current system text-size multiplier.
   getSystemTextSizeMultiplier: () => __TAURI_INVOKE<number>('get_system_text_size_multiplier'),
   /**
@@ -4893,6 +4898,7 @@ export const events = {
   foregroundOperation: makeEvent<ForegroundOperation>('foreground-operation'),
   functionKeyBarHideRequested: makeEvent<FunctionKeyBarHideRequested>('function-key-bar-hide-requested'),
   gitStateChanged: makeEvent<GitStateChangedPayload>('git-state-changed'),
+  glassTintChanged: makeEvent<GlassTintChanged>('glass-tint-changed'),
   globalShortcutFired: makeEvent<GlobalShortcutFired>('global-shortcut-fired'),
   indexAggregationComplete: makeEvent<IndexAggregationCompleteEvent>('index-aggregation-complete'),
   indexAggregationProgress: makeEvent<AggregationProgressEvent>('index-aggregation-progress'),
@@ -8040,6 +8046,15 @@ export type GitSubscribeError =
       // What the runtime reported, for the log.
       detail: string
     }
+
+/**
+ *  `glass-tint-changed`: the macOS 27 Appearance > Liquid Glass slider moved. `amount` is
+ *  the new value in `0.0..=1.0` (clearest to most tinted), or `None` when macOS no longer
+ *  reports one.
+ */
+export type GlassTintChanged = {
+  amount: number | null
+}
 
 // The allocator behind every Rust allocation in the shipped app.
 export type GlobalAllocator =
@@ -14391,7 +14406,7 @@ export type SystemSnapshot = {
 }
 
 /**
- *  `system-text-size-changed`: the macOS Accessibility > Display > Text Size
+ *  `system-text-size-changed`:the macOS Accessibility > Display > Text Size
  *  value changed. `multiplier` is the new system text-size multiplier (1.0 =
  *  default).
  */

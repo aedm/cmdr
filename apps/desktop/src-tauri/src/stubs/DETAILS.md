@@ -18,6 +18,8 @@ Per-stub behavior and rationale. `CLAUDE.md` holds the invariants; the catalog b
 - **`permissions.rs`**: `check_full_disk_access` / `check_full_disk_access_quiet` return `true`;
   `open_privacy_settings` and the appearance/System-Settings deep-link commands return errors.
 - **`text_size.rs`** (non-macOS, so also Linux): `get_system_text_size_multiplier` returns `1.0` (no system scaling).
+- **`reduce_transparency.rs`** / **`glass_tint.rs`** (non-macOS): `get_should_reduce_transparency` returns `false`,
+  `get_glass_tint_amount` returns `None` (the frontend then uses the slider's middle, 0.5).
 - **`volumes.rs`**: returns root `/`, Home, and existing Desktop/Documents/Downloads; `get_volume_space` uses
   `libc::statvfs`; `start_volume_watcher` is a no-op.
 
