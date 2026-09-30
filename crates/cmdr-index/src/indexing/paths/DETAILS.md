@@ -98,8 +98,8 @@ into index-relative space before the partial-aggregate send, so the same transfo
 
 ## Path → volume routing (`routing.rs`)
 
-`volume_id_for_local_path(path)` resolves which index volume owns a path, seven tiers in order, each mapping to the
-SAME id its volume and index register under:
+`volume_id_for_local_path(path)` resolves which index volume owns a path, seven tiers in order, each mapping to the SAME
+id its volume and index register under:
 
 1. **SMB** — `transports::smb::index::smb_volume_id_for_path` (probes the mount, keys by `(server, port, share)`).
 2. **MTP** — `mtp_volume_id_for_path`, the pure `mtp://` half: strip the scheme, take the first two `/`-segments,

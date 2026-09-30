@@ -42,9 +42,9 @@ connection BEFORE any truncate, but the threshold differs by path:
 - **LOCAL (`start_scan`, `local_rescan_reconciles`): `entry_count > 1 && prior_scan_completed && !predates_policy`.**
   The third half: an index whose exclusion-policy stamp is stale (`scanner::index_predates_exclusion_policy`) always
   truncates, because a reconcile never re-stamps the policy, so the index would stay distrusted and every launch would
-  route it back here (`../lifecycle/manager/launch_route.rs` sends it to a rebuild for the same reason). `create_tables` →
-  `ensure_root_sentinel` always inserts the ROOT row (id=1), and `TruncateData` re-inserts it, so a never-scanned DB has
-  `entry_count == 1`, not 0. The `> 1` half routes a populated index (rows BEYOND the sentinel) to reconcile and a
+  route it back here (`../lifecycle/manager/launch_route.rs` sends it to a rebuild for the same reason). `create_tables`
+  → `ensure_root_sentinel` always inserts the ROOT row (id=1), and `TruncateData` re-inserts it, so a never-scanned DB
+  has `entry_count == 1`, not 0. The `> 1` half routes a populated index (rows BEYOND the sentinel) to reconcile and a
   fresh/sentinel-only DB to the fast parallel bulk build — a `> 0` test would send a brand-new user's FIRST `/` scan
   down the serial reconcile (the onboarding regression). The **`prior_scan_completed` half is the completeness gate**
   (snapshotted via `get_index_status().scan_completed_at.is_some()` BEFORE the scan-start `DeleteMeta` clears it):

@@ -149,11 +149,11 @@ written under: an FNV-1a fingerprint of `EXCLUDED_PREFIXES`, `JUNK_BASENAMES`, `
 `FIRMLINKED_SYSTEM_PREFIXES`, content-derived so editing any list re-arms every existing index with no version constant
 for anyone to forget to bump. It's per exclusion tier: the `BootDisk` one also names the cut at filesystems mounted
 inside the boot tree (`../scanner/boot_tree_mounts.rs`), which mount-rooted indexes don't run, so that rule rebuilt only
-the boot index. Why it exists: an excluded directory gets no `entries` row at all, so it drives nothing to
-zero and its parents read as fully covered — true only while the policy is the one the rows were written under. REMOVE a
-name and the subtrees it used to skip stay row-less while their parents keep claiming coverage: permanently invisible to
-search, with nothing to trigger a re-walk. So an absent or stale stamp means **no coverage claim in that database is
-trusted** and the whole scope goes to the walk.
+the boot index. Why it exists: an excluded directory gets no `entries` row at all, so it drives nothing to zero and its
+parents read as fully covered — true only while the policy is the one the rows were written under. REMOVE a name and the
+subtrees it used to skip stay row-less while their parents keep claiming coverage: permanently invisible to search, with
+nothing to trigger a re-walk. So an absent or stale stamp means **no coverage claim in that database is trusted** and
+the whole scope goes to the walk.
 
 ❌ **Stamp it ONLY while the DB provably holds no row beneath a directory today's policy excludes**, which is exactly
 two moments: right after a `TruncateData`, and on a database that has never held an entry at all (`entry_count <= 1`,
