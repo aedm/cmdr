@@ -39,8 +39,10 @@ func RunWebsiteCSPConnectSrc(ctx *CheckContext) (CheckResult, error) {
 				return err
 			}
 			if d.IsDir() {
-				// The dev-only blog editor never ships, and it talks to the Vite dev server.
-				if filepath.Base(path) == "dev" && filepath.Dir(path) == filepath.Join(websiteDir, "src") {
+				// The dev-only blog editor never ships, and it talks to the Vite dev server. `src/build/`
+				// holds build-time-only modules (imported from component frontmatter, never from a
+				// client `<script>`), whose fetches run in Node during `astro build`, not under the CSP.
+				if (filepath.Base(path) == "dev" || filepath.Base(path) == "build") && filepath.Dir(path) == filepath.Join(websiteDir, "src") {
 					return filepath.SkipDir
 				}
 				return nil

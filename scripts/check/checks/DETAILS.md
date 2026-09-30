@@ -877,14 +877,14 @@ warning in CI. The same exemption covers `desktop-bundle-size`; the reasoning is
 ## Website CSP connect-src
 
 `website-csp-connect-src` (`IsFast`, no build) reads the one `Content-Security-Policy` in
-`apps/website/nginx-security-headers.conf` and walks `apps/website/src` and `public` (minus the dev-only `src/dev/`) for
-`fetch`, `sendBeacon`, `EventSource`, and `WebSocket` calls. Each target resolves to an origin from a literal URL, or
-from a template or identifier naming a same-file `const X = 'https://…'`; a target it can't resolve fails the check, so
-every call site stays readable to it. Every origin must pass `connect-src` (`'self'`, exact origins, and
-`https://*.host` wildcards). **Why**: the browser blocks a disallowed request before it leaves the page, the caller sees
-a generic network failure, and dev serves no CSP, so the blog's like button and the `?r=` lookup were both dead in
-production for months with nothing failing anywhere. Violations it can't see (third-party scripts) reach Discord through
-`/csp-report` (`apps/api-server/src/website/DETAILS.md` § CSP reports).
+`apps/website/nginx-security-headers.conf` and walks `apps/website/src` and `public` (minus the dev-only `src/dev/` and
+the build-time-only `src/build/`) for `fetch`, `sendBeacon`, `EventSource`, and `WebSocket` calls. Each target resolves
+to an origin from a literal URL, or from a template or identifier naming a same-file `const X = 'https://…'`; a target
+it can't resolve fails the check, so every call site stays readable to it. Every origin must pass `connect-src`
+(`'self'`, exact origins, and `https://*.host` wildcards). **Why**: the browser blocks a disallowed request before it
+leaves the page, the caller sees a generic network failure, and dev serves no CSP, so the blog's like button and the
+`?r=` lookup were both dead in production for months with nothing failing anywhere. Violations it can't see (third-party
+scripts) reach Discord through `/csp-report` (`apps/api-server/src/website/DETAILS.md` § CSP reports).
 
 ## Allowlist shrink-wrap
 

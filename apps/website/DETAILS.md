@@ -133,8 +133,9 @@ in `public/fonts/`.
   leaves, and nothing in dev shows it, since Astro's dev server and the Playwright E2E serve no CSP. The blog's like
   button shipped that way and never worked until the origin was added. Two guards: the `website-csp-connect-src` check
   matches every fetch in `src/` and `public/` against `connect-src` (`scripts/check/checks/DETAILS.md` § Website CSP
-  connect-src), and the CSP's `report-uri` / `report-to` send production violations to the API server, which alerts
-  Discord (`apps/api-server/src/website/DETAILS.md` § CSP reports).
+  connect-src), skipping `src/dev/` and `src/build/` (build-time-only modules, imported from component frontmatter and
+  ❌ never from a client `<script>`), and the CSP's `report-uri` / `report-to` send production violations to the API
+  server, which alerts Discord (`apps/api-server/src/website/DETAILS.md` § CSP reports).
 - **Always-latest download links**: `getcmdr.com/download/latest/<arch>` (and bare `/download/latest`, which hands out
   the universal build) is an nginx `return 302` to the API server's `/download/latest/<arch>`, query string preserved so
   `?ref=` and `?src=` survive. It lives in `nginx.conf`, not Astro, because a static build can only emit a meta-refresh
@@ -314,7 +315,7 @@ with it, PostHog autocapture, 2026-07-03 to 2026-09-30), and this audience mostl
 toward the 225 that a self-submitted cask needs for Homebrew's main catalog, and an email is the one way back to someone
 who tries Cmdr once and drifts off.
 
-- The star count comes from `src/lib/github-stars.ts` at build time, so visitors never call GitHub. When the fetch
+- The star count comes from `src/build/github-stars.ts` at build time, so visitors never call GitHub. When the fetch
   fails, the popup drops the number and the progress bar instead of showing a stale one.
 - The email block reads the newsletter's localStorage flags when the popup opens: subscribers see a thank-you line,
   visitors who clicked "Not interested" anywhere see no email block, and everyone else sees the form.

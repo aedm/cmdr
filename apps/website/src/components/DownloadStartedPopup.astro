@@ -13,7 +13,7 @@
 // "Not interested" on a newsletter prompt elsewhere.
 import Icon from './icons/Icon.astro'
 import NewsletterForm from './NewsletterForm.astro'
-import { GITHUB_REPO_URL, HOMEBREW_STAR_GOAL, getGithubStarCount } from '../lib/github-stars'
+import { GITHUB_REPO_URL, HOMEBREW_STAR_GOAL, getGithubStarCount } from '../build/github-stars'
 
 const DISCORD_INVITE_URL = 'https://discord.gg/4BVafBneKJ'
 const stars = await getGithubStarCount()

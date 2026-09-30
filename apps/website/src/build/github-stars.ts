@@ -1,4 +1,6 @@
 // The repo's GitHub star count, read once at build time so the visitor's browser never calls GitHub.
+// Lives in `src/build/`: import it from component frontmatter only, never from a client `<script>`
+// (the `website-csp-connect-src` check skips this directory on that promise).
 // The site rebuilds on every deploy and release, which keeps the number fresh enough for a progress
 // line. Best-effort: any failure (rate limit, network, timeout) yields `null`, and callers drop the
 // number rather than show a wrong one.
