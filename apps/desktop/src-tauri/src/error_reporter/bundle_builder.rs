@@ -149,9 +149,9 @@ pub fn build_bundle<R: tauri::Runtime>(
 /// through the report's redaction context. Split out so the kind-dispatching logic has its
 /// own unit tests without needing a full `tauri::AppHandle`.
 ///
-/// Automatic notes are generated metadata today, but stay redacted as defense for future
-/// callers because a user never previews them. User notes are typed and previewed, so they
-/// ship verbatim.
+/// Automatic notes carry the first error's message (as a `detail=` field the redactor caps)
+/// and a user never previews them, so they're redacted. User notes are typed and previewed,
+/// so they ship verbatim.
 ///
 /// The split-on-`\n` is defensive for any future automatic caller: a multi-line note would
 /// otherwise break `redact_line`'s `\b`-anchored patterns at the line boundary.

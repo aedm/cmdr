@@ -11,9 +11,12 @@
 //! parallel would race.
 
 use super::auto_dispatcher::{
-    TEST_LOCK, automatic_note_for_test, flush_spawned_for_test, jitter_window, pick_jitter_offset_for_test,
-    record_error_for_test, reset_for_test, set_enabled, simulate_late_app_handle_for_test, snapshot_for_test,
+    TEST_LOCK, flush_spawned_for_test, jitter_window, pick_jitter_offset_for_test,
+    note_for_test, record_error_for_test, reset_for_test, set_enabled, simulate_late_app_handle_for_test,
+    snapshot_for_test,
 };
+use super::BundleKind;
+use super::bundle_builder::prepare_user_note;
 use std::time::{Duration, Instant};
 
 fn lock_and_reset() -> std::sync::MutexGuard<'static, ()> {
@@ -74,22 +77,46 @@ fn respects_disabled_flag() {
 }
 
 #[test]
-fn automatic_note_keeps_only_the_typed_count() {
+fn automatic_note_carries_the_first_category_and_a_report_redacted_message() {
     let _guard = lock_and_reset();
     set_enabled(true);
 
-    record_error_for_test("PRIVATE-CATEGORY", "PRIVATE FIRST MESSAGE");
-    record_error_for_test("PRIVATE-SECOND-CATEGORY", "PRIVATE SECOND MESSAGE");
-    record_error_for_test("PRIVATE-THIRD-CATEGORY", "PRIVATE THIRD MESSAGE");
+    record_error_for_test("cmdr_lib::network::smb", "couldn't open /Users/alice/Secret/a.txt on nas.local");
+    record_error_for_test("cmdr_lib::other", "second message must NOT overwrite");
+    record_error_for_test("cmdr_lib::yet_another", "third message must NOT overwrite either");
 
-    let (count, _) = snapshot_for_test().expect("state should be active");
-    assert_eq!(count, 3, "error count should reflect all three calls");
-    let note = automatic_note_for_test(count);
-    assert_eq!(note, "auto-send: 3 errors within 60s");
-    assert!(
-        !note.contains("PRIVATE"),
-        "automatic notes must contain no producer prose"
+    let note = note_for_test().expect("state should be active");
+    assert_eq!(
+        note,
+        r#"auto-send: 3 errors within 60s, first: cmdr_lib::network::smb detail="couldn't open /Users/alice/Secret/a.txt on nas.local""#,
+        "the local note keeps the first error whole"
     );
+
+    let redaction = crate::redact::RedactionContext::for_test([0x42; 32], "ERR-NOTE1");
+    let shipped = prepare_user_note(&note, BundleKind::Auto, &redaction).expect("non-empty note");
+    for private in ["alice", "Secret", "nas", "second message"] {
+        assert!(!shipped.contains(private), "{private:?} survived: {shipped}");
+    }
+    assert!(
+        shipped.starts_with("auto-send: 3 errors within 60s, first: cmdr_lib::network::smb detail=\"couldn't open $HOME/<dir:"),
+        "the category and the message's shape ship: {shipped}"
+    );
+
+    reset_for_test();
+}
+
+#[test]
+fn automatic_note_caps_a_long_first_message_in_the_report() {
+    let _guard = lock_and_reset();
+    set_enabled(true);
+
+    record_error_for_test("cmdr_lib::viewer", &"z".repeat(5_000));
+
+    let note = note_for_test().expect("state should be active");
+    let redaction = crate::redact::RedactionContext::for_test([0x42; 32], "ERR-NOTE2");
+    let shipped = prepare_user_note(&note, BundleKind::Auto, &redaction).expect("non-empty note");
+    let detail = shipped.split("detail=\"").nth(1).expect("detail field").trim_end_matches('"');
+    assert!(detail.chars().count() <= crate::redact::REPORT_DETAIL_MAX_CHARS, "{shipped}");
 
     reset_for_test();
 }

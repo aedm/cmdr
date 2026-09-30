@@ -41,7 +41,7 @@ mod tests {
     //! in statics, so running these alongside any other test that drives it would race
     //! on the shared `STATE` and `ENABLED` flag.
     use super::*;
-    use crate::error_reporter::auto_dispatcher::{TEST_LOCK, reset_for_test, set_enabled, snapshot_for_test};
+    use crate::error_reporter::auto_dispatcher::{TEST_LOCK, note_for_test, reset_for_test, set_enabled, snapshot_for_test};
 
     /// Regression: a frontend log entry at `Error` level must trip the auto-dispatcher
     /// the same way a Rust-side `log_error!` would. Before the FE-bridge migration to
@@ -59,8 +59,11 @@ mod tests {
             message: "synthetic FE bridge failure for the test".to_string(),
         }]);
 
-        let (error_count, _) = snapshot_for_test().expect("FE error entry should open a debounce window");
-        assert_eq!(error_count, 1, "the FE entry should count as one error");
+        let note = note_for_test().expect("FE error entry should open a debounce window");
+        assert!(
+            note.contains("first: FE:viewer detail=\"synthetic FE bridge failure for the test\""),
+            "the note should carry the FE: category and the entry's text: {note}"
+        );
 
         reset_for_test();
     }

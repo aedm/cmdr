@@ -27,8 +27,8 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
 - **Breadcrumbs accept only `BreadcrumbEvent`.** Add a reviewed enum variant and typed fields for new diagnostic facts;
   never restore free-form messages, maps, or JSON. Unknown IPC fields fail closed, and command events retain only ids
   from the frontend's authoritative `COMMAND_IDS` tuple (compiled into Rust by `build.rs`).
-- **Automatic manifests carry only a typed error count; `User` notes ship verbatim.** Auto notes still pass through
-  report-scoped redaction as defense for future callers.
+- **`User` notes ship verbatim; `Auto` notes go through the report's redaction.** The auto note's first message is a
+  `detail=` field, so the report pass redacts and caps it.
 - **One dialog session, one id.** The preview mints it, the send passes it back via `BundleRequest.id`. Skip it and
   the user holds an id no report was filed under. The same ID also rebuilds the same report-scoped redaction context.
 - **Don't gate sending on `cfg!(debug_assertions)`.** Debug builds DO send (`buildMode` tags them `[DEV]`); only `CI`

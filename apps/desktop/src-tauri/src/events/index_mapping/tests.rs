@@ -1,7 +1,7 @@
 //! The mapping's completeness contract: nothing the index can say may fall on
 //! the floor between the subsystems and the host.
 
-use crate::error_reporter::auto_dispatcher::{TEST_LOCK, reset_for_test, set_enabled, snapshot_for_test};
+use crate::error_reporter::auto_dispatcher::{TEST_LOCK, note_for_test, reset_for_test, set_enabled};
 use cmdr_index::ActivityPhase;
 use cmdr_index::testing::events::one_of_every_kind;
 use cmdr_index::{Diagnostic, IndexErrorReport, IndexEvent, IndexEventKind};
@@ -74,8 +74,8 @@ fn every_event_maps_to_a_destination_with_a_non_empty_name() {
 
 /// The subsystems can't invoke `log_error!` (a crate-root macro), so an
 /// `IndexEvent::Error` is the only way a failure inside indexing reaches the
-/// auto-dispatcher and, from there, shipped error reports. The detail stays in the
-/// report-scoped-redacted log rather than dispatcher state; this pins the reporting edge.
+/// auto-dispatcher and, from there, shipped error reports. Silently dropping it
+/// would compile, ship, and cost us the feedback loop, so pin it.
 #[test]
 fn an_error_event_reaches_the_auto_dispatcher() {
     let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -96,8 +96,15 @@ fn an_error_event_reaches_the_auto_dispatcher() {
         None,
     );
 
-    let (error_count, _) = snapshot_for_test().expect("an index storage failure must open a debounce window");
-    assert_eq!(error_count, 1, "the storage failure should count as one error");
+    let note = note_for_test().expect("an index storage failure must open a debounce window");
+    assert!(
+        note.contains("first: cmdr::indexing::store detail="),
+        "the report needs a stable category so triage can group index-storage failures: {note}"
+    );
+    assert!(
+        note.contains("267"),
+        "the extended SQLite code is the discriminating fact; it must survive into the report: {note}"
+    );
 
     reset_for_test();
     set_enabled(false);
