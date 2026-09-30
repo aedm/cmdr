@@ -364,6 +364,22 @@ resolves the volume path, so callers gate it to local (non-SMB) mounts to keep a
 Both `get_attached_volumes` (the switcher list) and `resolve_path_volume_fast` (highlight + transfer-source) set the flag
 so they can't drift.
 
+**Decision**: A local volume is ejectable when its media is ejectable (`NSURLVolumeIsEjectableKey`) OR macOS places its
+disk on an external bus (`NSURLVolumeIsInternalKey == false`). One rule, `nsurl::offers_eject`, reached by both
+`get_attached_volumes` and `resolve_path_volume_fast` through `nsurl::is_volume_ejectable`.
+**Why**: the media flag alone means "this media ejects from its drive under software control", which a disk image and
+most USB drives answer yes and an external disk macOS sees as FIXED answers no: a user's Thunderbolt/USB SSD (a SanDisk
+PRO-G40) showed no eject button in v0.48.0 while a mounted `.dmg` beside it did (reported 2026-09-29; the per-key
+values for that drive are inferred, not read off it). The two callers must agree because the switcher's button reads
+the first and the eject command re-checks through the second, so a drift shows a button the command then refuses.
+Three limits are deliberate:
+
+- ❗ Only an explicit "not internal" counts. A disk macOS gives no answer for stays without a button.
+- An internal volume with fixed media (a second APFS volume, an internal data disk) offers none, although Finder does:
+  Cmdr can't mount it back, and its eject takes the whole physical disk, which there is the boot disk.
+- The boot volume never ejects, even on a Mac booted from an external disk. Network mounts are never asked: they end
+  through their session, and the lookup can hang on a dead one (§ "Hung mounts").
+
 **Decision**: Populate `mount_is_read_only` for attached volumes from the `statfs` `MNT_RDONLY` flag (`read_only_from_statfs`).
 **Why**: It powers the 🔒 indicator and the copy/move write guard for ANY read-only mount (a read-only `.dmg`, a locked
 SD card, an optical disc), not just MTP locked storage. The frontend guard machinery (`file-operation-commands.ts`,

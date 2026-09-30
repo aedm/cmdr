@@ -5,8 +5,8 @@
 //! § "Which mounts get a row".
 
 use super::{
-    LocationCategory, LocationInfo, SmbMountInfo, disk_image, get_bool_resource, get_icon_for_path, get_volume_name,
-    get_volume_uuid, is_network_fs_type, is_smb_fs_type, parse_smb_mount_source, supports_trash_for_fs_type,
+    LocationCategory, LocationInfo, SmbMountInfo, disk_image, get_icon_for_path, get_volume_name, get_volume_uuid,
+    is_network_fs_type, is_smb_fs_type, is_volume_ejectable, parse_smb_mount_source, supports_trash_for_fs_type,
     volume_id_for, volume_name_from_path,
 };
 use cmdr_fs::volume::canonical_root::collapse_by_volume_id;
@@ -372,7 +372,7 @@ pub fn get_attached_volumes() -> Vec<LocationInfo> {
                     let url = NSURL::fileURLWithPath(&NSString::from_str(path));
                     LocalVolumeMeta {
                         name: get_volume_name(&url, path),
-                        is_ejectable: get_bool_resource(&url, "NSURLVolumeIsEjectableKey").unwrap_or(false),
+                        is_ejectable: is_volume_ejectable(&url, path),
                         icon: get_icon_for_path(path),
                         is_disk_image: disk_image::is_disk_image_mount(path),
                         uuid: get_volume_uuid(&url),
