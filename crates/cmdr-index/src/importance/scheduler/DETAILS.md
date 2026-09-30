@@ -156,10 +156,10 @@ stopped doesn't quietly resume.
 
 **The signal scopes the LISTENERS too, not only the passes.** `wire_volume`'s three listeners (scan completion plus home
 coverage, dir-changed, the hourly refresh timer) wait on process-global buses and timers that never close, so
-`spawn_for_this_life` ends each one when the signal fires. Every start of a volume registers it, and so wires it again:
-without this a share that reconnected ten times carried ten hourly refresh timers, each driving its own full pass.
-`a_volumes_listeners_end_when_the_volume_stops` pins it through the buses' receiver counts. ❌ Don't spawn a per-volume
-listener any other way.
+`host::runtime::spawn_until_stopped` ends each one when the signal fires. Every start of a volume registers it, and so
+wires it again: without this a share that reconnected ten times carried ten hourly refresh timers, each driving its own
+full pass. `a_volumes_listeners_end_when_the_volume_stops` pins it through the buses' receiver counts. ❌ Don't spawn a
+per-volume listener any other way.
 
 **Where a pass looks.** Every loop that can run long polls through `stop::StopPoll`: both row streams of the full walk
 (the store's `for_each_*` callbacks return `ControlFlow`, so a stopped walk stops FETCHING), the two propagations, the

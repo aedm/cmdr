@@ -214,7 +214,8 @@ volume behind it takes `VolumeWork::for_test`, a generation of its own that noth
 **`media_index` shares the primitive but not the tree.** Its emergency stop (`gate::stop_token`) is process-wide, and
 re-enabling installs a FRESH token rather than un-cancelling — a token is one-shot by design, and a pass the user
 stopped must not quietly resume. Per-volume media cancellation would be a new feature, not a rewiring: nothing today
-scopes an enrichment pass to a volume's token.
+scopes an enrichment pass to a volume's token. Its per-volume LISTENERS are in the tree, though: `wire_volume` takes the
+same child token importance does and ends them with the volume (`media_index/scheduler/DETAILS.md` § The lifecycle bus).
 
 **`importance` is in the tree, holding a bare token.** A volume reaches the importance scheduler with a child of its
 root token already attached (`lifecycle_bus::RegisteredVolume.stop`, minted at the registration funnel and, for the

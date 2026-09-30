@@ -16,6 +16,7 @@ use super::{BeginOutcome, FinishOutcome, ImportanceScheduler, ScoringPolicy};
 use crate::IndexVolumeKind;
 use crate::importance::scorer::SignalSet;
 use crate::importance::stop::PassError;
+use crate::indexing::host::runtime::spawn_until_stopped;
 use crate::indexing::lifecycle::lifecycle_bus;
 
 /// Build and wire the scheduler, behind [`ImportanceScheduler::start`], which carries
@@ -242,7 +243,7 @@ pub(super) fn wire_volume(
     let sub_volume = volume_id.clone();
     let mut rx = lifecycle_bus::subscribe(&volume_id);
     let mut home_rx = lifecycle_bus::subscribe_home_covered(&volume_id);
-    spawn_for_this_life(&stop, async move {
+    spawn_until_stopped(&stop, async move {
         // Observe the retained values first (covers a signal fired before subscribe,
         // and a sweep-ready volume that already loaded Completed).
         if matches!(*rx.borrow_and_update(), lifecycle_bus::ScanState::Completed { .. }) || *home_rx.borrow_and_update()
@@ -263,18 +264,6 @@ pub(super) fn wire_volume(
                 Some(false) => {}
             }
         }
-    });
-}
-
-/// Spawn one of a volume's listeners, to run until that life of the volume ends.
-///
-/// The listeners wait on process-global buses and timers that never close, so
-/// nothing else would ever end them. Dropping one mid-wait is safe: each only awaits
-/// a channel or a timer, and hands the work itself to a run that stops on its own.
-fn spawn_for_this_life(stop: &CancellationToken, listener: impl Future<Output = ()> + Send + 'static) {
-    let stop = stop.clone();
-    crate::indexing::host::runtime::spawn(async move {
-        stop.run_until_cancelled_owned(listener).await;
     });
 }
 
@@ -317,7 +306,7 @@ fn start_periodic_full_refresh(
     available: SignalSet,
     stop: &CancellationToken,
 ) {
-    spawn_for_this_life(stop, async move {
+    spawn_until_stopped(stop, async move {
         loop {
             tokio::time::sleep(FULL_REFRESH_INTERVAL).await;
             log::debug!(target: "importance", "periodic full refresh for '{volume_id}'");
@@ -337,7 +326,7 @@ fn start_incremental(
     stop: &CancellationToken,
 ) {
     let mut rx = lifecycle_bus::subscribe_dirs_changed(&volume_id);
-    spawn_for_this_life(stop, async move {
+    spawn_until_stopped(stop, async move {
         // The retained initial value is the empty batch (nothing published yet);
         // `borrow_and_update` marks it seen so the first real change triggers.
         rx.borrow_and_update();
