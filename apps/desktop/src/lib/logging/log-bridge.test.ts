@@ -172,6 +172,58 @@ describe('log-bridge', () => {
     expect(callArgs[1].entries[0].message).toBe('Loaded 42 items')
   })
 
+  async function renderedMessage(record: Partial<LogRecord>): Promise<string> {
+    getTauriBridgeSink()(makeRecord(record))
+    await vi.advanceTimersByTimeAsync(100)
+    const callArgs = vi.mocked(invoke).mock.calls[0] as [string, { entries: { message: string }[] }]
+    return callArgs[1].entries[0].message
+  }
+
+  it('renders path and identity placeholders as keyed, Debug-quoted fields the report redactor reads', async () => {
+    const message = await renderedMessage({
+      rawMessage: 'Listing {listingId} on {volumeId} failed for {path} ({count} tries): {error}',
+      message: [
+        'Listing ',
+        'l-1',
+        ' on ',
+        'smb-nas-0123456789abcdef',
+        ' failed for ',
+        'docs/Client "Plans"\\2026\nnext',
+        ' (',
+        3,
+        ' tries): ',
+        'boom',
+        '',
+      ],
+    })
+    expect(message).toBe(
+      'Listing l-1 on volumeId="smb-nas-0123456789abcdef" failed for path="docs/Client \\"Plans\\"\\\\2026\\nnext" (3 tries): boom',
+    )
+  })
+
+  it('does not repeat a key the template already spells out', async () => {
+    const message = await renderedMessage({
+      rawMessage: 'calling listDirectoryStart: volumeId={volumeId}, path={loadPath}',
+      message: ['calling listDirectoryStart: volumeId=', 'root', ', path=', '/Users/ada/Plans', ''],
+    })
+    expect(message).toBe('calling listDirectoryStart: volumeId="root", path="/Users/ada/Plans"')
+  })
+
+  it('maps names to the redactor vocabulary and leaves a template array as plain text', async () => {
+    expect(
+      await renderedMessage({
+        rawMessage: 'Volume not found: {volumeName} on {server}, file {name}',
+        message: ['Volume not found: ', 'Client Share', ' on ', 'nas', ', file ', 'a.pdf', ''],
+      }),
+    ).toBe('Volume not found: volumeName="Client Share" on server="nas", file file="a.pdf"')
+
+    vi.mocked(invoke).mockClear()
+    const template = Object.assign(['Loaded ', ' items'], { raw: ['Loaded ', ' items'] })
+    expect(await renderedMessage({ rawMessage: template, message: ['Loaded ', 42, ' items'] })).toBe(
+      'Loaded 42 items',
+    )
+  })
+
   it('silently drops entries when invoke fails', async () => {
     vi.mocked(invoke).mockRejectedValueOnce(new Error('Backend unavailable'))
 

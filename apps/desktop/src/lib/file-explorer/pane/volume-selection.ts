@@ -102,11 +102,11 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
       return selectVolumeByIndex(pane, matches[0])
     }
     if (matches.length > 1) {
-      log.warn('Volume name is ambiguous: {name}', { name })
+      log.warn('Volume name is ambiguous: {volumeName}', { volumeName: name })
       return { kind: 'not-found' }
     }
 
-    log.warn('Volume not found: {name}', { name })
+    log.warn('Volume not found: {volumeName}', { volumeName: name })
     return { kind: 'not-found' }
   }
 

@@ -292,7 +292,7 @@ fn redactor_regex() -> &'static Regex {
             # with non-private meanings and must not become broad word matching.
             | (?P<identity_field>
                 \b (?P<if_key>
-                    host | server | share | volumeId | serverId | deviceId
+                    host | server | share | volumeId | volumeName | serverId | deviceId
                 )
                 =
                 (?P<if_value>

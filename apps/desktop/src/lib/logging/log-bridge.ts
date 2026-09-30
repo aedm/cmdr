@@ -29,10 +29,69 @@ let throttleWarningEmitted = false
 let droppedCount = 0
 const droppedCategoryToCountMap = new Map<string, number>()
 
+/**
+ * Placeholder names whose values name a path or an identity, mapped to the field key the
+ * backend's report redactor recognizes (`src-tauri/src/redact/DETAILS.md` § "Keyed path fields"
+ * and § "Producer-owned identity fields"). A relative path, a bare name, or a volume ID has no
+ * shape the redactor can spot in prose, so the key is what gets it tokenized in a report. The
+ * local log keeps the value whole.
+ */
+const REDACTOR_KEY_BY_PLACEHOLDER: Record<string, string> = {
+  path: 'path',
+  loadPath: 'path',
+  landedPath: 'path',
+  root: 'path',
+  target: 'path',
+  destinationPath: 'destination',
+  dir: 'dir',
+  folder: 'dir',
+  folderName: 'dir',
+  input: 'input',
+  name: 'file',
+  fileName: 'file',
+  volumeId: 'volumeId',
+  volumeName: 'volumeName',
+  deviceId: 'deviceId',
+  host: 'host',
+  server: 'server',
+  share: 'share',
+}
+
+/** Quote like Rust's `{:?}`, which is the escaping the redactor's quoted-value grammar reads. */
+function debugQuote(value: string): string {
+  let out = '"'
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0
+    if (char === '"' || char === '\\') out += `\\${char}`
+    else if (char === '\n') out += '\\n'
+    else if (char === '\r') out += '\\r'
+    else if (char === '\t') out += '\\t'
+    else if (code < 0x20 || code === 0x7f) out += `\\u{${code.toString(16)}}`
+    else out += char
+  }
+  return `${out}"`
+}
+
 function formatMessage(record: LogRecord): string {
   // LogTape message is an array of interleaved template parts and values,
-  // for example ["Loading ", 42, " items"]. Join them into a single string.
-  return record.message.map(String).join('')
+  // for example ["Loading ", 42, " items"]. A tagged template carries no names, so it joins as is.
+  const { message, rawMessage } = record
+  const names = typeof rawMessage === 'string' ? [...rawMessage.matchAll(/\{([^{}\s]+)\}/g)].map((m) => m[1]) : []
+  if (names.length * 2 + 1 !== message.length) return message.map(String).join('')
+
+  let out = ''
+  message.forEach((part, index) => {
+    const name = index % 2 === 1 ? names[(index - 1) / 2] : undefined
+    const key = name === undefined ? undefined : REDACTOR_KEY_BY_PLACEHOLDER[name]
+    if (key === undefined || name === undefined) {
+      out += String(part)
+      return
+    }
+    // A template that already reads `volumeId={volumeId}` gets the quotes, not a second key.
+    const keyed = out.endsWith(`${key}=`) || out.endsWith(`${name}=`)
+    out += keyed ? debugQuote(String(part)) : `${key}=${debugQuote(String(part))}`
+  })
+  return out
 }
 
 function getCategory(record: LogRecord): string {

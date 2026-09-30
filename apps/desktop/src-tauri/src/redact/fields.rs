@@ -174,6 +174,7 @@ pub(super) fn identity_field_token(key: &str, value: &str, context: Option<&Reda
         "host" | "server" => redact_host(value, context),
         "share" => identity_token("share", TokenDomain::Volume, value, context),
         "volumeId" => identity_token("volume-id", TokenDomain::VolumeId, value, context),
+        "volumeName" => identity_token("volume", TokenDomain::Volume, value, context),
         "serverId" => identity_token("server-id", TokenDomain::ServerId, value, context),
         "deviceId" => identity_token("device-id", TokenDomain::DeviceId, value, context),
         _ => value.to_string(),

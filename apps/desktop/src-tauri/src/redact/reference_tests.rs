@@ -250,6 +250,22 @@ fn producer_owned_identity_fields_redact_only_the_six_quoted_keys() {
     assert_eq!(context().redact_line(near_matches), near_matches);
 }
 
+/// The frontend log bridge renders a volume's display name as `volumeName="…"`; it shares the
+/// volume domain with `share=`, so one mount reads as one token wherever it's named.
+#[test]
+fn volume_name_field_shares_the_volume_token_domain() {
+    let context = context();
+    let redacted = context.redact_line(r#"FE volumeName="Client Share" share="Client Share""#);
+    assert!(!redacted.contains("Client Share"), "{redacted}");
+    let tokens: Vec<&str> = redacted.matches("<volume:").collect();
+    assert_eq!(tokens.len(), 1, "volumeName gets a volume token: {redacted}");
+    let token = |key: &str| {
+        let start = redacted.find(&format!("{key}=\"<")).expect("field") + key.len() + 2;
+        redacted[start..].split('"').next().unwrap_or_default().split(':').nth(1).map(str::to_string)
+    };
+    assert_eq!(token("volumeName"), token("share"), "{redacted}");
+}
+
 #[test]
 fn identity_field_keys_are_narrow_and_keep_stable_facts() {
     let context = context();

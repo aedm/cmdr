@@ -226,7 +226,7 @@
         const volume = getVolumes().find((v) => v.id === row.volumeId)
         const root = volume?.path ?? row.place?.appRoot ?? row.saved?.places[0]?.appRoot
         if (!row.volumeId || !root) {
-            log.warn('The hub row {name} has no place to open', { name: row.name })
+            log.warn('The hub row {server} has no place to open', { server: row.name })
             return
         }
         const targetPath = volume ? pathForPickedVolume(volume) : root

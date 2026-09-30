@@ -154,9 +154,9 @@ export function createEdgeFlowHandlers(deps: EdgeFlowHandlersDeps): EdgeFlowHand
     // Sync the volume selector; retry may have fixed a mount that was stale.
     requestVolumeRefresh()
 
-    log.info('Volume retry navigating to {path} on volume {vol}', {
+    log.info('Volume retry navigating to {path} on volume {volumeId}', {
       path: originalPath,
-      vol: volumeId,
+      volumeId,
     })
   }
 

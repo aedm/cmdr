@@ -332,7 +332,7 @@
     /** What Enter does to a row: `openMoveFor` decides, this carries it out. */
     function openRow(row: HubRow): void {
         const move = openMoveFor(row, rows, volumes)
-        if (!move) { log.warn('The hub row {name} has nowhere to open', { name: row.name }); return; }
+        if (!move) { log.warn('The hub row {server} has nowhere to open', { server: row.name }); return; }
         if (move.kind === 'host') onHostSelect?.(move.host, move.label)
         else if (move.kind === 'place') onServerSelect?.(move.row)
         else onShareViaHost?.(move.host, { share: move.share, label: move.label })

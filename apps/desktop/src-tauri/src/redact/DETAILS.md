@@ -207,7 +207,8 @@ fixed set of keys (see the regex) with either a `{:?}`-quoted value or a bare on
 ## Producer-owned identity fields
 
 Bare remote identities have no safe lexical shape. The redactor therefore claims only quoted values under exact typed
-keys: `host`, `server`, `share`, `volumeId`, `serverId`, and `deviceId`. Values may use `Some("…")`. Near matches,
+keys: `host`, `server`, `share`, `volumeId`, `volumeName`, `serverId`, and `deviceId` (`volumeName` shares the
+volume domain with `share`; the frontend log bridge emits it). Values may use `Some("…")`. Near matches,
 generic `name=` / `id=`, and unquoted legacy fields are excluded so ordinary diagnostics do not disappear. Producers
 that own an identity must emit its Rust debug form under one of those keys (`host={host:?}`), never put literal quotes
 around Display output. The same escape-aware quoted grammar applies to `user` / `username`. Arbitrary external prose

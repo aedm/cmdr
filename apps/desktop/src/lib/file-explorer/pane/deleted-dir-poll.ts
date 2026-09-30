@@ -98,9 +98,9 @@ export function createDeletedDirPoll(deps: DeletedDirPollDeps): DeletedDirPoll {
           if (volumeTimedOut) return
           if (!volumeExists) return
           if (deps.getCurrentPath() !== currentPath) return
-          log.info('Directory {dir} no longer exists, navigating to nearest valid parent under {volume}', {
+          log.info('Directory {dir} no longer exists, navigating to nearest valid parent under {root}', {
             dir: currentPath,
-            volume: volumePath,
+            root: volumePath,
           })
           walkUp(currentPath, volumePath)
         })
