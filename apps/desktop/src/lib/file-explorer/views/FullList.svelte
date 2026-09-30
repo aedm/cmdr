@@ -84,8 +84,8 @@
          * Bumped on every `directory-diff` event. Triggers a soft refresh
          * (refetch visible range in the background, keep existing entries
          * visible until new ones land). Use this instead of `cacheGeneration`
-         * for diff-driven refreshes — `cacheGeneration` does a destructive
-         * wipe that causes empty-pane flicker mid-bulk-operation.
+         * for diff-driven refreshes: a diff doesn't invalidate cold-context
+         * metadata such as measured columns.
          */
         softRefreshTick?: number
         cursorIndex: number
@@ -619,10 +619,10 @@
         cache.syncStaticEntries()
     })
 
-    // Hard reset on cold context changes, soft refresh on diff bursts; the cache
-    // owns the decision. A reset suppresses the grid-template-columns transition
-    // for the first paint after a dir switch, else the header (which persists
-    // across navs) slides from the previous dir's widths to the new ones.
+    // Hard refresh on cold context changes, soft refresh on diff bursts; the cache
+    // owns the decision. Both replace the visible window atomically. A reset also
+    // suppresses the grid-template-columns transition for the first paint after a
+    // dir switch, else the header slides from the previous widths to the new ones.
     $effect(() => {
         const sync = cache.syncToProps(rowAreaHeight > 0)
         if (sync === 'idle') return
@@ -634,7 +634,7 @@
                 })
             })
         }
-        fetchVisibleRange(sync === 'refresh')
+        fetchVisibleRange(sync === 'reset' || sync === 'refresh')
     })
 
     // Returns the number of visible items (for Page Up/Down navigation)

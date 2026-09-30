@@ -42,6 +42,7 @@
     import RepoChip from '../git/RepoChip.svelte'
     import { createGitBrowserSync } from './git-browser-sync.svelte'
     import { createListingLoader } from './listing-loader'
+    import { createListingPresentation } from './listing-presentation.svelte'
     import { createSmbViewState } from './smb-view-state.svelte'
     import { createVolumeSpace } from './volume-space.svelte'
     import ErrorPane from './ErrorPane.svelte'
@@ -377,6 +378,15 @@
         onMtpFatalError: (message) => onMtpFatalError?.(message),
         onCancelLoading: (cancelled) => onCancelLoading?.(cancelled),
         onArchiveNeedsPassword: (info) => onArchiveNeedsPassword?.(info),
+    })
+
+    // Keep the last settled rows through a sub-100 ms navigation. The list
+    // props switch to the new listing only once it lands, and both list caches
+    // replace their visible window atomically at that point.
+    const listingPresentation = createListingPresentation({
+        getListingId: () => listingId,
+        getTotalCount: () => effectiveTotalCount,
+        getLoading: () => loading,
     })
 
     // Volume root path from listing-complete event (accurate for MTP and all volume types)
@@ -1115,15 +1125,14 @@
 
     // Cache generation counter — bumped on **cold context changes** (sort,
     // hidden-files toggle, explicit refresh, listing swap). The List components
-    // treat this as a hard reset: wipe rendered entries and column widths,
-    // refetch from scratch.
+    // treat this as a hard refresh: invalidate cold-context metadata, force a
+    // refetch, and atomically replace the rendered window when it lands.
     let cacheGeneration = $state(0)
 
     // Soft-refresh tick — bumped on every `directory-diff` event (bulk delete,
     // copy, rename). The List components refetch the visible range in the
     // background and atomically replace, keeping existing entries on screen
-    // until the new ones land. This is what prevents the empty-pane flicker
-    // that destructive `cacheGeneration` bumps caused mid-bulk-op.
+    // until the new ones land without invalidating cold-context metadata.
     let softRefreshTick = $state(0)
 
     // Throttle the brief-mode column-width refetch during diff bursts. Without
@@ -1981,7 +1990,7 @@
             />
         {:else if paneViewKind === 'mtp-connect'}
             <MtpConnectionView {volumeId} {onVolumeChange} />
-        {:else if loading}
+        {:else if loading && listingPresentation.showLoading}
             <LoadingIcon {openingFolder} loadedCount={loadingCount} {finalizingCount} showCancelHint={true} />
         {:else if friendlyError}
             <ErrorPane
@@ -1998,9 +2007,9 @@
         {:else if viewMode === 'brief'}
             <BriefList
                 bind:this={briefListRef}
-                {listingId}
+                listingId={listingPresentation.listingId}
                 {volumeId}
-                totalCount={effectiveTotalCount}
+                totalCount={listingPresentation.totalCount}
                 {includeHidden}
                 {cacheGeneration}
                 {softRefreshTick}
@@ -2040,9 +2049,9 @@
         {:else}
             <FullList
                 bind:this={fullListRef}
-                {listingId}
+                listingId={listingPresentation.listingId}
                 {volumeId}
-                totalCount={effectiveTotalCount}
+                totalCount={listingPresentation.totalCount}
                 {includeHidden}
                 {cacheGeneration}
                 {softRefreshTick}
@@ -2081,6 +2090,10 @@
                 onVisibleRangeChange={handleVisibleRangeChange}
                 onDragInitiate={clearJumpState}
             />
+        {/if}
+        {#if loading && !listingPresentation.showLoading && listingPresentation.listingId}
+            <!-- Old rows are visual continuity only; loading still blocks every action. -->
+            <div class="loading-shield" aria-hidden="true"></div>
         {/if}
     </div>
     <!-- The status footer: which panes get it, and which of those talk about disk
@@ -2281,5 +2294,10 @@
         color: var(--color-error);
         text-align: center;
         padding: var(--spacing-lg);
+    }
+
+    .loading-shield {
+        position: absolute;
+        inset: 0;
     }
 </style>
