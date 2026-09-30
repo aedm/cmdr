@@ -63,8 +63,8 @@ allocation that pool's threads make, into a counter of its own. Worked example: 
 
 It lives in the indexing tree, not next to `wait_until`, because a `#[global_allocator]` is per BINARY: it has to sit in
 the crate whose test binary is measuring, and a shared crate would give the shipped app a second one. Rust memory
-numbers taken in tests are therefore measured under THIS allocator, not mimalloc — don't compare them with production
-figures.
+numbers taken in tests are therefore measured under THIS allocator, not the release build's global one — don't compare
+them with production figures.
 
 ### `proptest` (property-based testing)
 

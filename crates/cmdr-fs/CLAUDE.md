@@ -40,6 +40,9 @@ paths (`crate::file_system::volume::VolumeError`); other crates use `cmdr_fs::�
 - **A test needing a real removable volume uses `testing::disk_images` (macOS), ❌ never its own `hdiutil` or `diskutil`
   call.** Its runner holds the machine-wide lock, SIGKILLs a stuck tool, and proves a disk is the test's own before
   touching it. ❌ Never a physical disk or a new FAT/exFAT image. DETAILS § "`testing::disk_images`".
+- **The global allocator is decided here** (`process_memory/allocator.rs`: system on macOS, mimalloc on Linux or with
+  the `mimalloc` feature). Gate allocator code on the `cmdr_mimalloc` cfg, ❌ never `feature = "mimalloc"` (false on
+  Linux). DETAILS § Which global allocator.
 - **A stat-and-listing backend implements three small traits, ❌ never its own copy of the walk**: `ScanSource`,
   `MakesDirectories`, `PatchSource` (DETAILS § Bodies a backend gets for free). `secret_store.rs` is a backend's only
   door to the credential store.

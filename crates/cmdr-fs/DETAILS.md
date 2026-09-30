@@ -494,23 +494,65 @@ A fault the caller wants to arm on a call COUNT rather than on a path belongs on
 wrapper (`file_system/write_operations/transfer/volume/faulty_volume_test_support.rs`): it wraps any volume and fails
 the Nth call to a named operation. ❌ Don't grow this list with fault shapes that aren't about what a real backend does.
 
-## `process_memory`: three accountants, and the one reader that spans them
+## `process_memory`: the allocators, their accountants, and the one reader that spans them
 
-`query_mimalloc_heap` sees only our Rust heap. `query_system_malloc_zones` sees only the registered macOS zones, which
-mimalloc never joins. Neither can say what SHAPE the bytes are in, and that gap is what left a 643 MB block unnamed
-across three memory investigations (`../../docs/notes/performance/idle-memory-profile-2026-07-28.md`).
+### Which global allocator
+
+**Decision**: macOS runs on the system allocator, Linux on mimalloc, and the `mimalloc` feature (the app's forwards to
+this crate's) puts macOS on mimalloc too. `build.rs` folds that rule into one cfg, `cmdr_mimalloc`, and
+`process_memory/allocator.rs` turns it into the `GLOBAL_ALLOCATOR` constant plus the `GlobalAlloc` type and
+`GLOBAL_ALLOC` value the app's `main.rs` installs. Every allocator-specific line asks `cmdr_mimalloc` (or, outside this
+crate, the constant); ❌ never `feature = "mimalloc"`, which is false on Linux where mimalloc is the default.
+
+**Why macOS left mimalloc**: on David's dev Mac, 15 min after a search-and-listing burst, the system allocator settles
+at a median 241 MiB against mimalloc's 403, and under the 300 MiB target in five of seven runs against two of eight
+(`../../docs/notes/performance/allocator-slack-release-2026-09-27.md`). mimalloc's post-burst slack is fragmentation,
+not retention: sparse pages pinned by a few long-lived blocks, which no allocator call returns. It used to cost search
+speed to leave it, but the search loop no longer allocates per row, so that penalty is gone
+(`../../docs/notes/performance/search-loop-allocations-2026-09-27.md`). What macOS pays: burst peaks ~500 MiB higher
+(median 1,976 against 1,458 MiB), a transient that sometimes lasts past a minute after a burst, and an occasional bad
+settle (382 MiB, mostly swapped malloc-zone memory). Idle footprint drops ~95 MiB
+(`../../docs/notes/performance/allocator-comparison-2026-09-23.md`).
+
+**Why Linux keeps mimalloc**: glibc malloc is unmeasured under Cmdr's load, and its per-thread arenas behave very
+differently from macOS malloc under thread churn, so the macOS numbers say nothing about it. Measure it before flipping
+Linux; a feature to force the system allocator there is a one-line addition to `build.rs`.
+
+**Why the choice lives here and not in the app**: every memory reader has to know which heap it's reading, and the
+readers live here. With the choice beside them, the app's `main.rs` needs no cfg at all, and a reading can't disagree
+with the allocator that's installed. The one exception: only a binary that installs `GLOBAL_ALLOC` runs on it, and test
+binaries install their own counting allocator over `System`, so the mimalloc readers' tests allocate through `mi_malloc`
+directly and run only in a `--features mimalloc` test build.
+
+**What keeps the unused path alive**: the `clippy-mimalloc` check lane (slow, macOS) clippies the workspace with
+`cmdr/mimalloc` in its own target dir, and `rustdoc`'s `--all-features` documents it. `THIRD-PARTY-NOTICES.md` covers
+the default macOS build, so it doesn't credit mimalloc: shipping macOS on mimalloc again means making it that build's
+default (the rule in `build.rs`), which brings the credit back with it.
+
+### The readers
+
+Under **mimalloc**, `query_rust_heap` reads `mi_process_info` (committed bytes), and mimalloc is not a registered malloc
+zone, so `query_system_malloc_zones` sees every zone and none of the Rust heap. Under the **system allocator**, the Rust
+heap IS the default malloc zone, shared with Objective-C and C code, so `query_rust_heap` reads that zone's statistics
+(in use and reserved; macOS keeps no high-water mark) and `query_system_malloc_zones` skips it. Either way the two never
+overlap, which the watchdog's `untracked` remainder relies on. The skip leans on libmalloc keeping the default zone
+first in its registry; `a_malloc_block_lands_in_the_rust_heap_and_not_in_the_other_zones` pins it.
+
+Neither can say what SHAPE the bytes are in, and that gap is what left a 643 MB block unnamed across three memory
+investigations (`../../docs/notes/performance/idle-memory-profile-2026-07-28.md`).
 
 `query_vm_regions` closes it. It walks the task's own VM map with `mach_vm_region_recurse` and folds the entries by
 `user_tag`, so it produces the same rows `vmmap -summary` prints — in-process, with no `vmmap` to spawn and no
-`MallocStackLogging` relaunch, and covering BOTH allocators because every allocator ultimately takes its pages from the
-kernel.
+`MallocStackLogging` relaunch, and covering every allocator because every allocator ultimately takes its pages from the
+kernel. mimalloc's arenas sit under tag 100 (`MIMALLOC_ARENA_TAG`, which macOS names `IOAccelerator`); the zones' pages
+sit under `MALLOC_TAGS`.
 
 The per-tag histogram of distinct region sizes is the part that names things. macOS routes any allocation past its 127
 KB large-zone threshold to a VM region of exactly the requested size, so a repeated exact size under `MALLOC_LARGE` is a
 fingerprint of whatever asked for that many bytes. That is how the CLIP Core ML towers were identified from a region
 table alone: 101,187,584 bytes is the text tower's `49,408 × 512` fp32 token embedding and nothing else in the process
 (`../cmdr-index/src/media_index/clip/DETAILS.md` § "What holding the towers costs"). The mechanism is asserted, not
-assumed: `a_big_system_zone_block_becomes_a_malloc_large_region_of_exactly_its_size`.
+assumed: `a_big_system_zone_block_becomes_a_malloc_large_region_sized_to_its_request`.
 
 ⚠️ **`<mach/vm_region.h>` lives inside `#pragma pack(push, 4)`, so `VmRegionSubmapInfo64` must be
 `#[repr(C, packed(4))]`.** With plain `#[repr(C)]` the `u64` `offset` field gets 4 bytes of padding the kernel didn't
@@ -521,10 +563,13 @@ MiB block absent from the map entirely (verified on macOS 26.5, 2026-08-21).
 Cost is one syscall per map entry, so it is snapshot-only — never per watchdog tick or per log line, unlike the
 `task_info` readers beside it.
 
-`query_heap_census` answers the question the other three can't: of what mimalloc holds, how much is live data. It walks
-every page of the main heap (in mimalloc v3 one heap spans every thread's pages) and sums blocks in use against block
-space, with an allocation-free visitor and a page ceiling. Read against the VM map's tag-100 bytes it gives the heap's
-slack. Its blind spots and why it's safe to run in a live app: the module header.
+`query_rust_heap_snapshot` answers the question the others can't: of what the heap holds, how much is live data. Under
+mimalloc it runs `heap_census.rs`, which walks every page of the main heap (in mimalloc v3 one heap spans every thread's
+pages) and sums blocks in use against block space, with an allocation-free visitor and a page ceiling, and reads that
+against tag 100's resident bytes. Its blind spots and why it's safe to run in a live app: the module header. Under the
+system allocator there's no census to take (nothing in the zone tells a Rust block from an Objective-C one), and none is
+needed for live bytes: the zones count them exactly. The snapshot weighs every zone's live bytes against every malloc
+tag's resident bytes, because the VM tags can't say which zone a page belongs to.
 
 ## Bodies a backend gets for free
 

@@ -172,16 +172,18 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `smb2::Diagnostics` & friends with `specta::Type` derives (so `smb2` needn't depend on specta), one `impl From` per
   type.
 - **`memory_diagnostics.rs`** (macOS only): `get_memory_diagnostics(sizes_per_tag)`, one payload answering "what is
-  Cmdr holding right now, and what shape is it in?". Folds `cmdr_fs::process_memory`'s four readers together: the
-  footprint, mimalloc's own accounting, the registered malloc zones, and the kernel's VM map by tag with a per-tag
+  Cmdr holding right now, and what shape is it in?". Folds `cmdr_fs::process_memory`'s readers together: the
+  footprint, the Rust heap from whichever allocator is global, the malloc zones beyond it, and the kernel's VM map by tag with a per-tag
   region-size histogram. That last field is why it exists: a repeated exact region size is a fingerprint of whatever
   asked for those bytes, and it is what produced the first real candidate for a 643 MB block three investigations had
   left anonymous (`../../../../../docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md`). `sqlitePageCache` adds the
   fifth accountant, `cmdr_fs::sqlite_util::query_page_cache_usage` plus `live_read_connections`: SQLite's page slab is a
-  leaked Rust allocation, so it's a fixed 64 MiB inside the mimalloc total that no other field names, and the whole
-  point of one payload is that nobody has to know to go ask SQLite separately. `rustHeapCensus` splits the Rust heap
-  into live data and allocator slack (`cmdr_fs::process_memory::query_heap_census` read against the VM map's tag-100
-  bytes), the only way to tell "the program holds this" from "mimalloc holds this". Deliberately NOT
+  leaked Rust allocation, so it's a fixed 64 MiB inside the Rust heap total that no other field names, and the whole
+  point of one payload is that nobody has to know to go ask SQLite separately. `rustHeap` is tagged by `allocator`,
+  because the two allocators' numbers mean different things: the mimalloc variant carries a page census split into
+  live data and slack, the system one the default zone's live and reserved bytes plus a malloc-wide resident/slack
+  split (`cmdr_fs::process_memory::query_rust_heap_snapshot`; `crates/cmdr-fs/DETAILS.md` § "Which global
+  allocator"). Deliberately NOT
   `debug_assertions`-gated:
   the readings that matter come from a shipped build under a real workload, which is the one condition a debug-only
   command can't reach. Carries no paths or names, only counts. Runs off the IPC thread (one syscall per map entry) with

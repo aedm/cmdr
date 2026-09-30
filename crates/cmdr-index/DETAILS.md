@@ -120,7 +120,7 @@ normal ones for the same package).
 That makes it per test BINARY, and the host has its own. Cmdr keeps a trimmed copy in
 `apps/desktop/src-tauri/src/test_support.rs` for `search/ranking/memory_tests.rs`. **This fails by measuring zero, not
 by failing to compile**, so that test asserts a non-zero measurement before it asserts a budget. Note for anyone
-comparing memory numbers: Rust test runs are measured under the counting allocator, not mimalloc.
+comparing memory numbers: Rust test runs are measured under the counting allocator, not the release build's.
 
 ## One fingerprint helper, two policy stamps (`fingerprint.rs`)
 
