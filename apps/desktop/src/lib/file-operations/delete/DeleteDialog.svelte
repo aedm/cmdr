@@ -34,6 +34,7 @@
     import { withTimeout } from '$lib/utils/timing'
     import Trans from '$lib/intl/Trans.svelte'
     import { t, tString } from '$lib/intl/messages.svelte'
+    import type { DeleteConfirmer } from '$lib/file-explorer/pane/dialog-props'
 
     const log = getAppLogger('deleteDialog')
 
@@ -67,6 +68,10 @@
         /** When true, dialog auto-confirms without user interaction (MCP). */
         autoConfirm?: boolean
         onConfirm: (previewId: string | null, isPermanent: boolean) => void
+        /** Takes this dialog's own confirm for as long as it's mounted, so an MCP
+         *  `dialog confirm` presses the same button a person does. Returns the
+         *  unregister. */
+        registerConfirmer?: (confirm: DeleteConfirmer) => () => void
         onCancel: () => void
     }
 
@@ -85,6 +90,7 @@
         sourceVolumeId,
         autoConfirm = false,
         onConfirm,
+        registerConfirmer,
         onCancel,
     }: Props = $props()
 
@@ -338,6 +344,7 @@
 
     onDestroy(() => {
         destroyed = true
+        unregisterConfirmer?.()
         // Nothing may await an answer that can no longer arrive.
         settleOnlineOnlyAnswer()
         // Free the scan preview unless the user confirmed (the op then consumes
@@ -384,6 +391,13 @@
         confirmed = true
         onConfirm(previewId, isPermanent)
     }
+
+    // An MCP `dialog confirm` is the Confirm button: same preview, same mode.
+    // Registered during init, so a confirm that lands while the scan is still
+    // starting finds it and waits for the id like a fast Enter does.
+    const unregisterConfirmer = registerConfirmer?.(() => {
+        void handleConfirm()
+    })
 
     function handleCancel() {
         // Free the scan preview (cancels an in-flight scan and evicts any cached

@@ -313,10 +313,7 @@ export function createDialogState(deps: DialogStateDeps) {
 
   const programmaticConfirm = createProgrammaticConfirm({
     isTransferDialogOpen: () => showTransferDialog && transferDialogProps !== null,
-    getOpenDeleteDialog: () => (showDeleteDialog ? deleteDialogProps : null),
-    confirmDelete: (previewId, isPermanent) => {
-      state.handleDeleteConfirm(previewId, isPermanent)
-    },
+    isDeleteDialogOpen: () => showDeleteDialog && deleteDialogProps !== null,
     isArchivePasswordOpen: () => archivePassword.showDialog,
     supplyStoredPassword: () => {
       archivePassword.supplyStoredPassword()

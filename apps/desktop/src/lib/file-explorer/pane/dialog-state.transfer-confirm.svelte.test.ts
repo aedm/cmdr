@@ -211,6 +211,7 @@ describe('an MCP confirm on the transfer dialog', () => {
         dialogs.handleTransferConfirm(payload)
       },
       registerTransferConfirmer: (confirm: TransferConfirmer) => dialogs.registerTransferConfirmer(confirm),
+      registerDeleteConfirmer: () => noop,
       onTransferCancel: () => {
         dialogs.handleTransferCancel()
       },

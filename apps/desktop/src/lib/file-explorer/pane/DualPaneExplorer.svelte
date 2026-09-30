@@ -78,6 +78,7 @@
         ForegroundOperationVerdict,
         TransferConfirmPayload,
         TransferConfirmer,
+        DeleteConfirmer,
         TransferCompletePayload,
     } from './dialog-props'
     import { explorerState } from './explorer-state.svelte'
@@ -1441,6 +1442,7 @@
         dialogs.handleTransferConfirm(payload)
     }}
     registerTransferConfirmer={(confirm: TransferConfirmer) => dialogs.registerTransferConfirmer(confirm)}
+    registerDeleteConfirmer={(confirm: DeleteConfirmer) => dialogs.registerDeleteConfirmer(confirm)}
     onTransferCancel={() => {
         dialogs.handleTransferCancel()
     }}

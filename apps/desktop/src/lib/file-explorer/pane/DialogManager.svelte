@@ -19,6 +19,7 @@
         DeleteDialogPropsData,
         TransferConfirmPayload,
         TransferConfirmer,
+        DeleteConfirmer,
         TransferCompletePayload,
     } from './dialog-props'
     import type { FriendlyError, WriteOperationError } from '../types'
@@ -45,6 +46,7 @@
         deleteDialogProps,
         onTransferConfirm,
         registerTransferConfirmer,
+        registerDeleteConfirmer,
         onTransferCancel,
         onTransferComplete,
         onTransferCancelled,
@@ -88,6 +90,8 @@
         onTransferConfirm: (payload: TransferConfirmPayload) => void
         /** Hands the mounted transfer dialog's own confirm to the dialog state, for the MCP `dialog confirm`. */
         registerTransferConfirmer: (confirm: TransferConfirmer) => () => void
+        /** The delete dialog's twin of `registerTransferConfirmer`. */
+        registerDeleteConfirmer: (confirm: DeleteConfirmer) => () => void
         onTransferCancel: () => void
         onTransferComplete: (payload: TransferCompletePayload) => void
         onTransferCancelled: (filesProcessed: number) => void
@@ -256,6 +260,7 @@
                 sourceVolumeId={deleteDialogProps.sourceVolumeId}
                 autoConfirm={deleteDialogProps.autoConfirm}
                 onConfirm={onDeleteConfirm}
+                registerConfirmer={registerDeleteConfirmer}
                 onCancel={onDeleteCancel}
             />
         {/key}

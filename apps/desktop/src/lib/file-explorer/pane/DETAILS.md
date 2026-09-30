@@ -805,19 +805,23 @@ below rather than merely spreading lines:
 - `adopted-operation.svelte.ts`: the progress dialog's adopted arm, owning that slot and its four outcomes.
 - `archive-password-flow.svelte.ts`: the password prompt and its `transfer` / `browse` modes.
 - `transfer-op-label.ts`: the log-line label for an operation type, shared by the two families.
-- `programmatic-confirm.ts`: the MCP `dialog confirm`, owning the transfer dialog's registered confirm.
+- `programmatic-confirm.ts`: the MCP `dialog confirm`, owning the transfer and delete dialogs' registered confirms.
 
 `dialog-state.svelte.ts` keeps birth context, the confirmation / alert / error dialogs, and the cross-cutting queries
 (`anyDialogOpen`, `isConfirmationDialogOpen`, `dismissAllAfterRenderFailure`).
 
-**An MCP `dialog confirm` on the transfer dialog presses the dialog's own confirm**, ❌ never a payload built from
-`transferDialogProps`. The mounted `TransferDialog` registers its `handleConfirm` through `registerTransferConfirmer`,
-and `confirmOpenDialog` calls it with the mapped conflict policy (both in `programmatic-confirm.ts`). The props hold
-what the dialog OPENED with; the dialog holds what it will actually send (the edited path, the picked volume, the scan
-preview). For a compress the two differ from the first frame: the box names `<folder>/<name>.zip` and the props only the
-folder, which the backend's `ensure_zip_writable` refuses as a read-only destination. A confirm that lands mid-startup
-waits for the scan start like a person's fast Enter does; it does not wait for the conflict-name listing (only the
-auto-confirm does), so it stays inside the MCP ack budget. Pinned by `dialog-state.transfer-confirm.svelte.test.ts`.
+**An MCP `dialog confirm` on the transfer or delete dialog presses the dialog's own confirm**, ❌ never a payload built
+from `transferDialogProps` / `deleteDialogProps`. The mounted `TransferDialog` registers its `handleConfirm` through
+`registerTransferConfirmer`, and `confirmOpenDialog` calls it with the mapped conflict policy; `DeleteDialog` does the
+same through `registerDeleteConfirmer`, so the press carries the scan preview and the mode the trash switch shows now,
+and a trash the walk just turned into a delete is handed back as it is for a person (all in `programmatic-confirm.ts`,
+pinned by `programmatic-confirm.test.ts` and
+`../../file-operations/delete/DeleteDialog.programmatic-confirm.svelte.test.ts`). The props hold what the dialog OPENED
+with; the dialog holds what it will actually send (the edited path, the picked volume, the scan preview). For a compress
+the two differ from the first frame: the box names `<folder>/<name>.zip` and the props only the folder, which the
+backend's `ensure_zip_writable` refuses as a read-only destination. A confirm that lands mid-startup waits for the scan
+start like a person's fast Enter does; it does not wait for the conflict-name listing (only the auto-confirm does), so
+it stays inside the MCP ack budget. Pinned by `dialog-state.transfer-confirm.svelte.test.ts`.
 
 `handleTransferConfirm` takes no scan flag: the progress dialog doesn't wait for a `TransferDialog` preview, because the
 backend registers the operation at confirm and its own task waits for the preview it claimed
