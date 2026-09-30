@@ -126,6 +126,15 @@ in `public/fonts/`.
   post from the `[download](cmdr:download)` marker. That plugin must run after `rehype-external-links` (so its GitHub
   links don't get `target="_blank"`) and reads `public/latest.json` directly, mirroring `src/lib/release.ts`'s
   GitHub-fallback URL/size logic.
+- **Security headers**: every `nginx.conf` location that serves content includes `nginx-security-headers.conf` (copied
+  to `/etc/nginx/snippets/` by the Dockerfile), because nginx drops server-level `add_header`s in any location that sets
+  its own. It carries the only copy of the CSP. `connect-src` has to list every origin the site's JS fetches
+  (`api.getcmdr.com` for likes and `?r=` codes, remark42, Paddle): the browser blocks the rest before the request
+  leaves, and nothing in dev shows it, since Astro's dev server and the Playwright E2E serve no CSP. The blog's like
+  button shipped that way and never worked until the origin was added. Two guards: the `website-csp-connect-src` check
+  matches every fetch in `src/` and `public/` against `connect-src` (`scripts/check/checks/DETAILS.md` § Website CSP
+  connect-src), and the CSP's `report-uri` / `report-to` send production violations to the API server, which alerts
+  Discord (`apps/api-server/src/website/DETAILS.md` § CSP reports).
 - **Always-latest download links**: `getcmdr.com/download/latest/<arch>` (and bare `/download/latest`, which hands out
   the universal build) is an nginx `return 302` to the API server's `/download/latest/<arch>`, query string preserved so
   `?ref=` and `?src=` survive. It lives in `nginx.conf`, not Astro, because a static build can only emit a meta-refresh

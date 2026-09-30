@@ -1284,6 +1284,16 @@ var AllChecks = []CheckDefinition{
 		Inputs:    websiteInputs,
 		Run:       RunWebsiteAnalyticsInjection,
 	},
+	{
+		ID:          "website-csp-connect-src",
+		Nickname:    "csp-connect-src",
+		DisplayName: "CSP connect-src",
+		App:         AppWebsite,
+		Tech:        "🚀 Astro",
+		IsFast:      true, // a source-tree walk and a few regexes
+		Inputs:      websiteInputs,
+		Run:         RunWebsiteCSPConnectSrc,
+	},
 
 	// API server checks
 	{

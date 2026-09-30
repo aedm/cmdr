@@ -34,6 +34,7 @@ COPY --from=builder /app/apps/website/dist /usr/share/nginx/html
 
 # Copy nginx config
 COPY apps/website/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/website/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 # Expose port 80
 EXPOSE 80

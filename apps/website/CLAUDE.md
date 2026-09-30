@@ -49,12 +49,10 @@ API access: `docs/tooling/umami.md`, `docs/tooling/posthog.md`.
 All pages support both; a header toggle (`ThemeToggle.astro`) overrides system preference. [DETAILS.md](DETAILS.md) §
 Color scheme.
 
-- Don't hardcode colors; use `global.css` CSS variables. (OG images excepted: Satori can't read them, so keep their
-  hardcoded colors in sync.)
+- Don't hardcode colors; use `global.css` CSS variables. (Except OG images: Satori can't read them, so sync by hand.)
 - Accent buttons: text uses `--color-accent-contrast` (not `--color-background`) so it stays dark across modes.
-- Color utilities use the `@theme` names (`text-text-secondary`, `bg-accent/10`, `border-border`), never
-  `text-[var(--color-…)]` or `text-(--color-…)`. `pnpm check eslint` enforces it (`better-tailwindcss`), and
-  `pnpm lint:fix` rewrites the long forms. [DETAILS.md](DETAILS.md) § Tailwind class hygiene.
+- Color utilities use the `@theme` names (`text-text-secondary`), never `text-[var(--color-…)]`; eslint enforces it and
+  `pnpm lint:fix` rewrites them. [DETAILS.md](DETAILS.md) § Tailwind class hygiene.
 
 ## Gotchas
 
@@ -63,11 +61,13 @@ Color scheme.
   transform → add a block to `src/fixtures/visual-fixture.md`. Refresh with
   `apps/website/scripts/update-visual-baselines.sh`; CI verifies inside that same container, so ❌ never move that job
   to the bare runner or install browsers in it. [DETAILS.md](DETAILS.md) § Visual baselines.
-- **Keep TS generic calls single-line in `.astro` `<script>` blocks** — the astro-eslint parser chokes on multi-line,
-  cascade-blocking build/deploy.
-- **Typed lint needs `astro sync` first**, and the `.astro` block deliberately omits the `no-unsafe-*` rules (they
-  report only false positives there). [DETAILS.md](DETAILS.md) § Typed linting.
+- **Keep TS generic calls single-line in `.astro` `<script>` blocks**: multi-line ones break astro-eslint, and so
+  deploys.
+- **Typed lint needs `astro sync` first**; the `.astro` block omits the `no-unsafe-*` rules (only false positives
+  there). [DETAILS.md](DETAILS.md) § Typed linting.
 - `site` must be set in `astro.config.ts` for RSS and OG image URLs.
 - `compressHTML: true` is deliberate: Astro 7's `'jsx'` default breaks home + pricing; don't drop it.
 - Markdown pipeline details: [DETAILS.md](DETAILS.md) § Patterns.
+- **A new fetch origin goes in `connect-src`** (`nginx-security-headers.conf`), or prod silently blocks it.
+  [DETAILS.md](DETAILS.md) § Security headers.
 - Remark42 comments disabled in dev. Setup: `docs/guides/deploying-remark42.md`.

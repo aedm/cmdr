@@ -655,6 +655,9 @@ jobs:
       - name: Run ESLint
         run: ./scripts/check/check --check website-eslint --ci
 
+      - name: Check CSP connect-src covers every fetch
+        run: ./scripts/check/check --check website-csp-connect-src --ci
+
       - name: Run typecheck
         run: ./scripts/check/check --check website-typecheck --ci
 
