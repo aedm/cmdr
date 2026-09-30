@@ -180,13 +180,7 @@ the linked note's numbers.
 5. **WebContent grows over days** (138 → 262 MB): take a Web Inspector heap snapshot on a long-running build before
    changing anything. Status: not started. **Effect**: unknown until the snapshot; up to the ~120 MB of growth, in
    WebContent.
-6. **One SMB share reached three ways becomes three volumes.** `smb_volume_id` keys on the address as mounted, so the
-   LAN IP, a VPN IP, and the mDNS name make three indexes, writers, and scans
-   (`thread-and-connection-inventory-2026-09-22.md`). Fix with an alias-adoption layer, not `same_server*` as a key.
-   Risk: a wrong match merges two indexes. Status: not started; worth a spec. **Effect**: only on machines that reach
-   one share at 2+ addresses; per extra alias, two writer threads, an FSEvents stream, 32 MiB of page-slab budget, and a
-   duplicate scan over the network. Idle CPU and RAM not measured.
-7. **The root volume can skip `drive_is_listed`'s `getfsstat` on every subtree reconcile**: the boot volume can't be
+6. **The root volume can skip `drive_is_listed`'s `getfsstat` on every subtree reconcile**: the boot volume can't be
    unlisted, and the call showed ~470 samples in a churn window (`idle-census-2026-09-27.md` lever 6). Small. Status:
    not started. **Effect**: small idle CPU under FS churn; unmeasured as a share of a core.
 
@@ -207,6 +201,8 @@ Smaller or already filed, unranked:
 
 Items that don't move #92's targets, each tracked in its own issue:
 
+- #335: one SMB share reached at several addresses (LAN, VPN, mDNS name) becomes several volumes; recognize it by
+  ServerGuid + share name + volume serial after connecting, and adopt the existing index. Only on that setup.
 - #333: give burst-transient data (listing entries, search side tables) its own allocation region, dropped wholesale, to
   stay low at the burst peak as well as at rest.
 - #317: the parked `bridge*` interface filter for mDNS (needs a decision).
