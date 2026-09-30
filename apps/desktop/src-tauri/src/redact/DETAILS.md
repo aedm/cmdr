@@ -90,11 +90,14 @@ The tradeoff is debuggability ("I can see this is a Documents path") against PII
 project codenames"). The allowlist captures the dirs that are near-universal across users; anything custom collapses.
 Net result: triagers can usually guess the failure context without seeing the user's secrets.
 
-`Downloads` has a stricter report-mode rule because Cmdr gives the real home Downloads folder special behavior. A
-contextual redaction keeps it only when the path branch proved `/Users/<account>/Downloads`, `/home/<account>/Downloads`,
-or the Windows equivalent. It remains visible through deeper descendants. A custom local path or remote path that merely
-contains a `Downloads` segment gets a token. This is lexical and non-blocking: the hot path never resolves symlinks or
-touches a filesystem. The unsalted API keeps the broad historical allowlist for compatibility with non-report callers.
+The well-known home folders (`HOME_ROLE_DIRS` in `paths.rs`: Downloads, Desktop, Documents, Pictures, Movies, Music,
+Library, and `Library/Mobile Documents`, `Library/CloudStorage`, `Library/Application Support`) have a stricter
+report-mode rule: they're fixed macOS names whose role decides TCC protection, and Cmdr gives Downloads special
+behavior. A contextual redaction keeps one only when the path branch proved `/Users/<account>/<role>`,
+`/home/<account>/<role>`, or the Windows equivalent, and keeps it through deeper descendants (the longest role wins, so
+`$HOME/Library/CloudStorage/<dir:…>`). A custom local or remote path that merely contains such a segment gets a token.
+This is lexical and non-blocking: the hot path never resolves symlinks or touches a filesystem. The unsalted API keeps
+the broad historical allowlist for compatibility with non-report callers.
 
 ## Decision: an extensionless leaf reads as `<dir>`
 

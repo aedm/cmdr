@@ -51,17 +51,42 @@ pub(super) fn redact_windows_home(path: &str, context: Option<&RedactionContext>
     format!("$HOME{}", redacted_tail.replace('/', "\\"))
 }
 
+/// Home folders whose name is a role, not the user's choice: macOS TCC protection keys on
+/// them, and Cmdr treats Downloads specially. Report mode keeps them under `$HOME` at any
+/// depth. Longest first, so `Library/CloudStorage` wins over `Library`.
+const HOME_ROLE_DIRS: &[&str] = &[
+    "Library/Application Support",
+    "Library/Mobile Documents",
+    "Library/CloudStorage",
+    "Downloads",
+    "Desktop",
+    "Documents",
+    "Pictures",
+    "Movies",
+    "Music",
+    "Library",
+];
+
+/// Whether an allowlisted parent keeps its name. In report mode a home role name only proves
+/// its role under `$HOME` (`redact_home_tail`); a remote or nested folder spelled `Documents`
+/// is the user's own naming and gets a token.
+pub(super) fn keeps_parent_name(seg: &str, context: Option<&RedactionContext>) -> bool {
+    is_safe_parent_dir(seg) && (context.is_none() || !HOME_ROLE_DIRS.contains(&seg))
+}
+
 fn redact_home_tail(tail: &str, context: Option<&RedactionContext>) -> String {
     let Some(context) = context else {
         return redact_path_tail(tail, None);
     };
-    let Some(after_downloads) = tail.strip_prefix("/Downloads") else {
-        return redact_path_tail(tail, Some(context));
-    };
-    if !after_downloads.is_empty() && !after_downloads.starts_with('/') {
-        return redact_path_tail(tail, Some(context));
+    let body = tail.strip_prefix('/').unwrap_or(tail);
+    for role in HOME_ROLE_DIRS {
+        if let Some(after) = body.strip_prefix(role)
+            && (after.is_empty() || after.starts_with('/'))
+        {
+            return format!("/{role}{}", redact_path_tail(after, Some(context)));
+        }
     }
-    format!("/Downloads{}", redact_path_tail(after_downloads, Some(context)))
+    redact_path_tail(tail, Some(context))
 }
 
 pub(super) fn redact_unix_system(path: &str, context: Option<&RedactionContext>) -> String {
@@ -152,7 +177,7 @@ pub(super) fn redact_path_tail(tail: &str, context: Option<&RedactionContext>) -
             out.push_str(&redact_leaf(seg, is_file, context));
         } else if i == last_idx - 1 {
             // Immediate parent dir of the leaf; allowlist check.
-            if is_safe_parent_dir(seg) && (context.is_none() || *seg != "Downloads") {
+            if keeps_parent_name(seg, context) {
                 out.push_str(seg);
             } else {
                 out.push_str(&dir_token(seg, context));
@@ -183,7 +208,7 @@ fn redact_leaf_in_domain(seg: &str, is_file: bool, context: Option<&RedactionCon
         );
     }
     if !is_file {
-        return if is_safe_parent_dir(seg) && (context.is_none() || seg != "Downloads") {
+        return if keeps_parent_name(seg, context) {
             seg.to_string()
         } else {
             token_for("dir", seg, context, domain)

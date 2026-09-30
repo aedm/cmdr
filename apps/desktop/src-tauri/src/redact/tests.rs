@@ -430,6 +430,39 @@ fn context_preserves_only_context_proven_home_downloads_role() {
     assert!(!remote.contains("Downloads"), "{remote}");
 }
 
+/// TCC protection depends on which home folder a path is in, so every well-known one keeps
+/// its name under `$HOME`, at any depth, and nowhere else.
+#[test]
+fn context_preserves_every_well_known_home_folder_role() {
+    let context = context("ERR-ROLES");
+    for (input, role) in [
+        ("/Users/alice/Desktop/client/deep/plan.key", "$HOME/Desktop/<dir:"),
+        ("/Users/alice/Documents/client/deep/plan.pdf", "$HOME/Documents/<dir:"),
+        ("/Users/alice/Pictures/Trip/deep/a.jpg", "$HOME/Pictures/<dir:"),
+        ("/Users/alice/Movies/Trip/deep/a.mov", "$HOME/Movies/<dir:"),
+        ("/Users/alice/Music/Band/deep/a.mp3", "$HOME/Music/<dir:"),
+        ("/Users/alice/Library/Caches/deep/x.db", "$HOME/Library/<dir:"),
+        (
+            "/Users/alice/Library/Mobile Documents/com~apple~CloudDocs/Taxes/2026.pdf",
+            "$HOME/Library/Mobile Documents/<dir:",
+        ),
+        (
+            "/Users/alice/Library/CloudStorage/GoogleDrive-alice@example.com/Taxes/2026.pdf",
+            "$HOME/Library/CloudStorage/<dir:",
+        ),
+    ] {
+        let redacted = context.redact_line(input);
+        assert!(redacted.starts_with(role), "{input} → {redacted}");
+        for private in ["alice", "client", "Trip", "Band", "Taxes", "Caches", "CloudDocs", "GoogleDrive"] {
+            assert!(!redacted.contains(private), "{private:?} survived: {redacted}");
+        }
+    }
+    let unrelated = context.redact_line("/Users/alice/Work/Documents/deep/plan.pdf");
+    let remote = context.redact_line("smb://server/share/Pictures/Trip/a.jpg");
+    assert!(!unrelated.contains("Documents"), "{unrelated}");
+    assert!(!remote.contains("Pictures"), "{remote}");
+}
+
 #[test]
 fn typed_paths_consume_extensionless_multiword_leaves_as_complete_values() {
     let context = context("ERR-TYPED");

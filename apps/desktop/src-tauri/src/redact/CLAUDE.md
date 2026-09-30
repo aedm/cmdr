@@ -9,7 +9,8 @@ overlaps, and decisions: `DETAILS.md`.
 ## Must-knows
 
 - **Path shape keeps only a fixed mount/home prefix, an allowlisted immediate parent, and a conservative extension.**
-  Only a home-prefix path proves the Downloads role in report mode; extensionless leaves become `<dir>`.
+  In report mode only a home-prefix path proves a home role (`HOME_ROLE_DIRS`: Downloads, Documents, Library, …), at
+  any depth; extensionless leaves become `<dir>`.
 - **A recognized remote reference is redacted as one unit** in report mode: scheme, hierarchy, address class, port, and
   extension stay; every identity gets its own token. Unsalted callers keep the legacy transforms.
 - **Only exact derived-ID shapes are recognized** (known scheme + 16-hex digest, legacy `manual-…-<port>`). Never guess

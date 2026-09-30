@@ -6,7 +6,7 @@ use super::context::TokenDomain;
 use super::identity_token;
 use super::names::{split_cmdr_suffix, unescape_debug};
 use super::paths::{
-    dir_token, has_extension_like_suffix, is_safe_parent_dir, redact_leaf, redact_media, redact_unix_home,
+    dir_token, has_extension_like_suffix, keeps_parent_name, redact_leaf, redact_media, redact_unix_home,
     redact_unix_system, redact_volumes, redact_windows_home,
 };
 use super::{redactor_regex, split_trailing_noise_with};
@@ -289,7 +289,7 @@ pub(super) fn redact_relative_path(
             out.push_str(seg);
         } else if i == leaf_idx {
             out.push_str(&redact_leaf(seg, has_extension_like_suffix(seg), context));
-        } else if i + 1 == leaf_idx && is_safe_parent_dir(seg) && (context.is_none() || *seg != "Downloads") {
+        } else if i + 1 == leaf_idx && keeps_parent_name(seg, context) {
             out.push_str(seg);
         } else {
             out.push_str(&dir_token(seg, context));
