@@ -4,7 +4,7 @@
 //! (`resolve_path_volume_fast` reads `statfs` / `/proc/mounts`), so registration
 //! has to cover that same table. When it didn't, every mount outside `/Volumes`
 //! resolved to an ID nothing served, and the pane died on
-//! `VolumeError::NotFound("Volume not found: vol-…")` — which is what a cloud
+//! `VolumeError::NotFound` — which is what a cloud
 //! client mounting into the home folder (pCloud's `~/pCloud Drive`) hit, along
 //! with any hand-mounted share, disk image, or FUSE filesystem.
 //!

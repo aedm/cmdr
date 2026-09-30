@@ -919,7 +919,7 @@ path go through the same module). What the volume SWITCHER publishes stays a sep
 **Why**: path resolution and volume registration were two different answers to "which volumes exist", and resolution's
 was bigger. `resolve_path_volume_fast` reads `statfs`, so it mints an ID for any mount; registration took
 `get_attached_volumes()`, which required a `/Volumes/` prefix. Every mount elsewhere therefore resolved to an ID nothing
-served, and the listing ended in `VolumeError::NotFound("Volume not found: vol-…")` with the pane on a dead end. Users
+served, and the listing ended in `VolumeError::NotFound` with the pane on a dead end. Users
 hit it through cloud clients that mount into the home folder (pCloud's `~/pCloud Drive` is `pcloudfs`, a real mount, and
 a favorite pointing at it failed every time), and it was reproducible with any `mount -t hfs` outside `/Volumes`.
 

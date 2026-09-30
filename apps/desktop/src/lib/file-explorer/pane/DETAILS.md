@@ -1129,8 +1129,8 @@ all.
 
 _Decision / why:_ assuming the pane's volume still owns the fallback target strands the pane. An SMB share unmounts, its
 volume id is unregistered, the walk-up climbs from `/Volumes/<share>/sub` out to `/Volumes` (owned by the ROOT volume),
-and the listing goes out under the share's dead id → `Path not found: Volume not found`. It's PERMANENT, not transient:
-the landed path exists, so the poll's miss counter resets and nothing retries. Note the walk-up gets there only because
+and the listing goes out under the share's dead id → `VolumeError::NotFound`. It's PERMANENT, not transient: the landed
+path exists, so the poll's miss counter resets and nothing retries. Note the walk-up gets there only because
 `getVolumePath()` reports `/` for an unregistered volume (`DualPaneExplorer`'s `volumes.find(…)?.path ?? '/'`), which
 also disarms the "volume root is gone, skip" guard in `deleted-dir-poll.ts`. That masking is deliberate cover, not a
 second bug to fix: nothing else moves a pane off a vanished volume, so the poll is the only rescue, and walking up to a

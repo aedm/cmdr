@@ -452,7 +452,7 @@ async fn missing_volume_error(volume_id: &str, path: &Path) -> VolumeError {
 
     match why_unregistered(volume_id).await {
         Unregistered::NotConnected => VolumeError::NotConnected(path.display().to_string()),
-        Unregistered::Gone => VolumeError::NotFound(format!("Volume not found: {}", volume_id)),
+        Unregistered::Gone => VolumeError::NotFound(path.display().to_string()),
     }
 }
 
