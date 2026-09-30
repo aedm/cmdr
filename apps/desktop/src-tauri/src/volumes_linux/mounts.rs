@@ -339,7 +339,7 @@ pcloud /home/rin/pCloudDrive fuse.pcloud rw,nosuid,nodev,relatime,user_id={someo
         );
         let mounts = linux_mounts::parse_proc_mounts_from_content(&content);
 
-        let volumes = get_mounted_volumes_with(&mounts, |path| path_volume_id(path));
+        let volumes = get_mounted_volumes_with(&mounts, path_volume_id);
         let paths: Vec<&str> = volumes.iter().map(|v| v.path.as_str()).collect();
         assert_eq!(paths, ["/home/sven/pCloudDrive"]);
 
