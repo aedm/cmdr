@@ -134,12 +134,18 @@ budget on timeout.
 `AckSignal` variants, when they fire, and who uses them:
 
 - **`GenerationAdvanced`**: fires when `PaneStateStore.generation` is strictly greater than the captured value. Used by
-  pane mutators: `set_view_mode`, `sort`, `toggle_hidden`, `tab`, `nav_*`, auto-confirmed `copy`/`move`/`delete`, and
-  `dialog confirm`. NOT `select`/`refresh` (both round-trips).
+  pane mutators: `set_view_mode`, `sort`, `toggle_hidden`, `tab`, `nav_*`, and auto-confirmed `copy`/`move`/`delete`.
+  NOT `select`/`refresh` (both round-trips), and NOT `dialog confirm` (below).
 - **`SoftDialogAppeared(id)`**: fires when a soft dialog with that id is in `SoftDialogTracker`. Used by confirmation
   dialogs from `copy`/`move`/`delete` (`autoConfirm: false`), `mkdir`, `mkfile`, and `dialog open about`.
 - **`SoftDialogDisappeared(id)`**: fires when a soft dialog with that id is no longer tracked. Used by
-  `dialog close <confirmation>` (the FE `ModalDialog` fires `notifyDialogClosed` on unmount).
+  `dialog close <confirmation>` (the FE `ModalDialog` fires `notifyDialogClosed` on unmount), and by
+  `dialog confirm <transfer|delete>`: a confirm the FE acted on takes the dialog down in the same tick it starts the
+  operation. ❌ Don't ack a confirm on `GenerationAdvanced`: a compress, or a copy onto a slow volume, changes nothing
+  in either pane until its first file lands, so the tool answered "not acknowledged" about an operation that had
+  started (a 300 MB compress onto a phone, 2026-09-30). ❗ This signal is also true of a dialog that was never open, so
+  `confirm_open_dialog` checks the tracker FIRST and refuses a confirm of nothing with `invalid_params`. A confirm the
+  dialog declines (an invalid path in its box) leaves the dialog up and times out, which is the honest answer.
 - **`WindowAppeared(label)`**: fires when a `webview_windows()` entry matches (exact, or `viewer-*`). Used by
   `dialog open settings|file-viewer` and `dialog focus`.
 - **`WindowDisappeared(label)`**: fires when the matching `webview_windows()` entry is gone. Used by

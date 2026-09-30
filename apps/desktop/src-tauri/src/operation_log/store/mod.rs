@@ -258,9 +258,7 @@ pub fn intern_dir(conn: &Connection, volume_id: &str, path: &str) -> Result<i64,
     // volume root still has a dir to reference.
     let mut parent = intern_one(conn, volume_id, None, "")?;
     let (scheme_root, rest) = split_scheme_root(path);
-    let names = scheme_root
-        .into_iter()
-        .chain(rest.split('/').filter(|c| !c.is_empty()));
+    let names = scheme_root.into_iter().chain(rest.split('/').filter(|c| !c.is_empty()));
     for component in names {
         parent = intern_one(conn, volume_id, Some(parent), component)?;
     }
