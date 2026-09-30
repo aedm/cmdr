@@ -82,7 +82,8 @@ window focus context.
   click side live in `file_system/file_provider_actions/`.
 - `context_menu_icons.rs` (macOS): every image the file context menu carries, through `lend_context_menu_icons` and the
   pure `image_runs`: the `FILE_CONTEXT_ICONS` SF Symbols, the provider logo on each provider action, the app icons in
-  "Open with", each service's icon in `Share`, and the tag circles. See "Images on a CONTEXT menu".
+  "Open with", each service's icon in `Share`, and the tag circles, plus the dimmed " (default)" in "Open with". See
+  "Images on a CONTEXT menu".
 - `provider_logos.rs` (macOS): `PROVIDER_LOGOS`, which provider's logo is which, matched by app bundle ID, embedding the
   SVGs in `provider_logos/`. See "Provider logos on a CONTEXT menu".
 - `context_menu_header.rs`: the file context menu's first line, naming what the menu will act on.
@@ -109,7 +110,8 @@ active UI locale. Why the lookup lives in Rust rather than being handed over IPC
 Three shapes are worth knowing here:
 
 - **`menu_t_with` for the three labels that name what they act on** (`Copy "photo.jpg"`, `Eject (Backup)`, and the
-  `(busy)` variant, plus `Open with`'s `{app} (default)`). It's a literal `{token}` replacement, the same raw pipeline
+  `(busy)` variant, plus `Open with`'s `{app} (default)`, which `open_with::default_label` splits the same way so it
+  can dim the words). It's a literal `{token}` replacement, the same raw pipeline
   the `errors.*` family uses on the frontend, NOT ICU: there is no ICU engine in the app process and importing one for
   four labels would be a bad trade. ❌ Don't add a fifth without asking whether the label can be reshaped instead.
 - **`APP_MENU_TITLE` stays the literal `cmdr`.** macOS names the app menu after the application, so translating it would
@@ -836,6 +838,13 @@ highlighted row.
 - **Sizes**: 16 × 16 pt for logos, app icons (32 px, so 2× on Retina), and share icons, the box the
   neighbouring symbols take; 18 pt for the tag circles (36 px). A share icon is macOS's own `NSImage`,
   copied before sizing because the system shares it.
+- **The OS default's " (default)" draws dimmed**, like Finder's. The "Open with" run carries the first
+  item's label as `LabelPart`s (`open_with::default_label` splits the translated `{app} (default)` at
+  `{app}`: the name plain, the words around it dim), and `apply` sets it as an attributed title in the
+  menu font with `secondaryLabelColor` on the dim parts. It rides this pass because it needs the same
+  live `NSMenuItem`; neither muda nor Tauri can style a title (muda 0.21 swapped its `set_styled_text`
+  for a raw `NSAttributedString` setter, `tauri-apps/muda#422`, which Tauri doesn't wrap). The parts
+  join into the plain label the Tauri item carries, so the rewritten `title` still matches the run.
 
 `macos_appkit.rs` owns `observe_menu_tracking`, `tracking_menu`, `find_ns_item`, `find_ns_submenu`, and
 the door (`set_menu_item_image`, `sf_symbol_image`, `set_sf_symbol`), shared with the other consumers.

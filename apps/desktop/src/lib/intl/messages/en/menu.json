@@ -626,7 +626,7 @@
 
   "menu.context.openWithDefault": "{app} (default)",
   "@menu.context.openWithDefault": {
-    "description": "First entry of the \"Open with\" submenu, marking the app the system would use for this kind of file. Only the \"(default)\" part is translated; keep the {app} token exactly as written, braces included, since the app's own name goes there untouched. Use the wording your macOS Finder puts in the same position, parentheses included.",
+    "description": "First entry of the \"Open with\" submenu, marking the app the system would use for this kind of file. Only the \"(default)\" part is translated; keep the {app} token exactly as written, braces included, since the app's own name goes there untouched. Use the wording your macOS Finder puts in the same position, parentheses included. Everything outside {app} draws in a dimmed gray, like Finder's, so keep only the marker words there.",
     "placeholders": {
       "app": "the application's own display name, supplied by the system and never translated (e.g. \"Preview\", \"Xcode\")"
     }
