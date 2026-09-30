@@ -97,9 +97,9 @@ suite:
   all (`src-tauri/src/file_system/listing/DETAILS.md` § "Diffs speak the pane's rows"). It runs whenever a listing
   lands, not only on a toggle, and spans three IPC round trips, so it can be OVERTAKEN: by a navigation (which ends the
   old listing in the same tick it clears the pane's id) or by a newer resync. An overtaken run stops at its next await
-  and writes nothing, and a read that rejects once overtaken is the expected "Listing not found", swallowed. ❗ Overtaken
-  is read off the pane's current listing id plus a per-pane run counter (`createHiddenFilesResync`), ❌ never off the
-  rejection's message; a failure on the listing the pane still shows keeps rejecting.
+  and writes nothing, and a read that rejects once overtaken is the expected "Listing not found", swallowed. ❗
+  Overtaken is read off the pane's current listing id plus a per-pane run counter (`createHiddenFilesResync`), ❌ never
+  off the rejection's message; a failure on the listing the pane still shows keeps rejecting.
 - `entries-snapshot.ts`: the Selection dialog's entry list and the operation's selected-names snapshot. Both adapt a
   search snapshot's rows; the Selection list keeps the search engine's BASENAME in `name` (a mask like `*.txt` has to
   mean the filename), unlike `SearchResultsView`'s own adapter, which synthesizes the `~`-shortened full path for the
@@ -790,7 +790,7 @@ architecture in `../drag/DETAILS.md` § "Self-drag identity".
 renders the copy on the FE from that typed error (`transfer-error-messages.ts`). The factory pattern keeps the giant
 component testable: pass deps in, get back a struct of state + handlers.
 
-That factory is a composition root over four siblings, and the split carries the safety argument of § "Birth context"
+That factory is a composition root over its siblings, and the split carries the safety argument of § "Birth context"
 below rather than merely spreading lines:
 
 - `dialog-props.ts`: the prop shape of every dialog plus `DialogStateDeps`. Types only, so the runtime modules can name
@@ -800,13 +800,14 @@ below rather than merely spreading lines:
 - `adopted-operation.svelte.ts`: the progress dialog's adopted arm, owning that slot and its four outcomes.
 - `archive-password-flow.svelte.ts`: the password prompt and its `transfer` / `browse` modes.
 - `transfer-op-label.ts`: the log-line label for an operation type, shared by the two families.
+- `programmatic-confirm.ts`: the MCP `dialog confirm`, owning the transfer dialog's registered confirm.
 
 `dialog-state.svelte.ts` keeps birth context, the confirmation / alert / error dialogs, and the cross-cutting queries
-(`anyDialogOpen`, `isConfirmationDialogOpen`, `dismissAllAfterRenderFailure`, the MCP `confirmOpenDialog`).
+(`anyDialogOpen`, `isConfirmationDialogOpen`, `dismissAllAfterRenderFailure`).
 
 **An MCP `dialog confirm` on the transfer dialog presses the dialog's own confirm**, ❌ never a payload built from
 `transferDialogProps`. The mounted `TransferDialog` registers its `handleConfirm` through `registerTransferConfirmer`,
-and `confirmOpenDialog` calls it with the mapped conflict policy. The props hold what the dialog OPENED with; the dialog
+and `confirmOpenDialog` calls it with the mapped conflict policy (both in `programmatic-confirm.ts`). The props hold what the dialog OPENED with; the dialog
 holds what it will actually send (the edited path, the picked volume, the scan preview). For a compress the two differ
 from the first frame: the box names `<folder>/<name>.zip` and the props only the folder, which the backend's
 `ensure_zip_writable` refuses as a read-only destination. A confirm that lands mid-startup waits for the scan start like
