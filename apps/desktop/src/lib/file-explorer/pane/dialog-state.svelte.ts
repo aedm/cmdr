@@ -42,7 +42,7 @@ import { createArchivePasswordFlow } from './archive-password-flow.svelte'
 import { openRenameOnDuplicate } from './duplicate-rename'
 import { conflictPolicyFromMcpName } from '$lib/file-operations/transfer/conflict-policy'
 import type { TransferDialogPropsData } from './transfer-operations'
-import type { TransferOperationType, ConflictResolution, WriteOperationError } from '../types'
+import type { TransferOperationType, WriteOperationError } from '../types'
 import type {
   AdoptedOperationData,
   AlertDialogPropsData,
@@ -54,6 +54,7 @@ import type {
   OperationStartVerdict,
   TransferCompletePayload,
   TransferConfirmPayload,
+  TransferConfirmer,
   TransferErrorPropsData,
   TransferProgressPropsData,
 } from './dialog-props'
@@ -83,6 +84,15 @@ export function createDialogState(deps: DialogStateDeps) {
   // Transfer dialog state (copy/move)
   let showTransferDialog = $state(false)
   let transferDialogProps = $state<TransferDialogPropsData | null>(null)
+  /**
+   * The mounted transfer dialog's own confirm, the one its button runs. An MCP
+   * `dialog confirm` presses it rather than building a payload from the props:
+   * the props hold what the dialog OPENED with, and the dialog is where the
+   * destination actually lives (the edited path, the picked volume, the scan
+   * preview). For a compress the two differ from the first frame, since the box
+   * holds `<folder>/<name>.zip` and the props only the folder.
+   */
+  let pressTransferConfirm: TransferConfirmer | null = null
 
   // The progress dialog's BIRTH slot: what this window started, and what it may
   // therefore do to its panes afterwards. The adopted slot is a different
@@ -834,6 +844,18 @@ export function createDialogState(deps: DialogStateDeps) {
       return showTransferDialog || showTransferProgressDialog || showDeleteDialog
     },
 
+    /**
+     * Called by the transfer dialog as it mounts, with the function its own
+     * confirm button runs. Returns the unregister for its teardown, which leaves
+     * a newer dialog's registration alone.
+     */
+    registerTransferConfirmer(confirm: TransferConfirmer): () => void {
+      pressTransferConfirm = confirm
+      return () => {
+        if (pressTransferConfirm === confirm) pressTransferConfirm = null
+      }
+    },
+
     /** Programmatically confirm an open dialog (for MCP confirm action). */
     confirmOpenDialog(dialogType: string, onConflict?: string) {
       if (dialogType === 'transfer-confirmation' && showTransferDialog && transferDialogProps) {
@@ -847,15 +869,11 @@ export function createDialogState(deps: DialogStateDeps) {
             onConflict,
           })
         }
-        const resolution: ConflictResolution = mapped ?? 'skip'
-        this.handleTransferConfirm({
-          destination: transferDialogProps.destinationPath,
-          volumeId: transferDialogProps.destVolumeId,
-          previewId: null, // not available when confirming programmatically
-          conflictResolution: resolution,
-          operationType: transferDialogProps.operationType,
-          preKnownConflicts: [], // not available when confirming programmatically
-        })
+        if (!pressTransferConfirm) {
+          log.warn('A programmatic confirm found the transfer dialog open but not mounted yet; nothing confirmed')
+          return
+        }
+        pressTransferConfirm(mapped ?? 'skip')
       } else if (dialogType === 'delete-confirmation' && showDeleteDialog && deleteDialogProps) {
         // previewId not available when confirming programmatically.
         // For MCP auto-confirm, honor whatever the props initialized with.

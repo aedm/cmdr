@@ -43,8 +43,9 @@ Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
   confirm ALWAYS awaits `scan.scanStarted`. DETAILS § Scan.
 - **Compress swaps the conflict-policy UI for a dest-exists overwrite check**; its auto-confirm (MCP) path ❌ never
   silently overwrites.
-- **ONE map from an MCP `onConflict` name to a policy** (`conflict-policy.ts`), shared with `dialog confirm`. ❌ Never a
-  second copy: an unmapped name silently becomes `skip`, turning "ask about each file" into "skip every file".
+- **ONE map from an MCP `onConflict` name to a policy** (`conflict-policy.ts`), and ONE confirm path: `dialog confirm`
+  presses `handleConfirm` via `registerConfirmer`. ❌ Never a second map (an unmapped name silently becomes `skip`) or a
+  payload built from the opening props (no edited path, volume, or preview).
 
 The file map, rollback's limits, the password interception, the E2E markers, the phase catalog, flows, and decisions:
 `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

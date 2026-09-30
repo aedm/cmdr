@@ -64,6 +64,7 @@
         AdoptedOperationData,
         ForegroundOperationVerdict,
         TransferConfirmPayload,
+        TransferConfirmer,
         TransferCompletePayload,
     } from './dialog-props'
     import { explorerState } from './explorer-state.svelte'
@@ -1401,6 +1402,7 @@
     onTransferConfirm={(payload: TransferConfirmPayload) => {
         dialogs.handleTransferConfirm(payload)
     }}
+    registerTransferConfirmer={(confirm: TransferConfirmer) => dialogs.registerTransferConfirmer(confirm)}
     onTransferCancel={() => {
         dialogs.handleTransferCancel()
     }}

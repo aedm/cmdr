@@ -4,7 +4,7 @@
     import { homeDir } from '@tauri-apps/api/path'
     import { getVolumeSpace, DEFAULT_VOLUME_ID, type SpaceInfo } from '$lib/tauri-commands'
     import type { SortColumn, SortOrder, ConflictResolution, TransferOperationType } from '$lib/file-explorer/types'
-    import type { TransferConfirmPayload } from '$lib/file-explorer/pane/dialog-props'
+    import type { TransferConfirmPayload, TransferConfirmer } from '$lib/file-explorer/pane/dialog-props'
     import { validateDirectoryPath } from '$lib/utils/filename-validation'
     import { createTransferDestExistsCheck } from './transfer-dest-exists.svelte'
     import { conflictPolicyFromMcpName } from './conflict-policy'
@@ -67,6 +67,10 @@
          *  op spawned. The normal spawn reply happens in the progress state. */
         mcpRequestId?: string
         onConfirm: (payload: TransferConfirmPayload) => void
+        /** Takes this dialog's own confirm for as long as it's mounted, so an MCP
+         *  `dialog confirm` presses the same button a person does. Returns the
+         *  unregister. */
+        registerConfirmer?: (confirm: TransferConfirmer) => () => void
         onCancel: () => void
     }
 
@@ -89,6 +93,7 @@
         autoConfirmOnConflict,
         mcpRequestId,
         onConfirm,
+        registerConfirmer,
         onCancel,
     }: Props = $props()
 
@@ -440,6 +445,7 @@
 
     onDestroy(() => {
         destroyed = true
+        unregisterConfirmer?.()
         destExists.cancel()
         // Free the scan preview unless the user confirmed (then the
         // TransferProgressDialog / the started op takes over the same scan and
@@ -465,12 +471,15 @@
      * `config_resolution == Skip`). Under `stop` the backend prompts per clash at
      * runtime, so dispatching with `conflicts: []` costs information, never safety.
      *
-     * A human can't reach `skip` while the check is running — the policy radios only
-     * render once it's done — so this await belongs to the MCP auto-confirm path,
-     * where the names are a real win and nobody is watching the button.
+     * Only the auto-confirm waits for them: it fires on mount, before the check
+     * can have answered, and nobody is watching the button. A person can't reach
+     * `skip` while the check is running (the policy radios only render once it's
+     * done), and an MCP `dialog confirm` answers within its ack budget, so both
+     * dispatch with whatever names the check has by then. A dest listing can take
+     * minutes on a big remote folder.
      */
-    function needsConflictNames(): boolean {
-        return conflictPolicy === 'skip'
+    function needsConflictNames(isAuto: boolean): boolean {
+        return isAuto && conflictPolicy === 'skip'
     }
 
     async function handleConfirm(isAuto = false) {
@@ -497,7 +506,7 @@
         // check only gates `skip`.
         if (isSameVolumeMove) {
             scan.cancelPreview()
-            if (needsConflictNames()) await conflictCheckPromise
+            if (needsConflictNames(isAuto)) await conflictCheckPromise
             onConfirm({
                 destination: editedPath,
                 volumeId: selectedVolumeId,
@@ -522,7 +531,7 @@
         // can take minutes on a big remote dir, and only `skip` consumes its
         // names.
         await scan.scanStarted
-        if (needsConflictNames()) await conflictCheckPromise
+        if (needsConflictNames(isAuto)) await conflictCheckPromise
         onConfirm({
             destination: editedPath,
             volumeId: selectedVolumeId,
@@ -532,6 +541,14 @@
             preKnownConflicts: conflicts.conflictNames,
         })
     }
+
+    // An MCP `dialog confirm` is the Confirm button under a policy the agent named:
+    // same path, same box contents, same preview. Registered during init, so a
+    // confirm that lands while the mount is still resolving the home dir finds it.
+    const unregisterConfirmer = registerConfirmer?.((policy) => {
+        conflictPolicy = policy
+        void handleConfirm()
+    })
 
     function handleCancel() {
         // A confirm already committed and is only waiting to dispatch: the pending

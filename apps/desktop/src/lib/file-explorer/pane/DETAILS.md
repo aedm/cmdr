@@ -799,6 +799,15 @@ below rather than merely spreading lines:
 `dialog-state.svelte.ts` keeps birth context, the confirmation / alert / error dialogs, and the cross-cutting queries
 (`anyDialogOpen`, `isConfirmationDialogOpen`, `dismissAllAfterRenderFailure`, the MCP `confirmOpenDialog`).
 
+**An MCP `dialog confirm` on the transfer dialog presses the dialog's own confirm**, ❌ never a payload built from
+`transferDialogProps`. The mounted `TransferDialog` registers its `handleConfirm` through `registerTransferConfirmer`,
+and `confirmOpenDialog` calls it with the mapped conflict policy. The props hold what the dialog OPENED with; the dialog
+holds what it will actually send (the edited path, the picked volume, the scan preview). For a compress the two differ
+from the first frame: the box names `<folder>/<name>.zip` and the props only the folder, which the backend's
+`ensure_zip_writable` refuses as a read-only destination. A confirm that lands mid-startup waits for the scan start like
+a person's fast Enter does; it does not wait for the conflict-name listing (only the auto-confirm does), so it stays
+inside the MCP ack budget. Pinned by `dialog-state.transfer-confirm.svelte.test.ts`.
+
 `handleTransferConfirm` takes no scan flag: the progress dialog doesn't wait for a `TransferDialog` preview, because the
 backend registers the operation at confirm and its own task waits for the preview it claimed
 (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "The scan-wait"). What the handler MUST keep
