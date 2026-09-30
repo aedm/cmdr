@@ -102,8 +102,8 @@ func linuxDockerfile(channel, goVersion string) string {
 
 var toolchainChannelRE = regexp.MustCompile(`(?m)^\s*channel\s*=\s*"([^"]+)"`)
 
-// rustToolchainChannel reads the pinned channel from `rust-toolchain.toml`.
-func rustToolchainChannel(toolchainFile []byte) (string, error) {
+// RustToolchainChannel reads the pinned channel from `rust-toolchain.toml`.
+func RustToolchainChannel(toolchainFile []byte) (string, error) {
 	m := toolchainChannelRE.FindSubmatch(toolchainFile)
 	if m == nil {
 		return "", fmt.Errorf("rust-toolchain.toml has no `channel = \"…\"` line")
@@ -140,11 +140,11 @@ func checkoutCacheKey(rootDir string) string {
 	return string(slug) + "-" + hex.EncodeToString(sum[:])[:8]
 }
 
-// linuxTargetVolume names a checkout's target volume. The toolchain channel is part of
+// LinuxTargetVolume names a checkout's target volume. The toolchain channel is part of
 // the name because cargo keys artifacts by rustc: after a bump every artifact in the old
 // volume is dead weight, so a bump starts a fresh volume and `staleLinuxTargetVolumes`
 // drops the old one.
-func linuxTargetVolume(rootDir, channel string) string {
+func LinuxTargetVolume(rootDir, channel string) string {
 	return linuxTargetVolumePrefix + checkoutCacheKey(rootDir) + "-" + channel
 }
 
@@ -200,7 +200,7 @@ func prepareLinuxContainer(rootDir string) (linuxContainer, error) {
 	if err != nil {
 		return linuxContainer{}, err
 	}
-	channel, err := rustToolchainChannel(toolchainFile)
+	channel, err := RustToolchainChannel(toolchainFile)
 	if err != nil {
 		return linuxContainer{}, err
 	}
@@ -211,7 +211,7 @@ func prepareLinuxContainer(rootDir string) (linuxContainer, error) {
 	dockerfile := linuxDockerfile(channel, goVersion)
 	c := linuxContainer{
 		Image:        linuxImageTag(dockerfile, toolchainFile),
-		TargetVolume: linuxTargetVolume(rootDir, channel),
+		TargetVolume: LinuxTargetVolume(rootDir, channel),
 	}
 
 	if !dockerSucceeds("image", "inspect", c.Image) {
@@ -252,27 +252,43 @@ func buildLinuxImage(tag, dockerfile string, toolchainFile []byte) error {
 // Best-effort: a tag a running container still uses refuses to go, and stays until the
 // next build.
 func pruneLinuxImages(keep string) {
-	out, err := RunCommand(exec.Command("docker", "image", "ls", linuxImageRepo, "--format", "{{.Repository}}:{{.Tag}}"), true)
-	if err != nil {
-		return
-	}
-	for _, image := range strings.Fields(out) {
+	for _, image := range LinuxImageTags() {
 		if image != keep {
 			_, _ = RunCommand(exec.Command("docker", "image", "rm", image), true)
 		}
 	}
 }
 
+// LinuxImageTags lists every local tag of the lanes' image, as `repo:tag`.
+func LinuxImageTags() []string {
+	out, err := RunCommand(exec.Command("docker", "image", "ls", linuxImageRepo, "--format", "{{.Repository}}:{{.Tag}}"), true)
+	if err != nil {
+		return nil
+	}
+	return strings.Fields(out)
+}
+
 // ensureLinuxVolumes creates both cache volumes, labelling the per-checkout one, then
 // drops this checkout's target volumes of other toolchains.
+func ensureLinuxVolumes(rootDir, targetVolume string) error {
+	if err := CreateLinuxTargetVolume(rootDir, targetVolume); err != nil {
+		return err
+	}
+	if out, err := RunCommand(exec.Command("docker", "volume", "create", linuxCargoHomeVolume), true); err != nil {
+		return fmt.Errorf("creating the cargo home volume %s failed\n%s", linuxCargoHomeVolume, indentOutput(out))
+	}
+	DropStaleLinuxTargetVolumes(rootDir, targetVolume)
+	return nil
+}
+
+// CreateLinuxTargetVolume creates a checkout's target volume with the labels the reapers
+// key on; a no-op for one that exists.
 //
 // The labels go on at `docker volume create`, which has to come BEFORE any `docker run -v`:
 // that flag also creates a missing volume, but WITHOUT labels, and `docker volume create`
 // silently declines to add labels to a volume that already exists (verified on Docker
 // 29.4.0, 2026-09-02, by the E2E lane) — an unlabelled cache is one no reaper finds.
-// Removing a stale volume is safe against a concurrent run by construction: Docker refuses
-// to remove a volume a container is using.
-func ensureLinuxVolumes(rootDir, targetVolume string) error {
+func CreateLinuxTargetVolume(rootDir, targetVolume string) error {
 	create := exec.Command("docker", "volume", "create",
 		"--label", linuxCacheLabel+"=1",
 		"--label", linuxCheckoutLabel+"="+rootDir,
@@ -280,19 +296,26 @@ func ensureLinuxVolumes(rootDir, targetVolume string) error {
 	if out, err := RunCommand(create, true); err != nil {
 		return fmt.Errorf("creating the Linux target volume %s failed\n%s", targetVolume, indentOutput(out))
 	}
-	if out, err := RunCommand(exec.Command("docker", "volume", "create", linuxCargoHomeVolume), true); err != nil {
-		return fmt.Errorf("creating the cargo home volume %s failed\n%s", linuxCargoHomeVolume, indentOutput(out))
-	}
+	return nil
+}
 
+// DropStaleLinuxTargetVolumes removes the checkout's target volumes of other toolchain
+// channels and returns the ones it removed. Safe against a concurrent run by
+// construction: Docker refuses to remove a volume a container is using, and that one
+// stays for the next sweep.
+func DropStaleLinuxTargetVolumes(rootDir, current string) []string {
 	out, err := RunCommand(exec.Command("docker", "volume", "ls",
 		"--filter", "label="+linuxCheckoutLabel+"="+rootDir, "--format", "{{.Name}}"), true)
 	if err != nil {
 		return nil
 	}
-	for _, stale := range staleLinuxTargetVolumes(strings.Fields(out), rootDir, targetVolume) {
-		_, _ = RunCommand(exec.Command("docker", "volume", "rm", stale), true)
+	var dropped []string
+	for _, stale := range staleLinuxTargetVolumes(strings.Fields(out), rootDir, current) {
+		if _, err := RunCommand(exec.Command("docker", "volume", "rm", stale), true); err == nil {
+			dropped = append(dropped, stale)
+		}
 	}
-	return nil
+	return dropped
 }
 
 // dockerSucceeds reports whether a docker command exits 0, discarding its output.
@@ -303,13 +326,21 @@ func dockerSucceeds(args ...string) bool {
 
 // dockerUnavailable returns the skip result when Docker can't run a container here.
 func dockerUnavailable() (CheckResult, bool) {
-	if !CommandExists("docker") {
-		return Skipped("Docker not installed"), true
-	}
-	if !dockerSucceeds("info") {
-		return Skipped("Docker not running"), true
+	if reason, down := DockerDownReason(); down {
+		return Skipped(reason), true
 	}
 	return CheckResult{}, false
+}
+
+// DockerDownReason says why Docker can't run a container here, if it can't.
+func DockerDownReason() (string, bool) {
+	if !CommandExists("docker") {
+		return "Docker not installed", true
+	}
+	if !dockerSucceeds("info") {
+		return "Docker not running", true
+	}
+	return "", false
 }
 
 // containerKeepAlive bounds the idle container's lifetime. The container outlives each

@@ -1399,7 +1399,24 @@ compiles only what changed. Order: `clippy` → `clippy-linux` → `rust-tests-l
 - **Cleanup rides the E2E lane's labels** (`com.cmdr.e2e-linux-cache=1`, `com.cmdr.e2e-linux-checkout=<abs path>`,
   applied at `docker volume create`, which must precede any `docker run -v`). `remove-worktree.sh` removes every volume
   labelled with the worktree's path, and `e2e-linux.sh`'s reaper removes any whose checkout is gone. Nothing prunes a
-  LIVE checkout's volume, so the main clone's (only made under `--allow-main`) stays until removed by hand.
+  LIVE checkout's volume, which is what keeps the main clone's safe: it carries the same two labels, valued with the
+  main clone's path.
+- **The main clone owns one volume, and worktrees hand it on** (`scripts/check/linux-cache/handoff.go`, run by the hooks
+  in `scripts/worktree-hooks/CLAUDE.md`, with the names, labels, and stale sweep exported from
+  `desktop-rust-linux-container.go`). A new worktree is SEEDED with a copy of the main clone's volume for its channel
+  (none there: it builds cold). A worktree torn down after merging PROMOTES its volume into the main clone's, since
+  after the fast-forward its tree is the main clone's tree; "merged" is its HEAD being an ancestor of the main clone's,
+  with no uncommitted tracked changes. A promotion also drops the main clone's volumes of other channels. Both
+  directions copy, so the source keeps its volume until its own reaper takes it.
+- **A handoff is a btrfs reflink, swapped in whole**: one container mounts both volumes, takes every cargo lock on both
+  sides with `flock -n` (busy means a build is running: skip, keep the old cache), clones into `/to/.incoming` with
+  `cp --reflink=always`, then swaps each top-level entry in with `mv --exchange` (`renameat2`), so no path ever holds a
+  half-copied tree. 15 GB and 24,500 files clone in 0.4 s and cost 12 MB of new disk (OrbStack's `/dev/vdb1` is btrfs
+  with `nodatacow`, and reflinks still work; verified 2026-09-30); a whole seed or promotion is ~1 s. `docker system df`
+  counts each volume's apparent size, so it double-counts shared extents: `df` inside a container is the honest number.
+- **The accepted race**: a cargo that starts during the sub-second swap waits on the OLD lock file, then builds into the
+  new tree alongside any cargo that took the new one. Two worktrees promoting back to back are fine: the later one wins,
+  which is the fresher cache.
 - **`CARGO_HOME` is one machine-wide volume** (`cmdr-rust-linux-cargo-home`, unlabelled, ~0.65 GB), mounted WHOLE:
   cargo's package-cache lock lives in `CARGO_HOME` itself, so a shared `registry/` alone would let two containers unpack
   one crate at once.

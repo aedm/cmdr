@@ -17,7 +17,7 @@ func repoLinuxDockerfile(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatalf("reading rust-toolchain.toml: %v", err)
 	}
-	channel, err := rustToolchainChannel(toolchainFile)
+	channel, err := RustToolchainChannel(toolchainFile)
 	if err != nil {
 		t.Fatalf("rustToolchainChannel: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestLinuxImageProvisionsThePinnedTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading rust-toolchain.toml: %v", err)
 	}
-	channel, err := rustToolchainChannel(toolchainFile)
+	channel, err := RustToolchainChannel(toolchainFile)
 	if err != nil {
 		t.Fatalf("rustToolchainChannel: %v", err)
 	}
@@ -63,11 +63,11 @@ func TestLinuxImageProvisionsThePinnedTools(t *testing.T) {
 }
 
 func TestRustToolchainChannel(t *testing.T) {
-	got, err := rustToolchainChannel([]byte("[toolchain]\n# a comment\nchannel = \"1.97.1\"\ncomponents = [\"clippy\"]\n"))
+	got, err := RustToolchainChannel([]byte("[toolchain]\n# a comment\nchannel = \"1.97.1\"\ncomponents = [\"clippy\"]\n"))
 	if err != nil || got != "1.97.1" {
 		t.Errorf("rustToolchainChannel = %q, %v; want 1.97.1", got, err)
 	}
-	if _, err := rustToolchainChannel([]byte("[toolchain]\ncomponents = [\"clippy\"]\n")); err == nil {
+	if _, err := RustToolchainChannel([]byte("[toolchain]\ncomponents = [\"clippy\"]\n")); err == nil {
 		t.Error("a toolchain file with no channel must be an error, not an empty tag")
 	}
 }
@@ -158,8 +158,8 @@ func TestCheckoutCacheKeyMatchesTheE2ELinuxScript(t *testing.T) {
 // the E2E lane's volumes (same label), never a sibling checkout whose key extends ours.
 func TestStaleLinuxTargetVolumes(t *testing.T) {
 	root := "/Users/me/cmdr/.claude/worktrees/foo"
-	current := linuxTargetVolume(root, "1.98.0")
-	old := linuxTargetVolume(root, "1.97.1")
+	current := LinuxTargetVolume(root, "1.98.0")
+	old := LinuxTargetVolume(root, "1.97.1")
 	key := checkoutCacheKey(root)
 
 	labelled := []string{

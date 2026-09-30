@@ -230,6 +230,9 @@ pnpm check [flags]
   heal/wait pair; `lock.go` the flock, `compose.go` the real `Composer`
 - **`stack-lease/`**: Thin `package main` CLI onto `stacklease` (`acquire`/`release`/`reconcile`/`status`, each taking
   the stack name first) that the bash scripts shell out to
+- **`linux-cache/`**: `package main` CLI (`seed` / `promote`) that `scripts/worktree-hooks/` shells out to, handing the
+  Linux lanes' target volume between the main clone and a worktree with the lanes' own names and labels from `checks`.
+  Outside `checks/` because no check reaches it, so the cache has nothing to fingerprint it for
 - **`checks/`**: One file per check, plus `common.go` (shared utils) and `registry.go` (the `AllChecks` ordered list)
 
 ## Runner-level patterns
