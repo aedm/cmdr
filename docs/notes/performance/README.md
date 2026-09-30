@@ -153,8 +153,9 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
 
 ## Open follow-ups
 
-The single ranked list, and #92's exit condition: #92 closes when it's empty, so it holds only items that plausibly move
-the RAM or CPU targets. Where an issue exists, it's the place to track the work; the rest have none yet. Ranked by
+The single ranked list of items that plausibly move the RAM or CPU targets. #92 closed on 2026-09-30 with the targets
+met or at the line and no known meaningful waste at rest; #336 (someday) holds the next actions in order, so pick up
+there when someone reports Cmdr as wasteful again. Where an issue exists, it's the place to track the work. Ranked by
 expected payoff against the targets over effort. Each item's **Effect** line is the expected move against a target, from
 the linked note's numbers.
 
@@ -197,9 +198,9 @@ Smaller or already filed, unranked:
 - **The media live tick's `load_statuses`** reads every stored status on any tick that survives the filter
   (`live-tick-cost-2026-08-21.md`). **Effect**: unknown; unmeasured.
 
-## Moved out of #92
+## Tracked in their own issues
 
-Items that don't move #92's targets, each tracked in its own issue:
+Items that don't move the targets, each tracked in its own issue:
 
 - #335: one SMB share reached at several addresses (LAN, VPN, mDNS name) becomes several volumes; recognize it by
   ServerGuid + share name + volume serial after connecting, and adopt the existing index. Only on that setup.
