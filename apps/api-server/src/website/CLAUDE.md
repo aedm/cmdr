@@ -1,7 +1,8 @@
 # Website endpoints
 
 What getcmdr.com and the blog call: `beta-signup.ts` (`POST /beta-signup` → Listmonk), `likes.ts` (`/likes/:slug` blog
-hearts in KV), and `link-codes.ts` (`GET /r-codes.json` plus the `/admin/r-codes` CRUD behind it).
+hearts in KV), `link-codes.ts` (`GET /r-codes.json` plus the `/admin/r-codes` CRUD behind it), and `csp-report.ts`
+(`POST /csp-report`, the site's CSP violations, alerted to Discord).
 
 ## Must-knows
 
