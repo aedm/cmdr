@@ -32,8 +32,9 @@ paths (`crate::file_system::volume::VolumeError`); other crates use `cmdr_fs::�
 - **❌ Never build a volume ID by hand, or by stripping characters.** `volume::ids` is the one funnel; an ID keys the
   index DB, `lastUsedPaths`, tab state, and routing, so a lossy one hands two disks one identity and sends deletes to
   the wrong one.
-- **❌ Never open SQLite outside `sqlite_util`'s factories.** They install the process-wide page-cache slab, which can
-  only be installed before the process's first connection (`desktop-rust-sqlite-open-direct` enforces it).
+- **❌ Never open SQLite outside `sqlite_util`'s factories.** They install the process-wide page-cache slab, installable
+  only before the process's first connection (`desktop-rust-sqlite-open-direct` enforces it). ❌ Nor unlink a database
+  by hand: `delete_database` retires threads' cached connections.
 - **Nothing here produces user-facing prose**: errors carry typed reasons and structured params, the frontend renders
   every word, and `FileEntry.git_meta` states a FACT, ❌ never a sentence. DETAILS § The one place prose is produced
   here.

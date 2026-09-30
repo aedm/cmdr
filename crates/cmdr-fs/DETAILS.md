@@ -29,7 +29,8 @@ the next section.
   `conformance.rs`; and `host/` (what a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md`
   before writing a backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
-- `sqlite_util.rs`: the ONE process-wide page-cache slab, and the connection factories every store opens through.
+- `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, the
+  per-thread read-connection cache, and the one way a database file is deleted.
 - `staging.rs`: `StagingTemp`, the ONLY way to name a scratch file.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
@@ -263,6 +264,38 @@ The same shape bit once more, harmlessly: the `Volume::inject_error` E2E hook is
 feature that lived only on the app. This crate now declares its own, and the app's enables it via
 `cmdr-fs/playwright-e2e`. A feature name that isn't declared in the crate you move code into doesn't error — it warns
 about an "unexpected `cfg` condition value" and takes the false branch forever.
+
+## Retiring cached read connections, and deleting a database (`sqlite_util`)
+
+Both read paths keep their connections in a thread-local `ThreadConnCache` so enrichment never takes a lock. The price
+is that nobody can close another thread's connection, and that mattered twice once databases could go away:
+
+- **An unlinked file keeps its blocks until the last handle closes.** A forgotten share's database was deleted while
+  blocking threads still cached connections to it, so the disk didn't come back until those threads died.
+- **A stale connection still answers.** It reads the unlinked file, so a database recreated under the same path reads as
+  the old one for as long as the slot survives. The index's `ReadPool` defends with a fresh generation per pool;
+  importance reads carry no generation at all.
+
+`retire_read_connections(db_path)` is the mechanism for both. It bumps a process-wide epoch and records the epoch the
+path was retired at; every `ThreadConnCache::with` call compares the epoch to the one it last swept at (one atomic load
+when nothing changed) and closes each entry opened before its path's retirement. So the owning thread closes its own
+connections, on its next use of that cache for ANY database.
+
+⚠️ **It is a request, not a close.** A thread that never reads again keeps its connections until it exits, which tokio
+does to an idle blocking thread after ten seconds. The honest bound is "the owning thread's next read, or its death",
+and there is one cache per read path (`THREAD_CONNS`, `READ_CONNS`), each swept on its own next use. ❌ Don't document
+or rely on "closed when this returns". Closing sooner would need a lock on the hot read path, which is what the
+thread-local exists to avoid.
+
+A connection opened AFTER the retirement is kept, which is what lets a recreated database be cached normally. The
+comparison is per entry (`opened_at` against the path's retirement epoch), not a path denylist.
+
+`delete_database(db_path)` is the one way a database file is removed: retire, unlink the main file and its `-wal` and
+`-shm`, retire again. The second retirement covers a reader that opened between the first one and the unlink, which
+would otherwise be left holding the unlinked file. A missing file is fine, every file is attempted, and the first
+refusal is returned. ⚠️ It only reaches cached READ connections: the caller stops whatever writes the database first.
+`cmdr-index` builds its per-volume removal on it (`crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door
+they leave by"), and the three stores' schema-mismatch wipes call it too.
 
 ## What the app kept, and why
 
