@@ -132,7 +132,12 @@ fn a_changed_exclusion_fingerprint_rebuilds_a_phased_index() {
 
     assert_eq!(
         drive.meta(crate::indexing::store::EXCLUSION_POLICY_KEY).as_deref(),
-        Some(crate::indexing::scanner::exclusion_policy_fingerprint().as_str()),
+        Some(
+            crate::indexing::scanner::exclusion_policy_fingerprint(
+                crate::indexing::scanner::ExclusionTier::MountRooted
+            )
+            .as_str()
+        ),
         "the rebuild re-stamps, so coverage answers mean something again"
     );
     assert!(

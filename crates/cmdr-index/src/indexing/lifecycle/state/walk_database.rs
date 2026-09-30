@@ -8,7 +8,13 @@
 use std::path::Path;
 
 use super::clear_index;
+use crate::indexing::scanner::ExclusionTier;
 use crate::indexing::store::IndexStore;
+
+/// Which exclusion rules `volume_id`'s rows were written under.
+fn tier_of(volume_id: &str) -> ExclusionTier {
+    crate::indexing::paths::routing::exclusion_scope_for_volume(volume_id).tier()
+}
 
 /// Drop a database whose coverage claims this build refuses to trust, so the walk
 /// about to run fills a clean one instead of walking on top of it forever
@@ -46,7 +52,7 @@ pub(super) fn evict_an_index_no_walk_can_trust(volume_id: &str, db_path: &Path) 
             // bootstrap is about to stamp it. Only rows written under a policy this
             // build no longer applies are worth deleting a file over.
             let holds_rows = IndexStore::get_entry_count(&conn).unwrap_or(0) > 1;
-            holds_rows && crate::indexing::scanner::index_predates_exclusion_policy(&conn)
+            holds_rows && crate::indexing::scanner::index_predates_exclusion_policy(&conn, tier_of(volume_id))
         }
         Err(e) => {
             log::warn!("start_indexing_for('{volume_id}'): couldn't check the index's exclusion policy: {e}");
@@ -109,7 +115,7 @@ pub(super) fn prepare_database_for_a_walk(volume_id: &str, db_path: &Path, volum
             if let Err(e) = IndexStore::update_meta(
                 &conn,
                 crate::indexing::store::EXCLUSION_POLICY_KEY,
-                &crate::indexing::scanner::exclusion_policy_fingerprint(),
+                &crate::indexing::scanner::exclusion_policy_fingerprint(tier_of(volume_id)),
             ) {
                 log::warn!("start_indexing_for('{volume_id}'): stamping the exclusion policy failed: {e}");
             }

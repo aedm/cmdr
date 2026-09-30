@@ -115,6 +115,16 @@ impl VolumeProvider for AppVolumeProvider {
         }
     }
 
+    fn mount_points(&self) -> Option<Vec<std::path::PathBuf>> {
+        #[cfg(target_os = "macos")]
+        let roots = crate::volumes::mount_roots();
+        #[cfg(target_os = "linux")]
+        let roots = crate::volumes_linux::mount_roots();
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        let roots: Option<Vec<String>> = Some(Vec::new());
+        roots.map(|roots| roots.into_iter().map(std::path::PathBuf::from).collect())
+    }
+
     fn smb_volume_id_for_path(&self, path: &str) -> Option<String> {
         smb_volume_id_for_path(path)
     }
@@ -254,6 +264,16 @@ mod tests {
             AppVolumeProvider.is_mounted(MountIdentity::from_raw(u64::MAX)),
             Some(false)
         );
+    }
+
+    /// The index's boot-tree cut reads the real kernel table through this: it lists
+    /// the boot disk's own `/` (which the index then leaves out), so an empty answer
+    /// can only mean the read went wrong.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn mount_points_come_from_the_kernel_table() {
+        let points = AppVolumeProvider.mount_points().expect("the mount table reads");
+        assert!(points.iter().any(|p| p == Path::new("/")), "`/` is mounted: {points:?}");
     }
 
     /// The negative half, against a REAL filesystem: a FAT32 mount's inodes are

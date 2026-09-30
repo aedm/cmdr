@@ -685,9 +685,15 @@ impl Machine {
         let Ok(conn) = IndexStore::open_read_connection(&self.writer.db_path()) else {
             return Vec::new();
         };
-        coverage_for_scope(&conn, &index_path, &absolute, CoverageDimension::Listing)
-            .map(|map| map.frontier)
-            .unwrap_or_default()
+        coverage_for_scope(
+            &conn,
+            &index_path,
+            &absolute,
+            self.space.exclusion_scope().tier(),
+            CoverageDimension::Listing,
+        )
+        .map(|map| map.frontier)
+        .unwrap_or_default()
     }
 
     /// Split a phase's frontier into what runs now and what runs after it.

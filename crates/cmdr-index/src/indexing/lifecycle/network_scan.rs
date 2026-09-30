@@ -308,7 +308,9 @@ impl IndexManager {
             // over this volume are worthless — see `store::EXCLUSION_POLICY_KEY`.
             let _ = self
                 .writer
-                .send(crate::indexing::scanner::exclusion_policy_stamp_message());
+                .send(crate::indexing::scanner::exclusion_policy_stamp_message(
+                    self.path_space().exclusion_scope().tier(),
+                ));
         }
         if let Err(e) = tokio::task::block_in_place(|| self.writer.flush_blocking()) {
             log::warn!("network scan: flush after scan-start meta/truncate failed: {e}");

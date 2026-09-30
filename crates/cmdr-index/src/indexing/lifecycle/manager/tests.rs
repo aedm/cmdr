@@ -107,7 +107,10 @@ fn live_counters_omit_used_bytes_when_space_info_failed() {
 fn local_rescan_reconciles_only_beyond_the_root_sentinel() {
     // Completeness gate: even a populated DB does NOT reconcile if the prior scan
     // never completed.
-    assert!(!local_rescan_reconciles(0, true, false), "empty DB ⇒ fresh/truncate path");
+    assert!(
+        !local_rescan_reconciles(0, true, false),
+        "empty DB ⇒ fresh/truncate path"
+    );
     assert!(
         !local_rescan_reconciles(1, true, false),
         "sentinel-only DB (never scanned) ⇒ fresh/truncate path, NOT reconcile"

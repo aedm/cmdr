@@ -35,7 +35,7 @@ use cmdr_fs::firmlinks;
 
 /// Resolve a filesystem path to its index volume id.
 ///
-/// Six routing tiers, tried in order; each maps to the SAME id its volume and
+/// Seven routing tiers, tried in order; each maps to the SAME id its volume and
 /// index register under, so a read routes to the owning index (or skips cleanly
 /// when that volume has no registered index — `get_read_pool_for` → `None` — so an
 /// unindexed volume costs zero DB work):
@@ -47,6 +47,9 @@ use cmdr_fs::firmlinks;
 /// - **Server** (`sftp://` / `webdav://<user>@<host>:<port>[/…]`) → that account's
 ///   `sftp_volume_id` / `webdav_volume_id`. No drive index serves a server, so the
 ///   id owns none; routing it anyway is what keeps a server's path off `root`.
+/// - **Mount inside the boot tree** (a disk image, an sshfs / rclone / NFS mount,
+///   pCloud's `~/pCloud Drive`) → the mount's registered id. See
+///   [`boot_tree_mount_volume_id_for_path`].
 /// - **Local external mount** (a registered `/Volumes/X` drive on macOS,
 ///   `/mnt`/`/media` on Linux) → the mount's registered id, so an external drive's
 ///   dir-stats and `cmdr://state` status come from ITS OWN index, not `root`'s. See
@@ -69,10 +72,37 @@ pub(crate) fn volume_id_for_local_path(path: &str) -> VolumeId {
     if let Some(server) = cmdr_fs::volume::server_of_path(path) {
         return server.volume_id;
     }
+    if let Some(mount_id) = boot_tree_mount_volume_id_for_path(path) {
+        return mount_id;
+    }
     if let Some(mount_id) = external_mount_volume_id_for_path(path) {
         return mount_id;
     }
     ROOT_VOLUME_ID.to_string()
+}
+
+/// Resolve a path on a filesystem mounted inside the boot tree (an sshfs or rclone
+/// mount in the home folder, pCloud's `~/pCloud Drive`, an NFS share or a disk
+/// image mounted anywhere outside `/Volumes`) to that mount's registered id, or
+/// `None` for a path `root`'s index owns.
+///
+/// The boot scan stops at every such mount (`scanner::boot_tree_mounts`), so
+/// `root` holds none of its rows and routing here is what makes it read "not
+/// indexed" instead of `root`'s `fresh`. Both ask the same cached mount table, so
+/// they can't disagree about what's a mount. A registered folder that isn't a mount
+/// point (a cloud drive under `~/Library/CloudStorage`) is never in that table and
+/// stays on `root` with its sizes.
+///
+/// The registry is asked with the mount point as the TABLE spells it, which is how
+/// the host registered it: a table can list a home-folder mount through the Data
+/// volume while a pane names it by its firmlinked path. A mount the registry
+/// hasn't adopted yet (the pane that lists it adopts it) stays on `root` until it
+/// does.
+fn boot_tree_mount_volume_id_for_path(path: &str) -> Option<VolumeId> {
+    let normalized = firmlinks::normalize_path(path);
+    let mounts = crate::indexing::scanner::boot_tree_mounts::current();
+    let mount = mounts.covering(&normalized)?;
+    host::volumes::current().mount_id_for_path(&mount.raw)
 }
 
 /// Resolve a path on a registered local external mount to that mount's volume id,

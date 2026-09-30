@@ -302,7 +302,10 @@ mod tests {
     #[test]
     fn an_index_built_under_an_older_exclusion_policy_is_rebuilt() {
         for (finished, what) in [
-            (COMPLETED_JOURNALED, "a journal replay keeps the rows the new policy cuts"),
+            (
+                COMPLETED_JOURNALED,
+                "a journal replay keeps the rows the new policy cuts",
+            ),
             (COMPLETED_UNJOURNALED, "a reconcile in place never re-stamps the policy"),
         ] {
             assert_eq!(

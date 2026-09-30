@@ -26,7 +26,9 @@ is the canonical owner of `IndexPathSpace` and the read-side path transforms.
   never reach the index and drive the local rename pre-pass into a false `MoveEntryV2`. See `../transports/CLAUDE.md`
   for where the flag is resolved.
 - **Route by what's REGISTERED, never a path/id substring.** `volume_id_for_local_path` fast-rejects with
-  `is_on_mounted_external_volume` so a cloud-drive folder in the home dir stays on `root` and keeps its sizes.
+  `is_on_mounted_external_volume` so a cloud-drive folder in the home dir stays on `root` and keeps its sizes. A mount
+  INSIDE the boot tree routes to its own id off the same `scanner::boot_tree_mounts` set the boot scan cuts at: ❌ never
+  route one away without the scan cutting it too, or its sizes vanish.
 
 ## Module map
 

@@ -471,7 +471,8 @@ impl IndexManager {
             // deleted from can look perfectly finished. ❗ A read that FAILED counts as
             // set: `deletes::marker_reads_as_set` owns that call and says why.
             needs_rebuild: deletes::marker_reads_as_set(IndexStore::index_needs_rebuild(read_conn), &self.volume_id),
-            predates_exclusion_policy: has_rows && scanner::index_predates_exclusion_policy(read_conn),
+            predates_exclusion_policy: has_rows
+                && scanner::index_predates_exclusion_policy(read_conn, self.path_space().exclusion_scope().tier()),
         });
 
         match route {

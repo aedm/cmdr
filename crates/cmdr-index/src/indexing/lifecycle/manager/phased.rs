@@ -125,7 +125,9 @@ impl IndexManager {
         // fatal bug above; read as "always" it silently blesses rows written under
         // an older policy. Both misreadings are silent.
         if truncated || empty {
-            let _ = self.writer.send(exclusion_policy_stamp_message());
+            let _ = self.writer.send(exclusion_policy_stamp_message(
+                self.path_space().exclusion_scope().tier(),
+            ));
         }
         // Committed before the first walk reads `current_epoch` on its own
         // connection, exactly as a scan start flushes before its walker starts.
@@ -163,7 +165,7 @@ impl IndexManager {
         let populated = IndexStore::get_entry_count(self.store.read_conn()).is_ok_and(|count| count > 1);
         let why = if !populated {
             None
-        } else if index_predates_exclusion_policy(self.store.read_conn()) {
+        } else if index_predates_exclusion_policy(self.store.read_conn(), self.path_space().exclusion_scope().tier()) {
             Some("it predates this build's exclusion policy, so nothing in it counts as covered")
         } else if start == PhasedStart::RebuildFirst {
             Some("it has rows but no record of which ground they cover, or it's marked for a rebuild")

@@ -458,7 +458,10 @@ impl IndexManager {
         // (see `local_rescan_reconciles` for the completeness gate). Read the entry
         // count from the live read connection BEFORE any truncate. (NOTE: the network
         // predicate in `lifecycle/network_scan.rs` is intentionally left unchanged.)
-        let predates_policy = scanner::index_predates_exclusion_policy(self.store.read_conn());
+        let predates_policy = scanner::index_predates_exclusion_policy(
+            self.store.read_conn(),
+            self.path_space().exclusion_scope().tier(),
+        );
         let reconcile = IndexStore::get_entry_count(self.store.read_conn())
             .map(|n| local_rescan_reconciles(n, prior_scan_completed, predates_policy))
             .unwrap_or(false);
@@ -556,7 +559,9 @@ impl IndexManager {
             // must never claim it: it doesn't re-list the volume, so it can't clear
             // what an older policy let in. Coverage answers are worthless without
             // this stamp — see `store::EXCLUSION_POLICY_KEY`.
-            let _ = self.writer.send(scanner::exclusion_policy_stamp_message());
+            let _ = self.writer.send(scanner::exclusion_policy_stamp_message(
+                self.path_space().exclusion_scope().tier(),
+            ));
         }
         if let Err(e) = tokio::task::block_in_place(|| self.writer.flush_blocking()) {
             log::warn!("Failed to flush before scan: {e}");
