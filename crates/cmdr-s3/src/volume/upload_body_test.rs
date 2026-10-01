@@ -57,8 +57,24 @@ async fn drain(
     size: u64,
     stop: CancellationToken,
 ) -> (u64, bool, BodyCounts, BodyStopSlot) {
+    drain_answering(source, size, stop, true).await
+}
+
+/// [`drain`], with the last piece's go-ahead answered `last_piece_may_go`.
+async fn drain_answering(
+    source: Box<dyn VolumeReadStream>,
+    size: u64,
+    stop: CancellationToken,
+    last_piece_may_go: bool,
+) -> (u64, bool, BodyCounts, BodyStopSlot) {
     let counts = BodyCounts::default();
     let stopped: BodyStopSlot = Arc::default();
+    let (last_piece, mut asks) = tokio::sync::mpsc::channel::<tokio::sync::oneshot::Sender<bool>>(1);
+    tokio::spawn(async move {
+        while let Some(reply) = asks.recv().await {
+            let _ = reply.send(last_piece_may_go);
+        }
+    });
     let mut body = streamed_body(
         source,
         size,
@@ -66,6 +82,7 @@ async fn drain(
         stop,
         Arc::clone(&stopped),
         Arc::new(Liveness::new()),
+        last_piece,
     );
     let mut sent = 0u64;
     let mut failed = false;
@@ -105,6 +122,16 @@ async fn a_first_piece_past_the_promise_sends_nothing() {
     let (sent, failed, _, stopped) = drain(pieces(&[20]), 10, CancellationToken::new()).await;
     assert_eq!((sent, failed), (0, true));
     assert!(matches!(*stopped.lock_ignore_poison(), Some(BodyStop::Overlong)));
+}
+
+/// ❗ The last piece waits for the upload's go-ahead, which is where a Cancel
+/// arrives: refused, the body fails short of its length and S3 publishes
+/// nothing.
+#[tokio::test]
+async fn a_refused_last_piece_never_goes_out() {
+    let (sent, failed, _, _) = drain_answering(pieces(&[6, 6]), 12, CancellationToken::new(), false).await;
+    assert!(failed);
+    assert_eq!(sent, 6, "everything but the last piece went out");
 }
 
 #[tokio::test]

@@ -13,6 +13,12 @@
 //! under the user's name. Hence two counters that mean different things:
 //! `fetched` (out of the source: the guard's number) and `handed` (onto the
 //! wire: progress's number). ❌ Never collapse them.
+//!
+//! ❗ **The last piece waits for a go-ahead** ([`LastPieceAsk`]): the upload
+//! asks its progress callback, which is where a user's Cancel arrives, before
+//! the byte that would let S3 publish goes out. Without it, a cancel landing
+//! between two progress ticks lost to a fast finish and published the object
+//! the user had just called off.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -58,6 +64,11 @@ pub(super) enum BodyStop {
 /// once the request is over.
 pub(super) type BodyStopSlot = Arc<std::sync::Mutex<Option<BodyStop>>>;
 
+/// How a streamed body asks whether its last piece may go out: it sends a
+/// reply slot, and the upload answers `true` to go on, `false` to stop. A
+/// dropped slot or a closed channel is a stop.
+pub(super) type LastPieceAsk = tokio::sync::mpsc::Sender<tokio::sync::oneshot::Sender<bool>>;
+
 /// The read-ahead state behind [`streamed_body`].
 struct StreamedSource {
     stream: Box<dyn VolumeReadStream>,
@@ -70,6 +81,16 @@ struct StreamedSource {
     stop: CancellationToken,
     stopped: BodyStopSlot,
     liveness: Arc<Liveness>,
+    last_piece: LastPieceAsk,
+}
+
+/// Whether the upload lets the last piece go out.
+async fn last_piece_may_go(ask: &LastPieceAsk) -> bool {
+    let (reply, answer) = tokio::sync::oneshot::channel();
+    if ask.send(reply).await.is_err() {
+        return false;
+    }
+    answer.await.unwrap_or(false)
 }
 
 impl StreamedSource {
@@ -98,10 +119,11 @@ impl StreamedSource {
 /// `stream` as the body of a request promising exactly `size` bytes.
 ///
 /// Fails the body (which aborts the request, so nothing is published) when
-/// `stop` is cancelled, when the source fails, or when the source proves
-/// longer than `size`, and leaves the reason in `stopped`. A source that ends
-/// SHORT simply ends the body: hyper refuses to finish a request short of its
-/// `Content-Length`, and `counts.ended` tells the upload whose fault that was.
+/// `stop` is cancelled, when the source fails, when the source proves longer
+/// than `size`, or when `last_piece` says no, and leaves the reason in
+/// `stopped` when it's the source's. A source that ends SHORT simply ends the
+/// body: hyper refuses to finish a request short of its `Content-Length`, and
+/// `counts.ended` tells the upload whose fault that was.
 pub(super) fn streamed_body(
     stream: Box<dyn VolumeReadStream>,
     size: u64,
@@ -109,6 +131,7 @@ pub(super) fn streamed_body(
     stop: CancellationToken,
     stopped: BodyStopSlot,
     liveness: Arc<Liveness>,
+    last_piece: LastPieceAsk,
 ) -> UploadBody {
     let source = StreamedSource {
         stream,
@@ -119,6 +142,7 @@ pub(super) fn streamed_body(
         stop,
         stopped,
         liveness,
+        last_piece,
     };
     Box::pin(futures_util::stream::unfold(source, |mut source| async move {
         // A cancel is answered before anything is pulled or handed over, so a
@@ -143,6 +167,12 @@ pub(super) fn streamed_body(
         if source.counts.fetched.load(Ordering::Relaxed) > source.size {
             *source.stopped.lock_ignore_poison() = Some(BodyStop::Overlong);
             return Some((Err(std::io::Error::other("the source is longer than promised")), source));
+        }
+        // ❗ The source has ended, so this is the piece that lets S3 publish:
+        // only with the upload's go-ahead.
+        let last = source.pending.is_none() && source.counts.ended.load(Ordering::Relaxed);
+        if last && !last_piece_may_go(&source.last_piece).await {
+            return Some((Err(std::io::Error::other("cancelled")), source));
         }
         source.counts.handed.fetch_add(chunk.len() as u64, Ordering::Relaxed);
         // A piece handed over is the server draining the socket, so it's

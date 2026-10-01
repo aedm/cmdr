@@ -244,6 +244,7 @@ impl S3Volume {
         let counts = BodyCounts::default();
         let stop = CancellationToken::new();
         let stopped: BodyStopSlot = std::sync::Arc::default();
+        let (last_piece, mut asks) = tokio::sync::mpsc::channel(1);
         let body = streamed_body(
             stream,
             size,
@@ -251,6 +252,7 @@ impl S3Volume {
             stop.clone(),
             std::sync::Arc::clone(&stopped),
             std::sync::Arc::clone(client.liveness()),
+            last_piece,
         );
         // The block scopes the in-flight request: leaving it drops the request,
         // which is what stops a cancelled upload on the wire.
@@ -262,6 +264,16 @@ impl S3Volume {
             loop {
                 tokio::select! {
                     sent = &mut put => break Some(sent),
+                    // The body's last piece waits here: a Cancel that came in
+                    // since the last tick stops it before S3 can publish.
+                    Some(reply) = asks.recv() => {
+                        let go = progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_continue();
+                        let _ = reply.send(go);
+                        if !go {
+                            stop.cancel();
+                            break None;
+                        }
+                    }
                     _ = tick.tick() => {
                         if progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_break() {
                             stop.cancel();

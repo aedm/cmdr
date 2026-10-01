@@ -319,6 +319,12 @@ impl S3Volume {
         let sent = self
             .send_parts(client, target, &upload_id, &sizes, &mut reader, first, progress, &gone)
             .await;
+        // ❗ The completion is what publishes, so a Cancel that came in while
+        // the last part was in flight is honoured here, before it.
+        let sent = sent.and_then(|(parts, total)| match progress.at(total) {
+            std::ops::ControlFlow::Break(()) => Err(VolumeError::Cancelled(self.volume_id().to_string())),
+            std::ops::ControlFlow::Continue(()) => Ok((parts, total)),
+        });
         let outcome = match sent {
             Ok((parts, total)) => match self.complete(client, target, &upload_id, &parts, &gone).await {
                 Ok(etag) => Ok((total, etag)),
@@ -377,6 +383,11 @@ impl S3Volume {
         let conditional = target.mode == WriteMode::CreateNew && !built.check_first;
         if built.check_first {
             self.refuse_if_taken(client, target).await?;
+        }
+        // The PUT is what publishes: a Cancel that came in while the source
+        // filled is honoured before it.
+        if progress.at(0).is_break() {
+            return Err(VolumeError::Cancelled(self.volume_id().to_string()));
         }
         let handed = Arc::new(AtomicU64::new(0));
         let body = buffered_body(
