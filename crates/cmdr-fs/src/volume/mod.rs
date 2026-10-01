@@ -42,6 +42,16 @@ pub trait VolumeReadStream: Send {
     /// Bytes read so far (for progress tracking).
     fn bytes_read(&self) -> u64;
 
+    /// When the file being read was last modified, if the backend knows without
+    /// asking again. A destination that stores modification times as data (S3's
+    /// `x-amz-meta-mtime`) writes this one, so the copy keeps the source's date.
+    ///
+    /// Default `None`: the destination then stores no mtime of its own, never a
+    /// made-up one. ❗ A wrapper stream forwards its inner stream's answer.
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
+
     /// Promptly release any scarce backend resource this stream holds across
     /// chunks, before the stream is dropped. After this call the stream is spent;
     /// `next_chunk` must not be called again on it.

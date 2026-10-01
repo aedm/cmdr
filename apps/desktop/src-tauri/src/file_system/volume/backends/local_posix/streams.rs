@@ -25,6 +25,8 @@ struct LocalPosixReadStream {
     file: Option<std::fs::File>,
     total_size: u64,
     bytes_read: u64,
+    /// From the `stat` the open already takes, so it costs nothing.
+    modified_at: Option<std::time::SystemTime>,
 }
 
 /// 1 MiB chunks, matching `chunked_copy.rs`'s constant.
@@ -76,6 +78,10 @@ impl VolumeReadStream for LocalPosixReadStream {
     fn bytes_read(&self) -> u64 {
         self.bytes_read
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.modified_at
+    }
 }
 
 impl LocalPosixVolume {
@@ -104,6 +110,7 @@ impl LocalPosixVolume {
                     file: Some(file),
                     total_size,
                     bytes_read: 0,
+                    modified_at: metadata.modified().ok(),
                 }) as Box<dyn VolumeReadStream>)
             })
             .await

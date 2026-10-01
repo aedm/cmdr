@@ -220,10 +220,16 @@ impl S3Volume {
 /// The modification date a HEAD answers with: `x-amz-meta-mtime` when it parses,
 /// else `Last-Modified`, in Unix seconds.
 pub(super) fn modified_from_head(mtime: Option<&str>, last_modified: Option<&str>) -> Option<u64> {
+    stored_mtime(mtime, last_modified).and_then(unix_secs)
+}
+
+/// An object's date from its HEAD or GET headers, at full precision:
+/// `x-amz-meta-mtime` (the source file's own, rclone's format) when it parses,
+/// else `Last-Modified` (the upload time, whole seconds).
+pub(super) fn stored_mtime(mtime: Option<&str>, last_modified: Option<&str>) -> Option<SystemTime> {
     mtime
         .and_then(parse_mtime)
         .or_else(|| last_modified.and_then(|text| httpdate::parse_http_date(text).ok()))
-        .and_then(unix_secs)
 }
 
 /// Whether a HEAD says the object needs a restore before it can be read:

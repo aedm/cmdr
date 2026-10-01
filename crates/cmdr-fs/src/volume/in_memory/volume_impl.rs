@@ -23,6 +23,8 @@ const IN_MEMORY_STREAM_CHUNK_SIZE: usize = 64 * 1024;
 struct InMemoryReadStream {
     data: Vec<u8>,
     offset: usize,
+    /// The entry's `modified_at`, as the stream reports it.
+    modified_at: Option<std::time::SystemTime>,
     /// See [`InMemoryVolume::with_read_chunk_delay`]. `None` ⇒ no await ever pends.
     chunk_delay: Option<std::time::Duration>,
 }
@@ -49,6 +51,10 @@ impl VolumeReadStream for InMemoryReadStream {
 
     fn bytes_read(&self) -> u64 {
         self.offset as u64
+    }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.modified_at
     }
 }
 
@@ -473,9 +479,14 @@ impl Volume for InMemoryVolume {
             }
 
             let data = entry.content.clone().unwrap_or_default();
+            let modified_at = entry
+                .metadata
+                .modified_at
+                .map(|secs| std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs));
             Ok(Box::new(InMemoryReadStream {
                 data,
                 offset: 0,
+                modified_at,
                 chunk_delay: self.read_chunk_delay,
             }) as Box<dyn VolumeReadStream>)
         })

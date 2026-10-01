@@ -2,7 +2,7 @@
 
 use super::super::listing::children_of;
 use super::super::test_support::make_test_volume;
-use super::{cold_from_head, modified_from_head};
+use super::{cold_from_head, modified_from_head, stored_mtime};
 use crate::xml::parse_list_objects;
 
 /// One `ListObjectsV2` page with an object in every storage class that
@@ -81,4 +81,21 @@ fn an_mtime_that_doesnt_parse_falls_back_to_the_upload_time() {
 #[test]
 fn no_date_at_all_is_no_date() {
     assert_eq!(modified_from_head(None, None), None);
+}
+
+#[test]
+fn an_object_answer_carries_its_stored_mtime_to_the_nanosecond() {
+    // What a read stream hands a copy's destination: the source's own date,
+    // sub-second part included, so S3 → S3 keeps it exactly.
+    let exact = std::time::UNIX_EPOCH + std::time::Duration::new(1_354_040_105, 123_456_789);
+    assert_eq!(
+        stored_mtime(Some("1354040105.123456789"), Some("Wed, 01 Oct 2026 10:00:00 GMT")),
+        Some(exact)
+    );
+    // No mtime metadata: the upload time is the only date the object has.
+    assert_eq!(
+        stored_mtime(None, Some("Wed, 28 Nov 2012 18:15:05 GMT")),
+        Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_354_126_505))
+    );
+    assert_eq!(stored_mtime(Some("not a time"), None), None);
 }

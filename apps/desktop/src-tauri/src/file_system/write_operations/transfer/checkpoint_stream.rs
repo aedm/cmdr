@@ -142,6 +142,11 @@ impl VolumeReadStream for CheckpointStream {
     fn bytes_read(&self) -> u64 {
         self.bytes_yielded
     }
+
+    /// The source's own date, so a destination that stores one keeps it.
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.inner.modified_at()
+    }
 }
 
 impl CheckpointStream {
