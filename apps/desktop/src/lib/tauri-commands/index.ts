@@ -135,6 +135,7 @@ export type {
   OpenInEditorError,
   OpenTerminalError,
   OpenTerminalOutcome,
+  PaneContextMenuFacts,
   TerminalApp,
   TerminalAppList,
   TextEditorApp,

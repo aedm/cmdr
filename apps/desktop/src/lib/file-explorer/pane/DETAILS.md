@@ -1751,8 +1751,7 @@ directory owns is whether the item MAY appear, pushed as `PaneContextMenuFacts.c
 The same flag gates the context menu's `Services` submenu, which asks the same question for the same reason (a macOS
 service takes file URLs too): `src-tauri/src/menu/DETAILS.md` § "Services in the right-click menu".
 `PaneContextMenuFacts.canTag`, the Finder tag colors, carries the same `rowIsOsVisible` answer as its own flag (a tag is
-an xattr written through the row's path); the snapshot pane and the Search dialog pass `true`, their rows being real
-files. Why: `src-tauri/src/file_system/listing/DETAILS.md` § "Finder tags".
+an xattr written through the row's path). Why: `src-tauri/src/file_system/listing/DETAILS.md` § "Finder tags".
 
 A share service takes file URLs, so the question is whether the right-clicked ROW has a real file behind it, and it
 needs three inputs rather than one kind lookup (`rowIsOsVisible` in `volume-capabilities.ts`):
@@ -1768,9 +1767,10 @@ about the pane's own FOLDER, so a search-results snapshot answers no while every
 archive-inner pane answers yes (the terminal opens the folder holding the `.zip`) while its rows have nothing behind
 them. Folding them into one flag would be wrong for both panes.
 
-Surfaces other than the two file panes leave `canShare` at its `false` default, so the Search dialog's row menu carries
-no `Share` today. Not a considered no: it's the "a surface that can't answer says nothing" default the whole
-`PaneContextMenuFacts` object takes.
+The two surfaces that show search hits, the snapshot pane and the Search dialog, pass `canShare` and `canTag` as `true`
+from one place, `$lib/search/search-hit-menu.ts`: every hit is a real file the index walked, so there's no per-row
+question to ask. Any other surface leaves both at their `false` default, the "a surface that can't answer says nothing"
+default the whole `PaneContextMenuFacts` object takes.
 
 ## Feeding the macOS Services menu
 

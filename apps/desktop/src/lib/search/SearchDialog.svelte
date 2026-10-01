@@ -26,6 +26,7 @@
     import { onMount, onDestroy } from 'svelte'
     import { getSetting, onSpecificSettingChange } from '$lib/settings'
     import { showFileContextMenu, type HistoryEntry, type SearchResultEntry } from '$lib/tauri-commands'
+    import { searchDialogRowMenuFacts } from './search-hit-menu'
     import { contextMenuSizeBytes, contextMenuSizeText } from '$lib/file-explorer/selection/context-menu-target'
     import { boundShortcuts } from '$lib/shortcuts'
     import { resolveDefaultScope, defaultScopeLabel } from './searchable-folder'
@@ -234,10 +235,7 @@
             entry.name,
             entry.isDirectory,
             [entry.path],
-            // A hit comes from the file index, which only walks drives a favorite may point
-            // at, so a folder row here is always favoritable, and always a real path a tag
-            // can be written to.
-            { canFavorite: entry.isDirectory, canTag: true },
+            searchDialogRowMenuFacts(entry),
             { sizeText: contextMenuSizeText(contextMenuSizeBytes([entry])) },
             boundShortcuts(),
         ).catch(() => {

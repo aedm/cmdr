@@ -8,8 +8,9 @@ one module per job: `search-lifecycle.svelte.ts` (index prepare/release + readin
 and live paths + their query builder), `ai-translate.ts` (the AI's filter writes), `coverage-cta.svelte.ts` (what may be
 offered over a gap), `index-load-hint.svelte.ts` (the wait's voice), `snapshot-promotion.ts` ("Open in pane" +
 recent-search writes), `snapshot-fill.ts` (a pane's full row set), `search-run-tracking.ts` (the analytics clock),
-`snapshot-store.svelte.ts` + `snapshot-sort.svelte.ts` (snapshots and their row order). `search-state.svelte.ts` is the
-façade over those plus `searchable-folder`, `search-target-volume`, and `SearchResultsView.svelte`.
+`snapshot-store.svelte.ts` + `snapshot-sort.svelte.ts` (snapshots and their row order), `search-hit-menu.ts` (a hit's
+context-menu facts). `search-state.svelte.ts` is the façade over those plus `searchable-folder`, `search-target-volume`,
+and `SearchResultsView.svelte`.
 
 ## Must-knows
 
