@@ -1415,9 +1415,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Det går inte att koppla från medan åtgärder pågår på den här servern",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr arbetar fortfarande med filer på den här servern. Koppla från när det är klart.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} finns nu i din volymväljare.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1429,7 +1429,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr kunde inte ändra var {name} visas.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr kunde inte koppla från {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1475,9 +1475,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Det går inte att mata ut medan åtgärder pågår på den här enheten",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr arbetar fortfarande med filer på den här enheten. Mata ut när det är klart.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Matar ut {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

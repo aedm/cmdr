@@ -359,12 +359,8 @@
   "@settings.window.loading": {
     "sourceHash": "229d202"
   },
-  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después presiona Comprobar de nuevo:",
-  "@settings.adb.install.intro": {
-    "sourceHash": "add9e91"
-  },
-  "settings.adb.pathPlaceholder": "Buscar adb en los lugares habituales",
+  "settings.adb.pathPlaceholder": "Cmdr busca adb en los lugares habituales",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "ba15cb8"
+    "sourceHash": "68669b9"
   }
 }

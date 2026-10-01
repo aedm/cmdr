@@ -1425,9 +1425,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Verbinding verbreken kan niet terwijl er bewerkingen op deze server bezig zijn",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr is nog bezig met bestanden op deze server. Verbreek de verbinding zodra dat klaar is.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} staat nu in je volumekiezer.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1439,7 +1439,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr kon niet wijzigen waar {name} te zien is.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr kon de verbinding met {name} niet verbreken.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1485,9 +1485,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Uitwerpen kan niet terwijl er bewerkingen op dit apparaat bezig zijn",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr is nog bezig met bestanden op dit apparaat. Werp het uit zodra dat klaar is.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "{name} wordt uitgeworpen…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

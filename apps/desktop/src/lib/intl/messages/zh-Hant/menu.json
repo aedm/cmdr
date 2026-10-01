@@ -356,9 +356,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "前往路徑⋯",
+  "menu.go.goToPath": "前往資料夾⋯",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "前往最新下載項目",
   "@menu.go.goToLatestDownload": {

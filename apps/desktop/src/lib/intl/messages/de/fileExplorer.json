@@ -1419,9 +1419,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Trennen nicht möglich, während auf diesem Server Vorgänge laufen",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr arbeitet noch mit Dateien auf diesem Server. Trenne die Verbindung, sobald das erledigt ist.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} ist jetzt in deiner Volume-Auswahl.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1431,9 +1431,9 @@
   "@fileExplorer.navigation.serverUnpinnedToast": {
     "sourceHash": "7fa97b2"
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr konnte nicht ändern, wo {name} angezeigt wird.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr konnte nicht ändern, wo {name} erscheint.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr konnte die Verbindung zu {name} nicht trennen.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1479,9 +1479,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Auswerfen nicht möglich, während auf diesem Gerät Vorgänge laufen",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr arbeitet noch mit Dateien auf diesem Gerät. Wirf das Gerät aus, sobald das erledigt ist.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "{name} wird ausgeworfen …",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

@@ -723,6 +723,13 @@
     "confidence": "high",
     "sources": "macOS (Másolás); ms; GNOME; Xfce"
   },
+  "cost": {
+    "chosen": "költség",
+    "accept": ["kerül", "ára", "olcsó"],
+    "forms": "the noun → költség (becsült költség); costs nothing (a verb) → nem kerül semmibe; the price of a feature in prose → az ára",
+    "confidence": "high",
+    "sources": "ms (cost → költség); catalog (askCmdr.cost.unknown, settings.askCmdr.spend.empty, settings.fileOperations.adbEnabled.description)"
+  },
   "crash-report": {
     "chosen": "összeomlási jelentés",
     "accept": ["összeoml", "jelentés"],
@@ -937,8 +944,8 @@
   },
   "done": {
     "chosen": "Kész",
-    "accept": ["végez"],
-    "forms": "status Kész; Almost done → Mindjárt kész; Whatever's finished stays done → Ami elkészült, az kész marad",
+    "accept": ["végez", "befejeződ"],
+    "forms": "status Kész; Almost done → Mindjárt kész; Whatever's finished stays done → Ami elkészült, az kész marad; once that's done (a busy tooltip) → amint ez befejeződik (errors.eject.busy)",
     "confidence": "high",
     "sources": "macOS (PW23 Kész)"
   },
@@ -1376,11 +1383,17 @@
     "sources": "macOS (Vissza, Előre)"
   },
   "go-to-path": {
-    "chosen": "Ugrás útvonalra",
-    "accept": ["ugrás mappához", "útvonal"],
-    "forms": "Go to path… → Ugrás útvonalra…; Go to folder… (the Dock menu, Finder's own) → Ugrás mappához…",
+    "chosen": "Ugrás mappához",
+    "accept": ["útvonal"],
+    "forms": "menu item and command Go to folder… → Ugrás mappához…; dialog title and its button → Ugrás mappához",
+    "avoid": [
+      {
+        "form": "Ugrás útvonalra",
+        "why": "the old Go to path wording; English now matches Finder's Go to Folder"
+      }
+    ],
     "confidence": "high",
-    "sources": "catalog; macOS Finder (MenuBar 261.title Ugrás mappához…)"
+    "sources": "macOS Finder (MenuBar 261.title and LocalizableMerged N83 Ugrás mappához…, GT8 dialog title Ugrás mappához)"
   },
   "go-to-trash": {
     "chosen": "Ugrás a Kukába",

@@ -27,6 +27,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "50b8e0a"
   },
+  "servers.paneState.unreachable": "Cmdr no pudo acceder a {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "58c13ab"
+  },
   "servers.refusal.hostKeyRevoked": "Tu configuración de SSH en este Mac marca la clave de {host} como comprometida. Cmdr no se conectará a ese servidor.",
   "@servers.refusal.hostKeyRevoked": {
     "sourceHash": "ac070e7"

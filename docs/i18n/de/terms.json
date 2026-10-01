@@ -112,6 +112,19 @@
     "forms": "existence is the catalog's gibt es idiom (In diesem Ordner gibt es bereits …, Unter „{path}“ gibt es bereits etwas.); Diesen Ordner gibt es noch nicht",
     "sources": "catalog (conflictExistsFolder, errors.write.destinationExists.message)"
   },
+  "android-platform-tools": {
+    "accept": ["Platform Tools"],
+    "chosen": "Android Platform Tools",
+    "confidence": "high",
+    "forms": "the product name stays English and capitalized, never Plattformtools; after the first mention the short die Platform Tools",
+    "sources": "Google's German Android docs keep the English name (developer.android.com/tools/releases/platform-tools?hl=de: „Versionshinweise zu SDK Platform Tools“, checked 2026-10-01); catalog (adb.connect.adbNotInstalled, settings.fileOperations.adbBinaryPath.description)"
+  },
+  "android-tools": {
+    "chosen": "Android-Tools",
+    "confidence": "high",
+    "forms": "the generic group, coupled with a hyphen: die Android-Tools auf diesem Mac",
+    "sources": "catalog (adb.connect.serverUnreachable, settings.fileOperations.adbEnabled.description); ai-tool ruling reserves Tools for generic tooling"
+  },
   "answer": {
     "accept": ["antwortest", "antworten"],
     "avoid": [
@@ -634,6 +647,14 @@
     "confidence": "high",
     "forms": "button Kopieren; progress Wird kopiert; result {phrase} kopiert; unfinished copy → unvollständige Kopie",
     "sources": "macOS (Copy → Kopieren)"
+  },
+  "cost": {
+    "accept": ["kostet", "Kosten"],
+    "proseAccept": ["Preis", "Haken"],
+    "chosen": "kosten",
+    "confidence": "high",
+    "forms": "costs nothing → kostet nichts (resources as much as money)",
+    "sources": "standard German; catalog (settings.fileOperations.adbEnabled.description)"
   },
   "crash-report": {
     "accept": ["Absturz", "abgestürzt", "abstürz", "unerwartet beendet", "Bericht"],
@@ -1211,11 +1232,17 @@
     "sources": "standard German"
   },
   "go-to-path": {
-    "chosen": "Zu Pfad gehen",
+    "avoid": [
+      {
+        "form": "Zu Pfad gehen",
+        "why": "the old path wording; the English now names Finder's Go to Folder, so every surface takes Finder's words"
+      }
+    ],
+    "chosen": "Gehe zu Ordner",
     "confidence": "high",
-    "decision": "Das Dock-Menü von Cmdr",
-    "forms": "the dialog, its menu item, and the palette command; Cmdr's Dock menu names Finder's command instead: Gehe zu Ordner …",
-    "sources": "derived from macOS (Gehe zu …, Gehe zu Ordner)"
+    "decision": "Gehe zu Ordner: Finders Wortlaut auf jeder Fläche",
+    "forms": "the dialog title and its button → Gehe zu Ordner; the menu item and the palette command → Gehe zu Ordner … (no-break space before the ellipsis)",
+    "sources": "macOS Finder (GotoWindow 1.title Gehe zu Ordner, MenuBar 261.title Gehe zu Ordner …)"
   },
   "go-to-trash": {
     "chosen": "Zum Papierkorb gehen",
@@ -1431,6 +1458,13 @@
     "confidence": "high",
     "forms": "input source switching → Wechsel der Eingabequelle",
     "sources": "macOS (Eingabequelle)"
+  },
+  "install": {
+    "accept": ["Installiere", "installiert", "Installieren"],
+    "chosen": "installieren",
+    "confidence": "high",
+    "forms": "button Installieren; an instruction → Installiere …",
+    "sources": "macOS AppKit/SystemSettings (Install → Installieren, 100288.title); MS terminology"
   },
   "item": {
     "accept": ["Objekte"],

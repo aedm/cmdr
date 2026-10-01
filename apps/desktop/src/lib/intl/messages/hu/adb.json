@@ -67,9 +67,9 @@
   "@adb.disconnectDeviceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "adb.disconnectBusyTooltip": "Nem választható le, amíg ezen az eszközön műveletek vannak folyamatban",
+  "adb.disconnectBusyTooltip": "A Cmdr még fájlokkal dolgozik ezen az eszközön. Válaszd le, amint ez befejeződik.",
   "@adb.disconnectBusyTooltip": {
-    "sourceHash": "a425d4b"
+    "sourceHash": "73c355e"
   },
   "adb.disconnectingDeviceAriaLabel": "{name} leválasztása folyamatban…",
   "@adb.disconnectingDeviceAriaLabel": {

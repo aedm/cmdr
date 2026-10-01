@@ -487,8 +487,8 @@ Both equal their palette twins byte for byte (checked by `i18n-terms`).
 
 ## El menú del icono en el Dock (`menu.dock.*`)
 
-The Dock's `DockMenus.strings` forms "verb + app name" with no article (`Abrir Cmdr`). `Ir a la carpeta…` (the item says
-folder) stays apart from Cmdr's `Ir a la ruta` dialog (it says path). `{name} ({parent})` is identical to English.
+The Dock's `DockMenus.strings` forms "verb + app name" with no article (`Abrir Cmdr`). `Ir a la carpeta…` is Finder's
+item. `{name} ({parent})` is identical to English.
 
 ## La oferta de «Mostrar en el Finder» y el aviso de la primera vez (`main.revealNudge.*`, `main.revealActivation.*`, `settings.behavior.reveal*`)
 
@@ -566,11 +566,11 @@ agrees with `carpeta`.
   `Añadir a favoritos`.
 - press a number → `pulsa un número` (keys `pulsar`, mouse `hacer clic`).
 
-## Quién retiene el disco cuando la expulsión se rechaza (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+## Quién retiene el disco cuando la expulsión se rechaza (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, `errors.eject.otherProcesses`)
 
 - `{app}` opens the sentence with no article (a process name is a proper name).
 - `Cierra lo que tenga abierto ahí`: `lo que` + subjunctive and `ahí` agree with nothing.
-- `otras apps` joins through `Intl.ListFormat('es')` (`… y otras apps`).
+- `otras apps` / `otros` (processes) join through `Intl.ListFormat('es')` (`… y otras apps`).
 - macOS itself → `macOS sigue trabajando con este disco`, kept apart from the apps' `sigue usando`.
 
 ## Seleccionar todo lo de la misma clase (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)

@@ -90,6 +90,20 @@
     "forms": "\"Er bestaat al … op deze locatie\"; conflict title Bestand bestaat al",
     "sources": "macOS Finder (\"Er bestaat al een onderdeel … op deze locatie\")"
   },
+  "android-platform-tools": {
+    "accept": ["platform tools"],
+    "chosen": "Android platform tools",
+    "confidence": "high",
+    "forms": "the download's name stays English, unhyphenated: de Android platform tools; shortened the platform tools → de platform tools",
+    "sources": "Google's docs serve no Dutch (developer.android.com/tools/releases/platform-tools?hl=nl renders English, 2026-10-01); catalog (adb.connect.adbNotInstalled)"
+  },
+  "android-tools": {
+    "accept": ["Android-tools"],
+    "chosen": "Android-tools",
+    "confidence": "high",
+    "forms": "compound with a hyphen after the proper name: de Android-tools op deze Mac",
+    "sources": "catalog (adb.connect.serverUnreachable); style guide § Compounds"
+  },
   "answer": {
     "accept": ["antwoord", "beantwoord"],
     "avoid": [
@@ -567,6 +581,13 @@
     "confidence": "high",
     "forms": "button Kopieer; verb kopiëren; participle gekopieerd; noun kopie; an unfinished copy → onvolledig exemplaar",
     "sources": "macOS (Copy → Kopieer), Nautilus (Copied … → … gekopieerd)"
+  },
+  "cost": {
+    "accept": ["kost", "kosten", "kostte", "gekost"],
+    "chosen": "kosten",
+    "confidence": "high",
+    "forms": "verb in prose: Het kost niets om …; noun de kosten",
+    "sources": "MS terminology (cost → kosten, kostprijs); catalog"
   },
   "crash-report": {
     "accept": ["crashrapporten", "gecrasht", "crash", "vastgelopen"],
@@ -1131,11 +1152,16 @@
     "sources": "standard NL navigation (macOS Terug / Vooruit)"
   },
   "go-to-path": {
-    "accept": ["Ga naar map"],
-    "chosen": "Ga naar pad",
+    "avoid": [
+      {
+        "form": "Ga naar pad",
+        "why": "the English became Go to folder to match Finder; Finder's Dutch is Ga naar map"
+      }
+    ],
+    "chosen": "Ga naar map",
     "confidence": "high",
-    "forms": "Cmdr's dialog Ga naar pad…; the Dock menu's Finder item Go to Folder… → Ga naar map…",
-    "sources": "macOS Finder Ga naar … pattern (MenuBar 261.title Ga naar map…)"
+    "forms": "command and menu item Ga naar map…; dialog title and its confirm button Ga naar map",
+    "sources": "macOS Finder (MenuBar 261.title and N83 Ga naar map…, GT8 dialog title Ga naar map)"
   },
   "go-to-trash": {
     "avoid": [

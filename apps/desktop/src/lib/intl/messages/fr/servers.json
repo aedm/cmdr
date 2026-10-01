@@ -460,7 +460,7 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
-  "servers.paneState.unreachable": "Cmdr couldn’t reach {name}.",
+  "servers.paneState.unreachable": "Cmdr n’a pas pu joindre {name}.",
   "@servers.paneState.unreachable": {
     "sourceHash": "a7bc9bc"
   },

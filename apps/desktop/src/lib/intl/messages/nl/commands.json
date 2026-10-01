@@ -117,9 +117,9 @@
   "@commands.searchOpen.label": {
     "sourceHash": "179fed8"
   },
-  "commands.navGoToPath.label": "Ga naar pad…",
+  "commands.navGoToPath.label": "Ga naar map…",
   "@commands.navGoToPath.label": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "commands.navGoToPath.description": "Spring met het actieve paneel naar een getypt, geplakt of recent pad.",
   "@commands.navGoToPath.description": {

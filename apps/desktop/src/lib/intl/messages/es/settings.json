@@ -1063,7 +1063,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Accede a todo el sistema de archivos de un teléfono Android que tenga activada la depuración por USB, algo que MTP no puede mostrarte. Necesita las herramientas de plataforma de Android (el comando “adb”) en este Mac. Dejar esto activado no cuesta nada si no tienes herramientas de Android instaladas.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Ubicación de adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1642,9 +1642,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Aviso de grupo Red largo mostrado",
+  "settings.behavior.serversPinHintSeen.label": "Aviso de “Desfijar del selector” mostrado",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Si ya se ha mostrado el aviso único sobre desfijar servidores.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2526,13 +2526,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después pulsa Comprobar de nuevo:",
+  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después selecciona Comprobar de nuevo:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Buscar adb en los sitios habituales",
+  "settings.adb.pathPlaceholder": "Cmdr busca adb en los sitios habituales",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Explorar…",
   "@settings.adb.browse": {

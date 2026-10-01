@@ -707,6 +707,19 @@
     "forms": "the noun (one more instance) → 副本; in progress → 正在複製…",
     "sources": "AP-HK, MS, all five file managers"
   },
+  "cost": {
+    "accept": ["費用"],
+    "avoid": [
+      {
+        "form": "成本",
+        "why": "MS's accounting word; reads as a business ledger in a settings line"
+      }
+    ],
+    "chosen": "代價",
+    "confidence": "high",
+    "forms": "costs nothing (leaving a toggle on) → 不會有任何代價; money (AI usage) → 費用",
+    "sources": "catalog 代價 (7, settings.fileOperations.adbEnabled.description, onboarding.stepOptional.mtp.desc), 費用 (3); MS 成本"
+  },
   "crash-report": {
     "accept": ["當掉"],
     "avoid": [
@@ -1353,12 +1366,20 @@
       {
         "form": "跳到",
         "why": "Apple's older media-seek form"
+      },
+      {
+        "form": "前往路徑",
+        "why": "the old English Go to path; the command now matches Finder's Go to Folder"
+      },
+      {
+        "form": "前往檔案夾",
+        "why": "AP-TW outlier for folder (style.md § The Apple-zh-TW outlier rule)"
       }
     ],
     "chosen": "前往",
     "confidence": "high",
-    "forms": "Go to path… → 前往路徑⋯; the Dock's Go to folder… → 前往資料夾⋯ (keep the two apart)",
-    "sources": "AP Finder Go menu (前往檔案夾, 前往位置)"
+    "forms": "menu item and palette command Go to folder… → 前往資料夾⋯; dialog title and button → 前往資料夾",
+    "sources": "AP Finder Go To Folder: AP-HK 前往資料夾, AP-TW 前往檔案夾"
   },
   "got-it": {
     "avoid": [
@@ -1421,6 +1442,12 @@
     },
     "forms": "Hide others → 隱藏其他; Hide Cmdr → 隱藏 Cmdr",
     "sources": "AP Finder MenuBar 300729.title, TextEdit, Preview"
+  },
+  "hint": {
+    "chosen": "提示",
+    "confidence": "high",
+    "forms": "an internal seen-flag → 已顯示「X」提示 (settings.behavior.*HintSeen.label)",
+    "sources": "MS (hint → 提示), catalog settings.behavior.*Seen.label"
   },
   "history": {
     "accept": ["記錄", "歷史"],
@@ -1550,6 +1577,11 @@
     "chosen": "檢閱器",
     "confidence": "high",
     "sources": "AP Preview (AP-HK glyph variant 檢閲器)"
+  },
+  "install": {
+    "chosen": "安裝",
+    "confidence": "high",
+    "sources": "AP-TW SystemSettings (Install → 安裝), MS (3 entries)"
   },
   "internet": {
     "avoid": [
@@ -3261,6 +3293,16 @@
     "confidence": "high",
     "forms": "reseat the cable → 把連接線拔掉再插上; a drive pulled mid-transfer → 斷線了",
     "sources": "catalog errors.provider.macDroid.transient, errors.write.deviceDisconnected.*"
+  },
+  "unreachable": {
+    "accept": ["連不到", "無法連線", "連到", "連上"],
+    "chosen": "連不上",
+    "confidence": "high",
+    "exceptions": {
+      "viewer.copy.clipboardUnreachable": "a clipboard isn't a network target; Cmdr can't access it (無法存取)"
+    },
+    "forms": "Cmdr couldn't reach X → Cmdr 連不上 X。; a path title → 無法連到 {path}",
+    "sources": "catalog 連不上 (12, servers.refusal.unreachable, servers.paneState.unreachable), 無法連到 (2), 無法連線到 (2)"
   },
   "untouched": {
     "accept": ["沒有被動過", "沒動過"],

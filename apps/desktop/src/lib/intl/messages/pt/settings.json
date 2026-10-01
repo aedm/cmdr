@@ -1061,9 +1061,9 @@
   "@settings.fileOperations.adbEnabled.label": {
     "sourceHash": "3651356"
   },
-  "settings.fileOperations.adbEnabled.description": "Acessa o sistema de arquivos inteiro de um celular Android com a depuração USB ativada, algo que o MTP não consegue mostrar. Precisa das ferramentas de plataforma do Android (o comando “adb”) neste Mac. Deixar isto ativado não custa nada quando você não tem nenhuma ferramenta do Android instalada.",
+  "settings.fileOperations.adbEnabled.description": "Acessa o sistema de arquivos inteiro de um celular Android com a depuração USB ativada, algo que o MTP não consegue mostrar. Precisa das ferramentas de plataforma do Android (o comando “adb”) neste Mac. Deixar isto ativado não custa nada se você não tiver nenhuma ferramenta do Android instalada.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Localização do adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1642,9 +1642,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Dica de grupo Rede grande exibida",
+  "settings.behavior.serversPinHintSeen.label": "Dica de “Desafixar do seletor” exibida",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Se a dica única sobre desafixar servidores já foi exibida.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2528,13 +2528,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Instale as ferramentas de plataforma do Android e depois pressione Verificar novamente:",
+  "settings.adb.install.intro": "Instale as ferramentas de plataforma do Android e depois escolha “Verificar novamente”:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Procurar o adb nos lugares de sempre",
+  "settings.adb.pathPlaceholder": "O Cmdr procura o adb nos lugares de sempre",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Escolher…",
   "@settings.adb.browse": {

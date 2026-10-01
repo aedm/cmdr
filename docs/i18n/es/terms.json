@@ -80,6 +80,18 @@
     "confidence": "high",
     "sources": "macOS Finder (ya existe un ítem con el nombre…)"
   },
+  "android-platform-tools": {
+    "chosen": "herramientas de plataforma",
+    "accept": ["herramientas de la plataforma"],
+    "forms": "the download → las herramientas de plataforma de Android; Google's docs title → Herramientas de la plataforma del SDK de Android",
+    "confidence": "tentative",
+    "sources": "Android Developers es-419 (machine-translated: Herramientas de la plataforma del SDK); catalog (four keys say herramientas de plataforma de Android); no Tier 1 or Tier 3 hit in the pile"
+  },
+  "android-tools": {
+    "chosen": "herramientas de Android",
+    "confidence": "high",
+    "sources": "catalog (adb.connect.serverUnreachable, settings.fileOperations.adbEnabled.description); plain descriptive phrase, no vendor label to quote"
+  },
   "answer": {
     "chosen": "responder",
     "accept": ["respond", "respuesta"],
@@ -690,8 +702,8 @@
   },
   "disconnect": {
     "chosen": "Desconectar",
-    "accept": ["desconect"],
-    "forms": "menu item Desconectar (ocupado) when busy; aria Desconectar {name}",
+    "accept": ["desconect", "desconéct"],
+    "forms": "menu item Desconectar (ocupado) when busy; aria Desconectar {name}; imperative with a clitic Desconéctalo",
     "confidence": "high",
     "sources": "macOS Finder (MR10.1, N200 Desconectar)",
     "decision": "El hub de servidores: conectar, desconectar y olvidar"
@@ -1134,11 +1146,11 @@
     "sources": "macOS Finder (Atrás, Adelante)"
   },
   "go-to-path": {
-    "chosen": "Ir a la ruta",
-    "accept": ["Ir a la carpeta"],
-    "forms": "Cmdr's own dialog and command say Ir a la ruta (English says path); the Dock item that says folder follows Finder: Ir a la carpeta…",
-    "confidence": "high",
-    "sources": "macOS Finder (Ir a la carpeta Documentos pattern; MenuBar 261.title Ir a la carpeta…)"
+    "chosen": "Ir a la carpeta",
+    "forms": "menu item and palette command Ir a la carpeta…; dialog title and its confirm button Ir a la carpeta, as Finder's Go to Folder dialog",
+    "avoid": [{ "form": "Ir a la ruta", "why": "English moved from path to folder to match Finder" }],
+    "confidence": "confirmed",
+    "sources": "macOS Finder es and es_419 (MenuBar 261.title / N83 Ir a la carpeta…; GT8 and Go To Folder Ir a la carpeta)"
   },
   "go-to-trash": {
     "chosen": "Ir a la papelera",

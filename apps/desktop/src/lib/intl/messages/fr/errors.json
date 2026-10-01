@@ -1961,15 +1961,15 @@
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "A process called {process} is still using this drive. (We don’t have an app name, only the process name.)",
+  "errors.eject.unmountRefusedByProcess": "Un processus nommé {process} utilise encore ce disque. (Nous n’avons pas de nom d’app, seulement le nom du processus.)",
   "@errors.eject.unmountRefusedByProcess": {
     "sourceHash": "2dc3fba"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} processes called {processes} are still using this drive. (We don’t have app names, only the process names.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} processus nommés {processes} utilisent encore ce disque. (Nous n’avons pas de noms d’app, seulement les noms des processus.)",
   "@errors.eject.unmountRefusedByProcesses": {
     "sourceHash": "4d6c1a5"
   },
-  "errors.eject.otherProcesses": "others",
+  "errors.eject.otherProcesses": "d’autres",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },

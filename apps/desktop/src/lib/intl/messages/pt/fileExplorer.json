@@ -1422,9 +1422,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Não é possível desconectar enquanto há operações em andamento neste servidor",
+  "fileExplorer.navigation.disconnectBusyTooltip": "O Cmdr ainda está trabalhando com arquivos neste servidor. Desconecte assim que isso terminar.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} agora aparece no seletor de volumes.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1436,7 +1436,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "O Cmdr não conseguiu mudar onde {name} aparece.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "O Cmdr não conseguiu desconectar de {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1482,9 +1482,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Não é possível ejetar enquanto há operações em andamento neste dispositivo",
+  "fileExplorer.navigation.ejectBusyTooltip": "O Cmdr ainda está trabalhando com arquivos neste dispositivo. Ejete assim que isso terminar.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Ejetando {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

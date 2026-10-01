@@ -459,7 +459,7 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
-  "servers.paneState.unreachable": "Cmdr couldn’t reach {name}.",
+  "servers.paneState.unreachable": "A Cmdr nem érte el ezt: {name}.",
   "@servers.paneState.unreachable": {
     "sourceHash": "a7bc9bc"
   },

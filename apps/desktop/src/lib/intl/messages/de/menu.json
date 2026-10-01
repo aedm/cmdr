@@ -355,9 +355,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Zu Pfad gehen …",
+  "menu.go.goToPath": "Gehe zu Ordner …",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Zum neuesten Download gehen",
   "@menu.go.goToLatestDownload": {

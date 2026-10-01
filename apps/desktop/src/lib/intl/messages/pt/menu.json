@@ -357,9 +357,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Ir para o caminho…",
+  "menu.go.goToPath": "Ir para pasta…",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Ir para o último download",
   "@menu.go.goToLatestDownload": {

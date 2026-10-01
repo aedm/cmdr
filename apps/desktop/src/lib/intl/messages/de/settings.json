@@ -1064,7 +1064,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Zeigt dir das gesamte Dateisystem eines Android-Telefons, auf dem USB-Debugging eingeschaltet ist, also auch das, was über MTP verborgen bleibt. Dafür brauchst du die Android Platform Tools (den Befehl „adb“) auf diesem Mac. Wenn du keine Android-Tools installiert hast, kostet es nichts, die Einstellung anzulassen.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Speicherort von adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1648,9 +1648,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Hinweis zur langen Gruppe „Netzwerk“ gezeigt",
+  "settings.behavior.serversPinHintSeen.label": "Hinweis zu „Aus der Volume-Auswahl lösen“ gezeigt",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Ob der einmalige Hinweis zum Lösen von Servern gezeigt wurde.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2536,13 +2536,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Installiere die Android Platform Tools und drücke dann auf „Erneut prüfen“:",
+  "settings.adb.install.intro": "Installiere die Android Platform Tools und wähle dann „Erneut prüfen“:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "adb auf den üblichen Wegen suchen",
+  "settings.adb.pathPlaceholder": "Cmdr sucht adb auf den üblichen Wegen",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Durchsuchen …",
   "@settings.adb.browse": {

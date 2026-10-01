@@ -1065,7 +1065,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Krijg toegang tot het hele bestandssysteem van een Android-telefoon waarop USB-foutopsporing is ingeschakeld, iets wat MTP je niet kan laten zien. Hiervoor heb je de Android platform tools (de opdracht ‘adb’) op deze Mac nodig. Het kost niets om dit ingeschakeld te laten als je geen Android-tools hebt geïnstalleerd.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Locatie van adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1646,9 +1646,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Hint voor lange groep Netwerk getoond",
+  "settings.behavior.serversPinHintSeen.label": "Hint voor ‘Maak los uit volumekiezer’ getoond",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Of de eenmalige hint over het losmaken van servers is getoond.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2536,13 +2536,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Installeer de Android platform tools en druk daarna op ‘Controleer opnieuw’:",
+  "settings.adb.install.intro": "Installeer de Android platform tools en kies daarna ‘Controleer opnieuw’:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Zoek op de gebruikelijke manier naar adb",
+  "settings.adb.pathPlaceholder": "Cmdr zoekt op de gebruikelijke manier naar adb",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Blader…",
   "@settings.adb.browse": {

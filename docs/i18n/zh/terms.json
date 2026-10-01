@@ -106,6 +106,18 @@
     "forms": "conflict title 文件已存在 / 已存在同名文件; prose 已经有… / 已经在…了",
     "sources": "macOS Finder"
   },
+  "android-platform-tools": {
+    "chosen": "平台工具",
+    "confidence": "high",
+    "forms": "Android 平台工具 (the download's name, Google zh-CN docs: SDK 平台工具); a later mention in the same text 平台工具",
+    "sources": "Google zh-CN developer docs (SDK 平台工具); catalog adb.connect.adbNotInstalled"
+  },
+  "android-tools": {
+    "chosen": "Android 工具",
+    "confidence": "high",
+    "forms": "这台 Mac 上的 Android 工具; installed 没装任何 Android 工具",
+    "sources": "catalog adb.connect.serverUnreachable; Google zh-CN docs (工具)"
+  },
   "answer": {
     "accept": ["做出选择", "答复"],
     "avoid": [
@@ -592,6 +604,19 @@
     "forms": "F5 and the clipboard: 拷贝 (已拷贝, 拷贝到剪贴板); a noun copy (a duplicate file) → 副本",
     "sources": "macOS Finder"
   },
+  "cost": {
+    "accept": ["费用", "花费", "代价"],
+    "avoid": [
+      {
+        "form": "成本",
+        "why": "Microsoft's business-accounting word; reads as a balance sheet, not a user's bill or a machine's load"
+      }
+    ],
+    "chosen": "开销",
+    "confidence": "high",
+    "forms": "resources (CPU, disk, a background process) 开销 (不会有任何开销, 这点开销很划算); money (AI usage) 费用 (预计费用, 费用未知); the spend column 花费; a tradeoff (the cost is that…) 代价",
+    "sources": "catalog usage (3 开销 / 3 费用); Microsoft terminology (cost → 成本, business sense)"
+  },
   "crash-report": {
     "accept": ["崩溃"],
     "chosen": "崩溃报告",
@@ -709,7 +734,7 @@
   "device": {
     "chosen": "设备",
     "confidence": "confirmed",
-    "forms": "MTP 设备, USB 设备; the terse busy tooltip keeps 此设备",
+    "forms": "MTP 设备, USB 设备; prose 这个设备 (the busy tooltips: Cmdr 还在处理这个设备上的文件。)",
     "sources": "macOS/MS"
   },
   "disable": {
@@ -1191,12 +1216,17 @@
     "sources": "macOS Finder (Back/Forward → 返回/前进)"
   },
   "go-to-path": {
-    "accept": ["前往文件夹"],
-    "chosen": "前往路径",
-    "confidence": "high",
-    "forms": "Go to path… 前往路径…; Finder's Go to Folder… 前往文件夹… (a different command)",
-    "note": "前往 must take an object in Chinese; a bare 按数字键前往 dangles.",
-    "sources": "macOS Finder (Go to Folder → 前往文件夹)"
+    "avoid": [
+      {
+        "form": "前往路径",
+        "why": "the old Go to path wording; the English now names Finder's Go to Folder, so the command, menu item, dialog title, and button use Finder's words"
+      }
+    ],
+    "chosen": "前往文件夹",
+    "confidence": "confirmed",
+    "forms": "menu item and command 前往文件夹…; dialog title and its confirm button 前往文件夹 (one control, one name, though Finder's own button is a bare 前往)",
+    "note": "前往 must take an object in Chinese; a bare 按数字键前往 dangles. The typed thing stays a path (前往的路径, 输入或粘贴路径).",
+    "sources": "macOS Finder zh_CN (MenuBar.strings 261.title 前往文件夹…, LocalizableMerged GT8 前往文件夹, FR24 前往; macOS 27.0, 26A428, plutil, 2026-10-01)"
   },
   "go-to-trash": {
     "chosen": "前往废纸篓",

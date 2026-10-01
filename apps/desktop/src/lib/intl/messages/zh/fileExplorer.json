@@ -1413,9 +1413,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "此服务器上有操作正在进行，无法断开连接",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr 还在处理这台服务器上的文件。完成后再断开连接。",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} 现在会出现在你的宗卷选择器里。",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1427,7 +1427,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr 无法更改 {name} 的显示位置。",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr 无法断开与 {name} 的连接。",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1473,9 +1473,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "此设备上有操作正在进行，无法推出",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr 还在处理这个设备上的文件。完成后再推出。",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "正在推出 {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

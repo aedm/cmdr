@@ -1418,9 +1418,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "No se puede desconectar mientras hay operaciones en curso en este servidor",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr sigue trabajando con archivos en este servidor. Desconéctalo cuando termine.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} ya está en tu selector de volúmenes.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1432,7 +1432,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr no ha podido cambiar dónde aparece {name}.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr no ha podido desconectarse de {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1478,9 +1478,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "No se puede expulsar mientras hay operaciones en curso en este dispositivo",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr sigue trabajando con archivos en este dispositivo. Expúlsalo cuando termine.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Expulsando {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

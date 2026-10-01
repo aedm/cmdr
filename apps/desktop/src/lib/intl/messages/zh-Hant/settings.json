@@ -1059,9 +1059,9 @@
   "@settings.fileOperations.adbEnabled.label": {
     "sourceHash": "3651356"
   },
-  "settings.fileOperations.adbEnabled.description": "只要 Android 手機開啟了「USB 偵錯」，你就能存取它的整個檔案系統，包括 MTP 無法顯示的部分。這需要在這部 Mac 上安裝 Android SDK 平台工具（也就是 adb 指令）。就算你沒安裝任何 Android 工具，開著這一項也不會有任何代價。",
+  "settings.fileOperations.adbEnabled.description": "只要 Android 手機開啟了「USB 偵錯」，你就能存取它的整個檔案系統，包括 MTP 無法顯示的部分。這需要在這部 Mac 上安裝 Android 平台工具（也就是 adb 指令）。就算你沒安裝任何 Android 工具，開著這一項也不會有任何代價。",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "adb 的位置",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1639,9 +1639,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "已顯示「網路」群組過長的提示",
+  "settings.behavior.serversPinHintSeen.label": "已顯示「從切換器取消釘選」提示",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "是否已顯示過關於取消釘選伺服器的一次性提示。",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2524,13 +2524,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "安裝 Android 平台工具，然後按「重新檢查」：",
+  "settings.adb.install.intro": "安裝 Android 平台工具，然後選擇「重新檢查」：",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "用一般的方式尋找 adb",
+  "settings.adb.pathPlaceholder": "Cmdr 會用一般的方式尋找 adb",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "瀏覽⋯",
   "@settings.adb.browse": {

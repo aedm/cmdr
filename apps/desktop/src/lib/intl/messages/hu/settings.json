@@ -1061,7 +1061,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Eléred egy olyan Android-telefon teljes fájlrendszerét, amelyen be van kapcsolva az USB-hibakeresés; az MTP ezt nem mutatja meg. Ehhez kell az Android platform tools csomag (az „adb” parancs) ezen a Macen. Ha nincs telepítve Android-fejlesztőeszköz, nem kerül semmibe, ha bekapcsolva hagyod.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Az adb helye",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1640,9 +1640,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "A hosszú Hálózat csoport tippje megjelent",
+  "settings.behavior.serversPinHintSeen.label": "A „Rögzítés feloldása a kötetválasztóban” tippje megjelent",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Megjelent-e már az egyszeri tipp a szerverek rögzítésének feloldásáról.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2525,13 +2525,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Telepítsd az Android platform tools csomagot, majd nyomd meg az Újraellenőrzés gombot:",
+  "settings.adb.install.intro": "Telepítsd az Android platform tools csomagot, majd válaszd az „Újraellenőrzés” lehetőséget:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Az adb keresése a szokásos módon",
+  "settings.adb.pathPlaceholder": "A Cmdr a szokásos módon keresi az adb-t",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Böngészés…",
   "@settings.adb.browse": {

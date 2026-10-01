@@ -70,6 +70,19 @@
     "forms": "conflict title Tệp đã tồn tại; There's already something at X → Đã có thứ gì đó ở \"{path}\"; doesn't exist yet → chưa tồn tại",
     "sources": "macOS AppKit SavePanel (already exists → đã tồn tại), Finder NE21"
   },
+  "android-platform-tools": {
+    "accept": ["bộ công cụ nền tảng"],
+    "chosen": "bộ công cụ nền tảng Android",
+    "confidence": "high",
+    "forms": "the full name with Android when naming the download; bare bộ công cụ nền tảng once Android SDK is already in the sentence; Android SDK stays verbatim",
+    "sources": "Google's vi Android developer docs; catalog (adb.connect.adbNotInstalled, settings.adb.install.intro, adbEnabled.description); decisions.md § Điện thoại Android qua ADB"
+  },
+  "android-tools": {
+    "chosen": "công cụ Android",
+    "confidence": "high",
+    "forms": "no Android tooling installed → chưa cài công cụ Android nào; The Android tools on this Mac → Công cụ Android trên máy Mac này",
+    "sources": "catalog (adb.connect.serverUnreachable, adbEnabled.description); the pile has no vi string for it"
+  },
   "answer": {
     "avoid": [
       {
@@ -518,6 +531,13 @@
     "confidence": "high",
     "forms": "the noun (a copy) → bản sao; a fresh copy of a file → một bản mới; Duplicate → Nhân bản (separate command)",
     "sources": "macOS AppKit (Sao chép)"
+  },
+  "cost": {
+    "accept": ["tốn", "cái giá"],
+    "chosen": "chi phí",
+    "confidence": "high",
+    "forms": "the noun (money spent) → chi phí; the verb (it costs, costs nothing) → tốn: không tốn gì, tốn tiền, không tốn thêm CPU; the trade-off (The cost is …) → Cái giá là …",
+    "sources": "MS terminology (cost → chi phí); catalog (tốn ×3 in settings.json and onboarding.json)"
   },
   "crash-report": {
     "accept": ["sự cố", "sập"],
@@ -1089,12 +1109,16 @@
       {
         "form": "Đến đường dẫn",
         "why": "a stray variant; the go family is Đi tới"
+      },
+      {
+        "form": "Đi tới đường dẫn",
+        "why": "the command's old English name; EN now says Go to folder after Finder"
       }
     ],
     "chosen": "đi tới",
     "confidence": "high",
-    "forms": "Go to path → Đi tới đường dẫn…; Go to Folder… → Đi tới thư mục…; input label Đường dẫn cần đi tới",
-    "sources": "macOS Finder GotoWindow (Go to Folder → Đi tới thư mục)"
+    "forms": "the command, menu item, dialog title, and its button all read Đi tới thư mục (… on the command and menu item); input label Đường dẫn cần đi tới",
+    "sources": "macOS Finder MenuBar 261.title (Go to Folder… → Đi tới thư mục…), GotoWindow 1.title (Đi tới thư mục)"
   },
   "go-to-trash": {
     "chosen": "đi tới thùng rác",

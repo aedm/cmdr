@@ -703,18 +703,17 @@ The notice never suggests deleting: these may be the only copies. Its one action
   paired with its sibling's subject; a plain locative over a `-ra/-re` "points to".
 - already a favorite → `Ez a mappa már a kedvencek között van`: `között` names the list the user is looking at.
 
-## Az elutasított kiadás megnevezi, KI fogja a meghajtót (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+## Az elutasított kiadás megnevezi, KI fogja a meghajtót (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`/`.otherProcesses`)
 
 - Every key keeps the family skeleton `X még használja ezt a meghajtót.` + a `te` imperative, active like English, over
   Apple's passive `által használatban van`.
-- `{app}` leads bare, unquoted (`{app} még használja…`): a process name's first sound is unknown, so no article.
-- `{apps}` arrives as an `Intl.ListFormat` list ending in `egyéb alkalmazások`, so it takes no article either, and a
-  plural verb (`még használják`) that holds for any list.
-- other apps → `egyéb alkalmazások` (Thunar's msgid), over `más`, which suggests a different kind.
-- disk image → `lemezkép`; is still open → `még nyitva van`, over `csatolva van`, since English says open.
-- Cmdr itself → `Maga a Cmdr`, in the family's subject-first skeleton. send a report → `küldj jelentést`, never
-  `hibajelentést`.
+- `{app}` leads bare, unquoted: its first sound is unknown, so no article. `{apps}` (a list) also takes none, plus a
+  plural verb (`még használják`).
+- other apps → `egyéb alkalmazások` (Thunar), over `más` (a different kind); others → `egyéb folyamatok`.
+- disk image → `lemezkép`; is still open → `még nyitva van`, over `csatolva van`.
+- Cmdr itself → `Maga a Cmdr`; send a report → `küldj jelentést`, never `hibajelentést`.
 - `Várj egy percet` (system) vs `Várj egy pillanatot` (Cmdr) follows English's minute vs moment.
+- `Egy {process} nevű folyamat…` names the type; the plural lists after a colon so the numeral keeps a singular verb.
 
 ## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
 

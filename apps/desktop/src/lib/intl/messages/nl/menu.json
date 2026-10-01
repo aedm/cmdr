@@ -361,9 +361,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Ga naar pad…",
+  "menu.go.goToPath": "Ga naar map…",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Ga naar laatste download",
   "@menu.go.goToLatestDownload": {

@@ -67,9 +67,9 @@
   "@adb.disconnectDeviceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "adb.disconnectBusyTooltip": "Không thể ngắt kết nối khi còn thao tác đang chạy trên thiết bị này",
+  "adb.disconnectBusyTooltip": "Cmdr vẫn đang làm việc với tệp trên thiết bị này. Hãy ngắt kết nối khi việc đó xong.",
   "@adb.disconnectBusyTooltip": {
-    "sourceHash": "a425d4b"
+    "sourceHash": "73c355e"
   },
   "adb.disconnectingDeviceAriaLabel": "Đang ngắt kết nối {name}…",
   "@adb.disconnectingDeviceAriaLabel": {

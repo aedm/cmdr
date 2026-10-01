@@ -1057,9 +1057,9 @@
   "@settings.fileOperations.adbEnabled.label": {
     "sourceHash": "3651356"
   },
-  "settings.fileOperations.adbEnabled.description": "Truy cập toàn bộ hệ thống tệp của một điện thoại Android đang bật gỡ lỗi qua USB, phần mà MTP không cho bạn thấy. Cần có bộ công cụ nền tảng Android (lệnh “adb”) trên máy Mac này. Cứ để bật cũng không tốn gì khi bạn chưa cài công cụ Android nào.",
+  "settings.fileOperations.adbEnabled.description": "Truy cập toàn bộ hệ thống tệp của một điện thoại Android đang bật gỡ lỗi qua USB, phần mà MTP không cho bạn thấy. Cần có bộ công cụ nền tảng Android (lệnh “adb”) trên máy Mac này. Cứ để bật cũng không tốn gì nếu bạn chưa cài công cụ Android nào.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Vị trí của adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1638,9 +1638,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Đã hiển thị gợi ý về nhóm Mạng dài",
+  "settings.behavior.serversPinHintSeen.label": "Đã hiển thị gợi ý về “Bỏ ghim khỏi bộ chọn ổ đĩa”",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Gợi ý một lần về việc bỏ ghim máy chủ đã hiển thị hay chưa.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2523,13 +2523,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Hãy cài bộ công cụ nền tảng Android, rồi nhấn Kiểm tra lại:",
+  "settings.adb.install.intro": "Hãy cài bộ công cụ nền tảng Android, rồi chọn Kiểm tra lại:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Tìm adb theo cách thông thường",
+  "settings.adb.pathPlaceholder": "Cmdr tìm adb theo cách thông thường",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Duyệt…",
   "@settings.adb.browse": {

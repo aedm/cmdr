@@ -592,11 +592,11 @@ values write the catalog's `’`.
 - `addedButDockDidNotRestart` never says the add failed (it happened); `managedDock` names
   `La personne qui gère ce Mac`, never `l’administrateur`.
 
-## Le menu du Dock : les cinq clés `menu.dock.*`
+## Le menu du Dock et Aller au dossier (`menu.dock.*`, `menu.go.goToPath`, `goToPath.dialog.*`, `commands.navGoToPath.label`)
 
-- Open <App> → `Ouvrir Cmdr`, unquoted (Dock.app quotes file names only). Go to Folder… → `Aller au dossier…`, distinct
-  from `Aller au chemin…`. Connect to Server… → `Se connecter au serveur…`, never `Connexion au serveur` (Apple’s window
-  title). Search files… → `Rechercher des fichiers…`, as `menu.edit.searchFiles`.
+- Open <App> → `Ouvrir Cmdr`, unquoted (Dock.app quotes file names only). Go to folder → `Aller au dossier` (Finder).
+  Connect to Server… → `Se connecter au serveur…`. Search files… → `Rechercher des fichiers…`, as
+  `menu.edit.searchFiles`.
 - `{name} ({parent})` is identical to English (Finder’s own `^0 (^1)` line) and justified.
 
 ## La proposition « Afficher dans le Finder » et l'avis de première fois (`main.revealNudge.*`, `main.revealActivation.*`, `settings.behavior.reveal*`)

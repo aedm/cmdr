@@ -533,6 +533,19 @@
     "confidence": "confirmed",
     "sources": "macOS Finder pt-BR MenuBar"
   },
+  "cost": {
+    "chosen": "custo",
+    "accept": ["custa", "custar"],
+    "forms": "verb custar (não custa nada, custa US$ 59); noun o custo",
+    "avoid": [
+      {
+        "form": "preço de custo",
+        "why": "Microsoft's only pt-BR entry is the accounting sense, not a resource cost"
+      }
+    ],
+    "confidence": "high",
+    "sources": "shipped pt catalog (O custo é…, custa US$ 59, não custa nada); MS terminology pt-BR checked (cost → preço de custo, accounting sense only)"
+  },
   "crash-report": {
     "chosen": "relatório de falha",
     "accept": ["falha"],
@@ -1096,11 +1109,17 @@
     "sources": "macOS Finder pt-BR"
   },
   "go-to-path": {
-    "chosen": "Ir para o caminho",
-    "accept": ["Ir para pasta", "caminho"],
-    "forms": "Go to folder… (Dock menu) → Ir para pasta…",
-    "confidence": "high",
-    "sources": "macOS Finder pt-BR MenuBar (261 Ir para Pasta…)"
+    "chosen": "Ir para pasta",
+    "forms": "menu item and command Go to folder… → Ir para pasta…; dialog title and button → Ir para pasta (Finder's dialog says Ir Para a Pasta, but one control keeps one name)",
+    "avoid": [
+      {
+        "form": "Ir para o caminho",
+        "why": "the old Go to path wording; the English now names Finder's Go to Folder"
+      }
+    ],
+    "confidence": "confirmed",
+    "sources": "macOS Finder pt-BR LocalizableMerged (N83 Ir para Pasta…, GT8 Ir Para a Pasta), sentence-cased",
+    "decision": "Go to folder"
   },
   "go-to-trash": {
     "chosen": "Ir para o Lixo",
@@ -1805,6 +1824,13 @@
     "forms": "Android platform tools → ferramentas de plataforma do Android",
     "confidence": "tentative",
     "sources": "Google's term; no macOS or Microsoft source"
+  },
+  "android-tools": {
+    "chosen": "ferramentas do Android",
+    "accept": ["ferramenta do Android"],
+    "forms": "no Android tooling → nenhuma ferramenta do Android",
+    "confidence": "high",
+    "sources": "shipped pt catalog (adb.connect.serverUnreachable, settings.fileOperations.adbEnabled.description); no macOS or Microsoft source"
   },
   "port": {
     "chosen": "porta",

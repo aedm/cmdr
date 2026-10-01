@@ -81,6 +81,20 @@
     "forms": "conflict title Le fichier existe déjà",
     "sources": "macOS Finder; catalog"
   },
+  "android-platform-tools": {
+    "accept": ["Platform Tools"],
+    "chosen": "Android Platform Tools",
+    "confidence": "high",
+    "forms": "kept as Google’s product name, capitalized even where the English lowercases it (les Android Platform Tools)",
+    "sources": "developer.android.com/tools/releases/platform-tools?hl=fr (Notes de version du composant SDK Platform Tools, the name untranslated); style.md § Brand; catalog (adb.connect.adbNotInstalled)"
+  },
+  "android-tools": {
+    "accept": ["outil Android"],
+    "chosen": "outils Android",
+    "confidence": "high",
+    "forms": "the generic group, lowercase (Les outils Android de ce Mac; aucun outil Android installé)",
+    "sources": "catalog (adb.connect.serverUnreachable, settings.fileOperations.adbEnabled.description)"
+  },
   "answer": {
     "accept": ["réponse", "répondu"],
     "avoid": [
@@ -626,6 +640,13 @@
     "confidence": "high",
     "forms": "progress noun Copie (Copie en cours..., Copie vers {destination}); participles copié/copiés; Copied → Copié",
     "sources": "macOS Finder MenuBar (Copier, Copier en tant que lien)"
+  },
+  "cost": {
+    "accept": ["coûte", "coûter", "coûts"],
+    "chosen": "coût",
+    "confidence": "high",
+    "forms": "costs nothing → ne coûte rien; The cost is that… → Le coût, c’est que…",
+    "sources": "Microsoft terminology (cost → coût); catalog (onboarding.stepOptional.mtp.desc, settings.fileOperations.adbEnabled.description)"
   },
   "crash-report": {
     "accept": ["incident", "rapport"],
@@ -1218,11 +1239,17 @@
     "sources": "macOS Finder; catalog"
   },
   "go-to-path": {
-    "accept": ["Aller au dossier"],
-    "chosen": "Aller au chemin",
+    "avoid": [
+      {
+        "form": "Aller au chemin",
+        "why": "the English now follows Finder’s Go to Folder; one command, one name"
+      }
+    ],
+    "chosen": "Aller au dossier",
     "confidence": "high",
-    "forms": "Go to path… → Aller au chemin… (a path you type); Go to Folder… (Dock menu) → Aller au dossier… (Finder’s command); keep the two distinct",
-    "sources": "macOS Finder MenuBar 261.title (Aller au dossier…); catalog"
+    "decision": "Le menu du Dock et Aller au dossier (`menu.dock.*`, `menu.go.goToPath`, `goToPath.dialog.*`, `commands.navGoToPath.label`)",
+    "forms": "menu item and palette command → Aller au dossier… (keep the …); dialog title and its button → Aller au dossier; the typed input is still a chemin",
+    "sources": "macOS Finder MenuBar 261.title (Aller au dossier…); Finder Aller au dossier (3 hits)"
   },
   "go-to-trash": {
     "chosen": "Aller à la corbeille",

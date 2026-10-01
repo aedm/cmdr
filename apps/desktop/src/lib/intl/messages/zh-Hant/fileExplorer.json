@@ -1413,9 +1413,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "這個伺服器上有操作正在進行，無法中斷連線",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr 還在處理這個伺服器上的檔案。完成後再中斷連線。",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} 已經在你的卷宗切換器裡了。",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1427,7 +1427,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr 無法更改 {name} 的顯示位置。",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr 無法中斷與 {name} 的連線。",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1473,9 +1473,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "這個裝置上有操作正在進行，無法退出",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr 還在處理這個裝置上的檔案。完成後再退出。",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "正在退出 {name}⋯",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

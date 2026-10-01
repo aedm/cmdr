@@ -1063,7 +1063,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Nå hela filsystemet på en Android-telefon som har USB-felsökning aktiverad, något som MTP inte kan visa dig. Kräver Android platform tools (kommandot ”adb”) på den här Macen. Att låta det vara påslaget kostar ingenting om du inte har några Android-verktyg installerade.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Sökväg till adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1647,9 +1647,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Tips om lång Nätverk-grupp visat",
+  "settings.behavior.serversPinHintSeen.label": "Tips om ”Lossa från volymväljaren” visat",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Om engångstipset om att lossa servrar har visats.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2533,13 +2533,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Installera Android platform tools och tryck sedan på Leta igen:",
+  "settings.adb.install.intro": "Installera Android platform tools och välj sedan Leta igen:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Leta efter adb på vanligt sätt",
+  "settings.adb.pathPlaceholder": "Cmdr letar efter adb på vanligt sätt",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Bläddra…",
   "@settings.adb.browse": {

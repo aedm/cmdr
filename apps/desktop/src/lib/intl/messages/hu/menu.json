@@ -356,9 +356,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Ugrás útvonalra…",
+  "menu.go.goToPath": "Ugrás mappához…",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Ugrás a legutóbbi letöltéshez",
   "@menu.go.goToLatestDownload": {
