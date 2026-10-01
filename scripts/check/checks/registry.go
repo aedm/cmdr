@@ -305,6 +305,19 @@ var AllChecks = []CheckDefinition{
 		Run:         RunDeriveDefaultJustified,
 	},
 	{
+		ID:          "desktop-rust-vendor-patch-applied",
+		Nickname:    "vendor-patch-applied",
+		DisplayName: "vendored patches still apply",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		DependsOn:   nil,
+		IsFast:      true,
+		// The root manifest's `[patch.crates-io]` and the lockfile decide the whole
+		// answer; no cargo call, no compile.
+		Inputs: inputs([]string{"Cargo.toml", "Cargo.lock"}),
+		Run:    RunVendorPatchApplied,
+	},
+	{
 		ID:          "desktop-rust-probe-unwrap-justified",
 		Nickname:    "probe-unwrap-justified",
 		DisplayName: "probe-unwrap-justified",

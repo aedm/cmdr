@@ -1912,9 +1912,12 @@ Checks by app and tech:
   exactly the gap the compiler can't see, a bare `bool` or a named outcome type. Every ambiguity resolves to "don't
   flag" — an unresolvable name, two definitions disagreeing on their return type, a method call — because a check people
   learn to ignore is worse than none. Opt out with `// allowed-discarded-outcome: <why nobody above needs the answer>`),
-  mtp-dropping-timeout, mtp-no-transport-reset, bindings-fresh, ipc-enum-camelcase, the five `<provider>-smoke` lanes
-  (CI-only: one `--lib` module each against a live provider, self-skipping without its key; `gemini-smoke` additionally
-  has a warn-level "inconclusive" outcome — see § "Decision: a smoke lane has a THIRD outcome"), shipped-locales-fresh
+  mtp-dropping-timeout, mtp-no-transport-reset, bindings-fresh, ipc-enum-camelcase, vendor-patch-applied (every
+  `[patch.crates-io]` path entry in the root `Cargo.toml` still resolves to that path in `Cargo.lock`: a bump past the
+  vendored version makes cargo resolve crates.io again and park the patch under `[[patch.unused]]` with one warning;
+  `docs/notes/mdns-sd-multicast-join-retry-loop.md`), the five `<provider>-smoke` lanes (CI-only: one `--lib` module
+  each against a live provider, self-skipping without its key; `gemini-smoke` additionally has a warn-level
+  "inconclusive" outcome — see § "Decision: a smoke lane has a THIRD outcome"), shipped-locales-fresh
   (regenerate-and-diff `intl/shipped_locales.gen.rs` from the message-catalog dirs, so the locale resolver's CLDR script
   table can't go stale and leave a new locale both unreachable and unguarded), module-cycles (slow, warn-only;
   strongly-connected module components per crate with parent-child hubs collapsed, on a per-home ratchet, behind a

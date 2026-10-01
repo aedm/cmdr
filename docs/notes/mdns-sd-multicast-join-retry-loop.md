@@ -103,13 +103,20 @@ and one `[workspace]` table added to `Cargo.toml`. The root `Cargo.toml` swaps i
 - **Repo-wide tooling treats `vendor/` as out of jurisdiction**: `file-length` skips it (`fileLengthSkipDirs`), oxfmt
   and Prettier ignore it, and the doc graph already did.
 - **Running its tests** means `cargo test --lib` inside `vendor/mdns-sd`; no lane runs them.
+- **A check guards the patch.** `[patch]` applies only while the version a dependent asks for matches the vendored one.
+  A bump past 0.20.x (Renovate would do it) makes cargo resolve crates.io again and park the patch under
+  `[[patch.unused]]` in `Cargo.lock`, with one build warning as the only sign, and the retry storm comes back.
+  `desktop-rust-vendor-patch-applied` (`scripts/check/checks/desktop-rust-vendor-patch-applied.go`, fast lane and CI)
+  reads the lockfile and fails unless every `[patch.crates-io]` path entry resolves to its path. It also fails once
+  nothing depends on the crate, so a dead fork gets dropped instead of carried.
 
 ## Dropping the fork
 
-Upstream is <https://github.com/keepsimple1/mdns-sd>. The PR text is in `docs/notes/mdns-sd-upstream-pr/pr-draft.md` and
-the patch against `v0.21.4` sits beside it as
-`docs/notes/mdns-sd-upstream-pr/0001-fix-record-an-interface-whose-multicast-join-failed.patch`. Both are unsent as of
-2026-09-22: nothing is forked, pushed, or opened.
+Upstream is <https://github.com/keepsimple1/mdns-sd>. The fix is
+[keepsimple1/mdns-sd#513](https://github.com/keepsimple1/mdns-sd/pull/513), still open and unreleased (checked
+2026-10-01, `gh pr view`), so the fork stays. Its text and the patch against `v0.21.4` are kept in
+`docs/notes/mdns-sd-upstream-pr/pr-draft.md` and
+`docs/notes/mdns-sd-upstream-pr/0001-fix-record-an-interface-whose-multicast-join-failed.patch`.
 
 Once the fix is in a release, delete `vendor/mdns-sd`, delete the `[patch.crates-io]` block and the `exclude` entry from
 the root `Cargo.toml`, bump the dependency in `apps/desktop/src-tauri/Cargo.toml` to that version, and regenerate
