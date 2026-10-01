@@ -81,10 +81,11 @@ The full top-level inventory is here:
   `types/errors.rs`, `WriteOperationError` with the typed payloads its variants carry — both re-exported through
   `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
   between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
+  `target_names.rs` (the new NAME a renamed source takes in a move, § "Renames that run as moves"),
   `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `free_space.rs` (the copy's free-space pre-flight, § "The free-space pre-flight"), `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
   scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
-  `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
+  `start_volume_{copy,move,compress}`, plus `start_rename_by_move`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
   `test_support.rs`. Every backend's cells through this pipeline live in `backend_suites/`: the backend-blind
   `network_*_test_support.rs` scenarios the WebDAV, SFTP, SMB, and ADB suites drive, the chunk-gated sources in
   `network_gated_source_test_support.rs` (§ "The network transfer suites"), the per-backend fixture dials
@@ -466,6 +467,31 @@ stage a reader can't tell which half answered, and without the line at all a ref
 over an empty log: that was ERR-8RFN4, and the pre-flight kept that blind spot for one release after the rename closed
 it. Only the file log chain is `Debug` unconditionally, so both levels land in the bundle.
 
+## Renames that run as moves
+
+**Decision**: every caller of `Volume::rename` asks `Volume::rename_work` first, and an entry that renames by copy (an
+S3 folder, or an object past the 64 MiB part floor) is never handed to `rename`: it runs as a same-volume move with a
+new NAME (`target_names.rs`) through `routing::start_rename_by_move`. **Why**: each caller assumed one cheap call (F2
+waits 5 s on an instant op; a bulk rename hops name by name), while on an object store a folder rename is one copy and
+one delete per object, which needs a scan, byte progress, pause, cancel, conflicts, and journaling. The engine side:
+`transfer/volume/DETAILS.md` § "A same-volume move whose renames copy".
+
+- **F2** (`rename_managed`): an entry that copies starts the background move and answers `Ok` once it has started,
+  the way an in-zip rename answers once its edit driver is running; the sink is the global one the archive route uses.
+  The progress chip shows it. Before that, `check_rename_validity_impl` reports `by_move` (`RenameByMove`: files and
+  bytes from a bounded count, at most `SMALL_RENAME_FILES` + 1, and `confirm_first`), and the frontend opens the Move
+  dialog prefilled with the new name instead of renaming when `confirm_first` is set (past 100 files, or a count that
+  couldn't finish); it confirms through the `rename_by_move` command. M7's cost estimate joins these counts.
+- **The MCP rename tool** (autoConfirm) calls `rename_file`, so it takes F2's route.
+- **Bulk rename and Ask Cmdr's proposals** go through `start_renames`: every row's `rename_work` is asked (eight at a
+  time; free on a volume that renames in one call), and a batch with any copying row runs as ONE move with the new
+  names (`rename/bulk/by_move.rs`): the executor's dependency order (a chain moves its last link first), conflicts
+  skipped (a name something outside the batch holds keeps its owner, the executor's answer too), the sources bound to
+  their preflight fingerprints. ❗ A swap (`a ↔ b`) is left out and logged: it would need a temporary name, and a move
+  onto a FOLDER that's still there merges into it. An all-one-call batch keeps the executor.
+- **A same-volume move** routes itself (`move_same.rs`), and so does the **operation log's undo**: a same-volume
+  restore whose rename copies goes back through the staged per-file move (`rollback.rs`).
+
 ## Look-alike names
 
 `look_alike.rs` answers one question for every write that makes a name: does the folder already hold it under another
@@ -737,7 +763,7 @@ The paused bit has TWO homes, kept in sync by the IPC layer: a `PauseGate` on `W
 
 - **`PauseGate`** (`operation_intent.rs`): a `paused: AtomicBool` plus a `std::sync::Condvar` (for the sync driver, which parks inside `spawn_blocking`) and a `tokio::sync::Notify` (for the async volume drivers). `pause()` sets the flag and opens the operation's human-wait clock; `resume()` clears the flag, closes the clock, and wakes both waiters; `wake()` wakes both WITHOUT clearing the flag (the cancel path uses it) but DOES close the clock — the operation is winding down, so nobody is being waited on any more, and a clock left open would make the rollback that follows measure no rate at all. `wait_while_paused_sync(&intent)` / `wait_while_paused_async(&intent).await` park while `paused && !cancelled` and return immediately on cancel; ordinary loops reach them through `stop_or_park_*` below rather than calling them directly.
 - **One question per boundary: `WriteOperationState::stop_or_park_sync()` / `stop_or_park_async()`.** `true` means stop, `false` means carry on with the next item. It owns the whole contract, so no loop can spell it wrong: cancel is read FIRST (a stopping op never parks, and nothing destructive runs between the two reads), only a live op parks, and the intent is re-read after the wake, so a cancel landing WHILE parked is answered at that same boundary instead of one item later. A caller whose reading of "stop" ISN'T `is_cancelled` — a reversal running under `RollingBack` (`rollback.rs`'s `StopMeans`), a detached scan preview watching its own flag — drives `PauseGate`'s `*_until` helpers instead and names its own predicate.
-- **Gate placement: exactly where the loop already observes cancel, and only there** ([The park](#the-park) has the reasoning). Every serial loop that can spend real time asks: both transfer drivers' per-source loop tops (`transfer_driver/{sync,async}_driver.rs`), both delete walkers' delete-phase file and dir loops (`delete/walker.rs`), trash's per-item loop (`delete/trash.rs`), all of `move_op/`'s per-item loops (`transfer/DETAILS.md` § "Pause in the local move engine"), the copy's scanned-dirs pass (`transfer/copy/scanned_dirs.rs`), the two cross-volume merge walks and the sequential extractor's member loop (`transfer/volume/DETAILS.md` § "Pause in the volume walks"), the archive mutator through `MutationHooks::wait_if_paused`, and every SCAN boundary that already observes cancel. The cross-volume streaming copy path ALSO parks BETWEEN CHUNKS via the `CheckpointStream` wrapper in `transfer/volume/strategy.rs` (the sync per-chunk `on_progress` callback can't `.await`, so the async stream decorator owns mid-file parking + a `yield_now`), so a paused single large file (e.g. MTP→local) stops mid-stream holding only its `.cmdr-tmp-<uuid>`. Two paths still pause only at a file boundary, both for the same reason — no stream to park between chunks and nothing freed by parking: the local-FS sync chunk loop (`chunked_copy.rs`, which receives the cancel atom, not the `PauseGate`) and a server-side `copy_within` (`transfer/volume/strategy.rs`'s `try_server_side_copy`). Full rationale + scope: `transfer/DETAILS.md` § "Pause reaches between chunks".
+- **Gate placement: exactly where the loop already observes cancel, and only there** ([The park](#the-park) has the reasoning). Every serial loop that can spend real time asks: both transfer drivers' per-source loop tops (`transfer_driver/{sync,async}_driver.rs`), both delete walkers' delete-phase file and dir loops (`delete/walker.rs`), trash's per-item loop (`delete/trash.rs`), all of `move_op/`'s per-item loops (`transfer/DETAILS.md` § "Pause in the local move engine"), the copy's scanned-dirs pass (`transfer/copy/scanned_dirs.rs`), the two cross-volume merge walks and the sequential extractor's member loop (`transfer/volume/DETAILS.md` § "Pause in the volume walks"), the archive mutator through `MutationHooks::wait_if_paused`, and every SCAN boundary that already observes cancel. The cross-volume streaming copy path ALSO parks BETWEEN CHUNKS via the `CheckpointStream` wrapper in `transfer/volume/strategy.rs` (the sync per-chunk `on_progress` callback can't `.await`, so the async stream decorator owns mid-file parking + a `yield_now`), so a paused single large file (e.g. MTP→local) stops mid-stream holding only its `.cmdr-tmp-<uuid>`. Two paths still pause only at a file boundary, both for the same reason — no stream to park between chunks and nothing freed by parking: the local-FS sync chunk loop (`chunked_copy.rs`, which receives the cancel atom, not the `PauseGate`) and a server-side copy made in one call, such as SFTP's `copy_within` (`transfer/volume/server_side_copy.rs`'s `try_server_side_copy`); one made in pieces (S3's parts) parks between them, at `ServerCopyProgress::checkpoint`. Full rationale + scope: `transfer/DETAILS.md` § "Pause reaches between chunks".
 - **Cancellation always wins over pause.** `cancel_write_operation` / `cancel_all_write_operations` flip the intent AND call `pause_gate.wake()`, so a paused, parked op unblocks, observes the non-`Running` intent, and bails through the existing keep-partials path (keeping already-copied files, deleting only the last partial). Without that wake a paused op parked on the condvar would never see the cancel.
 - **A paused Running op keeps its lane slots** (`set_paused` never touches lanes), so a same-lane Queued op can't start and then fight it on resume. Resume runs NO admission pass (the op never freed its lanes). Pausing a Queued op is a v1 no-op (it isn't touching a device yet; it stays Queued and admits normally when its lanes free). Pinned by `manager::tests::{set_paused_flips_running_op_to_paused_and_keeps_its_lane, paused_running_op_does_not_admit_a_queued_same_lane_op}`.
 - **The request reports what it did**, as a `PauseOutcome`: `Applied` (the record flipped), `AlreadyInState` (asked for what it already is, so the caller's intent holds and a retry isn't a refusal), `NotApplicable` (queued, over, or unknown — nothing changed and nothing is remembered). It travels the whole way out: `set_paused` → `pause_operation` / `resume_operation` → the IPC commands → `bindings.ts`. The MCP `queue` tool is the consumer that needs it, since an agent acts on the answer; the queue window ignores it and reads the live status from `operations-changed` instead.
@@ -1301,7 +1327,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   `PermissionDenied`), loses nothing, and ❗ leaves the volume connected, since a refusal is an answer. The refusal
   comes from `webdav_refusing_proxy_test_support.rs`, an HTTP proxy in front of the real Apache that answers one
   request itself; ❌ never reconfigure the shared container for a cell. A refused `COPY` falls back to streaming by
-  design (`transfer/volume/strategy.rs::try_server_side_copy`).
+  design (`transfer/volume/server_side_copy.rs::try_server_side_copy`).
 - **`adb_transfer_test.rs` runs the same scenarios against a phone on `cmdr-adb`'s in-process fake server**, so it
   needs no Docker, runs in the unit lane, and has no name prefix to keep. Its own cells start a copy from two registered
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own

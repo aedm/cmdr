@@ -262,8 +262,9 @@ What each one is spent on:
 server otherwise pulls it down the link and pushes it back up: twice the file, four minutes at 30 MB/s against roughly
 nothing.
 
-`copy.rs` answers `Volume::copy_within`, which the app asks BEFORE reaching for a stream whenever both sides of a copy
-are the same volume instance (`write_operations/transfer/volume/strategy.rs::try_server_side_copy`).
+`copy.rs` answers `Volume::copy_within`, which the trait's default `copy_on_server` calls when both sides of a copy are
+the same volume instance; the app asks it BEFORE reaching for a stream
+(`write_operations/transfer/volume/server_side_copy.rs::try_server_side_copy`).
 
 - ❗ **Chunked, ❌ never one request for the whole file.** One `copy-data` for 4 GB is a single unanswered request for
   as long as the server's disks take, with no progress and nowhere to cancel. `COPY_CHUNK_BYTES` is 8 MiB, and each

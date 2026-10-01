@@ -11,9 +11,9 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
 - `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport.rs` (`S3Client`, the only `reqwest`
   user).
 - `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list, stat), `streams.rs` (GET), `writes.rs` (PUT, verify),
-  `multipart_upload.rs` (parts, the sweep), `upload_body.rs`, `upload_ledger.rs`, `mutation.rs` (folders, delete,
-  rename), `scan.rs`, `share_link.rs`, `paths.rs`, `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`,
-  `testing.rs`.
+  `temp_overwrite.rs`, `multipart_upload.rs` (parts, the sweep), `server_copy.rs`, `batch.rs` (tally, batch delete),
+  `upload_body.rs`, `upload_ledger.rs`, `mutation.rs` (folders, delete, rename), `scan.rs`, `share_link.rs`, `paths.rs`,
+  `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs`.
 
 ## Must-knows
 
@@ -35,8 +35,12 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
   reports another writer's object as `AlreadyExists`.
 - ❗ **An upload is recorded before its first part**, and an abort counts only once a listing confirms it; the sweep
   aborts ❌ only recorded uploads, ❌ never one in flight.
-- ❗ **`delete` is one node** (`ENOTEMPTY` while keys sit under a folder); `rename` moves one small file. M6 replaces
-  it.
+- ❗ **`delete` is one node** (`ENOTEMPTY` while keys sit under a folder). **`rename` moves one small file**; a folder
+  or an object past the part floor is `RenameWork::CopyThenDelete`, which callers send through the engine.
+- ❗ **An overwrite of an existing object off the `refuses_short_body` allowlist goes through a temp key**: VersityGW
+  publishes a cut-off PUT, which would lose the original.
+- ❗ **Server-side copy stays within one account**, matched on the concrete `S3Volume`, ❌ never a path; parts pinned to
+  the source's ETag.
 - ❗ **No checksum headers; equal-size parts, always** (R2). Streamed bodies sign `UNSIGNED-PAYLOAD`.
 - ❌ **One unattended authentication attempt, never a loop.**
 - ❗ **A share link is a credential**: `cmdr_fs::volume::ShareLink`, ❌ never logged, never across IPC.

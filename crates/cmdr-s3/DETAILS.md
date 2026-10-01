@@ -6,11 +6,12 @@ Must-knows and the module map: `CLAUDE.md`. This file carries the decisions. Pro
 
 ## Where the crate stands
 
-Connect, browse, read, and write work: the transport, the connect probe, and a `Volume` that lists, stats, streams,
-scans for a copy, uploads (one PUT or in parts), makes folders, deletes one node, and renames one small file, so copies
-onto, off, and between buckets run through the app's transfer engine. Server-side copy within an account and the "can't
-rename in one call" capability are the plan's M6; their builders (`UploadPartCopy`, `DeleteObjects`) already sit in
-`ops.rs`, which is why `lib.rs` still carries a crate-wide `allow(dead_code)`.
+Connect, browse, read, write, and server-side copy work: the transport, the connect probe, and a `Volume` that lists,
+stats, streams, scans for a copy, uploads (one PUT or in parts), copies within the account without the bytes leaving the
+server, makes folders, deletes one node or a batch, and renames one small file. A folder or a big object answers
+`RenameWork::CopyThenDelete`, and the app routes such a rename through its transfer engine as a move
+(`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). Cost estimates are
+the plan's M7.
 
 ## The model: one volume per place
 
@@ -134,10 +135,13 @@ proves the header path against VersityGW (`S3Volume::trust_conditional_writes`, 
 through the transfer engine, byte for byte, plus the shared network scenarios (cancel, an answered Overwrite in place,
 awkward names); `connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container. Seeding goes
 through `volume::testing::seed`, this crate's own builders, so a cell about the write path never seeds through the code
-it tests. Multipart cells cut 5 MiB parts (`S3Volume::set_part_floor`, testing only) except one per fixture at the
-production 64 MiB. The 1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object
-(`cmdr-test-large-65mib/blob.bin`, `seed_once`) are seeded once per fixture and kept; every other cell works under a
-`scratch_prefix` of its own, since the stack's objects persist across runs.
+it tests. `copy_test.rs` covers server-side copy (whole and in parts, the date kept, across buckets and refused where
+the profile forbids it, cancel, pause between parts, no-overwrite) and `batch_test.rs` the batch delete past 1,000 keys,
+the capped tally, and `rename_work`, both on both fixtures; the app's `backend_suites/s3_rename_integration_test.rs`
+drives renames that run as moves end to end. Multipart cells cut 5 MiB parts (`S3Volume::set_part_floor`, testing only)
+except one per fixture at the production 64 MiB. The 1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB
+object (`cmdr-test-large-65mib/blob.bin`, `seed_once`) are seeded once per fixture and kept; every other cell works
+under a `scratch_prefix` of its own, since the stack's objects persist across runs.
 
 ## The public surface is capped
 
@@ -185,8 +189,9 @@ they can't be reached over HTTP through this stack.
 - **B2**: `s3.<region>.backblazeb2.com`, path style. No conditional writes (501, per corroboration only).
 - **Wasabi**: `s3.<region>.wasabisys.com`, path style (Wasabi's recommendation). Check-then-write (undocumented).
 - **Hetzner**: `<location>.your-objectstorage.com`, region = location, path style. Check-then-write (undocumented).
-  `cross_bucket_copy` is false: Hetzner's `CopyObject` works within one bucket only, and the builders refuse a
-  cross-bucket copy with `BuildError::CrossBucketCopy` before sending it.
+  `cross_bucket_copy()` is false: Hetzner's `CopyObject` works within one bucket only, and the builders refuse a
+  cross-bucket copy with `BuildError::CrossBucketCopy` before sending it; `copy_on_server` answers `NotSupported`, so
+  the engine streams it. `forbid_cross_bucket_copy` (testing only) makes a fixture behave that way.
 - **Other**: the given `http(s)://host[:port]` (nothing after it), region default `us-east-1`, the path-style toggle as
   given except that an IP endpoint is always path style. Check-then-write.
 
@@ -196,6 +201,22 @@ certificate. On AWS (where path style is deprecated, no date set) a bucket that 
 
 **Host parts are validated.** A region, location, or account ID must be `a–z 0–9 -`, so a typed `x.evil.com/` can't
 redirect requests (and the signature) to another host.
+
+**A short body is refused only where we have evidence (`refuses_short_body`, an allowlist).** S3's contract is that a
+PUT whose body ends before its `Content-Length` publishes nothing and keeps the old object; VersityGW breaks it and
+stores what arrived (fixture README). Trusted, each on evidence (2026-10-01):
+
+- **AWS**: documents `IncompleteBody` (400): "You did not provide the number of bytes specified by the Content-Length
+  HTTP header" (https://docs.aws.amazon.com/AmazonS3/latest/developerguide/ErrorResponses.html).
+- **R2**: documents error 10013 / `IncompleteBody` (400): "Request body terminated before expected `Content-Length`"
+  (https://developers.cloudflare.com/r2/api/error-codes/).
+- **B2**: not documented; observed answering a short PUT with its own `InvalidRequest` (400) "The request body was too
+  small" (https://stackoverflow.com/questions/76163129). The weakest of the three; M8 confirms it on a real account, and
+  if it doesn't hold, B2 comes off the list.
+
+Wasabi, Hetzner, and "Other" (VersityGW, MinIO, Garage, anything) are off it, Garage included though it refuses too
+(fixture README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object
+goes through a temp key (§ "Overwrites through a temp key").
 
 **Conditional writes are an allowlist, ❌ never a probe.** A server can ignore `If-None-Match: *` and answer 200 while
 overwriting: Garage does on Put, Complete, and Copy, VersityGW on Copy (`apps/desktop/test/s3-servers/README.md`,
@@ -230,10 +251,9 @@ stays `false`: a request is open while the source drains.
   a token of its own (`x-amz-meta-cmdr-write`, `metadata::write_token`), and a PUT that was cancelled or cut off HEADs
   its key (again after 150 and 300 ms, since the server stores the body only once it notices the drop) and deletes the
   object ONLY when it carries that token (`writes.rs::remove_cut_off_put`): anything else there is the original or
-  another writer's. ❗ Residual risk on such a server: an in-place `CreateOrReplace` that's cut off has already lost the
-  original to the server's truncated publish, and a crash mid-PUT leaves the truncated object with nothing to clean it.
-  AWS, R2, B2, and Garage refuse a short body; which other providers keep the promise is for M8 to confirm. The token is
-  visible as user metadata and harmless to other tools.
+  another writer's. That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to
+  refuse a short body never writes in place at all (§ "Overwrites through a temp key"). The token is visible as user
+  metadata and harmless to other tools.
 - **Multipart** (`multipart_upload.rs`): up to `UPLOAD_CONCURRENCY` (4) parts in flight, and a part is read from the
   source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are buffered at all
   because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server fault, or a
@@ -247,6 +267,27 @@ stays `false`: a request is open while the source drains.
 - **Throttling on a single PUT isn't retried here**: its body is the source stream, which can't be read twice, and the
   engine's per-file retry runs only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a
   candidate for M8's friendly errors.
+
+## Overwrites through a temp key
+
+`temp_overwrite.rs`. Decision (the safer option, David's): on a provider off the `refuses_short_body` allowlist, a
+`CreateOrReplace` write whose key holds an object (one HEAD to find out) never writes in place, because a PUT there
+that's cancelled or cut off publishes the truncated bytes over the original (VersityGW does: the fixture cell
+`write_test.rs::a_cancelled_overwrite_keeps_the_original` failed that way before this path existed).
+
+1. The temp is `<name>.cmdr-tmp-<uuid>` beside the final key (`cmdr_fs::staging::StagingTemp`, hidden from the pane
+   while this write owns it), recorded in the ledger BEFORE its first byte (§ "Unfinished uploads"), and written under
+   `CreateNew` carrying the write's token.
+2. The temp is verified like every write, and a Cancel is honoured right before the next step, which is what publishes.
+3. `copy_key` copies the temp onto the final key on the server (`CopyObject`, or parts past the part floor): a request
+   with no body to cut short, and one that replaces the original in one go. It keeps the temp's metadata, so the
+   source's mtime survives.
+4. The temp is deleted while it carries the token, and its record forgotten once the server confirms it gone.
+
+A crash at any step leaves the original whole and, at worst, the temp, which the next connect's sweep removes by its
+token. Cost: a HEAD, a copy, and a delete per overwrite, only off the allowlist. A write to a FREE name keeps writing
+straight to the key (there's no original to lose; a cut-off one is removed by its token), and so does a multipart upload
+(only its completion publishes). A stream of unknown length takes the temp path too, since it may end up a single PUT.
 
 ## No-overwrite writes
 
@@ -277,10 +318,10 @@ S3 keeps an unfinished multipart upload's parts forever, invisible in every list
 abort it on the spot; what an abort can't reach (a crash, a dropped future, a server gone mid-abort) is swept later.
 
 - **The record** (`upload_ledger.rs`): `<state dir>/unfinished-uploads` under `VolumeHost::state_dir("s3")`, one line
-  per event (`+` when `CreateMultipartUpload` answers, `-` once completed or aborted), every field percent-encoded,
-  rewritten to the open records whenever a sweep reads it. A process-wide registry marks uploads running in THIS
-  process, and a guard marks a dropped upload abandoned. Without a state directory (a test host) the record lives for
-  the session.
+  per event (`+` when `CreateMultipartUpload` answers, `-` once completed or aborted; `T` / `t` for an overwrite's temp
+  object, carrying its write token in place of an upload id), every field percent-encoded, rewritten to the open records
+  whenever a sweep reads it. A process-wide registry marks uploads running in THIS process, and a guard marks a dropped
+  upload abandoned. Without a state directory (a test host) the record lives for the session.
 - **Decision/Why not the operation log**: the operation log is the durable journal of what happened to the USER's files,
   for undo and search, and its rows are paths a rollback can act on. An unfinished upload is protocol state that only
   this crate can act on (`AbortMultipartUpload`), keyed by an account and an upload ID; putting it there would mean a
@@ -292,7 +333,9 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
 - **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an
-  upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live.
+  upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live. The
+  same sweep removes a temp object a crash left (`remove_temp`): only while the object at its key carries the recorded
+  token, ❌ never anything else there.
 
 ## Folders, delete, and rename
 
@@ -305,13 +348,46 @@ folder wins over an object of the same name (`NameHolds`), the listing's rule.
   in the way at any depth; every level it creates gets a marker, so a `mkdir -p` folder survives emptying.
 - **`delete`** reads one listing of `name/` capped at two keys (`listing::folder_contents`): anything but the marker is
   `ENOTEMPTY`, the marker alone deletes the marker, nothing at all falls back to a HEAD and deletes the object (or
-  answers `NotFound`). A LIST per delete is a class-A request; the batch path (`DeleteObjects`, 1,000 keys) has no trait
-  hook yet and arrives with M6's move engine.
-- **`rename`** moves one file of up to 64 MiB (`RENAME_BY_COPY_LIMIT`): `CopyObject` keeping the metadata (so the mtime
-  survives), a HEAD proving the copy is ours, then the source's delete, so the worst a failure leaves is two copies.
-  `force: false` refuses a taken name first. A folder, a bigger file, or a cross-bucket copy on Hetzner answers
-  `NotSupported`, so nothing triggers a copy per object by accident. ❗ M6 replaces this with the typed "can't rename in
-  one call" capability and routing through the transfer engine.
+  answers `NotFound`). A LIST per delete is a class-A request.
+- **`delete_files`** (`batch.rs`) is the batch a move's source sweep sends per folder level: `DeleteObjects`, 1,000 keys
+  a request with `Content-MD5`, quiet, its body parsed even on 200, each failed key reported against its own path
+  (matched NFC on R2). ❗ By key, with no folder check: the trait's contract is files the caller just listed.
+- **`rename`** moves one file of up to the part floor (64 MiB, `copies_whole`): `CopyObject` keeping the metadata (so
+  the mtime survives), a HEAD proving the copy is ours, then the source's delete, so the worst a failure leaves is two
+  copies. `force: false` refuses a taken name first.
+- **`rename_work`** answers `CopyThenDelete` for a folder (any key under the prefix) and for an object past the part
+  floor, so every caller sends those through the app's engine; `rename` itself still answers them `NotSupported`, so
+  nothing copies a folder by accident. One capped listing, plus a HEAD for an object.
+- **`tally_subtree`** (`batch.rs`) counts objects under a prefix with a recursive listing, a thousand keys a request,
+  stopping one past the cap; folder markers aren't files. F2 asks it how big a rename would be.
+
+## Server-side copy
+
+`server_copy.rs`. `copy_on_server` copies from this place or a sibling place of the SAME account (the endpoint and key
+id, matched on the concrete `S3Volume` the source downcasts to); another account or another backend is `NotSupported`,
+and so is a cross-bucket copy where the provider copies within one bucket only (Hetzner). The engine then streams.
+
+- **The source is HEADed once**: its size picks the shape, its ETag pins every part (`x-amz-copy-source-if-match`, so an
+  object replaced mid-copy fails the part rather than stitching two versions; both fixtures accept it, whether they
+  enforce it is unverified), and its metadata travels.
+- **Up to the part floor, one `CopyObject`**; past it, a multipart upload of `UploadPartCopy` ranges with the upload
+  plan's part size and folded tail (§ "Multipart"), even under 5 GB, so progress moves per part and a pause lands
+  between parts. ❗ Garage refuses a copy source under 5 MiB even as the last part, which the folded tail avoids.
+- **Up to `COPY_CONCURRENCY` (16) parts in flight**, with AIMD on the window (`Window`): halved on a throttle
+  (`S3Error::is_throttle`: `SlowDown`, 503, 429, Wasabi's and R2's codes), one wider per landed part. A throttled or
+  faulted part goes again after 1, 2, then 4 s.
+- **A pause lands at `ServerCopyProgress::checkpoint`**, asked before creating the upload and before each part; while it
+  waits, the parts in flight keep being driven to completion. A cancel aborts the upload through the ledger's
+  listed-until-gone abort, and the source is never touched.
+- ❗ **Every 200 is parsed**: `CopyObjectResult` and `CopyPartResult` can carry an `<Error>`.
+- **No-overwrite**: `CopyObject` takes R2's `cf-copy-destination-if-none-match`, else a HEAD first (VersityGW and Garage
+  ignore `If-None-Match` on a copy, fixture README); a multipart copy refuses at its completion, as an upload does. A
+  HEAD after every copy verifies it.
+- **The date survives**: a source with its own `x-amz-meta-mtime` is copied with `COPY` (every header kept); one without
+  is restated (`REPLACE`) with its `Last-Modified` as the mtime, its content headers, and its other user metadata (both
+  fixtures honour `REPLACE`, `copy_test.rs`). A multipart copy names the same metadata at its creation.
+
+## No-overwrite writes
 
 ## Responses
 

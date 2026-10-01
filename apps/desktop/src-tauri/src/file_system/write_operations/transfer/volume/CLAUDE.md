@@ -12,15 +12,15 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
   policy, backend, and mid-merge cancel/rollback/retry. Assert it through `safety_oracle.rs`, ❌ never inline; new cells:
   `safety_grid_tests.rs`.
 - **Dir-vs-dir is NEVER a conflict**, and only for REAL dirs: ask `rename_merge::merges_as_a_directory` (an entry)
-  or `Volume::entry_kind` (a path), ❌ never `is_directory`, an entry's or the volume's (both follow links). `transfer/DETAILS.md` §
-  "Symlinks are opaque to a move".
+  or `Volume::entry_kind` (a path), ❌ never `is_directory` (it follows links). `transfer/DETAILS.md` § "Symlinks are
+  opaque to a move".
 - **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
   ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`); an
   answered one sets the dest ASIDE (`ResolvedConflict::displaced`).
 - **A MOVE's source sweep deletes the walk's LEDGER, ❌ never the tree** (`source_sweep.rs`): Skips, newcomers, and
   changed files stay.
-- **❌ Never fabricate a destination size for the conflict dialog**; report `None` (a fabricated `0` makes "Overwrite all
-  smaller" unconditional).
+- **❌ Never fabricate a destination size for the conflict dialog**: `None` (a fake `0` makes "Overwrite all smaller"
+  unconditional).
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
   empty. Every name asks `landing.rs`: a look-alike is taken (by ITS bytes), only free names respell, and an
   unanswerable probe fails the item.
@@ -30,17 +30,18 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **A cross-volume file write stages on `.cmdr-tmp-<uuid>`**, renamed in after its last byte. Ask
   `../staged_write.rs::resolve_staging`; ❌ only single-shot or whole-publish earns an exemption, NEVER smallness.
 - **The SOURCE's mode goes on the temp BEFORE that rename** (`landed_mode.rs`), local destinations only, never wider
-  than what the destination created. `0` means no mode: ❌ never guess or fail over one. A new write path owes the call.
-- **A same-`Arc` copy tries `strategy.rs::try_server_side_copy` (`Volume::copy_within`) first**, staged, ❌ never
-  single-shot. Anything short of success streams, ❌ except a cancel.
-- **A staged temp the destination won't release is REPORTED**: the sweep RETURNS it on
-  `CancelRollback::staged_leftovers`, ❌ never `skips`, ❌ never only a log.
+  than created; `0` means none, ❌ never guessed. A new write path owes the call.
+- **Every file copy asks `Volume::copy_on_server` first**; the BACKEND picks its sources, ❌ never a path. Staged unless
+  whole-publish; anything but a cancel or a taken name falls back to streaming.
+- **A same-volume move whose `rename_work` says copy takes the copy-then-delete engine**, ❌ never `rename`.
+- **A staged temp the destination won't release is REPORTED** on `CancelRollback::staged_leftovers`, ❌ never
+  `skips` or only a log.
 - **Only `cleanup.rs::remove_tree` recurses, its `TreeRemoval` naming who authorized it.** Cleanup and
   rollback go through `delete_written_file` / `prune_created_dir_if_empty`, listing before deleting.
-- **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry means UNKNOWN, ❌ never
-  "file"; `strategy.rs::resolve_source_is_directory`'s answer drives the cleanup/ledger branch.
-  ❌ No `.unwrap_or(false)`, ❌ no `Default` on `SourceHint`, ❌ no probing where a hint EXISTS.
-- **Same-volume move is a rename-merge with top-level hints only**, ❌ never a subtree walk.
+- **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry is UNKNOWN, ❌ never
+  "file"; `strategy.rs::resolve_source_is_directory` answers. ❌ No `.unwrap_or(false)`, no `Default` on `SourceHint`,
+  no probing where a hint EXISTS.
+- **A same-volume move that renames is a rename-merge with top-level hints only**, ❌ never a subtree walk.
 
 ## Concurrency and failures
 
@@ -49,9 +50,9 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **ONE `FileWindow` per operation** (`merge_ctx.rs`, on `MergeCtx`), taken by every merge leaf and top-level FILE task
   (width 1 keeps MTP serial). ❌ Never per level or per source. A walker ❌ never holds a permit while it recurses
   (deadlock at width 1) and ❌ never returns before draining its leaves.
-- **A failure carries the path it happened ON** (`transfer_error.rs::PathedVolumeError`): ❌ never re-label with the
-  top-level source, ❌ never `.at()` above the frame that knows the item. § "Naming the item that failed".
-- **Two test traps**: a `*_tests.rs` here is a `#[path]` CHILD (`super::` is one level shallower), and a
+- **A failure carries the path it happened ON** (`transfer_error.rs::PathedVolumeError`): ❌ never re-labelled with the
+  top-level source or `.at()` above the frame that knows the item. § "Naming the item that failed".
+- **Two test traps**: a `*_tests.rs` here is a `#[path]` CHILD (`super::` one level shallower), and a
   `FaultyVolume` cell must **assert `fault_fired(op)`**.
 
-Semantics, flows, and the rollback ledger: `DETAILS.md`, read first for non-trivial work.
+Semantics, flows, and the rollback ledger: `DETAILS.md`; read it first for non-trivial work.

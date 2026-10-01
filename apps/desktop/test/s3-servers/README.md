@@ -107,7 +107,11 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
   the object just put. Observed through `cmdr-s3`'s `write_test.rs` (`…catches_a_writer_mid_upload`, both servers) on
   2026-10-01; `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes" has what Cmdr does with it.
 - `DeleteObjects` with `Content-MD5`: 200 on both, and a key that never existed comes back under `<Deleted>`, as on AWS.
-  Garage also adds a `<VersionId>` and `<DeleteMarkerVersionId>` to each entry on an unversioned bucket.
+  Garage also adds a `<VersionId>` and `<DeleteMarkerVersionId>` to each entry on an unversioned bucket. Past 1,000
+  keys, two requests clear 1,005 on both (`cmdr-s3`'s `batch_test.rs`, 2026-10-01).
+- `CopyObject` with `x-amz-metadata-directive: REPLACE` writes the metadata sent (an `x-amz-meta-mtime` included) on
+  both, and `UploadPartCopy` with `x-amz-copy-source-if-match` carrying the source's current ETag succeeds on both
+  (`cmdr-s3`'s `copy_test.rs`, 2026-10-01). Whether either REFUSES a stale ETag there is unverified.
 - A presigned `GET` (query auth, `X-Amz-Expires=300`, `UNSIGNED-PAYLOAD`): 200 on both.
 - A wrong secret: VersityGW answers 403 `SignatureDoesNotMatch`, Garage 403 `AccessDenied`. A refusal classifier can't
   rely on the code alone to tell "wrong secret" from "no permission".

@@ -22,9 +22,11 @@ the next section.
   platforms' SMB mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `share_link.rs` (`ShareLink`,
   a URL that's a credential and so prints nothing in `Debug`, and `ShareLinkExpiry`); `entry_kind.rs` (`File` /
   `Directory` / `Symlink`, the answer `Volume::entry_kind` gives, a link reported as the link, where `is_directory` may
-  follow it); `retirement.rs` (how background work learns it stopped being the live volume); `channel_stream.rs` (a
-  network backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam a copy scan touches per
-  entry: counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and `secret_store.rs` (the bodies a
+  follow it); `server_side.rs` (`RenameWork`, `SubtreeTally`, `ServerCopyProgress`: work a server does on its own, §
+  "Server-side work"); `retirement.rs` (how background work learns it stopped being the live volume);
+  `channel_stream.rs` (a network backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam
+  a copy scan touches per entry: counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and
+  `secret_store.rs` (the bodies a
   stat-and-listing backend gets for free); `liveness.rs` (the HTTP backends' silence watch, which tells a server gone
   silent from one that's only slow: `crates/cmdr-webdav/DETAILS.md` § "Silent or slow"); `remote_paths.rs` (a server
   tree's `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
@@ -387,23 +389,39 @@ everything on `scan_walk`) asks per entry; one whose per-path scan is a bounded 
 (in-memory, archive) asks per source path, which is the smallest unit of waiting it has. `volume::conformance`'s
 `assert_batch_scan_stops_when_told` and `assert_batch_scan_asks_inside_the_walk` pin which is which.
 
-## `Volume::copy_within`: letting a server copy for itself
+## Server-side work: `copy_on_server`, `copy_within`, and a rename that copies
 
-Some protocols can copy a file from one path to another without the bytes travelling through Cmdr (SFTP's
-`copy-data@openssh.com`; SMB has `FSCTL_SRV_COPYCHUNK`, unimplemented today). Duplicating a large file inside one server
-otherwise sends it down the link and straight back up.
+`server_side.rs` holds the vocabulary for work a server does on its own.
 
-The default is `NotSupported`, and ❗ a caller must read that as "do it the ordinary way" rather than as a failure: it
-is the answer both for a backend with no such operation and for one whose SERVER simply lacks the extension, which is
-only knowable at runtime. `write_operations/transfer/volume/strategy.rs::try_server_side_copy` is the one caller, and it
-asks only when `Arc::ptr_eq` says both sides of the copy are the same volume.
+**`Volume::copy_on_server(source, from, to, mode, progress)`** is the transfer engine's one server-side copy, asked
+before every streamed file (`write_operations/transfer/volume/server_side_copy.rs::try_server_side_copy`). Some
+protocols copy a file without the bytes travelling through Cmdr (SFTP's `copy-data@openssh.com`, S3's `CopyObject` and
+`UploadPartCopy`; SMB's `FSCTL_SRV_COPYCHUNK` is unimplemented today). Contract points, all load-bearing:
 
-Two contract points are load-bearing:
+- ❗ **The backend decides which sources it can copy from**, from `source`'s concrete type and identity
+  (`as_any().downcast_ref`), ❌ never a path: two S3 places of one account are two instances that can copy between them,
+  while a copy on a server the source path doesn't belong to copies the wrong file, silently. The default answers only
+  for the very same instance (`std::ptr::addr_eq`), through `copy_within`.
+- **`NotSupported` means "stream it"**, never a failure: a backend with no such operation, a server lacking the
+  extension, or a source it doesn't recognize.
+- **`to` is written under `mode`, as `write_from_stream` writes it.** A whole-publishing backend
+  (`publishes_writes_whole`) publishes the copy whole too, so the caller writes its final name, `CreateNew` when it
+  expected the name free; every other backend's destination holds a byte-incomplete file while the copy runs, so the
+  caller stages it exactly like a streamed write, ❌ never single-shot. The default refuses `CreateNew`, because
+  `copy_within` truncates.
+- **Cancel and pause arrive through `ServerCopyProgress`**: `advanced` answers `Break` to stop (the backend removes its
+  partial, then answers `Cancelled`), and `checkpoint` is where a backend that copies in pieces (S3's parts) waits out a
+  pause before starting each one.
 
-- ❗ **Never single-shot.** The destination genuinely holds a byte-incomplete file while this runs, so the caller stages
-  it exactly as it stages a streamed write. A backend answering otherwise would be asking for a partial at the user's
-  chosen filename.
-- **`to` is created or TRUNCATED**, matching `write_from_stream`, so a caller-minted safe-replace temp works unchanged.
+**`Volume::copy_within(from, to, on_progress)`** is the older, same-volume-only form that SFTP and ADB implement; the
+default `copy_on_server` calls it, so they need nothing more.
+
+**`Volume::rename_work(path)`** answers whether renaming one ENTRY is one call (`RenameWork::OneCall`, the default, with
+no I/O) or a copy plus a delete (`CopyThenDelete`: an object store's folder or big file). Every `rename` caller asks it
+first and sends a copying entry through the transfer engine; ❌ never inferred from a backend kind, because the answer
+is per entry. Its two helpers: `tally_subtree(path, cap)`, a bounded count of what such a rename carries (default
+`server_side::tally_by_listing`, one listing per folder), and `delete_files(paths)`, the batch delete a move's source
+sweep calls per folder level (default: `delete` per path, a gone path answering `Ok`).
 
 ## `root_anchored`: the one rule for turning a caller's path into a backend's
 

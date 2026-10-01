@@ -35,7 +35,9 @@ invariants: `CLAUDE.md`. Only the layout facts neither of those carries live her
   do from `r#move`, and three lines of type alias were the whole of a three-module cycle. They live with the driver
   whose contract they are now (`../transfer_driver/mod.rs`), which also single-sources the shape `copy_serial.rs` had
   been restating privately. Shared vocabulary between the dispatcher and its engines belongs in `transfer_driver` or in
-  `preflight.rs`, ❌ never in the dispatcher.
+  `preflight.rs`, ❌ never in the dispatcher. One engine may hand off to the other: `move_same` calls
+  `move_cross::move_volumes_with_progress` when a rename copies (§ "A same-volume move whose renames copy"), and
+  `move_cross` names nothing back, so the edge stays one-way.
 - **`conflict.rs` DECIDES; two thin siblings act and answer.** The resolver keeps the policy (`resolve_volume_conflict`,
   `apply_volume_conflict_resolution`, the conditional reduction). `landing.rs` answers where a name lands before any
   of that (§ "Look-alike names and new-name spelling"). `finalize.rs` holds the
@@ -524,43 +526,83 @@ report `max_concurrent_ops() == 1`, so this always runs on the serial copy path.
 `strategy_sequential_tests.rs` (nested-subtree correctness, the random-vs-sequential routing gate, empty
 dirs + symlinks + out-of-order entries, and cancel-between-members).
 
-## Letting the server do a same-volume copy
+## Server-side copy
 
 Duplicating a file inside one remote volume used to pull every byte down the link and push it straight back up. A
-protocol that can copy for itself (SFTP's `copy-data`) skips both halves, so `stream_pipe_file` asks
-`Volume::copy_within` before it opens a stream. MOVE has had a same-volume fast path since forever
-(`move.rs` → `move_within_same_volume`, a server-side rename); this is COPY's.
+protocol that can copy for itself (SFTP's `copy-data`, S3's `CopyObject`) skips both halves, so `stream_pipe_file`
+asks `Volume::copy_on_server(source, from, to, mode, progress)` before it opens a stream (`server_side_copy.rs`'s
+`try_server_side_copy`). It's also the byte path of a same-volume move whose renames copy (§ "A same-volume move whose
+renames copy").
 
-**Eligibility is `Arc::ptr_eq` on the two volumes**, which is exact rather than approximate: `routing.rs` resolves both
-sides through the volume registry, so one volume id yields one `Arc`. ❗ Asking a DIFFERENT volume to copy `from`
-inside itself is not a failure — on a server that happens to hold a same-named file it is the wrong file, copied
-silently.
+**Which sources a backend copies from is the BACKEND's decision**, from `source`'s concrete type and identity: the
+trait default answers only for the very same instance (through `copy_within`, so SFTP and ADB are unchanged), and S3
+copies between any places of one account (`crates/cmdr-s3/DETAILS.md` § "Server-side copy"). ❗ Asking a server to copy
+a path that belongs to a DIFFERENT server is not a failure; on one that holds a same-named file it is the wrong file,
+copied silently. So the engine never decides it from paths or ids; it hands over both volumes and takes the answer.
 
-**`Ok(None)` means "do it the ordinary way"**, and that is the answer for everything except a clean success and a
-cancel:
+**`Ok(None)` means "do it the ordinary way"**, and that is the answer for everything except a clean success, a cancel,
+and a taken name:
 
-- Two different volumes.
-- `NotSupported`, from a backend with no server-side copy or from one whose SERVER lacks the extension.
+- `NotSupported`, from a backend with no server-side copy, one whose SERVER lacks the extension, or one that doesn't
+  recognize the source (another account, another backend, a bucket-bound provider asked to cross buckets).
 - ⚠️ **Any other failure.** The streaming loop below carries the retry policy, the stall watchdog, and the pause
   checkpoints, so a fast path that failed for a real reason fails there too with better handling and a better report.
   The cost is one doomed extra attempt on a genuinely broken destination, which is the cheaper side of the trade.
 - ❌ **A cancel is never one of them.** The intent is consulted as well as the error variant, so a backend that labels
   its own stop something other than `Cancelled` can't turn a Cancel click into a second, full-speed attempt.
+- ❌ **Nor is `AlreadyExists`**: the streamed write would refuse the same name.
 
-**It stages exactly like a streamed write**, with the REQUESTED staging rather than `resolve_staging`'s: the destination
-genuinely holds a byte-incomplete file while a server-side copy runs, so the single-shot exemption can't apply however
-small the file is. The quit deadline (`state.backend_abort`) rides the same `select!` it rides for a streamed write, and
-cleans up nothing for the same reason.
+**Staging follows the destination.** A whole-publishing destination (§ "Whole-publish destinations") publishes a
+server-side copy whole as well, so `resolve_staging(staging, publishes_writes_whole)` sends it to the final name, as
+`CreateNew` when the name was expected free; a temp there would only cost a landing rename, a second full copy.
+Everywhere else the destination genuinely holds a byte-incomplete file while the copy runs, so it stages exactly like a
+streamed write, ❌ never with the single-shot exemption however small the file is. The quit deadline
+(`state.backend_abort`) rides the same `select!` it rides for a streamed write, and cleans up nothing for the same
+reason.
 
-⚠️ **A pause doesn't land mid-file here**, only at the next file boundary. There is no stream to park between chunks,
-and pausing frees nothing anyway — no bytes are crossing the link. Same limitation, and the same reasoning, as the
-local-FS chunk loop's. What bounds it is the walk above: `merge_level` parks per entry (§ "Pause in the volume walks"),
-so a paused same-share subtree copy stops after the leaves already in flight finish — at most the operation's
-`FileWindow` width, one of them on MTP. Closing the mid-file gap would mean a cooperative stop inside
-`Volume::copy_within` itself, per backend, which is the same work that would give it a cancel.
+**A pause lands at the backend's checkpoints.** The engine's `ServerCopyProgress` answers `checkpoint` with the
+operation's own `stop_or_park_async`, and S3 asks it before each part, so a paused multipart copy parks between parts
+while the parts already in flight finish. A backend that copies in one call (SFTP's `copy-data`) has no checkpoint, so
+its pause lands at the next file, bounded by the walk above: `merge_level` parks per entry (§ "Pause in the volume
+walks"), at most the operation's `FileWindow` width of leaves still finishing.
 
-Cells: `strategy_server_side_copy_tests.rs` (eligibility, the fallback, staging, cancel) with a counting double;
-`crates/cmdr-sftp/src/volume/copy_test.rs` for what a real server does, including a fixture that lacks the extension.
+Cells: `strategy_server_side_copy_tests.rs` (who's asked, the fallback, staging, the final-name copy on a whole-publish
+destination, a sibling place of one account, cancel, and the checkpoint parking a paused copy) with counting doubles;
+`crates/cmdr-sftp/src/volume/copy_test.rs` and `crates/cmdr-s3/src/volume/copy_test.rs` for what real servers do;
+`backend_suites/s3_rename_integration_test.rs` for a cross-bucket copy through the engine, on the server or streamed.
+
+## A same-volume move whose renames copy
+
+**Decision**: a same-volume move asks `Volume::rename_work` for each top-level source, and if ANY answers
+`CopyThenDelete` (an S3 folder, or an object past the part floor), the whole move runs through the copy-then-delete
+engine (`move_cross.rs`'s `move_volumes_with_progress`) with the one volume on both sides (`move_same.rs`). **Why**:
+`rename_merge` assumes a rename is one cheap call that carries a subtree; on an object store it's a copy per object, and
+only the transfer engine gives that a scan, byte progress, pause, cancel, conflicts, and journaling. A volume that
+renames everything in one call answers with no I/O, so nothing changes for local disks, SMB, MTP, SFTP, or WebDAV.
+
+- **Copy everything, then delete.** Per top-level source, the copy lands every file (server-side, § "Server-side
+  copy") before the source sweep removes anything, so the worst a crash or a cancel leaves is duplicates, ❌ never
+  loss. The sweep removes what the copy's LEDGER carried, as every cross-volume move does (`source_sweep.rs`).
+- **Batched deletes.** The sweep collects each folder level's files and hands them to `Volume::delete_files` in one
+  call (S3: `DeleteObjects`, 1,000 keys a request, per-key failures reported against their own paths), then deletes
+  the folder. ❗ A folder that existed only through what was in it (an object store's prefix with no marker) is gone
+  once its last file is, so the folder's own `NotFound` counts as removed.
+- **The dest-inside-source guard and the already-in-place filter run first**, the same as for a rename-merge; only
+  the remaining sources take the copy route.
+- **Not rollbackable while running**, like every cross-volume move (`supports_rollback: false`); what it journals
+  (per-leaf rows under the one volume id) is what the operation log offers to undo afterwards.
+
+**Renames that run as moves name their target.** A move's destination is a FOLDER, so a rename (`/a/foo` → `/a/bar`)
+carries the new NAME per source on `WriteOperationState::target_names` (`../../target_names.rs`), which the async
+driver reads where every volume engine builds a top-level destination path. Both engines honor it: the rename-merge
+renames straight to the new name, and the copy engine copies to it. A name is one plain component, refused otherwise,
+so a source can't land outside the folder it was given; ❌ the local and cross-volume engines take none
+(`move_between_volumes` refuses a map there). Who starts these: `../../DETAILS.md` § "Renames that run as moves".
+
+Cells: `move_by_copy_tests.rs` (routing, batched sweep, a rename to a new name on both kinds of volume, a stop keeping
+every source) with `InMemoryVolume::with_renames_by_copy`, which refuses `rename` outright so a move that forgot to
+route fails loudly; `backend_suites/s3_rename_integration_test.rs` against both S3 fixtures (a 1,005-object folder
+rename paging its deletes, a multipart-copy rename keeping the date, pause and cancel).
 
 ## The single-shot exemption
 
@@ -731,8 +773,8 @@ construction sites across every backend to save a stat the copy has already paid
 **Three write paths, three hooks, and they must stay in step.** `stream_pipe_file` (every streamed cross-volume file,
 copy and cross-volume move alike, since `move_cross.rs` routes through `copy_single_path`), `sequential_extract.rs`'s
 data pass (which writes its own files — the mode rides `PlannedWrite::source_mode`, recorded by the plan pass, the only
-one that lists the archive), and `try_server_side_copy`, which needs no hook: it is a same-`Arc` `Volume::copy_within`,
-where the backend copying a file inside itself owns what it copies. A fourth write path owes the same call.
+one that lists the archive), and `try_server_side_copy`, which needs no hook: it is `Volume::copy_on_server`, where the
+backend copying a file on its own server owns what it copies. A fourth write path owes the same call.
 
 Pinned by `landed_mode_tests.rs` (the fold, per umask and per source shape), `copy_snapshot_out_tests.rs` and
 `copy_extract_out_tests.rs` (end to end out of the two routed volumes, into a real local destination, both alone and
