@@ -7,7 +7,6 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use url::Url;
 
 use crate::encoding::wire_query;
-use crate::sigv4::PayloadHash;
 
 /// What travels after the headers.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,15 +68,6 @@ impl S3Request {
     pub(crate) fn header(mut self, name: HeaderName, value: HeaderValue) -> Self {
         self.headers.insert(name, value);
         self
-    }
-
-    /// The payload hash this body is signed with.
-    pub(crate) fn payload_hash(&self) -> PayloadHash {
-        match &self.body {
-            Body::Empty => PayloadHash::of(b""),
-            Body::Bytes(bytes) => PayloadHash::of(bytes),
-            Body::Streamed { .. } => PayloadHash::Unsigned,
-        }
     }
 
     /// The URL the request goes to.

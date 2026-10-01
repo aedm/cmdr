@@ -1,0 +1,51 @@
+//! An S3 error answer in the `Volume` vocabulary.
+//!
+//! ❌ Nothing here reads `<Message>`: the `<Code>` and the status decide, the
+//! way `S3Error`'s own predicates do. The text that rides in an `IoError` is a
+//! log diagnostic, never shown.
+
+use cmdr_fs::volume::VolumeError;
+use log::debug;
+
+use crate::error::{S3Error, S3ErrorCode};
+
+/// Turns an S3 error answer into the `Volume` vocabulary, for an operation on
+/// `path`.
+///
+/// ❗ **`path` is the payload, not context.** `NotFound` and
+/// `PermissionDenied` are DEFINED to carry the path, and the transfer layer
+/// renders it as the name of the file the user is missing
+/// (`conformance::assert_not_found_carries_the_path`).
+///
+/// A refusal is `PermissionDenied` whichever code said it (`AccessDenied`, or
+/// keys that stopped working mid-session): an operation can't mend keys, and
+/// the volume's sign-in path is where a person does.
+pub(crate) fn map_s3_error(error: &S3Error, path: &str) -> VolumeError {
+    if error.is_not_found() {
+        debug!("S3 path={path:?}: backend=s3, error_kind=not_found, code={error}");
+        return VolumeError::NotFound(path.to_string());
+    }
+    if error.is_not_implemented() || error.status == http::StatusCode::METHOD_NOT_ALLOWED {
+        return VolumeError::NotSupported;
+    }
+    let refused = match error.code {
+        S3ErrorCode::AccessDenied | S3ErrorCode::SignatureDoesNotMatch | S3ErrorCode::InvalidAccessKeyId => true,
+        S3ErrorCode::NoBody => error.status == http::StatusCode::FORBIDDEN,
+        _ => false,
+    };
+    if refused {
+        debug!("S3 path={path:?}: backend=s3, error_kind=permission_denied, code={error}");
+        return VolumeError::PermissionDenied {
+            path: path.to_string(),
+            raw_os_error: None,
+        };
+    }
+    VolumeError::IoError {
+        message: error.to_string(),
+        raw_os_error: None,
+    }
+}
+
+#[cfg(test)]
+#[path = "errors_test.rs"]
+mod errors_test;

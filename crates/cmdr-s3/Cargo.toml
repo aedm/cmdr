@@ -44,3 +44,43 @@ time = { version = "0.3", features = ["parsing"] }
 # R2 stores keys NFC; the profile composes them before they leave.
 unicode-normalization = "0.1"
 log = "0.4"
+# The `Volume` trait, every type it exchanges, the host seams this backend asks
+# the app through, and the HTTP silence watch it shares with `cmdr-webdav`.
+cmdr-fs = { path = "../cmdr-fs" }
+# The HTTP transport, confined to `transport.rs`. ❗ EXACTLY `cmdr-webdav`'s
+# feature set, itself a subset of the app's, so no second reqwest
+# configuration enters the graph.
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream"] }
+# A HEAD's `Last-Modified` (RFC 1123), the version `cmdr-webdav` resolves.
+httpdate = "1"
+# The backend's own async surface: `sync` for the client lock, `time` for the
+# reconnect backoff, `rt` for the handle background work spawns onto, `macros`
+# for `select!`. Deliberately NOT `rt-multi-thread`: the runtime is the app's,
+# handed down through `VolumeHost::runtime`. `cmdr-webdav`'s exact set.
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+# `CancellationToken`, on the connect and listing paths. Default features off,
+# the shape `cmdr-fs` pins.
+tokio-util = { version = "0.7.18", default-features = false }
+# `testing` only: the per-process token that keeps two concurrent suites' key
+# prefixes apart on the machine-wide fixtures. Optional, so a shipped build
+# never links it; the version `cmdr-fs` pins.
+uuid = { version = "1.19.0", features = ["v4"], optional = true }
+
+[features]
+# "This is a test build." Widens `volume::testing` (the Docker fixture
+# connection and the seeding helpers) from `#[cfg(test)]`-only to `pub`, so the
+# app's S3 suites share one set of fixtures with this crate's own. Forwards
+# `cmdr-fs/testing` because the fixtures are built on `InMemoryCredentials` and
+# `RecordingVolumeEvents`.
+#
+# Never enable in a production build.
+testing = ["cmdr-fs/testing", "dep:uuid"]
+
+[dev-dependencies]
+# Depending on ourselves turns the `testing` feature on for every DEV target and
+# leaves it off for the lib, so a shipped build carries no fixtures.
+cmdr-s3 = { path = ".", features = ["testing"] }
+cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
+# The Docker-backed suites drive real concurrency, so their tests need a
+# multi-threaded runtime the lib deliberately can't build for itself.
+tokio = { version = "1", features = ["rt-multi-thread", "test-util"] }

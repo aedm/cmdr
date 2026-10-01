@@ -199,6 +199,22 @@ var surfaceGuardedCrates = []struct {
 		},
 	},
 	{
+		// Measured 2026-10-01, when the crate first exposed a volume (connect
+		// and browse), and set to exactly that. `cmdr-webdav`'s shape plus two:
+		// `S3Provider` (the connect form's preset, which the host maps its saved
+		// entry onto) and `InvalidProvider` (a preset that can't make an
+		// endpoint, refused before anything is dialed). `volume` is the only
+		// public module; `volume::testing` exists only behind the `testing`
+		// feature. Item-by-item: `crates/cmdr-s3/DETAILS.md` § "The public
+		// surface is capped".
+		Name: "cmdr-s3",
+		Ceilings: surfaceCeilings{
+			RootPromises:   8,
+			PublicModules:  1,
+			SubsystemItems: 8,
+		},
+	},
+	{
 		// Measured 2026-09-05, at the extraction, and set to exactly what the crate
 		// exposes — no headroom, so the first addition has to be argued for.
 		//

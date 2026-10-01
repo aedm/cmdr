@@ -6,10 +6,105 @@ Must-knows and the module map: `CLAUDE.md`. This file carries the decisions. Pro
 
 ## Where the crate stands
 
-The protocol layer exists; the transport, the `Volume`, and the app wiring don't. Everything is `pub(crate)` and nothing
-outside the tests calls it yet, so `lib.rs` carries a crate-wide `allow(dead_code)` that goes once `volume/` exists. The
-crate has no `index-crate-isolation` surface ceiling yet for the same reason: it exposes nothing. It is in the guarded
-list (no `tauri` in its tree) from day one.
+Connect and browse work: the transport, the connect probe, and a read-only `Volume` that lists and stats. Reads, writes,
+copies, and share links are later milestones of the plan, and their builders already sit in `ops.rs`, which is why
+`lib.rs` still carries a crate-wide `allow(dead_code)`; it goes once reads and writes call them.
+
+## The model: one volume per place
+
+The ACCOUNT is the endpoint plus the access key id; it owns the secret (store service `s3+<scheme>://<host>:<port>`,
+scoped by the key id, so every bucket under one key shares it). A PLACE is a bucket under it, or the account root, whose
+children are the buckets (`apps/desktop/src/lib/servers/DETAILS.md` § "The model", bucket = place). Each place is its
+own volume with its own id (`cmdr_fs::volume::s3_volume_id(host, port, key id, bucket)`), because a pin, a tab, and a
+switcher row each key on a place.
+
+- **App paths are the account's**, `s3://<key id>@<host>:<port>/<bucket>/<key>`, and a place's root hangs under that
+  prefix (`/` or `/<bucket>`). So one object has one app spelling whichever place reached it, and a bucket place refuses
+  another bucket's path (`RemoteRoot`'s containment check).
+- **Two places of one account each hold their own client.** Sharing one is an optimisation for later; nothing depends on
+  it.
+- **The account root needs `ListBuckets`.** A bucket-scoped key (R2 non-admin tokens, B2 keys without
+  `listAllBucketNames`) gets a typed `BucketListRefused` there, and its way in is a bucket place.
+
+## Connecting
+
+`connect_s3_volume` reads the secret from the `CredentialStore` (nothing stored is `NeedsCredentials`), builds an
+`S3Client` (`user_agent("Cmdr")`, 10 s connect timeout, no `read_timeout`, redirects off, plus a pool-free twin for the
+silence probe), and probes. On success it records the PII-free `s3_connected` with one property, `provider` (`aws`,
+`r2`, `b2`, `wasabi`, `hetzner`, `other`).
+
+**The probe is `ListBuckets` first, then `HeadBucket` for a bucket place.** `ListBuckets` goes first even for a bucket
+because its error BODY is the only thing that can tell a wrong secret from a key without rights; a HEAD has no body. The
+table (`refusal.rs`, one cell per row in `refusal_test.rs`):
+
+- `ListBuckets` 2xx with a `ListAllMyBucketsResult`: the keys work; a bucket place goes on to `HeadBucket`.
+- `SignatureDoesNotMatch` / `InvalidAccessKeyId`: `KeysRejected`, whatever the place.
+- `RequestTimeTooSkewed`: `ClockSkewed` (this Mac's clock is off by more than 15 minutes).
+- 5xx or a throttle: `Transport`.
+- No S3 `<Error>` body (an HTML page, a bare 404): `NotAnS3Endpoint`.
+- `AccessDenied` (or any other S3 error) on the account root: `BucketListRefused`; on a bucket place: fall back to
+  `HeadBucket`, which a bucket-scoped key passes.
+- `HeadBucket` 404: `NoSuchBucket`. 403: `AccessDenied` (can't tell a wrong key from no rights). A redirect, or any
+  answer carrying `x-amz-bucket-region`: `WrongRegion { region }`.
+- Transport failures: `TimedOut`, `CertificateUntrusted` (an `InvalidData` `io::Error` in the source chain), or
+  `Unreachable`.
+
+**Gotcha: Garage answers a wrong secret with `AccessDenied`** (VersityGW with `SignatureDoesNotMatch`; fixture README).
+So `AccessDenied` is never `KeysRejected`, and the words for `BucketListRefused` and `AccessDenied` ask about both the
+keys and the rights. `integration_test.rs` pins both servers' answers.
+
+## Listing and stat
+
+- **The account root**: `ListBuckets`, every page (AWS paginates past 10,000), buckets as folders carrying their
+  creation date as `created_at`.
+- **A folder**: `ListObjectsV2` with `prefix=<key>/` and `delimiter=/`, every page, `on_progress` after each page with
+  the running tally (never per entry), cancel checked between pages. `listing.rs` turns a page into children:
+  `CommonPrefixes` are folders; the folder's own marker (the key `<key>/` itself) is left out; a key with a `/` past the
+  prefix (a child's marker, or a server that ignored the delimiter) names a folder, once; an empty, `.`, or `..` name is
+  left out (unaddressable). ❗ **An object and a folder of one name keep the folder**: S3 allows `notes` beside
+  `notes/…`, but one name in a pane is one path, and two entries on one path break everything keyed on it.
+- **A missing folder is `NotFound`**: S3 has no folders, so a prefix with no keys at all (its marker included) doesn't
+  exist, and a listing that saw nothing says so rather than showing an empty folder.
+- **`get_metadata`**: the account root without a request; a bucket by `HeadBucket`; a key by `HeadObject`, and when that
+  finds no object, one `ListObjectsV2` capped at one key under `<key>/` decides folder or `NotFound`.
+- **Dates**: a HEAD's `x-amz-meta-mtime` (rclone's key and format, the source file's own mtime) wins over
+  `Last-Modified` (the upload time). ❗ **A listing shows `LastModified`**: `ListObjectsV2` carries no user metadata,
+  and a HEAD per child to fetch it would cost a request per file. So a file Cmdr or rclone uploaded shows its upload
+  time in the pane and its own mtime in Get info. Decision: cost over consistency, because every request is billed.
+- **Errors** (`src/volume/errors.rs`): not found (`NoSuchKey`, `NoSuchBucket`, a bodyless 404) is `NotFound(path)`; a
+  refusal (`AccessDenied`, keys that stopped working, a bodyless 403) is `PermissionDenied { path }`; `NotImplemented` /
+  405 is `NotSupported`; the rest is `IoError` carrying `<Code> (HTTP nnn)` for the logs.
+- **Space**: `NotSupported`, and no poll interval. S3 has no capacity, and "bytes used" is a listing of every key.
+
+## Connection state and reconnect
+
+The WebDAV model, nearly line for line (`crates/cmdr-webdav/DETAILS.md` § "The reconnect model" and § "Silent or slow"
+have the reasoning): `Connected | Disconnected | NeedsCredentials`, transitions only through `emit_if_changed`, the
+first `DeviceDisconnected` flips the state once and starts a 2/5/15/30/60/120 s backoff when "reconnect automatically"
+is on, one unattended probe out of the store, and a refusal (`KeysRejected`, `AccessDenied`, `BucketListRefused`)
+latches `NeedsCredentials` until a person signs in. `reconnect_with_credentials(username, password)` takes the access
+key id as the username and refuses any other key (`NotSupported`): another key is another account. `sign_in_prompt` is
+`SignInShape::AccessKeys`. The silence watch is the shared `cmdr_fs::volume::liveness`, probing with an unsigned HEAD on
+the endpoint through the pool-free client.
+
+## Which side a test lives on
+
+Unit cells: the refusal table, the listing rules, path splitting, the error map, the state machine, and the switch, all
+without a server. Docker cells (`#[ignore]`d, run by the shared fixture lane through `package(cmdr-s3)`): every
+`integration_test.rs` cell runs against BOTH fixtures, because they disagree on a wrong secret; `conformance_test.rs`
+holds the read-only promises (`is_writable` and `supports_export` match what the methods do, `NotFound` names the path);
+`connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container. Seeding goes through
+`volume::testing::seed`, this crate's own builders, because the volume doesn't write yet. The 1,005-key paging prefix
+(`cmdr-test-paging-1005/`) is seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its
+own, since the stack's objects persist across runs.
+
+## The public surface is capped
+
+Root re-exports: 7 items (`S3ConnectionParams`, `S3Provider`, `InvalidProvider`, `S3ConnectError`, `S3Volume`,
+`UnattendedReconnect`, `connect_s3_volume`) plus `pub mod volume`, which the check counts as an eighth. Public modules:
+1 (`volume`), plus `volume::testing` under the `testing` feature. `index-crate-isolation` pins it at exactly 8 / 1 / 8
+(measured 2026-10-01): `cmdr-webdav`'s shape plus the provider preset the host maps its saved entry onto, and the
+refusal for a preset that can't make an endpoint.
 
 ## Signing
 
@@ -17,7 +112,7 @@ list (no `tauri` in its tree) from day one.
   explicit `host` (so the transport can't spell an IPv6 literal or a default port differently from what was signed). It
   signs every header in the request. The transport may add headers afterwards (`user-agent`, `content-length`); those go
   unsigned, which SigV4 allows.
-- **The payload hash follows the body** (`S3Request::payload_hash`): `Body::Streamed` signs `UNSIGNED-PAYLOAD` so the
+- **The payload hash follows the body** (`PayloadHash::for_body`): `Body::Streamed` signs `UNSIGNED-PAYLOAD` so the
   bytes are read once; `Body::Bytes` (the XML bodies) and `Body::Empty` sign their real SHA-256. The spec said
   `UNSIGNED-PAYLOAD` everywhere. Hashing what's already in memory costs nothing, and it's what a strict server (or one
   on plain `http://`) expects.
@@ -89,8 +184,9 @@ up afterwards. Making the flag part of the return type is what keeps the check f
 - **URL-encoded listings.** ListObjectsV2 and ListMultipartUploads ask for `encoding-type=url` (XML 1.0 can't carry some
   characters a key may hold), and the parser decodes only when the response echoes `<EncodingType>url</EncodingType>`.
   AWS writes a space as `+` and a plus as `%2B`, so `+` becomes a space before percent-decoding (botocore's
-  `unquote_plus`). A server that encodes a plus as a literal `+` would break this; the fixture suite should list a key
-  holding both.
+  `unquote_plus`). A server that encodes a plus as a literal `+` would break this; `integration_test.rs` lists keys
+  holding both (`a b+c.txt`, `x + y/`) and both fixtures pass (verified on VersityGW v1.8.0 and Garage v2.4.1,
+  2026-10-01).
 - **Archived objects.** `StorageClass::is_archived` is true for `GLACIER` and `DEEP_ARCHIVE`. Intelligent-Tiering's
   archive tiers don't show in a listing (only HEAD's `x-amz-archive-status` says so), so a read of one surfaces as
   `InvalidObjectState` instead.

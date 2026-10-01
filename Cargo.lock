@@ -1617,16 +1617,23 @@ name = "cmdr-s3"
 version = "0.0.0"
 dependencies = [
  "base64 0.23.1",
+ "cmdr-fs",
+ "cmdr-s3",
  "hmac 0.13.0",
  "http",
+ "httpdate",
  "log",
  "md-5 0.11.0",
  "percent-encoding",
  "quick-xml 0.41.0",
+ "reqwest",
  "sha2 0.11.0",
  "time",
+ "tokio",
+ "tokio-util",
  "unicode-normalization",
  "url",
+ "uuid",
 ]
 
 [[package]]

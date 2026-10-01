@@ -1,34 +1,36 @@
 # cmdr-s3
 
-The S3 backend for AWS, R2, B2, Wasabi, Hetzner, and any other S3-compatible server. Today it's the protocol layer only:
-signing, request building, XML, typed errors, and provider profiles, all pure values with no network and no `Volume`
-yet. The plan: `docs/specs/s3-support-plan.md`. Decisions and gotchas: `DETAILS.md`.
+The S3 backend for AWS, R2, B2, Wasabi, Hetzner, and any other S3-compatible server: the protocol layer plus a read-only
+`Volume` per place (a bucket, or the account root that lists them). The plan: `docs/specs/s3-support-plan.md`. Decisions
+and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 
 ## Module map
 
-- `sigv4.rs`: SigV4 header auth and share-link presigning. `encoding.rs`: S3's percent-encoding and key encoding.
-- `request.rs`: `S3Request` (unsigned) and `SignedRequest`, as plain values. `ops.rs`: one builder per S3 call.
-- `profile.rs`: preset → endpoint, region, addressing, conditional-write support, and the session downgrade.
-- `xml/`: the element tree (`mod.rs`), response parsers (`parse.rs`), request bodies (`build.rs`). `error.rs`:
-  `S3Error`.
-- `multipart.rs`: the part plan. `metadata.rs`: rclone's `x-amz-meta-mtime` format.
+- `sigv4.rs`, `encoding.rs`, `request.rs`, `ops.rs` (one builder per S3 call), `profile.rs` (preset → endpoint,
+  addressing, conditional writes), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
+- `params.rs` (`S3ConnectionParams`, `S3Provider`, the store key), `refusal.rs` (`S3ConnectError` + the probe's table),
+  `transport.rs` (`S3Client`, the only `reqwest` user).
+- `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list and stat), `paths.rs`, `errors.rs`, `state.rs` +
+  `reconnect.rs`, `volume_impl.rs`, `testing.rs` (fixtures, `testing` feature).
 
 ## Must-knows
 
-- ❌ **Never classify by `<Message>`.** `S3Error` comes from `<Code>` plus the status; a bodyless answer classifies by
-  status alone.
-- ❗ **Parse every success body.** Complete, CopyObject, UploadPartCopy, and DeleteObjects can fail inside `200 OK`;
-  each parser checks the root and returns `BodyError::Embedded`.
-- ❗ **Keys are never trimmed**, and a listing asks for `encoding-type=url` and decodes `+` as a space (AWS's spelling).
-- ❗ **A key with a `.` or `..` segment is refused** (`KeyError::DotSegment`): every URL parser resolves it, so `a/../b`
-  would hit `b`.
+- ❌ **Never classify by `<Message>`.** `<Code>` plus the status; a bodyless answer (every HEAD) by status alone.
+- ❗ **`reqwest` stays in `transport.rs`.** Everything else sends `S3Request`s and reads `Answer`s; a transport failure
+  goes back to `map_transport_error` / `classify_connect_error`.
+- ❗ **Every wire-touching delegator wraps itself in `noting`**, and every request goes out through
+  `S3Client::exchange`: the operations are the liveness detector (`cmdr_fs::volume::liveness`, shared with WebDAV).
+- ❗ **Every request costs the user money.** ❌ No HEAD per child, no watcher, no space poll, no index.
+- ❗ **A wrong secret is ambiguous on some servers**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
+  `InvalidAccessKeyId` are `KeysRejected`. The probe runs `ListBuckets` first because only its body can tell.
+- ❗ **Read-only for now, and it says so**: `is_writable`, `supports_export`, `supports_streaming` are `false` until the
+  method they speak for works (conformance holds them to it).
+- ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
+- ❗ **Keys are never trimmed**; listings use `encoding-type=url` and decode `+` as a space. A `.`/`..` segment is
+  refused (`KeyError::DotSegment`).
 - ❗ **Conditional writes are an allowlist, ❌ never a probe**: Garage and VersityGW answer 200 to an ignored
-  `If-None-Match` and overwrite. A no-overwrite write returns `Built { check_first }`; when it's `true`, HEAD first.
-- ❗ **No checksum headers.** Wasabi rejects `CRC64NVME`; integrity is `Content-MD5` on DeleteObjects plus size and ETag
-  checks.
-- ❗ **Equal-size parts, always** (`plan_parts`): R2 refuses anything else at completion. A tail under 5 MiB folds into
-  the part before it (Garage refuses a smaller `UploadPartCopy` source).
-- ❗ **Streamed bodies sign `UNSIGNED-PAYLOAD`; in-memory ones sign their hash.** Header auth only; query auth is for
-  share links, because a signed URL leaks into every log line that prints it.
-- `reqwest` isn't a dependency yet. When the transport lands, confine it the way `crates/cmdr-webdav/CLAUDE.md` does.
-- Every dependency was already in `Cargo.lock` at these versions and features. Check `cargo tree -d` before adding one.
+  `If-None-Match` and overwrite.
+- ❗ **No checksum headers; equal-size parts, always** (R2). Streamed bodies sign `UNSIGNED-PAYLOAD`.
+- ❌ **One unattended authentication attempt, never a loop**; the store is refreshed by an attended sign-in, never
+  seeded.
+- Every dependency was already in `Cargo.lock`. Check `cargo tree -d` before adding one.

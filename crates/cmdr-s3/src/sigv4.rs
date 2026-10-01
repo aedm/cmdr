@@ -15,7 +15,7 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use crate::encoding::{canonical_query, encode_component};
-use crate::request::{S3Request, SignedRequest};
+use crate::request::{Body, S3Request, SignedRequest};
 
 const ALGORITHM: &str = "AWS4-HMAC-SHA256";
 const SERVICE: &str = "s3";
@@ -96,6 +96,16 @@ impl PayloadHash {
         Self::Sha256(hex(&Sha256::digest(bytes)))
     }
 
+    /// The hash a body is signed with: its real SHA-256 when it's
+    /// in memory, `UNSIGNED-PAYLOAD` when it streams.
+    pub(crate) fn for_body(body: &Body) -> Self {
+        match body {
+            Body::Empty => Self::of(b""),
+            Body::Bytes(bytes) => Self::of(bytes),
+            Body::Streamed { .. } => Self::Unsigned,
+        }
+    }
+
     pub(crate) fn as_str(&self) -> &str {
         match self {
             Self::Unsigned => "UNSIGNED-PAYLOAD",
@@ -123,7 +133,7 @@ impl Scope<'_> {
 /// Signs `request` with header auth: adds `host`, `x-amz-date`,
 /// `x-amz-content-sha256`, and `Authorization`, signing every header present.
 pub(crate) fn sign(mut request: S3Request, scope: &Scope<'_>) -> SignedRequest {
-    let payload = request.payload_hash();
+    let payload = PayloadHash::for_body(&request.body);
     request.headers.insert(name("x-amz-date"), value(scope.time.stamp()));
     request
         .headers
