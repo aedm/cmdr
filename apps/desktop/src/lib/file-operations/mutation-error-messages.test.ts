@@ -36,6 +36,7 @@ const VOLUME_CASES: VolumeError[] = [
   { type: 'notADirectory', data: '/Volumes/share/album/notes' },
   { type: 'invalidName', data: 'STATUS_OBJECT_NAME_INVALID' },
   { type: 'deletePending', data: '/Volumes/share/doomed.txt' },
+  { type: 'coldStorage', data: '/photos/2019.tar' },
   { type: 'ambiguousName', data: '/Volumes/share/café.txt' },
   { type: 'staleDestinationHandle', data: '/DCIM/Camera' },
   { type: 'ioError', data: { message: 'input/output error', rawOsError: 5 } },

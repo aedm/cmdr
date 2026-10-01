@@ -61,7 +61,9 @@ pub(crate) enum StorageClass {
 }
 
 impl StorageClass {
-    fn from_text(text: Option<&str>) -> Self {
+    /// The class a listing's `StorageClass` or a HEAD's `x-amz-storage-class`
+    /// names; absent is `STANDARD`.
+    pub(crate) fn from_text(text: Option<&str>) -> Self {
         match text {
             None | Some("STANDARD") => Self::Standard,
             Some("GLACIER") => Self::Glacier,

@@ -25,6 +25,18 @@ fn a_missing_key_or_bucket_is_not_found_and_names_the_path() {
 }
 
 #[test]
+fn an_archived_object_is_cold_storage_on_the_path() {
+    // Glacier Flexible Retrieval and Deep Archive answer a read with
+    // `InvalidObjectState` (403) until the object is restored. It must stay
+    // apart from a refusal: the keys are fine, the bytes just aren't there yet.
+    let error = from_code(StatusCode::FORBIDDEN, "InvalidObjectState");
+    assert!(
+        matches!(map_s3_error(&error, "/b/old.tar"), VolumeError::ColdStorage(path) if path == "/b/old.tar"),
+        "{error}"
+    );
+}
+
+#[test]
 fn a_refusal_is_permission_denied_on_the_path() {
     for error in [
         from_code(StatusCode::FORBIDDEN, "AccessDenied"),

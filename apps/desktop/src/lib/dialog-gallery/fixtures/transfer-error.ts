@@ -234,6 +234,14 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
     operationType: 'delete',
     error: { type: 'delete_pending', path: '/Users/david/Downloads/ubuntu-26.04-desktop-amd64.iso' },
   },
+  // A copy off an S3 bucket meeting an object in Glacier.
+  source_in_cold_storage: {
+    operationType: 'copy',
+    error: {
+      type: 'source_in_cold_storage',
+      path: 's3://AKIAIOSFODNN7EXAMPLE@s3.eu-west-1.amazonaws.com:443/family-photos/2019/holiday-raw.tar',
+    },
+  },
   // The many-files branch: the body copy counts them and the details block lists
   // every one, so this is where the dialog gets tall.
   files_too_large_for_filesystem: {

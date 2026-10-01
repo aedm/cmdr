@@ -368,6 +368,12 @@ pub enum WriteOperationError {
     DeletePending {
         path: String,
     },
+    /// The source file is archived in cold storage (S3 Glacier Flexible
+    /// Retrieval or Deep Archive) and can't be read until someone restores it.
+    /// Not transient: a retry meets the same archived object.
+    SourceInColdStorage {
+        path: String,
+    },
     /// One or more files exceed the destination filesystem's per-file size
     /// limit (FAT32's 4 GiB cap). Detected during the pre-copy scan, before any
     /// bytes are written, so the whole operation is blocked all-or-nothing

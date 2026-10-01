@@ -31,6 +31,10 @@
     /* Short, because a screen reader reads it on every restricted row; the instruction above
        is the hover tooltip on the same glyph. */
     const RESTRICTED_FOLDER_LABEL = $derived(tString('fileExplorer.restrictedFolder.label'))
+    /* Same split for an S3 object in cold storage (`inColdStorage`): a short name per row,
+       the explanation on hover. */
+    const ARCHIVED_FILE_LABEL = $derived(tString('fileExplorer.archivedFile.label'))
+    const ARCHIVED_FILE_TOOLTIP = $derived(tString('fileExplorer.archivedFile.tooltip'))
     import {
         getVisibleItemsCount as getVisibleItemsCountUtil,
         getVirtualizationBufferRows,
@@ -793,6 +797,10 @@
                                     name="info"
                                     label={RESTRICTED_FOLDER_LABEL}
                                     tooltip={RESTRICTED_FOLDER_TOOLTIP}
+                                />{/if}{#if file.inColdStorage}<StatusGlyph
+                                    name="archive"
+                                    label={ARCHIVED_FILE_LABEL}
+                                    tooltip={ARCHIVED_FILE_TOOLTIP}
                                 />{/if}{#if showTags}<TagDots tags={file.tags} />{/if}</span>
                             {#if gitColumnVisible}
                                 {@const status = gitColumn.statusFor(file)}

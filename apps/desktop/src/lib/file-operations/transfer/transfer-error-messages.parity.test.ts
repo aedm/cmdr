@@ -598,6 +598,20 @@ const cases: Case[] = [
     },
   },
 
+  {
+    // Names the archived file: one object deep in a copied folder is the whole
+    // problem, and a restore is asked for by name.
+    name: 'source_in_cold_storage',
+    error: { type: 'source_in_cold_storage', path: 's3://AKIA@s3.eu-west-1.amazonaws.com:443/photos/2019.tar' },
+    expected: {
+      title: 'This file is archived',
+      message:
+        'The file at s3://AKIA@s3.eu-west-1.amazonaws.com:443/photos/2019.tar is archived, so it can’t be read until it’s restored.',
+      suggestion:
+        'Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.',
+    },
+  },
+
   // Per-operation variant coverage: each verb-dependent field must render the
   // right copy for every operation it can occur under. The cases above already
   // pin one operation per field; these fill in the rest so all four

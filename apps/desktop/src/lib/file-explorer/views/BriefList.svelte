@@ -64,6 +64,10 @@
     /* Short, because a screen reader reads it on every restricted row; the instruction above
        is the hover tooltip on the same glyph. */
     const RESTRICTED_FOLDER_LABEL = $derived(tString('fileExplorer.restrictedFolder.label'))
+    /* Same split for an S3 object in cold storage (`inColdStorage`): a short name per row,
+       the explanation on hover. */
+    const ARCHIVED_FILE_LABEL = $derived(tString('fileExplorer.archivedFile.label'))
+    const ARCHIVED_FILE_TOOLTIP = $derived(tString('fileExplorer.archivedFile.tooltip'))
     import { iconCacheCleared } from '$lib/icon-cache'
     import { escapeHtml, tooltip } from '$lib/tooltip/tooltip'
     import type { RenameState, RenameSessionId } from '../rename/rename-state.svelte'
@@ -1004,6 +1008,10 @@
                                                 name="info"
                                                 label={RESTRICTED_FOLDER_LABEL}
                                                 tooltip={RESTRICTED_FOLDER_TOOLTIP}
+                                            />{/if}{#if file.inColdStorage}<StatusGlyph
+                                                name="archive"
+                                                label={ARCHIVED_FILE_LABEL}
+                                                tooltip={ARCHIVED_FILE_TOOLTIP}
                                             />{/if}</span>
                                     {#if showTags}<TagDots tags={file.tags} />{/if}
                                 {/if}

@@ -115,6 +115,7 @@ const LISTING_REASONS: ListingErrorReason[] = [
   { reason: 'connectionTimedOut' },
   { reason: 'notSupported' },
   { reason: 'deletePending', path: PATH },
+  { reason: 'coldStorage', path: PATH },
   { reason: 'invalidName', path: PATH },
   { reason: 'ambiguousName', path: PATH },
   { reason: 'ioSerious', path: PATH, osMessage: 'something went wrong' },

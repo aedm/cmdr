@@ -937,6 +937,24 @@
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
+  "errors.listing.coldStorage.title": "This file is archived",
+  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "@errors.listing.coldStorage.title": {
+    "description": "Title of the listing error panel when browsing into a file (usually a zip) that sits in cloud cold storage and can't be read until it's restored. Plain text. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.listing.coldStorage.explanation": {
+    "description": "Body of the listing error panel for an archived file. Markdown. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path; here it leads the sentence inside backticks. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.listing.coldStorage.suggestion": {
+    "description": "Recovery suggestion for an archived file. Markdown bullet list. \"Storage provider’s console\" means the provider's website or admin tool (for example the AWS console), where a restore is started. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.listing.invalidName.title": "This name won’t work here",
   "errors.listing.invalidName.explanation": "`{path}` has a name the destination can’t store, so it refused the name without looking for the file.",
   "errors.listing.invalidName.suggestion": "Here’s what to try:\n- Rename the item to something shorter and plainer\n- Some destinations refuse reserved names like `CON`, `NUL`, or `LPT1`\n- A very long name can go over the destination’s own limit, even when every character in it is fine",
@@ -2462,6 +2480,29 @@
     "description": "Recovery suggestion when a file is marked for deletion but still held open. Plain text.",
     "screenshot": "transfer-error-delete_pending.png"
   },
+  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "@errors.write.sourceInColdStorage.title": {
+    "description": "Title of the copy/move error dialog when a source file sits in cloud cold storage and can't be read until it's restored. Plain text. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.sourceInColdStorage.message": {
+    "description": "Body of the copy/move error dialog for an archived source file. Plain text. Names the file, because one archived file deep in a copied folder is the whole problem. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "placeholders": {
+      "path": {
+        "description": "The full path of the archived file, inserted verbatim. Do not translate or reformat it."
+      }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.sourceInColdStorage.suggestion": {
+    "description": "Recovery suggestion for an archived source file. Plain text. \"Storage provider’s console\" means the provider's website or admin tool (for example the AWS console), where a restore is started. A restore takes minutes to about two days depending on the tier.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.newDataKeptAt.title": "Your new file is under a different name",
   "errors.write.newDataKeptAt.message": "The new {path} is written and complete, but the destination wouldn’t let it take that name, and the file it was replacing is already gone. The new one is at {keptAt}.",
   "errors.write.newDataKeptAt.suggestion": "Open {keptAt} to check it, then rename it. If the destination is a network share or a phone, reconnect it first and the rename will go through.",
@@ -2801,6 +2842,12 @@
   "errors.volume.deletePending": "That file is on its way out, and something still has it open. Try again in a moment.",
   "@errors.volume.deletePending": {
     "description": "Shown for a file on a network share whose deletion was requested but that an open handle is keeping alive. It clears on its own, so word it as temporary. Inline one-line message under the name field in Cmdr's Rename / New folder / New file flow, or in a brief toast. Plain text, one sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "screenshot": "mkdir-confirmation-too-long.png",
+    "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
+  },
+  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "@errors.volume.coldStorage": {
+    "description": "Shown when an action needs to read a file that sits in cloud cold storage (for example S3 Glacier) and hasn't been restored. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path. Inline one-line message in a brief toast or under a name field. Plain text, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read. \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
     "screenshot": "mkdir-confirmation-too-long.png",
     "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
   },

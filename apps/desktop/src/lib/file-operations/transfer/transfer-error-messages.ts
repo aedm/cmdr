@@ -195,6 +195,9 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   cancelled: { category: 'transient', retryHint: true },
   connection_interrupted: { category: 'transient', retryHint: true },
   delete_pending: { category: 'transient', retryHint: true },
+  // No Retry: the file stays archived until someone restores it, which Cmdr
+  // can't do yet, so the identical request can only meet it again.
+  source_in_cold_storage: { category: 'needs_action', retryHint: false },
   device_disconnected: { category: 'needs_action', retryHint: true },
   // Retry: nothing is broken and nothing was lost. The originals are all where
   // they were, so running the same move again is exactly the way out.
@@ -582,6 +585,14 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
         title: w('deletePending.title'),
         message: w('deletePending.message', { path: escapeHtml(error.path) }),
         suggestion: w('deletePending.suggestion'),
+      }
+    // An S3 object in Glacier: named, because one archived file deep in a
+    // selected folder is the whole problem, and only a restore gets it back.
+    case 'source_in_cold_storage':
+      return {
+        title: w('sourceInColdStorage.title'),
+        message: w('sourceInColdStorage.message', { path: escapeHtml(error.path) }),
+        suggestion: w('sourceInColdStorage.suggestion'),
       }
     default:
       return null

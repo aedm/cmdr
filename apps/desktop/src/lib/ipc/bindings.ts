@@ -252,6 +252,16 @@ export const commands = {
          *  tradeoff. `None` on every non-portal entry.
          */
         gitMeta: GitEntryMeta | null
+        /**
+         *  `true` for a file whose bytes sit in a cold storage class and can't be
+         *  read until someone restores them: S3 Glacier Flexible Retrieval or Deep
+         *  Archive, from the listing's `StorageClass`. The pane shows it as
+         *  "archived" (the internals say "cold storage" because `is_archive`
+         *  already means a zip), and a read answers `VolumeError::ColdStorage`.
+         *  A restored object still lists as archived: the listing can't tell.
+         *  `false` on every other backend.
+         */
+        inColdStorage: boolean
       } | null,
       string
     >(__TAURI_INVOKE('get_file_at', { listingId, index, includeHidden })),
@@ -396,6 +406,16 @@ export const commands = {
          *  tradeoff. `None` on every non-portal entry.
          */
         gitMeta: GitEntryMeta | null
+        /**
+         *  `true` for a file whose bytes sit in a cold storage class and can't be
+         *  read until someone restores them: S3 Glacier Flexible Retrieval or Deep
+         *  Archive, from the listing's `StorageClass`. The pane shows it as
+         *  "archived" (the internals say "cold storage" because `is_archive`
+         *  already means a zip), and a read answers `VolumeError::ColdStorage`.
+         *  A restored object still lists as archived: the listing can't tell.
+         *  `false` on every other backend.
+         */
+        inColdStorage: boolean
       } | null,
       string
     >(__TAURI_INVOKE('get_file_beside', { listingId, name, side, includeHidden })),
@@ -7778,6 +7798,16 @@ export type FileEntry = {
    *  tradeoff. `None` on every non-portal entry.
    */
   gitMeta: GitEntryMeta | null
+  /**
+   *  `true` for a file whose bytes sit in a cold storage class and can't be
+   *  read until someone restores them: S3 Glacier Flexible Retrieval or Deep
+   *  Archive, from the listing's `StorageClass`. The pane shows it as
+   *  "archived" (the internals say "cold storage" because `is_archive`
+   *  already means a zip), and a read answers `VolumeError::ColdStorage`.
+   *  A restored object still lists as archived: the listing can't tell.
+   *  `false` on every other backend.
+   */
+  inColdStorage: boolean
 }
 
 /**
@@ -9509,6 +9539,16 @@ export type ListingErrorReason =
   // A delete is pending on the path and an open handle is keeping it alive.
   | {
       reason: 'deletePending'
+      // The path the failure was about.
+      path: string
+    }
+  /**
+   *  `VolumeError::ColdStorage`: the file's bytes sit in a cold storage class
+   *  (S3 Glacier) and need a restore before they can be read, which is how a
+   *  listing meets it: browsing into an archived zip. No retry hint.
+   */
+  | {
+      reason: 'coldStorage'
       // The path the failure was about.
       path: string
     }
@@ -15619,6 +15659,12 @@ export type ViewerError =
    *  the message; the FE still renders one generic archive message.
    */
   | { kind: 'archive'; failure: ArchiveFailureKind; message: string }
+  /**
+   *  The file is archived in cold storage (S3 Glacier Flexible Retrieval or
+   *  Deep Archive) and can't be read until someone restores it, so there's
+   *  nothing to preview yet and a Retry can't help.
+   */
+  | { kind: 'coldStorage' }
 
 // Result returned when opening a viewer session.
 export type ViewerOpenResult = {
@@ -16046,6 +16092,19 @@ export type VolumeError =
    *  the retry also fails. MTP-only today.
    */
   | { type: 'staleDestinationHandle'; data: string }
+  /**
+   *  The file's bytes sit in a cold storage class and can't be read until
+   *  someone restores them (S3 Glacier Flexible Retrieval and Deep Archive,
+   *  and Intelligent-Tiering's archive tiers, answer `InvalidObjectState`).
+   *  Carries the path.
+   *
+   *  The UI calls such a file "archived"; the internals say "cold storage"
+   *  because "archive" already means a zip or tar here (`is_archive`,
+   *  `NeedsPassword`). Retrying can only fail the same way until a restore
+   *  lands, so it's typed rather than an [`IoError`](Self::IoError), which
+   *  offers a Retry. S3-only today.
+   */
+  | { type: 'coldStorage'; data: string }
   /**
    *  Anything the backend couldn't classify further. The classifier
    *  re-dispatches on `raw_os_error` when one is present.
@@ -16913,6 +16972,12 @@ export type WriteOperationError =
    *  last handle closes. SMB-only today.
    */
   | { type: 'delete_pending'; path: string }
+  /**
+   *  The source file is archived in cold storage (S3 Glacier Flexible
+   *  Retrieval or Deep Archive) and can't be read until someone restores it.
+   *  Not transient: a retry meets the same archived object.
+   */
+  | { type: 'source_in_cold_storage'; path: string }
   /**
    *  One or more files exceed the destination filesystem's per-file size
    *  limit (FAT32's 4 GiB cap). Detected during the pre-copy scan, before any

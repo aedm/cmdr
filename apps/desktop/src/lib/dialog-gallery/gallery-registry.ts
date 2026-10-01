@@ -216,6 +216,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       { id: 'name_too_long', label: 'Name too long' },
       { id: 'invalid_name', label: 'Invalid name' },
       { id: 'delete_pending', label: 'Delete pending' },
+      { id: 'source_in_cold_storage', label: 'Archived source (S3 Glacier)' },
       { id: 'files_too_large_for_filesystem', label: 'Too large for the filesystem (three files)' },
       { id: 'files_too_large_for_filesystem-single', label: 'Too large for the filesystem (one file)' },
       { id: 'new_data_kept_at', label: 'New file kept under another name' },

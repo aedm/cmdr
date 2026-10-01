@@ -283,6 +283,14 @@ fn volume_error_variants_map_correctly() {
             |r| matches!(r, ListingErrorReason::IsADirectory { .. }),
         ),
         (
+            // A zip in S3 Glacier, browsed: its bytes can't be read until a
+            // restore lands, so a retry can only fail again.
+            VolumeError::ColdStorage("x".into()),
+            ErrorCategory::NeedsAction,
+            false,
+            |r| matches!(r, ListingErrorReason::ColdStorage { .. }),
+        ),
+        (
             VolumeError::NotADirectory("x".into()),
             ErrorCategory::NeedsAction,
             false,
@@ -372,6 +380,11 @@ fn typed_variants_populate_path_param() {
     }
     // The message names the path whose spelling matched twice, so the user knows
     // which folder holds the look-alike names.
+    // The message names the archived file, which is what a restore is asked for.
+    match listing_error_from_volume_error(&VolumeError::ColdStorage("x".into()), path).reason {
+        ListingErrorReason::ColdStorage { path } => assert_eq!(path, want),
+        other => panic!("ColdStorage should carry a path, got {other:?}"),
+    }
     match listing_error_from_volume_error(&VolumeError::AmbiguousName("x".into()), path).reason {
         ListingErrorReason::AmbiguousName { path } => assert_eq!(path, want),
         other => panic!("AmbiguousName should carry a path, got {other:?}"),

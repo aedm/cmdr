@@ -191,6 +191,19 @@ fn test_map_volume_error_delete_pending() {
 }
 
 #[test]
+fn test_map_volume_error_cold_storage() {
+    // An S3 object in Glacier can't be read until it's restored. It must stay
+    // typed to the dialog: as an `IoError` it would offer a Retry that can only
+    // meet the same archived object again.
+    let err = map_volume_error(
+        "/ctx",
+        PathRole::Source,
+        VolumeError::ColdStorage("/bucket/old.tar".to_string()),
+    );
+    assert!(matches!(err, WriteOperationError::SourceInColdStorage { path } if path == "/ctx"));
+}
+
+#[test]
 fn test_map_volume_error_invalid_name() {
     // A name the destination can't store (an SMB server answering
     // STATUS_OBJECT_NAME_INVALID) MUST become the typed

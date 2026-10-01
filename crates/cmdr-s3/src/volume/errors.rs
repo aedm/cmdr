@@ -25,6 +25,13 @@ pub(crate) fn map_s3_error(error: &S3Error, path: &str) -> VolumeError {
         debug!("S3 path={path:?}: backend=s3, error_kind=not_found, code={error}");
         return VolumeError::NotFound(path.to_string());
     }
+    // An archived object (Glacier Flexible Retrieval, Deep Archive, an
+    // Intelligent-Tiering archive tier) until it's restored: typed, because a
+    // retry can only meet it again and the fix is a restore, not new keys.
+    if error.code == S3ErrorCode::InvalidObjectState {
+        debug!("S3 path={path:?}: backend=s3, error_kind=cold_storage, code={error}");
+        return VolumeError::ColdStorage(path.to_string());
+    }
     if error.is_not_implemented() || error.status == http::StatusCode::METHOD_NOT_ALLOWED {
         return VolumeError::NotSupported;
     }

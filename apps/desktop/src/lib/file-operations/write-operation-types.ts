@@ -223,6 +223,7 @@ export type WriteOperationError =
   | { type: 'name_too_long'; path: string }
   | { type: 'invalid_name'; path: string; message: string }
   | { type: 'delete_pending'; path: string }
+  | { type: 'source_in_cold_storage'; path: string }
   | {
       type: 'files_too_large_for_filesystem'
       /** The destination filesystem kind (snake_case tag, e.g. 'fat32'). */

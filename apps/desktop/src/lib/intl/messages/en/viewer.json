@@ -67,6 +67,12 @@
     "screenshot": "viewer-search.png",
     "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
   },
+  "viewer.error.coldStorage": "This file is archived, so there’s nothing to show until it’s restored. Restore it in your storage provider’s console, then open it again.",
+  "@viewer.error.coldStorage": {
+    "description": "Shown in place of the file's content when the file sits in cloud cold storage (for example S3 Glacier) and can't be read until it's restored. \"Storage provider’s console\" means the provider's website or admin tool (for example the AWS console). \"Archived\" here means the file's bytes sit in a cloud provider's cold storage tier (for example S3 Glacier) and must be restored before they can be read. It does NOT mean a zip or other archive file.",
+    "screenshot": "viewer-search.png",
+    "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
+  },
   "viewer.error.retry": "Retry",
   "@viewer.error.retry": {
     "description": "Button that tries opening the file again after a load timeout. Keep it short (a button).",

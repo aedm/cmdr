@@ -73,8 +73,9 @@ keys and the rights. `integration_test.rs` pins both servers' answers.
   and a HEAD per child to fetch it would cost a request per file. So a file Cmdr or rclone uploaded shows its upload
   time in the pane and its own mtime in Get info. Decision: cost over consistency, because every request is billed.
 - **Errors** (`src/volume/errors.rs`): not found (`NoSuchKey`, `NoSuchBucket`, a bodyless 404) is `NotFound(path)`; a
-  refusal (`AccessDenied`, keys that stopped working, a bodyless 403) is `PermissionDenied { path }`; `NotImplemented` /
-  405 is `NotSupported`; the rest is `IoError` carrying `<Code> (HTTP nnn)` for the logs.
+  refusal (`AccessDenied`, keys that stopped working, a bodyless 403) is `PermissionDenied { path }`; an archived object
+  (`InvalidObjectState`) is `ColdStorage(path)`; `NotImplemented` / 405 is `NotSupported`; the rest is `IoError`
+  carrying `<Code> (HTTP nnn)` for the logs.
 - **Space**: `NotSupported`, and no poll interval. S3 has no capacity, and "bytes used" is a listing of every key.
 
 ## Reading
@@ -212,9 +213,15 @@ up afterwards. Making the flag part of the return type is what keeps the check f
   `unquote_plus`). A server that encodes a plus as a literal `+` would break this; `integration_test.rs` lists keys
   holding both (`a b+c.txt`, `x + y/`) and both fixtures pass (verified on VersityGW v1.8.0 and Garage v2.4.1,
   2026-10-01).
-- **Archived objects.** `StorageClass::is_archived` is true for `GLACIER` and `DEEP_ARCHIVE`. Intelligent-Tiering's
-  archive tiers don't show in a listing (only HEAD's `x-amz-archive-status` says so), so a read of one surfaces as
-  `InvalidObjectState` instead.
+- **Archived objects.** `StorageClass::is_archived` is true for `GLACIER` and `DEEP_ARCHIVE` (Glacier Instant Retrieval
+  reads on demand, so it isn't). A listing child carries it as `FileEntry::in_cold_storage`, which the pane shows as an
+  "archived" glyph; a stat also reads HEAD's `x-amz-storage-class` and `x-amz-archive-status` (`cold_from_head`), the
+  only place Intelligent-Tiering's archive tiers show. A read of any of them answers `InvalidObjectState`, which
+  `map_s3_error` turns into `VolumeError::ColdStorage(path)` by the code alone; the copy dialog, the listing error pane
+  (an archived zip, browsed), and the viewer each word it from that typed variant. A restored object still lists as
+  `GLACIER`, so it keeps the glyph and reads fine. The internals say "cold storage" because "archive" already means a
+  zip here; the UI says "archived". Restore is a later milestone. Neither fixture has storage classes, so this is
+  unit-tested only (`query_test.rs`, `errors_test.rs`).
 
 ## Request bodies
 

@@ -242,6 +242,21 @@ pub(super) fn ambiguous_name(path_display: &str, raw_detail: String) -> ListingE
     }
 }
 
+/// The file sits in cold storage (S3 Glacier) and can't be read until it's
+/// restored. Retrying changes nothing until then, so no retry hint.
+pub(super) fn cold_storage(path_display: &str, raw_detail: String) -> ListingError {
+    ListingError {
+        category: ErrorCategory::NeedsAction,
+        reason: ListingErrorReason::ColdStorage {
+            path: path_display.to_string(),
+        },
+        provider: None,
+        action_kind: None,
+        retry_hint: false,
+        raw_detail,
+    }
+}
+
 pub(super) fn io_serious(path_display: &str, message: &str, raw_detail: String) -> ListingError {
     ListingError {
         category: ErrorCategory::Serious,

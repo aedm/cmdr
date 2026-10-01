@@ -112,6 +112,7 @@ export type ListingErrorReason =
   | { reason: 'connectionTimedOut' }
   | { reason: 'notSupported' }
   | { reason: 'deletePending'; path: string }
+  | { reason: 'coldStorage'; path: string }
   | { reason: 'invalidName'; path: string }
   | { reason: 'ambiguousName'; path: string }
   | { reason: 'ioSerious'; path: string; osMessage: string }

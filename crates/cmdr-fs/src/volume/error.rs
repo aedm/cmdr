@@ -128,6 +128,17 @@ pub enum VolumeError {
     /// Carries the destination folder path for a destination-correct message if
     /// the retry also fails. MTP-only today.
     StaleDestinationHandle(String),
+    /// The file's bytes sit in a cold storage class and can't be read until
+    /// someone restores them (S3 Glacier Flexible Retrieval and Deep Archive,
+    /// and Intelligent-Tiering's archive tiers, answer `InvalidObjectState`).
+    /// Carries the path.
+    ///
+    /// The UI calls such a file "archived"; the internals say "cold storage"
+    /// because "archive" already means a zip or tar here (`is_archive`,
+    /// `NeedsPassword`). Retrying can only fail the same way until a restore
+    /// lands, so it's typed rather than an [`IoError`](Self::IoError), which
+    /// offers a Retry. S3-only today.
+    ColdStorage(String),
     /// Anything the backend couldn't classify further. The classifier
     /// re-dispatches on `raw_os_error` when one is present.
     IoError {
@@ -183,6 +194,7 @@ impl std::fmt::Display for VolumeError {
             Self::DeletePending(path) => write!(f, "Delete pending: {}", path),
             Self::AmbiguousName(path) => write!(f, "More than one stored name matches: {}", path),
             Self::StaleDestinationHandle(path) => write!(f, "Destination folder handle was stale: {}", path),
+            Self::ColdStorage(path) => write!(f, "In cold storage, needs a restore before reading: {}", path),
             Self::IoError { message, .. } => write!(f, "I/O error: {}", message),
             Self::NeedsPassword { wrong_attempt } => {
                 if *wrong_attempt {

@@ -84,6 +84,13 @@ export interface FileEntry {
    */
   gitMeta?: GitEntryMeta
   /**
+   * The file's bytes sit in cold storage (S3 Glacier Flexible Retrieval or Deep
+   * Archive) and can't be read until someone restores them. The row shows an
+   * "archived" glyph; a read answers `coldStorage`. Set by the backend listing;
+   * optional so synthetic entries can omit it.
+   */
+  inColdStorage?: boolean
+  /**
    * Parent directory path. Optional on FileEntry because normal directory
    * listings derive it implicitly from the containing folder, but search-results
    * snapshots carry it per row so the optional Path column in FullList can

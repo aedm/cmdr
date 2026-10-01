@@ -255,6 +255,10 @@ pub enum ViewerError {
         failure: ArchiveFailureKind,
         message: String,
     },
+    /// The file is archived in cold storage (S3 Glacier Flexible Retrieval or
+    /// Deep Archive) and can't be read until someone restores it, so there's
+    /// nothing to preview yet and a Retry can't help.
+    ColdStorage,
 }
 
 impl std::fmt::Display for ViewerError {
@@ -283,6 +287,7 @@ impl std::fmt::Display for ViewerError {
             // both a `.zip` and a `.git` snapshot reach it.
             Self::DestinationIsReadOnly => write!(f, "Can't save into a read-only location"),
             Self::Archive { message, .. } => write!(f, "{message}"),
+            Self::ColdStorage => write!(f, "The file is archived and needs a restore before it can be read"),
         }
     }
 }

@@ -21,7 +21,7 @@ use crate::metadata::{MTIME_HEADER, parse_mtime};
 use crate::ops::{self, ListObjectsParams};
 use crate::request::S3Request;
 use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
-use crate::xml::{BodyError, parse_list_buckets, parse_list_objects};
+use crate::xml::{BodyError, StorageClass, parse_list_buckets, parse_list_objects};
 
 impl S3Volume {
     /// One request, in the `Volume` vocabulary: a transport failure by its
@@ -174,17 +174,21 @@ impl S3Volume {
     }
 
     /// A listing child as a `FileEntry` at its app path.
-    fn child_entry(&self, parent: &str, child: Child) -> Option<FileEntry> {
+    pub(super) fn child_entry(&self, parent: &str, child: Child) -> Option<FileEntry> {
         let remote = child_of(parent, child.name());
         match child {
             Child::Folder { name } => self.folder_entry(&name, &remote, None),
             Child::Object {
-                name, size, modified, ..
+                name,
+                size,
+                modified,
+                archived,
             } => {
                 let app_path = self.root.to_app_path(&remote)?;
                 let mut entry = FileEntry::new(name, app_path.to_string_lossy().into_owned(), false, false);
                 entry.size = Some(size);
                 entry.modified_at = modified.and_then(unix_secs);
+                entry.in_cold_storage = archived;
                 Some(entry)
             }
         }
@@ -208,6 +212,7 @@ impl S3Volume {
         let mut entry = FileEntry::new(name.to_string(), app_path.to_string_lossy().into_owned(), false, false);
         entry.size = head.header("content-length").and_then(|length| length.parse().ok());
         entry.modified_at = modified_from_head(head.header(MTIME_HEADER), head.header("last-modified"));
+        entry.in_cold_storage = cold_from_head(head.header("x-amz-storage-class"), head.header("x-amz-archive-status"));
         Some(entry)
     }
 }
@@ -219,6 +224,14 @@ pub(super) fn modified_from_head(mtime: Option<&str>, last_modified: Option<&str
         .and_then(parse_mtime)
         .or_else(|| last_modified.and_then(|text| httpdate::parse_http_date(text).ok()))
         .and_then(unix_secs)
+}
+
+/// Whether a HEAD says the object needs a restore before it can be read:
+/// `x-amz-storage-class` names Glacier Flexible Retrieval or Deep Archive, or
+/// `x-amz-archive-status` says an Intelligent-Tiering object moved to one of
+/// its archive tiers (which a listing can't show).
+pub(super) fn cold_from_head(storage_class: Option<&str>, archive_status: Option<&str>) -> bool {
+    StorageClass::from_text(storage_class).is_archived() || archive_status.is_some()
 }
 
 /// Seconds since the epoch, or `None` for a date before it (S3 has none).

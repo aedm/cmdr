@@ -289,6 +289,13 @@ pub enum ListingErrorReason {
         /// The path the failure was about.
         path: String,
     },
+    /// `VolumeError::ColdStorage`: the file's bytes sit in a cold storage class
+    /// (S3 Glacier) and need a restore before they can be read, which is how a
+    /// listing meets it: browsing into an archived zip. No retry hint.
+    ColdStorage {
+        /// The path the failure was about.
+        path: String,
+    },
     /// `VolumeError::AmbiguousName`: the path matches more than one stored name
     /// once Unicode form and case are set aside, and none exactly, so nothing was
     /// opened. No retry hint: the same path asks the same question.

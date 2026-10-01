@@ -1,6 +1,55 @@
-//! Which date an object shows.
+//! Which date an object shows, and which objects show as archived.
 
-use super::modified_from_head;
+use super::super::listing::children_of;
+use super::super::test_support::make_test_volume;
+use super::{cold_from_head, modified_from_head};
+use crate::xml::parse_list_objects;
+
+/// One `ListObjectsV2` page with an object in every storage class that
+/// matters: two that need a restore, and two that read at once.
+const PAGE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>b</Name><Prefix>old/</Prefix><KeyCount>4</KeyCount><IsTruncated>false</IsTruncated>
+  <Contents><Key>old/flexible.tar</Key><Size>10</Size><StorageClass>GLACIER</StorageClass></Contents>
+  <Contents><Key>old/deep.tar</Key><Size>10</Size><StorageClass>DEEP_ARCHIVE</StorageClass></Contents>
+  <Contents><Key>old/instant.tar</Key><Size>10</Size><StorageClass>GLACIER_IR</StorageClass></Contents>
+  <Contents><Key>old/plain.tar</Key><Size>10</Size></Contents>
+</ListBucketResult>"#;
+
+#[test]
+fn a_listing_marks_the_objects_that_need_a_restore_and_only_those() {
+    let volume = make_test_volume(Some("b"));
+    let page = parse_list_objects(PAGE).expect("a well-formed page");
+    let cold: Vec<(String, bool)> = children_of(&page, "old/")
+        .into_iter()
+        .filter_map(|child| volume.child_entry("/b/old", child))
+        .map(|entry| (entry.name, entry.in_cold_storage))
+        .collect();
+    assert_eq!(
+        cold,
+        [
+            ("flexible.tar".to_string(), true),
+            ("deep.tar".to_string(), true),
+            // Glacier Instant Retrieval reads on demand: no badge.
+            ("instant.tar".to_string(), false),
+            ("plain.tar".to_string(), false),
+        ]
+    );
+}
+
+#[test]
+fn a_head_names_cold_storage_by_class_or_by_archive_tier() {
+    // `x-amz-storage-class` is absent for STANDARD.
+    assert!(!cold_from_head(None, None));
+    assert!(cold_from_head(Some("GLACIER"), None));
+    assert!(cold_from_head(Some("DEEP_ARCHIVE"), None));
+    assert!(!cold_from_head(Some("GLACIER_IR"), None));
+    assert!(!cold_from_head(Some("STANDARD_IA"), None));
+    // Intelligent-Tiering's archive tiers show only on a HEAD.
+    assert!(cold_from_head(Some("INTELLIGENT_TIERING"), Some("ARCHIVE_ACCESS")));
+    assert!(cold_from_head(Some("INTELLIGENT_TIERING"), Some("DEEP_ARCHIVE_ACCESS")));
+    assert!(!cold_from_head(Some("INTELLIGENT_TIERING"), None));
+}
 
 const LAST_MODIFIED: &str = "Wed, 01 Oct 2025 10:00:00 GMT";
 const LAST_MODIFIED_SECS: u64 = 1_759_312_800;
