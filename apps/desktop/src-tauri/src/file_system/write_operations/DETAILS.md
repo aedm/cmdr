@@ -1447,8 +1447,10 @@ the copy names a drive, and the boot disk never goes away, so it meets the rule 
 ## Testing the in-flight temp ledger
 
 **Every test that records or sweeps owns its ledger.** `in_flight_temps::Ledger` is a handle; the app has one
-(`Ledger::process()`, which every `WriteOperationState` carries by default), and a test builds its own and hands it to
-the states it drives with `WriteOperationState::with_in_flight_ledger`. `Ledger::recording_in(data_dir)` records into a
+(`Ledger::process()`, which a `WriteOperationState` records into unless it carries another), and a test builds its own
+and hands it to the states it drives with `WriteOperationState::with_in_flight_ledger`. The state holds only that
+`Option<Ledger>` and `Ledger::of` resolves it, so `state` never calls into `in_flight_temps`: that call closed a
+`state` → `in_flight_temps` → `sweep` → `transfer_sides` → `state` module cycle. `Ledger::recording_in(data_dir)` records into a
 fresh log there; dropping it is the crash; `Ledger::for_test().launch_in(data_dir)` is the next launch, replaying that
 log; `live_paths()` is what that ledger alone believes is on disk. So a cell's log, tally, and live set hold its own
 records and nothing else, and it can assert on all of them whole.

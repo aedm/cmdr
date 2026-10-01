@@ -167,9 +167,10 @@ impl SweepTally {
 /// One persisted ledger: the open log, what it claims exists, and the listener
 /// that settles its deferred records when their volume arrives.
 ///
-/// Production has exactly one, [`Ledger::process`], and every operation state
-/// carries a handle to it. A test builds its own and hands it to the states it
-/// drives (`WriteOperationState::with_in_flight_ledger`), so a test that
+/// Production has exactly one, [`Ledger::process`], which every operation state
+/// records into unless it carries another ([`Ledger::of`]). A test builds its
+/// own and hands it to the states it drives
+/// (`WriteOperationState::with_in_flight_ledger`), so a test that
 /// replays and sweeps its log only ever meets its own records. ❌ Don't go back
 /// to one singleton the tests install a log into: a sweep test then replays the
 /// records of every transfer test running beside it and deletes their live
@@ -197,6 +198,11 @@ impl Ledger {
     /// The app's one ledger, in the app data dir once [`init_and_sweep`] has run.
     pub(super) fn process() -> Self {
         PROCESS_LEDGER.clone()
+    }
+
+    /// The ledger `state` records into: a test's own, else the process's.
+    fn of(state: &WriteOperationState) -> &Self {
+        state.in_flight_ledger.as_ref().unwrap_or_else(|| &*PROCESS_LEDGER)
     }
 
     fn store(&self) -> MutexGuard<'_, Store> {
@@ -266,7 +272,7 @@ pub(super) fn register(state: &WriteOperationState, temp: &Path, home: Option<Te
         );
         return;
     };
-    let mut store = state.in_flight_ledger().store();
+    let mut store = Ledger::of(state).store();
     store.recorded.insert(record.clone());
     append(&mut store, record.add_op(), &record);
 }
@@ -278,7 +284,7 @@ pub(super) fn deregister(state: &WriteOperationState, temp: &Path, home: Option<
     let Some(record) = record_for(temp, home) else {
         return;
     };
-    let mut store = state.in_flight_ledger().store();
+    let mut store = Ledger::of(state).store();
     store.recorded.remove(&record);
     append(&mut store, record.retire_op(), &record);
     compact_if_large(&mut store);
@@ -337,7 +343,7 @@ fn record(state: &WriteOperationState, home: RecordHome, kind: ItemKind, absolut
     if is_temp {
         state.in_flight_temps.lock_ignore_poison().push(absolute.to_path_buf());
     }
-    let mut store = state.in_flight_ledger().store();
+    let mut store = Ledger::of(state).store();
     store.recorded.insert(record.clone());
     append(&mut store, record.add_op(), &record);
 
@@ -354,7 +360,7 @@ pub(super) fn retire(state: &WriteOperationState, record: &TrackedRecord) {
         .in_flight_temps
         .lock_ignore_poison()
         .retain(|p| p != &record.absolute);
-    state.in_flight_ledger().retire_record(&record.record);
+    Ledger::of(state).retire_record(&record.record);
 }
 
 /// The thing is still on disk and its volume isn't reachable, so hold the record
@@ -370,7 +376,7 @@ pub(super) fn keep_for_arrival(state: &WriteOperationState, record: TrackedRecor
     if record.record.volume_id().is_none() {
         return;
     }
-    let ledger = state.in_flight_ledger();
+    let ledger = Ledger::of(state);
     ledger.store().pending.insert(record.record);
     ledger.ensure_arrival_listener();
 }
