@@ -495,7 +495,7 @@ async fn connecting_a_place_that_is_already_registered_is_refused() {
 )]
 async fn forgetting_a_server_tells_the_panes_before_it_takes_the_row_away() {
     let _recorder = crate::volume_broadcast::recorder_test_lock();
-    let host = "192.0.2.41";
+    let host = "192.0.2.74";
     sftp_known_servers::remember(sftp_entry(host, true));
     let volume_id = cmdr_fs::volume::sftp_volume_id(host, 2222, "ada");
 
@@ -581,7 +581,7 @@ async fn disconnecting_a_connected_place_tells_the_panes_and_keeps_it_saved() {
 )]
 async fn disconnecting_a_place_that_has_no_session_announces_nothing() {
     let _recorder = crate::volume_broadcast::recorder_test_lock();
-    let host = "192.0.2.42";
+    let host = "192.0.2.75";
     sftp_known_servers::remember(sftp_entry(host, true));
     let volume_id = cmdr_fs::volume::sftp_volume_id(host, 2222, "ada");
 
