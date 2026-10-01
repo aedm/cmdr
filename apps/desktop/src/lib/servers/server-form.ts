@@ -9,8 +9,9 @@
 import type { SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 import type { SavedSftpServer, SavedWebdavServer } from '$lib/tauri-commands'
 import { mountSourceAsSmbUrl, parseServerAddress, uncAsSmbUrl, type ParsedAddress } from './address-parser'
+import { emptyS3Fields, s3FieldsFromAppPath, s3HostOf, s3ProviderFrom, type S3FormFields } from './s3-form'
 
-/** Every field the add and edit forms hold, across all three protocols. */
+/** Every field the add and edit forms hold, across all four protocols. */
 export interface ServerForm {
   protocol: ServerProtocol
   /** What the user typed, kept verbatim so their own spelling survives an edit. */
@@ -34,6 +35,12 @@ export interface ServerForm {
   keyFile: string
   useAgent: boolean
   autoReconnect: boolean
+  /**
+   * S3's own fields: the provider preset, its one field, and the bucket (`s3-form.ts`). The
+   * access key ID is `username` and the secret access key is `secret`, so the identity lock and
+   * the secret plumbing are the ones every account uses.
+   */
+  s3: S3FormFields
 }
 
 /** A blank form, on add mode's defaults. */
@@ -57,6 +64,7 @@ export function emptyServerForm(): ServerForm {
     keyFile: '',
     useAgent: true,
     autoReconnect: true,
+    s3: emptyS3Fields(),
   }
 }
 
@@ -74,7 +82,9 @@ export function emptyServerForm(): ServerForm {
  * into. That username goes, since the address no longer says it.
  */
 export function applyParsedAddress(form: ServerForm, parsed: ParsedAddress): ServerForm {
-  if (parsed.kind === 'unparsed')
+  // S3 shows no address, so one left over from another protocol fills nothing: its
+  // account is no access key ID.
+  if (form.protocol === 's3' || parsed.kind === 'unparsed')
     return form.usernameFromAddress ? { ...form, ...usernameAfter(form, undefined) } : form
   // A path is a folder only on SFTP (an SMB path is a share, and a WebDAV one
   // stays in the base URL), and only when the address doesn't name another
@@ -114,6 +124,10 @@ function usernameAfter(
  * before anything is dialed. An address with no scheme leaves the default.
  */
 export function formFromPrefill(address: string): ServerForm {
+  // An `s3://` app path names the account and the bucket, and its host names the
+  // preset, so it fills the S3 fields rather than an address S3 has no field for.
+  const s3 = s3FieldsFromAppPath(address.trim())
+  if (s3) return { ...emptyServerForm(), protocol: 's3', username: s3.accessKeyId, s3: s3.fields }
   const parsed = parseServerAddress(address)
   const protocol = parsed.kind === 'parsed' && parsed.protocol !== undefined ? parsed.protocol : 'smb'
   return applyParsedAddress({ ...emptyServerForm(), protocol, address }, parsed)
@@ -127,14 +141,27 @@ export function formFromPrefill(address: string): ServerForm {
  * `smbAddressFrom` instead.
  */
 export function serverTargetFrom(form: ServerForm): ServerTarget | null {
-  const parsed = parseServerAddress(form.address)
-  if (parsed.kind === 'unparsed') return null
-
   const username = form.username.trim()
   // ❗ Empty stays empty. The backend calls an unnamed server by its account and
   // host, and a name that repeated the typed address left the edit sheet with a
   // name that looked like the address, which sent a person to edit the wrong field.
   const displayName = form.displayName.trim()
+
+  // S3 has no address: the preset makes the endpoint.
+  if (form.protocol === 's3') {
+    const bucket = form.s3.bucket.trim()
+    return {
+      protocol: 's3',
+      displayName,
+      provider: s3ProviderFrom(form.s3),
+      accessKeyId: username,
+      bucket: bucket === '' ? null : bucket,
+      autoReconnect: form.autoReconnect,
+    }
+  }
+
+  const parsed = parseServerAddress(form.address)
+  if (parsed.kind === 'unparsed') return null
 
   // ❗ The TOGGLE decides which target this is, ❌ never the address: this is
   // the one place a protocol is chosen for a dial, and it is the person's pick
@@ -205,6 +232,13 @@ export function smbAddressFrom(address: string): string {
  * address already saved under a name someone gave it (`saved`) reads as that name.
  */
 export function nameFallbackOf(form: ServerForm, saved: readonly SavedServer[] = []): string | null {
+  if (form.protocol === 's3') {
+    // `s3_known_places::KnownS3Place::label`: the bucket, else the key, at the endpoint host.
+    const host = s3HostOf(form.s3)
+    if (host === null) return null
+    const who = form.s3.bucket.trim() || form.username.trim()
+    return who === '' ? host : `${who}@${host}`
+  }
   const parsed = parseServerAddress(form.address)
   if (parsed.kind === 'unparsed') return null
   if (form.protocol === 'smb') {
@@ -375,7 +409,7 @@ function normalizeRoot(root: string): string {
 }
 
 /** The protocols' own ports, which a sentence leaves unsaid. */
-const DEFAULT_PORTS: Record<ServerProtocol, number[]> = { smb: [445], sftp: [22], webdav: [80, 443] }
+const DEFAULT_PORTS: Record<ServerProtocol, number[]> = { smb: [445], sftp: [22], webdav: [80, 443], s3: [80, 443] }
 
 /**
  * A host as a sentence names it: with its port when that isn't the protocol's own,

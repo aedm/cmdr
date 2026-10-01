@@ -48,6 +48,7 @@
     import { triggerNetworkDiscovery } from './lazy-trigger'
     import { signedInAsLabel } from './signed-in-as-label'
     import { tString } from '$lib/intl/messages.svelte'
+    import { addToast } from '$lib/ui/toast'
     import type { MessageKey } from '$lib/intl/keys.gen'
     import { getAppLogger } from '$lib/logging/logger'
 
@@ -338,6 +339,12 @@
         if (!move) { log.warn('The hub row {server} has nowhere to open', { server: row.name }); return; }
         if (move.kind === 'host') onHostSelect?.(move.host, move.label)
         else if (move.kind === 'place') onServerSelect?.(move.row)
+        // ❗ Says where to go rather than doing nothing: an S3 account is no place itself.
+        else if (move.kind === 'account')
+            addToast(tString('servers.hub.openAccountHint', { name: move.label }), {
+                level: 'info',
+                id: 'servers-open-account-hint',
+            })
         else onShareViaHost?.(move.host, { share: move.share, label: move.label })
     }
 
@@ -559,11 +566,11 @@
                 }}
                 onkeydown={() => {}}
             >
-                <span class="col-name" class:is-share={row.kind === 'share'}>
+                <span class="col-name" class:is-place={row.kind === 'place'}>
                     <span class="row-icon"><Icon name={hubRowIcon(row)} size={16} aria-hidden="true" /></span>
                     <!-- The tooltip sits on the span that clips: an overflow check on the cell never fires. -->
                     <span class="name-text" use:tooltip={{ text: row.name + accountSuffix(row), overflowOnly: true }}
-                        >{row.name}{#if row.account !== null}<span class="share-account">{accountSuffix(row)}</span
+                        >{row.name}{#if row.account !== null}<span class="row-account">{accountSuffix(row)}</span
                             >{/if}</span
                     >
                 </span>
@@ -578,7 +585,7 @@
                     {tString(STATUS_TEXT_KEY[row.status])}
                 </span>
                 <span class="col-last-used">
-                    {#if row.kind === 'share'}
+                    {#if row.kind === 'place'}
                         <!-- The server row above says when it was last used. -->
                     {:else if lastUsedSeconds(row) === null}
                         <span class="never-used">{tString('servers.hub.neverUsed')}</span>
@@ -786,7 +793,7 @@
 
     /* A share sits one icon plus the gap in. ❗ On the ICON: padding on the flex cell grew
        its base size and pushed Type, Address, and Status right on every share row. */
-    .col-name.is-share .row-icon {
+    .col-name.is-place .row-icon {
         margin-left: var(--spacing-xl);
     }
 
@@ -799,7 +806,7 @@
         padding-right: var(--spacing-sm);
     }
 
-    .share-account {
+    .row-account {
         color: var(--color-text-tertiary);
     }
 

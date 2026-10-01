@@ -13,6 +13,7 @@
  */
 
 import type { PaneFileEntry, PaneState } from '$lib/tauri-commands'
+import { parseServerPath, serverAppRoot } from '$lib/servers/server-path-utils'
 import type { HubRow } from './servers-hub-rows'
 import { fullIndexOf, type HubItem } from './servers-hub-items'
 
@@ -91,9 +92,9 @@ function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {
   const tokens = [`protocol=${row.protocol}`, `status="${row.status}"`, `address=${row.address}`]
   // The account it's signed in as (a share: opens as); `(guest)` can't be an account's name.
   if (row.account !== null) tokens.push(`account=${row.account.kind === 'guest' ? '(guest)' : row.account.username}`)
-  if (row.kind === 'share') {
-    // A saved share under the row above it.
-    tokens.push('kind=share')
+  if (row.kind === 'place') {
+    // A saved place under the row above it: an SMB share, or an S3 bucket or account root.
+    tokens.push(row.protocol === 'smb' ? 'kind=share' : 'kind=place')
   } else {
     const shares = lookups.shareCountOf?.(row)
     if (shares !== undefined) tokens.push(`shares=${String(shares)}`)
@@ -110,8 +111,13 @@ function entryFor(row: HubRow, lookups: HubMcpLookups): PaneFileEntry {
  */
 function pathFor(row: HubRow, lookups: HubMcpLookups): string {
   // A share's place: its last mount path, or `smb://<host>/<share>` before one.
-  if (row.kind === 'share' && row.place) return row.place.appRoot
+  if (row.kind === 'place' && row.place) return row.place.appRoot
   if (row.protocol === 'smb') return `smb://${row.address}`
+  // An S3 account: the account's own prefix, which every one of its places hangs under.
+  if (row.protocol === 's3') {
+    const parsed = parseServerPath(row.saved?.places[0]?.appRoot ?? '')
+    if (parsed) return serverAppRoot(parsed)
+  }
   return lookups.appRootOf(row) ?? `${row.protocol}://${row.address}`
 }
 

@@ -34,13 +34,17 @@
     import type { ServerProtocol } from '$lib/ipc/bindings'
     import type { ServerForm } from './server-form'
     import type { MessageKey } from '$lib/intl/keys.gen'
+    import S3EndpointFields from './S3EndpointFields.svelte'
+
+    /** A made-up access key ID in AWS's shape, for the placeholder. AWS's own documentation example. */
+    const ACCESS_KEY_ID_EXAMPLE = 'AKIAIOSFODNN7EXAMPLE'
 
     /**
      * What the address field takes, per selected protocol. ❗ Keyed by the TOGGLE, like
      * everything else the sheet decides: an SMB user told to paste "a whole ssh line"
      * would paste the wrong thing.
      */
-    const ADDRESS_HELP_KEY: Record<ServerProtocol, MessageKey> = {
+    const ADDRESS_HELP_KEY: Record<Exclude<ServerProtocol, 's3'>, MessageKey> = {
         smb: 'servers.sheet.addressHelpSmb',
         sftp: 'servers.sheet.addressHelpSftp',
         webdav: 'servers.sheet.addressHelpWebdav',
@@ -82,6 +86,14 @@
         rootRefusal?: string
         /** The sentence under the start folder. */
         startFolderRefusal?: string
+        /** S3: the sentence under the region (or a preset's location or account ID). */
+        regionRefusal?: string
+        /** S3: the sentence under the bucket. */
+        bucketRefusal?: string
+        /** S3, on `region_mismatch` with the region named: switches to it and tries again. */
+        onUseRegion?: () => void
+        /** The region `onUseRegion` switches to. */
+        suggestedRegion?: string
         /** Shown in edit mode when the backend says unattended reconnect can't work as things stand. */
         storedSecretWarning?: string
         /**
@@ -100,6 +112,9 @@
         secretInput?: HTMLInputElement
         rootInput?: HTMLInputElement
         startFolderInput?: HTMLInputElement
+        /** S3: Other's region input (a preset's region is `addressInput`). */
+        regionInput?: HTMLInputElement
+        bucketInput?: HTMLInputElement
     }
 
     /* eslint-disable prefer-const -- $bindable() requires `let` destructuring */
@@ -117,6 +132,10 @@
         secretRefusal,
         rootRefusal,
         startFolderRefusal,
+        regionRefusal,
+        bucketRefusal,
+        onUseRegion,
+        suggestedRegion,
         storedSecretWarning,
         namePlaceholder,
         advancedOpen = $bindable(false),
@@ -126,6 +145,8 @@
         secretInput = $bindable(),
         rootInput = $bindable(),
         startFolderInput = $bindable(),
+        regionInput = $bindable(),
+        bucketInput = $bindable(),
     }: Props = $props()
 
     const log = getAppLogger('servers')
@@ -134,7 +155,10 @@
         { value: 'smb', label: tString('servers.sheet.protocolSmb') },
         { value: 'sftp', label: tString('servers.sheet.protocolSftp') },
         { value: 'webdav', label: tString('servers.sheet.protocolWebdav') },
+        { value: 's3', label: tString('servers.sheet.protocolS3') },
     ])
+
+    const isS3 = $derived(form.protocol === 's3')
 
     /** SMB signs in from the mount, not from here, and keeps no folders here either. */
     const asksForCredentials = $derived(form.protocol !== 'smb')
@@ -175,6 +199,25 @@
     />
 </div>
 
+{#if isS3}
+    <!-- S3 has no address: the provider preset makes the endpoint, and the bucket names the place. -->
+    <S3EndpointFields
+        fields={form.s3}
+        {disabled}
+        {identityEditable}
+        {addressRefusal}
+        {regionRefusal}
+        {bucketRefusal}
+        {onUseRegion}
+        {suggestedRegion}
+        bind:addressInput
+        bind:regionInput
+        bind:bucketInput
+        onChange={(patch) => {
+            onChange({ s3: { ...form.s3, ...patch } })
+        }}
+    />
+{:else}
 <div class="field">
     <label for="server-address" class="field-label">{tString('servers.sheet.address')}</label>
     <TextInput
@@ -216,7 +259,7 @@
         <!-- `status`, ❌ not `alert`: it arrives while someone is typing, and it
              asks for a look, not an interruption. -->
         <p id="server-address-warning" class="field-warning" role="status">{addressWarning}</p>
-    {:else if identityEditable}
+    {:else if identityEditable && form.protocol !== 's3'}
         <p id="server-address-help" class="field-help">{tString(ADDRESS_HELP_KEY[form.protocol])}</p>
     {:else if !asksForCredentials}
         <!-- SMB: the account stays editable, so the address is the one locked field and says why here. -->
@@ -226,6 +269,7 @@
          WebDAV lock the account too, so their sentence sits under the username instead,
          where it covers all three of address, protocol, and account. -->
 </div>
+{/if}
 
 <!-- Every protocol has a name, SMB included: it's what the Servers list shows. -->
 <div class="field">
@@ -266,8 +310,12 @@
 {/if}
 
 {#if asksForCredentials}
+    <!-- S3's account is its access key ID, and its secret the secret access key: the same two
+         fields, so the identity lock and the secret plumbing are the ones every account uses. -->
     <div class="field">
-        <label for="server-username" class="field-label">{tString('servers.sheet.username')}</label>
+        <label for="server-username" class="field-label"
+            >{isS3 ? tString('servers.sheet.accessKeyId') : tString('servers.sheet.username')}</label
+        >
         <TextInput
             id="server-username"
             value={form.username}
@@ -276,8 +324,10 @@
             }}
             disabled={disabled || !identityEditable}
             aria-describedby={identityHint ? 'server-identity-hint' : undefined}
-            placeholder={tString('servers.sheet.usernamePlaceholder')}
-            autocomplete="username"
+            placeholder={isS3
+                ? tString('servers.sheet.examplePlaceholder', { example: ACCESS_KEY_ID_EXAMPLE })
+                : tString('servers.sheet.usernamePlaceholder')}
+            autocomplete={isS3 ? 'off' : 'username'}
             autocapitalize="off"
             spellcheck={false}
         />
@@ -287,7 +337,9 @@
     </div>
 
     <div class="field">
-        <label for="server-secret" class="field-label">{tString('servers.sheet.password')}</label>
+        <label for="server-secret" class="field-label"
+            >{isS3 ? tString('servers.sheet.secretAccessKey') : tString('servers.sheet.password')}</label
+        >
         <TextInput
             id="server-secret"
             bind:inputElement={secretInput}
@@ -299,7 +351,7 @@
             {disabled}
             invalid={secretRefusal !== undefined}
             aria-describedby={secretRefusal ? 'server-secret-refusal' : undefined}
-            autocomplete="current-password"
+            autocomplete={isS3 ? 'off' : 'current-password'}
         />
         {#if secretRefusal}
             <p id="server-secret-refusal" class="field-refusal" role="alert">{secretRefusal}</p>
@@ -328,6 +380,8 @@
     <details class="advanced" bind:open={advancedOpen}>
         <summary>{tString('servers.sheet.advanced')}</summary>
         <div class="advanced-body">
+            <!-- S3 has no folders to root or start in: its bucket is the place. -->
+            {#if !isS3}
             <div class="field">
                 <label for="server-remote-root" class="field-label">{tString('servers.sheet.rootFolder')}</label>
                 <TextInput
@@ -374,6 +428,7 @@
                     <p id="server-start-folder-help" class="field-help">{tString('servers.sheet.startFolderHelp')}</p>
                 {/if}
             </div>
+            {/if}
 
             {#if isSftp}
                 <div class="field">

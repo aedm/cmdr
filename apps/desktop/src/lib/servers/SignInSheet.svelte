@@ -54,6 +54,7 @@
         hostWithPort,
     } from './server-form'
     import { readSavedServerOutcome, type SaveOutcome } from './server-outcomes'
+    import { s3FieldProblem, s3HostOf, s3RequiredFieldOf } from './s3-form'
     import type {
         AddIntent,
         SignInAttemptOutcome,
@@ -66,10 +67,12 @@
         forgetServerSecret,
         getKnownSftpServers,
         getKnownWebdavServers,
+        getS3UnattendedReconnect,
         getSftpUnattendedReconnect,
         getWebdavUnattendedReconnect,
         hasServerSecret,
         listSavedServers,
+        saveS3Credentials,
         saveSftpCredentials,
         saveWebdavCredentials,
         updateSavedServer,
@@ -99,6 +102,8 @@
     )
     /** The hint the last refused round came with, and the refusal it belongs under. */
     let hinted = $state<{ refusal: ConnectRefusalKind; hint: RefusalHint } | null>(null)
+    /** S3's `region_mismatch`: the region the server says the bucket lives in, when it said. */
+    let refusalRegion = $state<string | null>(null)
     let form = $state<ServerForm>(emptyServerForm())
     /**
      * Sign-in mode's own fields; the add form holds its own.
@@ -139,6 +144,8 @@
     let secretInput = $state<HTMLInputElement | undefined>()
     let rootInput = $state<HTMLInputElement | undefined>()
     let startFolderInput = $state<HTMLInputElement | undefined>()
+    let regionInput = $state<HTMLInputElement | undefined>()
+    let bucketInput = $state<HTMLInputElement | undefined>()
 
     const isEdit = $derived(request.mode === 'edit')
     /** `nothing` never opens the sheet, so a shape that reaches here always asks something. */
@@ -191,11 +198,17 @@
             // username is editable, the account the sheet opened with may not be
             // the one that was turned away.
             const username = roundUsername || (request.endpoint.username ?? request.endpoint.displayName)
-            return { host: request.endpoint.host, username }
+            return { host: request.endpoint.host, username, protocol: request.endpoint.protocol, region: refusalRegion }
         }
+        // S3 has no address: the preset's endpoint host is the server it names.
         const parsed = parseServerAddress(form.address)
-        const host = parsed.kind === 'parsed' ? hostWithPort(parsed.host, parsed.port, form.protocol) : form.address
-        return { host, username: form.username || host }
+        const host =
+            form.protocol === 's3'
+                ? (s3HostOf(form.s3) ?? '')
+                : parsed.kind === 'parsed'
+                  ? hostWithPort(parsed.host, parsed.port, form.protocol)
+                  : form.address
+        return { host, username: form.username || host, protocol: form.protocol, region: refusalRegion }
     })
 
     /**
@@ -251,8 +264,23 @@
     const canSubmit = $derived.by(() => {
         if (busy) return false
         if (request.mode === 'sign-in') return credentials.guest || credentials.secret !== ''
+        // S3 can't dial without a key and the one field its preset makes the endpoint from.
+        if (form.protocol === 's3') return form.username.trim() !== '' && s3RequiredFieldOf(form.s3).trim() !== ''
         return form.address.trim() !== ''
     })
+
+    /**
+     * "Use us-east-2", offered once a bucket turned out to live in a region the server
+     * named, on a preset that takes a region. One press switches and tries again.
+     */
+    const offersUseRegion = $derived(
+        request.mode === 'add' &&
+            refusal === 'region_mismatch' &&
+            refusalRegion !== null &&
+            form.protocol === 's3' &&
+            form.s3.provider !== 'r2' &&
+            form.s3.provider !== 'hetzner',
+    )
 
     onMount(() => {
         void seed()
@@ -355,6 +383,10 @@
             const state = await getWebdavUnattendedReconnect(id)
             return state === 'no_stored_secret' ? tString('servers.sheet.needsStoredSecret') : null
         }
+        if (protocol === 's3') {
+            const state = await getS3UnattendedReconnect(id)
+            return state === 'no_stored_secret' ? tString('servers.sheet.needsStoredSecret') : null
+        }
         return null
     }
 
@@ -373,6 +405,12 @@
             // can't be told right now.
             startFolderTouched = true
             await refuse('start_folder_outside_root')
+            return
+        }
+        // A region or an endpoint no host name can carry is a typo, and says so before anything dials.
+        const s3Problem = request.mode !== 'sign-in' && form.protocol === 's3' ? s3FieldProblem(form.s3) : null
+        if (s3Problem) {
+            await refuse(s3Problem)
             return
         }
         if (request.mode === 'edit') {
@@ -434,6 +472,7 @@
         busy = true
         refusal = null
         hinted = null
+        refusalRegion = null
         let outcome: SignInAttemptOutcome = { kind: 'refused', refusal: 'unreachable' }
         try {
             outcome = await attempt(submission)
@@ -473,6 +512,7 @@
                 return
             case 'refused':
                 hinted = outcome.hint ? { refusal: outcome.refusal, hint: outcome.hint } : null
+                refusalRegion = outcome.region ?? null
                 await refuse(outcome.refusal)
                 return
         }
@@ -499,6 +539,9 @@
         else if (where === 'address') addressInput?.focus()
         else if (where === 'root') rootInput?.focus()
         else if (where === 'start_folder') startFolderInput?.focus()
+        // A preset's region IS the input that makes its endpoint; only Other has a separate one.
+        else if (where === 'region') (regionInput ?? addressInput)?.focus()
+        else if (where === 'bucket') bucketInput?.focus()
     }
 
     /**
@@ -642,6 +685,9 @@
         if (form.secret === '') return
         if (target.protocol === 'sftp') {
             await saveSftpCredentials(target.host, target.port, target.username, form.secret)
+        } else if (target.protocol === 's3') {
+            // The ACCOUNT's secret: every place under this key shares it.
+            await saveS3Credentials(target.provider, target.accessKeyId, form.secret)
         } else {
             await saveWebdavCredentials(target.url, target.username, form.secret)
         }
@@ -702,8 +748,22 @@
                 disabled={busy}
                 protocolEditable={!isEdit}
                 identityEditable={!isEdit}
-                identityHint={isEdit ? tString('servers.sheet.identityLocked') : undefined}
+                identityHint={isEdit
+                    ? tString(form.protocol === 's3' ? 'servers.sheet.identityLockedS3' : 'servers.sheet.identityLocked')
+                    : undefined}
                 addressRefusal={refusalWhere === 'address' ? refusalText : undefined}
+                regionRefusal={refusalWhere === 'region' ? refusalText : undefined}
+                bucketRefusal={refusalWhere === 'bucket' ? refusalText : undefined}
+                suggestedRegion={refusalRegion ?? undefined}
+                onUseRegion={offersUseRegion
+                    ? () => {
+                          form = { ...form, s3: { ...form.s3, region: refusalRegion ?? form.s3.region } }
+                          refusal = null
+                          void submit()
+                      }
+                    : undefined}
+                bind:regionInput
+                bind:bucketInput
                 addressRefusalHint={refusalWhere === 'address' ? refusalHintText : undefined}
                 {addressWarning}
                 onAddAnyway={offersAddAnyway ? () => void submit('save_unchecked') : undefined}

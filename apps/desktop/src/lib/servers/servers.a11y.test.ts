@@ -198,6 +198,77 @@ describe('the three renderers on their own', () => {
     await expectNoA11yViolations(target)
   })
 
+  it('the S3 form, Other selected, with refusals under the endpoint, the region, the bucket, and the secret, has no violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const form = emptyServerForm()
+    mount(ServerFormFields, {
+      target,
+      props: {
+        form: { ...form, protocol: 's3', username: 'AKIAEXAMPLE', s3: { ...form.s3, provider: 'other' } },
+        disabled: false,
+        protocolEditable: true,
+        identityEditable: true,
+        addressRefusal: 'Nothing at this address answers as S3 storage.',
+        regionRefusal: 'This bucket is in us-east-2. Pick that region and try again.',
+        onUseRegion: () => {},
+        suggestedRegion: 'us-east-2',
+        bucketRefusal: 'There’s no bucket by that name at s3.example.com.',
+        secretRefusal: 'That secret access key didn’t work for AKIAEXAMPLE.',
+        advancedOpen: true,
+        onChange: () => {},
+      },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+
+  it('the S3 form on a preset, edit mode, has no violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const form = emptyServerForm()
+    mount(ServerFormFields, {
+      target,
+      props: {
+        form: {
+          ...form,
+          protocol: 's3',
+          username: 'AKIAEXAMPLE',
+          s3: { ...form.s3, provider: 'r2', accountId: 'abc' },
+        },
+        disabled: false,
+        protocolEditable: false,
+        identityEditable: false,
+        identityHint: 'The provider, the access key ID, and the bucket are what name this place.',
+        regionRefusal: 'Use only lowercase letters, digits, and dashes here.',
+        onChange: () => {},
+      },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+
+  it('the access_keys credential fields with a refusal have no violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(SignInCredentialFields, {
+      target,
+      props: {
+        shape: { kind: 'access_keys' },
+        accountLabel: 'AKIAEXAMPLE',
+        username: 'AKIAEXAMPLE',
+        secret: '',
+        remember: false,
+        guest: false,
+        disabled: false,
+        secretRefusal: 'That secret access key didn’t work for AKIAEXAMPLE.',
+        onChange: () => {},
+      },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+
   it('the credential fields with a refusal have no violations', async () => {
     const target = document.createElement('div')
     document.body.appendChild(target)

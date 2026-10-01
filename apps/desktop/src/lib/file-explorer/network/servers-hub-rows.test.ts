@@ -430,8 +430,8 @@ describe('saved SMB shares', () => {
 
     expect(rows.map((row) => [row.kind, row.name, row.account])).toEqual([
       ['server', "Sven's NAS", null],
-      ['share', 'Container', { kind: 'user', username: 'sven' }],
-      ['share', 'Scans', null],
+      ['place', 'Container', { kind: 'user', username: 'sven' }],
+      ['place', 'Scans', null],
     ])
     const container = rows[1]
     expect(container.volumeId).toBe('smb-container')

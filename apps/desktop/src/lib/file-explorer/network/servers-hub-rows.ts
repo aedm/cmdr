@@ -15,11 +15,13 @@
  * files the same machine under its Bonjour name. It claims EVERY host that
  * matches, since one machine can be in the discovery list under both spellings.
  *
- * An SMB server's saved SHARES (`SavedServer.places`, `docs/specs/saved-smb-shares.md`)
- * are rows of their own, right under their server: the list says "user + server +
- * share", which is what a person means to save (cmdr-reports#7).
+ * A server with MANY places (an SMB host's saved shares, `docs/specs/saved-smb-shares.md`,
+ * and an S3 account's saved buckets) lists each place as a row of its own, right under
+ * its server: the list says "user + server + share", which is what a person means to
+ * save (cmdr-reports#7). The server row itself has no place to act on.
  */
 
+import type { ServerProtocol } from '$lib/ipc/bindings'
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
 import type { ConnectionState, NetworkHost, VolumeInfo } from '../types'
 import { signedInAsOfMount, signedInAsUser, type SignedInAs } from './signed-in-as'
@@ -42,14 +44,14 @@ export type HubRowStatus =
 
 /** One line in the hub's table. */
 export interface HubRow {
-  /** Stable across rebuilds: the saved server's id, else the host's; `share:<volume id>` for a share. */
+  /** Stable across rebuilds: the saved server's id, else the host's; `share:<volume id>` for a place row. */
   id: string
   /**
-   * A SERVER (an account, or a host mDNS sees) or one of an SMB server's saved
-   * SHARES, which sits right under it.
+   * A SERVER (an account, or a host mDNS sees) or one of a many-place server's
+   * saved PLACES (an SMB share, an S3 bucket or account root), right under it.
    */
-  kind: 'server' | 'share'
-  /** A share's server row, `null` for a server. */
+  kind: 'server' | 'place'
+  /** A place row's server row, `null` for a server. */
   parentId: string | null
   /**
    * The account the row is signed in as, `null` when nothing known says. A share: the live mount's while it's
@@ -58,25 +60,25 @@ export interface HubRow {
    * a share's mount, which disagreed with the header. A one-place server: `null` (its name is `user@host` already).
    */
   account: SignedInAs | null
-  /** A share's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
+  /** A place row's place, `null` for a server row (a one-place server's is `saved.places[0]`). */
   place: SavedPlace | null
   /** What the Name column shows. */
   name: string
   /** Which protocol the row speaks, for the Type column. */
-  protocol: 'smb' | 'sftp' | 'webdav'
+  protocol: ServerProtocol
   /** What the Address column shows: resolved where mDNS resolved it. */
   address: string
   status: HubRowStatus
   /** ISO 8601, or `null` when nothing ever recorded one. */
   lastConnectedAt: string | null
   /**
-   * The place's volume id: a one-place server's, or a saved share's.
+   * The place's volume id: a one-place server's, or a place row's.
    *
-   * ❗ `null` for an SMB HOST row: its places are its shares, each a row of its
-   * own. Enter on a host opens its places list instead.
+   * ❗ `null` for a many-place server row (an SMB host, an S3 account): its places
+   * are rows of their own. Enter on an SMB host opens its places list instead.
    */
   volumeId: string | null
-  /** Whether the place is pinned to the switcher. Always `false` for an SMB host. */
+  /** Whether the place is pinned to the switcher. Always `false` for a many-place server. */
   pinned: boolean
   /** The saved entry behind the row, when the user saved one. */
   saved: SavedServer | null
@@ -153,55 +155,70 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
     add({ ...nearbyRow(host), account: listed([host.id]) })
   }
 
-  // Servers in rank order, each followed by its shares in name order. ❗ Shares
-  // are placed AFTER the sort, so a share never drifts away from its server.
+  // Servers in rank order, each followed by its places in name order. ❗ Places
+  // are placed AFTER the sort, so a place never drifts away from its server.
   const ordered: HubRow[] = []
   for (const row of rows.sort(compareRows)) {
     ordered.push(row)
-    if (!row.saved || row.protocol !== 'smb') continue
-    const shares = [...row.saved.places].sort((a, b) =>
+    if (!row.saved || !hasManyPlaces(row.protocol)) continue
+    const places = [...row.saved.places].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     )
-    const shareRows = shares.map((place) => shareRow(row, place, states, mountAccounts.get(place.volumeId) ?? null))
-    row.account = listed([row.host?.id, row.id]) ?? signedInAsUser(row.saved.username)
-    for (const share of shareRows) {
-      if (taken.has(share.id)) continue
-      taken.add(share.id)
-      ordered.push(share)
+    const placeRows = places.map((place) => placeRow(row, place, states, mountAccounts.get(place.volumeId) ?? null))
+    // An SMB server: the account its listing signed in as, else its saved one. An S3 account: its key.
+    row.account =
+      row.protocol === 'smb'
+        ? (listed([row.host?.id, row.id]) ?? signedInAsUser(row.saved.username))
+        : signedInAsUser(row.saved.username)
+    for (const placeRowEntry of placeRows) {
+      if (taken.has(placeRowEntry.id)) continue
+      taken.add(placeRowEntry.id)
+      ordered.push(placeRowEntry)
     }
   }
   return ordered
 }
 
 /**
- * A saved SMB share, as the row under its server.
+ * Whether a protocol's server holds many places, each a row of its own under it:
+ * an SMB host's shares, an S3 account's buckets. SFTP and WebDAV have exactly one.
+ */
+export function hasManyPlaces(protocol: ServerProtocol): boolean {
+  return protocol === 'smb' || protocol === 's3'
+}
+
+/**
+ * A saved place of a many-place server, as the row under its server.
  *
- * Its status is off the VOLUME LIST like every other place's: connected while
- * its volume is mounted (through the kernel or directly), saved otherwise.
+ * Its status is off the VOLUME LIST like every other place's. A share: connected
+ * while its volume is mounted (through the kernel or directly), saved otherwise. An
+ * S3 place reads like a one-place server (`placeStatus`), and names no account: the
+ * account row right above it already says the key.
  *
- * ❗ While connected it names the account the LIVE mount signed in as (`mountAccount`,
+ * ❗ While connected a share names the account the LIVE mount signed in as (`mountAccount`,
  * off the mount table; `GUEST` is nobody). The saved account is for the next connect:
  * an Add as otheruser over a mount signed in as testuser read "Connected … as otheruser".
  */
-function shareRow(
+function placeRow(
   server: HubRow,
   place: SavedPlace,
   states: Map<string, ConnectionState | null>,
   mountAccount: string | null,
 ): HubRow {
   const state = states.get(place.volumeId) ?? null
+  const isSmb = server.protocol === 'smb'
   const live = state === 'direct' || state === 'os_mount'
-  const liveAccount = live ? signedInAsOfMount(mountAccount) : null
+  const liveAccount = live && isSmb ? signedInAsOfMount(mountAccount) : null
   return {
     id: `share:${place.volumeId}`,
-    kind: 'share',
+    kind: 'place',
     parentId: server.id,
-    account: liveAccount ?? signedInAsUser(place.username),
+    account: isSmb ? (liveAccount ?? signedInAsUser(place.username)) : null,
     place,
     name: place.name,
-    protocol: 'smb',
+    protocol: server.protocol,
     address: server.address,
-    status: live ? 'connected' : 'saved',
+    status: isSmb ? (live ? 'connected' : 'saved') : placeStatus(state),
     lastConnectedAt: null,
     volumeId: place.volumeId,
     pinned: place.pinned,
@@ -267,6 +284,7 @@ function savedRow(server: SavedServer, host: NetworkHost | null, states: Map<str
   // ❗ Length-checked, not `[0] ?? null`: an SMB server may carry no places,
   // and the index signature would otherwise type the gap away.
   const place: SavedPlace | null = server.places.length > 0 ? server.places[0] : null
+  const many = hasManyPlaces(server.protocol)
   return {
     id: server.id,
     kind: 'server',
@@ -276,11 +294,11 @@ function savedRow(server: SavedServer, host: NetworkHost | null, states: Map<str
     name: displayName(server, host),
     protocol: server.protocol,
     address: hostAddress(host) ?? server.address,
-    status: savedStatus(server, host, place ? (states.get(place.volumeId) ?? null) : null),
+    status: savedStatus(server, host, states),
     lastConnectedAt: server.lastConnectedAt,
-    // An SMB host's places are its shares, each a row of its own.
-    volumeId: server.protocol === 'smb' ? null : (place?.volumeId ?? null),
-    pinned: server.protocol === 'smb' ? false : (place?.pinned ?? false),
+    // A many-place server's places are rows of their own; the server row has none to act on.
+    volumeId: many ? null : (place?.volumeId ?? null),
+    pinned: many ? false : (place?.pinned ?? false),
     saved: server,
     host,
   }
@@ -336,8 +354,23 @@ function nearbyRow(host: NetworkHost): HubRow {
  * discovery list at startup, reachable or not, so that entry says nothing about
  * the network. `primaryHost` puts a discovered one first when there is one.
  */
-function savedStatus(server: SavedServer, host: NetworkHost | null, state: ConnectionState | null): HubRowStatus {
+function savedStatus(
+  server: SavedServer,
+  host: NetworkHost | null,
+  states: Map<string, ConnectionState | null>,
+): HubRowStatus {
   if (server.protocol === 'smb') return host?.source === 'discovered' ? 'found_nearby' : 'saved'
+  const placeStatuses = server.places.map((place) => placeStatus(states.get(place.volumeId) ?? null))
+  // An S3 account reads as its most urgent place: live if one is, else asking if one asks.
+  // A one-place server has exactly one.
+  return placeStatuses.reduce<HubRowStatus>(
+    (best, status) => (STATUS_RANK[status] < STATUS_RANK[best] ? status : best),
+    'saved',
+  )
+}
+
+/** How live one place is, off its volume's connection state. */
+function placeStatus(state: ConnectionState | null): HubRowStatus {
   switch (state) {
     case 'direct':
     case 'os_mount':
@@ -360,8 +393,10 @@ function savedStatus(server: SavedServer, host: NetworkHost | null, state: Conne
 export type HubOpenMove =
   /** A host's share list. `label` is what the row calls it, for the list's words. */
   | { kind: 'host'; host: NetworkHost; label: string }
-  /** The pane lands on the row's place: a one-place server's, or a saved share's. */
+  /** The pane lands on the row's place: a one-place server's, or a place row's. */
   | { kind: 'place'; row: HubRow }
+  /** An S3 account row, which is no place itself: the hub says to open one of the places under it. */
+  | { kind: 'account'; label: string }
   /** A saved share no mount went through yet: its host's share list, mounting that share. */
   | { kind: 'share_via_host'; host: NetworkHost; share: string; label: string }
 
@@ -377,7 +412,9 @@ export type HubOpenMove =
  * happen and is logged by the caller.
  */
 export function openMoveFor(row: HubRow, rows: HubRow[], volumes: VolumeInfo[]): HubOpenMove | null {
-  if (row.kind === 'share') {
+  // An S3 place is dialed in the pane like a one-place server; only a share goes through its host.
+  if (row.kind === 'place' && row.protocol !== 'smb') return { kind: 'place', row }
+  if (row.kind === 'place') {
     if (row.volumeId && volumes.some((volume) => volume.id === row.volumeId)) return { kind: 'place', row }
     const server = rows.find((candidate) => candidate.id === row.parentId)
     const host = row.host ?? (server ? savedHostFor(server) : null)
@@ -386,6 +423,7 @@ export function openMoveFor(row: HubRow, rows: HubRow[], volumes: VolumeInfo[]):
       : null
   }
   if (row.protocol === 'smb') return { kind: 'host', host: row.host ?? savedHostFor(row), label: row.name }
+  if (row.protocol === 's3') return { kind: 'account', label: row.name }
   return { kind: 'place', row }
 }
 
@@ -402,7 +440,7 @@ export function savedHostFor(row: HubRow): NetworkHost {
 
 /** A share is a folder under its server; a server is a machine, or a service on one. */
 export function hubRowIcon(row: HubRow): 'folder' | 'monitor' | 'server' {
-  if (row.kind === 'share') return 'folder'
+  if (row.kind === 'place') return 'folder'
   return row.protocol === 'smb' ? 'monitor' : 'server'
 }
 

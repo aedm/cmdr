@@ -101,6 +101,31 @@
       "name": "the server name, like Naspolya"
     }
   },
+  "servers.hub.editAccountHint": "{name} keeps its settings on its buckets. Select one of the rows under it to edit it.",
+  "@servers.hub.editAccountHint": {
+    "description": "Toast when the user presses Edit or Rename (F4, F2) on an S3 account’s row in the Servers list. An S3 account (a storage service plus an access key) has no settings of its own; each saved bucket under it, listed as a row right below, is edited on its own. “Bucket” is the S3 term for a top-level storage container; keep the provider console’s term.",
+    "placeholders": {
+      "name": "the account’s name in the list, like \"Photos backup\" or \"AKIAEXAMPLE@s3.eu-west-1.amazonaws.com\""
+    }
+  },
+  "servers.hub.openAccountHint": "{name} isn’t a place to open. Open one of the buckets under it.",
+  "@servers.hub.openAccountHint": {
+    "description": "Toast when the user presses Enter or double-clicks an S3 account’s row in the Servers list. The account itself can’t be opened; its saved buckets, listed as rows right below it, can. “Bucket” is the S3 term; keep the provider console’s term.",
+    "placeholders": {
+      "name": "the account’s name in the list, like \"Photos backup\""
+    }
+  },
+  "servers.hub.forgetAccountConfirm": "Forget {name} and every bucket saved under it? Cmdr drops their connections and stops listing them. Your files stay in the buckets.",
+  "@servers.hub.forgetAccountConfirm": {
+    "description": "Body of the confirmation dialog before an S3 account and all its saved buckets leave the Servers list and the volume switcher (F8 on the account’s row). Reassures that nothing in storage is deleted. “Bucket” is the S3 term; keep the provider console’s term.",
+    "placeholders": {
+      "name": "the account’s name in the list, like \"Photos backup\""
+    }
+  },
+  "servers.hub.forgetSecretKeyToo": "Also forget the account’s secret access key",
+  "@servers.hub.forgetSecretKeyToo": {
+    "description": "Checkbox in the Forget confirmation for an S3 account or one of its buckets: when checked, the secret access key Cmdr saved for the account is deleted too. Every bucket under the account uses that one key, so it’s unchecked when forgetting a single bucket. Same term as servers.sheet.secretAccessKey. Sentence case, no final period."
+  },
   "servers.hub.forgetShare": "Forget share",
   "@servers.hub.forgetShare": {
     "description": "VERB phrase. Item in a saved SMB share's right-click menu in the Servers list: drops the saved share from the list and the volume switcher. Match the wording of menu.network.forgetServer, with share in place of server."
@@ -544,6 +569,108 @@
   "@servers.sheet.name": {
     "description": "Label of the field for what to call this server in the app. One word, NOUN.",
     "screenshot": "server-sign-in-add.png"
+  },
+  "servers.sheet.protocolS3": "S3",
+  "@servers.sheet.protocolS3": {
+    "description": "One option of the protocol picker in the Add server sheet: S3-compatible object storage (Amazon S3, Cloudflare R2, Backblaze B2, and others). A protocol name; keep it as-is."
+  },
+  "servers.sheet.s3Provider": "Provider",
+  "@servers.sheet.s3Provider": {
+    "description": "Label of the dropdown in the Add server sheet, S3 selected, that picks the storage service (Amazon S3, Cloudflare R2, and so on). One word, NOUN."
+  },
+  "servers.sheet.s3ProviderAws": "Amazon S3",
+  "@servers.sheet.s3ProviderAws": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderR2": "Cloudflare R2",
+  "@servers.sheet.s3ProviderR2": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderB2": "Backblaze B2",
+  "@servers.sheet.s3ProviderB2": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderWasabi": "Wasabi",
+  "@servers.sheet.s3ProviderWasabi": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage",
+  "@servers.sheet.s3ProviderHetzner": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderOther": "Other S3-compatible",
+  "@servers.sheet.s3ProviderOther": {
+    "description": "The last choice in the S3 Provider dropdown: any other storage server that speaks the S3 protocol (a self-hosted MinIO or Garage, for example). Picking it asks for the server’s web address. “S3” is a protocol name; keep it as-is."
+  },
+  "servers.sheet.s3Region": "Region",
+  "@servers.sheet.s3Region": {
+    "description": "Label of the field in the S3 form where the user types the storage region, a code like eu-west-1. One word, NOUN. Use the term the providers’ consoles use in your language."
+  },
+  "servers.sheet.s3RegionOptionalPlaceholder": "Optional. Leave empty to use us-east-1",
+  "@servers.sheet.s3RegionOptionalPlaceholder": {
+    "description": "Placeholder inside the Region field for “Other S3-compatible” storage, where the region is optional. Keep us-east-1 as-is: it’s a region code. Short: it has to fit inside a text field."
+  },
+  "servers.sheet.s3AccountId": "Account ID",
+  "@servers.sheet.s3AccountId": {
+    "description": "Label of the field in the S3 form, Cloudflare R2 selected, where the user types their Cloudflare account ID. Use the term Cloudflare’s dashboard uses in your language."
+  },
+  "servers.sheet.s3AccountIdHelp": "The account ID on your Cloudflare R2 overview page.",
+  "@servers.sheet.s3AccountIdHelp": {
+    "description": "One line under the Account ID field (Cloudflare R2 selected) saying where to find it. “Cloudflare R2” is a product name; keep it as-is."
+  },
+  "servers.sheet.s3Location": "Location",
+  "@servers.sheet.s3Location": {
+    "description": "Label of the dropdown in the S3 form, Hetzner Object Storage selected, that picks the data center location (fsn1, nbg1, hel1). One word, NOUN."
+  },
+  "servers.sheet.s3Endpoint": "Endpoint",
+  "@servers.sheet.s3Endpoint": {
+    "description": "Label of the field in the S3 form, “Other S3-compatible” selected, where the user types the storage server’s web address, like https://s3.example.com. One word, NOUN; use the term S3 tools use in your language."
+  },
+  "servers.sheet.s3PathStyle": "Use path-style addressing",
+  "@servers.sheet.s3PathStyle": {
+    "description": "Checkbox in the S3 form, “Other S3-compatible” selected, on by default: the bucket name goes in the web address’s path rather than in the host name. “Path-style” is the S3 term for it; keep it recognizable. Sentence case, no final period."
+  },
+  "servers.sheet.s3PathStyleHelp": "Most self-hosted servers, like MinIO and Garage, need this.",
+  "@servers.sheet.s3PathStyleHelp": {
+    "description": "One line under the “Use path-style addressing” checkbox. MinIO and Garage are product names; keep them as-is."
+  },
+  "servers.sheet.s3Bucket": "Bucket",
+  "@servers.sheet.s3Bucket": {
+    "description": "Label of the field in the S3 form where the user may type a bucket name. “Bucket” is the S3 term for a top-level storage container; use the term the providers’ consoles use in your language. One word, NOUN."
+  },
+  "servers.sheet.s3BucketPlaceholder": "Optional",
+  "@servers.sheet.s3BucketPlaceholder": {
+    "description": "Placeholder inside the Bucket field of the S3 form. One word: the field may stay empty."
+  },
+  "servers.sheet.s3BucketHelp": "Leave it empty to see every bucket this key can list.",
+  "@servers.sheet.s3BucketHelp": {
+    "description": "One line under the Bucket field of the S3 form: an empty Bucket opens the whole account, listing its buckets, if the access key may list them. “Bucket” is the S3 term; keep the providers’ term."
+  },
+  "servers.sheet.s3UseRegion": "Use {region}",
+  "@servers.sheet.s3UseRegion": {
+    "description": "Button under the Region field when the bucket turned out to live in another region and the server said which. It switches the Region field to that region and tries again. VERB phrase, imperative.",
+    "placeholders": {
+      "region": "a region code, like \"us-east-2\"; never translated"
+    }
+  },
+  "servers.sheet.accessKeyId": "Access key ID",
+  "@servers.sheet.accessKeyId": {
+    "description": "Label of the field in the S3 form where the user types the access key ID, the public half of an S3 key pair (like AKIAIOSFODNN7EXAMPLE). Use the term the providers’ consoles use in your language."
+  },
+  "servers.sheet.secretAccessKey": "Secret access key",
+  "@servers.sheet.secretAccessKey": {
+    "description": "Label of the field in the S3 form and the S3 sign-in sheet where the user types the secret access key, the private half of an S3 key pair (it works like a password). Use the term the providers’ consoles use in your language."
+  },
+  "servers.sheet.examplePlaceholder": "Example: {example}",
+  "@servers.sheet.examplePlaceholder": {
+    "description": "Placeholder inside an S3 form field, showing a sample value. The word before it is the ordinary label your language puts in front of an example; match servers.sheet.usernamePlaceholder (“Example: barry”).",
+    "placeholders": {
+      "example": "a sample value kept as-is, like a region code \"eu-west-1\", an access key ID, or a web address"
+    }
+  },
+  "servers.sheet.identityLockedS3": "The provider, the access key ID, and the bucket are what name this place. Forget it and add it again to change them.",
+  "@servers.sheet.identityLockedS3": {
+    "description": "Two lines under the greyed-out S3 fields when the user is EDITING a saved S3 place, explaining why those can’t be typed in and what to do instead. The S3 twin of servers.sheet.identityLocked; “Forget” is the same word as there. “Bucket” is the S3 term; keep the providers’ term."
   },
   "servers.sheet.namePlaceholder": "Leave empty to use {label}",
   "@servers.sheet.namePlaceholder": {

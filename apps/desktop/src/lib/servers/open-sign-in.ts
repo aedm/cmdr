@@ -27,6 +27,7 @@ import {
   listSavedServers,
   newServerAttemptId,
   reconnectVolumeWithCredentials,
+  saveS3Credentials,
   saveSftpCredentials,
   saveWebdavCredentials,
   savedServerId,
@@ -298,12 +299,12 @@ async function attemptAdd(
   )
   const attemptId = newServerAttemptId()
   const outcome = readConnectOutcome(await connectServer(submission.target, attemptId, submission.secret))
-  // A WebDAV connect asks the store before it dials, so "needs credentials" with
-  // an empty field is the field, not the server: word it as such.
+  // A WebDAV or S3 connect asks the store before it dials, so "needs credentials"
+  // with an empty field is the field, not the server: word it as such.
   if (
     outcome.kind === 'refused' &&
     outcome.refusal === 'needs_credentials' &&
-    submission.target.protocol === 'webdav' &&
+    (submission.target.protocol === 'webdav' || submission.target.protocol === 's3') &&
     !submission.secret?.secret
   ) {
     return { kind: 'refused', refusal: 'password_missing' }
@@ -383,6 +384,8 @@ async function saveUnchecked(target: ServerTarget, secret: SecretOffer | null): 
     try {
       if (target.protocol === 'sftp') {
         await saveSftpCredentials(target.host, target.port, target.username, secret.secret)
+      } else if (target.protocol === 's3') {
+        await saveS3Credentials(target.provider, target.accessKeyId, secret.secret)
       } else {
         await saveWebdavCredentials(target.url, target.username, secret.secret)
       }
@@ -506,13 +509,27 @@ async function identityFor(volumeId: string): Promise<PlaceIdentity> {
   const endpoint: SignInEndpoint = {
     protocol: owner.protocol,
     displayName: place?.name ?? owner.displayName,
-    // An SMB share's header names the share on its host: the place IS that share.
-    address: owner.protocol === 'smb' && place ? `smb://${owner.address}/${place.name}` : owner.address,
+    address: headerAddressOf(owner, place, parsed),
     host: parsed?.host ?? owner.address,
     // ❗ The PLACE's account first: an SMB host's shares each remember their own.
     username: parsed?.username ?? place?.username ?? owner.username ?? undefined,
   }
   return { endpoint, saveSecret: secretWriterFor(owner, parsed) }
+}
+
+/**
+ * The sheet's header line for a place. An SMB share names the share on its host, and
+ * an S3 bucket the bucket on its endpoint: in both, the place IS that share or bucket.
+ * Every other place is its server's address.
+ */
+function headerAddressOf(
+  owner: SavedServer,
+  place: SavedServer['places'][number] | undefined,
+  parsed: ReturnType<typeof parseServerPath>,
+): string {
+  if (owner.protocol === 'smb' && place) return `smb://${owner.address}/${place.name}`
+  const bucket = parsed?.protocol === 's3' ? parsed.path.split('/')[0] : ''
+  return bucket ? `${owner.address}/${bucket}` : owner.address
 }
 
 /**
