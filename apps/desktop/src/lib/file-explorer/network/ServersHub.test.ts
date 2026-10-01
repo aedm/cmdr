@@ -79,6 +79,7 @@ const savedSftp: SavedServer = {
       connected: false,
       appRoot: 'sftp://ada@jump.local:22',
       username: 'ada',
+      autoReconnect: true,
     },
   ],
 }
@@ -580,6 +581,7 @@ describe('ServersHub keyboard context menu', () => {
             connected: false,
             appRoot: '/Volumes/public',
             username: null,
+            autoReconnect: null,
           },
         ],
       } satisfies SavedServer,
@@ -628,6 +630,7 @@ describe('ServersHub row text', () => {
         connected: false,
         appRoot: '/Volumes/public',
         username: 'testuser',
+        autoReconnect: null,
       },
     ],
   }
@@ -684,6 +687,7 @@ describe('ServersHub row menu after a pin', () => {
         connected: false,
         appRoot: '/Volumes/public',
         username: null,
+        autoReconnect: null,
       },
     ],
   })

@@ -32,6 +32,7 @@ function sftpServer(overrides: Partial<SavedServer> = {}): SavedServer {
         connected: false,
         appRoot: `sftp://ada@nas.local:22`,
         username: 'ada',
+        autoReconnect: true,
       },
     ],
     ...overrides,
@@ -285,6 +286,7 @@ describe('buildHubRows: status', () => {
           pinned: true,
           connected: true,
           username: 'ada',
+          autoReconnect: true,
           appRoot: 'sftp://ada@nas.local:22',
         },
       ],
@@ -413,6 +415,7 @@ describe('saved SMB shares', () => {
         connected: false,
         appRoot: 'smb://10.0.0.4/Scans',
         username: null,
+        autoReconnect: null,
       },
       {
         volumeId: 'smb-container',
@@ -421,6 +424,7 @@ describe('saved SMB shares', () => {
         connected: false,
         appRoot: '/Volumes/Container',
         username: 'sven',
+        autoReconnect: null,
       },
     ],
   })
@@ -571,6 +575,7 @@ describe('openMoveFor', () => {
         connected: false,
         appRoot: 'smb://10.0.0.4/Scans',
         username: null,
+        autoReconnect: null,
       },
       {
         volumeId: 'smb-container',
@@ -579,6 +584,7 @@ describe('openMoveFor', () => {
         connected: false,
         appRoot: '/Volumes/Container',
         username: 'sven',
+        autoReconnect: null,
       },
     ],
   })

@@ -112,6 +112,7 @@ const placeRow: HubRow = {
         connected: false,
         appRoot: 'sftp://ada@nas.local:22',
         username: 'ada',
+        autoReconnect: true,
       },
     ],
   },
@@ -165,6 +166,7 @@ const shareRow: HubRow = {
     connected: false,
     appRoot: '/Volumes/Container',
     username: 'sven',
+    autoReconnect: null,
   },
 }
 
@@ -614,6 +616,7 @@ describe('an S3 account and its places', () => {
     connected: false,
     appRoot: `s3://AKIA@host:443/${bucket}`,
     username: 'AKIA',
+    autoReconnect: true,
   })
   const account: HubRow = {
     ...placeRow,
@@ -684,6 +687,18 @@ describe('an S3 account and its places', () => {
       level: 'info',
       id: 'servers-edit-hint',
     })
+  })
+
+  it('shows and flips the bucket’s OWN "Reconnect automatically", ❌ not the account’s', async () => {
+    const quietBucket: HubRow = { ...bucketRow, place: { ...s3Place('photos'), autoReconnect: false } }
+    expect(actions().rowMenu(quietBucket)?.settings[0]).toMatchObject({ toggle: 'auto-reconnect', checked: false })
+    await actions().runRowEntry(quietBucket, {
+      type: 'toggle',
+      toggle: 'auto-reconnect',
+      label: 'Reconnect automatically',
+      checked: false,
+    })
+    expect(setServerAutoReconnect).toHaveBeenCalledWith('s3-host-443-akia-photos', true)
   })
 
   it('gives a bucket the server-place menu, ❌ not a share’s', () => {

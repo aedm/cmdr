@@ -76,7 +76,8 @@ export async function listSavedPlaces(): Promise<Map<string, SavedPlaceFacts>> {
       servers.flatMap((server) =>
         server.places.map((place): [string, SavedPlaceFacts] => [
           place.volumeId,
-          { autoReconnect: server.autoReconnect ?? undefined },
+          // ❗ The PLACE's own switch: an S3 account's buckets each keep theirs.
+          { autoReconnect: place.autoReconnect ?? server.autoReconnect ?? undefined },
         ]),
       ),
     )

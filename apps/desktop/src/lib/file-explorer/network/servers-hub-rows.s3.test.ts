@@ -23,6 +23,7 @@ function place(bucket: string | null, overrides: Partial<SavedPlace> = {}): Save
     connected: false,
     appRoot: bucket === null ? 's3://AKIAEXAMPLE@127.0.0.1:14480/' : `s3://AKIAEXAMPLE@127.0.0.1:14480/${bucket}`,
     username: 'AKIAEXAMPLE',
+    autoReconnect: true,
     ...overrides,
   }
 }

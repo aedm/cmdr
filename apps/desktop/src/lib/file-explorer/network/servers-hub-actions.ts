@@ -312,8 +312,18 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       ejecting: false,
       isSaved: row.saved !== null,
       directConnection: undefined,
-      autoReconnect: row.saved?.autoReconnect ?? undefined,
+      autoReconnect: placeAutoReconnect(row) ?? undefined,
     })
+  }
+
+  /**
+   * The row's place's own "Reconnect automatically" switch: a place row's, else a
+   * one-place server's only place. ❗ Per PLACE, ❌ never the server's: an S3 account's
+   * buckets each keep their own.
+   */
+  function placeAutoReconnect(row: HubRow): boolean | null {
+    const place = row.place ?? row.saved?.places.find((p) => p.volumeId === row.volumeId) ?? null
+    return place?.autoReconnect ?? row.saved?.autoReconnect ?? null
   }
 
   /**
@@ -376,7 +386,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     // The row shows the saved entry's switch; the `volumes-changed` the command emits is what
     // re-reads the saved list, so the next open shows the new state.
     'auto-reconnect': async (row) => {
-      if (row.volumeId && row.saved) await setServerAutoReconnect(row.volumeId, !row.saved.autoReconnect)
+      if (row.volumeId && row.saved) await setServerAutoReconnect(row.volumeId, !placeAutoReconnect(row))
     },
   }
 
