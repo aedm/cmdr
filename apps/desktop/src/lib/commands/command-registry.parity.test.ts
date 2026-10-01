@@ -122,7 +122,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'file.showInFinder': 'Show in file manager',
   'file.openTerminalHere': 'Open terminal here',
   'file.copyPath': 'Copy path to clipboard',
-  'file.copyCurrentDirectoryPath': 'Copy current directory path',
+  'file.copyCurrentDirectoryPath': 'Copy current folder path',
   'file.copyFilename': 'Copy filename',
   'file.getInfo': 'File properties',
   'file.quickLook': 'Preview',

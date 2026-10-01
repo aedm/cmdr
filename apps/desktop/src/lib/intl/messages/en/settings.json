@@ -2416,7 +2416,7 @@
   "@settings.summary.fileAndFolderSizes": {
     "description": "One-line summary shown under the \"File and folder sizes\" subsection heading."
   },
-  "settings.summary.listing": "Document icons, directory sorting, and Brief mode column width.",
+  "settings.summary.listing": "Document icons, folder sorting, and Brief mode column width.",
   "@settings.summary.listing": {
     "description": "One-line summary shown under the \"Listing\" subsection heading. \"directory\" = folder; \"Brief\" is a Cmdr view-mode name (translate consistently)."
   },

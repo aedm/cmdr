@@ -235,7 +235,7 @@
   },
   "errors.listing.notPermitted.title": "Not permitted",
   "errors.listing.notPermitted.explanation": "macOS blocked Cmdr from accessing `{path}`. This usually means the folder is protected by macOS security policies, or Cmdr hasn’t been granted the right permissions yet.",
-  "errors.listing.notPermitted.suggestion": "Here’s what to try:\n- Open **{system_settings} > {privacy_and_security} > {files_and_folders}** and grant Cmdr access\n- If this is a system-protected folder (like system directories), you may need to grant Cmdr **{full_disk_access}** under {privacy_and_security}\n- In Terminal, run `ls -la` on this path to check ownership and permissions",
+  "errors.listing.notPermitted.suggestion": "Here’s what to try:\n- Open **{system_settings} > {privacy_and_security} > {files_and_folders}** and grant Cmdr access\n- If this is a system-protected folder, you may need to grant Cmdr **{full_disk_access}** under {privacy_and_security}\n- In Terminal, run `ls -la` on this path to check ownership and permissions",
   "@errors.listing.notPermitted.title": {
     "description": "Title of the listing error panel when macOS blocked access to a folder (operation not permitted). Plain text.",
     "screenshot": "error-message-example.png",
