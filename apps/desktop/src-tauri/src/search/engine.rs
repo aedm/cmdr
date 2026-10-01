@@ -231,7 +231,7 @@ pub(crate) fn search(
 /// reads their size, because they lose a recency-weighted ranking against
 /// hundreds of thousands of freshly-touched ones.
 pub(crate) struct DirSizes {
-    by_id: std::collections::HashMap<i64, u64>,
+    by_id: HashMap<i64, u64>,
     /// Whether absence from the map means "outside the size filter" (a filter) or
     /// merely "size unknown" (built only to sort by size). Getting this backwards
     /// would silently delete every directory the index has no `dir_stats` row for.
@@ -239,7 +239,7 @@ pub(crate) struct DirSizes {
 }
 
 impl DirSizes {
-    pub(crate) fn new(by_id: std::collections::HashMap<i64, u64>, is_filter: bool) -> Self {
+    pub(crate) fn new(by_id: HashMap<i64, u64>, is_filter: bool) -> Self {
         Self { by_id, is_filter }
     }
 
