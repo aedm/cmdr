@@ -212,7 +212,18 @@ export interface Command {
    * highlights: matches landing in keyword text are dropped (see `fuzzy-search.ts`).
    */
   keywords?: string[]
+  /**
+   * A condition the palette shows this command under, for one that only means
+   * something somewhere (`'focusedPaneSharesLinks'`: the focused pane is on a
+   * volume that can mint share links). The palette asks the condition when it
+   * opens (`getPaletteCommands(holds)`); every other surface lists the command
+   * regardless. Omitted: always shown.
+   */
+  paletteCondition?: PaletteCondition
 }
+
+/** What a palette row's `paletteCondition` can ask. One member per question. */
+export type PaletteCondition = 'focusedPaneSharesLinks'
 
 /**
  * Authored form of a command, as written in `command-registry.ts`. Holds i18n

@@ -363,6 +363,39 @@ export const fileListCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
+    id: 'file.copyShareLink',
+    nameKey: 'commands.fileCopyShareLink.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    // Only where the focused pane's volume can mint one (S3 today), by capability.
+    paletteCondition: 'focusedPaneSharesLinks',
+    shortcuts: [],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.fileCopyShareLink.description',
+  },
+  {
+    id: 'file.copyShareLinkOneDay',
+    nameKey: 'commands.fileCopyShareLinkOneDay.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    // Only where the focused pane's volume can mint one (S3 today), by capability.
+    paletteCondition: 'focusedPaneSharesLinks',
+    shortcuts: [],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.fileCopyShareLinkOneDay.description',
+  },
+  {
+    id: 'file.copyShareLinkOneHour',
+    nameKey: 'commands.fileCopyShareLinkOneHour.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    // Only where the focused pane's volume can mint one (S3 today), by capability.
+    paletteCondition: 'focusedPaneSharesLinks',
+    shortcuts: [],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.fileCopyShareLinkOneHour.description',
+  },
+  {
     id: 'file.getInfo',
     nameKey: isMacOS() ? 'commands.fileGetInfo.mac.label' : 'commands.fileGetInfo.other.label',
     scope: 'Main window/File list',

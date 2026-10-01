@@ -220,6 +220,25 @@ impl S3Client {
         })
     }
 
+    /// A presigned GET for `key`, valid for `expires` from now (`ops::share_link`).
+    /// Here because the credentials are: computed offline, nothing is sent.
+    /// ❗ The URL carries a signature that reads the object; ❌ never log it.
+    pub(crate) fn share_link(
+        &self,
+        bucket: &str,
+        key: &str,
+        expires: Duration,
+    ) -> Result<url::Url, ops::ShareLinkError> {
+        ops::share_link(
+            &self.profile,
+            &self.credentials,
+            bucket,
+            key,
+            SystemTime::now(),
+            expires,
+        )
+    }
+
     /// Whether the server answers at all, on a fresh connection: an unsigned
     /// HEAD on the endpoint, any status counting. The watch applies the budget.
     pub(crate) async fn ping(&self) -> bool {

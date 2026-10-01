@@ -128,6 +128,7 @@ export {
   cloudMakeAvailableOffline,
   cloudRemoveDownload,
   googleDriveLinks,
+  copyShareLink,
 } from './file-actions'
 export type {
   DriveItemLinks,

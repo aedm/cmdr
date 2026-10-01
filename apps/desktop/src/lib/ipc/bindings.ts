@@ -1650,6 +1650,15 @@ export const commands = {
       string
     >(__TAURI_INVOKE('google_drive_links', { path })),
   /**
+   *  Mints a share link to the file at `path` on `volume_id`, valid for
+   *  `expires_in`, and copies it to the clipboard.
+   *
+   *  No timeout wrapper: minting reads a lock and signs a string; it reaches no
+   *  server and no disk.
+   */
+  copyShareLink: (volumeId: string, path: string, expiresIn: ShareLinkExpiry) =>
+    typedError<null, VolumeError>(__TAURI_INVOKE('copy_share_link', { volumeId, path, expiresIn })),
+  /**
    *  Make a cloud-managed file available offline (download it). **iCloud Drive only**:
    *  this routes through the `FileManager` ubiquity APIs, which accept iCloud URLs and
    *  reject everything else. Third-party providers (Dropbox, Google Drive, OneDrive,
@@ -14144,6 +14153,18 @@ export type ShareInfo = {
 }
 
 /**
+ *  How long a share link lasts. The three choices the menu and the palette
+ *  offer, ❗ all inside S3's seven-day ceiling on a SigV4 signature.
+ */
+export type ShareLinkExpiry =
+  // One hour.
+  | 'oneHour'
+  // One day.
+  | 'oneDay'
+  // Seven days: the default, and the longest a SigV4 signature may live.
+  | 'sevenDays'
+
+/**
  *  Error types for share listing operations.
  *
  *  Uses internally tagged representation so each variant can carry different fields
@@ -15788,6 +15809,11 @@ export type VolumeCapabilities = {
    *  or a move.
    */
   canExport: boolean
+  /**
+   *  "Copy share link" can mint a link to a file here, which anyone can open
+   *  to download it for a while (S3's presigned GET).
+   */
+  canShareLinks: boolean
   /**
    *  A drive index can be turned on for this volume, because the index has a
    *  transport that walks and watches this backend. `BackendKind::can_be_indexed`

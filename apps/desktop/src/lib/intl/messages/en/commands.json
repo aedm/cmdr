@@ -665,6 +665,30 @@
   "@commands.cloudAskGemini.description": {
     "description": "Longer help text for the \"Ask Gemini\" command, shown as a secondary line in the command palette."
   },
+  "commands.fileCopyShareLink.label": "Copy share link (seven days)",
+  "@commands.fileCopyShareLink.label": {
+    "description": "Command name that copies a share link to the selected file in an S3 bucket (cloud storage), valid for seven days. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file. Appears in the command palette, only while the focused pane is on a bucket."
+  },
+  "commands.fileCopyShareLink.description": "Copies a link anyone can open to download the file for the next seven days",
+  "@commands.fileCopyShareLink.description": {
+    "description": "Longer help text for the \"Copy share link (seven days)\" command, shown as a secondary line in the command palette."
+  },
+  "commands.fileCopyShareLinkOneDay.label": "Copy share link (one day)",
+  "@commands.fileCopyShareLinkOneDay.label": {
+    "description": "Command name that copies a share link to the selected file in an S3 bucket (cloud storage), valid for one day. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file. Appears in the command palette, only while the focused pane is on a bucket."
+  },
+  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "@commands.fileCopyShareLinkOneDay.description": {
+    "description": "Longer help text for the \"Copy share link (one day)\" command, shown as a secondary line in the command palette."
+  },
+  "commands.fileCopyShareLinkOneHour.label": "Copy share link (one hour)",
+  "@commands.fileCopyShareLinkOneHour.label": {
+    "description": "Command name that copies a share link to the selected file in an S3 bucket (cloud storage), valid for one hour. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file. Appears in the command palette, only while the focused pane is on a bucket."
+  },
+  "commands.fileCopyShareLinkOneHour.description": "Copies a link anyone can open to download the file for the next hour",
+  "@commands.fileCopyShareLinkOneHour.description": {
+    "description": "Longer help text for the \"Copy share link (one hour)\" command, shown as a secondary line in the command palette."
+  },
   "commands.tagsToggleGrey.label": "Toggle gray tag",
   "@commands.tagsToggleGrey.label": {
     "description": "Command name that adds or removes the gray macOS Finder color tag on the selected files. \"Gray\" is the macOS system color-tag name; keep it matching what Finder calls this color in the user’s language. Appears in the command palette and the keyboard-shortcuts settings.",
@@ -969,6 +993,29 @@
     "description": "Error toast when copying a Google Drive item's web address to the clipboard didn't go through. \"Google Drive\" is a product name and stays in English. Uses a contraction (\"Couldn't\").",
     "placeholders": {
       "detail": "the raw underlying error text appended after the sentence (a technical message, often in English)"
+    }
+  },
+  "commands.handler.shareLinkCopied.sevenDays": "Copied a share link. It works for seven days.",
+  "@commands.handler.shareLinkCopied.sevenDays": {
+    "description": "Success toast after copying a share link to a file in an S3 bucket that works for seven days. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file."
+  },
+  "commands.handler.shareLinkCopied.oneDay": "Copied a share link. It works for one day.",
+  "@commands.handler.shareLinkCopied.oneDay": {
+    "description": "Success toast after copying a share link that works for one day. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file."
+  },
+  "commands.handler.shareLinkCopied.oneHour": "Copied a share link. It works for one hour.",
+  "@commands.handler.shareLinkCopied.oneHour": {
+    "description": "Success toast after copying a share link that works for one hour. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file."
+  },
+  "commands.handler.shareLinkUnavailable": "Move the cursor to a file in an S3 bucket to copy a share link.",
+  "@commands.handler.shareLinkUnavailable": {
+    "description": "Warning toast when \"Copy share link\" runs but the cursor isn't on a file in an S3 bucket (a folder, or a pane somewhere else). \"S3 bucket\" is cloud storage; \"S3\" is a product name and stays in English."
+  },
+  "commands.handler.shareLinkFailed": "Couldn’t make a share link. {detail}",
+  "@commands.handler.shareLinkFailed": {
+    "description": "Error toast when a share link to a file in an S3 bucket couldn't be made or copied. Uses a contraction (\"Couldn't\").",
+    "placeholders": {
+      "detail": "a sentence saying why, already in the user's language (for example that the bucket isn't connected)"
     }
   },
   "commands.handler.openTerminalHere.hint": "Opened this folder in your terminal app. Want Cmdr to open a different app next time? Pick one in Settings, under Navigation & file ops.",

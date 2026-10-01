@@ -177,6 +177,7 @@ describe('createPanePointer', () => {
           canShare: true,
           canTag: true,
           canFavorite: true,
+          canShareLink: false,
         },
         { countText: '2 items', sizeText: undefined },
         boundCombos,
@@ -200,6 +201,7 @@ describe('createPanePointer', () => {
           canShare: true,
           canTag: true,
           canFavorite: true,
+          canShareLink: false,
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
@@ -223,6 +225,7 @@ describe('createPanePointer', () => {
           canShare: true,
           canTag: true,
           canFavorite: true,
+          canShareLink: false,
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
@@ -246,6 +249,7 @@ describe('createPanePointer', () => {
           canShare: false,
           canTag: false,
           canFavorite: false,
+          canShareLink: false,
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
@@ -272,6 +276,7 @@ describe('createPanePointer', () => {
           // The third fact parts company with the other two: a snapshot row is a real
           // file, so it shares, but it isn't a folder that will still be there next launch.
           canFavorite: false,
+          canShareLink: false,
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
@@ -289,7 +294,14 @@ describe('createPanePointer', () => {
         'a.txt',
         false,
         ['/dir/trip.zip/IMG_0001.jpg'],
-        { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canTag: false, canFavorite: false },
+        {
+          listingId: 'listing-1',
+          canOpenTerminalHere: true,
+          canShare: false,
+          canTag: false,
+          canFavorite: false,
+          canShareLink: false,
+        },
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
@@ -350,6 +362,7 @@ describe('createPanePointer', () => {
         canShare: true,
         canTag: true,
         canFavorite: true,
+        canShareLink: false,
       })
       expect(ipc.showFileContextMenu.mock.calls[0][3]).toEqual(['/dir/a.txt', '/dir/b.txt'])
       expect(ipc.showFileContextMenu.mock.calls[0][7]).toEqual({ x: 116, y: 240 })

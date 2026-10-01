@@ -258,6 +258,8 @@ export interface VolumeBackendCapabilities {
   canExport: boolean
   /** A drive index can be turned on for this volume: the index has a way to walk and watch this backend. */
   canBeIndexed: boolean
+  /** "Copy share link" can mint a link to a file here (S3's presigned GET). */
+  canShareLinks: boolean
 }
 
 /**

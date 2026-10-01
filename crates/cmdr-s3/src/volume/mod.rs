@@ -31,6 +31,7 @@ mod paths;
 mod query;
 mod reconnect;
 mod scan;
+mod share_link;
 mod state;
 mod streams;
 mod volume_impl;
@@ -261,6 +262,8 @@ mod integration_test;
 mod read_test;
 #[cfg(test)]
 mod reconnect_test;
+#[cfg(test)]
+mod share_link_test;
 #[cfg(test)]
 mod state_test;
 #[cfg(test)]

@@ -100,6 +100,9 @@ const EXPECTED_PALETTE_IDS: readonly CommandId[] = [
   'file.copyPath',
   'file.copyCurrentDirectoryPath',
   'file.copyFilename',
+  'file.copyShareLink',
+  'file.copyShareLinkOneDay',
+  'file.copyShareLinkOneHour',
   'file.contextMenu',
   'selection.toggle',
   'selection.toggleAndDown',
@@ -259,6 +262,20 @@ describe('whileDialogOpen', () => {
     expect(whileDialogOpenFor('app.settings').runs).toBe('always')
     expect(whileDialogOpenFor('edit.paste').runs).toBe('inTextInput')
     expect(whileDialogOpenFor('tab.close').runs).toBe('never')
+  })
+})
+
+describe('conditional palette rows', () => {
+  const shareLinkIds = ['file.copyShareLink', 'file.copyShareLinkOneDay', 'file.copyShareLinkOneHour']
+
+  it('leaves the share-link rows out where the focused pane can’t mint links', () => {
+    const ids = getPaletteCommands(() => false).map((c) => c.id)
+    for (const id of shareLinkIds) expect(ids).not.toContain(id)
+  })
+
+  it('shows them where it can', () => {
+    const ids = getPaletteCommands(() => true).map((c) => c.id)
+    for (const id of shareLinkIds) expect(ids).toContain(id)
   })
 })
 

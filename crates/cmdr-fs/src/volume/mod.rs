@@ -853,6 +853,32 @@ pub trait Volume: Send + Sync {
         false
     }
 
+    /// Whether [`share_link`](Self::share_link) can mint a link to a file here:
+    /// a URL anyone can open to download it, for a while. Gates "Copy share
+    /// link" in the context menu and the command palette.
+    ///
+    /// Default `false`, matching `share_link`'s `NotSupported`. S3 answers `true`
+    /// (a presigned GET, computed offline).
+    fn supports_share_links(&self) -> bool {
+        false
+    }
+
+    /// A link to the FILE at `path` that anyone can open to download it, valid
+    /// for `expires_in`. ❗ The link is a credential: [`ShareLink`] keeps it out of
+    /// `Debug`, and ❌ nothing may log what it holds.
+    ///
+    /// A folder answers [`VolumeError::IsADirectory`]: a link names one object.
+    /// Default `NotSupported`; a backend that overrides it answers
+    /// [`supports_share_links`](Self::supports_share_links) `true`.
+    fn share_link<'a>(
+        &'a self,
+        path: &'a Path,
+        expires_in: ShareLinkExpiry,
+    ) -> Pin<Box<dyn Future<Output = Result<ShareLink, VolumeError>> + Send + 'a>> {
+        let _ = (path, expires_in);
+        Box::pin(async { Err(VolumeError::NotSupported) })
+    }
+
     /// Whether a [`FileEntry::permissions`](crate::entry::FileEntry::permissions)
     /// from this backend is a REAL POSIX mode somebody recorded, rather than the
     /// `0` that means "this backend has no permission concept".
@@ -919,6 +945,7 @@ pub trait Volume: Send + Sync {
         VolumeCapabilities {
             backend_can_write: self.is_writable(),
             can_export: self.supports_export(),
+            can_share_links: self.supports_share_links(),
             can_be_indexed: self.backend_kind().can_be_indexed(),
         }
     }
@@ -1726,6 +1753,7 @@ mod scan_boundary;
 pub mod scan_stop;
 pub mod scan_walk;
 pub mod secret_store;
+pub mod share_link;
 mod types;
 mod usb_speed;
 
@@ -1754,6 +1782,7 @@ pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavai
 pub use entry_kind::EntryKind;
 pub use error::{ErrnoField, VolumeError};
 pub use ids::*;
+pub use share_link::{ShareLink, ShareLinkExpiry};
 // The app-path schemes live beside the translation they feed; re-exported here
 // so callers keep `volume::sftp_app_root` and friends.
 pub use in_memory::InMemoryVolume;

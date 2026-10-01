@@ -19,7 +19,7 @@ import { boundShortcuts } from '$lib/shortcuts'
 import type { FileEntry, SelectPayload } from '../types'
 import { getSetting, setSetting } from '$lib/settings'
 import { addToast } from '$lib/ui/toast'
-import { capabilitiesFor, paneFolderCanBeFavorited, rowIsOsVisible } from './volume-capabilities'
+import { capabilitiesFor, paneFolderCanBeFavorited, rowCanShareLink, rowIsOsVisible } from './volume-capabilities'
 import { canOpenTerminalIn } from '$lib/open-terminal/terminal-target'
 import { isFileListBackgroundClick } from './pane-background-dblclick'
 import { sameKindTargetFor } from './select-same-kind'
@@ -152,6 +152,8 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
         // question than sharing does: not just whether the OS can read it now, but
         // whether it's still there next launch. A snapshot row fails exactly there.
         canFavorite: paneFolderCanBeFavorited(volumeId, entry.path),
+        // A FILE on a volume that mints links (S3), not inside an archive.
+        canShareLink: rowCanShareLink(volumeId, entry),
       },
       { countText: contextMenuCountText(paths.length), sizeText: contextMenuSizeText(sizeBytes) },
       boundShortcuts(),

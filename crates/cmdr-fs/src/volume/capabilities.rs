@@ -43,6 +43,9 @@ pub struct VolumeCapabilities {
     /// Files can be read out of here, so this volume can be the SOURCE of a copy
     /// or a move.
     pub can_export: bool,
+    /// "Copy share link" can mint a link to a file here, which anyone can open
+    /// to download it for a while (S3's presigned GET).
+    pub can_share_links: bool,
     /// A drive index can be turned on for this volume, because the index has a
     /// transport that walks and watches this backend. `BackendKind::can_be_indexed`
     /// is the one decider.

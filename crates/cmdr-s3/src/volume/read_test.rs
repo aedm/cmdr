@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use cmdr_fs::volume::{StreamLength, Volume, VolumeError};
+use cmdr_fs::volume::{ShareLinkExpiry, StreamLength, Volume, VolumeError};
 
 use super::S3Volume;
 use super::testing::*;
@@ -219,6 +219,43 @@ async fn a_large_object_streams_in_small_pieces_on_versitygw() {
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn a_large_object_streams_in_small_pieces_on_garage() {
     a_large_object_streams_in_small_pieces(GARAGE).await;
+}
+
+// ── Share links ──────────────────────────────────────────────────────
+
+async fn a_share_link_downloads_the_object_with_no_keys_at_all(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let key = format!("{}shared/a b+c.txt", scratch_prefix("share-link"));
+    let content = self_describing_bytes(5_000, "shared");
+    seed(service, FIXTURE_BUCKET, &[object(&key, &content)]).await;
+
+    let link = volume
+        .share_link(&at(&volume, &key), ShareLinkExpiry::OneHour)
+        .await
+        .expect(FIXTURE)
+        .into_url();
+    // A plain client with no signer and no credentials, the way the person the
+    // link goes to would fetch it. ❗ This is the one place outside
+    // `transport.rs` that speaks `reqwest`: it stands in for a browser.
+    let fetched = reqwest::get(&link).await.expect(FIXTURE);
+    assert_eq!(fetched.status(), 200, "{}: the link opens", service.key);
+    assert!(
+        fetched.bytes().await.expect(FIXTURE) == content,
+        "{}: and hands back the object's bytes",
+        service.key
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_share_link_downloads_the_object_with_no_keys_at_all_on_versitygw() {
+    a_share_link_downloads_the_object_with_no_keys_at_all(VERSITYGW).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_share_link_downloads_the_object_with_no_keys_at_all_on_garage() {
+    a_share_link_downloads_the_object_with_no_keys_at_all(GARAGE).await;
 }
 
 // ── Refusals ─────────────────────────────────────────────────────────

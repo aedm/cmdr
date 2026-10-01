@@ -50,6 +50,7 @@ pub mod services_menu;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub mod s3;
 pub mod settings;
+pub mod share_link;
 // The protocol-agnostic server family, over the per-protocol wiring. Same gate
 // as `sftp` and `webdav`, whose commands it faces.
 #[cfg(any(target_os = "macos", target_os = "linux"))]

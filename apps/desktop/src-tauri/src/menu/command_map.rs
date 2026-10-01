@@ -110,6 +110,13 @@ pub const DRIVE_COPY_LINK_ID: &str = "drive_copy_link";
 /// Files only: Gemini's `?di=` names a document, so a folder never gets this one.
 pub const DRIVE_ASK_GEMINI_ID: &str = "drive_ask_gemini";
 
+/// "Copy share link" (files on a volume that `supports_share_links`): a submenu
+/// holding one item per expiry, seven days first because it's the default.
+pub const SHARE_LINK_SUBMENU_ID: &str = "share_link_submenu";
+pub const SHARE_LINK_SEVEN_DAYS_ID: &str = "share_link_seven_days";
+pub const SHARE_LINK_ONE_DAY_ID: &str = "share_link_one_day";
+pub const SHARE_LINK_ONE_HOUR_ID: &str = "share_link_one_hour";
+
 /// Submenu ID for `Services` in the file context menu (macOS). Never handled: AppKit
 /// fills the submenu and performs the pick, so the item itself is never clicked. It
 /// carries an ID at all so `menu.get()` can find it and the id stays out of the
@@ -415,6 +422,9 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         DRIVE_OPEN_ID => Some(("cloud.openInGoogleDrive", CommandScope::FileScoped)),
         DRIVE_COPY_LINK_ID => Some(("cloud.copyGoogleDriveLink", CommandScope::FileScoped)),
         DRIVE_ASK_GEMINI_ID => Some(("cloud.askGemini", CommandScope::FileScoped)),
+        SHARE_LINK_SEVEN_DAYS_ID => Some(("file.copyShareLink", CommandScope::FileScoped)),
+        SHARE_LINK_ONE_DAY_ID => Some(("file.copyShareLinkOneDay", CommandScope::FileScoped)),
+        SHARE_LINK_ONE_HOUR_ID => Some(("file.copyShareLinkOneHour", CommandScope::FileScoped)),
 
         // Zoom (text size): App scope so ⌘0/⌘+/⌘- work in any focused window.
         VIEW_ZOOM_75_ID => Some(("view.zoom.set75", CommandScope::App)),
@@ -520,6 +530,9 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "cloud.openInGoogleDrive" => Some(DRIVE_OPEN_ID),
         "cloud.copyGoogleDriveLink" => Some(DRIVE_COPY_LINK_ID),
         "cloud.askGemini" => Some(DRIVE_ASK_GEMINI_ID),
+        "file.copyShareLink" => Some(SHARE_LINK_SEVEN_DAYS_ID),
+        "file.copyShareLinkOneDay" => Some(SHARE_LINK_ONE_DAY_ID),
+        "file.copyShareLinkOneHour" => Some(SHARE_LINK_ONE_HOUR_ID),
         "sort.byName" => Some(SORT_BY_NAME_ID),
         "sort.byExtension" => Some(SORT_BY_EXTENSION_ID),
         "sort.byModified" => Some(SORT_BY_MODIFIED_ID),
@@ -687,6 +700,9 @@ mod tests {
             "file.openTerminalHere",
             "file.copyPath",
             "file.copyFilename",
+            "file.copyShareLink",
+            "file.copyShareLinkOneDay",
+            "file.copyShareLinkOneHour",
             "file.getInfo",
             "file.quickLook",
             "selection.selectAll",

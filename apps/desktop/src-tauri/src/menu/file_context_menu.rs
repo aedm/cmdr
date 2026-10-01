@@ -17,7 +17,7 @@ use std::path::PathBuf;
 
 use tauri::{
     AppHandle, Runtime,
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
 
 #[cfg(target_os = "macos")]
@@ -50,7 +50,8 @@ use super::{
 use super::{
     COPY_FILENAME_ID, COPY_PATH_ID, EDIT_ID, FAVORITES_ADD_CONTEXT_ID, FILE_COPY_ID, FILE_DELETE_ID, FILE_DUPLICATE_ID,
     FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, GO_PARENT_ID, ImageIndexMenuState, OPEN_ID,
-    RENAME_ID, SHOW_IN_FINDER_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, image_index_menu_items,
+    RENAME_ID, SHARE_LINK_ONE_DAY_ID, SHARE_LINK_ONE_HOUR_ID, SHARE_LINK_SEVEN_DAYS_ID, SHARE_LINK_SUBMENU_ID,
+    SHOW_IN_FINDER_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, image_index_menu_items,
 };
 
 /// A fact the menu asked off the main thread (`context_menu_facts.rs`): answered in time,
@@ -181,6 +182,10 @@ pub struct ContextMenuPaneFacts {
     /// insides, a `.git`-portal folder, a phone, and a protocol-only server. Without it the
     /// item is offered where the add would be refused, and the user gets silence.
     pub can_favorite: bool,
+    /// Whether "Copy share link" may appear: the row is a file on a volume that can
+    /// mint a link (`Volume::supports_share_links`). A file-only item, so a folder row
+    /// never shows it whatever this says.
+    pub can_share_link: bool,
 }
 /// Builds a context menu for a specific file.
 ///
@@ -222,6 +227,7 @@ pub fn build_context_menu<R: Runtime>(
         can_share,
         can_tag,
         can_favorite,
+        can_share_link,
     } = pane;
     // All three gate macOS-only items, so on Linux they're read nowhere.
     #[cfg(not(target_os = "macos"))]
@@ -385,6 +391,11 @@ pub fn build_context_menu<R: Runtime>(
     }
     menu.append(&copy_filename_item)?;
     menu.append(&copy_path_item)?;
+    // Beside the other two "copy something about this file" items. Absent, never greyed,
+    // where the volume can't mint one: there's nothing a user could do to enable it.
+    if !is_directory && can_share_link {
+        menu.append(&share_link_submenu(app, shortcuts)?)?;
+    }
 
     // Add to favorites — directories only (favorites are folders), and only where a favorite
     // could point back: `can_favorite` is the caller's reading of the row, matching the gate
@@ -513,6 +524,19 @@ pub fn build_context_menu<R: Runtime>(
 
 /// Open in Google Drive, Copy Google Drive link, and Ask Gemini, in menu order.
 #[cfg(target_os = "macos")]
+/// "Copy share link" with one row per expiry, the seven-day default first.
+fn share_link_submenu<R: Runtime>(app: &AppHandle<R>, shortcuts: &ContextMenuShortcuts) -> tauri::Result<Submenu<R>> {
+    let submenu = Submenu::with_id(app, SHARE_LINK_SUBMENU_ID, menu_t("menu.context.copyShareLink"), true)?;
+    for (id, key) in [
+        (SHARE_LINK_SEVEN_DAYS_ID, "menu.context.shareLinkSevenDays"),
+        (SHARE_LINK_ONE_DAY_ID, "menu.context.shareLinkOneDay"),
+        (SHARE_LINK_ONE_HOUR_ID, "menu.context.shareLinkOneHour"),
+    ] {
+        submenu.append(&context_item(app, shortcuts, id, menu_t(key), true)?)?;
+    }
+    Ok(submenu)
+}
+
 fn drive_items<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<[MenuItem<R>; 3]> {
     Ok([
         MenuItem::with_id(

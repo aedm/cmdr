@@ -18,8 +18,8 @@ use std::time::Duration;
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::scan_walk;
 use cmdr_fs::volume::{
-    BackendKind, BatchScanResult, CopyScanResult, LaneKey, ListingProgress, Retirement, ScanBoundary, SignInShape,
-    SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
+    BackendKind, BatchScanResult, CopyScanResult, LaneKey, ListingProgress, Retirement, ScanBoundary, ShareLink,
+    ShareLinkExpiry, SignInShape, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -194,6 +194,20 @@ impl Volume for S3Volume {
         boundary: &'a ScanBoundary<'a>,
     ) -> Pin<Box<dyn Future<Output = Result<BatchScanResult, VolumeError>> + Send + 'a>> {
         Box::pin(self.noting(scan_walk::scan_trees(self, paths, boundary)))
+    }
+
+    /// A presigned GET, signed offline (`share_link.rs`), so ❌ no `noting`:
+    /// nothing reaches the wire.
+    fn supports_share_links(&self) -> bool {
+        true
+    }
+
+    fn share_link<'a>(
+        &'a self,
+        path: &'a Path,
+        expires_in: ShareLinkExpiry,
+    ) -> Pin<Box<dyn Future<Output = Result<ShareLink, VolumeError>> + Send + 'a>> {
+        Box::pin(self.share_link_impl(path, expires_in))
     }
 
     // ── What it can't do yet, said out loud ──────────────────────────

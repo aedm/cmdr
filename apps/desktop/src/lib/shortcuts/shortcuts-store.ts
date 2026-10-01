@@ -279,6 +279,9 @@ export const menuCommands = [
   'file.quickLook',
   'file.copyPath',
   'file.copyFilename',
+  'file.copyShareLink',
+  'file.copyShareLinkOneDay',
+  'file.copyShareLinkOneHour',
   // Cloud actions (macOS File Provider, items only show when the right-clicked file is in a cloud folder)
   'cloud.makeOffline',
   'cloud.removeDownload',

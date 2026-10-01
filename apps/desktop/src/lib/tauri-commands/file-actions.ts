@@ -5,6 +5,8 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   commands,
   type DriveItemLinks,
+  type ShareLinkExpiry,
+  type VolumeError,
   type EditorOpenReport,
   type OpenInEditorError,
   type OpenTerminalError,
@@ -100,6 +102,11 @@ export interface PaneContextMenuFacts {
    * hides the item: Rust's `add_favorite` would refuse anyway, and it refuses silently.
    */
   canFavorite?: boolean
+  /**
+   * Whether "Copy share link" appears: the row is a FILE on a volume that can mint a
+   * link (`canShareLinks`, S3 today). Omitting it hides the item.
+   */
+  canShareLink?: boolean
 }
 
 /**
@@ -190,6 +197,7 @@ export async function showFileContextMenu(
       canShare: pane.canShare ?? false,
       canTag: pane.canTag ?? false,
       canFavorite: pane.canFavorite ?? false,
+      canShareLink: pane.canShareLink ?? false,
     },
     target: {
       countText: target.countText ?? null,
@@ -212,6 +220,20 @@ export async function googleDriveLinks(path: string): Promise<DriveItemLinks | n
   const res = await commands.googleDriveLinks(path)
   if (res.status === 'error') throwIpcError(res.error)
   return res.data
+}
+
+/**
+ * Mints a share link to the file at `path` and puts it on the clipboard, in Rust.
+ * ❗ The link never comes back here: its signature is a credential, and keeping
+ * it out of IPC keeps it out of every frontend log. The outcome is all there is.
+ */
+export async function copyShareLink(
+  volumeId: string,
+  path: string,
+  expiresIn: ShareLinkExpiry,
+): Promise<{ ok: true } | { ok: false; error: VolumeError }> {
+  const res = await commands.copyShareLink(volumeId, path, expiresIn)
+  return res.status === 'ok' ? { ok: true } : { ok: false, error: res.error }
 }
 
 /**

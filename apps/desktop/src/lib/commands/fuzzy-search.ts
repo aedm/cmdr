@@ -7,7 +7,7 @@
 
 import uFuzzy from '@leeoniya/ufuzzy'
 import { INTRA_MODE_SINGLE_ERROR } from '$lib/utils/ufuzzy-modes'
-import type { Command, CommandMatch } from './types'
+import type { Command, CommandMatch, PaletteCondition } from './types'
 import { commands, getPaletteCommands } from './command-registry'
 
 // Configure uFuzzy for command palette behavior
@@ -27,10 +27,15 @@ const fuzzy = new uFuzzy({
  * @param recentCommandIds - Optional list of recently executed command IDs, most-recent first.
  *   When the query is empty, recents (filtered to still-valid palette commands) lead the result,
  *   followed by the remaining palette commands in registry order. Ignored for non-empty queries.
+ * @param holds - Answers each command's `paletteCondition`; a command whose condition doesn't hold is left out.
  * @returns Array of matched commands with highlight indices, ordered by relevance
  */
-export function searchCommands(query: string, recentCommandIds: string[] = []): CommandMatch[] {
-  const paletteCommands = getPaletteCommands()
+export function searchCommands(
+  query: string,
+  recentCommandIds: string[] = [],
+  holds?: (condition: PaletteCondition) => boolean,
+): CommandMatch[] {
+  const paletteCommands = getPaletteCommands(holds)
 
   // Empty query: show recents first, then the rest of the palette in registry order.
   if (!query.trim()) {

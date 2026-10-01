@@ -19,7 +19,8 @@ the next section.
   `DeviceReadiness`, `BackendKind`, `SignInShape`, and `DeviceUnavailableReason`); `ids` + `canonical_root` + `mtp_ids`
   (the ID funnel and double-mount collapse); `published_locations` (the switcher list's dedupe both platforms share,
   where a favorite never claims a volume's path); `smb_mount_source` (the `user:password@host:port` split both
-  platforms' SMB mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `entry_kind.rs` (`File` /
+  platforms' SMB mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `share_link.rs` (`ShareLink`,
+  a URL that's a credential and so prints nothing in `Debug`, and `ShareLinkExpiry`); `entry_kind.rs` (`File` /
   `Directory` / `Symlink`, the answer `Volume::entry_kind` gives, a link reported as the link, where `is_directory` may
   follow it); `retirement.rs` (how background work learns it stopped being the live volume); `channel_stream.rs` (a
   network backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam a copy scan touches per

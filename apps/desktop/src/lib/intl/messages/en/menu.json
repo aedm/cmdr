@@ -589,6 +589,26 @@
     "description": "VERB phrase (imperative). Right-click menu on a file or folder stored in Google Drive: copies the web address of that item to the clipboard, so it can be pasted into a message. It copies a link, not the file. \"Google Drive\" is a product name and stays in English."
   },
 
+  "menu.context.copyShareLink": "Copy share link",
+  "@menu.context.copyShareLink": {
+    "description": "VERB phrase (imperative). Right-click menu on a file in an S3 bucket (cloud storage): opens a submenu of how long the link should last. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file."
+  },
+
+  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "@menu.context.shareLinkSevenDays": {
+    "description": "Submenu item under \"Copy share link\": copies a link that stops working after seven days. The default choice, listed first."
+  },
+
+  "menu.context.shareLinkOneDay": "Expires in one day",
+  "@menu.context.shareLinkOneDay": {
+    "description": "Submenu item under \"Copy share link\": copies a link that stops working after one day."
+  },
+
+  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "@menu.context.shareLinkOneHour": {
+    "description": "Submenu item under \"Copy share link\": copies a link that stops working after one hour."
+  },
+
   "menu.context.askGemini": "Ask Gemini",
   "@menu.context.askGemini": {
     "description": "VERB phrase (imperative). Right-click menu on a FILE stored in Google Drive, next to \"Open in Google Drive\": opens Google Drive's Gemini AI assistant in the browser with that file as its subject, so the user can ask questions about it. \"Gemini\" is a product name and stays in English; only the verb around it moves. ❌ No trailing …: it opens a web page, not a dialog."

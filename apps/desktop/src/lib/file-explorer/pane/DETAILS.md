@@ -313,9 +313,11 @@ folder” footer hint, so a shortcut rebind updates the clue without remounting 
 **Volume capabilities (`volume-capabilities.ts`).** Guard logic branches on a `VolumeCapabilities` record, ❌ never on a
 volume-id string. The record has two halves, and which half answers is the whole design:
 
-- **Rust answers "what can it do."** `Volume::capabilities()` publishes `backendCanWrite`, `canExport`, and
-  `canBeIndexed` per volume; they ride on `VolumeInfo.capabilities` and land on the record as `canWrite` / `canBeSource`
-  / `canBeIndexed` via `withBackendCapabilities`. `canBeIndexed` gates the switcher's index affordances
+- **Rust answers "what can it do."** `Volume::capabilities()` publishes `backendCanWrite`, `canExport`, `canShareLinks`,
+  and `canBeIndexed` per volume; they ride on `VolumeInfo.capabilities` and land on the record as `canWrite` /
+  `canBeSource` / `canShareLinks` / `canBeIndexed` via `withBackendCapabilities`. `canShareLinks` gates "Copy share
+  link" (S3): the context menu asks `rowCanShareLink` (a file, not inside an archive), the palette asks it through
+  `capabilitiesForPane` for the focused pane. `canBeIndexed` gates the switcher's index affordances
   (`navigation/drive-index-manager.svelte.ts::isDriveRow`), and its per-kind default carries real weight for a phone,
   whose row is clicked before it's dialed and so before any backend has published. Canonical:
   `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "Trait capability model".

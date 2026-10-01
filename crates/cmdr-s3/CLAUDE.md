@@ -11,7 +11,8 @@ per place (a bucket, or the account root that lists them) that lists, stats, and
 - `params.rs` (`S3ConnectionParams`, `S3Provider`, the store key), `refusal.rs` (`S3ConnectError` + the probe's table),
   `transport.rs` (`S3Client`, the only `reqwest` user).
 - `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list and stat), `streams.rs` (ranged GET), `scan.rs`,
-  `paths.rs`, `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs` (fixtures, `testing` feature).
+  `share_link.rs`, `paths.rs`, `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs` (fixtures,
+  `testing` feature).
 
 ## Must-knows
 
@@ -35,4 +36,6 @@ per place (a bucket, or the account root that lists them) that lists, stats, and
 - ❗ **No checksum headers; equal-size parts, always** (R2). Streamed bodies sign `UNSIGNED-PAYLOAD`.
 - ❌ **One unattended authentication attempt, never a loop**; the store is refreshed by an attended sign-in, never
   seeded.
+- ❗ **A share link is a credential**: it travels as `cmdr_fs::volume::ShareLink` (no URL in `Debug`), and ❌ nothing
+  logs it. The app writes it straight to the clipboard; it never crosses IPC.
 - Every dependency was already in `Cargo.lock`. Check `cargo tree -d` before adding one.

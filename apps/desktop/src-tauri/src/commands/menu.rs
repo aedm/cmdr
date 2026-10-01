@@ -120,6 +120,10 @@ pub struct PaneContextMenuFacts {
     /// "Add to favorites" item is offered. The affordance half of [`crate::commands::favorites`]'s
     /// own gate; ❗ enforcement stays there, since a context menu is not the only add surface.
     pub can_favorite: bool,
+    /// Whether "Copy share link" appears: the row is a FILE on a volume that can mint
+    /// one (`Volume::supports_share_links`, S3 today), as the frontend's capability
+    /// fold reads it. ❗ The command still checks; this only spares a dead item.
+    pub can_share_link: bool,
 }
 
 /// Shows the file context menu.
@@ -252,6 +256,7 @@ pub fn show_file_context_menu<R: Runtime>(
             can_share: pane.can_share,
             can_tag: pane.can_tag,
             can_favorite: pane.can_favorite,
+            can_share_link: pane.can_share_link,
         },
         image_index,
         crate::menu::ContextMenuTargetFacts {

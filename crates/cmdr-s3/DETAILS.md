@@ -98,6 +98,17 @@ keys and the rights. `integration_test.rs` pins both servers' answers.
   folder. A recursive `ListObjectsV2` (no delimiter, 1,000 keys per request whatever the nesting) would bill fewer
   requests for a deep tree; it's not done because the copy that follows lists each folder again anyway.
 
+## Share links
+
+"Copy share link" is `Volume::share_link` (`share_link.rs`): a presigned GET (`S3Client::share_link`, over
+`ops::share_link`) for one key, signed offline with the account's keys, so it's free, instant, and sends nothing (❌ no
+`noting`). The expiry is a `ShareLinkExpiry` (one hour, one day, or seven days, S3's SigV4 ceiling). The account root
+and a bucket's top answer `IsADirectory`; a key that's really a prefix gets a link that answers 404, since telling the
+two apart would cost a request and the UI only offers it on a file row. No live client means `DeviceDisconnected`: the
+credentials live on the client. Both fixtures serve the link to a plain unsigned `reqwest::get` (`read_test.rs`,
+verified on VersityGW v1.8.0 and Garage v2.4.1, 2026-10-01). The app's `copy_share_link` command writes it to the
+clipboard in Rust and returns only the outcome, so the URL never reaches IPC or a frontend log.
+
 ## Connection state and reconnect
 
 The WebDAV model, nearly line for line (`crates/cmdr-webdav/DETAILS.md` § "The reconnect model" and § "Silent or slow"
