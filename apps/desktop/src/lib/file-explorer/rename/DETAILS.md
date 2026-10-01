@@ -42,11 +42,11 @@ flow ends the session like a success (minus the cursor follow, since nothing mov
 `onConfirmRenameAsMove`, which opens the Move dialog in rename mode, with its cost line (`../pane/rename-as-move.ts`,
 `../../file-operations/transfer/DETAILS.md` § "Rename mode").
 
-**In a chain, the Move dialog waits for the editor to close.** A SUPERSEDED save answering `confirm-move` is parked in
-`deferredMove` and opened by `closeEditor` (every editor close goes through it), a microtask later so the pane's focus
-hand-back doesn't steal the dialog's focus; if no editor is open when it lands, it opens at once. A chain opens ONE Move
-dialog (`moveDialogClaimed`): confirming it starts a move that holds the progress slot, so a second couldn't open
-anyway. Its other renames that need one keep their names, in the kept-names toast
+**In a chain, the Move dialog waits for the editor to close** (`../pane/rename-move-dialog.ts`). A SUPERSEDED save
+answering `confirm-move` is held and opened once `closeEditor` runs (every editor close goes through it), a microtask
+later so the pane's focus hand-back doesn't steal the dialog's focus; if no editor is open when it lands, it opens at
+once. A chain opens ONE Move dialog (`claim`): confirming it starts a move that holds the progress slot, so a second
+couldn't open anyway. Its other renames that need one keep their names, in the kept-names toast
 (`fileExplorer.rename.needsOwnMoveDialog`).
 
 Conflict resolution calls `performRename(target, newName, force: true)` after "Overwrite and trash/delete". The

@@ -122,6 +122,8 @@ suite:
 - `network-host-state.svelte.ts`: the open Network host and its queued auto-mount share.
 - `context-menu-anchor.ts`: where a keyboard-opened context menu pops (cursor row, else the scroll surface), as a pure
   rect → point function plus a DOM reader over it. § Keyboard context menu.
+- `rename-move-dialog.ts`: a rename chain's one Move dialog for a rename that copies on S3, held until the editor closes
+  (`../rename/DETAILS.md`, "In a chain, the Move dialog waits").
 - `rename-flow.svelte.ts`: the whole inline-rename flow (activation, save, the dialogs, the arrow-key chain). It lives
   here because it hangs off the pane, but everything it does is documented next to the rest of rename in
   `../rename/DETAILS.md`, whose `CLAUDE.md` you won't get autoloaded while editing this directory.
