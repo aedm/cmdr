@@ -36,7 +36,7 @@ import (
 
 // guardedIndexCrates are the crates whose dependency trees must stay app-free.
 var guardedIndexCrates = []string{
-	"cmdr-index", "cmdr-fs", "cmdr-archive", "cmdr-smb", "cmdr-sftp", "cmdr-webdav", "cmdr-mtp", "cmdr-s3",
+	"cmdr-index", "cmdr-fs", "cmdr-archive", "cmdr-smb", "cmdr-sftp", "cmdr-webdav", "cmdr-mtp", "cmdr-s3", "cmdr-adb", "cmdr-git",
 }
 
 // forbiddenForIndexCrates are the packages that must not appear in a guarded
