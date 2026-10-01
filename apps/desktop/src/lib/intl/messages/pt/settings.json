@@ -682,7 +682,7 @@
   "@settings.mediaIndex.importanceThreshold.waitingForDriveIndex": {
     "sourceHash": "1d50f92"
   },
-  "settings.mediaIndex.importanceThreshold.pending": "Alguns discos ainda estão sendo analisados, então esses números vão crescer.",
+  "settings.mediaIndex.importanceThreshold.pending": "Alguns discos ainda estão em varredura, então esses números vão crescer.",
   "@settings.mediaIndex.importanceThreshold.pending": {
     "sourceHash": "c144f80"
   },

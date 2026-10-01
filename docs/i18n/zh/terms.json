@@ -1072,6 +1072,12 @@
   },
   "folder": {
     "accept": ["目录"],
+    "avoid": [
+      {
+        "form": "目录大小",
+        "why": "user-facing help text says 文件夹大小; 目录 stays only for the dir abbreviation and counted 个目录"
+      }
+    ],
     "chosen": "文件夹",
     "confidence": "high",
     "exceptions": {
@@ -1079,7 +1085,7 @@
       "settings.mediaIndex.progress.coveredOfTotal": "\"your covered folders\" collapses to 覆盖范围内 (within the covered scope)."
     },
     "forms": "user-facing 文件夹; the status-bar dir abbreviation and technical aggregation 目录 (counted 个目录)",
-    "note": "User-facing help text says 文件夹 even where older strings said 目录 (目录大小 → 文件夹大小).",
+    "note": "User-facing help text says 文件夹, so folder size is always 文件夹大小.",
     "sources": "macOS"
   },
   "force-quit": {

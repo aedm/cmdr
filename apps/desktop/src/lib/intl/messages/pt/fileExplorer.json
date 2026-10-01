@@ -911,11 +911,11 @@
   "@fileExplorer.dirSize.mismatchTooltipPrefix": {
     "sourceHash": "3ff9147"
   },
-  "fileExplorer.dirSize.lowerBoundLine": "Pelo menos isto: algumas subpastas ainda não foram analisadas, então o total real pode ser maior.",
+  "fileExplorer.dirSize.lowerBoundLine": "Pelo menos isto: algumas subpastas ainda não passaram pela varredura, então o total real pode ser maior.",
   "@fileExplorer.dirSize.lowerBoundLine": {
     "sourceHash": "2aaea43"
   },
-  "fileExplorer.dirSize.unknownTooltip": "Tamanho desconhecido: esta pasta ainda não foi analisada.",
+  "fileExplorer.dirSize.unknownTooltip": "Tamanho desconhecido: esta pasta ainda não passou pela varredura.",
   "@fileExplorer.dirSize.unknownTooltip": {
     "sourceHash": "f5771e5"
   },
