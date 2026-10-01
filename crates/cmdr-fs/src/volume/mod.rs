@@ -1912,6 +1912,7 @@ pub mod scan_walk;
 pub mod secret_store;
 pub mod server_side;
 pub mod share_link;
+pub mod tls;
 mod types;
 mod usb_speed;
 

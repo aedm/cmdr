@@ -84,10 +84,6 @@
       "lines": 14,
       "reason": "TODO: the per-image decision ladder shared by `run_sequential` and `run_parallel`'s dispatcher: the cancel and idle checks, `os_join`, the `is_excluded` / `should_enrich` skip, the `done` and `bytes_done` bump, and the `needs_enrichment` / `needs_clip` staleness pair. Extract a pure `fn classify_image(...) -\u003e ImageStep` beside them, with `ImageStep::{Pause(PauseReason), Skip, Enrich { want_vision, want_clip, os_path }}`, and let each arm keep only its own exit shape: the sequential one returns `finish_paused(...)`, the dispatcher sets `reason` and breaks so it can join its workers. Which images a pass touches and when it pauses is the data-safety contract written in `network/CLAUDE.md`, so the two arms agreeing should be a property of the code rather than of two copies staying in step."
     },
-    "crates/cmdr-s3/src/transport.rs ↔ crates/cmdr-webdav/src/errors.rs": {
-      "lines": 16,
-      "reason": "TODO: `has_tls_refusal` (walk an error's source chain for an `InvalidData` `io::Error`, which is how `tokio-rustls` surfaces a handshake refusal) is word for word in both HTTP backends. It takes nothing `reqwest`-specific, so it belongs in `cmdr-fs` as `fn has_tls_refusal(err: \u0026(dyn std::error::Error + 'static)) -\u003e bool`, next to the `http_session` extraction the `reconnect.rs` pair's entry describes."
-    },
     "crates/cmdr-s3/src/volume/mod.rs ↔ crates/cmdr-webdav/src/volume/mod.rs": {
       "lines": 14,
       "reason": "TODO: the inner state's construction in `assemble` (the atomics, the `Retirement`, the locks, the switches), which the `reconnect.rs` pair's `http_session` extraction folds into one `SessionState::new`."

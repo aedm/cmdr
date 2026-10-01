@@ -28,8 +28,9 @@ the next section.
   a copy scan touches per entry: counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and
   `secret_store.rs` (the bodies a
   stat-and-listing backend gets for free); `liveness.rs` (the HTTP backends' silence watch, which tells a server gone
-  silent from one that's only slow: `crates/cmdr-webdav/DETAILS.md` § "Silent or slow"); `remote_paths.rs` (a server
-  tree's `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
+  silent from one that's only slow: `crates/cmdr-webdav/DETAILS.md` § "Silent or slow") and `tls.rs` (their connect
+  probes' TLS-refusal test, by the typed `io::ErrorKind`); `remote_paths.rs` (a server tree's
+  `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
   classification); `usb_speed.rs` (❗ its doc comment reaches `bindings.ts`); `in_memory.rs` (the store and its knobs;
   `in_memory/volume_impl.rs` is its `impl Volume`); `conformance.rs` (+ `conformance/directory_creation.rs`, the three
   `create_directory_all` promises); and `host/` (what a backend needs from the app, as named traits; read
