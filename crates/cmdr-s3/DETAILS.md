@@ -473,9 +473,9 @@ request: the inputs are the scan the dialog already ran.
 - **The table** (`cost/s3-prices.json`, schema 1): per provider, request classes (a name as the provider's page spells
   it, a price per million, the S3 operations in it), `egressPerGb`, `storagePerGbMonth`, `minimumStorageDays`,
   `minimumBillableObjectBytes`, the currency, `asOf`, the source URL, and `notes`. `apps/api-server` serves a
-  byte-identical copy at `/s3-prices/v1` (its test compares the two), so a price change edits both and the Worker deploy
-  reaches every install; the bundled copy is the fallback. The sources and their dates:
-  `docs/notes/s3/provider-research.md`.
+  byte-identical copy at `/s3-prices/v1` (`apps/api-server/src/s3-prices/`, whose test compares the two bytewise), so a
+  price change edits both and the Worker deploy reaches every install; the bundled copy is the fallback. The sources and
+  their dates: `docs/notes/s3/provider-research.md`.
 - **Parsing is strict where it protects the math, loose where it protects a newer server**: every operation priced
   exactly once, every number finite and non-negative, else the whole table is refused (the app keeps its copy). Unknown
   providers, operations, and fields are ignored; a newer `schemaVersion` is refused.

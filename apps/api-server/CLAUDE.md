@@ -6,12 +6,13 @@ versions.
 
 ## Module map
 
-Four areas own their code, tests, and `C+D.md`; read an area's docs before working in it.
+Five areas own their code, tests, and `C+D.md`; read an area's docs before working in it.
 
 - `src/licensing/` — the Paddle webhook, `/activate`, `/validate`, the `/admin/` license routes, the daily backup.
 - `src/telemetry/` — crash reports, heartbeats, downloads, update checks, error reports, feedback.
 - `src/website/` — `/beta-signup`, `/likes/:slug`, the `?r=` link codes.
 - `src/admin/` — the dashboard's read-only aggregations, including `/admin/funnel`.
+- `src/s3-prices/` — `/s3-prices/v1`, the app's S3 price table.
 
 Root holds the assembly and the shared leaves (`index.ts`, `types.ts`, `email/`, `discord.ts`, `github-issues.ts`,
 `project-board.ts` + `webhook-github.ts`, `scheduled.ts`, `cron-health.ts`, `user-agent.ts`; DETAILS § Root files). ❌

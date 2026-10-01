@@ -12,6 +12,7 @@ import { likes } from './website/likes'
 import { betaSignup } from './website/beta-signup'
 import { linkCodes } from './website/link-codes'
 import { cspReport } from './website/csp-report'
+import { s3Prices } from './s3-prices/s3-prices'
 import { webhookGitHub } from './webhook-github'
 import {
   handleCrashNotifications,
@@ -48,6 +49,7 @@ app.route('/', betaSignup)
 app.route('/', feedback)
 app.route('/', linkCodes)
 app.route('/', cspReport)
+app.route('/', s3Prices)
 app.route('/', webhookGitHub)
 
 export { app }

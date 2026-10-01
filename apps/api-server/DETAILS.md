@@ -7,6 +7,7 @@ Must-know invariants live in `CLAUDE.md`. Per-area depth lives with the code:
 - `src/telemetry/DETAILS.md` — crash/heartbeat/download/update-check payloads, error-report eviction and intake.
 - `src/website/DETAILS.md` — Listmonk signup, blog likes, `?r=` link codes.
 - `src/admin/DETAILS.md` — the dashboard endpoints and the funnel's column derivations.
+- `src/s3-prices/DETAILS.md` — the S3 price table's response headers and caching.
 
 Read this before any non-trivial work here: editing, planning, reorganizing, or advising.
 
@@ -101,6 +102,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | OPTIONS | `/csp-report`              | none          | CORS preflight (204) for Reporting API batches, getcmdr.com origins only                           |
 | GET     | `/r-codes.json`            | none          | Public `?r=<code>` → UTM map (note stripped), edge-cached 5 min, `Access-Control-Allow-Origin: *`  |
 | OPTIONS | `/r-codes.json`            | none          | CORS preflight (204)                                                                               |
+| GET     | `/s3-prices/v1`            | none          | The app's S3 list-price table (JSON), `max-age=3600` + `ETag`; byte-identical to the crate's copy  |
 | GET     | `/admin/r-codes`           | Bearer token  | Full code map including admin `note`                                                               |
 | PUT     | `/admin/r-codes/:code`     | Bearer token  | Upsert a code: `{ utm_source, utm_medium?, note? }` (utm values sanitized; code charset validated) |
 | DELETE  | `/admin/r-codes/:code`     | Bearer token  | Remove a code from the map                                                                         |
