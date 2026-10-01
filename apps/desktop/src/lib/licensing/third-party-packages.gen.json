@@ -1954,12 +1954,6 @@
       "url": "https://github.com/instant-labs/instant-clip-tokenizer"
     },
     {
-      "name": "internal-russh-num-bigint",
-      "version": "0.5.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/rust-num/num-bigint"
-    },
-    {
       "name": "io-close",
       "version": "0.3.7",
       "license": "MIT OR Apache-2.0",
@@ -2303,7 +2297,7 @@
     },
     {
       "name": "num-bigint",
-      "version": "0.4.8",
+      "version": "0.5.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/rust-num/num-bigint"
     },
@@ -3017,7 +3011,7 @@
     },
     {
       "name": "russh",
-      "version": "0.62.7",
+      "version": "0.63.3",
       "license": "Apache-2.0",
       "url": "https://github.com/warp-tech/russh"
     },

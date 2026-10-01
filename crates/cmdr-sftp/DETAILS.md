@@ -662,6 +662,12 @@ host. Then a healthy server presents the key we stored, and anything else is a r
 an rsa entry can't outrank an ed25519 one just because of how the names sorted, and an unparseable stored name narrows
 nothing instead of emptying the offer.
 
+**Host certificates are never asked for.** `build_config` leaves `preferred.host_key_certificates` empty, so a server
+presents a bare key. Should a certificate arrive anyway, `presented` judges it by the key inside it (the one russh
+verified the exchange signature against): we hold no `@cert-authority` trust, so a certificate earns nothing beyond its
+bare key. ❌ Don't advertise certificate algorithms without first teaching `trust::decide` about CAs. Guarded by
+`no_host_certificate_algorithm_is_advertised`.
+
 ### The order of consultation
 
 `trust::decide`, strongest signal first:
