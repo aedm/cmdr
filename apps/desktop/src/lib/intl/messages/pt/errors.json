@@ -1103,11 +1103,11 @@
   },
   "errors.write.destinationNotFound.message.copy": "A pasta para onde você está copiando não existe mais, então não havia onde colocar seus arquivos. Os originais estão intactos.",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "A pasta para onde você está movendo não existe mais, então não havia onde colocar seus arquivos. Os originais estão intactos.",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "Ela pode ter sido renomeada ou removida, ou o disco foi desconectado. Escolha outro destino, ou abra a pasta de novo e tente outra vez.",
   "@errors.write.destinationNotFound.suggestion": {
@@ -1759,7 +1759,7 @@
   },
   "errors.mutation.notFound": "Não há mais nada em “{path}”.",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "A pasta raiz de um volume não pode ser renomeada por aqui.",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1779,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "Esse volume não está mais disponível, então nada foi alterado.",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "O Cmdr não consegue abrir este arquivo compactado para edição agora.",
   "@errors.mutation.archiveNotEditable": {
@@ -1815,7 +1815,7 @@
   },
   "errors.volume.notFound": "Não há mais nada em “{path}”.",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "O Cmdr não tem acesso a “{path}”.",
   "@errors.volume.permissionDenied": {
@@ -1927,7 +1927,7 @@
   },
   "errors.eject.volumeNotFound": "Esse disco não está mais conectado, então não há nada para ejetar.",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "Este disco não é removível, então ele continua conectado.",
   "@errors.eject.notEjectable": {
@@ -1939,7 +1939,7 @@
   },
   "errors.eject.remoteNotConnected": "Este servidor não está mais conectado, então não há nada para fechar.",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "O dispositivo se recusou a encerrar a conexão. Desconecte-o assim que ele estiver ocioso.",
   "@errors.eject.deviceDisconnectRefused": {

@@ -1103,11 +1103,11 @@
   },
   "errors.write.destinationNotFound.message.copy": "A mappa, amelybe másolsz, már nem létezik, így nem volt hová tenni a fájljaidat. Az eredetiek érintetlenek.",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "A mappa, amelybe áthelyezel, már nem létezik, így nem volt hová tenni a fájljaidat. Az eredetiek érintetlenek.",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "Lehet, hogy átnevezték vagy eltávolították, vagy a meghajtó lecsatlakozott. Válassz másik célt, vagy nyisd meg újra a mappát, és próbáld újra.",
   "@errors.write.destinationNotFound.suggestion": {
@@ -1759,7 +1759,7 @@
   },
   "errors.mutation.notFound": "Már nincs semmi itt: „{path}”.",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "Egy kötet legfelső mappája innen nem nevezhető át.",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1779,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "A kötet már nem érhető el, ezért semmi nem változott.",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "A Cmdr most nem tudja szerkesztésre megnyitni ezt az archívumot.",
   "@errors.mutation.archiveNotEditable": {
@@ -1815,7 +1815,7 @@
   },
   "errors.volume.notFound": "Már nincs semmi itt: „{path}”.",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "A Cmdrnek nincs hozzáférése ehhez: „{path}”.",
   "@errors.volume.permissionDenied": {
@@ -1927,7 +1927,7 @@
   },
   "errors.eject.volumeNotFound": "Ez a meghajtó már nincs csatlakoztatva, így nincs mit kiadni.",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "Ez a meghajtó nem cserélhető, ezért csatlakoztatva marad.",
   "@errors.eject.notEjectable": {
@@ -1939,7 +1939,7 @@
   },
   "errors.eject.remoteNotConnected": "Ez a szerver már nincs csatlakoztatva, így nincs mit lezárni.",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "Az eszköz nem zárta le a kapcsolatot. Húzd ki, amikor már nincs használatban.",
   "@errors.eject.deviceDisconnectRefused": {

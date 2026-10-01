@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "Din telefon är inte ansluten längre.",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "Titta på din telefon och tryck på Tillåt.",
   "@adb.connect.unauthorized": {

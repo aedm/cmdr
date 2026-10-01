@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "Je telefoon is niet meer aangesloten.",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "Kijk op je telefoon en tik op ‘Toestaan’.",
   "@adb.connect.unauthorized": {

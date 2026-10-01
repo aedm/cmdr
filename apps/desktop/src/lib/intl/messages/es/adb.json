@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "Tu teléfono ya no está conectado.",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "Comprueba tu teléfono y toca Permitir.",
   "@adb.connect.unauthorized": {

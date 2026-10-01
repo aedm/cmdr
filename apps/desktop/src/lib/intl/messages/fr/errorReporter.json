@@ -126,7 +126,7 @@
   },
   "errorReporter.amend.unavailable": "Ce rapport n’accepte plus de note. Pour transmettre vos notes à l’équipe, envoyez un nouveau rapport depuis le menu Aide.",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "Fermer",
   "@errorReporter.amend.close": {

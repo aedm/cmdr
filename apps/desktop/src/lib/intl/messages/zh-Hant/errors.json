@@ -1103,11 +1103,11 @@
   },
   "errors.write.destinationNotFound.message.copy": "你要複製過去的資料夾已經不在了，所以沒有地方放你的檔案。原本的檔案完全沒有被動過。",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "你要移動過去的資料夾已經不在了，所以沒有地方放你的檔案。原本的檔案完全沒有被動過。",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "它可能被重新命名或移除了，也可能是磁碟機斷線了。換一個目標位置，或者重新開啟那個資料夾再試一次。",
   "@errors.write.destinationNotFound.suggestion": {
@@ -1759,7 +1759,7 @@
   },
   "errors.mutation.notFound": "「{path}」已經不在了。",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "卷宗的最上層資料夾沒辦法在這裡重新命名。",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1779,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "那個卷宗已經不能用了，所以什麼都沒有更動。",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr 現在無法開啟這個壓縮檔來編輯。",
   "@errors.mutation.archiveNotEditable": {
@@ -1815,7 +1815,7 @@
   },
   "errors.volume.notFound": "「{path}」已經不在了。",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr 沒有「{path}」的存取權。",
   "@errors.volume.permissionDenied": {
@@ -1927,7 +1927,7 @@
   },
   "errors.eject.volumeNotFound": "那個磁碟機已經不在了，沒有東西需要退出。",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "這個磁碟機不可移除，所以會一直連著。",
   "@errors.eject.notEjectable": {
@@ -1939,7 +1939,7 @@
   },
   "errors.eject.remoteNotConnected": "這個伺服器已經不再連線，沒有東西需要關閉。",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "裝置沒有把連線關掉。等它閒下來再拔線。",
   "@errors.eject.deviceDisconnectRefused": {

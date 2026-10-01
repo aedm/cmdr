@@ -1102,11 +1102,11 @@
   },
   "errors.write.destinationNotFound.message.copy": "你要拷贝到的文件夹已经不存在了，所以没有地方放你的文件。原文件没有被动过。",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "你要移动到的文件夹已经不存在了，所以没有地方放你的文件。原文件没有被动过。",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "它可能被重命名或删除了，也可能是驱动器断开了。换一个目标位置，或者重新打开这个文件夹再试一次。",
   "@errors.write.destinationNotFound.suggestion": {
@@ -1758,7 +1758,7 @@
   },
   "errors.mutation.notFound": "“{path}”已经不存在了。",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "宗卷的顶层文件夹无法在这里重命名。",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1778,7 +1778,7 @@
   },
   "errors.mutation.volumeGone": "这个宗卷已经不可用了，所以什么都没有改动。",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr 现在无法打开这个压缩文件来编辑。",
   "@errors.mutation.archiveNotEditable": {
@@ -1814,7 +1814,7 @@
   },
   "errors.volume.notFound": "“{path}”已经不存在了。",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr 没有权限访问“{path}”。",
   "@errors.volume.permissionDenied": {
@@ -1926,7 +1926,7 @@
   },
   "errors.eject.volumeNotFound": "这个驱动器已经断开了，所以不用再推出。",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "这个驱动器不可移除，所以会一直保持连接。",
   "@errors.eject.notEjectable": {
@@ -1938,7 +1938,7 @@
   },
   "errors.eject.remoteNotConnected": "这台服务器已经断开了，所以没有连接需要关闭。",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "设备没有关闭连接。等它空闲下来再拔下线缆。",
   "@errors.eject.deviceDisconnectRefused": {

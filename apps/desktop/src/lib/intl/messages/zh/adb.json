@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "你的手机已经断开连接了。",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "看一下你的手机，然后点按“允许”。",
   "@adb.connect.unauthorized": {

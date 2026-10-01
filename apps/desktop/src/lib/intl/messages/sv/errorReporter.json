@@ -127,7 +127,7 @@
   },
   "errorReporter.amend.unavailable": "Det går inte längre att lägga till något i den rapporten. Skicka en ny rapport från Hjälp-menyn, så når dina noteringar teamet.",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "Stäng",
   "@errorReporter.amend.close": {

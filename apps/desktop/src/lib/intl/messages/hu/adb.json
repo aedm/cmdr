@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "A telefonod már nincs csatlakoztatva.",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "Nézd meg a telefonodat, és koppints az „Engedélyezés” gombra.",
   "@adb.connect.unauthorized": {

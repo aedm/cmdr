@@ -13,7 +13,7 @@
   },
   "adb.connect.deviceGone": "你的手機已經中斷連線了。",
   "@adb.connect.deviceGone": {
-    "sourceHash": "e2766e6"
+    "sourceHash": "00d5254"
   },
   "adb.connect.unauthorized": "請查看你的手機，然後輕觸「允許」。",
   "@adb.connect.unauthorized": {
