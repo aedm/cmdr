@@ -13,14 +13,107 @@
 //! - **The sources are bound** to the fingerprints preflight captured, the way
 //!   every other approved operation is (`source_binding.rs`).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use super::BulkRenameRow;
-use super::plan::{RenamePlanStep, build_execution_plan};
+use super::plan::{RenamePlanStep, build_execution_plan, spelled_destinations};
+use super::{BulkRenameRow, start_bulk_rename};
+use crate::file_system::volume::{RenameWork, Volume};
+use crate::file_system::write_operations::event_sinks::OperationEventSink;
+use crate::file_system::write_operations::routing::start_rename_by_move;
+use crate::file_system::write_operations::source_binding::ExpectedSources;
+use crate::file_system::write_operations::types::{ConflictResolution, VolumeCopyConfig, WriteOperationStartResult};
+use crate::operation_log::types::Initiator;
+
+/// How many entries a batch asks `Volume::rename_work` about at once.
+const RENAME_WORK_CONCURRENCY: usize = 8;
+
+/// Starts a reviewed batch of renames on one volume, routed by what a rename
+/// costs there. Where every row renames in one call, the batch executor
+/// ([`start_bulk_rename`]) runs it; where any row's rename copies (an object
+/// store's folder or big file, `Volume::rename_work`), the whole batch runs as
+/// one background move with the new names. The production entry
+/// for Ask Cmdr's approved renames and the bulk-rename command.
+pub(crate) async fn start_renames(
+    events: Arc<dyn OperationEventSink>,
+    volume_id: String,
+    rows: Vec<BulkRenameRow>,
+    initiator: Initiator,
+) -> Result<WriteOperationStartResult, String> {
+    if volume_id != "root"
+        && let Some(volume) = crate::file_system::volume::manager::get_volume_manager().get(&volume_id)
+        && any_rename_copies(volume.as_ref(), &rows).await
+    {
+        return start_batch_as_move(events, volume_id, volume.as_ref(), rows, initiator).await;
+    }
+    start_bulk_rename(events, volume_id, rows, initiator)
+}
+
+/// Whether any row's rename copies on `volume`. A volume that renames
+/// everything in one call answers with no I/O; an entry that can't be asked
+/// about is left to the executor, which refuses it on its own terms.
+async fn any_rename_copies(volume: &dyn Volume, rows: &[BulkRenameRow]) -> bool {
+    for chunk in rows.chunks(RENAME_WORK_CONCURRENCY) {
+        let answers = futures_util::future::join_all(chunk.iter().map(|row| volume.rename_work(&row.source))).await;
+        if answers
+            .iter()
+            .any(|work| matches!(work, Ok(RenameWork::CopyThenDelete)))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// The batch as one move with new names, in the executor's dependency order,
+/// conflicts skipped, its sources bound to what preflight saw.
+async fn start_batch_as_move(
+    events: Arc<dyn OperationEventSink>,
+    volume_id: String,
+    volume: &dyn Volume,
+    rows: Vec<BulkRenameRow>,
+    initiator: Initiator,
+) -> Result<WriteOperationStartResult, String> {
+    if rows.iter().any(|row| row.source.parent() != row.destination.parent()) {
+        return Err("A rename plan can only change names in the same folder.".to_string());
+    }
+    let rows = spelled_destinations(volume, rows);
+    let Some(parent) = rows.first().and_then(|row| row.source.parent()).map(Path::to_path_buf) else {
+        return Err("Choose at least one rename to apply.".to_string());
+    };
+    let (renames, left_out) = move_order(&rows);
+    for index in left_out {
+        log::warn!(
+            target: "volume",
+            "bulk rename on '{volume_id}': {} is part of a swap, which a move can't do without merging; it keeps its name",
+            rows[index].source.display()
+        );
+    }
+    let expected = ExpectedSources::new(
+        rows.iter()
+            .map(|row| (row.source.clone(), row.expected_fingerprint.clone())),
+    );
+    let config = VolumeCopyConfig {
+        // A name something outside the batch holds keeps its owner.
+        conflict_resolution: ConflictResolution::Skip,
+        ..VolumeCopyConfig::default()
+    };
+    start_rename_by_move(
+        events,
+        volume_id,
+        renames,
+        parent.display().to_string(),
+        config,
+        initiator,
+        Some(expected),
+    )
+    .await
+    .map_err(|e| format!("The renames couldn't start as a move: {e:?}"))
+}
 
 /// What a batch moves, in order, as `(source, new name)`, and which rows a
 /// cycle kept out. No-op rows (a name that doesn't change) move nowhere.
-pub(super) fn move_order(rows: &[BulkRenameRow]) -> (Vec<(PathBuf, String)>, Vec<usize>) {
+fn move_order(rows: &[BulkRenameRow]) -> (Vec<(PathBuf, String)>, Vec<usize>) {
     let active = vec![true; rows.len()];
     let mut moves = Vec::with_capacity(rows.len());
     let mut left_out = Vec::new();

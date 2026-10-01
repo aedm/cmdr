@@ -29,6 +29,8 @@ use crate::operation_log::types::{EntryType, ExecutionStatus, Initiator, ItemOut
 mod by_move;
 mod plan;
 
+pub(crate) use by_move::start_renames;
+
 use plan::{
     RenamePlanStep, build_execution_plan, settle_local_conflicts, settle_remote_conflicts, spelled_destinations,
 };
@@ -54,92 +56,6 @@ impl BulkRenameOutcome {
     fn is_done(self) -> bool {
         self == Self::Done
     }
-}
-
-/// How many entries a batch asks `Volume::rename_work` about at once.
-const RENAME_WORK_CONCURRENCY: usize = 8;
-
-/// Starts a reviewed batch of renames on one volume, routed by what a rename
-/// costs there. Where every row renames in one call, the batch executor
-/// ([`start_bulk_rename`]) runs it; where any row's rename copies (an object
-/// store's folder or big file, `Volume::rename_work`), the whole batch runs as
-/// one background move with the new names (`by_move.rs`). The production entry
-/// for Ask Cmdr's approved renames and the bulk-rename command.
-pub(crate) async fn start_renames(
-    events: Arc<dyn OperationEventSink>,
-    volume_id: String,
-    rows: Vec<BulkRenameRow>,
-    initiator: Initiator,
-) -> Result<WriteOperationStartResult, String> {
-    if volume_id != "root"
-        && let Some(volume) = crate::file_system::volume::manager::get_volume_manager().get(&volume_id)
-        && any_rename_copies(volume.as_ref(), &rows).await
-    {
-        return start_batch_as_move(events, volume_id, volume.as_ref(), rows, initiator).await;
-    }
-    start_bulk_rename(events, volume_id, rows, initiator)
-}
-
-/// Whether any row's rename copies on `volume`. A volume that renames
-/// everything in one call answers with no I/O; an entry that can't be asked
-/// about is left to the executor, which refuses it on its own terms.
-async fn any_rename_copies(volume: &dyn Volume, rows: &[BulkRenameRow]) -> bool {
-    for chunk in rows.chunks(RENAME_WORK_CONCURRENCY) {
-        let answers = futures_util::future::join_all(chunk.iter().map(|row| volume.rename_work(&row.source))).await;
-        if answers
-            .iter()
-            .any(|work| matches!(work, Ok(crate::file_system::volume::RenameWork::CopyThenDelete)))
-        {
-            return true;
-        }
-    }
-    false
-}
-
-/// The batch as one move with new names, in the executor's dependency order,
-/// conflicts skipped, its sources bound to what preflight saw.
-async fn start_batch_as_move(
-    events: Arc<dyn OperationEventSink>,
-    volume_id: String,
-    volume: &dyn Volume,
-    rows: Vec<BulkRenameRow>,
-    initiator: Initiator,
-) -> Result<WriteOperationStartResult, String> {
-    if rows.iter().any(|row| row.source.parent() != row.destination.parent()) {
-        return Err("A rename plan can only change names in the same folder.".to_string());
-    }
-    let rows = spelled_destinations(volume, rows);
-    let Some(parent) = rows.first().and_then(|row| row.source.parent()).map(Path::to_path_buf) else {
-        return Err("Choose at least one rename to apply.".to_string());
-    };
-    let (renames, left_out) = by_move::move_order(&rows);
-    for index in left_out {
-        log::warn!(
-            target: "volume",
-            "bulk rename on '{volume_id}': {} is part of a swap, which a move can't do without merging; it keeps its name",
-            rows[index].source.display()
-        );
-    }
-    let expected = super::super::source_binding::ExpectedSources::new(
-        rows.iter()
-            .map(|row| (row.source.clone(), row.expected_fingerprint.clone())),
-    );
-    let config = super::super::types::VolumeCopyConfig {
-        // A name something outside the batch holds keeps its owner.
-        conflict_resolution: super::super::types::ConflictResolution::Skip,
-        ..super::super::types::VolumeCopyConfig::default()
-    };
-    super::super::routing::start_rename_by_move(
-        events,
-        volume_id,
-        renames,
-        parent.display().to_string(),
-        config,
-        initiator,
-        Some(expected),
-    )
-    .await
-    .map_err(|e| format!("The renames couldn't start as a move: {e:?}"))
 }
 
 /// Starts one queued, same-volume batch rename. The caller has already resolved

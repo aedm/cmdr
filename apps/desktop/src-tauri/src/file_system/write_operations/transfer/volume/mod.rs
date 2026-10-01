@@ -42,6 +42,7 @@ mod naming;
 mod preflight;
 mod rename_merge;
 mod sequential_extract;
+mod server_side_copy;
 mod source_sweep;
 mod strategy;
 mod transfer_error;

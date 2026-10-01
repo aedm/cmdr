@@ -5,6 +5,11 @@
 //! rename-merge child by child. The cross-volume path and the move dispatcher
 //! live in `volume::r#move`; this module holds the rename body, its background
 //! task wrapper, and the per-item operation-log journaling.
+//!
+//! ❗ On a volume where an entry's rename isn't one call (`Volume::rename_work`:
+//! an object store's folder or big file), the whole move runs through the
+//! copy-then-delete engine instead (`moves_by_copy`, `DETAILS.md` § "A
+//! same-volume move whose renames copy").
 
 use std::collections::HashMap;
 use std::future::Future;

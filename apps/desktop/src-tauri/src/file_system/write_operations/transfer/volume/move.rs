@@ -2,7 +2,8 @@
 //! whichever engine it picks.
 //!
 //! Three strategies, decided by the volume relationship:
-//! - Same volume (same Arc): `volume.rename()` per file (instant for MTP MoveObject) — `move_same`
+//! - Same volume (same Arc): `volume.rename()` per file (instant for MTP MoveObject) — `move_same`,
+//!   which copies then deletes instead where the volume's renames copy (S3)
 //! - Both local: delegates to `move_files_start` (handles same-fs rename optimization)
 //! - Cross-volume: copy to destination then delete sources — `move_cross`
 //!
