@@ -510,6 +510,12 @@ about what a person should go and close. The sentence says outright that it's on
 `System`, `Cmdr`, and `DiskImage` because each of those carries more advice than a cryptic name does. These are RAW
 `errors.*` values (no ICU), so singular and plural are two keys, like the app pair.
 
+❗ **Every refusal sentence names neither the volume kind nor the verb** ("…still has files open there. Close them, then
+try again."). The same sentence follows both `fileExplorer.pane.ejectFailedToast` ("Couldn't eject {volumeName}: …", any
+detachable kind, shares and phones included) and `disconnectFailedToast` ("Couldn't disconnect: …", the SMB reconnect
+view, whose holder scan runs on the share's mount path), and the prefix already says both. "This drive" or "eject again"
+would read wrong after a share's disconnect.
+
 ❗ **The two `HolderScan` arms word the SAME**, and neither ever says the drive is free. `Incomplete` means the scan
 couldn't cover every mount, so its names are worth saying while its emptiness says nothing; only `complete` with an
 empty `named` would license "nothing is using this drive", and no copy says that today.

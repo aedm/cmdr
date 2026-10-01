@@ -31,9 +31,9 @@
     "description": "Button that closes the \"Go to folder\" dialog without navigating. A short button label.",
     "screenshot": "go-to-path.png"
   },
-  "goToPath.dialog.confirm": "Go to folder",
+  "goToPath.dialog.confirm": "Go",
   "@goToPath.dialog.confirm": {
-    "description": "Primary button in the \"Go to folder\" dialog that navigates to the typed path. A short button label.",
+    "description": "Primary button in the \"Go to folder\" dialog that navigates to the typed path. A short button label in your language's usual button form, matching the button Finder itself shows in its own Go to Folder dialog (Finder's English one says \"Go\"). The dialog's title already says \"Go to folder\", so the button doesn't need to repeat the whole phrase.",
     "screenshot": "go-to-path.png"
   },
   "goToPath.dialog.ancestorHint": "This path doesn’t exist. The closest place to go is {dir}.",

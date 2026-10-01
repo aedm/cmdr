@@ -55,25 +55,14 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `volume-switcher` matches only "volume switcher" / "volume chooser", so a bare "switcher"
   (`settings.behavior.serversPinHintSeen.label`, `menu.network.unpin`) shows as "No concept yet". Add `switcher` to its
   `match`, with `app switcher` in `notMatch`.
-- `errors.eject.unmountRefusedByProcess` / `…Processes`: the description says the string also follows "Couldn’t
-  disconnect: …" (a network share), but the English says "this drive". Spanish had to pick `este disco` (the eject
-  ruling); a share reads oddly with it. Either split the share case or say "this volume"-neutral English. (es)
-- `errors.eject.unmountRefusedByProcesses`: "processes called {processes}" puts `errors.eject.otherProcesses` ("others")
-  inside a "called" frame, so a language that renders "called X" as a modifier (zh `名为…的进程`) ends up naming "other
-  processes" as a process name. zh restructured to list the names after the count; consider "{countText} processes are
-  still using this drive: {processes}." in English so every language gets the safe shape. (zh)
 - `settings.adb.install.intro`, `settings.fileOperations.adbEnabled.description`: the descriptions say to use Google's
   localized name for the platform tools and never keep the English, but Google doesn't localize "SDK Platform Tools" in
   most locales (sv, nl, fr, de checked). Say: keep the English where Google does. Also say whether "choose Re-check"
   means clicking (sv, nl, and es wanted `klicka på` / `klik op` / `haz clic en`). (sv, nl, fr, de)
-- `goToPath.dialog.confirm` shares its English with the dialog title, which puts Finder's title form on a button (de
-  imperative, zh and pt where Finder's button is a bare "Go"). A separate English button label ("Go") would let locales
-  use their usual button form. Finder pt-BR also splits menu and dialog wording, which `i18n-term-consistency` forbids;
-  the `@key` notes should say the menu item wins. (pt, de, zh)
-- `errors.eject.unmountRefusedByProcess` / `…Processes`: the "We don't have…" aside breaks the third-person error voice
-  ("Cmdr couldn't…"); de proposes "Cmdr only has the process name, not an app name." The description should also say the
-  last list item may be `errors.eject.otherProcesses`, and zh-Hant's list join can run Latin into Han with no space
-  (`cfprefsd和其他程序`). (de, zh-Hant)
+- Go to folder: Finder pt-BR splits its menu and dialog wording, which `i18n-term-consistency` forbids; the `goToPath.*`
+  `@key` notes should say the menu item wins. (pt)
+- `errors.eject.unmountRefusedByProcesses`: zh-Hant's list join can run Latin into Han with no space
+  (`cfprefsd和其他程序`). (zh-Hant)
 - `servers.paneState.unreachable`, the eject-process keys: say in the descriptions which shipped sibling to mirror
   (`servers.refusal.unreachable`, `errors.eject.otherApps`); every locale converged on them anyway. (fr)
 - `adb.disconnectBusyTooltip`: "Disconnect" doesn't say whether Cmdr drops the device or the person leaves it, which

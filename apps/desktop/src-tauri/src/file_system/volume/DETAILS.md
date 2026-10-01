@@ -473,7 +473,7 @@ holding the drive ("Unmount was dissented by PID 51419"). It has to be Rust's lo
 `wordEjectRefusal` is a warn, and production frontend logging keeps errors only. `unmount_tool::run` answers a
 `ToolOutcome` rather than an `EjectError` so the exit status survives to that line, and `unmount_tool::settle` maps it
 onto the wire type: only a tool that EXITED with a code is `UnmountRefused`. One that couldn't start or died to a
-signal is `Unexpected`, since "something is still using this drive" would be a lie there.
+signal is `Unexpected`, since "something still has files open there" would be a lie there.
 
 **A failure for a volume that's no longer mounted counts as done.** When the tool doesn't succeed, `settle` asks
 whether the mount root is still in the OS mount table (`volumes::is_mount_point`, the non-blocking
@@ -551,8 +551,8 @@ answer rides on `EjectError::UnmountRefused`, and the MCP `eject` tool repeats i
 - **Linux answers `Incomplete`**, having no walk at all: ❌ not an empty `Complete`, which would claim nothing holds the
   drive.
 
-**What KIND of holder each one is** (`holders/facts.rs`) is what picks the sentence: "macOS is still working with this
-drive" and "Photos is still using this drive" are different actions. ❌ Never decided from a process name, a path
+**What KIND of holder each one is** (`holders/facts.rs`) is what picks the sentence: "macOS still has files open
+there. Wait a minute…" and "Photos still has files open there. Close them…" are different actions. ❌ Never decided from a process name, a path
 prefix, or a message. The rules run in order and the first that answers wins:
 
 1. Cmdr's own process, or one it started (its whole ancestor chain, up to eight levels, stopping at launchd) → `Cmdr`.
