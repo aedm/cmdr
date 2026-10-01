@@ -1175,16 +1175,16 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "description": "Info toast when the user presses the system-clipboard copy or cut shortcut (Cmd+C / Cmd+X) inside the virtual `.git` portal, where Cmdr shows a repository’s branches, tags, and commits as browsable folders. Those entries are reconstructed from git history and have no path the system clipboard can carry, so it points the user at the F5 (copy) and F6 (move) transfer keys instead. F5 and F6 are keyboard key names; keep them as-is. \"git\" is the version-control tool name; keep it."
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is over {limit}, too big to open in {appName} straight from here. Copy it to a folder first, then open it there.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is bigger than {limit}, so Cmdr can’t open it in {appName} from inside the archive.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "description": "Toast shown after the user right-clicked a file inside an archive (a zip Cmdr browses like a folder) or inside a repository’s virtual `.git` snapshot, picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. \"From here\" means the place the user is browsing, whichever it is, so don’t name an archive. Tells the user to copy the file to a normal folder (F5) and open it from there.",
+    "description": "Toast shown after the user right-clicked a file inside an archive (a zip Cmdr browses like a folder) or inside a repository’s virtual `.git` snapshot, picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. \"The archive\" is the place the file sits in, so keep it generic.",
     "placeholders": {
       "fileName": "the file’s name, e.g. holiday.mov. Never translate it",
       "limit": "the size limit, already formatted with its unit, e.g. 2 GB",
       "appName": "the app the user picked, e.g. Preview or QuickTime Player. Never translate it"
     }
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} is in a password-protected archive. Copy it to a folder first (Cmdr asks for the password), then open it in {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} is in a password-protected archive. Copy it to a folder first (Cmdr will ask for the password), then open it in {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "description": "Toast shown after the user right-clicked a file inside an encrypted archive (a zip or 7z Cmdr browses like a folder), picked an app under \"Open with\", and nothing opened, because Cmdr doesn’t have the archive’s password yet. Copying the file out (F5) shows a password prompt; after that, the file can be opened. \"Archive\" means a zip/7z file.",
     "placeholders": {

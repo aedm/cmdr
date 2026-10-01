@@ -262,7 +262,7 @@ describe('transfer progress dialog chrome (en)', () => {
     const strong = (c: unknown[]) => c.join('')
     const result = t('fileOperations.transferProgress.warningFileOverFolder', { strong })
     expect(Array.isArray(result) ? result.join('') : result).toBe(
-      'The target exists and is a folder. You’re about to overwrite it with a file by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?',
+      'The target exists and is a folder. You’re about to replace it with a file by the same name. Everything inside the folder would be gone. What to do?',
     )
   })
 })

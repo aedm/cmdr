@@ -112,7 +112,7 @@ describe('a clash between a file and a folder', () => {
   it('warns when a file is about to replace a folder', async () => {
     const target = await mountDialog({ ...conflict(path), destinationIsDirectory: true })
     const warning = target.querySelector('.conflict-warning[role="alert"]')
-    expect(warning?.textContent).toContain('All contents of the target folder would be deleted')
+    expect(warning?.textContent).toContain('Everything inside the folder would be gone')
   })
 
   it('warns when a folder is about to replace a file', async () => {

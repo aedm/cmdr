@@ -971,7 +971,7 @@
     "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
   },
 
-  "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to overwrite it with a <strong>file</strong> by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?",
+  "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to replace it with a <strong>file</strong> by the same name. Everything inside the folder would be gone. What to do?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "description": "Red warning shown in the conflict step when a file would replace a same-named folder, deleting the folder's contents. <strong> wraps the emphasized words 'folder' and 'file'. Keep it stark; this is a destructive action.",
     "screenshot": "transfer-dialog.png",
