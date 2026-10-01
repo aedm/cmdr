@@ -139,7 +139,10 @@ Each one ends green on `pnpm check` with its docs updated. Tiers follow
    with progress, pause, cancel, F2's small/big split.
 7. **M7, cost estimates**: price table endpoint in `apps/api-server`, the estimator in Rust (requests by class, egress,
    minimum duration and minimum object size), the estimate line + (i) in the Move, Copy, and Delete dialogs and the F2
-   dialog path.
+   dialog path. Shipped as `crates/cmdr-s3/src/cost/` (table + estimator, `DETAILS.md` § "Cost estimates"),
+   `/s3-prices/v1`, and `apps/desktop/src-tauri/src/s3_costs/` (the planner, from the dialog's own scan; its
+   `DETAILS.md` § "Known gaps" lists what shows no estimate yet). The estimate is one-time cost only: requests,
+   downloads, and early deletion; ongoing storage isn't an operation's cost.
 8. **M8, live providers and polish**: real accounts (keys via `secret`), throughput and throttling measured per provider
    and the concurrency numbers set from them, conditional-write behavior confirmed on Wasabi and Hetzner, friendly
    errors, delete-dialog versioning notes, docs (`C+D.md`, `docs/architecture.md`, capability matrix), and the i18n

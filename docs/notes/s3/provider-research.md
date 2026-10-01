@@ -113,7 +113,10 @@ Storage. MinIO is skipped: nothing trivially available that changes a decision h
 - Storage, S3 Standard: $0.023/GB-month (first 50 TB).
 - `PUT/COPY/POST/LIST`: $0.005 per 1,000.
 - `GET/SELECT` and all other requests: $0.0004 per 1,000.
-- `DELETE` and `CANCEL`: free.
+- `DELETE` and `CANCEL`: free. `DeleteObjects` (a POST) counts as a delete and is free: **corroboration**
+  (https://repost.aws/questions/QUZouQPXJERluPStXFvke0tw/s3-deleteobject-pricing), the price table's assumption.
+- Free Tier: since 2025-07-15, new accounts get up to $200 in credits instead of per-service allowances (pricing page,
+  re-scraped 2026-10-01).
 - Egress to internet: $0.09/GB (first 10 TB/month); first 100 GB/month free, aggregated across all AWS services and
   regions.
 - Standard-IA and One Zone-IA: 30-day minimum storage duration, prorated charge for early deletion. S3 Standard has no
@@ -229,7 +232,8 @@ Storage. MinIO is skipped: nothing trivially available that changes a decision h
   $4.50 per
   million (IA $9.00).
 - Class B (`GetObject`, `HeadObject`, `HeadBucket`, and more): $0.36 per million (IA $0.90).
-- Free operations: `DeleteObject`, `DeleteBucket`, `AbortMultipartUpload`.
+- Free operations: `DeleteObject`, `DeleteBucket`, `AbortMultipartUpload`. `DeleteObjects` is in no list; the price
+  table prices it like `DeleteObject` (re-checked 2026-10-01, "Last updated Oct 1, 2026").
 - Egress: free for all classes. IA data retrieval: $0.01/GB.
 - Free tier per month: 10 GB-month storage, 1 million Class A, 10 million Class B.
 - Minimum storage duration: none for Standard, 30 days for IA. No minimum object size mentioned.
@@ -404,7 +408,9 @@ https://docs.wasabi.com/apidocs/wasabi-api
 ### Pricing
 
 - Source: https://wasabi.com/pricing/faq
-- Storage: $7.99/TB-month (US and Europe pay-as-you-go example; computed per GB per day).
+- Storage: $7.99/TB-month (US and Europe pay-as-you-go example; computed per GB per day). The FAQ's math: $7.99 / 1,024
+  GB = $0.0078/GB-month, / 30 days = $0.000260091/GB-day, which is what an early deletion bills per remaining day
+  (re-checked 2026-10-01).
 - Egress and API requests: free, subject to policy: monthly egress should not exceed active storage volume.
 - **Minimum monthly charge**: 1 TB of active storage.
 - **Minimum storage duration**: 90 days on pay-as-you-go. Deleting earlier triggers a "Timed Deleted Storage" charge for
@@ -520,6 +526,5 @@ https://docs.wasabi.com/apidocs/wasabi-api
   conditionals; presigned URL max expiry; checksum header handling; `DeleteObjects` max keys; rate-limit response code
   (503 vs 429); minimum part size.
 - AWS: the exact response for `ListBuckets` with a bucket-scoped IAM policy (403 inferred from the required permission);
-  current AWS Free Tier terms for S3 (the pricing page's free tier block didn't scrape); whether third-party providers
-  accept a flexible checksum in place of `Content-MD5` on `DeleteObjects`.
+  whether third-party providers accept a flexible checksum in place of `Content-MD5` on `DeleteObjects`.
 - Any published server-side copy throughput figure (MB/s per request) for any provider.
