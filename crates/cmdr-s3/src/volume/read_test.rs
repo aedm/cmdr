@@ -204,7 +204,7 @@ async fn a_large_object_streams_in_small_pieces(service: FixtureService) {
     // huge ones); a streamed one hands back what the socket delivered.
     assert!(
         largest <= 4 * 1024 * 1024 && chunks >= 16,
-        "{}: {chunks} chunk(s), the largest {largest} bytes: the body must stream, ❌ never be held whole",
+        "{}: chunk count {chunks}, largest chunk {largest} B: the body must stream, ❌ never be held whole",
         service.key
     );
 }

@@ -7,9 +7,9 @@ The family-grouped handler modules behind the dispatch core (`../command-dispatc
 
 - `types.ts`: the seam, including `DispatchExemptId` and its runtime `DISPATCH_EXEMPT_IDS` tuple. Read it before
   touching exemptions.
-- One module per family (`app-dialog`, `view`, `pane`, `tab`, `nav`, `sort`, `file`, `clipboard`, `selection`, `tag`,
-  `servers`, `misc`), spread by `index.ts` into `commandHandlers: CommandHandlerRecord`. That annotation is the
-  completeness guard: a missing or exempt-id handler fails to compile.
+- One module per family (`app-dialog`, `view`, `pane`, `tab`, `nav`, `sort`, `file`, `share-link`, `clipboard`,
+  `selection`, `tag`, `servers`, `misc`), spread by `index.ts` into `commandHandlers: CommandHandlerRecord`. That
+  annotation is the completeness guard: a missing or exempt-id handler fails to compile.
 
 ## Rules
 

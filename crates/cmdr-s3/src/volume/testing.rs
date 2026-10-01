@@ -226,7 +226,7 @@ pub async fn seed_once(service: FixtureService, bucket: &str, key: &str, len: us
     assert_eq!(
         bytes.len(),
         len,
-        "seed_once: the generator must make exactly {len} bytes"
+        "seed_once: the generator must make exactly the length asked for ({len} B)"
     );
     seed(service, bucket, &[object(key, &bytes)]).await;
 }

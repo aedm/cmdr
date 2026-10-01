@@ -141,8 +141,8 @@
       "reason": "TODO: The status bar is a separable concern: `getStatusText`, `walkProgress`, `waitElapsed`, the `waitNow` ticker, and the `createAnnouncementThrottle` live region (about 80 script) plus its markup (about 40) and `.status-*` style (about 55) already take every helper from `query-stream.ts`, so a `QueryStatusBar.svelte` taking the counts and the `LiveRunView` lifts roughly 175 lines cleanly. (Column measurement already lives in `result-columns.svelte.ts`.) That leaves the state-branch chain and the row template at roughly 710 lines."
     },
     "apps/desktop/src/lib/tauri-commands/index.ts": {
-      "lines": 915,
-      "reason": "A pure barrel: 944 lines of `export { … } from './x'` and `export type { … }` across about 40 domain sub-files, one line per re-exported symbol, with zero declarations, imports, or logic anywhere in it. `tauri-commands/CLAUDE.md` makes it the single stable import path precisely so sub-file layout can shift behind it, so its length tracks the IPC surface and cutting it would mean either fewer commands or breaking that contract."
+      "lines": 1007,
+      "reason": "A pure barrel: nothing but `export { … } from './x'` and `export type { … }` across about 40 domain sub-files, one line per re-exported symbol, with zero declarations, imports, or logic anywhere in it. `tauri-commands/CLAUDE.md` makes it the single stable import path precisely so sub-file layout can shift behind it, so its length tracks the IPC surface and cutting it would mean either fewer commands or breaking that contract."
     },
     "apps/desktop/src/lib/ui/ModalDialog.svelte": {
       "lines": 823,
