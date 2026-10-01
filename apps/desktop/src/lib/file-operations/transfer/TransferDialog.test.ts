@@ -190,6 +190,9 @@ interface MountOpts {
   currentVolumeId?: string
   sourceFolderPath?: string
   destinationPath?: string
+  /** Rename mode (F2 on a big S3 folder): one source, renamed in place. */
+  newName?: string
+  sourcePaths?: string[]
 }
 
 type ConfirmFn = (payload: TransferConfirmPayload) => void
@@ -201,7 +204,7 @@ function mountDialog(opts: MountOpts = {}): HTMLDivElement {
     target,
     props: {
       operationType: opts.operationType ?? 'copy',
-      sourcePaths: ['/Users/test/photos', '/Users/test/notes.txt'],
+      sourcePaths: opts.sourcePaths ?? ['/Users/test/photos', '/Users/test/notes.txt'],
       destinationPath: opts.destinationPath ?? '/Users/test/dest',
       currentVolumeId: opts.currentVolumeId ?? 'root',
       fileCount: 1,
@@ -213,6 +216,7 @@ function mountDialog(opts: MountOpts = {}): HTMLDivElement {
       destVolumeId: opts.currentVolumeId ?? 'root',
       autoConfirm: opts.autoConfirm ?? false,
       autoConfirmOnConflict: opts.autoConfirmOnConflict,
+      newName: opts.newName,
       onConfirm: opts.onConfirm ?? (() => {}),
       onCancel: opts.onCancel ?? (() => {}),
     },
@@ -1133,5 +1137,98 @@ describe('TransferDialog confirm without waiting for the conflict check', () => 
     await flushMicrotasks()
 
     expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('TransferDialog rename mode (a rename that copies, confirmed as a move)', () => {
+  // A same-volume move on a non-default volume: exactly what the fast path would
+  // otherwise grab, so each test also proves rename mode stays off it.
+  const RENAME = {
+    operationType: 'move' as const,
+    sourceVolumeId: 'ext',
+    currentVolumeId: 'ext',
+    sourcePaths: ['/Volumes/External/bucket/photos'],
+    sourceFolderPath: '/Volumes/External/bucket',
+    destinationPath: '/Volumes/External/bucket',
+    newName: 'pictures',
+  }
+
+  function pathInput(target: HTMLElement): HTMLInputElement {
+    const input = target.querySelector<HTMLInputElement>('input[aria-label="Destination path"]')
+    if (!input) throw new Error('path input not rendered')
+    return input
+  }
+
+  async function typePath(target: HTMLElement, value: string): Promise<void> {
+    const input = pathInput(target)
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushMicrotasks()
+  }
+
+  it('prefills the path box with the folder plus the new name', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+
+    expect(pathInput(target).value).toBe('/bucket/pictures')
+  })
+
+  it('hides the Copy/Move/Compress toggle and says why it runs as a move', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+
+    expect(target.querySelector('.tg-root')).toBeNull()
+    expect(target.querySelector('.rename-hint')?.textContent).toContain('pause or cancel')
+  })
+
+  it('runs the deep scan, so the dialog shows what the rename copies', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+
+    expect(startScanPreviewMock).toHaveBeenCalledTimes(1)
+    expect(scanState(target)).toBe('counting')
+  })
+
+  it('skips the top-level conflict check, where the source would clash with itself', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+
+    expect(scanVolumeForConflictsMock).not.toHaveBeenCalled()
+    expect(target.querySelector('.dialog-body')?.getAttribute('data-conflict-state')).toBe('skipped')
+  })
+
+  it('confirms with the folder as the destination and the leaf as the new name', async () => {
+    let captured: TransferConfirmPayload | null = null
+    const target = mountDialog({ ...RENAME, onConfirm: (p) => (captured = p) })
+    await flushMicrotasks()
+    await typePath(target, '/bucket/archive/pictures 2024')
+
+    confirmButton(target).click()
+    await flushMicrotasks()
+
+    expect(captured).toMatchObject({
+      destination: '/bucket/archive',
+      newName: 'pictures 2024',
+      operationType: 'move',
+      previewId: 'preview-1',
+    })
+  })
+
+  it('refuses an empty new name, and lets the source folder stand as the destination', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+    expect(target.querySelector('.path-error')).toBeNull()
+
+    await typePath(target, '/bucket/')
+    expect(target.querySelector('.path-error')?.textContent).toBeTruthy()
+    expect(confirmButton(target).disabled).toBe(true)
+  })
+
+  it('refuses a new name with a disallowed character', async () => {
+    const target = mountDialog(RENAME)
+    await flushMicrotasks()
+
+    await typePath(target, '/bucket/bad\u0000name')
+    expect(target.querySelector('.path-error')?.textContent).toBeTruthy()
   })
 })

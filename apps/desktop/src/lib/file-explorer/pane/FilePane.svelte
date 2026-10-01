@@ -74,7 +74,7 @@
     import { createRenameState } from '../rename/rename-state.svelte'
     import { type ListingDirectorySortMode } from '$lib/settings'
     import { tString } from '$lib/intl/messages.svelte'
-    import { createRenameFlow } from './rename-flow.svelte'
+    import { createRenameFlow, type RenameAsMoveRequest } from './rename-flow.svelte'
     import ExtensionChangeDialog from '../rename/ExtensionChangeDialog.svelte'
     import RenameConflictDialog from '../rename/RenameConflictDialog.svelte'
     import { getAppLogger } from '$lib/logging/logger'
@@ -193,6 +193,8 @@
         onCommand?: (commandId: CommandId) => void
         /** Reveals a snapshot result through the coordinator's navigation transaction. */
         onRevealSearchResult?: (path: string) => void
+        /** Opens the Move dialog for a rename that copies too much to start unasked. */
+        onConfirmRenameAsMove?: (request: RenameAsMoveRequest) => void
     }
 
     const {
@@ -226,6 +228,7 @@
         onGoBack,
         onCommand,
         onRevealSearchResult,
+        onConfirmRenameAsMove,
     }: Props = $props()
 
     let currentPath = $state(untrack(() => initialPath))
@@ -1109,6 +1112,7 @@
         getEntryAt: (index: number) => activeListRef()?.getEntryAt(index),
         indexOfEntry: (path: string) => activeListRef()?.indexOfEntry(path),
         moveCursorTo,
+        onConfirmRenameAsMove: (request: RenameAsMoveRequest) => onConfirmRenameAsMove?.(request),
     })
 
     // Destructure handlers: factory methods don't use `this`, safe to destructure

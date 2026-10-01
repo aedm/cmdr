@@ -43,6 +43,12 @@ export interface TransferDialogPropsData {
    * `dialog-props.ts` for why every trigger has to answer it.
    */
   duplicateFollowUp: DuplicateFollowUp
+  /**
+   * Rename mode: the move renames its one source to this name in place. Set only
+   * when F2 hands a rename that copies too much to start unasked (a big S3
+   * folder) to the Move dialog (`rename-as-move.ts`).
+   */
+  newName?: string
 }
 
 /**

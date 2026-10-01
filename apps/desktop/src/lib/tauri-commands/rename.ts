@@ -1,6 +1,6 @@
 // Rename-related Tauri command wrappers
 
-import { commands, type Initiator, type ValidationError } from '$lib/ipc/bindings'
+import { commands, type Initiator, type RenameByMove, type ValidationError } from '$lib/ipc/bindings'
 import { throwMutationError } from '$lib/file-operations/mutation-error'
 
 export interface RenameConflictFileInfo {
@@ -17,6 +17,9 @@ export interface RenameValidityResult {
   hasConflict: boolean
   isCaseOnlyRename: boolean
   conflict: RenameConflictFileInfo | null
+  /** Set only when this rename copies (an S3 folder or big file): what it would
+   *  move, and whether it's big enough to confirm in the Move dialog first. */
+  byMove: RenameByMove | null
 }
 
 /**

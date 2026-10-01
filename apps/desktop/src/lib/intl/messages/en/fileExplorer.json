@@ -1230,6 +1230,10 @@
       "others": "the same number of other files (drives the singular/plural form)"
     }
   },
+  "fileExplorer.rename.needsMoveConfirmation": "Renaming it copies a lot on the server, so press F2 on it again to confirm.",
+  "@fileExplorer.rename.needsMoveConfirmation": {
+    "description": "Reason shown inside fileExplorer.rename.chainKeptOriginalName (after the colon) when the user renames a run of files with the up/down arrows and one of them is a big folder on cloud storage (S3). There, a rename copies every file inside and deletes the originals, so a big one needs confirming in the Move dialog first, and a chain that has already moved on can't stop to ask. Tells the user to press F2 on that item again, which opens the confirmation. F2 is a keyboard key name; keep it as-is. A full sentence starting with a capital letter."
+  },
   "fileExplorer.rename.unconfirmed": "Couldn’t confirm the rename of “{name}”. The volume may be slow, so the rename may still have gone through.",
   "@fileExplorer.rename.unconfirmed": {
     "description": "Warning toast shown when a rename gets no answer from the volume in time (a slow network share or phone). The rename may well have succeeded on disk, so the message must never say the file kept its name; it says Cmdr couldn’t tell. Cmdr re-reads the folder right after, so the user will see which it was. {name} is the name the file had before the rename, shown in quotes. As soon as a second rename goes unanswered, this same toast is rewritten with fileExplorer.rename.unconfirmedAndOthers, so the two read as one message that grows.",

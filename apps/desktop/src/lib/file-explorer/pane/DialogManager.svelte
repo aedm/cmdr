@@ -191,6 +191,7 @@
                 autoConfirm={transferDialogProps.autoConfirm}
                 autoConfirmOnConflict={transferDialogProps.autoConfirmOnConflict}
                 mcpRequestId={transferDialogProps.mcpRequestId}
+                newName={transferDialogProps.newName}
                 onConfirm={onTransferConfirm}
                 registerConfirmer={registerTransferConfirmer}
                 onCancel={onTransferCancel}
@@ -240,6 +241,7 @@
             itemSizes={transferProgressProps.itemSizes}
             mcpRequestId={transferProgressProps.mcpRequestId}
             initiator={transferProgressProps.initiator}
+            newName={transferProgressProps.newName}
             onComplete={onTransferComplete}
             onCancelled={onTransferCancelled}
             onError={onTransferError}

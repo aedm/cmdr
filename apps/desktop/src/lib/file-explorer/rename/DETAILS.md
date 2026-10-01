@@ -21,7 +21,7 @@ Depth and rationale for inline rename. `CLAUDE.md` holds the must-knows.
 
 ## Three-stage save flow (`rename-operations.ts::executeRenameSave()`)
 
-`RenameResult` variants: `noop`, `error`, `timeout`, `extension-ask`, `conflict`, `success`.
+`RenameResult` variants: `noop`, `error`, `timeout`, `extension-ask`, `conflict`, `success`, `confirm-move`.
 
 1. **Extension check**: if `extensionPolicy === 'ask'` and extensions differ meaningfully
    (`extensionsDifferMeaningfully()` from `filename-validation.ts`), return `{ type: 'extension-ask' }`; the caller
@@ -33,6 +33,14 @@ Depth and rationale for inline rename. `CLAUDE.md` holds the must-knows.
 3. **Perform rename**: `renameFile(from, to, force)`. Success → `{ type: 'success', newName }`. Timeout →
    `{ type: 'timeout' }`, wordless: the caller aggregates a run of them into one toast, so the sentence depends on how
    many are waiting to be reported (see "Saying so, in one toast that grows").
+
+**A rename that copies.** On S3 a folder or big file has no rename: the backend copies every object and deletes the
+source, and says so in `validity.byMove`. A small one (`confirmFirst: false`) goes through `renameFile` as usual, which
+starts it as a background move with the progress chip. A big or uncounted one (`confirmFirst: true`) returns
+`{ type: 'confirm-move', newName }` before renaming anything: the flow ends the session like a success (minus the cursor
+follow, since nothing moved yet) and calls the pane's `onConfirmRenameAsMove`, which opens the Move dialog in rename
+mode (`../pane/rename-as-move.ts`, `../../file-operations/transfer/DETAILS.md` § "Rename mode"). A SUPERSEDED save never
+opens it: a chain drops the name into the kept-names toast (`fileExplorer.rename.needsMoveConfirmation`).
 
 Conflict resolution calls `performRename(target, newName, force: true)` after "Overwrite and trash/delete". The
 `moveToTrash` call in the overwrite-trash path also has timeout detection (persistent toast + refresh).

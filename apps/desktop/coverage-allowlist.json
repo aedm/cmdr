@@ -70,9 +70,6 @@
     "file-explorer/rename/rename-activation.ts": {
       "reason": "Depends on document event listeners and timers"
     },
-    "file-explorer/rename/rename-operations.ts": {
-      "reason": "Depends on Tauri commands and FilePane integration"
-    },
     "file-explorer/selection/FileIcon.svelte": {
       "reason": "Simple UI component, display only"
     },

@@ -458,6 +458,25 @@ export async function moveBetweenVolumes(
 }
 
 /**
+ * A rename that runs as a move on one volume: `sourcePath` moves into the folder
+ * `destPath` under `newName`. What the Move dialog confirms when F2 opens it for
+ * a rename that copies (a big S3 folder, `RenameValidityResult.byMove`). Same
+ * events as `moveBetweenVolumes`.
+ */
+export async function renameByMove(
+  volumeId: string,
+  sourcePath: string,
+  destPath: string,
+  newName: string,
+  config?: VolumeCopyConfig,
+  initiator?: Initiator,
+): Promise<WriteOperationStartResult> {
+  const res = await commands.renameByMove(volumeId, sourcePath, destPath, newName, config ?? null, initiator ?? null)
+  if (res.status === 'error') throwIpcError(res.error)
+  return res.data
+}
+
+/**
  * Compresses files into a NEW zip at `destZipPath` on `destVolumeId`, reusing the
  * archive-edit machinery (seed a valid empty zip, then pack the sources in). Same
  * events as `copyBetweenVolumes`. The destination may be local or remote (SMB/MTP):

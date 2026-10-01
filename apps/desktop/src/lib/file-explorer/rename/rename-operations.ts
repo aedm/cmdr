@@ -32,6 +32,9 @@ export type RenameResult =
   | { type: 'extension-ask'; oldExtension: string; newExtension: string }
   | { type: 'conflict'; validity: RenameValidityResult }
   | { type: 'success'; newName: string }
+  /** The rename copies too much to start unasked (a big S3 folder): the caller
+   *  opens the Move dialog prefilled with `newName`, and nothing renamed yet. */
+  | { type: 'confirm-move'; newName: string }
 
 /**
  * Words for the backend's typed verdict on a name it won't take.
@@ -111,6 +114,13 @@ export async function executeRenameSave(
   // Conflict detected (and not a case-only rename of the same file)
   if (validity.hasConflict && !validity.isCaseOnlyRename) {
     return { type: 'conflict', validity }
+  }
+
+  // A rename that copies past the small-rename count waits for the Move dialog.
+  // A small one (`confirmFirst` false) goes through `renameFile`, which starts
+  // it as a background move by itself.
+  if (validity.byMove?.confirmFirst) {
+    return { type: 'confirm-move', newName: trimmedName }
   }
 
   // Perform the rename

@@ -84,6 +84,7 @@
     } from './dialog-props'
     import { explorerState } from './explorer-state.svelte'
     import type { PaneAccess } from './pane-access'
+    import type { RenameAsMoveRequest } from './rename-flow.svelte'
     import { createClipboardOperations } from './clipboard-operations'
     import { createFileOperationCommands } from './file-operation-commands'
     import { createPaneCommands } from './pane-commands'
@@ -1387,6 +1388,7 @@
                     wrongAttempt: boolean
                     retry: () => void
                 }) => { dialogs.showArchivePasswordForBrowse(info); }}
+                onConfirmRenameAsMove={(request: RenameAsMoveRequest) => { fileOps.confirmRenameAsMove(paneId, request); }}
                 unreachable={getActiveTab(tabMgr).unreachable}
                 onRetryUnreachable={() => edgeFlow.handleRetryUnreachable(paneId)}
                 onOpenHome={() => edgeFlow.handleOpenHome(paneId)}

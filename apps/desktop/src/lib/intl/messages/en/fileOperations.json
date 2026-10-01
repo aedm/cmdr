@@ -427,6 +427,10 @@
     "description": "Yellow inline warning beneath the destination path box in the Copy/Move dialog, shown when the typed destination folder doesn’t exist yet and the Copy action is selected. Reassures the user the folder will be made automatically. Active voice, friendly. Keep the product name 'Cmdr' as-is. There’s a separate '...Move' variant for the Move action."
   },
 
+  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "@fileOperations.transferDialog.renameByMoveHint": {
+    "description": "One-line note in the Move dialog when it opens to confirm a rename (the user pressed F2 on a big folder or file on cloud storage such as S3). There, a rename has no shortcut: every file gets copied to the new name and the originals deleted, so it runs as a regular move with progress. Reassures the user they can pause or cancel it. Friendly, active voice."
+  },
   "fileOperations.transferDialog.targetWillBeCreatedMove": "This folder doesn’t exist yet. Cmdr will create it during the move.",
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "description": "Yellow inline warning beneath the destination path box in the Copy/Move dialog, shown when the typed destination folder doesn’t exist yet and the Move action is selected. Reassures the user the folder will be made automatically. Active voice, friendly. Keep the product name 'Cmdr' as-is. There’s a separate '...Copy' variant for the Copy action."

@@ -33,6 +33,9 @@ export interface TransferConfirmPayload {
    *  under `Skip all`. Empty when no conflicts were found or the pre-flight
    *  scan failed. */
   preKnownConflicts: string[]
+  /** Rename mode only: the leaf of the edited path, which the source moves under
+   *  into `destination` (then the folder part alone). */
+  newName?: string
 }
 
 /**
@@ -123,6 +126,9 @@ export interface TransferProgressPropsData {
    * why the answer differs per gesture.
    */
   duplicateFollowUp: DuplicateFollowUp
+  /** Rename mode: a move of the ONE source into `destinationPath` under this name
+   *  (`rename-as-move.ts`). Kept on retry, which renames the same way. */
+  newName?: string
 }
 
 /**

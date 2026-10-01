@@ -42,6 +42,21 @@ export interface RenameFlowDeps {
   indexOfEntry: (path: string) => number | undefined
   /** Lands the cursor on a row and scrolls it into view. */
   moveCursorTo: (index: number) => void
+  /**
+   * A rename that copies too much to start unasked (a big S3 folder): open the
+   * Move dialog for `sourcePath`, prefilled with `newName` in `parentPath`. Only
+   * the session that typed the name may call it; a superseded save never opens
+   * a dialog.
+   */
+  onConfirmRenameAsMove: (request: RenameAsMoveRequest) => void
+}
+
+/** What the Move dialog needs to confirm a rename that copies. */
+export interface RenameAsMoveRequest {
+  sourcePath: string
+  parentPath: string
+  newName: string
+  isDirectory: boolean
 }
 
 export function createRenameFlow(deps: RenameFlowDeps) {
@@ -357,6 +372,11 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         // the name is dropped, and the toast is how the user learns it was.
         chainReports.keptName(target.originalName, tString('fileOperations.validation.conflict', { name: trimmedName }))
         break
+      case 'confirm-move':
+        // The rename needs an OK in the Move dialog, and a dialog can't ask about
+        // a file the user has already moved past: the name is dropped, and said so.
+        chainReports.keptName(target.originalName, tString('fileExplorer.rename.needsMoveConfirmation'))
+        break
       case 'noop':
       case 'extension-ask':
         // Nothing happened on disk, and the extension question can't be put to a
@@ -420,10 +440,22 @@ export function createRenameFlow(deps: RenameFlowDeps) {
       case 'success':
         finalizeRename(result.newName)
         break
+      case 'confirm-move':
+        // The editor's job is done: the name now lives in the Move dialog, which
+        // owns the confirmation and the background move it starts.
+        endRenameSession()
+        deps.onConfirmRenameAsMove({
+          sourcePath: target.path,
+          parentPath: target.parentPath,
+          newName: result.newName,
+          isDirectory: target.isDirectory,
+        })
+        break
     }
   }
 
-  function finalizeRename(newName: string) {
+  /** Closes the editor and its dialogs, and hands focus back to the pane. */
+  function endRenameSession() {
     clearPendingRenameActivation()
     endChain()
     rename.cancel()
@@ -431,6 +463,10 @@ export function createRenameFlow(deps: RenameFlowDeps) {
     conflictDialogState = null
     suppressExtensionWarningOnce = false
     restoreFocus()
+  }
+
+  function finalizeRename(newName: string) {
+    endRenameSession()
 
     pendingCursorName = newName
 

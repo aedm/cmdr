@@ -638,6 +638,7 @@ export {
   scanMtpForCopy,
   copyBetweenVolumes,
   moveBetweenVolumes,
+  renameByMove,
   compressFiles,
   scanVolumeForCopy,
   scanVolumeForConflicts,

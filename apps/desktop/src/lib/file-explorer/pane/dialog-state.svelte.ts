@@ -449,6 +449,7 @@ export function createDialogState(deps: DialogStateDeps) {
       conflictResolution,
       operationType,
       preKnownConflicts,
+      newName,
     }: TransferConfirmPayload) {
       if (!transferDialogProps) return
 
@@ -474,6 +475,7 @@ export function createDialogState(deps: DialogStateDeps) {
         mcpRequestId: transferDialogProps.mcpRequestId,
         initiator: transferDialogProps.initiator,
         duplicateFollowUp: transferDialogProps.duplicateFollowUp,
+        newName,
       })
 
       showTransferDialog = false

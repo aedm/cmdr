@@ -118,3 +118,33 @@ describe("a validity check that can't run at all", () => {
     expect(message).toBe(renderMutationError({ type: 'unexpected', detail: '' }, 'file'))
   })
 })
+
+describe('a rename that copies', () => {
+  const validity = (byMove: unknown) => ({
+    valid: true,
+    error: null,
+    hasConflict: false,
+    isCaseOnlyRename: false,
+    conflict: null,
+    byMove,
+  })
+
+  it('asks for the Move dialog when the backend wants an OK first, and renames nothing yet', async () => {
+    checkRenameValiditySpy.mockResolvedValue(validity({ files: 5000, bytes: 1, countedAll: false, confirmFirst: true }))
+
+    const result = await executeRenameSave(FOLDER, 'renamed', 'yes', false, 's3-1')
+
+    expect(result).toEqual({ type: 'confirm-move', newName: 'renamed' })
+    expect(renameFileSpy).not.toHaveBeenCalled()
+  })
+
+  it('renames right away when the copy is small enough to run in the background', async () => {
+    checkRenameValiditySpy.mockResolvedValue(validity({ files: 3, bytes: 10, countedAll: true, confirmFirst: false }))
+    renameFileSpy.mockResolvedValue(undefined)
+
+    const result = await executeRenameSave(FOLDER, 'renamed', 'yes', false, 's3-1')
+
+    expect(result).toEqual({ type: 'success', newName: 'renamed' })
+    expect(renameFileSpy).toHaveBeenCalledWith('/dir/notes', '/dir/renamed', false, 's3-1')
+  })
+})

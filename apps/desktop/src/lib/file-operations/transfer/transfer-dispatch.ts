@@ -18,6 +18,7 @@ import {
   deleteFiles,
   moveBetweenVolumes,
   moveFiles,
+  renameByMove,
   trashFiles,
   DEFAULT_VOLUME_ID,
   type Initiator,
@@ -55,6 +56,9 @@ export interface TransferDispatchConfig {
   /** Who triggered this operation. `undefined`/`user` for direct UI actions;
    *  `aiClient` when an MCP tool initiated it (drives the operation-log provenance). */
   initiator?: Initiator
+  /** Rename mode: a move of the ONE source into `destinationPath` under this name
+   *  (F2 on a big S3 folder, confirmed in the Move dialog). */
+  newName?: string
 }
 
 /**
@@ -121,6 +125,25 @@ export function dispatchTransferOperation(config: TransferDispatchConfig): Promi
     )
   }
   if (config.operationType === 'move') {
+    const volumeMoveConfig = {
+      conflictResolution: config.conflictResolution ?? 'stop',
+      progressIntervalMs,
+      maxConflictsToShow,
+      previewId: config.previewId,
+      preKnownConflicts: config.preKnownConflicts ?? [],
+      compressionLevel,
+    }
+    // A rename that copies, confirmed in the Move dialog: one source, one volume.
+    if (config.newName !== undefined) {
+      return renameByMove(
+        config.sourceVolumeId,
+        config.sourcePaths[0] ?? '',
+        config.destinationPath ?? '',
+        config.newName,
+        volumeMoveConfig,
+        config.initiator,
+      )
+    }
     // Volume move (MTP or other non-local); backend handles same-volume, cross-volume, etc.
     if (isVolumeMove(config)) {
       return moveBetweenVolumes(
@@ -128,14 +151,7 @@ export function dispatchTransferOperation(config: TransferDispatchConfig): Promi
         config.sourcePaths,
         config.destVolumeId ?? DEFAULT_VOLUME_ID,
         config.destinationPath ?? '',
-        {
-          conflictResolution: config.conflictResolution ?? 'stop',
-          progressIntervalMs,
-          maxConflictsToShow,
-          previewId: config.previewId,
-          preKnownConflicts: config.preKnownConflicts ?? [],
-          compressionLevel,
-        },
+        volumeMoveConfig,
         config.initiator,
       )
     }

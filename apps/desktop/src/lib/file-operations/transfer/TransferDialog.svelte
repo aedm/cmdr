@@ -5,7 +5,12 @@
     import { getVolumeSpace, DEFAULT_VOLUME_ID, type SpaceInfo } from '$lib/tauri-commands'
     import type { SortColumn, SortOrder, ConflictResolution, TransferOperationType } from '$lib/file-explorer/types'
     import type { TransferConfirmPayload, TransferConfirmer } from '$lib/file-explorer/pane/dialog-props'
-    import { validateDirectoryPath } from '$lib/utils/filename-validation'
+    import {
+        validateDirectoryPath,
+        validateDisallowedChars,
+        validateNameLength,
+        validateNotEmpty,
+    } from '$lib/utils/filename-validation'
     import { createTransferDestExistsCheck } from './transfer-dest-exists.svelte'
     import { conflictPolicyFromMcpName } from './conflict-policy'
     import CompressLevelControl from './CompressLevelControl.svelte'
@@ -21,7 +26,9 @@
         confirmLabelKey,
         generateTitle,
         initialEditedPath,
+        joinPathLeaf,
         shouldShowHardlinkNote,
+        splitPathLeaf,
     } from './transfer-dialog-utils'
     import { getPathValidationError, formatSpaceInfo } from './transfer-dialog-logic'
     import { createTransferScanState } from './transfer-scan-state.svelte'
@@ -66,6 +73,12 @@
          *  open): the FE then acks the round-trip WITHOUT an operationId, since no
          *  op spawned. The normal spawn reply happens in the progress state. */
         mcpRequestId?: string
+        /**
+         * Rename mode: the ONE source moves to this name in place (F2 on a big S3
+         * folder, `pane/rename-as-move.ts`). The path box holds folder + name, the
+         * Copy/Move/Compress toggle is gone, and confirm splits the box back.
+         */
+        newName?: string
         onConfirm: (payload: TransferConfirmPayload) => void
         /** Takes this dialog's own confirm for as long as it's mounted, so an MCP
          *  `dialog confirm` presses the same button a person does. Returns the
@@ -92,10 +105,13 @@
         autoConfirm = false,
         autoConfirmOnConflict,
         mcpRequestId,
+        newName,
         onConfirm,
         registerConfirmer,
         onCancel,
     }: Props = $props()
+
+    const isRenameMode = newName !== undefined
 
     let activeOperationType = $state<TransferOperationType>(initialOperationType)
 
@@ -132,9 +148,18 @@
     // Compute initial volume-relative path. Can't use $derived selectedVolume here (not yet available),
     // so look up the volume path directly from the props.
     const initialVolumePath = volumes.find((v) => v.id === currentVolumeId)?.path ?? '/'
-    let editedPath = $state(
-        initialEditedPath(initialOperationType, destinationPath, initialVolumePath, sourcePaths, sourceFolderPath),
+    const initialFolderOrTarget = initialEditedPath(
+        initialOperationType,
+        destinationPath,
+        initialVolumePath,
+        sourcePaths,
+        sourceFolderPath,
     )
+    let editedPath = $state(
+        newName === undefined ? initialFolderOrTarget : joinPathLeaf(initialFolderOrTarget, newName),
+    )
+    /** Rename mode's path box, split back into the folder it lands in and the new name. */
+    const renameTarget = $derived(splitPathLeaf(editedPath))
     log.debug(
         'Initial path resolution: destinationPath={destinationPath}, currentVolumeId={currentVolumeId}, initialVolumePath={initialVolumePath}, editedPath={editedPath}',
         {
@@ -193,8 +218,14 @@
      *  re-scan. So local→local must keep the deep preview running, matching the
      *  same guard in `TransferProgressDialog`'s `isSameVolumeMove`. Derived from
      *  what the dialog already knows (no extra prop). */
+    //  Rename mode is never this fast path: its move copies every object (that's
+    //  why the editor sent it here), and the backend consumes the preview the
+    //  dialog's counts come from.
     const isSameVolumeMove = $derived(
-        activeOperationType === 'move' && sourceVolumeId !== DEFAULT_VOLUME_ID && sourceVolumeId === selectedVolumeId,
+        !isRenameMode &&
+            activeOperationType === 'move' &&
+            sourceVolumeId !== DEFAULT_VOLUME_ID &&
+            sourceVolumeId === selectedVolumeId,
     )
 
     // Deep scan-preview orchestration (Size bar + file/dir tallies). The factory
@@ -295,23 +326,38 @@
             ? 'done'
             : conflicts.conflictCheckUnknown
               ? 'unknown'
-              : activeOperationType === 'compress'
+              : activeOperationType === 'compress' || isRenameMode
                 ? 'skipped'
                 : 'checking',
     )
 
     const pathError = $derived.by(() => {
+        if (isRenameMode) return renamePathError()
         const structural = validateDirectoryPath(editedPath)
         if (structural.severity === 'error') return structural.message
         return getPathValidationError(sourcePaths, editedPath, activeOperationType)
     })
 
+    /** Rename mode validates the folder's shape and the NEW NAME as a name.
+     *  `getPathValidationError` would call the source's own folder "already there". */
+    function renamePathError(): string | null {
+        const structural = validateDirectoryPath(renameTarget.folder)
+        if (structural.severity === 'error') return structural.message
+        const isDir = folderCount > 0
+        for (const check of [validateNotEmpty, validateDisallowedChars, validateNameLength]) {
+            const result = check(renameTarget.leaf, isDir)
+            if (result.severity === 'error') return result.message
+        }
+        return null
+    }
+
     // Destination-existence check (debounced, async) behind the yellow "will be
     // created" warning. Created synchronously here (component init) so its internal
     // `$effect` lands in the effect-tracking context, matching the scan/conflict
     // factories above.
+    // Rename mode asks about the FOLDER the source lands in, not the new name.
     const destExists = createTransferDestExistsCheck({
-        getEditedPath: () => editedPath,
+        getEditedPath: () => (isRenameMode ? renameTarget.folder : editedPath),
         getSelectedVolumeId: () => selectedVolumeId,
         getDestroyed: () => destroyed,
         log,
@@ -450,7 +496,8 @@
         // auto-confirm branch so the fast path's `handleConfirm` await guard sees a
         // real promise. Compress makes ONE new file, so multi-file dest conflicts
         // are meaningless — it skips the check and uses the dest-exists affordance.
-        conflictCheckPromise = activeOperationType === 'compress' ? null : conflicts.check()
+        // Rename mode skips it too: the one source would clash with itself.
+        conflictCheckPromise = activeOperationType === 'compress' || isRenameMode ? null : conflicts.check()
 
         // Auto-confirm if MCP requested it (after a tick so the dialog is fully initialized)
         if (autoConfirm) {
@@ -551,12 +598,13 @@
         await scan.scanStarted
         if (needsConflictNames(isAuto)) await conflictCheckPromise
         onConfirm({
-            destination: editedPath,
+            destination: isRenameMode ? renameTarget.folder : editedPath,
             volumeId: selectedVolumeId,
             previewId: scan.previewId,
             conflictResolution: conflictPolicy,
             operationType: activeOperationType,
             preKnownConflicts: conflicts.conflictNames,
+            ...(isRenameMode ? { newName: renameTarget.leaf } : {}),
         })
     }
 
@@ -619,15 +667,20 @@
 
     <div class="dialog-body" data-conflict-state={conflictState}>
         <!-- Copy / Move / Compress. `fullWidth` so the segmented control spans the
-             same column as the fields below it. -->
-        <ToggleGroup
-            semantics="toggles"
-            value={activeOperationType}
-            options={operationOptions}
-            onChange={(next: string) => (activeOperationType = next as TransferOperationType)}
-            ariaLabel={tString('fileOperations.transferDialog.operationAria')}
-            fullWidth
-        />
+             same column as the fields below it. Rename mode is a move and nothing
+             else, so it shows why instead. -->
+        {#if isRenameMode}
+            <p class="rename-hint">{tString('fileOperations.transferDialog.renameByMoveHint')}</p>
+        {:else}
+            <ToggleGroup
+                semantics="toggles"
+                value={activeOperationType}
+                options={operationOptions}
+                onChange={(next: string) => (activeOperationType = next as TransferOperationType)}
+                ariaLabel={tString('fileOperations.transferDialog.operationAria')}
+                fullWidth
+            />
+        {/if}
 
         <!-- Where the items come from: the full source path, middle-shortened when
              it's too long for the row (the tail carries the meaning). -->
@@ -645,6 +698,7 @@
                             items={volumeItems}
                             value={selectedVolumeId}
                             ariaLabel={tString('fileOperations.transferDialog.destVolumeAria')}
+                            disabled={isRenameMode}
                             onChange={(id: string) => {
                                 selectedVolumeId = id
                             }}
@@ -1003,6 +1057,12 @@
 
     .scan-label {
         color: var(--color-text-tertiary);
+    }
+
+    .rename-hint {
+        margin: 0;
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
     }
 
     .hardlink-note {

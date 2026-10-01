@@ -469,6 +469,17 @@ user-visible differences from copy/move:
   The slide duration is 0 under `prefers-reduced-motion` and 0 before the first paint, so opening straight into Compress
   doesn't animate.
 
+### Rename mode (F2 on a big S3 folder)
+
+`TransferDialogPropsData.newName` turns the Move dialog into a rename confirmation (`rename/DETAILS.md` § "A rename that
+copies"). The path box holds folder + new name, the Copy/Move/Compress toggle gives way to one hint line, and the volume
+picker is disabled (`renameByMove` works on one volume). It is ❌ never `isSameVolumeMove`: the deep scan runs so the
+dialog shows the counts, and the backend consumes the preview. The top-level conflict check is skipped
+(`data-conflict-state="skipped"`; the source would clash with itself), the leaf is validated as a NAME, and the
+dest-exists probe asks about the folder. Confirm splits the box (`splitPathLeaf`: a trailing slash is an empty name, ❌
+never the folder's name one level up) into `destination` + `newName`, which rides to `transfer-dispatch.ts` and routes
+to `renameByMove`. `retryPropsFrom` keeps it.
+
 ### Same-FS move optimization
 
 When source and destination are on the same filesystem (checked via `metadata.dev()`), backend uses instant `rename()`.

@@ -84,6 +84,8 @@
         itemSizes?: number[]
         /** Who triggered this operation (`aiClient` for MCP-originated writes). */
         initiator?: Initiator
+        /** Rename mode: the one source moves into `destinationPath` under this name. */
+        newName?: string
         onComplete: (payload: TransferCompletePayload) => void
         onCancelled: (filesProcessed: number) => void
         onError: (error: WriteOperationError, progressAtStop: ProgressAtStop | null) => void
@@ -118,6 +120,7 @@
         spaceShortfall,
         itemSizes,
         initiator,
+        newName,
         onComplete,
         onCancelled,
         onError,
@@ -199,6 +202,7 @@
         spaceShortfall,
         itemSizes,
         initiator,
+        newName,
         onComplete,
         onCancelled,
         onError,

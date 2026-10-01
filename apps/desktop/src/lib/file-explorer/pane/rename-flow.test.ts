@@ -279,6 +279,28 @@ describe('Enter (submit) ends the session the way the user asked', () => {
     })
   })
 
+  it('a rename that copies too much to start unasked closes the editor and opens the Move dialog with the new name', async () => {
+    const { rename, flow, onRequestFocus, onConfirmRenameAsMove } = buildFlow()
+    executeRenameSaveSpy.mockResolvedValue({ type: 'confirm-move', newName: 'notes.md' })
+
+    flow.startRename()
+    flow.handleRenameInput('notes.md')
+    flow.handleRenameSubmit()
+
+    await vi.waitFor(() => {
+      expect(onConfirmRenameAsMove).toHaveBeenCalledWith({
+        sourcePath: PASTED.path,
+        parentPath: '/dir',
+        newName: 'notes.md',
+        isDirectory: false,
+      })
+    })
+    expect(rename.active).toBe(false)
+    expect(onRequestFocus).toHaveBeenCalled()
+    // Nothing renamed yet, so there's no new name for the cursor to follow.
+    expect(flow.pendingCursorName).toBeNull()
+  })
+
   it('an unchanged name ends the rename without touching the disk', () => {
     const { rename, flow } = buildFlow()
 
@@ -490,7 +512,7 @@ describe('a superseded rename session may speak, never steer', () => {
    */
   function supersededSave(showHiddenFiles = true) {
     let entry: Entry = PASTED
-    const { rename, flow, onRequestFocus } = buildFlow(() => entry, showHiddenFiles)
+    const { rename, flow, onRequestFocus, onConfirmRenameAsMove } = buildFlow(() => entry, showHiddenFiles)
     const save = deferred<unknown>()
     executeRenameSaveSpy.mockReturnValue(save.promise)
 
@@ -509,7 +531,7 @@ describe('a superseded rename session may speak, never steer', () => {
       await Promise.resolve()
     }
 
-    return { rename, flow, onRequestFocus, staleSessionId, landSave }
+    return { rename, flow, onRequestFocus, onConfirmRenameAsMove, staleSessionId, landSave }
   }
 
   it('a save landing after the user moved on leaves the live session editing', async () => {
@@ -571,6 +593,17 @@ describe('a superseded rename session may speak, never steer', () => {
 
     expect(flow.conflictDialogState).toBeNull()
     expect(rename.active).toBe(true)
+  })
+
+  it('a rename that needs the Move dialog never opens it once the user moved on, and says the name was kept', async () => {
+    const { rename, onConfirmRenameAsMove, landSave } = supersededSave()
+
+    await landSave({ type: 'confirm-move', newName: 'notes.md' })
+
+    expect(onConfirmRenameAsMove).not.toHaveBeenCalled()
+    expect(rename.active).toBe(true)
+    expect(rename.target?.path).toBe(NEXT.path)
+    expect(addToastSpy.mock.calls[0][1]).toBe('fileExplorer.rename.chainKeptOriginalName')
   })
 
   it('the blur from the superseded editor unmounting does not end the live session', async () => {

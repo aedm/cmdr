@@ -32,6 +32,8 @@ import { paneOffersTrash } from './trash-availability'
 import { checkTransferDestinationGuard } from './transfer-entry'
 import { operationStartIsBlocked } from './operation-start-gate'
 import { duplicateInPlace } from './duplicate-command'
+import { openRenameAsMove } from './rename-as-move'
+import type { RenameAsMoveRequest } from './rename-flow.svelte'
 import type { MessageKey } from '$lib/intl/keys.gen'
 import type { DuplicateFollowUp } from './duplicate-rename'
 import type { FilePaneAPI, OpenDeleteDialogArgs, OpenTransferDialogArgs, StartRenameOptions } from './types'
@@ -750,6 +752,9 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     openTransferDialog,
     openCopyDialog,
     duplicateInPlace: () => duplicateInPlace(access, dialogs),
+    confirmRenameAsMove: (pane: 'left' | 'right', request: RenameAsMoveRequest) => {
+      openRenameAsMove(access, dialogs, pane, request)
+    },
     openMoveDialog,
     openCompressDialog,
     openDeleteDialog,
