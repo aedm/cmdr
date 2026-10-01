@@ -121,7 +121,8 @@ function endpointParts(endpoint: string): { secure: boolean; host: string; port:
   const match = ENDPOINT_RE.exec(endpoint.trim())
   if (!match) return null
   const secure = match[1] === 'https'
-  const port = match[3] === undefined ? (secure ? 443 : 80) : Number(match[3])
+  // The port group is optional, so an absent one matches as `undefined` despite the `string` element type.
+  const port = match[3] ? Number(match[3]) : secure ? 443 : 80
   if (port < 1 || port > 65535) return null
   return { secure, host: match[2].toLowerCase(), port }
 }

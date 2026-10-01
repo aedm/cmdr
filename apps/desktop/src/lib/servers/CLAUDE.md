@@ -10,6 +10,7 @@ the words for a connect that stopped.
   form's model, with S3's provider presets in `s3-form.ts` (rendered by `S3EndpointFields.svelte`).
 - `connect-flow.ts` picks the move by the volume's standing (via `server-outcomes.ts`); `open-sign-in.ts` picks the
   command it needs and opens `SignInSheet.svelte`, over `sign-in-contract.ts` + `sign-in-sheet-state.svelte.ts`.
+  `saved-server-io.ts`: the sheets' one per-protocol switch for store reads and secret writes.
 - `connect-refusals.ts`: a sentence per reason and the field it goes under. `server-command-target.ts`: which server a
   palette command acts on. SMB's side of the sheet is `../file-explorer/network/smb-sign-in.ts`, ❌ not here.
 

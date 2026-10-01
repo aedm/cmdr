@@ -18,7 +18,9 @@ import SignInSheet from './SignInSheet.svelte'
 import HostKeyStep from './HostKeyStep.svelte'
 import ServerFormFields from './ServerFormFields.svelte'
 import SignInCredentialFields from './SignInCredentialFields.svelte'
+import S3EndpointFields from './S3EndpointFields.svelte'
 import { emptyServerForm } from './server-form'
+import { emptyS3Fields } from './s3-form'
 import { expectNoA11yViolations } from '$lib/test-a11y'
 import type { SignInAttemptOutcome, SignInSheetRequest } from './sign-in-contract'
 
@@ -241,6 +243,24 @@ describe('the three renderers on their own', () => {
         identityEditable: false,
         identityHint: 'The provider, the access key ID, and the bucket are what name this place.',
         regionRefusal: 'Use only lowercase letters, digits, and dashes here.',
+        onChange: () => {},
+      },
+    })
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+
+  it('the S3 provider block on Hetzner, with a refusal under its location and the bucket, has no violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(S3EndpointFields, {
+      target,
+      props: {
+        fields: { ...emptyS3Fields(), provider: 'hetzner', location: 'hel1' },
+        disabled: false,
+        identityEditable: true,
+        addressRefusal: 'Nothing at this address answers as S3 storage.',
+        bucketRefusal: 'There’s no bucket by that name at hel1.your-objectstorage.com.',
         onChange: () => {},
       },
     })

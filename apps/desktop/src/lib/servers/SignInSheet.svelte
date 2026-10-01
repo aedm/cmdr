@@ -41,10 +41,7 @@
         applyParsedAddress,
         emptyServerForm,
         formFromPrefill,
-        formFromS3Place,
-        formFromSftpServer,
         formFromSmbHost,
-        formFromWebdavServer,
         isStartFolderUnderRoot,
         nameFallbackOf,
         withSavedAccount,
@@ -56,6 +53,7 @@
     } from './server-form'
     import { readSavedServerOutcome, type SaveOutcome } from './server-outcomes'
     import { s3FieldProblem, s3HostOf, s3RequiredFieldOf } from './s3-form'
+    import { saveTargetSecret, savedEditForm, unattendedReconnectWarning } from './saved-server-io'
     import type {
         AddIntent,
         SignInAttemptOutcome,
@@ -66,17 +64,8 @@
     import {
         approveSftpHostKey,
         forgetServerSecret,
-        getKnownSftpServers,
-        getKnownWebdavServers,
-        getS3UnattendedReconnect,
-        getSftpUnattendedReconnect,
-        getWebdavUnattendedReconnect,
         hasServerSecret,
-        knownS3PlaceOf,
         listSavedServers,
-        saveS3Credentials,
-        saveSftpCredentials,
-        saveWebdavCredentials,
         updateSavedServer,
         updateSavedSmbHost,
     } from '$lib/tauri-commands'
@@ -354,26 +343,12 @@
             focusFirstEditableField()
             return
         }
+        // An S3 account's buckets are each saved on their own, so the PLACE is what's read.
         const id = editedId ?? server.id
-        if (server.protocol === 'sftp') {
-            const saved = (await getKnownSftpServers()).find(
-                (s) => `${s.host}:${String(s.port)}` === server.address && s.username === server.username,
-            )
-            if (saved) form = formFromSftpServer(saved)
-        } else if (server.protocol === 's3') {
-            // An S3 account's buckets are each saved on their own, so the PLACE is
-            // looked up by the volume id the backend published (`knownS3PlaceOf`).
-            const saved = await knownS3PlaceOf(id)
-            if (saved) form = formFromS3Place(saved)
-        } else {
-            const saved = (await getKnownWebdavServers()).find(
-                (s) => s.url === server.address && s.username === server.username,
-            )
-            if (saved) form = formFromWebdavServer(saved)
-        }
+        form = (await savedEditForm(server, id)) ?? form
         form.remember = await hasServerSecret(id)
         rememberWhenOpened = form.remember
-        storedSecretWarning = await readStoredSecretWarning(id, server.protocol)
+        storedSecretWarning = await unattendedReconnectWarning(id, server.protocol)
         await tick()
         focusFirstEditableField()
     }
@@ -386,29 +361,6 @@
      */
     function focusFirstEditableField() {
         if (sheetBody) focusFirstField(sheetBody)
-    }
-
-    /**
-     * The backend's own answer to "auto-reconnect is on and nothing happens".
-     *
-     * ❗ Asked when the sheet RENDERS, ❌ never derived from a rung plus a
-     * credential check: the rung is decided per dial, and a derivation goes stale
-     * the moment one lands elsewhere.
-     */
-    async function readStoredSecretWarning(id: string, protocol: SavedServer['protocol']): Promise<string | null> {
-        if (protocol === 'sftp') {
-            const state = await getSftpUnattendedReconnect(id)
-            return state === 'needs_stored_secret' ? tString('servers.sheet.needsStoredSecret') : null
-        }
-        if (protocol === 'webdav') {
-            const state = await getWebdavUnattendedReconnect(id)
-            return state === 'no_stored_secret' ? tString('servers.sheet.needsStoredSecret') : null
-        }
-        if (protocol === 's3') {
-            const state = await getS3UnattendedReconnect(id)
-            return state === 'no_stored_secret' ? tString('servers.sheet.needsStoredSecret') : null
-        }
-        return null
     }
 
     function close(result: SignInSheetResult) {
@@ -704,14 +656,7 @@
      */
     async function writeTypedSecret(target: ServerTarget) {
         if (form.secret === '') return
-        if (target.protocol === 'sftp') {
-            await saveSftpCredentials(target.host, target.port, target.username, form.secret)
-        } else if (target.protocol === 's3') {
-            // The ACCOUNT's secret: every place under this key shares it.
-            await saveS3Credentials(target.provider, target.accessKeyId, form.secret)
-        } else {
-            await saveWebdavCredentials(target.url, target.username, form.secret)
-        }
+        await saveTargetSecret(target, form.secret)
         // The store holds one now, which is exactly what the box means.
         form.remember = true
         rememberWhenOpened = true

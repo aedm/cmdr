@@ -90,6 +90,25 @@
     })
 </script>
 
+<!-- eslint-disable @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax: a snippet call is a void expression by design -->
+
+{#snippet useRegionRemedy()}
+    {#if onUseRegion && suggestedRegion}
+        <div class="remedy-row">
+            <Button size="mini" onclick={onUseRegion} {disabled}>
+                {tString('servers.sheet.s3UseRegion', { region: suggestedRegion })}
+            </Button>
+        </div>
+    {/if}
+{/snippet}
+
+{#snippet zoneRefusal(text: string | undefined)}
+    {#if text}
+        <p id="server-s3-zone-refusal" class="field-refusal" role="alert">{text}</p>
+        {@render useRegionRemedy()}
+    {/if}
+{/snippet}
+
 <div class="field">
     <span id="server-s3-provider-label" class="field-label">{tString('servers.sheet.s3Provider')}</span>
     <Select
@@ -241,23 +260,7 @@
         <p id="server-s3-bucket-help" class="field-help">{tString('servers.sheet.s3BucketHelp')}</p>
     {/if}
 </div>
-
-{#snippet zoneRefusal(text: string | undefined)}
-    {#if text}
-        <p id="server-s3-zone-refusal" class="field-refusal" role="alert">{text}</p>
-        {@render useRegionRemedy()}
-    {/if}
-{/snippet}
-
-{#snippet useRegionRemedy()}
-    {#if onUseRegion && suggestedRegion}
-        <div class="remedy-row">
-            <Button size="mini" onclick={onUseRegion} {disabled}>
-                {tString('servers.sheet.s3UseRegion', { region: suggestedRegion })}
-            </Button>
-        </div>
-    {/if}
-{/snippet}
+<!-- eslint-enable @typescript-eslint/no-confusing-void-expression -->
 
 <style>
     .field {

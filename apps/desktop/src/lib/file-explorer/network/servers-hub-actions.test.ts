@@ -703,8 +703,8 @@ describe('an S3 account and its places', () => {
 
   it('gives a bucket the server-place menu, ❌ not a share’s', () => {
     const menu = actions().rowMenu(bucketRow)
-    const picks = menu?.actions.map((entry) => (entry.type === 'action' ? entry.action : entry.type)) ?? []
+    const picks = menu?.actions.map((entry) => entry.action) ?? []
     expect(picks).toContain('edit')
-    expect(menu?.actions.some((entry) => entry.type === 'action' && entry.label === 'Forget share')).toBe(false)
+    expect(menu?.actions.some((entry) => entry.label === 'Forget share')).toBe(false)
   })
 })

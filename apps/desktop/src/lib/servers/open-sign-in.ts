@@ -57,6 +57,7 @@ import type {
 } from './sign-in-contract'
 import { readConnectOutcome, readSavedServerOutcome } from './server-outcomes'
 import { openSignInSheet } from './sign-in-sheet-state.svelte'
+import { saveTargetSecret } from './saved-server-io'
 import { asAddServerError } from './add-server-error'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
@@ -386,13 +387,7 @@ async function saveUnchecked(target: ServerTarget, secret: SecretOffer | null): 
   if (saved.kind === 'refused') return saved
   if (secret?.remember) {
     try {
-      if (target.protocol === 'sftp') {
-        await saveSftpCredentials(target.host, target.port, target.username, secret.secret)
-      } else if (target.protocol === 's3') {
-        await saveS3Credentials(target.provider, target.accessKeyId, secret.secret)
-      } else {
-        await saveWebdavCredentials(target.url, target.username, secret.secret)
-      }
+      await saveTargetSecret(target, secret.secret)
     } catch (e) {
       log.warn('The server saved, but its password did not: {error}', { error: String(e) })
       return { kind: 'refused', refusal: 'saved_secret_not_updated' }

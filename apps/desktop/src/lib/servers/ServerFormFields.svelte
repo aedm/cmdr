@@ -33,6 +33,7 @@
     import { getAppLogger } from '$lib/logging/logger'
     import type { ServerProtocol } from '$lib/ipc/bindings'
     import type { ServerForm } from './server-form'
+    import type { S3FormFields } from './s3-form'
     import type { MessageKey } from '$lib/intl/keys.gen'
     import S3EndpointFields from './S3EndpointFields.svelte'
 
@@ -213,7 +214,7 @@
         bind:addressInput
         bind:regionInput
         bind:bucketInput
-        onChange={(patch) => {
+        onChange={(patch: Partial<S3FormFields>) => {
             onChange({ s3: { ...form.s3, ...patch } })
         }}
     />
