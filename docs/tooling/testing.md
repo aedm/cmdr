@@ -237,7 +237,9 @@ state with `(cd scripts/check && go run ./stack-lease status)` and force it down
 WebDAV (`apps/desktop/test/webdav-servers/`, ports 13480+, Apache `mod_dav` with one Basic and one Digest-only service,
 plus a real Nextcloud outside the default lane) stacks lease the same way under their own `/tmp/cmdr-<stack>.lock` +
 `/tmp/cmdr-<stack>-leases` namespaces. `CMDR_WEBDAV_TEST_URL` points the whole WebDAV suite at a server of your own
-instead; the fixture README has the variables and which cells opt out.
+instead; the fixture README has the variables and which cells opt out. The S3 stack (`apps/desktop/test/s3-servers/`,
+ports 14480+, VersityGW plus Garage, which ignores conditional writes) leases the same way, and its README records what
+each server answered for every call the backend makes.
 
 ### MCP servers (for ad-hoc exploration during test writing)
 

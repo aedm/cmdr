@@ -62,8 +62,8 @@ var agentDocExclusions = []string{
 //     blocks, `fingerprint.go` + `cache.go` + `runner-sources.go` the cache
 //     itself, `common.go` the context and process handling every check runs
 //     through, and `test-log.go` the per-test record every lane records into.
-//     `fixture-stacks.go`, `smb_ports.go`, `sftp_ports.go`, and `webdav_ports.go` are the fixture
-//     vocabulary and the port env the orchestrator applies before any lane runs.
+//     `fixture-stacks.go`, `smb_ports.go`, `sftp_ports.go`, `webdav_ports.go`, and `s3_ports.go`
+//     are the fixture vocabulary and the port env the orchestrator applies before any lane runs.
 //   - `go.mod` / `go.sum` and `check.sh` build and start the runner itself.
 //
 // `TestGlobalInputsCoverWhatNoCheckCanReach` and
@@ -84,6 +84,7 @@ var GlobalInputs = []string{
 	"scripts/check/checks/inputs.go",
 	"scripts/check/checks/registry.go",
 	"scripts/check/checks/runner-sources.go",
+	"scripts/check/checks/s3_ports.go",
 	"scripts/check/checks/sftp_ports.go",
 	"scripts/check/checks/smb_ports.go",
 	"scripts/check/checks/test-log.go",
@@ -247,6 +248,7 @@ var rustCompileInputs = inputs(
 // read them: a change to one changes what it tests, and changes nothing any
 // other Rust lane compiles or scans.
 var rustFixtureServerInputs = []string{
+	"apps/desktop/test/s3-servers/**",
 	"apps/desktop/test/sftp-servers/**",
 	"apps/desktop/test/smb-servers/**",
 	"apps/desktop/test/webdav-servers/**",
@@ -373,6 +375,14 @@ const (
 	webdavStartRel   = "apps/desktop/test/webdav-servers/start.sh"
 )
 
+// The S3 fixture stack, the same arrangement as WebDAV's:
+// `TestS3FixturePortsMatchComposeDefaults` / `TestS3ModeServicesAgree` keep the
+// Go tables, the compose defaults, and `start.sh`'s mode table equal.
+const (
+	s3ComposeRel = "apps/desktop/test/s3-servers/docker-compose.yml"
+	s3StartRel   = "apps/desktop/test/s3-servers/start.sh"
+)
+
 // The SMB fixture's vendored compose, whose `${SMB_CONSUMER_*_PORT:-…}` defaults
 // are smb2's range. `TestSmbPinnedPortsCoverEveryVendoredService` checks that
 // `stacklease.SMB` pins a cmdr port for every one of them.
@@ -409,7 +419,7 @@ var goTestsInputs = inputs(
 	rustWorkspaceConfigInputs,
 	rustEmbeddedInputs,
 	treeGlobs(frontendSourceRoots...),
-	[]string{"apps/desktop/package.json", sftpComposeRel, sftpStartRel, sftpTestingRel, sftpEntrypointRel, webdavComposeRel, webdavStartRel, smbComposeRel},
+	[]string{"apps/desktop/package.json", sftpComposeRel, sftpStartRel, sftpTestingRel, sftpEntrypointRel, webdavComposeRel, webdavStartRel, s3ComposeRel, s3StartRel, smbComposeRel},
 )
 
 // workflowsInputs covers the GitHub workflow files the workflow-scanning checks

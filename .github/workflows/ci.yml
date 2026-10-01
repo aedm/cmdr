@@ -58,6 +58,7 @@ jobs:
           filters: |
             rust:
               - 'apps/desktop/src-tauri/**'
+              - 'apps/desktop/test/s3-servers/**'
               - 'apps/desktop/test/sftp-servers/**'
               - 'apps/desktop/test/smb-servers/**'
               - 'apps/desktop/test/webdav-servers/**'

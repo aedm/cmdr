@@ -736,7 +736,7 @@ var AllChecks = []CheckDefinition{
 		DisplayName:     "integration tests (network fixtures)",
 		App:             AppDesktop,
 		Tech:            "🦀 Rust",
-		NeedsContainers: []StackMode{SmbCore, SftpCore, WebdavCore},
+		NeedsContainers: []StackMode{SmbCore, SftpCore, WebdavCore, S3Core},
 		DependsOn:       []string{"desktop-rust-clippy"},
 		Inputs:          inputs(rustCompileInputs, rustFixtureServerInputs),
 		Run:             RunRustIntegrationTests,

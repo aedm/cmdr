@@ -435,6 +435,9 @@ var realTreeReadingTests = map[string][]string{
 	"TestWebdavFixturePortsBindToLoopback":                     {webdavComposeRel},
 	"TestWebdavFixturePortsMatchComposeDefaults":               {webdavComposeRel},
 	"TestWebdavModeServicesAgree":                              {webdavStartRel},
+	"TestS3FixturePortsBindToLoopback":                         {s3ComposeRel},
+	"TestS3FixturePortsMatchComposeDefaults":                   {s3ComposeRel},
+	"TestS3ModeServicesAgree":                                  {s3StartRel},
 	"TestSmbPinnedPortsCoverEveryVendoredService":              {smbComposeRel},
 	// Reads only the crate directories `fixtureIntegrationFilter` stats to
 	// decide whether a `package(…)` clause parses.

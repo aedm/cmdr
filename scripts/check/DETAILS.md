@@ -223,11 +223,11 @@ pnpm check [flags]
 - **`stack_orchestrator.go`**: Runner-level Docker fixture lifecycle: acquires a machine-wide lease per stack (via
   `stacklease`) at init, releases each at exit
 - **`stacklease/`**: Library: the machine-wide flock + holder-id refcount that makes a shared fixture stack safe across
-  worktrees. `registry.go` holds the registered stacks (`smb`, `sftp`, `webdav`); `stack.go` the `Stack` value itself.
-  `stacklease.go` keeps the core (`Acquire`, `decideAction`, `Reconcile`, `Release`, `PrintStatus`, service resolution);
-  `log.go` the two log sinks and the `OnReconcileStart`/`OnTeardown` hooks; `confighash.go` the config-hash stamp and
-  compare; `leases.go` the per-holder lease files and the dead-PID sweep; `keymaterial.go` the host-key-material
-  heal/wait pair; `lock.go` the flock, `compose.go` the real `Composer`
+  worktrees. `registry.go` holds the registered stacks (`smb`, `sftp`, `webdav`, `s3`); `stack.go` the `Stack` value
+  itself. `stacklease.go` keeps the core (`Acquire`, `decideAction`, `Reconcile`, `Release`, `PrintStatus`, service
+  resolution); `log.go` the two log sinks and the `OnReconcileStart`/`OnTeardown` hooks; `confighash.go` the config-hash
+  stamp and compare; `leases.go` the per-holder lease files and the dead-PID sweep; `keymaterial.go` the
+  host-key-material heal/wait pair; `lock.go` the flock, `compose.go` the real `Composer`
 - **`stack-lease/`**: Thin `package main` CLI onto `stacklease` (`acquire`/`release`/`reconcile`/`status`, each taking
   the stack name first) that the bash scripts shell out to
 - **`linux-cache/`**: `package main` CLI (`seed` / `promote`) that `scripts/worktree-hooks/` shells out to, handing the
@@ -907,9 +907,9 @@ adopt-or-reconcile policy, the dead-PID sweep, and the down-at-zero teardown are
   holders are invisible to the other and downing one at zero can never touch the other's containers. The runner uses the
   same holder-id (its `check.sh` PID) in each, which counts once per stack.
 - **SMB's `/tmp` paths are frozen** at `cmdr-smb.lock` and `cmdr-smb-leases`, pinned by a test. SFTP and WebDAV follow
-  the pattern (`cmdr-sftp.lock` + `cmdr-sftp-leases` on 12480+, `cmdr-webdav.lock` + `cmdr-webdav-leases` on 13480+). A
-  sibling worktree on older code holds its lease at those exact paths; moving them would make a live holder invisible
-  and re-open the teardown race the library exists to close.
+  the pattern (`cmdr-sftp.lock` + `cmdr-sftp-leases` on 12480+, `cmdr-webdav.lock` + `cmdr-webdav-leases` on 13480+,
+  `cmdr-s3.lock` + `cmdr-s3-leases` on 14480+). A sibling worktree on older code holds its lease at those exact paths;
+  moving them would make a live holder invisible and re-open the teardown race the library exists to close.
 - **A stack's HOST state is machine-wide too, all of it.** SMB mounts nothing from the host; SFTP's two key-auth
   services bind-mount `/tmp/cmdr-sftp-keys/<service>`, a third machine-wide path beside the lock and the lease dir. ❌
   Never a path relative to the compose file: compose resolves a relative bind source against the compose file's own
@@ -927,9 +927,9 @@ adopt-or-reconcile policy, the dead-PID sweep, and the down-at-zero teardown are
   wait for the pair to reappear. It reports rather than returning to a caller whose key-auth cells would all fail.
 - **A stack with FIRST-PARTY images declares `buildContextsRel`**, which folds every context's contents into the config
   hash and puts `--build` on `up`. ❗ Both, or an edited entrypoint never reaches a running container: `up -d` neither
-  rebuilds nor recreates a healthy one. SFTP declares one context, WebDAV two (its httpd image and its Nextcloud one);
-  SMB's images are vendored and it declares none. The hash carries each context's own name beside each file's, so two
-  contexts holding a `Dockerfile` can't cancel each other out.
+  rebuilds nor recreates a healthy one. SFTP declares one context, WebDAV two (its httpd image and its Nextcloud one),
+  S3 two (its VersityGW and Garage wrappers); SMB's images are vendored and it declares none. The hash carries each
+  context's own name beside each file's, so two contexts holding a `Dockerfile` can't cancel each other out.
 - **Both Playwright lanes lease the SFTP and WebDAV stacks in `e2e` mode**, one server each (`sftp-fixture-openssh`,
   `webdav-fixture-apache`), for the `server-ops-*` specs. The Linux lane also lists `SmbE2E`; the macOS lane doesn't,
   since `smb.spec.ts` is skipped there. CI runs `e2e-linux.sh` directly, so that script takes its own lease on all three

@@ -184,10 +184,10 @@ is 1,000–1,400 lines plus tests:
   `git.deuxfleurs.fr/Deuxfleurs/garage`, GitHub mirror 4,618 stars). Its S3 compatibility page lists ListBuckets,
   CopyObject, DeleteObjects, ListMultipartUploads, ListParts, UploadPartCopy, and presigned URLs as implemented. It does
   NOT support conditional writes: forge issue #1052 "support conditional writes" is open (filed 2025-05-28), and #1326
-  was closed as its duplicate on 2026-02-07. Whether it ignores `If-None-Match` or rejects it isn't verified; the first
-  fixture test should pin that down. That gap is the point: Cmdr must not assume no-clobber writes work everywhere.
-  Setup cost: a TOML config plus a bootstrap step (`garage layout assign` / `apply`, `garage key create`,
-  `garage bucket create`, `garage bucket allow`) in `start.sh`, a few seconds.
+  was closed as its duplicate on 2026-02-07. It silently ignores `If-None-Match` and overwrites (verified on v2.4.1,
+  2026-10-01; the full per-call table is in `apps/desktop/test/s3-servers/README.md`). That gap is the point: Cmdr must
+  not assume no-clobber writes work everywhere. Setup cost: a TOML config plus a bootstrap step (`garage layout assign`
+  / `apply`, `garage key create`, `garage bucket create`, `garage bucket allow`) in `start.sh`, a few seconds.
 - **SeaweedFS**: a solid alternative to Garage. Apache-2.0, 35k stars, pushed 2026-10-01, 795 open issues; images about
   26 MB. Its S3 gateway handles `If-None-Match` (`weed/s3api/s3api_object_handlers_put.go`) and copy-part. Heavier
   conceptually (master + volume + filer behind the gateway), so it brings more moving parts than we need.
