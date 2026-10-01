@@ -2004,7 +2004,7 @@
   },
   "settings.summary.servers": "De SSH-serversleutels die je hebt vertrouwd.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Blader op een Android-telefoon waarop USB-foutopsporing is ingeschakeld.",
   "@settings.summary.adb": {

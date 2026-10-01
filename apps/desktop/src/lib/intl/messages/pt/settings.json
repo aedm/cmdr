@@ -1998,7 +1998,7 @@
   },
   "settings.summary.servers": "As chaves de host SSH em que você confiou.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Navegue por um celular Android com a depuração USB ativada.",
   "@settings.summary.adb": {

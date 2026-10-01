@@ -20,8 +20,8 @@ const { connectPlace, cancelPlaceConnect } = vi.hoisted(() => ({
 
 vi.mock('$lib/servers/connect-flow', () => ({ connectPlace, cancelPlaceConnect }))
 vi.mock('$lib/servers/connect-refusals', () => ({
-  wordConnectRefusal: (kind: string, subject: { host: string; username: string }) =>
-    `${kind} for ${subject.username} at ${subject.host}`,
+  wordPaneRefusal: (kind: string, subject: { host: string; username: string; name: string }) =>
+    `${kind} for ${subject.username} at ${subject.host}, named ${subject.name}`,
 }))
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
@@ -128,14 +128,15 @@ describe('createPlaceConnect', () => {
     expect(cancelPlaceConnect).toHaveBeenCalledWith('server-connect-7')
   })
 
-  it('words a refusal from the place’s own host and account, and offers Try again', async () => {
+  it('words a refusal from the place’s own name, host, and account, and offers Try again', async () => {
     connectPlace.mockResolvedValue({ kind: 'refused', refusal: 'unreachable' })
     const { sub } = create()
     await vi.waitFor(() => {
       expect(sub.state?.kind).toBe('refused')
     })
     if (sub.state?.kind !== 'refused') throw new Error('not refused')
-    expect(sub.state.refusal).toBe('unreachable for ada at nas.local')
+    // ❗ The name the user gave it rides along, so "unreachable" can say "Naspolya" over "nas.local".
+    expect(sub.state.refusal).toBe('unreachable for ada at nas.local, named Naspolya')
     // ❌ No Disconnect on a place with no session to drop.
     expect(sub.state.disconnect).toBeUndefined()
 
@@ -166,7 +167,7 @@ describe('createPlaceConnect', () => {
       expect(sub.state?.kind).toBe('refused')
     })
     if (sub.state?.kind !== 'refused') throw new Error('not refused')
-    expect(sub.state.refusal).toBe('unreachable for ada@example.com at cloud.example.com')
+    expect(sub.state.refusal).toBe('unreachable for ada@example.com at cloud.example.com, named Cloud')
   })
 
   /**

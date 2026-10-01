@@ -14,7 +14,7 @@
 import { connectPlace, cancelPlaceConnect } from '$lib/servers/connect-flow'
 import { openSignInForPlace } from '$lib/servers/open-sign-in'
 import type { ConnectRefusalKind } from '$lib/servers/connect-refusals'
-import { wordConnectRefusal } from '$lib/servers/connect-refusals'
+import { wordPaneRefusal } from '$lib/servers/connect-refusals'
 import { isSmbVolumeId, parseServerPath } from '$lib/servers/server-path-utils'
 import { getAppLogger } from '$lib/logging/logger'
 import type { RemoteConnectState } from './remote-connect-state'
@@ -190,9 +190,10 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     }
     return {
       kind: 'refused',
-      refusal: wordConnectRefusal(refusal, {
+      refusal: wordPaneRefusal(refusal, {
         host: parsed?.host ?? info.name,
         username: parsed?.username ?? info.name,
+        name: info.name,
       }),
       retry: () => {
         // A fresh attempt, with a fresh id: the old one is spent.

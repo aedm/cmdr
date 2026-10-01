@@ -1995,7 +1995,7 @@
   },
   "settings.summary.servers": "你已信任的 SSH 主機金鑰。",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "瀏覽已開啟「USB 偵錯」的 Android 手機。",
   "@settings.summary.adb": {

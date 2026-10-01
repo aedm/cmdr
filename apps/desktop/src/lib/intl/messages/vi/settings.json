@@ -1995,7 +1995,7 @@
   },
   "settings.summary.servers": "Các khóa máy chủ SSH mà bạn đã tin cậy.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Duyệt điện thoại Android đang bật gỡ lỗi qua USB.",
   "@settings.summary.adb": {

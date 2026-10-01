@@ -1995,7 +1995,7 @@
   },
   "settings.summary.servers": "你信任过的 SSH 主机密钥。",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "浏览已开启 USB 调试的 Android 手机。",
   "@settings.summary.adb": {

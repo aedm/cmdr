@@ -2004,7 +2004,7 @@
   },
   "settings.summary.servers": "Die SSH-Hostschlüssel, denen du vertraust.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Ein Android-Telefon durchsehen, auf dem USB-Debugging eingeschaltet ist.",
   "@settings.summary.adb": {

@@ -2008,7 +2008,7 @@
   },
   "settings.summary.servers": "Les clés d’hôte SSH que vous avez approuvées.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Parcourir un téléphone Android dont le débogage USB est activé.",
   "@settings.summary.adb": {

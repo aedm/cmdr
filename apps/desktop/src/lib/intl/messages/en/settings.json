@@ -1283,7 +1283,7 @@
   "@settings.fileOperations.adbEnabled.label": {
     "description": "Label for the toggle enabling Android Debug Bridge support. \"Android\" is a product name and \"ADB\" is the abbreviation for Android Debug Bridge; keep both as-is. In Settings > File systems > Android (ADB)."
   },
-  "settings.fileOperations.adbEnabled.description": "Reach the whole filesystem of an Android phone that has USB debugging turned on, which MTP can’t show you. Needs the Android platform tools (the “adb” command) on this Mac. Leaving this on costs nothing when you have no Android tooling installed.",
+  "settings.fileOperations.adbEnabled.description": "Reach the whole filesystem of an Android phone that has USB debugging turned on, which MTP can’t show you. Needs the Android platform tools (the “adb” command) on this Mac. Leaving this on costs nothing if you have no Android tooling installed.",
   "@settings.fileOperations.adbEnabled.description": {
     "description": "Help text for the ADB toggle. \"USB debugging\" and \"platform tools\" are labels the reader has to find on their own phone and in Google’s own docs, so render them the way the vendor’s localized Android shows them in your language, ❌ never keep the English. \"Android\", \"MTP\", and the command name “adb” stay as-is."
   },
@@ -2002,9 +2002,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "description": "Internal, never shown in the UI. Pairs with the double-click-to-parent hint label."
   },
-  "settings.behavior.serversPinHintSeen.label": "Long Network group hint shown",
+  "settings.behavior.serversPinHintSeen.label": "Unpin-from-switcher hint shown",
   "@settings.behavior.serversPinHintSeen.label": {
-    "description": "Internal, never shown in the UI: tracks whether the one-time hint about a long Network group in the volume switcher has appeared."
+    "description": "Internal, never shown in the settings UI, but findable in settings search: tracks whether the one-time hint about unpinning servers from the volume switcher (shown when its Network group gets long) has appeared. \"Unpin from switcher\" is the context-menu item menu.network.unpin."
   },
   "settings.behavior.serversPinHintSeen.description": "Whether the one-time hint about unpinning servers has been shown.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -2428,7 +2428,7 @@
   "@settings.summary.smbNetworkShares": {
     "description": "One-line summary shown under the \"SMB/Network shares\" subsection heading. \"SMB\" is a protocol name; keep it."
   },
-  "settings.summary.servers": "The SSH host keys you have trusted.",
+  "settings.summary.servers": "The SSH host keys you’ve trusted.",
   "@settings.summary.servers": {
     "description": "One-line summary shown on the \"Servers (SFTP, WebDAV)\" card in the File systems overview. A host key is the fingerprint a server proves its identity with; \"SSH\" is a protocol name (keep it)."
   },
@@ -3068,11 +3068,11 @@
   "@settings.adb.recheck": {
     "description": "VERB (imperative), the button beside the status: look for the \"adb\" command again, which is what a person presses right after installing the Android tools. One or two words; the button is small."
   },
-  "settings.adb.install.intro": "Install the Android platform tools, then press Re-check:",
+  "settings.adb.install.intro": "Install the Android platform tools, then choose Re-check:",
   "@settings.adb.install.intro": {
     "description": "Line introducing a copyable terminal command, shown only when \"adb\" was not found. \"Re-check\" must match the button label settings.adb.recheck word for word. \"Android platform tools\" is the name of the download; use the wording Google’s own localized docs use. The command itself is never translated."
   },
-  "settings.adb.pathPlaceholder": "Look for adb the usual way",
+  "settings.adb.pathPlaceholder": "Cmdr looks for adb the usual way",
   "@settings.adb.pathPlaceholder": {
     "description": "Placeholder in the empty \"Location of adb\" field, saying what an empty field means: Cmdr searches the usual places itself. \"adb\" is a command name; keep it lowercase and as-is."
   },

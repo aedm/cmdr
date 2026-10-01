@@ -2004,7 +2004,7 @@
   },
   "settings.summary.servers": "SSH-värdnycklarna du har litat på.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Bläddra i en Android-telefon som har USB-felsökning aktiverad.",
   "@settings.summary.adb": {

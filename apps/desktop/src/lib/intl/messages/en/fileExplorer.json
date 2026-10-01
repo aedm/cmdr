@@ -2079,9 +2079,9 @@
       "name": "the server's display name, like \"Naspolya\""
     }
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Can’t disconnect while operations are in progress on this server",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr is still working with files on this server. Disconnect once that’s done.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "description": "Accessibility label and tooltip on a disconnect control that is disabled because a file operation is still running against the server."
+    "description": "Accessibility label and tooltip on a disconnect control that is disabled because a file operation (a copy, move, or delete) is still running against the server. Says why and when the button comes back, never blames the user. Keep it in step with fileExplorer.navigation.ejectBusyTooltip and adb.disconnectBusyTooltip."
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} is in your volume switcher now.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -2097,7 +2097,7 @@
       "name": "the server’s display name, like \"Naspolya\""
     }
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr couldn’t change where {name} shows.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr couldn’t change where {name} appears.",
   "@fileExplorer.navigation.pinRefusedToast": {
     "description": "Toast shown when moving a server in or out of the volume switcher didn’t go through.",
     "placeholders": {
@@ -2170,9 +2170,9 @@
     },
     "screenshot": "pane-volume-chooser.png"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Can’t eject while operations are in progress on this device",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr is still working with files on this device. Eject once that’s done.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "description": "Accessibility label and tooltip on a disabled eject button, explaining the volume can’t be ejected because a file operation is running on it."
+    "description": "Accessibility label and tooltip on a disabled eject button, explaining the volume (a drive, a disk image, or a phone) can’t be ejected yet because a file operation is running on it. Says when the button comes back. Keep it in step with fileExplorer.navigation.disconnectBusyTooltip and adb.disconnectBusyTooltip."
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Ejecting {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

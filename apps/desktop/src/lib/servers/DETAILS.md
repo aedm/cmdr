@@ -321,6 +321,11 @@ the shape lets the username be edited, the account the sheet opened with may not
 "ada doesn't have access here" after `bob` was refused blames an account nobody tried. Add mode has the same rule for
 the host: an edit retires the refusal, since its sentence reads the live form.
 
+**A pane names a saved place by the name the user gave it.** `place-connect.svelte.ts` words its refusal through
+`wordPaneRefusal`, which says `unreachable` as `servers.paneState.unreachable` ("Cmdr couldn't reach Naspolya."),
+falling back to the host when the name is empty. Every other kind reads as in the sheet. The sheet and the Add form keep
+`servers.refusal.unreachable` with the host, since there the address is what the person typed and can fix.
+
 Keys live in `$lib/intl/messages/en/servers.json` under `servers.refusal.*`, reached through a `Record` in
 `connect-refusals.ts` rather than a built string, which is what keeps `desktop-message-keys-unused` honest without a
 dynamic-prefix entry. `$lib/error-messages/friendly-error-style.test.ts` renders all of them and holds them to the same

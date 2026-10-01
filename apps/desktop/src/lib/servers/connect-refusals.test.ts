@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { _setLocaleForTests } from '$lib/intl/locale'
-import { refusalField, wordConnectRefusal } from './connect-refusals'
+import { refusalField, wordConnectRefusal, wordPaneRefusal } from './connect-refusals'
 import type { ConnectRefusalKind } from './connect-refusals'
 
 /** One value per `ConnectRefusalKind`. Adding a kind makes this fail to typecheck. */
@@ -94,6 +94,24 @@ describe('wordConnectRefusal', () => {
     expect(sentence).toContain('ada')
     expect(sentence.toLowerCase()).not.toContain('password')
     expect(refusalField('account_not_permitted')).toBe('form')
+  })
+})
+
+describe('wordPaneRefusal', () => {
+  it('names an unreachable saved server by the name the user gave it', () => {
+    const sentence = wordPaneRefusal('unreachable', { ...subject, name: 'Naspolya' })
+    expect(sentence).toContain('Naspolya')
+    expect(sentence).not.toContain('nas.local')
+  })
+
+  it('falls back to the host when the place has no name', () => {
+    expect(wordPaneRefusal('unreachable', { ...subject, name: '' })).toContain('nas.local')
+  })
+
+  it('words every other reason the way the sheet does', () => {
+    for (const kind of KINDS.filter((k) => k !== 'unreachable')) {
+      expect(wordPaneRefusal(kind, { ...subject, name: 'Naspolya' })).toBe(wordConnectRefusal(kind, subject))
+    }
   })
 })
 

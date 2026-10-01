@@ -16,8 +16,8 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2601 / 3779 keys have a screenshot (69%):** 1402 direct (37%) and 1199 representative (32%). 1014 remain
-uncoupled, and 164 are native surfaces a webview capture cannot reach.
+**Total: 2600 / 3777 keys have a screenshot (69%):** 1399 direct (37%) and 1201 representative (32%). 1014 remain
+uncoupled, and 163 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
@@ -39,7 +39,7 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        32 |      2 |    41 |   17% |
-| menu           |      4 |              0 |         0 |    162 |   166 |    2% |
+| menu           |      4 |              0 |         0 |    161 |   165 |    2% |
 | mtp            |     18 |              4 |         0 |      0 |    22 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
 | onboarding     |     96 |             38 |        20 |      0 |   154 |   87% |
@@ -48,19 +48,19 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | queue          |     25 |             11 |         1 |      0 |    37 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
-| servers        |     55 |             21 |        52 |      0 |   128 |   59% |
+| servers        |     55 |             23 |        52 |      0 |   130 |   60% |
 | settings       |    343 |             37 |       250 |      0 |   630 |   60% |
 | shortcuts      |     32 |             28 |         0 |      0 |    60 |  100% |
 | suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
 | transfer       |      2 |             12 |         0 |      0 |    14 |  100% |
 | ui             |     13 |              0 |        11 |      0 |    24 |   54% |
 | updates        |      5 |             16 |         0 |      0 |    21 |  100% |
-| viewer         |     30 |             74 |         0 |      0 |   104 |  100% |
+| viewer         |     27 |             74 |         0 |      0 |   101 |  100% |
 | whatsNew       |      6 |              1 |         1 |      0 |     8 |   88% |
 
 ## Surfaces to review
 
-The run captured 165 surfaces. This section is regenerated every run, so it stays true as the UI changes.
+The run captured 164 surfaces. This section is regenerated every run, so it stays true as the UI changes.
 
 ### No unique keys (23)
 

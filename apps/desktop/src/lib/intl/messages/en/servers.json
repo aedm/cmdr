@@ -224,7 +224,7 @@
   },
   "servers.refusal.unreachable": "Cmdr couldn’t reach {host}.",
   "@servers.refusal.unreachable": {
-    "description": "Shown in the pane when there was no route to the server at all: it’s off, the name doesn’t resolve, or the network is down. \"Cmdr\" is the product name.",
+    "description": "Shown in the Add server form and the sign-in form when there was no route to the server at all: it’s off, the name doesn’t resolve, or the network is down. Names the address the person typed (a pane standing on a saved server says servers.paneState.unreachable instead). \"Cmdr\" is the product name.",
     "placeholders": {
       "host": "the server’s hostname or address, like \"nas.local\""
     }
@@ -597,6 +597,15 @@
     "description": "Heading of the pane view shown when the user cancelled connecting to a saved server or share (for example, closed its sign-in form). A plain statement, NOT an error: nothing failed, the person chose not to connect yet.",
     "placeholders": {
       "name": "the place’s display name, like “private on localhost:11481”"
+    },
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
+  },
+  "servers.paneState.unreachable": "Cmdr couldn’t reach {name}.",
+  "@servers.paneState.unreachable": {
+    "description": "Heading of the pane view shown when the user opened a saved server and there was no route to it at all: it’s off, its address doesn’t resolve, or the network is down. Names the server by the name the user gave it. A Try again button sits below. \"Cmdr\" is the product name.",
+    "placeholders": {
+      "name": "the name the user gave the saved server, like “Naspolya”, or its hostname, like “nas.local”, when it has no name"
     },
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."

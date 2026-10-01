@@ -104,6 +104,24 @@ export function wordConnectRefusal(kind: ConnectRefusalKind, subject: RefusalSub
   return tString(REFUSAL_KEYS[kind], { host: subject.host, username: subject.username })
 }
 
+/** A saved place in a pane, which also has the name the user gave it. */
+export interface PaneRefusalSubject extends RefusalSubject {
+  /** The place's display name. Empty falls back to the host. */
+  name: string
+}
+
+/**
+ * The sentence a pane standing on a saved place says. ❗ `unreachable` names the
+ * place by the name the user gave it ("Naspolya", not "nas.local"); the sheet and
+ * the Add form keep the host, since there it's the address the person typed.
+ */
+export function wordPaneRefusal(kind: ConnectRefusalKind, subject: PaneRefusalSubject): string {
+  if (kind === 'unreachable') {
+    return tString('servers.paneState.unreachable', { name: subject.name.trim() || subject.host })
+  }
+  return wordConnectRefusal(kind, subject)
+}
+
 /**
  * Something besides the server worth checking, which the backend reads off how a
  * probe failed. Rendered as a softer line under the refusal, ❌ never instead of

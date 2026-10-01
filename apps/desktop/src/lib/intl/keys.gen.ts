@@ -2815,6 +2815,7 @@ export type MessageKey =
   | 'servers.paneState.signedOut'
   | 'servers.paneState.signedOutNothingToAsk'
   | 'servers.paneState.tryAgain'
+  | 'servers.paneState.unreachable'
   | 'servers.pinHint.body'
   | 'servers.pinHint.gotIt'
   | 'servers.pinHint.title'
