@@ -284,6 +284,15 @@ hygiene before it: IntelliSense's editor nudges never reached `pnpm check` or CI
 - **Editor**: set `"tailwindCSS.lint.suggestCanonicalClasses": "ignore"` in your `.vscode/settings.json` (gitignored) so
   IntelliSense stops reporting what ESLint now owns.
 - **Cost**: the canonical rule boots Tailwind, about one second per lint run.
+- **`rootFontSize: 16`** in the plugin settings lets the rule turn pixel values that land on the spacing scale into
+  their rem forms (`p-[2px]` to `p-0.5`). It doesn't catch every one (`min-w-[320px]` stayed put; it's `min-w-80` by
+  hand), so prefer the scale name when writing new classes.
+- **Colors inside arbitrary values are invisible to every rule.** A gradient stop takes
+  `color-mix(in_srgb,var(--color-accent)_15%,transparent)`, never a literal `rgba(…)`, so the light theme's accent
+  applies (see `Hero.astro`).
+- **Only utility-worthy colors go in `@theme`.** A token there becomes a utility the canonicalizer may suggest, so an
+  alias like `--color-icon-no: var(--color-warning)` made it propose `text-icon-no` for `text-warning`. CSS-only
+  variables (the inline markdown icon colors) live in a plain `:root` block.
 
 The analytics dashboard runs the same rule set from its `eslint.config.js` with `src/app.css` as the entry point; its
 sweep was class order plus a few collapses (`h-2 w-2` to `size-2`, `text-xs leading-relaxed` to `text-xs/relaxed`). The
