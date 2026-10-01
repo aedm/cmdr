@@ -2,6 +2,7 @@
     import SettingsSection from '../components/SettingsSection.svelte'
     import { tString } from '$lib/intl/messages.svelte'
     import SettingRow from '../components/SettingRow.svelte'
+    import { disabledNoteId } from '$lib/settings/settings-window'
     import SettingToggleGroup from '../components/SettingToggleGroup.svelte'
     import SettingSwitch from '../components/SettingSwitch.svelte'
     import SettingRadioGroup from '../components/SettingRadioGroup.svelte'
@@ -39,7 +40,7 @@
     )
     const widthFieldDisabled = $derived(briefWidthMode !== 'limited')
 
-    // "Sort directories" only means something while folders lead; mixed in with
+    // "Sort folders" only means something while folders lead; mixed in with
     // files, they sort by the column like any file. Same in-window read as above.
     let foldersFirst = $state<boolean>(getSetting('listing.foldersFirst'))
     onMount(() =>
@@ -98,9 +99,14 @@
                     label={dirSortDef.label}
                     description={dirSortDef.description}
                     disabled={!foldersFirst}
+                    disabledNote={tString('settings.listing.directorySortMode.disabledReason')}
                     {searchQuery}
                 >
-                    <SettingToggleGroup id="listing.directorySortMode" disabled={!foldersFirst} />
+                    <SettingToggleGroup
+                        id="listing.directorySortMode"
+                        disabled={!foldersFirst}
+                        ariaDescribedBy={foldersFirst ? undefined : disabledNoteId('listing.directorySortMode')}
+                    />
                 </SettingRow>
             {/if}
             {#if shouldShow('listing.showExtensionInName')}

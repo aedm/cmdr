@@ -460,7 +460,7 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     labelKey: 'settings.listing.directorySortMode.label',
     descriptionKey: 'settings.listing.directorySortMode.description',
     cardKey: 'settings.appearance.card.namesAndIcons',
-    keywords: ['sort', 'directory', 'folder', 'order', 'listing', 'name', 'size'],
+    keywords: ['sort', 'directory', 'directories', 'folder', 'folders', 'order', 'listing', 'name', 'size'],
     type: 'enum',
     default: 'likeFiles',
     component: 'toggle-group',

@@ -264,7 +264,7 @@ export type ExtensionChangePolicy = 'yes' | 'no' | 'ask'
 export type PasteClipboardAsFileMode = 'doNothing' | 'createFile' | 'createFileAndRename'
 export type DirectorySortMode = 'likeFiles' | 'alwaysByName'
 /**
- * What a listing's comparator is told (the Rust `DirectorySortMode`): the "Sort directories"
+ * What a listing's comparator is told (the Rust `DirectorySortMode`): the "Sort folders"
  * choice while "Show folders first" is on, else `mixedWithFiles`. `getDirectorySortMode()` folds
  * the two settings into it; it's never stored.
  */

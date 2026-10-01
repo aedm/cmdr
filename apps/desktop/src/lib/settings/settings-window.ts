@@ -260,6 +260,14 @@ export function settingAnchorId(settingId: SettingId): string {
 }
 
 /**
+ * The DOM id of a row's `disabledNote` line: `SettingRow` stamps it, and the section points
+ * the control's `aria-describedby` at it while the row is disabled.
+ */
+export function disabledNoteId(settingId: SettingId): string {
+  return `${settingAnchorId(settingId)}-disabled-note`
+}
+
+/**
  * The DOM-id convention for a command's row in the Keyboard shortcuts section.
  *
  * Shared knowledge between `openShortcutCustomization` (which deep-links to it) and

@@ -2,7 +2,7 @@
  * The directory sort mode every listing hands the backend comparator (#291).
  *
  * Two settings feed it: "Show folders first" decides whether folders lead at all,
- * and "Sort directories" decides how they sort among themselves while they do.
+ * and "Sort folders" decides how they sort among themselves while they do.
  * Folders mixed in with files sort by the column like any file, so "Sort
  * directories" has nothing to say then.
  */
@@ -43,7 +43,7 @@ describe('getDirectorySortMode', () => {
     cleanupReactiveSettings()
   })
 
-  it('passes the "Sort directories" choice through while folders lead (the default)', () => {
+  it('passes the "Sort folders" choice through while folders lead (the default)', () => {
     expect(getDirectorySortMode()).toBe('alwaysByName')
   })
 
@@ -51,7 +51,7 @@ describe('getDirectorySortMode', () => {
     changeSetting('listing.foldersFirst', false)
     expect(getDirectorySortMode()).toBe('mixedWithFiles')
 
-    // "Sort directories" changing meanwhile is remembered, not applied.
+    // "Sort folders" changing meanwhile is remembered, not applied.
     changeSetting('listing.directorySortMode', 'likeFiles')
     expect(getDirectorySortMode()).toBe('mixedWithFiles')
 

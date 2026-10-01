@@ -3229,6 +3229,7 @@ export type MessageKey =
   | 'settings.listing.briefColumnWidthMode.opt.limited'
   | 'settings.listing.briefColumnWidthMode.opt.paneWidth'
   | 'settings.listing.directorySortMode.description'
+  | 'settings.listing.directorySortMode.disabledReason'
   | 'settings.listing.directorySortMode.label'
   | 'settings.listing.directorySortMode.opt.alwaysByName'
   | 'settings.listing.directorySortMode.opt.likeFiles'

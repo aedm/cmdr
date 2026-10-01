@@ -387,21 +387,25 @@
   },
   "settings.listing.foldersFirst.label": "Show folders first",
   "@settings.listing.foldersFirst.label": {
-    "description": "Label for the on/off switch that lists folders above files in every file list. On by default. In Settings > Appearance > Listing, right above \"Sort directories\"."
+    "description": "Label for the on/off switch that lists folders above files in every file list. On by default. In Settings > Appearance > Listing, right above \"Sort folders\"."
   },
-  "settings.listing.foldersFirst.description": "List folders above files. Turn it off to sort folders and files together by the chosen column, so the newest item tops a date sort, folder or not.",
+  "settings.listing.foldersFirst.description": "List folders above files. Turn it off to mix folders and files.",
   "@settings.listing.foldersFirst.description": {
-    "description": "Help text under the \"Show folders first\" switch. \"the chosen column\" is the column the file list is sorted by (name, size, date, and so on). \"folder or not\" means whether that newest item is a folder or a file."
+    "description": "Help text under the \"Show folders first\" switch. \"Mix folders and files\" means that with the switch off, folders and files sort together by the active column (name, size, date, and so on) instead of folders coming first."
   },
-  "settings.listing.directorySortMode.label": "Sort directories",
+  "settings.listing.directorySortMode.label": "Sort folders",
   "@settings.listing.directorySortMode.label": {
-    "description": "Label for the picker controlling how folders sort relative to files. In Settings > Appearance > Listing.",
+    "description": "Label for the picker controlling how folders sort among themselves while \"Show folders first\" is on. In Settings > Appearance > Listing, right below \"Show folders first\". Use the word your macOS Finder uses for \"folder\".",
     "screenshot": "settings-appearance-listing.png"
   },
-  "settings.listing.directorySortMode.description": "How directories are sorted when changing the sort column.",
+  "settings.listing.directorySortMode.description": "How folders are sorted when changing the sort column.",
   "@settings.listing.directorySortMode.description": {
-    "description": "Help text for the directory-sort-mode setting. \"directories\" = folders.",
+    "description": "Help text under the \"Sort folders\" picker. \"The sort column\" is the column the file list is sorted by (name, size, date, and so on).",
     "screenshot": "settings-appearance-listing.png"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Currently disabled because folders are mixed with files. Turn on “Show folders first” to enable this setting.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "description": "Extra line with a small info icon under the \"Sort folders\" picker, shown only while that picker is greyed out because the \"Show folders first\" switch right above it is off. \"Show folders first\" must match the translation of settings.listing.foldersFirst.label exactly."
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Like files",
   "@settings.listing.directorySortMode.opt.likeFiles": {

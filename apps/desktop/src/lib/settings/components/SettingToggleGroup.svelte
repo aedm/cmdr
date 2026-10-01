@@ -30,9 +30,11 @@
          * the definition label.
          */
         labelOverrides?: Record<string, string>
+        /** Id of an element that explains the control, such as a `SettingRow` disabled note. */
+        ariaDescribedBy?: string
     }
 
-    const { id, disabled = false, labelOverrides }: Props = $props()
+    const { id, disabled = false, labelOverrides, ariaDescribedBy }: Props = $props()
 
     const definition = getSettingDefinition(id)
     const label = definition?.label ?? id
@@ -69,5 +71,6 @@
     {options}
     onChange={handleChange}
     ariaLabel={label}
+    {ariaDescribedBy}
     {disabled}
 />

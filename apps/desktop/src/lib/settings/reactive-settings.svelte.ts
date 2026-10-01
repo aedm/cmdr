@@ -286,8 +286,8 @@ export function getShowHiddenFiles(): boolean {
 
 /**
  * The directory sort mode every listing and re-sort hands the backend comparator: "Show folders
- * first" off mixes folders in with files (where "Sort directories" has nothing to say), else the
- * "Sort directories" choice. Reads both settings, so an `$effect` on it re-sorts on either.
+ * first" off mixes folders in with files (where "Sort folders" has nothing to say), else the
+ * "Sort folders" choice. Reads both settings, so an `$effect` on it re-sorts on either.
  */
 export function getDirectorySortMode(): ListingDirectorySortMode {
   return foldersFirst ? directorySortMode : 'mixedWithFiles'

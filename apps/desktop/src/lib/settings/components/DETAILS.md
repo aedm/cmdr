@@ -8,8 +8,13 @@ Every row is a `SettingRow` (label + description + control + reset pip + restart
 and `searchQuery`, and its description text spans the full width regardless of `split`). Two snippets escape the plain
 shape: `descriptionContent` replaces the description text with markup, and `labelTrailing` lands right after the label,
 ahead of the pip and the badges, for a small adornment belonging to the label rather than the control (an `<InfoTip>`
-carrying the long version of the description, say — onboarding's step 4 does exactly that). Pick the inner control by
-shape:
+carrying the long version of the description, say — onboarding's step 4 does exactly that). A disabled row says why in
+one of two ways: `disabledReason`, a short badge beside the label, or `disabledNote`, a full sentence with an info glyph
+under the description that also says how to enable the row ("Sort folders" uses it). The note is a visible line, not a
+tooltip, because a disabled control can't take focus, so a tooltip on it is out of reach for keyboard and screen-reader
+users. A disabled row dims its children rather than itself, which keeps the note at full AA contrast; point the
+control's `aria-describedby` at `disabledNoteId(id)` (`settings-window.ts`, beside `settingAnchorId`) while it's
+disabled. Pick the inner control by shape:
 
 - `SettingSwitch`: the primary boolean, wrapping `lib/ui/Switch`.
 - `SettingCheckbox`: a secondary boolean, for one hanging off a switch or in a denser layout.
