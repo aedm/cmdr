@@ -1615,14 +1615,14 @@
     }
 
     // A listing landed or includeHidden changed: cancel rename, re-sync count + cursor (`hidden-files-resync.ts`).
-    const resyncAfterHiddenFilesToggle = createHiddenFilesResync(() => listingId)
+    const hiddenFilesResync = createHiddenFilesResync(() => listingId)
     $effect(() => {
         if (listingId && !loading) {
             // Cancel rename on hidden files toggle (spec: sort change / toggle hidden = cancel)
             untrack(() => {
                 rename.cancel()
             })
-            void resyncAfterHiddenFilesToggle({
+            void hiddenFilesResync.resync({
                 listingId,
                 includeHidden,
                 // Read cursor state without tracking to avoid infinite re-triggers
@@ -1888,6 +1888,8 @@
         diskSpace.cleanup()
         // Drop the git subscriptions (setting listeners + repo watcher) on unmount.
         gitBrowser.cleanup()
+        // The teardown above ended this pane's listing; a resync mid-flight must stop quietly.
+        hiddenFilesResync.dispose()
     })
 </script>
 

@@ -7,8 +7,9 @@
  * - a cursor left past the end is clamped, and only then,
  * - a file that just became hidden falls back to the clamp,
  * - an empty listing puts the cursor at 0 rather than -1,
- * - a resync the pane has moved on from (a new listing, or a newer toggle) ends
- *   quietly and writes nothing, while a failure on the live listing still rejects.
+ * - a resync the pane has moved on from (a new listing, a newer toggle, or the
+ *   pane's own teardown) ends quietly and writes nothing, while a failure on the
+ *   live listing still rejects.
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 
@@ -31,7 +32,7 @@ describe('resyncAfterHiddenFilesToggle', () => {
   let setCursorIndex: Mock
   /** The listing the pane shows right now; a test moves the pane on by changing it. */
   let paneListingId: string
-  let resyncAfterHiddenFilesToggle: ReturnType<typeof createHiddenFilesResync>
+  let resync: ReturnType<typeof createHiddenFilesResync>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -41,11 +42,11 @@ describe('resyncAfterHiddenFilesToggle', () => {
     ipc.findFileIndex.mockResolvedValue(null)
     ipc.setListingIncludeHidden.mockResolvedValue(undefined)
     paneListingId = 'listing-1'
-    resyncAfterHiddenFilesToggle = createHiddenFilesResync(() => paneListingId)
+    resync = createHiddenFilesResync(() => paneListingId)
   })
 
-  function run(over: Partial<Parameters<ReturnType<typeof createHiddenFilesResync>>[0]> = {}) {
-    return resyncAfterHiddenFilesToggle({
+  function run(over: Partial<Parameters<ReturnType<typeof createHiddenFilesResync>['resync']>[0]> = {}) {
+    return resync.resync({
       listingId: 'listing-1',
       includeHidden: true,
       nameToFollow: undefined,
@@ -177,6 +178,34 @@ describe('resyncAfterHiddenFilesToggle', () => {
     answerFirstCount(99)
     await first
     expect(setTotalCount).toHaveBeenCalledExactlyOnceWith(10)
+  })
+
+  // A destroyed pane still reports its old listing id, but its teardown (or the
+  // tab that replaced it, `{#key}` in `DualPaneExplorer.svelte`) already ended
+  // that listing. Seen in a dev hot-reload burst; a tab switch does it too.
+  it('ends quietly when the pane was destroyed and the read found its listing gone', async () => {
+    ipc.getTotalCount.mockImplementation(() => {
+      resync.dispose()
+      return Promise.reject(new Error('Listing not found: listing-1'))
+    })
+    await expect(run({ nameToFollow: 'a.txt' })).resolves.toBeUndefined()
+    expect(setTotalCount).not.toHaveBeenCalled()
+    expect(setCursorIndex).not.toHaveBeenCalled()
+  })
+
+  it('writes nothing into a pane destroyed while the followed file was being looked up', async () => {
+    ipc.findFileIndex.mockImplementation(() => {
+      resync.dispose()
+      return Promise.resolve(4)
+    })
+    await run({ nameToFollow: 'a.txt' })
+    expect(setCursorIndex).not.toHaveBeenCalled()
+  })
+
+  it('does nothing once the pane is destroyed', async () => {
+    resync.dispose()
+    await run()
+    expect(ipc.setListingIncludeHidden).not.toHaveBeenCalled()
   })
 
   it('still rejects when a read fails on the listing the pane is showing', async () => {
