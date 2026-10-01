@@ -162,7 +162,7 @@ describe('a source no volume answers for', () => {
     expect(stats?.querySelector('.scan-status'), 'no spinner: nothing is counting').toBeNull()
 
     const notice = target.querySelector('.scan-unavailable')
-    expect(notice?.textContent).toContain('isn’t connected any more')
+    expect(notice?.textContent).toContain('isn’t connected anymore')
     expect(notice?.textContent).not.toContain('couldn’t finish measuring')
     expect(notice?.querySelector('button'), 'no Retry: it can never work').toBeNull()
 
