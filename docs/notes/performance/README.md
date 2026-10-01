@@ -208,7 +208,8 @@ Items that don't move the targets, each tracked in its own issue:
   stay low at the burst peak as well as at rest.
 - #317: the parked `bridge*` interface filter for mDNS (needs a decision).
 - #318: `SmbClient::close()` (LOGOFF) in `smb2`.
-- #319: upstream the `mdns-sd` fix, and guard that `mdns-sd` resolves from `vendor/`.
+- #319: drop the `vendor/mdns-sd` fork once upstream releases the fix (keepsimple1/mdns-sd#513, open). The guard that it
+  resolves from `vendor/` is `desktop-rust-vendor-patch-applied`.
 - #320: the direct-symlink EXISTS query's O(children) shape.
 - #321: the CPU half of the diagnostics instrument (per-thread CPU and wakeups over MCP).
 - #322: a per-chunk memo of ancestor verdicts in the search exclude check.
