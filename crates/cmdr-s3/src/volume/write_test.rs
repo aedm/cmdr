@@ -125,6 +125,80 @@ async fn uploads_of_unknown_length_round_trip(service: FixtureService) {
     assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
 }
 
+/// A source that hands out its first pieces and then never another: the
+/// upload is parked mid-body, with the server already holding all but the
+/// read-ahead piece, for as long as the cell likes.
+struct StallingSource {
+    pieces: Vec<Vec<u8>>,
+    total: u64,
+}
+
+impl VolumeReadStream for StallingSource {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move {
+            if self.pieces.is_empty() {
+                std::future::pending::<()>().await;
+            }
+            Some(Ok(self.pieces.remove(0)))
+        })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Known(self.total)
+    }
+
+    fn bytes_read(&self) -> u64 {
+        0
+    }
+}
+
+/// ❗ A single PUT cancelled mid-body leaves nothing under the name. S3 itself
+/// never publishes a PUT short of its `Content-Length`, but VersityGW does: a
+/// body cut off mid-flight is stored as a truncated object under the user's
+/// name (fixture README). So the write cleans up after any PUT that didn't
+/// finish, removing the object only when it carries this write's own token.
+/// The source stalls after its first piece, so the server holds those bytes
+/// when the cancel lands: deterministic, whatever the timing.
+async fn a_cancelled_single_put_publishes_nothing(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let prefix = scratch_prefix("write-cancel-put");
+    let path = volume.root().join(key_of(&prefix, "cancelled.bin"));
+    // The first piece goes out once the second is read ahead; the third never
+    // comes, so the server holds 1 MiB of 3 when the cancel lands.
+    let source = StallingSource {
+        pieces: vec![
+            self_describing_bytes(MIB, "first"),
+            self_describing_bytes(MIB, "second"),
+        ],
+        total: 3 * MIB as u64,
+    };
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+
+    let outcome = volume
+        .write_from_stream(
+            &path,
+            WriteMode::CreateNew,
+            source.total_size(),
+            Box::new(source),
+            // The user's Cancel, a few ticks into the stall.
+            &|progress| {
+                if progress.bytes_written >= MIB as u64 && asked.fetch_add(1, Ordering::Relaxed) >= 2 {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::Cancelled(_))), "got {outcome:?}");
+    let left = volume.get_metadata(&path).await.ok().map(|entry| entry.size);
+    assert!(
+        left.is_none(),
+        "a cancelled PUT left an object of {left:?} bytes under the name"
+    );
+}
+
 /// ❗ A cancel aborts the multipart upload: no parts stay behind on the server
 /// (billed, invisible), no record stays in the ledger, and no object appears.
 async fn a_cancel_mid_multipart_leaves_no_upload_behind(service: FixtureService) {
@@ -488,6 +562,9 @@ on_both_fixtures! {
     a_cancel_mid_multipart_leaves_no_upload_behind
         => a_cancel_mid_multipart_leaves_no_upload_behind_on_versitygw,
            a_cancel_mid_multipart_leaves_no_upload_behind_on_garage;
+    a_cancelled_single_put_publishes_nothing
+        => a_cancelled_single_put_publishes_nothing_on_versitygw,
+           a_cancelled_single_put_publishes_nothing_on_garage;
     create_new_checks_then_writes_and_catches_a_writer_mid_upload
         => create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_versitygw,
            create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_garage;

@@ -197,7 +197,13 @@ impl S3Volume {
     }
 
     /// One `DeleteObject`.
-    async fn delete_key(&self, client: &S3Client, bucket: &str, key: &str, remote: &str) -> Result<(), VolumeError> {
+    pub(super) async fn delete_key(
+        &self,
+        client: &S3Client,
+        bucket: &str,
+        key: &str,
+        remote: &str,
+    ) -> Result<(), VolumeError> {
         let request =
             ops::delete_object(client.profile(), bucket, key).map_err(|_| VolumeError::NotFound(remote.to_string()))?;
         self.ask(client, request, remote).await.map(|_| ())

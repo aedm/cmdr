@@ -16,7 +16,7 @@ use md5::{Digest as _, Md5};
 use url::Url;
 
 use crate::encoding::{encode_component, encode_key};
-use crate::metadata::{MTIME_HEADER, format_mtime};
+use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER, format_mtime};
 use crate::profile::{ConditionalOp, LocateError, NoOverwrite, ProviderProfile};
 use crate::request::{Body, S3Request};
 use crate::sigv4::{AmzTime, Credentials, Scope, presign};
@@ -64,6 +64,9 @@ pub(crate) struct Built {
 pub(crate) struct ObjectMetadata {
     /// The source file's modification time (`x-amz-meta-mtime`).
     pub mtime: Option<SystemTime>,
+    /// The identity of the PUT writing it (`x-amz-meta-cmdr-write`), so a
+    /// cut-off write can tell its own leftover from anyone else's object.
+    pub write_token: Option<String>,
 }
 
 /// What a copy does with the source's metadata.
@@ -373,8 +376,12 @@ fn guarded(profile: &ProviderProfile, op: ConditionalOp, request: S3Request, ove
 }
 
 fn with_metadata(request: S3Request, metadata: &ObjectMetadata) -> S3Request {
-    match metadata.mtime {
+    let request = match metadata.mtime {
         Some(mtime) => request.header(name(MTIME_HEADER), value(&format_mtime(mtime))),
+        None => request,
+    };
+    match &metadata.write_token {
+        Some(token) => request.header(name(WRITE_TOKEN_HEADER), value(token)),
         None => request,
     }
 }

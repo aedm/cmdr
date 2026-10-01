@@ -17,6 +17,14 @@
 //! writer's object at the name after ours is reported as `AlreadyExists`. A
 //! writer that lands BETWEEN our check and our write is the one window nothing
 //! can see without bucket versioning; `DETAILS.md` § "No-overwrite writes".
+//!
+//! ❗ **A cut-off PUT is cleaned up after**, because not every server keeps
+//! S3's promise to publish nothing short of `Content-Length`: VersityGW stores
+//! whatever arrived before the connection dropped, under the user's name
+//! (`apps/desktop/test/s3-servers/README.md`). So every PUT carries a token of
+//! its own (`x-amz-meta-cmdr-write`), and a PUT that was cancelled or cut off
+//! removes the object at its key ONLY when that object carries its token
+//! ([`S3Volume::remove_cut_off_put`]).
 
 use std::ops::ControlFlow;
 use std::path::Path;
@@ -194,9 +202,11 @@ impl S3Volume {
             raw_os_error: None,
         })?;
         let client = self.clone_client().await?;
-        // The source file's own date, carried as `x-amz-meta-mtime`.
+        // The source file's own date, carried as `x-amz-meta-mtime`, and this
+        // write's token, so a cut-off PUT can find its own leftover.
         let metadata = ObjectMetadata {
             mtime: stream.modified_at(),
+            write_token: Some(crate::metadata::write_token()),
         };
         let progress = Progress::new(on_progress, length);
         let target = WriteTarget {
@@ -285,8 +295,12 @@ impl S3Volume {
         };
         let fetched = counts.fetched.load(Ordering::Relaxed);
         let answer = match sent {
-            None => return Err(VolumeError::Cancelled(self.volume_id().to_string())),
+            None => {
+                self.remove_cut_off_put(client, target).await;
+                return Err(VolumeError::Cancelled(self.volume_id().to_string()));
+            }
             Some(Err(e)) => {
+                self.remove_cut_off_put(client, target).await;
                 return Err(match stopped.lock_ignore_poison().take() {
                     Some(BodyStop::Source(source)) => source,
                     Some(BodyStop::Overlong) => size_mismatch(target.remote, fetched, size),
@@ -311,6 +325,50 @@ impl S3Volume {
         let _ = progress.at(size);
         self.verify_landing(client, target, size, answer.header("etag")).await?;
         Ok(size)
+    }
+
+    /// After a PUT that was cancelled or cut off mid-body: removes the object
+    /// at the key when it carries THIS write's token, which is a server keeping
+    /// a truncated body against S3's contract (VersityGW does). ❌ Anything
+    /// else at the key is left alone: it's the original, or another writer's.
+    ///
+    /// The server stores the cut-off body once it notices the dropped
+    /// connection, which may be a moment after the drop, so a miss is checked
+    /// again twice, 150 ms apart. On a server that keeps the contract this
+    /// costs one HEAD that finds nothing, plus two after short waits, and only
+    /// for a PUT that didn't finish.
+    pub(super) async fn remove_cut_off_put(&self, client: &S3Client, target: &WriteTarget<'_>) {
+        let Some(token) = target.metadata.write_token.as_deref() else {
+            return;
+        };
+        for attempt in 0..3 {
+            if attempt > 0 {
+                tokio::time::sleep(Duration::from_millis(150)).await;
+            }
+            let Ok(head) = self.head_object(client, target.bucket, target.key, target.remote).await else {
+                return;
+            };
+            let Some(head) = head else {
+                continue;
+            };
+            if head.header(crate::metadata::WRITE_TOKEN_HEADER) != Some(token) {
+                // The original, or another writer's: never ours to remove.
+                return;
+            }
+            match self.delete_key(client, target.bucket, target.key, target.remote).await {
+                Ok(()) => warn!(
+                    target: "volume",
+                    "s3: the server kept a cut-off upload of {}; removed it",
+                    target.remote
+                ),
+                Err(e) => warn!(
+                    target: "volume",
+                    "s3: the server kept a cut-off upload of {} and removing it failed: {e}",
+                    target.remote
+                ),
+            }
+            return;
+        }
     }
 
     /// `CreateNew` on a provider with no trusted conditional header: refuse a

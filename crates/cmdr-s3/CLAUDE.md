@@ -28,11 +28,13 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
 - ❗ **Keys are never trimmed**; a `.`/`..` segment is refused (`KeyError::DotSegment`).
 - ❗ **Writes go to the final key** (`publishes_writes_whole`). ❌ Nothing partial is ever published: the streamed body
-  reads one piece ahead and holds its last piece for a Cancel check. ❌ Don't collapse `fetched` and `handed`.
+  reads one piece ahead and holds its last piece for a Cancel check, and a cut-off PUT removes what a server kept of it,
+  by its own `x-amz-meta-cmdr-write` token only. ❌ Don't collapse `fetched` and `handed`.
 - ❗ **Conditional writes are an allowlist, ❌ never a probe**: Garage and VersityGW answer 200 to an ignored
   `If-None-Match` and overwrite. Elsewhere `CreateNew` HEADs first (again before Complete), and a HEAD after every write
   reports another writer's object as `AlreadyExists`.
-- ❗ **An upload is recorded before its first part**; the sweep aborts ❌ only recorded uploads, ❌ never one in flight.
+- ❗ **An upload is recorded before its first part**, and an abort counts only once a listing confirms it; the sweep
+  aborts ❌ only recorded uploads, ❌ never one in flight.
 - ❗ **`delete` is one node** (`ENOTEMPTY` while keys sit under a folder); `rename` moves one small file. M6 replaces
   it.
 - ❗ **No checksum headers; equal-size parts, always** (R2). Streamed bodies sign `UNSIGNED-PAYLOAD`.

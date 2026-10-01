@@ -225,6 +225,15 @@ stays `false`: a request is open while the source drains.
   Cancel arrives: with only the 200 ms tick, a cancel landing between ticks lost to a fast finish and published the
   object (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). A cancel after the last piece went
   out is too late to stop the publish, and the write reports the file it finished.
+- ❗ **A cut-off PUT is cleaned up after**, because not every server keeps S3's promise to publish nothing short of
+  `Content-Length`: VersityGW stores whatever arrived before the connection dropped (fixture README). Every PUT carries
+  a token of its own (`x-amz-meta-cmdr-write`, `metadata::write_token`), and a PUT that was cancelled or cut off HEADs
+  its key (again after 150 and 300 ms, since the server stores the body only once it notices the drop) and deletes the
+  object ONLY when it carries that token (`writes.rs::remove_cut_off_put`): anything else there is the original or
+  another writer's. ❗ Residual risk on such a server: an in-place `CreateOrReplace` that's cut off has already lost the
+  original to the server's truncated publish, and a crash mid-PUT leaves the truncated object with nothing to clean it.
+  AWS, R2, B2, and Garage refuse a short body; which other providers keep the promise is for M8 to confirm. The token is
+  visible as user metadata and harmless to other tools.
 - **Multipart** (`multipart_upload.rs`): up to `UPLOAD_CONCURRENCY` (4) parts in flight, and a part is read from the
   source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are buffered at all
   because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server fault, or a
@@ -277,6 +286,9 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
   this crate can act on (`AbortMultipartUpload`), keyed by an account and an upload ID; putting it there would mean a
   schema migration, a new row kind no rollback understands, and the app reaching into S3 vocabulary. A file this crate
   owns, in a directory the host hands every backend, keeps it where the knowledge is.
+- **An abort is confirmed by listing** (`abort_upload`): a part request cut off just before an abort can land after it
+  and bring the upload back (VersityGW does; AWS documents the race), so each round aborts and then lists the key's
+  uploads, up to four rounds 200 ms apart, and only a listing without the upload ID forgets the record.
 - **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an

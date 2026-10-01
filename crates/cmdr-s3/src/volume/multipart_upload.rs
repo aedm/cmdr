@@ -396,10 +396,15 @@ impl S3Volume {
             CancellationToken::new(),
             Arc::clone(client.liveness()),
         );
-        let answer = client
-            .upload(built.request, body)
-            .await
-            .map_err(|e| map_transport_error(&e, self.volume_id(), target.remote))?;
+        let answer = match client.upload(built.request, body).await {
+            Ok(answer) => answer,
+            Err(e) => {
+                // A transport failure mid-body can leave a truncated object on
+                // a server that keeps one (`writes.rs` § "A cut-off PUT").
+                self.remove_cut_off_put(client, target).await;
+                return Err(map_transport_error(&e, self.volume_id(), target.remote));
+            }
+        };
         if !answer.status.is_success() {
             let error = S3Error::from_response(answer.status, &answer.text());
             self.note_refused_condition(client, &error, ConditionalOp::Put, conditional);
@@ -603,9 +608,20 @@ fn planned_total(sizes: &PartSizes) -> u64 {
     }
 }
 
-/// Aborts `upload` and settles its record: forgotten when the server says it's
-/// gone (aborted now, or already), kept for the next sweep otherwise. Answers
+/// How many times an abort is sent before the upload is left for the next
+/// sweep, and how long to wait between rounds.
+const ABORT_ROUNDS: u32 = 4;
+const ABORT_ROUND_GAP: Duration = Duration::from_millis(200);
+
+/// Aborts `upload` and settles its record: forgotten once the server's own
+/// listing no longer shows it, kept for the next sweep otherwise. Answers
 /// whether it settled.
+///
+/// ❗ An abort's 204 isn't proof. A part request cut off a moment earlier can
+/// still land after it, and a server may then bring the upload back: AWS says
+/// to abort again until the parts are gone, and VersityGW does resurrect it
+/// (fixture README). So each round aborts and then lists the key's uploads,
+/// and only a listing without this upload ID ends it.
 pub(super) async fn abort_upload(client: &S3Client, ledger: &UploadLedger, upload: &UnfinishedUpload) -> bool {
     let Ok(request) = ops::abort_multipart_upload(client.profile(), &upload.bucket, &upload.key, &upload.upload_id)
     else {
@@ -613,21 +629,41 @@ pub(super) async fn abort_upload(client: &S3Client, ledger: &UploadLedger, uploa
         ledger.finished(upload);
         return true;
     };
-    let gone = match client.exchange(request, QUERY_BUDGET).await {
-        Ok(answer) if answer.status.is_success() => true,
-        Ok(answer) => S3Error::from_response(answer.status, &answer.text()).is_not_found(),
-        Err(e) => {
-            debug!(target: "volume", "s3: aborting an upload of {} didn't reach the server: {e}", upload.key);
-            false
+    for round in 0..ABORT_ROUNDS {
+        if round > 0 {
+            tokio::time::sleep(ABORT_ROUND_GAP).await;
         }
-    };
-    if gone {
-        ledger.finished(upload);
-    } else {
-        warn!(target: "volume", "s3: couldn't abort the upload of {}; the next connect tries again", upload.key);
-        ledger.abandoned(upload);
+        let answered = match client.exchange(request.clone(), QUERY_BUDGET).await {
+            Ok(answer) => {
+                answer.status.is_success() || S3Error::from_response(answer.status, &answer.text()).is_not_found()
+            }
+            Err(e) => {
+                debug!(target: "volume", "s3: aborting an upload of {} didn't reach the server: {e}", upload.key);
+                false
+            }
+        };
+        if answered && still_listed(client, upload).await == Some(false) {
+            ledger.finished(upload);
+            return true;
+        }
     }
-    gone
+    warn!(target: "volume", "s3: couldn't abort the upload of {}; the next connect tries again", upload.key);
+    ledger.abandoned(upload);
+    false
+}
+
+/// Whether the server still lists `upload` among its key's unfinished uploads,
+/// `None` when it couldn't say.
+async fn still_listed(client: &S3Client, upload: &UnfinishedUpload) -> Option<bool> {
+    let request = ops::list_multipart_uploads(client.profile(), &upload.bucket, &upload.key, None).ok()?;
+    let answer = client.exchange(request, QUERY_BUDGET).await.ok()?;
+    if !answer.status.is_success() {
+        return None;
+    }
+    let page = crate::xml::parse_list_multipart_uploads(&answer.text()).ok()?;
+    // One page answers it: the listing is in key order and this key's uploads
+    // come first under a prefix that IS the key.
+    Some(page.uploads.iter().any(|listed| listed.upload_id == upload.upload_id))
 }
 
 impl S3VolumeInner {

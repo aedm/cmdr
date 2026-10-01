@@ -13,6 +13,26 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 /// The header carrying the mtime. S3 stores metadata keys lowercase.
 pub(crate) const MTIME_HEADER: &str = "x-amz-meta-mtime";
 
+/// The header naming the one PUT that wrote an object (`write_token`), so a
+/// write that was cut off can recognise and remove what a server kept of it
+/// (`volume/writes.rs` § "A cut-off PUT"), ❌ and nothing else.
+pub(crate) const WRITE_TOKEN_HEADER: &str = "x-amz-meta-cmdr-write";
+
+/// A token no other write on this machine uses: the process, the clock, and a
+/// counter. Not a secret, only an identity for one PUT.
+pub(crate) fn write_token() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.as_nanos());
+    format!(
+        "{:x}-{nanos:x}-{:x}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    )
+}
+
 /// `at` in rclone's format.
 pub(crate) fn format_mtime(at: SystemTime) -> String {
     match at.duration_since(UNIX_EPOCH) {

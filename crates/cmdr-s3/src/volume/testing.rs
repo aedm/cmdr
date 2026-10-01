@@ -203,7 +203,10 @@ pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
     for batch in seeds.chunks(32) {
         let mut puts = Vec::with_capacity(batch.len());
         for seed in batch {
-            let metadata = ObjectMetadata { mtime: seed.mtime };
+            let metadata = ObjectMetadata {
+                mtime: seed.mtime,
+                write_token: None,
+            };
             let built = ops::put_object(
                 client.profile(),
                 bucket,

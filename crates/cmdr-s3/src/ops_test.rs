@@ -47,6 +47,7 @@ fn header<'a>(request: &'a S3Request, name: &str) -> Option<&'a str> {
 fn with_mtime() -> ObjectMetadata {
     ObjectMetadata {
         mtime: Some(UNIX_EPOCH + Duration::from_secs(MTIME)),
+        write_token: None,
     }
 }
 
@@ -104,6 +105,19 @@ fn put_object_streams_its_body_and_writes_the_rclone_mtime() {
     assert_eq!(built.request.body, Body::Streamed { length: 1234 });
     assert_eq!(header(&built.request, "x-amz-meta-mtime"), Some("1354040105"));
     assert_eq!(header(&built.request, "if-none-match"), None);
+    assert_eq!(header(&built.request, "x-amz-meta-cmdr-write"), None);
+}
+
+/// A write's token rides as metadata, so a cut-off PUT can recognise what a
+/// server kept of it.
+#[test]
+fn put_object_carries_the_write_token() {
+    let metadata = ObjectMetadata {
+        mtime: None,
+        write_token: Some("1f-abc-0".to_string()),
+    };
+    let built = put_object(&aws(), "photos", "a.jpg", 1, Overwrite::Replace, &metadata).unwrap();
+    assert_eq!(header(&built.request, "x-amz-meta-cmdr-write"), Some("1f-abc-0"));
 }
 
 #[test]

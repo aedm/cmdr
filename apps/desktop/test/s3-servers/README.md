@@ -95,6 +95,13 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
   (minimum part size is 5Mb)"); VersityGW accepts it, as AWS does for a last part. A multipart copy has to upload a
   short tail rather than copy it, at least on Garage.
 - `CopyObject` across buckets (`cmdr-test` to `cmdr-test-2`): 200 on both.
+- ❗ **A PUT cut off mid-body (the client closes the connection before `Content-Length`): VersityGW stores the bytes
+  that arrived as the object**, under its name, which S3 never does; Garage keeps nothing. Deterministic on VersityGW
+  v1.8.0 (`cmdr-s3`'s `write_test.rs::a_cancelled_single_put_publishes_nothing`, a source stalled after 1 MiB of 3:
+  1,048,576 bytes stored), 2026-10-01.
+- ❗ **An aborted multipart upload can come back on VersityGW** when an `UploadPart` cut off a moment before the abort
+  lands after it: `ListMultipartUploads` shows the upload again (7 of 20 runs of `…a_cancel_mid_multipart…`,
+  2026-10-01). AWS documents the same race and says to abort again until the parts are gone.
 - A `PutObject` to a key while a multipart upload of that key is in flight: ❗ **Garage ends the upload** (the next
   `UploadPart` or `CompleteMultipartUpload` answers 404 `NoSuchUpload`); VersityGW keeps it, and completing it replaces
   the object just put. Observed through `cmdr-s3`'s `write_test.rs` (`…catches_a_writer_mid_upload`, both servers) on
