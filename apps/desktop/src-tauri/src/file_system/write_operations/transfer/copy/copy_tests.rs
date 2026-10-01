@@ -365,7 +365,7 @@ fn local_copy_bench_many_small_files() {
     let tmp = tempfile::tempdir().expect("tempdir");
     // Measure with the persisted in-flight-temp ledger live, since production
     // rewrites it twice per file. Without this the bench would quietly skip it.
-    let _store = crate::file_system::write_operations::in_flight_temps::test_support::use_store_in(tmp.path());
+    let ledger = crate::file_system::write_operations::in_flight_temps::Ledger::recording_in(tmp.path());
     let src_dir = tmp.path().join("src");
     fs::create_dir_all(&src_dir).unwrap();
     let payload = vec![0xAB_u8; FILE_BYTES];
@@ -383,7 +383,9 @@ fn local_copy_bench_many_small_files() {
         fs::create_dir_all(&dst_dir).unwrap();
 
         let events = Arc::new(CollectorEventSink::new());
-        let state = make_state(1_000_000); // effectively no progress emits
+        // Effectively no progress emits.
+        let state =
+            Arc::new(WriteOperationState::new(Duration::from_millis(1_000_000)).with_in_flight_ledger(ledger.clone()));
         let config = WriteOperationConfig::default();
 
         let started = std::time::Instant::now();

@@ -1446,21 +1446,19 @@ the copy names a drive, and the boot disk never goes away, so it meets the rule 
 
 ## Testing the in-flight temp ledger
 
-`in_flight_temps.rs` keeps ONE process-wide `STORE` for the whole test binary, and three rules follow from that. Ignore
-either and the tests fail on load rather than on a break, which is worse than not having them.
+**Every test that records or sweeps owns its ledger.** `in_flight_temps::Ledger` is a handle; the app has one
+(`Ledger::process()`, which every `WriteOperationState` carries by default), and a test builds its own and hands it to
+the states it drives with `WriteOperationState::with_in_flight_ledger`. `Ledger::recording_in(data_dir)` records into a
+fresh log there; dropping it is the crash; `Ledger::for_test().launch_in(data_dir)` is the next launch, replaying that
+log; `live_paths()` is what that ledger alone believes is on disk. So a cell's log, tally, and live set hold its own
+records and nothing else, and it can assert on all of them whole.
 
-- **Take `test_support::take_store()` (or `use_store_in`) for the WHOLE test body**, ❌ never for just the part that
-  writes. Installing a log into the singleton redirects every `register` in the process into that file, from any
-  thread, so two tests doing it at once put one test's records in the other's log — and leave a startup-sweep fixture
-  replaying an empty log, sweeping nothing. The guard holds a `SINGLE_FILE` mutex that serializes them; releasing it
-  early hands the singleton to the next test while this one is still recording. `simulate_process_exit()` is how a test
-  detaches the process's handle (the crash it's reproducing) without giving the singleton back.
-- **Assert about the path under test, ❌ never about the whole ledger.** `live_paths()` and the log file are shared with
-  every transfer test that stages a write without holding the guard, so `live_paths().is_empty()` and
-  `read_recorded(..).is_empty()` are assertions about the rest of the suite. Ask `contains(&subject)` instead; it pins
-  the same regression.
-- **A volume-borne cell picks a volume ID nothing else uses.** The ledger's arrival listener is installed once per
-  process and stays for the rest of the test binary, so a shared ID lets one cell's registration claim another's
+- ❌ **Don't reintroduce a singleton that tests install a log into.** That's how a sweep cell replayed the records of
+  every transfer test running beside it and deleted their live temps mid-copy under plain `cargo test` (#162; the
+  check runner's one-process-per-test runner hid it). A test whose states use the default process ledger records
+  only in memory, since nothing opens that ledger's log under test.
+- **A volume-borne cell picks a volume ID nothing else uses.** The volume registry is still one per process, and each
+  ledger's arrival listener hears every registration, so a shared ID lets one cell's registration claim another's
   pending records.
 
 **The sweep signals completion, so no test needs a deadline.** `init_and_sweep` returns a `SweepHandle`; the launch path
