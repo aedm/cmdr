@@ -59,6 +59,7 @@ mod scratch_dir;
 mod source_binding;
 mod state;
 mod status_cache;
+mod target_names;
 mod transfer;
 mod transfer_sides;
 mod types;
@@ -147,13 +148,18 @@ pub(crate) use look_alike::held_in_another_spelling;
 pub(crate) use paste_clipboard::write_payload_to_dir;
 pub(crate) use rename::{
     BulkRenameRow, RenameValidityResult, check_rename_permission_for_volume, check_rename_validity_impl,
-    rename_managed, same_local_file, start_bulk_rename,
+    rename_managed, same_local_file, start_renames,
 };
+// The batch executor alone, for the suites that drive it without the routing
+// `start_renames` puts in front of it.
+#[cfg(test)]
+pub(crate) use rename::start_bulk_rename;
 // The source-identity binding a reviewed batch may supply. `source_binding.rs`.
 // Volume + destination resolution and the three routed cross-volume entry points,
 // reachable by a backend caller and not only the IPC edge. `routing.rs`.
 pub(crate) use routing::{
-    resolve_dest_path, resolve_source_volume, start_volume_compress, start_volume_copy, start_volume_move,
+    resolve_dest_path, resolve_source_volume, start_rename_by_move, start_volume_compress, start_volume_copy,
+    start_volume_move,
 };
 #[cfg(not(test))]
 use source_binding::retain_bound_sources;

@@ -151,7 +151,9 @@ where
             continue;
         }
 
-        let initial_dest_path = if let Some(name) = source_path.file_name() {
+        // A rename that runs as a move names its source's new name here
+        // (`target_names.rs`); every other source keeps its own.
+        let initial_dest_path = if let Some(name) = state.target_names.name_for(source_path) {
             dest_root.join(name)
         } else {
             dest_root.to_path_buf()

@@ -172,12 +172,14 @@ pub async fn apply_bulk_rename(
     }
 
     let initiator = bulk_rename_initiator(&applied_rows);
-    crate::file_system::write_operations::start_bulk_rename(
+    // Routed: where a rename copies (an S3 folder), the batch runs as one move.
+    crate::file_system::write_operations::start_renames(
         Arc::new(crate::file_system::write_operations::TauriEventSink::new(app)),
         volume_id,
         rows,
         initiator,
     )
+    .await
     .map_err(|detail| BulkRenameError::CouldntStart { detail })
 }
 

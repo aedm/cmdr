@@ -761,6 +761,11 @@ pub(crate) async fn move_volumes_with_progress(
 // `use super::*`, and `test_support` has to stay one module so its fixtures are
 // one type everywhere. `super::super` is `volume` either way, so the paths that
 // cross to a sibling engine are unchanged.
+/// A same-volume move whose entries rename by copy, and renames that run as
+/// moves.
+#[cfg(test)]
+#[path = "move_by_copy_tests.rs"]
+mod by_copy_tests;
 #[cfg(test)]
 #[path = "move_cancel_tests.rs"]
 mod cancel_tests;

@@ -1041,6 +1041,50 @@ export const commands = {
       }),
     ),
   /**
+   *  A rename that runs as a move on one volume: `source_path` moves into
+   *  `dest_path` under `new_name`. What the Move dialog confirms when F2 opens
+   *  it for a rename that copies (an S3 folder past the small-rename count,
+   *  `RenameValidityResult::by_move`). Same events as `move_between_volumes`.
+   */
+  renameByMove: (
+    volumeId: string,
+    sourcePath: string,
+    destPath: string,
+    newName: string,
+    config: {
+      // In milliseconds.
+      progressIntervalMs: number
+      conflictResolution: ConflictResolution
+      // Maximum returned in pre-flight scan.
+      maxConflictsToShow: number
+      // Preview scan ID to reuse cached scan results (from start_scan_preview).
+      previewId?: string | null
+      /**
+       *  Source filenames already known to conflict at the destination (from the
+       *  pre-flight `scan_for_conflicts` call). When `conflict_resolution == Skip`,
+       *  the copy pipeline bulk-skips these upfront so the progress bar jumps to
+       *  reflect them immediately, rather than discovering each one serially via
+       *  per-file `get_metadata` stats while non-conflict copies run in between.
+       *  Ignored for other resolution modes (Stop still prompts; Overwrite still
+       *  proceeds normally). Empty if the FE didn't pre-scan or found no
+       *  conflicts.
+       */
+      preKnownConflicts?: string[]
+      /**
+       *  Deflate level (1..=9) for zip writes this op produces (compress, or
+       *  copy/move INTO an archive); `None` = the crate default (level 6). The
+       *  frontend reads the `behavior.archiveCompressionLevel` setting at dispatch
+       *  and passes it here; non-archive copies ignore it. The mutator clamps to
+       *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
+       */
+      compressionLevel?: number | null
+    } | null,
+    initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
+  ) =>
+    typedError<WriteOperationStartResult, WriteOperationError>(
+      __TAURI_INVOKE('rename_by_move', { volumeId, sourcePath, destPath, newName, config, initiator }),
+    ),
+  /**
    *  Compresses `source_paths` into a NEW zip at `dest_zip_path` on `dest_volume_id`.
    *  Same events as `copy_between_volumes`. The destination may be LOCAL or REMOTE
    *  (SMB/MTP).
@@ -12294,6 +12338,25 @@ export type RejectResultView =
   | { kind: 'unknown' }
 
 /**
+ *  What a rename that runs as a move would carry, counted with a bounded
+ *  listing (`Volume::tally_subtree`). The plan's M7 adds its cost estimate
+ *  beside these counts.
+ */
+export type RenameByMove = {
+  // Files the move copies, counted up to one past [`SMALL_RENAME_FILES`].
+  files: number
+  // Their bytes.
+  bytes: number
+  // `false` when the count stopped at its cap, so there are more.
+  countedAll: boolean
+  /**
+   *  Big enough (or uncounted) to confirm in the Move dialog first; else it
+   *  starts as a background move with the progress chip.
+   */
+  confirmFirst: boolean
+}
+
+/**
  *  One item's evidence: the typed source plus the short quote or note behind it.
  *
  *  `detail` is MODEL-AUTHORED TEXT that reaches the review dialog. The frontend renders it
@@ -12351,6 +12414,12 @@ export type RenameValidityResult = {
   isCaseOnlyRename: boolean
   // Conflicting file info, if any.
   conflict: ConflictFileInfo | null
+  /**
+   *  Set when renaming this entry isn't one call on its volume
+   *  (`Volume::rename_work`), so it runs as a move: what that move carries,
+   *  and whether to confirm it first.
+   */
+  byMove: RenameByMove | null
 }
 
 /**

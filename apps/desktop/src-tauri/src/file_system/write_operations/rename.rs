@@ -21,13 +21,15 @@ use super::look_alike::{NewEntry, place_new_entry};
 use super::manager::{self, OperationDescriptor, OperationSummaryText};
 use super::mutation_error::MutationError;
 use super::types::WriteOperationType;
-use crate::file_system::volume::Volume;
+use crate::file_system::volume::{RenameWork, Volume};
 use crate::operation_log::types::{Initiator, OpKind};
 use cmdr_archive::mutator::Changeset;
 
 mod bulk;
 
-pub(crate) use bulk::{BulkRenameRow, start_bulk_rename};
+#[cfg(test)]
+pub(crate) use bulk::start_bulk_rename;
+pub(crate) use bulk::{BulkRenameRow, start_renames};
 
 /// Result of a rename validity check.
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
@@ -43,6 +45,52 @@ pub(crate) struct RenameValidityResult {
     pub is_case_only_rename: bool,
     /// Conflicting file info, if any.
     pub conflict: Option<ConflictFileInfo>,
+    /// Set when renaming this entry isn't one call on its volume
+    /// (`Volume::rename_work`), so it runs as a move: what that move carries,
+    /// and whether to confirm it first.
+    pub by_move: Option<RenameByMove>,
+}
+
+/// The most files a rename that runs as a move carries without asking first:
+/// past it, F2 opens the Move dialog instead of starting in the background.
+pub(crate) const SMALL_RENAME_FILES: u64 = 100;
+
+/// What a rename that runs as a move would carry, counted with a bounded
+/// listing (`Volume::tally_subtree`). The plan's M7 adds its cost estimate
+/// beside these counts.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RenameByMove {
+    /// Files the move copies, counted up to one past [`SMALL_RENAME_FILES`].
+    pub files: u64,
+    /// Their bytes.
+    pub bytes: u64,
+    /// `false` when the count stopped at its cap, so there are more.
+    pub counted_all: bool,
+    /// Big enough (or uncounted) to confirm in the Move dialog first; else it
+    /// starts as a background move with the progress chip.
+    pub confirm_first: bool,
+}
+
+impl RenameByMove {
+    /// The verdict for what a bounded count found: anything past
+    /// [`SMALL_RENAME_FILES`], or a count that couldn't finish, asks first.
+    pub(crate) fn from_tally(tally: Option<crate::file_system::volume::SubtreeTally>) -> Self {
+        match tally {
+            Some(tally) => Self {
+                files: tally.files,
+                bytes: tally.bytes,
+                counted_all: tally.complete,
+                confirm_first: !tally.complete || tally.files > SMALL_RENAME_FILES,
+            },
+            None => Self {
+                files: 0,
+                bytes: 0,
+                counted_all: false,
+                confirm_first: true,
+            },
+        }
+    }
 }
 
 /// Metadata about a conflicting sibling file.
@@ -182,6 +230,27 @@ async fn rename_managed_inner(
             None => to,
         }
     };
+    // ❗ An entry whose rename isn't one call here (an object store's folder or
+    // big file) never reaches `Volume::rename`: it starts a background move,
+    // with progress and cancel, and this answers once that has started, the
+    // way an in-zip rename does.
+    if !is_root && let Some(volume) = manager.get(&volume_id) {
+        match volume.rename_work(&from).await {
+            Ok(RenameWork::OneCall) => {}
+            Ok(RenameWork::CopyThenDelete) => {
+                return (
+                    start_rename_as_move(&from, &to, force, &volume_id, initiator).await,
+                    super::analytics::InstantTarget::Volume,
+                );
+            }
+            Err(error) => {
+                return (
+                    Err(MutationError::Volume { error }),
+                    super::analytics::InstantTarget::Volume,
+                );
+            }
+        }
+    }
     let descriptor = rename_descriptor(&from, &to, &volume_id);
     // Journal the rename as a single-item op under the REAL volume id. Snapshot the
     // source kind BEFORE the closure moves `from`/`to` and the rename fires: local
@@ -317,6 +386,53 @@ async fn rename_managed_inner(
         }
     }
     (result, super::analytics::InstantTarget::Volume)
+}
+
+/// Starts the background move a rename that copies runs as
+/// (`routing::start_rename_by_move`): `from` moves into `to`'s folder under
+/// `to`'s name. A confirmed replace (`force`) runs under Overwrite; anything
+/// else asks on a clash, which only a race can bring, since the name was
+/// checked free just above.
+async fn start_rename_as_move(
+    from: &Path,
+    to: &Path,
+    force: bool,
+    volume_id: &str,
+    initiator: Initiator,
+) -> Result<(), MutationError> {
+    let events = archive_edit::global_tauri_sink().ok_or_else(|| MutationError::Unexpected {
+        detail: "the operation manager isn't ready to start a move".to_string(),
+    })?;
+    let parent = to.parent().ok_or(MutationError::CantRenameVolumeRoot)?;
+    let config = super::types::VolumeCopyConfig {
+        conflict_resolution: if force {
+            super::types::ConflictResolution::Overwrite
+        } else {
+            super::types::ConflictResolution::Stop
+        },
+        ..super::types::VolumeCopyConfig::default()
+    };
+    super::routing::start_rename_by_move(
+        events,
+        volume_id.to_string(),
+        vec![(from.to_path_buf(), name_of(to))],
+        parent.display().to_string(),
+        config,
+        initiator,
+        None,
+    )
+    .await
+    .map(|started| {
+        log::info!(
+            target: "volume",
+            "rename of {} runs as move {} on '{volume_id}'",
+            from.display(),
+            started.operation_id
+        );
+    })
+    .map_err(|e| MutationError::Unexpected {
+        detail: format!("the move a rename runs as couldn't start: {e:?}"),
+    })
 }
 
 /// Where a volume rename of `from` to `to` really lands (`look_alike.rs`).
@@ -645,6 +761,7 @@ pub(crate) async fn check_rename_validity_impl(
             has_conflict: false,
             is_case_only_rename: false,
             conflict: None,
+            by_move: None,
         };
     }
 
@@ -657,6 +774,7 @@ pub(crate) async fn check_rename_validity_impl(
             has_conflict: false,
             is_case_only_rename: false,
             conflict: None,
+            by_move: None,
         };
     }
 
@@ -673,6 +791,7 @@ pub(crate) async fn check_rename_validity_impl(
             // MTP is case-sensitive, no case-only rename ambiguity
             is_case_only_rename: false,
             conflict: conflict_info.1,
+            by_move: rename_by_move_cost(&volume_id, &old_path).await,
         }
     } else {
         // Local filesystem: use symlink_metadata with inode comparison
@@ -683,8 +802,30 @@ pub(crate) async fn check_rename_validity_impl(
             has_conflict: conflict_info.0,
             is_case_only_rename: conflict_info.1,
             conflict: conflict_info.2,
+            // The local disk renames everything in one call.
+            by_move: None,
         }
     }
+}
+
+/// What renaming `old_path` would carry when it runs as a move, `None` when
+/// it's one call (or the volume is gone, which the rename itself reports).
+/// The count is bounded ([`SMALL_RENAME_FILES`] plus one), so F2 on a huge
+/// folder answers without listing all of it.
+async fn rename_by_move_cost(volume_id: &str, old_path: &Path) -> Option<RenameByMove> {
+    let volume = crate::file_system::volume::manager::get_volume_manager().get(volume_id)?;
+    match volume.rename_work(old_path).await {
+        Ok(RenameWork::CopyThenDelete) => {}
+        Ok(RenameWork::OneCall) | Err(_) => return None,
+    }
+    let tally = match volume.tally_subtree(old_path, SMALL_RENAME_FILES).await {
+        Ok(tally) => Some(tally),
+        Err(e) => {
+            log::debug!(target: "volume", "couldn't count what renaming {} carries: {e}", old_path.display());
+            None
+        }
+    };
+    Some(RenameByMove::from_tally(tally))
 }
 
 /// Checks if a file with `new_path` exists and whether it's the same inode as `old_path`

@@ -38,7 +38,7 @@ use super::super::types::{OpStatus, ProposalVerb};
 use crate::file_system::volume::Volume;
 use crate::file_system::write_operations::{
     BulkRenameRow, ExpectedSources, OperationEventSink, SourceFingerprint, VolumeCopyConfig, WriteOperationConfig,
-    WriteOperationError, WriteOperationStartResult, delete_files_start, resolve_source_volume, start_bulk_rename,
+    WriteOperationError, WriteOperationStartResult, delete_files_start, resolve_source_volume, start_renames,
     start_volume_compress, start_volume_copy, start_volume_move, trash_files_start,
 };
 use crate::operation_log::types::Initiator;
@@ -259,7 +259,9 @@ async fn start_for(
         ProposalVerb::Rename => {
             let (parent, _) = target_of(group)?;
             let rows = rename_rows(&parent, ops, &expected)?;
-            start_bulk_rename(events, group.source_volume_id.clone(), rows, Initiator::Agent)
+            // Routed: where a rename copies (an S3 folder), the batch runs as one move.
+            start_renames(events, group.source_volume_id.clone(), rows, Initiator::Agent)
+                .await
                 .map_err(|detail| ApprovalRefusal::EngineRefused { detail })
         }
     }

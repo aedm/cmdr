@@ -9,7 +9,7 @@ use crate::file_system::{
     CONFLICT_CHECK_BUDGET, OperationEventSink, ScanConflict, SourceItemInput, TauriEventSink, VolumeCopyConfig,
     VolumeCopyScanResult, VolumeScanError, WriteOperationError, WriteOperationStartResult, resolve_dest_path,
     resolve_source_volume, scan_for_volume_copy as ops_scan_for_volume_copy, scan_volume_for_conflicts_within,
-    start_volume_compress, start_volume_copy, start_volume_move,
+    start_rename_by_move, start_volume_compress, start_volume_copy, start_volume_move,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -71,6 +71,35 @@ pub async fn move_between_volumes(
         config.unwrap_or_default(),
         initiator.unwrap_or(Initiator::User),
         // No source binding: the user picked these in the pane they are looking at.
+        None,
+    )
+    .await
+}
+
+/// A rename that runs as a move on one volume: `source_path` moves into
+/// `dest_path` under `new_name`. What the Move dialog confirms when F2 opens
+/// it for a rename that copies (an S3 folder past the small-rename count,
+/// `RenameValidityResult::by_move`). Same events as `move_between_volumes`.
+#[tauri::command]
+#[specta::specta]
+pub async fn rename_by_move(
+    app: tauri::AppHandle,
+    volume_id: String,
+    source_path: String,
+    dest_path: String,
+    new_name: String,
+    config: Option<VolumeCopyConfig>,
+    initiator: Option<Initiator>,
+) -> Result<WriteOperationStartResult, WriteOperationError> {
+    let events: Arc<dyn OperationEventSink> = Arc::new(TauriEventSink::new(app));
+    start_rename_by_move(
+        events,
+        volume_id,
+        vec![(PathBuf::from(source_path), new_name)],
+        dest_path,
+        config.unwrap_or_default(),
+        initiator.unwrap_or(Initiator::User),
+        // No source binding: the user picked it in the pane they are looking at.
         None,
     )
     .await

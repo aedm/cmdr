@@ -384,6 +384,19 @@ pub async fn stored_mtime_header(service: FixtureService, bucket: &str, key: &st
     answer.header(crate::metadata::MTIME_HEADER).map(str::to_string)
 }
 
+/// The `x-amz-meta-cmdr-write` token an object carries: every PUT Cmdr streams
+/// writes a fresh one, and a server-side copy of an object that had none
+/// writes none, so it tells a streamed copy from a server-side one.
+pub async fn stored_write_token(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
+    let client = seeding_client(service);
+    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
+    let answer = client
+        .exchange(request, QUERY_BUDGET)
+        .await
+        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
+    answer.header(crate::metadata::WRITE_TOKEN_HEADER).map(str::to_string)
+}
+
 /// Bytes as a copy's source: in pieces of `piece` bytes, with a known length
 /// or not, and the modification time a destination should keep.
 pub struct BytesSource {

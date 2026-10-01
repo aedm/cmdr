@@ -193,6 +193,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::dismiss_all_failed_operations,
                     crate::commands::file_system::copy_between_volumes,
                     crate::commands::file_system::move_between_volumes,
+                    crate::commands::file_system::rename_by_move,
                     crate::commands::file_system::compress_files,
                     crate::commands::file_system::scan_volume_for_copy,
                     crate::commands::file_system::scan_volume_for_conflicts,

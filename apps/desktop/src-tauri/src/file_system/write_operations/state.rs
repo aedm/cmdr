@@ -165,6 +165,14 @@ pub struct WriteOperationState {
     /// state and not the volume ids, exactly like `journal_volumes` above.
     /// `super::transfer_sides` says why the names can't be looked up later.
     pub(crate) sides: Option<super::transfer_sides::TransferSides>,
+    /// The NAME a top-level source takes at the destination when it isn't its
+    /// own, keyed by source path: a rename that runs as a move (a folder on an
+    /// object store, `Volume::rename_work`). Empty for every ordinary
+    /// transfer. Read by the async transfer driver, the one place a
+    /// destination path is built; set through
+    /// [`with_target_names`](Self::with_target_names). Carried here for the
+    /// same reason as `journal_volumes`.
+    pub(crate) target_names: super::target_names::TargetNames,
     /// Destination `.cmdr-tmp-*` paths this operation is CURRENTLY streaming
     /// bytes into, so an abandoned transfer's litter can be found and removed.
     ///
@@ -238,6 +246,7 @@ impl WriteOperationState {
             human_wait,
             journal_volumes: None,
             sides: None,
+            target_names: super::target_names::TargetNames::default(),
             in_flight_temps: std::sync::Mutex::new(Vec::new()),
             in_flight_ledger: None,
             last_progress: std::sync::Mutex::new(None),
@@ -326,6 +335,14 @@ impl WriteOperationState {
     /// in the volume copy/move bodies journal under the REAL volume ids.
     pub fn with_journal_volumes(mut self, source_volume_id: String, dest_volume_id: String) -> Self {
         self.journal_volumes = Some((source_volume_id, dest_volume_id));
+        self
+    }
+
+    /// Set the names top-level sources take at the destination (see
+    /// [`target_names`](Self::target_names)). Chained before wrapping the
+    /// state in an `Arc`.
+    pub(crate) fn with_target_names(mut self, target_names: super::target_names::TargetNames) -> Self {
+        self.target_names = target_names;
         self
     }
 

@@ -34,7 +34,7 @@ use super::preflight::{SourceHint, source_merges_as_a_directory, top_level_move_
 use super::rename_merge::{RenameMergeCtx, rename_merge_directory};
 use super::strategy::Replaces;
 use super::transfer_error::{PathRole, map_volume_error};
-use crate::file_system::volume::{EntryKind, Volume, VolumeError};
+use crate::file_system::volume::{EntryKind, RenameWork, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::OpKind;
 
@@ -64,6 +64,7 @@ pub(super) async fn move_within_same_volume(
     source_paths: Vec<PathBuf>,
     dest_path: PathBuf,
     config: VolumeCopyConfig,
+    target_names: super::super::super::target_names::TargetNames,
     initiator: crate::operation_log::types::Initiator,
     expected_sources: Option<crate::file_system::write_operations::source_binding::ExpectedSources>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
@@ -83,7 +84,8 @@ pub(super) async fn move_within_same_volume(
     // the per-item record point in `_with_progress` reads it off the state.
     let state = Arc::new(
         WriteOperationState::new(Duration::from_millis(progress_interval_ms))
-            .with_journal_volumes(volume_id.clone(), volume_id.clone()),
+            .with_journal_volumes(volume_id.clone(), volume_id.clone())
+            .with_target_names(target_names),
     );
     let journal_volume_id = volume_id.clone();
 
@@ -213,6 +215,21 @@ pub(super) async fn move_within_same_volume(
     })
 }
 
+/// Whether any of `sources` can't be renamed in one call on `volume`, which
+/// sends the whole move through the copy-then-delete engine. Asks each entry
+/// (`Volume::rename_work`); a volume that renames everything in one call
+/// answers with no I/O.
+async fn moves_by_copy(volume: &Arc<dyn Volume>, sources: &[PathBuf]) -> Result<bool, WriteOperationError> {
+    for source in sources {
+        match volume.rename_work(source).await {
+            Ok(RenameWork::OneCall) => {}
+            Ok(RenameWork::CopyThenDelete) => return Ok(true),
+            Err(e) => return Err(map_volume_error(&source.display().to_string(), PathRole::Source, e)),
+        }
+    }
+    Ok(false)
+}
+
 /// Journal one moved top-level item of a same-volume move: the `rollback_unit`
 /// row (one rename-back reverses the whole subtree) plus the buffered `search_only`
 /// leaves. `overwrote` is the OR of the top-level file→file overwrite (recorded in
@@ -319,8 +336,9 @@ pub(crate) async fn move_within_same_volume_with_progress(
     // `../DETAILS.md` § "Self-collision (duplicating in place)".
     let (already_in_place, remaining): (Vec<PathBuf>, Vec<PathBuf>) =
         source_paths.iter().cloned().partition(|source| {
-            source
-                .file_name()
+            state
+                .target_names
+                .name_for(source)
                 .map(|name| is_the_same_volume_path(source, &dest_path.join(name)))
                 .unwrap_or(false)
         });
@@ -339,6 +357,30 @@ pub(crate) async fn move_within_same_volume_with_progress(
     }
     let already_in_place = already_in_place.len();
     let source_paths = &remaining[..];
+
+    // ❗ An entry whose rename isn't one call here (an object store's folder or
+    // big file, `Volume::rename_work`) is never handed to `rename`: the whole
+    // move runs through the copy-then-delete engine on this one volume, which
+    // copies server-side where the backend can and deletes the sources only
+    // after their copies landed. The worst a crash leaves is duplicates.
+    if moves_by_copy(&volume, source_paths).await? {
+        log::info!(
+            "move_within_same_volume: {} renames by copy, so op={operation_id} copies then deletes",
+            volume.name()
+        );
+        return super::move_cross::move_volumes_with_progress(
+            events,
+            operation_id,
+            state,
+            Arc::clone(&volume),
+            source_paths,
+            Arc::clone(&volume),
+            dest_path,
+            config,
+        )
+        .await
+        .map_err(|failure| failure.error);
+    }
 
     // Top-level hints, NOT a deep pre-flight scan. A same-volume move is a
     // rename — it transfers zero bytes, so there's no Size bar to feed (the FE

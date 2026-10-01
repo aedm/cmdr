@@ -24,6 +24,7 @@ use super::super::super::journal;
 use super::super::super::manager;
 use super::super::super::source_binding::{ExpectedSources, retain_bound_sources_on};
 use super::super::super::state::WriteOperationState;
+use super::super::super::target_names::TargetNames;
 use super::super::super::types::{
     VolumeCopyConfig, WriteOperationConfig, WriteOperationError, WriteOperationStartResult, WriteOperationType,
 };
@@ -55,10 +56,12 @@ pub async fn move_between_volumes(
     dest_volume: Arc<dyn Volume>,
     dest_path: PathBuf,
     config: VolumeCopyConfig,
+    target_names: TargetNames,
     initiator: crate::operation_log::types::Initiator,
     expected_sources: Option<ExpectedSources>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
-    // Same volume: use native rename/move (instant for MTP)
+    // Same volume: use native rename/move (instant for MTP), or copy then
+    // delete where the volume's renames copy (`move_same.rs`).
     if Arc::ptr_eq(&source_volume, &dest_volume) {
         return move_within_same_volume(
             events,
@@ -67,10 +70,20 @@ pub async fn move_between_volumes(
             source_paths,
             dest_path,
             config,
+            target_names,
             initiator,
             expected_sources,
         )
         .await;
+    }
+
+    // A rename runs within one volume: the local and cross-volume engines
+    // below have no use for a new name, and would silently drop it.
+    if !target_names.is_empty() {
+        return Err(WriteOperationError::IoError {
+            path: dest_path.display().to_string(),
+            message: "a rename that runs as a move stays on one volume".to_string(),
+        });
     }
 
     // Both local: delegate to the battle-tested move implementation

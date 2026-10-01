@@ -98,7 +98,8 @@ pub use write_operations::{
 // there is one routing to keep right. `write_operations/routing.rs`.
 pub use write_operations::{VolumeCopyConfig, VolumeCopyScanResult, scan_for_volume_copy};
 pub(crate) use write_operations::{
-    resolve_dest_path, resolve_source_volume, start_volume_compress, start_volume_copy, start_volume_move,
+    resolve_dest_path, resolve_source_volume, start_rename_by_move, start_volume_compress, start_volume_copy,
+    start_volume_move,
 };
 // The transfer dialog's pre-flight conflict check (`write_operations::
 // conflict_preflight`), reached by the thin `#[tauri::command]` wrapper in

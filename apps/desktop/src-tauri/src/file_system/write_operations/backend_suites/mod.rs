@@ -85,7 +85,10 @@ mod smb_transfer_safety_test;
 mod smb_transfer_semantics_test;
 
 // S3: gated on the Docker fixture and named for the `s3_integration_` lane.
-// Copies off a bucket only, until the volume writes.
+// Copies onto, off, and between buckets; renames that run as moves, and
+// copies inside one account.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_rename_integration_test;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod s3_transfer_integration_test;
 

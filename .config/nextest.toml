@@ -436,6 +436,19 @@ slow-timeout = { period = "20s", terminate-after = 1 }
 retries = 2
 
 [[profile.default.overrides]]
+# The S3 folder rename past a thousand objects
+# (`backend_suites/s3_rename_integration_test.rs`), on both fixtures. It has to be
+# that big: the source sweep pages its `DeleteObjects` past the first 1,000 keys,
+# and that paging is the point. So a cell seeds 1,005 objects and the engine then
+# copies, verifies, and deletes each one, about four thousand requests. Alone it
+# runs in ~1.7 s (measured 2026-10-01, M3 Max); with the whole `s3_integration_`
+# lane running at once against the one shared fixture stack it passed 8 s and was
+# killed mid-copy. ❌ Don't read 30 s as a runtime: it's the hang backstop with
+# headroom for a busy stack.
+filter = 'test(a_folder_of_1005_objects_renames_through_the_engine)'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[[profile.default.overrides]]
 # The sabre/dav cells (`crates/cmdr-webdav/src/volume/nextcloud_test.rs`), which
 # `desktop-rust-webdav-nextcloud` runs against a real Nextcloud in Docker.
 #
