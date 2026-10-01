@@ -313,5 +313,6 @@ async function editServer(volumeId: string, volumeName: string): Promise<void> {
     log.info('Editing {volumeName} found no saved server behind it', { volumeName })
     return
   }
-  await openEditServerSheet(server)
+  // ❗ The place too: an S3 account's buckets are each saved, and edited, on their own.
+  await openEditServerSheet(server, volumeId)
 }

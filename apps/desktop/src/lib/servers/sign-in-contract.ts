@@ -174,8 +174,12 @@ export type SignInSheetRequest =
        */
       refusal?: ConnectRefusalKind
     }
-  /** Change a saved server: the add form prefilled, plus the two switches. */
-  | { mode: 'edit'; server: SavedServer }
+  /**
+   * Change a saved server: the add form prefilled, plus the two switches. `placeVolumeId`
+   * names WHICH place for a server with many editable ones (an S3 account's buckets,
+   * each its own saved entry); absent, the server's one place is meant.
+   */
+  | { mode: 'edit'; server: SavedServer; placeVolumeId?: string }
 
 /** How the sheet closed. */
 export type SignInSheetResult =

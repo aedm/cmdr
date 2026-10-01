@@ -153,9 +153,12 @@ export async function placeRootOf(volumeId: string): Promise<string | null> {
   return null
 }
 
-/** Opens edit mode on a saved server. Save writes; nothing dials. */
-export async function openEditServerSheet(server: SavedServer): Promise<SignInSheetResult> {
-  return await openSignInSheet({ mode: 'edit', server })
+/**
+ * Opens edit mode on a saved server. Save writes; nothing dials. `placeVolumeId` picks the
+ * place for a server whose places are each saved on their own (an S3 account's buckets).
+ */
+export async function openEditServerSheet(server: SavedServer, placeVolumeId?: string): Promise<SignInSheetResult> {
+  return await openSignInSheet({ mode: 'edit', server, placeVolumeId })
 }
 
 /**
