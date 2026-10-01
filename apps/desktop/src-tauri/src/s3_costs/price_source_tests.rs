@@ -6,8 +6,19 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::*;
 use crate::test_support::TestDir;
 
-const BUNDLED_JSON: &str = include_str!("../../../../../crates/cmdr-s3/src/cost/s3-prices.json");
+/// A minimal valid table, inline: embedding the crate's file from here would
+/// leave a price edit invisible to this crate's check lanes.
+const SERVED_JSON: &str = r#"{"schemaVersion": 1, "providers": {"aws": {"label": "AWS", "currency": "USD",
+  "asOf": "2026-10-01", "source": "https://example.com", "requestClasses": [{"name": "All", "perMillion": 1,
+  "operations": ["PutObject", "CopyObject", "CreateMultipartUpload", "UploadPart", "UploadPartCopy",
+  "CompleteMultipartUpload", "ListObjectsV2", "GetObject", "HeadObject", "DeleteObject", "DeleteObjects",
+  "AbortMultipartUpload"]}], "egressPerGb": 0.09, "storagePerGbMonth": 0.023, "minimumStorageDays": 0,
+  "minimumBillableObjectBytes": 0}}}"#;
 const HOUR: Duration = Duration::from_secs(60 * 60);
+
+fn expected_table() -> PriceTable {
+    PriceTable::parse(SERVED_JSON).expect("the inline table is valid")
+}
 
 async fn serving(response: ResponseTemplate) -> (MockServer, String) {
     let server = MockServer::start().await;
@@ -18,10 +29,10 @@ async fn serving(response: ResponseTemplate) -> (MockServer, String) {
 
 #[tokio::test]
 async fn a_served_table_parses_and_comes_back_with_its_json() {
-    let (_server, url) = serving(ResponseTemplate::new(200).set_body_string(BUNDLED_JSON)).await;
+    let (_server, url) = serving(ResponseTemplate::new(200).set_body_string(SERVED_JSON)).await;
     let (table, json) = fetch(&url).await.expect("a valid table");
-    assert_eq!(table, PriceTable::bundled());
-    assert_eq!(json, BUNDLED_JSON);
+    assert_eq!(table, expected_table());
+    assert_eq!(json, SERVED_JSON);
 }
 
 #[tokio::test]
@@ -46,8 +57,8 @@ fn the_cache_round_trips_and_a_bad_one_is_ignored() {
     let path = dir.join(CACHE_FILE);
     assert!(read_cache(&path).is_none(), "no file yet");
 
-    write_cache(&path, BUNDLED_JSON).expect("written");
-    assert_eq!(read_cache(&path), Some(PriceTable::bundled()));
+    write_cache(&path, SERVED_JSON).expect("written");
+    assert_eq!(read_cache(&path), Some(expected_table()));
 
     std::fs::write(&path, "{not json").expect("written");
     assert!(read_cache(&path).is_none(), "a broken cache falls back");
