@@ -30,6 +30,8 @@
     import { tooltip } from '$lib/tooltip/tooltip'
     import { getAppLogger } from '$lib/logging/logger'
     import { ScanThroughput } from '../scan-throughput'
+    import S3CostLine from '../S3CostLine.svelte'
+    import { costRequestFor } from '../s3-cost-line'
     import { useShortenMiddle } from '$lib/utils/shorten-middle-action'
     import { withTimeout } from '$lib/utils/timing'
     import Trans from '$lib/intl/Trans.svelte'
@@ -194,6 +196,16 @@
      *  bare `Math.round` produced. `null` once it rounds to nothing, which is
      *  also what hides the line. */
     const scanRate = $derived(filesPerSec === null ? null : formatFilesPerSecond(filesPerSec))
+    // Priced as a permanent delete only: a trash is unpriced, so it gets no line.
+    const costRequest = $derived(
+        costRequestFor({
+            operation: isPermanent ? 'delete' : 'trash',
+            scanComplete,
+            previewId,
+            sourceVolumeId,
+            destinationVolumeId: null,
+        }),
+    )
     let unlisteners: UnlistenFn[] = []
     /** Set first thing in `onDestroy`. A plain `let`, read by `startScan`, which can outlive the dialog. */
     let destroyed = false
@@ -571,6 +583,7 @@
                 </span>
             {/if}
         </div>
+        <S3CostLine request={costRequest} />
 
         <!-- Throughput -->
         {#if isScanning && scanRate !== null}

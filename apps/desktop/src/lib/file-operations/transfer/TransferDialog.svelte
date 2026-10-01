@@ -15,6 +15,8 @@
     import { conflictPolicyFromMcpName } from './conflict-policy'
     import CompressLevelControl from './CompressLevelControl.svelte'
     import CompressEstimateLine from './CompressEstimateLine.svelte'
+    import S3CostLine from '../S3CostLine.svelte'
+    import { costRequestFor } from '../s3-cost-line'
     import ModalDialog from '$lib/ui/ModalDialog.svelte'
     import TextInput from '$lib/ui/TextInput.svelte'
     import Button from '$lib/ui/Button.svelte'
@@ -290,6 +292,10 @@
     )
 
     const confirmLabel = $derived(tString(confirmLabelKey(activeOperationType)))
+    // A same-volume move never scans, so it never asks.
+    const costRequest = $derived(
+        costRequestFor({ operation: activeOperationType, scanComplete, previewId: scan.previewId, sourceVolumeId, destinationVolumeId: selectedVolumeId }),
+    )
 
     /** Counting state for the tallies element, exposed as `data-scan-state` so
      *  E2E tests can wait race-free for the scan to settle before asserting the
@@ -785,6 +791,7 @@
                 </span>
             {/if}
         </div>
+        <S3CostLine request={costRequest} />
 
         <!-- The size scan couldn't finish. Said plainly, because the tallies
              above are now a floor rather than a total, and a dialog that goes

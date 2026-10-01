@@ -85,6 +85,7 @@ vi.mock('@tauri-apps/api/path', () => ({
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
+  estimateOperationCost: vi.fn(() => Promise.resolve([])),
   notifyDialogOpened: vi.fn(() => Promise.resolve()),
   notifyDialogClosed: vi.fn(() => Promise.resolve()),
   getVolumeSpace: vi.fn(() =>

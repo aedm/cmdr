@@ -1,4 +1,5 @@
-// S3 accounts: the account's secret and the unattended-reconnect query.
+// S3 accounts: the account's secret, the unattended-reconnect query, and the
+// list-price cost estimate a Copy, Move, or Delete dialog shows.
 // Connecting, cancelling, disconnecting, pinning, and forgetting go through the
 // protocol-agnostic `servers.ts`, which takes S3 places like any other.
 //
@@ -7,10 +8,16 @@
 // `crates/cmdr-s3/DETAILS.md`.
 
 import { commands } from '$lib/ipc/bindings'
-import type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from '$lib/ipc/bindings'
+import type {
+  CostEstimate,
+  CostEstimateRequest,
+  S3ProviderChoice,
+  S3UnattendedReconnect,
+  SavedS3Place,
+} from '$lib/ipc/bindings'
 import { throwKeychainError } from '$lib/servers/keychain-failure'
 
-export type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place }
+export type { CostEstimate, CostEstimateRequest, S3ProviderChoice, S3UnattendedReconnect, SavedS3Place }
 
 /**
  * Every saved S3 place, one per bucket (or account root), with the provider the
@@ -75,4 +82,15 @@ export async function deleteS3Credentials(provider: S3ProviderChoice, accessKeyI
  */
 export async function getS3UnattendedReconnect(volumeId: string): Promise<S3UnattendedReconnect | null> {
   return await commands.getS3UnattendedReconnect(volumeId)
+}
+
+/**
+ * What a planned copy, move, or delete costs at each involved provider's list
+ * prices, one entry per priced provider. Reads the dialog's settled scan preview
+ * by `previewId`, never S3, so it's cheap to ask unconditionally once the scan
+ * settles: it answers `[]` when neither end is a priced S3 place or the preview
+ * isn't settled. Pricing model: `apps/desktop/src-tauri/src/s3_costs/DETAILS.md`.
+ */
+export async function estimateOperationCost(request: CostEstimateRequest): Promise<CostEstimate[]> {
+  return await commands.estimateOperationCost(request)
 }

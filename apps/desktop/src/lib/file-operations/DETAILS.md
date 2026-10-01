@@ -50,6 +50,29 @@ Umbrella-level files:
   reads `errorMessage` / `isChecking` and writes `errorMessage` back when the create is refused.
 - `cursor-entry.ts`: `getCursorEntry()`, the backend entry under the pane's cursor with the `..` row shift applied once,
   so the two dialogs' pre-fills (`getInitialFolderName` / `getInitialFileName`) can't drift.
+- `S3CostLine.svelte` + `s3-cost-line.ts`: the list-price cost estimate under the Copy, Move, and Delete dialogs' scan
+  tallies (§ below).
+
+## S3 cost line
+
+"About $0.02 at AWS list prices", one line per priced provider, then one `InfoTip` saying free tiers, discounts,
+allowances, and minimums can move the bill. The pricing itself is Rust's (`src-tauri/src/s3_costs/DETAILS.md`); this
+side only asks and shows.
+
+- **When it asks**: `costRequestFor` builds the request once the dialog's scan has settled AND its preview id is known;
+  before that it's `null` and the line asks nothing. The backend reads that settled preview, never S3, and answers `[]`
+  when neither end is a priced S3 place, so a dialog asks unconditionally. `S3CostLine` asks once per distinct request
+  (keyed by value) and drops an answer to a request that's since changed.
+- **Who asks**: `TransferDialog` for copy and move (❌ not compress), destination = the picked volume. F2's
+  rename-by-move rides it. A same-volume move skips its scan (`isSameVolumeMove`), so it gets no line: a server-side
+  rename costs next to nothing. `DeleteDialog` for a permanent delete only; a trash is unpriced, so flipping the switch
+  hides the line.
+- **Hide rule**: an estimate that rounds to zero in its currency's minor unit (`roundsToZero`, read off the formatter's
+  own `maximumFractionDigits`) gets no line; when none is left, nothing renders. A refusal renders nothing and logs at
+  debug.
+- **Money goes through `formatMoney`** (`$lib/intl/number-format.ts`), so it follows the OS formatting locale.
+- ❌ **No estimate on a rollback or an undo**: those just run. `RollbackConfirmDialog` never mounts the line, pinned by
+  `S3CostLine.svelte.test.ts`.
 
 ## Mutation refusals (rename, New Folder, New File, single trash)
 

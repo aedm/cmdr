@@ -90,7 +90,8 @@ commands, and notable non-obvious placements.
 - **`s3.ts`**: S3 accounts minus everything the servers family already speaks (connect, cancel, disconnect, pin, forget
   all take S3 places): the ACCOUNT's secret trio, keyed on the provider choice plus the access key id, so every bucket
   under one key shares it, and the unattended-reconnect query. The model and every connect outcome:
-  `crates/cmdr-s3/DETAILS.md`.
+  `crates/cmdr-s3/DETAILS.md`. Also `estimateOperationCost`, the list-price estimate the Copy, Move, and Delete dialogs
+  ask once their scan preview settles (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`).
 - **`licensing.ts`**: license status, activation, expiry, server validation.
 - **`settings.ts`**: port checking, file watcher debounce, indexing toggle, MCP server control, AI subsystem commands.
 - **`tab.ts`**: tab context menu: `showTabContextMenu`, `onTabContextAction`.

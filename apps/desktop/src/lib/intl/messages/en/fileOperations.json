@@ -509,6 +509,25 @@
     "description": "Tooltip on the \"Estimated size\" label in the Compress dialog, clarifying the number is a quick approximation and the real packed size may differ. \"zip\" is a file format; do not translate it."
   },
 
+  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "@fileOperations.s3Cost.line": {
+    "description": "One line in the Copy, Move, and Delete confirmation dialogs, shown once the size scan finishes when the source or destination is cloud storage (S3). It estimates what the operation will cost on the user's cloud bill, at the provider's published (list) prices. One line per provider involved; an ⓘ after the line(s) explains the estimate. \"About\" signals it's an approximation. \"list prices\" means the provider's public, undiscounted price list.",
+    "placeholders": {
+      "amount": "the estimated cost, already formatted with its currency (e.g. $0.02 or €1.50)",
+      "provider": "the cloud storage provider's name (e.g. AWS, Cloudflare R2, Backblaze B2, Wasabi, Hetzner); a brand name, never translated"
+    }
+  },
+
+  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "@fileOperations.s3Cost.infoLabel": {
+    "description": "Accessible name (read by screen readers) of the ⓘ button after the cloud storage cost estimate in the Copy, Move, and Delete dialogs. Hovering or focusing it shows the explanation in fileOperations.s3Cost.infoText. Here \"About\" means \"regarding\", not \"approximately\"."
+  },
+
+  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "@fileOperations.s3Cost.infoText": {
+    "description": "Tooltip behind the ⓘ after the cloud storage cost estimate in the Copy, Move, and Delete dialogs. Explains that the estimate uses the provider's published prices, so the real bill can differ. \"Free tiers\" are a provider's no-cost usage allowances; \"minimum charges\" are fees a provider bills even for tiny usage."
+  },
+
   "fileOperations.transferDialog.scanUnresponsive": "The source isn’t responding, so this size is all we could count.",
   "@fileOperations.transferDialog.scanUnresponsive": {
     "description": "Shown in the transfer dialog when the size scan gave up because the source volume (a network share, say) stopped answering. The counters above it stay on screen, so the sentence explains that they're a partial count rather than a total. A 'Try again' button sits beside it."

@@ -998,8 +998,8 @@ export {
 } from './webdav'
 export type { KnownWebdavServer, SavedWebdavServer, WebdavUnattendedReconnect } from './webdav'
 
-// S3 accounts: the account's secret and the unattended-reconnect query.
-// Everything else goes through the protocol-agnostic servers family above.
+// S3 accounts: the account's secret, the unattended-reconnect query, and the
+// list-price cost estimate for a planned operation. Everything else goes through the protocol-agnostic servers family above.
 export {
   saveS3Credentials,
   hasS3Credentials,
@@ -1007,7 +1007,8 @@ export {
   getS3UnattendedReconnect,
   getKnownS3Places,
   knownS3PlaceOf,
+  estimateOperationCost,
 } from './s3'
-export type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from './s3'
+export type { CostEstimate, CostEstimateRequest, S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from './s3'
 
 export { confirmWithCheckbox } from './confirm-dialog'
