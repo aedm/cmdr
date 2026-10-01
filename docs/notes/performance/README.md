@@ -140,7 +140,8 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
   reaches it, and diff indices are the pane's rows: `hidden-entry-diffs-2026-09-23.md`.
 - **Rust heap**: the score cache, the MCP search arena's 30 s drop, the wake inbox paged to `main.db`, and the heap
   census: `rust-heap-attribution-2026-09-23.md`.
-- **SMB sockets**: fixed in `smb2` 0.24.1 (Cmdr ships 0.25.0): `smb2-socket-lifetime-2026-09-23.md`.
+- **SMB sockets**: fixed in `smb2` 0.24.1, and pinned in Cmdr by a mount/unmount Docker cell:
+  `smb2-socket-lifetime-2026-09-23.md`.
 - **mDNS log storm**: `vendor/mdns-sd` stops a multicast-join retry every 5 s on machines with a VM bridge:
   `docs/notes/mdns-sd-multicast-join-retry-loop.md`.
 - **`memory_diagnostics` over MCP**, release builds included: `docs/tooling/memory-debugging.md`.
@@ -213,7 +214,6 @@ Items that don't move the targets, each tracked in its own issue:
 - #323: a stuck-loop watchdog at the log sink, and third-party `log::error!` reaching Flow B.
 - #324: share lists prefetched for every discovered SMB host at launch.
 - #325: a sync-status pool thread wedged in a File Provider call.
-- #326: Cmdr's acceptance check for the `smb2` 0.24.1 socket fix.
 - #328: mimalloc's `os_tag` colliding with `VM_MEMORY_IOACCELERATOR`.
 - #308: refresh the Finder-style free space when purgeable space changes.
 - #134: load only the active language's messages.

@@ -1639,6 +1639,7 @@ dependencies = [
  "cmdr-fs",
  "cmdr-smb",
  "futures-util",
+ "libc",
  "log",
  "serde",
  "smb2",
