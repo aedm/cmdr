@@ -4428,6 +4428,12 @@
       "url": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec"
     },
     {
+      "name": "@jridgewell/sourcemap-codec",
+      "version": "1.6.0",
+      "license": "MIT",
+      "url": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec"
+    },
+    {
       "name": "@jridgewell/trace-mapping",
       "version": "0.3.31",
       "license": "MIT",
@@ -4447,7 +4453,7 @@
     },
     {
       "name": "@sveltejs/acorn-typescript",
-      "version": "1.0.11",
+      "version": "1.0.13",
       "license": "MIT",
       "url": "https://github.com/sveltejs/acorn-typescript#readme"
     },
@@ -4999,7 +5005,7 @@
     },
     {
       "name": "devalue",
-      "version": "5.9.0",
+      "version": "5.9.4",
       "license": "MIT",
       "url": "https://github.com/sveltejs/devalue#readme"
     },
@@ -5011,7 +5017,7 @@
     },
     {
       "name": "esrap",
-      "version": "2.2.13",
+      "version": "2.4.0",
       "license": "MIT",
       "url": "https://github.com/sveltejs/esrap#readme"
     },
@@ -5065,7 +5071,7 @@
     },
     {
       "name": "svelte",
-      "version": "5.57.0",
+      "version": "5.57.1",
       "license": "MIT",
       "url": "https://svelte.dev"
     },
