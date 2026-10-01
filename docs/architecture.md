@@ -93,7 +93,7 @@ All under `apps/desktop/src/lib/`.
 - `text-editor/`: which app F4 opens files in: reads the stored choice, launches through `openInEditor`, falls back to
   the system default with a toast when that app is gone, and points at the setting once with a hint. The Settings row is
   `apps/desktop/src/lib/settings/sections/TextEditorSelect.svelte`. See `apps/desktop/src/lib/text-editor/CLAUDE.md`
-- `go-to-path/`: "Go to path" (⌘G) dialog + handler: thin presenter over backend `resolve_go_to_path`, recents mirror
+- `go-to-path/`: "Go to folder" (⌘G) dialog + handler: thin presenter over backend `resolve_go_to_path`, recents mirror
 - `query-ui/`: Shared filter-and-act-on primitives for Search and Selection: `QueryBar`, `ModeChips`, `QueryResults`,
   recent-items, `createQueryFilterState()`
 - `query-ui/filter-chips/`: Filter chip popover subsystem (size/modified/scope/pattern)
@@ -261,7 +261,7 @@ All under `apps/desktop/src-tauri/src/`.
 - `search/`: In-memory search index (lazy load, rayon parallel scan, glob/regex) + AI query translation (`search/ai/`)
 - `selection/`: Selection dialog backend: recent-selections store + cloud AI translation (`selection/ai/`); the matcher
   itself runs in JS
-- `go_to_path/`: "Go to path" backend: pure path resolution + fixed-cap recent-paths store. IPC in
+- `go_to_path/`: "Go to folder" backend: pure path resolution + fixed-cap recent-paths store. IPC in
   `commands/go_to_path.rs`
 - `recents/`: The persisted recents list all three of those keep (dedupe, cap, durable JSON file, quarantine). A
   consumer supplies the entry type and its dedupe key. See `apps/desktop/src-tauri/src/recents/CLAUDE.md`

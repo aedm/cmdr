@@ -1214,9 +1214,6 @@
     "chosen": "Zu Pfad gehen",
     "confidence": "high",
     "decision": "Das Dock-Menü von Cmdr",
-    "exceptions": {
-      "menu.dock.goToFolder": "Cmdr’s Dock menu names Finder’s own command: Gehe zu Ordner …"
-    },
     "forms": "the dialog, its menu item, and the palette command; Cmdr's Dock menu names Finder's command instead: Gehe zu Ordner …",
     "sources": "derived from macOS (Gehe zu …, Gehe zu Ordner)"
   },

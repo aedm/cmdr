@@ -656,10 +656,6 @@
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
   },
-  "menu.dock.goToFolder": "前往資料夾⋯",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
-  },
   "menu.dock.connectToServer": "連接伺服器⋯",
   "@menu.dock.connectToServer": {
     "sourceHash": "6188f47"

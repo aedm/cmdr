@@ -1345,9 +1345,9 @@
   },
   "go-to-path": {
     "distinct": ["path", "navigate"],
-    "en": "Go to path",
+    "en": "Go to folder",
     "match": ["go to path", "go to folder"],
-    "sense": "The dialog and command for typing a path to navigate to."
+    "sense": "The dialog and command for typing a path to navigate to. Named after Finder's Go to Folder, so a locale uses Finder's wording."
   },
   "go-to-trash": {
     "distinct": ["move-to-trash"],

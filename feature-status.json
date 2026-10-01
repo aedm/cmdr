@@ -93,7 +93,7 @@
     },
     {
       "id": "go-to-path",
-      "name": "Go to path",
+      "name": "Go to folder",
       "status": "beta",
       "note": "Paste or type any path and jump there; it's new, so recents and edge-case path handling are still settling."
     },

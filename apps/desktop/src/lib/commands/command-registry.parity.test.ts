@@ -41,7 +41,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'suggestedOps.show': 'Suggested ops',
   'askCmdr.toggle': 'Ask Cmdr',
   'search.open': 'Search files',
-  'nav.goToPath': 'Go to path…',
+  'nav.goToPath': 'Go to folder…',
   'favorites.add': 'Add to favorites',
   'favorites.open': 'Show favorites',
   'favorites.openByNumber': 'Open the favorite with that number',

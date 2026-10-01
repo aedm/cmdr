@@ -657,10 +657,6 @@
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
   },
-  "menu.dock.goToFolder": "Gehe zu Ordner …",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
-  },
   "menu.dock.connectToServer": "Mit Server verbinden …",
   "@menu.dock.connectToServer": {
     "sourceHash": "6188f47"

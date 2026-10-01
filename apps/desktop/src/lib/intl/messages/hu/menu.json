@@ -656,10 +656,6 @@
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
   },
-  "menu.dock.goToFolder": "Ugrás mappához…",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
-  },
   "menu.dock.connectToServer": "Kapcsolódás szerverre…",
   "@menu.dock.connectToServer": {
     "sourceHash": "6188f47"

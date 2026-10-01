@@ -2127,7 +2127,6 @@ export type MessageKey =
   | 'menu.context.showInFolder'
   | 'menu.context.toggleSelection'
   | 'menu.dock.connectToServer'
-  | 'menu.dock.goToFolder'
   | 'menu.dock.locationInParent'
   | 'menu.dock.openCmdr'
   | 'menu.dock.searchFiles'

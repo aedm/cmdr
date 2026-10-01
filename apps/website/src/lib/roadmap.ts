@@ -363,7 +363,7 @@ export const roadmapSections: RoadmapSection[] = [
         milestones: [
           {
             date: '(Jun 3)',
-            title: 'Go to path',
+            title: 'Go to folder',
             description: '⌘G to jump anywhere: paste a path, ~ expansion, recent paths.',
             done: true,
           },

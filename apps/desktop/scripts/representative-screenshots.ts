@@ -343,7 +343,7 @@ export const REPRESENTATIVE_SCREENSHOTS: RepresentativeMapping[] = [
     prefix: 'goToPath.dialog.',
     screenshot: 'go-to-path.png',
     note:
-      'The Go to path dialog, pictured here. Your string belongs to a state this screenshot doesn’t show: its list of recent ' +
+      'The Go to folder dialog, pictured here. Your string belongs to a state this screenshot doesn’t show: its list of recent ' +
       'paths, or a hint under the field about the path you typed.',
   },
   {
