@@ -1,0 +1,6 @@
+{
+  "errorReporter.amend.unavailable": "That report can’t take a note any more. To get your notes to the team, send a new report from the Help menu.",
+  "@errorReporter.amend.unavailable": {
+    "sourceHash": "08ab034"
+  }
+}
