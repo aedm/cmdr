@@ -1,5 +1,5 @@
-//! The context-menu popups: file, breadcrumb, parent row, tab, network host, and the function key
-//! bar. (A volume switcher row's and a favorite's actions are the in-app `Menu`'s, not a popup
+//! The context-menu popups: file, breadcrumb, parent row, tab, network host, the function key
+//! bar, and the viewer's text. (A volume switcher row's and a favorite's actions are the in-app `Menu`'s, not a popup
 //! here: `apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`.)
 //!
 //! The pushes that keep the menu BAR in step with the frontend (view mode, hidden files, pin tab,
@@ -14,7 +14,7 @@ use crate::menu::context_menu_facts;
 use crate::menu::{
     ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, MenuState, SameKindTarget, build_breadcrumb_context_menu,
     build_context_menu, build_function_key_bar_context_menu, build_network_host_context_menu,
-    build_parent_row_context_menu, build_tab_context_menu,
+    build_parent_row_context_menu, build_tab_context_menu, build_viewer_context_menu,
 };
 use tauri::menu::ContextMenu;
 use tauri::{AppHandle, Manager, Runtime, Window};
@@ -431,6 +431,17 @@ pub fn show_function_key_bar_context_menu(window: Window<tauri::Wry>) -> Result<
     focus_for_context_menu(&window);
     menu.popup(window).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Shows the viewer's right-click menu over the file text (fire-and-forget), at the pointer.
+/// The pick comes back as `ViewerContextMenuAction` to this viewer, same shape as
+/// [`show_tab_context_menu`]. `has_selection` greys Copy: the selection model lives in the
+/// viewer's frontend, which reads it at open time.
+#[tauri::command]
+#[specta::specta]
+pub fn show_viewer_context_menu(window: Window<tauri::Wry>, has_selection: bool) -> Result<(), String> {
+    let menu = build_viewer_context_menu(window.app_handle(), has_selection).map_err(|e| e.to_string())?;
+    popup_context_menu(&menu, window, None)
 }
 
 /// Shows a native context menu for a servers hub row's SMB host (fire-and-forget).

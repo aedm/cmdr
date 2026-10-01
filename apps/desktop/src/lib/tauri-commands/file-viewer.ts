@@ -230,6 +230,15 @@ export async function viewerSetWordWrap(label: string, checked: boolean): Promis
 }
 
 /**
+ * Pops the viewer's native right-click menu (Copy, Select all) at the pointer. Copy is greyed
+ * unless `hasSelection`; the pick comes back through `onViewerContextMenuAction`.
+ */
+export async function showViewerContextMenu(hasSelection: boolean): Promise<void> {
+  const res = await commands.showViewerContextMenu(hasSelection)
+  if (res.status === 'error') throwIpcError(res.error)
+}
+
+/**
  * Tells the viewer menu bar whether this viewer's search box holds keyboard focus, which is what
  * decides whether its Edit > Cut and Edit > Paste look live: that box is the only editable field
  * in the window. Push it on the input's focus and blur, when the search bar closes, and on the

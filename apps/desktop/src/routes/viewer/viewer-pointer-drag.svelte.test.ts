@@ -27,6 +27,7 @@ interface Harness {
   setAnchor: Mock<SetOffset>
   setFocus: Mock<SetOffset>
   setRange: Mock<SetRange>
+  showContextMenu: Mock<() => void>
 }
 
 function rect(left: number, top: number, right: number, bottom: number): DOMRect {
@@ -82,6 +83,7 @@ function mountHarness(): Harness {
     setAnchor: vi.fn<SetOffset>(),
     setFocus: vi.fn<SetOffset>(),
     setRange: vi.fn<SetRange>(),
+    showContextMenu: vi.fn<() => void>(),
   }
 }
 
@@ -102,6 +104,7 @@ function createDrag(
     takeFocus: () => {
       harness.container.focus({ preventScroll: true })
     },
+    showContextMenu: harness.showContextMenu,
   })
 }
 
@@ -385,5 +388,17 @@ describe('viewer drag granularity', () => {
 
     expect(harness.setFocus).toHaveBeenLastCalledWith({ row: 1, offset: 4 })
     expect(harness.setRange).not.toHaveBeenCalled()
+  })
+})
+
+describe('viewer right-click', () => {
+  it('suppresses the webview menu and asks for the native one', () => {
+    const drag = createDrag(harness, 'hello world')
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 })
+
+    drag.handleContextMenu(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(harness.showContextMenu).toHaveBeenCalledOnce()
   })
 })

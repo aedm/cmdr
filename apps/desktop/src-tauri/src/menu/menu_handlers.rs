@@ -26,8 +26,8 @@ use super::{
     SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged,
     TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID,
     VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID,
-    VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode,
-    ViewModeChanged, menu_id_to_command,
+    VIEWER_CONTEXT_COPY_ID, VIEWER_CONTEXT_SELECT_ALL_ID, VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID,
+    VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -197,6 +197,16 @@ fn viewer_edit_action_for(menu_id: &str) -> Option<ViewerEditActionKind> {
     match menu_id {
         VIEWER_EDIT_COPY_ID => Some(ViewerEditActionKind::Copy),
         VIEWER_SELECT_ALL_ID => Some(ViewerEditActionKind::SelectAll),
+        _ => None,
+    }
+}
+
+/// The viewer right-click menu's action a clicked item id names, or `None` when the id isn't one
+/// of them.
+fn viewer_context_action_for(menu_id: &str) -> Option<ViewerEditActionKind> {
+    match menu_id {
+        VIEWER_CONTEXT_COPY_ID => Some(ViewerEditActionKind::Copy),
+        VIEWER_CONTEXT_SELECT_ALL_ID => Some(ViewerEditActionKind::SelectAll),
         _ => None,
     }
 }
@@ -394,6 +404,18 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         };
         use tauri_specta::Event as _;
         let _ = crate::window_events::ViewerEditAction { action }.emit_to(app, &label);
+        return;
+    }
+
+    // === The viewer's right-click menu: emit to the viewer it was popped over ===
+    // `show_viewer_context_menu` focused that window before the popup, so the focused one is it.
+    if let Some(action) = viewer_context_action_for(id) {
+        let Some(label) = focused_viewer_label(app) else {
+            log::warn!(target: "menu", "Viewer context item {id} clicked with no viewer focused, ignoring");
+            return;
+        };
+        use tauri_specta::Event as _;
+        let _ = crate::window_events::ViewerContextMenuAction { action }.emit_to(app, &label);
         return;
     }
 
@@ -787,6 +809,29 @@ mod viewer_edit_action_tests {
         assert_eq!(viewer_edit_action_for(SELECT_ALL_ID), None);
         assert_eq!(viewer_edit_action_for(VIEWER_WORD_WRAP_ID), None);
         assert_eq!(viewer_edit_action_for("unknown_id"), None);
+    }
+
+    #[test]
+    fn the_viewer_context_menus_items_name_their_action() {
+        assert_eq!(
+            viewer_context_action_for(VIEWER_CONTEXT_COPY_ID),
+            Some(ViewerEditActionKind::Copy)
+        );
+        assert_eq!(
+            viewer_context_action_for(VIEWER_CONTEXT_SELECT_ALL_ID),
+            Some(ViewerEditActionKind::SelectAll)
+        );
+    }
+
+    /// ❗ The bar's pair defers to the search box when it has focus; the right-click pair
+    /// always acts on the file. Crossing the two would copy the query from a menu opened over
+    /// the text, or the reverse.
+    #[test]
+    fn the_bar_and_the_context_menu_never_share_an_item() {
+        assert_eq!(viewer_context_action_for(VIEWER_EDIT_COPY_ID), None);
+        assert_eq!(viewer_context_action_for(VIEWER_SELECT_ALL_ID), None);
+        assert_eq!(viewer_edit_action_for(VIEWER_CONTEXT_COPY_ID), None);
+        assert_eq!(viewer_edit_action_for(VIEWER_CONTEXT_SELECT_ALL_ID), None);
     }
 }
 

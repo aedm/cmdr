@@ -439,21 +439,6 @@
     "screenshot": "viewer-search.png",
     "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
   },
-  "viewer.contextMenu.ariaLabel": "Viewer actions",
-  "@viewer.contextMenu.ariaLabel": {
-    "description": "Accessibility label for the viewer's right-click context menu, which offers Copy and Select all.",
-    "screenshot": "viewer-context-menu.png"
-  },
-  "viewer.contextMenu.copy": "Copy",
-  "@viewer.contextMenu.copy": {
-    "description": "Context-menu item that copies the selected text to the clipboard. Its keyboard shortcut (⌘C) is shown separately.",
-    "screenshot": "viewer-context-menu.png"
-  },
-  "viewer.contextMenu.selectAll": "Select all",
-  "@viewer.contextMenu.selectAll": {
-    "description": "Context-menu item that selects the whole file's text. Its keyboard shortcut (⌘A) is shown separately.",
-    "screenshot": "viewer-context-menu.png"
-  },
   "viewer.copyDialog.confirmTitleKnown": "Copy {size} to the clipboard?",
   "@viewer.copyDialog.confirmTitleKnown": {
     "description": "Title of the dialog asking the user to confirm copying a large selection to the clipboard, naming the size, e.g. \"Copy 24 MB to the clipboard?\".",

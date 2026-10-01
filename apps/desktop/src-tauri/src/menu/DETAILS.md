@@ -36,7 +36,7 @@ window focus context.
   and the OS at once. ❗ `context_menu_icons_test.rs`'s guard test `include_str!`s THIS file to check every icon names an
   item the menu actually builds; a builder moving out of it has to take that `include_str!` along.
 - `menu_structure.rs`: the smaller context menus — breadcrumb (with the `detach_label` item) / parent-row / tab /
-  network-host / function-key-bar — the viewer-window menu (`build_viewer_menu`), and the `ContextMenuShortcuts` /
+  network-host / function-key-bar / the viewer's text (`build_viewer_context_menu`) — the viewer-window menu (`build_viewer_menu`), and the `ContextMenuShortcuts` /
   `context_item` vocabulary every popup here shares. A volume switcher row's, a favorite's, and a servers-hub place's
   actions are NOT here: they're the in-app `Menu`'s, one list in
   `apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`.
@@ -186,6 +186,10 @@ Exceptions that do NOT use `"execute-command"`:
   `FunctionKeyBarHideRequested` to the main window. Nothing is stashed in `MenuState.context`, because there's no
   right-clicked target to remember: the frontend owns both the setting write and the toast that offers the way back
   (`src/lib/file-explorer/pane/function-key-bar-hide.ts`)
+- **Viewer right-click menu**: Copy (enabled from the frontend's `has_selection`) and Select all, on their own
+  `VIEWER_CONTEXT_*` ids, emitting `ViewerContextMenuAction` to the focused viewer (the popup focused it). ❗ Not the
+  bar's `VIEWER_EDIT_COPY_ID` / `VIEWER_SELECT_ALL_ID`: those defer to the search box, this pair always acts on the file
+  (`src/routes/viewer/DETAILS.md` § Gotchas)
 - **Open with** (macOS): items have dynamic IDs like `open-with:com.apple.Xcode` that can't be
   enumerated in `menu_id_to_command`. `on_menu_event` prefix-matches `open-with:` and calls
   `file_system::open_with::open_paths_with` directly, looking up the app URL via

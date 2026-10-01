@@ -16,6 +16,8 @@
         onViewerPullProgress,
         onViewerWordWrapToggled,
         onViewerEditAction,
+        onViewerContextMenuAction,
+        showViewerContextMenu,
         activateWindowMenu,
     } from '$lib/tauri-commands'
     import { createViewerPull } from './viewer-pull.svelte'
@@ -37,7 +39,7 @@
     import { createIndexingPoll } from './viewer-indexing-poll'
     import { handleOpenFailure } from './viewer-open-failure'
     import { createViewerKeyboard, isSearchInputFocused } from './viewer-keyboard'
-    import { runViewerEditAction } from './viewer-menu-actions'
+    import { runViewerContextMenuAction, runViewerEditAction } from './viewer-menu-actions'
     import { createViewerTail } from './viewer-tail.svelte'
     import {
         createViewerSelection,
@@ -54,7 +56,6 @@
     import ViewerTextCursor from './ViewerTextCursor.svelte'
     import { getViewerShowTextCursor } from '$lib/settings/reactive-settings.svelte'
     import TextInput from '$lib/ui/TextInput.svelte'
-    import ViewerContextMenu from './ViewerContextMenu.svelte'
     import ViewerToolbar from './ViewerToolbar.svelte'
     import ViewerStatusBar from './ViewerStatusBar.svelte'
     import ViewerRow from './ViewerRow.svelte'
@@ -278,6 +279,7 @@
     let unlistenMcpFocus: UnlistenFn | undefined
     let unlistenWordWrap: UnlistenFn | undefined
     let unlistenEditAction: UnlistenFn | undefined
+    let unlistenContextMenuAction: UnlistenFn | undefined
     let unlistenWindowFocus: UnlistenFn | undefined
 
     const textWidthTracker = createTextWidthTracker({
@@ -409,6 +411,11 @@
             selection.setRange(range)
         },
         takeFocus: () => scroll.containerRef?.focus({ preventScroll: true }),
+        showContextMenu: () => {
+            showViewerContextMenu(selection.selection !== null).catch((e: unknown) => {
+                log.warn("Couldn't open the viewer's context menu: {error}", { error: String(e) })
+            })
+        },
     })
 
     // Every effect below drives the text / virtual-scroll pipeline. In media mode the
@@ -547,10 +554,8 @@
         },
         isCopyConfirmOpen: () => copyFlow.isConfirmOpen,
         isCopyRefuseOpen: () => copyFlow.isRefuseOpen,
-        isContextMenuOpen: () => pointerDrag.contextMenuPos !== null,
         cancelCopyConfirm: copyFlow.cancelConfirm,
         dismissCopyRefuse: copyFlow.dismissRefuse,
-        closeContextMenu: pointerDrag.closeContextMenu,
         logEscape: () => {
             log.debug('ESC pressed, searchVisible={searchVisible}, windowReady={windowReady}', {
                 searchVisible: search.searchVisible,
@@ -613,7 +618,6 @@
         if (loading || !sessionId || next === viewMode) return
         if (next === 'media' && availableMediaKind(media.kind, media.lastMediaKind) === null) return
         if (next !== 'text') search.closeSearch()
-        pointerDrag.closeContextMenu()
         if (next === 'text' && media.kind !== 'text') {
             await media.viewAsText()
         } else if (next === 'media' && media.kind === 'text') {
@@ -810,6 +814,12 @@
             runViewerEditAction(action, viewerEditActionDeps)
         })
 
+        // Copy / Select all from the native right-click menu over the text, always the file's.
+        unlistenContextMenuAction = await onViewerContextMenuAction(({ action }) => {
+            if (!isTextView) return
+            runViewerContextMenuAction(action, viewerEditActionDeps)
+        })
+
         // On macOS the app-level menu bar is shared across windows, so each window swaps in its
         // own menu when it gains focus. A freshly-opened viewer window is already focused, so
         // `onFocusChanged` won't fire for this initial focus — activate the viewer menu explicitly
@@ -857,6 +867,7 @@
         unlistenMcpFocus?.()
         unlistenWordWrap?.()
         unlistenEditAction?.()
+        unlistenContextMenuAction?.()
         unlistenWindowFocus?.()
     }
 
@@ -1295,18 +1306,6 @@
     />
 </main>
 
-{#if pointerDrag.contextMenuPos !== null}
-    <ViewerContextMenu
-        x={pointerDrag.contextMenuPos.x}
-        y={pointerDrag.contextMenuPos.y}
-        hasSelection={selection.selection !== null}
-        onCopy={() => {
-            void copyFlow.handleCopy()
-        }}
-        onSelectAll={keyboard.handleSelectAllShortcut}
-        onClose={pointerDrag.closeContextMenu}
-    />
-{/if}
 
 <ViewerCopyDialogs
     confirmBytes={copyFlow.confirmBytes}

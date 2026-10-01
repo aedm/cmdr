@@ -88,7 +88,7 @@ use crate::window_events::{
     CloseAbout, CloseAllFileViewers, CloseConfirmation, CloseFileViewer, ExecuteCommand, FocusAbout, FocusConfirmation,
     FocusFileViewer, FocusSettings, ForegroundOperation, FunctionKeyBarHideRequested, McpSettingsClose, MouseNav,
     OpenFileViewer, OpenSettings, PersistRestrictedSetting, RevealPath, ShowSearchResultInFolder, TabContextAction,
-    ViewerEditAction, ViewerWordWrapToggled,
+    ViewerContextMenuAction, ViewerEditAction, ViewerWordWrapToggled,
 };
 // AI + system/misc events.
 use crate::ai::{
@@ -255,6 +255,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::menu::show_tab_context_menu,
                     crate::commands::menu::show_network_host_context_menu,
                     crate::commands::menu::show_function_key_bar_context_menu,
+                    crate::commands::menu::show_viewer_context_menu,
                     crate::commands::file_actions::show_in_finder,
                     crate::commands::quick_look::quick_look_open,
                     crate::commands::quick_look::quick_look_set_path,
@@ -1201,6 +1202,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // emit_to(viewer label): the viewer bar's Edit > Copy / Select all, which the viewer
             // has to run itself (its selection model isn't in the DOM the responder chain sees).
             ViewerEditAction,
+            ViewerContextMenuAction,
             // emit_to(viewer label): how far a viewer's pull into its preview temp got.
             ViewerPullProgress,
             TabContextAction,

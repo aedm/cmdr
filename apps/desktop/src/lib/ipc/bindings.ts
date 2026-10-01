@@ -1513,6 +1513,14 @@ export const commands = {
    *  [`show_tab_context_menu`].
    */
   showFunctionKeyBarContextMenu: () => typedError<null, string>(__TAURI_INVOKE('show_function_key_bar_context_menu')),
+  /**
+   *  Shows the viewer's right-click menu over the file text (fire-and-forget), at the pointer.
+   *  The pick comes back as `ViewerContextMenuAction` to this viewer, same shape as
+   *  [`show_tab_context_menu`]. `has_selection` greys Copy: the selection model lives in the
+   *  viewer's frontend, which reads it at open time.
+   */
+  showViewerContextMenu: (hasSelection: boolean) =>
+    typedError<null, string>(__TAURI_INVOKE('show_viewer_context_menu', { hasSelection })),
   // Show a file in Finder (reveal in parent folder)
   showInFinder: (path: string) => typedError<null, string>(__TAURI_INVOKE('show_in_finder', { path })),
   // Open (or re-open) Quick Look on the given path.
@@ -4980,6 +4988,7 @@ export const events = {
   systemTextSizeChanged: makeEvent<SystemTextSizeChanged>('system-text-size-changed'),
   tabContextAction: makeEvent<TabContextAction>('tab-context-action'),
   viewModeChanged: makeEvent<ViewModeChanged>('view-mode-changed'),
+  viewerContextMenuAction: makeEvent<ViewerContextMenuAction>('viewer-context-menu-action'),
   viewerEditAction: makeEvent<ViewerEditAction>('viewer-edit-action'),
   viewerPullProgress: makeEvent<ViewerPullProgress>('viewer-pull-progress'),
   viewerWordWrapToggled: makeEvent<ViewerWordWrapToggled>('viewer-word-wrap-toggled'),
@@ -11311,7 +11320,12 @@ export type OversizedFile = {
   size: number
 }
 
-// Represents a file entry in a pane (simplified subset of the main FileEntry).
+/**
+ *  Represents a file entry in a pane (simplified subset of the main FileEntry).
+ *
+ *  `Default` exists for tests only: its zero is a file nobody looked at, claiming
+ *  `is_directory: false`. Production rows always arrive whole from the frontend.
+ */
 export type PaneFileEntry = {
   name: string
   path: string
@@ -15094,6 +15108,18 @@ export type ViewModeChanged = {
  *  this enum); users never see it. Future kinds (Markdown, Html) slot in here.
  */
 export type ViewerContentKind = 'text' | 'image' | 'pdf'
+
+/**
+ *  `viewer-context-menu-action`: Copy or Select all was picked from the viewer's right-click menu
+ *  over the file text. Emitted to that viewer's label.
+ *
+ *  Its own event rather than a `ViewerEditAction`: the bar's pair hands both actions to the
+ *  search box while it has focus, and a right-click on the text leaves focus where it was, so
+ *  this pair always acts on the file.
+ */
+export type ViewerContextMenuAction = {
+  action: ViewerEditActionKind
+}
 
 /**
  *  `viewer-edit-action`: Edit > Copy or Edit > Select all was picked while a viewer window
