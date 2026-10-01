@@ -4431,9 +4431,10 @@ export const commands = {
     >('get_s3_unattended_reconnect', { volumeId }),
   /**
    *  Every S3 place the user has saved, with its provider, for an edit sheet
-   *  that has to show (and resend) what identifies the place.
+   *  that has to show (and resend) what identifies the place. A place whose
+   *  provider no longer makes an endpoint has no id, so it's left out.
    */
-  getKnownS3Places: () => __TAURI_INVOKE<KnownS3Place[]>('get_known_s3_places'),
+  getKnownS3Places: () => __TAURI_INVOKE<SavedS3Place[]>('get_known_s3_places'),
   /**
    *  Every server the user has saved, across all three stores.
    *
@@ -8949,33 +8950,6 @@ export type KnownNetworkShare = {
   pinned?: boolean
 }
 
-// One S3 place the user has connected to, and how to reach it again.
-export type KnownS3Place = {
-  // The provider, and with it the endpoint.
-  provider: S3ProviderChoice
-  // The account's key. ❗ Part of the identity.
-  accessKeyId: string
-  /**
-   *  The bucket this place is, or `None` for the account root that lists the
-   *  buckets. ❗ Part of the identity.
-   */
-  bucket: string | null
-  // The name a person gave this place, or empty when nobody did.
-  displayName: string
-  /**
-   *  Whether Cmdr may redial unattended when the session drops. ❗ Defaults to
-   *  on, the same as SFTP's and WebDAV's.
-   */
-  autoReconnect?: boolean
-  /**
-   *  Whether this place shows in the volume switcher. ❗ A `remember` never
-   *  changes it on a replace (the WebDAV store's rule and reason).
-   */
-  pinned?: boolean
-  // When this place was last connected to, ISO 8601.
-  lastConnectedAt: string
-}
-
 // One SFTP server the user has connected to, and how to reach it again.
 export type KnownSftpServer = {
   // The server, as the user typed it.
@@ -12830,6 +12804,28 @@ export type SavedPlaceRefusal =
       // The id that is already live.
       volumeId: string
     }
+
+/**
+ *  One saved S3 place as the frontend reads it: the stored entry plus the
+ *  volume id its row and its switcher entry carry, so a caller matches by id
+ *  rather than re-deriving one.
+ */
+export type SavedS3Place = {
+  // The place's volume id (`cmdr_fs::volume::s3_volume_id`).
+  volumeId: string
+  // The provider preset, with Other's endpoint, region, and path style.
+  provider: S3ProviderChoice
+  // The account's key.
+  accessKeyId: string
+  // The bucket, or `null` for the account root.
+  bucket: string | null
+  // The name a person gave it, empty when nobody did.
+  displayName: string
+  // The place's "Reconnect automatically" switch.
+  autoReconnect: boolean
+  // Whether it shows in the volume switcher.
+  pinned: boolean
+}
 
 /**
  *  An endpoint plus an identity, as the hub lists it.

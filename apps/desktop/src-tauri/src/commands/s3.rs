@@ -108,12 +108,52 @@ pub async fn delete_s3_credentials(provider: S3ProviderChoice, access_key_id: St
     .await
 }
 
+/// One saved S3 place as the frontend reads it: the stored entry plus the
+/// volume id its row and its switcher entry carry, so a caller matches by id
+/// rather than re-deriving one.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedS3Place {
+    /// The place's volume id (`cmdr_fs::volume::s3_volume_id`).
+    pub volume_id: String,
+    /// The provider preset, with Other's endpoint, region, and path style.
+    pub provider: S3ProviderChoice,
+    /// The account's key.
+    pub access_key_id: String,
+    /// The bucket, or `null` for the account root.
+    pub bucket: Option<String>,
+    /// The name a person gave it, empty when nobody did.
+    pub display_name: String,
+    /// The place's "Reconnect automatically" switch.
+    pub auto_reconnect: bool,
+    /// Whether it shows in the volume switcher.
+    pub pinned: bool,
+}
+
+impl SavedS3Place {
+    fn of(entry: KnownS3Place) -> Option<Self> {
+        Some(Self {
+            volume_id: entry.volume_id()?,
+            provider: entry.provider,
+            access_key_id: entry.access_key_id,
+            bucket: entry.bucket,
+            display_name: entry.display_name,
+            auto_reconnect: entry.auto_reconnect,
+            pinned: entry.pinned,
+        })
+    }
+}
+
 /// Every S3 place the user has saved, with its provider, for an edit sheet
-/// that has to show (and resend) what identifies the place.
+/// that has to show (and resend) what identifies the place. A place whose
+/// provider no longer makes an endpoint has no id, so it's left out.
 #[tauri::command]
 #[specta::specta]
-pub fn get_known_s3_places() -> Vec<KnownS3Place> {
+pub fn get_known_s3_places() -> Vec<SavedS3Place> {
     s3_known_places::all()
+        .into_iter()
+        .filter_map(SavedS3Place::of)
+        .collect()
 }
 
 /// Whether an S3 volume can come back on its own as it stands. `null` when
