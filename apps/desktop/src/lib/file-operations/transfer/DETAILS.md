@@ -159,7 +159,7 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
        window's prompt (`../DETAILS.md` § "Conflict prompts for operations with no dialog"). So a deep clash that nobody
        answers is a missing listener, never a reason to widen this check.
      - **Cross-type guardrail.** When a real conflict is a type mismatch AND the user selects "Overwrite all", a red
-       warning appears (mirrors the per-file dialog's file→folder warning): overwriting replaces items of a different
+       warning appears (mirrors the per-file dialog's file↔folder warning): overwriting replaces items of a different
        type, including folder contents.
 
 2. **TransferProgressDialog** (operation execution)

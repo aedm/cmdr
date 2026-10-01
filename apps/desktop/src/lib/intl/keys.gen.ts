@@ -1833,6 +1833,7 @@ export type MessageKey =
   | 'fileOperations.transferProgress.titleReversalRenamingBack'
   | 'fileOperations.transferProgress.titleRollingBack'
   | 'fileOperations.transferProgress.warningFileOverFolder'
+  | 'fileOperations.transferProgress.warningFolderOverFile'
   | 'fileOperations.trash.goToTrashAction'
   | 'fileOperations.trash.noTrashHere'
   | 'fileOperations.trash.undoAction'
