@@ -211,6 +211,51 @@ async fn a_paused_rename_resumes_and_lands(service: FixtureService) {
     assert!(!volume.exists(&at(&volume, &from_key)).await);
 }
 
+/// A reviewed batch with a folder in it (Ask Cmdr's proposals and the bulk
+/// rename both start here) runs as ONE move with the new names, and lands
+/// every one of them.
+async fn a_batch_with_a_folder_renames_as_one_move(service: FixtureService) {
+    use crate::file_system::write_operations::{BulkRenameRow, SourceFingerprint, start_renames};
+
+    let (volume_id, volume, prefix) = registered(service, "rename-batch", None).await;
+    let (folder_file, note) = (format!("{prefix}album/a.jpg"), format!("{prefix}note.txt"));
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&folder_file, b"jpeg"), object(&note, b"n")],
+    )
+    .await;
+    let mut rows = Vec::new();
+    for (id, from, to) in [("1", "album", "photos"), ("2", "note.txt", "memo.txt")] {
+        let source = at(&volume, &format!("{prefix}{from}"));
+        let fingerprint = SourceFingerprint::capture_remote(volume.as_ref(), &source)
+            .await
+            .expect("a fingerprint");
+        rows.push(BulkRenameRow {
+            row_id: id.to_string(),
+            destination: source.with_file_name(to),
+            source,
+            expected_fingerprint: fingerprint,
+        });
+    }
+    let events = Arc::new(CollectorEventSink::new());
+
+    let started = start_renames(events.clone(), volume_id, rows, Initiator::Agent)
+        .await
+        .expect("the batch starts");
+    assert_eq!(
+        started.operation_type,
+        WriteOperationType::Move,
+        "one move, not a rename batch"
+    );
+    settle(&events, "the batch to settle").await;
+
+    assert!(volume.exists(&at(&volume, &format!("{prefix}photos/a.jpg"))).await);
+    assert!(volume.exists(&at(&volume, &format!("{prefix}memo.txt"))).await);
+    assert!(!volume.exists(&at(&volume, &folder_file)).await);
+    assert!(!volume.exists(&at(&volume, &note)).await);
+}
+
 /// A copy between two buckets of one account runs on the server: the object
 /// arrives without the token a streamed PUT writes.
 async fn a_copy_between_two_buckets_runs_on_the_server(service: FixtureService) {
@@ -315,6 +360,9 @@ on_both_fixtures! {
     a_paused_rename_resumes_and_lands
         => s3_integration_a_paused_rename_resumes_and_lands_on_versitygw,
            s3_integration_a_paused_rename_resumes_and_lands_on_garage;
+    a_batch_with_a_folder_renames_as_one_move
+        => s3_integration_a_batch_with_a_folder_renames_as_one_move_on_versitygw,
+           s3_integration_a_batch_with_a_folder_renames_as_one_move_on_garage;
     a_copy_between_two_buckets_runs_on_the_server
         => s3_integration_a_copy_between_two_buckets_runs_on_the_server_on_versitygw,
            s3_integration_a_copy_between_two_buckets_runs_on_the_server_on_garage;
