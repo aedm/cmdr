@@ -3,9 +3,14 @@
 //! The preset fixes the endpoint, the signing region, and the addressing
 //! style, plus what each provider's docs say about conditional writes and
 //! server-side copy (`docs/notes/s3/provider-research.md` has the sources).
-//! What the docs leave open ("probe") is settled by the server: a conditional
-//! header answered with `501 NotImplemented` downgrades that operation to
-//! check-then-write for the rest of the session, logged once.
+//!
+//! ❗ Conditional writes are an allowlist, ❌ never a probe: a server can ignore
+//! `If-None-Match: *` and answer 200 while overwriting (Garage on Put,
+//! Complete, and Copy; VersityGW on Copy; `apps/desktop/test/s3-servers/README.md`),
+//! so a success proves nothing. Only what a provider documents enforcing gets
+//! a header; everything else checks then writes. A `501 NotImplemented` on an
+//! allowlisted operation downgrades it to check-then-write for the rest of the
+//! session, logged once.
 
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -87,38 +92,28 @@ pub(crate) enum NoOverwrite {
     CheckThenWrite,
 }
 
-/// What the docs say about one conditional operation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Documented {
-    Supported(NoOverwrite),
-    Unsupported,
-    /// Undocumented: send the header and let a `501` settle it.
-    Probe,
-}
-
 /// One conditional operation's answer, downgradable for the session.
 #[derive(Debug)]
 struct ConditionalCell {
-    documented: Documented,
+    /// The allowlist entry: a header for an operation the provider documents
+    /// enforcing, `CheckThenWrite` for everything else.
+    listed: NoOverwrite,
     downgraded: AtomicBool,
 }
 
 impl ConditionalCell {
-    fn new(documented: Documented) -> Self {
+    fn new(listed: NoOverwrite) -> Self {
         Self {
-            documented,
+            listed,
             downgraded: AtomicBool::new(false),
         }
     }
 
     fn current(&self) -> NoOverwrite {
         if self.downgraded.load(Ordering::Relaxed) {
-            return NoOverwrite::CheckThenWrite;
-        }
-        match self.documented {
-            Documented::Supported(how) => how,
-            Documented::Probe => NoOverwrite::IfNoneMatch,
-            Documented::Unsupported => NoOverwrite::CheckThenWrite,
+            NoOverwrite::CheckThenWrite
+        } else {
+            self.listed
         }
     }
 }
@@ -173,8 +168,7 @@ pub(crate) struct ProviderProfile {
 
 impl ProviderProfile {
     pub(crate) fn from_preset(preset: &Preset) -> Result<Self, ProfileError> {
-        use Documented::{Probe, Supported, Unsupported};
-        use NoOverwrite::{CloudflareCopyHeader, IfNoneMatch};
+        use NoOverwrite::{CheckThenWrite, CloudflareCopyHeader, IfNoneMatch};
 
         let profile = match preset {
             Preset::Aws { region } => Self::https(
@@ -182,7 +176,7 @@ impl ProviderProfile {
                 format!("s3.{}.amazonaws.com", host_part(region)?),
                 region,
                 Addressing::VirtualHosted,
-                [Supported(IfNoneMatch); 3],
+                [IfNoneMatch; 3],
             ),
             Preset::R2 { account_id } => {
                 let mut r2 = Self::https(
@@ -190,7 +184,7 @@ impl ProviderProfile {
                     format!("{}.r2.cloudflarestorage.com", host_part(account_id)?),
                     "auto",
                     Addressing::Path,
-                    [Supported(IfNoneMatch), Unsupported, Supported(CloudflareCopyHeader)],
+                    [IfNoneMatch, CheckThenWrite, CloudflareCopyHeader],
                 );
                 r2.nfc_keys = true;
                 r2
@@ -200,14 +194,14 @@ impl ProviderProfile {
                 format!("s3.{}.backblazeb2.com", host_part(region)?),
                 region,
                 Addressing::Path,
-                [Unsupported; 3],
+                [CheckThenWrite; 3],
             ),
             Preset::Wasabi { region } => Self::https(
                 ProviderKind::Wasabi,
                 format!("s3.{}.wasabisys.com", host_part(region)?),
                 region,
                 Addressing::Path,
-                [Probe; 3],
+                [CheckThenWrite; 3],
             ),
             Preset::Hetzner { location } => {
                 let mut hetzner = Self::https(
@@ -215,7 +209,7 @@ impl ProviderProfile {
                     format!("{}.your-objectstorage.com", host_part(location)?),
                     location,
                     Addressing::Path,
-                    [Probe; 3],
+                    [CheckThenWrite; 3],
                 );
                 hetzner.cross_bucket_copy = false;
                 hetzner
@@ -237,7 +231,7 @@ impl ProviderProfile {
                 } else {
                     Addressing::VirtualHosted
                 };
-                let mut other = Self::https(ProviderKind::Other, host, region, addressing, [Probe; 3]);
+                let mut other = Self::https(ProviderKind::Other, host, region, addressing, [CheckThenWrite; 3]);
                 other.scheme = scheme;
                 other
             }
@@ -250,7 +244,7 @@ impl ProviderProfile {
         endpoint_host: String,
         region: &str,
         addressing: Addressing,
-        [put, complete, copy]: [Documented; 3],
+        [put, complete, copy]: [NoOverwrite; 3],
     ) -> Self {
         Self {
             kind,

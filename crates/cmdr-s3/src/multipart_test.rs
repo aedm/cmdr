@@ -16,7 +16,7 @@ fn small_uploads_use_the_minimum_part_size() {
         }
     );
     assert_eq!(plan_parts(MIN_PART_SIZE).unwrap().part_count, 1);
-    assert_eq!(plan_parts(MIN_PART_SIZE + 1).unwrap().part_count, 2);
+    assert_eq!(plan_parts(MIN_PART_SIZE + 5 * MIB).unwrap().part_count, 2);
     assert_eq!(plan_parts(1).unwrap().part_count, 1);
 }
 
@@ -63,4 +63,31 @@ fn ranges_tile_the_object_with_a_short_last_part() {
     assert_eq!(plan.range(1), (0, 64 * MIB - 1));
     assert_eq!(plan.range(2), (64 * MIB, 128 * MIB - 1));
     assert_eq!(plan.range(3), (128 * MIB, 150 * MIB - 1));
+}
+
+#[test]
+fn a_tail_under_5_mib_folds_into_the_part_before_it() {
+    // Garage refuses an `UploadPartCopy` source under 5 MiB even as the last
+    // part (`apps/desktop/test/s3-servers/README.md`).
+    let plan = plan_parts(130 * MIB).unwrap();
+    assert_eq!(plan.part_count, 2);
+    assert_eq!(plan.range(1), (0, 64 * MIB - 1));
+    assert_eq!(plan.range(2), (64 * MIB, 130 * MIB - 1));
+
+    assert_eq!(plan_parts(MIN_PART_SIZE + 1).unwrap().part_count, 1);
+    assert_eq!(plan_parts(MIN_PART_SIZE + 1).unwrap().range(1), (0, MIN_PART_SIZE));
+    // Exactly 5 MiB stands on its own.
+    assert_eq!(
+        plan_parts(MIN_PART_SIZE + 5 * MIB).unwrap().range(2),
+        (MIN_PART_SIZE, MIN_PART_SIZE + 5 * MIB - 1)
+    );
+}
+
+#[test]
+fn a_tail_stays_separate_when_folding_would_pass_5_gib() {
+    let total = 9_999 * MAX_PART_SIZE + 1;
+    let plan = plan_parts(total).unwrap();
+    assert_eq!(plan.part_size, MAX_PART_SIZE);
+    assert_eq!(u64::from(plan.part_count), MAX_PARTS);
+    assert_eq!(plan.range(10_000), (total - 1, total - 1));
 }

@@ -126,9 +126,9 @@ fn a_refused_overwrite_uses_the_header_where_the_provider_has_one_and_checks_fir
 
 #[test]
 fn a_downgraded_profile_stops_sending_the_header() {
-    let hetzner = hetzner();
-    hetzner.downgrade(ConditionalOp::Put);
-    let built = put_object(&hetzner, "b", "k", 1, Overwrite::Refuse, &ObjectMetadata::default()).unwrap();
+    let aws = aws();
+    aws.downgrade(ConditionalOp::Put);
+    let built = put_object(&aws, "b", "k", 1, Overwrite::Refuse, &ObjectMetadata::default()).unwrap();
     assert_eq!(header(&built.request, "if-none-match"), None);
     assert!(built.check_first);
 }

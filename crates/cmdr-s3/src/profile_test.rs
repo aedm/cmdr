@@ -135,7 +135,40 @@ fn b2_has_no_conditional_writes() {
 }
 
 #[test]
-fn wasabi_and_hetzner_probe_and_hetzner_copies_within_a_bucket_only() {
+fn every_provider_off_the_allowlist_checks_then_writes() {
+    // A server can ignore `If-None-Match` and answer 200 while overwriting
+    // (Garage on all three, VersityGW on Copy), so nothing is probed.
+    for preset in [
+        Preset::Wasabi {
+            region: "eu-central-2".into(),
+        },
+        Preset::Hetzner {
+            location: "hel1".into(),
+        },
+        Preset::Other {
+            endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
+            region: None,
+            path_style: true,
+        },
+    ] {
+        let unlisted = profile(preset);
+        for op in [
+            ConditionalOp::Put,
+            ConditionalOp::CompleteMultipart,
+            ConditionalOp::Copy,
+        ] {
+            assert_eq!(
+                unlisted.no_overwrite(op),
+                NoOverwrite::CheckThenWrite,
+                "{:?} {op:?}",
+                unlisted.kind
+            );
+        }
+    }
+}
+
+#[test]
+fn wasabi_and_hetzner_endpoints_and_hetzner_copies_within_a_bucket_only() {
     let wasabi = profile(Preset::Wasabi {
         region: "eu-central-2".into(),
     });
@@ -149,28 +182,23 @@ fn wasabi_and_hetzner_probe_and_hetzner_copies_within_a_bucket_only() {
     assert_eq!(hetzner.endpoint_host, "hel1.your-objectstorage.com");
     assert_eq!(hetzner.region, "hel1");
     assert!(!hetzner.cross_bucket_copy);
-
-    for probed in [&wasabi, &hetzner] {
-        assert_eq!(probed.no_overwrite(ConditionalOp::Put), NoOverwrite::IfNoneMatch);
-        assert_eq!(probed.no_overwrite(ConditionalOp::Copy), NoOverwrite::IfNoneMatch);
-    }
 }
 
 #[test]
-fn a_not_implemented_answer_downgrades_one_operation_once() {
-    let hetzner = profile(Preset::Hetzner {
-        location: "fsn1".into(),
+fn a_not_implemented_answer_downgrades_one_allowlisted_operation_once() {
+    let aws = profile(Preset::Aws {
+        region: "us-east-1".into(),
     });
 
-    assert!(hetzner.downgrade(ConditionalOp::Put));
+    assert!(aws.downgrade(ConditionalOp::Put));
     assert!(
-        !hetzner.downgrade(ConditionalOp::Put),
+        !aws.downgrade(ConditionalOp::Put),
         "only the first call reports (and logs)"
     );
 
-    assert_eq!(hetzner.no_overwrite(ConditionalOp::Put), NoOverwrite::CheckThenWrite);
+    assert_eq!(aws.no_overwrite(ConditionalOp::Put), NoOverwrite::CheckThenWrite);
     assert_eq!(
-        hetzner.no_overwrite(ConditionalOp::Copy),
+        aws.no_overwrite(ConditionalOp::Copy),
         NoOverwrite::IfNoneMatch,
         "other ops untouched"
     );
