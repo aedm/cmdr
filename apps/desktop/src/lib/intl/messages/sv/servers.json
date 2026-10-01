@@ -472,11 +472,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Serverns nyckel har ändrats. Det kan betyda att servern har installerats om, eller att något sitter mellan dig och den. Koppla från och öppna servern igen för att kontrollera fingeravtrycket.",
+  "servers.paneState.hostKeyChangedHint": "Serverns nyckel har ändrats. Det kan betyda att servern har installerats om, eller att något sitter mellan dig och den. Kontrollera den nya nyckeln innan du ansluter igen.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "Kontrollera nyckeln",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

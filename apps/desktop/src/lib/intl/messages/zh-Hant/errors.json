@@ -1141,15 +1141,15 @@
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
   },
-  "errors.write.noLongerConnected.title": "Not connected anymore",
+  "errors.write.noLongerConnected.title": "已經中斷連線",
   "@errors.write.noLongerConnected.title": {
     "sourceHash": "3974fa0"
   },
-  "errors.write.noLongerConnected.message": "The phone or server holding these files isn’t connected anymore, so nothing has changed.",
+  "errors.write.noLongerConnected.message": "存放這些檔案的手機或伺服器已經中斷連線了，所以什麼都沒有改變。",
   "@errors.write.noLongerConnected.message": {
     "sourceHash": "d0827c4"
   },
-  "errors.write.noLongerConnected.suggestion": "Plug the phone back in, or open the server from the volume switcher, then try again.",
+  "errors.write.noLongerConnected.suggestion": "把手機重新插上，或從卷宗切換器開啟伺服器，然後再試一次。",
   "@errors.write.noLongerConnected.suggestion": {
     "sourceHash": "850ecdb"
   },

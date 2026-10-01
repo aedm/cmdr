@@ -475,11 +475,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "De sleutel is gewijzigd. Dat kan betekenen dat de server opnieuw is geïnstalleerd, of dat er iets tussen jou en de server zit. Verbreek de verbinding en open de server opnieuw om de vingerafdruk te controleren.",
+  "servers.paneState.hostKeyChangedHint": "De sleutel is gewijzigd. Dat kan betekenen dat de server opnieuw is geïnstalleerd, of dat er iets tussen jou en de server zit. Controleer de nieuwe sleutel voordat je opnieuw verbinding maakt.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "Controleer de sleutel",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

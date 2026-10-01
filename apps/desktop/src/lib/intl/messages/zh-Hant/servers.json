@@ -471,11 +471,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "它的主機金鑰變了。這可能表示伺服器重新安裝過，也可能有東西夾在你和它中間。請先中斷連線，再重新開啟它來核對指紋。",
+  "servers.paneState.hostKeyChangedHint": "它的主機金鑰變了。這可能表示伺服器重新安裝過，也可能有東西夾在你和它中間。重新連線之前，請先核對新的主機金鑰。",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "核對主機金鑰",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

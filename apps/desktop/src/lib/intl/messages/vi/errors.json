@@ -1141,15 +1141,15 @@
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
   },
-  "errors.write.noLongerConnected.title": "Not connected anymore",
+  "errors.write.noLongerConnected.title": "Không còn kết nối",
   "@errors.write.noLongerConnected.title": {
     "sourceHash": "3974fa0"
   },
-  "errors.write.noLongerConnected.message": "The phone or server holding these files isn’t connected anymore, so nothing has changed.",
+  "errors.write.noLongerConnected.message": "Điện thoại hoặc máy chủ chứa các tệp này không còn kết nối nữa, nên chưa có gì thay đổi.",
   "@errors.write.noLongerConnected.message": {
     "sourceHash": "d0827c4"
   },
-  "errors.write.noLongerConnected.suggestion": "Plug the phone back in, or open the server from the volume switcher, then try again.",
+  "errors.write.noLongerConnected.suggestion": "Hãy cắm lại điện thoại hoặc mở máy chủ từ bộ chọn ổ đĩa, rồi thử lại.",
   "@errors.write.noLongerConnected.suggestion": {
     "sourceHash": "850ecdb"
   },

@@ -471,11 +471,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "它的主机密钥变了。可能是服务器重装过，也可能是有东西夹在你和它之间。请先断开连接，然后再打开它来核对指纹。",
+  "servers.paneState.hostKeyChangedHint": "它的主机密钥变了。可能是服务器重装过，也可能是有东西夹在你和它之间。重新连接之前，请先核对新的密钥。",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "核对主机密钥",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

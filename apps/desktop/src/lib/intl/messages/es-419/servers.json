@@ -63,9 +63,9 @@
   "@servers.hostKey.changedDisclosure": {
     "sourceHash": "14de108"
   },
-  "servers.paneState.hostKeyChangedHint": "Su clave cambió. Esto puede significar que el servidor se reinstaló, o que hay algo entre tú y él. Desconecta y vuelve a abrirlo para comprobar la huella digital.",
+  "servers.paneState.hostKeyChangedHint": "Su clave cambió. Esto puede significar que el servidor se reinstaló, o que hay algo entre tú y él. Comprueba la nueva clave antes de volver a conectarte.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "5b20396"
+    "sourceHash": "b750bb6"
   },
   "servers.hub.editNearbyHint": "{name} se detectó cerca y sigue sin guardar, así que no hay nada que editar.",
   "@servers.hub.editNearbyHint": {

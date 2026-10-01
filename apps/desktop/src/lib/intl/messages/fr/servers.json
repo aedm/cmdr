@@ -472,11 +472,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Sa clé a changé. Cela peut signifier que le serveur a été réinstallé, ou que quelque chose s’est interposé entre vous et lui. Déconnectez-vous, puis ouvrez-le à nouveau pour vérifier l’empreinte.",
+  "servers.paneState.hostKeyChangedHint": "Sa clé a changé. Cela peut signifier que le serveur a été réinstallé, ou que quelque chose s’est interposé entre vous et lui. Vérifiez la nouvelle clé avant de vous reconnecter.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "Vérifier la clé",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

@@ -303,9 +303,9 @@
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
   },
-  "fileOperations.transferDialog.sourceNoLongerConnected": "The phone or server holding these files isn’t connected anymore, so Cmdr can’t copy from it.",
+  "fileOperations.transferDialog.sourceNoLongerConnected": "存放這些檔案的手機或伺服器已經中斷連線了，所以 Cmdr 無法從那裡複製。",
   "@fileOperations.transferDialog.sourceNoLongerConnected": {
-    "sourceHash": "433502e"
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "我們無法檢查目標位置已經有什麼。遇到同名的項目時會再問你。",
   "@fileOperations.transferDialog.conflictsUnknown": {

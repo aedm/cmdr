@@ -471,11 +471,11 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Khóa của máy chủ đã thay đổi. Có thể máy chủ đã được cài đặt lại, hoặc có gì đó đang nằm giữa bạn và máy chủ. Hãy ngắt kết nối, rồi mở lại để kiểm tra dấu vân tay.",
+  "servers.paneState.hostKeyChangedHint": "Khóa của máy chủ đã thay đổi. Có thể máy chủ đã được cài đặt lại, hoặc có gì đó đang nằm giữa bạn và máy chủ. Hãy kiểm tra khóa mới trước khi kết nối lại.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
   },
-  "servers.paneState.checkHostKey": "Check the key",
+  "servers.paneState.checkHostKey": "Kiểm tra khóa",
   "@servers.paneState.checkHostKey": {
     "sourceHash": "fefa256"
   },

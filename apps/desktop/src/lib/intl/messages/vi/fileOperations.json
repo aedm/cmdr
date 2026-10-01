@@ -304,9 +304,9 @@
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
   },
-  "fileOperations.transferDialog.sourceNoLongerConnected": "The phone or server holding these files isn’t connected any more, so Cmdr can’t copy from it.",
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Điện thoại hoặc máy chủ chứa các tệp này không còn kết nối nữa, nên Cmdr không thể sao chép từ đó.",
   "@fileOperations.transferDialog.sourceNoLongerConnected": {
-    "sourceHash": "433502e"
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "Chúng tôi không kiểm tra được những gì đã có ở đích. Bạn sẽ được hỏi về mọi mục trùng tên.",
   "@fileOperations.transferDialog.conflictsUnknown": {

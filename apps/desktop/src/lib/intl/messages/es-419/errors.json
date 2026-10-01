@@ -295,6 +295,10 @@
   "@errors.write.sourceNotFound.message.trash": {
     "sourceHash": "e52396a"
   },
+  "errors.write.noLongerConnected.message": "El teléfono o servidor que contiene estos archivos ya no está conectado, así que no cambió nada.",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "61e1555"
+  },
   "errors.write.destinationNotFound.title": "No se pudo encontrar la carpeta de destino",
   "@errors.write.destinationNotFound.title": {
     "sourceHash": "e7b89c1"

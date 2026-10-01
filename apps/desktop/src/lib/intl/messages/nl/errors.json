@@ -1141,15 +1141,15 @@
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
   },
-  "errors.write.noLongerConnected.title": "Not connected anymore",
+  "errors.write.noLongerConnected.title": "Niet meer verbonden",
   "@errors.write.noLongerConnected.title": {
     "sourceHash": "3974fa0"
   },
-  "errors.write.noLongerConnected.message": "The phone or server holding these files isn’t connected anymore, so nothing has changed.",
+  "errors.write.noLongerConnected.message": "De telefoon of server met deze bestanden is niet meer verbonden, dus er is niets veranderd.",
   "@errors.write.noLongerConnected.message": {
     "sourceHash": "d0827c4"
   },
-  "errors.write.noLongerConnected.suggestion": "Plug the phone back in, or open the server from the volume switcher, then try again.",
+  "errors.write.noLongerConnected.suggestion": "Sluit de telefoon weer aan of open de server via de volumekiezer, en probeer het daarna opnieuw.",
   "@errors.write.noLongerConnected.suggestion": {
     "sourceHash": "850ecdb"
   },
