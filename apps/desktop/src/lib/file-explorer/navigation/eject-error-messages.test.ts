@@ -228,13 +228,39 @@ describe('a refused unmount names who held the drive', () => {
     )
   })
 
-  it('falls back to the unnamed sentence when nothing said what the holders are, and never calls one an app', () => {
+  it('names the one process when nothing said what kind it is, and says it is only a process name', () => {
+    expect(renderEjectError(refusedBy([holder('unclassified', 'mdworker')]))).toBe(
+      'A process called mdworker is still using this drive. (We don’t have an app name, only the process name.)',
+    )
+  })
+
+  it('names several unclassified processes with their count, and never calls them apps', () => {
     const rendered = renderEjectError(
       refusedBy([holder('unclassified', 'some-helper'), holder('unclassified', 'mdworker')]),
     )
-    expect(rendered).toBe(renderEjectError(refusedBy([])))
-    expect(rendered).not.toContain('some-helper')
-    expect(rendered).not.toContain('mdworker')
+    expect(rendered).toBe(
+      '2 processes called some-helper and mdworker are still using this drive. (We don’t have app names, only the process names.)',
+    )
+    expect(rendered).not.toContain('apps are')
+  })
+
+  it('counts two processes of one name once, like an app', () => {
+    const twoOfOne = [holder('unclassified', 'mdworker', 101), holder('unclassified', 'mdworker', 102)]
+    expect(renderEjectError(refusedBy(twoOfOne))).toBe(
+      renderEjectError(refusedBy([holder('unclassified', 'mdworker', 101)])),
+    )
+  })
+
+  it('stops at three process names and says "others" for the rest, counting them all', () => {
+    const five = ['a-helper', 'b-helper', 'c-helper', 'd-helper', 'e-helper'].map((n) => holder('unclassified', n))
+    expect(renderEjectError(refusedBy(five))).toBe(
+      '5 processes called a-helper, b-helper, c-helper, and others are still using this drive. (We don’t have app names, only the process names.)',
+    )
+  })
+
+  it('still prefers macOS, Cmdr, or a disk image over an unclassified name', () => {
+    const mixed = [holder('unclassified', 'mdworker'), holder('system', 'mds_stores')]
+    expect(renderEjectError(refusedBy(mixed))).toBe(renderEjectError(refusedBy([holder('system', 'mds_stores')])))
   })
 
   it('words an incomplete scan from the names it did see', () => {

@@ -31,8 +31,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
   `category === 'network'`: a mounted SMB share is one) and a PHONE by `deviceReadiness`, ❌ never `isEjectable` or
   `connectionState`, carried unconditionally and not at all, else a greyed `unavailable` phone offers a live Disconnect.
 - **`wordEjectRefusal(e)` words every eject refusal** from `errors.eject.*`; ❌ never `String(e)` or `diskutil` stderr.
-  `wordUnmountRefusal` names the holders; ❗ `Unclassified` and BOTH empty `HolderScan` arms take the unnamed fallback,
-  ❌ never "nothing is using this drive". Precedence: `DETAILS.md`.
+  `wordUnmountRefusal` names holders (`Unclassified` as processes, ❌ never apps); an empty scan takes the unnamed
+  fallback, ❌ never "nothing is using this drive". Precedence: `DETAILS.md`.
 - **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes. ❗
   No `listSavedServers()` fetch in `volume-grouping.ts`; the row carries `pinned` already.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`

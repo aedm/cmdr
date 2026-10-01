@@ -499,17 +499,20 @@ runs most-actionable first over `holders.named`:
    name) is deliberately unused: the approved copy names no image.
 3. **`Cmdr`** → we own it and invite a report.
 4. **`System`** → nothing to close, so the advice is to wait.
-5. Otherwise the unnamed `errors.eject.unmountRefused` line.
+5. **`Unclassified` holders** → their bare process names, deduped and capped like the apps (three, then
+   `errors.eject.otherProcesses`): `errors.eject.unmountRefusedByProcess` (`{process}`) for one,
+   `errors.eject.unmountRefusedByProcesses` (`{countText}`, `{processes}`) for more, where the count is distinct names.
+6. Otherwise the unnamed `errors.eject.unmountRefused` line.
 
-❗ **`Unclassified` has no sentence of its own** and falls through to that last fallback, exactly like an empty list. It
-means "named, but nothing said what kind" (the budget ran out, or a signature wouldn't read), so wording it as an app or
-a tool would be a guess about what a person should go and close.
+❗ **`Unclassified` is worded as a PROCESS, ❌ never an app or a tool.** It means "named, but nothing said what kind"
+(the budget ran out, or a signature wouldn't read), so the name is an executable's; calling it an app would be a guess
+about what a person should go and close. The sentence says outright that it's only the process name. It ranks below
+`System`, `Cmdr`, and `DiskImage` because each of those carries more advice than a cryptic name does. These are RAW
+`errors.*` values (no ICU), so singular and plural are two keys, like the app pair.
 
 ❗ **The two `HolderScan` arms word the SAME**, and neither ever says the drive is free. `Incomplete` means the scan
 couldn't cover every mount, so its names are worth saying while its emptiness says nothing; only `complete` with an
-empty `named` would license "nothing is using this drive", and no copy says that today. A refusal whose holders are all
-`Unclassified` therefore reads identically to one that named nobody, which is a known copy-quality gap awaiting a
-product decision (GitHub [#247](https://github.com/vdavid/cmdr/issues/247)).
+empty `named` would license "nothing is using this drive", and no copy says that today.
 
 `wordEjectRefusal` adds one `warn` line whenever a `Cmdr` holder is in `named` AT ALL, ❌ not only when it wins the
 precedence: an app beside it rightly gets the sentence, but Cmdr holding a drive it's trying to let go of is a bug worth

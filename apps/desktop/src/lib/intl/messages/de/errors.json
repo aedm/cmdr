@@ -1961,6 +1961,18 @@
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
+  "errors.eject.unmountRefusedByProcess": "A process called {process} is still using this drive. (We don’t have an app name, only the process name.)",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "2dc3fba"
+  },
+  "errors.eject.unmountRefusedByProcesses": "{countText} processes called {processes} are still using this drive. (We don’t have app names, only the process names.)",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "4d6c1a5"
+  },
+  "errors.eject.otherProcesses": "others",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
   "errors.eject.unmountRefusedByDiskImage": "Auf diesem Laufwerk liegt ein Image, das noch geöffnet ist. Wirf erst das Image aus, dann das Laufwerk.",
   "@errors.eject.unmountRefusedByDiskImage": {
     "sourceHash": "82fc540"

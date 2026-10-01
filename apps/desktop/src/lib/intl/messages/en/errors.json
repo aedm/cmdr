@@ -2946,6 +2946,37 @@
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
+  "errors.eject.unmountRefusedByProcess": "A process called {process} is still using this drive. (We don’t have an app name, only the process name.)",
+  "@errors.eject.unmountRefusedByProcess": {
+    "description": "Shown when the operating system turns the eject down and Cmdr found exactly ONE running program holding the drive, but couldn't tell which app it belongs to, so all it has is the program's technical process name. The sentence must call it a process, never an app or a tool, and the parenthetical tells the reader why the name may look cryptic. Surface: a brief error toast in the top-right of Cmdr's main window, shown after someone asks to eject a drive or disconnect a network share. Your string is dropped into \"Couldn't eject {volumeName}: …\" or \"Couldn't disconnect: …\", so it reads as the sentence AFTER a colon. Plain text, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "placeholders": {
+      "process": {
+        "description": "The technical name of the running process, for example \"mdworker_shared\" or \"backupd\". Cmdr reads it from the operating system: never translate it, and don't wrap it in quotation marks."
+      }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "errors.eject.unmountRefusedByProcesses": "{countText} processes called {processes} are still using this drive. (We don’t have app names, only the process names.)",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "description": "The same message as the one-process version, for TWO OR MORE running programs that Cmdr couldn't match to an app, so all it has is their technical process names. The sentence must call them processes, never apps or tools. Surface: a brief error toast in the top-right of Cmdr's main window, shown after someone asks to eject a drive or disconnect a network share. Your string is dropped into \"Couldn't eject {volumeName}: …\" or \"Couldn't disconnect: …\", so it reads as the sentence AFTER a colon. Plain text, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "placeholders": {
+      "countText": {
+        "description": "How many different processes, already formatted as a number, always 2 or more, so the noun and verbs around it stay plural."
+      },
+      "processes": {
+        "description": "Two or more process names, already joined into one phrase by your language's own list rules, for example \"mdworker and backupd\" or \"mdworker, backupd, cfprefsd, and others\". Never translate the names, and don't add quotation marks."
+      }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "errors.eject.otherProcesses": "others",
+  "@errors.eject.otherProcesses": {
+    "description": "The LAST item in the list of process names that {processes} carries, standing in for everything past the first three: \"mdworker, backupd, cfprefsd, and others\". The sentence around it already says \"processes\", so this is a plain plural pronoun or noun phrase meaning \"other processes\". Your language's list rules join it, so translate it as something that can sit at the end of a list, never as a sentence, and leave it lowercase unless your language requires otherwise. Surface: a brief error toast in the top-right of Cmdr's main window, shown after someone asks to eject a drive.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.eject.unmountRefusedByDiskImage": "A disk image stored on this drive is still open. Eject that image first, then eject this drive.",
   "@errors.eject.unmountRefusedByDiskImage": {
     "description": "Shown when what holds the drive is a mounted disk image whose file lives ON this drive, so the drive can't go anywhere until the image is ejected. A \"disk image\" is a file (usually .dmg) that mounts and behaves like its own drive; use the term macOS itself uses in your language. Surface: a brief error toast in the top-right of Cmdr's main window, shown after someone asks to eject a drive. Your string is dropped into \"Couldn't eject {volumeName}: …\", so it reads as the sentence AFTER a colon. Plain text, one or two short sentences, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
