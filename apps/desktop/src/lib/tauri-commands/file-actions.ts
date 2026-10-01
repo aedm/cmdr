@@ -152,6 +152,20 @@ export interface MenuAnchor {
   y: number
 }
 
+/** Every pane fact the backend expects, with an omitted one read as "no". */
+function paneFactsForIpc(pane: PaneContextMenuFacts): Required<PaneContextMenuFacts> {
+  return {
+    restrictDestinationActions: pane.restrictDestinationActions ?? false,
+    canShowInFolder: pane.canShowInFolder ?? false,
+    listingId: pane.listingId ?? '',
+    canOpenTerminalHere: pane.canOpenTerminalHere ?? false,
+    canShare: pane.canShare ?? false,
+    canTag: pane.canTag ?? false,
+    canFavorite: pane.canFavorite ?? false,
+    canShareLink: pane.canShareLink ?? false,
+  }
+}
+
 /**
  * Shows a native context menu for a file.
  * @param path - Absolute path to the right-clicked file (the "primary" file).
@@ -189,16 +203,7 @@ export async function showFileContextMenu(
     filename,
     isDirectory,
     paths,
-    pane: {
-      restrictDestinationActions: pane.restrictDestinationActions ?? false,
-      canShowInFolder: pane.canShowInFolder ?? false,
-      listingId: pane.listingId ?? '',
-      canOpenTerminalHere: pane.canOpenTerminalHere ?? false,
-      canShare: pane.canShare ?? false,
-      canTag: pane.canTag ?? false,
-      canFavorite: pane.canFavorite ?? false,
-      canShareLink: pane.canShareLink ?? false,
-    },
+    pane: paneFactsForIpc(pane),
     target: {
       countText: target.countText ?? null,
       sizeText: target.sizeText ?? null,
