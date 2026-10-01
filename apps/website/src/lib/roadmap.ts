@@ -646,6 +646,18 @@ export const roadmapSections: RoadmapSection[] = [
             description: 'Now a good variety of rich and raw modes.',
             done: true,
           },
+          {
+            date: '(Sep 29)',
+            title: 'Streamed compression',
+            description: 'Zips stream straight to servers and local devices.',
+            done: true,
+          },
+          {
+            date: '(Sep 30)',
+            title: 'Reorder tabs',
+            description: 'Drag&drop tabs, in-pane and cross-pane.',
+            done: true,
+          },
         ],
       },
     ],
