@@ -117,6 +117,14 @@ pub struct InMemoryVolume {
     /// readable until then). Default `false`, where a write onto an existing
     /// name refuses whatever the mode. Set via [`Self::with_whole_publish`].
     publishes_writes_whole: bool,
+    /// Whether this volume renames like an object store: [`Volume::rename_work`]
+    /// answers `CopyThenDelete` for every entry, and [`Volume::rename`] refuses
+    /// with `NotSupported`, so a caller that forgot to ask gets caught. Default
+    /// `false`. Set via [`Self::with_renames_by_copy`].
+    renames_by_copy: bool,
+    /// Every batch [`Volume::delete_files`] was handed, in order, so a test can
+    /// see the sweep batched.
+    delete_batches: std::sync::Mutex<Vec<usize>>,
     /// Paths whose [`Volume::is_directory`] and [`Volume::get_metadata`] fail with
     /// an `IoError` instead of answering, modeling a stat that couldn't complete
     /// (a dropped MTP session, a hung mount) rather than a path that isn't there.
@@ -165,6 +173,8 @@ impl InMemoryVolume {
             create_directory_not_found: false,
             composes_new_names: false,
             publishes_writes_whole: false,
+            renames_by_copy: false,
+            delete_batches: std::sync::Mutex::new(Vec::new()),
             stat_failing: RwLock::new(HashSet::new()),
             connection_state: None,
             backend_kind: BackendKind::Local,
@@ -269,6 +279,19 @@ impl InMemoryVolume {
     pub fn with_whole_publish(mut self) -> Self {
         self.publishes_writes_whole = true;
         self
+    }
+
+    /// Makes this volume rename like an object store: every entry's
+    /// [`Volume::rename_work`] is `CopyThenDelete`, and `rename` itself refuses
+    /// with `NotSupported`.
+    pub fn with_renames_by_copy(mut self) -> Self {
+        self.renames_by_copy = true;
+        self
+    }
+
+    /// How many paths each [`Volume::delete_files`] call carried, in order.
+    pub fn delete_batches(&self) -> Vec<usize> {
+        self.delete_batches.lock_ignore_poison().clone()
     }
 
     /// Test helper: fails any `rename` whose DESTINATION is `to`, AFTER the

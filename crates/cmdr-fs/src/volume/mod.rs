@@ -620,6 +620,69 @@ pub trait Volume: Send + Sync {
         Box::pin(async { Err(VolumeError::NotSupported) })
     }
 
+    /// Whether renaming the entry at `path` is one cheap server-side call here,
+    /// or a copy of its bytes plus a delete ([`RenameWork`], `server_side.rs`).
+    ///
+    /// ❗ Every caller of [`rename`](Self::rename) asks this first, and sends a
+    /// [`RenameWork::CopyThenDelete`] entry through the transfer engine as a
+    /// same-volume move (progress, pause, cancel, journaling) instead of
+    /// calling `rename`. ❌ Never inferred from a backend kind: the answer is
+    /// per entry (S3 renames a small file in one call, a folder never).
+    ///
+    /// Default `OneCall`, with no I/O.
+    fn rename_work<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<RenameWork, VolumeError>> + Send + 'a>> {
+        let _ = path;
+        Box::pin(async { Ok(RenameWork::OneCall) })
+    }
+
+    /// Counts the files under `path` (a file counts as one), stopping once
+    /// more than `cap` are found ([`SubtreeTally::complete`] is then `false`).
+    /// What a rename that copies would move, for the rename editor to decide
+    /// whether to confirm first.
+    ///
+    /// Default: one listing per folder ([`server_side::tally_by_listing`]). An
+    /// object store overrides it with a recursive listing, a thousand keys per
+    /// request whatever the nesting.
+    fn tally_subtree<'a>(
+        &'a self,
+        path: &'a Path,
+        cap: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<SubtreeTally, VolumeError>> + Send + 'a>> {
+        Box::pin(server_side::tally_by_listing(self, path, cap))
+    }
+
+    /// Deletes several FILES, answering one result per path, in order.
+    ///
+    /// The batch form of [`delete`](Self::delete), for a move's source sweep:
+    /// an object store deletes a thousand keys per request (`DeleteObjects`).
+    /// ❗ Files only, each one a path the caller just listed as a file: a
+    /// backend may delete by key without the folder check `delete` makes. A
+    /// path already gone answers `Ok`.
+    ///
+    /// Default: [`delete`](Self::delete) per path.
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn delete_files<'a>(
+        &'a self,
+        paths: &'a [PathBuf],
+    ) -> Pin<Box<dyn Future<Output = Vec<Result<(), VolumeError>>> + Send + 'a>> {
+        Box::pin(async move {
+            let mut results = Vec::with_capacity(paths.len());
+            for path in paths {
+                results.push(match self.delete(path).await {
+                    Err(VolumeError::NotFound(_)) => Ok(()),
+                    other => other,
+                });
+            }
+            results
+        })
+    }
+
     // ========================================
     // Mutation notification
     // ========================================
@@ -1727,6 +1790,44 @@ pub trait Volume: Send + Sync {
         let _ = (from, to, on_progress);
         Box::pin(async { Err(VolumeError::NotSupported) })
     }
+
+    /// Copies one FILE from `from` on `source` to `to` here, without the bytes
+    /// travelling through Cmdr: the transfer engine's one server-side-copy
+    /// entry point, asked before every streamed file.
+    ///
+    /// `source` may be THIS volume, or another view of the same storage the
+    /// backend can copy across (two S3 places of one account). ❗ The backend
+    /// decides that from `source`'s concrete type and identity, ❌ never from a
+    /// path: a copy on a server the source path doesn't belong to copies the
+    /// wrong file, silently.
+    ///
+    /// `to` is written the way [`write_from_stream`](Self::write_from_stream)
+    /// writes it under `mode`; a whole-publishing backend
+    /// ([`publishes_writes_whole`](Self::publishes_writes_whole)) publishes the
+    /// copy whole too, so the caller writes its final name. Cancellation comes
+    /// through `progress`, and the backend removes its partial before
+    /// answering [`VolumeError::Cancelled`].
+    ///
+    /// `NotSupported` means "stream it instead", never a failure. Default:
+    /// [`copy_within`](Self::copy_within) when `source` is this very volume
+    /// and `mode` is `CreateOrReplace` (its contract truncates), else
+    /// `NotSupported`.
+    fn copy_on_server<'a>(
+        &'a self,
+        source: &'a dyn Volume,
+        from: &'a Path,
+        to: &'a Path,
+        mode: WriteMode,
+        progress: &'a dyn ServerCopyProgress,
+    ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            if mode == WriteMode::CreateNew || !std::ptr::addr_eq(self as *const Self, source as *const dyn Volume) {
+                return Err(VolumeError::NotSupported);
+            }
+            self.copy_within(from, to, &|done, total| progress.advanced(done, total))
+                .await
+        })
+    }
 }
 
 /// Anchors a caller-supplied path at `root`, giving the absolute, root-anchored
@@ -1790,6 +1891,7 @@ mod scan_boundary;
 pub mod scan_stop;
 pub mod scan_walk;
 pub mod secret_store;
+pub mod server_side;
 pub mod share_link;
 mod types;
 mod usb_speed;
@@ -1819,6 +1921,7 @@ pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavai
 pub use entry_kind::EntryKind;
 pub use error::{ErrnoField, VolumeError};
 pub use ids::*;
+pub use server_side::{RenameWork, ServerCopyProgress, SubtreeTally};
 pub use share_link::{ShareLink, ShareLinkExpiry};
 // The app-path schemes live beside the translation they feed; re-exported here
 // so callers keep `volume::sftp_app_root` and friends.

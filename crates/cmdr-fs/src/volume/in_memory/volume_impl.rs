@@ -4,12 +4,11 @@
 
 use super::{InMemoryEntry, InMemoryVolume};
 use crate::entry::FileEntry;
-#[cfg(feature = "playwright-e2e")]
 use crate::ignore_poison::IgnorePoison;
 use crate::ignore_poison::RwLockIgnorePoison;
 use crate::volume::{
-    BackendKind, ConnectionState, CopyScanResult, IndexWalk, LaneKey, ScanConflict, SourceItemInfo, SpaceInfo,
-    StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WriteAccess, WriteMode,
+    BackendKind, ConnectionState, CopyScanResult, IndexWalk, LaneKey, RenameWork, ScanConflict, SourceItemInfo,
+    SpaceInfo, StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WriteAccess, WriteMode,
 };
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -296,6 +295,40 @@ impl Volume for InMemoryVolume {
         })
     }
 
+    fn rename_work<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<RenameWork, VolumeError>> + Send + 'a>> {
+        let _ = path;
+        let work = if self.renames_by_copy {
+            RenameWork::CopyThenDelete
+        } else {
+            RenameWork::OneCall
+        };
+        Box::pin(async move { Ok(work) })
+    }
+
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn delete_files<'a>(
+        &'a self,
+        paths: &'a [PathBuf],
+    ) -> Pin<Box<dyn Future<Output = Vec<Result<(), VolumeError>>> + Send + 'a>> {
+        self.delete_batches.lock_ignore_poison().push(paths.len());
+        Box::pin(async move {
+            let mut results = Vec::with_capacity(paths.len());
+            for path in paths {
+                results.push(match self.delete(path).await {
+                    Err(VolumeError::NotFound(_)) => Ok(()),
+                    other => other,
+                });
+            }
+            results
+        })
+    }
+
     fn rename<'a>(
         &'a self,
         from: &'a Path,
@@ -303,6 +336,9 @@ impl Volume for InMemoryVolume {
         force: bool,
     ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
         Box::pin(async move {
+            if self.renames_by_copy {
+                return Err(VolumeError::NotSupported);
+            }
             if let Some(failure) = &self.rename_failure {
                 return Err(failure.clone());
             }
