@@ -21,50 +21,73 @@ fn report_shape(input: &str) -> String {
     token.replace_all(&output, "<$1>").into_owned()
 }
 
-/// `redact_line` is also the compatibility sanitizer for ordinary MCP resources. These outputs
-/// pin its byte-for-byte policy, which deliberately stops short of the report-mode handling of
-/// complete remote references, structured identities, and name-derived IDs.
+/// `redact_line` serves ordinary MCP resources with the SAME policy as a report, only with bare
+/// tokens: complete remote references, structured identities, and name-derived IDs included.
+/// A second, weaker policy for MCP once let a space-containing URL swallow the path after it.
 #[test]
-fn unsalted_api_preserves_pre_report_policy_bytes() {
+fn unsalted_api_runs_the_report_policy_with_bare_tokens() {
     let cases = [
         ("/Users/alice/Secret Project/report.pdf", "$HOME/<dir>/<file>.pdf"),
         (
             "smb://ada:secret@nas.local:1445/Finance/Downloads/report.pdf?token=secret#customer",
-            "smb://<host>/<share>/Downloads/<dir>",
+            "smb://<user>:<credential>@<host>.local:1445/<share>/<dir>/<file>.pdf?<query>=<query>#<fragment>",
         ),
         (
             r"\\nas.local\Finance\Downloads\report.pdf",
-            r"\\<host>\<share>\Downloads\<file>.pdf",
+            r"\\<host>.local\<share>\<dir>\<file>.pdf",
         ),
         (
             "sftp://ada:secret@files.example.test:2222/home/ada/Client/report.pdf?token=secret#customer",
-            "sftp://<userinfo>@files.example.test:2222/home/ada/Client/report.pdf?token=secret#customer",
+            "sftp://<user>:<credential>@<host>:2222/<dir>/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>",
         ),
+        // A URL path may contain spaces, so the prose after it rides along as path segments:
+        // over-redacted, never leaked.
         (
             "https://u@host.example/a then /Users/alice/secret.txt",
-            "https://<userinfo>@host.example/a then $HOME/<file>.txt",
+            "https://<user>@<host>/<dir>/<dir>/<dir>/<file>.txt",
         ),
         (
             "webdav://nas.local/dav/ada/report.pdf?owner=ada@example.test#customer",
-            "webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer",
+            "webdav://<host>.local/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>",
         ),
         (
             "https://10.24.8.3/customer/acme/report.json?owner=ada@example.test#customer",
-            "https://<ipv4>/customer/acme/report.json?owner=<email>#customer",
+            "https://<ipv4-private>/<dir>/<dir>/<file>.json?<query>=<query>#<fragment>",
         ),
         (
             r#"host="Client Nimbus" share="Private Vault""#,
-            r#"host="Client Nimbus" share="Private Vault""#,
+            r#"host="<host>" share="<share>""#,
         ),
         (r#"host="nas.local" user="ada""#, r#"host="<host>.local" user="<user>""#),
         (
             "IDs smb-nas-private-445-client-0123456789abcdef manual-192-168-40-9-1445",
-            "IDs smb-nas-private-445-client-0123456789abcdef manual-192-168-40-9-1445",
+            "IDs smb-<volume-id> manual-<server-id>-1445",
         ),
     ];
 
     for (input, expected) in cases {
-        assert_eq!(r(input), expected, "legacy compatibility changed for {input:?}");
+        assert_eq!(r(input), expected, "unsalted output for {input:?}");
+        assert_eq!(r(input), report_shape(input), "the two policies split for {input:?}");
+    }
+}
+
+/// cmdr-reports#30: a URL with a space in its path once swallowed the absolute path after it
+/// under the unsalted policy, so the user's home folder name shipped raw.
+#[test]
+fn a_space_containing_url_never_hides_the_path_after_it() {
+    let cases = [
+        "fetched https://u@host.example/My Folder/a.txt then /Users/alice/secret.txt",
+        "fetched sftp://ada@nas.example/Client Nimbus/report.pdf and /Users/alice/Private Plans/b.pdf",
+        "webdav://nas.local/dav/Shared Stuff/x.docx then /Volumes/Alice Backup/notes.md",
+    ];
+    for input in cases {
+        for out in [r(input), report_shape(input)] {
+            assert!(!out.contains("alice") && !out.contains("Alice"), "{out}");
+            assert!(
+                !out.contains("Private") && !out.contains("Nimbus") && !out.contains("Shared"),
+                "{out}"
+            );
+        }
     }
 }
 

@@ -53,7 +53,7 @@ fn split_uri_with_query() {
 }
 
 #[test]
-fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
+fn recent_listing_errors_redact_remote_references_and_identities_with_bare_tokens() {
     let errors = [
         RecentListingError {
             at_unix_ms: 1_789_000_000_001,
@@ -82,13 +82,13 @@ fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
             "  - atUnixMs: 1789000000001\n",
             "    listingId: listing-private-server\n",
             "    volumeId: smb-nas-private-445-client-0123456789abcdef\n",
-            "    path: \"sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\"\n",
-            "    message: \"host=\\\"Client Nimbus\\\" share=\\\"Private Vault\\\" source=https://<ipv4>/acme?owner=<email>#customer\"\n",
+            "    path: \"sftp://<user>:<credential>@<host>:2222/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>\"\n",
+            "    message: \"host=\\\"<host>\\\" share=\\\"<share>\\\" source=https://<ipv4-private>/<dir>?<query>=<query>#<fragment>\"\n",
             "  - atUnixMs: 1789000000002\n",
             "    listingId: listing-webdav\n",
             "    volumeId: manual-192-168-40-9-1445\n",
-            "    path: \"webdav://<host>.local/dav/ada/report.json?owner=<email>#customer\"\n",
-            "    message: \"Could not list \\\\\\\\<host>\\\\<share>\\\\Downloads\\\\<file>.pdf\"\n",
+            "    path: \"webdav://<host>.local/<dir>/<dir>/<file>.json?<query>=<query>#<fragment>\"\n",
+            "    message: \"Could not list \\\\\\\\<host>.local\\\\<share>\\\\<dir>\\\\<file>.pdf\"\n",
         )
     );
 }

@@ -110,7 +110,7 @@ fn running_op_shows_status_progress_speed_and_eta() {
 }
 
 #[test]
-fn operation_paths_keep_pre_report_remote_and_id_policy() {
+fn operation_paths_redact_remote_references_and_ids_with_bare_tokens() {
     let mut operation = snapshot("op-remote", LifecycleStatus::Running);
     operation.source =
         Some("sftp://ada:secret@files.example.test:2222/home/ada/report.pdf?token=secret#customer".to_string());
@@ -133,10 +133,10 @@ fn operation_paths_keep_pre_report_remote_and_id_policy() {
             "  - operationId: op-remote\n",
             "    type: copy\n",
             "    status: running\n",
-            "    source: \"sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\"\n",
-            "    destination: \"webdav://<host>.local/dav/ada/report.pdf?owner=<email>#customer\"\n",
+            "    source: \"sftp://<user>:<credential>@<host>:2222/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>\"\n",
+            "    destination: \"webdav://<host>.local/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>\"\n",
             "    progress: scanning\n",
-            "    currentFile: \"smb-nas-private-445-client-0123456789abcdef\"\n",
+            "    currentFile: \"smb-<volume-id>\"\n",
             "    elapsedSeconds: 0\n",
         )
     );

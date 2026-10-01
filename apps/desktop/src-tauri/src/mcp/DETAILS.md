@@ -346,13 +346,12 @@ Directory module split by test category:
 
 ## Key decisions
 
-### Ordinary resources do not inherit report-delivery policy
+### Ordinary resources share the report redaction policy, with bare tokens
 
-The ordinary MCP resources are a functional interface whose redacted text is observable output. They use unsalted
-`crate::redact::redact_line`, whose legacy scanner semantics are pinned at the complete builder seams for logs,
-operations, and recent listing failures. Uploaded crash/error reports cross a different trust boundary and use
-`RedactionContext` for complete remote-reference, structured-identity, and derived-ID coverage with report-local
-tokens. The canonical policy and rationale live in `resources/DETAILS.md` and `../redact/DETAILS.md`.
+The ordinary MCP resources use unsalted `crate::redact::redact_line`: the same policy uploaded crash/error reports get
+(complete remote references, structured identities, derived IDs), with bare tokens in place of report-local ones. The
+builder seams for logs, operations, and recent listing failures pin the output. The canonical policy and rationale live
+in `../redact/DETAILS.md` § "Decision: one policy; the context only salts tokens".
 
 ### MCP action tools wait for backend ack before returning success
 
