@@ -2,8 +2,9 @@
 //! a zero-byte `name/` marker.
 //!
 //! - **A folder exists** when it has a marker OR any key under its prefix, and
-//!   ❗ a folder wins over an object of the same name, the way the listing
-//!   decides (`listing.rs`): one name in a pane is one path.
+//!   a folder wins over an object of the same name, except for a file the
+//!   listing showed as `<name> (file)`: its row names only the file, and the
+//!   folder's row only the folder (`paths.rs`).
 //! - **`create_directory` writes the marker** (conditional where allowlisted,
 //!   else after a check) and refuses an occupied name or a missing parent the
 //!   way `mkdir` does, so the shared `mkdir -p` walk works unchanged.
@@ -32,7 +33,7 @@ use log::{debug, warn};
 use super::S3Volume;
 use super::errors::map_s3_error;
 use super::listing::{FolderContents, folder_contents};
-use super::paths::{Target, target_of};
+use super::paths::{Holder, Resolved, Target, target_of};
 use super::query::body_error;
 use super::writes::{Landed, Landing, judge_landing};
 use crate::error::S3Error;
@@ -153,13 +154,26 @@ impl S3Volume {
 
     /// One node: an object, or a folder's own marker. ❗ A folder still holding
     /// anything is refused, never recursed into.
+    ///
+    /// A `<name> (file)` row deletes only its file, and the folder row beside
+    /// it only the folder's marker: ❗ a folder whose last key went is never
+    /// mistaken for the file of its name (`paths.rs`).
     pub(super) async fn delete_impl(&self, path: &Path) -> Result<(), VolumeError> {
-        let remote = self.to_remote_path(path)?;
+        let Resolved { remote, holder } = self.resolve(path)?;
         let Target::Key { bucket, key } = target_of(&remote) else {
             // Deleting a bucket, or the account, isn't a file operation.
             return Err(VolumeError::NotSupported);
         };
         let client = self.clone_client().await?;
+        if holder == Holder::File {
+            if self.head_object(&client, bucket, key, &remote).await?.is_none() {
+                return Err(VolumeError::NotFound(remote));
+            }
+            self.delete_key(&client, bucket, key, &remote).await?;
+            self.forget_beside_folder(&remote);
+            patch_deleted(self, path).await;
+            return Ok(());
+        }
         let prefix = format!("{key}/");
         let params = ListObjectsParams {
             prefix: &prefix,
@@ -180,6 +194,7 @@ impl S3Volume {
                 });
             }
             FolderContents::MarkerOnly => prefix,
+            FolderContents::Nothing if holder == Holder::Folder => return Err(VolumeError::NotFound(remote)),
             FolderContents::Nothing => {
                 if self.head_object(&client, bucket, key, &remote).await?.is_none() {
                     return Err(VolumeError::NotFound(remote));
@@ -210,7 +225,14 @@ impl S3Volume {
     /// The source goes only after the copy is verified, so the worst a failure
     /// leaves is two copies, never none.
     pub(super) async fn rename_impl(&self, from: &Path, to: &Path, force: bool) -> Result<(), VolumeError> {
-        let remote_from = self.to_remote_path(from)?;
+        let Resolved {
+            remote: remote_from,
+            holder,
+        } = self.resolve(from)?;
+        if holder == Holder::Folder {
+            // ❗ Never the file of its name: a folder is the engine's job.
+            return Err(VolumeError::NotSupported);
+        }
         let remote_to = self.to_remote_path(to)?;
         let (
             Target::Key {
@@ -231,9 +253,10 @@ impl S3Volume {
         let client = self.clone_client().await?;
         let Some(head) = self.head_object(&client, from_bucket, from_key, &remote_from).await? else {
             return Err(
-                if self
-                    .has_keys_under(&client, from_bucket, from_key, &remote_from)
-                    .await?
+                if holder == Holder::Either
+                    && self
+                        .has_keys_under(&client, from_bucket, from_key, &remote_from)
+                        .await?
                 {
                     // A folder is one copy and one delete per object: the
                     // transfer engine's job (`rename_work`).
@@ -303,6 +326,7 @@ impl S3Volume {
             warn!(target: "volume", "s3: {remote_from} was copied to {remote_to} but its delete failed: {e}");
             return Err(e);
         }
+        self.forget_beside_folder(&remote_from);
         patch_renamed(self, from, to).await;
         Ok(())
     }
@@ -312,13 +336,16 @@ impl S3Volume {
     /// is a copy the transfer engine runs. The account and a bucket's top
     /// can't be renamed at all, which `rename` itself says.
     pub(super) async fn rename_work_impl(&self, path: &Path) -> Result<RenameWork, VolumeError> {
-        let remote = self.to_remote_path(path)?;
+        let Resolved { remote, holder } = self.resolve(path)?;
         let Target::Key { bucket, key } = target_of(&remote) else {
             return Ok(RenameWork::OneCall);
         };
         let client = self.clone_client().await?;
-        if self.has_keys_under(&client, bucket, key, &remote).await? {
+        if holder != Holder::File && self.has_keys_under(&client, bucket, key, &remote).await? {
             return Ok(RenameWork::CopyThenDelete);
+        }
+        if holder == Holder::Folder {
+            return Err(VolumeError::NotFound(remote));
         }
         let Some(head) = self.head_object(&client, bucket, key, &remote).await? else {
             return Err(VolumeError::NotFound(remote));

@@ -3,7 +3,7 @@
 
 use std::time::{Duration, SystemTime};
 
-use super::{Child, FolderContents, children_of, folder_contents};
+use super::{Child, FolderContents, children_of, folder_contents, settle};
 use crate::xml::{ObjectEntry, ObjectPage, StorageClass};
 
 fn object(key: &str, size: u64) -> ObjectEntry {
@@ -73,11 +73,70 @@ fn keys_deeper_down_collapse_into_one_folder() {
 }
 
 #[test]
-fn a_key_and_a_prefix_of_one_name_keep_the_folder() {
+fn a_key_and_a_prefix_of_one_name_list_both_the_file_suffixed() {
     // ❗ S3 lets `notes` and `notes/…` both exist; one name in a pane can't be
-    // two entries (both would carry one path), and the folder holds more.
-    let listed = children_of(&page(&["notes/"], vec![object("notes", 3)]), "");
-    assert_eq!(names(&listed), [("notes", true)]);
+    // two entries (both would carry one path), so the file shows as
+    // `notes (file)`.
+    let listed = settle(children_of(&page(&["notes/"], vec![object("notes", 3)]), ""));
+    assert_eq!(names(&listed), [("notes", true), ("notes (file)", false)]);
+    assert!(matches!(
+        &listed[1],
+        Child::Object {
+            beside_folder: true,
+            size: 3,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_key_and_a_prefix_on_different_pages_still_list_both() {
+    // `notes` sorts before `notes/`, so a page break can fall between them.
+    let mut children = children_of(&page(&[], vec![object("a.txt", 1), object("notes", 3)]), "");
+    children.extend(children_of(&page(&["notes/"], vec![]), ""));
+    let listed = settle(children);
+    assert_eq!(
+        names(&listed),
+        [("notes", true), ("a.txt", false), ("notes (file)", false)]
+    );
+}
+
+#[test]
+fn a_file_with_no_folder_of_its_name_keeps_its_name() {
+    let listed = settle(children_of(&page(&["photos/"], vec![object("notes", 3)]), ""));
+    assert_eq!(names(&listed), [("photos", true), ("notes", false)]);
+    assert!(matches!(
+        &listed[1],
+        Child::Object {
+            beside_folder: false,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_suffixed_name_that_is_taken_leaves_the_file_out() {
+    // A real `notes (file)` already holds the name the shadowed file would
+    // take; two rows on one path would break the pane, so it stays unlisted.
+    let page = page(&["notes/"], vec![object("notes", 3), object("notes (file)", 5)]);
+    let listed = settle(children_of(&page, ""));
+    assert_eq!(names(&listed), [("notes", true), ("notes (file)", false)]);
+    assert!(matches!(
+        &listed[1],
+        Child::Object {
+            beside_folder: false,
+            size: 5,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_folder_named_twice_lists_once() {
+    // A server that ignores the delimiter can name one folder on two pages.
+    let mut children = children_of(&page(&[], vec![object("a/x", 1)]), "");
+    children.extend(children_of(&page(&[], vec![object("a/y", 1)]), ""));
+    assert_eq!(names(&settle(children)), [("a", true)]);
 }
 
 #[test]

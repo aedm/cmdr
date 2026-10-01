@@ -9,7 +9,7 @@
 //! through the [`VolumeHost`] seams handed to [`connect_s3_volume`].
 //! `CLAUDE.md` has the must-knows, `DETAILS.md` the decisions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 
@@ -127,6 +127,10 @@ struct S3VolumeInner {
     /// The smallest part a multipart upload cuts: `MIN_PART_SIZE`, except in a
     /// Docker cell that wants several parts from a small file.
     part_floor: AtomicU64,
+    /// The server-side paths of files the last listing of their folder showed
+    /// beside a folder of their own name, as `<name> (file)` (`paths.rs` §
+    /// "A file beside a folder of its name").
+    beside_folders: std::sync::Mutex<HashSet<String>>,
 }
 
 impl S3VolumeInner {
@@ -329,6 +333,7 @@ impl S3Volume {
                 host,
                 ledger,
                 written: std::sync::Mutex::new(HashMap::new()),
+                beside_folders: std::sync::Mutex::new(HashSet::new()),
                 part_floor: AtomicU64::new(MIN_PART_SIZE),
             }),
         }
@@ -337,6 +342,8 @@ impl S3Volume {
 
 #[cfg(test)]
 mod batch_test;
+#[cfg(test)]
+mod beside_folder_test;
 #[cfg(test)]
 mod conformance_test;
 #[cfg(test)]

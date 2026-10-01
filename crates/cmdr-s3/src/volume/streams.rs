@@ -16,7 +16,7 @@ use http::StatusCode;
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::paths::{Target, target_of};
+use super::paths::{Holder, Resolved, Target, target_of};
 use super::query::stored_mtime;
 use crate::error::S3Error;
 use crate::metadata::MTIME_HEADER;
@@ -203,11 +203,15 @@ impl S3Volume {
     /// Sends a GET for the object at `path`, answering with its body still on
     /// the wire and the server-side path errors name. The account root and a
     /// bucket's top are folders.
+    /// The folder row beside a `<name> (file)` row is a folder too.
     async fn get(&self, path: &Path, range: Option<ByteRange>) -> Result<(Opened, String), VolumeError> {
-        let remote = self.to_remote_path(path)?;
+        let Resolved { remote, holder } = self.resolve(path)?;
         let Target::Key { bucket, key } = target_of(&remote) else {
             return Err(VolumeError::IsADirectory(remote));
         };
+        if holder == Holder::Folder {
+            return Err(VolumeError::IsADirectory(remote));
+        }
         let client = self.clone_client().await?;
         let request =
             ops::get_object(client.profile(), bucket, key, range).map_err(|_| VolumeError::NotFound(remote.clone()))?;

@@ -10,7 +10,7 @@ use std::path::Path;
 use cmdr_fs::volume::{ShareLink, ShareLinkExpiry, VolumeError};
 
 use super::S3Volume;
-use super::paths::{Target, target_of};
+use super::paths::{Holder, Resolved, Target, target_of};
 use crate::ops::ShareLinkError;
 
 impl S3Volume {
@@ -23,10 +23,14 @@ impl S3Volume {
         path: &Path,
         expires_in: ShareLinkExpiry,
     ) -> Result<ShareLink, VolumeError> {
-        let remote = self.to_remote_path(path)?;
+        let Resolved { remote, holder } = self.resolve(path)?;
         let Target::Key { bucket, key } = target_of(&remote) else {
             return Err(VolumeError::IsADirectory(remote));
         };
+        // The folder row beside a `<name> (file)` row: never that file's link.
+        if holder == Holder::Folder {
+            return Err(VolumeError::IsADirectory(remote));
+        }
         let client = self.clone_client().await?;
         match client.share_link(bucket, key, expires_in.duration()).await {
             Ok(url) => Ok(ShareLink::new(url.into())),

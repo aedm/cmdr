@@ -14,8 +14,8 @@ use tokio_util::sync::CancellationToken;
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::listing::{Child, children_of};
-use super::paths::{Target, child_of, target_of};
+use super::listing::{Child, FILE_SUFFIX, children_of, settle};
+use super::paths::{Holder, Resolved, Target, child_of, target_of};
 use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, parse_mtime};
 use crate::ops::{self, ListObjectsParams};
@@ -87,6 +87,9 @@ impl S3Volume {
                 // Whether the listing saw ANY key under the prefix, the folder's
                 // own marker included: an S3 "folder" with none doesn't exist.
                 let mut found = prefix.is_empty();
+                // Settled once every page is in: a file and the folder of its
+                // name can sit on different pages.
+                let mut children = Vec::new();
                 loop {
                     let params = ListObjectsParams {
                         prefix: &prefix,
@@ -100,9 +103,8 @@ impl S3Volume {
                     let page = parse_list_objects(&answer.text()).map_err(|e| body_error(&e, &remote))?;
                     found |= !page.prefixes.is_empty() || !page.objects.is_empty();
                     for child in children_of(&page, &wire_prefix) {
-                        if let Some(entry) = self.child_entry(&remote, child) {
-                            gathered.add(entry);
-                        }
+                        gathered.count(&child);
+                        children.push(child);
                     }
                     gathered.report(on_progress);
                     token = page.next_continuation_token.filter(|_| page.is_truncated);
@@ -114,6 +116,12 @@ impl S3Volume {
                 if !found {
                     return Err(VolumeError::NotFound(remote));
                 }
+                let children = settle(children);
+                self.note_beside_folders(&remote, &children);
+                gathered.entries = children
+                    .into_iter()
+                    .filter_map(|child| self.child_entry(&remote, child))
+                    .collect();
             }
         }
         stop_if_cancelled(cancel, &remote)?;
@@ -123,8 +131,10 @@ impl S3Volume {
     /// One entry: the account root without a request, a bucket by
     /// `HeadBucket`, a key by `HeadObject`, and a key that isn't an object by
     /// one bounded listing of what's under it.
+    /// A folder a file of its name was listed beside is only ever the folder,
+    /// and that file's `<name> (file)` row only ever the file (`paths.rs`).
     pub(super) async fn get_metadata_impl(&self, path: &Path) -> Result<FileEntry, VolumeError> {
-        let remote = self.to_remote_path(path)?;
+        let Resolved { remote, holder } = self.resolve(path)?;
         let not_here = || VolumeError::NotFound(path.to_string_lossy().into_owned());
         match target_of(&remote) {
             Target::Account => self.folder_entry(&self.name, &remote, None).ok_or_else(not_here),
@@ -137,10 +147,17 @@ impl S3Volume {
             Target::Key { bucket, key } => {
                 let client = self.clone_client().await?;
                 let name = key.rsplit('/').next().unwrap_or(key);
+                if holder == Holder::Folder {
+                    return if self.has_keys_under(&client, bucket, key, &remote).await? {
+                        self.folder_entry(name, &remote, None).ok_or_else(not_here)
+                    } else {
+                        Err(not_here())
+                    };
+                }
                 let request = ops::head_object(client.profile(), bucket, key).map_err(|_| not_here())?;
                 match self.ask(&client, request, &remote).await {
                     Ok(answer) => self.object_entry(name, &remote, &answer).ok_or_else(not_here),
-                    Err(VolumeError::NotFound(_)) => {
+                    Err(VolumeError::NotFound(_)) if holder == Holder::Either => {
                         if self.has_keys_under(&client, bucket, key, &remote).await? {
                             self.folder_entry(name, &remote, None).ok_or_else(not_here)
                         } else {
@@ -186,6 +203,7 @@ impl S3Volume {
                 size,
                 modified,
                 archived,
+                ..
             } => {
                 let app_path = self.root.to_app_path(&remote)?;
                 let mut entry = FileEntry::new(name, app_path.to_string_lossy().into_owned(), false, false);
@@ -210,9 +228,16 @@ impl S3Volume {
     /// An object from its HEAD: the size from `Content-Length`, the date from
     /// `x-amz-meta-mtime` (the source's own mtime, rclone's key and format)
     /// when it's there, else `Last-Modified` (the upload time).
+    /// A file listed beside a folder of its name keeps its `<name> (file)` row.
     pub(super) fn object_entry(&self, name: &str, remote: &str, head: &Answer) -> Option<FileEntry> {
-        let app_path = self.root.to_app_path(remote)?;
-        let mut entry = FileEntry::new(name.to_string(), app_path.to_string_lossy().into_owned(), false, false);
+        let shown = self.shown_remote(remote);
+        let name = if shown == remote {
+            name.to_string()
+        } else {
+            format!("{name}{FILE_SUFFIX}")
+        };
+        let app_path = self.root.to_app_path(&shown)?;
+        let mut entry = FileEntry::new(name, app_path.to_string_lossy().into_owned(), false, false);
         entry.size = head.header("content-length").and_then(|length| length.parse().ok());
         entry.modified_at = modified_from_head(head.header(MTIME_HEADER), head.header("last-modified"));
         entry.in_cold_storage = cold_from_head(head.header("x-amz-storage-class"), head.header("x-amz-archive-status"));
@@ -276,6 +301,17 @@ impl Gathered {
             self.tally.bytes += entry.size.unwrap_or(0);
         }
         self.entries.push(entry);
+    }
+
+    /// Counts a listing child the entries get made from later.
+    fn count(&mut self, child: &Child) {
+        match child {
+            Child::Folder { .. } => self.tally.dirs += 1,
+            Child::Object { size, .. } => {
+                self.tally.files += 1;
+                self.tally.bytes += size;
+            }
+        }
     }
 
     /// The running tally, after a page. ❗ Never per entry.

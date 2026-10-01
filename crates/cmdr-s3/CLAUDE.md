@@ -38,6 +38,8 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
   reports another writer's object as `AlreadyExists`.
 - ❗ **An upload is recorded before its first part**, and an abort counts only once a listing confirms it; the sweep
   aborts ❌ only recorded uploads, ❌ never one in flight.
+- ❗ **A file beside a folder of its name lists as `<name> (file)`**: resolve paths through `paths.rs::resolve`, ❌
+  never `RemoteRoot` directly, or the folder row reaches the file.
 - ❗ **`delete` is one node** (`ENOTEMPTY` while keys sit under a folder). **`rename` moves one small file**; a folder
   or an object past the part floor is `RenameWork::CopyThenDelete`, which callers send through the engine.
 - ❗ **An overwrite of an existing object off the `refuses_short_body` allowlist goes through a temp key**: VersityGW

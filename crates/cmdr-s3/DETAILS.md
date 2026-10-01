@@ -64,8 +64,18 @@ keys and the rights. `integration_test.rs` pins both servers' answers.
   the running tally (never per entry), cancel checked between pages. `listing.rs` turns a page into children:
   `CommonPrefixes` are folders; the folder's own marker (the key `<key>/` itself) is left out; a key with a `/` past the
   prefix (a child's marker, or a server that ignored the delimiter) names a folder, once; an empty, `.`, or `..` name is
-  left out (unaddressable). ❗ **An object and a folder of one name keep the folder**: S3 allows `notes` beside
-  `notes/…`, but one name in a pane is one path, and two entries on one path break everything keyed on it.
+  left out (unaddressable). `settle` then works on every page at once (a file and its folder can straddle a page break).
+- **A file beside a folder of its name lists as `<name> (file)`.** S3 allows `notes` beside `notes/…`, but a pane row is
+  one path: the frontend keys rows, selection, the listing cache, and every operation by `path`, and Svelte throws on a
+  duplicate key. Showing both under one name would need a row whose name isn't its path's last segment, which the app
+  assumes everywhere (copy destinations, rename, breadcrumbs), so the file takes the suffix in its name AND its path.
+  The volume remembers each such file's real path (`beside_folders`, refreshed by every listing of its folder, forgotten
+  when the file is deleted or renamed), and `paths.rs::resolve` maps `…/notes (file)` back to the key `notes` and marks
+  `…/notes` as ❗ the folder ONLY: stat, read, share link, delete, rename, and `rename_work` on the folder row never
+  fall through to the file (else the engine's delete of a folder whose last child just went would delete the file of its
+  name). The suffix is a path segment, so it's untranslated. If a real `notes (file)` already holds the name, the
+  shadowed file stays unlisted. VersityGW (POSIX-backed) can't hold both at all; Garage can, and `beside_folder_test.rs`
+  drives every row operation there.
 - **A missing folder is `NotFound`**: S3 has no folders, so a prefix with no keys at all (its marker included) doesn't
   exist, and a listing that saw nothing says so rather than showing an empty folder.
 - **`get_metadata`**: the account root without a request; a bucket by `HeadBucket`; a key by `HeadObject`, and when that
@@ -365,7 +375,8 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
 ## Folders, delete, and rename
 
 `mutation.rs`. A folder is a prefix: it exists when it has a zero-byte `name/` marker OR any key under it, and ❗ a
-folder wins over an object of the same name (`NameHolds`), the listing's rule.
+folder wins over an object of the same name (`NameHolds`), except where the listing showed the file as `<name> (file)`
+(§ "Listing and stat"): then each row names only its own holder (`paths::Holder`).
 
 - **`create_directory`** writes the marker, refusing a taken name (`AlreadyExists`), a missing parent (`NotFound`), and
   a FILE holding the parent's name (`NotADirectory`: a marker under it would turn that file into a folder in every

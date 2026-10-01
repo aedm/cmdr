@@ -5,6 +5,7 @@
 //! answers `CommonPrefixes` (each a "folder") and `Contents` (the objects
 //! directly inside). This module is where those become what a pane shows.
 
+use std::collections::HashSet;
 use std::time::SystemTime;
 
 use crate::xml::ObjectPage;
@@ -24,7 +25,62 @@ pub(super) enum Child {
         /// Glacier Flexible Retrieval or Deep Archive: reads fail until
         /// restored.
         archived: bool,
+        /// A folder of the object's own name sits beside it, so `name` is the
+        /// key's last segment plus [`FILE_SUFFIX`] ([`settle`]).
+        beside_folder: bool,
     },
+}
+
+/// What a file listed beside a folder of its own name shows as after that
+/// name. A path segment, so it's the same in every language.
+pub(super) const FILE_SUFFIX: &str = " (file)";
+
+/// A whole listing's children, every page's in order, made into what a pane
+/// can show: folders first, each folder once, and a file whose name a folder
+/// also holds renamed with [`FILE_SUFFIX`].
+///
+/// ❗ A renamed file whose new name is taken (a real `notes (file)` beside it)
+/// stays out, as it did before files beside folders were shown: two rows on
+/// one path break everything keyed on the path.
+pub(super) fn settle(children: Vec<Child>) -> Vec<Child> {
+    let mut folders: Vec<String> = Vec::new();
+    let mut objects = Vec::new();
+    for child in children {
+        match child {
+            Child::Folder { name } if !folders.contains(&name) => folders.push(name),
+            Child::Folder { .. } => {}
+            object @ Child::Object { .. } => objects.push(object),
+        }
+    }
+    let taken: HashSet<String> = objects
+        .iter()
+        .map(|object| object.name().to_string())
+        .chain(folders.iter().cloned())
+        .collect();
+    let objects = objects.into_iter().filter_map(|object| match object {
+        Child::Object {
+            name,
+            size,
+            modified,
+            archived,
+            ..
+        } if folders.contains(&name) => {
+            let shown = format!("{name}{FILE_SUFFIX}");
+            (!taken.contains(&shown)).then_some(Child::Object {
+                name: shown,
+                size,
+                modified,
+                archived,
+                beside_folder: true,
+            })
+        }
+        other => Some(other),
+    });
+    folders
+        .iter()
+        .map(|name| Child::Folder { name: name.clone() })
+        .chain(objects)
+        .collect()
 }
 
 impl Child {
@@ -49,10 +105,8 @@ impl Child {
 ///   ignored the delimiter. Each folder appears once.
 /// - **A name nothing can address** is left out: empty (from `a//b`), `.`, and
 ///   `..`, which every URL parser resolves away (`encoding::KeyError`).
-/// - ❗ **An object and a folder of one name keep the folder.** S3 allows both
-///   (`notes` beside `notes/…`), but one name in a pane is one path, and two
-///   entries on one path break everything keyed on it. The folder holds more.
-///   The object stays reachable by its path; it just isn't listed.
+/// - An object and a folder of one name both come back; [`settle`] tells them
+///   apart once every page is in.
 pub(super) fn children_of(page: &ObjectPage, prefix: &str) -> Vec<Child> {
     let mut folders: Vec<String> = Vec::new();
     let mut add_folder = |name: &str| {
@@ -83,10 +137,10 @@ pub(super) fn children_of(page: &ObjectPage, prefix: &str) -> Vec<Child> {
                 size: object.size,
                 modified: object.last_modified,
                 archived: object.storage_class.is_archived(),
+                beside_folder: false,
             });
         }
     }
-    objects.retain(|object| !folders.iter().any(|folder| folder == object.name()));
     folders
         .into_iter()
         .map(|name| Child::Folder { name })
