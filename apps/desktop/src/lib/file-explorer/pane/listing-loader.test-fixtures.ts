@@ -10,6 +10,7 @@
 import { vi } from 'vitest'
 import { createListingLoader, type ListingLoaderDeps } from './listing-loader'
 import type { ConnectionState } from '../types'
+import type { HistoryCursor } from '../navigation/navigation-history'
 
 export interface Deferred<T> {
   promise: Promise<T>
@@ -46,6 +47,8 @@ interface PaneState {
   volumeRootFromEvent: string | undefined
   cursorIndex: number
   selectedIndices: number[]
+  /** What a pending Back / Forward restore hands the next load of its path. */
+  historyCursor: { path: string; cursor: HistoryCursor | undefined } | null
 }
 
 export function makeHarness(over: Partial<PaneState> = {}) {
@@ -72,6 +75,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     volumeRootFromEvent: undefined,
     cursorIndex: 0,
     selectedIndices: [],
+    historyCursor: null,
     ...over,
   }
   const spies = {
@@ -156,6 +160,11 @@ export function makeHarness(over: Partial<PaneState> = {}) {
       state.volumeRootFromEvent = r
     },
     getCursorIndex: () => state.cursorIndex,
+    takeHistoryCursor: (path) => {
+      const pending = state.historyCursor
+      state.historyCursor = null
+      return pending?.path === path ? pending.cursor : undefined
+    },
     setCursorIndexRaw: (i) => {
       state.cursorIndex = i
     },

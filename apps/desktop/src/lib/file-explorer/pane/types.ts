@@ -3,6 +3,7 @@ import type { DragAutoScrollFrameResult, DragAutoScrollPointer } from '../drag/d
 import type { Initiator, ListingIndexSizesChanged, Location } from '$lib/tauri-commands'
 import type { HubRow } from '../network/servers-hub-rows'
 import type { FavoritesMenuOpenTrigger } from '../navigation/favorites-analytics'
+import type { HistoryCursor } from '../navigation/navigation-history'
 
 /** Options for `startRename`. */
 export interface StartRenameOptions {
@@ -59,6 +60,14 @@ export interface LoadDirectoryArgs {
 /** A directory load: the volume and path it lists, and the entry it puts under the cursor on landing. */
 export interface ListingLoad extends LoadDirectoryArgs {
   volumeId: string
+  /** A Back / Forward landing's remembered cursor, restored when `selectName` is absent. */
+  historyCursor?: HistoryCursor
+}
+
+/** Where a history walk lands, and the cursor its entry remembers (none on a first visit's entry). */
+export interface HistoryCursorTarget {
+  path: string
+  cursor: HistoryCursor | undefined
 }
 
 /**
@@ -164,6 +173,11 @@ export interface FilePaneAPI {
    * inserted at or above the cursor's index.
    */
   setPendingCursorName(name: string | null): void
+  /**
+   * A Back / Forward landing: put the cursor where it last sat in the destination
+   * history entry once that entry's rows are on screen (`pane/history-cursor-sync.svelte.ts`).
+   */
+  restoreHistoryCursor(target: HistoryCursorTarget): void
   isInNetworkView(): boolean
   hasParentEntry(): boolean
   getCurrentPath(): string

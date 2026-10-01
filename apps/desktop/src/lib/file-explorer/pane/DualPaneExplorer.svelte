@@ -30,7 +30,8 @@
     import { determineNavigationPath } from '../navigation/path-navigation'
     import { createVolumeRootFollow } from './volume-root-follow'
 
-    import { canGoBack } from '../navigation/navigation-history'
+    import { canGoBack, getCurrentEntry } from '../navigation/navigation-history'
+    import { recordCursor, type CursorReading } from '../navigation/history-cursor'
     import TabBar from '../tabs/TabBar.svelte'
     import TabDragOverlay from '../tabs/TabDragOverlay.svelte'
     import { createTabDragController } from '../tabs/tab-drag-controller.svelte'
@@ -1338,6 +1339,9 @@
                 }}
                 onStoredSpelling={(spelling: { from: string; to: string }) => {
                     adoptStoredSpelling(navigateDeps, paneId, spelling)
+                }}
+                onCursorReading={(reading: CursorReading) => {
+                    recordCursor(getCurrentEntry(getPaneHistory(paneId)), reading)
                 }}
                 onVolumeChange={({ volumeId, targetPath }: VolumeChangePayload) => {
                     navigateIntent({

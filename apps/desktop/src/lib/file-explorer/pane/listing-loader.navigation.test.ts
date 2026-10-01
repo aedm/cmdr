@@ -276,3 +276,58 @@ describe('createListingLoader — navigateToFallback / handleCancelLoading / nav
     expect(h.listDirectoryStart).toHaveBeenCalled()
   })
 })
+
+describe("createListingLoader — a Back / Forward landing restores its entry's cursor", () => {
+  async function land(over: Parameters<typeof makeHarness>[0], totalCount: number) {
+    const harness = makeHarness(over)
+    await harness.loader.loadDirectory({ path: '/b' })
+    completeCb(0)({ listingId: harness.state.listingId, totalCount, volumeRoot: '/' })
+    await vi.waitFor(() => {
+      expect(harness.state.loading).toBe(false)
+    })
+    return harness
+  }
+
+  it('lands on the remembered row where it is now, past the `..` row', async () => {
+    h.findFileIndex.mockResolvedValue(7)
+    const { state } = await land(
+      { hasParent: true, historyCursor: { path: '/b', cursor: { index: 3, rowPath: '/b/x.txt' } } },
+      20,
+    )
+    expect(h.findFileIndex).toHaveBeenCalledWith(state.listingId, 'x.txt', false)
+    expect(state.cursorIndex).toBe(8)
+  })
+
+  it('falls back to the remembered index, clamped, when the row is gone', async () => {
+    h.findFileIndex.mockResolvedValue(null)
+    const { state } = await land(
+      { hasParent: true, historyCursor: { path: '/b', cursor: { index: 30, rowPath: '/b/gone.txt' } } },
+      9,
+    )
+    // Nine entries plus `..`: the last row is 9.
+    expect(state.cursorIndex).toBe(9)
+  })
+
+  it('uses the index alone when no row was confirmed', async () => {
+    const { state } = await land({ historyCursor: { path: '/b', cursor: { index: 4 } } }, 20)
+    expect(h.findFileIndex).not.toHaveBeenCalled()
+    expect(state.cursorIndex).toBe(4)
+  })
+
+  it('ignores a pending restore meant for another path, and drops it', async () => {
+    const { state } = await land({ cursorIndex: 6, historyCursor: { path: '/elsewhere', cursor: { index: 4 } } }, 20)
+    expect(state.cursorIndex).toBe(0)
+    expect(state.historyCursor).toBeNull()
+  })
+
+  it('lets an explicit selectName win over the remembered cursor', async () => {
+    h.findFileIndex.mockResolvedValue(2)
+    const { loader, state } = makeHarness({ historyCursor: { path: '/b', cursor: { index: 9 } } })
+    await loader.loadDirectory({ path: '/b', selectName: 'pick.txt' })
+    completeCb(0)({ listingId: state.listingId, totalCount: 20, volumeRoot: '/' })
+    await vi.waitFor(() => {
+      expect(state.loading).toBe(false)
+    })
+    expect(state.cursorIndex).toBe(2)
+  })
+})

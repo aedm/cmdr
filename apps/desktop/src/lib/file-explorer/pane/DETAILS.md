@@ -94,6 +94,10 @@ suite:
   this pane started, and the array also shrinks when another window deletes the same file, when a move purges its
   sources, and when a result is trashed from a normal pane. It needs `FilePane`'s `searchSnapshot` to read the store's
   mutation tick, which also keeps `effectiveTotalCount` (Cmd+A, cursor clamping) honest after a purge.
+- `history-cursor-sync.svelte.ts`: the pane's half of per-history-entry cursor memory, reporting each cursor move with
+  the listing it happened in and parking a Back / Forward destination's cursor until its rows land. Created AFTER
+  `snapshot-selection-sync`, so a snapshot restore runs after that remap in the same flush. The model and the leak it
+  guards against: `../navigation/DETAILS.md` § "Cursor memory per entry".
 - `path-sync.ts` / `hidden-files-resync.ts`: the prop-driven reload truth table, and the cursor follow after the
   hidden-files toggle. ❗ A pane view with no listing (search results, a device-only phone, the network view) still
   COMMITS the new path (`sync-path`): skipping it on the network view left a pane that came from a share on that share's

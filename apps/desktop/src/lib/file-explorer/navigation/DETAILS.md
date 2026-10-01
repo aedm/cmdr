@@ -39,11 +39,13 @@ badges). `resolve-location.ts` and `breadcrumb-navigation.ts` are documented whe
 
 ## `navigation-history.ts`
 
-Purely functional: all operations return new objects, never mutate.
+Purely functional: all operations return new objects, never mutate. The one in-place write is an entry's `cursor`
+(`history-cursor.ts`, below), which isn't navigation state.
 
 ```
 NavigationHistory = { stack: HistoryEntry[], currentIndex: number }
-HistoryEntry = { volumeId: string, path: string, networkHost?: NetworkHost }
+HistoryEntry = { volumeId: string, path: string, networkHost?: NetworkHost, cursor?: HistoryCursor }
+HistoryCursor = { index: number, rowPath?: string }
 PushResult = { history: NavigationHistory, droppedEntries: HistoryEntry[] }
 ```
 
@@ -81,6 +83,28 @@ fires from two branches: `handleListingComplete` (success) AND the `listing-erro
 two steps because the current pane state isn't in the stack. The `listing-error` handler with the auto-fallback (path
 deleted → navigate to parent) doesn't push via this callback; it relies on the fallback navigation's own
 `commitPathFromListing` push (the in-place `history: 'push-path'` commit in `pane/navigate.ts`).
+
+### Cursor memory per entry (`history-cursor.ts`)
+
+Back and Forward put the cursor where it last sat in the destination ENTRY, ❌ never a per-path map: two visits to one
+folder are two history positions, each with its own cursor. Session-only, like the history itself. Cursor only:
+selection and pixel scroll stay out.
+
+- **Recording.** The pane reports every cursor move synchronously as a `CursorReading` tagged with the listing on screen
+  (`../pane/history-cursor-sync.svelte.ts`), and `DualPaneExplorer`'s `onCursorReading` writes it into the active tab's
+  current entry through `recordCursor`, which drops a reading from any other listing. That gate is what stops the leak:
+  a history walk moves `currentIndex` at once while the old rows stay up until the new listing lands, and an unguarded
+  write in between would stamp the old listing's index on the destination. The row's path arrives later from the
+  selection-info feed's read, and `recordCursor` takes it only for the index it was read at.
+- **In place, on purpose.** A reading fires per keystroke; a new history object each time would re-run every reader of
+  the tab's history. The cursor isn't part of an entry's identity (`entriesEqual` skips it), and a cloned tab's history
+  is a `$state.snapshot` copy, so tabs never share one.
+- **Restoring.** `navigate.ts::commitHistoryWalk` hands the pane a COPY of the destination entry's cursor
+  (`FilePaneAPI.restoreHistoryCursor`; none for the servers hub). A listing takes it when its load starts and lands on
+  it before the rows paint (`listing-loader.ts`, `takeHistoryCursor`); a snapshot has no load, so the sync factory
+  applies it once the snapshot's rows are mounted at that path. `restoredCursorIndex` picks the row where it is now,
+  else the saved index clamped into the rows, else 0. Any load takes and clears the parked cursor, so it can't land on a
+  later, unrelated visit.
 
 ## `path-navigation.ts`
 

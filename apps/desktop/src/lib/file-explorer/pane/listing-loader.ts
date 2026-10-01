@@ -49,6 +49,8 @@ import {
 } from '$lib/tauri-commands'
 import { sweepListingTags } from './tag-sweep'
 import { resolveValidPath } from '../navigation/path-resolution'
+import { restoredCursorIndex } from '../navigation/history-cursor'
+import type { HistoryCursor } from '../navigation/navigation-history'
 import { renderListingError } from '$lib/error-messages/listing-error'
 import { evictPerPathIconsForDir } from '$lib/icon-cache'
 import { cancelClickToRename } from '../rename/rename-activation'
@@ -131,6 +133,11 @@ export interface ListingLoaderDeps {
   // `setCursorIndex`, which scrolls / ticks / syncs MCP; the loader does its own).
   getCursorIndex: () => number
   setCursorIndexRaw: (index: number) => void
+  /**
+   * Takes the pending Back / Forward cursor restore when it's meant for `path`.
+   * Clears it either way, so a restore never outlives the next load.
+   */
+  takeHistoryCursor: (path: string) => HistoryCursor | undefined
   clearEntryUnderCursor: () => void
   clearSyncStatusMap: () => void
   clearIndexStatusMap: () => void
@@ -389,7 +396,8 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
 
     // Store the load for use in event handlers, and as the one a cancel would stop
     const loadPath = path
-    const load: ListingLoad = { volumeId, path, selectName }
+    const historyCursor = deps.takeHistoryCursor(path)
+    const load: ListingLoad = { volumeId, path, selectName, historyCursor }
     inFlight = load
 
     // Loading state is set synchronously above; Svelte will render it on the next
@@ -576,6 +584,18 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     }
   }
 
+  /** Where a Back / Forward landing's remembered cursor sits in the listing that just landed. */
+  async function historyCursorIndex(cursor: HistoryCursor, totalCount: number, includeHidden: boolean) {
+    const parentRow = deps.getHasParent() ? 1 : 0
+    let foundRowIndex: number | undefined
+    if (cursor.rowPath !== undefined) {
+      const name = cursor.rowPath.slice(cursor.rowPath.lastIndexOf('/') + 1)
+      const found = await findFileIndex(deps.getListingId(), name, includeHidden)
+      if (found !== null) foundRowIndex = found + parentRow
+    }
+    return restoredCursorIndex(cursor, foundRowIndex, totalCount + parentRow)
+  }
+
   // Handle listing completion event
   async function handleListingComplete(payload: ListingCompleteEvent, load: ListingLoad) {
     benchmark.logEventValue('listing-complete received, totalCount', payload.totalCount)
@@ -589,6 +609,8 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
       const foundIndex = await findFileIndex(deps.getListingId(), load.selectName, includeHidden)
       const adjustedIndex = deps.getHasParent() ? (foundIndex ?? -1) + 1 : (foundIndex ?? 0)
       deps.setCursorIndexRaw(adjustedIndex >= 0 ? adjustedIndex : 0)
+    } else if (load.historyCursor) {
+      deps.setCursorIndexRaw(await historyCursorIndex(load.historyCursor, payload.totalCount, includeHidden))
     } else {
       deps.setCursorIndexRaw(0)
     }

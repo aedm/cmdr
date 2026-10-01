@@ -49,7 +49,13 @@
     import VolumeUnreachableBanner from './VolumeUnreachableBanner.svelte'
     import NetworkMountView from './NetworkMountView.svelte'
     import SearchResultsView from './SearchResultsView.svelte'
-    import type { CancelLoadingPayload, PaneViewKind, SearchResultsViewAPI, VolumeChangePayload } from './types'
+    import type {
+        CancelLoadingPayload,
+        HistoryCursorTarget,
+        PaneViewKind,
+        SearchResultsViewAPI,
+        VolumeChangePayload,
+    } from './types'
     import { paneFooterVisibility } from './pane-footer'
     import { getMutationTick, getSnapshot, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
     import MtpConnectionView from './MtpConnectionView.svelte'
@@ -107,6 +113,8 @@
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
+    import { createHistoryCursorSync } from './history-cursor-sync.svelte'
+    import type { CursorReading } from '../navigation/history-cursor'
     import { getFirstShortcutReactive } from '$lib/shortcuts/reactive-shortcuts.svelte'
 
     interface Props {
@@ -128,6 +136,8 @@
          * another way). The parent re-spells the tab and its history in place.
          */
         onStoredSpelling?: (spelling: { from: string; to: string }) => void
+        /** Where the cursor sits, for the current history entry to remember (`history-cursor-sync.svelte.ts`). */
+        onCursorReading?: (reading: CursorReading) => void
         onVolumeChange?: (change: VolumeChangePayload) => void
         /**
          * Go to an already-resolved `Location` (volume id + path). Used when a row
@@ -198,6 +208,7 @@
         directorySortMode = 'likeFiles',
         onPathChange,
         onStoredSpelling,
+        onCursorReading,
         onVolumeChange,
         onGoToLocation,
         onSortChange,
@@ -345,6 +356,7 @@
         setCursorIndexRaw: (index) => {
             cursorIndex = index
         },
+        takeHistoryCursor: (path) => historyCursor.takeForLoad(path),
         clearEntryUnderCursor: () => {
             selectionInfo.clearEntry()
         },
@@ -855,6 +867,10 @@
      */
     export function setPendingCursorName(name: string | null): void {
         renameFlow.pendingCursorName = name
+    }
+
+    export function restoreHistoryCursor(target: HistoryCursorTarget): void {
+        historyCursor.restore(target)
     }
 
     /**
@@ -1745,6 +1761,9 @@
         syncMcp: () => {
             debouncedSyncMcp.call()
         },
+        onCursorRow: (index: number, rowPath: string) => {
+            historyCursor.reportRow(index, rowPath)
+        },
     })
 
     // Scroll the entry under the cursor into view when view mode changes
@@ -1811,6 +1830,19 @@
         applyCursorIndex: (index: number) => {
             cursorIndex = index
         },
+    })
+
+    // After the snapshot remap above, so a Back onto a snapshot lands its restore last.
+    const historyCursor = createHistoryCursorSync({
+        getCursorIndex: () => cursorIndex,
+        getShownLocation: () => {
+            const settled = isSearchResultsView ? searchSnapshot !== undefined : listingId !== '' && !loading
+            return settled && !isNetworkView ? { volumeId, path: currentPath } : null
+        },
+        getSnapshotRows: () => searchSnapshot?.entries,
+        getCurrentPath: () => currentPath,
+        setCursorIndex: (index: number) => void setCursorIndex(index),
+        onReading: onCursorReading,
     })
 
     // The pane's MTP device being unplugged: the listener re-registers itself on
