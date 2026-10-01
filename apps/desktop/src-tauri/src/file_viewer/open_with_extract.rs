@@ -20,7 +20,7 @@
 //!   with nothing at it (verified on macOS 27.0 with `URLsForApplicationsToOpenURL:`
 //!   via `osascript`, 2026-10-01), and the menu is built before anything is pulled. So
 //!   the app list is computed against an empty file with the same extension in this
-//!   dir ([`listing_path`]), which LaunchServices types by extension exactly as it
+//!   dir (`listing_path`), which LaunchServices types by extension exactly as it
 //!   types the real entry. The UTI-based query that needs no file at all lives in
 //!   `UniformTypeIdentifiers.framework`, which dyld refuses on the 10.15 floor.
 //!
@@ -136,7 +136,7 @@ impl OpenWithCopyRefused {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum OpenWithCopyRefusal {
-    /// Over [`OPEN_WITH_CAP_BYTES`] (`cap`), refused before a byte was written.
+    /// Over `OPEN_WITH_CAP_BYTES` (`cap`), refused before a byte was written.
     TooLarge { cap: u64 },
     /// The archive needs a password it hasn't been given. Copying the file out asks
     /// for it, after which "Open with" works too.
@@ -246,7 +246,7 @@ pub(crate) fn listing_path(path: &Path) -> PathBuf {
     listing_path_in(path, &open_with_dir())
 }
 
-/// [`listing_path`] in an explicit dir, for tests.
+/// `listing_path` in an explicit dir, for tests.
 #[cfg(any(target_os = "macos", test))]
 pub(super) fn listing_path_in(path: &Path, dir: &Path) -> PathBuf {
     if !path_routes_over_its_parent(path) {
