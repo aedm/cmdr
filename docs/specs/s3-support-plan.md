@@ -95,8 +95,11 @@ copy and one delete per object, and a big file's is a slow server-side copy.
   into the part before it; confirm on R2 in M8 that a last part LARGER than the rest is accepted, else split the tail
   differently there. **Concurrency**: ~16 parts for server-side copies, four to eight for uploads, AIMD back-off on
   `SlowDown` / 503 / 429. Hetzner's 750 requests/s per bucket is the low bar. Tune per provider in M8.
-- **Cancel** aborts the multipart upload. **Startup** lists our own unfinished uploads (`ListMultipartUploads`, matched
-  by a Cmdr marker in the initiation metadata) and aborts them, because they're invisible and billed forever.
+- **Cancel** aborts the multipart upload. **Startup** aborts our own unfinished uploads, because they're invisible and
+  billed forever. ❗ `ListMultipartUploads` returns no initiation metadata, so nothing on the server marks an upload as
+  Cmdr's: each upload's bucket, key, and upload ID are recorded locally (the operation log) when it starts and cleared
+  when it completes or aborts, and the sweep aborts what's left. ❌ Never abort uploads we didn't record: another tool's
+  upload may be live.
 - **A copy can fail inside a `200 OK`** on AWS: always parse the body.
 
 ## Milestones
