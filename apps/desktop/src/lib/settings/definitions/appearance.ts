@@ -444,6 +444,17 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     component: 'switch',
   },
   {
+    id: 'listing.foldersFirst',
+    section: ['Appearance', 'Listing'],
+    labelKey: 'settings.listing.foldersFirst.label',
+    descriptionKey: 'settings.listing.foldersFirst.description',
+    cardKey: 'settings.appearance.card.namesAndIcons',
+    keywords: ['sort', 'directory', 'directories', 'folder', 'folders', 'first', 'top', 'mixed', 'order', 'listing'],
+    type: 'boolean',
+    default: true,
+    component: 'switch',
+  },
+  {
     id: 'listing.directorySortMode',
     section: ['Appearance', 'Listing'],
     labelKey: 'settings.listing.directorySortMode.label',

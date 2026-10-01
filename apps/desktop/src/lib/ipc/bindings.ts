@@ -23,6 +23,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
   ) =>
     typedError<ListingStartResult, ListingStartError>(
@@ -43,6 +48,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
     listingId: string,
   ) =>
@@ -460,6 +470,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
     cursorFilename: string | null,
     includeHidden: boolean,
@@ -6917,6 +6932,11 @@ export type DirectorySortMode =
   | 'likeFiles'
   // Directories always sort by name, regardless of the active sort column.
   | 'alwaysByName'
+  /**
+   *  Directories don't lead: they sort among the files by the same column ("Show
+   *  folders first" off). Size ranks a directory by its `recursive_size`.
+   */
+  | 'mixedWithFiles'
 
 /**
  *  The volume that left the mount table while a transfer was running.

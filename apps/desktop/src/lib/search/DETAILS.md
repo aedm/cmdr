@@ -848,9 +848,9 @@ the column, because that is what the click will actually do. Ranked shows no act
 
 **The comparator is Rust's, not a copy of it.** `sort_search_results` (`src-tauri/src/commands/search.rs`) runs
 `file_system::listing::sorting::entry_comparator`, the SAME comparator every directory listing sorts by, over a
-`SearchSortRow` that implements the shared `SortableEntry` trait. Natural number ordering, case folding,
-directories-first, and the user's `directorySortMode` all come along, and there is no second implementation to drift. A
-frontend comparator would have had to reproduce `alphanumeric_sort`'s leading-zero and non-ASCII rules by hand.
+`SearchSortRow` that implements the shared `SortableEntry` trait. Natural number ordering, case folding, and the user's
+folders-first and `directorySortMode` choices all come along, and there is no second implementation to drift. A frontend
+comparator would have had to reproduce `alphanumeric_sort`'s leading-zero and non-ASCII rules by hand.
 
 Two consequences of that trait's `None` answers, both deliberate. A search result carries no CREATION time, so
 `sort.byCreated` lands on the comparator's both-unknown arm and orders by name (the header has no Created column to

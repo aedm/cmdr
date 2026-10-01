@@ -25,7 +25,7 @@ import type {
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
 import { throwMutationError } from '$lib/file-operations/mutation-error'
-import type { DirectorySortMode } from '$lib/settings'
+import type { ListingDirectorySortMode } from '$lib/settings'
 
 export type {
   ListingOpeningEvent,
@@ -47,7 +47,7 @@ export type {
  * @param sortBy - Column to sort by.
  * @param sortOrder - Ascending or descending.
  * @param listingId - Unique identifier for the listing (used for cancellation)
- * @param directorySortMode - How to sort directories: like files or always by name.
+ * @param directorySortMode - Where directories go: first (like files, or always by name), or mixed with files.
  */
 export async function listDirectoryStart(
   volumeId: string,
@@ -56,7 +56,7 @@ export async function listDirectoryStart(
   sortBy: SortColumn,
   sortOrder: SortOrder,
   listingId: string,
-  directorySortMode?: DirectorySortMode,
+  directorySortMode?: ListingDirectorySortMode,
 ): Promise<StreamingListingStartResult> {
   const res = await commands.listDirectoryStartStreaming(
     volumeId,
@@ -90,7 +90,7 @@ export async function cancelListing(listingId: string): Promise<void> {
  * @param includeHidden - Whether to include hidden files when calculating cursor index.
  * @param selectedIndices - Optional indices of selected files to track through re-sort.
  * @param allSelected - If true, all files are selected (optimization).
- * @param directorySortMode - How to sort directories: like files or always by name.
+ * @param directorySortMode - Where directories go: first (like files, or always by name), or mixed with files.
  * @public
  */
 export async function resortListing(
@@ -101,7 +101,7 @@ export async function resortListing(
   includeHidden: boolean,
   selectedIndices?: number[],
   allSelected?: boolean,
-  directorySortMode?: DirectorySortMode,
+  directorySortMode?: ListingDirectorySortMode,
 ): Promise<ResortResult> {
   const res = await commands.resortListing(
     listingId,

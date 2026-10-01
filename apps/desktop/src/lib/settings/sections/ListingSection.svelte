@@ -22,6 +22,7 @@
     const showHiddenDef = getSettingDefinition('listing.showHiddenFiles') ?? { label: '', description: '' }
     const appIconsDef = getSettingDefinition('appearance.useAppIconsForDocuments') ?? { label: '', description: '' }
     const fnKeyBarDef = getSettingDefinition('appearance.showFunctionKeyBar') ?? { label: '', description: '' }
+    const foldersFirstDef = getSettingDefinition('listing.foldersFirst') ?? { label: '', description: '' }
     const dirSortDef = getSettingDefinition('listing.directorySortMode') ?? { label: '', description: '' }
     const showExtInNameDef = getSettingDefinition('listing.showExtensionInName') ?? { label: '', description: '' }
     const showTagsDef = getSettingDefinition('listing.showTags') ?? { label: '', description: '' }
@@ -37,10 +38,19 @@
         }),
     )
     const widthFieldDisabled = $derived(briefWidthMode !== 'limited')
+
+    // "Sort directories" only means something while folders lead; mixed in with
+    // files, they sort by the column like any file. Same in-window read as above.
+    let foldersFirst = $state<boolean>(getSetting('listing.foldersFirst'))
+    onMount(() =>
+        onSpecificSettingChange('listing.foldersFirst', (value) => {
+            foldersFirst = value
+        }),
+    )
 </script>
 
 <SettingsSection title={tString('settings.section.listing')}>
-    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.directorySortMode', 'listing.showExtensionInName', 'listing.showTags')}
+    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.foldersFirst', 'listing.directorySortMode', 'listing.showExtensionInName', 'listing.showTags')}
         <SectionCard label={tString('settings.appearance.card.namesAndIcons')}>
             {#if shouldShow('listing.showHiddenFiles')}
                 <SettingRow
@@ -72,14 +82,25 @@
                     <SettingSwitch id="appearance.showFunctionKeyBar" />
                 </SettingRow>
             {/if}
+            {#if shouldShow('listing.foldersFirst')}
+                <SettingRow
+                    id="listing.foldersFirst"
+                    label={foldersFirstDef.label}
+                    description={foldersFirstDef.description}
+                    {searchQuery}
+                >
+                    <SettingSwitch id="listing.foldersFirst" />
+                </SettingRow>
+            {/if}
             {#if shouldShow('listing.directorySortMode')}
                 <SettingRow
                     id="listing.directorySortMode"
                     label={dirSortDef.label}
                     description={dirSortDef.description}
+                    disabled={!foldersFirst}
                     {searchQuery}
                 >
-                    <SettingToggleGroup id="listing.directorySortMode" />
+                    <SettingToggleGroup id="listing.directorySortMode" disabled={!foldersFirst} />
                 </SettingRow>
             {/if}
             {#if shouldShow('listing.showExtensionInName')}

@@ -65,7 +65,7 @@
     import { createPaneMcpSync } from './pane-mcp-sync.svelte'
     import { initListingDiffSync } from './listing-diff-sync.svelte'
     import { createRenameState } from '../rename/rename-state.svelte'
-    import { type DirectorySortMode } from '$lib/settings'
+    import { type ListingDirectorySortMode } from '$lib/settings'
     import { tString } from '$lib/intl/messages.svelte'
     import { createRenameFlow } from './rename-flow.svelte'
     import ExtensionChangeDialog from '../rename/ExtensionChangeDialog.svelte'
@@ -120,7 +120,7 @@
         viewMode?: ViewMode
         sortBy?: SortColumn
         sortOrder?: SortOrder
-        directorySortMode?: DirectorySortMode
+        directorySortMode?: ListingDirectorySortMode
         onPathChange?: (path: string) => void
         /**
          * The listing landed on the volume's own spelling of the pane's path (a

@@ -55,7 +55,7 @@ import { cancelClickToRename } from '../rename/rename-activation'
 import { dismissTransientToastsForPane } from '$lib/ui/toast'
 import { getAppLogger } from '$lib/logging/logger'
 import { getSetting } from '$lib/settings'
-import type { DirectorySortMode } from '$lib/settings'
+import type { ListingDirectorySortMode } from '$lib/settings'
 import type { SortColumn, SortOrder } from '../types'
 import { basenameOf, type CanonicalPath, parentOf } from '$lib/path/canonical'
 import type { ListViewAPI } from './types'
@@ -103,7 +103,7 @@ export interface ListingLoaderDeps {
   getIncludeHidden: () => boolean
   getSortBy: () => SortColumn
   getSortOrder: () => SortOrder
-  getDirectorySortMode: () => DirectorySortMode
+  getDirectorySortMode: () => ListingDirectorySortMode
   getCaps: () => VolumeCapabilities
   getHasParent: () => boolean
   getIsMtpView: () => boolean

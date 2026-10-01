@@ -263,6 +263,12 @@ export type ExtensionChangePolicy = 'yes' | 'no' | 'ask'
 /** What ⌘V does in a pane when the clipboard holds no file URLs but has pasteable content (text, image, PDF). */
 export type PasteClipboardAsFileMode = 'doNothing' | 'createFile' | 'createFileAndRename'
 export type DirectorySortMode = 'likeFiles' | 'alwaysByName'
+/**
+ * What a listing's comparator is told (the Rust `DirectorySortMode`): the "Sort directories"
+ * choice while "Show folders first" is on, else `mixedWithFiles`. `getDirectorySortMode()` folds
+ * the two settings into it; it's never stored.
+ */
+export type ListingDirectorySortMode = DirectorySortMode | 'mixedWithFiles'
 export type SizeDisplayMode = 'smart' | 'logical' | 'physical'
 export type BriefColumnWidthMode = 'paneWidth' | 'limited'
 export type AppColor = 'system' | 'cmdr-gold'
@@ -352,6 +358,7 @@ export interface SettingsValues {
 
   // Listing
   'listing.showHiddenFiles': boolean
+  'listing.foldersFirst': boolean
   'listing.directorySortMode': DirectorySortMode
   'listing.sizeDisplay': SizeDisplayMode
   'listing.sizeUnit': FileSizeUnit

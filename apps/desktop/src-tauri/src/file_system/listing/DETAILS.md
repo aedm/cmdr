@@ -337,6 +337,15 @@ to the name, and under Size the directories are all unknown and sort by name amo
 mapping from "a row" to "what orders it" is decided, and that mapping is the thing that must not drift. The trait makes
 the shared fields the contract and the generic monomorphizes, so the listing's hot path pays nothing.
 
+**`DirectorySortMode` decides whether directories lead.** `LikeFiles` and `AlwaysByName` put them first (by the column,
+or by name), and `MixedWithFiles` ("Show folders first" off, #291) drops that step: `compare_mixed` ranks a directory
+among the files by the same column. Size is the one column where the two kinds read different fields (a directory's
+`known_dir_size`, a file's `size`), so the mixed sort uses one rule for both, an unknown size LAST whatever the order,
+to stay transitive: per-kind rules (a file's unknown first, a directory's last) would cycle once mixed. The mode
+arrives per listing from the frontend, which folds its two settings into it (`apps/desktop/src/lib/file-explorer/DETAILS.md`
+§ Sorting), and every sort path reads it off the `CachedListing`, so the watcher's re-sorts, archive panes, and every
+volume follow it.
+
 `sort_search_results` (`commands/search.rs`) is the frontend's way in: it answers with the input indices in sorted
 order, and the caller re-orders the rows it already holds. The frontend deliberately has NO comparator of its own; the
 snapshot store's sort round-trips through this command. `apps/desktop/src/lib/search/DETAILS.md` § "The snapshot pane's

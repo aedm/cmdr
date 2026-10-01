@@ -12,6 +12,7 @@ import {
   type FileSizeFormat,
   type FileSizeUnit,
   type DirectorySortMode,
+  type ListingDirectorySortMode,
   type SizeDisplayMode,
   type BriefColumnWidthMode,
   type AppColor,
@@ -34,6 +35,7 @@ let useAppIconsForDocuments = $state<boolean>(true)
 let showFunctionKeyBar = $state<boolean>(true)
 let showHiddenFiles = $state<boolean>(false)
 let directorySortMode = $state<DirectorySortMode>('likeFiles')
+let foldersFirst = $state<boolean>(true)
 let appColor = $state<AppColor>('cmdr-gold')
 let sizeDisplay = $state<SizeDisplayMode>('smart')
 let sizeUnit = $state<FileSizeUnit>('dynamic')
@@ -92,6 +94,7 @@ async function runInit(options?: { restrictedWindow?: boolean }): Promise<void> 
     showFunctionKeyBar = getSetting('appearance.showFunctionKeyBar')
     showHiddenFiles = getSetting('listing.showHiddenFiles')
     directorySortMode = getSetting('listing.directorySortMode')
+    foldersFirst = getSetting('listing.foldersFirst')
     appColor = getSetting('appearance.appColor')
     sizeDisplay = getSetting('listing.sizeDisplay')
     sizeUnit = getSetting('listing.sizeUnit')
@@ -159,6 +162,9 @@ function applySettingChange(id: string, value: unknown): void {
       break
     case 'listing.directorySortMode':
       directorySortMode = value as DirectorySortMode
+      break
+    case 'listing.foldersFirst':
+      foldersFirst = value as boolean
       break
     case 'appearance.appColor':
       appColor = value as AppColor
@@ -278,9 +284,13 @@ export function getShowHiddenFiles(): boolean {
   return showHiddenFiles
 }
 
-/** Get current directory sort mode */
-export function getDirectorySortMode(): DirectorySortMode {
-  return directorySortMode
+/**
+ * The directory sort mode every listing and re-sort hands the backend comparator: "Show folders
+ * first" off mixes folders in with files (where "Sort directories" has nothing to say), else the
+ * "Sort directories" choice. Reads both settings, so an `$effect` on it re-sorts on either.
+ */
+export function getDirectorySortMode(): ListingDirectorySortMode {
+  return foldersFirst ? directorySortMode : 'mixedWithFiles'
 }
 
 /** Whether the user has selected Cmdr gold as their app color */

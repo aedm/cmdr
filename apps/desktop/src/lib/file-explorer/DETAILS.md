@@ -134,14 +134,20 @@ Full history-stack contract and the volume-breadcrumb detail live in `navigation
 
 ### Behavior
 
-- **Directories first**: always
+- **Directories first**: by default. The `listing.foldersFirst` setting ("Show folders first", on by default) turns it
+  off, and dirs then sort among the files by the active column (#291).
 - **Natural sorting**: `file10.txt` after `file2.txt`
 - **Extension grouping**: dotfiles → no-extension → by extension alphabetically
 - **Per-tab sort**: each tab owns its `sortBy` + `sortOrder` (no global per-column memory)
-- **Directory sort mode**: setting `listing.directorySortMode` controls how dirs sort among themselves:
+- **Directory sort mode**: setting `listing.directorySortMode` controls how dirs sort among themselves while they lead:
   - `likeFiles` (default): dirs sort by the active column (uses `recursive_size` for Size). Dirs with unknown size sort
     last.
   - `alwaysByName`: dirs always sort by name, ignoring the active sort column.
+- **The wire mode folds both settings**: `reactive-settings.svelte.ts::getDirectorySortMode()` answers the Rust
+  `DirectorySortMode` (`ListingDirectorySortMode` here): the "Sort directories" choice, or `mixedWithFiles` while "Show
+  folders first" is off. The settings page greys "Sort directories" out then. Every listing, re-sort, and search-results
+  sort reads that one getter, and the explorer's sort-mode `$effect` re-sorts both panes when either setting flips. The
+  mixed comparison (Size included): `src-tauri/src/file_system/listing/sorting.rs::compare_mixed`.
 - **Name ASC tiebreaker**: when primary sort values are equal, entries fall back to name ascending
 
 ### Implementation

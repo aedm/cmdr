@@ -3228,6 +3228,8 @@ export type MessageKey =
   | 'settings.listing.directorySortMode.label'
   | 'settings.listing.directorySortMode.opt.alwaysByName'
   | 'settings.listing.directorySortMode.opt.likeFiles'
+  | 'settings.listing.foldersFirst.description'
+  | 'settings.listing.foldersFirst.label'
   | 'settings.listing.showExtensionInName.description'
   | 'settings.listing.showExtensionInName.label'
   | 'settings.listing.showHiddenFiles.description'
