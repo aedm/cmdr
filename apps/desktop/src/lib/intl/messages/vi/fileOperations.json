@@ -540,9 +540,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Đích đã tồn tại và là một <strong>thư mục</strong>. Bạn sắp ghi đè nó bằng một <strong>tệp</strong> trùng tên. Toàn bộ nội dung của thư mục đích sẽ bị xóa và thay bằng tệp đó. Làm gì đây?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Đích đã tồn tại và là một <strong>thư mục</strong>. Bạn sắp thay thế nó bằng một <strong>tệp</strong> trùng tên. Mọi thứ bên trong thư mục đó sẽ mất. Làm gì đây?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "Đích đã tồn tại và là một <strong>tệp</strong>. Bạn sắp thay thế nó bằng một <strong>thư mục</strong> trùng tên. Tệp đó sẽ mất ngay khi thư mục thế vào chỗ của nó. Làm gì đây?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

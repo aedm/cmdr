@@ -240,10 +240,8 @@
   "ask": {
     "chosen": "询问",
     "confidence": "tentative",
-    "exceptions": {
-      "settings.servers.trustedHostKeys.confirm": "\"ask whether to trust it\" (问你) is the verb, not the \"Ask each time\" setting option."
-    },
-    "forms": "setting option 询问 / 每次询问; don't-ask-again 不再询问",
+    "proseAccept": ["问你"],
+    "forms": "setting option 询问 / 每次询问; don't-ask-again 不再询问; prose asking the user (问你要不要信任它, 问你要密码) → 问你",
     "sources": "catalog"
   },
   "ask-cmdr": {

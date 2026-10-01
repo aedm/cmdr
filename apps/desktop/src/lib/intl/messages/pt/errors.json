@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Veja o que tentar:\n- Abra **{system_settings} > {privacy_and_security} > {files_and_folders}** e conceda acesso ao Cmdr\n- Se for uma pasta protegida pelo sistema (como diretórios do sistema), talvez você precise conceder ao Cmdr **{full_disk_access}** em {privacy_and_security}\n- No Terminal, execute `ls -la` neste caminho para verificar o dono e as permissões",
+  "errors.listing.notPermitted.suggestion": "Veja o que tentar:\n- Abra **{system_settings} > {privacy_and_security} > {files_and_folders}** e conceda acesso ao Cmdr\n- Se for uma pasta protegida pelo sistema, talvez você precise conceder ao Cmdr **{full_disk_access}** em {privacy_and_security}\n- No Terminal, execute `ls -la` neste caminho para verificar o dono e as permissões",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Caminho não encontrado",
   "@errors.listing.pathNotFoundErrno.title": {

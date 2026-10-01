@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Ezeket próbálhatod:\n- Nyisd meg a **{system_settings} > {privacy_and_security} > {files_and_folders}** menüt, és adj hozzáférést a Cmdrnek\n- Ha ez egy rendszer által védett mappa (például rendszerkönyvtár), lehet, hogy a {privacy_and_security} alatt **{full_disk_access}** jogot kell adnod a Cmdrnek\n- A Terminalban add ki az `ls -la` parancsot ezen az útvonalon a tulajdonjog és az engedélyek ellenőrzéséhez",
+  "errors.listing.notPermitted.suggestion": "Ezeket próbálhatod:\n- Nyisd meg a **{system_settings} > {privacy_and_security} > {files_and_folders}** menüt, és adj hozzáférést a Cmdrnek\n- Ha ez egy rendszer által védett mappa, lehet, hogy a {privacy_and_security} alatt **{full_disk_access}** jogot kell adnod a Cmdrnek\n- A Terminalban add ki az `ls -la` parancsot ezen az útvonalon a tulajdonjog és az engedélyek ellenőrzéséhez",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Az útvonal nem található",
   "@errors.listing.pathNotFoundErrno.title": {

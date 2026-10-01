@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "可以這樣試試：\n- 開啟 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 存取權\n- 如果這是受系統保護的資料夾（例如系統目錄），你可能得在 {privacy_and_security} 裡授予 Cmdr **{full_disk_access}**\n- 在終端機裡對這個路徑執行 `ls -la`，查看擁有者和權限",
+  "errors.listing.notPermitted.suggestion": "可以這樣試試：\n- 開啟 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 存取權\n- 如果這是受系統保護的資料夾，你可能得在 {privacy_and_security} 裡授予 Cmdr **{full_disk_access}**\n- 在終端機裡對這個路徑執行 `ls -la`，查看擁有者和權限",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "找不到路徑",
   "@errors.listing.pathNotFoundErrno.title": {

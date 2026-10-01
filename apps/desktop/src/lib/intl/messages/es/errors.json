@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Esto es lo que puedes probar:\n- Abre **{system_settings} > {privacy_and_security} > {files_and_folders}** y concede acceso a Cmdr\n- Si es una carpeta protegida por el sistema (como los directorios del sistema), puede que necesites conceder a Cmdr **{full_disk_access}** en {privacy_and_security}\n- En la Terminal, ejecuta `ls -la` en esta ruta para revisar la propiedad y los permisos",
+  "errors.listing.notPermitted.suggestion": "Esto es lo que puedes probar:\n- Abre **{system_settings} > {privacy_and_security} > {files_and_folders}** y concede acceso a Cmdr\n- Si es una carpeta protegida por el sistema, puede que necesites conceder a Cmdr **{full_disk_access}** en {privacy_and_security}\n- En la Terminal, ejecuta `ls -la` en esta ruta para revisar la propiedad y los permisos",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Ruta no encontrada",
   "@errors.listing.pathNotFoundErrno.title": {

@@ -541,9 +541,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "A cél létezik, és egy <strong>mappa</strong>. Egy azonos nevű <strong>fájllal</strong> készülsz felülírni. A célmappa teljes tartalma törlődne, és a fájl lépne a helyébe. Mi legyen?",
+  "fileOperations.transferProgress.warningFileOverFolder": "A cél létezik, és egy <strong>mappa</strong>. Egy azonos nevű <strong>fájlra</strong> készülsz lecserélni. Minden, ami a mappában van, eltűnne. Mi legyen?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "A cél létezik, és egy <strong>fájl</strong>. Egy azonos nevű <strong>mappára</strong> készülsz lecserélni. A fájl eltűnne, amint a mappa a helyébe lép. Mi legyen?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

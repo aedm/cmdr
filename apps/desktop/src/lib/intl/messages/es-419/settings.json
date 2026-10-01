@@ -35,6 +35,10 @@
   "@settings.appearance.useAppIconsForDocuments.description": {
     "sourceHash": "9353728"
   },
+  "settings.listing.directorySortMode.disabledReason": "Desactivada por ahora, porque las carpetas se mezclan con los archivos. Activa “Mostrar carpetas primero” para usar esta opción.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "2d38158"
+  },
   "settings.archives.zip.description": "Qué hace presionar Intro en un archivo zip.",
   "@settings.archives.zip.description": {
     "sourceHash": "e33a325"

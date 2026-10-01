@@ -789,13 +789,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} tem mais de {limit}, grande demais para abrir em {appName} direto daqui. Copie o arquivo para uma pasta primeiro e depois abra-o lá.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} tem mais de {limit}, então o Cmdr não consegue abrir o arquivo em {appName} de dentro do arquivo compactado.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está em um arquivo compactado protegido por senha. Copie o arquivo para uma pasta primeiro (o Cmdr pede a senha) e depois abra-o em {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está em um arquivo compactado protegido por senha. Copie o arquivo para uma pasta primeiro (o Cmdr vai pedir a senha) e depois abra-o em {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "Não foi possível tirar {fileName} do arquivo compactado para abrir em {appName}. O arquivo compactado pode estar danificado ou usar um formato que o Cmdr não consegue ler.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

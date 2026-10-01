@@ -315,17 +315,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Listar mappar ovanför filer. Slå av det för att sortera mappar och filer tillsammans efter den valda kolumnen, så hamnar det nyaste objektet överst vid sortering efter datum, oavsett om det är en mapp eller inte.",
+  "settings.listing.foldersFirst.description": "Listar mappar ovanför filer. Stäng av det för att blanda mappar och filer.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
-  "settings.listing.directorySortMode.label": "Sortera kataloger",
+  "settings.listing.directorySortMode.label": "Sortera mappar",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
-  "settings.listing.directorySortMode.description": "Hur kataloger sorteras när du byter sorteringskolumn.",
+  "settings.listing.directorySortMode.description": "Hur mappar sorteras när du byter sorteringskolumn.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Avstängd just nu eftersom mappar och filer blandas. Slå på ”Visa mappar först” för att aktivera den här inställningen.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Som filer",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1986,9 +1990,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "Dokumentsymboler, katalogsortering och kolumnbredd i Kortfattat läge.",
+  "settings.summary.listing": "Dokumentsymboler, mappsortering och kolumnbredd i Kortfattat läge.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigering till överordnad mapp med dubbelklick och beteende när du byter namn på filer.",
   "@settings.summary.navigationAndFileOps": {

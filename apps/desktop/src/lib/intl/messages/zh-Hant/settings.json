@@ -313,17 +313,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "在檔案上方列出資料夾。關閉後，資料夾和檔案會依所選的直欄一起排序，這樣依日期排序時，最新的項目會排在最上面，不管它是不是資料夾。",
+  "settings.listing.foldersFirst.description": "在檔案上方列出資料夾。關閉後，資料夾和檔案會混在一起。",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
-  "settings.listing.directorySortMode.label": "目錄排序",
+  "settings.listing.directorySortMode.label": "資料夾排序",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
-  "settings.listing.directorySortMode.description": "更改排序欄位時，目錄的排序方式。",
+  "settings.listing.directorySortMode.description": "更改排序欄位時，資料夾的排序方式。",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "目前已停用，因為資料夾和檔案混在一起。開啟「先顯示資料夾」即可使用這項設定。",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "與檔案一致",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1977,9 +1981,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "文件圖像、目錄排序，以及簡潔模式的欄寬。",
+  "settings.summary.listing": "文件圖像、資料夾排序，以及簡潔模式的欄寬。",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "按兩下前往上層資料夾，以及重新命名檔案時的行為。",
   "@settings.summary.navigationAndFileOps": {

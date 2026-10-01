@@ -540,9 +540,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "El destino existe y es una <strong>carpeta</strong>. Estás a punto de sobrescribirla con un <strong>archivo</strong> del mismo nombre. Todo el contenido de la carpeta de destino se eliminaría y se sustituiría por el archivo. ¿Qué quieres hacer?",
+  "fileOperations.transferProgress.warningFileOverFolder": "El destino existe y es una <strong>carpeta</strong>. Estás a punto de reemplazarla por un <strong>archivo</strong> del mismo nombre. Todo lo que hay dentro de la carpeta desaparecería. ¿Qué quieres hacer?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "El destino existe y es un <strong>archivo</strong>. Estás a punto de reemplazarlo por una <strong>carpeta</strong> del mismo nombre. El archivo desaparecería en cuanto la carpeta ocupara su lugar. ¿Qué quieres hacer?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

@@ -539,9 +539,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "目標已經存在，而且是一個<strong>資料夾</strong>。你正要用同名的<strong>檔案</strong>覆寫它。目標資料夾的全部內容會被刪除，由這個檔案取代。要怎麼做？",
+  "fileOperations.transferProgress.warningFileOverFolder": "目標已經存在，而且是一個<strong>資料夾</strong>。你正要用同名的<strong>檔案</strong>取代它。資料夾裡的所有東西都會沒了。要怎麼做？",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "目標已經存在，而且是一個<strong>檔案</strong>。你正要用同名的<strong>資料夾</strong>取代它。資料夾一換上去，原本的檔案就沒了。要怎麼做？",
   "@fileOperations.transferProgress.warningFolderOverFile": {

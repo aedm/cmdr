@@ -314,17 +314,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Mostra as pastas acima dos arquivos na lista. Desative para ordenar pastas e arquivos juntos pela coluna escolhida: assim, ao ordenar por data, o item mais recente fica no topo, seja pasta ou não.",
+  "settings.listing.foldersFirst.description": "Mostra as pastas acima dos arquivos na lista. Desative para misturar pastas e arquivos.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Ordenar pastas",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Como as pastas são ordenadas ao trocar a coluna de ordenação.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Desativado no momento porque as pastas estão misturadas com os arquivos. Ative “Mostrar pastas primeiro” para usar este ajuste.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Como arquivos",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1982,7 +1986,7 @@
   },
   "settings.summary.listing": "Ícones de documento, ordenação de pastas e largura de coluna no modo Resumido.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navegação com clique duplo para a pasta superior e comportamento ao renomear arquivos.",
   "@settings.summary.navigationAndFileOps": {

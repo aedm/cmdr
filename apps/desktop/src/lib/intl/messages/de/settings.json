@@ -315,17 +315,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Listet Ordner vor den Dateien auf. Schalte das aus, um Ordner und Dateien gemeinsam nach der gewählten Spalte zu sortieren. Dann steht bei einer Sortierung nach Datum das neueste Objekt oben, egal ob Ordner oder Datei.",
+  "settings.listing.foldersFirst.description": "Listet Ordner vor den Dateien auf. Schalte das aus, um Ordner und Dateien gemischt aufzulisten.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Ordner sortieren",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Wie Ordner sortiert werden, wenn du die Sortierspalte wechselst.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Gerade deaktiviert, weil Ordner und Dateien gemischt sind. Schalte „Ordner zuerst anzeigen“ ein, um diese Einstellung zu aktivieren.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Wie Dateien",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1988,7 +1992,7 @@
   },
   "settings.summary.listing": "Dokumentsymbole, Ordnersortierung und Spaltenbreite im Kompaktmodus.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigation per Doppelklick zum übergeordneten Ordner und das Verhalten beim Umbenennen von Dateien.",
   "@settings.summary.navigationAndFileOps": {

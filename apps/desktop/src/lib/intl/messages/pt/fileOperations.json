@@ -541,9 +541,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "O destino já existe e é uma <strong>pasta</strong>. Você está prestes a substituí-la por um <strong>arquivo</strong> com o mesmo nome. Todo o conteúdo da pasta de destino seria apagado e substituído pelo arquivo. O que você quer fazer?",
+  "fileOperations.transferProgress.warningFileOverFolder": "O destino já existe e é uma <strong>pasta</strong>. Você está prestes a substituí-la por um <strong>arquivo</strong> com o mesmo nome. Tudo o que está dentro da pasta deixaria de existir. O que você quer fazer?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "O destino já existe e é um <strong>arquivo</strong>. Você está prestes a substituí-lo por uma <strong>pasta</strong> com o mesmo nome. O arquivo deixaria de existir assim que a pasta ocupasse o lugar dele. O que você quer fazer?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

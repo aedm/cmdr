@@ -790,13 +790,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is groter dan {limit} en daarmee te groot om rechtstreeks vanaf hier in {appName} te openen. Kopieer het bestand eerst naar een map en open het daar.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is groter dan {limit}, dus Cmdr kan het bestand niet vanuit het archief in {appName} openen.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} staat in een met een wachtwoord beveiligd archief. Kopieer het bestand eerst naar een map (Cmdr vraagt dan om het wachtwoord) en open het daarna in {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} staat in een met een wachtwoord beveiligd archief. Kopieer het bestand eerst naar een map (Cmdr zal dan om het wachtwoord vragen) en open het daarna in {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "Kon {fileName} niet uit het archief halen om in {appName} te openen. Het archief is mogelijk beschadigd, of het gebruikt een structuur die Cmdr niet kan lezen.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

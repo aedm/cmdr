@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Das kannst du versuchen:\n- Öffne **{system_settings} > {privacy_and_security} > {files_and_folders}** und gewähre Cmdr Zugriff\n- Wenn es ein systemgeschützter Ordner ist (etwa Systemverzeichnisse), musst du Cmdr unter {privacy_and_security} eventuell **{full_disk_access}** gewähren\n- Führe im Terminal `ls -la` für diesen Pfad aus, um Eigentümer und Zugriffsrechte zu prüfen",
+  "errors.listing.notPermitted.suggestion": "Das kannst du versuchen:\n- Öffne **{system_settings} > {privacy_and_security} > {files_and_folders}** und gewähre Cmdr Zugriff\n- Wenn es ein systemgeschützter Ordner ist, musst du Cmdr unter {privacy_and_security} eventuell **{full_disk_access}** gewähren\n- Führe im Terminal `ls -la` für diesen Pfad aus, um Eigentümer und Zugriffsrechte zu prüfen",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Pfad nicht gefunden",
   "@errors.listing.pathNotFoundErrno.title": {

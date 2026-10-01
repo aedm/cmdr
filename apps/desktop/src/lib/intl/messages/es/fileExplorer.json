@@ -789,13 +789,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ocupa más de {limit}: es demasiado grande para abrirlo en {appName} directamente desde aquí. Primero cópialo a una carpeta y luego ábrelo desde ahí.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ocupa más de {limit}, así que Cmdr no puede abrirlo en {appName} desde dentro del archivo comprimido.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está en un archivo comprimido protegido con contraseña. Primero copia el archivo a una carpeta (Cmdr te pide la contraseña) y luego ábrelo en {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está en un archivo comprimido protegido con contraseña. Primero copia el archivo a una carpeta (Cmdr te pedirá la contraseña) y luego ábrelo en {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "No se ha podido sacar {fileName} de su archivo comprimido para abrirlo en {appName}. Puede que el archivo comprimido esté dañado o use un formato que Cmdr no puede leer.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

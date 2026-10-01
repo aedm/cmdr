@@ -541,9 +541,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Målet finns och är en <strong>mapp</strong>. Du är på väg att skriva över det med en <strong>fil</strong> med samma namn. Allt innehåll i målmappen skulle raderas och ersättas av filen. Vad vill du göra?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Målet finns och är en <strong>mapp</strong>. Du är på väg att ersätta det med en <strong>fil</strong> med samma namn. Allt i mappen skulle försvinna. Vad vill du göra?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "Målet finns och är en <strong>fil</strong>. Du är på väg att ersätta det med en <strong>mapp</strong> med samma namn. Filen skulle försvinna när mappen tar dess plats. Vad vill du göra?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

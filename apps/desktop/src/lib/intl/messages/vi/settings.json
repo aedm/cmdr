@@ -311,17 +311,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Liệt kê thư mục phía trên tệp. Tắt tùy chọn này để sắp xếp thư mục và tệp chung với nhau theo cột đã chọn, nhờ vậy khi sắp xếp theo ngày, mục mới nhất sẽ đứng đầu, dù có là thư mục hay không.",
+  "settings.listing.foldersFirst.description": "Liệt kê thư mục phía trên tệp. Tắt tùy chọn này để xếp lẫn thư mục và tệp với nhau.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Sắp xếp thư mục",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Cách sắp xếp thư mục khi đổi cột sắp xếp.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Hiện đang tắt vì thư mục và tệp đang xếp lẫn với nhau. Hãy bật “Hiển thị thư mục lên đầu” để dùng cài đặt này.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Như tệp",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1979,7 +1983,7 @@
   },
   "settings.summary.listing": "Biểu tượng tài liệu, sắp xếp thư mục, và độ rộng cột chế độ Rút gọn.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Điều hướng bằng bấm đúp tới thư mục cha, và hành vi khi đổi tên tệp.",
   "@settings.summary.navigationAndFileOps": {

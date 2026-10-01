@@ -789,13 +789,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}” lớn hơn {limit}, quá lớn để mở bằng {appName} ngay từ đây. Hãy sao chép tệp vào một thư mục trước, rồi mở ở đó.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}” lớn hơn {limit}, nên Cmdr không thể mở tệp này bằng {appName} từ bên trong tệp nén.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
   "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}” nằm trong một tệp nén được bảo vệ bằng mật khẩu. Hãy sao chép tệp vào một thư mục trước (Cmdr sẽ hỏi mật khẩu), rồi mở bằng {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "Không thể lấy “{fileName}” ra khỏi tệp nén để mở bằng {appName}. Có thể tệp nén bị hỏng hoặc dùng định dạng mà Cmdr không đọc được.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

@@ -484,9 +484,9 @@
   "@commands.fileCopyPath.label": {
     "sourceHash": "333608a"
   },
-  "commands.fileCopyCurrentDirectoryPath.label": "複製目前的目錄路徑",
+  "commands.fileCopyCurrentDirectoryPath.label": "複製目前的資料夾路徑",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "複製檔名",
   "@commands.fileCopyFilename.label": {

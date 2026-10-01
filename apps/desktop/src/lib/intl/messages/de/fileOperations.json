@@ -541,9 +541,9 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Das Ziel existiert und ist ein <strong>Ordner</strong>. Du bist dabei, es mit einer <strong>Datei</strong> desselben Namens zu überschreiben. Der gesamte Inhalt des Zielordners würde gelöscht und durch die Datei ersetzt. Was möchtest du tun?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Das Ziel existiert und ist ein <strong>Ordner</strong>. Du bist dabei, es durch eine <strong>Datei</strong> desselben Namens zu ersetzen. Alles, was im Ordner liegt, wäre weg. Was möchtest du tun?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
   },
   "fileOperations.transferProgress.warningFolderOverFile": "Das Ziel existiert und ist eine <strong>Datei</strong>. Du bist dabei, es durch einen <strong>Ordner</strong> desselben Namens zu ersetzen. Die Datei wäre weg, sobald der Ordner ihren Platz einnimmt. Was möchtest du tun?",
   "@fileOperations.transferProgress.warningFolderOverFile": {

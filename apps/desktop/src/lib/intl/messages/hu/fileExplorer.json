@@ -789,13 +789,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "„{fileName}” nagyobb {limit} méretnél, ezért innen közvetlenül nem nyitható meg ezzel: {appName}. Előbb másold egy mappába, aztán ott nyisd meg.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "„{fileName}” nagyobb {limit} méretnél, ezért a Cmdr nem tudja megnyitni az archívumból ezzel: {appName}.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "„{fileName}” egy jelszóval védett archívumban van. Előbb másold egy mappába (a Cmdr elkéri a jelszót), aztán nyisd meg ezzel: {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "„{fileName}” egy jelszóval védett archívumban van. Előbb másold egy mappába (a Cmdr majd elkéri a jelszót), aztán nyisd meg ezzel: {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "„{fileName}” kicsomagolása az archívumból nem sikerült, így nem nyitható meg ezzel: {appName}. Lehet, hogy az archívum sérült, vagy olyan formátumú, amelyet a Cmdr nem tud elolvasni.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

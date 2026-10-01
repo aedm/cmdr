@@ -488,7 +488,7 @@
   },
   "commands.fileCopyCurrentDirectoryPath.label": "Kopieer pad van huidige map",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Kopieer bestandsnaam",
   "@commands.fileCopyFilename.label": {

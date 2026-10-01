@@ -314,17 +314,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Muestra las carpetas encima de los archivos en la lista. Si lo desactivas, carpetas y archivos se ordenan juntos según la columna elegida, así que al ordenar por fecha el elemento más reciente queda arriba, sea carpeta o no.",
+  "settings.listing.foldersFirst.description": "Muestra las carpetas encima de los archivos en la lista. Si lo desactivas, carpetas y archivos se mezclan.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Ordenar carpetas",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Cómo se ordenan las carpetas al cambiar la columna de ordenación.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Desactivado por ahora, porque las carpetas se mezclan con los archivos. Activa “Mostrar carpetas primero” para usar este ajuste.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Como los archivos",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1982,7 +1986,7 @@
   },
   "settings.summary.listing": "Iconos de documentos, ordenación de carpetas y ancho de columna en la vista breve.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navegación con doble clic a la carpeta superior y comportamiento al renombrar archivos.",
   "@settings.summary.navigationAndFileOps": {

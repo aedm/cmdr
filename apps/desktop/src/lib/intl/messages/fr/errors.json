@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Voici ce que vous pouvez essayer :\n- Ouvrez **{system_settings} > {privacy_and_security} > {files_and_folders}** et accordez l’accès à Cmdr\n- Si c’est un dossier protégé par le système (comme les répertoires système), vous devrez peut-être accorder à Cmdr l’**{full_disk_access}** sous {privacy_and_security}\n- Dans Terminal, lancez `ls -la` sur ce chemin pour vérifier le propriétaire et les autorisations",
+  "errors.listing.notPermitted.suggestion": "Voici ce que vous pouvez essayer :\n- Ouvrez **{system_settings} > {privacy_and_security} > {files_and_folders}** et accordez l’accès à Cmdr\n- Si c’est un dossier protégé par le système, vous devrez peut-être accorder à Cmdr l’**{full_disk_access}** sous {privacy_and_security}\n- Dans Terminal, lancez `ls -la` sur ce chemin pour vérifier le propriétaire et les autorisations",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Chemin introuvable",
   "@errors.listing.pathNotFoundErrno.title": {

@@ -314,17 +314,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Affiche les dossiers au-dessus des fichiers dans la liste. Désactivez cette option pour trier dossiers et fichiers ensemble selon la colonne choisie : l’élément le plus récent arrive alors en tête d’un tri par date, dossier ou non.",
+  "settings.listing.foldersFirst.description": "Affiche les dossiers au-dessus des fichiers dans la liste. Désactivez cette option pour mélanger dossiers et fichiers.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Trier les dossiers",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Comment les dossiers sont triés lors du changement de colonne de tri.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Ce réglage est désactivé pour le moment, car les dossiers sont mélangés aux fichiers. Activez « Afficher les dossiers d’abord » pour le réactiver.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Comme les fichiers",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1992,7 +1996,7 @@
   },
   "settings.summary.listing": "Icônes de documents, tri des dossiers et largeur de colonne en mode Bref.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigation par double-clic vers le dossier parent et comportement lors du renommage des fichiers.",
   "@settings.summary.navigationAndFileOps": {

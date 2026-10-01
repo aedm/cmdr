@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Dit kun je proberen:\n- Open **{system_settings} > {privacy_and_security} > {files_and_folders}** en geef Cmdr toegang\n- Als dit een door het systeem beschermde map is (zoals systeemmappen), moet je Cmdr misschien **{full_disk_access}** geven onder {privacy_and_security}\n- Voer in Terminal `ls -la` op dit pad uit om de eigenaar en bevoegdheden te controleren",
+  "errors.listing.notPermitted.suggestion": "Dit kun je proberen:\n- Open **{system_settings} > {privacy_and_security} > {files_and_folders}** en geef Cmdr toegang\n- Als dit een door het systeem beschermde map is, moet je Cmdr misschien **{full_disk_access}** geven onder {privacy_and_security}\n- Voer in Terminal `ls -la` op dit pad uit om de eigenaar en bevoegdheden te controleren",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Pad niet gevonden",
   "@errors.listing.pathNotFoundErrno.title": {

@@ -1050,7 +1050,7 @@
     "accept": ["katalog"],
     "chosen": "mapp",
     "confidence": "high",
-    "forms": "mappen, mappar; katalog only where technical directory matters (directorySortMode, git); folder sizes → mappstorlekar",
+    "forms": "mappen, mappar; katalog only where technical directory matters (git); the Sort folders setting says mappar like Visa mappar först; folder sizes → mappstorlekar",
     "sources": "macOS Finder, MS, GNOME"
   },
   "force-quit": {

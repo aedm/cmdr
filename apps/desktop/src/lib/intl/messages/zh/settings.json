@@ -313,17 +313,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "在文件上方列出文件夹。关闭后，文件夹和文件会按所选的列一起排序，这样按日期排序时，最新的项目会排在最前面，不管它是不是文件夹。",
+  "settings.listing.foldersFirst.description": "在文件上方列出文件夹。关闭后，文件夹和文件会混在一起。",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
-  "settings.listing.directorySortMode.label": "目录排序",
+  "settings.listing.directorySortMode.label": "文件夹排序",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
-  "settings.listing.directorySortMode.description": "更改排序列时，目录的排序方式。",
+  "settings.listing.directorySortMode.description": "更改排序列时，文件夹的排序方式。",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "当前已停用，因为文件夹和文件混在一起。开启“优先显示文件夹”即可使用这项设置。",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "与文件一致",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1977,9 +1981,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "文稿图标、目录排序，以及简洁模式的列宽。",
+  "settings.summary.listing": "文稿图标、文件夹排序，以及简洁模式的列宽。",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "双击前往上层文件夹，以及重命名文件时的行为。",
   "@settings.summary.navigationAndFileOps": {

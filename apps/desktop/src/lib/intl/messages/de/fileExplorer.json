@@ -789,13 +789,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ist größer als {limit} und damit zu groß, um direkt von hier aus in {appName} geöffnet zu werden. Kopiere die Datei zuerst in einen Ordner und öffne sie dann dort.",
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ist größer als {limit}, deshalb kann Cmdr die Datei nicht aus dem Archiv heraus in {appName} öffnen.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
-  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} liegt in einem passwortgeschützten Archiv. Kopiere die Datei zuerst in einen Ordner (Cmdr fragt dann nach dem Passwort) und öffne sie danach in {appName}.",
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} liegt in einem passwortgeschützten Archiv. Kopiere die Datei zuerst in einen Ordner (Cmdr wird dich nach dem Passwort fragen) und öffne sie danach in {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "{fileName} ließ sich nicht aus dem Archiv holen und deshalb nicht in {appName} öffnen. Vielleicht ist das Archiv beschädigt oder verwendet ein Format, das Cmdr nicht lesen kann.",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

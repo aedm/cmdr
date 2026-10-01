@@ -313,17 +313,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "A listában a mappák a fájlok fölé kerülnek. Kapcsold ki, ha a mappákat és a fájlokat együtt rendeznéd a választott oszlop szerint: így dátum szerinti rendezésnél a legújabb elem kerül felülre, akár mappa, akár fájl.",
+  "settings.listing.foldersFirst.description": "A listában a mappák a fájlok fölé kerülnek. Kapcsold ki, ha vegyesen szeretnéd látni a mappákat és a fájlokat.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
-  "settings.listing.directorySortMode.label": "Könyvtárak rendezése",
+  "settings.listing.directorySortMode.label": "Mappák rendezése",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
-  "settings.listing.directorySortMode.description": "Hogyan rendeződjenek a könyvtárak a rendezőoszlop váltásakor.",
+  "settings.listing.directorySortMode.description": "Hogyan rendeződjenek a mappák a rendezőoszlop váltásakor.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Most ki van kapcsolva, mert a mappák és a fájlok vegyesen jelennek meg. Kapcsold be a „Mappák megjelenítése felül” beállítást, hogy ezt is beállíthasd.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Mint a fájlok",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1979,9 +1983,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "Dokumentumikonok, könyvtárrendezés és Rövid mód oszlopszélessége.",
+  "settings.summary.listing": "Dokumentumikonok, mapparendezés és Rövid mód oszlopszélessége.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigáció a szülőmappába dupla kattintással, és viselkedés fájlok átnevezésekor.",
   "@settings.summary.navigationAndFileOps": {

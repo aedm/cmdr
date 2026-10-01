@@ -787,13 +787,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "「{fileName}」超過 {limit}，太大了，沒辦法直接從這裡用 {appName} 開啟。請先把它複製到一個資料夾，再從那裡開啟。",
+  "fileExplorer.openWith.copyRefused.tooLarge": "「{fileName}」超過 {limit}，所以 Cmdr 無法從封存檔裡用 {appName} 開啟它。",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
   "fileExplorer.openWith.copyRefused.needsPassword": "「{fileName}」在一個有密碼保護的封存檔裡。請先把它複製到一個資料夾（Cmdr 會問你密碼），再用 {appName} 開啟。",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "無法把「{fileName}」從封存檔裡取出來，所以沒辦法用 {appName} 開啟。這個封存檔可能已損壞，或用了 Cmdr 讀不了的格式。",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {

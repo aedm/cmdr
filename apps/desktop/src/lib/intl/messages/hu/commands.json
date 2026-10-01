@@ -484,9 +484,9 @@
   "@commands.fileCopyPath.label": {
     "sourceHash": "333608a"
   },
-  "commands.fileCopyCurrentDirectoryPath.label": "Aktuális könyvtár útvonalának másolása",
+  "commands.fileCopyCurrentDirectoryPath.label": "Aktuális mappa útvonalának másolása",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Fájlnév másolása",
   "@commands.fileCopyFilename.label": {

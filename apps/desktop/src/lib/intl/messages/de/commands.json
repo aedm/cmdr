@@ -486,7 +486,7 @@
   },
   "commands.fileCopyCurrentDirectoryPath.label": "Pfad des aktuellen Ordners kopieren",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Dateinamen kopieren",
   "@commands.fileCopyFilename.label": {

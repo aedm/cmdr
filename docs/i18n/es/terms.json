@@ -185,11 +185,10 @@
   "ask": {
     "chosen": "Preguntar",
     "accept": ["pregunt"],
+    "proseAccept": ["pedi", "pide"],
     "confidence": "high",
     "sources": "standard option label",
-    "exceptions": {
-      "settings.network.permissionIntroSuffix": "Asking a person or the AI for something (pedir), not the ask-each-time option (proposed: tighten the concept's match)."
-    }
+    "note": "Asking someone FOR something (a password, a yes) is pedir in prose (te pedirá la contraseña); the option label stays Preguntar."
   },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",

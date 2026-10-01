@@ -315,17 +315,21 @@
   "@settings.listing.foldersFirst.label": {
     "sourceHash": "a61d73e"
   },
-  "settings.listing.foldersFirst.description": "Toon mappen boven bestanden in de lijst. Zet dit uit om mappen en bestanden samen te sorteren op de gekozen kolom, zodat bij sorteren op datum het nieuwste onderdeel bovenaan staat, of het nu een map is of niet.",
+  "settings.listing.foldersFirst.description": "Toon mappen boven bestanden in de lijst. Zet dit uit om mappen en bestanden door elkaar te tonen.",
   "@settings.listing.foldersFirst.description": {
-    "sourceHash": "a26188c"
+    "sourceHash": "8505ff3"
   },
   "settings.listing.directorySortMode.label": "Mappen sorteren",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Hoe mappen worden gesorteerd bij het wisselen van sorteerkolom.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Nu uitgeschakeld, omdat mappen en bestanden door elkaar staan. Zet ‘Mappen eerst tonen’ aan om deze instelling in te schakelen.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Zoals bestanden",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -1988,7 +1992,7 @@
   },
   "settings.summary.listing": "Documentsymbolen, mapsortering, en kolombreedte in de Beknopte weergave.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigeren naar de bovenliggende map met dubbelklik, en gedrag bij het wijzigen van bestandsnamen.",
   "@settings.summary.navigationAndFileOps": {

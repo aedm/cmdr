@@ -486,7 +486,7 @@
   },
   "commands.fileCopyCurrentDirectoryPath.label": "Copiar caminho da pasta atual",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Copiar nome do arquivo",
   "@commands.fileCopyFilename.label": {

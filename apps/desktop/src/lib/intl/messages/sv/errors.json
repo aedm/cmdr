@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Så här kan du prova:\n- Öppna **{system_settings} > {privacy_and_security} > {files_and_folders}** och ge Cmdr åtkomst\n- Om det här är en systemskyddad mapp (som systemkataloger) kan du behöva ge Cmdr **{full_disk_access}** under {privacy_and_security}\n- Kör `ls -la` på den här sökvägen i Terminal för att kontrollera ägare och behörigheter",
+  "errors.listing.notPermitted.suggestion": "Så här kan du prova:\n- Öppna **{system_settings} > {privacy_and_security} > {files_and_folders}** och ge Cmdr åtkomst\n- Om det här är en systemskyddad mapp kan du behöva ge Cmdr **{full_disk_access}** under {privacy_and_security}\n- Kör `ls -la` på den här sökvägen i Terminal för att kontrollera ägare och behörigheter",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Sökvägen hittades inte",
   "@errors.listing.pathNotFoundErrno.title": {

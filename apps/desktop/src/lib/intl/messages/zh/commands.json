@@ -484,9 +484,9 @@
   "@commands.fileCopyPath.label": {
     "sourceHash": "333608a"
   },
-  "commands.fileCopyCurrentDirectoryPath.label": "拷贝当前目录路径",
+  "commands.fileCopyCurrentDirectoryPath.label": "拷贝当前文件夹路径",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "拷贝文件名",
   "@commands.fileCopyFilename.label": {

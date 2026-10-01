@@ -787,13 +787,13 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}”超过 {limit}，太大了，无法从这里直接用 {appName} 打开。请先把它拷贝到一个文件夹，再从那里打开。",
+  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}”超过 {limit}，所以 Cmdr 无法从压缩文件里用 {appName} 打开它。",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "sourceHash": "c26db52"
+    "sourceHash": "43399e6"
   },
   "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}”在一个受密码保护的压缩文件里。请先把它拷贝到一个文件夹（Cmdr 会问你要密码），再用 {appName} 打开。",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
-    "sourceHash": "74840cd"
+    "sourceHash": "882a23f"
   },
   "fileExplorer.openWith.copyRefused.archiveUnreadable": "没能把“{fileName}”从压缩文件里取出来，所以无法用 {appName} 打开。这个压缩文件可能已损坏，或者采用了 Cmdr 无法读取的格式。",
   "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
