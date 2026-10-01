@@ -827,12 +827,36 @@ describe('TransferDialog destination path', () => {
     expect(locked.querySelector('.path-error')?.textContent).toContain('permission')
   })
 
+  it('disables Confirm while the folder refuses writes, since the transfer would only refuse it again', async () => {
+    destinationWriteAccessMock.mockResolvedValue({ kind: 'unwritable', reason: 'readOnlyFilesystem' })
+    const target = mountDialog({ destinationPath: '/Volumes/Installer' })
+    await settleExistsCheck()
+
+    expect(target.querySelector('.path-error')?.textContent).toContain('read-only')
+    expect(confirmButton(target).disabled).toBe(true)
+  })
+
+  it('ignores Enter while the folder refuses writes, the same as the disabled button', async () => {
+    destinationWriteAccessMock.mockResolvedValue({ kind: 'unwritable', reason: 'noPermission' })
+    const onConfirm = vi.fn<ConfirmFn>()
+    const target = mountDialog({ destinationPath: '/Users/other/private', onConfirm })
+    await settleExistsCheck()
+
+    pathInput(target).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    const dialog = target.querySelector<HTMLElement>('[role="dialog"], dialog') ?? target
+    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushMicrotasks()
+
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
   it('stays quiet when the backend can’t tell whether the folder takes writes', async () => {
     destinationWriteAccessMock.mockResolvedValue({ kind: 'unknown' })
     const target = mountDialog({ destinationPath: '/Volumes/naspi/share' })
     await settleExistsCheck()
 
     expect(target.querySelector('.path-error')).toBeNull()
+    expect(confirmButton(target).disabled).toBe(false)
   })
 })
 

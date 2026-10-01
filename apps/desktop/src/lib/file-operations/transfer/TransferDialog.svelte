@@ -318,9 +318,12 @@
     })
 
     // The destination folder takes no writes, said before confirm (red, beneath the
-    // path box, after a structural error). Confirm stays enabled: the transfer asks
-    // again before it writes and refuses with its own typed error, which is also
-    // what an MCP auto-confirm meets.
+    // path box, after a structural error). Confirm is disabled while it shows, the
+    // same way a path error disables it, with the notice as the reason: the transfer
+    // asks the same question before it writes and refuses anyway, so an enabled button
+    // only led to that refusal in an extra dialog. A notice gone stale (the folder
+    // became writable while the dialog was open) clears on the next edit of the path.
+    // MCP auto-confirm skips the button and meets the backend's typed refusal instead.
     const REFUSAL_KEY = {
         readOnlyFilesystem: 'fileOperations.transferDialog.destinationReadOnly',
         noPermission: 'fileOperations.transferDialog.destinationNoPermission',
@@ -566,9 +569,19 @@
         onCancel()
     }
 
+    /**
+     * A person's confirm: the button or Enter. Refused while the destination
+     * refuses writes, where the button reads disabled. ❌ Not in `handleConfirm`:
+     * an MCP confirm goes through that, and it meets the backend's typed refusal.
+     */
+    function confirmFromUser() {
+        if (targetRefusal) return
+        void handleConfirm()
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter') {
-            void handleConfirm()
+            confirmFromUser()
         }
     }
 
@@ -576,7 +589,7 @@
         if (event.key === 'Enter') {
             event.preventDefault()
             event.stopPropagation()
-            void handleConfirm()
+            confirmFromUser()
         }
     }
 </script>
@@ -826,7 +839,7 @@
              button has to look busy rather than inviting a second click. The spinner
              is decorative (no `label`, so `aria-hidden`), which keeps the button's
              accessible name exactly `confirmLabel` and needs no new catalog string. -->
-        <Button variant="primary" onclick={() => handleConfirm()} disabled={!!pathError || !!scan.sourceRefusal || confirmPending}>
+        <Button variant="primary" onclick={confirmFromUser} disabled={!!pathError || !!targetRefusal || !!scan.sourceRefusal || confirmPending}>
             <span class="confirm-content">
                 {#if confirmPending}
                     <Spinner size="sm" />

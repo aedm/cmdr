@@ -625,10 +625,13 @@ Two niceties on top:
   unregistered volume). A definite `unwritable` shows a red line under the box (`#transfer-path-refusal`, keys
   `destinationReadOnly` / `destinationNoPermission` / `destinationNotWritable`, one per reason the backend could tell
   apart) and suppresses the yellow "will be created" warning, which would be a promise the transfer can't keep. The
-  structural red error still wins. ❗ `unknown` shows nothing, and confirm stays enabled: the transfer asks again before
-  it writes and refuses with the typed `destination_not_writable` error, which is also what an MCP auto-confirm meets (a
-  disabled confirm would leave its round trip waiting). The phone case this exists for: copying onto a Pixel's `/`
-  surfaced only after confirm, as "Not enough space".
+  structural red error still wins. While it shows, Confirm is disabled and Enter does nothing (`confirmFromUser`), the
+  way a path error disables them, with the notice as the reason. Decision/Why: the transfer asks the same question
+  before it writes and refuses with the typed `destination_not_writable` error anyway, so an enabled button led only to
+  that refusal in an extra dialog. ❗ The gate sits in `confirmFromUser`, ❌ never `handleConfirm`: an MCP confirm and
+  the auto-confirm go through `handleConfirm` and meet the backend's typed refusal, where a refused confirm would leave
+  their round trip waiting. `unknown` shows nothing and blocks nothing. The phone case this exists for: copying onto a
+  Pixel's `/` surfaced only after confirm, as "Not enough space".
 
 Backend counterpart: every transfer path creates a missing destination (and ancestors) before transferring — the local
 copy/move paths via `ensure_destination_dir` (`write_operations/validation.rs`), and the cross-volume +
