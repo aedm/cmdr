@@ -70,6 +70,7 @@ use crate::file_system::write_operations::{
 };
 use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged};
 use crate::file_viewer::ViewerPullProgress;
+use crate::file_viewer::open_with_extract::OpenWithCopyRefused;
 use crate::listing_index_sizes::ListingIndexSizesChanged;
 use crate::mtp::{
     MtpDeviceConnected, MtpDeviceDisconnected, MtpExclusiveAccessError, MtpPermissionError, MtpPtpcameradRestored,
@@ -1028,6 +1029,9 @@ pub fn builder() -> Builder<tauri::Wry> {
             // The leftover sweep, which belongs to no operation
             // (write_operations/in_flight_sweep.rs).
             MoveLeftoversKeptEvent, // event_name = "move-leftovers-kept"
+            // An "Open with" click on a file inside an archive that couldn't be copied
+            // out, so no app launched (file_viewer/open_with_extract.rs).
+            OpenWithCopyRefused,
             // Operation manager registry snapshot (write_operations/manager.rs).
             OperationsChanged,
             SuggestionsChanged,

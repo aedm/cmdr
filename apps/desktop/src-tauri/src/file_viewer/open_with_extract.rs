@@ -29,8 +29,10 @@
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, RwLock};
 
-use super::ViewerError;
+use serde::{Deserialize, Serialize};
+
 use super::materialize::{TempSpot, extract_routed_into, reap_temps_with_prefix};
+use super::{ArchiveFailureKind, ViewerError};
 use crate::file_system::volume::manager::{get_volume_manager, path_routes_over_its_parent};
 use crate::ignore_poison::RwLockIgnorePoison;
 
@@ -89,14 +91,86 @@ pub(crate) fn any_needs_extraction(paths: &[PathBuf]) -> bool {
     paths.iter().any(|path| path_routes_over_its_parent(path))
 }
 
+/// `open-with-copy-refused`: an "Open with" click on a file only a route serves
+/// couldn't copy it out, so no app was launched. The main window says why in a toast;
+/// without it, the click would do nothing at all.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenWithCopyRefused {
+    /// The file's own name, as the person sees it in the pane.
+    pub file_name: String,
+    /// The chosen app's display name (its bundle name without `.app`).
+    pub app_name: String,
+    pub reason: OpenWithCopyRefusal,
+}
+
+impl OpenWithCopyRefused {
+    /// The notice for `refused`, a launch of the app bundle at `app_path`.
+    pub(crate) fn new(refused: &RefusedCopy, app_path: &Path) -> Self {
+        let lossy = |name: Option<&std::ffi::OsStr>, fallback: &Path| {
+            name.map_or_else(|| fallback.display().to_string(), |n| n.to_string_lossy().into_owned())
+        };
+        Self {
+            file_name: lossy(refused.path.file_name(), &refused.path),
+            app_name: lossy(app_path.file_stem(), app_path),
+            reason: refused.reason,
+        }
+    }
+}
+
+/// Why the copy couldn't be made, in the terms the toast words differently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum OpenWithCopyRefusal {
+    /// Over [`OPEN_WITH_CAP_BYTES`] (`cap`), refused before a byte was written.
+    TooLarge { cap: u64 },
+    /// The archive needs a password it hasn't been given. Copying the file out asks
+    /// for it, after which "Open with" works too.
+    NeedsPassword,
+    /// The archive is damaged or uses something this build can't decode.
+    ArchiveUnreadable,
+    /// Anything else: the source went away or couldn't be read.
+    Unreadable,
+}
+
+impl From<&ViewerError> for OpenWithCopyRefusal {
+    fn from(error: &ViewerError) -> Self {
+        match error {
+            ViewerError::TooLargeToPreview { cap, .. } => Self::TooLarge { cap: *cap },
+            ViewerError::Archive { failure, .. } => match failure {
+                ArchiveFailureKind::NeedsPassword => Self::NeedsPassword,
+                ArchiveFailureKind::Unsupported | ArchiveFailureKind::Unreadable => Self::ArchiveUnreadable,
+            },
+            ViewerError::Io { .. }
+            | ViewerError::NotFound { .. }
+            | ViewerError::IsDirectory
+            | ViewerError::SessionNotFound { .. }
+            | ViewerError::Cancelled
+            | ViewerError::OutOfRange
+            | ViewerError::TimedOut
+            | ViewerError::StoppedResponding
+            | ViewerError::DestinationIsReadOnly => Self::Unreadable,
+        }
+    }
+}
+
+/// A launch that couldn't copy one of its rows out: which one, and why.
+#[derive(Debug)]
+pub(crate) struct RefusedCopy {
+    pub(crate) path: PathBuf,
+    pub(crate) reason: OpenWithCopyRefusal,
+    /// The pull's own failure, for the log.
+    pub(crate) error: ViewerError,
+}
+
 /// What to hand the app: each path as it is, or a fresh read-only copy of one only a
 /// route serves. Blocking (it streams the file out): run it off the main thread.
-pub(crate) fn launch_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, ViewerError> {
+pub(crate) fn launch_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, RefusedCopy> {
     launch_paths_in(paths, &open_with_dir(), OPEN_WITH_CAP_BYTES)
 }
 
 /// [`launch_paths`] into an explicit dir under an explicit cap, for tests.
-pub(super) fn launch_paths_in(paths: &[PathBuf], dir: &Path, cap: u64) -> Result<Vec<PathBuf>, ViewerError> {
+pub(super) fn launch_paths_in(paths: &[PathBuf], dir: &Path, cap: u64) -> Result<Vec<PathBuf>, RefusedCopy> {
     let spot = TempSpot {
         dir,
         prefix: TEMP_SUBDIR_PREFIX,
@@ -109,7 +183,12 @@ pub(super) fn launch_paths_in(paths: &[PathBuf], dir: &Path, cap: u64) -> Result
             }
             // `None`: the route didn't confirm (a real folder named `foo.zip`), so the
             // path is a real file and opens as it is.
-            let Some(copy) = extract_routed_into(path, &parent_volume_id(path), spot, cap)? else {
+            let copy = extract_routed_into(path, &parent_volume_id(path), spot, cap).map_err(|error| RefusedCopy {
+                path: path.clone(),
+                reason: OpenWithCopyRefusal::from(&error),
+                error,
+            })?;
+            let Some(copy) = copy else {
                 return Ok(path.clone());
             };
             make_read_only(&copy.temp_file);

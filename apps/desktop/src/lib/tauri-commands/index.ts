@@ -534,6 +534,7 @@ export {
   onMediaIndexFolderExclusion,
   onMediaIndexFolderChoice,
   onMenuBarRebuilt,
+  onOpenWithCopyRefused,
 } from './menu-events'
 
 // Directory-watcher events

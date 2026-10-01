@@ -4,9 +4,12 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::ViewerError;
 use super::materialize::reap_orphan_temps;
-use super::open_with_extract::{is_open_with_temp_name, launch_paths_in, listing_path_in, reap_open_with_temps};
+use super::open_with_extract::{
+    OpenWithCopyRefusal, OpenWithCopyRefused, RefusedCopy, is_open_with_temp_name, launch_paths_in, listing_path_in,
+    reap_open_with_temps,
+};
+use super::{ArchiveFailureKind, ViewerError};
 
 /// Registers a real local-FS "root" volume so the archive route finds a parent.
 fn ensure_root_volume() {
@@ -100,14 +103,97 @@ fn an_oversize_file_is_refused_before_anything_is_written() {
     build_zip(&zip, &[("big.bin", &[7u8; 4096])]);
     let dir = tempfile::tempdir().expect("open-with dir");
 
-    let err = launch_paths_in(&[zip.join("big.bin")], dir.path(), 100).expect_err("over the cap");
+    let refused = launch_paths_in(&[zip.join("big.bin")], dir.path(), 100).expect_err("over the cap");
 
-    assert!(matches!(err, ViewerError::TooLargeToPreview { .. }), "got {err:?}");
+    assert_eq!(refused.path, zip.join("big.bin"), "names the file it couldn't copy");
+    assert_eq!(refused.reason, OpenWithCopyRefusal::TooLarge { cap: 100 });
     assert_eq!(
         std::fs::read_dir(dir.path()).expect("read dir").count(),
         0,
         "nothing left behind"
     );
+}
+
+/// A password the archive hasn't been given yet is its own refusal: the person can do
+/// something about it (copy it out, which asks for the password), unlike a damaged one.
+#[test]
+fn a_file_in_a_locked_archive_is_refused_as_needing_its_password() {
+    use cmdr_archive::test_fixtures::{CryptoFixtureFile, build_aes_zip};
+
+    ensure_root_volume();
+    let src = tempfile::tempdir().expect("src dir");
+    let zip = src.path().join("locked.zip");
+    let bytes = build_aes_zip(
+        &[CryptoFixtureFile {
+            name: "secret.pdf".to_string(),
+            content: b"%PDF-1.4 hush".to_vec(),
+            encrypted: true,
+        }],
+        "open sesame",
+        zip::AesMode::Aes256,
+    );
+    std::fs::write(&zip, bytes).expect("write the locked zip");
+    let dir = tempfile::tempdir().expect("open-with dir");
+
+    let refused = launch_paths_in(&[zip.join("secret.pdf")], dir.path(), CAP).expect_err("no password yet");
+
+    assert_eq!(refused.reason, OpenWithCopyRefusal::NeedsPassword);
+}
+
+#[test]
+fn every_other_pull_failure_lands_on_a_refusal_the_toast_can_word() {
+    let archive = |failure| ViewerError::Archive {
+        failure,
+        message: "zip says no".to_string(),
+    };
+    let cases = [
+        (
+            ViewerError::TooLargeToPreview { size: 9, cap: 5 },
+            OpenWithCopyRefusal::TooLarge { cap: 5 },
+        ),
+        (
+            archive(ArchiveFailureKind::NeedsPassword),
+            OpenWithCopyRefusal::NeedsPassword,
+        ),
+        (
+            archive(ArchiveFailureKind::Unsupported),
+            OpenWithCopyRefusal::ArchiveUnreadable,
+        ),
+        (
+            archive(ArchiveFailureKind::Unreadable),
+            OpenWithCopyRefusal::ArchiveUnreadable,
+        ),
+        (
+            ViewerError::Io {
+                message: "EIO".to_string(),
+            },
+            OpenWithCopyRefusal::Unreadable,
+        ),
+        (
+            ViewerError::NotFound {
+                path: "/gone".to_string(),
+            },
+            OpenWithCopyRefusal::Unreadable,
+        ),
+    ];
+    for (error, expected) in cases {
+        assert_eq!(OpenWithCopyRefusal::from(&error), expected, "for {error:?}");
+    }
+}
+
+#[test]
+fn the_notice_names_the_file_and_the_app_as_the_person_sees_them() {
+    let refused = RefusedCopy {
+        path: PathBuf::from("/Users/me/bundle.zip/docs/report.pdf"),
+        reason: OpenWithCopyRefusal::NeedsPassword,
+        error: ViewerError::IsDirectory,
+    };
+
+    let notice = OpenWithCopyRefused::new(&refused, Path::new("/System/Applications/Preview.app"));
+
+    assert_eq!(notice.file_name, "report.pdf");
+    assert_eq!(notice.app_name, "Preview");
+    assert_eq!(notice.reason, OpenWithCopyRefusal::NeedsPassword);
 }
 
 #[test]

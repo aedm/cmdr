@@ -241,7 +241,15 @@ the reasons; the shape:
 - **The launch path.** `../menu/open_with.rs::launch_with` keeps an ordinary launch synchronous on the main thread. When
   any row routes, it pulls on the blocking pool and hops back to the main thread for `open_paths_with`. The volume
   under the path is `mount_id_for_path` (else the default volume), since the menu carries paths only and a route rides
-  on its parent drive's volume. A failed pull is logged, the same as a failed launch.
+  on its parent drive's volume.
+- **A pull that can't finish launches nothing and says why.** `launch_paths` answers a `RefusedCopy` (the row, plus a
+  typed `OpenWithCopyRefusal`: `tooLarge { cap }`, `needsPassword`, `archiveUnreadable`, `unreadable`, mapped from the
+  `ViewerError` variant, ❌ never its message). `launch_with` logs it and emits `OpenWithCopyRefused`, which the main
+  window's `../../../src/lib/file-explorer/open-with-refused-bridge.ts` shows as a warning toast: the click lands on the native
+  menu, so the frontend hears of it no other way. A locked archive is `ArchiveFailureKind::NeedsPassword`
+  (`map_volume_error`), because copying the file out (F5) asks for the password and fixes it. There's no "preparing"
+  cue while a big pull runs: nothing on the main window fits one without a new progress surface. A failed LAUNCH
+  (`open_paths_with`) is still log-only, ordinary rows included.
 - **The app list asks about a stand-in.** `URLsForApplicationsToOpenURL:` answers no apps for a path with nothing at it
   (verified on macOS 27.0 via `osascript`, 2026-10-01), and the menu is built before anything is pulled. So
   `../menu/context_menu_facts.rs` asks about `listing_path`: for a routed row, an empty `stand-in.<ext>` in

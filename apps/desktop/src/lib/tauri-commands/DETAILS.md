@@ -109,6 +109,8 @@ commands, and notable non-obvious placements.
 - **`menu-events.ts`**: `onViewModeChanged` / `onMenuSort` / `onMediaIndexFolderExclusion` / `onMediaIndexFolderChoice`
   over the direct (non-`execute-command`) native-menu events. The two media-index ones carry the right-clicked folder
   plus its target state; `listener-setup.ts` routes each into the ONE FE helper that also backs the Settings list.
+  `onOpenWithCopyRefused` carries an "Open with" launch that couldn't copy its file out of an archive, for
+  `../file-explorer/open-with-refused-bridge.ts`.
 - **`directory-watcher.ts`**: `onDirectoryDiff` / `onDirectoryDeleted` over the file-watcher events (`onDirectoryDiff`
   casts the generated payload to the FE `DirectoryDiff` whose `entry` is the FE `FileEntry`).
 - **`native-drag.ts`**: `onDragImageSize` / `onDragModifiers` (macOS drag overlay) + `onDragOutSessionStarted` /

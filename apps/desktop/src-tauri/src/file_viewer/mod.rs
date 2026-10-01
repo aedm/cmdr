@@ -200,6 +200,9 @@ pub enum ArchiveFailureKind {
     Unsupported,
     /// The archive entry could not be read for another archive-specific reason.
     Unreadable,
+    /// The entry is encrypted and the archive hasn't been given its password yet (or
+    /// was given a wrong one).
+    NeedsPassword,
 }
 
 /// Errors from the viewer backends.

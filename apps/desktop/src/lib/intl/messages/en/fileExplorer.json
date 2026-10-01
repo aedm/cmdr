@@ -1175,6 +1175,39 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "description": "Info toast when the user presses the system-clipboard copy or cut shortcut (Cmd+C / Cmd+X) inside the virtual `.git` portal, where Cmdr shows a repository’s branches, tags, and commits as browsable folders. Those entries are reconstructed from git history and have no path the system clipboard can carry, so it points the user at the F5 (copy) and F6 (move) transfer keys instead. F5 and F6 are keyboard key names; keep them as-is. \"git\" is the version-control tool name; keep it."
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is over {limit}, too big to open in {appName} straight from here. Copy it to a folder first, then open it there.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "description": "Toast shown after the user right-clicked a file inside an archive (a zip Cmdr browses like a folder) or inside a repository’s virtual `.git` snapshot, picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. \"From here\" means the place the user is browsing, whichever it is, so don’t name an archive. Tells the user to copy the file to a normal folder (F5) and open it from there.",
+    "placeholders": {
+      "fileName": "the file’s name, e.g. holiday.mov. Never translate it",
+      "limit": "the size limit, already formatted with its unit, e.g. 2 GB",
+      "appName": "the app the user picked, e.g. Preview or QuickTime Player. Never translate it"
+    }
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} is in a password-protected archive. Copy it to a folder first (Cmdr asks for the password), then open it in {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "description": "Toast shown after the user right-clicked a file inside an encrypted archive (a zip or 7z Cmdr browses like a folder), picked an app under \"Open with\", and nothing opened, because Cmdr doesn’t have the archive’s password yet. Copying the file out (F5) shows a password prompt; after that, the file can be opened. \"Archive\" means a zip/7z file.",
+    "placeholders": {
+      "fileName": "the file’s name, e.g. contract.pdf. Never translate it",
+      "appName": "the app the user picked, e.g. Preview. Never translate it"
+    }
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Couldn’t get {fileName} out of its archive to open it in {appName}. The archive may be damaged or use a format Cmdr can’t read.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "description": "Toast shown after the user right-clicked a file inside an archive (a zip, tar, or 7z Cmdr browses like a folder), picked an app under \"Open with\", and nothing opened, because Cmdr couldn’t read that file out of the archive: the archive is corrupt or uses a compression method Cmdr doesn’t support. \"Archive\" means the zip/tar/7z file. Never use the words \"error\" or \"failed\".",
+    "placeholders": {
+      "fileName": "the file’s name, e.g. report.pdf. Never translate it",
+      "appName": "the app the user picked, e.g. Preview. Never translate it"
+    }
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Couldn’t read {fileName} to open it in {appName}. Check that its drive is still connected, then try again.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "description": "Toast shown after the user right-clicked a file inside an archive or a repository’s virtual `.git` snapshot, picked an app under \"Open with\", and nothing opened, because reading the file broke off for a reason other than the archive itself (the drive holding it went away, a disk read problem). Suggests checking the drive and trying again. Never use the words \"error\" or \"failed\".",
+    "placeholders": {
+      "fileName": "the file’s name, e.g. report.pdf. Never translate it",
+      "appName": "the app the user picked, e.g. Preview. Never translate it"
+    }
+  },
   "fileExplorer.rename.hiddenAfterRename": "Your file disappeared from view because hidden files aren’t shown.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "description": "Info toast after renaming a file to a name starting with a dot, which hides it because hidden files aren’t currently shown. Reassures the user the file still exists."

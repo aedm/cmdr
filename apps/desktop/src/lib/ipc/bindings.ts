@@ -4974,6 +4974,7 @@ export const events = {
   networkHostResolved: makeEvent<NetworkHostResolved>('network-host-resolved'),
   openFileViewer: makeEvent<OpenFileViewer>('open-file-viewer'),
   openSettings: makeEvent<OpenSettings>('open-settings'),
+  openWithCopyRefused: makeEvent<OpenWithCopyRefused>('open-with-copy-refused'),
   operationsChanged: makeEvent<OperationsChanged>('operations-changed'),
   osLocalesChanged: makeEvent<OsLocalesChanged>('os-locales-changed'),
   persistRestrictedSetting: makeEvent<PersistRestrictedSetting>('persist-restricted-setting'),
@@ -5523,6 +5524,11 @@ export type ArchiveFailureKind =
   | 'unsupported'
   // The archive entry could not be read for another archive-specific reason.
   | 'unreadable'
+  /**
+   *  The entry is encrypted and the archive hasn't been given its password yet (or
+   *  was given a wrong one).
+   */
+  | 'needsPassword'
 
 /**
  *  Why a name can't be a fresh-ZIP entry, for
@@ -11066,6 +11072,33 @@ export type OpenTerminalOutcome =
    *  mount went away), so nothing was launched.
    */
   | 'not_a_local_path'
+
+// Why the copy couldn't be made, in the terms the toast words differently.
+export type OpenWithCopyRefusal =
+  // Over [`OPEN_WITH_CAP_BYTES`] (`cap`), refused before a byte was written.
+  | { kind: 'tooLarge'; cap: number }
+  /**
+   *  The archive needs a password it hasn't been given. Copying the file out asks
+   *  for it, after which "Open with" works too.
+   */
+  | { kind: 'needsPassword' }
+  // The archive is damaged or uses something this build can't decode.
+  | { kind: 'archiveUnreadable' }
+  // Anything else: the source went away or couldn't be read.
+  | { kind: 'unreadable' }
+
+/**
+ *  `open-with-copy-refused`: an "Open with" click on a file only a route serves
+ *  couldn't copy it out, so no app was launched. The main window says why in a toast;
+ *  without it, the click would do nothing at all.
+ */
+export type OpenWithCopyRefused = {
+  // The file's own name, as the person sees it in the pane.
+  fileName: string
+  // The chosen app's display name (its bundle name without `.app`).
+  appName: string
+  reason: OpenWithCopyRefusal
+}
 
 /**
  *  An operation's header plus a page of its items, with dir prefixes resolved to

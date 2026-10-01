@@ -511,10 +511,10 @@ fn map_volume_error(err: VolumeError, routed: Option<RoutedKind>) -> ViewerError
         VolumeError::IsADirectory(_) => ViewerError::IsDirectory,
         other => match routed {
             Some(RoutedKind::Archive) => ViewerError::Archive {
-                failure: if matches!(other, VolumeError::NotSupported) {
-                    ArchiveFailureKind::Unsupported
-                } else {
-                    ArchiveFailureKind::Unreadable
+                failure: match other {
+                    VolumeError::NotSupported => ArchiveFailureKind::Unsupported,
+                    VolumeError::NeedsPassword { .. } => ArchiveFailureKind::NeedsPassword,
+                    _ => ArchiveFailureKind::Unreadable,
                 },
                 message: other.to_string(),
             },
