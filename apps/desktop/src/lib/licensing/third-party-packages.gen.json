@@ -4423,12 +4423,6 @@
     },
     {
       "name": "@jridgewell/sourcemap-codec",
-      "version": "1.5.5",
-      "license": "MIT",
-      "url": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec"
-    },
-    {
-      "name": "@jridgewell/sourcemap-codec",
       "version": "1.6.0",
       "license": "MIT",
       "url": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec"
