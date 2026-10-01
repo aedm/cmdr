@@ -1,0 +1,119 @@
+# S3 support: any S3-compatible bucket as a volume
+
+Tracks [#119](https://github.com/vdavid/cmdr/issues/119). Why: people keep files in AWS S3, Cloudflare R2, Backblaze B2,
+Wasabi, and Hetzner Object Storage, and today Cmdr can't reach any of them. This adds `crates/cmdr-s3`, one backend for
+every S3-compatible service, on the rails SFTP and WebDAV laid down (account → place → pin, the sign-in sheet, the
+reconnect cycle, the transfer engine, the conformance cells).
+
+Evidence this plan stands on, read before touching the matching milestone:
+
+- `docs/notes/s3/provider-research.md`: per-provider capabilities, limits, quirks, and list prices, each sourced.
+- `docs/notes/s3/library-and-fixture-audit.md`: why we write our own signer, and why VersityGW + Garage are the
+  fixtures.
+
+## Product decisions (David, 2026-10-01)
+
+- **No OAuth.** Every provider authenticates with an access key ID + secret, signed SigV4. `~/.aws` profiles and SSO are
+  out of scope for now.
+- **The volume is the account; buckets are its places.** The account root lists buckets when the key may
+  (`ListBuckets`); a bucket-scoped key (R2 non-admin tokens, B2 keys without `listAllBucketNames`, Hetzner outside the
+  key's project) can't, so the user can always type a bucket name, and a typed bucket becomes a saved place like an SFTP
+  path. This is `apps/desktop/src/lib/servers/DETAILS.md` § "The model" with bucket = place.
+- **Connect form**: presets for AWS (+ region), R2 (+ account ID), B2 (+ region), Wasabi (+ region), and Hetzner (+
+  location), plus "Other S3-compatible" with a raw endpoint URL and a path-style toggle.
+- **Folders are prefixes.** Creating an empty folder writes a zero-byte `name/` marker object (the AWS console's and
+  rclone's convention). A folder with no marker vanishes when its last object goes; that's S3, and fine.
+- **Modified dates**: S3 only stores upload time. We write the source's mtime into `x-amz-meta-mtime` (rclone's key and
+  format, so the two tools agree) and show it when present, else `LastModified`.
+- **No indexing and no thumbnails on S3 volumes** for now: every request costs money.
+- **Space**: `get_space_info` answers `VolumeError::NotSupported`.
+- **Delete is permanent** (S3 has no trash), and the delete dialog says so. When the bucket keeps versions (AWS/R2
+  versioning on, and B2 by default), it says the bytes stay billed.
+- **Cost estimates** before costly operations, at list prices: "About
+  $0.02 at AWS list prices", with an (i) explaining
+  free tiers, discounts, and minimums. Hidden when it rounds to $0.00.
+  ❌ None on rollbacks: those just run. The price table is served by `apps/api-server` so a price change needs no
+  release.
+- **No-overwrite races**: where a provider lacks `If-None-Match: *`, we check then write, and when a clash is noticed
+  afterwards we tell the user plainly what happened and what survived.
+- **Share link**: "Copy share link" mints a presigned GET URL, seven days by default (the SigV4 maximum), with one hour
+  and one day as the other choices. Free and offline: it's a signature, not a request.
+- **Archived objects** (AWS Glacier Flexible Retrieval / Deep Archive): an "archived" badge in the listing and a typed
+  error with a clear sentence on read. Restore is later.
+- **Versioning UI** ("Show versions", restore an old version) is later.
+- One tier: nothing is gated.
+
+## Architecture
+
+`crates/cmdr-s3` in the shape of `crates/cmdr-webdav` (read its `CLAUDE.md` first): no `tauri`, `reqwest` confined to a
+few modules, typed errors, the operations as the liveness detector, the shared-client instance model.
+
+- **Our own SigV4 and XML layer, no new crates** (`library-and-fixture-audit.md` has the why: `rusty-s3` presigns
+  everything and R2 refuses presigned `POST`; `aws-sdk-s3` brings its own HTTP stack and ~238k lines). Header auth with
+  `x-amz-content-sha256: UNSIGNED-PAYLOAD` for every call, query auth only for share links. Built on `hmac` + `sha2` +
+  `quick-xml`, already in `Cargo.lock`. Fallback if the signer fights us: AWS's standalone `aws-sigv4`.
+- ❗ **No checksum headers by default.** Wasabi rejects `CRC64NVME`, and R2/B2 accept only subsets. Integrity comes from
+  `Content-MD5` where the API requires it (`DeleteObjects`) and from comparing sizes and ETags after a write.
+- **A provider profile**, chosen by the preset and refined by what the server answers: addressing style, region rule,
+  conditional-write support per operation (AWS: Put/Complete/Copy; R2: Put only, Copy via
+  `cf-copy-destination-if-none-match`; B2: none; Wasabi, Hetzner: probe), cross-bucket server-side copy (Hetzner:
+  same-bucket only), equal-size multipart parts (R2 demands it, so we always do it), Unicode normalization (R2 stores
+  keys NFC), price table id. An operation that answers `501 NotImplemented` to a conditional header downgrades the
+  profile to check-then-write for the session and logs it once.
+- **Paths**: volume root `/` lists buckets; `/<bucket>/<key...>`. Keys are encoded per segment.
+
+### The rename capability (the cross-cutting change)
+
+Every `Volume::rename` caller assumes one cheap server-side call: F2 (`rename_managed`, an instant op with a 5 s
+frontend wait), same-volume move (`transfer/volume/move_same.rs`, "a whole subtree moves with one rename"), bulk rename
+(`write_operations/rename/bulk.rs`), Ask Cmdr's rename proposals, and the MCP rename tool. On S3 a folder rename is one
+copy and one delete per object, and a big file's is a slow server-side copy.
+
+- **A new `Volume` capability** says whether renaming a given entry is one call. Default: yes. S3: no for a folder, and
+  no for a file over the multipart-copy threshold (~100 MB). A typed answer, ❌ never inferred from a backend kind.
+- **Every caller routes on it**: an entry that can't rename in one call goes through the transfer engine as a
+  same-volume move with server-side copy, with the scan preview, progress, pause, cancel, conflicts, and journaling.
+  Bulk rename and Ask Cmdr route through the same background move.
+- **F2 keeps its inline editor.** On Enter, `check_rename_validity` also reports the routed cost (object count, bytes,
+  estimate), counting with a bounded listing that stops past the threshold. Small (≤100 objects and the estimate rounds
+  to $0.00): start a background move with the progress chip, no dialog. Bigger: open the Move dialog prefilled with the
+  new name, showing the count and the estimate.
+- **Order**: copy everything, then delete in `DeleteObjects` batches of 1,000. The worst state after a crash is
+  duplicates, ❌ never loss; the operation log offers to finish or undo.
+
+### Server-side copy and multipart
+
+- Same-endpoint copies never touch the Mac: `CopyObject` up to the threshold, `UploadPartCopy` above it (even under 5
+  GB), so progress advances per part and pause lands between parts.
+- **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`.
+  **Concurrency**: ~16 parts for server-side copies, four to eight for uploads, AIMD back-off on `SlowDown` / 503 / 429.
+  Hetzner's 750 requests/s per bucket is the low bar. Tune per provider in M8.
+- **Cancel** aborts the multipart upload. **Startup** lists our own unfinished uploads (`ListMultipartUploads`, matched
+  by a Cmdr marker in the initiation metadata) and aborts them, because they're invisible and billed forever.
+- **A copy can fail inside a `200 OK`** on AWS: always parse the body.
+
+## Milestones
+
+Each one ends green on `pnpm check` with its docs updated. Tiers follow
+`apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "Building a new volume".
+
+1. **M1, the protocol layer** (crate only, no app): signer against AWS's published SigV4 vectors, request builders, XML
+   parsers and builders, typed `S3Error` from `<Error><Code>`, the provider profile. Unit tests only.
+2. **M2, fixtures**: `apps/desktop/test/s3-servers/` with VersityGW (primary) and Garage (no conditional writes), a
+   `start.sh` / `stop.sh` on random high ports bound to 127.0.0.1, wired into the check runner's fixture lane.
+3. **M3, connect and browse (tier 1)**: params + credential store key, connect probe and its refusal table, buckets at
+   the root, `ListObjectsV2` listings feeding `on_progress`, metadata, connection state through `noting`, the servers
+   hub (presets, account → bucket places, typed bucket names), the sign-in sheet's S3 variant.
+4. **M4, read (tier 2a)**: ranged streaming GET, S3 → anywhere copies, archived badge + typed error, "Copy share link".
+5. **M5, write (tier 2b)**: streaming PUT, multipart upload with equal parts, `create_file` with conditional write or
+   check-then-write, folder markers, non-recursive `delete`, mtime metadata, the startup abort sweep, every applicable
+   `cmdr_fs::volume::conformance` cell against both fixtures.
+6. **M6, the rename capability and server-side copy**: the trait capability, routing in all five callers, multipart copy
+   with progress, pause, cancel, F2's small/big split.
+7. **M7, cost estimates**: price table endpoint in `apps/api-server`, the estimator in Rust (requests by class, egress,
+   minimum duration and minimum object size), the estimate line + (i) in the Move, Copy, and Delete dialogs and the F2
+   dialog path.
+8. **M8, live providers and polish**: real accounts (keys via `secret`), throughput and throttling measured per provider
+   and the concurrency numbers set from them, conditional-write behavior confirmed on Wasabi and Hetzner, friendly
+   errors, delete-dialog versioning notes, docs (`C+D.md`, `docs/architecture.md`, capability matrix), and the i18n
+   brief for the translator agent.
