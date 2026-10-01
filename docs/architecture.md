@@ -351,7 +351,7 @@ All under `apps/desktop/src-tauri/src/`.
 ## Workspace crates
 
 All under `crates/`, alongside the four apps. `cmdr-fs`, `cmdr-index`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`,
-`cmdr-webdav`, `cmdr-adb`, `cmdr-mtp`, and `cmdr-git` carry no `tauri` dependency and no reach into the app;
+`cmdr-webdav`, `cmdr-s3`, `cmdr-adb`, `cmdr-mtp`, and `cmdr-git` carry no `tauri` dependency and no reach into the app;
 `index-crate-isolation` enforces that against the `cargo metadata` graph, and caps the public surface of `cmdr-index`,
 `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-mtp`, and `cmdr-git` at the numbers their audits landed
 on. The two dev CLIs and the vendored fork are ordinary members.
@@ -390,6 +390,11 @@ on. The two dev CLIs and the vendored fork are ordinary members.
   guardrails and which side a test lives on: `crates/cmdr-webdav/CLAUDE.md`. Its Docker servers:
   `apps/desktop/test/webdav-servers/README.md`. What it still owes: GitHub issues
   [#173](https://github.com/vdavid/cmdr/issues/173)–[#178](https://github.com/vdavid/cmdr/issues/178).
+- `crates/cmdr-s3/`: everything Cmdr says to an S3-compatible object store (AWS, Cloudflare R2, Backblaze B2, Wasabi,
+  Hetzner, any other). So far the protocol layer only, as pure values: our own SigV4 signer, one request builder per S3
+  call, `quick-xml` response parsers and typed `S3Error`s, and the provider profiles that hold each service's endpoint
+  and quirks. No transport, `Volume`, or app wiring yet. The plan: `docs/specs/s3-support-plan.md`. Decisions:
+  `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`.
 - `crates/cmdr-adb/`: everything Cmdr says to an Android device over ADB. `AdbVolume` per attached device, rooted at the
   device's real `/`, spoken to the ADB server on loopback (the sync service for stat, list, and transfers, `shell,v2`
   for the verbs it lacks, `host:track-devices` for hotplug), with a typed errno-based error policy and a fake ADB server
