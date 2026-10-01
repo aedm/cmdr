@@ -14021,8 +14021,8 @@ export type ShowSearchResultInFolder = {
  *  break SMB; one reading "editable" as a mode rule would break SFTP.
  *
  *  **Reserved, ❌ not added until a producer exists**:
- *  - `AccessKeys { session_token: bool }` for S3: an access key id, a secret
- *    access key, and optionally a session token.
+ *  - A `session_token` field on [`AccessKeys`](Self::AccessKeys), once
+ *    temporary credentials (`~/.aws` profiles, SSO) are in scope.
  *  - `Oauth { provider }`: a "Continue in your browser" button and a waiting
  *    state, with the callback coming home backend-side; "remember" is implicit
  *    there (the refresh token is the only sane state), and a revoked token
@@ -14053,6 +14053,14 @@ export type SignInShape =
    *  answered that question themselves.
    */
   | { kind: 'key_passphrase' }
+  /**
+   *  An S3 secret access key, under the access key id it belongs to, read-only.
+   *
+   *  ❗ Read-only for [`Password`](Self::Password)'s reason: the access key id
+   *  is part of the volume id, so another key is another account. Same
+   *  refresh-never-seed rule too.
+   */
+  | { kind: 'access_keys' }
   /**
    *  A username AND a password, both editable: SMB, where the SHARE is the
    *  identity and the account is a field on it.
