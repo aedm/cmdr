@@ -1,0 +1,32 @@
+[package]
+name = "cmdr-s3"
+version = "0.0.0"
+edition = "2024"
+license = "LicenseRef-BSL-1.1"
+publish = false
+
+# The house lint set lives in the workspace root's `[workspace.lints]`, so this
+# crate can't quietly become a lint-free zone. `unused_crate_dependencies` is the
+# one lint that stays at the crate root instead (it's judged per compilation unit).
+[lints]
+workspace = true
+
+# Every dependency below was already in `Cargo.lock` at this crate's landing, at
+# the version and with the features pinned here, so the crate added no package
+# and no second configuration of one. Keep it that way: `cargo tree -d` before
+# and after any change here.
+[dependencies]
+# The SigV4 signer. Same versions the SFTP stack and the app already resolve.
+hmac = "0.13.0"
+sha2 = "0.11"
+url = "2"
+# Decoding keys from an `encoding-type=url` listing, and encoding them on the
+# way into a URL.
+percent-encoding = "2"
+# `Method`, `HeaderMap`, and `StatusCode`: the vocabulary a built request and an
+# S3 error are made of. `reqwest` re-exports the same crate, so the transport
+# takes these as-is.
+http = "1"
+# The ISO 8601 timestamps S3 lists carry (`2009-10-12T17:50:30.000Z`) and the
+# signer's date fields. A strict subset of the app's features.
+time = { version = "0.3", features = ["parsing"] }
