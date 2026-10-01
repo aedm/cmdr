@@ -277,7 +277,7 @@ impl LineIndexBackend {
     fn resolve_target(&self, target: &SeekTarget) -> Result<usize, ViewerError> {
         let last_row = self.total_rows.saturating_sub(1);
         Ok(match target {
-            SeekTarget::Line(n) => (*n).min(last_row),
+            SeekTarget::Row(n) => (*n).min(last_row),
             // ❗ The row CONTAINING the byte, not the checkpoint before it. Rounding
             // down to a checkpoint threw a byte-offset seek up to 255 rows backwards,
             // and `read_range` steers between chunks by byte offset, so the rounding

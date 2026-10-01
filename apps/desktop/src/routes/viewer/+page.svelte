@@ -695,8 +695,6 @@
         totalBytes = result.totalBytes
         // `initialLines.totalRows` is the row total and says whether it's counted or
         // sampled; `result.totalLines` is the PHYSICAL line count, for the status bar.
-        // (`result.estimatedTotalLines` carries the same row number as `totalRows.rows`;
-        // the wire keeps its old spelling until the IPC rename lands.)
         totalRows = result.initialLines.totalRows.kind === 'exact' ? result.initialLines.totalRows.rows : null
         estimatedRows = result.initialLines.totalRows.rows
         totalLines = result.totalLines
@@ -768,7 +766,7 @@
                 const remaining = fullLoadRows.rows - result.initialLines.rows.length
                 const startRow = result.initialLines.firstRowNumber + result.initialLines.rows.length
                 const tFetch = performance.now()
-                viewerGetLines(result.sessionId, 'line', startRow, remaining)
+                viewerGetLines(result.sessionId, 'row', startRow, remaining)
                     .then((chunk) => {
                         log.debug('FullLoad fetch remaining {count} {rowsNoun} took {ms}ms', {
                             count: chunk.rows.length,

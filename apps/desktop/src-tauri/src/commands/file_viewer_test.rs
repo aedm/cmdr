@@ -194,7 +194,7 @@ async fn escape_during_a_watched_save_stops_it_and_leaves_no_temp() {
     let result = write_range_watched(
         session_id.clone(),
         1,
-        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Row { row: 0, offset: 0 },
         RangeEnd::Eof,
         dest.to_string_lossy().into_owned(),
         Duration::from_secs(30),
@@ -234,7 +234,7 @@ async fn a_save_that_keeps_writing_runs_past_the_limit() {
     let result = write_range_watched(
         session_id.clone(),
         1,
-        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Row { row: 0, offset: 0 },
         RangeEnd::Eof,
         dest.to_string_lossy().into_owned(),
         Duration::from_secs(1),
@@ -279,7 +279,7 @@ async fn a_save_that_goes_quiet_gives_up_and_leaves_no_temp() {
     let result = write_range_watched(
         quiet_session.clone(),
         1,
-        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Row { row: 0, offset: 0 },
         RangeEnd::Eof,
         dest.to_string_lossy().into_owned(),
         Duration::from_millis(500),

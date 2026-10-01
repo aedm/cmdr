@@ -60,9 +60,8 @@ fetch costs more than a bounded read however long a line is. The rule, the wire 
 **The text coordinate is a row, everywhere.** `rowCache`, `visibleFrom` / `visibleTo`, `estimatedTotalRows()`, the
 selection's `(row, offset)` endpoints, `EOF_ROW`, the caret motions, and the search jump all count rows. A file whose
 every line is shorter than a segment has rows and lines one-to-one, so nothing about it changed; a minified bundle is
-where the two part company. ❗ `RangeEnd`'s `line` field and `SearchMatch.line` are the WIRE's spelling of that same row
-index (the IPC rename is its own milestone); `toRangeEnds` and `viewerSearchPoll` are the only two places that crossing
-happens, and both convert at the boundary rather than letting a field called `line` travel inward.
+where the two part company. The wire speaks rows too (`RangeEnd`'s `{ kind: 'row', row, offset }`, `SearchMatch.row`,
+the `'row'` seek kind), so the row travels straight through with no conversion at the IPC boundary.
 
 **`totalLines` still exists, and it is not a coordinate.** The status bar's "N lines" is a physical line count, `null`
 on `byteSeek`. The row total comes from `TotalRows` (`exact` or `estimated`) on the open result's first chunk, on every

@@ -120,7 +120,7 @@ fn search_hits(backend: &dyn FileViewerBackend, query: &str) -> Vec<(usize, usiz
         .search(&literal_matcher(query), &cancel, &results, &progress)
         .expect("search must succeed");
     let found = results.into_inner().expect("search results must not be poisoned");
-    found.iter().map(|m| (m.line, m.column, m.byte_offset)).collect()
+    found.iter().map(|m| (m.row, m.column, m.byte_offset)).collect()
 }
 
 fn read(backend: &dyn FileViewerBackend, anchor: RangeEnd, focus: RangeEnd) -> String {
@@ -128,8 +128,8 @@ fn read(backend: &dyn FileViewerBackend, anchor: RangeEnd, focus: RangeEnd) -> S
     read_range(backend, anchor, focus, &cancel).expect("range read must succeed")
 }
 
-fn at(line: u64, offset: u32) -> RangeEnd {
-    RangeEnd::Line { line, offset }
+fn at(row: u64, offset: u32) -> RangeEnd {
+    RangeEnd::Row { row, offset }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ fn fetching_by_line_number_works_on_the_two_backends_that_claim_to_support_it() 
     for which in [Which::FullLoad, Which::LineIndex] {
         let backend = open_backend(which, &file);
         assert!(backend.capabilities().supports_line_seek, "{which:?}");
-        let chunk = backend.get_lines(&SeekTarget::Line(10), 3).expect("line fetch");
+        let chunk = backend.get_lines(&SeekTarget::Row(10), 3).expect("line fetch");
         assert_eq!(chunk.first_row_number, 10, "{which:?}");
         assert_eq!(
             chunk.texts(),
@@ -190,7 +190,7 @@ fn line_index_reports_the_target_rows_byte_offset_not_the_checkpoints() {
 
     for which in ALL_BACKENDS {
         let chunk = open_backend(which, &file)
-            .get_lines(&SeekTarget::Line(10), 3)
+            .get_lines(&SeekTarget::Row(10), 3)
             .expect("row fetch");
         assert_eq!(chunk.first_row_number, 10, "{which:?}");
         assert_eq!(chunk.byte_offset, 10 * UNIFORM_LINE_BYTES, "{which:?}");
@@ -202,7 +202,7 @@ fn line_index_reports_the_target_rows_byte_offset_not_the_checkpoints() {
 #[test]
 fn byte_seek_maps_a_row_target_through_the_bytes_per_row_it_sampled() {
     // FIXED in milestone 3 (was `bug_pinned_byte_seek_estimates_a_line_target_at_80_bytes_a_line`).
-    // `SeekTarget::Line(n)` used to become `n * 80` bytes, which on a 20-byte-row file
+    // `SeekTarget::Row(n)` used to become `n * 80` bytes, which on a 20-byte-row file
     // overshoots fourfold: row 10 landed at byte 800, which is EOF, so the fetch came
     // back EMPTY carrying a row number the estimate had invented. It now divides by the
     // bytes-per-row it sampled at open, and that sample is the SAME map its byte-to-row
@@ -212,7 +212,7 @@ fn byte_seek_maps_a_row_target_through_the_bytes_per_row_it_sampled() {
 
     let backend = open_backend(Which::ByteSeek, &file);
     assert!(!backend.capabilities().supports_line_seek);
-    let chunk = backend.get_lines(&SeekTarget::Line(10), 3).expect("row fetch");
+    let chunk = backend.get_lines(&SeekTarget::Row(10), 3).expect("row fetch");
     assert_eq!(chunk.byte_offset, 10 * UNIFORM_LINE_BYTES);
     assert_eq!(chunk.first_row_number, 10);
     assert_eq!(
@@ -327,7 +327,7 @@ fn selecting_the_whole_file_yields_every_byte_in_every_backend() {
 #[test]
 fn a_multi_row_range_on_byte_seek_returns_the_rows_that_were_asked_for() {
     // FIXED in milestone 3 (was `bug_pinned_multi_line_range_on_byte_seek_returns_nothing`).
-    // `range_read` seeks its FIRST chunk by `SeekTarget::Line(start)`, which ByteSeek
+    // `range_read` seeks its FIRST chunk by `SeekTarget::Row(start)`, which ByteSeek
     // used to answer with the 80-bytes-a-line estimate. On a 20-byte-row file that
     // landed four times too far in, so `first_row_number` came back past the range's end
     // row and the loop returned before emitting anything: a partial copy in ByteSeek
@@ -812,7 +812,7 @@ fn a_chunk_ending_on_the_last_row_says_so_instead_of_serving_it_twice() {
 
             // Asking for exactly the rows the file has must come back saying so, rather
             // than leaving the caller to ask once more and be handed the last row again.
-            let chunk = backend.get_lines(&SeekTarget::Line(0), rows).expect("fetch");
+            let chunk = backend.get_lines(&SeekTarget::Row(0), rows).expect("fetch");
             assert_eq!(chunk.rows.len(), rows, "{which:?} {name}");
             assert_eq!(chunk.end, ChunkEnd::EndOfFile, "{which:?} {name}");
             assert_eq!(chunk.end_byte_offset, backend.total_bytes(), "{which:?} {name}");

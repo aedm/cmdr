@@ -132,7 +132,7 @@ impl FullLoadBackend {
 
     fn resolve_target(&self, target: &SeekTarget) -> usize {
         match target {
-            SeekTarget::Line(n) => (*n).min(self.rows.len().saturating_sub(1)),
+            SeekTarget::Row(n) => (*n).min(self.rows.len().saturating_sub(1)),
             SeekTarget::ByteOffset(offset) => {
                 // Binary search for the row containing this byte offset.
                 match self.rows.binary_search_by_key(offset, |row| row.byte_offset) {

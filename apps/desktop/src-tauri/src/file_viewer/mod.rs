@@ -101,8 +101,8 @@ pub(crate) const MAX_SEARCH_MATCHES: usize = 10_000;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum SeekTargetKind {
-    /// `target_value` is a 0-based line number.
-    Line,
+    /// `target_value` is a 0-based row index.
+    Row,
     /// `target_value` is a byte offset.
     Byte,
     /// `target_value` is a fraction of the file (0.0 = start, 1.0 = end).
@@ -110,14 +110,11 @@ pub enum SeekTargetKind {
 }
 
 /// Where to seek in the file.
-///
-/// The numeric coordinate is a ROW index, not a physical line; renaming the variant
-/// to match is open (GitHub #263).
 #[derive(Debug, Clone)]
 pub enum SeekTarget {
-    /// Jump to a specific row (0-based). Exact on `FullLoadBackend` and
-    /// `LineIndexBackend`; `ByteSeekBackend` maps it through its bytes-per-row sample.
-    Line(usize),
+    /// Jump to a specific row (0-based), not a physical line. Exact on `FullLoadBackend`
+    /// and `LineIndexBackend`; `ByteSeekBackend` maps it through its bytes-per-row sample.
+    Row(usize),
     /// Jump to a byte offset and find the row containing it.
     ByteOffset(u64),
     /// Jump to a fraction of the file (0.0 = start, 1.0 = end).
@@ -167,10 +164,9 @@ impl LineChunk {
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMatch {
-    /// 0-based ROW index (the coordinate is already a row; the field rename is open,
-    /// GitHub #263). Search scans rows, so a match inside a 300 MB line comes back with a
-    /// column that fits on screen instead of one 2.5 million units wide.
-    pub line: usize,
+    /// 0-based ROW index. Search scans rows, so a match inside a 300 MB line comes back
+    /// with a column that fits on screen instead of one 2.5 million units wide.
+    pub row: usize,
     /// UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by
     /// the row's length, which is bounded by two segments.
     pub column: usize,

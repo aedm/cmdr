@@ -11827,11 +11827,11 @@ export type QuitRequested = {
 }
 
 /**
- *  One endpoint of a selection. Frontend uses `Line { line, offset }`; for the
- *  "select all" path in ByteSeek-no-index mode (where `totalLines` is unknown),
- *  it uses `Eof` so the backend can resolve the end without a fake line number.
+ *  One endpoint of a selection: a ROW index plus a UTF-16 offset into that row. For the
+ *  "select all" path in ByteSeek-no-index mode (where the row count is unknown), the
+ *  frontend sends `Eof` so the backend can resolve the end without a fake row number.
  */
-export type RangeEnd = { kind: 'line'; line: number; offset: number } | { kind: 'eof' }
+export type RangeEnd = { kind: 'row'; row: number; offset: number } | { kind: 'eof' }
 
 /**
  *  Which half of a transfer refused the write, for [`WriteOperationError::ReadOnlyDevice`].
@@ -12861,11 +12861,10 @@ export type SearchIndexReadyEvent = {
 // A search match found by a backend.
 export type SearchMatch = {
   /**
-   *  0-based ROW index (the coordinate is already a row; the field rename is open,
-   *  GitHub #263). Search scans rows, so a match inside a 300 MB line comes back with a
-   *  column that fits on screen instead of one 2.5 million units wide.
+   *  0-based ROW index. Search scans rows, so a match inside a 300 MB line comes back
+   *  with a column that fits on screen instead of one 2.5 million units wide.
    */
-  line: number
+  row: number
   /**
    *  UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by
    *  the row's length, which is bounded by two segments.
@@ -13276,8 +13275,8 @@ export type SecretOffer = {
  *  error arm for a case typed callers can't reach.
  */
 export type SeekTargetKind =
-  // `target_value` is a 0-based line number.
-  | 'line'
+  // `target_value` is a 0-based row index.
+  | 'row'
   // `target_value` is a byte offset.
   | 'byte'
   // `target_value` is a fraction of the file (0.0 = start, 1.0 = end).
@@ -15164,8 +15163,11 @@ export type ViewerOpenResult = {
   fileName: string
   totalBytes: number
   totalLines: number | null
-  // For ByteSeek where `total_lines` is unknown. Based on `total_bytes / avg_bytes_per_line`.
-  estimatedTotalLines: number
+  /**
+   *  The file's ROW count, exact or (on ByteSeek) from its bytes-per-row sample. The
+   *  first chunk's `total_rows` carries the same number plus which of the two it is.
+   */
+  estimatedTotalRows: number
   backendType: BackendType
   capabilities: BackendCapabilities
   initialLines: LineChunk

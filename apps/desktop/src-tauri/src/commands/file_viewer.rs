@@ -220,7 +220,7 @@ pub async fn viewer_get_lines(
     count: usize,
 ) -> Result<LineChunk, ViewerError> {
     let target = match target_type {
-        SeekTargetKind::Line => SeekTarget::Line(target_value as usize),
+        SeekTargetKind::Row => SeekTarget::Row(target_value as usize),
         SeekTargetKind::Byte => SeekTarget::ByteOffset(target_value as u64),
         SeekTargetKind::Fraction => SeekTarget::Fraction(target_value),
     };

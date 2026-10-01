@@ -236,7 +236,7 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   (FullLoad, or ByteSeek with no index: a scan streams from byte 0 and numbers lines exactly, so an index would only
   read the file twice), then `backend.search(matcher, cancel, matches, progress)`, the viewer's own loop, capped at
   `MAX_SEARCH_MATCHES`. Matches are grouped by line in arrival order, the first `MAX_FIND_LINES` (50) lines are fetched
-  by `SeekTarget::ByteOffset(match.byte_offset)` (exact on every backend; `Line(n)` is a guess on ByteSeek), `\r`
+  by `SeekTarget::ByteOffset(match.byte_offset)` (exact on every backend; `Row(n)` is a guess on ByteSeek), `\r`
   stripped, and cut by `snippet_around` to `FIND_SNIPPET_CHARS` (300) around the first match, a third before it, with
   `…` at each cut end. The match column is UTF-16 (the viewer's JS-facing unit) and goes through
   `range_read::clamp_utf16_offset_to_byte`, the one UTF-16→byte conversion in the tree; read as a char index it lands

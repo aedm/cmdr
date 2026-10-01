@@ -162,7 +162,7 @@ impl FileViewerBackend for ScriptedBackend {
 
         let stride = self.stride();
         let start = match target {
-            SeekTarget::Line(n) => *n,
+            SeekTarget::Row(n) => *n,
             SeekTarget::ByteOffset(b) => (*b as usize) / stride,
             SeekTarget::Fraction(f) => ((self.line_count as f64) * f) as usize,
         }

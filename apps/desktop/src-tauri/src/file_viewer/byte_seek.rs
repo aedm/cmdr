@@ -147,7 +147,7 @@ impl ByteSeekBackend {
             // 200-byte-a-row file, which is how the old 80-byte guess emptied a
             // clipboard. The sample collapses TO `SEGMENT_BYTES` by itself on a file
             // with no newline in it.
-            SeekTarget::Line(row) => (*row as u64).saturating_mul(self.bytes_per_row).min(self.total_bytes),
+            SeekTarget::Row(row) => (*row as u64).saturating_mul(self.bytes_per_row).min(self.total_bytes),
         }
     }
 }
@@ -210,7 +210,7 @@ impl FileViewerBackend for ByteSeekBackend {
         // same grid the target would have produced. Both directions run through
         // `bytes_per_row`, so a row the frontend was handed comes back as itself.
         let first_row_number = match target {
-            SeekTarget::Line(row) => *row,
+            SeekTarget::Row(row) => *row,
             _ => self.row_at(row_start),
         };
         // No index, so the line number under a row is the row number: on an ordinary

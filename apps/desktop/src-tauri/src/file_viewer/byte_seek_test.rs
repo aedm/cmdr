@@ -134,19 +134,19 @@ fn get_lines_row_target_rides_the_sampled_bytes_per_row() {
     let file = write_test_file(&dir, "test.txt", "a\nb\nc\n");
 
     let backend = ByteSeekBackend::open(&file).unwrap();
-    let chunk = backend.get_lines(&SeekTarget::Line(0), 2).unwrap();
+    let chunk = backend.get_lines(&SeekTarget::Row(0), 2).unwrap();
     assert_eq!(chunk.byte_offset, 0);
     assert_eq!(chunk.texts(), vec!["a", "b"]);
 
     // Every row here is 2 bytes, which is what the open-time sample measures, so row 2
     // lands on byte 4 rather than at `2 * 80` past the end of a six-byte file.
-    let chunk2 = backend.get_lines(&SeekTarget::Line(2), 2).unwrap();
+    let chunk2 = backend.get_lines(&SeekTarget::Row(2), 2).unwrap();
     assert_eq!(chunk2.byte_offset, 4);
     // "c", then the empty row a file ending in a newline carries.
     assert_eq!(chunk2.texts(), vec!["c", ""]);
 
     // Past the end still clamps to EOF, where only that final empty row is left.
-    let chunk3 = backend.get_lines(&SeekTarget::Line(50), 2).unwrap();
+    let chunk3 = backend.get_lines(&SeekTarget::Row(50), 2).unwrap();
     assert_eq!(chunk3.byte_offset, 6);
     assert_eq!(chunk3.texts(), vec![""]);
 }
@@ -178,10 +178,10 @@ fn search_finds_matches() {
     let matches = results.lock().unwrap();
 
     assert_eq!(matches.len(), 2);
-    assert_eq!(matches[0].line, 0);
+    assert_eq!(matches[0].row, 0);
     assert_eq!(matches[0].column, 0);
     assert_eq!(matches[0].byte_offset, 0); // First line starts at byte 0
-    assert_eq!(matches[1].line, 2);
+    assert_eq!(matches[1].row, 2);
     // "hello world\n" = 12 bytes, "foo bar\n" = 8 bytes → line 2 starts at byte 20
     assert_eq!(matches[1].byte_offset, 20);
 
@@ -262,7 +262,7 @@ fn search_with_multibyte_chars() {
     let matches = results.lock().unwrap();
 
     assert_eq!(matches.len(), 1);
-    assert_eq!(matches[0].line, 0);
+    assert_eq!(matches[0].row, 0);
     // "café " is 5 characters, not 6 bytes
     assert_eq!(matches[0].column, 5);
     assert_eq!(matches[0].length, 5);
@@ -288,7 +288,7 @@ fn search_with_replacement_chars() {
     let matches = results.lock().unwrap();
 
     assert_eq!(matches.len(), 1);
-    assert_eq!(matches[0].line, 0);
+    assert_eq!(matches[0].row, 0);
     // Column should be 1 (after replacement char), not 3 (byte offset of U+FFFD)
     assert_eq!(matches[0].column, 1);
     assert_eq!(matches[0].length, 3);

@@ -94,9 +94,9 @@ fn group_by_line(matches: &[SearchMatch]) -> Vec<LineGroup> {
     let mut groups: Vec<LineGroup> = Vec::new();
     for m in matches {
         match groups.last_mut() {
-            Some(group) if group.line == m.line => group.matches += 1,
+            Some(group) if group.line == m.row => group.matches += 1,
             _ => groups.push(LineGroup {
-                line: m.line,
+                line: m.row,
                 byte_offset: m.byte_offset,
                 first_column: m.column,
                 matches: 1,

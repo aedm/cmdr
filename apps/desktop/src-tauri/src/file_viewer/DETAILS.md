@@ -303,6 +303,10 @@ line, `None` on a continuation, so the gutter prints a number once per line). Th
 `end_byte_offset`, the TRUE source offset just past the last row, and `ChunkEnd`, which says whether it ran out of
 rows, out of `CHUNK_BUDGET_BYTES` (2 MiB), or out of file.
 
+**The wire counts rows too.** `SeekTarget::Row` / `SeekTargetKind::Row`, `RangeEnd::Row { row, offset }`, and
+`SearchMatch.row` all carry the row index, and the frontend uses them as-is. A real line number only ever travels as
+`ViewerRow.line_number` (the gutter) or `totalLines` (the status bar).
+
 **Three things a caller gets wrong without thinking about it:**
 
 - ❗ Joining rows with `\n`. A break Cmdr made is not a newline, so a copy, save, or announcement path that stitches
@@ -397,11 +401,11 @@ that the scan opener finds a line exactly with no index).
 
 - `viewer_open(path)` → `ViewerOpenResult` (session ID, metadata, initial lines, backend type)
 - `viewer_get_lines(session_id, target_type, target_value, count)` → `Result<LineChunk, ViewerError>`. `target_type` is
-  the typed `SeekTargetKind` (`line` / `byte` / `fraction`), which pairs with the numeric `target_value`; a typed
+  the typed `SeekTargetKind` (`row` / `byte` / `fraction`), which pairs with the numeric `target_value`; a typed
   parameter is what keeps the backend from re-parsing a free-form string and needing an error arm for a case no caller
   can reach
 - `viewer_read_range(session_id, read_id, anchor, focus)` → `Result<String, ViewerError>`: reads a logical
-  `(line, offset)` range as one UTF-8 string. Endpoints are `RangeEnd::Line { line, offset }` (UTF-16 code unit offset)
+  `(row, offset)` range as one UTF-8 string. Endpoints are `RangeEnd::Row { row, offset }` (UTF-16 code unit offset)
   or `RangeEnd::Eof`, which ⌘A emits in ByteSeek-no-index mode (`makeSelectToEof` / `toRangeEnds` in the frontend's
   `routes/viewer/selection.svelte.ts`). `read_id` is FE-allocated so cancel can land without an
   extra round-trip. The function holds the SESSIONS lock only long enough to clone the backend `Arc` and register the
@@ -654,7 +658,7 @@ same mutex: if it sees `Cancelled`, it leaves it. Tests `test_worker_done_after_
 `test_watchdog_forces_cancel_when_worker_ignores_flag` pin this contract.
 
 **Decision**: `SearchMatch.byte_offset` stores the byte offset of the line start for each match.
-**Why**: In ByteSeek mode (when line indexing timed out), search returns exact line numbers but the virtual scroll uses estimated line counts for fraction-based seeking. The byte offset lets the frontend convert to scroll position via `(byteOffset / totalBytes) * estimatedTotalLines`, which is the same fraction the virtual scroll uses for fetching. Without this, navigating to a search match scrolls to the wrong part of the file.
+**Why**: In ByteSeek mode (when line indexing timed out), search returns exact line numbers but the virtual scroll uses estimated line counts for fraction-based seeking. The byte offset lets the frontend convert to scroll position via `(byteOffset / totalBytes) * estimatedTotalRows`, which is the same fraction the virtual scroll uses for fetching. Without this, navigating to a search match scrolls to the wrong part of the file.
 
 **Decision**: Sparse checkpoints every 256 lines instead of indexing every line.
 **Why**: Indexing every line in a 100M-line file would need ~800 MB of offset data (8 bytes each). At 256-line intervals, the same file needs ~3 MB. The trade-off is that seeking to a specific line requires reading forward up to 255 lines from the nearest checkpoint, which takes <1ms on any modern disk, well within the 16ms frame budget for 60fps scrolling.
@@ -694,9 +698,9 @@ timeout shape. Why every family owns its error type: `docs/guides/error-handling
   `session.active_reads` keyed by the FE-allocated `read_id`. `cancel_read(session_id, read_id)` flips that one flag.
   Per-read (not session-wide) for the same reason as `search_cancel`: a session-wide flag would race against concurrent
   reads and against reads that complete just as the user starts a new one.
-- **`read_range` advances by byte offset after the first chunk, not by line number**: ByteSeek's `SeekTarget::Line(N)`
-  resolves to `N * 80` bytes (no line index), so a multi-chunk read keyed by line number would misalign as soon as line
-  lengths drift from the 80-byte estimate. `range_read.rs` keys the first chunk by line, then by `byte_offset = chunk
+- **`read_range` advances by byte offset after the first chunk, not by row number**: ByteSeek's `SeekTarget::Row(N)`
+  resolves through its bytes-per-row estimate (no line index), so a multi-chunk read keyed by row number would misalign
+  as soon as row lengths drift from the estimate. `range_read.rs` keys the first chunk by row, then by `byte_offset = chunk
   end` for every subsequent chunk. All three backends honour byte-offset seeks exactly.
 - **The save is the escape hatch from the clipboard's memory refusal, so it must never buffer the range.** The copy
   dialog refuses a clipboard copy past `COPY_REFUSE_BYTES` (100 MiB) and points the user at "Save as", so
