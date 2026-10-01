@@ -19,9 +19,9 @@
     "description": "Generic fallback shown on the drive’s badge for ANY indexing run (a first index covered folder by folder, a full scan, or a repeat check) before live progress activity arrives. It says “indexing” rather than “scanning” because a first index no longer makes one pass over the drive. The trailing '…' signals ongoing work; keep it."
   },
 
-  "indexing.scan.counters": "{entriesText} {entries, plural, one {entry} other {entries}}, {dirsText} {dirs, plural, one {dir} other {dirs}}",
+  "indexing.scan.counters": "{entriesText} {entries, plural, one {entry} other {entries}}, {dirsText} {dirs, plural, one {folder} other {folders}}",
   "@indexing.scan.counters": {
-    "description": "Standalone running tally detail line shown under the scan heading, e.g. '12,345 entries, 678 dirs'. No leading space (it’s its own line, not joined to the heading); 'dirs' is short for directories/folders (keep it terse, this is a compact status line).",
+    "description": "Standalone running tally detail line shown under the scan heading, e.g. '12,345 entries, 678 folders'. No leading space (it’s its own line, not joined to the heading). Keep it terse: this is a compact status line.",
     "placeholders": {
       "entries": "the same number of files and folders (drives the singular/plural form of its noun)",
       "dirs": "the same number of folders (drives the singular/plural form of its noun)",
@@ -33,9 +33,9 @@
 
   "indexing.scan.countersElapsed": "{counters} · {elapsed}",
   "@indexing.scan.countersElapsed": {
-    "description": "Detail line under the heading during a drive’s FIRST scan, joining the running entry/dir tally with how long the scan has been running, e.g. '12,345 entries, 678 dirs · 2:34'. There’s no trustworthy percent on a first scan, so this count + elapsed clock is the honest progress signal instead of a bar. The middle dot (·) is a separator; keep it. {counters} and {elapsed} are already formatted (don’t translate inside them); place the separator idiomatically for your language.",
+    "description": "Detail line under the heading during a drive’s FIRST scan, joining the running entry/folder tally with how long the scan has been running, e.g. '12,345 entries, 678 folders · 2:34'. There’s no trustworthy percent on a first scan, so this count + elapsed clock is the honest progress signal instead of a bar. The middle dot (·) is a separator; keep it. {counters} and {elapsed} are already formatted (don’t translate inside them); place the separator idiomatically for your language.",
     "placeholders": {
-      "counters": "the already-formatted entry/dir tally (e.g. '12,345 entries, 678 dirs')",
+      "counters": "the already-formatted entry/folder tally (e.g. '12,345 entries, 678 folders')",
       "elapsed": "how long the scan has been running, as a clock (minutes:seconds, e.g. 2:34)"
     },
     "screenshot": "indexing-checklist.png"

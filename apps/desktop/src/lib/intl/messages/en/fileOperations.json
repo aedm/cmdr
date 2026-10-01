@@ -138,11 +138,11 @@
     "screenshot": "delete-confirm.png"
   },
 
-  "fileOperations.delete.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.delete.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.delete.scanDir": {
-    "description": "Unit noun shown after the live directory tally in the delete dialog's scan stats (e.g. '4 dirs'). 'dir' is the abbreviation of directory/folder. The number is rendered separately.",
+    "description": "Unit noun shown after the live folder tally in the delete dialog's scan stats (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "delete-confirm.png"
   },
@@ -461,11 +461,11 @@
     "screenshot": "conflict-dialog.png"
   },
 
-  "fileOperations.transferDialog.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.transferDialog.scanDir": {
-    "description": "Unit noun after the live directory tally in the transfer dialog's scan stats (e.g. '4 dirs'). 'dir' abbreviates directory/folder. The number is rendered separately.",
+    "description": "Unit noun after the live folder tally in the transfer dialog's scan stats (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "conflict-dialog.png"
   },
@@ -689,11 +689,11 @@
     "screenshot": "conflict-dialog.png"
   },
 
-  "fileOperations.scanPhase.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.scanPhase.scanDir": {
-    "description": "Unit noun after the live directory tally during a transfer's scan phase (e.g. '4 dirs'). 'dir' abbreviates directory/folder. The number is rendered separately.",
+    "description": "Unit noun after the live folder tally during a transfer's scan phase (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "conflict-dialog.png"
   },

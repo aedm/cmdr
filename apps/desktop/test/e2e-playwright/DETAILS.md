@@ -505,7 +505,7 @@ the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnec
 ## Transfer-dialog counters + programmatic drop entry
 
 **`expectDialogCounters(tauriPage, { bytes?, files, dirs, allowSkipped? })`** (helpers.ts) asserts the transfer dialog's
-counter line ("3.19 KB / 1 file / 0 dirs") race-free. It polls the `data-scan-state` attribute on the dialog's
+counter line ("3.19 KB / 1 file / 0 folders") race-free. It polls the `data-scan-state` attribute on the dialog's
 `.scan-stats` element to a terminal state (`done`, or `done`/`skipped` when `allowSkipped` is set) BEFORE reading, so an
 assertion never fires mid-scan. Call it right after `waitForSelector(TRANSFER_DIALOG, …)` and after any Copy/Move toggle
 (the toggle restarts the scan; the poll re-synchronises). `files` / `dirs` are exact RECURSIVE totals; `bytes` is the

@@ -1367,7 +1367,7 @@
   },
   "fileExplorer.dirSize.dirPlaceholder": "'<'dir>",
   "@fileExplorer.dirSize.dirPlaceholder": {
-    "description": "Placeholder shown in the Size column for a folder whose recursive size is not computed yet. Rendered literally as <dir> (with the angle brackets). The leading apostrophe-quote ICU-escapes the < so it is not parsed as a markup tag; keep the literal text <dir> intact.",
+    "description": "Placeholder shown in the Size column for a folder whose recursive size is not computed yet. Rendered literally as <dir> (with the angle brackets). The leading apostrophe-quote ICU-escapes the < so it is not parsed as a markup tag; keep the literal text <dir> intact. The short \"dir\" is deliberate: the Size column is narrow, so don’t expand it to \"folder\".",
     "screenshot": "conflict-dialog.png"
   },
   "fileExplorer.dirSize.mismatchTooltipPrefix": "Content and on-disk sizes differ significantly.",
@@ -1647,7 +1647,7 @@
   },
   "fileExplorer.selectionInfo.dir": "DIR",
   "@fileExplorer.selectionInfo.dir": {
-    "description": "Status-bar marker shown in place of a size for a folder whose recursive size is not computed. Short for \"directory\"; rendered in capitals."
+    "description": "Status-bar marker shown in place of a size for a folder whose recursive size is not computed. Short for \"directory\"; rendered in capitals. \"DIR\" is a deliberate short form because the status bar has little room, so keep it short and don’t expand it to \"folder\"."
   },
   "fileExplorer.selectionInfo.sizeNotReadyAriaLabel": "Size not ready yet",
   "@fileExplorer.selectionInfo.sizeNotReadyAriaLabel": {
@@ -1676,7 +1676,7 @@
   },
   "fileExplorer.selectionInfo.noSelectionDirs": " and {count, plural, one {{countText} dir} other {{countText} dirs}}",
   "@fileExplorer.selectionInfo.noSelectionDirs": {
-    "description": "Folder-count fragment appended to the no-selection status summary when folders exist, e.g. \" and 12 dirs\". \"dir\" is short for directory/folder. Includes a leading space and the word \"and\".",
+    "description": "Folder-count fragment appended to the no-selection status summary when folders exist, e.g. \" and 12 dirs\". Includes a leading space and the word \"and\". \"dir\" is a deliberate short form here because the status bar has little room, so keep it short and don’t expand it to \"folder\".",
     "placeholders": {
       "countText": "the number of folders, already formatted for display",
       "count": "the same number of folders (drives the singular/plural form)"
@@ -1685,7 +1685,7 @@
   },
   "fileExplorer.selectionInfo.noSelection": "No selection, {files}{dirs}.",
   "@fileExplorer.selectionInfo.noSelection": {
-    "description": "Status-bar summary when nothing is selected, e.g. \"No selection, 1,234 files and 12 dirs.\" {files} is the file-count fragment; {dirs} is the optional folder-count fragment (empty when there are no folders).",
+    "description": "Status-bar summary when nothing is selected, e.g. \"No selection, 1,234 files and 12 dirs.\" {files} is the file-count fragment; {dirs} is the optional folder-count fragment (empty when there are no folders). \"dir\" is a deliberate short form here because the status bar has little room, so keep it short and don’t expand it to \"folder\".",
     "placeholders": {
       "files": "the file-count phrase, e.g. \"1,234 files\"",
       "dirs": "the folder-count phrase including its leading \" and \", or empty when there are no folders"
@@ -1742,7 +1742,7 @@
   },
   "fileExplorer.summary.dirNoun": "{count, plural, one {dir} other {dirs}}",
   "@fileExplorer.summary.dirNoun": {
-    "description": "The noun \"dir(s)\" (short for folder) used in the status-bar selection summary, e.g. \"2 of 5 dirs\". A separate count precedes it in styled markup; this key supplies only the singular/plural noun.",
+    "description": "The noun \"dir(s)\" (short for folder) used in the status-bar selection summary, e.g. \"2 of 5 dirs\". A separate count precedes it in styled markup; this key supplies only the singular/plural noun. \"dir\" is a deliberate short form here because the status bar has little room, so keep it short and don’t expand it to \"folder\".",
     "placeholders": {
       "count": "the number the noun agrees with (drives singular vs plural)"
     },

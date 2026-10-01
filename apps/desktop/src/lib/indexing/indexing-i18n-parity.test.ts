@@ -27,7 +27,7 @@ describe('indexing catalog parity (en)', () => {
     expect(tString('indexing.scan.label')).toBe('Indexing your drive…')
     expect(
       tString('indexing.scan.counters', { entriesText: '12,345', entries: 12345, dirsText: '678', dirs: 678 }),
-    ).toBe('12,345 entries, 678 dirs')
+    ).toBe('12,345 entries, 678 folders')
     expect(tString('indexing.scan.etaRough', { eta: '2m left' })).toBe('roughly 2m left')
     expect(tString('indexing.drive.heading', { name: 'Macintosh HD' })).toBe('Macintosh HD')
   })
