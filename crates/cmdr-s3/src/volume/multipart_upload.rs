@@ -81,7 +81,7 @@ impl PartReader {
         self.fill_with(want, &mut || Ok(())).await
     }
 
-    /// [`fill`](Self::fill), calling `between` after every piece it pulls, so a
+    /// The next `want` bytes, as `fill` reads them, calling `between` after every piece it pulls, so a
     /// slow source still reports progress and can be cancelled. ❗ Between
     /// pieces only: a `next_chunk` is never dropped half-read.
     pub(super) async fn fill_with(
