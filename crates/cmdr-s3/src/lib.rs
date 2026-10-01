@@ -8,5 +8,7 @@
 //! Everything Cmdr says to an S3-compatible object store.
 
 pub(crate) mod encoding;
+pub(crate) mod error;
 pub(crate) mod request;
 pub(crate) mod sigv4;
+pub(crate) mod xml;

@@ -19,6 +19,8 @@ workspace = true
 # The SigV4 signer. Same versions the SFTP stack and the app already resolve.
 hmac = "0.13.0"
 sha2 = "0.11"
+# Response parsing and request bodies. The version `cmdr-webdav` uses.
+quick-xml = "0.41"
 url = "2"
 # Decoding keys from an `encoding-type=url` listing, and encoding them on the
 # way into a URL.
