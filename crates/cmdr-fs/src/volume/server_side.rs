@@ -3,7 +3,7 @@
 //! reports.
 //!
 //! An object store (S3) has no rename: a "rename" copies every object and
-//! deletes the source. Every caller of [`Volume::rename`](super::Volume::rename)
+//! deletes the source. Every caller of [`Volume::rename`]
 //! assumes one cheap call, so a volume says per entry which kind of work a
 //! rename is ([`RenameWork`]), and a caller that gets
 //! [`RenameWork::CopyThenDelete`] sends the entry through the transfer engine as
@@ -17,7 +17,7 @@ use std::pin::Pin;
 use super::{Volume, VolumeError};
 
 /// How renaming one entry runs on its volume
-/// ([`Volume::rename_work`](super::Volume::rename_work)).
+/// ([`Volume::rename_work`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenameWork {
     /// One cheap server-side call renames the entry, a folder's whole subtree
@@ -30,7 +30,7 @@ pub enum RenameWork {
     CopyThenDelete,
 }
 
-/// What [`Volume::tally_subtree`](super::Volume::tally_subtree) counted under
+/// What [`Volume::tally_subtree`] counted under
 /// one path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SubtreeTally {
@@ -44,7 +44,7 @@ pub struct SubtreeTally {
 }
 
 /// The progress and pause hook a server-side copy reports through
-/// ([`Volume::copy_on_server`](super::Volume::copy_on_server)).
+/// ([`Volume::copy_on_server`]).
 ///
 /// A server-side copy moves no bytes through Cmdr, so there's no stream to
 /// park between chunks: a backend that copies in pieces (S3's parts) asks

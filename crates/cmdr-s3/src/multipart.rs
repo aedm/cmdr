@@ -48,7 +48,7 @@ pub(crate) fn plan_parts(total: u64) -> Result<PartPlan, TooLarge> {
     plan_parts_with_floor(total, MIN_PART_SIZE)
 }
 
-/// [`plan_parts`] with a smaller floor than 64 MiB, for a Docker cell that
+/// The test-only `plan_parts` with a smaller floor than 64 MiB, for a Docker cell that
 /// wants several parts without uploading hundreds of megabytes. ❗ Production
 /// always plans with [`MIN_PART_SIZE`]; `floor` is clamped to S3's 5 MiB.
 pub(crate) fn plan_parts_with_floor(total: u64, floor: u64) -> Result<PartPlan, TooLarge> {

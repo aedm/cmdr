@@ -370,7 +370,7 @@ pub(crate) async fn move_within_same_volume_with_progress(
     // after their copies landed. The worst a crash leaves is duplicates.
     if moves_by_copy(&volume, source_paths).await? {
         log::info!(
-            "move_within_same_volume: {} renames by copy, so op={operation_id} copies then deletes",
+            "move_within_same_volume: {} renames by copy, so op={operation_id} copies then deletes", // allowed-pluralize-noun: `{}` is the volume's name, and "renames" is a verb
             volume.name()
         );
         return super::move_cross::move_volumes_with_progress(
