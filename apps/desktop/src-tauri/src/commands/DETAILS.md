@@ -75,6 +75,10 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `get_webdav_unattended_reconnect`. Same rules as SFTP: the `attempt_id` is the caller's, reconnect and sign-in go
   through `network.rs`, and no command returns a stored secret. The flow is `network::webdav_volume_wiring`; the
   contract is `crates/cmdr-webdav/DETAILS.md` § "Connecting from the frontend".
+- **`s3.rs`**: the S3 surface the facade has no reason to widen: the ACCOUNT's secret (`save` / `has` / `delete`, keyed
+  `s3+<scheme>://<host>:<port>` + the access key id, shared by every bucket under the key), `get_known_s3_places` (each
+  saved place with its provider, which an edit sheet resends), and `get_s3_unattended_reconnect`. Connecting, saving,
+  pinning, and forgetting all go through `servers.rs`. The flow is `network::s3_volume_wiring`.
 - **`servers.rs`**: the protocol-agnostic server family, a FACADE over the three above. The hub, the switcher, the
   sign-in sheet, and the pane banner speak about servers rather than about SFTP, WebDAV, and SMB, so this is the
   surface they call: `list_saved_servers` (the union of the two saved-server stores plus SMB hosts from
@@ -140,9 +144,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   - **This family is where a NEW backend plugs in**, and that is why it exists as a facade over correct, tested
     per-protocol enums rather than as a rewrite of them: one more `ServerTarget` arm, one more saved-server store, and
     whatever outcomes the protocol adds to the superset. The frontend then branches once, in a `switch` it already has.
-    S3 is the shape this was sized against: its account is an endpoint plus an access key, its places are buckets, and
-    its sign-in is the reserved `SignInShape::AccessKeys` variant (`crates/cmdr-fs/src/volume/connection.rs`, and
-    `apps/desktop/src/lib/servers/DETAILS.md` § "The renderer table").
+    S3 plugged in that way: its account is an endpoint plus an access key, its places are buckets (plus the account root),
+    and its sign-in is `SignInShape::AccessKeys`. The listing groups an account's places under ONE `SavedServer` whose
+    id is the account root's place id, the SMB host → shares shape (`servers/s3_accounts.rs`); every per-place command
+    takes the place's own volume id. Its outcomes add `access_denied`, `bucket_list_refused`, `bucket_not_found`,
+    `region_mismatch`, `clock_skewed`, and `not_an_s3_endpoint`, with a wrong secret reusing `authentication_rejected`.
 - **`network.rs`**: SMB/network shares: discovery, share listing, keychain, mounting, direct-connection upgrade,
   in-place reconnect (`reconnect_volume`: backend single-flighted via `Volume::attempt_reconnect`;
   `reconnect_volume_with_credentials`: the "Sign in" path after an auth-failure reconnect give-up, via

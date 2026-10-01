@@ -940,6 +940,20 @@ answers `certificate_untrusted`, and pinning is a follow-up in GitHub [#173](htt
 `on_superseded`, remember) with the same caller-owned attempt table. The connection states, the one unattended re-probe,
 and every connect outcome: `crates/cmdr-webdav/DETAILS.md` § "Connecting from the frontend".
 
+### The S3 twin, a place per entry
+
+`s3_known_places.rs` holds one entry per PLACE (`s3_known_places.json`), ❗ not per account: an S3 account (endpoint plus
+access key id) has many places, each bucket plus the account root that lists them, and each is its own volume with its
+own id (`cmdr_fs::volume::s3_volume_id`), pin, and "reconnect automatically" switch. An entry is found by that derived
+id, never by comparing fields. The provider preset rides as `S3ProviderChoice` (the wire and store twin of
+`cmdr_s3::S3Provider`), so the endpoint is never stored for a preset. The secret is the ACCOUNT's (service
+`s3+<scheme>://<host>:<port>`, scope the key id), so every bucket under one key reads one Keychain entry, and forgetting
+one place's secret forgets it for its siblings. `s3_volume_wiring.rs` is WebDAV's three steps (dial, register retiring the
+incumbent, remember). An edit changes only the name and the switch, since provider, key id, and bucket ARE the place; the
+switch reaches a live volume at once, the name the next connect. `commands/servers.rs` groups the places back under one
+hub row per account (`servers/s3_accounts.rs`), and `server_volumes::server_volume_for_path` picks the MOST specific
+saved root, because the account root and a bucket place spell one object the same way.
+
 ❗ **`cancel_connect` on an id nobody is running answers `false`** rather than raising: a click landing just after a
 connect finished is ordinary. And a `Cancelled` outcome never reaches `register` or `remember`, so a cancelled connect
 leaves no volume, no saved server, and no secret.

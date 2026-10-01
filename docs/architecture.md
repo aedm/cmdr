@@ -22,8 +22,8 @@ All under `apps/desktop/src/lib/`.
   and MCP encoding in `servers-hub-*.ts`), the places under one account (`PlacesBrowser.svelte`), SMB's side of the
   sign-in sheet (`smb-sign-in.ts`), the "Connect directly" upgrade, the per-volume reconnect cycle, and the mDNS
   discovery store
-- `servers/`: Remote places the app dials (SFTP, WebDAV): the `sftp://user@host:port/path` spelling, the connect flow
-  that picks its move by the volume's standing, the ONE sign-in sheet every credential ask in the app opens
+- `servers/`: Remote places the app dials (SFTP, WebDAV, S3): the `sftp://user@host:port/path` spelling, the connect
+  flow that picks its move by the volume's standing, the ONE sign-in sheet every credential ask in the app opens
   (`SignInSheet.svelte`, add / sign-in / edit), the address parser behind add mode, the words for a connect that
   stopped, and which server the palette's server commands act on. See `apps/desktop/src/lib/servers/CLAUDE.md`
 - `file-explorer/git/`: Git browser frontend: breadcrumb chip, status columns, reactive `RepoInfo` store, git portal
@@ -172,9 +172,9 @@ All under `apps/desktop/src-tauri/src/`.
   bounded scan and classification behind "which app is still using this drive" (`file_system/volume/DETAILS.md` §
   "Eject")
 - `file_system/volume/backends/`: the one `Volume` impl that still lives in the app, `LocalPosixVolume`. Every crate
-  backend (`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-adb`, `cmdr-mtp`, `cmdr-git`) is imported by
-  crate name at its call sites, and each one's app-side tests sit beside the app code they assert on. What stays
-  app-side is what needs the app: archive routing and the archive LRU, SMB's mount and upgrade passes, and edit /
+  backend (`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-adb`, `cmdr-mtp`, `cmdr-git`) is
+  imported by crate name at its call sites, and each one's app-side tests sit beside the app code they assert on. What
+  stays app-side is what needs the app: archive routing and the archive LRU, SMB's mount and upgrade passes, and edit /
   transfer driving
 - `file_system/git/`: the app's two git seams, the `.git/` listing overlay and the wiring (the parked portal, the
   toggle, `volume_holds_real_repos`, and the `git-state-changed` event). The route itself sits with the registry in
@@ -353,8 +353,8 @@ All under `apps/desktop/src-tauri/src/`.
 All under `crates/`, alongside the four apps. `cmdr-fs`, `cmdr-index`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`,
 `cmdr-webdav`, `cmdr-s3`, `cmdr-adb`, `cmdr-mtp`, and `cmdr-git` carry no `tauri` dependency and no reach into the app;
 `index-crate-isolation` enforces that against the `cargo metadata` graph, and caps the public surface of `cmdr-index`,
-`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-mtp`, and `cmdr-git` at the numbers their audits landed
-on. The two dev CLIs and the vendored fork are ordinary members.
+`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-mtp`, and `cmdr-git` at the numbers their
+audits landed on. The two dev CLIs and the vendored fork are ordinary members.
 
 - `crates/cmdr-fs/`: the filesystem vocabulary and host primitives every layer speaks in — the `Volume` trait and its
   data types, `FileEntry`, typed error classification (`ListingError` / `ListingErrorReason` / `ErrorCategory`, errno →
@@ -391,10 +391,13 @@ on. The two dev CLIs and the vendored fork are ordinary members.
   `apps/desktop/test/webdav-servers/README.md`. What it still owes: GitHub issues
   [#173](https://github.com/vdavid/cmdr/issues/173)–[#178](https://github.com/vdavid/cmdr/issues/178).
 - `crates/cmdr-s3/`: everything Cmdr says to an S3-compatible object store (AWS, Cloudflare R2, Backblaze B2, Wasabi,
-  Hetzner, any other). So far the protocol layer only, as pure values: our own SigV4 signer, one request builder per S3
-  call, `quick-xml` response parsers and typed `S3Error`s, and the provider profiles that hold each service's endpoint
-  and quirks. No transport, `Volume`, or app wiring yet. The plan: `docs/specs/s3-support-plan.md`. Decisions:
-  `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`.
+  Hetzner, any other). Our own SigV4 signer, one request builder per S3 call, `quick-xml` parsers and typed `S3Error`s,
+  the provider profiles, a `reqwest` transport, and a READ-ONLY `S3Volume` per place (a bucket, or the account root that
+  lists them): connect, list, stat, reconnect. Reads and writes are later milestones. The app keeps the place list and
+  the connect wiring (`apps/desktop/src-tauri/src/network/s3_*.rs`), the IPC surface (`commands/s3.rs` plus the S3 arm
+  of `commands/servers.rs`), and `s3://` redaction. The plan: `docs/specs/s3-support-plan.md`. Decisions:
+  `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`. Its Docker servers:
+  `apps/desktop/test/s3-servers/README.md`.
 - `crates/cmdr-adb/`: everything Cmdr says to an Android device over ADB. `AdbVolume` per attached device, rooted at the
   device's real `/`, spoken to the ADB server on loopback (the sync service for stat, list, and transfers, `shell,v2`
   for the verbs it lacks, `host:track-devices` for hotplug), with a typed errno-based error policy and a fake ADB server

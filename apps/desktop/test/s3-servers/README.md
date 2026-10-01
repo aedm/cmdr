@@ -119,10 +119,11 @@ mismatch, while the same request signed by hand passes. It's a curl bug, not a s
 4. If it builds an image of its own, add the context to `buildContextsRel` on `stacklease.S3`, or an edit to it never
    reaches a running container.
 
-## Adding the first cells
+## Adding a cell
 
-The lane already brings this stack up; what it doesn't have yet is a selector for the cells. When `crates/cmdr-s3` lands
-its first Docker cell, add an `S3` entry to `laneFixtures` in `scripts/check/checks/fixture-lane-coverage.go` (markers
-`s3-servers/start.sh` and `s3-fixture`, backend package `cmdr-s3`), and gate each cell with an `#[ignore]` reason naming
-one of those markers. ❌ Not before the crate is on disk: nextest can't parse a `package()` for a crate that doesn't
-exist.
+The shared fixture lane selects every `#[ignore]`d test in `package(cmdr-s3)`, plus app-crate cells named
+`s3_integration_*` (`laneFixtures` in `scripts/check/checks/fixture-lane-coverage.go`). Gate each cell with an
+`#[ignore]` reason naming `s3-servers/start.sh` or `s3-fixture`, connect through `cmdr_s3::volume::testing`, and work
+under a `scratch_prefix` of your own: the objects persist across runs. Seed with `testing::seed`, which goes through the
+crate's own request builders. Run a cell against BOTH servers when what it asserts could differ between them; a wrong
+secret already does (above). By hand: `./start.sh`, then `cargo nextest run -p cmdr-s3 --run-ignored only`.

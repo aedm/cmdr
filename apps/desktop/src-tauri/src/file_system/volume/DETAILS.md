@@ -173,9 +173,9 @@ Optional methods default to `Err(VolumeError::NotSupported)` or `false`, so new 
 - `paths_are_os_visible()`: whether ANOTHER app can open a `file://` URL built from a path this volume hands out. Defaults to whatever `supports_local_fs_access()` says, which is right wherever the two coincide. `SmbVolume` is the one backend that splits them: it answers `false` above (its own I/O rides smb2, never `std::fs`) and `true` here, because the sneaky mount keeps the share OS-mounted and every path it yields is an ordinary `/Volumes/…` path. Consumed by the macOS drag-out path (`commands/file_system/drag.rs::locality_for_volume`) to pick the pasteboard layout: `false` means promise-only items, which only Finder accepts, so a backend that answers it wrong makes drags into browsers and mail clients silently do nothing while Finder keeps working. It is a claim about the MOUNT, not the backend kind, so it has to track the mount going away — see `note_root_mount_gone` below.
 - `note_root_mount_gone()`: the registry telling a volume that its active mount root is gone and there was no live sibling to promote it to (§ "A volume ID owns a set of mount roots"). Default no-op; only `SmbVolume` overrides, latching `paths_are_os_visible()` to `false` while its smb2 session keeps browsing. A volume can't work this out for itself — nothing may probe a mount — and the failure it prevents is silent: paths that still list fine in Cmdr, and a drag out of them that does nothing.
 - `notify_mutation(volume_id, parent_path, mutation)`: called after a successful mutation (create, delete, rename, and `write_from_stream`) to update the listing cache immediately. Fire-and-forget, no error propagation. See "Mutation notification" below.
-- `connection_state()`: how live this volume's session is, for the switcher dot and the reconnect manager. Default `None`. Every connecting backend implements it: `SmbVolume` (`Direct` / `Disconnected`; the `OsMount` variant is attached by `enrich_from_volume_registry`, never by a volume), `SftpVolume` (all four, including `NeedsHostKeyApproval`), `WebdavVolume`, and `AdbVolume`. ❗ `is_some()` is NOT an "is this SMB" test — that's `backend_kind()`.
-- `attempt_reconnect()`: tries to rebuild the volume's underlying session in place after a transient connection loss. Default `Err(NotSupported)`. `SmbVolume`, `SftpVolume`, and `WebdavVolume` override it; the Tauri command `reconnect_volume` and the FE reconnect manager call this on each backoff tick. Idempotent and single-flight: concurrent callers wait on the same in-flight attempt instead of dog-piling the server.
-- `reconnect_with_credentials(username, password)`: reconnect with freshly-entered credentials, replacing whatever was cached. Default `Err(NotSupported)`; `SmbVolume` persists the new password (so the next reconnect is silent) then runs `attempt_reconnect`, and accepts a CHANGED username. ❗ `SftpVolume` and `WebdavVolume` refuse a changed one, because the volume id IS the account; `SignInShape` is what tells the sheet which it is. Invoked by the Tauri command `reconnect_volume_with_credentials` behind the "Sign in" prompt shown after an auth-failure reconnect give-up.
+- `connection_state()`: how live this volume's session is, for the switcher dot and the reconnect manager. Default `None`. Every connecting backend implements it: `SmbVolume` (`Direct` / `Disconnected`; the `OsMount` variant is attached by `enrich_from_volume_registry`, never by a volume), `SftpVolume` (all four, including `NeedsHostKeyApproval`), `WebdavVolume`, `S3Volume`, and `AdbVolume`. ❗ `is_some()` is NOT an "is this SMB" test — that's `backend_kind()`.
+- `attempt_reconnect()`: tries to rebuild the volume's underlying session in place after a transient connection loss. Default `Err(NotSupported)`. `SmbVolume`, `SftpVolume`, `WebdavVolume`, and `S3Volume` override it; the Tauri command `reconnect_volume` and the FE reconnect manager call this on each backoff tick. Idempotent and single-flight: concurrent callers wait on the same in-flight attempt instead of dog-piling the server.
+- `reconnect_with_credentials(username, password)`: reconnect with freshly-entered credentials, replacing whatever was cached. Default `Err(NotSupported)`; `SmbVolume` persists the new password (so the next reconnect is silent) then runs `attempt_reconnect`, and accepts a CHANGED username. ❗ `SftpVolume`, `WebdavVolume`, and `S3Volume` (whose username is the access key id) refuse a changed one, because the volume id IS the account; `SignInShape` is what tells the sheet which it is. Invoked by the Tauri command `reconnect_volume_with_credentials` behind the "Sign in" prompt shown after an auth-failure reconnect give-up.
 - `on_unmount()`: lifecycle hook called before unregistration. `SmbVolume` uses it to disconnect its smb2 session. Default is no-op.
 - `on_superseded()`: lifecycle hook for "a newer instance took my id, but the device is still here". Defaults to `on_unmount()`; `SmbVolume` overrides it to keep serving the holders that already have it. Contract: `backends/DETAILS.md` § "Supersede vs. unmount".
 - `begin_scan_session()` / `end_scan_session()`: default-no-op async hooks the indexing lifecycle
@@ -305,35 +305,39 @@ Everything below is optional per the trait (methods default to `Err(NotSupported
 
 At-a-glance view of which capabilities each current volume opts into. Use this when picking a reference implementation for your new volume.
 
-| Capability | Local | MTP | SMB | InMemory | Archive |
-| --- | --- | --- | --- | --- | --- |
-| `list_directory` / metadata | yes | yes | yes | yes | yes |
-| Mutations (create/delete/rename) | yes | yes | yes | yes | no: read-only (mutation planned) |
-| `supports_export` | yes | yes | yes | yes | yes |
-| `supports_streaming` | yes | yes | yes | yes | yes |
-| `supports_unknown_length_writes` | yes | no | yes | no | no |
-| `supports_atomic_replace_rename` | yes | no | no | no | no |
-| `open_read_stream` | yes: spawn_blocking | yes: owned download | yes: channel-backed | yes: in-memory | yes: core `ArchiveEntryReader` |
-| `write_from_stream` | yes: spawn_blocking | yes: streaming | yes: streaming | yes: in-memory | no (mutation planned) |
-| `can_watch_listings` | yes: FSEvents/inotify | no (own USB watcher) | no (own smb2 CHANGE_NOTIFY watcher) | no | no (own content watch on the `.zip`) |
-| `listing_watch_coverage` | path-level (WATCHER_MANAGER); `ThisMachineOnly` on a network mount | volume-level `EveryWriter` (device connected) | volume-level `EveryWriter` (watcher + Direct) | `None` (default) | `EveryWriter` while the content watch lives |
-| `supports_local_fs_access` | yes (default) | no | no | no | no (inner paths) |
-| `paths_are_os_visible` | yes (inherited) | no (inherited) | yes: OVERRIDE while its mount lives | no (inherited) | no (inherited) |
-| `local_path` | yes: `Some(root)` | `None` | `None` | `None` | `None` |
-| `notify_mutation` | default (std::fs) | yes: MTP `get_metadata` | yes: smb2 `get_metadata` | yes: in-memory | n/a (read-only) |
-| `create_directory_errors_on_existing_dir` | yes (default) | no (protocol allows dup names) | yes (default) | yes (default) | n/a (read-only) |
-| `scanner` / `watcher` (indexing) | yes / yes | no | no | no | no |
-| `rerooted` | yes: new instance | `None` (device-anchored) | yes: new instance, shared session; `None` for an unrecorded root when anchored inside the share | `None` (default) | `None` (inner paths) |
-| `on_unmount` | default | default | yes: drops smb2 session | default | default |
-| `on_superseded` | default | default | yes: retires id, keeps session | default | default |
-| `connection_state` | `None` | `None` | yes | `None` | `None` |
-| `backend_kind` | `Local` (default) | `Mtp` | `Smb` | `Archive` | `GitPortal` |
-| `space_poll_interval` | 2 s (default) | 5 s | 5 s | `None` | `None` |
-| `lane_key` / `get_space_info` | mount root / statvfs+NSURL | device serial / device | server+share / smb2 | root or override / configured | **parent's** / **parent's** |
-| `max_concurrent_ops` | 4..=16 (core-based) | 1 (USB bulk serial) | `network.smbConcurrency` | 32 | 1 (initial cap) |
-| `operations_are_local` | yes: `true` | `false` | `false` | yes: `true` | `false` |
+| Capability | Local | MTP | SMB | InMemory | Archive | S3 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `list_directory` / metadata | yes | yes | yes | yes | yes | yes |
+| Mutations (create/delete/rename) | yes | yes | yes | yes | no: read-only (mutation planned) | no: read-only (writes planned) |
+| `supports_export` | yes | yes | yes | yes | yes | no (reads planned) |
+| `supports_streaming` | yes | yes | yes | yes | yes | no (reads planned) |
+| `supports_unknown_length_writes` | yes | no | yes | no | no | no |
+| `supports_atomic_replace_rename` | yes | no | no | no | no | no |
+| `open_read_stream` | yes: spawn_blocking | yes: owned download | yes: channel-backed | yes: in-memory | yes: core `ArchiveEntryReader` | no (reads planned) |
+| `write_from_stream` | yes: spawn_blocking | yes: streaming | yes: streaming | yes: in-memory | no (mutation planned) | no (writes planned) |
+| `can_watch_listings` | yes: FSEvents/inotify | no (own USB watcher) | no (own smb2 CHANGE_NOTIFY watcher) | no | no (own content watch on the `.zip`) | no (S3 has no change feed a client holds) |
+| `listing_watch_coverage` | path-level (WATCHER_MANAGER); `ThisMachineOnly` on a network mount | volume-level `EveryWriter` (device connected) | volume-level `EveryWriter` (watcher + Direct) | `None` (default) | `EveryWriter` while the content watch lives | `None` (default) |
+| `supports_local_fs_access` | yes (default) | no | no | no | no (inner paths) | no |
+| `paths_are_os_visible` | yes (inherited) | no (inherited) | yes: OVERRIDE while its mount lives | no (inherited) | no (inherited) | no (inherited) |
+| `local_path` | yes: `Some(root)` | `None` | `None` | `None` | `None` | `None` |
+| `notify_mutation` | default (std::fs) | yes: MTP `get_metadata` | yes: smb2 `get_metadata` | yes: in-memory | n/a (read-only) | n/a (read-only) |
+| `create_directory_errors_on_existing_dir` | yes (default) | no (protocol allows dup names) | yes (default) | yes (default) | n/a (read-only) | n/a (read-only) |
+| `scanner` / `watcher` (indexing) | yes / yes | no | no | no | no | no (every request costs money) |
+| `rerooted` | yes: new instance | `None` (device-anchored) | yes: new instance, shared session; `None` for an unrecorded root when anchored inside the share | `None` (default) | `None` (inner paths) | `None` (default) |
+| `on_unmount` | default | default | yes: drops smb2 session | default | default | yes: drops the client |
+| `on_superseded` | default | default | yes: retires id, keeps session | default | default | yes: retires id, keeps client |
+| `connection_state` | `None` | `None` | yes | `None` | `None` | yes |
+| `backend_kind` | `Local` (default) | `Mtp` | `Smb` | `Archive` | `GitPortal` | `S3` |
+| `space_poll_interval` | 2 s (default) | 5 s | 5 s | `None` | `None` | `None` |
+| `lane_key` / `get_space_info` | mount root / statvfs+NSURL | device serial / device | server+share / smb2 | root or override / configured | **parent's** / **parent's** | account (endpoint + key id) / `NotSupported` |
+| `max_concurrent_ops` | 4..=16 (core-based) | 1 (USB bulk serial) | `network.smbConcurrency` | 32 | 1 (initial cap) | 4 (constant) |
+| `operations_are_local` | yes: `true` | `false` | `false` | yes: `true` | `false` | `false` |
 
 Legend: `yes` = implemented, `no` = opted out (default or explicitly), ⚠️ = implemented but suboptimal (memory-heavy or otherwise worth revisiting).
+
+`S3Volume` is one place on an S3 account (a bucket, or the account root that lists them), read-only until its reads and
+writes land (`crates/cmdr-s3/CLAUDE.md`). Its `lane_key` is the ACCOUNT, since every bucket under one key shares the
+endpoint's request budget.
 
 `ArchiveVolume` is the read-only zip backend (`crates/cmdr-archive/CLAUDE.md`); its `lane_key` and
 `get_space_info` uniquely delegate to a **parent** volume (the volume storing the `.zip`), so archive work shares the
