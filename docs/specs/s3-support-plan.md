@@ -38,6 +38,11 @@ Evidence this plan stands on, read before touching the matching milestone:
   release.
 - **No-overwrite races**: where a provider lacks `If-None-Match: *`, we check then write, and when a clash is noticed
   afterwards we tell the user plainly what happened and what survived.
+- **Overwrites never risk the original (decided 2026-10-01, the safer option)**: a server that publishes a PUT cut off
+  mid-body (VersityGW does) would lose the original to a cancelled in-place overwrite. So "refuses a short body" is a
+  provider allowlist (AWS, R2, B2, on evidence; `crates/cmdr-s3/DETAILS.md` § "Providers"), and off it, an overwrite of
+  an existing object writes a token-tagged temp key, verifies it, copies it onto the final key server-side, and deletes
+  the temp. A write to a free name still goes straight to its key.
 - **Share link**: "Copy share link" mints a presigned GET URL, seven days by default (the SigV4 maximum), with one hour
   and one day as the other choices. Free and offline: it's a signature, not a request.
 - **Archived objects** (AWS Glacier Flexible Retrieval / Deep Archive): an "archived" badge in the listing and a typed
@@ -76,22 +81,31 @@ frontend wait), same-volume move (`transfer/volume/move_same.rs`, "a whole subtr
 (`write_operations/rename/bulk.rs`), Ask Cmdr's rename proposals, and the MCP rename tool. On S3 a folder rename is one
 copy and one delete per object, and a big file's is a slow server-side copy.
 
-- **A new `Volume` capability** says whether renaming a given entry is one call. Default: yes. S3: no for a folder, and
-  no for a file over the multipart-copy threshold (~100 MB). A typed answer, ❌ never inferred from a backend kind.
+- **A new `Volume` capability**, `Volume::rename_work(path)` → `RenameWork::{OneCall, CopyThenDelete}`, says whether
+  renaming a given entry is one call. Default: yes, with no I/O. S3: no for a folder, and no for an object past the
+  multipart-copy threshold, which is the part floor (64 MiB, `copies_whole`). A typed answer, ❌ never inferred from a
+  backend kind.
 - **Every caller routes on it**: an entry that can't rename in one call goes through the transfer engine as a
-  same-volume move with server-side copy, with the scan preview, progress, pause, cancel, conflicts, and journaling.
-  Bulk rename and Ask Cmdr route through the same background move.
-- **F2 keeps its inline editor.** On Enter, `check_rename_validity` also reports the routed cost (object count, bytes,
-  estimate), counting with a bounded listing that stops past the threshold. Small (≤100 objects and the estimate rounds
-  to $0.00): start a background move with the progress chip, no dialog. Bigger: open the Move dialog prefilled with the
-  new name, showing the count and the estimate.
-- **Order**: copy everything, then delete in `DeleteObjects` batches of 1,000. The worst state after a crash is
-  duplicates, ❌ never loss; the operation log offers to finish or undo.
+  same-volume move with server-side copy, with the scan preview, progress, pause, cancel, conflicts, and journaling. A
+  rename's new name rides the move as a per-source target name. Bulk rename and Ask Cmdr route through the same
+  background move: a batch with any copying row runs as one move, in the executor's dependency order, conflicts skipped;
+  a swap (`a ↔ b`) is left out, since a move onto a folder still there would merge. The operation log's undo routes the
+  same way.
+- **F2 keeps its inline editor.** On Enter, `check_rename_validity` also reports the routed cost (`by_move`: files and
+  bytes), counting with a bounded listing that stops one past 100. Small (≤100 files): `rename_file` starts a background
+  move with the progress chip, no dialog. Bigger: open the Move dialog prefilled with the new name, showing the counts
+  from its scan. M7 adds the estimate to `by_move` and to the small rule ("and the estimate rounds to $0.00").
+- **Order**: per top-level source, copy everything, then delete; the source sweep deletes each folder level's files in
+  one `Volume::delete_files` call (`DeleteObjects`, batches of 1,000). The worst state after a crash is duplicates, ❌
+  never loss; the operation log offers to undo.
 
 ### Server-side copy and multipart
 
-- Same-endpoint copies never touch the Mac: `CopyObject` up to the threshold, `UploadPartCopy` above it (even under 5
-  GB), so progress advances per part and pause lands between parts.
+- Copies within one account (one endpoint and key id, any of its places) never touch the Mac: `Volume::copy_on_server`,
+  `CopyObject` up to the part floor, `UploadPartCopy` above it (even under 5 GB), so progress advances per part and
+  pause lands between parts. A provider that copies within one bucket only (Hetzner) streams a cross-bucket copy
+  instead. Each part is pinned to the source's ETag; a source without `x-amz-meta-mtime` has its `Last-Modified` written
+  as the copy's mtime.
 - **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`. Garage
   refuses an `UploadPartCopy` source under 5 MiB even as the last part (fixture README), so a tail under 5 MiB folds
   into the part before it; confirm on R2 in M8 that a last part LARGER than the rest is accepted, else split the tail
