@@ -118,8 +118,11 @@ export type SignInAttemptOutcome =
   | { kind: 'added'; serverId: string }
   | { kind: 'needs_host_key'; prompt: HostKeyPrompt }
   | { kind: 'host_key_revoked'; key: SftpHostKeyIdentity }
-  /** `hint`: a softer line under the refusal, for something besides the server worth checking. */
-  | { kind: 'refused'; refusal: ConnectRefusalKind; hint?: RefusalHint }
+  /**
+   * `hint`: a softer line under the refusal, for something besides the server worth checking. `region`:
+   * `region_mismatch` only, the region the server says the bucket lives in.
+   */
+  | { kind: 'refused'; refusal: ConnectRefusalKind; hint?: RefusalHint; region?: string }
   /** The user pressed Cancel. ❗ Says nothing: they know. */
   | { kind: 'cancelled' }
 

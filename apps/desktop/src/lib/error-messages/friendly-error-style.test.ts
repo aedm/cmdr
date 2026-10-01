@@ -212,6 +212,14 @@ const REFUSAL_KINDS: ConnectRefusalKind[] = [
   'account_not_permitted',
   'secret_not_stored',
   'saved_secret_not_updated',
+  'access_denied',
+  'bucket_list_refused',
+  'bucket_not_found',
+  'region_mismatch',
+  'clock_skewed',
+  'not_an_s3_endpoint',
+  's3_field_malformed',
+  'endpoint_malformed',
 ]
 
 /**

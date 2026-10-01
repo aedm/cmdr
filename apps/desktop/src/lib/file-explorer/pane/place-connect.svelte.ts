@@ -170,7 +170,7 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         }
         return
       case 'refused':
-        state = refusedState(volumeId, info, result.refusal)
+        state = refusedState(volumeId, info, result.refusal, result.region)
         return
     }
   }
@@ -201,7 +201,12 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
     return found && isAtOrUnder(found, volumePath) ? found : volumePath
   }
 
-  function refusedState(volumeId: string, info: VolumeInfo, refusal: ConnectRefusalKind): RemoteConnectState {
+  function refusedState(
+    volumeId: string,
+    info: VolumeInfo,
+    refusal: ConnectRefusalKind,
+    region: string | undefined,
+  ): RemoteConnectState {
     const parsed = parseServerPath(info.path)
     // An SMB share's path is its mount point, which names no server by design.
     if (!parsed && !isSmbVolumeId(volumeId)) {
@@ -213,6 +218,8 @@ export function createPlaceConnect(deps: PlaceConnectDeps): PlaceConnect {
         host: parsed?.host ?? info.name,
         username: parsed?.username ?? info.name,
         name: info.name,
+        protocol: parsed?.protocol,
+        region,
       }),
       retry: () => {
         // A fresh attempt, with a fresh id: the old one is spent.

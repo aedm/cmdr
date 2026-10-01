@@ -29,6 +29,14 @@ const KINDS: ConnectRefusalKind[] = [
   'start_folder_not_found',
   'save_unconfirmed',
   'account_not_permitted',
+  'access_denied',
+  'bucket_list_refused',
+  'bucket_not_found',
+  'region_mismatch',
+  'clock_skewed',
+  'not_an_s3_endpoint',
+  's3_field_malformed',
+  'endpoint_malformed',
 ]
 
 const subject = { host: 'nas.local', username: 'ada' }
@@ -112,6 +120,47 @@ describe('wordPaneRefusal', () => {
     for (const kind of KINDS.filter((k) => k !== 'unreachable')) {
       expect(wordPaneRefusal(kind, { ...subject, name: 'Naspolya' })).toBe(wordConnectRefusal(kind, subject))
     }
+  })
+})
+
+describe('S3 refusals', () => {
+  const s3 = { host: 's3.eu-west-1.amazonaws.com', username: 'AKIAEXAMPLE', protocol: 's3' as const }
+
+  it('names the region a bucket lives in when the server said, and still reads without one', () => {
+    expect(wordConnectRefusal('region_mismatch', { ...s3, region: 'us-east-2' })).toContain('us-east-2')
+    const unnamed = wordConnectRefusal('region_mismatch', s3)
+    expect(unnamed).not.toMatch(/\{[a-z]/i)
+    expect(unnamed).not.toBe('')
+  })
+
+  it('says “secret access key” where SFTP and WebDAV say “password”', () => {
+    // An S3 account has no password, and a sentence that asks for one sends the reader
+    // looking for something their provider never gave them.
+    for (const kind of [
+      'authentication_rejected',
+      'needs_credentials',
+      'password_missing',
+      'secret_not_stored',
+      'saved_secret_not_updated',
+    ] as const) {
+      const sentence = wordConnectRefusal(kind, s3)
+      expect(sentence.toLowerCase(), kind).not.toContain('password')
+      expect(sentence, kind).toContain('secret access key')
+    }
+    // Everyone else keeps the password wording.
+    expect(wordConnectRefusal('authentication_rejected', subject)).toContain('password')
+  })
+
+  it('puts each S3 refusal under the field that fixes it', () => {
+    expect(refusalField('access_denied')).toBe('secret')
+    expect(refusalField('bucket_list_refused')).toBe('bucket')
+    expect(refusalField('bucket_not_found')).toBe('bucket')
+    expect(refusalField('region_mismatch')).toBe('region')
+    expect(refusalField('s3_field_malformed')).toBe('region')
+    expect(refusalField('not_an_s3_endpoint')).toBe('address')
+    expect(refusalField('endpoint_malformed')).toBe('address')
+    // A Mac whose clock is off is nothing any field fixes.
+    expect(refusalField('clock_skewed')).toBe('form')
   })
 })
 

@@ -290,6 +290,77 @@
   "@servers.refusal.savedSecretNotUpdated": {
     "description": "Shown under the password field of the edit server sheet when the server’s other settings were saved, but the system’s password store refused to keep or remove the password: the user clicked Deny on the system prompt, the keychain is locked, or no password store is available. ❗ The other changes DID save, so don’t word it as if nothing was saved. Pressing Save again is safe and only retries the password. “Save” is the sheet’s button (servers.sheet.save). “Keychain” is Apple’s name for the password store; use the name your language’s macOS uses."
   },
+  "servers.refusal.s3AuthenticationRejected": "That secret access key didn’t work for {username}.",
+  "@servers.refusal.s3AuthenticationRejected": {
+    "description": "Shown when an S3 storage server refused the secret access key Cmdr offered for this access key ID. Factual, not accusing. “Secret access key” is the credential name S3 providers use; match the provider console’s term in your language if it has one, and use the same words as servers.sheet.secretAccessKey.",
+    "placeholders": {
+      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
+    }
+  },
+  "servers.refusal.s3NeedsCredentials": "This account asks for a secret access key.",
+  "@servers.refusal.s3NeedsCredentials": {
+    "description": "Shown when an S3 account wants its secret access key and Cmdr has none stored. ❗ NOT a rejection: nothing was ever offered, so don’t word it as a wrong key. Same term as servers.sheet.secretAccessKey."
+  },
+  "servers.refusal.s3SecretMissing": "Enter the secret access key for {username}.",
+  "@servers.refusal.s3SecretMissing": {
+    "description": "Under the secret access key field of the Add server sheet, when the field is empty and Cmdr has no stored key for this account, so nothing was sent yet. Same term as servers.sheet.secretAccessKey.",
+    "placeholders": {
+      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
+    }
+  },
+  "servers.refusal.s3SecretNotStored": "Cmdr couldn’t store this secret access key in your Keychain. Try again, or turn off “Remember in Keychain” to sign in without storing it.",
+  "@servers.refusal.s3SecretNotStored": {
+    "description": "The S3 twin of servers.refusal.secretNotStored: the user turned on “Remember in Keychain” and the system’s password store refused to keep the key (Deny on the system prompt, a locked keychain, or no store). Nothing else changed. “Remember in Keychain” must match the servers.sheet.remember label word for word. “Keychain” is Apple’s name; use the name your language’s macOS uses."
+  },
+  "servers.refusal.s3SavedSecretNotUpdated": "Cmdr saved your changes but couldn’t update the secret access key in your Keychain. Save again to try once more.",
+  "@servers.refusal.s3SavedSecretNotUpdated": {
+    "description": "The S3 twin of servers.refusal.savedSecretNotUpdated: the edit DID save, and only writing the secret access key to the system’s password store didn’t. Pressing Save again is safe. “Save” is servers.sheet.save. “Keychain” is Apple’s name; use the name your language’s macOS uses."
+  },
+  "servers.refusal.accessDenied": "This bucket turned {username} away. Check the secret access key, and that this key may read the bucket.",
+  "@servers.refusal.accessDenied": {
+    "description": "Under the secret access key field when an S3 bucket refused the key. The server can’t say whether the secret is wrong or the key has no rights to this bucket, so the sentence asks about both. “Bucket” is the S3 term for a top-level storage container; keep the provider console’s term.",
+    "placeholders": {
+      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
+    }
+  },
+  "servers.refusal.bucketListRefused": "This key can’t list the buckets on this account. Type a bucket name to open that bucket, or check the secret access key.",
+  "@servers.refusal.bucketListRefused": {
+    "description": "Under the Bucket field when the user left it empty (which opens the whole account and lists its buckets) and the key isn’t allowed to list buckets. On some servers a wrong secret answers the same way, so it mentions both. “Bucket” is the S3 term; keep the provider console’s term."
+  },
+  "servers.refusal.bucketNotFound": "There’s no bucket by that name at {host}.",
+  "@servers.refusal.bucketNotFound": {
+    "description": "Under the Bucket field when the S3 server has no bucket with the typed name. “Bucket” is the S3 term; keep the provider console’s term.",
+    "placeholders": {
+      "host": "the storage server’s host name, like \"s3.eu-west-1.amazonaws.com\""
+    }
+  },
+  "servers.refusal.regionMismatch": "This bucket is in a different region. Pick its region and try again.",
+  "@servers.refusal.regionMismatch": {
+    "description": "Under the Region field when the S3 bucket lives in another region than the one chosen, and the server didn’t say which. “Region” must match servers.sheet.s3Region."
+  },
+  "servers.refusal.regionMismatchNamed": "This bucket is in {region}. Pick that region and try again.",
+  "@servers.refusal.regionMismatchNamed": {
+    "description": "Under the Region field when the S3 bucket lives in another region than the one chosen. “Region” matches servers.sheet.s3Region.",
+    "placeholders": {
+      "region": "a region code, like \"us-east-2\"; never translated"
+    }
+  },
+  "servers.refusal.clockSkewed": "This Mac’s clock is off by more than 15 minutes, so the server won’t accept Cmdr’s requests. Set the date and time automatically in System Settings, then try again.",
+  "@servers.refusal.clockSkewed": {
+    "description": "Shown when an S3 server refused the request because this Mac’s clock is too far off: S3 signatures carry a timestamp. “System Settings” is the macOS app name; use the name your language’s macOS uses."
+  },
+  "servers.refusal.notAnS3Endpoint": "Nothing at this address answers as S3 storage.",
+  "@servers.refusal.notAnS3Endpoint": {
+    "description": "Under the endpoint field when the address answers as a web server but not as S3-compatible storage. “S3” is a protocol name; don’t translate it."
+  },
+  "servers.refusal.s3FieldMalformed": "Use only lowercase letters, digits, and dashes here.",
+  "@servers.refusal.s3FieldMalformed": {
+    "description": "Under the Region, Location, or Account ID field of the S3 form, before anything was sent, when the typed value holds other characters. Short and instructive."
+  },
+  "servers.refusal.endpointMalformed": "Enter the endpoint as http:// or https:// plus a host name, like https://s3.example.com.",
+  "@servers.refusal.endpointMalformed": {
+    "description": "Under the Endpoint field of the S3 form (“Other S3-compatible”), before anything was sent, when the typed value isn’t a web address made of a scheme, a host, and an optional port. Keep http://, https://, and the example address as they are."
+  },
   "servers.sheet.addTitle": "Add server",
   "@servers.sheet.addTitle": {
     "description": "Title of the sheet where the user types a new server. VERB phrase, imperative.",

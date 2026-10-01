@@ -48,6 +48,22 @@ export function readConnectOutcome(outcome: ServerConnectOutcome): ServerDialOut
       return { kind: 'refused', refusal: 'timed_out' }
     case 'unreachable':
       return { kind: 'refused', refusal: 'unreachable' }
+    case 'access_denied':
+      return { kind: 'refused', refusal: 'access_denied' }
+    case 'bucket_list_refused':
+      return { kind: 'refused', refusal: 'bucket_list_refused' }
+    case 'bucket_not_found':
+      return { kind: 'refused', refusal: 'bucket_not_found' }
+    case 'region_mismatch':
+      // ❗ The region rides along: "this bucket is in us-east-2" is the fix, and the
+      // bare kind can only say "another region".
+      return outcome.region
+        ? { kind: 'refused', refusal: 'region_mismatch', region: outcome.region }
+        : { kind: 'refused', refusal: 'region_mismatch' }
+    case 'clock_skewed':
+      return { kind: 'refused', refusal: 'clock_skewed' }
+    case 'not_an_s3_endpoint':
+      return { kind: 'refused', refusal: 'not_an_s3_endpoint' }
   }
 }
 
@@ -82,11 +98,18 @@ export function readSavedServerOutcome(outcome: SavedServerOutcome): SaveOutcome
  * ❗ `auth_method_unsupported` is deliberately out: the server challenged with a
  * scheme Cmdr doesn't speak, the secret never left, and no typing fixes it.
  * Opening a password box over it would ask for something that cannot help.
+ *
+ * S3's `access_denied` is IN: a bucket that turns a key away can mean a wrong
+ * secret (Garage answers one that way), so the sheet, with the sentence asking
+ * about both, is the one place a fix can be typed. `bucket_list_refused` is OUT:
+ * the way past it is a bucket place, which no secret typed here creates.
  */
 export function needsAHuman(outcome: ServerDialOutcome): boolean {
   return (
     outcome.kind === 'needs_host_key' ||
     (outcome.kind === 'refused' &&
-      (outcome.refusal === 'needs_credentials' || outcome.refusal === 'authentication_rejected'))
+      (outcome.refusal === 'needs_credentials' ||
+        outcome.refusal === 'authentication_rejected' ||
+        outcome.refusal === 'access_denied'))
   )
 }
