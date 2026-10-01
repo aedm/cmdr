@@ -202,6 +202,7 @@ impl<'a> TempSpot<'a> {
 
 /// [`extract_routed`] into another temp family's spot, unwatched: open-with's pull
 /// (`open_with_extract.rs`), which has no window to close and no deadline to honor.
+#[cfg(any(target_os = "macos", test))]
 pub(super) fn extract_routed_into(
     requested: &Path,
     volume_id: &str,

@@ -107,6 +107,11 @@ fn an_oversize_file_is_refused_before_anything_is_written() {
 
     assert_eq!(refused.path, zip.join("big.bin"), "names the file it couldn't copy");
     assert_eq!(refused.reason, OpenWithCopyRefusal::TooLarge { cap: 100 });
+    assert!(
+        matches!(refused.error, ViewerError::TooLargeToPreview { cap: 100, .. }),
+        "keeps the pull's own failure for the log, got {:?}",
+        refused.error
+    );
     assert_eq!(
         std::fs::read_dir(dir.path()).expect("read dir").count(),
         0,
