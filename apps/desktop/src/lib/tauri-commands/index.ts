@@ -998,7 +998,14 @@ export type { KnownWebdavServer, SavedWebdavServer, WebdavUnattendedReconnect } 
 
 // S3 accounts: the account's secret and the unattended-reconnect query.
 // Everything else goes through the protocol-agnostic servers family above.
-export { saveS3Credentials, hasS3Credentials, deleteS3Credentials, getS3UnattendedReconnect } from './s3'
-export type { S3ProviderChoice, S3UnattendedReconnect } from './s3'
+export {
+  saveS3Credentials,
+  hasS3Credentials,
+  deleteS3Credentials,
+  getS3UnattendedReconnect,
+  getKnownS3Places,
+  knownS3PlaceOf,
+} from './s3'
+export type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from './s3'
 
 export { confirmWithCheckbox } from './confirm-dialog'

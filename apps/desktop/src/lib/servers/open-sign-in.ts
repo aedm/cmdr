@@ -24,6 +24,7 @@ import {
   forgetServerSecret,
   getVolumeSignInState,
   hasServerSecret,
+  knownS3PlaceOf,
   listSavedServers,
   newServerAttemptId,
   reconnectVolumeWithCredentials,
@@ -517,7 +518,21 @@ async function identityFor(volumeId: string): Promise<PlaceIdentity> {
     // ❗ The PLACE's account first: an SMB host's shares each remember their own.
     username: parsed?.username ?? place?.username ?? owner.username ?? undefined,
   }
-  return { endpoint, saveSecret: secretWriterFor(owner, parsed) }
+  const saveSecret = owner.protocol === 's3' ? await s3SecretWriterFor(volumeId) : secretWriterFor(owner, parsed)
+  return { endpoint, saveSecret }
+}
+
+/**
+ * An S3 place files its ACCOUNT's secret, keyed on the provider choice plus the
+ * access key id, which only the saved entry knows (the listing carries neither the
+ * preset nor its fields). `null` when no saved place answers for the id.
+ */
+async function s3SecretWriterFor(volumeId: string): Promise<((secret: string) => Promise<void>) | null> {
+  const place = await knownS3PlaceOf(volumeId)
+  if (!place) return null
+  return async (secret) => {
+    await saveS3Credentials(place.provider, place.accessKeyId, secret)
+  }
 }
 
 /**

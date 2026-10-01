@@ -10,11 +10,19 @@ vi.mock('$lib/ipc/bindings', () => ({
     hasS3Credentials: vi.fn(),
     deleteS3Credentials: vi.fn(),
     getS3UnattendedReconnect: vi.fn(),
+    getKnownS3Places: vi.fn(),
   },
 }))
 
-import { commands, type S3ProviderChoice } from '$lib/ipc/bindings'
-import { deleteS3Credentials, getS3UnattendedReconnect, hasS3Credentials, saveS3Credentials } from './s3'
+import { commands, type S3ProviderChoice, type SavedS3Place } from '$lib/ipc/bindings'
+import {
+  deleteS3Credentials,
+  getKnownS3Places,
+  getS3UnattendedReconnect,
+  hasS3Credentials,
+  knownS3PlaceOf,
+  saveS3Credentials,
+} from './s3'
 
 const AWS: S3ProviderChoice = { kind: 'aws', region: 'eu-west-1' }
 const KEY = 'AKIAEXAMPLE'
@@ -53,6 +61,30 @@ describe('the account secret', () => {
     vi.mocked(commands.hasS3Credentials).mockResolvedValueOnce(true)
     expect(await hasS3Credentials(AWS, KEY)).toBe(true)
     expect(commands.hasS3Credentials).toHaveBeenCalledWith(AWS, KEY)
+  })
+})
+
+describe('the saved places', () => {
+  const photos: SavedS3Place = {
+    volumeId: 's3-photos',
+    provider: AWS,
+    accessKeyId: KEY,
+    bucket: 'photos',
+    displayName: '',
+    autoReconnect: true,
+    pinned: false,
+  }
+  const root: SavedS3Place = { ...photos, volumeId: 's3-root', bucket: null }
+
+  it('reads the list through', async () => {
+    vi.mocked(commands.getKnownS3Places).mockResolvedValueOnce([photos, root])
+    expect(await getKnownS3Places()).toEqual([photos, root])
+  })
+
+  it('finds the place a volume id names by the id the backend published, ❌ never a hash of its own', async () => {
+    vi.mocked(commands.getKnownS3Places).mockResolvedValue([photos, root])
+    expect((await knownS3PlaceOf('s3-root'))?.bucket).toBeNull()
+    expect(await knownS3PlaceOf('s3-nothing')).toBeNull()
   })
 })
 

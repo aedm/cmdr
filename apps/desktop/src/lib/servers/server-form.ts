@@ -6,10 +6,17 @@
  * address MEANS are testable without mounting anything.
  */
 
-import type { SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
+import type { SavedS3Place, SavedServer, ServerProtocol, ServerTarget } from '$lib/ipc/bindings'
 import type { SavedSftpServer, SavedWebdavServer } from '$lib/tauri-commands'
 import { mountSourceAsSmbUrl, parseServerAddress, uncAsSmbUrl, type ParsedAddress } from './address-parser'
-import { emptyS3Fields, s3FieldsFromAppPath, s3HostOf, s3ProviderFrom, type S3FormFields } from './s3-form'
+import {
+  emptyS3Fields,
+  s3FieldsFromAppPath,
+  s3FieldsFromTarget,
+  s3HostOf,
+  s3ProviderFrom,
+  type S3FormFields,
+} from './s3-form'
 
 /** Every field the add and edit forms hold, across all four protocols. */
 export interface ServerForm {
@@ -329,6 +336,24 @@ export function formFromWebdavServer(server: SavedWebdavServer): ServerForm {
     remoteRoot: server.remoteRoot,
     startFolder: server.startFolder ?? '',
     autoReconnect: server.autoReconnect,
+    remember: false,
+  }
+}
+
+/**
+ * A saved S3 place, as the edit form holds it: its preset, key, bucket, the RAW name
+ * (empty when nobody named it), and its own reconnect switch. Identity is locked in
+ * edit mode, so the target it saves back names this same place.
+ */
+export function formFromS3Place(place: SavedS3Place): ServerForm {
+  return {
+    ...emptyServerForm(),
+    protocol: 's3',
+    username: place.accessKeyId,
+    displayName: place.displayName,
+    autoReconnect: place.autoReconnect,
+    s3: s3FieldsFromTarget(place.provider, place.bucket),
+    // Seeded by the sheet from `hasServerSecret`, ❌ never defaulted on here.
     remember: false,
   }
 }

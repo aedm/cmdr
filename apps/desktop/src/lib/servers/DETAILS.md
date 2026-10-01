@@ -179,19 +179,27 @@ decide whether to draw a menu item.
 the standing picked, compares the box against what `hasServerSecret` answered, and writes once per flip: OFF →
 `forgetServerSecret` NOW, because `refresh_remembered_secret` writes wherever the store already holds something, so a
 mend over a live entry would put the just-declined password straight back; ON over an empty store →
-`saveSftpCredentials` / `saveWebdavCredentials` NOW, because an attended sign-in refreshes a remembered secret and never
-seeds one, so a box flipped on with nothing written would promise a thing that never happens. ❌ Neither ever happens as
-a side effect of a dial. ❗ A save the Keychain refuses (Deny on the prompt, a locked keychain, no secret service)
-answers `secret_not_stored` under the password field and runs no round: nothing was filed, so the local reading stays
-where it was and the next press writes again.
+`saveSftpCredentials` / `saveWebdavCredentials` / `saveS3Credentials` NOW, because an attended sign-in refreshes a
+remembered secret and never seeds one, so a box flipped on with nothing written would promise a thing that never
+happens. ❌ Neither ever happens as a side effect of a dial. ❗ A save the Keychain refuses (Deny on the prompt, a
+locked keychain, no secret service) answers `secret_not_stored` under the password field and runs no round: nothing was
+filed, so the local reading stays where it was and the next press writes again.
 
 ❗ **The writer takes the whole tuple the volume id is minted from** (`(host, port, username)` for SFTP, the base URL
 and the account for WebDAV), read off the place's `appRoot` rather than rebuilt from a host plus a default port: an
 entry written under a different key is one the dial never finds, and the box would be lying in the other direction. A
-place no saved server claims has no key to write under, so it has no writer.
+place no saved server claims has no key to write under, so it has no writer. S3's key is the ACCOUNT's (the provider
+choice plus the access key id, shared by every bucket under the key), which the listing doesn't carry: the writer reads
+the saved place (`knownS3PlaceOf`, matched by the `volumeId` the backend publishes, ❌ never a frontend hash).
 
 In EDIT mode there is nothing typed to save, so the box only ever forgets (`SignInSheet.svelte`'s `writeRememberFlip`);
 turning it on there rides the next successful sign-in's offer.
+
+**An S3 edit is per PLACE.** An account's buckets are each saved on their own, so Edit carries the place it was raised
+on (`openEditServerSheet(server, placeVolumeId)`, the request's `placeVolumeId`), and the sheet reads, flips Remember
+for, and titles that place: its entry comes from `knownS3PlaceOf`, its name from the place's listing row. Locked there:
+the provider and its field, the access key ID, and the bucket (`servers.sheet.identityLockedS3`). A typed secret is the
+account's (`saveS3Credentials`).
 
 **Edit mode changes SETTINGS, ❌ never identity.** The address, the protocol toggle, and the username are locked, and
 `servers.sheet.identityLocked` sits under them saying to Forget and Add instead. Rust mints the volume id from

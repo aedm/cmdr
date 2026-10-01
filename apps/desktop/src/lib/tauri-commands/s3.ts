@@ -7,10 +7,28 @@
 // `crates/cmdr-s3/DETAILS.md`.
 
 import { commands } from '$lib/ipc/bindings'
-import type { S3ProviderChoice, S3UnattendedReconnect } from '$lib/ipc/bindings'
+import type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from '$lib/ipc/bindings'
 import { throwKeychainError } from '$lib/servers/keychain-failure'
 
-export type { S3ProviderChoice, S3UnattendedReconnect }
+export type { S3ProviderChoice, S3UnattendedReconnect, SavedS3Place }
+
+/**
+ * Every saved S3 place, one per bucket (or account root), with the provider the
+ * listing doesn't carry: what an edit form and a secret writer need.
+ */
+export async function getKnownS3Places(): Promise<SavedS3Place[]> {
+  return await commands.getKnownS3Places()
+}
+
+/**
+ * The saved S3 place a volume id names, or `null` when none does.
+ *
+ * ❗ By the `volumeId` the backend published, ❌ never a frontend twin of the hash
+ * Rust mints from `(host, port, key id, bucket)`: an id spelled twice can drift.
+ */
+export async function knownS3PlaceOf(volumeId: string): Promise<SavedS3Place | null> {
+  return (await getKnownS3Places()).find((place) => place.volumeId === volumeId) ?? null
+}
 
 /**
  * Saves the secret access key for one ACCOUNT (a provider's endpoint plus an

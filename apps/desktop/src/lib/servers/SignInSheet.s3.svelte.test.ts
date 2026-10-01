@@ -14,6 +14,27 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   notifyDialogOpened: vi.fn(() => Promise.resolve()),
   notifyDialogClosed: vi.fn(() => Promise.resolve()),
   listSavedServers: vi.fn(() => Promise.resolve([])),
+  knownS3PlaceOf: (id: string) => knownS3PlaceOf(id),
+  hasServerSecret: vi.fn(() => Promise.resolve(true)),
+  getS3UnattendedReconnect: vi.fn(() => Promise.resolve('possible')),
+  updateSavedServer: (target: unknown) => updateSavedServer(target),
+  saveS3Credentials: (...args: unknown[]) => saveS3Credentials(...args),
+}))
+
+const { knownS3PlaceOf, updateSavedServer, saveS3Credentials } = vi.hoisted(() => ({
+  knownS3PlaceOf: vi.fn((_id: string) =>
+    Promise.resolve({
+      provider: { kind: 'wasabi', region: 'eu-central-1' },
+      accessKeyId: 'AKIAEXAMPLE',
+      bucket: 'photos',
+      displayName: '',
+      autoReconnect: false,
+      pinned: true,
+      volumeId: 's3-photos',
+    }),
+  ),
+  updateSavedServer: vi.fn((_target: unknown) => Promise.resolve({ outcome: 'saved' })),
+  saveS3Credentials: vi.fn((..._args: unknown[]) => Promise.resolve()),
 }))
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn(() => Promise.resolve(null)) }))
@@ -146,6 +167,60 @@ describe('SignInSheet: the S3 form', () => {
     await flush()
     expect(submissions).toHaveLength(2)
     expect(onlyTarget().target).toMatchObject({ provider: { kind: 'aws', region: 'us-east-2' } })
+  })
+})
+
+describe('SignInSheet: editing an S3 place', () => {
+  const account = {
+    id: 's3-account-root',
+    protocol: 's3' as const,
+    displayName: 'AKIAEXAMPLE@s3.eu-central-1.wasabisys.com',
+    nameSource: 'fallback' as const,
+    address: 's3.eu-central-1.wasabisys.com',
+    username: 'AKIAEXAMPLE',
+    pinned: false,
+    lastConnectedAt: null,
+    autoReconnect: true,
+    places: [
+      {
+        volumeId: 's3-photos',
+        name: 'photos@s3.eu-central-1.wasabisys.com',
+        pinned: true,
+        connected: false,
+        appRoot: 's3://AKIAEXAMPLE@s3.eu-central-1.wasabisys.com:443/photos',
+        username: 'AKIAEXAMPLE',
+        autoReconnect: false,
+      },
+    ],
+  }
+
+  it('opens on the PLACE it was raised on, with its identity locked and its own switch', async () => {
+    await open({ mode: 'edit', server: account, placeVolumeId: 's3-photos' })
+    expect(knownS3PlaceOf).toHaveBeenCalledWith('s3-photos')
+    expect(document.body.textContent).toContain('photos@s3.eu-central-1.wasabisys.com')
+    expect(field('server-s3-region')?.value).toBe('eu-central-1')
+    expect(field('server-s3-region')?.disabled).toBe(true)
+    expect(field('server-s3-bucket')?.value).toBe('photos')
+    expect(field('server-username')?.disabled).toBe(true)
+    expect(field('server-name')?.disabled).toBe(false)
+  })
+
+  it('saves the same place back and writes a typed secret as the account’s', async () => {
+    await open({ mode: 'edit', server: account, placeVolumeId: 's3-photos' })
+    type('server-name', 'Photos')
+    type('server-secret', 'n3w')
+    await tick()
+    press('Save')
+    await flush()
+    expect(updateSavedServer).toHaveBeenCalledWith({
+      protocol: 's3',
+      displayName: 'Photos',
+      provider: { kind: 'wasabi', region: 'eu-central-1' },
+      accessKeyId: 'AKIAEXAMPLE',
+      bucket: 'photos',
+      autoReconnect: false,
+    })
+    expect(saveS3Credentials).toHaveBeenCalledWith({ kind: 'wasabi', region: 'eu-central-1' }, 'AKIAEXAMPLE', 'n3w')
   })
 })
 

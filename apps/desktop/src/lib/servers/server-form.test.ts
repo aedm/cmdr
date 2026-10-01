@@ -12,6 +12,7 @@ import {
   applyParsedAddress,
   emptyServerForm,
   formFromPrefill,
+  formFromS3Place,
   formFromSftpServer,
   isStartFolderUnderRoot,
   nameFallbackOf,
@@ -446,6 +447,37 @@ describe('the S3 form', () => {
   it('trims the access key ID, which is part of the identity', () => {
     expect(serverTargetFrom(s3Form({ provider: 'r2', accountId: 'abc' }, ' AKIA1 '))).toMatchObject({
       accessKeyId: 'AKIA1',
+    })
+  })
+
+  it('opens a saved S3 place in the edit form with its preset, key, bucket, raw name, and switch', () => {
+    const form = formFromS3Place({
+      provider: { kind: 'other', endpoint: 'http://nas:9000', region: null, pathStyle: false },
+      accessKeyId: 'AKIA1',
+      bucket: 'photos',
+      displayName: '',
+      autoReconnect: false,
+      pinned: true,
+      volumeId: 's3-photos',
+    })
+    expect(form).toMatchObject({
+      protocol: 's3',
+      username: 'AKIA1',
+      displayName: '',
+      autoReconnect: false,
+      remember: false,
+    })
+    expect(form.s3).toMatchObject({
+      provider: 'other',
+      endpoint: 'http://nas:9000',
+      pathStyle: false,
+      bucket: 'photos',
+    })
+    // The target it saves back is the place it opened on: same identity, so the save edits rather than duplicates.
+    expect(serverTargetFrom(form)).toMatchObject({
+      provider: { kind: 'other', endpoint: 'http://nas:9000', region: null, pathStyle: false },
+      accessKeyId: 'AKIA1',
+      bucket: 'photos',
     })
   })
 

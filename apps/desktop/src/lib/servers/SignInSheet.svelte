@@ -41,6 +41,7 @@
         applyParsedAddress,
         emptyServerForm,
         formFromPrefill,
+        formFromS3Place,
         formFromSftpServer,
         formFromSmbHost,
         formFromWebdavServer,
@@ -71,6 +72,7 @@
         getSftpUnattendedReconnect,
         getWebdavUnattendedReconnect,
         hasServerSecret,
+        knownS3PlaceOf,
         listSavedServers,
         saveS3Credentials,
         saveSftpCredentials,
@@ -153,6 +155,16 @@
     /** Edit mode has nothing to try: Save writes and closes. */
     const attempt = $derived(request.mode === 'edit' ? null : request.attempt)
     const editedServer = $derived(request.mode === 'edit' ? request.server : null)
+    /**
+     * The saved entry an edit reads and writes, by id: the place it was raised on
+     * where a server keeps several (an S3 account's buckets, each saved on its own),
+     * else the server's own id, which for a one-place server IS its place's.
+     */
+    const editedId = $derived(request.mode === 'edit' ? (request.placeVolumeId ?? request.server.id) : null)
+    /** The edited place's listing entry, for its label: an S3 bucket's own, not its account's. */
+    const editedPlace = $derived(
+        request.mode === 'edit' ? request.server.places.find((p) => p.volumeId === request.placeVolumeId) : undefined,
+    )
 
     /**
      * ❗ The listing's `displayName` IS the label already: a name a person typed,
@@ -161,7 +173,10 @@
      */
     const sheetTitle = $derived.by(() => {
         if (request.mode === 'add') return tString('servers.sheet.addTitle')
-        if (request.mode === 'edit') return tString('servers.sheet.editTitle', { name: request.server.displayName })
+        if (request.mode === 'edit') {
+            const name = request.server.protocol === 's3' && editedPlace ? editedPlace.name : request.server.displayName
+            return tString('servers.sheet.editTitle', { name })
+        }
         return tString('servers.sheet.signInTitle', { name: request.endpoint.displayName })
     })
 
@@ -339,20 +354,26 @@
             focusFirstEditableField()
             return
         }
+        const id = editedId ?? server.id
         if (server.protocol === 'sftp') {
             const saved = (await getKnownSftpServers()).find(
                 (s) => `${s.host}:${String(s.port)}` === server.address && s.username === server.username,
             )
             if (saved) form = formFromSftpServer(saved)
+        } else if (server.protocol === 's3') {
+            // An S3 account's buckets are each saved on their own, so the PLACE is
+            // looked up by the volume id the backend published (`knownS3PlaceOf`).
+            const saved = await knownS3PlaceOf(id)
+            if (saved) form = formFromS3Place(saved)
         } else {
             const saved = (await getKnownWebdavServers()).find(
                 (s) => s.url === server.address && s.username === server.username,
             )
             if (saved) form = formFromWebdavServer(saved)
         }
-        form.remember = await hasServerSecret(server.id)
+        form.remember = await hasServerSecret(id)
         rememberWhenOpened = form.remember
-        storedSecretWarning = await readStoredSecretWarning(server.id, server.protocol)
+        storedSecretWarning = await readStoredSecretWarning(id, server.protocol)
         await tick()
         focusFirstEditableField()
     }
@@ -621,7 +642,7 @@
             return
         }
         try {
-            await writeRememberFlip(editedServer.id)
+            await writeRememberFlip(editedId ?? editedServer.id)
             await writeTypedSecret(target)
             close({ kind: 'saved' })
         } catch (e) {
