@@ -327,3 +327,43 @@ fn only_aws_r2_and_b2_are_trusted_to_refuse_a_short_body() {
         assert!(!unlisted.refuses_short_body, "{:?}", unlisted.kind);
     }
 }
+
+fn request_to(profile: &ProviderProfile, bucket: &str, key: &str) -> crate::request::S3Request {
+    crate::ops::head_object(profile, bucket, key).unwrap()
+}
+
+#[test]
+fn aws_reroutes_a_bucket_to_its_own_region_keeping_the_bucket_where_it_was() {
+    let aws = profile(Preset::Aws {
+        region: "eu-north-1".into(),
+    });
+
+    let virtual_hosted = aws.reroute(request_to(&aws, "photos", "a b.jpg"), "us-west-2").unwrap();
+    assert_eq!(virtual_hosted.host, "photos.s3.us-west-2.amazonaws.com");
+    assert_eq!(virtual_hosted.path, "/a%20b.jpg");
+
+    let by_path = aws.reroute(request_to(&aws, "my.photos", "k"), "us-west-2").unwrap();
+    assert_eq!(by_path.host, "s3.us-west-2.amazonaws.com");
+    assert_eq!(by_path.path, "/my.photos/k");
+}
+
+#[test]
+fn only_aws_reroutes_and_only_to_a_region_a_hostname_can_carry() {
+    let aws = profile(Preset::Aws {
+        region: "eu-north-1".into(),
+    });
+    for junk in ["", "x.evil.com", "evil.com/", "EU-WEST-1"] {
+        assert!(aws.reroute(request_to(&aws, "photos", "k"), junk).is_none(), "{junk:?}");
+    }
+
+    let wasabi = profile(Preset::Wasabi {
+        region: "eu-central-1".into(),
+    });
+    assert!(
+        wasabi
+            .reroute(request_to(&wasabi, "photos", "k"), "us-east-1")
+            .is_none()
+    );
+    let minio = profile(other("http://127.0.0.1:9000", true));
+    assert!(minio.reroute(request_to(&minio, "photos", "k"), "us-east-1").is_none());
+}

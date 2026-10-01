@@ -91,5 +91,7 @@ testing = ["cmdr-fs/testing", "dep:uuid"]
 cmdr-s3 = { path = ".", features = ["testing"] }
 cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
 # The Docker-backed suites drive real concurrency, so their tests need a
-# multi-threaded runtime the lib deliberately can't build for itself.
-tokio = { version = "1", features = ["rt-multi-thread", "test-util"] }
+# multi-threaded runtime the lib deliberately can't build for itself. `net` and
+# `io-util` serve the fake AWS in `transport_routing_test.rs` (`cmdr-fs`'s
+# dev set has both).
+tokio = { version = "1", features = ["rt-multi-thread", "test-util", "net", "io-util"] }

@@ -20,6 +20,7 @@ use crate::ops;
 use crate::profile::ProviderProfile;
 use crate::refusal::{BucketCheck, BucketList, S3ConnectError, judge_head_bucket, judge_list_buckets};
 use crate::request::{Body, S3Request};
+use crate::routing::{BUCKET_REGION_HEADER, BucketRegions, read_hint};
 use crate::sigv4::{AmzTime, Credentials, Scope, sign};
 
 /// The connect timeout on every request, and the connect probe's total budget
@@ -65,6 +66,16 @@ impl Answer {
     pub(crate) fn header(&self, name: &str) -> Option<&str> {
         self.headers.get(name).and_then(|value| value.to_str().ok())
     }
+}
+
+/// What [`S3Client::relearn`] reads off an answer.
+#[derive(Debug, Clone, Copy)]
+struct Heard<'a> {
+    status: StatusCode,
+    /// `x-amz-bucket-region`.
+    region_header: Option<&'a str>,
+    /// The error body, `""` when it isn't read.
+    body: &'a str,
 }
 
 /// An answer whose body is still on the wire ([`S3Client::open`]).
@@ -125,6 +136,9 @@ pub(crate) struct S3Client {
     /// What the server has said lately (`cmdr_fs::volume::liveness`). Dies
     /// with this client: a reconnect builds a new one.
     liveness: Arc<Liveness>,
+    /// Each bucket's region, on an AWS account root only
+    /// ([`Self::route_each_bucket`]); `None` sends everything to the profile's.
+    regions: Option<BucketRegions>,
 }
 
 impl S3Client {
@@ -132,11 +146,39 @@ impl S3Client {
     /// in another region with a 301, and following it would re-send a request
     /// signed for the wrong host.
     pub(crate) fn new(profile: ProviderProfile, credentials: Credentials) -> Result<Self, S3ConnectError> {
+        Self::build(profile, credentials, |builder| builder)
+    }
+
+    /// A client that dials `addr` for every one of `hosts`, for a cell that
+    /// plays AWS's regional endpoints on one local server.
+    #[cfg(test)]
+    pub(crate) fn resolving(
+        profile: ProviderProfile,
+        credentials: Credentials,
+        hosts: &[String],
+        addr: std::net::SocketAddr,
+    ) -> Self {
+        Self::build(profile, credentials, |mut builder| {
+            for host in hosts {
+                builder = builder.resolve(host, addr);
+            }
+            builder
+        })
+        .expect("a test client builds")
+    }
+
+    fn build(
+        profile: ProviderProfile,
+        credentials: Credentials,
+        tweak: impl Fn(reqwest::ClientBuilder) -> reqwest::ClientBuilder,
+    ) -> Result<Self, S3ConnectError> {
         let builder = || {
-            reqwest::Client::builder()
-                .user_agent("Cmdr")
-                .connect_timeout(REQUEST_BUDGET)
-                .redirect(reqwest::redirect::Policy::none())
+            tweak(
+                reqwest::Client::builder()
+                    .user_agent("Cmdr")
+                    .connect_timeout(REQUEST_BUDGET)
+                    .redirect(reqwest::redirect::Policy::none()),
+            )
         };
         let build_failed = |e: reqwest::Error| S3ConnectError::Transport(e.to_string());
         Ok(Self {
@@ -147,7 +189,103 @@ impl S3Client {
             profile,
             credentials,
             liveness: Arc::new(Liveness::new()),
+            regions: None,
         })
+    }
+
+    /// Sends each bucket's requests to that bucket's own region, learned as
+    /// answers name it (`routing.rs`). For an AWS account root only: a bucket
+    /// place keeps the connect probe's wrong-region refusal, and no other
+    /// provider redirects by region. A no-op off AWS.
+    pub(crate) fn route_each_bucket(&mut self) {
+        if self.profile.kind == crate::profile::ProviderKind::Aws {
+            self.regions = Some(BucketRegions::default());
+        }
+    }
+
+    /// Whether this client routes per bucket.
+    #[cfg(test)]
+    pub(crate) fn routes_each_bucket(&self) -> bool {
+        self.regions.is_some()
+    }
+
+    /// Records a bucket's region a listing named (`ListBuckets`'
+    /// `BucketRegion`), so its first request goes straight there.
+    pub(crate) fn learn_bucket_region(&self, bucket: &str, region: &str) {
+        if let Some(regions) = &self.regions {
+            regions.learn(bucket, region);
+        }
+    }
+
+    /// `request` addressed to its bucket's region, with the region to sign
+    /// for: the profile's own unless the bucket is known to live elsewhere.
+    fn route(&self, request: S3Request) -> (S3Request, String) {
+        let known = self
+            .regions
+            .as_ref()
+            .zip(request.bucket.as_deref())
+            .and_then(|(regions, bucket)| regions.region_of(bucket))
+            .filter(|region| *region != self.profile.region);
+        match known {
+            Some(region) => match self.profile.reroute(request.clone(), &region) {
+                Some(rerouted) => (rerouted, region),
+                None => (request, self.profile.region.clone()),
+            },
+            None => (request, self.profile.region.clone()),
+        }
+    }
+
+    /// The bucket a request may be re-sent for, when this client routes.
+    fn routed_bucket(&self, request: &S3Request) -> Option<String> {
+        self.regions.as_ref().and(request.bucket.clone())
+    }
+
+    /// Learns from an answer to a request for `bucket` signed for `signed_for`,
+    /// and says whether to send it again: it went to the wrong region and the
+    /// right one is now known. A misrouted answer that names no region asks
+    /// `HeadBucket`, which names it on every status.
+    async fn relearn(&self, bucket: &str, answer: Heard<'_>, signed_for: &str) -> bool {
+        let Some(regions) = &self.regions else {
+            return false;
+        };
+        let hint = read_hint(answer.status, answer.region_header, answer.body);
+        if let Some(region) = &hint.region {
+            regions.learn(bucket, region);
+        }
+        if !hint.misrouted {
+            return false;
+        }
+        if hint.region.is_none() {
+            self.discover_region(bucket).await;
+        }
+        regions.region_of(bucket).is_some_and(|region| region != signed_for)
+    }
+
+    /// Asks `HeadBucket` where `bucket` lives when nothing has said yet:
+    /// before an upload, whose body can't be sent twice, and a share link.
+    async fn ensure_region(&self, bucket: &str) {
+        if self
+            .regions
+            .as_ref()
+            .is_some_and(|regions| regions.region_of(bucket).is_none())
+        {
+            self.discover_region(bucket).await;
+        }
+    }
+
+    /// One `HeadBucket` on the profile's own endpoint, which answers
+    /// `x-amz-bucket-region` whatever its status. A failure teaches nothing;
+    /// the request it was for then comes back as it is.
+    async fn discover_region(&self, bucket: &str) {
+        let (Some(regions), Ok(head)) = (&self.regions, ops::head_bucket(&self.profile, bucket)) else {
+            return;
+        };
+        let region = self.profile.region.clone();
+        if let Ok(answer) = self.send(head, &region, REQUEST_BUDGET).await
+            && let Some(named) = answer.header(BUCKET_REGION_HEADER)
+        {
+            regions.learn(bucket, named);
+        }
     }
 
     /// The provider profile every request is built against.
@@ -169,11 +307,34 @@ impl S3Client {
     /// with no body and the server refuses it (S3 answers a missing
     /// `Content-Length` with 411); the streaming write path brings its own
     /// sender.
+    ///
+    /// On an AWS account root, a request that went to the wrong region goes
+    /// once more, to the region the answer named ([`Self::route_each_bucket`]).
     pub(crate) async fn exchange(&self, request: S3Request, budget: Duration) -> Result<Answer, reqwest::Error> {
+        let Some(bucket) = self.routed_bucket(&request) else {
+            let region = self.profile.region.clone();
+            return self.send(request, &region, budget).await;
+        };
+        let (routed, region) = self.route(request.clone());
+        let answer = self.send(routed, &region, budget).await?;
+        let heard = Heard {
+            status: answer.status,
+            region_header: answer.header(BUCKET_REGION_HEADER),
+            body: &answer.text(),
+        };
+        if !self.relearn(&bucket, heard, &region).await {
+            return Ok(answer);
+        }
+        let (routed, region) = self.route(request);
+        self.send(routed, &region, budget).await
+    }
+
+    /// One signed exchange for `region`, as it is.
+    async fn send(&self, request: S3Request, region: &str, budget: Duration) -> Result<Answer, reqwest::Error> {
         let time = AmzTime::new(SystemTime::now());
         let scope = Scope {
             credentials: &self.credentials,
-            region: &self.profile.region,
+            region,
             time: &time,
         };
         let signed = sign(request, &scope);
@@ -206,15 +367,22 @@ impl S3Client {
     /// request, which S3 never publishes. ❌ No `.timeout()`: an upload has no
     /// total budget, and silence is the watch's to judge (the body source
     /// counts every piece it hands over as heard).
+    ///
+    /// ❗ The body goes once, so on an AWS account root a bucket's region is
+    /// asked for first when nothing has named it yet.
     pub(crate) async fn upload(&self, request: S3Request, body: UploadBody) -> Result<Answer, reqwest::Error> {
         let length = match request.body {
             Body::Streamed { length } => length,
             Body::Empty | Body::Bytes(_) => 0,
         };
+        if let Some(bucket) = self.routed_bucket(&request) {
+            self.ensure_region(&bucket).await;
+        }
+        let (request, region) = self.route(request);
         let time = AmzTime::new(SystemTime::now());
         let scope = Scope {
             credentials: &self.credentials,
-            region: &self.profile.region,
+            region: &region,
             time: &time,
         };
         let signed = sign(request, &scope);
@@ -248,11 +416,42 @@ impl S3Client {
     /// whole body, and a multi-GB download has none. Only the wait for the
     /// headers is bounded (`QUERY_BUDGET`); the body's budget is per chunk, in
     /// the caller ([`Opened::chunk`] counts each one as heard).
+    ///
+    /// On an AWS account root, a redirect to another region is followed once,
+    /// like [`Self::exchange`]'s.
     pub(crate) async fn open(&self, request: S3Request, volume_id: &str, path: &str) -> Result<Opened, VolumeError> {
+        let Some(bucket) = self.routed_bucket(&request) else {
+            let region = self.profile.region.clone();
+            return self.open_once(request, &region, volume_id, path).await;
+        };
+        let (routed, region) = self.route(request.clone());
+        let opened = self.open_once(routed, &region, volume_id, path).await?;
+        // A redirect only: judging a 400 would mean reading its body, which
+        // the caller reads itself.
+        let heard = Heard {
+            status: opened.status,
+            region_header: opened.header(BUCKET_REGION_HEADER),
+            body: "",
+        };
+        if !opened.status.is_redirection() || !self.relearn(&bucket, heard, &region).await {
+            return Ok(opened);
+        }
+        let (routed, region) = self.route(request);
+        self.open_once(routed, &region, volume_id, path).await
+    }
+
+    /// One signed GET for `region`, as it is.
+    async fn open_once(
+        &self,
+        request: S3Request,
+        region: &str,
+        volume_id: &str,
+        path: &str,
+    ) -> Result<Opened, VolumeError> {
         let time = AmzTime::new(SystemTime::now());
         let scope = Scope {
             credentials: &self.credentials,
-            region: &self.profile.region,
+            region,
             time: &time,
         };
         let signed = sign(request, &scope);
@@ -278,22 +477,24 @@ impl S3Client {
     }
 
     /// A presigned GET for `key`, valid for `expires` from now (`ops::share_link`).
-    /// Here because the credentials are: computed offline, nothing is sent.
+    /// Here because the credentials are: computed offline, nothing is sent,
+    /// except one `HeadBucket` on an AWS account root that doesn't know the
+    /// bucket's region yet (a link to the wrong region only redirects).
     /// ❗ The URL carries a signature that reads the object; ❌ never log it.
-    pub(crate) fn share_link(
+    pub(crate) async fn share_link(
         &self,
         bucket: &str,
         key: &str,
         expires: Duration,
     ) -> Result<url::Url, ops::ShareLinkError> {
-        ops::share_link(
-            &self.profile,
-            &self.credentials,
+        self.ensure_region(bucket).await;
+        let region = self.regions.as_ref().and_then(|regions| regions.region_of(bucket));
+        let target = ops::LinkTarget {
             bucket,
             key,
-            SystemTime::now(),
-            expires,
-        )
+            region: region.as_deref(),
+        };
+        ops::share_link(&self.profile, &self.credentials, target, SystemTime::now(), expires)
     }
 
     /// Whether the server answers at all, on a fresh connection: an unsigned
@@ -394,3 +595,7 @@ fn has_tls_refusal(err: &reqwest::Error) -> bool {
     }
     false
 }
+
+#[cfg(test)]
+#[path = "transport_routing_test.rs"]
+mod transport_routing_test;

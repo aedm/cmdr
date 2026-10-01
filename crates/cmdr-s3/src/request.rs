@@ -40,6 +40,10 @@ pub(crate) struct S3Request {
     /// Headers to send and sign. Names are lowercase by construction.
     pub headers: HeaderMap,
     pub body: Body,
+    /// The bucket the request is about, `None` for the account root. What
+    /// the transport routes an AWS account root's requests by
+    /// (`routing.rs`).
+    pub bucket: Option<String>,
 }
 
 impl S3Request {
@@ -53,6 +57,7 @@ impl S3Request {
             query: Vec::new(),
             headers: HeaderMap::new(),
             body: Body::Empty,
+            bucket: None,
         }
     }
 

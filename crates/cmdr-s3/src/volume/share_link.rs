@@ -28,7 +28,7 @@ impl S3Volume {
             return Err(VolumeError::IsADirectory(remote));
         };
         let client = self.clone_client().await?;
-        match client.share_link(bucket, key, expires_in.duration()) {
+        match client.share_link(bucket, key, expires_in.duration()).await {
             Ok(url) => Ok(ShareLink::new(url.into())),
             // A key this stack can't address (a `.` or `..` segment).
             Err(ShareLinkError::Build(_)) => Err(VolumeError::NotFound(remote)),

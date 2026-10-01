@@ -291,7 +291,12 @@ async fn build_and_probe(
     cancel: &CancellationToken,
 ) -> Result<S3Client, S3ConnectError> {
     let profile = params.profile().map_err(|_| S3ConnectError::InvalidProvider)?;
-    let client = S3Client::new(profile, Credentials::new(params.access_key_id(), secret))?;
+    let mut client = S3Client::new(profile, Credentials::new(params.access_key_id(), secret))?;
+    // An account root reaches buckets in every region; a bucket place keeps
+    // the probe's wrong-region refusal, which names the region to use.
+    if params.bucket().is_none() {
+        client.route_each_bucket();
+    }
     tokio::select! {
         () = cancel.cancelled() => Err(S3ConnectError::Cancelled),
         probed = client.probe(params.bucket()) => probed.map(|()| client),

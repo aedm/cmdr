@@ -325,19 +325,33 @@ pub(crate) fn delete_objects(profile: &ProviderProfile, bucket: &str, keys: &[&s
 pub(crate) fn share_link(
     profile: &ProviderProfile,
     credentials: &Credentials,
-    bucket: &str,
-    key: &str,
+    target: LinkTarget<'_>,
     now: SystemTime,
     expires: Duration,
 ) -> Result<Url, ShareLinkError> {
-    let request = get_object(profile, bucket, key, None).map_err(ShareLinkError::Build)?;
+    let request = get_object(profile, target.bucket, target.key, None).map_err(ShareLinkError::Build)?;
+    let rerouted = target
+        .region
+        .filter(|region| *region != profile.region)
+        .and_then(|region| Some((profile.reroute(request.clone(), region)?, region)));
+    let (request, region) = rerouted.unwrap_or((request, profile.region.as_str()));
     let time = AmzTime::new(now);
     let scope = Scope {
         credentials,
-        region: &profile.region,
+        region,
         time: &time,
     };
     presign(&request, &scope, expires).map_err(|_| ShareLinkError::ExpiryOutOfRange)
+}
+
+/// The object a share link reads.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LinkTarget<'a> {
+    pub bucket: &'a str,
+    pub key: &'a str,
+    /// The bucket's own region when it isn't the profile's (an AWS account
+    /// root, `routing.rs`); `None` signs for the profile's.
+    pub region: Option<&'a str>,
 }
 
 /// Why a share link wasn't minted.
@@ -351,7 +365,9 @@ pub(crate) enum ShareLinkError {
 /// A request to `bucket` (and `key`) with no body yet.
 fn at(profile: &ProviderProfile, method: Method, bucket: &str, key: Option<&str>) -> Result<S3Request, BuildError> {
     let location = profile.locate(Some(bucket), key)?;
-    Ok(S3Request::new(method, &profile.scheme, &location.host, location.path))
+    let mut request = S3Request::new(method, &profile.scheme, &location.host, location.path);
+    request.bucket = Some(bucket.to_string());
+    Ok(request)
 }
 
 fn part(

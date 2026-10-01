@@ -19,6 +19,7 @@ use unicode_normalization::{UnicodeNormalization, is_nfc};
 use url::Url;
 
 use crate::encoding::{KeyError, encode_component, encode_key};
+use crate::request::S3Request;
 
 /// The connect form's choice, with what each preset asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -205,7 +206,7 @@ impl ProviderProfile {
             Preset::Aws { region } => {
                 let mut aws = Self::https(
                     ProviderKind::Aws,
-                    format!("s3.{}.amazonaws.com", host_part(region)?),
+                    aws_endpoint(host_part(region)?),
                     region,
                     Addressing::VirtualHosted,
                     [IfNoneMatch; 3],
@@ -375,6 +376,21 @@ impl ProviderProfile {
         })
     }
 
+    /// `request` sent to `region`'s endpoint instead of this profile's, for an
+    /// AWS bucket that lives elsewhere: only the host changes (the bucket stays
+    /// in the host or the path, wherever `locate` put it), and the caller signs
+    /// for `region`. `None` off AWS, for a region a hostname can't carry, or
+    /// for a request that isn't on this profile's endpoint.
+    pub(crate) fn reroute(&self, mut request: S3Request, region: &str) -> Option<S3Request> {
+        if self.kind != ProviderKind::Aws {
+            return None;
+        }
+        let regional = aws_endpoint(host_part(region).ok()?);
+        let bucket_part = request.host.strip_suffix(&self.endpoint_host)?;
+        request.host = format!("{bucket_part}{regional}");
+        Some(request)
+    }
+
     /// Sends `If-None-Match: *` on Put and Complete whatever the allowlist
     /// says, for a Docker cell that proves the header path against VersityGW
     /// (which honours both; `apps/desktop/test/s3-servers/README.md`). ❌
@@ -395,6 +411,11 @@ impl ProviderProfile {
             ConditionalOp::Copy => &self.copy,
         }
     }
+}
+
+/// AWS's endpoint for `region`, which must already be a valid host part.
+fn aws_endpoint(region: &str) -> String {
+    format!("s3.{region}.amazonaws.com")
 }
 
 /// A region, location, or account ID that goes into a hostname: lowercase

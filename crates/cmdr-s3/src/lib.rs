@@ -16,6 +16,7 @@ pub(crate) mod params;
 pub(crate) mod profile;
 pub(crate) mod refusal;
 pub(crate) mod request;
+pub(crate) mod routing;
 pub(crate) mod sigv4;
 pub(crate) mod transport;
 pub mod volume;

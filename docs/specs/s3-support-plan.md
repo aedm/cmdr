@@ -144,6 +144,7 @@ Each one ends green on `pnpm check` with its docs updated. Tiers follow
    `DETAILS.md` § "Known gaps" lists what shows no estimate yet). The estimate is one-time cost only: requests,
    downloads, and early deletion; ongoing storage isn't an operation's cost.
 8. **M8, live providers and polish**: real accounts (keys via `secret`), throughput and throttling measured per provider
-   and the concurrency numbers set from them, conditional-write behavior confirmed on Wasabi and Hetzner, friendly
-   errors, delete-dialog versioning notes, docs (`C+D.md`, `docs/architecture.md`, capability matrix), and the i18n
-   brief for the translator agent.
+   and the concurrency numbers set from them, conditional-write behavior confirmed on Wasabi and Hetzner, an AWS account
+   root reaching a bucket in another region (tested against a fake AWS only, `crates/cmdr-s3/DETAILS.md` § "Providers"),
+   friendly errors, delete-dialog versioning notes, docs (`C+D.md`, `docs/architecture.md`, capability matrix), and the
+   i18n brief for the translator agent.

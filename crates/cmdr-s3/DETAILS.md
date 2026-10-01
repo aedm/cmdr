@@ -208,6 +208,25 @@ certificate. On AWS (where path style is deprecated, no date set) a bucket that 
 **Host parts are validated.** A region, location, or account ID must be `a–z 0–9 -`, so a typed `x.evil.com/` can't
 redirect requests (and the signature) to another host.
 
+**An AWS account root routes each bucket to its own region (`routing.rs`).** One account holds buckets in many regions,
+and a request sent to (and signed for) the wrong one answers `301 PermanentRedirect` (`307` while a new bucket's DNS
+settles; `400 AuthorizationHeaderMalformed` when only the signature's region is off). The client keeps a per-bucket
+region map (`BucketRegions`, dies with the client) and sends a known bucket's requests to `s3.<region>.amazonaws.com`
+signed for that region (`ProviderProfile::reroute`: only the host changes). It learns from `ListBuckets`'
+`BucketRegion`, from `x-amz-bucket-region` on any answer, and from a 400's `<Region>`; a misrouted answer goes once
+more, to the named region. One that names none (a bodyless redirect) asks `HeadBucket`, which carries the header on
+every status. An upload's body can't be sent twice, so `upload` asks `HeadBucket` first when nothing has named the
+bucket yet; a share link does the same so it isn't signed for the wrong region. So the cost is at most one redirect or
+one `HeadBucket` per bucket per session, which the cost estimate ignores.
+
+- ❗ **A bucket place doesn't route**: its connect probe's `WrongRegion` refusal names the region to use instead
+  (`route_each_bucket` is called for the account root only).
+- **AWS only.** The research note documents no region redirect elsewhere (Wasabi says a wrong-region host serves GETs
+  but refuses writes, with no redirect named; M8 checks on a real account).
+- **Verified against a fake AWS only** (`transport_routing_test.rs`: one local server behind every `*.amazonaws.com`
+  host, answering the way the S3 docs say), because the Docker fixtures have one region. M8 confirms it on a real
+  account.
+
 **A short body is refused only where we have evidence (`refuses_short_body`, an allowlist).** S3's contract is that a
 PUT whose body ends before its `Content-Length` publishes nothing and keeps the old object; VersityGW breaks it and
 stores what arrived (fixture README). Trusted, each on evidence (2026-10-01):

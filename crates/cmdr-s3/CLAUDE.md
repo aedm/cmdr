@@ -9,7 +9,7 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
 - `sigv4.rs`, `encoding.rs`, `request.rs`, `ops.rs` (one builder per S3 call), `profile.rs` (preset → endpoint,
   addressing, conditional writes), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
 - `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport.rs` (`S3Client`, the only `reqwest`
-  user).
+  user), `routing.rs` (an AWS account root's per-bucket regions).
 - `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list, stat), `streams.rs` (GET), `writes.rs` (PUT, verify),
   `temp_overwrite.rs`, `multipart_upload.rs` (parts, the sweep), `server_copy.rs`, `batch.rs` (tally, batch delete),
   `upload_body.rs`, `upload_ledger.rs`, `mutation.rs` (folders, delete, rename), `scan.rs`, `share_link.rs`, `paths.rs`,

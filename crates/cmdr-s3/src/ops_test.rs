@@ -339,15 +339,12 @@ fn a_share_link_is_a_presigned_get_for_the_object() {
     let credentials = Credentials::new("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
     let now = UNIX_EPOCH + Duration::from_secs(1_369_353_600);
 
-    let link = share_link(
-        &r2(),
-        &credentials,
-        "photos",
-        "a b.jpg",
-        now,
-        Duration::from_secs(3_600),
-    )
-    .unwrap();
+    let target = LinkTarget {
+        bucket: "photos",
+        key: "a b.jpg",
+        region: None,
+    };
+    let link = share_link(&r2(), &credentials, target, now, Duration::from_secs(3_600)).unwrap();
 
     let url = Url::parse(link.as_str()).unwrap();
     assert_eq!(url.host_str(), Some("acct.r2.cloudflarestorage.com"));
@@ -357,7 +354,22 @@ fn a_share_link_is_a_presigned_get_for_the_object() {
     assert!(query.contains("X-Amz-Expires=3600"));
     assert!(query.contains("X-Amz-Signature="));
     assert_eq!(
-        share_link(&r2(), &credentials, "photos", "a", now, Duration::from_secs(604_801)),
+        share_link(&r2(), &credentials, target, now, Duration::from_secs(604_801)),
         Err(ShareLinkError::ExpiryOutOfRange)
     );
+}
+
+#[test]
+fn a_share_link_to_an_aws_bucket_elsewhere_names_its_region_and_endpoint() {
+    let credentials = Credentials::new("AKIAIOSFODNN7EXAMPLE", "secret");
+    let target = LinkTarget {
+        bucket: "photos",
+        key: "a",
+        region: Some("eu-west-1"),
+    };
+
+    let link = share_link(&aws(), &credentials, target, UNIX_EPOCH, Duration::from_secs(60)).unwrap();
+
+    assert_eq!(link.host_str(), Some("photos.s3.eu-west-1.amazonaws.com"));
+    assert!(link.query().unwrap().contains("%2Feu-west-1%2Fs3%2F"));
 }

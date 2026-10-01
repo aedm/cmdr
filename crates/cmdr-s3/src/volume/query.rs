@@ -60,6 +60,9 @@ impl S3Volume {
                     let answer = self.ask(&client, request, &remote).await?;
                     let page = parse_list_buckets(&answer.text()).map_err(|e| body_error(&e, &remote))?;
                     for bucket in page.buckets {
+                        if let Some(region) = &bucket.region {
+                            client.learn_bucket_region(&bucket.name, region);
+                        }
                         let child = child_of(&remote, &bucket.name);
                         if let Some(entry) = self.folder_entry(&bucket.name, &child, bucket.created) {
                             gathered.add(entry);
