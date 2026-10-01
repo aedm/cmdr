@@ -7,7 +7,7 @@
  * its scan settles. Rationale and the surfaces: `DETAILS.md` § "S3 cost line".
  */
 
-import type { CostEstimate, CostEstimateRequest } from '$lib/tauri-commands'
+import type { ClashPlan, CostEstimate, CostEstimateRequest } from '$lib/tauri-commands'
 import { formatMoney, getNumberFormatter } from '$lib/intl/number-format'
 import type { TransferOperationType } from './write-operation-types'
 
@@ -39,7 +39,9 @@ export function visibleCostLines(estimates: CostEstimate[]): CostLine[] {
 /**
  * The request a dialog hands `S3CostLine`, or `null` for "don't ask (yet)":
  * the scan is still running, the preview id isn't known, or the operation is one
- * the backend doesn't price (compress, trash).
+ * the backend doesn't price (compress, trash). `clashes` (the Move and Copy
+ * dialogs' conflict check plus the chosen policy) prices the overwrites; the
+ * backend decides which clashes the policy overwrites.
  */
 export function costRequestFor(input: {
   operation: TransferOperationType
@@ -47,9 +49,11 @@ export function costRequestFor(input: {
   previewId: string | null
   sourceVolumeId: string
   destinationVolumeId: string | null
+  clashes?: ClashPlan | null
 }): CostEstimateRequest | null {
-  const { operation, scanComplete, previewId, sourceVolumeId, destinationVolumeId } = input
+  const { operation, scanComplete, previewId, sourceVolumeId, destinationVolumeId, clashes } = input
   if (operation !== 'copy' && operation !== 'move' && operation !== 'delete') return null
   if (!scanComplete || previewId === null) return null
-  return { operation, previewId, sourceVolumeId, destinationVolumeId }
+  const request: CostEstimateRequest = { operation, previewId, sourceVolumeId, destinationVolumeId }
+  return clashes ? { ...request, clashes } : request
 }

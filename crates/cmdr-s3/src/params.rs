@@ -60,6 +60,13 @@ impl S3Provider {
         }
     }
 
+    /// Whether the provider is on the `refuses_short_body` allowlist
+    /// (`ProviderProfile`), so an overwrite goes straight to its key. A
+    /// provider whose profile won't build answers `false`, the temp-key side.
+    pub(crate) fn refuses_short_body(&self) -> bool {
+        ProviderProfile::from_preset(&self.preset()).is_ok_and(|profile| profile.refuses_short_body)
+    }
+
     fn preset(&self) -> Preset {
         match self.clone() {
             Self::Aws { region } => Preset::Aws { region },

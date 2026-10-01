@@ -18,6 +18,10 @@ estimates". The product decision: `docs/specs/s3-support-plan.md` § "Product de
 - **Copy**: same account and buckets the provider copies between → `copy_on_server` per file on the one account.
   Otherwise a `download` per file on an S3 source and an `upload` per file on an S3 destination. Each copied folder
   writes a marker at an S3 destination (`upload(0)`).
+- **Overwrites** (a copy's or a move's, `CostEstimateRequest.clashes`): the dialog sends the conflict check's file
+  clashes and its policy; `plan::overwritten` decides which the policy overwrites the way the transfer does (strictly
+  smaller, strictly older), and each one is `replace_object` at the destination plus, for an upload, `upload_over`. A
+  server-side copy replaces in one request, so only `replace_object`.
 - **Move**: the copy, then at the source a `delete_object` per file (with its date) and a `delete_folder` per folder.
   This is also F2's rename by move: the prefilled Move dialog runs the same scan. Before that, `estimate_rename` prices
   the rename editor's own tally (`Volume::tally_subtree`, at most 101 files) as a same-account move, and any amount that
@@ -42,6 +46,7 @@ There's no "stay offline" setting in the app today; if one lands, `fetching_allo
 
 ## Known gaps
 
-- **Overwrites** aren't priced: the conflicts are known only once the operation runs. On Wasabi, overwriting a young
-  object bills its remaining days.
+- **Only the overwrites the dialog's conflict check saw are priced**: its one destination listing finds clashes at the
+  top level, so a file inside a folder that merges isn't known until the operation writes it. Stop asks per clash, so
+  no overwrite is assumed under it, and a skipped clash's copy is still counted.
 - AWS prices are US East's for every region.

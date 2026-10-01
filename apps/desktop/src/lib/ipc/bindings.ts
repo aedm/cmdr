@@ -6213,6 +6213,15 @@ export type ChunkEnd =
   // The chunk reached the end of the file. There is nothing past it.
   | 'endOfFile'
 
+/**
+ *  The clashes the conflict check found, and the policy the dialog will
+ *  answer them with.
+ */
+export type ClashPlan = {
+  resolution: ConflictResolution
+  clashes: KnownClash[]
+}
+
 export type ClientInfoDto = {
   primary_server: string
   timeout_ms: number
@@ -6658,6 +6667,13 @@ export type CostEstimateRequest = {
   sourceVolumeId: string
   // `None` for a delete.
   destinationVolumeId: string | null
+  /**
+   *  What the dialog's conflict check found at the destination, and the
+   *  policy answering it, so overwrites are priced. `None` for a delete, or
+   *  before the check answers. Only the clashes the check's one listing saw:
+   *  a file inside a folder that merges isn't known until it's written.
+   */
+  clashes?: ClashPlan | null
 }
 
 // The per-day cost rollup, newest day first. Wire type (the settings spend list).
@@ -9013,6 +9029,20 @@ export type KeychainError =
   | { type: 'access_denied'; message: string }
   // Other error
   | { type: 'other'; message: string }
+
+/**
+ *  A file the dialog's conflict check found at the destination under a name
+ *  a copied file takes: the two files' sizes and dates, as the check's one
+ *  destination listing saw them (on S3, the destination's upload time).
+ */
+export type KnownClash = {
+  sourceSize: number
+  destSize: number
+  // Unix seconds.
+  sourceModified: number | null
+  // Unix seconds.
+  destModified: number | null
+}
 
 // A dialog type registered by the frontend at startup.
 export type KnownDialog = {

@@ -6,7 +6,7 @@ use cmdr_s3::cost::Workload;
 use serde::Deserialize;
 
 use crate::file_system::volume::ScannedFile;
-use crate::file_system::write_operations::ScanCostFacts;
+use crate::file_system::write_operations::{ConflictResolution, ScanCostFacts};
 
 /// The operation a dialog is about to start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, specta::Type)]
@@ -15,6 +15,64 @@ pub enum CostedOperation {
     Copy,
     Move,
     Delete,
+}
+
+/// A file the dialog's conflict check found at the destination under a name
+/// a copied file takes: the two files' sizes and dates, as the check's one
+/// destination listing saw them (on S3, the destination's upload time).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct KnownClash {
+    pub source_size: u64,
+    pub dest_size: u64,
+    /// Unix seconds.
+    pub source_modified: Option<u64>,
+    /// Unix seconds.
+    pub dest_modified: Option<u64>,
+}
+
+/// The clashes the conflict check found, and the policy the dialog will
+/// answer them with.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClashPlan {
+    pub resolution: ConflictResolution,
+    pub clashes: Vec<KnownClash>,
+}
+
+/// An existing destination file the operation writes over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Overwrite {
+    /// The bytes written over it.
+    pub incoming_size: u64,
+    pub replaced: ScannedFile,
+}
+
+/// The clashes `plan.resolution` overwrites, decided the way the transfer
+/// does (`transfer/volume/conflict.rs`): strictly smaller, strictly older
+/// with both dates known. Stop asks about each one as it comes, so none is
+/// assumed; Skip and Rename overwrite nothing.
+pub(super) fn overwritten(plan: &ClashPlan) -> Vec<Overwrite> {
+    let overwrites = |clash: &KnownClash| match plan.resolution {
+        ConflictResolution::Overwrite => true,
+        ConflictResolution::OverwriteSmaller => clash.dest_size < clash.source_size,
+        ConflictResolution::OverwriteOlder => matches!(
+            (clash.source_modified, clash.dest_modified),
+            (Some(source), Some(dest)) if dest < source
+        ),
+        ConflictResolution::Stop | ConflictResolution::Skip | ConflictResolution::Rename => false,
+    };
+    plan.clashes
+        .iter()
+        .filter(|clash| overwrites(clash))
+        .map(|clash| Overwrite {
+            incoming_size: clash.source_size,
+            replaced: ScannedFile {
+                size: clash.dest_size,
+                modified_at: clash.dest_modified,
+            },
+        })
+        .collect()
 }
 
 /// Each end of the operation: an empty workload when it's an S3 place, and
@@ -27,8 +85,13 @@ pub(super) struct Sides {
 
 /// The billed work per S3 provider the operation touches: the source's first,
 /// then the destination's. A server-side copy bills one account, so it's one
-/// workload.
-pub(super) fn plan(operation: CostedOperation, sides: Sides, facts: &ScanCostFacts) -> Vec<Workload> {
+/// workload. `overwrites` are the destination files the copy writes over.
+pub(super) fn plan(
+    operation: CostedOperation,
+    sides: Sides,
+    facts: &ScanCostFacts,
+    overwrites: &[Overwrite],
+) -> Vec<Workload> {
     let Sides {
         mut source,
         mut destination,
@@ -50,6 +113,10 @@ pub(super) fn plan(operation: CostedOperation, sides: Sides, facts: &ScanCostFac
             both.copy_on_server(file.size);
         }
         write_folder_markers(both, facts.dirs);
+        // The copy replaces each one in a single request.
+        for overwrite in overwrites {
+            both.replace_object(overwrite.replaced.size, overwrite.replaced.modified_at);
+        }
         destination = None;
     } else {
         if let Some(source) = source.as_mut() {
@@ -58,6 +125,10 @@ pub(super) fn plan(operation: CostedOperation, sides: Sides, facts: &ScanCostFac
         if let Some(destination) = destination.as_mut() {
             files.iter().for_each(|file| destination.upload(file.size));
             write_folder_markers(destination, facts.dirs);
+            for overwrite in overwrites {
+                destination.replace_object(overwrite.replaced.size, overwrite.replaced.modified_at);
+                destination.upload_over(overwrite.incoming_size);
+            }
         }
     }
     if operation == CostedOperation::Move

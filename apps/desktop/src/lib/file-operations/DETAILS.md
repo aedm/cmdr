@@ -64,9 +64,11 @@ side only asks and shows.
   when neither end is a priced S3 place, so a dialog asks unconditionally. `S3CostLine` asks once per distinct request
   (keyed by value) and drops an answer to a request that's since changed.
 - **Who asks**: `TransferDialog` for copy and move (❌ not compress), destination = the picked volume. F2's
-  rename-by-move rides it. A same-volume move skips its scan (`isSameVolumeMove`), so it gets no line: a server-side
-  rename costs next to nothing. `DeleteDialog` for a permanent delete only; a trash is unpriced, so flipping the switch
-  hides the line.
+  rename-by-move rides it. A same-volume move that renames in one call skips its scan (`isSameVolumeMove`), so it gets
+  no line: a server-side rename costs next to nothing. On S3 (`renamesCanCopy`) it scans and asks. Once the conflict
+  check has answered, the request carries its file clashes and the chosen policy (`clashes`), so switching the policy
+  re-asks and the overwrites are priced. `DeleteDialog` for a permanent delete only; a trash is unpriced, so flipping
+  the switch hides the line.
 - **Hide rule**: an estimate that rounds to zero in its currency's minor unit (`roundsToZero`, read off the formatter's
   own `maximumFractionDigits`) gets no line; when none is left, nothing renders. A refusal renders nothing and logs at
   debug.

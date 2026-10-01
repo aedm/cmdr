@@ -523,7 +523,10 @@ request: the inputs are the scan the dialog already ran.
 - **`Workload` mirrors the write paths**, method by method, with the shapes in each doc comment: an upload is one PUT up
   to the part floor or Create + parts + Complete, then a verifying HEAD; a server copy adds the source's HEAD; a
   provider off the conditional-write list (everyone but AWS and R2) adds a no-overwrite HEAD (two for parts). Deletes
-  batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. The counts are
-  close, not exact: a temp-key overwrite, a retried part, or a page past 1,000 keys add a few.
+  batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. An overwrite is
+  `replace_object` (the replaced object's remaining days, with no request of its own) plus, for an upload,
+  `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite lands through a temp key (four HEADs, a
+  `CopyObject`, a delete), and the temp goes brand new, so Wasabi bills its full 90 days. The counts are close, not
+  exact: a retried part or a page past 1,000 keys add a few.
 - **Gigabytes are binary** (AWS's GB is 2^30; Wasabi's FAQ divides a TB by 1,024).
 - **"Other" has no prices**, so no estimate. AWS prices are US East's; other regions differ by a little.

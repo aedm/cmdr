@@ -278,6 +278,56 @@ fn wasabi_partial_day_rounds_down_to_whole_days_of_age() {
 }
 
 // ---------------------------------------------------------------------------
+// Overwrites: the replaced object, and the temp key off the short-body
+// allowlist.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wasabi_overwriting_a_young_object_bills_its_remaining_days_with_no_delete_request() {
+    let mut work = workload(&wasabi());
+    work.replace_object(GIB, Some(NOW - 10 * DAY));
+    close(estimate(&work).total, 80.0 * 0.00780273 / 30.0);
+    assert!(work.requests.is_empty(), "the write replaces it: {:?}", work.requests);
+}
+
+#[test]
+fn aws_overwriting_an_object_costs_nothing_extra() {
+    let mut work = workload(&aws());
+    work.replace_object(GIB, Some(NOW));
+    work.upload_over(MIB);
+    close(estimate(&work).total, 0.0);
+    assert!(
+        work.requests.is_empty(),
+        "AWS refuses a short body, so the PUT goes straight to the key"
+    );
+}
+
+/// Off the `refuses_short_body` allowlist a one-PUT overwrite lands through a
+/// temp key, and the temp is deleted brand new: Wasabi bills its whole 90 days.
+#[test]
+fn wasabi_upload_over_an_object_goes_through_a_temp_key_billed_for_90_days() {
+    let mut work = workload(&wasabi());
+    work.upload_over(GIB / 32);
+    close(estimate(&work).total, (1.0 / 32.0) * 90.0 * 0.00780273 / 30.0);
+    // HEAD finding the original, HEAD of the temp, the copy, its verifying
+    // HEAD, the HEAD of the temp's token, and the temp's delete.
+    assert_eq!(work.requests.get(&RequestKind::HeadObject), Some(&4));
+    assert_eq!(work.requests.get(&RequestKind::CopyObject), Some(&1));
+    assert_eq!(work.requests.get(&RequestKind::DeleteObject), Some(&1));
+}
+
+#[test]
+fn a_multipart_upload_over_an_object_goes_straight_to_the_key() {
+    let mut work = workload(&hetzner());
+    work.upload_over(GIB);
+    assert!(
+        work.requests.is_empty(),
+        "only its completion publishes: {:?}",
+        work.requests
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Hetzner: requests free, storage and egress inside the base price, EUR.
 // ---------------------------------------------------------------------------
 

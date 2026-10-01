@@ -132,4 +132,35 @@ describe('createTransferConflictCheck', () => {
     expect(check.conflictNames).toEqual(['photo.jpg'])
     expect(check.conflictCheckComplete).toBe(true)
   })
+
+  it('keeps the sizes and dates of the file clashes, for pricing an overwrite', async () => {
+    scanVolumeForConflictsMock.mockResolvedValueOnce([
+      {
+        sourcePath: 'photo.jpg',
+        destPath: '/photos/photo.jpg',
+        sourceIsDirectory: false,
+        destIsDirectory: false,
+        sourceSize: 10,
+        destSize: 5,
+        sourceModified: 200,
+        destModified: 100,
+      },
+      {
+        sourcePath: 'album',
+        destPath: '/photos/album',
+        sourceIsDirectory: true,
+        destIsDirectory: false,
+        sourceSize: 0,
+        destSize: 7,
+        sourceModified: null,
+        destModified: null,
+      },
+    ])
+    const check = makeCheck(['/backup/photo.jpg', '/backup/album'], '/photos')
+
+    await check.check()
+
+    // A folder replacing a file is a clash too, but it isn't an object overwritten by bytes.
+    expect(check.fileClashes).toEqual([{ sourceSize: 10, destSize: 5, sourceModified: 200, destModified: 100 }])
+  })
 })

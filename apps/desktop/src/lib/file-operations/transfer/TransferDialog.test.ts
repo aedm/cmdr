@@ -733,6 +733,28 @@ describe('TransferDialog data-scan-state marker', () => {
     )
   })
 
+  it('prices the overwrites the chosen policy makes, from the conflict check', async () => {
+    scanVolumeForConflictsMock.mockResolvedValue([
+      makeConflict({ sourcePath: 'notes.txt', sourceSize: 10, destSize: 5, sourceModified: 200, destModified: 100 }),
+    ])
+    const target = mountDialog({ operationType: 'copy', sourceVolumeId: 'root', currentVolumeId: 's3-photos' })
+    await flushMicrotasks()
+    scanCompleteCb?.({ previewId: 'preview-1', filesTotal: 2, dirsTotal: 0, bytesTotal: 30, dedupBytesTotal: 30 })
+    await flushMicrotasks()
+
+    target.querySelector<HTMLInputElement>('input[type="radio"][value="overwrite"]')?.click()
+    await flushMicrotasks()
+
+    expect(vi.mocked(commands.estimateOperationCost)).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        clashes: {
+          resolution: 'overwrite',
+          clashes: [{ sourceSize: 10, destSize: 5, sourceModified: 200, destModified: 100 }],
+        },
+      }),
+    )
+  })
+
   it('still reaches "done" for a same-volume COPY (copy scans even on one volume)', async () => {
     const target = mountDialog({ operationType: 'copy', sourceVolumeId: 'ext', currentVolumeId: 'ext' })
     await flushMicrotasks()

@@ -6,7 +6,7 @@
 use cmdr_s3::S3Provider;
 use cmdr_s3::cost::{PriceTable, Workload};
 
-use super::plan::{CostedOperation, Sides, plan};
+use super::plan::{ClashPlan, CostedOperation, KnownClash, Overwrite, Sides, overwritten, plan};
 use crate::file_system::volume::ScannedFile;
 use crate::file_system::write_operations::ScanCostFacts;
 
@@ -73,7 +73,7 @@ fn nothing_on_s3_plans_nothing() {
         destination: None,
         server_copy: false,
     };
-    assert!(plan(CostedOperation::Copy, sides, &facts(&[(MIB, None)], 0)).is_empty());
+    assert!(plan(CostedOperation::Copy, sides, &facts(&[(MIB, None)], 0), &[]).is_empty());
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn an_upload_to_aws_is_a_put_and_a_head_per_file_and_folder() {
         server_copy: false,
     };
     let files: Vec<_> = (0..1_000).map(|_| (MIB, None)).collect();
-    let planned = plan(CostedOperation::Copy, sides, &facts(&files, 2));
+    let planned = plan(CostedOperation::Copy, sides, &facts(&files, 2), &[]);
     // 1,000 files and two folder markers: 1,002 PUTs ($0.00501) and 1,002
     // verifying HEADs ($0.0004008).
     close(totals(&planned)[0], 0.0054108);
@@ -97,7 +97,7 @@ fn a_download_from_aws_bills_its_bytes() {
         destination: None,
         server_copy: false,
     };
-    let planned = plan(CostedOperation::Copy, sides, &facts(&[(10 * GIB, None)], 0));
+    let planned = plan(CostedOperation::Copy, sides, &facts(&[(10 * GIB, None)], 0), &[]);
     // One GET and 10 GB × $0.09.
     close(totals(&planned)[0], 0.9000004);
 }
@@ -109,7 +109,7 @@ fn a_move_within_one_aws_account_copies_on_the_server_and_deletes_the_source() {
         destination: Some(aws()),
         server_copy: true,
     };
-    let planned = plan(CostedOperation::Move, sides, &facts(&[(MIB, None)], 1));
+    let planned = plan(CostedOperation::Move, sides, &facts(&[(MIB, None)], 1), &[]);
     // One workload: the account is billed once. The file: `CopyObject` and two
     // HEADs; the folder: its marker written at the destination (PUT + HEAD), and
     // at the source a capped listing plus the marker's free delete. The file's
@@ -126,7 +126,12 @@ fn a_copy_between_two_accounts_downloads_from_one_and_uploads_to_the_other() {
         destination: Some(aws()),
         server_copy: false,
     };
-    let planned = plan(CostedOperation::Copy, sides, &facts(&[(MIB, None), (MIB, None)], 0));
+    let planned = plan(
+        CostedOperation::Copy,
+        sides,
+        &facts(&[(MIB, None), (MIB, None)], 0),
+        &[],
+    );
     let amounts = totals(&planned);
     // R2: two GETs at $0.36/M, egress free. AWS: two PUTs and two HEADs.
     close(amounts[0], 2.0 * 0.36e-6);
@@ -144,6 +149,7 @@ fn a_wasabi_delete_bills_the_young_objects_remaining_days() {
         CostedOperation::Delete,
         sides,
         &facts(&[(GIB, Some(NOW - 30 * DAY)), (GIB, Some(NOW - 200 * DAY))], 1),
+        &[],
     );
     // Only the 30-day-old object: 1 GB × 60 days × $0.00780273 / 30.
     close(totals(&planned)[0], 60.0 * 0.00780273 / 30.0);
@@ -156,7 +162,7 @@ fn a_move_off_wasabi_bills_early_deletion_on_the_source() {
         destination: None,
         server_copy: false,
     };
-    let planned = plan(CostedOperation::Move, sides, &facts(&[(GIB, Some(NOW))], 0));
+    let planned = plan(CostedOperation::Move, sides, &facts(&[(GIB, Some(NOW))], 0), &[]);
     close(totals(&planned)[0], 90.0 * 0.00780273 / 30.0);
 }
 
@@ -167,7 +173,7 @@ fn a_copy_off_wasabi_deletes_nothing_and_costs_nothing() {
         destination: None,
         server_copy: false,
     };
-    let planned = plan(CostedOperation::Copy, sides, &facts(&[(GIB, Some(NOW))], 0));
+    let planned = plan(CostedOperation::Copy, sides, &facts(&[(GIB, Some(NOW))], 0), &[]);
     close(totals(&planned)[0], 0.0);
 }
 
@@ -184,8 +190,101 @@ fn without_a_per_file_list_the_bytes_spread_evenly_over_the_files() {
         bytes: 400 * MIB,
         per_file: None,
     };
-    let planned = plan(CostedOperation::Copy, sides, &bare);
+    let planned = plan(CostedOperation::Copy, sides, &bare, &[]);
     // Four 100 MiB files, each two 64 MiB-floor parts plus Create and Complete:
     // 16 PUT-class requests, and four HEADs.
     close(totals(&planned)[0], 16.0 * 5e-6 + 4.0 * 4e-7);
+}
+
+fn clash(source_size: u64, dest_size: u64, source_modified: Option<u64>, dest_modified: Option<u64>) -> KnownClash {
+    KnownClash {
+        source_size,
+        dest_size,
+        source_modified,
+        dest_modified,
+    }
+}
+
+/// An upload onto Wasabi that overwrites a young object: the replaced object's
+/// remaining days, plus the temp key's whole 90 days (Wasabi is off the
+/// short-body allowlist, so a one-PUT overwrite lands through a temp key).
+#[test]
+fn an_upload_overwriting_on_wasabi_bills_the_replaced_object_and_the_temp_key() {
+    let sides = Sides {
+        source: None,
+        destination: Some(wasabi()),
+        server_copy: false,
+    };
+    let overwrites = [Overwrite {
+        incoming_size: GIB / 32,
+        replaced: ScannedFile {
+            size: GIB,
+            modified_at: Some(NOW - 10 * DAY),
+        },
+    }];
+    let planned = plan(
+        CostedOperation::Copy,
+        sides,
+        &facts(&[(GIB / 32, None)], 0),
+        &overwrites,
+    );
+    let replaced = 80.0 * 0.00780273 / 30.0;
+    let temp = (1.0 / 32.0) * 90.0 * 0.00780273 / 30.0;
+    close(totals(&planned)[0], replaced + temp);
+}
+
+/// A server-side copy onto an existing key replaces it in one request: only
+/// the replaced object's remaining days.
+#[test]
+fn a_server_copy_overwriting_on_wasabi_bills_only_the_replaced_object() {
+    let sides = Sides {
+        source: Some(wasabi()),
+        destination: Some(wasabi()),
+        server_copy: true,
+    };
+    let overwrites = [Overwrite {
+        incoming_size: MIB,
+        replaced: ScannedFile {
+            size: GIB,
+            modified_at: Some(NOW - 30 * DAY),
+        },
+    }];
+    let planned = plan(CostedOperation::Copy, sides, &facts(&[(MIB, None)], 0), &overwrites);
+    close(totals(&planned)[0], 60.0 * 0.00780273 / 30.0);
+}
+
+#[test]
+fn the_policy_decides_which_known_clashes_are_overwritten() {
+    use crate::file_system::write_operations::ConflictResolution;
+    let clashes = vec![
+        clash(10, 5, Some(200), Some(100)),
+        clash(10, 20, Some(100), Some(200)),
+        clash(10, 10, None, Some(100)),
+    ];
+    let sizes = |resolution| -> Vec<u64> {
+        overwritten(&ClashPlan {
+            resolution,
+            clashes: clashes.clone(),
+        })
+        .iter()
+        .map(|overwrite| overwrite.replaced.size)
+        .collect()
+    };
+    assert_eq!(sizes(ConflictResolution::Overwrite), [5, 20, 10]);
+    assert_eq!(
+        sizes(ConflictResolution::OverwriteSmaller),
+        [5],
+        "strictly smaller only"
+    );
+    assert_eq!(
+        sizes(ConflictResolution::OverwriteOlder),
+        [5],
+        "strictly older, both dates known"
+    );
+    assert!(sizes(ConflictResolution::Skip).is_empty());
+    assert!(sizes(ConflictResolution::Rename).is_empty());
+    assert!(
+        sizes(ConflictResolution::Stop).is_empty(),
+        "each clash is asked about, so none is assumed"
+    );
 }

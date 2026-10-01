@@ -21,6 +21,10 @@ pub struct Workload {
     /// Whether a write HEADs its key first, because the provider ignores or
     /// lacks `If-None-Match` (`DETAILS.md` § "No-overwrite writes").
     pub(crate) checks_before_write: bool,
+    /// Whether a one-PUT overwrite of an existing object lands through a temp
+    /// key, because the provider is off the `refuses_short_body` allowlist
+    /// (`volume/temp_overwrite.rs`).
+    pub(crate) overwrites_through_temp: bool,
     pub(crate) requests: HashMap<RequestKind, u64>,
     /// Objects deleted, batched into `DeleteObjects` at estimate time.
     pub(crate) deleted_objects: u64,
@@ -51,6 +55,7 @@ impl Workload {
             // AWS takes `If-None-Match` on every write and R2 on a PUT and a
             // copy (`ProviderProfile::from_preset`); everyone else HEADs first.
             checks_before_write: !matches!(provider, S3Provider::Aws { .. } | S3Provider::R2 { .. }),
+            overwrites_through_temp: !provider.refuses_short_body(),
             requests: HashMap::new(),
             deleted_objects: 0,
             egress_bytes: 0,
@@ -111,6 +116,34 @@ impl Workload {
             let age_days = self.now.saturating_sub(modified_at) / SECONDS_PER_DAY;
             self.dated_deletions.push((size, age_days));
         }
+    }
+
+    /// An existing object the operation writes over. `modified_at` is its
+    /// upload time, when known: a provider with a minimum storage duration
+    /// bills its remaining days, as for a delete, though no delete is sent.
+    pub fn replace_object(&mut self, size: u64, modified_at: Option<u64>) {
+        if let Some(modified_at) = modified_at {
+            let age_days = self.now.saturating_sub(modified_at) / SECONDS_PER_DAY;
+            self.dated_deletions.push((size, age_days));
+        }
+    }
+
+    /// What an [`upload`](Self::upload) of `size` adds when it lands on an
+    /// EXISTING key. Off the `refuses_short_body` allowlist a one-PUT
+    /// overwrite goes through a temp key (`volume/temp_overwrite.rs`): a HEAD
+    /// finding the original, the temp's HEAD, a `CopyObject` onto the final key
+    /// and its verifying HEAD, then a HEAD of the temp's token and its delete.
+    /// The temp goes brand new, so a minimum storage duration bills its whole
+    /// term. A multipart upload goes straight to the key (only its completion
+    /// publishes), and adds nothing.
+    pub fn upload_over(&mut self, size: u64) {
+        if !self.overwrites_through_temp || part_count(size) > 1 {
+            return;
+        }
+        self.add(RequestKind::HeadObject, 4);
+        self.add(RequestKind::CopyObject, 1);
+        self.add(RequestKind::DeleteObject, 1);
+        self.dated_deletions.push((size, 0));
     }
 
     /// One folder removed once it's empty (`volume/mutation.rs`): a listing

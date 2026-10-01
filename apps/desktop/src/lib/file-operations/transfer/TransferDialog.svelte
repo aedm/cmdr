@@ -298,8 +298,22 @@
 
     const confirmLabel = $derived(tString(confirmLabelKey(activeOperationType)))
     // A same-volume move that renames in one call never scans, so it never asks.
+    // The overwrites the policy makes are priced from the conflict check's
+    // clashes, once it has answered (rename mode's new name is never taken).
+    const costClashes = $derived(
+        conflicts.conflictCheckComplete && !isRenameMode
+            ? { resolution: conflictPolicy, clashes: conflicts.fileClashes }
+            : null,
+    )
     const costRequest = $derived(
-        costRequestFor({ operation: activeOperationType, scanComplete, previewId: scan.previewId, sourceVolumeId, destinationVolumeId: selectedVolumeId }),
+        costRequestFor({
+            operation: activeOperationType,
+            scanComplete,
+            previewId: scan.previewId,
+            sourceVolumeId,
+            destinationVolumeId: selectedVolumeId,
+            clashes: costClashes,
+        }),
     )
 
     /** Counting state for the tallies element, exposed as `data-scan-state` so

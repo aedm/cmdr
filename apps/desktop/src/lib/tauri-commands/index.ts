@@ -1009,6 +1009,14 @@ export {
   knownS3PlaceOf,
   estimateOperationCost,
 } from './s3'
-export type { CostEstimate, CostEstimateRequest, S3ProviderChoice, S3UnattendedReconnect, SavedS3Place } from './s3'
+export type {
+  ClashPlan,
+  CostEstimate,
+  CostEstimateRequest,
+  KnownClash,
+  S3ProviderChoice,
+  S3UnattendedReconnect,
+  SavedS3Place,
+} from './s3'
 
 export { confirmWithCheckbox } from './confirm-dialog'

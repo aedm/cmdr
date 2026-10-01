@@ -15,8 +15,8 @@ use cmdr_s3::S3Volume;
 use cmdr_s3::cost::PriceTable;
 use serde::{Deserialize, Serialize};
 
-pub use plan::CostedOperation;
-use plan::{Sides, plan};
+pub use plan::{ClashPlan, CostedOperation};
+use plan::{Overwrite, Sides, overwritten, plan};
 
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::write_operations::{ScanCostFacts, cached_cost_facts};
@@ -31,6 +31,12 @@ pub struct CostEstimateRequest {
     pub source_volume_id: String,
     /// `None` for a delete.
     pub destination_volume_id: Option<String>,
+    /// What the dialog's conflict check found at the destination, and the
+    /// policy answering it, so overwrites are priced. `None` for a delete, or
+    /// before the check answers. Only the clashes the check's one listing saw:
+    /// a file inside a folder that merges isn't known until it's written.
+    #[serde(default)]
+    pub clashes: Option<ClashPlan>,
 }
 
 /// One provider's share of the cost.
@@ -66,7 +72,14 @@ pub fn estimate(request: &CostEstimateRequest, data_dir: Option<&Path>) -> Vec<C
         destination: destination_s3.map(S3Volume::cost_workload),
         server_copy: matches!((source_s3, destination_s3), (Some(from), Some(to)) if to.copies_on_server_from(from)),
     };
-    priced(request.operation, sides, &facts, &price_source::current(data_dir))
+    let overwrites = request.clashes.as_ref().map(overwritten).unwrap_or_default();
+    priced(
+        request.operation,
+        sides,
+        &facts,
+        &overwrites,
+        &price_source::current(data_dir),
+    )
 }
 
 /// What renaming an entry on `volume_id` costs when the rename runs as a move
@@ -89,11 +102,18 @@ fn priced_rename(workload: cmdr_s3::cost::Workload, facts: &ScanCostFacts, table
         destination: Some(workload),
         server_copy: true,
     };
-    priced(CostedOperation::Move, sides, facts, table)
+    // A rename's new name is free: the editor refuses a taken one.
+    priced(CostedOperation::Move, sides, facts, &[], table)
 }
 
-fn priced(operation: CostedOperation, sides: Sides, facts: &ScanCostFacts, table: &PriceTable) -> Vec<CostEstimate> {
-    plan(operation, sides, facts)
+fn priced(
+    operation: CostedOperation,
+    sides: Sides,
+    facts: &ScanCostFacts,
+    overwrites: &[Overwrite],
+    table: &PriceTable,
+) -> Vec<CostEstimate> {
+    plan(operation, sides, facts, overwrites)
         .iter()
         .filter_map(|work| table.estimate(work))
         .map(|estimate| {

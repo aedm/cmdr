@@ -73,6 +73,15 @@ describe('costRequestFor', () => {
     expect(costRequestFor({ ...settled, operation: 'move' })?.operation).toBe('move')
   })
 
+  it('carries what the conflict check found, so overwrites are priced', () => {
+    const clashes = {
+      resolution: 'overwrite' as const,
+      clashes: [{ sourceSize: 10, destSize: 5, sourceModified: 200, destModified: 100 }],
+    }
+    expect(costRequestFor({ ...settled, operation: 'copy', clashes })?.clashes).toEqual(clashes)
+    expect(costRequestFor({ ...settled, operation: 'copy', clashes: null })).not.toHaveProperty('clashes')
+  })
+
   it('asks for a delete with no destination', () => {
     expect(costRequestFor({ ...settled, operation: 'delete', destinationVolumeId: null })).toEqual({
       operation: 'delete',

@@ -9,15 +9,25 @@
 
 import { commands } from '$lib/ipc/bindings'
 import type {
+  ClashPlan,
   CostEstimate,
   CostEstimateRequest,
+  KnownClash,
   S3ProviderChoice,
   S3UnattendedReconnect,
   SavedS3Place,
 } from '$lib/ipc/bindings'
 import { throwKeychainError } from '$lib/servers/keychain-failure'
 
-export type { CostEstimate, CostEstimateRequest, S3ProviderChoice, S3UnattendedReconnect, SavedS3Place }
+export type {
+  ClashPlan,
+  CostEstimate,
+  CostEstimateRequest,
+  KnownClash,
+  S3ProviderChoice,
+  S3UnattendedReconnect,
+  SavedS3Place,
+}
 
 /**
  * Every saved S3 place, one per bucket (or account root), with the provider the
