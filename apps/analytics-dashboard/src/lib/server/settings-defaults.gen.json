@@ -1872,6 +1872,7 @@
     "listing.briefColumnWidthMaxPx": 400,
     "listing.briefColumnWidthMode": "paneWidth",
     "listing.directorySortMode": "likeFiles",
+    "listing.foldersFirst": true,
     "listing.showExtensionInName": false,
     "listing.showHiddenFiles": false,
     "listing.showTags": true,
