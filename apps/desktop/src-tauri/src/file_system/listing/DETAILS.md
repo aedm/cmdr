@@ -664,6 +664,15 @@ unconditional replace.
 encode↔decode round-trip is verified **semantically** (re-`read_tags` equals the input), not byte-for-byte against a
 Finder reference — valid bplists differ in object-table ordering/dedup.
 
+**Where the menu offers tags.** Only on rows that are real OS paths (`PaneContextMenuFacts.can_tag`, the frontend's
+`rowIsOsVisible`, the same reading `Share…` takes). Decision/Why: hiding an action that can't work beats explaining
+after the click, and the write is an `xattr::set` through the path, so a phone, an ADB device, an SFTP or WebDAV server,
+an archive's insides, or a `.git`-portal row takes the click and stores nothing. Keyed on the capability, ❌ never a
+list of backends, so a new protocol-only backend (S3) hides them for free. A share Cmdr talks to directly over smb2
+keeps them: its share stays mounted by macOS, its rows are `/Volumes/…` paths, and the xattr goes through that mount.
+A macOS-mounted filesystem that can't store xattrs still shows them; only trying can tell. Reading tags
+(`enrich_tags`) still runs everywhere, since an empty read is harmless.
+
 `tags.rs::toggle_color(paths, color)` is the higher-level op behind both triggers: it reads each path's current tags,
 applies Finder's multi-file rule (if EVERY path already carries the color, remove it from all; otherwise add the
 canonical system tag — `Red\n6`, …, `Gray\n1` — to every path that lacks it), preserves all other tags, skips rewriting

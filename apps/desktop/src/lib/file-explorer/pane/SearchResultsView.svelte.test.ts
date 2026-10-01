@@ -489,6 +489,7 @@ describe('SearchResultsView', () => {
       expect(showFileContextMenuSpy.mock.calls[0][4]).toEqual({
         restrictDestinationActions: true,
         canShowInFolder: true,
+        canTag: true,
       })
       target.remove()
     })

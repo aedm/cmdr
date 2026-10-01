@@ -175,6 +175,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canTag: true,
           canFavorite: true,
         },
         { countText: '2 items', sizeText: undefined },
@@ -197,6 +198,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canTag: true,
           canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
@@ -219,6 +221,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canTag: true,
           canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
@@ -241,6 +244,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: false,
           canShare: false,
+          canTag: false,
           canFavorite: false,
         },
         { countText: undefined, sizeText: undefined },
@@ -264,6 +268,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: false,
           canShare: true,
+          canTag: true,
           // The third fact parts company with the other two: a snapshot row is a real
           // file, so it shares, but it isn't a folder that will still be there next launch.
           canFavorite: false,
@@ -284,12 +289,18 @@ describe('createPanePointer', () => {
         'a.txt',
         false,
         ['/dir/trip.zip/IMG_0001.jpg'],
-        { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canFavorite: false },
+        { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canTag: false, canFavorite: false },
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
         sameKindOfEntry,
       )
+    })
+
+    it('hides the tag colors on a phone, where a tag has nowhere to be stored', async () => {
+      state.volumeId = 'mtp-1'
+      await createPanePointer(deps).handleContextMenu(entryOf())
+      expect(ipc.showFileContextMenu.mock.calls[0][4]).toMatchObject({ canTag: false })
     })
 
     it('labels the Selection submenu from the ROW the menu opens over, not the pane-wide state', async () => {
@@ -337,6 +348,7 @@ describe('createPanePointer', () => {
         listingId: 'listing-1',
         canOpenTerminalHere: true,
         canShare: true,
+        canTag: true,
         canFavorite: true,
       })
       expect(ipc.showFileContextMenu.mock.calls[0][3]).toEqual(['/dir/a.txt', '/dir/b.txt'])

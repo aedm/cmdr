@@ -111,6 +111,11 @@ pub struct PaneContextMenuFacts {
     /// needs. Not the same question as `can_open_terminal_here`: the search-results
     /// snapshot has no folder of its own yet lists real files.
     pub can_share: bool,
+    /// Whether the seven Finder tag colors appear. A tag is an xattr written through the row's
+    /// path, so only rows that are real OS paths can hold one: a phone, an SFTP or WebDAV
+    /// server, or an archive's insides would take the click and store nothing. The same
+    /// reading of the row as `can_share`, kept apart because it gates a different item.
+    pub can_tag: bool,
     /// Whether the right-clicked folder is somewhere a favorite could point back to, so the
     /// "Add to favorites" item is offered. The affordance half of [`crate::commands::favorites`]'s
     /// own gate; ❗ enforcement stays there, since a context menu is not the only add surface.
@@ -169,6 +174,7 @@ pub fn show_file_context_menu<R: Runtime>(
         is_directory,
         is_icloud_drive,
         can_share: pane.can_share,
+        can_tag: pane.can_tag,
     });
 
     // Update menu context so on_menu_event has paths + bundle map for the new items.
@@ -244,6 +250,7 @@ pub fn show_file_context_menu<R: Runtime>(
             can_show_in_folder: pane.can_show_in_folder,
             can_open_terminal_here: pane.can_open_terminal_here,
             can_share: pane.can_share,
+            can_tag: pane.can_tag,
             can_favorite: pane.can_favorite,
         },
         image_index,

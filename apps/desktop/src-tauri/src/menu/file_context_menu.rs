@@ -170,6 +170,11 @@ pub struct ContextMenuPaneFacts {
     /// no, so the two can't be folded into one flag. `Share` needs one more yes on top:
     /// macOS has to actually offer a service (`FileContextInfo::share_services`).
     pub can_share: bool,
+    /// Whether the seven Finder tag colors may appear (macOS). The same reading of the rows as
+    /// `can_share` (a tag is an xattr written through the row's path), its own flag because it
+    /// gates its own item. ❗ Off on a phone, an SFTP / WebDAV server, an archive's insides, or a
+    /// `.git`-portal row: the click would write nothing and say nothing.
+    pub can_tag: bool,
     /// Whether "Add to favorites" may appear on a folder row at all: whether that row is a
     /// place a favorite could point back to next launch. The ROW's answer, like `can_share`,
     /// and the affordance half of Rust's own `add_favorite` gate — which refuses an archive's
@@ -215,11 +220,12 @@ pub fn build_context_menu<R: Runtime>(
         can_show_in_folder,
         can_open_terminal_here,
         can_share,
+        can_tag,
         can_favorite,
     } = pane;
-    // Both gate macOS-only items, so on Linux they're read nowhere.
+    // All three gate macOS-only items, so on Linux they're read nowhere.
     #[cfg(not(target_os = "macos"))]
-    let _ = (can_open_terminal_here, can_share);
+    let _ = (can_open_terminal_here, can_share, can_tag);
     let menu = Menu::new(app)?;
     #[cfg(target_os = "macos")]
     let mut late = LateTargets::new(app);
@@ -266,9 +272,10 @@ pub fn build_context_menu<R: Runtime>(
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     // Finder tag colors (macOS): seven circles that toggle the system color tags on the
-    // selection. Shown for files and folders (Finder tags both).
+    // selection. Shown for files and folders (Finder tags both), wherever the rows are real
+    // OS paths a tag can be written to (`can_tag`).
     #[cfg(target_os = "macos")]
-    {
+    if can_tag {
         let tag_items = append_tag_color_group(app, &menu)?;
         if info.applied_tag_colors.is_pending() {
             late.tag_items = tag_items;

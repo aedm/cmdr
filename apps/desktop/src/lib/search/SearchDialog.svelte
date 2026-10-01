@@ -235,8 +235,9 @@
             entry.isDirectory,
             [entry.path],
             // A hit comes from the file index, which only walks drives a favorite may point
-            // at, so a folder row here is always favoritable.
-            { canFavorite: entry.isDirectory },
+            // at, so a folder row here is always favoritable, and always a real path a tag
+            // can be written to.
+            { canFavorite: entry.isDirectory, canTag: true },
             { sizeText: contextMenuSizeText(contextMenuSizeBytes([entry])) },
             boundShortcuts(),
         ).catch(() => {

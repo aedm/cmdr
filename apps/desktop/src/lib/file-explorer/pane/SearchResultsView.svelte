@@ -266,7 +266,8 @@
                 snapshotBasename(entry.path),
                 entry.isDirectory,
                 paths,
-                { restrictDestinationActions: !caps.canWrite, canShowInFolder: true },
+                // Every snapshot row is a real file, so the tag colors can write to it.
+                { restrictDestinationActions: !caps.canWrite, canShowInFolder: true, canTag: true },
                 {
                     countText: contextMenuCountText(paths.length),
                     sizeText: contextMenuSizeText(contextMenuSizeBytes(targets)),

@@ -197,7 +197,9 @@ Exceptions that do NOT use `"execute-command"`:
   `MenuState.context.paths`. The "Other…" entry shows an `NSOpenPanel` filtered to `.app`
   bundles and launches the chosen app the same way.
 - **Finder tag colors** (macOS): the file context menu carries seven circle items
-  (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
+  (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders wherever `can_tag` says the rows are
+  real OS paths: hidden on a phone, ADB, SFTP, WebDAV, an archive's insides, and a `.git`-portal row, where the write
+  would store nothing and say nothing), IDs `tag-color:<1..=7>`,
   which `tag_row/` draws as Finder's one row of circles once the menu tracks ("The tag row"). Like "Open with", they're
   prefix-routed
   (`on_menu_event` matches `tag-color:`) — NOT in `menu_id_to_command` — and call
