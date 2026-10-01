@@ -389,9 +389,14 @@ share's figure on every folder after. It listens for `volume-space-changed` even
 is the pane ID, so two panes on the same volume have independent registrations (one pane navigating away doesn't affect
 the other). The backend deduplicates by volume_id, polls each volume at its own cadence
 (`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the readout would draw a different
-figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). While the main window is
-hidden it polls only the boot volume's low-space check, then catches up the moment the window shows. The volume dropdown
-(`volume-space-manager.svelte.ts`) uses a separate on-demand fetch and is unaffected.
+figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). ❗ A new watch counts as a
+reader that has seen nothing: the poller polls that volume on the next one-second tick and sends the reading even if it
+hasn't moved (`space_poller::watch`). A remote volume (`sftp://`, `webdav://`) has no other route to the pane, because
+the on-demand `getVolumeSpace` reads the mount table and answers `null`, so a second pane on a volume the first one
+already showed stayed blank until the free space moved. For the same reason a `null` fetch never overwrites a figure: it
+means "this route can't tell". While the main window is hidden it polls only the boot volume's low-space check, then
+catches up the moment the window shows. The volume dropdown (`volume-space-manager.svelte.ts`) uses a separate on-demand
+fetch and is unaffected.
 
 The wording lives in `disk-space-utils.ts`, catalog-backed functions over one `SpaceInfo` plus the user's binary/SI
 format.
