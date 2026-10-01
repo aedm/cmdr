@@ -311,6 +311,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Ordner zuerst anzeigen",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Listet Ordner vor den Dateien auf. Schalte das aus, um Ordner und Dateien gemeinsam nach der gewählten Spalte zu sortieren. Dann steht bei einer Sortierung nach Datum das neueste Objekt oben, egal ob Ordner oder Datei.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Ordner sortieren",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

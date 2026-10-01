@@ -311,6 +311,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Visa mappar först",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Listar mappar ovanför filer. Slå av det för att sortera mappar och filer tillsammans efter den valda kolumnen, så hamnar det nyaste objektet överst vid sortering efter datum, oavsett om det är en mapp eller inte.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Sortera kataloger",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

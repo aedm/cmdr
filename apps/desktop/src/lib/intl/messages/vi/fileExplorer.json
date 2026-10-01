@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}” lớn hơn {limit}, quá lớn để mở bằng {appName} ngay từ đây. Hãy sao chép tệp vào một thư mục trước, rồi mở ở đó.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}” nằm trong một tệp nén được bảo vệ bằng mật khẩu. Hãy sao chép tệp vào một thư mục trước (Cmdr sẽ hỏi mật khẩu), rồi mở bằng {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Không thể lấy “{fileName}” ra khỏi tệp nén để mở bằng {appName}. Có thể tệp nén bị hỏng hoặc dùng định dạng mà Cmdr không đọc được.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Không thể đọc “{fileName}” để mở bằng {appName}. Hãy kiểm tra xem ổ đĩa chứa tệp có còn kết nối không, rồi thử lại.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Tệp của bạn đã biến mất khỏi khung nhìn vì các tệp ẩn không được hiển thị.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

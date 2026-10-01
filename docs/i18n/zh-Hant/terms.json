@@ -773,6 +773,14 @@
     "confidence": "confirmed",
     "sources": "AP-TW = AP-HK, MS"
   },
+  "damaged": {
+    "accept": ["損毀"],
+    "chosen": "損壞",
+    "confidence": "high",
+    "forms": "may be damaged → 可能已損壞; looks damaged → 看起來損壞了",
+    "note": "Apple zh-TW writes both: 損毀 for apps (LA33, LA34, AppKit) and 損壞 for a file (NE59). Cmdr's damaged things are files and archives, and the catalog says 損壞 in every key.",
+    "sources": "macOS Finder zh-TW (NE59 該檔案已損壞; LA33 已損毀); catalog"
+  },
   "dark-mode": {
     "accept": ["淺色模式", "深色", "淺色"],
     "chosen": "深色模式",
@@ -1286,6 +1294,12 @@
     "chosen": "忘記",
     "confidence": "high",
     "sources": "AP live TW 30 / HK 32 (Forget This Network… → 忘記此網路設定⋯)"
+  },
+  "format": {
+    "chosen": "格式",
+    "confidence": "high",
+    "forms": "an archive's compression format → 壓縮格式; FAT32 format → FAT32 格式; date and time format → 日期和時間格式",
+    "sources": "macOS Finder zh-TW (Format 格式, Compression format to use 要使用的壓縮格式), AppKit (「%2$@」格式的檔案); catalog"
   },
   "frame": {
     "chosen": "影格",
@@ -2240,6 +2254,14 @@
     "chosen": "密碼",
     "confidence": "high",
     "sources": "AP-TW = AP-HK (pile 48/48, live 1,187/1,139), MS, TC"
+  },
+  "password-protected": {
+    "accept": ["受密碼保護"],
+    "chosen": "有密碼保護",
+    "confidence": "high",
+    "forms": "This archive is password-protected → 這個壓縮檔有密碼保護; a password-protected archive → 有密碼保護的封存檔",
+    "avoid": [{ "form": "已被密碼保護", "why": "GNOME's passive; reads stiff next to the catalog's 有密碼保護" }],
+    "sources": "GNOME Nautilus zh-TW (受密碼保護的封存檔); catalog (errors.volume.needsPassword, the archive-password prompt)"
   },
   "paste": {
     "accept": ["貼到"],

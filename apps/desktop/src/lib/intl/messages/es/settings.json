@@ -310,6 +310,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Mostrar carpetas primero",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Muestra las carpetas encima de los archivos en la lista. Si lo desactivas, carpetas y archivos se ordenan juntos según la columna elegida, así que al ordenar por fecha el elemento más reciente queda arriba, sea carpeta o no.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Ordenar carpetas",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

@@ -543,6 +543,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "目標已經存在，而且是一個<strong>檔案</strong>。你正要用同名的<strong>資料夾</strong>取代它。資料夾一換上去，原本的檔案就沒了。要怎麼做？",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "這兩個名稱看起來一樣，但伺服器儲存的寫法不同。按一下「覆寫」會取代現有的那一個。",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

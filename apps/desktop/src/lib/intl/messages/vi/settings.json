@@ -307,6 +307,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Hiển thị thư mục lên đầu",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Liệt kê thư mục phía trên tệp. Tắt tùy chọn này để sắp xếp thư mục và tệp chung với nhau theo cột đã chọn, nhờ vậy khi sắp xếp theo ngày, mục mới nhất sẽ đứng đầu, dù có là thư mục hay không.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Sắp xếp thư mục",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

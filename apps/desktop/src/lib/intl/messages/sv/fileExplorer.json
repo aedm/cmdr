@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} är större än {limit}, för stor för att öppnas i {appName} direkt härifrån. Kopiera filen till en mapp först och öppna den där.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} ligger i ett lösenordsskyddat arkiv. Kopiera filen till en mapp först (Cmdr frågar efter lösenordet) och öppna den sedan i {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Det gick inte att få ut {fileName} ur arkivet för att öppna filen i {appName}. Arkivet kan vara skadat eller använda ett format som Cmdr inte kan läsa.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Det gick inte att läsa {fileName} för att öppna filen i {appName}. Kontrollera att enheten fortfarande är ansluten och försök igen.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Din fil försvann från vyn eftersom dolda filer inte visas.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

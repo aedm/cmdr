@@ -462,6 +462,13 @@
     "forms": "your cloud provider → je cloudprovider; cloud folders → cloudmappen; cloud mount → Cloudkoppeling; provider app names (Dropbox, Google Drive, OneDrive, iCloud Drive, macFUSE) stay verbatim",
     "sources": "compositional; brands do-not-translate"
   },
+  "column": {
+    "accept": ["kolommen"],
+    "chosen": "kolom",
+    "confidence": "high",
+    "forms": "de-woord; the Name column → de kolom Naam / naamkolom; sort column → sorteerkolom; column width → kolombreedte",
+    "sources": "macOS Finder (SV2 sorteerkolom); catalog"
+  },
   "command": {
     "accept": ["opdrachten"],
     "chosen": "opdracht",
@@ -1892,7 +1899,9 @@
     "sources": "macOS, MS"
   },
   "password-protected": {
+    "accept": ["met een wachtwoord beveiligd"],
     "chosen": "beveiligd met een wachtwoord",
+    "forms": "predicative (Dit archief is beveiligd met een wachtwoord); attributive before the noun (een met een wachtwoord beveiligd archief)",
     "confidence": "high",
     "sources": "Total Commander, Double Commander"
   },

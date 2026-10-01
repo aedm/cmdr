@@ -787,6 +787,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "「{fileName}」超過 {limit}，太大了，沒辦法直接從這裡用 {appName} 開啟。請先把它複製到一個資料夾，再從那裡開啟。",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "「{fileName}」在一個有密碼保護的封存檔裡。請先把它複製到一個資料夾（Cmdr 會問你密碼），再用 {appName} 開啟。",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "無法把「{fileName}」從封存檔裡取出來，所以沒辦法用 {appName} 開啟。這個封存檔可能已損壞，或用了 Cmdr 讀不了的格式。",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "無法讀取「{fileName}」，所以沒辦法用 {appName} 開啟。請確認它所在的磁碟機仍然連接著，然後再試一次。",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "你的檔案從畫面上消失了，因為現在沒有顯示隱藏檔案。",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

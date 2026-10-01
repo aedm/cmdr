@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ocupa más de {limit}: es demasiado grande para abrirlo en {appName} directamente desde aquí. Primero cópialo a una carpeta y luego ábrelo desde ahí.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está en un archivo comprimido protegido con contraseña. Primero copia el archivo a una carpeta (Cmdr te pide la contraseña) y luego ábrelo en {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "No se ha podido sacar {fileName} de su archivo comprimido para abrirlo en {appName}. Puede que el archivo comprimido esté dañado o use un formato que Cmdr no puede leer.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "No se ha podido leer {fileName} para abrirlo en {appName}. Comprueba que la unidad donde está siga conectada y vuelve a intentarlo.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Tu archivo ha desaparecido de la vista porque no se muestran los archivos ocultos.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

@@ -780,3 +780,8 @@ share options → `Nincs megosztási lehetőség`.
 
 - Bare placeholders in colon frames: `Minden megérkezett ide: {landedAt}`, `az eredetit innen: {path}`.
 - `engedély` over `jogosultság`, like the informal `permissionDenied.message.*` siblings.
+
+## Archívumban lévő fájl „Megnyitás ezzel” toastjai (`fileExplorer.openWith.copyRefused.*`)
+
+- `{appName}` takes the menu's colon frame (`nem nyitható meg ezzel: {appName}`): a `-ban/-ben` or `a/az` on a runtime
+  app name would be a guess. "Couldn't X" takes the possessor slot (`„{fileName}” kicsomagolása … nem sikerült`).

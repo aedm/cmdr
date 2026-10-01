@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} tem mais de {limit}, grande demais para abrir em {appName} direto daqui. Copie o arquivo para uma pasta primeiro e depois abra-o lá.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está em um arquivo compactado protegido por senha. Copie o arquivo para uma pasta primeiro (o Cmdr pede a senha) e depois abra-o em {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Não foi possível tirar {fileName} do arquivo compactado para abrir em {appName}. O arquivo compactado pode estar danificado ou usar um formato que o Cmdr não consegue ler.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Não foi possível ler {fileName} para abrir em {appName}. Verifique se o disco ainda está conectado e tente de novo.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Seu arquivo sumiu da tela porque os arquivos ocultos não estão sendo exibidos.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

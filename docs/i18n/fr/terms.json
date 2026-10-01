@@ -516,6 +516,12 @@
     "forms": "cloud folders → dossiers cloud",
     "sources": "catalog"
   },
+  "column": {
+    "chosen": "colonne",
+    "confidence": "high",
+    "forms": "feminine; the Name column → la colonne Nom; sort column → colonne de tri; column width → largeur de colonne",
+    "sources": "macOS Finder (SV2 colonne de tri); catalog"
+  },
   "command": {
     "chosen": "commande",
     "confidence": "high",

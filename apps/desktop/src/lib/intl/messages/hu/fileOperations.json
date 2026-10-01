@@ -545,6 +545,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "A cél létezik, és egy <strong>fájl</strong>. Egy azonos nevű <strong>mappára</strong> készülsz lecserélni. A fájl eltűnne, amint a mappa a helyébe lép. Mi legyen?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "A két név ugyanúgy néz ki, de a szerver eltérő írásmóddal tárolja őket. A „Felülírás” gomb a meglévő elemet cseréli le.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

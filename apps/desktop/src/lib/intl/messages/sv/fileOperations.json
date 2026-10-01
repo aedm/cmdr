@@ -545,6 +545,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "Målet finns och är en <strong>fil</strong>. Du är på väg att ersätta det med en <strong>mapp</strong> med samma namn. Filen skulle försvinna när mappen tar dess plats. Vad vill du göra?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "Namnen ser likadana ut, men servern stavar dem olika. Skriv över ersätter det som redan finns där.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

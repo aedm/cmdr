@@ -575,6 +575,12 @@
     "confidence": "high",
     "sources": "descriptive; catalog"
   },
+  "column": {
+    "chosen": "oszlop",
+    "confidence": "high",
+    "forms": "the Name column → a Név oszlop; sort column → rendezőoszlop; column width → oszlopszélesség; by the chosen column → a választott oszlop szerint",
+    "sources": "macOS Finder (SV2 Valamely oszlop szerinti rendezéshez); catalog"
+  },
   "coming-soon": {
     "chosen": "Hamarosan",
     "confidence": "high",

@@ -545,6 +545,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "Das Ziel existiert und ist eine <strong>Datei</strong>. Du bist dabei, es durch einen <strong>Ordner</strong> desselben Namens zu ersetzen. Die Datei wäre weg, sobald der Ordner ihren Platz einnimmt. Was möchtest du tun?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "Diese Namen sehen gleich aus, aber der Server schreibt sie unterschiedlich. „Überschreiben“ ersetzt das Objekt, das schon da ist.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

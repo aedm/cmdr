@@ -431,6 +431,13 @@
     "confidence": "high",
     "sources": "catalog"
   },
+  "column": {
+    "accept": ["columnas"],
+    "chosen": "columna",
+    "confidence": "high",
+    "forms": "the Name column → la columna Nombre; sort column → columna de ordenación; column width → ancho de columna",
+    "sources": "macOS Finder (SV2 columna de ordenación); catalog"
+  },
   "coming-soon": {
     "chosen": "próximamente",
     "confidence": "high",

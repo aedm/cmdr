@@ -310,6 +310,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Afficher les dossiers d’abord",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Affiche les dossiers au-dessus des fichiers dans la liste. Désactivez cette option pour trier dossiers et fichiers ensemble selon la colonne choisie : l’élément le plus récent arrive alors en tête d’un tri par date, dossier ou non.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Trier les dossiers",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

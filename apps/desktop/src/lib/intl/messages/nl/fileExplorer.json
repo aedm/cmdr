@@ -790,6 +790,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is groter dan {limit} en daarmee te groot om rechtstreeks vanaf hier in {appName} te openen. Kopieer het bestand eerst naar een map en open het daar.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} staat in een met een wachtwoord beveiligd archief. Kopieer het bestand eerst naar een map (Cmdr vraagt dan om het wachtwoord) en open het daarna in {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Kon {fileName} niet uit het archief halen om in {appName} te openen. Het archief is mogelijk beschadigd, of het gebruikt een structuur die Cmdr niet kan lezen.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Kon {fileName} niet lezen om in {appName} te openen. Controleer of de schijf nog is aangesloten en probeer het dan opnieuw.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Je bestand is uit beeld verdwenen omdat verborgen bestanden niet worden getoond.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

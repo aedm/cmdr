@@ -544,6 +544,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "Đích đã tồn tại và là một <strong>tệp</strong>. Bạn sắp thay thế nó bằng một <strong>thư mục</strong> trùng tên. Tệp đó sẽ mất ngay khi thư mục thế vào chỗ của nó. Làm gì đây?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "Hai tên này trông giống hệt nhau, nhưng máy chủ lưu chúng theo cách viết khác nhau. Nút Ghi đè sẽ thay thế mục hiện có.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

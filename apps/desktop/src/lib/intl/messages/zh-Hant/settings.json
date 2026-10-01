@@ -309,6 +309,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "先顯示資料夾",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "在檔案上方列出資料夾。關閉後，資料夾和檔案會依所選的直欄一起排序，這樣依日期排序時，最新的項目會排在最上面，不管它是不是資料夾。",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "目錄排序",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

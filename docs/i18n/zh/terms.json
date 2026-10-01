@@ -486,6 +486,18 @@
     "forms": "云服务商; a cloud mount 云挂载; cloud folders 云端文件夹; cloud services 云服务",
     "sources": "catalog"
   },
+  "column": {
+    "chosen": "列",
+    "confidence": "high",
+    "forms": "the Name column → 名称列; sort column → 排序列; column width → 列宽; by the chosen column → 按所选的列",
+    "avoid": [
+      {
+        "form": "栏",
+        "why": "Finder's list-view word (SV2 排序栏), but AppKit says 列 (调整该列到恰当的大小) and the catalog is 列 in every key"
+      }
+    ],
+    "sources": "macOS AppKit Browser (该列), Double Commander (列); catalog"
+  },
   "coming-soon": {
     "chosen": "即将推出",
     "confidence": "high",

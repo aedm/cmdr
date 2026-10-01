@@ -256,6 +256,20 @@
     "confidence": "high",
     "sources": "MS terminology; standard German"
   },
+  "column": {
+    "chosen": "Spalte",
+    "confidence": "high",
+    "forms": "pl. Spalten; the Name column → die Spalte Name / Namensspalte; sort column → Sortierspalte; column width → Spaltenbreite",
+    "sources": "macOS Finder (FI43 Spalten, SV1 die Spalte „Name“, Spaltendarstellung), AppKit Browser (Breite dieser Spalte anpassen); catalog"
+  },
+  "damaged": {
+    "chosen": "beschädigt",
+    "confidence": "high",
+    "avoid": [
+      { "form": "defekt", "why": "Finder uses it once (NE59) against beschädigt in LA33 / LA34 and every catalog key" }
+    ],
+    "sources": "macOS Finder (LA33 / LA34 möglicherweise beschädigt); catalog"
+  },
   "deployment": {
     "accept": ["Ressource"],
     "chosen": "Bereitstellung",

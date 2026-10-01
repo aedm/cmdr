@@ -420,6 +420,12 @@
     "forms": "cloud folders → thư mục đám mây; cloud service → dịch vụ đám mây; sync app → ứng dụng đồng bộ; cloud mount → mục gắn kết đám mây",
     "sources": "MS terminology, catalog (Đám mây group)"
   },
+  "column": {
+    "chosen": "cột",
+    "confidence": "high",
+    "forms": "the Name column → cột Tên; sort column → cột sắp xếp; column width → độ rộng cột; by the chosen column → theo cột đã chọn",
+    "sources": "macOS Finder (SV2 cột sắp xếp); catalog"
+  },
   "command": {
     "chosen": "lệnh",
     "confidence": "high",

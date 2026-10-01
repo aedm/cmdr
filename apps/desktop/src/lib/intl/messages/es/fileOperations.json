@@ -544,6 +544,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "El destino existe y es un <strong>archivo</strong>. Estás a punto de reemplazarlo por una <strong>carpeta</strong> del mismo nombre. El archivo desaparecería en cuanto la carpeta ocupara su lugar. ¿Qué quieres hacer?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "Estos nombres se ven iguales, pero el servidor los escribe de forma distinta. “Sobrescribir” reemplaza el elemento que ya está ahí.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

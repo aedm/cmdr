@@ -543,6 +543,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "目标已存在，是一个<strong>文件</strong>。你即将用同名的<strong>文件夹</strong>替换它。文件夹一旦取而代之，这个文件就没了。要怎么做？",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "这两个名称看起来一样，但服务器存储的写法不同。“覆盖”会替换现有的那一项。",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

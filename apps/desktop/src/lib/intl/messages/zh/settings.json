@@ -309,6 +309,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "优先显示文件夹",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "在文件上方列出文件夹。关闭后，文件夹和文件会按所选的列一起排序，这样按日期排序时，最新的项目会排在最前面，不管它是不是文件夹。",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "目录排序",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

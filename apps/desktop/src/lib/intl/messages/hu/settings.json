@@ -309,6 +309,14 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Mappák megjelenítése felül",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "A listában a mappák a fájlok fölé kerülnek. Kapcsold ki, ha a mappákat és a fájlokat együtt rendeznéd a választott oszlop szerint: így dátum szerinti rendezésnél a legújabb elem kerül felülre, akár mappa, akár fájl.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "a26188c"
+  },
   "settings.listing.directorySortMode.label": "Könyvtárak rendezése",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7f0a1e4"

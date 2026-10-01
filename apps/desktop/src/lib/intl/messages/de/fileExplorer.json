@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ist größer als {limit} und damit zu groß, um direkt von hier aus in {appName} geöffnet zu werden. Kopiere die Datei zuerst in einen Ordner und öffne sie dann dort.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} liegt in einem passwortgeschützten Archiv. Kopiere die Datei zuerst in einen Ordner (Cmdr fragt dann nach dem Passwort) und öffne sie danach in {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "{fileName} ließ sich nicht aus dem Archiv holen und deshalb nicht in {appName} öffnen. Vielleicht ist das Archiv beschädigt oder verwendet ein Format, das Cmdr nicht lesen kann.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "{fileName} ließ sich nicht lesen und deshalb nicht in {appName} öffnen. Prüfe, ob das Laufwerk noch verbunden ist, und versuche es dann erneut.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Deine Datei ist aus der Ansicht verschwunden, weil verborgene Dateien nicht angezeigt werden.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

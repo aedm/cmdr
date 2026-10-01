@@ -787,6 +787,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}”超过 {limit}，太大了，无法从这里直接用 {appName} 打开。请先把它拷贝到一个文件夹，再从那里打开。",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}”在一个受密码保护的压缩文件里。请先把它拷贝到一个文件夹（Cmdr 会问你要密码），再用 {appName} 打开。",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "没能把“{fileName}”从压缩文件里取出来，所以无法用 {appName} 打开。这个压缩文件可能已损坏，或者采用了 Cmdr 无法读取的格式。",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "无法读取“{fileName}”，所以没法用 {appName} 打开。请确认它所在的驱动器仍连接着，然后再试一次。",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "你的文件从视图中消失了，因为当前不显示隐藏文件。",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

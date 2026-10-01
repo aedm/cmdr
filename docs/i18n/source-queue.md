@@ -69,3 +69,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   decides transitive vs reflexive in fr. (fr)
 - No concept yet for "called", "others", "reach", "usual", "leaving", "android", "adb"; "switcher" is the one that
   matters (zh-Hant has both 卷宗切換器 and a bare 切換器). (de, zh-Hant)
+- `settings.listing.foldersFirst.label` sits right above `settings.listing.directorySortMode.label` ("Sort
+  directories"): two words for one thing, and sv/hu/zh/zh-Hant render directory distinctly. Say "Sort folders". (all)
+- `fileOperations.transferProgress.warningFolderOverFile` says "replace" where its mirror `warningFileOverFolder` says
+  "overwrite"; pick one verb so the pair reads as one family. (all)

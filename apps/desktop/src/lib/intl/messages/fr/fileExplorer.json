@@ -789,6 +789,22 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
+  "fileExplorer.openWith.copyRefused.tooLarge": "« {fileName} » dépasse {limit}, c’est trop volumineux pour l’ouvrir dans {appName} directement depuis ici. Copiez d’abord le fichier dans un dossier, puis ouvrez-le depuis ce dossier.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "c26db52"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "« {fileName} » se trouve dans une archive protégée par un mot de passe. Copiez d’abord le fichier dans un dossier (Cmdr vous demande le mot de passe), puis ouvrez-le dans {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "74840cd"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Impossible d’extraire « {fileName} » de son archive pour l’ouvrir dans {appName}. L’archive est peut-être endommagée ou utilise un format que Cmdr ne sait pas lire.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Impossible de lire « {fileName} » pour l’ouvrir dans {appName}. Vérifiez que le disque est toujours connecté, puis réessayez.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Votre fichier a disparu de la vue, car les fichiers cachés ne sont pas affichés.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "6258274"

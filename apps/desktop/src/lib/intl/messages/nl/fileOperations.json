@@ -545,6 +545,10 @@
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "sourceHash": "6dce75c"
   },
+  "fileOperations.transferProgress.warningFolderOverFile": "Het doel bestaat en is een <strong>bestand</strong>. Je staat op het punt het te vervangen door een <strong>map</strong> met dezelfde naam. Het bestand zou weg zijn zodra de map zijn plaats inneemt. Wat wil je doen?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
+  },
   "fileOperations.transferProgress.lookAlikeHint": "Deze namen zien er hetzelfde uit, maar de server slaat ze anders op. Met ‘Overschrijf’ vervang je het onderdeel dat er al staat.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"

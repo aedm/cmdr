@@ -171,6 +171,14 @@
   "@fileExplorer.clipboard.pastedAsFileSettings": {
     "sourceHash": "4f2debb"
   },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "No se pudo sacar {fileName} de su archivo comprimido para abrirlo en {appName}. Puede que el archivo comprimido esté dañado o use un formato que Cmdr no puede leer.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "ab5a658"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "No se pudo leer {fileName} para abrirlo en {appName}. Comprueba que la unidad donde está siga conectada y vuelve a intentarlo.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "c59cae3"
+  },
   "fileExplorer.rename.hiddenAfterRename": "Tu archivo desapareció de la vista porque no se muestran los archivos ocultos.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "3b71f83"
