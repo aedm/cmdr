@@ -126,10 +126,10 @@ impl PartReader {
 /// Marks an upload abandoned in the ledger if its task ends without settling
 /// it, which covers a future dropped mid-upload (the silence watch, the quit
 /// deadline): the next connect's sweep aborts it.
-struct UploadGuard {
-    ledger: UploadLedger,
-    upload: UnfinishedUpload,
-    settled: bool,
+pub(super) struct UploadGuard {
+    pub(super) ledger: UploadLedger,
+    pub(super) upload: UnfinishedUpload,
+    pub(super) settled: bool,
 }
 
 impl Drop for UploadGuard {
@@ -163,7 +163,7 @@ struct PartJob {
 /// being "not found": Garage ends one when another write replaces the object
 /// mid-upload (`apps/desktop/test/s3-servers/README.md`), so `gone` tells the
 /// caller to look for that clash.
-fn upload_refusal(error: &S3Error, remote: &str, gone: &AtomicBool) -> VolumeError {
+pub(super) fn upload_refusal(error: &S3Error, remote: &str, gone: &AtomicBool) -> VolumeError {
     if error.code == S3ErrorCode::NoSuchUpload {
         gone.store(true, Ordering::Relaxed);
         return VolumeError::IoError {
@@ -417,7 +417,11 @@ impl S3Volume {
     }
 
     /// `CreateMultipartUpload`, carrying the object's metadata.
-    async fn create_upload(&self, client: &S3Client, target: &WriteTarget<'_>) -> Result<String, VolumeError> {
+    pub(super) async fn create_upload(
+        &self,
+        client: &S3Client,
+        target: &WriteTarget<'_>,
+    ) -> Result<String, VolumeError> {
         let request = ops::create_multipart_upload(client.profile(), target.bucket, target.key, target.metadata)
             .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
         let answer = self.ask(client, request, target.remote).await?;
@@ -553,7 +557,7 @@ impl S3Volume {
     /// the object's ETag.
     ///
     /// ❗ The body is parsed even on 200: S3 can fail a completion inside it.
-    async fn complete(
+    pub(super) async fn complete(
         &self,
         client: &S3Client,
         target: &WriteTarget<'_>,
@@ -690,15 +694,26 @@ impl S3VolumeInner {
     pub(super) async fn sweep_unfinished_uploads(&self) -> usize {
         let ledger = self.ledger.clone();
         let account = self.account();
-        let leftovers = tokio::task::spawn_blocking(move || ledger.leftovers(&account))
-            .await
-            .unwrap_or_default();
-        if leftovers.is_empty() {
+        let (leftovers, temps) = tokio::task::spawn_blocking(move || {
+            let leftovers = ledger.leftovers(&account);
+            (leftovers, ledger.temp_leftovers(&account))
+        })
+        .await
+        .unwrap_or_default();
+        if leftovers.is_empty() && temps.is_empty() {
             return 0;
         }
         let Some(client) = self.client.read().await.clone() else {
             return 0;
         };
+        // An overwrite's temp a crash left behind: removed while it carries
+        // its write's token (`temp_overwrite.rs`).
+        for temp in &temps {
+            self.remove_temp(&client, temp).await;
+        }
+        if leftovers.is_empty() {
+            return 0;
+        }
         let mut aborted = 0;
         for upload in &leftovers {
             if abort_upload(&client, &self.ledger, upload).await {

@@ -30,6 +30,7 @@ use crate::sigv4::Credentials;
 use crate::transport::S3Client;
 use upload_ledger::UploadLedger;
 
+mod batch;
 mod errors;
 mod listing;
 mod multipart_upload;
@@ -38,9 +39,11 @@ mod paths;
 mod query;
 mod reconnect;
 mod scan;
+mod server_copy;
 mod share_link;
 mod state;
 mod streams;
+mod temp_overwrite;
 mod upload_body;
 mod upload_ledger;
 mod volume_impl;
@@ -184,12 +187,6 @@ impl S3Volume {
         self.inner.client.write().await.take();
     }
 
-    /// Shortens the silence ladder, for a cell that runs it in real time.
-    #[cfg(test)]
-    fn set_silence_timings(&self, timings: Timings) {
-        *self.inner.silence.write_ignore_poison() = timings;
-    }
-
     /// The smallest part a multipart upload cuts.
     fn part_floor(&self) -> u64 {
         self.inner.part_floor.load(Ordering::Relaxed)
@@ -210,6 +207,15 @@ impl S3Volume {
     pub async fn trust_conditional_writes(&self) {
         if let Some(client) = self.inner.client.read().await.as_ref() {
             client.profile().trust_conditional_writes();
+        }
+    }
+
+    /// Makes this volume's provider copy within one bucket only, the way
+    /// Hetzner's does, for a cell proving a cross-bucket copy streams instead.
+    #[cfg(any(test, feature = "testing"))]
+    pub async fn forbid_cross_bucket_copy(&self) {
+        if let Some(client) = self.inner.client.read().await.as_ref() {
+            client.profile().forbid_cross_bucket_copy();
         }
     }
 
@@ -309,9 +315,13 @@ impl S3Volume {
 }
 
 #[cfg(test)]
+mod batch_test;
+#[cfg(test)]
 mod conformance_test;
 #[cfg(test)]
 mod connection_drop_test;
+#[cfg(test)]
+mod copy_test;
 #[cfg(test)]
 mod integration_test;
 #[cfg(test)]

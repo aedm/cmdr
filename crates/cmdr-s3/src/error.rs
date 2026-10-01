@@ -188,6 +188,23 @@ impl S3Error {
             _ => false,
         }
     }
+
+    /// The server asking us to slow down (`SlowDown`, a 503, a 429, Wasabi's
+    /// and R2's own codes), as opposed to a fault: a server-side copy halves
+    /// how many parts it keeps in flight on one of these.
+    pub(crate) fn is_throttle(&self) -> bool {
+        match self.code {
+            S3ErrorCode::SlowDown
+            | S3ErrorCode::ServiceUnavailable
+            | S3ErrorCode::TooManyRequests
+            | S3ErrorCode::RequestRateLimitExceeded => true,
+            S3ErrorCode::NoBody | S3ErrorCode::Other(_) => matches!(
+                self.status,
+                StatusCode::SERVICE_UNAVAILABLE | StatusCode::TOO_MANY_REQUESTS
+            ),
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for S3Error {

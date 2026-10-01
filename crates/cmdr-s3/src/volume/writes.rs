@@ -207,6 +207,7 @@ impl S3Volume {
         let metadata = ObjectMetadata {
             mtime: stream.modified_at(),
             write_token: Some(crate::metadata::write_token()),
+            carried: Vec::new(),
         };
         let progress = Progress::new(on_progress, length);
         let target = WriteTarget {
@@ -217,6 +218,17 @@ impl S3Volume {
             metadata: &metadata,
         };
         debug!(target: "volume", "s3 write {remote} ({shape:?}, {mode:?})");
+        // ❗ A PUT this server might publish short must not land on the
+        // original: it goes to a temp key, and a verified copy replaces it.
+        if mode == WriteMode::CreateOrReplace
+            && !matches!(shape, UploadShape::Parts(_))
+            && !client.profile().refuses_short_body
+            && self.head_object(&client, bucket, key, &remote).await?.is_some()
+        {
+            return self
+                .overwrite_through_temp(&client, dest, &target, shape, stream, &progress)
+                .await;
+        }
         match shape {
             UploadShape::Single(size) => self.put_streamed(&client, &target, size, stream, &progress).await,
             UploadShape::Parts(plan) => {
@@ -230,7 +242,7 @@ impl S3Volume {
     /// One streamed PUT of exactly `size` bytes, with progress and cancel.
     /// ❗ A body that ends short, runs long, fails, or is cancelled aborts the
     /// request, and S3 publishes nothing: there's never a partial to clean.
-    async fn put_streamed(
+    pub(super) async fn put_streamed(
         &self,
         client: &S3Client,
         target: &WriteTarget<'_>,

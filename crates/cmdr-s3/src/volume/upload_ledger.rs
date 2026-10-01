@@ -12,9 +12,16 @@
 //! second place of the same account that connects mid-upload: the in-flight
 //! set is process-wide for that reason.
 //!
+//! It also records each temp object an overwrite writes first (`writes.rs` §
+//! "Overwrites through a temp key"): a crash between that temp's PUT and its
+//! removal leaves an object under a `.cmdr-tmp-` name, and on a server that
+//! publishes a cut-off PUT a truncated one. The sweep deletes such a temp only
+//! while it still carries the write's own token.
+//!
 //! The log is `<state dir>/unfinished-uploads` (`VolumeHost::state_dir`), one
 //! line per event: `+ <account> <bucket> <key> <upload id>` when an upload
-//! starts, `- …` when it completes or is aborted, every field
+//! starts, `- …` when it completes or is aborted, and `T` / `t` with the
+//! write's token in place of the upload id for a temp object, every field
 //! percent-encoded so a key holding a space or a line break can't break a
 //! line. Reading leftovers rewrites it to the records still open. Without a
 //! state directory the records live in memory for the session. Every access
@@ -46,6 +53,19 @@ pub(super) struct UnfinishedUpload {
     pub upload_id: String,
 }
 
+/// One temp object an overwrite wrote (or is writing) before the copy that
+/// replaces the original, and the token its PUT carried.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(super) struct TempObject {
+    /// As on [`UnfinishedUpload`].
+    pub account: String,
+    pub bucket: String,
+    pub key: String,
+    /// The `x-amz-meta-cmdr-write` token: the sweep deletes the key only
+    /// while the object there still carries it.
+    pub token: String,
+}
+
 /// What the whole process knows that the log doesn't.
 #[derive(Default)]
 struct Registry {
@@ -55,6 +75,16 @@ struct Registry {
     /// state directory, and a backstop beside the log with one (an append
     /// that failed still reaches this session's sweeps).
     open: HashSet<UnfinishedUpload>,
+    /// The same two sets for temp objects.
+    temps_in_flight: HashSet<TempObject>,
+    temps_open: HashSet<TempObject>,
+}
+
+/// One line of the log, either kind.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Record {
+    Upload(UnfinishedUpload),
+    Temp(TempObject),
 }
 
 static REGISTRY: Mutex<Option<Registry>> = Mutex::new(None);
@@ -110,14 +140,14 @@ impl UploadLedger {
     pub(super) fn leftovers(&self, account: &str) -> Vec<UnfinishedUpload> {
         let mut guard = registry();
         let registry = guard.get_or_insert_with(Registry::default);
-        let mut open: Vec<UnfinishedUpload> = match &self.log {
-            Some(log) => {
-                let recorded = replay(log);
-                compact(log, &recorded);
-                recorded
-            }
-            None => Vec::new(),
-        };
+        let mut open: Vec<UnfinishedUpload> = self
+            .replay_and_compact()
+            .into_iter()
+            .filter_map(|record| match record {
+                Record::Upload(upload) => Some(upload),
+                Record::Temp(_) => None,
+            })
+            .collect();
         for record in &registry.open {
             if !open.contains(record) {
                 open.push(record.clone());
@@ -125,6 +155,68 @@ impl UploadLedger {
         }
         open.retain(|record| record.account == account && !registry.in_flight.contains(record));
         open
+    }
+
+    /// `temp` is about to be written: recorded before its PUT, so a crash
+    /// mid-write still leaves a record.
+    pub(super) fn temp_started(&self, temp: &TempObject) {
+        let mut guard = registry();
+        let registry = guard.get_or_insert_with(Registry::default);
+        registry.temps_in_flight.insert(temp.clone());
+        registry.temps_open.insert(temp.clone());
+        self.append_line(&temp_line('T', temp));
+    }
+
+    /// `temp` is gone from the server (deleted, or never written).
+    pub(super) fn temp_finished(&self, temp: &TempObject) {
+        let mut guard = registry();
+        let registry = guard.get_or_insert_with(Registry::default);
+        registry.temps_in_flight.remove(temp);
+        registry.temps_open.remove(temp);
+        self.append_line(&temp_line('t', temp));
+    }
+
+    /// The write owning `temp` ended without removing it: keep the record for
+    /// the next sweep.
+    pub(super) fn temp_abandoned(&self, temp: &TempObject) {
+        if let Some(registry) = registry().as_mut() {
+            registry.temps_in_flight.remove(temp);
+        }
+    }
+
+    /// The temp objects a sweep for `account` may remove: every open record no
+    /// write in this process owns. Rewrites the log to the records still open.
+    pub(super) fn temp_leftovers(&self, account: &str) -> Vec<TempObject> {
+        let mut guard = registry();
+        let registry = guard.get_or_insert_with(Registry::default);
+        let mut open: Vec<TempObject> = self
+            .replay_and_compact()
+            .into_iter()
+            .filter_map(|record| match record {
+                Record::Temp(temp) => Some(temp),
+                Record::Upload(_) => None,
+            })
+            .collect();
+        for record in &registry.temps_open {
+            if !open.contains(record) {
+                open.push(record.clone());
+            }
+        }
+        open.retain(|record| record.account == account && !registry.temps_in_flight.contains(record));
+        open
+    }
+
+    /// Every record the log holds open, both kinds, after rewriting it to
+    /// just those. Called with the registry lock held, like every access.
+    fn replay_and_compact(&self) -> Vec<Record> {
+        match &self.log {
+            Some(log) => {
+                let recorded = replay(log);
+                compact(log, &recorded);
+                recorded
+            }
+            None => Vec::new(),
+        }
     }
 
     /// What a crash does to a record: the in-flight mark goes with the process
@@ -137,10 +229,23 @@ impl UploadLedger {
         }
     }
 
+    /// What a crash does to a temp's record, as [`Self::forget_in_flight`].
+    #[cfg(test)]
+    pub(super) fn forget_temp_in_flight(temp: &TempObject) {
+        if let Some(registry) = registry().as_mut() {
+            registry.temps_in_flight.remove(temp);
+            registry.temps_open.remove(temp);
+        }
+    }
+
     /// Appends one event to the log. A failure is logged and survived: the
     /// session's own record still holds it, and a lost line only costs a
     /// leftover a later launch won't know about.
     fn append(&self, op: char, upload: &UnfinishedUpload) {
+        self.append_line(&line(op, upload));
+    }
+
+    fn append_line(&self, text: &str) {
         let Some(log) = &self.log else {
             return;
         };
@@ -148,7 +253,7 @@ impl UploadLedger {
             .parent()
             .map_or(Ok(()), std::fs::create_dir_all)
             .and_then(|()| std::fs::OpenOptions::new().create(true).append(true).open(log))
-            .and_then(|mut file| file.write_all(line(op, upload).as_bytes()));
+            .and_then(|mut file| file.write_all(text.as_bytes()));
         if let Err(e) = written {
             warn!(target: "volume", "s3: couldn't record an upload in {}: {e}", log.display());
         }
@@ -166,34 +271,51 @@ fn line(op: char, upload: &UnfinishedUpload) -> String {
     )
 }
 
-/// The records the log holds open: every `+` without a later `-`, in the
-/// order they started. A line that doesn't read is skipped.
-fn replay(log: &std::path::Path) -> Vec<UnfinishedUpload> {
+/// One log line for a temp object: `T` when written, `t` when gone.
+fn temp_line(op: char, temp: &TempObject) -> String {
+    format!(
+        "{op} {} {} {} {}\n",
+        encode_component(&temp.account),
+        encode_component(&temp.bucket),
+        encode_component(&temp.key),
+        encode_component(&temp.token)
+    )
+}
+
+/// The records the log holds open: every `+` without a later `-` and every
+/// `T` without a later `t`, in the order they started. A line that doesn't
+/// read is skipped.
+fn replay(log: &std::path::Path) -> Vec<Record> {
     let Ok(text) = std::fs::read_to_string(log) else {
         return Vec::new();
     };
-    let mut open: Vec<UnfinishedUpload> = Vec::new();
+    let mut open: Vec<Record> = Vec::new();
     for raw in text.lines() {
-        let Some((op, upload)) = parse_line(raw) else {
+        let Some((opens, record)) = parse_line(raw) else {
             if !raw.is_empty() {
                 warn!(target: "volume", "s3: skipping an unreadable line in {}", log.display());
             }
             continue;
         };
-        match op {
-            '+' if !open.contains(&upload) => open.push(upload),
-            '-' => open.retain(|record| record != &upload),
-            _ => {}
+        if opens {
+            if !open.contains(&record) {
+                open.push(record);
+            }
+        } else {
+            open.retain(|held| held != &record);
         }
     }
     open
 }
 
-fn parse_line(raw: &str) -> Option<(char, UnfinishedUpload)> {
+/// A line as `(opens, record)`: whether it opens its record or closes it.
+fn parse_line(raw: &str) -> Option<(bool, Record)> {
     let mut fields = raw.split(' ');
-    let op = match fields.next()? {
-        "+" => '+',
-        "-" => '-',
+    let (opens, temp) = match fields.next()? {
+        "+" => (true, false),
+        "-" => (false, false),
+        "T" => (true, true),
+        "t" => (false, true),
         _ => return None,
     };
     let mut next = || -> Option<String> {
@@ -202,23 +324,39 @@ fn parse_line(raw: &str) -> Option<(char, UnfinishedUpload)> {
             .ok()
             .map(|text| text.into_owned())
     };
-    let upload = UnfinishedUpload {
-        account: next()?,
-        bucket: next()?,
-        key: next()?,
-        upload_id: next()?,
-    };
+    let (account, bucket, key, last) = (next()?, next()?, next()?, next()?);
     if fields.next().is_some() {
         return None;
     }
-    Some((op, upload))
+    let record = if temp {
+        Record::Temp(TempObject {
+            account,
+            bucket,
+            key,
+            token: last,
+        })
+    } else {
+        Record::Upload(UnfinishedUpload {
+            account,
+            bucket,
+            key,
+            upload_id: last,
+        })
+    };
+    Some((opens, record))
 }
 
 /// Rewrites the log to `open`, through a sibling and a rename so a crash
 /// mid-write leaves the old log rather than half of a new one.
-fn compact(log: &std::path::Path, open: &[UnfinishedUpload]) {
+fn compact(log: &std::path::Path, open: &[Record]) {
     let temp = log.with_extension("tmp");
-    let text: String = open.iter().map(|upload| line('+', upload)).collect();
+    let text: String = open
+        .iter()
+        .map(|record| match record {
+            Record::Upload(upload) => line('+', upload),
+            Record::Temp(object) => temp_line('T', object),
+        })
+        .collect();
     let rewritten = std::fs::write(&temp, text).and_then(|()| std::fs::rename(&temp, log));
     if let Err(e) = rewritten {
         warn!(target: "volume", "s3: couldn't rewrite {}: {e}", log.display());

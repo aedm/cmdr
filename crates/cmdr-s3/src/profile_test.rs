@@ -114,7 +114,7 @@ fn aws_refuses_overwrites_by_header_on_all_three_writes() {
     ] {
         assert_eq!(aws.no_overwrite(op), NoOverwrite::IfNoneMatch, "{op:?}");
     }
-    assert!(aws.cross_bucket_copy);
+    assert!(aws.cross_bucket_copy());
     assert!(!aws.nfc_keys);
 }
 
@@ -174,14 +174,14 @@ fn wasabi_and_hetzner_endpoints_and_hetzner_copies_within_a_bucket_only() {
     });
     assert_eq!(wasabi.endpoint_host, "s3.eu-central-2.wasabisys.com");
     assert_eq!(wasabi.addressing, Addressing::Path);
-    assert!(wasabi.cross_bucket_copy);
+    assert!(wasabi.cross_bucket_copy());
 
     let hetzner = profile(Preset::Hetzner {
         location: "hel1".into(),
     });
     assert_eq!(hetzner.endpoint_host, "hel1.your-objectstorage.com");
     assert_eq!(hetzner.region, "hel1");
-    assert!(!hetzner.cross_bucket_copy);
+    assert!(!hetzner.cross_bucket_copy());
 }
 
 #[test]
@@ -287,4 +287,43 @@ fn a_bad_bucket_or_key_is_refused_before_any_url_exists() {
         Err(LocateError::Key(KeyError::DotSegment))
     );
     assert_eq!(aws.locate(Some("b"), Some("")), Err(LocateError::Key(KeyError::Empty)));
+}
+
+/// ❗ An allowlist, like conditional writes: only a provider with evidence that
+/// it refuses a short body keeps writing an overwrite in place. VersityGW
+/// publishes a cut-off PUT, and "Other" may be VersityGW.
+#[test]
+fn only_aws_r2_and_b2_are_trusted_to_refuse_a_short_body() {
+    let trusted = [
+        Preset::Aws {
+            region: "us-east-1".into(),
+        },
+        Preset::R2 {
+            account_id: "abc123".into(),
+        },
+        Preset::B2 {
+            region: "us-east-005".into(),
+        },
+    ];
+    for preset in trusted {
+        let listed = profile(preset);
+        assert!(listed.refuses_short_body, "{:?}", listed.kind);
+    }
+    let untrusted = [
+        Preset::Wasabi {
+            region: "eu-central-2".into(),
+        },
+        Preset::Hetzner {
+            location: "hel1".into(),
+        },
+        Preset::Other {
+            endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
+            region: None,
+            path_style: true,
+        },
+    ];
+    for preset in untrusted {
+        let unlisted = profile(preset);
+        assert!(!unlisted.refuses_short_body, "{:?}", unlisted.kind);
+    }
 }

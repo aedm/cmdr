@@ -12,10 +12,12 @@
 //!   on keys under it would be the recursion the trait forbids; the engine walks
 //!   the children itself.
 //! - **`rename` is one small file**: a server-side copy, verified, then the
-//!   delete of the source. A folder answers `NotSupported` so nothing triggers
-//!   a copy per object by accident. ❗ The plan's M6 replaces this with a typed
-//!   "can't rename in one call" capability and routing through the transfer
-//!   engine.
+//!   delete of the source. ❗ Everything else is
+//!   [`RenameWork::CopyThenDelete`] (`rename_work`): a folder, and a file past
+//!   the part floor, whose copy needs progress and cancel. Every caller asks
+//!   first and sends those through the transfer engine as a move; `rename`
+//!   itself still refuses them with `NotSupported`, so nothing copies a whole
+//!   folder by accident.
 
 use std::path::{Path, PathBuf};
 
@@ -24,7 +26,7 @@ use cmdr_fs::volume::host::listings::ListingHost;
 use cmdr_fs::volume::mkdir_all::{self, LeadsTo, MakesDirectories};
 use cmdr_fs::volume::patching::{PatchSource, patch_created, patch_deleted, patch_renamed};
 use cmdr_fs::volume::scan_walk::Walking;
-use cmdr_fs::volume::{DirectoryCreation, VolumeError, WriteMode};
+use cmdr_fs::volume::{DirectoryCreation, RenameWork, VolumeError, WriteMode};
 use log::{debug, warn};
 
 use super::S3Volume;
@@ -34,7 +36,6 @@ use super::paths::{Target, target_of};
 use super::query::body_error;
 use super::writes::{Landed, Landing, judge_landing};
 use crate::error::S3Error;
-use crate::multipart::MIN_PART_SIZE;
 use crate::ops::{self, BuildError, CopySource, ListObjectsParams, MetadataDirective, ObjectMetadata, Overwrite};
 use crate::transport::S3Client;
 use crate::xml::{parse_copy_result, parse_list_objects};
@@ -46,11 +47,6 @@ pub(crate) const ENOTEMPTY: i32 = 39;
 /// `ENOTEMPTY` on everything else Cmdr builds for.
 #[cfg(not(target_os = "linux"))]
 pub(crate) const ENOTEMPTY: i32 = 66;
-
-/// The biggest file `rename` moves with one `CopyObject`: the size a single
-/// PUT takes too. Past it a server-side copy gets slow enough to need the
-/// transfer engine's progress and cancel, which the plan's M6 routes it to.
-pub(super) const RENAME_BY_COPY_LIMIT: u64 = MIN_PART_SIZE;
 
 /// What holds a name, folder first (the listing's rule).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,7 +236,7 @@ impl S3Volume {
                     .await?
                 {
                     // A folder is one copy and one delete per object: the
-                    // transfer engine's job (the plan's M6).
+                    // transfer engine's job (`rename_work`).
                     VolumeError::NotSupported
                 } else {
                     VolumeError::NotFound(remote_from)
@@ -251,7 +247,7 @@ impl S3Volume {
             .header("content-length")
             .and_then(|length| length.parse().ok())
             .unwrap_or(0);
-        if size > RENAME_BY_COPY_LIMIT {
+        if !self.copies_whole(size) {
             return Err(VolumeError::NotSupported);
         }
         if !force && self.name_holds(&client, to_bucket, to_key, &remote_to).await? != NameHolds::Nothing {
@@ -309,6 +305,33 @@ impl S3Volume {
         }
         patch_renamed(self, from, to).await;
         Ok(())
+    }
+
+    /// Whether renaming `path` is one call here: an object up to the part
+    /// floor is (`CopyObject`, then a delete); a folder, or a bigger object,
+    /// is a copy the transfer engine runs. The account and a bucket's top
+    /// can't be renamed at all, which `rename` itself says.
+    pub(super) async fn rename_work_impl(&self, path: &Path) -> Result<RenameWork, VolumeError> {
+        let remote = self.to_remote_path(path)?;
+        let Target::Key { bucket, key } = target_of(&remote) else {
+            return Ok(RenameWork::OneCall);
+        };
+        let client = self.clone_client().await?;
+        if self.has_keys_under(&client, bucket, key, &remote).await? {
+            return Ok(RenameWork::CopyThenDelete);
+        }
+        let Some(head) = self.head_object(&client, bucket, key, &remote).await? else {
+            return Err(VolumeError::NotFound(remote));
+        };
+        let size: u64 = head
+            .header("content-length")
+            .and_then(|length| length.parse().ok())
+            .unwrap_or(u64::MAX);
+        Ok(if self.copies_whole(size) {
+            RenameWork::OneCall
+        } else {
+            RenameWork::CopyThenDelete
+        })
     }
 
     /// The path the app addresses `path` by.

@@ -18,7 +18,7 @@ use cmdr_fs::volume::{DirectoryCreation, StreamLength, Volume, VolumeError, Volu
 
 use super::S3Volume;
 use super::testing::*;
-use super::upload_ledger::{UnfinishedUpload, UploadLedger};
+use super::upload_ledger::{TempObject, UnfinishedUpload, UploadLedger};
 use crate::metadata::format_mtime;
 
 const MIB: usize = 1024 * 1024;
@@ -197,6 +197,90 @@ async fn a_cancelled_single_put_publishes_nothing(service: FixtureService) {
         left.is_none(),
         "a cancelled PUT left an object of {left:?} bytes under the name"
     );
+}
+
+/// ❗ An overwrite of an existing object that's cancelled mid-body keeps the
+/// ORIGINAL. VersityGW publishes a PUT cut off mid-body (fixture README), so
+/// on a provider not trusted to refuse a short body the write goes to a temp
+/// key first and only a verified copy replaces the original. Nothing of the
+/// temp stays behind, and no record of it stays in the ledger.
+async fn a_cancelled_overwrite_keeps_the_original(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let prefix = scratch_prefix("write-cancel-overwrite");
+    let key = key_of(&prefix, "kept.txt");
+    let original = b"the original, which must survive".to_vec();
+    seed(service, FIXTURE_BUCKET, &[object(&key, &original)]).await;
+    let path = volume.root().join(&key);
+    let source = StallingSource {
+        pieces: vec![
+            self_describing_bytes(MIB, "first"),
+            self_describing_bytes(MIB, "second"),
+        ],
+        total: 3 * MIB as u64,
+    };
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+
+    let outcome = volume
+        .write_from_stream(
+            &path,
+            WriteMode::CreateOrReplace,
+            source.total_size(),
+            Box::new(source),
+            &|progress| {
+                if progress.bytes_written >= MIB as u64 && asked.fetch_add(1, Ordering::Relaxed) >= 2 {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::Cancelled(_))), "got {outcome:?}");
+    assert!(
+        read_back(&volume, &path).await == original,
+        "a cancelled overwrite must leave the original byte for byte"
+    );
+    let folder = volume.root().join(prefix.trim_end_matches('/'));
+    let names: Vec<String> = volume
+        .list_directory(&folder, None)
+        .await
+        .expect("the folder lists")
+        .into_iter()
+        .map(|entry| entry.name)
+        .collect();
+    assert_eq!(names, vec!["kept.txt".to_string()], "no temp stays beside it");
+    assert!(volume.inner.ledger.temp_leftovers(&volume.inner.account()).is_empty());
+}
+
+/// An overwrite that finishes lands the new bytes and the source's date at
+/// the name, with no temp left beside it, on both fixtures.
+async fn a_finished_overwrite_through_a_temp_lands_whole(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let prefix = scratch_prefix("write-overwrite-temp");
+    let key = key_of(&prefix, "replaced.bin");
+    seed(service, FIXTURE_BUCKET, &[object(&key, b"old bytes")]).await;
+    let path = volume.root().join(&key);
+    let fresh = self_describing_bytes(2 * MIB + 9, "fresh");
+    let mtime = SystemTime::UNIX_EPOCH + Duration::new(1_354_040_105, 5);
+
+    write(
+        &volume,
+        &path,
+        WriteMode::CreateOrReplace,
+        BytesSource::new(fresh.clone()).modified_at(mtime),
+    )
+    .await
+    .expect("an overwrite lands");
+    assert!(read_back(&volume, &path).await == fresh);
+    assert_eq!(
+        stored_mtime_header(service, FIXTURE_BUCKET, &key).await,
+        Some(format_mtime(mtime))
+    );
+    let folder = volume.root().join(prefix.trim_end_matches('/'));
+    let listed = volume.list_directory(&folder, None).await.expect("the folder lists");
+    assert_eq!(listed.len(), 1, "no temp stays beside it: {listed:?}");
+    assert!(volume.inner.ledger.temp_leftovers(&volume.inner.account()).is_empty());
 }
 
 /// ❗ A cancel aborts the multipart upload: no parts stay behind on the server
@@ -417,6 +501,42 @@ async fn the_sweep_aborts_only_recorded_uploads(service: FixtureService) {
     abort_foreign_upload(service, FIXTURE_BUCKET, &theirs_key, &theirs_id).await;
 }
 
+/// ❗ An overwrite's temp a crash left behind goes at the next sweep, by its
+/// token only: an object at a recorded key that carries another token (or
+/// none) is somebody's file, and stays.
+async fn the_sweep_removes_a_crashed_overwrites_temp_by_its_token(service: FixtureService) {
+    let state = TestDir::new("s3_ledger_temp_sweep");
+    let volume = connect_fixture_with_host(service, Some(FIXTURE_BUCKET), fixture_host_with_state(&state)).await;
+    let prefix = scratch_prefix("write-temp-sweep");
+    let ours_key = key_of(&prefix, "a.txt.cmdr-tmp-1");
+    let theirs_key = key_of(&prefix, "b.txt.cmdr-tmp-2");
+    seed_with_token(service, FIXTURE_BUCKET, &ours_key, b"truncated", "tok-ours").await;
+    seed_with_token(service, FIXTURE_BUCKET, &theirs_key, b"someone's", "tok-theirs").await;
+    let ledger = UploadLedger::at(Some(state.join("s3")));
+    for (key, token) in [(&ours_key, "tok-ours"), (&theirs_key, "tok-recorded")] {
+        let record = TempObject {
+            account: volume.inner.account(),
+            bucket: FIXTURE_BUCKET.to_string(),
+            key: key.clone(),
+            token: token.to_string(),
+        };
+        ledger.temp_started(&record);
+        ledger.temp_abandoned(&record);
+    }
+
+    volume.sweep_unfinished_uploads().await;
+
+    assert!(
+        !volume.exists(&volume.root().join(&ours_key)).await,
+        "our temp is removed"
+    );
+    assert!(
+        read_back(&volume, &volume.root().join(&theirs_key)).await == b"someone's",
+        "an object carrying another token stays"
+    );
+    assert!(ledger.temp_leftovers(&volume.inner.account()).is_empty());
+}
+
 async fn folders_are_markers_and_prefixes(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
     let prefix = scratch_prefix("write-folders");
@@ -565,11 +685,19 @@ on_both_fixtures! {
     a_cancelled_single_put_publishes_nothing
         => a_cancelled_single_put_publishes_nothing_on_versitygw,
            a_cancelled_single_put_publishes_nothing_on_garage;
+    a_cancelled_overwrite_keeps_the_original
+        => a_cancelled_overwrite_keeps_the_original_on_versitygw, a_cancelled_overwrite_keeps_the_original_on_garage;
+    a_finished_overwrite_through_a_temp_lands_whole
+        => a_finished_overwrite_through_a_temp_lands_whole_on_versitygw,
+           a_finished_overwrite_through_a_temp_lands_whole_on_garage;
     create_new_checks_then_writes_and_catches_a_writer_mid_upload
         => create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_versitygw,
            create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_garage;
     a_replace_writes_over_the_object_in_place
         => a_replace_writes_over_the_object_in_place_on_versitygw, a_replace_writes_over_the_object_in_place_on_garage;
+    the_sweep_removes_a_crashed_overwrites_temp_by_its_token
+        => the_sweep_removes_a_crashed_overwrites_temp_by_its_token_on_versitygw,
+           the_sweep_removes_a_crashed_overwrites_temp_by_its_token_on_garage;
     the_sweep_aborts_only_recorded_uploads
         => the_sweep_aborts_only_recorded_uploads_on_versitygw, the_sweep_aborts_only_recorded_uploads_on_garage;
     folders_are_markers_and_prefixes

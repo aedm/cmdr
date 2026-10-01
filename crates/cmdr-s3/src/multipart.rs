@@ -40,7 +40,10 @@ pub(crate) struct TooLarge;
 
 /// The plan for `total` bytes: parts of at least 64 MiB and at least
 /// `total / 10,000`, rounded up to a whole MiB, with a tail under 5 MiB folded
-/// into the part before it unless that part would pass 5 GiB.
+/// into the part before it unless that part would pass 5 GiB. Production
+/// plans through [`plan_parts_with_floor`] with the volume's floor, which is
+/// this unless a Docker cell lowered it.
+#[cfg(test)]
 pub(crate) fn plan_parts(total: u64) -> Result<PartPlan, TooLarge> {
     plan_parts_with_floor(total, MIN_PART_SIZE)
 }

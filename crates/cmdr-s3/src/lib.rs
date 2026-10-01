@@ -1,9 +1,5 @@
 #![warn(unused_crate_dependencies)]
 #![deny(missing_docs)]
-#![allow(
-    dead_code,
-    reason = "the protocol layer carries the server-side copy and batch delete builders (`UploadPartCopy`, `DeleteObjects`, a metadata-replacing `CopyObject`) ahead of the plan's M6 calling them; drop this then"
-)]
 
 //! Everything Cmdr says to an S3-compatible object store.
 

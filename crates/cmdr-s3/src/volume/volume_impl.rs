@@ -4,8 +4,6 @@
 //!
 //! ❗ **A capability answers for a method that works**, ❌ never ahead of it:
 //! `is_writable` is button state, and `supports_export` gates copy-from.
-//! Server-side copy within the account (`copy_within`) and the "can't rename in
-//! one call" capability are the plan's M6 (`docs/specs/s3-support-plan.md`).
 
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -17,8 +15,9 @@ use std::time::Duration;
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::{
     BackendKind, BatchScanResult, CopyScanResult, DirectoryCreation, LaneKey, ListingProgress, MutationEvent,
-    Retirement, ScanBoundary, ScanConflict, ShareLink, ShareLinkExpiry, SignInShape, SourceItemInfo, SpaceInfo,
-    StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
+    RenameWork, Retirement, ScanBoundary, ScanConflict, ServerCopyProgress, ShareLink, ShareLinkExpiry, SignInShape,
+    SourceItemInfo, SpaceInfo, StreamLength, StreamWriteProgress, SubtreeTally, Volume, VolumeError, VolumeReadStream,
+    WatchCoverage, WriteMode,
 };
 use cmdr_fs::volume::{patching, scan_walk};
 use tokio_util::sync::CancellationToken;
@@ -291,8 +290,8 @@ impl Volume for S3Volume {
         Box::pin(self.noting(self.delete_impl(path)))
     }
 
-    /// One small file by copy-then-delete; a folder or a big file answers
-    /// `NotSupported` until the plan's M6 routes them through the engine.
+    /// One small file by copy-then-delete. A folder or a big file answers
+    /// `NotSupported`: callers ask `rename_work` first and move those.
     fn rename<'a>(
         &'a self,
         from: &'a Path,
@@ -300,6 +299,60 @@ impl Volume for S3Volume {
         force: bool,
     ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
         Box::pin(self.noting(self.rename_impl(from, to, force)))
+    }
+
+    /// ❗ A folder, and a file past the part floor, are `CopyThenDelete`: S3
+    /// has no rename (`mutation.rs`).
+    fn rename_work<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<RenameWork, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.rename_work_impl(path)))
+    }
+
+    /// A recursive listing, a thousand keys a request (`batch.rs`).
+    fn tally_subtree<'a>(
+        &'a self,
+        path: &'a Path,
+        cap: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<SubtreeTally, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.tally_subtree_impl(path, cap)))
+    }
+
+    /// `DeleteObjects`, a thousand keys a request (`batch.rs`).
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn delete_files<'a>(
+        &'a self,
+        paths: &'a [PathBuf],
+    ) -> Pin<Box<dyn Future<Output = Vec<Result<(), VolumeError>>> + Send + 'a>> {
+        Box::pin(async move {
+            match self.noting(async { Ok(self.delete_files_impl(paths).await) }).await {
+                Ok(results) => {
+                    if let Some(Err(error)) = results.iter().find(|result| result.is_err()) {
+                        self.note_lost_session(error);
+                    }
+                    results
+                }
+                // The server went silent mid-batch: none of it is confirmed.
+                Err(error) => paths.iter().map(|_| Err(error.clone())).collect(),
+            }
+        })
+    }
+
+    /// `CopyObject` or `UploadPartCopy` within one account, this place or a
+    /// sibling (`server_copy.rs`). Whole-publish like every write here.
+    fn copy_on_server<'a>(
+        &'a self,
+        source: &'a dyn Volume,
+        from: &'a Path,
+        to: &'a Path,
+        mode: WriteMode,
+        progress: &'a dyn ServerCopyProgress,
+    ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.copy_on_server_impl(source, from, to, mode, progress)))
     }
 
     /// ❗ No watcher, so this patch is what keeps a pane honest after a copy.

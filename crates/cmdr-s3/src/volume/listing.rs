@@ -34,6 +34,7 @@ impl Child {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn is_folder(&self) -> bool {
         matches!(self, Self::Folder { .. })
     }

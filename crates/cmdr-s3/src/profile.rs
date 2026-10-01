@@ -176,8 +176,19 @@ pub(crate) struct ProviderProfile {
     pub addressing: Addressing,
     /// Whether `CopyObject` / `UploadPartCopy` may name a source in another
     /// bucket. Hetzner copies within one bucket only; a cross-bucket move
-    /// there streams through the Mac.
-    pub cross_bucket_copy: bool,
+    /// there streams through the Mac. Atomic only so a Docker cell can make a
+    /// fixture behave like Hetzner ([`Self::forbid_cross_bucket_copy`]); read
+    /// through [`Self::cross_bucket_copy`].
+    cross_bucket_copy: AtomicBool,
+    /// Whether the provider refuses a PUT whose body ends before its
+    /// `Content-Length` and keeps the old object, as S3's contract says. An
+    /// allowlist, like conditional writes: VersityGW publishes the bytes that
+    /// arrived (`apps/desktop/test/s3-servers/README.md`), so an in-place
+    /// overwrite cut off there loses the original. Elsewhere an overwrite of
+    /// an existing object goes through a temp key (`volume/writes.rs` §
+    /// "Overwrites through a temp key"). The evidence per provider:
+    /// `DETAILS.md` § "Providers".
+    pub refuses_short_body: bool,
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
     /// there. Composing before sending keeps our own comparisons honest.
     pub nfc_keys: bool,
@@ -191,13 +202,17 @@ impl ProviderProfile {
         use NoOverwrite::{CheckThenWrite, CloudflareCopyHeader, IfNoneMatch};
 
         let profile = match preset {
-            Preset::Aws { region } => Self::https(
-                ProviderKind::Aws,
-                format!("s3.{}.amazonaws.com", host_part(region)?),
-                region,
-                Addressing::VirtualHosted,
-                [IfNoneMatch; 3],
-            ),
+            Preset::Aws { region } => {
+                let mut aws = Self::https(
+                    ProviderKind::Aws,
+                    format!("s3.{}.amazonaws.com", host_part(region)?),
+                    region,
+                    Addressing::VirtualHosted,
+                    [IfNoneMatch; 3],
+                );
+                aws.refuses_short_body = true;
+                aws
+            }
             Preset::R2 { account_id } => {
                 let mut r2 = Self::https(
                     ProviderKind::R2,
@@ -207,15 +222,20 @@ impl ProviderProfile {
                     [IfNoneMatch, CheckThenWrite, CloudflareCopyHeader],
                 );
                 r2.nfc_keys = true;
+                r2.refuses_short_body = true;
                 r2
             }
-            Preset::B2 { region } => Self::https(
-                ProviderKind::B2,
-                format!("s3.{}.backblazeb2.com", host_part(region)?),
-                region,
-                Addressing::Path,
-                [CheckThenWrite; 3],
-            ),
+            Preset::B2 { region } => {
+                let mut b2 = Self::https(
+                    ProviderKind::B2,
+                    format!("s3.{}.backblazeb2.com", host_part(region)?),
+                    region,
+                    Addressing::Path,
+                    [CheckThenWrite; 3],
+                );
+                b2.refuses_short_body = true;
+                b2
+            }
             Preset::Wasabi { region } => Self::https(
                 ProviderKind::Wasabi,
                 format!("s3.{}.wasabisys.com", host_part(region)?),
@@ -231,7 +251,7 @@ impl ProviderProfile {
                     Addressing::Path,
                     [CheckThenWrite; 3],
                 );
-                hetzner.cross_bucket_copy = false;
+                hetzner.cross_bucket_copy = AtomicBool::new(false);
                 hetzner
             }
             Preset::Other {
@@ -272,7 +292,8 @@ impl ProviderProfile {
             endpoint_host,
             region: region.to_string(),
             addressing,
-            cross_bucket_copy: true,
+            cross_bucket_copy: AtomicBool::new(true),
+            refuses_short_body: false,
             nfc_keys: false,
             put: ConditionalCell::new(put),
             complete: ConditionalCell::new(complete),
@@ -298,6 +319,19 @@ impl ProviderProfile {
             );
         }
         first
+    }
+
+    /// Whether a server-side copy may read from another bucket than it writes
+    /// to (not on Hetzner).
+    pub(crate) fn cross_bucket_copy(&self) -> bool {
+        self.cross_bucket_copy.load(Ordering::Relaxed)
+    }
+
+    /// Makes this profile copy within one bucket only, the way Hetzner's does,
+    /// for a Docker cell proving that a cross-bucket copy streams instead.
+    #[cfg(any(test, feature = "testing"))]
+    pub(crate) fn forbid_cross_bucket_copy(&self) {
+        self.cross_bucket_copy.store(false, Ordering::Relaxed);
     }
 
     /// The key as this provider stores it: NFC on R2, untouched elsewhere.

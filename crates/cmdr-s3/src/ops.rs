@@ -67,6 +67,12 @@ pub(crate) struct ObjectMetadata {
     /// The identity of the PUT writing it (`x-amz-meta-cmdr-write`), so a
     /// cut-off write can tell its own leftover from anyone else's object.
     pub write_token: Option<String>,
+    /// Headers a server-side copy restates from its source when it can't
+    /// keep them by `COPY` (a multipart copy, or a copy that adds the mtime):
+    /// `content-type`, `cache-control`, and the like, plus every other
+    /// `x-amz-meta-*`. Lowercase names, values as the source's HEAD served
+    /// them.
+    pub carried: Vec<(String, String)>,
 }
 
 /// What a copy does with the source's metadata.
@@ -199,6 +205,13 @@ pub(crate) fn upload_part(
 }
 
 /// One part copied server-side from `source`'s inclusive byte `range`.
+/// `source_etag`, when known, pins every part to the one version of the
+/// source the copy started from (`x-amz-copy-source-if-match`): an object
+/// replaced mid-copy fails the part rather than stitching two versions.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one part's whole address: the upload, the part number, the source, its range, and the version pin"
+)]
 pub(crate) fn upload_part_copy(
     profile: &ProviderProfile,
     bucket: &str,
@@ -207,11 +220,15 @@ pub(crate) fn upload_part_copy(
     part_number: u32,
     source: CopySource<'_>,
     (first, last): (u64, u64),
+    source_etag: Option<&str>,
 ) -> Result<S3Request, BuildError> {
-    let request = part(profile, bucket, key, upload_id, part_number)?;
-    Ok(request
+    let request = part(profile, bucket, key, upload_id, part_number)?
         .header(name("x-amz-copy-source"), copy_source(profile, source, bucket)?)
-        .header(name("x-amz-copy-source-range"), value(&format!("bytes={first}-{last}"))))
+        .header(name("x-amz-copy-source-range"), value(&format!("bytes={first}-{last}")));
+    Ok(match source_etag.and_then(|etag| HeaderValue::from_str(etag).ok()) {
+        Some(etag) => request.header(name("x-amz-copy-source-if-match"), etag),
+        None => request,
+    })
 }
 
 pub(crate) fn complete_multipart_upload(
@@ -380,10 +397,18 @@ fn with_metadata(request: S3Request, metadata: &ObjectMetadata) -> S3Request {
         Some(mtime) => request.header(name(MTIME_HEADER), value(&format_mtime(mtime))),
         None => request,
     };
-    match &metadata.write_token {
+    let mut request = match &metadata.write_token {
         Some(token) => request.header(name(WRITE_TOKEN_HEADER), value(token)),
         None => request,
+    };
+    for (carried, text) in &metadata.carried {
+        // Both came off a HEAD's headers, so both parse; one that somehow
+        // doesn't is left out rather than failing the copy.
+        if let (Ok(carried), Ok(text)) = (HeaderName::from_bytes(carried.as_bytes()), HeaderValue::from_str(text)) {
+            request = request.header(carried, text);
+        }
     }
+    request
 }
 
 /// `x-amz-copy-source`: `/bucket/key`, the key percent-encoded per segment.
@@ -392,7 +417,7 @@ fn copy_source(
     source: CopySource<'_>,
     destination_bucket: &str,
 ) -> Result<HeaderValue, BuildError> {
-    if !profile.cross_bucket_copy && source.bucket != destination_bucket {
+    if !profile.cross_bucket_copy() && source.bucket != destination_bucket {
         return Err(BuildError::CrossBucketCopy);
     }
     if source.bucket.is_empty() || source.bucket.contains('/') {

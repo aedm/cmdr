@@ -48,6 +48,7 @@ fn with_mtime() -> ObjectMetadata {
     ObjectMetadata {
         mtime: Some(UNIX_EPOCH + Duration::from_secs(MTIME)),
         write_token: None,
+        carried: Vec::new(),
     }
 }
 
@@ -115,6 +116,7 @@ fn put_object_carries_the_write_token() {
     let metadata = ObjectMetadata {
         mtime: None,
         write_token: Some("1f-abc-0".to_string()),
+        carried: Vec::new(),
     };
     let built = put_object(&aws(), "photos", "a.jpg", 1, Overwrite::Replace, &metadata).unwrap();
     assert_eq!(header(&built.request, "x-amz-meta-cmdr-write"), Some("1f-abc-0"));
@@ -203,10 +205,13 @@ fn upload_part_copy_names_its_source_and_byte_range() {
         bucket: "photos",
         key: "2024/a b.mov",
     };
-    let request = upload_part_copy(&aws(), "archive", "a.mov", "up", 2, source, (64, 127)).unwrap();
+    let request = upload_part_copy(&aws(), "archive", "a.mov", "up", 2, source, (64, 127), None).unwrap();
     assert_eq!(header(&request, "x-amz-copy-source"), Some("/photos/2024/a%20b.mov"));
     assert_eq!(header(&request, "x-amz-copy-source-range"), Some("bytes=64-127"));
+    assert_eq!(header(&request, "x-amz-copy-source-if-match"), None);
     assert_eq!(request.body, Body::Empty);
+    let pinned = upload_part_copy(&aws(), "archive", "a.mov", "up", 2, source, (64, 127), Some("\"abc\"")).unwrap();
+    assert_eq!(header(&pinned, "x-amz-copy-source-if-match"), Some("\"abc\""));
 }
 
 #[test]
@@ -280,7 +285,7 @@ fn hetzner_refuses_a_cross_bucket_copy_before_sending_it() {
         .is_ok()
     );
     assert_eq!(
-        upload_part_copy(&hetzner(), "two", "a", "up", 1, source, (0, 1)).err(),
+        upload_part_copy(&hetzner(), "two", "a", "up", 1, source, (0, 1), None).err(),
         Some(BuildError::CrossBucketCopy)
     );
 }
