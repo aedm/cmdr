@@ -1,13 +1,15 @@
-//! Real copies off a live S3 bucket onto local disk, driven through the app's
-//! own `copy_between_volumes`, against both Docker fixtures.
+//! Real copies onto, off, and between live S3 buckets, driven through the
+//! app's own `copy_between_volumes`, against both Docker fixtures.
 //!
 //! ❗ **The point is the entry point**, the same as
 //! `webdav_transfer_integration_test.rs`: `cmdr-s3`'s own suite exercises every
-//! read method, but a copy also needs the capability predicates, the scan, and
-//! the pre-flight to agree, and none of those live in the crate. S3 has no
-//! writes yet, so the source is seeded through the crate's own request
-//! builders (`cmdr_s3::volume::testing::seed`), and only the off-the-bucket
-//! direction runs.
+//! read and write method, but a copy also needs the capability predicates, the
+//! scan, the pre-flight, the conflict layer, and the staging decision to agree,
+//! and none of those live in the crate. S3 is the first destination that
+//! publishes every write whole, so these cells are also where the engine's
+//! final-name writes and in-place overwrites meet a real server
+//! (`write_operations/transfer/volume/DETAILS.md` § "Whole-publish
+//! destinations").
 //!
 //! Every cell checksums the bytes at BOTH ends. The cells stay named for the
 //! `s3_integration_` lane prefix.
@@ -17,11 +19,16 @@ use std::sync::Arc;
 
 use cmdr_fs::volume::Volume;
 use cmdr_s3::volume::testing::{
-    FIXTURE_BUCKET, FixtureService, GARAGE, VERSITYGW, connect_fixture, object, scratch_prefix, seed, seed_once,
+    FIXTURE_BUCKET, FIXTURE_BUCKET_2, FixtureService, GARAGE, VERSITYGW, connect_fixture, object, scratch_prefix, seed,
+    seed_once, stored_mtime_header, unfinished_uploads,
 };
 
 use super::network_transfer_test_support::{
-    a_seeded_tree_lands_intact_off_the_server, read_all, run_copy, self_describing_bytes, sha256, tree_files,
+    a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
+    a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
+    a_seeded_tree_lands_intact_off_the_server, an_overwrite_answer_replaces_the_destination_bytes,
+    assert_no_staging_litter, awkward_names_survive_a_round_trip, read_all, run_copy, self_describing_bytes, sha256,
+    tree_files,
 };
 use crate::file_system::volume::LocalPosixVolume;
 use crate::test_support::TestDir;
@@ -146,4 +153,271 @@ async fn s3_integration_a_directory_tree_lands_intact_off_a_bucket_on_versitygw(
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_directory_tree_lands_intact_off_a_bucket_on_garage() {
     a_directory_tree_lands_intact_off_a_bucket(GARAGE).await;
+}
+
+// ── Onto a bucket, and between buckets ───────────────────────────────
+
+/// Past one 64 MiB part, so the engine's copy onto S3 goes out as a multipart
+/// upload (three parts) through `CheckpointStream`.
+const MULTIPART_BYTES: usize = 140 * 1024 * 1024;
+
+/// A local file onto a bucket at the final key (no `.cmdr-tmp-*` staging: S3
+/// publishes whole), as one PUT and as a multipart upload, each carrying the
+/// local file's own mtime.
+async fn copying_onto_a_bucket_lands_every_byte_and_the_mtime(service: FixtureService) {
+    let (remote, prefix, dir) = fixture(service, "copy-onto").await;
+    let local_dir = TestDir::new("s3_copy_onto_bucket");
+    let mtime = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::new(1_354_040_105, 250_000_000);
+    for (name, len) in [("small.bin", PAYLOAD_BYTES), ("large.bin", MULTIPART_BYTES)] {
+        let path = local_dir.join(name);
+        std::fs::write(&path, self_describing_bytes(len, name)).expect("seeding the local file");
+        std::fs::File::options()
+            .write(true)
+            .open(&path)
+            .and_then(|file| file.set_modified(mtime))
+            .expect("dating the local file");
+    }
+    let local: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*local_dir));
+
+    run_copy(
+        "s3_copy_onto_bucket",
+        Arc::clone(&local),
+        vec![PathBuf::from("small.bin"), PathBuf::from("large.bin")],
+        Arc::clone(&remote),
+        dir.clone(),
+    )
+    .await;
+
+    for (name, len) in [("small.bin", PAYLOAD_BYTES), ("large.bin", MULTIPART_BYTES)] {
+        let landed = read_all(remote.as_ref(), &dir.join(name)).await;
+        assert_eq!(landed.len(), len, "{name}: the copy landed the wrong number of bytes");
+        assert_eq!(
+            sha256(&landed),
+            sha256(&self_describing_bytes(len, name)),
+            "{name}: the object must checksum to the local file"
+        );
+        assert_eq!(
+            stored_mtime_header(service, FIXTURE_BUCKET, &format!("{prefix}{name}")).await,
+            Some("1354040105.25".to_string()),
+            "{name}: the local file's own date rides as x-amz-meta-mtime"
+        );
+    }
+    assert_no_staging_litter(remote.as_ref(), &dir, "a copy onto a bucket").await;
+    assert!(
+        unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty(),
+        "the multipart upload must be completed, not left behind"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_copying_onto_a_bucket_lands_every_byte_and_the_mtime_on_versitygw() {
+    copying_onto_a_bucket_lands_every_byte_and_the_mtime(VERSITYGW).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_copying_onto_a_bucket_lands_every_byte_and_the_mtime_on_garage() {
+    copying_onto_a_bucket_lands_every_byte_and_the_mtime(GARAGE).await;
+}
+
+/// S3 → S3, between two buckets of one account: the bytes stream through
+/// Cmdr today (server-side copy is the plan's M6), and the source object's
+/// stored mtime carries over.
+async fn copying_between_buckets_lands_every_byte(service: FixtureService) {
+    let (source, prefix, source_dir) = fixture(service, "copy-between").await;
+    let content = self_describing_bytes(PAYLOAD_BYTES, "between.bin");
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[cmdr_s3::volume::testing::Seed {
+            key: &format!("{prefix}between.bin"),
+            bytes: &content,
+            mtime: Some(cmdr_s3::volume::testing::distant_mtime()),
+        }],
+    )
+    .await;
+    let dest: Arc<dyn Volume> = Arc::new(connect_fixture(service, Some(FIXTURE_BUCKET_2)).await);
+    let dest_dir = dest.root().join(prefix.trim_end_matches('/'));
+
+    run_copy(
+        "s3_copy_between_buckets",
+        Arc::clone(&source),
+        vec![source_dir.join("between.bin")],
+        Arc::clone(&dest),
+        dest_dir.clone(),
+    )
+    .await;
+
+    assert_eq!(
+        sha256(&read_all(dest.as_ref(), &dest_dir.join("between.bin")).await),
+        sha256(&content),
+        "the copy in the second bucket must checksum to the first"
+    );
+    assert_eq!(
+        stored_mtime_header(service, FIXTURE_BUCKET_2, &format!("{prefix}between.bin")).await,
+        Some("1354040105".to_string()),
+        "the source object's stored mtime carries over"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_copying_between_buckets_lands_every_byte_on_versitygw() {
+    copying_between_buckets_lands_every_byte(VERSITYGW).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_copying_between_buckets_lands_every_byte_on_garage() {
+    copying_between_buckets_lands_every_byte(GARAGE).await;
+}
+
+// ── The shared network scenarios, each against both fixtures ─────────
+//
+// A whole tree each way, a cancel mid-upload, an answered Overwrite (in place,
+// on S3), a pre-existing destination folder still probed per name, and awkward
+// names. Spelled out per fixture: the lane selects cells by name, and a macro
+// would hide the names from `fixture-lane-coverage`.
+
+/// Runs one shared scenario on a fresh scratch folder of `service`'s bucket.
+async fn scenario<F, Fut>(service: FixtureService, label: &str, run: F)
+where
+    F: FnOnce(Arc<dyn Volume>, PathBuf) -> Fut,
+    Fut: Future<Output = ()>,
+{
+    let (remote, _, dir) = fixture(service, label).await;
+    run(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_directory_tree_lands_intact_onto_a_bucket_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "a_directory_tree_lands_intact_on_the_server",
+        a_directory_tree_lands_intact_on_the_server,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_directory_tree_lands_intact_onto_a_bucket_on_garage() {
+    scenario(
+        GARAGE,
+        "a_directory_tree_lands_intact_on_the_server",
+        a_directory_tree_lands_intact_on_the_server,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_tree_written_through_the_volume_lands_intact_off_a_bucket_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "a_directory_tree_lands_intact_off_the_server",
+        a_directory_tree_lands_intact_off_the_server,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_tree_written_through_the_volume_lands_intact_off_a_bucket_on_garage() {
+    scenario(
+        GARAGE,
+        "a_directory_tree_lands_intact_off_the_server",
+        a_directory_tree_lands_intact_off_the_server,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_cancelled_upload_leaves_nothing_behind_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "a_cancelled_upload_leaves_nothing_behind",
+        a_cancelled_upload_leaves_nothing_behind,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_cancelled_upload_leaves_nothing_behind_on_garage() {
+    scenario(
+        GARAGE,
+        "a_cancelled_upload_leaves_nothing_behind",
+        a_cancelled_upload_leaves_nothing_behind,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_an_overwrite_answer_replaces_the_object_in_place_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "an_overwrite_answer_replaces_the_destination_bytes",
+        an_overwrite_answer_replaces_the_destination_bytes,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_an_overwrite_answer_replaces_the_object_in_place_on_garage() {
+    scenario(
+        GARAGE,
+        "an_overwrite_answer_replaces_the_destination_bytes",
+        an_overwrite_answer_replaces_the_destination_bytes,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_pre_existing_destination_still_probes_each_name_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "a_pre_existing_destination_still_probes_each_name",
+        a_pre_existing_destination_still_probes_each_name,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_a_pre_existing_destination_still_probes_each_name_on_garage() {
+    scenario(
+        GARAGE,
+        "a_pre_existing_destination_still_probes_each_name",
+        a_pre_existing_destination_still_probes_each_name,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_awkward_names_survive_a_round_trip_on_versitygw() {
+    scenario(
+        VERSITYGW,
+        "awkward_names_survive_a_round_trip",
+        awkward_names_survive_a_round_trip,
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn s3_integration_awkward_names_survive_a_round_trip_on_garage() {
+    scenario(
+        GARAGE,
+        "awkward_names_survive_a_round_trip",
+        awkward_names_survive_a_round_trip,
+    )
+    .await;
 }
