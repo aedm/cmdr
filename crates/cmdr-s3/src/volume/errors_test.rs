@@ -24,6 +24,22 @@ fn a_missing_key_or_bucket_is_not_found_and_names_the_path() {
     }
 }
 
+/// The only precondition Cmdr sends is a no-overwrite one (`If-None-Match: *`
+/// or R2's copy header), so a 412 means the name is taken and what's there
+/// stayed: the same refusal every other backend gives a `CreateNew`.
+#[test]
+fn a_failed_no_overwrite_precondition_is_already_exists_on_the_path() {
+    for error in [
+        from_code(StatusCode::PRECONDITION_FAILED, "PreconditionFailed"),
+        S3Error::from_status(StatusCode::PRECONDITION_FAILED),
+    ] {
+        assert!(
+            matches!(map_s3_error(&error, "/b/a.txt"), VolumeError::AlreadyExists(path) if path == "/b/a.txt"),
+            "{error}"
+        );
+    }
+}
+
 #[test]
 fn an_archived_object_is_cold_storage_on_the_path() {
     // Glacier Flexible Retrieval and Deep Archive answer a read with

@@ -5,11 +5,14 @@
 //! failure straight back here to be judged ([`map_transport_error`],
 //! [`classify_connect_error`]), so a client swap is one file's problem.
 
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
+use bytes::Bytes;
 use cmdr_fs::volume::VolumeError;
 use cmdr_fs::volume::liveness::Liveness;
+use futures_util::Stream;
 use http::{HeaderMap, StatusCode};
 use log::debug;
 
@@ -31,6 +34,16 @@ pub(crate) const REQUEST_BUDGET: Duration = Duration::from_secs(10);
 /// One listing page's or one HEAD's total budget: bounded work, though a
 /// page on a slow or throttled server may take a while.
 pub(crate) const QUERY_BUDGET: Duration = Duration::from_secs(60);
+
+/// The bytes of a streamed request body ([`S3Client::upload`]): every piece the
+/// transport sends, in order. An `Err` aborts the request on the wire, which is
+/// how a refused source or a cancel keeps S3 from publishing anything.
+pub(crate) type UploadBody = Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>>;
+
+/// A `CompleteMultipartUpload`'s total budget. Longer than a query's: AWS may
+/// take minutes to assemble a big object, sending whitespace meanwhile, which
+/// the body read counts as heard.
+pub(crate) const COMPLETE_BUDGET: Duration = Duration::from_secs(15 * 60);
 
 /// What a request came back with. The body is read whole: every answer this
 /// carries is a small XML document or nothing (a HEAD).
@@ -182,6 +195,50 @@ impl S3Client {
             body.extend_from_slice(&chunk);
         }
         Ok(Answer { status, headers, body })
+    }
+
+    /// Signs `request` (a `Body::Streamed { length }`, so `UNSIGNED-PAYLOAD`)
+    /// and sends `body` as its bytes with `Content-Length: length`, then reads
+    /// the answer whole (a PUT answers nothing, an error a small XML document).
+    ///
+    /// ❗ `Content-Length` always, ❌ never a chunked body: S3 answers 411 to a
+    /// PUT without one, and a body that ends short makes hyper abort the
+    /// request, which S3 never publishes. ❌ No `.timeout()`: an upload has no
+    /// total budget, and silence is the watch's to judge (the body source
+    /// counts every piece it hands over as heard).
+    pub(crate) async fn upload(&self, request: S3Request, body: UploadBody) -> Result<Answer, reqwest::Error> {
+        let length = match request.body {
+            Body::Streamed { length } => length,
+            Body::Empty | Body::Bytes(_) => 0,
+        };
+        let time = AmzTime::new(SystemTime::now());
+        let scope = Scope {
+            credentials: &self.credentials,
+            region: &self.profile.region,
+            time: &time,
+        };
+        let signed = sign(request, &scope);
+        let mut response = self
+            .http
+            .request(signed.method, signed.url)
+            .headers(signed.headers)
+            .header(reqwest::header::CONTENT_LENGTH, length)
+            .body(reqwest::Body::wrap_stream(body))
+            .send()
+            .await?;
+        self.liveness.heard();
+        let status = response.status();
+        let headers = response.headers().clone();
+        let mut answer = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            self.liveness.heard();
+            answer.extend_from_slice(&chunk);
+        }
+        Ok(Answer {
+            status,
+            headers,
+            body: answer,
+        })
     }
 
     /// Signs `request` now and sends it, handing back the answer with its body

@@ -42,12 +42,19 @@ pub(crate) struct TooLarge;
 /// `total / 10,000`, rounded up to a whole MiB, with a tail under 5 MiB folded
 /// into the part before it unless that part would pass 5 GiB.
 pub(crate) fn plan_parts(total: u64) -> Result<PartPlan, TooLarge> {
+    plan_parts_with_floor(total, MIN_PART_SIZE)
+}
+
+/// [`plan_parts`] with a smaller floor than 64 MiB, for a Docker cell that
+/// wants several parts without uploading hundreds of megabytes. ❗ Production
+/// always plans with [`MIN_PART_SIZE`]; `floor` is clamped to S3's 5 MiB.
+pub(crate) fn plan_parts_with_floor(total: u64, floor: u64) -> Result<PartPlan, TooLarge> {
     if total > MAX_PARTS * MAX_PART_SIZE {
         return Err(TooLarge);
     }
     // At most 5 GiB, itself a whole MiB, so rounding can't push it past the cap.
     let needed = total.div_ceil(MAX_PARTS).div_ceil(MIB) * MIB;
-    let part_size = needed.max(MIN_PART_SIZE);
+    let part_size = needed.max(floor.max(MIN_TAIL));
     let mut part_count = total.div_ceil(part_size).max(1);
     let tail = total % part_size;
     if part_count > 1 && tail > 0 && tail < MIN_TAIL && part_size + tail <= MAX_PART_SIZE {

@@ -6,11 +6,15 @@
 //! ❗ The stack is machine-wide and its objects persist across runs (named
 //! volumes), so every cell works under a key prefix of its own
 //! ([`scratch_prefix`]) and never assumes an empty bucket. Seeding goes through
-//! this crate's own request builders and transport, because the volume itself
-//! doesn't write yet.
+//! this crate's own request builders and transport rather than the volume, so a
+//! cell about the volume's write path never seeds through the code it tests.
 
+use std::path::Path;
+use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
+
+use cmdr_fs::volume::{StreamLength, Volume, VolumeError, VolumeReadStream};
 
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::credentials::InMemoryCredentials;
@@ -116,12 +120,36 @@ pub fn fixture_host_with_secret(secret: &str) -> VolumeHost {
         .build()
 }
 
+/// A [`fixture_host`] whose backends keep their durable state under `dir`
+/// (`VolumeHost::state_dir`), for a cell about S3's unfinished-upload record.
+pub fn fixture_host_with_state(dir: &Path) -> VolumeHost {
+    let mut credentials = InMemoryCredentials::new();
+    for service in FIXTURE_SERVICES {
+        credentials = credentials.with_entry(
+            &fixture_params(service, None).credential_service(),
+            Some(FIXTURE_ACCESS_KEY),
+            FIXTURE_ACCESS_KEY,
+            &fixture_secret(),
+        );
+    }
+    VolumeHost::builder()
+        .credentials(Arc::new(credentials))
+        .events(Arc::new(RecordingVolumeEvents::new()) as Arc<dyn VolumeEventSink>)
+        .state_root(dir)
+        .build()
+}
+
 /// Connects to one place on a fixture server, panicking with a pointer at the
 /// stack script if it isn't up.
 pub async fn connect_fixture(service: FixtureService, bucket: Option<&str>) -> S3Volume {
+    connect_fixture_with_host(service, bucket, fixture_host()).await
+}
+
+/// [`connect_fixture`] through `host`.
+pub async fn connect_fixture_with_host(service: FixtureService, bucket: Option<&str>, host: VolumeHost) -> S3Volume {
     let params = fixture_params(service, bucket);
     let volume_id = cmdr_fs::volume::s3_volume_id(params.host(), params.port(), FIXTURE_ACCESS_KEY, bucket);
-    match connect_s3_volume("fixture", &volume_id, params, fixture_host(), CancellationToken::new()).await {
+    match connect_s3_volume("fixture", &volume_id, params, host, CancellationToken::new()).await {
         Ok(volume) => volume,
         Err(e) => panic!(
             "the S3 fixture {} refused a connection ({e:?}); is the stack up? apps/desktop/test/s3-servers/start.sh",
@@ -257,4 +285,148 @@ pub fn object<'a>(key: &'a str, bytes: &'a [u8]) -> Seed<'a> {
 /// the past, so it can't be mistaken for an upload time.
 pub fn distant_mtime() -> SystemTime {
     SystemTime::UNIX_EPOCH + Duration::from_secs(1_354_040_105)
+}
+
+/// Starts a multipart upload straight through the protocol, with no Cmdr
+/// record of it: what another tool's live upload looks like to a sweep.
+pub async fn start_foreign_upload(service: FixtureService, bucket: &str, key: &str) -> String {
+    let client = seeding_client(service);
+    let request = ops::create_multipart_upload(client.profile(), bucket, key, &ObjectMetadata::default())
+        .expect("a fixture key builds");
+    let answer = client
+        .exchange(request, QUERY_BUDGET)
+        .await
+        .unwrap_or_else(|e| panic!("starting an upload of {key:?}: {e}"));
+    assert!(
+        answer.status.is_success(),
+        "starting an upload answered {}",
+        answer.status
+    );
+    crate::xml::parse_initiate_multipart(&answer.text())
+        .expect("an InitiateMultipartUploadResult")
+        .upload_id
+}
+
+/// Every unfinished upload under `prefix`, as `(key, upload id)`.
+pub async fn unfinished_uploads(service: FixtureService, bucket: &str, prefix: &str) -> Vec<(String, String)> {
+    let client = seeding_client(service);
+    let mut found = Vec::new();
+    let mut markers: Option<(String, String)> = None;
+    loop {
+        let request = ops::list_multipart_uploads(
+            client.profile(),
+            bucket,
+            prefix,
+            markers.as_ref().map(|(key, id)| (key.as_str(), id.as_str())),
+        )
+        .expect("a fixture listing builds");
+        let answer = client
+            .exchange(request, QUERY_BUDGET)
+            .await
+            .unwrap_or_else(|e| panic!("listing uploads under {prefix:?}: {e}"));
+        assert!(answer.status.is_success(), "listing uploads answered {}", answer.status);
+        let page = crate::xml::parse_list_multipart_uploads(&answer.text()).expect("a ListMultipartUploadsResult");
+        found.extend(page.uploads.into_iter().map(|upload| (upload.key, upload.upload_id)));
+        match (page.is_truncated, page.next_key_marker, page.next_upload_id_marker) {
+            (true, Some(key), Some(id)) => markers = Some((key, id)),
+            _ => break,
+        }
+    }
+    found
+}
+
+/// Aborts one upload straight through the protocol, for a cell's cleanup.
+pub async fn abort_foreign_upload(service: FixtureService, bucket: &str, key: &str, upload_id: &str) {
+    let client = seeding_client(service);
+    let request = ops::abort_multipart_upload(client.profile(), bucket, key, upload_id).expect("a fixture key builds");
+    let _ = client.exchange(request, QUERY_BUDGET).await;
+}
+
+/// The `x-amz-meta-mtime` an object carries, as stored.
+pub async fn stored_mtime_header(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
+    let client = seeding_client(service);
+    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
+    let answer = client
+        .exchange(request, QUERY_BUDGET)
+        .await
+        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
+    answer.header(crate::metadata::MTIME_HEADER).map(str::to_string)
+}
+
+/// Bytes as a copy's source: in pieces of `piece` bytes, with a known length
+/// or not, and the modification time a destination should keep.
+pub struct BytesSource {
+    bytes: Vec<u8>,
+    offset: usize,
+    piece: usize,
+    known: bool,
+    mtime: Option<SystemTime>,
+}
+
+impl BytesSource {
+    /// `bytes` of known length in 1 MiB pieces, no mtime.
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            bytes,
+            offset: 0,
+            piece: 1024 * 1024,
+            known: true,
+            mtime: None,
+        }
+    }
+
+    /// The same bytes with no length declared up front.
+    pub fn of_unknown_length(mut self) -> Self {
+        self.known = false;
+        self
+    }
+
+    /// The source file's modification time.
+    pub fn modified_at(mut self, mtime: SystemTime) -> Self {
+        self.mtime = Some(mtime);
+        self
+    }
+}
+
+impl VolumeReadStream for BytesSource {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move {
+            if self.offset >= self.bytes.len() {
+                return None;
+            }
+            let end = (self.offset + self.piece).min(self.bytes.len());
+            let piece = self.bytes[self.offset..end].to_vec();
+            self.offset = end;
+            Some(Ok(piece))
+        })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        if self.known {
+            StreamLength::Known(self.bytes.len() as u64)
+        } else {
+            StreamLength::Unknown
+        }
+    }
+
+    fn bytes_read(&self) -> u64 {
+        self.offset as u64
+    }
+
+    fn modified_at(&self) -> Option<SystemTime> {
+        self.mtime
+    }
+}
+
+/// Everything at `path`, read back through the volume.
+pub async fn read_back(volume: &S3Volume, path: &Path) -> Vec<u8> {
+    let mut stream = volume
+        .open_read_stream(path)
+        .await
+        .unwrap_or_else(|e| panic!("reading {} back: {e:?}", path.display()));
+    let mut bytes = Vec::new();
+    while let Some(piece) = stream.next_chunk().await {
+        bytes.extend(piece.unwrap_or_else(|e| panic!("reading {} back: {e:?}", path.display())));
+    }
+    bytes
 }

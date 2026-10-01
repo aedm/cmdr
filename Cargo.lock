@@ -1618,8 +1618,10 @@ name = "cmdr-s3"
 version = "0.0.0"
 dependencies = [
  "base64 0.23.1",
+ "bytes",
  "cmdr-fs",
  "cmdr-s3",
+ "futures-util",
  "hmac 0.13.0",
  "http",
  "httpdate",

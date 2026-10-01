@@ -2,13 +2,12 @@
 //! the modules that do the work. Every answer here is deliberate: a default
 //! this backend accepts silently is a promise it may not be able to keep.
 //!
-//! ❗ **Read-only for now, and it says so.** Listing, stat, and reads work;
-//! writes and copies within the account are later milestones
-//! (`docs/specs/s3-support-plan.md`), so `is_writable` answers `false` and every
-//! mutation keeps the trait's `NotSupported` default. ❌ No `true` here before
-//! the method it speaks for works: `is_writable` is button state, and
-//! `supports_export` gates copy-from.
+//! ❗ **A capability answers for a method that works**, ❌ never ahead of it:
+//! `is_writable` is button state, and `supports_export` gates copy-from.
+//! Server-side copy within the account (`copy_within`) and the "can't rename in
+//! one call" capability are the plan's M6 (`docs/specs/s3-support-plan.md`).
 
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -16,11 +15,12 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use cmdr_fs::entry::FileEntry;
-use cmdr_fs::volume::scan_walk;
 use cmdr_fs::volume::{
-    BackendKind, BatchScanResult, CopyScanResult, LaneKey, ListingProgress, Retirement, ScanBoundary, ShareLink,
-    ShareLinkExpiry, SignInShape, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
+    BackendKind, BatchScanResult, CopyScanResult, DirectoryCreation, LaneKey, ListingProgress, MutationEvent,
+    Retirement, ScanBoundary, ScanConflict, ShareLink, ShareLinkExpiry, SignInShape, SourceItemInfo, SpaceInfo,
+    StreamLength, StreamWriteProgress, Volume, VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
 };
+use cmdr_fs::volume::{patching, scan_walk};
 use tokio_util::sync::CancellationToken;
 
 use super::{BACKEND, S3Volume};
@@ -210,12 +210,106 @@ impl Volume for S3Volume {
         Box::pin(self.share_link_impl(path, expires_in))
     }
 
-    // ── What it can't do yet, said out loud ──────────────────────────
+    fn scan_for_conflicts<'a>(
+        &'a self,
+        source_items: &'a [SourceItemInfo],
+        dest_path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<ScanConflict>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(scan_walk::scan_conflicts(self, source_items, dest_path)))
+    }
 
-    /// Writes arrive with the write milestone; until then New folder, New
-    /// file, Rename, and Paste render disabled here.
+    // ── The write path ───────────────────────────────────────────────
+
     fn is_writable(&self) -> bool {
-        false
+        true
+    }
+
+    /// ❗ S3 publishes an object only when its PUT or multipart completion
+    /// finishes, and a replaced object stays readable until then, so the
+    /// transfer engine writes final keys here with no `.cmdr-tmp-*` staging
+    /// (`writes.rs`). `write_is_single_shot` keeps its `false` default: a
+    /// request stays open while the source drains.
+    fn publishes_writes_whole(&self) -> bool {
+        true
+    }
+
+    /// Multipart takes a stream whose length shows only at its end.
+    fn supports_unknown_length_writes(&self) -> bool {
+        true
+    }
+
+    fn write_from_stream<'a>(
+        &'a self,
+        dest: &'a Path,
+        mode: WriteMode,
+        length: StreamLength,
+        stream: Box<dyn VolumeReadStream>,
+        on_progress: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
+    ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.write_from_stream_impl(dest, mode, length, stream, on_progress)))
+    }
+
+    /// ❗ No-clobber: the provider's conditional header where it's trusted,
+    /// else a check before and a HEAD after (`writes.rs`).
+    fn create_file<'a>(
+        &'a self,
+        path: &'a Path,
+        content: &'a [u8],
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.create_file_impl(path, content)))
+    }
+
+    fn create_directory<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.create_directory_impl(path)))
+    }
+
+    /// The shared walk over this backend's marker write (`mutation.rs`).
+    fn create_directory_all<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<DirectoryCreation, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.create_directory_all_impl(path)))
+    }
+
+    /// A taken name, folder or file, is refused before the marker is written,
+    /// so the folder-merge walker reads `AlreadyExists` as "merge into this".
+    fn create_directory_errors_on_existing_dir(&self) -> bool {
+        true
+    }
+
+    /// New names go out composed (NFC): a decomposed key is one that web tools
+    /// and scripts matching bytes don't find. R2 composes keys itself.
+    fn composes_new_names(&self) -> bool {
+        true
+    }
+
+    /// ❗ One node: a folder still holding anything is refused (`mutation.rs`).
+    fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.delete_impl(path)))
+    }
+
+    /// One small file by copy-then-delete; a folder or a big file answers
+    /// `NotSupported` until the plan's M6 routes them through the engine.
+    fn rename<'a>(
+        &'a self,
+        from: &'a Path,
+        to: &'a Path,
+        force: bool,
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.rename_impl(from, to, force)))
+    }
+
+    /// ❗ No watcher, so this patch is what keeps a pane honest after a copy.
+    fn notify_mutation<'a>(
+        &'a self,
+        _volume_id: &'a str,
+        parent_path: &'a Path,
+        mutation: MutationEvent,
+    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+        Box::pin(patching::patch_mutation(self, parent_path, mutation))
     }
 
     // ── Lifecycle ────────────────────────────────────────────────────

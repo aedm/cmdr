@@ -2,7 +2,7 @@
 #![deny(missing_docs)]
 #![allow(
     dead_code,
-    reason = "the protocol layer carries the read and write paths' builders (ranged GET, multipart, copy, delete, share links) ahead of the volume calling them; drop this once reads and writes land"
+    reason = "the protocol layer carries the server-side copy and batch delete builders (`UploadPartCopy`, `DeleteObjects`, a metadata-replacing `CopyObject`) ahead of the plan's M6 calling them; drop this then"
 )]
 
 //! Everything Cmdr says to an S3-compatible object store.

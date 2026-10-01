@@ -3,7 +3,7 @@
 
 use std::time::{Duration, SystemTime};
 
-use super::{Child, children_of};
+use super::{Child, FolderContents, children_of, folder_contents};
 use crate::xml::{ObjectEntry, ObjectPage, StorageClass};
 
 fn object(key: &str, size: u64) -> ObjectEntry {
@@ -116,4 +116,33 @@ fn an_archived_object_says_so() {
     cold.storage_class = StorageClass::DeepArchive;
     let listed = children_of(&page(&[], vec![cold]), "");
     assert!(matches!(listed[0], Child::Object { archived: true, .. }));
+}
+
+/// What a delete reads off one capped listing of `name/`: ❗ anything but the
+/// folder's own marker means it still holds something, and the delete refuses
+/// rather than recursing.
+#[test]
+fn a_folder_holding_anything_but_its_marker_is_not_empty() {
+    assert_eq!(
+        folder_contents(&page(&[], vec![object("a/", 0), object("a/x.txt", 1)]), "a/"),
+        FolderContents::Holds
+    );
+    assert_eq!(folder_contents(&page(&["a/sub/"], vec![]), "a/"), FolderContents::Holds);
+    assert_eq!(
+        folder_contents(&page(&[], vec![object("a/x.txt", 1)]), "a/"),
+        FolderContents::Holds
+    );
+}
+
+#[test]
+fn a_folder_with_only_its_marker_is_empty_and_marked() {
+    assert_eq!(
+        folder_contents(&page(&[], vec![object("a/", 0)]), "a/"),
+        FolderContents::MarkerOnly
+    );
+}
+
+#[test]
+fn nothing_under_the_prefix_is_no_folder() {
+    assert_eq!(folder_contents(&page(&[], vec![]), "a/"), FolderContents::Nothing);
 }

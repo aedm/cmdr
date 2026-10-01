@@ -9,8 +9,11 @@
 //! through the [`VolumeHost`] seams handed to [`connect_s3_volume`].
 //! `CLAUDE.md` has the must-knows, `DETAILS.md` the decisions.
 
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
+
+use cmdr_fs::entry::FileEntry;
 
 use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 use cmdr_fs::volume::host::VolumeHost;
@@ -20,13 +23,17 @@ use cmdr_fs::volume::remote_paths::RemoteRoot;
 use cmdr_fs::volume::{Retirement, VolumeError};
 use tokio_util::sync::CancellationToken;
 
+use crate::multipart::MIN_PART_SIZE;
 use crate::params::S3ConnectionParams;
 use crate::refusal::S3ConnectError;
 use crate::sigv4::Credentials;
 use crate::transport::S3Client;
+use upload_ledger::UploadLedger;
 
 mod errors;
 mod listing;
+mod multipart_upload;
+mod mutation;
 mod paths;
 mod query;
 mod reconnect;
@@ -34,7 +41,10 @@ mod scan;
 mod share_link;
 mod state;
 mod streams;
+mod upload_body;
+mod upload_ledger;
 mod volume_impl;
+mod writes;
 
 pub use state::ConnectionState;
 
@@ -105,6 +115,15 @@ struct S3VolumeInner {
     silence: std::sync::RwLock<Timings>,
     /// Everything this backend asks the app around it.
     host: VolumeHost,
+    /// The multipart uploads this account started and hasn't settled
+    /// (`upload_ledger.rs`), under the host's state directory.
+    ledger: UploadLedger,
+    /// Entries a write just verified, by server-side path, for the pane patch
+    /// that follows it (`writes.rs`). Bounded; taken on read.
+    written: std::sync::Mutex<HashMap<String, FileEntry>>,
+    /// The smallest part a multipart upload cuts: `MIN_PART_SIZE`, except in a
+    /// Docker cell that wants several parts from a small file.
+    part_floor: AtomicU64,
 }
 
 impl S3VolumeInner {
@@ -170,6 +189,36 @@ impl S3Volume {
     fn set_silence_timings(&self, timings: Timings) {
         *self.inner.silence.write_ignore_poison() = timings;
     }
+
+    /// The smallest part a multipart upload cuts.
+    fn part_floor(&self) -> u64 {
+        self.inner.part_floor.load(Ordering::Relaxed)
+    }
+
+    /// Cuts multipart uploads into parts as small as `bytes` (S3's 5 MiB
+    /// floor at the least), so a cell sees several parts without uploading
+    /// hundreds of megabytes. ❗ Production always cuts 64 MiB parts.
+    #[cfg(any(test, feature = "testing"))]
+    pub fn set_part_floor(&self, bytes: u64) {
+        self.inner.part_floor.store(bytes, Ordering::Relaxed);
+    }
+
+    /// Points this volume's no-overwrite writes at the `If-None-Match: *`
+    /// header, for a cell proving that path against VersityGW. ❌ Never in
+    /// production (`ProviderProfile::trust_conditional_writes`).
+    #[cfg(any(test, feature = "testing"))]
+    pub async fn trust_conditional_writes(&self) {
+        if let Some(client) = self.inner.client.read().await.as_ref() {
+            client.profile().trust_conditional_writes();
+        }
+    }
+
+    /// Runs the unfinished-upload sweep now and answers how many uploads it
+    /// aborted, for a cell that can't wait on the one a connect starts.
+    #[cfg(any(test, feature = "testing"))]
+    pub async fn sweep_unfinished_uploads(&self) -> usize {
+        self.inner.sweep_unfinished_uploads().await
+    }
 }
 
 /// Opens one S3 place: reads the account's secret from the store, builds a
@@ -207,7 +256,10 @@ pub async fn connect_s3_volume(
     // endpoint, key, bucket, or region crosses.
     host.analytics()
         .record("s3_connected", &[("provider", params.provider().kind_name())]);
-    Ok(S3Volume::assemble(name, volume_id, params, client, host))
+    let volume = S3Volume::assemble(name, volume_id, params, client, host);
+    // Uploads an earlier session left unfinished are billed until aborted.
+    volume.inner.spawn_upload_sweep();
+    Ok(volume)
 }
 
 /// A client for `params` with `secret`, proven by the connect probe.
@@ -231,6 +283,7 @@ impl S3Volume {
             std::path::Path::new(&params.remote_root()),
         );
         let auto_reconnect = params.auto_reconnect;
+        let ledger = UploadLedger::at(host.state_dir(BACKEND));
         Self {
             name: name.to_string(),
             root,
@@ -247,6 +300,9 @@ impl S3Volume {
                 auth_attempt_spent: AtomicBool::new(false),
                 silence: std::sync::RwLock::new(Timings::PRODUCTION),
                 host,
+                ledger,
+                written: std::sync::Mutex::new(HashMap::new()),
+                part_floor: AtomicU64::new(MIN_PART_SIZE),
             }),
         }
     }
@@ -268,3 +324,5 @@ mod share_link_test;
 mod state_test;
 #[cfg(test)]
 mod test_support;
+#[cfg(test)]
+mod write_test;

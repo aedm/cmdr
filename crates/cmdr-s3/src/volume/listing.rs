@@ -98,6 +98,30 @@ fn addressable(name: &str) -> bool {
     !name.is_empty() && name != "." && name != ".."
 }
 
+/// What a folder holds, read off one listing of `prefix` (ending in `/`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FolderContents {
+    /// No key at all under the prefix: no folder by that name.
+    Nothing,
+    /// Only the folder's own zero-byte marker (`prefix` itself).
+    MarkerOnly,
+    /// Something besides the marker: a file, or a folder below.
+    Holds,
+}
+
+/// Judges a page listing `prefix` with `delimiter=/` and `max-keys` of at
+/// least two, which is enough to tell a marker alone from a marker and a child.
+pub(super) fn folder_contents(page: &ObjectPage, prefix: &str) -> FolderContents {
+    let others = page.objects.iter().filter(|object| object.key != prefix).count() + page.prefixes.len();
+    if others > 0 {
+        FolderContents::Holds
+    } else if page.objects.is_empty() {
+        FolderContents::Nothing
+    } else {
+        FolderContents::MarkerOnly
+    }
+}
+
 #[cfg(test)]
 #[path = "listing_test.rs"]
 mod listing_test;

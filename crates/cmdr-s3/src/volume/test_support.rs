@@ -47,7 +47,10 @@ pub(super) fn make_test_volume_with(bucket: Option<&str>, host: VolumeHost) -> S
             auto_reconnect: AtomicBool::new(true),
             auth_attempt_spent: AtomicBool::new(false),
             silence: std::sync::RwLock::new(Timings::PRODUCTION),
+            ledger: super::upload_ledger::UploadLedger::at(host.state_dir("s3")),
             host,
+            written: std::sync::Mutex::new(std::collections::HashMap::new()),
+            part_floor: std::sync::atomic::AtomicU64::new(crate::multipart::MIN_PART_SIZE),
         }),
     }
 }

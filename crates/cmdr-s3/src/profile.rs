@@ -13,7 +13,7 @@
 //! session, logged once.
 
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use unicode_normalization::{UnicodeNormalization, is_nfc};
 use url::Url;
@@ -92,19 +92,39 @@ pub(crate) enum NoOverwrite {
     CheckThenWrite,
 }
 
+impl NoOverwrite {
+    fn to_u8(self) -> u8 {
+        match self {
+            Self::IfNoneMatch => 0,
+            Self::CloudflareCopyHeader => 1,
+            Self::CheckThenWrite => 2,
+        }
+    }
+
+    fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::IfNoneMatch,
+            1 => Self::CloudflareCopyHeader,
+            _ => Self::CheckThenWrite,
+        }
+    }
+}
+
 /// One conditional operation's answer, downgradable for the session.
 #[derive(Debug)]
 struct ConditionalCell {
-    /// The allowlist entry: a header for an operation the provider documents
-    /// enforcing, `CheckThenWrite` for everything else.
-    listed: NoOverwrite,
+    /// The allowlist entry (a [`NoOverwrite`]): a header for an operation the
+    /// provider documents enforcing, `CheckThenWrite` for everything else.
+    /// Atomic only so a Docker cell can point a fixture at the header path
+    /// ([`ProviderProfile::trust_conditional_writes`]).
+    listed: AtomicU8,
     downgraded: AtomicBool,
 }
 
 impl ConditionalCell {
     fn new(listed: NoOverwrite) -> Self {
         Self {
-            listed,
+            listed: AtomicU8::new(listed.to_u8()),
             downgraded: AtomicBool::new(false),
         }
     }
@@ -113,7 +133,7 @@ impl ConditionalCell {
         if self.downgraded.load(Ordering::Relaxed) {
             NoOverwrite::CheckThenWrite
         } else {
-            self.listed
+            NoOverwrite::from_u8(self.listed.load(Ordering::Relaxed))
         }
     }
 }
@@ -319,6 +339,19 @@ impl ProviderProfile {
                 None => format!("/{bucket}"),
             },
         })
+    }
+
+    /// Sends `If-None-Match: *` on Put and Complete whatever the allowlist
+    /// says, for a Docker cell that proves the header path against VersityGW
+    /// (which honours both; `apps/desktop/test/s3-servers/README.md`). ❌
+    /// Never in production: the allowlist is the only thing that may trust a
+    /// server's header, because an ignored one answers 200 and overwrites.
+    #[cfg(any(test, feature = "testing"))]
+    pub(crate) fn trust_conditional_writes(&self) {
+        for cell in [&self.put, &self.complete] {
+            cell.listed.store(NoOverwrite::IfNoneMatch.to_u8(), Ordering::Relaxed);
+            cell.downgraded.store(false, Ordering::Relaxed);
+        }
     }
 
     fn cell(&self, op: ConditionalOp) -> &ConditionalCell {

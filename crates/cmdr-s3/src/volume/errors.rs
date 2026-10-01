@@ -25,6 +25,12 @@ pub(crate) fn map_s3_error(error: &S3Error, path: &str) -> VolumeError {
         debug!("S3 path={path:?}: backend=s3, error_kind=not_found, code={error}");
         return VolumeError::NotFound(path.to_string());
     }
+    // A no-overwrite precondition (`If-None-Match: *`, R2's copy header), the
+    // only kind Cmdr sends: the name is taken and what's there stayed.
+    if error.is_precondition_failed() {
+        debug!("S3 path={path:?}: backend=s3, error_kind=already_exists, code={error}");
+        return VolumeError::AlreadyExists(path.to_string());
+    }
     // An archived object (Glacier Flexible Retrieval, Deep Archive, an
     // Intelligent-Tiering archive tier) until it's restored: typed, because a
     // retry can only meet it again and the fix is a restore, not new keys.

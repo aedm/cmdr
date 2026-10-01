@@ -53,6 +53,11 @@ cmdr-fs = { path = "../cmdr-fs" }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream"] }
 # A HEAD's `Last-Modified` (RFC 1123), the version `cmdr-webdav` resolves.
 httpdate = "1"
+# The upload body: a `Stream` of `Bytes` the transport hands to
+# `reqwest::Body::wrap_stream`, and the part uploads run side by side. The
+# versions `cmdr-webdav` resolves.
+bytes = "1"
+futures-util = "0.3"
 # The backend's own async surface: `sync` for the client lock, `time` for the
 # reconnect backoff, `rt` for the handle background work spawns onto, `macros`
 # for `select!`. Deliberately NOT `rt-multi-thread`: the runtime is the app's,

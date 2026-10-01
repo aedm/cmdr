@@ -194,6 +194,8 @@ impl S3VolumeInner {
                 self.emit_if_changed(ConnectionState::Connected);
                 drop(installed);
                 info!(target: "volume", "s3 volume '{}' is back", self.volume_id);
+                // An upload the outage cut off couldn't be aborted then.
+                self.spawn_upload_sweep();
                 Ok(())
             }
             Err(

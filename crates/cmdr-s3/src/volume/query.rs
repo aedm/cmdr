@@ -26,7 +26,7 @@ use crate::xml::{BodyError, StorageClass, parse_list_buckets, parse_list_objects
 impl S3Volume {
     /// One request, in the `Volume` vocabulary: a transport failure by its
     /// typed predicates, a non-2xx by the S3 error table, both against `path`.
-    async fn ask(&self, client: &S3Client, request: S3Request, path: &str) -> Result<Answer, VolumeError> {
+    pub(super) async fn ask(&self, client: &S3Client, request: S3Request, path: &str) -> Result<Answer, VolumeError> {
         let answer = client
             .exchange(request, QUERY_BUDGET)
             .await
@@ -152,7 +152,7 @@ impl S3Volume {
 
     /// Whether anything sits under `key/`: one `ListObjectsV2` capped at one
     /// key, which a folder marker answers too.
-    async fn has_keys_under(
+    pub(super) async fn has_keys_under(
         &self,
         client: &S3Client,
         bucket: &str,
@@ -197,7 +197,7 @@ impl S3Volume {
     /// A folder (a bucket, a prefix, the account root) at its app path.
     /// `created` is a bucket's creation date. `None` when a misbehaving server
     /// named something off this place's root.
-    fn folder_entry(&self, name: &str, remote: &str, created: Option<SystemTime>) -> Option<FileEntry> {
+    pub(super) fn folder_entry(&self, name: &str, remote: &str, created: Option<SystemTime>) -> Option<FileEntry> {
         let app_path = self.root.to_app_path(remote)?;
         let mut entry = FileEntry::new(name.to_string(), app_path.to_string_lossy().into_owned(), true, false);
         entry.created_at = created.and_then(unix_secs);
@@ -207,7 +207,7 @@ impl S3Volume {
     /// An object from its HEAD: the size from `Content-Length`, the date from
     /// `x-amz-meta-mtime` (the source's own mtime, rclone's key and format)
     /// when it's there, else `Last-Modified` (the upload time).
-    fn object_entry(&self, name: &str, remote: &str, head: &Answer) -> Option<FileEntry> {
+    pub(super) fn object_entry(&self, name: &str, remote: &str, head: &Answer) -> Option<FileEntry> {
         let app_path = self.root.to_app_path(remote)?;
         let mut entry = FileEntry::new(name.to_string(), app_path.to_string_lossy().into_owned(), false, false);
         entry.size = head.header("content-length").and_then(|length| length.parse().ok());
@@ -246,7 +246,7 @@ fn unix_secs(at: SystemTime) -> Option<u64> {
 }
 
 /// A 2xx body that wasn't the document asked for, in the `Volume` vocabulary.
-fn body_error(error: &BodyError, path: &str) -> VolumeError {
+pub(super) fn body_error(error: &BodyError, path: &str) -> VolumeError {
     match error {
         BodyError::Embedded(error) => map_s3_error(error, path),
         BodyError::Malformed => VolumeError::IoError {
