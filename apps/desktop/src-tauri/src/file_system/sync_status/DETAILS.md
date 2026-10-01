@@ -52,10 +52,12 @@ workers. If all 12 are ever lost, batches stop resolving and the pane shows no b
 **A wedge names its call, once.** The probe announces each step through `framework_pool::note_activity` (the domain
 check, the `stat`, then the `NSURL` resource key it's about to read), which writes the worker's own slot without the
 pool's lock and allocates only when the path changes. When a batch starts, `Pool::newly_wedged` hands back each worker
-that crossed `wedged_after` since the last look, and `join_or_start` logs its thread name, the call, how long, and the
-path, once per stuck job. The path stands in for the provider: each domain has its own root
-(`~/Library/CloudStorage/<provider>…`, `~/Library/Mobile Documents` for iCloud Drive). The domain id itself is an
-ancestor xattr walk that could block on a dead mount, which the tokio thread logging this must not do.
+that crossed `wedged_after` since the last look, and `join_or_start` logs its thread name, the call, how long, the path,
+and the provider, once per stuck job (`wedge_report`). The provider comes from the path's shape through
+`cloud_provider::locate` (each domain has its own root: `~/Library/CloudStorage/<provider>…`, iCloud Drive's
+container under `~/Library/Mobile Documents`), and reads "unknown" for a path reached through a symlink or a
+mirror-mode Drive folder. The domain id would be exact, but it's an ancestor xattr walk that could block on a dead mount,
+which the tokio thread logging this must not do.
 
 ## Decision: `target_workers` is 4, not `available_parallelism()`
 
