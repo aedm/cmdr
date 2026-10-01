@@ -155,7 +155,7 @@ fn is_supported_remote_url(path: &str) -> bool {
     };
     matches!(
         scheme.to_ascii_lowercase().as_str(),
-        "sftp" | "ssh" | "webdav" | "http" | "https" | "smb"
+        "sftp" | "ssh" | "webdav" | "s3" | "http" | "https" | "smb"
     ) || (valid_url_scheme(scheme)
         && remainder
             .split(['/', '?', '#'])

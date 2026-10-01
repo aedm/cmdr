@@ -93,8 +93,10 @@ pub(super) fn redact_derived_id(id: &str, context: Option<&RedactionContext>) ->
         return id.to_string();
     };
     let (scheme, slug) = scheme_and_slug.split_once('-').unwrap_or((scheme_and_slug, ""));
-    if !matches!(scheme, "smb" | "sftp" | "webdav" | "adb" | "mtp" | "vol" | "path")
-        || !valid_derived_slug(slug)
+    if !matches!(
+        scheme,
+        "smb" | "sftp" | "webdav" | "s3" | "adb" | "mtp" | "vol" | "path"
+    ) || !valid_derived_slug(slug)
         || digest.len() != 16
         || !digest.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
         || (id.contains(':') && storage.is_none())

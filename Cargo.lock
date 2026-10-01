@@ -1360,6 +1360,7 @@ dependencies = [
  "cmdr-git",
  "cmdr-index",
  "cmdr-mtp",
+ "cmdr-s3",
  "cmdr-sftp",
  "cmdr-smb",
  "cmdr-webdav",

@@ -11,13 +11,13 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unix_system` | `/tmp/`, `/var/`, `/private/`, `/opt/` | prefix kept; tail walked with same shape rules |
 | `volumes` | `/Volumes/<label>/...` (spaces allowed) | `/Volumes/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
 | `media` | `/media/<label>/...` (spaces allowed) | `/media/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
-| `remote_url` | SFTP/SSH/WebDAV/HTTP(S)/SMB URL, with or without userinfo | scheme + hierarchy + port + address class + conservative extension; identities tokenized |
+| `remote_url` | SFTP/SSH/WebDAV/S3/HTTP(S)/SMB URL, with or without userinfo | scheme + hierarchy + port + address class + conservative extension; identities tokenized |
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
 | `url_userinfo` | another scheme's `scheme://user[:pass]@host/...` | same complete component redaction as recognized URLs |
 | `bare_userinfo` | `//user[:pass]@host/...` (no scheme) | SMB-shaped component redaction without inventing a scheme |
 | `detail_field` | external text: `detail="…"`, `stderr="…"`, `stdout="…"` (Debug-quoted) | redacted, keyed echoes scrubbed, capped (200 chars) |
 | `path_field` | a keyed field: `path=`, `smb_path=`, `from=`, `to=`, `file=`, … (see the regex) | relative value walked in place; absolute value handed to the branches above |
-| `derived_id` | current `smb`/`sftp`/`webdav`/`adb`/`mtp`/`vol`/`path` ID with 16-hex digest | scheme kept, opaque ID tokenized; MTP storage number kept |
+| `derived_id` | current `smb`/`sftp`/`webdav`/`s3`/`adb`/`mtp`/`vol`/`path` ID with 16-hex digest | scheme kept, opaque ID tokenized; MTP storage number kept |
 | `manual_server_id` | `manual-<address-derived name>-<port>` | `manual-<server-id>-<port>` |
 | `email` | `local@domain.tld` | `<email>` |
 | `account` | `user=`/`username:` fields | `user=<user>`, `None` untouched |

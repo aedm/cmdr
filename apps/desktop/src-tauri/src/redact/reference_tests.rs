@@ -2,7 +2,8 @@
 
 use super::*;
 use cmdr_fs::volume::{
-    adb_volume_id, local_volume_id, mtp_ids, path_volume_id, sftp_volume_id, smb_volume_id, webdav_volume_id,
+    adb_volume_id, local_volume_id, mtp_ids, path_volume_id, s3_volume_id, sftp_volume_id, smb_volume_id,
+    webdav_volume_id,
 };
 
 const TEST_PROCESS_SECRET: [u8; 32] = [0x7c; 32];
@@ -115,6 +116,10 @@ fn complete_remote_urls_redact_every_identity_but_keep_diagnostic_shape() {
         (
             "webdav://ada@nas.local:8443/remote.php/dav/files/ada/Secret%20Plan.docx",
             "webdav://<user>@<host>.local:8443/<dir>/<dir>/<dir>/<dir>/<file>.docx",
+        ),
+        (
+            "s3://AKIACLIENTKEY@s3.eu-west-1.amazonaws.com:443/client-photos/Client Nimbus/plan.pdf",
+            "s3://<user>@<host>:443/<dir>/<dir>/<file>.pdf",
         ),
         (
             "https://api.private.test:9443/customer/acme/report.json?access_token=s3cret&folder=Client%20Nimbus#invoice-42",
@@ -230,6 +235,10 @@ fn current_name_derived_ids_are_tokenized_only_at_the_diagnostic_boundary() {
         (smb_volume_id("nas.private", 445, "Client Share"), "smb-<volume-id>"),
         (sftp_volume_id("nas.private", 22, "ada"), "sftp-<volume-id>"),
         (webdav_volume_id("dav.private", 443, "ada"), "webdav-<volume-id>"),
+        (
+            s3_volume_id("s3.private", 443, "AKIAKEY", Some("client-photos")),
+            "s3-<volume-id>",
+        ),
         (adb_volume_id("R58M1/Client"), "adb-<device-id>"),
         (mtp.clone(), "mtp-<device-id>"),
         (mtp_ids::mtp_volume_id(&mtp, 65_537), "mtp-<device-id>:65537"),

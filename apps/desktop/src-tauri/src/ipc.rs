@@ -683,6 +683,18 @@ macro_rules! ipc_command_manifest {
                 ]
                 dispatch_only: []
             }
+            // S3 accounts: the secret and the unattended-reconnect answer.
+            // Connecting goes through `commands::servers` below. Same gate and same
+            // no-stub reasoning as the SFTP block.
+            cfg(any(target_os = "macos", target_os = "linux")) {
+                typed: [
+                    crate::commands::s3::save_s3_credentials,
+                    crate::commands::s3::has_s3_credentials,
+                    crate::commands::s3::delete_s3_credentials,
+                    crate::commands::s3::get_s3_unattended_reconnect,
+                ]
+                dispatch_only: []
+            }
             // The protocol-agnostic server family, over the two blocks above. Same
             // gate and same no-stub reasoning.
             cfg(any(target_os = "macos", target_os = "linux")) {

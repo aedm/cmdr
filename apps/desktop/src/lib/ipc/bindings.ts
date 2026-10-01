@@ -4396,6 +4396,40 @@ export const commands = {
       | null
     >('get_webdav_unattended_reconnect', { volumeId }),
   /**
+   *  Saves the secret access key for one account.
+   *
+   *  ❗ **This command IS the "remember the secret" switch**, the WebDAV twin's
+   *  contract: `has_s3_credentials` reads it back, `delete_s3_credentials` turns
+   *  it off, and there's no second flag anywhere. On a blocking task: the store
+   *  can put a Keychain prompt in front of it.
+   */
+  saveS3Credentials: (provider: S3ProviderChoice, accessKeyId: string, secret: string) =>
+    typedError<null, KeychainError>(__TAURI_INVOKE('save_s3_credentials', { provider, accessKeyId, secret })),
+  /**
+   *  Whether a secret is stored for one account. ❗ No command hands the secret
+   *  itself to the frontend. A store that didn't answer in time reads as `false`.
+   */
+  hasS3Credentials: (provider: S3ProviderChoice, accessKeyId: string) =>
+    __TAURI_INVOKE<boolean>('has_s3_credentials', { provider, accessKeyId }),
+  // Forgets the stored secret for one account, and so for every place under it.
+  deleteS3Credentials: (provider: S3ProviderChoice, accessKeyId: string) =>
+    typedError<null, KeychainError>(__TAURI_INVOKE('delete_s3_credentials', { provider, accessKeyId })),
+  /**
+   *  Whether an S3 volume can come back on its own as it stands. `null` when
+   *  nothing S3 is registered under that id. ❗ Reads the store: ask when a
+   *  banner renders, ❌ never poll.
+   */
+  getS3UnattendedReconnect: (volumeId: string) =>
+    __TAURI_INVOKE<
+      // On, and it works.
+      | 'possible'
+      // The switch is off.
+      | 'switch_off'
+      // ❗ On, and nothing is stored to redial with: the state a UI warns about.
+      | 'no_stored_secret'
+      | null
+    >('get_s3_unattended_reconnect', { volumeId }),
+  /**
    *  Every server the user has saved, across all three stores.
    *
    *  ❗ Cached state only, ❌ never the wire: the hub re-reads this on every
@@ -12633,6 +12667,68 @@ export type RustHeapDiagnostics =
     }
 
 /**
+ *  Which provider a saved S3 place is on, as the connect form's presets name
+ *  it. The wire and store twin of `cmdr_s3::S3Provider`.
+ *
+ *  ❗ The preset decides the endpoint, the signing region, and the addressing,
+ *  so only "Other" carries an endpoint at all.
+ */
+export type S3ProviderChoice =
+  // Amazon S3, in one region (`eu-west-1`).
+  | {
+      kind: 'aws'
+      // The endpoint's region.
+      region: string
+    }
+  // Cloudflare R2, by account ID.
+  | {
+      kind: 'r2'
+      // The 32-hex account ID from the R2 dashboard.
+      accountId: string
+    }
+  // Backblaze B2, in one region (`us-west-004`).
+  | {
+      kind: 'b2'
+      // The region from the bucket's S3 endpoint.
+      region: string
+    }
+  // Wasabi, in one region (`eu-central-1`).
+  | {
+      kind: 'wasabi'
+      // The endpoint's region.
+      region: string
+    }
+  // Hetzner Object Storage, in one location (`fsn1`, `nbg1`, `hel1`).
+  | {
+      kind: 'hetzner'
+      // The endpoint's location.
+      location: string
+    }
+  // Any other S3-compatible server.
+  | {
+      kind: 'other'
+      // `http(s)://host[:port]`, nothing after it.
+      endpoint: string
+      // The signing region; `us-east-1` when empty.
+      region: string | null
+      // Whether buckets go in the path rather than the host name.
+      pathStyle: boolean
+    }
+
+/**
+ *  Whether an S3 volume can actually come back on its own as it stands. The
+ *  WebDAV twin (`WebdavUnattendedReconnect`), for the same reasons: ❌ never
+ *  derive it in the frontend from a credential check.
+ */
+export type S3UnattendedReconnect =
+  // On, and it works.
+  | 'possible'
+  // The switch is off.
+  | 'switch_off'
+  // ❗ On, and nothing is stored to redial with: the state a UI warns about.
+  | 'no_stored_secret'
+
+/**
  *  One mountable thing under an account: an SFTP or WebDAV root, later an S3
  *  bucket or a shared drive. What a tab, a favorite, and a path point at.
  */
@@ -13641,8 +13737,37 @@ export type ServerConnectOutcome =
   | { outcome: 'certificate_untrusted' }
   // WebDAV only: the URL answers HTTP but not WebDAV.
   | { outcome: 'not_a_webdav_server' }
-  // WebDAV only: the address the user typed isn't a `http`/`https` URL.
+  /**
+   *  WebDAV and S3: the address the user typed isn't a usable `http`/`https`
+   *  URL (for S3, also a region, location, or account ID a host name can't
+   *  carry).
+   */
   | { outcome: 'invalid_url' }
+  /**
+   *  S3 only: the bucket refused this key, which is a wrong key or one without
+   *  rights here (a bodyless 403 can't say which).
+   */
+  | { outcome: 'access_denied' }
+  /**
+   *  S3 only: the account root needs `ListBuckets` and this key may not (or,
+   *  on some servers, its secret is wrong). A bucket name is the way in.
+   */
+  | { outcome: 'bucket_list_refused' }
+  // S3 only: no bucket by that name on this endpoint.
+  | { outcome: 'bucket_not_found' }
+  // S3 only: the bucket lives in another region than the one chosen.
+  | {
+      outcome: 'region_mismatch'
+      // The bucket's region, when the server named it.
+      region: string | null
+    }
+  /**
+   *  S3 only: this Mac's clock is too far off for the server to accept a
+   *  signature.
+   */
+  | { outcome: 'clock_skewed' }
+  // S3 only: the address answers, but not as S3.
+  | { outcome: 'not_an_s3_endpoint' }
   /**
    *  The start folder isn't the root or under it. ❗ Refused before dialing,
    *  so nothing was registered or saved.
@@ -13687,6 +13812,11 @@ export type ServerProtocol =
   | 'sftp'
   // A WebDAV server, one account per entry.
   | 'webdav'
+  /**
+   *  An S3 account (an endpoint plus an access key id), whose places are its
+   *  saved buckets and, when saved, its root.
+   */
+  | 's3'
 
 // Why a request to Cmdr's api server didn't come back with a usable answer.
 export type ServerRequestError =
@@ -13759,6 +13889,26 @@ export type ServerTarget =
        *  under `remote_root`, in the same space. `None` is the root.
        */
       startFolder: string | null
+      // Whether Cmdr may re-probe unattended when a request finds it gone.
+      autoReconnect: boolean
+    }
+  /**
+   *  One S3 place: display name, provider (which fixes the endpoint), access
+   *  key id, an optional bucket, and the auto-reconnect switch.
+   */
+  | {
+      protocol: 's3'
+      // What to call it in the UI.
+      displayName: string
+      // The provider preset, and with it the endpoint.
+      provider: S3ProviderChoice
+      // The account's key. ❗ Part of the identity.
+      accessKeyId: string
+      /**
+       *  The bucket this place is, or `None` for the account root, which lists
+       *  the buckets. ❗ Part of the identity: each bucket is its own place.
+       */
+      bucket: string | null
       // Whether Cmdr may re-probe unattended when a request finds it gone.
       autoReconnect: boolean
     }

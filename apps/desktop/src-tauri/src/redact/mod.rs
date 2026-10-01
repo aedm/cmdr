@@ -246,7 +246,7 @@ fn redactor_regex() -> &'static Regex {
             | (?P<media>          / media / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )*
                                   (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
-            | (?P<remote_url>     (?i: sftp | ssh | webdav | http | https | smb ) ://
+            | (?P<remote_url>     (?i: sftp | ssh | webdav | s3 | http | https | smb ) ://
                                   [^\s"'<>|`]+ (?: \x20 [^\s"'<>|`]+ )*
             )
             | (?P<unc>            \\\\ [^\\\s"'<>|`]+ (?: \\ [^\\\s"'<>|`]+ (?: \x20 [^\\\s"'<>|`]+ )* )* )
@@ -312,7 +312,7 @@ fn redactor_regex() -> &'static Regex {
             # append its numeric storage ID.
             | (?P<derived_id>
                 \b (?:
-                    (?: smb | sftp | webdav | adb | vol | path ) -
+                    (?: smb | sftp | webdav | s3 | adb | vol | path ) -
                     (?: [\p{L}\p{N}] (?: [\p{L}\p{N}-]{0,22} [\p{L}\p{N}] )? - )?
                     [0-9a-f]{16}
                   | mtp -

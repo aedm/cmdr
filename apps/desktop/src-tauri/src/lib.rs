@@ -510,6 +510,7 @@ pub fn run() {
             network::load_sftp_stores(app.handle());
             // And the WebDAV server list, for the same picker.
             network::load_webdav_stores(app.handle());
+            network::load_s3_stores(app.handle());
 
             // Load persisted recent search history into the in-memory cache.
             search::history::RECENT_SEARCHES.load(app.handle());

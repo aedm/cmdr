@@ -79,6 +79,11 @@ cmdr-sftp = { path = "../../../crates/cmdr-sftp" }
 # verifies it without building the app. The secret store, the server list, and
 # every command stay here.
 cmdr-webdav = { path = "../../../crates/cmdr-webdav" }
+# The S3 backend: the signer, the provider profiles, and a `Volume` per place
+# (a bucket, or the account root). No `tauri` in its tree, so
+# `cargo check -p cmdr-s3` verifies it without building the app. The secret
+# store, the place list, and every command stay here.
+cmdr-s3 = { path = "../../../crates/cmdr-s3" }
 # The Android-over-ADB backend: a real-filesystem `Volume` per device behind the
 # ADB server, beside MTP. No `tauri`, no user-facing words; `docs/specs/android-adb-backend.md`.
 cmdr-adb = { path = "../../../crates/cmdr-adb" }
@@ -467,6 +472,7 @@ cmdr-smb = { path = "../../../crates/cmdr-smb", features = ["testing"] }
 # connect through.
 cmdr-sftp = { path = "../../../crates/cmdr-sftp", features = ["testing"] }
 cmdr-webdav = { path = "../../../crates/cmdr-webdav", features = ["testing"] }
+cmdr-s3 = { path = "../../../crates/cmdr-s3", features = ["testing"] }
 cmdr-adb = { path = "../../../crates/cmdr-adb", features = ["testing"] }
 # Same crate as the per-target normal dependency above, with `testing` on for dev
 # targets only: that's what publishes the virtual-device fixture and the

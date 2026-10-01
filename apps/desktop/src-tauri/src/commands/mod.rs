@@ -46,6 +46,9 @@ pub mod selection;
 // frontend's wrapper no-ops elsewhere (`tauri-commands/app-state.ts`).
 #[cfg(target_os = "macos")]
 pub mod services_menu;
+// S3: the same gate and the same reason as `sftp`. ❌ No stub counterpart.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+pub mod s3;
 pub mod settings;
 // The protocol-agnostic server family, over the per-protocol wiring. Same gate
 // as `sftp` and `webdav`, whose commands it faces.
