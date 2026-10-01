@@ -248,3 +248,31 @@ fn a_phone_path_names_its_serial_exactly_as_the_prefix_spelled_it() {
     // A bare device path is the Mac's boot disk in the app's vocabulary.
     assert_eq!(adb_serial_of_path("/sdcard/DCIM"), None);
 }
+
+#[test]
+fn an_s3_app_root_names_the_account_and_folds_the_host() {
+    assert_eq!(
+        s3_app_root("S3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE"),
+        "s3://AKIAEXAMPLE@s3.eu-west-1.amazonaws.com:443"
+    );
+}
+
+#[test]
+fn an_s3_path_names_the_place_of_its_bucket() {
+    // ❗ The bucket is the place, so a path inside one names that bucket's id;
+    // a path at the account's root names the account place.
+    let in_bucket = server_of_path("s3://AKIAEXAMPLE@127.0.0.1:14480/cmdr-test/a/b.txt").expect("an S3 path");
+    assert_eq!(in_bucket.kind, super::super::BackendKind::S3);
+    assert_eq!(
+        in_bucket.volume_id,
+        super::super::s3_volume_id("127.0.0.1", 14480, "AKIAEXAMPLE", Some("cmdr-test"))
+    );
+    for root in ["s3://AKIAEXAMPLE@127.0.0.1:14480", "s3://AKIAEXAMPLE@127.0.0.1:14480/"] {
+        let account = server_of_path(root).expect("an S3 account path");
+        assert_eq!(
+            account.volume_id,
+            super::super::s3_volume_id("127.0.0.1", 14480, "AKIAEXAMPLE", None),
+            "{root}"
+        );
+    }
+}

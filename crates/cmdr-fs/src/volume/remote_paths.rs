@@ -219,6 +219,21 @@ pub fn webdav_app_root(host: &str, port: u16, username: &str) -> String {
     remote_app_root(WEBDAV_SCHEME, host, port, username)
 }
 
+/// The `s3://<access key id>@<host>:<port>` prefix every app path on an S3
+/// account's places carries. The SFTP twin, for the same reasons:
+/// [`sftp_app_root`].
+///
+/// ❗ The prefix is the ACCOUNT, and a place's root hangs under it: `/` for the
+/// account root that lists buckets, `/<bucket>` for a bucket place. So one
+/// object has one app spelling whichever place a pane reached it through, and a
+/// tab restores onto it either way.
+pub fn s3_app_root(host: &str, port: u16, access_key_id: &str) -> String {
+    remote_app_root(S3_SCHEME, host, port, access_key_id)
+}
+
+/// The scheme [`s3_app_root`] mints and [`server_of_path`] reads back.
+const S3_SCHEME: &str = "s3";
+
 /// The scheme [`sftp_app_root`] mints and [`server_of_path`] reads back.
 const SFTP_SCHEME: &str = "sftp";
 
@@ -235,16 +250,18 @@ fn remote_app_root(scheme: &str, host: &str, port: u16, username: &str) -> Strin
 /// The server account an app path names, as [`server_of_path`] reads it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerPath {
-    /// The backend its scheme names: [`BackendKind::Sftp`](super::BackendKind::Sftp)
-    /// or [`BackendKind::Webdav`](super::BackendKind::Webdav).
+    /// The backend its scheme names: [`BackendKind::Sftp`](super::BackendKind::Sftp),
+    /// [`BackendKind::Webdav`](super::BackendKind::Webdav), or
+    /// [`BackendKind::S3`](super::BackendKind::S3).
     pub kind: super::BackendKind,
-    /// The id that account mints ([`sftp_volume_id`] or [`webdav_volume_id`]).
+    /// The id that account mints ([`sftp_volume_id`], [`webdav_volume_id`], or
+    /// [`s3_volume_id`](super::s3_volume_id) for the bucket the path is in).
     pub volume_id: String,
 }
 
-/// The server account an `sftp://` or `webdav://<user>@<host>:<port>[/…]` app
-/// path names, or `None` for any other path, and for one missing its user, host,
-/// or port.
+/// The server account an `sftp://`, `webdav://`, or
+/// `s3://<user>@<host>:<port>[/…]` app path names, or `None` for any other path,
+/// and for one missing its user, host, or port.
 ///
 /// The one split of what [`remote_app_root`] joins, kept beside it so the two
 /// can't drift. Pure for the reason [`adb_serial_of_path`] is: the path IS the
@@ -257,26 +274,36 @@ pub struct ServerPath {
 /// after its last `:`, which is how an IPv6 host (`sftp://ada@::1:22`) still
 /// splits.
 pub fn server_of_path(path: &str) -> Option<ServerPath> {
-    type Mint = fn(&str, u16, &str) -> String;
-    let servers: [(&str, super::BackendKind, Mint); 2] = [
-        (SFTP_SCHEME, super::BackendKind::Sftp, sftp_volume_id),
-        (WEBDAV_SCHEME, super::BackendKind::Webdav, webdav_volume_id),
+    let schemes = [
+        (SFTP_SCHEME, super::BackendKind::Sftp),
+        (WEBDAV_SCHEME, super::BackendKind::Webdav),
+        (S3_SCHEME, super::BackendKind::S3),
     ];
-    let (rest, kind, mint) = servers.into_iter().find_map(|(scheme, kind, mint)| {
+    let (rest, kind) = schemes.into_iter().find_map(|(scheme, kind)| {
         let rest = path.strip_prefix(scheme)?.strip_prefix("://")?;
-        Some((rest, kind, mint))
+        Some((rest, kind))
     })?;
-    let authority = rest.split('/').next()?;
+    let mut segments = rest.split('/');
+    let authority = segments.next()?;
     let (username, host_port) = authority.rsplit_once('@')?;
     let (host, port) = host_port.rsplit_once(':')?;
     let port: u16 = port.parse().ok()?;
     if username.is_empty() || host.is_empty() {
         return None;
     }
-    Some(ServerPath {
-        kind,
-        volume_id: mint(host, port, username),
-    })
+    let volume_id = match kind {
+        // ❗ An S3 account has a place per bucket, and the first segment names
+        // it; none is the account root. A pane on the account root that browsed
+        // into a bucket holds the root's id while this names the bucket's; both
+        // are S3, which is what every caller here asks about.
+        super::BackendKind::S3 => {
+            let bucket = segments.next().filter(|bucket| !bucket.is_empty());
+            super::s3_volume_id(host, port, username, bucket)
+        }
+        super::BackendKind::Webdav => webdav_volume_id(host, port, username),
+        _ => sftp_volume_id(host, port, username),
+    };
+    Some(ServerPath { kind, volume_id })
 }
 
 /// The `adb://<serial>` prefix every app path on an ADB volume carries, and the

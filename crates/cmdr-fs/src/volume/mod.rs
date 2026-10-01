@@ -1759,7 +1759,9 @@ pub use ids::*;
 pub use in_memory::InMemoryVolume;
 pub use mkdir_all::{LeadsTo, MadeDirectories, MakesDirectories};
 pub use patching::{PatchSource, patch_created, patch_deleted, patch_mutation, patch_renamed};
-pub use remote_paths::{ServerPath, adb_app_root, adb_serial_of_path, server_of_path, sftp_app_root, webdav_app_root};
+pub use remote_paths::{
+    ServerPath, adb_app_root, adb_serial_of_path, s3_app_root, server_of_path, sftp_app_root, webdav_app_root,
+};
 pub use retirement::{Retirement, Retires, SelfHandle};
 pub use root_echo::{RootEcho, root_echo};
 pub use scan_boundary::{ScanBoundary, stopped as scan_stopped};

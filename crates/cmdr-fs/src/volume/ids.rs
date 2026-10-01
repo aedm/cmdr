@@ -27,6 +27,8 @@
 //!   ([`sftp_volume_id`]).
 //! - `webdav-`: a WebDAV server keyed by (host, port, username)
 //!   ([`webdav_volume_id`]).
+//! - `s3-`: one place on an S3 account (a bucket, or the account root), keyed by
+//!   (host, port, access key id, bucket) ([`s3_volume_id`]).
 //! - `mtp-`: an MTP device keyed by its serial (`super::mtp_ids`).
 //! - `path-`: the fallback when nothing better exists ([`path_volume_id`]),
 //!   keyed by the mount path. Stable only as long as the mount path is.
@@ -232,6 +234,34 @@ pub fn webdav_volume_id(host: &str, port: u16, username: &str) -> String {
         "webdav",
         &format!("{host}-{port}-{username}"),
         &[&host, &port, username],
+    )
+}
+
+/// Build the ID for one S3 PLACE: a bucket under an account, or (with no bucket)
+/// the account's root, which lists the buckets.
+///
+/// The account is the endpoint plus the access key id, and the bucket is the
+/// place under it (`apps/desktop/src/lib/servers/DETAILS.md` § "The model"):
+/// a pin, a tab, and a switcher row each key on a place, so two buckets under
+/// one key, and the root beside them, get an id each. Two keys on one endpoint
+/// are two accounts, since each may see different buckets with different rights.
+///
+/// # Case folding
+///
+/// The host is lowercased (DNS). The access key id and the bucket are NOT: both
+/// are case-sensitive (a legacy `us-east-1` bucket may carry capitals).
+///
+/// ❗ The slug is the bucket and the host (bucket first, so the slug's cap cuts
+/// the host), ❌ never the key id: an id lands in logs and data-dir names, and
+/// the digest already carries the key.
+pub fn s3_volume_id(host: &str, port: u16, access_key_id: &str, bucket: Option<&str>) -> String {
+    let host = host.to_lowercase();
+    let port = port.to_string();
+    let bucket = bucket.unwrap_or_default();
+    derived_id(
+        "s3",
+        &format!("{bucket}-{host}"),
+        &[&host, &port, access_key_id, bucket],
     )
 }
 

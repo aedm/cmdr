@@ -459,3 +459,54 @@ fn a_digest_shaped_tail_is_not_enough_on_its_own() {
     // An empty slug is legitimate (`{scheme}-{digest}`), so this one is current.
     assert!(!is_legacy_volume_id("path-abcdef0123456789"));
 }
+
+// ── S3: an account's places, one id each ──────────────────────────────
+
+#[test]
+fn every_s3_place_under_one_account_has_its_own_id() {
+    // A bucket is a place, and a place is what a pin, a tab, and a switcher row
+    // key on, so two buckets (and the account root, which lists them) can't
+    // share one.
+    let root = s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE", None);
+    let photos = s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("photos"));
+    let backups = s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("backups"));
+    assert_ne!(root, photos);
+    assert_ne!(photos, backups);
+    assert!(root.starts_with("s3-"), "got: {root}");
+}
+
+#[test]
+fn two_keys_on_one_s3_endpoint_never_share_an_id() {
+    // Two keys may see different buckets, or the same bucket with different
+    // rights.
+    assert_ne!(
+        s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAONE", Some("photos")),
+        s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIATWO", Some("photos"))
+    );
+}
+
+#[test]
+fn s3_volume_id_folds_the_host_but_not_the_key_or_the_bucket() {
+    assert_eq!(
+        s3_volume_id("S3.EU-WEST-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("photos")),
+        s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("photos"))
+    );
+    assert_ne!(
+        s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "akiaexample", Some("photos")),
+        s3_volume_id("s3.eu-west-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("photos"))
+    );
+    // Legacy us-east-1 buckets may carry capitals, and they're a different bucket.
+    assert_ne!(
+        s3_volume_id("s3.us-east-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("Photos")),
+        s3_volume_id("s3.us-east-1.amazonaws.com", 443, "AKIAEXAMPLE", Some("photos"))
+    );
+}
+
+#[test]
+fn an_s3_id_keeps_the_access_key_out_of_its_readable_half() {
+    // The slug lands in logs and data-dir names; the key id has no business
+    // there, and the digest already carries it.
+    let id = s3_volume_id("127.0.0.1", 14480, "GK00000000000000000000c0de", Some("cmdr-test"));
+    assert!(!id.to_lowercase().contains("gk0000"), "got: {id}");
+    assert!(id.contains("cmdr-test"), "the bucket still reads in it; got: {id}");
+}
