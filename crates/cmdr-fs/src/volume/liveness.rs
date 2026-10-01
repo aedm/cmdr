@@ -15,14 +15,16 @@
 //! waiting operation with the typed disconnected error.
 //!
 //! ❗ Nothing here names HTTP: the probe is a closure, so the ladder is tested
-//! on a paused clock with no server at all (`liveness_test.rs`).
+//! on a paused clock with no server at all (`liveness_test.rs`). The HTTP
+//! backends (`cmdr-webdav`, `cmdr-s3`) share it, each naming itself in the one
+//! log line through `watch`'s `backend`.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use cmdr_fs::ignore_poison::IgnorePoison;
-use cmdr_fs::pluralize::pluralize;
+use crate::ignore_poison::IgnorePoison;
+use crate::pluralize::pluralize;
 use log::warn;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -30,19 +32,19 @@ use tokio_util::sync::CancellationToken;
 /// How long silence lasts before the watchdog asks, and how long it waits for
 /// the answer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct Timings {
+pub struct Timings {
     /// Silence from the server, with a request waiting, before a probe goes out.
-    pub(crate) quiet: Duration,
+    pub quiet: Duration,
     /// How long one probe may take to be answered.
-    pub(crate) probe_budget: Duration,
+    pub probe_budget: Duration,
     /// Unanswered probes in a row that make the server gone.
-    pub(crate) unanswered_limit: u32,
+    pub unanswered_limit: u32,
 }
 
 impl Timings {
     /// 10 s of silence, then two probes of 10 s each: gone after 30 s, the
     /// silence `cmdr-smb` and `cmdr-sftp` allow too.
-    pub(crate) const PRODUCTION: Self = Self {
+    pub const PRODUCTION: Self = Self {
         quiet: Duration::from_secs(10),
         probe_budget: Duration::from_secs(10),
         unanswered_limit: 2,
@@ -50,7 +52,7 @@ impl Timings {
 }
 
 /// One client's evidence that its server is still there.
-pub(crate) struct Liveness {
+pub struct Liveness {
     /// When the server last sent a byte, or took one.
     last_heard: Mutex<Instant>,
     /// Operations waiting on the server right now.
@@ -63,7 +65,8 @@ pub(crate) struct Liveness {
 }
 
 impl Liveness {
-    pub(crate) fn new() -> Self {
+    /// A fresh watch: nothing waiting, the server last heard from now.
+    pub fn new() -> Self {
         Self {
             last_heard: Mutex::new(Instant::now()),
             in_flight: AtomicUsize::new(0),
@@ -73,17 +76,17 @@ impl Liveness {
     }
 
     /// The server just proved it's there.
-    pub(crate) fn heard(&self) {
+    pub fn heard(&self) {
         *self.last_heard.lock_ignore_poison() = Instant::now();
     }
 
     /// Cancelled when the server is gone.
-    pub(crate) fn lost(&self) -> &CancellationToken {
+    pub fn lost(&self) -> &CancellationToken {
         &self.lost
     }
 
     /// The server is gone: every waiting operation answers now.
-    pub(crate) fn declare_lost(&self) {
+    pub fn declare_lost(&self) {
         self.lost.cancel();
     }
 
@@ -92,7 +95,7 @@ impl Liveness {
     ///
     /// ❗ The first waiter restarts the silence clock: time nobody was asking
     /// anything is not the server being quiet.
-    pub(crate) fn begin(self: &Arc<Self>) -> Waiting {
+    pub fn begin(self: &Arc<Self>) -> Waiting {
         if self.in_flight.fetch_add(1, Ordering::SeqCst) == 0 {
             self.heard();
         }
@@ -128,15 +131,21 @@ impl Liveness {
     }
 }
 
+impl Default for Liveness {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// One operation waiting on the server. Dropping it ends the wait.
-pub(crate) struct Waiting {
+pub struct Waiting {
     liveness: Arc<Liveness>,
     needs_a_watch: bool,
 }
 
 impl Waiting {
     /// Whether nobody is watching yet, so the caller has to start [`watch`].
-    pub(crate) fn needs_a_watch(&self) -> bool {
+    pub fn needs_a_watch(&self) -> bool {
         self.needs_a_watch
     }
 }
@@ -151,8 +160,9 @@ impl Drop for Waiting {
 /// server lost when `probe` goes unanswered `unanswered_limit` times in a row.
 ///
 /// `probe` answers whether the server responded at all; its budget is applied
-/// here. Ends when nothing waits any more, or once the server is lost.
-pub(crate) async fn watch<P, F>(liveness: Arc<Liveness>, timings: Timings, mut probe: P)
+/// here. `backend` names the backend in the log line (`webdav`, `s3`). Ends
+/// when nothing waits any more, or once the server is lost.
+pub async fn watch<P, F>(liveness: Arc<Liveness>, timings: Timings, backend: &'static str, mut probe: P)
 where
     P: FnMut() -> F,
     F: Future<Output = bool>,
@@ -186,7 +196,7 @@ where
         if unanswered >= timings.unanswered_limit {
             warn!(
                 target: "volume",
-                "webdav server silent for {:?} with requests waiting, and {} went unanswered: treating it as gone",
+                "{backend} server silent for {:?} with requests waiting, and {} went unanswered: treating it as gone",
                 liveness.quiet_for(),
                 pluralize(u64::from(unanswered), "probe")
             );

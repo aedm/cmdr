@@ -15,8 +15,8 @@ use reqwest::{Method, RequestBuilder, Response, StatusCode};
 use url::Url;
 
 use crate::errors::{WebdavConnectError, classify_connect_error};
-use crate::liveness::Liveness;
 use crate::propfind::{PropfindEntry, parse_multistatus};
+use cmdr_fs::volume::liveness::Liveness;
 
 /// The connect budget, per request: the PROBE's total budget and the idle
 /// budget between body chunks on a download (`streams.rs`). A transfer as a
@@ -90,7 +90,7 @@ pub(crate) struct WebdavClient {
     base: Url,
     username: String,
     password: String,
-    /// What the server has said lately (`crate::liveness`). Dies with this
+    /// What the server has said lately (`cmdr_fs::volume::liveness`). Dies with this
     /// client: a reconnect builds a new one.
     liveness: Arc<Liveness>,
 }

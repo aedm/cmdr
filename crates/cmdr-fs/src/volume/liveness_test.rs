@@ -56,7 +56,7 @@ async fn a_silent_server_is_declared_lost_at_the_deadline() {
     let (asked, probe) = counted_probe(|_| None);
     let started = Instant::now();
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     lost_within_five_minutes(&liveness).await;
 
     assert_eq!(started.elapsed(), Duration::from_secs(30));
@@ -71,7 +71,7 @@ async fn a_server_that_answers_its_probes_is_never_lost() {
     let _waiting = liveness.begin();
     let (asked, probe) = counted_probe(|_| Some(true));
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     // allowed-test-sleep: virtual time on a paused clock; ten minutes of a busy server is the subject.
     tokio::time::sleep(Duration::from_secs(10 * 60)).await;
 
@@ -94,7 +94,7 @@ async fn bytes_on_the_wire_keep_the_probe_from_going_out() {
     let _waiting = liveness.begin();
     let (asked, probe) = counted_probe(|_| None);
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     for _ in 0..24 {
         // allowed-test-sleep: virtual time on a paused clock; a byte every 5 s is the subject.
         tokio::time::sleep(Duration::from_secs(5)).await;
@@ -118,7 +118,7 @@ async fn a_byte_during_an_unanswered_probe_resets_the_count() {
     let (asked, probe) = counted_probe(|_| None);
     let started = Instant::now();
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     // Probe 1 goes out at 10 s; a byte lands at 15 s, inside its budget.
     // allowed-test-sleep: virtual time on a paused clock; the byte's moment is the subject.
     tokio::time::sleep(Duration::from_secs(15)).await;
@@ -139,7 +139,7 @@ async fn an_answer_between_misses_starts_the_count_over() {
     let _waiting = liveness.begin();
     let (asked, probe) = counted_probe(|n| if n % 2 == 0 { None } else { Some(true) });
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     // allowed-test-sleep: virtual time on a paused clock; five minutes of alternating answers is the subject.
     tokio::time::sleep(Duration::from_secs(5 * 60)).await;
 
@@ -156,7 +156,7 @@ async fn a_refused_probe_counts_as_unanswered() {
     let (_asked, probe) = counted_probe(|_| Some(false));
     let started = Instant::now();
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     lost_within_five_minutes(&liveness).await;
 
     assert_eq!(started.elapsed(), T.quiet);
@@ -170,7 +170,7 @@ async fn nothing_waiting_means_nothing_probed() {
     let waiting = liveness.begin();
     let (asked, probe) = counted_probe(|_| None);
 
-    let watcher = tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    let watcher = tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     drop(waiting);
     // allowed-test-sleep: virtual time on a paused clock; five idle minutes with no probe is the subject.
     tokio::time::sleep(Duration::from_secs(5 * 60)).await;
@@ -194,7 +194,7 @@ async fn idle_time_before_a_request_is_not_silence() {
     let _waiting = liveness.begin();
     let (asked, probe) = counted_probe(|_| None);
 
-    tokio::spawn(watch(Arc::clone(&liveness), T, probe));
+    tokio::spawn(watch(Arc::clone(&liveness), T, "test", probe));
     // allowed-test-sleep: virtual time on a paused clock; stopping just short of the quiet stretch is the subject.
     tokio::time::sleep(T.quiet - Duration::from_secs(1)).await;
 

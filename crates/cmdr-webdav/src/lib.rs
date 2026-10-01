@@ -7,7 +7,6 @@
 use cmdr_webdav as _;
 
 pub(crate) mod errors;
-pub(crate) mod liveness;
 pub(crate) mod params;
 pub(crate) mod propfind;
 pub(crate) mod transport;

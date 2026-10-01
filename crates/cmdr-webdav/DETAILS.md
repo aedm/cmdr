@@ -262,7 +262,8 @@ non-`Connected` state, so the late task can never take the fresh one. The same p
 A server that goes SILENT (a NAS asleep, Wi-Fi gone, a VPN dropped) closes nothing, and HTTP has no keepalive, so a
 request on one waits for its budget and ends with `ConnectionTimeout`, which says nothing about the server. ❌ A timeout
 can't be the signal: a huge listing on a slow NAS times out just the same, and reading one as a lost connection would
-flicker `Disconnected` on a server that's merely busy. So `liveness.rs` watches for silence instead:
+flicker `Disconnected` on a server that's merely busy. So `cmdr_fs::volume::liveness` (shared with `cmdr-s3`) watches
+for silence instead:
 
 - **What counts as hearing from the server**: a response's headers (`WebdavClient::send`, which every request goes out
   through), each body chunk (PROPFIND bodies are read chunk by chunk for this; `WebdavReadStream` notes its own), and
@@ -287,10 +288,10 @@ that: `reqwest` keeps TCP keepalive on pooled connections (15 s idle, 3 probes 1
 single-threaded server too busy to answer anything for 30 s would read as gone; no NAS or Nextcloud setup works that
 way.
 
-Pinned three ways: `liveness_test.rs` runs the ladder on a paused clock with a closure for a probe (exact deadlines, no
-server); `volume/slow_server_test.rs` runs it for real on a shortened ladder against an in-process server that holds a
-listing, trickles a body, or goes quiet on command; `volume/connection_drop_test.rs` runs the production ladder against
-Apache behind a black-holed `TcpProxy`.
+Pinned three ways: `crates/cmdr-fs/src/volume/liveness_test.rs` runs the ladder on a paused clock with a closure for a
+probe (exact deadlines, no server); `volume/slow_server_test.rs` runs it for real on a shortened ladder against an
+in-process server that holds a listing, trickles a body, or goes quiet on command; `volume/connection_drop_test.rs` runs
+the production ladder against Apache behind a black-holed `TcpProxy`.
 
 ## Connecting from the frontend
 

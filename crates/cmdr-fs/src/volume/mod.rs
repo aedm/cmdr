@@ -1715,6 +1715,7 @@ mod entry_kind;
 mod error;
 mod ids;
 mod in_memory;
+pub mod liveness;
 pub mod mkdir_all;
 pub mod mtp_ids;
 pub mod patching;

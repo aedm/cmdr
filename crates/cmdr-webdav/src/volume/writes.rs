@@ -36,8 +36,8 @@ use tokio_util::sync::CancellationToken;
 
 use super::WebdavVolume;
 use crate::errors::Attempted;
-use crate::liveness::Liveness;
 use crate::transport::{MUTATION_BUDGET, WebdavClient, method};
+use cmdr_fs::volume::liveness::Liveness;
 
 /// How often the upload reports progress while the body is on its way.
 const PROGRESS_TICK: Duration = Duration::from_millis(200);

@@ -10,7 +10,7 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   scoped by username.
 - `errors.rs`: `WebdavConnectError` and the status-code table (`map_status`, keyed by an `Attempted` context).
 - `transport.rs`: `WebdavClient`, URL building, PROPFIND, the connect probe. `propfind.rs`: the `multistatus` parser.
-  `liveness.rs`: the silence watch, which tells a silent server from a slow one.
+  The silence watch, which tells a silent server from a slow one, is `cmdr_fs::volume::liveness`.
 - `volume/`: `mod.rs` (the volume, `connect_webdav_volume`, `send`), `paths.rs`, `query.rs`, `streams.rs` (GET),
   `writes.rs` (the PUT), `mutation.rs`, `copy.rs`, `scan.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`,
   `testing.rs` (fixtures, `testing` feature).

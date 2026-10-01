@@ -21,8 +21,8 @@ use reqwest::{Method, Response, StatusCode};
 
 use super::WebdavVolume;
 use crate::errors::Attempted;
-use crate::liveness::Liveness;
 use crate::transport::REQUEST_BUDGET;
+use cmdr_fs::volume::liveness::Liveness;
 
 type BodyStream = Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>;
 
