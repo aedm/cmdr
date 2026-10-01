@@ -1003,7 +1003,8 @@ onboarding dialog is open") and the panes never see a keystroke. A stale selecto
 standing once and cost 84 of 348 tests on three consecutive CI runs, the failures spread across 20 unrelated specs and
 reading as keyboard and MTP regressions. So `breakTheCascade` walks the wizard out first: tick the terms gate, press the
 footer's forward button, repeat until it unmounts. The spec that opened it still owes a `closeOnboardingWizardIfOpen` in
-a `finally`; this is the backstop.
+a `finally`; this is the backstop. A spec that inspects the wizard's checklist matches rows by `data-checklist-item`
+(`accessibility.spec.ts`), never by label: the labels are translated copy and move with every wording edit.
 
 So when the Escape rounds leave an overlay standing, `breakTheCascade` in `fixtures.ts` cancels every operation the
 dialog could be waiting on (the same drain `operation-queue.spec.ts` documents: cancel, then poll `list_operations`
