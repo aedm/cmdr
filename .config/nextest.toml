@@ -449,6 +449,17 @@ filter = 'test(a_folder_of_1005_objects_renames_through_the_engine)'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
 [[profile.default.overrides]]
+# The S3 copy onto a bucket (`backend_suites/s3_transfer_integration_test.rs`), on
+# both fixtures. It uploads a 140 MiB file as a three-part multipart upload (the
+# multipart path is the point) and reads it back for a checksum, so it moves
+# ~280 MiB through one Docker server. Alone it took 7.2 s on Garage under a load
+# average of 10 (measured 2026-10-01, M3 Max), and the default 8 s cap killed it
+# on VersityGW in two full-lane runs. ❌ Don't read 30 s as a runtime: it's the
+# hang backstop with headroom for a busy stack.
+filter = 'test(copying_onto_a_bucket_lands_every_byte_and_the_mtime)'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[[profile.default.overrides]]
 # The sabre/dav cells (`crates/cmdr-webdav/src/volume/nextcloud_test.rs`), which
 # `desktop-rust-webdav-nextcloud` runs against a real Nextcloud in Docker.
 #
