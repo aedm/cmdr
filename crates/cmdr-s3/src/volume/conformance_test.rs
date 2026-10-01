@@ -24,6 +24,34 @@ async fn a_read_only_place_keeps_the_promises_it_can(service: FixtureService) {
     conformance::assert_not_found_carries_the_path(&volume, &volume.root().join(format!("{prefix}missing.txt"))).await;
 }
 
+async fn a_copy_scan_stops_when_told_and_asks_inside_the_walk(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let prefix = scratch_prefix("conformance-scan");
+    let keys: Vec<String> = ["a.txt", "b.txt", "inner/c.txt", "inner/deeper/d.txt", "other/e.txt"]
+        .iter()
+        .map(|name| format!("{prefix}tree/{name}"))
+        .collect();
+    let seeds: Vec<Seed<'_>> = keys.iter().map(|key| object(key, b"scan me")).collect();
+    seed(service, FIXTURE_BUCKET, &seeds).await;
+    let tree = volume.root().join(format!("{prefix}tree"));
+
+    conformance::assert_batch_scan_stops_when_told(&volume, &tree).await;
+    // Five files and three folders under the top.
+    conformance::assert_batch_scan_asks_inside_the_walk(&volume, &tree, 8).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_copy_scan_stops_when_told_and_asks_inside_the_walk_on_versitygw() {
+    a_copy_scan_stops_when_told_and_asks_inside_the_walk(VERSITYGW).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_copy_scan_stops_when_told_and_asks_inside_the_walk_on_garage() {
+    a_copy_scan_stops_when_told_and_asks_inside_the_walk(GARAGE).await;
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn a_read_only_place_keeps_the_promises_it_can_on_versitygw() {

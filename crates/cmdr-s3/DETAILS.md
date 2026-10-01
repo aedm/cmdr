@@ -6,9 +6,10 @@ Must-knows and the module map: `CLAUDE.md`. This file carries the decisions. Pro
 
 ## Where the crate stands
 
-Connect and browse work: the transport, the connect probe, and a read-only `Volume` that lists and stats. Reads, writes,
-copies, and share links are later milestones of the plan, and their builders already sit in `ops.rs`, which is why
-`lib.rs` still carries a crate-wide `allow(dead_code)`; it goes once reads and writes call them.
+Connect, browse, and read work: the transport, the connect probe, and a `Volume` that lists, stats, streams, and scans
+for a copy, so S3 → anywhere copies run through the app's transfer engine. Writes and copies within an account are later
+milestones of the plan, and their builders already sit in `ops.rs`, which is why `lib.rs` still carries a crate-wide
+`allow(dead_code)`; it goes once writes call them.
 
 ## The model: one volume per place
 
@@ -76,6 +77,26 @@ keys and the rights. `integration_test.rs` pins both servers' answers.
   405 is `NotSupported`; the rest is `IoError` carrying `<Code> (HTTP nnn)` for the logs.
 - **Space**: `NotSupported`, and no poll interval. S3 has no capacity, and "bytes used" is a listing of every key.
 
+## Reading
+
+`streams.rs`, modelled on `crates/cmdr-webdav/src/volume/streams.rs`:
+
+- **One GET per stream, pulled a chunk at a time** through `S3Client::open`, which returns the answer with its body
+  still on the wire (`Opened`). ❌ No `.timeout()` on the request: only the headers wait is bounded (`QUERY_BUDGET`),
+  and the body gets `REQUEST_BUDGET` of idle time per chunk, never a total, so a multi-GB download has no ceiling. Every
+  chunk counts as `heard` for the silence watch. Peak memory per stream is one socket read.
+- **A read from an offset asks `Range: bytes=<offset>-`.** A 206 names the full length in `Content-Range`, so a resumed
+  stream's `total_size` stays the whole object. ❗ A 200 to a ranged GET means the server ignored `Range`; the stream
+  skips `offset` bytes locally (`judge_get`, unit-tested). A 416 (at or past the end) is an empty read. Both fixtures
+  answer 206 with the exact window (verified on VersityGW v1.8.0 and Garage v2.4.1, `read_test.rs`, 2026-10-01).
+- **`read_range`** asks for exactly `[offset, offset + len)` and drops the response once the window is full, so a server
+  that ignored the range doesn't stream the rest of the object. It backs remote-archive browsing.
+- **A refused GET reads its `<Error>` body** (bounded by `REQUEST_BUDGET`) and goes through `map_s3_error`. The account
+  root and a bucket's top answer `IsADirectory` without a request.
+- **The copy scan** (`scan.rs`) hands `cmdr_fs::volume::scan_walk` the backend's own stat and listing: one listing per
+  folder. A recursive `ListObjectsV2` (no delimiter, 1,000 keys per request whatever the nesting) would bill fewer
+  requests for a deep tree; it's not done because the copy that follows lists each folder again anyway.
+
 ## Connection state and reconnect
 
 The WebDAV model, nearly line for line (`crates/cmdr-webdav/DETAILS.md` § "The reconnect model" and § "Silent or slow"
@@ -89,14 +110,18 @@ the endpoint through the pool-free client.
 
 ## Which side a test lives on
 
-Unit cells: the refusal table, the listing rules, path splitting, the error map, the state machine, and the switch, all
-without a server. Docker cells (`#[ignore]`d, run by the shared fixture lane through `package(cmdr-s3)`): every
-`integration_test.rs` cell runs against BOTH fixtures, because they disagree on a wrong secret; `conformance_test.rs`
-holds the read-only promises (`is_writable` and `supports_export` match what the methods do, `NotFound` names the path);
-`connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container. Seeding goes through
-`volume::testing::seed`, this crate's own builders, because the volume doesn't write yet. The 1,005-key paging prefix
-(`cmdr-test-paging-1005/`) is seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its
-own, since the stack's objects persist across runs.
+Unit cells: the refusal table, the listing rules, path splitting, the error map, the state machine, the switch, and how
+a GET's answer is read (`streams_test.rs`), all without a server. Docker cells (`#[ignore]`d, run by the shared fixture
+lane through `package(cmdr-s3)`): every `integration_test.rs` and `read_test.rs` cell runs against BOTH fixtures,
+because they disagree on a wrong secret; `conformance_test.rs` holds the promises a place that reads but doesn't write
+can keep (`is_writable` and `supports_export` match what the methods do, `NotFound` names the path, the copy scan stops
+when told and asks inside the walk); the app's
+`file_system/write_operations/backend_suites/s3_transfer_integration_test.rs` copies off a bucket through the transfer
+engine, byte for byte; `connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container.
+Seeding goes through `volume::testing::seed`, this crate's own builders, because the volume doesn't write yet. The
+1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`)
+are seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's
+objects persist across runs.
 
 ## The public surface is capped
 

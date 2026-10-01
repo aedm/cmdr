@@ -2,12 +2,12 @@
 //! the modules that do the work. Every answer here is deliberate: a default
 //! this backend accepts silently is a promise it may not be able to keep.
 //!
-//! ❗ **Read-only for now, and it says so.** Listing and stat work; reads,
-//! writes, and copies are later milestones (`docs/specs/s3-support-plan.md`),
-//! so `is_writable`, `supports_export`, and `supports_streaming` answer
-//! `false` and every mutation keeps the trait's `NotSupported` default. ❌ No
-//! `true` here before the method it speaks for works: `is_writable` is button
-//! state, and `supports_export` gates copy-from.
+//! ❗ **Read-only for now, and it says so.** Listing, stat, and reads work;
+//! writes and copies within the account are later milestones
+//! (`docs/specs/s3-support-plan.md`), so `is_writable` answers `false` and every
+//! mutation keeps the trait's `NotSupported` default. ❌ No `true` here before
+//! the method it speaks for works: `is_writable` is button state, and
+//! `supports_export` gates copy-from.
 
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -16,8 +16,10 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use cmdr_fs::entry::FileEntry;
+use cmdr_fs::volume::scan_walk;
 use cmdr_fs::volume::{
-    BackendKind, LaneKey, ListingProgress, Retirement, SignInShape, SpaceInfo, Volume, VolumeError, WatchCoverage,
+    BackendKind, BatchScanResult, CopyScanResult, LaneKey, ListingProgress, Retirement, ScanBoundary, SignInShape,
+    SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -122,18 +124,79 @@ impl Volume for S3Volume {
         Box::pin(async move { self.get_metadata_impl(path).await.is_ok() })
     }
 
-    // ── What it can't do yet, said out loud ──────────────────────────
+    // ── The byte path ────────────────────────────────────────────────
 
-    /// Reads arrive with the read milestone.
     fn supports_streaming(&self) -> bool {
-        false
+        true
     }
 
-    /// Copy-from arrives with the read milestone; until then the guard refuses
-    /// a copy off S3 before it opens anything.
+    /// ❗ Implementing the read path does not declare it; this does.
     fn supports_export(&self) -> bool {
-        false
+        true
     }
+
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn open_read_stream<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn VolumeReadStream>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(async move {
+            let stream = self.open_read_stream_impl(path, 0).await?;
+            Ok(Box::new(stream) as Box<dyn VolumeReadStream>)
+        }))
+    }
+
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn open_read_stream_at_offset<'a>(
+        &'a self,
+        path: &'a Path,
+        offset: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn VolumeReadStream>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(async move {
+            let stream = self.open_read_stream_impl(path, offset).await?;
+            Ok(Box::new(stream) as Box<dyn VolumeReadStream>)
+        }))
+    }
+
+    /// Backs remote-archive browsing: a zip's central directory and entries
+    /// come down as a few windows, never the whole object.
+    #[allow(
+        clippy::type_complexity,
+        reason = "async trait method returns a pinned boxed future by design"
+    )]
+    fn read_range<'a>(
+        &'a self,
+        path: &'a Path,
+        offset: u64,
+        len: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(self.read_range_impl(path, offset, len)))
+    }
+
+    /// A copy off S3 scans its source first: one listing per folder
+    /// (`scan.rs`).
+    fn scan_for_copy<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<CopyScanResult, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(scan_walk::scan_one(self, path)))
+    }
+
+    fn scan_for_copy_batch_with_boundary<'a>(
+        &'a self,
+        paths: &'a [PathBuf],
+        boundary: &'a ScanBoundary<'a>,
+    ) -> Pin<Box<dyn Future<Output = Result<BatchScanResult, VolumeError>> + Send + 'a>> {
+        Box::pin(self.noting(scan_walk::scan_trees(self, paths, boundary)))
+    }
+
+    // ── What it can't do yet, said out loud ──────────────────────────
 
     /// Writes arrive with the write milestone; until then New folder, New
     /// file, Rename, and Paste render disabled here.

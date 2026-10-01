@@ -101,8 +101,8 @@
       "reason": "TODO: the same extraction as the `reconnect.rs` pair's entry: the three-state enum and its `VolumeConnection` mapping move into the shared `http_session` module with the rest of the lifecycle."
     },
     "crates/cmdr-s3/src/volume/volume_impl.rs ↔ crates/cmdr-webdav/src/volume/volume_impl.rs": {
-      "lines": 88,
-      "reason": "TODO: two kinds of clone. `noting` (the liveness race and the lost-session hook) is lifecycle logic and moves with the `reconnect.rs` pair's `http_session` extraction. The rest is `Volume` trait-method signatures delegating in one line (`list_directory*`, the lifecycle hooks, `connection_state`), the same trade the `cmdr-sftp` ↔ `cmdr-webdav` entry describes: a macro emitting trait methods costs more than it saves and hides them from symbol search."
+      "lines": 148,
+      "reason": "TODO: two kinds of clone. `noting` (the liveness race and the lost-session hook) is lifecycle logic and moves with the `reconnect.rs` pair's `http_session` extraction. The rest is `Volume` trait-method signatures delegating in one line (`list_directory*`, the read path's `open_read_stream*` / `read_range`, the copy scan's two, the lifecycle hooks, `connection_state`), the same trade the `cmdr-sftp` ↔ `cmdr-webdav` entry describes: a macro emitting trait methods costs more than it saves and hides them from symbol search."
     },
     "crates/cmdr-sftp/src/volume/volume_impl.rs ↔ crates/cmdr-webdav/src/volume/volume_impl.rs": {
       "lines": 53,

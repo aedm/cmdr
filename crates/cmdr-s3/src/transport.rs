@@ -54,6 +54,52 @@ impl Answer {
     }
 }
 
+/// An answer whose body is still on the wire ([`S3Client::open`]).
+pub(crate) struct Opened {
+    pub status: StatusCode,
+    pub headers: HeaderMap,
+    response: reqwest::Response,
+    /// The client's silence watch: every chunk is the server being there.
+    liveness: Arc<Liveness>,
+    volume_id: String,
+    path: String,
+}
+
+impl Opened {
+    /// A header's value, when it's there and printable.
+    pub(crate) fn header(&self, name: &str) -> Option<&str> {
+        self.headers.get(name).and_then(|value| value.to_str().ok())
+    }
+
+    /// The next piece of the body as it arrives, `None` at its end. A
+    /// transport failure comes back in the `Volume` vocabulary. Copied out
+    /// once, because `VolumeReadStream` hands out owned bytes anyway.
+    pub(crate) async fn chunk(&mut self) -> Option<Result<Vec<u8>, VolumeError>> {
+        match self.response.chunk().await {
+            Ok(Some(chunk)) => {
+                self.liveness.heard();
+                Some(Ok(chunk.to_vec()))
+            }
+            Ok(None) => None,
+            Err(e) => Some(Err(map_transport_error(&e, &self.volume_id, &self.path))),
+        }
+    }
+
+    /// The rest of the body as text, for an error answer (a small XML
+    /// document). Whatever doesn't arrive within `budget` is left out, so a
+    /// misbehaving server can't hold a failed read open.
+    pub(crate) async fn text(mut self, budget: Duration) -> String {
+        let mut body = Vec::new();
+        let _ = tokio::time::timeout(budget, async {
+            while let Some(Ok(chunk)) = self.chunk().await {
+                body.extend_from_slice(&chunk);
+            }
+        })
+        .await;
+        String::from_utf8_lossy(&body).into_owned()
+    }
+}
+
 /// One signed client for one account on one endpoint.
 pub(crate) struct S3Client {
     http: reqwest::Client,
@@ -136,6 +182,42 @@ impl S3Client {
             body.extend_from_slice(&chunk);
         }
         Ok(Answer { status, headers, body })
+    }
+
+    /// Signs `request` now and sends it, handing back the answer with its body
+    /// still on the wire, for a GET whose body may be any size.
+    ///
+    /// ❗ No `.timeout()` on the request: that would be a total budget on the
+    /// whole body, and a multi-GB download has none. Only the wait for the
+    /// headers is bounded (`QUERY_BUDGET`); the body's budget is per chunk, in
+    /// the caller ([`Opened::chunk`] counts each one as heard).
+    pub(crate) async fn open(&self, request: S3Request, volume_id: &str, path: &str) -> Result<Opened, VolumeError> {
+        let time = AmzTime::new(SystemTime::now());
+        let scope = Scope {
+            credentials: &self.credentials,
+            region: &self.profile.region,
+            time: &time,
+        };
+        let signed = sign(request, &scope);
+        let sent = self
+            .http
+            .request(signed.method, signed.url)
+            .headers(signed.headers)
+            .send();
+        let response = match tokio::time::timeout(QUERY_BUDGET, sent).await {
+            Ok(Ok(response)) => response,
+            Ok(Err(e)) => return Err(map_transport_error(&e, volume_id, path)),
+            Err(_elapsed) => return Err(VolumeError::ConnectionTimeout(path.to_string())),
+        };
+        self.liveness.heard();
+        Ok(Opened {
+            status: response.status(),
+            headers: response.headers().clone(),
+            response,
+            liveness: Arc::clone(&self.liveness),
+            volume_id: volume_id.to_string(),
+            path: path.to_string(),
+        })
     }
 
     /// Whether the server answers at all, on a fresh connection: an unsigned

@@ -440,7 +440,21 @@ pub(super) async fn a_directory_tree_lands_intact_on_the_server(remote: Arc<dyn 
 /// in its path mapping, fails here and nowhere in its own crate's suite.
 pub(super) async fn a_directory_tree_lands_intact_off_the_server(remote: Arc<dyn Volume>, dir: PathBuf) {
     seed_remote_tree(remote.as_ref(), &dir.join("tree")).await;
+    a_seeded_tree_lands_intact_off_the_server(Arc::clone(&remote), &dir).await;
+    clean_deep(remote.as_ref(), &dir).await;
+}
 
+/// Every file of the fixture tree as a relative path and its bytes, for a
+/// backend that can't seed through its own volume (S3 has no writes yet).
+pub(super) fn tree_files() -> impl Iterator<Item = (&'static str, Vec<u8>)> {
+    TREE.into_iter()
+        .map(|(relative, len)| (relative, self_describing_bytes(len, relative)))
+}
+
+/// The fixture tree, already seeded at `dir/tree` by whatever means the
+/// backend has, copied off the server and compared name for name and byte for
+/// byte. Leaves the remote side for the caller to clean.
+pub(super) async fn a_seeded_tree_lands_intact_off_the_server(remote: Arc<dyn Volume>, dir: &Path) {
     let expected = expected_tree_lines();
     assert_eq!(
         tree_fingerprint(remote.as_ref(), &dir.join("tree")).await,
@@ -465,8 +479,6 @@ pub(super) async fn a_directory_tree_lands_intact_off_the_server(remote: Arc<dyn
         expected,
         "the tree on local disk must match the one on the server, name for name and byte for byte"
     );
-
-    clean_deep(remote.as_ref(), &dir).await;
 }
 
 /// A copy stopped mid-upload leaves the destination exactly as it found it.

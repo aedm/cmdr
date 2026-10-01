@@ -208,6 +208,42 @@ pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
     }
 }
 
+/// Puts `bytes()` at `key` unless an object of that exact length is already
+/// there, for a big object that would otherwise pile up on the fixture's disk
+/// once per run. ❗ The key is fixed and shared across runs, so treat it as
+/// read-only.
+pub async fn seed_once(service: FixtureService, bucket: &str, key: &str, len: usize, bytes: impl FnOnce() -> Vec<u8>) {
+    let client = seeding_client(service);
+    let head = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
+    let answer = client
+        .exchange(head, QUERY_BUDGET)
+        .await
+        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
+    if answer.status.is_success() && answer.header("content-length") == Some(len.to_string().as_str()) {
+        return;
+    }
+    let bytes = bytes();
+    assert_eq!(
+        bytes.len(),
+        len,
+        "seed_once: the generator must make exactly {len} bytes"
+    );
+    seed(service, bucket, &[object(key, &bytes)]).await;
+}
+
+/// `len` bytes that say where they are: line `n` reads `<tag> <n>` padded to
+/// a fixed width, so a misplaced window shows which bytes it got.
+pub fn self_describing_bytes(len: usize, tag: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(len);
+    let mut line = 0u64;
+    while out.len() < len {
+        out.extend_from_slice(format!("{tag} {line:015}\n").as_bytes());
+        line += 1;
+    }
+    out.truncate(len);
+    out
+}
+
 /// The plain seed: `bytes` at `key`, no metadata.
 pub fn object<'a>(key: &'a str, bytes: &'a [u8]) -> Seed<'a> {
     Seed {

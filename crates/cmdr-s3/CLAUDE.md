@@ -1,8 +1,8 @@
 # cmdr-s3
 
-The S3 backend for AWS, R2, B2, Wasabi, Hetzner, and any other S3-compatible server: the protocol layer plus a read-only
-`Volume` per place (a bucket, or the account root that lists them). The plan: `docs/specs/s3-support-plan.md`. Decisions
-and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
+The S3 backend for AWS, R2, B2, Wasabi, Hetzner, and any other S3-compatible server: the protocol layer plus a `Volume`
+per place (a bucket, or the account root that lists them) that lists, stats, and reads, but doesn't write yet. The plan:
+`docs/specs/s3-support-plan.md`. Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 
 ## Module map
 
@@ -10,8 +10,8 @@ and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   addressing, conditional writes), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
 - `params.rs` (`S3ConnectionParams`, `S3Provider`, the store key), `refusal.rs` (`S3ConnectError` + the probe's table),
   `transport.rs` (`S3Client`, the only `reqwest` user).
-- `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list and stat), `paths.rs`, `errors.rs`, `state.rs` +
-  `reconnect.rs`, `volume_impl.rs`, `testing.rs` (fixtures, `testing` feature).
+- `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list and stat), `streams.rs` (ranged GET), `scan.rs`,
+  `paths.rs`, `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs` (fixtures, `testing` feature).
 
 ## Must-knows
 
@@ -23,8 +23,10 @@ and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 - ❗ **Every request costs the user money.** ❌ No HEAD per child, no watcher, no space poll, no index.
 - ❗ **A wrong secret is ambiguous on some servers**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
   `InvalidAccessKeyId` are `KeysRejected`. The probe runs `ListBuckets` first because only its body can tell.
-- ❗ **Read-only for now, and it says so**: `is_writable`, `supports_export`, `supports_streaming` are `false` until the
-  method they speak for works (conformance holds them to it).
+- ❗ **No writes yet, and it says so**: `is_writable` is `false` until the write path works (conformance holds it to
+  that). Reads are real: `supports_export` and `supports_streaming` are `true`.
+- ❌ **No `.timeout()` on a GET, never a buffered body**: `S3Client::open` bounds only the headers; the body's budget is
+  per chunk, and each chunk counts as heard. A 200 to a ranged GET is skipped locally.
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
 - ❗ **Keys are never trimmed**; listings use `encoding-type=url` and decode `+` as a space. A `.`/`..` segment is
   refused (`KeyError::DotSegment`).

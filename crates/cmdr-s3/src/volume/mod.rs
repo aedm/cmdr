@@ -30,7 +30,9 @@ mod listing;
 mod paths;
 mod query;
 mod reconnect;
+mod scan;
 mod state;
+mod streams;
 mod volume_impl;
 
 pub use state::ConnectionState;
@@ -255,6 +257,8 @@ mod conformance_test;
 mod connection_drop_test;
 #[cfg(test)]
 mod integration_test;
+#[cfg(test)]
+mod read_test;
 #[cfg(test)]
 mod reconnect_test;
 #[cfg(test)]

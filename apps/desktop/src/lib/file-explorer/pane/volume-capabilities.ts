@@ -219,14 +219,14 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     pollsForDeletedFolder: false,
   }),
   s3: Object.freeze({
-    // The `webdav` row's shape, with write and export OFF: this is what answers for a
-    // place nothing has registered yet, and S3 is read-only until the backend
-    // publishes otherwise (the published answer replaces these two whenever it exists).
+    // The `webdav` row's shape, with write OFF: this is what answers for a place
+    // nothing has registered yet, and S3 reads but doesn't write until the backend
+    // publishes otherwise (the published answer replaces these whenever it exists).
     // No drive index on purpose: every request costs the user money.
     kind: 's3',
     hasBackendListing: true,
     canWrite: false,
-    canBeSource: false,
+    canBeSource: true,
     hasParentRow: true,
     syncsToMcp: true,
     canBeIndexed: false,

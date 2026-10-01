@@ -5,7 +5,7 @@
 //! against `dyn Volume`. The `<backend>_*_test.rs` files are thin cells that dial
 //! one backend's fixture and hand the live volume to a scenario. ❗ The cells stay
 //! per backend because the integration lane selects them by name prefix
-//! (`smb_integration_`, `sftp_integration_`, `webdav_integration_`:
+//! (`smb_integration_`, `sftp_integration_`, `webdav_integration_`, `s3_integration_`:
 //! `scripts/check/checks/fixture-lane-coverage.go`). The ADB and MTP cells need no
 //! Docker and run in the unit lane. Which scenario runs on which backend, and why
 //! any is skipped: `../DETAILS.md` § "Backend suites".
@@ -83,6 +83,11 @@ pub(crate) mod smb_test_support;
 mod smb_transfer_safety_test;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod smb_transfer_semantics_test;
+
+// S3: gated on the Docker fixture and named for the `s3_integration_` lane.
+// Copies off a bucket only, until the volume writes.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_transfer_integration_test;
 
 // WebDAV: gated on the Docker fixture and named for the `webdav_integration_` lane.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
