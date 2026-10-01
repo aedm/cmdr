@@ -15429,7 +15429,7 @@ export type VolumeCopyScanResult = {
   totalBytes: number
   /**
    *  What the destination reports it has room for, or `None` when the backend
-   *  genuinely can't answer (SFTP: `statvfs@openssh.com` is out of reach). ❗
+   *  genuinely can't answer (an SFTP server without `statvfs@openssh.com`). ❗
    *  `None` is "can't tell", ❌ never "no room" — a preview must still open.
    */
   destSpace: SpaceInfo | null

@@ -525,7 +525,7 @@ pub struct VolumeCopyScanResult {
     pub dir_count: usize,
     pub total_bytes: u64,
     /// What the destination reports it has room for, or `None` when the backend
-    /// genuinely can't answer (SFTP: `statvfs@openssh.com` is out of reach). ❗
+    /// genuinely can't answer (an SFTP server without `statvfs@openssh.com`). ❗
     /// `None` is "can't tell", ❌ never "no room" — a preview must still open.
     pub dest_space: Option<SpaceInfo>,
     /// Whether the destination folder takes writes, asked BEFORE its space. An

@@ -230,21 +230,21 @@ the ratio cell alongside the depth curve read 4.3× where the same cell alone re
 fallback be driven from a unit cell rather than only from a server that lacks the extension.
 
 ⚠️ **Only the `support_*` predicates are readable.** `max_read_len` and `max_write_len` sit behind the engine's
-`__ci-tests` feature, and `statvfs@openssh.com` has neither a predicate nor a request to send it (§ "The `Volume`
-answers"). So the value carries exactly five fields, and ❌ nothing should be added for an extension the engine cannot
-answer for.
+`__ci-tests` feature. So the value carries exactly six fields, and ❌ nothing should be added for an extension the
+engine cannot answer for.
 
 ⚠️ **`copy-data` carries NO `@openssh.com` suffix**, where `posix-rename`, `fsync`, `hardlink`, `expand-path`, and
 `statvfs` all do (`openssh-sftp-protocol` 0.24.2 `constants.rs`; OpenSSH `sftp-server.c` 9.9p2, read 2026-08-22). The
 fixture's `QUIRK_DROP_EXTENSIONS` list matches on the wire name, so a suffixed entry there dropped nothing and the
-"server without the extension" fixture quietly had it — `a_server_with_the_extensions_dropped_advertises_neither` is
-what caught that and is what keeps it caught.
+"server without the extension" fixture quietly had it — `a_server_with_the_extensions_dropped_advertises_none_of_them`
+is what caught that and is what keeps it caught.
 
 What each one is spent on:
 
 - **`posix-rename`** gates the forced rename's atomic replace, and its ABSENCE gates the forceless rename's shortcut (§
   "Renaming without clobbering").
 - **`copy_data`** gates `Volume::copy_within` (§ "Copying inside one server").
+- **`statvfs`** gates free space (§ "The `Volume` answers").
 - **`fsync`, `hardlink`, `expand_path` are recorded and logged, and deliberately unspent.** They are worth carrying
   because one `debug!` line at connect answers "why did this server behave differently" before anything else does, and
   the names are protocol constants so the line is PII-free. What each would buy, and why not yet:
@@ -640,10 +640,9 @@ addresses nothing, and a folder copy writes it at the destination. Loud and loss
 
 The escape hatch, if it bites: vendor `openssh-sftp-protocol` plus `ssh_format` under `crates/` as a **path** dependency
 and make `NameEntry::filename` byte-backed (1 594 and 1 162 lines of `src/` at the pinned 0.24.2 and 0.14.1, `wc -l`,
-2026-08-23). ❌ Not `git =`: `deny.toml`'s `unknown-git = "deny"` forbids it. The same vendoring is the only route to
-free space, so the two are one piece of work: GitHub [#193](https://github.com/vdavid/cmdr/issues/193).
-`a_name_that_is_not_utf8_takes_the_whole_session_down` pins the current behaviour so the day it changes is a visible
-day.
+2026-08-23). ❌ Not `git =`: `deny.toml`'s `unknown-git = "deny"` forbids it. Tracked in GitHub
+[#193](https://github.com/vdavid/cmdr/issues/193). `a_name_that_is_not_utf8_takes_the_whole_session_down` pins the
+current behaviour so the day it changes is a visible day.
 
 ## Host-key trust
 
@@ -914,17 +913,18 @@ Beyond the four required methods, `volume_impl.rs` states these deliberately:
 - **`retirement` is published, `on_superseded` retires the id, `attempt_reconnect` and `reconnect_with_credentials` are
   answered** (§ "Coming back"). ❗ `connection_liveness` stays `None`: the keepalive's count lives inside `russh`, which
   exposes no pollable reading, and elapsed silence is not an answer.
-- **`get_space_info` → `NotSupported`, `space_poll_interval` → `None`.** `statvfs@openssh.com` is **not reachable from
-  this crate stack**: `openssh-sftp-client-lowlevel` has no `send_statvfs_request`, and `openssh-sftp-protocol` carries
-  only the extension _name_ so the hello parses. There is no `support_statvfs` predicate either — the predicates are
-  `expand_path`, `fsync`, `hardlink`, `posix_rename`, and `copy`. Free space needs the protocol crate vendored, which is
-  the same escape hatch the filename problem uses. The two answers have to agree, or a pane polls something that always
-  refuses. ❗ **The app owes the other half of this contract**, and for a while it didn't pay it: the transfer
-  pre-flight propagated the `NotSupported` as a failure, so every copy INTO a server died after ~500 ms. `NotSupported`
-  here means "can't tell", ❌ never "no room". Both pre-flights go through
-  `write_operations/transfer/volume/copy.rs::dest_space_if_known`, which reads the refusal as `None` and proceeds while
-  still propagating every OTHER error. ❌ Don't answer this with a guessed number to make a caller's life easier; the
-  caller is the one that has to cope.
+- **`get_space_info` and `get_space_info_at` answer from `statvfs@openssh.com`, polled every 5 s.** One small round trip
+  (`Fs::statvfs`, `openssh-sftp-client` 0.15.10+): the root's filesystem for the pane, the destination folder's for a
+  copy, since one server can hold several mounts. `mapping.rs::statvfs_to_space_info` reads it the way `statvfs(3)`
+  defines it, the same as the local backend: `frsize` units, `bavail` as room left, everything not `bfree` as used, so
+  root-reserved blocks are in neither figure. OpenSSH has answered it since 5.1, but a server that doesn't advertise it
+  (`ServerExtensions::statvfs`) gets `NotSupported` without a request; the poller drops a refused reading, so the 5 s
+  cadence costs nothing on the wire there. `sftp-fixture-noposixrename` is that server. ❗ **The app owes the other half
+  of this contract**, and for a while it didn't pay it: the transfer pre-flight propagated the `NotSupported` as a
+  failure, so every copy INTO a server died after ~500 ms. `NotSupported` here means "can't tell", ❌ never "no room".
+  Both pre-flights go through `write_operations/transfer/volume/copy.rs::dest_space_if_known`, which reads the refusal
+  as `None` and proceeds while still propagating every OTHER error. ❌ Don't answer this with a guessed number to make a
+  caller's life easier; the caller is the one that has to cope.
 
 ## Connecting from the frontend
 

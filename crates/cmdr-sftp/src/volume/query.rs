@@ -2,14 +2,14 @@
 use std::path::Path;
 
 use cmdr_fs::entry::FileEntry;
-use cmdr_fs::volume::{EntryKind, ListingProgress, VolumeError};
+use cmdr_fs::volume::{EntryKind, ListingProgress, SpaceInfo, VolumeError};
 use openssh_sftp_client::fs::DirEntry;
 use tokio_util::sync::CancellationToken;
 
 use super::SftpVolume;
 use cmdr_fs::volume::remote_paths::RemoteRoot;
 
-use super::mapping::metadata_to_file_entry;
+use super::mapping::{metadata_to_file_entry, statvfs_to_space_info};
 use crate::errors::map_sftp_error;
 
 // ⚠️ **A filename that isn't UTF-8 costs the SESSION, not just the listing.**
@@ -121,6 +121,28 @@ impl SftpVolume {
             Some(t) if t.is_dir() => EntryKind::Directory,
             _ => EntryKind::File,
         })
+    }
+
+    /// The free and total space of the filesystem holding `path`: one
+    /// `statvfs@openssh.com` round trip.
+    ///
+    /// A server without the extension answers `NotSupported` without touching
+    /// the wire, which callers read as "can't tell", ❌ never "no room".
+    /// Asked per path because one server can hold several filesystems, and a
+    /// copy is judged against the one it lands on.
+    pub(super) async fn space_info_impl(&self, path: &Path) -> Result<SpaceInfo, VolumeError> {
+        let remote = self.to_remote_path(path)?;
+        let session = self.clone_session().await?;
+        if !session.extensions().statvfs {
+            return Err(VolumeError::NotSupported);
+        }
+        let stat = session
+            .sftp()
+            .fs()
+            .statvfs(&remote)
+            .await
+            .map_err(|e| map_sftp_error(&e, &remote))?;
+        Ok(statvfs_to_space_info(&stat))
     }
 
     /// Whether `path` is there, as a plain yes/no.

@@ -374,7 +374,7 @@ export interface VolumeCopyScanResult {
   dirCount: number
   totalBytes: number
   /** What the destination reports about its room, or `null` when the backend
-   *  genuinely can't answer (SFTP can't reach `statvfs@openssh.com`). `null`
+   *  genuinely can't answer (an SFTP server without `statvfs@openssh.com`). `null`
    *  means "can't tell", never "no room"; nor does an `unbounded` reading, which
    *  is storage with no ceiling. */
   destSpace: SpaceInfo | null

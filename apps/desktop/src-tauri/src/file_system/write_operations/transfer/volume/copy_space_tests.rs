@@ -38,9 +38,9 @@ use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_preview_of_a_destination_that_cant_report_space_still_scans() {
     // ❗ "Can't tell" is not "no room". A backend answers `NotSupported` here when
-    // the protocol genuinely has no way to ask — SFTP is the live case, since
-    // `statvfs@openssh.com` isn't reachable from its crate stack — and that
-    // honest refusal must not become a preview the user can't open.
+    // it genuinely has no way to ask (an SFTP server without
+    // `statvfs@openssh.com` is the live case), and that honest refusal must not
+    // become a preview the user can't open.
     let source: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Source").with_space_info(1_000_000, 900_000));
     let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Dest"));
     source.create_file(Path::new("/report.pdf"), b"content").await.unwrap();
