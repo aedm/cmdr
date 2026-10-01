@@ -125,9 +125,9 @@ behind it, so it moved to `cmdr-fs` beside `smb_volume_id` rather than becoming 
 you could compute the answer from a `&str`.
 
 **`MountFacts` is two decisions, not a `FilesystemKind`.** The index acts on exactly two things — may the local walker
-touch this mount, and may the rename pre-pass trust its inodes — and both are host judgments: the kind → network mapping
-is per-platform, and the probe itself can block for minutes on a wedged mount. Returning the two flags moved the whole
-macOS/Linux fork out of `transports/local_external`.
+touch this mount, and may the rename pre-pass trust its inodes — and both are host judgments: the mount probe is
+per-platform (the app answers "network" for anything that isn't a known local disk), and the probe itself can block for
+minutes on a wedged mount. Returning the two flags moved the whole macOS/Linux fork out of `transports/local_external`.
 
 **Presence is by filesystem identity, and it reads the mount table, never the mount.** `mount_identity(root)` names the
 filesystem mounted exactly at a root (a `MountIdentity`, opaque to the index), and `is_mounted(identity)` says whether
