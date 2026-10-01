@@ -1230,9 +1230,9 @@
       "others": "the same number of other files (drives the singular/plural form)"
     }
   },
-  "fileExplorer.rename.needsMoveConfirmation": "Renaming it copies a lot on the server, so press F2 on it again to confirm.",
-  "@fileExplorer.rename.needsMoveConfirmation": {
-    "description": "Reason shown inside fileExplorer.rename.chainKeptOriginalName (after the colon) when the user renames a run of files with the up/down arrows and one of them is a big folder on cloud storage (S3). There, a rename copies every file inside and deletes the originals, so a big one needs confirming in the Move dialog first, and a chain that has already moved on can't stop to ask. Tells the user to press F2 on that item again, which opens the confirmation. F2 is a keyboard key name; keep it as-is. A full sentence starting with a capital letter."
+  "fileExplorer.rename.needsOwnMoveDialog": "Renaming it copies on the server, which needs its own Move dialog. Rename it again by itself.",
+  "@fileExplorer.rename.needsOwnMoveDialog": {
+    "description": "Reason shown inside fileExplorer.rename.chainKeptOriginalName (after the colon) when the user renames a run of files with the up/down arrows and more than one of them is a big folder or file on cloud storage (S3). There, a rename copies every file inside on the server and deletes the originals, so it has to be confirmed in the Move dialog first. The first such item in the run gets that dialog; this message is for the others, which kept their names. It asks the user to rename that item again on its own. A full sentence starting with a capital letter."
   },
   "fileExplorer.rename.unconfirmed": "Couldn’t confirm the rename of “{name}”. The volume may be slow, so the rename may still have gone through.",
   "@fileExplorer.rename.unconfirmed": {

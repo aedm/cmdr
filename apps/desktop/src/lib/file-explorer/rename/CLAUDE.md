@@ -30,7 +30,8 @@ Full details (save flow, validation tiers, cursor tracking, decisions): `DETAILS
   (ERR-KVERS). `DETAILS.md` § Permission check on activation.
 - **Async work carries the session id it started with; a superseded session may only toast and refresh.** A save,
   permission check, or editor cancel landing after a newer activation must never cancel, focus, shake, move the cursor,
-  or open a dialog. `DETAILS.md` § Rename sessions.
+  or open a dialog over the live editor (a `confirm-move` Move dialog waits for it to close). `DETAILS.md` § Rename
+  sessions.
 - **A bare arrow chains the rename to the next row, and five orderings inside that step fail silently**: the save fires
   BEFORE the next activation; the editor opens on the entry captured at keypress time, which is the row BESIDE it, ❌
   never one at an index; a conflict is dropped on the BACKEND's answer, ❌ never on cached sibling names; and kept vs

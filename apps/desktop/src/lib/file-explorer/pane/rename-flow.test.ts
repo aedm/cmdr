@@ -595,15 +595,17 @@ describe('a superseded rename session may speak, never steer', () => {
     expect(rename.active).toBe(true)
   })
 
-  it('a rename that needs the Move dialog never opens it once the user moved on, and says the name was kept', async () => {
+  it('a rename that needs the Move dialog never opens it over the live editor', async () => {
     const { rename, onConfirmRenameAsMove, landSave } = supersededSave()
 
     await landSave({ type: 'confirm-move', newName: 'notes.md' })
+    await Promise.resolve()
 
+    // It waits for the editor to close (`rename-chain.test.ts`).
     expect(onConfirmRenameAsMove).not.toHaveBeenCalled()
     expect(rename.active).toBe(true)
     expect(rename.target?.path).toBe(NEXT.path)
-    expect(addToastSpy.mock.calls[0][1]).toBe('fileExplorer.rename.chainKeptOriginalName')
+    expect(addToastSpy).not.toHaveBeenCalled()
   })
 
   it('the blur from the superseded editor unmounting does not end the live session', async () => {

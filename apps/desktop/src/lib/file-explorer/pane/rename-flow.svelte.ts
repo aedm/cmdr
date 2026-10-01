@@ -44,9 +44,9 @@ export interface RenameFlowDeps {
   moveCursorTo: (index: number) => void
   /**
    * A rename that copies too much to start unasked (a big S3 folder): open the
-   * Move dialog for `sourcePath`, prefilled with `newName` in `parentPath`. Only
-   * the session that typed the name may call it; a superseded save never opens
-   * a dialog.
+   * Move dialog for `sourcePath`, prefilled with `newName` in `parentPath`.
+   * Called only while no editor is open: a superseded save's waits for the
+   * live editor to close.
    */
   onConfirmRenameAsMove: (request: RenameAsMoveRequest) => void
 }
@@ -110,6 +110,40 @@ export function createRenameFlow(deps: RenameFlowDeps) {
    */
   function endChain() {
     siblingNames.clear()
+  }
+
+  // A chain opens at most ONE Move dialog: the first of its renames whose save
+  // answers `confirm-move` claims it, and the others keep their names, said so
+  // in the chain's toast. Confirming one starts a move that holds the progress
+  // slot, so a second dialog couldn't open behind it anyway.
+  let moveDialogClaimed = false
+  // A claimed rename whose save landed while an editor was open: its dialog
+  // waits for the editor to close (`closeEditor`), since a dialog can't open
+  // over a name the user is typing.
+  let deferredMove: RenameAsMoveRequest | null = null
+
+  /** Claims the chain's one Move dialog; `false` when a rename already has it. */
+  function claimMoveDialog(): boolean {
+    if (moveDialogClaimed) return false
+    moveDialogClaimed = true
+    return true
+  }
+
+  function offerDeferredMove() {
+    if (rename.active || deferredMove === null) return
+    const request = deferredMove
+    deferredMove = null
+    deps.onConfirmRenameAsMove(request)
+  }
+
+  /**
+   * Closes the editor, then opens a deferred Move dialog. A microtask later, so
+   * the focus hand-back that follows a close lands first and the dialog keeps
+   * the focus it takes.
+   */
+  function closeEditor() {
+    rename.cancel()
+    if (deferredMove !== null) queueMicrotask(offerDeferredMove)
   }
 
   // When true, suppress the blur-cancel (a dialog is about to open)
@@ -204,7 +238,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
     if (!pathInsideArchive(entry.path)) {
       void checkPermission(entry.path, entry.isDirectory, currentVolumeId).then((errorMsg) => {
         if (errorMsg && rename.active && !rename.isSuperseded(sessionId)) {
-          rename.cancel()
+          closeEditor()
           addToast(errorMsg, { level: 'error' })
           restoreFocus()
         }
@@ -340,9 +374,10 @@ export function createRenameFlow(deps: RenameFlowDeps) {
    * Such a save may only SPEAK (a toast, a background refresh); everything it
    * used to steer now belongs to a different file. Cancelling would close the
    * editor the user is typing in, shaking would blame the wrong file, moving the
-   * cursor would yank it off the file being edited, and a dialog would ask about
-   * a file the user has already moved past. The forbidden moves aren't guarded
-   * here, they're absent.
+   * cursor would yank it off the file being edited, and a dialog over the editor
+   * would interrupt the name being typed. The forbidden moves aren't guarded
+   * here, they're absent; the one dialog a superseded save may raise, the Move
+   * dialog's confirmation, waits for the editor to close (`deferredMove`).
    *
    * `target` and `trimmedName` are the ones the save was sent with, so the toast
    * can name the file that kept its name rather than whichever one the editor
@@ -373,9 +408,14 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         chainReports.keptName(target.originalName, tString('fileOperations.validation.conflict', { name: trimmedName }))
         break
       case 'confirm-move':
-        // The rename needs an OK in the Move dialog, and a dialog can't ask about
-        // a file the user has already moved past: the name is dropped, and said so.
-        chainReports.keptName(target.originalName, tString('fileExplorer.rename.needsMoveConfirmation'))
+        // The rename needs an OK in the Move dialog, which opens once no editor
+        // is open: never over the name the user is typing now.
+        if (!claimMoveDialog()) {
+          chainReports.keptName(target.originalName, tString('fileExplorer.rename.needsOwnMoveDialog'))
+          break
+        }
+        deferredMove = renameAsMoveRequest(target, result.newName)
+        offerDeferredMove()
         break
       case 'noop':
       case 'extension-ask':
@@ -397,7 +437,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
     }
     switch (result.type) {
       case 'noop':
-        rename.cancel()
+        closeEditor()
         restoreFocus()
         break
       case 'error':
@@ -405,11 +445,11 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         // After a click-away the editor is already blurred, so there's nothing to
         // shake and no focused field to fix the name in: end the session instead
         // of stranding an input the user has to hunt back to.
-        if (commitFromClickAway) rename.cancel()
+        if (commitFromClickAway) closeEditor()
         else rename.triggerShake()
         break
       case 'timeout':
-        rename.cancel()
+        closeEditor()
         restoreFocus()
         // The same aggregated toast the chain uses: a chain's last rename ends
         // here rather than superseded, and its timeout belongs in the running
@@ -444,21 +484,21 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         // The editor's job is done: the name now lives in the Move dialog, which
         // owns the confirmation and the background move it starts.
         endRenameSession()
-        deps.onConfirmRenameAsMove({
-          sourcePath: target.path,
-          parentPath: target.parentPath,
-          newName: result.newName,
-          isDirectory: target.isDirectory,
-        })
+        if (claimMoveDialog()) deps.onConfirmRenameAsMove(renameAsMoveRequest(target, result.newName))
+        else chainReports.keptName(target.originalName, tString('fileExplorer.rename.needsOwnMoveDialog'))
         break
     }
+  }
+
+  function renameAsMoveRequest(target: RenameTarget, newName: string): RenameAsMoveRequest {
+    return { sourcePath: target.path, parentPath: target.parentPath, newName, isDirectory: target.isDirectory }
   }
 
   /** Closes the editor and its dialogs, and hands focus back to the pane. */
   function endRenameSession() {
     clearPendingRenameActivation()
     endChain()
-    rename.cancel()
+    closeEditor()
     extensionDialogState = null
     conflictDialogState = null
     suppressExtensionWarningOnce = false
@@ -507,6 +547,8 @@ export function createRenameFlow(deps: RenameFlowDeps) {
       // opens a new chain: this is the activation no arrow asked for.
       clearPendingRenameActivation()
       endChain()
+      // A new chain gets its own Move dialog, unless the last one's still waits.
+      moveDialogClaimed = deferredMove !== null
 
       // Scoped to this rename session; reset when it ends (finalize/cancel).
       suppressExtensionWarningOnce = options?.suppressExtensionWarning ?? false
@@ -552,7 +594,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
       clearPendingRenameActivation()
       cancelClickToRename()
       endChain()
-      rename.cancel()
+      closeEditor()
       extensionDialogState = null
       conflictDialogState = null
       suppressExtensionWarningOnce = false
@@ -580,7 +622,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         return
       }
       if (!rename.hasChanged()) {
-        rename.cancel()
+        closeEditor()
         restoreFocus()
         return
       }
@@ -604,12 +646,12 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         // Don't trap the click and don't swallow the reason: drop the edit and say
         // why the name didn't stick.
         const reason = rename.validation.message
-        rename.cancel()
+        closeEditor()
         addToast(tString('fileExplorer.rename.keptOriginalName', { reason }), { level: 'warn' })
         return
       }
       if (!rename.hasChanged()) {
-        rename.cancel()
+        closeEditor()
         return
       }
 
@@ -646,7 +688,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
       conflictDialogState = null
 
       if (!target || !trimmedName) {
-        rename.cancel()
+        closeEditor()
         restoreFocus()
         return
       }
@@ -683,7 +725,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
                 )
               }
               if (rename.isSuperseded(sessionId)) return
-              rename.cancel()
+              closeEditor()
               restoreFocus()
             })
           break
@@ -694,7 +736,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
           })
           break
         case 'cancel':
-          rename.cancel()
+          closeEditor()
           restoreFocus()
           break
         case 'continue':
@@ -720,7 +762,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
       // and must not cancel the session the save still owns.
       if (pendingCommit) return
       endChain()
-      rename.cancel()
+      closeEditor()
       restoreFocus()
     },
 

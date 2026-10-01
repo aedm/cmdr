@@ -35,12 +35,19 @@ Depth and rationale for inline rename. `CLAUDE.md` holds the must-knows.
    many are waiting to be reported (see "Saying so, in one toast that grows").
 
 **A rename that copies.** On S3 a folder or big file has no rename: the backend copies every object and deletes the
-source, and says so in `validity.byMove`. A small one (`confirmFirst: false`) goes through `renameFile` as usual, which
-starts it as a background move with the progress chip. A big or uncounted one (`confirmFirst: true`) returns
-`{ type: 'confirm-move', newName }` before renaming anything: the flow ends the session like a success (minus the cursor
-follow, since nothing moved yet) and calls the pane's `onConfirmRenameAsMove`, which opens the Move dialog in rename
-mode (`../pane/rename-as-move.ts`, `../../file-operations/transfer/DETAILS.md` § "Rename mode"). A SUPERSEDED save never
-opens it: a chain drops the name into the kept-names toast (`fileExplorer.rename.needsMoveConfirmation`).
+source, and says so in `validity.byMove`. A small, free one (`confirmFirst: false`) goes through `renameFile` as usual,
+which starts it as a background move with the progress chip. A big, uncounted, or priced one (`confirmFirst: true`; the
+rule is Rust's, `RenameByMove::from_tally`) returns `{ type: 'confirm-move', newName }` before renaming anything: the
+flow ends the session like a success (minus the cursor follow, since nothing moved yet) and calls the pane's
+`onConfirmRenameAsMove`, which opens the Move dialog in rename mode, with its cost line (`../pane/rename-as-move.ts`,
+`../../file-operations/transfer/DETAILS.md` § "Rename mode").
+
+**In a chain, the Move dialog waits for the editor to close.** A SUPERSEDED save answering `confirm-move` is parked in
+`deferredMove` and opened by `closeEditor` (every editor close goes through it), a microtask later so the pane's focus
+hand-back doesn't steal the dialog's focus; if no editor is open when it lands, it opens at once. A chain opens ONE Move
+dialog (`moveDialogClaimed`): confirming it starts a move that holds the progress slot, so a second couldn't open
+anyway. Its other renames that need one keep their names, in the kept-names toast
+(`fileExplorer.rename.needsOwnMoveDialog`).
 
 Conflict resolution calls `performRename(target, newName, force: true)` after "Overwrite and trash/delete". The
 `moveToTrash` call in the overwrite-trash path also has timeout detection (persistent toast + refresh).
