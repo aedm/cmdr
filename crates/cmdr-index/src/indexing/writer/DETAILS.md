@@ -485,7 +485,8 @@ READ is never "no row" (below), and a failed `get_parent_id` queues the current 
 and the `None` branch with a positive delta `INSERT OR REPLACE`s a fresh row holding ONLY the delta — a transient busy
 read turned into a permanently wrong aggregate. `Err` now writes nothing and queues the chain; `Ok(None)` keeps its
 meaning. Same fix in `repair_dir_stats_upward`'s stored-row read, and `recompute_recursive_has_symlinks` returns
-`Result<bool>` instead of `unwrap_or(false)`.
+`Result<bool>` instead of `unwrap_or(false)`. Its two queries read off partial indexes (`idx_child_symlinks` for the
+direct half, `idx_child_dirs` for the subdir half), never every child: `../store/DETAILS.md` § child directories.
 
 **Decision: the drain point is the writer loop's caught-up tick, outside any explicit transaction.** `writer_loop`
 drains at the end of an iteration when `queue_depth == 0` and `conn.is_autocommit()` — the same "fully caught up" point

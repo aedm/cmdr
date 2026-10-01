@@ -233,6 +233,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 - **`file_viewer.rs`**: session lifecycle, regex/literal search with mode flags, word wrap, menu state (including
   `viewer_set_search_input_focused`, which greys the viewer bar's Edit > Cut / Paste with its search box), encoding
   pickers (`viewer_set_encoding` / `viewer_get_encoding_options`), tail mode (`viewer_set_tail_mode`), `viewer_reload`.
+  `viewer_get_lines` runs through `get_lines_within`, which flips the fetch's cancel flag when its deadline fires
+  (`file_viewer/DETAILS.md` § Tauri commands).
 - **`menu.rs`**: the context-menu popups (file / breadcrumb / parent row / tab / network host / function key bar),
   plus `update_menu_context`.
 - **`menu_state.rs`**: the pushes that keep the menu BAR in step with the frontend: the view-mode + hidden-files +

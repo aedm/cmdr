@@ -15,8 +15,8 @@ the `Volume` trait, capability flags, and any write path.
 - `format.rs`: `open_tar_decoder` (the codecs), plus a re-export of the naming vocabulary — `ArchiveFormat`,
   `format_for_name` (detection SoT), `is_sequential` — which lives in `crates/cmdr-fs/src/archive_format.rs` because
   `FileEntry.is_archive` reads it.
-- `zip.rs` / `tar.rs` / `sevenz.rs`: per-format parse + producer + `EntryStore` arm. `zip_times.rs`: which zip entries
-  record only a DOS time, read as the writer's wall clock (DETAILS § Entry times).
+- `zip.rs` / `tar.rs` / `sevenz.rs`: per-format parse + producer + `EntryStore` arm. `zip_times.rs`: DOS-only entry
+  times (DETAILS § Entry times).
 - `source.rs`: the `ArchiveByteSource` seam + `LocalFileSource` / `BytesSource` / `TailCachedSource`.
 - `reader.rs`: `ArchiveEntryReader` — chunked, off-executor decompression. `extract.rs`: `SubtreeExtractReader` — the
   one-pass subtree extractor for sequential formats (compressed tar, 7z), decode-once bulk extract.
@@ -46,7 +46,6 @@ reorganizing, or advising.
   since a password WAS supplied, types it `WrongPassword` (never string-matched). **A HEADER-encrypted 7z (`-mhe=on`)
   needs the password to even BROWSE** (encrypted metadata), so `parse` — not just extraction — returns
   `Encrypted`/`WrongPassword`; the volume layer surfaces it as `NeedsPassword` on the LISTING path (browse-time prompt).
-  Filename encoding is rc-zip's job for zip — consume the decoded `entry.name`.
 - **`ArchiveNode::mode` is what the archive RECORDED, `None` when it recorded nothing** (zip external attributes, the
   tar header, 7z's `0x8000` unix extension). ❌ Never a plausible `0o644`: the copy engine puts it on what an extract
   writes. Low nine bits only — setuid/setgid/sticky are dropped at the parser.
