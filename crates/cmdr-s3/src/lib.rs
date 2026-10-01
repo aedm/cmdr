@@ -6,6 +6,7 @@
 #[cfg(test)]
 use cmdr_s3 as _;
 
+pub mod cost;
 pub(crate) mod encoding;
 pub(crate) mod error;
 pub(crate) mod metadata;

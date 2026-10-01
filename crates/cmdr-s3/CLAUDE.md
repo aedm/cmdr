@@ -14,6 +14,9 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
   `temp_overwrite.rs`, `multipart_upload.rs` (parts, the sweep), `server_copy.rs`, `batch.rs` (tally, batch delete),
   `upload_body.rs`, `upload_ledger.rs`, `mutation.rs` (folders, delete, rename), `scan.rs`, `share_link.rs`, `paths.rs`,
   `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs`.
+- `cost/`: the price table (`s3-prices.json`, byte-identical to `apps/api-server`'s), `Workload` (requests counted the
+  way the write paths send them), `Estimate`. ❗ A write path that sends a request more or less updates its `Workload`
+  method too.
 
 ## Must-knows
 

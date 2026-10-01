@@ -53,6 +53,10 @@ cmdr-fs = { path = "../cmdr-fs" }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream"] }
 # A HEAD's `Last-Modified` (RFC 1123), the version `cmdr-webdav` resolves.
 httpdate = "1"
+# The price table (`cost/prices.rs`): the JSON `apps/api-server` serves and the
+# crate bundles. The versions `cmdr-fs` resolves.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 # The upload body: a `Stream` of `Bytes` the transport hands to
 # `reqwest::Body::wrap_stream`, and the part uploads run side by side. The
 # versions `cmdr-webdav` resolves.

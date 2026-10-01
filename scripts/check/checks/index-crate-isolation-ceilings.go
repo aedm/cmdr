@@ -207,11 +207,18 @@ var surfaceGuardedCrates = []struct {
 		// public module; `volume::testing` exists only behind the `testing`
 		// feature. Item-by-item: `crates/cmdr-s3/DETAILS.md` § "The public
 		// surface is capped".
+		//
+		// RAISED 8/1/8 -> 9/2/15 for cost estimates: `pub mod cost` (the price
+		// table, `Workload`, `Estimate`, `LineItem`, `PriceTableError`) plus
+		// `S3Volume::cost_workload` and `copies_on_server_from`. Wider is the
+		// better design here: how many requests a write sends is this crate's
+		// knowledge, so counting them beside the write paths keeps the two from
+		// drifting apart, which an app-side copy of the counts would invite.
 		Name: "cmdr-s3",
 		Ceilings: surfaceCeilings{
-			RootPromises:   8,
-			PublicModules:  1,
-			SubsystemItems: 8,
+			RootPromises:   9,
+			PublicModules:  2,
+			SubsystemItems: 15,
 		},
 	},
 	{

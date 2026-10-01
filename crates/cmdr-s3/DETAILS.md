@@ -10,8 +10,8 @@ Connect, browse, read, write, and server-side copy work: the transport, the conn
 stats, streams, scans for a copy, uploads (one PUT or in parts), copies within the account without the bytes leaving the
 server, makes folders, deletes one node or a batch, and renames one small file. A folder or a big object answers
 `RenameWork::CopyThenDelete`, and the app routes such a rename through its transfer engine as a move
-(`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). Cost estimates are
-the plan's M7.
+(`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). `cost/` prices a
+planned operation at list prices (§ "Cost estimates").
 
 ## The model: one volume per place
 
@@ -146,10 +146,16 @@ under a `scratch_prefix` of its own, since the stack's objects persist across ru
 ## The public surface is capped
 
 Root re-exports: 7 items (`S3ConnectionParams`, `S3Provider`, `InvalidProvider`, `S3ConnectError`, `S3Volume`,
-`UnattendedReconnect`, `connect_s3_volume`) plus `pub mod volume`, which the check counts as an eighth. Public modules:
-1 (`volume`), plus `volume::testing` under the `testing` feature. `index-crate-isolation` pins it at exactly 8 / 1 / 8
-(measured 2026-10-01): `cmdr-webdav`'s shape plus the provider preset the host maps its saved entry onto, and the
-refusal for a preset that can't make an endpoint.
+`UnattendedReconnect`, `connect_s3_volume`) plus `pub mod volume` and `pub mod cost`, which the check counts as an
+eighth and ninth. Public modules: 2 (`volume`, `cost`), plus `volume::testing` under the `testing` feature.
+`index-crate-isolation` pins it at exactly 9 / 2 / 15: `cmdr-webdav`'s shape plus the provider preset the host maps its
+saved entry onto, the refusal for a preset that can't make an endpoint, and the cost estimator (`PriceTable`,
+`PriceTableError`, `Workload`, `Estimate`, `LineItem`, `S3Volume::cost_workload`, `S3Volume::copies_on_server_from`).
+
+**Decision**: the estimator lives here, not in the app. **Why**: how many requests a write sends (a verifying HEAD, the
+part plan, the no-overwrite HEAD) is this crate's knowledge, and counting it beside the write paths keeps the two from
+drifting. `PriceTableError` is opaque (a `Display` for the log) because nothing downstream branches on why a served
+table was refused: the app keeps the copy it has.
 
 ## Signing
 
@@ -458,3 +464,34 @@ one, and refuses anything that isn't digits, one optional `-`, and one optional 
 A write takes the date from the source stream (`VolumeReadStream::modified_at`: a local file's `stat`, another S3
 object's own `x-amz-meta-mtime` or `Last-Modified`) and sets it on the PUT or on `CreateMultipartUpload`, never on the
 parts. A source with no date writes none. A rename copies the metadata with the object.
+
+## Cost estimates
+
+`cost/`. A dialog about to copy, move, or delete on S3 shows "About $0.02 at AWS list prices". Nothing here sends a
+request: the inputs are the scan the dialog already ran.
+
+- **The table** (`cost/s3-prices.json`, schema 1): per provider, request classes (a name as the provider's page spells
+  it, a price per million, the S3 operations in it), `egressPerGb`, `storagePerGbMonth`, `minimumStorageDays`,
+  `minimumBillableObjectBytes`, the currency, `asOf`, the source URL, and `notes`. `apps/api-server` serves a
+  byte-identical copy at `/s3-prices/v1` (its test compares the two), so a price change edits both and the Worker deploy
+  reaches every install; the bundled copy is the fallback. The sources and their dates:
+  `docs/notes/s3/provider-research.md`.
+- **Parsing is strict where it protects the math, loose where it protects a newer server**: every operation priced
+  exactly once, every number finite and non-negative, else the whole table is refused (the app keeps its copy). Unknown
+  providers, operations, and fields are ignored; a newer `schemaVersion` is refused.
+- **List prices only.** Free tiers (AWS's 100 GB, R2's monthly requests), included allowances (B2 and Wasabi's free
+  downloads, Hetzner's 1 TB), and monthly minimums are `notes`, never math: we can't see the account's month. So
+  `egressPerGb` is what a normal account pays per download (AWS $0.09, everyone else $0), and the dialog's (i) says the
+  real bill can differ.
+- **One-time cost only.** Requests, downloads, and early deletion. Ongoing storage isn't an operation's cost, so the
+  minimum billable size matters only inside an early-deletion charge.
+- **Early deletion** (Wasabi's 90 days): each deleted object with a known age under the minimum bills
+  `max(size, minimum object) × remaining days × storagePerGbMonth / 30`, in GiB. Whole days of age, rounded down; a date
+  in the future counts as brand new; an object with no date costs nothing (we don't guess).
+- **`Workload` mirrors the write paths**, method by method, with the shapes in each doc comment: an upload is one PUT up
+  to the part floor or Create + parts + Complete, then a verifying HEAD; a server copy adds the source's HEAD; a
+  provider off the conditional-write list (everyone but AWS and R2) adds a no-overwrite HEAD (two for parts). Deletes
+  batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. The counts are
+  close, not exact: a temp-key overwrite, a retried part, or a page past 1,000 keys add a few.
+- **Gigabytes are binary** (AWS's GB is 2^30; Wasabi's FAQ divides a TB by 1,024).
+- **"Other" has no prices**, so no estimate. AWS prices are US East's; other regions differ by a little.

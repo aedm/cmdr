@@ -160,6 +160,22 @@ impl S3Volume {
         self.inner.unattended_reconnect().await
     }
 
+    /// An empty [`Workload`](crate::cost::Workload) for this place's provider,
+    /// for a cost estimate: the caller adds each file the operation touches.
+    pub fn cost_workload(&self) -> crate::cost::Workload {
+        crate::cost::Workload::for_provider(self.inner.params().provider())
+    }
+
+    /// Whether a copy from `source` to here would run on the server, asked
+    /// without a request: the same account, and buckets the provider copies
+    /// between (Hetzner copies within one). `copy_on_server_impl` decides it
+    /// for real per file.
+    pub fn copies_on_server_from(&self, source: &S3Volume) -> bool {
+        let (here, there) = (self.inner.params(), source.inner.params());
+        source.inner.account() == self.inner.account()
+            && (here.bucket() == there.bucket() || !matches!(here.provider(), crate::S3Provider::Hetzner { .. }))
+    }
+
     /// Drops the live client. There is no session to close: dropping IS the
     /// shutdown, and the connection pool goes with it.
     pub async fn disconnect(&self) {
