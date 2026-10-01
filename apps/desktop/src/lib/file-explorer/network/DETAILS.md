@@ -24,13 +24,19 @@ Lifecycle:
 Resolution → prefetch pipeline (fire-and-forget):
 
 1. `startResolution(host)`: calls `resolveNetworkHost`, updates host, then calls `startPrefetchShares`.
-2. `startPrefetchShares(host)`: for a host the person SAVED, calls `prefetchSharesCmd` (backend caches result), then
-   `fetchSharesSilent` to populate `shareStates`. For any other host it does nothing.
+2. `startPrefetchShares(host)`: while a Servers view is on screen, for a host the person SAVED, calls
+   `prefetchSharesCmd` (backend caches result), then `fetchSharesSilent` to populate `shareStates`. With no Servers view
+   up, or for any other host, it does nothing.
+3. `holdDiscoveryForServersView()`: on the FIRST view shown, runs `startPrefetchShares` over every known host, so the
+   saved ones list as the view opens (each row shows its own loading state until its list lands).
 
-❗ **A host Cmdr only found is listed when the person opens it, and at no other time** (#324). Listing a host's shares
-means connecting to it and signing in, as a guest where it lets one in, so prefetching every resolved host made each
-launch sign in to every SMB machine on the network, and the hub then labelled a machine the person never touched "as
-guest". Three places hold the line, and a fourth caller of `listSharesOnHost` has to hold it too:
+❗ **Nothing is listed at launch, and a host Cmdr only found is listed when the person opens it, and at no other time**
+(#324). Listing a host's shares means connecting to it and signing in, as a guest where it lets one in, so prefetching
+every resolved host made each launch sign in to every SMB machine on the network, and the hub then labelled a machine
+the person never touched "as guest". A saved server's prefetch waits for a Servers view too: at launch nobody is about
+to pick a share, and the browse window (`docs/notes/performance/mdns-browse-gating-2026-09-27.md`) would otherwise turn
+into a connection per saved host per launch. Three places hold the found-host line, and a fourth caller of
+`listSharesOnHost` has to hold it too:
 
 - `startPrefetchShares`: no prefetch.
 - `refreshAllStaleShares` (entering the Servers view): a saved host's stale list is re-read; a found host's is DROPPED,
@@ -316,9 +322,12 @@ so a separate flag could only disagree with it.
 App startup
   └─ initNetworkDiscovery() → listNetworkHosts() + event listeners
        └─ startResolution() → resolveNetworkHost()
-            └─ startPrefetchShares() → a saved host only: prefetchSharesCmd() → fetchSharesSilent()
+            └─ startPrefetchShares() → only with a Servers view up, a saved host only:
+                 prefetchSharesCmd() → fetchSharesSilent()
 
-User opens the Servers volume → ServersHub mounts → listSavedServers() + refreshAllStaleShares()
+User opens the Servers volume → NetworkMountView: holdDiscoveryForServersView()
+       └─ first view shown → startPrefetchShares() over every known host
+     → ServersHub mounts → listSavedServers() + refreshAllStaleShares()
 
 User double-clicks an SMB host → PlacesBrowser mounts → loadShares()
        ├─ cache hit → render (a saved host's prefetch, or an earlier visit)
@@ -578,9 +587,10 @@ the hosts it found, so a view opens on them at once and the fresh browse adds an
 - **Resolution and share prefetch are fire-and-forget**: hosts come and go, so a timeout / unreachable during prefetch
   is normal, not worth surfacing. The UI shows "Not checked" / "Waiting..." until data arrives; only user-initiated
   actions surface errors.
-- **Prefetch is for saved servers only** (#324's option (b), David's call): their share lists stay instant, and the
-  first open of a host Cmdr only found waits for its listing. The trade is that wait against a file manager that signs
-  in to every SMB machine on the network at each launch.
+- **Prefetch is for saved servers only, and only once a Servers view opens** (#324's option (b), David's call): the
+  first open of the Servers view may show a saved server's list loading, and the first open of a host Cmdr only found
+  waits for its listing. The trade is those waits against a file manager that connects to SMB machines at each launch
+  whether or not anyone looks.
 - **State via getters, not raw `$state` exports**: raw exports lose reactivity when imported from a plain `.ts`; getters
   work everywhere and make the API boundary explicit.
 - **`tryStoredCredentials` skips the `hasSmbCredentials` pre-check**: two Keychain calls = two system prompts; one

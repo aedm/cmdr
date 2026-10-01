@@ -159,7 +159,8 @@ fn guest_attempt_for(
 /// Returns immediately if shares are already cached.
 ///
 /// Listing signs in to the host (as a guest, where it lets one in), so the frontend calls
-/// this for servers the user saved and never for one that was only discovered.
+/// this for servers the user saved, only while a Servers view is on screen, and never for
+/// one that was only discovered.
 #[tauri::command]
 #[specta::specta]
 #[allow(

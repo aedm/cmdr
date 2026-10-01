@@ -53,6 +53,8 @@ const listedAccounts = new SvelteMap<string, SignedInAs>()
 /** Hosts a guest listing worked on this session: where "Use guest" is a real way back. */
 const guestListingHosts = new SvelteSet<string>()
 const prefetchingHosts = new SvelteSet<string>()
+/** How many Servers views are on screen (two panes can each show one). */
+let serversViewsShown = 0
 
 // Credential status tracking - 'unknown' | 'has_creds' | 'no_creds' | 'failed'
 type CredentialStatus = 'unknown' | 'has_creds' | 'no_creds' | 'failed'
@@ -119,19 +121,21 @@ function readSavedServers(): Promise<SavedServer[]> {
 
 /**
  * Lists a host's shares ahead of time (fire-and-forget), so its share list is
- * there the moment the person opens it. Called when a host resolves.
+ * there the moment the person opens it. Called when a Servers view opens, and
+ * when a host resolves while one is open.
  *
- * ❗ **Only for a server the person SAVED** (`savedSmbHostIds`, the hub's own
- * match). Listing means connecting to the host and signing in, as a guest where
- * it lets one in, and for a host Cmdr merely found that is a sign-in nobody asked
- * for: every launch used to do it to every SMB machine on the network (#324). A
- * found host is listed when the person opens it (`fetchShares`), and at no other
- * time: see `refreshAllStaleShares` and the hub's refresh, which hold the same line.
+ * ❗ **Only while a Servers view is on screen, and only for a server the person
+ * SAVED** (`savedSmbHostIds`, the hub's own match). Listing means connecting to
+ * the host and signing in, as a guest where it lets one in: every launch used to
+ * do it to every SMB machine on the network (#324). With no Servers view open,
+ * nobody is about to pick a share. A found host is listed when the person opens
+ * it (`fetchShares`), and at no other time: see `refreshAllStaleShares` and the
+ * hub's refresh, which hold the same line.
  */
 function startPrefetchShares(host: NetworkHost) {
   const { hostname } = host
-  // Skip if no hostname or already have data
-  if (!hostname || shareStates.has(host.id)) {
+  // Skip if no Servers view is up, no hostname, or we already have data
+  if (serversViewsShown === 0 || !hostname || shareStates.has(host.id)) {
     return
   }
 
@@ -191,17 +195,18 @@ async function fetchSharesSilent(host: NetworkHost): Promise<void> {
   }
 }
 
-/** How many Servers views are on screen (two panes can each show one). */
-let serversViewsShown = 0
-
 /**
  * Keeps the backend's mDNS browse running while a Servers view is on screen, so hosts
- * arrive and leave live there. Call when the view appears; call the returned release
+ * arrive and leave live there, and lists the saved servers' shares the first time one
+ * appears (`startPrefetchShares`). Call when the view appears; call the returned release
  * when it goes. The backend hears only the first appearance and the last departure.
  */
 export function holdDiscoveryForServersView(): () => void {
   serversViewsShown += 1
-  if (serversViewsShown === 1) void setServersViewShown(true)
+  if (serversViewsShown === 1) {
+    void setServersViewShown(true)
+    for (const host of hosts) startPrefetchShares(host)
+  }
   let released = false
   return () => {
     if (released) return
@@ -230,11 +235,10 @@ export async function initNetworkDiscovery(): Promise<void> {
   hosts = await listNetworkHosts()
   discoveryState = await getNetworkDiscoveryState()
 
-  // Start resolving all loaded hosts immediately (non-blocking)
-  // Also prefetch shares for already-resolved hosts
+  // Start resolving all loaded hosts immediately (non-blocking). Resolved ones go
+  // to the prefetch, which lists nothing unless a Servers view is already open.
   for (const host of hosts) {
     if (host.hostname) {
-      // Already resolved - prefetch shares directly
       startPrefetchShares(host)
     } else {
       // Needs resolution first (will prefetch after)

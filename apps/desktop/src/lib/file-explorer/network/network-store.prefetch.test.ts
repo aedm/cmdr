@@ -1,11 +1,12 @@
 /**
- * Which hosts get their shares listed without anyone asking (#324).
+ * Which hosts get their shares listed without anyone asking, and when (#324).
  *
  * Listing a host's shares means connecting to it and signing in, as a guest where
- * it lets one in. For a server the person saved, doing that ahead of time is the
- * point: its share list is there the moment they open it. For a host Cmdr merely
- * found on the network it is a sign-in nobody asked for, so that one waits until
- * the person opens it.
+ * it lets one in. For a server the person saved, doing that once the Servers view
+ * is on screen is the point: its share list is there the moment they open it. At
+ * launch, with no Servers view open, nobody is about to open anything. For a host
+ * Cmdr merely found on the network it is a sign-in nobody asked for, so that one
+ * waits until the person opens it.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { NetworkHost } from '../types'
@@ -93,9 +94,31 @@ describe('share prefetch', () => {
     vi.useRealTimers()
   })
 
-  it('lists a saved server’s shares ahead of time, and leaves a host nobody saved alone', async () => {
+  /** Releases every Servers view a test opened, so the next one starts with none on screen. */
+  const releases: (() => void)[] = []
+  function openServersView(): void {
+    releases.push(store.holdDiscoveryForServersView())
+  }
+  afterEach(() => {
+    for (const release of releases.splice(0)) release()
+  })
+
+  it('lists nobody’s shares at launch while no Servers view is open, not even a saved server’s', async () => {
     ipc.listNetworkHosts.mockResolvedValue([nas, printer])
     await store.initNetworkDiscovery()
+    events.hostResolved?.(nas)
+    await settle()
+
+    expect(ipc.prefetchShares).not.toHaveBeenCalled()
+    expect(ipc.listSharesOnHost).not.toHaveBeenCalled()
+  })
+
+  it('lists a saved server’s shares once the Servers view opens, and leaves a host nobody saved alone', async () => {
+    ipc.listNetworkHosts.mockResolvedValue([nas, printer])
+    await store.initNetworkDiscovery()
+    await settle()
+
+    openServersView()
     await settle()
 
     expect(prefetchedHostIds()).toEqual([nas.id])
@@ -103,17 +126,19 @@ describe('share prefetch', () => {
     expect(store.getShareState(printer.id)).toBeUndefined()
   })
 
-  it('reads the saved list once for a launch’s worth of hosts', async () => {
+  it('reads the saved list once for a view’s worth of hosts', async () => {
     const twin: NetworkHost = { id: `bonjour-tv-${String(testRun)}`, name: 'TV', hostname: 'tv.local', port: 445 }
     ipc.listNetworkHosts.mockResolvedValue([nas, printer, twin])
     await store.initNetworkDiscovery()
+    openServersView()
     await settle()
 
     expect(ipc.listSavedServers).toHaveBeenCalledOnce()
   })
 
-  it('holds the same line for a host that turns up, or resolves, later', async () => {
+  it('holds the same line for a host that turns up, or resolves, while the view is open', async () => {
     await store.initNetworkDiscovery()
+    openServersView()
 
     events.hostFound?.(printer)
     events.hostFound?.({ id: nas.id, name: nas.name, port: 445 })
@@ -128,6 +153,7 @@ describe('share prefetch', () => {
     ipc.listSavedServers.mockRejectedValue(new Error('store unreadable'))
     ipc.listNetworkHosts.mockResolvedValue([nas, printer])
     await store.initNetworkDiscovery()
+    openServersView()
     await settle()
 
     expect(ipc.prefetchShares).not.toHaveBeenCalled()
@@ -138,6 +164,7 @@ describe('share prefetch', () => {
     vi.useFakeTimers()
     ipc.listNetworkHosts.mockResolvedValue([nas, printer])
     await store.initNetworkDiscovery()
+    openServersView()
     await settle()
     // The person opened the printer: that is the one way a found host gets listed.
     await store.fetchShares(printer)

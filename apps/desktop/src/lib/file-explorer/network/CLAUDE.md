@@ -23,7 +23,8 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 - **`triggerNetworkDiscovery()` is the single chokepoint for a networking intent**; ❌ don't gate on `network.enabled`
   yourself, the helper does. The browse runs while a Servers view holds it (`holdDiscoveryForServersView`).
 - **❌ Never list the shares of a host Cmdr only found, unless the person opens it** (#324): listing signs in to it.
-  Prefetch, the stale refresh, and ⌘R all gate on `savedSmbHostIds`; a new `listSharesOnHost` caller must too.
+  Prefetch, the stale refresh, and ⌘R all gate on `savedSmbHostIds`; a new `listSharesOnHost` caller must too. Even a
+  saved server's prefetch waits for a Servers view on screen: nothing is listed at launch.
 - **The hub's cursor counts what's on screen; MCP indexes the full list** (a collapsed nearby group hides rows). Cross
   with `servers-hub-items.ts`, ❌ never index `rows` by the cursor. DETAILS § "The nearby group".
 - **❌ Never ask the Keychain twice**: each access can raise a system prompt. No `hasSmbCredentials` pre-check before
