@@ -308,6 +308,10 @@ impl Volume for InMemoryVolume {
         Box::pin(async move { Ok(work) })
     }
 
+    fn renames_can_copy(&self) -> bool {
+        self.renames_by_copy
+    }
+
     #[allow(
         clippy::type_complexity,
         reason = "async trait method returns a pinned boxed future by design"

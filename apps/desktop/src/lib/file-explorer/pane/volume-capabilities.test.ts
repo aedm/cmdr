@@ -72,6 +72,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: true,
       pollsForDeletedFolder: true,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     smb: {
       kind: 'smb',
@@ -83,6 +84,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: true,
       pollsForDeletedFolder: true,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     sftp: {
       kind: 'sftp',
@@ -95,6 +97,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       // No OS mount: the Mac can't see the folder, so nothing it watches goes blind.
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     webdav: {
       kind: 'webdav',
@@ -106,6 +109,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: false,
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     s3: {
       kind: 's3',
@@ -117,6 +121,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: false,
       pollsForDeletedFolder: false,
       canShareLinks: true,
+      renamesCanCopy: true,
     },
     mtp: {
       kind: 'mtp',
@@ -128,6 +133,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: true,
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     adb: {
       kind: 'adb',
@@ -140,6 +146,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: true,
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     network: {
       kind: 'network',
@@ -153,6 +160,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: false,
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     'search-results': {
       kind: 'search-results',
@@ -168,6 +176,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: false,
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     archive: {
       kind: 'archive',
@@ -181,6 +190,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       // The archive file itself sits in a folder; the DRIVE it's on still decides.
       pollsForDeletedFolder: true,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
     'git-portal': {
       kind: 'git-portal',
@@ -196,6 +206,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       // Snapshot folders never exist on disk, so a poll would evict the user.
       pollsForDeletedFolder: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     },
   }
 
@@ -428,6 +439,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         canExport: true,
         canBeIndexed: true,
         canShareLinks: false,
+        renamesCanCopy: false,
       }),
     ).toBe(row)
   })
@@ -439,6 +451,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
       canExport: false,
       canBeIndexed: true,
       canShareLinks: false,
+      renamesCanCopy: false,
     })
     expect(folded.canWrite).toBe(false)
     expect(folded.canBeSource).toBe(false)
@@ -457,6 +470,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
       canExport: true,
       canBeIndexed: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     })
     expect(folded.canBeIndexed).toBe(false)
     expect(folded.canWrite).toBe(true)
@@ -469,7 +483,13 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         id: 'weird-vol',
         fsType: 'apfs',
         category: 'attached_volume',
-        capabilities: { backendCanWrite: false, canExport: true, canBeIndexed: true, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: false,
+          canExport: true,
+          canBeIndexed: true,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     const caps = capabilitiesFor('weird-vol')
@@ -485,7 +505,13 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         id: 's3-127-0-0-1-14480-akia-photos-1a2b',
         fsType: 's3',
         category: 'network',
-        capabilities: { backendCanWrite: false, canExport: true, canBeIndexed: false, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: false,
+          canExport: true,
+          canBeIndexed: false,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     const caps = capabilitiesFor('s3-127-0-0-1-14480-akia-photos-1a2b')
@@ -500,13 +526,25 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         id: 's3-127-0-0-1-14480-akia-photos-1a2b',
         fsType: 's3',
         category: 'network',
-        capabilities: { backendCanWrite: false, canExport: true, canBeIndexed: false, canShareLinks: true },
+        capabilities: {
+          backendCanWrite: false,
+          canExport: true,
+          canBeIndexed: false,
+          canShareLinks: true,
+          renamesCanCopy: true,
+        },
       }),
       vol({
         id: 'sftp-host-22-me-1a2b',
         fsType: 'sftp',
         category: 'network',
-        capabilities: { backendCanWrite: true, canExport: true, canBeIndexed: false, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: true,
+          canExport: true,
+          canBeIndexed: false,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     expect(capabilitiesFor('s3-127-0-0-1-14480-akia-photos-1a2b').canShareLinks).toBe(true)
@@ -519,7 +557,13 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         id: 's3-127-0-0-1-14480-akia-photos-1a2b',
         fsType: 's3',
         category: 'network',
-        capabilities: { backendCanWrite: false, canExport: true, canBeIndexed: false, canShareLinks: true },
+        capabilities: {
+          backendCanWrite: false,
+          canExport: true,
+          canBeIndexed: false,
+          canShareLinks: true,
+          renamesCanCopy: true,
+        },
       }),
     ]
     const id = 's3-127-0-0-1-14480-akia-photos-1a2b'
@@ -540,7 +584,13 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         id: 'volumesnaspi',
         fsType: 'smbfs',
         category: 'network',
-        capabilities: { backendCanWrite: true, canExport: true, canBeIndexed: true, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: true,
+          canExport: true,
+          canBeIndexed: true,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     expect(capabilitiesFor('volumesnaspi').kind).toBe('smb')
@@ -568,7 +618,13 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
         id: 'root',
         fsType: 'apfs',
         category: 'main_volume',
-        capabilities: { backendCanWrite: true, canExport: true, canBeIndexed: true, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: true,
+          canExport: true,
+          canBeIndexed: true,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     expect(capabilitiesForPane('root', '/Users/me/foo.tar/inner').canWrite).toBe(false)
@@ -613,7 +669,13 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
         id: 'root',
         fsType: 'apfs',
         category: 'main_volume',
-        capabilities: { backendCanWrite: true, canExport: true, canBeIndexed: true, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: true,
+          canExport: true,
+          canBeIndexed: true,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     for (const path of [
@@ -643,7 +705,13 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
         id: 'root',
         fsType: 'apfs',
         category: 'main_volume',
-        capabilities: { backendCanWrite: true, canExport: true, canBeIndexed: true, canShareLinks: false },
+        capabilities: {
+          backendCanWrite: true,
+          canExport: true,
+          canBeIndexed: true,
+          canShareLinks: false,
+          renamesCanCopy: false,
+        },
       }),
     ]
     // The volumeId is the writable parent drive; the path crosses `.git/branches/`,

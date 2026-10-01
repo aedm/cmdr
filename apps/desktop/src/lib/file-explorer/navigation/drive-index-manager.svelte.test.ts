@@ -195,7 +195,13 @@ describe('isDriveRow — index-affordance eligibility', () => {
   it('keeps the badge on a phone over ADB, before and after it is dialed', () => {
     const phone = { id: 'adb-r58m-0a1b2c', category: 'mobile_device', fsType: 'adb' } as const
     expect(isDriveRow(vol(phone))).toBe(true)
-    const dialed = { backendCanWrite: true, canExport: true, canBeIndexed: true, canShareLinks: false }
+    const dialed = {
+      backendCanWrite: true,
+      canExport: true,
+      canBeIndexed: true,
+      canShareLinks: false,
+      renamesCanCopy: false,
+    }
     expect(isDriveRow(vol({ ...phone, capabilities: dialed }))).toBe(true)
   })
 
@@ -204,7 +210,13 @@ describe('isDriveRow — index-affordance eligibility', () => {
   })
 
   it("follows a registered backend's own answer over the per-kind default", () => {
-    const declines = { backendCanWrite: true, canExport: true, canBeIndexed: false, canShareLinks: false }
+    const declines = {
+      backendCanWrite: true,
+      canExport: true,
+      canBeIndexed: false,
+      canShareLinks: false,
+      renamesCanCopy: false,
+    }
     expect(isDriveRow(vol({ category: 'attached_volume', capabilities: declines }))).toBe(false)
   })
 })

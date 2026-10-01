@@ -15930,6 +15930,14 @@ export type VolumeCapabilities = {
    *  is the one decider.
    */
   canBeIndexed: boolean
+  /**
+   *  Some entries here rename by copying their bytes on the server and
+   *  deleting the source (`Volume::rename_work` can answer
+   *  `CopyThenDelete`), so a move within this volume is billed work with a
+   *  scan, not one cheap rename. The Move dialog scans such a move (for its
+   *  counts and the S3 cost line) where it would skip the scan elsewhere.
+   */
+  renamesCanCopy: boolean
 }
 
 /**

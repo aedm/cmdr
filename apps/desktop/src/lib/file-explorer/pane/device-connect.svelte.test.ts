@@ -257,6 +257,7 @@ describe('createDeviceConnect', () => {
       canExport: true,
       canBeIndexed: false,
       canShareLinks: false,
+      renamesCanCopy: false,
     }
     setInfo({ ...phone({ kind: 'ready' }), capabilities: registered })
     expect(sub.holdsListing).toBe(false)

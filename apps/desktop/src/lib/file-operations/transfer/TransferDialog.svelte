@@ -36,6 +36,7 @@
     import { createTransferScanState } from './transfer-scan-state.svelte'
     import { createTransferConflictCheck } from './transfer-conflict-check.svelte'
     import { getVolumes } from '$lib/stores/volume-store.svelte'
+    import { capabilitiesFor } from '$lib/file-explorer/pane/volume-capabilities'
     import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
     import Size from '$lib/ui/Size.svelte'
     import { formatByteSize } from '$lib/units'
@@ -222,12 +223,16 @@
      *  what the dialog already knows (no extra prop). */
     //  Rename mode is never this fast path: its move copies every object (that's
     //  why the editor sent it here), and the backend consumes the preview the
-    //  dialog's counts come from.
+    //  dialog's counts come from. Nor is a volume whose renames copy (S3,
+    //  `renamesCanCopy`): its move is billed server-side copying, so it scans for
+    //  the counts and the cost line, and hands that preview to the backend the
+    //  same way rename mode does.
     const isSameVolumeMove = $derived(
         !isRenameMode &&
             activeOperationType === 'move' &&
             sourceVolumeId !== DEFAULT_VOLUME_ID &&
-            sourceVolumeId === selectedVolumeId,
+            sourceVolumeId === selectedVolumeId &&
+            !capabilitiesFor(sourceVolumeId).renamesCanCopy,
     )
 
     // Deep scan-preview orchestration (Size bar + file/dir tallies). The factory
@@ -292,7 +297,7 @@
     )
 
     const confirmLabel = $derived(tString(confirmLabelKey(activeOperationType)))
-    // A same-volume move never scans, so it never asks.
+    // A same-volume move that renames in one call never scans, so it never asks.
     const costRequest = $derived(
         costRequestFor({ operation: activeOperationType, scanComplete, previewId: scan.previewId, sourceVolumeId, destinationVolumeId: selectedVolumeId }),
     )

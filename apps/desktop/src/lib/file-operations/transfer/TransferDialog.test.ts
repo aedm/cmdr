@@ -150,6 +150,21 @@ vi.mock('$lib/stores/volume-store.svelte', () => ({
       category: 'network',
       isEjectable: false,
     },
+    {
+      id: 's3-photos',
+      name: 'photos',
+      path: 's3://photos',
+      category: 'attached_volume',
+      fsType: 's3',
+      isEjectable: false,
+      capabilities: {
+        backendCanWrite: true,
+        canExport: true,
+        canShareLinks: true,
+        canBeIndexed: false,
+        renamesCanCopy: true,
+      },
+    },
   ],
 }))
 
@@ -689,6 +704,33 @@ describe('TransferDialog data-scan-state marker', () => {
 
     expect(startScanPreviewMock, 'same-volume move skips the scan').not.toHaveBeenCalled()
     expect(scanState(target)).toBe('skipped')
+  })
+
+  it('scans a same-volume move where renames copy (S3), so the counts and the cost line appear', async () => {
+    const onConfirm = vi.fn<ConfirmFn>()
+    const target = mountDialog({
+      operationType: 'move',
+      sourceVolumeId: 's3-photos',
+      currentVolumeId: 's3-photos',
+      onConfirm,
+    })
+    await flushMicrotasks()
+
+    expect(startScanPreviewMock, 'a move that copies on the server scans').toHaveBeenCalled()
+    expect(scanState(target)).toBe('counting')
+
+    scanCompleteCb?.({ previewId: 'preview-1', filesTotal: 3, dirsTotal: 1, bytesTotal: 30, dedupBytesTotal: 30 })
+    await flushMicrotasks()
+    expect(scanState(target)).toBe('done')
+    expect(vi.mocked(commands.estimateOperationCost)).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: 'move', previewId: 'preview-1', sourceVolumeId: 's3-photos' }),
+    )
+
+    confirmButton(target).click()
+    await flushMicrotasks()
+    expect(onConfirm, 'the move hands its scan to the backend').toHaveBeenCalledWith(
+      expect.objectContaining({ previewId: 'preview-1' }),
+    )
   })
 
   it('still reaches "done" for a same-volume COPY (copy scans even on one volume)', async () => {

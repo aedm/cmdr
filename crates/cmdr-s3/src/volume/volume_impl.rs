@@ -310,6 +310,11 @@ impl Volume for S3Volume {
         Box::pin(self.noting(self.rename_work_impl(path)))
     }
 
+    /// A folder, and an object past the part floor, rename by copying.
+    fn renames_can_copy(&self) -> bool {
+        true
+    }
+
     /// A recursive listing, a thousand keys a request (`batch.rs`).
     fn tally_subtree<'a>(
         &'a self,

@@ -630,12 +630,26 @@ pub trait Volume: Send + Sync {
     /// per entry (S3 renames a small file in one call, a folder never).
     ///
     /// Default `OneCall`, with no I/O.
+    ///
+    /// A volume that can answer `CopyThenDelete` says so up front with
+    /// [`renames_can_copy`](Self::renames_can_copy).
     fn rename_work<'a>(
         &'a self,
         path: &'a Path,
     ) -> Pin<Box<dyn Future<Output = Result<RenameWork, VolumeError>> + Send + 'a>> {
         let _ = path;
         Box::pin(async { Ok(RenameWork::OneCall) })
+    }
+
+    /// Whether [`rename_work`](Self::rename_work) can answer `CopyThenDelete`
+    /// for some entry here, asked with no I/O: a move within this volume may be
+    /// a server-side copy per object. Published as
+    /// `VolumeCapabilities::renames_can_copy`, so the Move dialog scans such a
+    /// move instead of skipping the scan as it does for a one-call rename.
+    ///
+    /// Default `false`, matching `rename_work`'s `OneCall`. S3 answers `true`.
+    fn renames_can_copy(&self) -> bool {
+        false
     }
 
     /// Counts the files under `path` (a file counts as one), stopping once
@@ -1020,6 +1034,7 @@ pub trait Volume: Send + Sync {
             can_export: self.supports_export(),
             can_share_links: self.supports_share_links(),
             can_be_indexed: self.backend_kind().can_be_indexed(),
+            renames_can_copy: self.renames_can_copy(),
         }
     }
 

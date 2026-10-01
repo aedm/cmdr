@@ -160,6 +160,13 @@ export interface VolumeCapabilities {
    * backend's `canShareLinks`, folded like the other three.
    */
   canShareLinks: boolean
+  /**
+   * Some entries here rename by copying on the server (S3's folders and big
+   * objects), so a move within this volume is billed work: the Move dialog
+   * scans it for its counts and the cost line where it skips the scan for a
+   * one-call rename. The backend's `renamesCanCopy`, folded like the others.
+   */
+  renamesCanCopy: boolean
 }
 
 /**
@@ -181,6 +188,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: true,
     pollsForDeletedFolder: true,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   smb: Object.freeze({
     kind: 'smb',
@@ -194,6 +202,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     // The share stays OS-mounted at `/Volumes/…`, so the Mac's own stat answers.
     pollsForDeletedFolder: true,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   sftp: Object.freeze({
     // A server: a real backend listing over a session Cmdr owns, with `..` and a
@@ -213,6 +222,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     // notice its folder deleted on the server is a separate question nobody polls for.
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   webdav: Object.freeze({
     // The `sftp` row, for the same reasons: a session-backed listing with no OS
@@ -226,6 +236,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: false,
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   s3: Object.freeze({
     // The `webdav` row's shape, plus share links. The backend's published answer
@@ -240,6 +251,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: false,
     pollsForDeletedFolder: false,
     canShareLinks: true,
+    renamesCanCopy: true,
   }),
   mtp: Object.freeze({
     kind: 'mtp',
@@ -252,6 +264,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     // A device path the Mac can't stat. An unplugged phone is `mtp-disconnect-watch`'s.
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   adb: Object.freeze({
     // Same shape as `mtp`: a device-anchored real listing. The transport differs
@@ -267,6 +280,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: true,
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   network: Object.freeze({
     kind: 'network',
@@ -282,6 +296,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: false,
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   'search-results': Object.freeze({
     kind: 'search-results',
@@ -299,6 +314,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     // No folder behind the namespace, so nothing to poll.
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   archive: Object.freeze({
     kind: 'archive',
@@ -325,6 +341,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: false,
     pollsForDeletedFolder: true,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
   'git-portal': Object.freeze({
     kind: 'git-portal',
@@ -349,6 +366,7 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     canBeIndexed: false,
     pollsForDeletedFolder: false,
     canShareLinks: false,
+    renamesCanCopy: false,
   }),
 })
 
@@ -478,7 +496,8 @@ export function withBackendCapabilities(
     published.backendCanWrite === row.canWrite &&
     published.canExport === row.canBeSource &&
     published.canBeIndexed === row.canBeIndexed &&
-    published.canShareLinks === row.canShareLinks
+    published.canShareLinks === row.canShareLinks &&
+    published.renamesCanCopy === row.renamesCanCopy
   ) {
     return row
   }
@@ -488,6 +507,7 @@ export function withBackendCapabilities(
     canBeSource: published.canExport,
     canBeIndexed: published.canBeIndexed,
     canShareLinks: published.canShareLinks,
+    renamesCanCopy: published.renamesCanCopy,
   })
 }
 

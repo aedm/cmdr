@@ -107,6 +107,10 @@ impl Volume for WritableExportingVolume {
     fn supports_share_links(&self) -> bool {
         true
     }
+
+    fn renames_can_copy(&self) -> bool {
+        true
+    }
 }
 
 #[test]
@@ -119,6 +123,7 @@ fn an_undeclared_backend_gets_the_conservative_answer_to_everything() {
             can_share_links: false,
             // Follows `backend_kind`, whose default is `Local`.
             can_be_indexed: true,
+            renames_can_copy: false,
         }
     );
 }
@@ -132,6 +137,7 @@ fn declaring_a_predicate_moves_the_published_surface() {
             can_export: true,
             can_share_links: true,
             can_be_indexed: true,
+            renames_can_copy: true,
         }
     );
 }
@@ -146,7 +152,20 @@ fn the_in_memory_double_publishes_the_read_write_surface_a_test_expects() {
             can_export: true,
             can_share_links: false,
             can_be_indexed: true,
+            renames_can_copy: false,
         }
+    );
+}
+
+/// The double that renames by copying says so, so a same-volume move on it
+/// scans like the S3 one it stands in for.
+#[test]
+fn the_in_memory_double_publishes_renames_that_copy() {
+    assert!(
+        InMemoryVolume::new("Store")
+            .with_renames_by_copy()
+            .capabilities()
+            .renames_can_copy
     );
 }
 

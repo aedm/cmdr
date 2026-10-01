@@ -42,9 +42,6 @@ There's no "stay offline" setting in the app today; if one lands, `fetching_allo
 
 ## Known gaps
 
-- **A plain same-volume move on S3 (F6 within one place) shows no estimate**: the Move dialog skips its scan for a
-  same-volume move (`TransferDialog.svelte`'s `isSameVolumeMove`, built for servers that rename in place), so there are
-  no files to price. Rename mode scans, so F2's big renames do show one.
 - **Overwrites** aren't priced: the conflicts are known only once the operation runs. On Wasabi, overwriting a young
   object bills its remaining days.
 - AWS prices are US East's for every region.

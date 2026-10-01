@@ -491,16 +491,20 @@ Frontend handles this by:
 
 ### Same-volume move skips the deep scan preview
 
-`isSameVolumeMove = activeOperationType === 'move' && sourceVolumeId !== DEFAULT_VOLUME_ID && sourceVolumeId === selectedVolumeId`
-(derived in `TransferDialog`, no extra prop). For a same-volume move the backend does a server-side rename-merge that
-transfers zero bytes, so the deep recursive scan preview — which exists only to feed the Size bar — is pure waste. On a
-NAS it used to cost 30–40 s of "Verifying before move…" before a 100 ms rename. So:
+`isSameVolumeMove = activeOperationType === 'move' && sourceVolumeId !== DEFAULT_VOLUME_ID && sourceVolumeId === selectedVolumeId && !renamesCanCopy`
+(derived in `TransferDialog`, no extra prop; rename mode is never it either). For a same-volume move the backend does a
+server-side rename-merge that transfers zero bytes, so the deep recursive scan preview — which exists only to feed the
+Size bar — is pure waste. On a NAS it used to cost 30–40 s of "Verifying before move…" before a 100 ms rename. So:
 
 The `DEFAULT_VOLUME_ID` exclusion is load-bearing and mirrors the same guard in `TransferProgressDialog`'s
 `isSameVolumeMove`: a local→local move (root → root) is NOT a server-side rename. The backend's local move path
 **consumes** the preview cache via `config.preview_id`, and the dialog's tallies come from the preview — so cancelling
 it for a local→local move both zeroes the dialog counters and forces a backend re-scan. Local→local keeps the deep
 preview running.
+
+**A volume whose renames copy keeps the scan too** (`capabilitiesFor(sourceVolumeId).renamesCanCopy`, S3): its move is a
+server-side copy per object, billed, so the dialog scans for the counts and the S3 cost line, and confirm hands the
+preview id to `move_within_same_volume`, which waits it out through `await_claimed_preview` exactly as for rename mode.
 
 The scan-preview machinery (the listeners, `start()` / `cancelPreview()`, the toggle `$effect`, the awaitable
 `scanStarted` promise) lives in **`transfer-scan-state.svelte.ts`** (`createTransferScanState`), and the conflict-check

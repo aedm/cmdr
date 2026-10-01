@@ -260,6 +260,8 @@ export interface VolumeBackendCapabilities {
   canBeIndexed: boolean
   /** "Copy share link" can mint a link to a file here (S3's presigned GET). */
   canShareLinks: boolean
+  /** Some entries here rename by copying on the server (S3), so a move within the volume scans. */
+  renamesCanCopy: boolean
 }
 
 /**
