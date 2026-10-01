@@ -90,6 +90,44 @@ pub async fn assert_delete_leaves_a_non_empty_dir_intact(volume: &dyn Volume, di
     );
 }
 
+/// [`Volume::delete_files`] removes exactly the files it was handed, answers
+/// one result per path in order, and calls a path that was already gone done.
+///
+/// `doomed` must be two files in the same folder as `kept`, a third file that
+/// stays. The assertion checks all three exist first.
+///
+/// **Why this one is worth a shared assertion.** A move's source sweep hands a
+/// whole folder level to it at once, and a backend may delete by key with no
+/// folder check (S3's `DeleteObjects`): one that answered for the wrong path, or
+/// took a neighbour along, would report a source deleted that's still there, or
+/// delete one the move never carried.
+pub async fn assert_delete_files_removes_exactly_what_it_names(volume: &dyn Volume, doomed: [&Path; 2], kept: &Path) {
+    for path in doomed.iter().chain([&kept]) {
+        assert!(
+            volume.exists(path).await,
+            "fixture precondition: {} must exist",
+            path.display()
+        );
+    }
+    let gone = kept.with_file_name("never-there-for-the-batch.txt");
+    let paths = vec![doomed[0].to_path_buf(), gone, doomed[1].to_path_buf()];
+
+    let results = volume.delete_files(&paths).await;
+
+    assert_eq!(results.len(), paths.len(), "one result per path, in order");
+    for (path, result) in paths.iter().zip(&results) {
+        assert!(result.is_ok(), "{} must answer Ok, got {result:?}", path.display());
+    }
+    for path in doomed {
+        assert!(!volume.exists(path).await, "{} must be deleted", path.display());
+    }
+    assert!(
+        volume.exists(kept).await,
+        "a batch delete must take nothing it wasn't handed, but {} is gone",
+        kept.display()
+    );
+}
+
 /// [`Volume::rename`] with `force == false` refuses
 /// a destination that already exists, and takes nothing away in the process.
 ///

@@ -34,6 +34,27 @@ async fn delete_honors_the_shared_non_recursion_contract() {
         .await;
 }
 
+/// The batch delete a move's source sweep uses, through the trait's default.
+#[tokio::test]
+async fn delete_files_honors_the_shared_batch_contract() {
+    let test_dir = TestDir::new("delete_files_batch_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+    volume.create_directory(Path::new("level")).await.unwrap();
+    for name in ["a.txt", "b.txt", "kept.txt"] {
+        volume
+            .create_file(&Path::new("level").join(name), b"bytes")
+            .await
+            .unwrap();
+    }
+
+    cmdr_fs::volume::conformance::assert_delete_files_removes_exactly_what_it_names(
+        &volume,
+        [Path::new("level/a.txt"), Path::new("level/b.txt")],
+        Path::new("level/kept.txt"),
+    )
+    .await;
+}
+
 /// The shared `Volume::rename` no-clobber assertion. LocalPosix earns it with
 /// `renamex_np(RENAME_EXCL)` / `renameat2(RENAME_NOREPLACE)`, one kernel
 /// operation with no TOCTOU window — a different mechanism from every other

@@ -34,6 +34,9 @@ async fn a_place_keeps_the_write_promises(service: FixtureService) {
             ("target.txt", b"the user's target file"),
             ("album/keep.txt", b"content"),
             ("blocker", b"a file where a folder is asked for"),
+            ("level/a.txt", b"doomed"),
+            ("level/b.txt", b"doomed"),
+            ("level/kept.txt", b"kept"),
         ],
     )
     .await;
@@ -52,6 +55,12 @@ async fn a_place_keeps_the_write_promises(service: FixtureService) {
     conformance::assert_create_directory_all_reports_an_existing_dir_honestly(&volume, &at("album")).await;
     conformance::assert_create_directory_all_refuses_a_file_in_the_way(&volume, &at("blocker")).await;
     conformance::assert_conflict_scan_reads_a_missing_destination_as_empty(&volume, &at("not-created-yet")).await;
+    conformance::assert_delete_files_removes_exactly_what_it_names(
+        &volume,
+        [&at("level/a.txt"), &at("level/b.txt")],
+        &at("level/kept.txt"),
+    )
+    .await;
 }
 
 async fn a_place_keeps_the_read_promises(service: FixtureService) {

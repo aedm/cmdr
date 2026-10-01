@@ -482,6 +482,10 @@ everywhere, which is the point.
   `crates/cmdr-mtp/DETAILS.md` § "The no-clobber rename is check-then-act".
 - `assert_create_file_refuses_to_clobber` — the New File command renders the refusal as "that name is taken", so a
   clobbering backend silently empties a file and reports success.
+- `assert_delete_files_removes_exactly_what_it_names` — a move's source sweep hands a whole folder level to
+  `delete_files`, and a backend may delete by key with no folder check (S3's `DeleteObjects`), so a wrong answer per
+  path, or a neighbour taken along, would misreport or over-delete a move's sources. Run by S3, local, and the in-memory
+  double; the other backends take the trait's default (`delete` per path).
 - `assert_unknown_write_is_refused_before_io` — a backend without unknown-length support returns `NotSupported` before
   polling the source or touching an existing destination, and never calls that write single-shot. This is the safety
   boundary that lets callers ask the capability question without racing it against destructive I/O.

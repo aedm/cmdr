@@ -201,6 +201,27 @@ async fn delete_honors_the_shared_non_recursion_contract() {
     conformance::assert_delete_leaves_a_non_empty_dir_intact(&volume, Path::new("/album"), "keep.txt").await;
 }
 
+/// The batch delete a move's source sweep uses, over the double whose batches
+/// the engine's own cells count.
+#[tokio::test]
+async fn delete_files_honors_the_shared_batch_contract() {
+    let volume = InMemoryVolume::new("Test");
+    volume.create_directory(Path::new("/level")).await.unwrap();
+    for name in ["a.txt", "b.txt", "kept.txt"] {
+        volume
+            .create_file(&Path::new("/level").join(name), b"bytes")
+            .await
+            .unwrap();
+    }
+
+    conformance::assert_delete_files_removes_exactly_what_it_names(
+        &volume,
+        [Path::new("/level/a.txt"), Path::new("/level/b.txt")],
+        Path::new("/level/kept.txt"),
+    )
+    .await;
+}
+
 /// The shared no-clobber assertions, over the double every other suite's
 /// fixtures stand on. Same reasoning as the delete one above: if the double
 /// stops honoring a contract, hundreds of tests keep passing while the thing
