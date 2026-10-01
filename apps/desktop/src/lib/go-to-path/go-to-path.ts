@@ -131,7 +131,7 @@ async function goToSchemeInput(explorer: ExplorerAPI, intent: SchemeIntent): Pro
     onSmbHandOff: (handOff) => {
       explorer.openSmbHandOffInFocusedPane(handOff)
     },
-    // An SFTP or WebDAV address connects a place, and the jump lands on it.
+    // An SFTP, WebDAV, or S3 address connects a place, and the jump lands on it.
     onConnected: ({ volumeId, root }) => {
       explorer.navigate({
         pane: explorer.getFocusedPane(),

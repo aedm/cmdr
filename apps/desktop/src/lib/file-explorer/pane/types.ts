@@ -421,5 +421,5 @@ export type NetworkCursorEntry =
   /** An SMB host in the hub, with the hub row it is on (Edit server… acts on the row). */
   | { kind: 'host'; host: NetworkHost; row: HubRow }
   | { kind: 'share'; share: ShareInfo }
-  /** A one-place server in the hub: SFTP or WebDAV, which has no SMB host. */
+  /** A hub row with no SMB host: an SFTP or WebDAV server, or an S3 account or one of its places. */
   | { kind: 'server'; row: HubRow }

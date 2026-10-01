@@ -258,6 +258,7 @@ export const appearanceSettings: SettingDefinitionSource[] = [
       'smb',
       'sftp',
       'webdav',
+      's3',
       'server',
       'network',
       'background',

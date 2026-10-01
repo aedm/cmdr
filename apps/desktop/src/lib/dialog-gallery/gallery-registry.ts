@@ -420,7 +420,13 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
         label: 'Add: a pasted WebDAV address',
         note: 'Answers "nothing here speaks WebDAV", so the Nextcloud remedy shows once a username is typed.',
       },
+      {
+        id: 'add-s3',
+        label: 'Add: a pasted S3 address',
+        note: 'Opens on S3 with the AWS preset, the key, and the bucket filled in; a secret typed and Add and open answers that the bucket lives in us-east-2, with the one-press switch.',
+      },
       { id: 'sign-in', label: 'Sign in: password' },
+      { id: 'sign-in-s3', label: 'Sign in: S3 secret access key' },
       { id: 'sign-in-guest', label: 'Sign in: username, password, or guest' },
       { id: 'host-key-first-contact', label: 'Host key: first contact' },
       { id: 'host-key-changed', label: 'Host key: it changed' },

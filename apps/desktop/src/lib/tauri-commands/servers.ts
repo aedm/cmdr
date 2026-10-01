@@ -82,7 +82,7 @@ export function newServerAttemptId(): string {
  * pick throws a {@link SavedPlaceFailure}, which a user should never see.
  *
  * `username` is the sheet's account field, which only an SMB share's sheet has;
- * SFTP and WebDAV ignore it.
+ * SFTP, WebDAV, and S3 ignore it.
  */
 export async function connectSavedPlace(
   volumeId: string,

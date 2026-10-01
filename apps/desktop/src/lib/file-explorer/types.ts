@@ -212,7 +212,7 @@ export type LocationCategory =
 /**
  * How live a remote volume's session is. Mirrors Rust's `ConnectionState`.
  *
- * `direct` = a live session Cmdr owns (smb2, SFTP, WebDAV, a dialed phone),
+ * `direct` = a live session Cmdr owns (smb2, SFTP, WebDAV, S3, a dialed phone),
  * `os_mount` = SMB's kernel-mount fallback, `disconnected` = the session dropped
  * and the backoff loop owns recovery, `needs_sign_in` = the backend stopped
  * retrying because a credential is missing, `needs_host_key_approval` = SFTP's
@@ -288,7 +288,7 @@ export interface VolumeInfo {
   supportsTrash?: boolean
   /**
    * How live this volume's session is. Set for every volume a connecting backend
-   * serves (SMB, SFTP, WebDAV, ADB) plus a saved-but-unconnected server.
+   * serves (SMB, SFTP, WebDAV, S3, ADB) plus a saved-but-unconnected server.
    * ❌ Never an "is this SMB" test: `navigation/connection-state.ts` has the
    * predicates, `pane/volume-capabilities.ts` has the kind.
    */
