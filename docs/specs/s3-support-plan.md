@@ -58,8 +58,13 @@ few modules, typed errors, the operations as the liveness detector, the shared-c
   conditional-write support per operation (AWS: Put/Complete/Copy; R2: Put only, Copy via
   `cf-copy-destination-if-none-match`; B2: none; Wasabi, Hetzner: probe), cross-bucket server-side copy (Hetzner:
   same-bucket only), equal-size multipart parts (R2 demands it, so we always do it), Unicode normalization (R2 stores
-  keys NFC), price table id. An operation that answers `501 NotImplemented` to a conditional header downgrades the
-  profile to check-then-write for the session and logs it once.
+  keys NFC), price table id.
+- ❗ **Conditional writes are an allowlist, ❌ never a probe.** A server can IGNORE `If-None-Match: *` and answer 200
+  while overwriting: Garage does on Put, Complete, and Copy, and VersityGW does on Copy
+  (`apps/desktop/test/s3-servers/README.md`, observed 2026-10-01). So a success proves nothing. Only an operation a
+  provider is documented AND verified (M8, real accounts) to enforce takes the conditional path; everything else, "Other
+  S3-compatible" included, checks then writes. A `501 NotImplemented` on an allowlisted one downgrades it to
+  check-then-write for the session and logs once.
 - **Paths**: volume root `/` lists buckets; `/<bucket>/<key...>`. Keys are encoded per segment.
 
 ### The rename capability (the cross-cutting change)
@@ -85,9 +90,11 @@ copy and one delete per object, and a big file's is a slow server-side copy.
 
 - Same-endpoint copies never touch the Mac: `CopyObject` up to the threshold, `UploadPartCopy` above it (even under 5
   GB), so progress advances per part and pause lands between parts.
-- **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`.
-  **Concurrency**: ~16 parts for server-side copies, four to eight for uploads, AIMD back-off on `SlowDown` / 503 / 429.
-  Hetzner's 750 requests/s per bucket is the low bar. Tune per provider in M8.
+- **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`. Garage
+  refuses an `UploadPartCopy` source under 5 MiB even as the last part (fixture README), so a tail under 5 MiB folds
+  into the part before it; confirm on R2 in M8 that a last part LARGER than the rest is accepted, else split the tail
+  differently there. **Concurrency**: ~16 parts for server-side copies, four to eight for uploads, AIMD back-off on
+  `SlowDown` / 503 / 429. Hetzner's 750 requests/s per bucket is the low bar. Tune per provider in M8.
 - **Cancel** aborts the multipart upload. **Startup** lists our own unfinished uploads (`ListMultipartUploads`, matched
   by a Cmdr marker in the initiation metadata) and aborts them, because they're invisible and billed forever.
 - **A copy can fail inside a `200 OK`** on AWS: always parse the body.
