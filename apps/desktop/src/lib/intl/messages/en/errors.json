@@ -2876,7 +2876,7 @@
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
-  "errors.eject.busy": "Cmdr is still moving files on this drive. Eject it once that finishes.",
+  "errors.eject.busy": "Cmdr is still moving files there. Try again once that finishes.",
   "@errors.eject.busy": {
     "description": "Shown when a copy, move, or delete is still reading from or writing to the drive, so ejecting now could truncate a file. Tell the person to wait rather than to force it. Surface: a brief error toast in the top-right of Cmdr's main window, shown after someone asks to eject a drive or disconnect a network share. Your string is dropped into \"Couldn't eject {volumeName}: …\" or \"Couldn't disconnect: …\", so it reads as the sentence AFTER a colon. Plain text, one or two short sentences, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
     "screenshot": "error-message-example.png",
