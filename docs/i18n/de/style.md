@@ -306,8 +306,8 @@ Dateien".
   weiter: die Fläche muss nicht Cmdrs eigene sein.
 - **Das Dock-Menü zählt zu den nativen Menüs und nimmt Apples Wortlaut.** Beim Rechtsklick auf das Dock-Symbol von Cmdr
   steht der Eintrag neben Apples Dock-Menü, also gewinnt dessen Formulierung (`Cmdr öffnen`). Der Dialog zum Springen
-  heißt auf jeder Fläche wie im Finder: `Gehe zu Ordner …`. Belege: `decisions.md` § Das Dock-Menü von Cmdr und § Gehe
-  zu Ordner.
+  heißt auf jeder Fläche wie im Finder: `Gehe zu Ordner …`. Belege: `decisions.md` § Das Dock-Menü von Cmdr. Zum Dialog:
+  `decisions.md` § Gehe zu Ordner.
 - **Zwei Schlüssel mit demselben englischen Wert bekommen EIN deutsches Wort.** `desktop-i18n-term-consistency` meldet
   jede Stelle, an der derselbe englische String zweimal verschieden übersetzt ist, und identische Werte tragen denselben
   `sourceHash`, sodass man es beim Übersetzen sofort sieht. Deshalb vor jedem Ein-Wort-Label kurz im `en`-Katalog nach
