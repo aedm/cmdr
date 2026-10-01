@@ -184,7 +184,8 @@ its reply is allowed to mean (`parse_mcp_response`, `parse_operation_start_respo
   `nav_result` (in `nav.rs`) words the tool result from that discriminant — `navigated` is the only `OK`; `fell-back`
   and `did-not-settle` are errors naming both the request and where the pane actually is. The FE holds the response
   until the pane comes to rest, which for a cross-volume switch is well past `settled` (that arm resolves it on the
-  optimistic commit, before the new volume lists anything — the last false-positive `OK`). `go_to_latest_download`
+  optimistic commit, before the new volume lists anything — the last false-positive `OK`), then flushes the state push,
+  so `cmdr://state` read right after shows the landing. `go_to_latest_download`
   rides the same helper for its navigation leg, so it can't move a cursor in a directory the pane never reached.
 - `select_volume` (30 s, the same helper on `mcp-volume-select`): the FE holds its reply until the switch's
   remembered-folder correction has landed and the pane has come to rest, and `select_volume_result` words the same

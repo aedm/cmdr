@@ -427,9 +427,11 @@ describe('mcp-nav-to-path listener', () => {
   })
 
   const setFocusedPaneMock = vi.fn()
+  const syncPaneStateToMcpMock = vi.fn(() => Promise.resolve())
 
   async function setupWithExplorer(navigate: () => NavigateResult): Promise<Map<string, TauriEventHandler>> {
     setFocusedPaneMock.mockClear()
+    syncPaneStateToMcpMock.mockClear()
     const handlers = new Map<string, TauriEventHandler>()
     // A pane already sitting on the target, on the target's volume: the in-place arm,
     // whose `settled` is the listing itself, so the reply needs no quiet wait.
@@ -439,7 +441,13 @@ describe('mcp-nav-to-path listener', () => {
       isPaneLoading: () => false,
     }
     await setupMcpListeners({
-      getExplorer: () => ({ navigate, setFocusedPane: setFocusedPaneMock, ...restingPane }) as unknown as ExplorerAPI,
+      getExplorer: () =>
+        ({
+          navigate,
+          setFocusedPane: setFocusedPaneMock,
+          syncPaneStateToMcp: syncPaneStateToMcpMock,
+          ...restingPane,
+        }) as unknown as ExplorerAPI,
       dispatch: vi.fn(),
       listenTauri: (event, handler) => {
         handlers.set(event, handler)
@@ -473,6 +481,23 @@ describe('mcp-nav-to-path listener', () => {
       volumeId: 'root',
       path: '/Library',
     })
+  })
+
+  // The pane's own push is debounced, so without a flush the reply can beat it and a
+  // `cmdr://state` read right after `OK` still shows the previous folder (#342).
+  it('flushes the pane state to the backend before replying', async () => {
+    resolveLocationMock.mockResolvedValue({ ok: true, location: { volumeId: 'root', path: '/Library' } })
+    const handlers = await setupWithExplorer(() => ({ status: 'started', settled: Promise.resolve() }))
+
+    getHandler(handlers, 'mcp-nav-to-path')({ payload: { pane: 'left', path: '/Library', requestId: 'req-f' } })
+    await flushAsyncWork()
+
+    expect(syncPaneStateToMcpMock).toHaveBeenCalledWith('left')
+    const replyOrder = vi.mocked(emit).mock.calls.findIndex(([name]) => name === 'mcp-response')
+    expect(replyOrder).toBeGreaterThanOrEqual(0)
+    expect(syncPaneStateToMcpMock.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(emit).mock.invocationCallOrder[replyOrder],
+    )
   })
 
   it('does NOT shift focus when the navigate is refused', async () => {
@@ -643,6 +668,7 @@ describe('mcp-nav-to-path landing outcomes (the volume-switch arm)', () => {
         return { status: 'started', settled: Promise.resolve() }
       }),
       setFocusedPane: vi.fn(),
+      syncPaneStateToMcp: vi.fn(() => Promise.resolve()),
       getPaneLocation: () => ({ volumeId: pane.volumeId, volumePath: '/', path: pane.path }),
       getPaneListingId: () => pane.listingId,
       isPaneLoading: () => pane.loading,

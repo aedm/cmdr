@@ -249,7 +249,9 @@ path; its `fromMenu` flag picks `setViewModeFromMenu` (skip `pushViewMenuState`)
   waits for the pane to go QUIET — a listing other than the one it started with, then `quietMs` with no load in flight —
   and classifies what it finds: `navigated`, `fell-back`, or `did-not-settle`. The reply carries that discriminant plus
   the pane's resting `volumeId` and `path`; the Rust side words the tool result from the discriminant, ❌ never from the
-  message text. The in-place arm skips the wait, because there `settled` IS the listing.
+  message text. The in-place arm skips the wait, because there `settled` IS the listing. Either way the adapter flushes
+  the pane state (`syncPaneStateToMcp`) before replying: the pane's own push is debounced 300 ms, so without it a
+  `cmdr://state` read right after `OK` showed the previous folder's path and rows under the new tab title.
 
   **Every way this handler declines also logs.** The three of them — the path not resolving to a volume, `navigate()`
   refusing, and no explorer being mounted — used to `return` in silence, because the only channel out is a reply keyed

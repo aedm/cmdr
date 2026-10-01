@@ -451,6 +451,10 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
         landed: { volumeId: landed.volumeId, path: landed.path },
         quiet,
       })
+      // The pane's own push is debounced and can trail its listing, so flush it: a
+      // `cmdr://state` read right after the reply then shows the landing, not the
+      // folder before it. Same as `mcp-volume-select.ts`.
+      await explorerRef.syncPaneStateToMcp(pane)
       if (landing.outcome === 'navigated') {
         navDeclines.clear()
         await reply({ ok: true, ...landing })
