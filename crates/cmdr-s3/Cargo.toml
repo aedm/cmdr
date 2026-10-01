@@ -19,6 +19,10 @@ workspace = true
 # The SigV4 signer. Same versions the SFTP stack and the app already resolve.
 hmac = "0.13.0"
 sha2 = "0.11"
+# `Content-MD5` on `DeleteObjects`, which AWS still demands. Same version `smb2`
+# resolves; `base64` is the app's version.
+md-5 = "0.11"
+base64 = "0.23.0"
 # Response parsing and request bodies. The version `cmdr-webdav` uses.
 quick-xml = "0.41"
 url = "2"
@@ -32,3 +36,6 @@ http = "1"
 # The ISO 8601 timestamps S3 lists carry (`2009-10-12T17:50:30.000Z`) and the
 # signer's date fields. A strict subset of the app's features.
 time = { version = "0.3", features = ["parsing"] }
+# R2 stores keys NFC; the profile composes them before they leave.
+unicode-normalization = "0.1"
+log = "0.4"

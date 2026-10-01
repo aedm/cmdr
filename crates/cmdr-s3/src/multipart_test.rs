@@ -1,0 +1,66 @@
+//! The part plan at its edges.
+
+use super::{MAX_PART_SIZE, MAX_PARTS, MIB, MIN_PART_SIZE, PartPlan, TooLarge, plan_parts};
+
+const GIB: u64 = 1024 * MIB;
+const TIB: u64 = 1024 * GIB;
+
+#[test]
+fn small_uploads_use_the_minimum_part_size() {
+    assert_eq!(
+        plan_parts(100 * MIB).unwrap(),
+        PartPlan {
+            part_size: MIN_PART_SIZE,
+            part_count: 2,
+            total: 100 * MIB
+        }
+    );
+    assert_eq!(plan_parts(MIN_PART_SIZE).unwrap().part_count, 1);
+    assert_eq!(plan_parts(MIN_PART_SIZE + 1).unwrap().part_count, 2);
+    assert_eq!(plan_parts(1).unwrap().part_count, 1);
+}
+
+#[test]
+fn an_empty_upload_is_one_empty_part() {
+    let plan = plan_parts(0).unwrap();
+    assert_eq!(plan.part_count, 1);
+    assert_eq!(plan.part_size, MIN_PART_SIZE);
+}
+
+#[test]
+fn the_minimum_holds_up_to_625_gib() {
+    // 10,000 × 64 MiB = 625 GiB.
+    let plan = plan_parts(625 * GIB).unwrap();
+    assert_eq!(plan.part_size, MIN_PART_SIZE);
+    assert_eq!(u64::from(plan.part_count), MAX_PARTS);
+}
+
+#[test]
+fn past_that_parts_grow_to_whole_mebibytes_and_never_exceed_10000() {
+    let plan = plan_parts(625 * GIB + 1).unwrap();
+    assert_eq!(plan.part_size, 65 * MIB);
+    assert!(u64::from(plan.part_count) <= MAX_PARTS);
+
+    for total in [TIB, 3 * TIB + 12_345, 10 * TIB, 48 * TIB] {
+        let plan = plan_parts(total).unwrap();
+        assert_eq!(plan.part_size % MIB, 0, "{total}");
+        assert!(u64::from(plan.part_count) <= MAX_PARTS, "{total}");
+        assert!(plan.part_size * u64::from(plan.part_count) >= total, "{total}");
+        assert!(plan.part_size <= MAX_PART_SIZE, "{total}");
+    }
+}
+
+#[test]
+fn beyond_10000_parts_of_5_gib_is_too_large() {
+    assert!(plan_parts(MAX_PARTS * MAX_PART_SIZE).is_ok());
+    assert_eq!(plan_parts(MAX_PARTS * MAX_PART_SIZE + 1), Err(TooLarge));
+}
+
+#[test]
+fn ranges_tile_the_object_with_a_short_last_part() {
+    let plan = plan_parts(150 * MIB).unwrap();
+    assert_eq!(plan.part_count, 3);
+    assert_eq!(plan.range(1), (0, 64 * MIB - 1));
+    assert_eq!(plan.range(2), (64 * MIB, 128 * MIB - 1));
+    assert_eq!(plan.range(3), (128 * MIB, 150 * MIB - 1));
+}

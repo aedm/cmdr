@@ -1616,12 +1616,16 @@ dependencies = [
 name = "cmdr-s3"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "hmac 0.13.0",
  "http",
+ "log",
+ "md-5 0.11.0",
  "percent-encoding",
  "quick-xml 0.41.0",
  "sha2 0.11.0",
  "time",
+ "unicode-normalization",
  "url",
 ]
 

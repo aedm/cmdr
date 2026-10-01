@@ -9,6 +9,10 @@
 
 pub(crate) mod encoding;
 pub(crate) mod error;
+pub(crate) mod metadata;
+pub(crate) mod multipart;
+pub(crate) mod ops;
+pub(crate) mod profile;
 pub(crate) mod request;
 pub(crate) mod sigv4;
 pub(crate) mod xml;
