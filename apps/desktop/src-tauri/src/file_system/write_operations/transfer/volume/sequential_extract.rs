@@ -18,17 +18,17 @@ use super::super::staged_write::StagedWrite;
 use super::super::transfer_driver::SourceProgress;
 use super::merge::copy_directory_streaming;
 use super::merge_ctx::{CreatedPaths, MergeCtx};
-use super::strategy::{LandingName, note_pending_for_local_dest, resolve_staging, staging_for};
+use super::strategy::{LandingName, Replaces, note_pending_for_local_dest, resolve_staging, staging_for};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 /// One resolved file write the planning pass records: where the bytes land, and
-/// (for a file→file Overwrite safe-replace) the original to swap the temp over
-/// once written.
+/// what that does to a file at the name (for a file→file Overwrite
+/// safe-replace, the original to swap the temp over once written).
 pub(super) struct PlannedWrite {
     pub(super) dest_path: PathBuf,
-    pub(super) replace_after_write: Option<PathBuf>,
+    pub(super) replaces: Replaces,
     /// Whether a conflict resolution picked `dest_path`, which is what the
     /// landing needs to tell its own placeholder from the user's file
     /// (`staged_write.rs::LandingName`).
@@ -137,14 +137,14 @@ pub(super) async fn extract_sequential_subtree(
         };
 
         // Stage the write on a `.cmdr-tmp-*` sibling unless the conflict pass
-        // already did (`replace_after_write`) or the destination lands this write
+        // already did (`Replaces::ViaTemp`) or the destination lands this write
         // in one shot (`resolve_staging`), so a killed extract leaves nothing at a
         // final name. Same contract as `stream_pipe_file`; unlike it, a sequential
         // source can't be re-read, so a destination that can't land a staged write
         // fails the extract instead of falling back.
         let length = crate::file_system::volume::StreamLength::Known(file.size);
-        let single_shot = dest_volume.write_is_single_shot(length).await;
-        let staging = resolve_staging(staging_for(&planned.replace_after_write, planned.landing), single_shot);
+        let lands_whole = dest_volume.write_is_single_shot(length).await || dest_volume.publishes_writes_whole();
+        let staging = resolve_staging(staging_for(&planned.replaces, planned.landing), lands_whole);
         let staged = StagedWrite::begin(state, &planned.dest_path, staging);
         // Register the destination before the write, exactly as `stream_pipe_file`
         // does (covers a Downloads-landing local dest; a no-op for MTP/SMB).
@@ -190,14 +190,22 @@ pub(super) async fn extract_sequential_subtree(
 
         // Safe-replace finalize for a file→file Overwrite (same as the per-entry
         // path): the temp holds the complete new bytes; swap it over the original.
-        let recorded = match planned.replace_after_write {
-            Some(orig) => {
+        // A replaced file is recorded the way `merge.rs::copy_leaf` records it:
+        // an op that overwrote isn't rollbackable, and the journal can only say
+        // so if it's told.
+        let recorded = match planned.replaces {
+            Replaces::ViaTemp(orig) => {
                 super::finalize::finalize_safe_replace(dest_volume, &planned.dest_path, &orig)
                     .await
                     .map_err(|e| PathedVolumeError::at_destination(e, &orig))?;
+                created.record_overwrite();
                 orig
             }
-            None => planned.dest_path,
+            Replaces::InPlace => {
+                created.record_overwrite();
+                planned.dest_path
+            }
+            Replaces::Nothing => planned.dest_path,
         };
         created.record_file(recorded, bytes);
         total_bytes += bytes;

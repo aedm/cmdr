@@ -20,7 +20,7 @@ use super::super::staged_write::StagedWrite;
 use super::super::recovered_name::FinalizeFailure;
 use super::super::retry;
 pub(super) use super::super::staged_write::{
-    LandingName, WriteStaging, failed_write_leaves_ours_at, resolve_staging, staging_for,
+    LandingName, Replaces, WriteStaging, failed_write_leaves_ours_at, resolve_staging, staging_for,
 };
 use super::super::transfer_driver::{LeafProgressLedger, SourceProgress};
 use super::super::transfer_probe::{
@@ -163,8 +163,9 @@ pub(super) async fn copy_single_path(
     merge: Option<&MergeCtx<'_>>,
     // Whether `dest_path` is the file's final name (`Stage`) or a `.cmdr-tmp-*`
     // the caller already minted for a safe-replace and will land itself
-    // (`AlreadyStaged`). Every call site derives it the same way:
-    // `replace_after_write.is_some()`. Only the FILE branch reads it — a
+    // (`AlreadyStaged`), or the final name an in-place replace writes over.
+    // Every call site derives it the same way: `staging_for(&replaces,
+    // landing)`. Only the FILE branch reads it — a
     // directory source's children each get their own staging decision inside the
     // merge walker — and a directory conflict never yields a caller temp, so
     // passing the same expression everywhere stays correct.
@@ -387,7 +388,10 @@ pub(super) async fn stream_pipe_file(
         // destination-side foreground yield's floor exemption (handed to the
         // `CheckpointStream`). See `resolve_staging`.
         let write_is_single_shot = dest_volume.write_is_single_shot(length).await;
-        let resolved_staging = resolve_staging(staging, write_is_single_shot);
+        // A whole-publishing destination (an object store) needs no staging
+        // either, though it makes no single-shot promise: the yield floor and
+        // the stall watchdog below keep reading the single-shot answer alone.
+        let resolved_staging = resolve_staging(staging, write_is_single_shot || dest_volume.publishes_writes_whole());
         let staged = StagedWrite::begin(state, dest_path, resolved_staging);
         note_pending_for_local_dest(dest_volume, staged.target());
         // Wrap so a paused op parks (and a long copy yields to foreground)

@@ -390,8 +390,10 @@ than dependent on cleanup running.
 safe-replace, which additionally keeps the ORIGINAL in place until the temp is complete) and lands it itself; staging it
 again would just yield a `foo.cmdr-tmp-A.cmdr-tmp-B`. Every other write stages here, as `WriteStaging::Stage` or
 `WriteStaging::StageOntoClaimedName`. Each call site derives it identically via
-`volume::strategy::staging_for(&replace_after_write, landing)`, so there is one rule, not four. Both write sites then run
-that choice through `resolve_staging`, the single place a staged write can become `SingleShot`.
+`volume::strategy::staging_for(&replaces, landing)`, so there is one rule, not four. Both write sites then run
+that choice through `resolve_staging`, the single place a staged write can become `SingleShot`. The one write that is
+`SingleShot` from the start is an in-place Overwrite on a destination that publishes every write whole
+(`staged_write::Replaces::InPlace`, `volume/DETAILS.md` § "Whole-publish destinations").
 
 **Generated validated files reuse the same ownership.** `StagedWrite::begin_generated` always mints and
 records a sibling stage. A publisher whose volume declares `supports_atomic_replace_rename()` lands it with one force

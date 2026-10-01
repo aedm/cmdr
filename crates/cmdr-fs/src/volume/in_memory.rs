@@ -111,6 +111,12 @@ pub struct InMemoryVolume {
     /// What [`Volume::composes_new_names`] reports. Default `false`; set via
     /// [`Self::with_composed_new_names`] to stand in for a share.
     composes_new_names: bool,
+    /// What [`Volume::publishes_writes_whole`] reports, and whether
+    /// `write_from_stream` honours [`WriteMode`](super::WriteMode) the way an
+    /// object store does (`CreateOrReplace` replaces at the end, the old bytes
+    /// readable until then). Default `false`, where a write onto an existing
+    /// name refuses whatever the mode. Set via [`Self::with_whole_publish`].
+    publishes_writes_whole: bool,
     /// Paths whose [`Volume::is_directory`] and [`Volume::get_metadata`] fail with
     /// an `IoError` instead of answering, modeling a stat that couldn't complete
     /// (a dropped MTP session, a hung mount) rather than a path that isn't there.
@@ -158,6 +164,7 @@ impl InMemoryVolume {
             rename_to_failing: RwLock::new(HashSet::new()),
             create_directory_not_found: false,
             composes_new_names: false,
+            publishes_writes_whole: false,
             stat_failing: RwLock::new(HashSet::new()),
             connection_state: None,
             backend_kind: BackendKind::Local,
@@ -251,6 +258,16 @@ impl InMemoryVolume {
     /// the server behind one.
     pub fn with_composed_new_names(mut self) -> Self {
         self.composes_new_names = true;
+        self
+    }
+
+    /// Makes this volume an object store's double: [`Volume::publishes_writes_whole`]
+    /// answers `true`, and `write_from_stream` lands its bytes only once the
+    /// stream ends, replacing an existing file under `CreateOrReplace` and
+    /// refusing one under `CreateNew`. A write that fails or is cancelled leaves
+    /// the name exactly as it was.
+    pub fn with_whole_publish(mut self) -> Self {
+        self.publishes_writes_whole = true;
         self
     }
 
@@ -494,6 +511,42 @@ impl InMemoryVolume {
         path.parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| PathBuf::from("/"))
+    }
+
+    /// Puts `data` at `path` in one step, replacing a FILE that's there: the
+    /// landing of a [`with_whole_publish`](Self::with_whole_publish) write.
+    /// A folder at the name is refused, as an object store's would be.
+    fn replace_whole(&self, path: &Path, data: Vec<u8>) -> Result<(), VolumeError> {
+        let normalized = self.normalize(path);
+        let mut entries = self.entries.write_ignore_poison();
+        if entries
+            .get(&normalized)
+            .is_some_and(|entry| entry.metadata.is_directory)
+        {
+            return Err(VolumeError::IsADirectory(normalized.display().to_string()));
+        }
+        let name = normalized
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let metadata = FileEntry {
+            size: Some(data.len() as u64),
+            modified_at: Some(Self::now_secs()),
+            created_at: Some(Self::now_secs()),
+            permissions: 0o644,
+            owner: "testuser".to_string(),
+            group: "staff".to_string(),
+            extended_metadata_loaded: true,
+            ..FileEntry::new(name, normalized.display().to_string(), false, false)
+        };
+        entries.insert(
+            normalized,
+            InMemoryEntry {
+                metadata,
+                content: Some(data),
+            },
+        );
+        Ok(())
     }
 
     /// Gets current timestamp as seconds since Unix epoch.

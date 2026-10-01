@@ -12,7 +12,7 @@
 //! borrowed context already holds every input they need — the volumes, the
 //! policy, the destination index, the preflight hints, and the shared counters.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
@@ -25,7 +25,7 @@ use super::copy_concurrent_task::CopyTask;
 use super::landing::{DestFolder, Landing, NewName, where_it_lands};
 use super::merge_ctx::MergeProbe;
 use super::preflight::SourceFileFacts;
-use super::strategy::{LandingName, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
+use super::strategy::{LandingName, Replaces, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
 use crate::file_system::volume::VolumeError;
 use crate::ignore_poison::IgnorePoison;
@@ -86,11 +86,12 @@ impl ConcurrentCopy<'_> {
         } else {
             self.dest_path.to_path_buf()
         };
-        // For a file→file Overwrite, conflict resolution hands back a
-        // temp sibling to stream into plus the original path to swap in
-        // after the write fully lands (safe-replace). `None` ⇒ write
-        // `dest_item_path` directly.
-        let mut replace_after_write: Option<PathBuf> = None;
+        // For a file→file Overwrite, conflict resolution says how the
+        // original is replaced (`Replaces`): a temp sibling to stream into
+        // plus the original to swap in after the write fully lands
+        // (safe-replace), or the original's own name on a destination that
+        // publishes whole. `Nothing` ⇒ write `dest_item_path` directly.
+        let mut replaces = Replaces::Nothing;
         // Nothing has resolved anything yet, so the name this task writes to is
         // one we believe free (`staged_write.rs::LandingName`).
         let mut dest_name_claimed = false;
@@ -138,7 +139,7 @@ impl ConcurrentCopy<'_> {
                 }
                 Some(rc) => {
                     dest_item_path = rc.write_path;
-                    replace_after_write = rc.replace_after_write;
+                    replaces = rc.replaces;
                     // The resolver picked this name: a `Rename` reserved it, an
                     // Overwrite across types already cleared it.
                     dest_name_claimed = true;
@@ -174,7 +175,7 @@ impl ConcurrentCopy<'_> {
         } else {
             LandingName::ExpectedFree
         };
-        if !source_is_dir && failed_write_leaves_ours_at(staging_for(&replace_after_write, landing)) {
+        if !source_is_dir && failed_write_leaves_ours_at(staging_for(&replaces, landing)) {
             self.in_flight_partials
                 .lock_ignore_poison()
                 .push(dest_item_path.clone());
@@ -209,7 +210,7 @@ impl ConcurrentCopy<'_> {
             source_is_dir,
             source_facts: SourceFileFacts::from_size_hint(source_size_hint),
             dest_path: dest_item_path,
-            replace_after_write,
+            replaces,
             dest_name_claimed,
             file_name,
             window: self.file_window.clone(),

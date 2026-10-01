@@ -236,6 +236,11 @@ macro_rules! forward_volume_methods {
             self.$inner.write_is_single_shot(length)
         }
     };
+    (@one $inner:ident, publishes_writes_whole) => {
+        fn publishes_writes_whole(&self) -> bool {
+            self.$inner.publishes_writes_whole()
+        }
+    };
 }
 
 use crate::file_system::volume::WriteMode;
@@ -356,7 +361,7 @@ impl<V: Volume + 'static> Volume for FaultyVolume<V> {
         scan_for_copy,
         scan_for_copy_batch,
         scan_for_conflicts,
-        supports_unknown_length_writes, write_is_single_shot,
+        supports_unknown_length_writes, write_is_single_shot, publishes_writes_whole,
     );
 
     fn as_any(&self) -> &dyn std::any::Any {

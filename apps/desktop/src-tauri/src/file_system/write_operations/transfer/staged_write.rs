@@ -69,9 +69,10 @@ pub(super) enum WriteStaging {
     /// to it.
     AlreadyStaged,
     /// The DESTINATION lands this write in one indivisible shot (`Volume::
-    /// write_is_single_shot`), so the final name can never hold a partial and
-    /// staging would buy nothing but a rename round trip. Write straight to the
-    /// final name.
+    /// write_is_single_shot`), or publishes every write whole by protocol
+    /// (`Volume::publishes_writes_whole`, an object store), so the final name
+    /// can never hold a partial and staging would buy nothing but a rename.
+    /// Write straight to the final name.
     ///
     /// Carries the [`LandingName`] of the staged write it replaced, because
     /// with no landing rename to refuse a taken name, the write itself has to:
@@ -531,20 +532,84 @@ async fn land(
     }
 }
 
+/// What one resolved write does to a FILE already holding the destination name,
+/// as conflict resolution decided it.
+///
+/// A required, typed answer rather than an `Option<PathBuf>` because a third
+/// shape exists and each one drives a different finalize, cleanup, and journal:
+/// confusing them either deletes the user's original on a failed write or
+/// records an overwrite as a fresh file, which an undo would then delete.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::file_system::write_operations) enum Replaces {
+    /// Nothing is replaced: a free name, a `Rename` pick, a merge into a
+    /// folder, or a cross-type destination already set aside.
+    Nothing,
+    /// A file→file Overwrite by SAFE-REPLACE: the write goes to a temp sibling,
+    /// and once it's complete the caller swaps it over `orig`
+    /// (`volume::finalize::finalize_safe_replace`). The original survives the
+    /// whole write.
+    ViaTemp(PathBuf),
+    /// A file→file Overwrite on a destination that publishes every write whole
+    /// (`Volume::publishes_writes_whole`, an object store): the write goes to
+    /// the original's own name with `CreateOrReplace`, and the destination
+    /// swaps the content only when the write completes. Nothing to finalize,
+    /// and ❗ a failed write leaves the ORIGINAL there, so nothing at the name
+    /// is ours to clean.
+    InPlace,
+}
+
+impl Replaces {
+    /// Whether this write replaces a file the user had, which makes the
+    /// operation not rollbackable (the original is gone).
+    pub(in crate::file_system::write_operations) fn overwrites(&self) -> bool {
+        !matches!(self, Self::Nothing)
+    }
+
+    /// The original a safe-replace temp is swapped over after the write, and
+    /// so the name the bytes end up at. `None` for every other shape: the write
+    /// target already IS the final name.
+    pub(in crate::file_system::write_operations) fn swap_target(&self) -> Option<&Path> {
+        match self {
+            Self::ViaTemp(orig) => Some(orig),
+            Self::Nothing | Self::InPlace => None,
+        }
+    }
+
+    /// The file this write replaces, whatever the mechanism: a safe-replace's
+    /// `orig`, or `write_path` itself for an in-place one. A same-volume move
+    /// asks this, because it renames the SOURCE onto that name either way.
+    pub(in crate::file_system::write_operations) fn replaced_file(self, write_path: &Path) -> Option<PathBuf> {
+        match self {
+            Self::ViaTemp(orig) => Some(orig),
+            Self::InPlace => Some(write_path.to_path_buf()),
+            Self::Nothing => None,
+        }
+    }
+}
+
 /// The staging every call site derives the same way: a conflict resolution that
-/// handed back a temp to swap over an original (`Some(orig)`) already staged the
-/// write, anything else is ours to stage.
+/// handed back a temp to swap over an original ([`Replaces::ViaTemp`]) already
+/// staged the write, an in-place replace on a whole-publishing destination
+/// ([`Replaces::InPlace`]) writes the final name over, and anything else is
+/// ours to stage.
 ///
 /// `landing` is the OTHER thing only the caller knows: whether a conflict
 /// resolution put this write at this name. It decides what the landing rename's
 /// `AlreadyExists` means (see `staged_write.rs::land`), so ❌ never pass
 /// `ClaimedByTheCaller` for a write nothing resolved — that is the reading that
 /// clears the user's file.
-pub(super) fn staging_for(replace_after_write: &Option<PathBuf>, landing: LandingName) -> WriteStaging {
-    match (replace_after_write, landing) {
-        (Some(_), _) => WriteStaging::AlreadyStaged,
-        (None, LandingName::ExpectedFree) => WriteStaging::Stage,
-        (None, LandingName::ClaimedByTheCaller) => WriteStaging::StageOntoClaimedName,
+///
+/// `InPlace` answers `SingleShot(ClaimedByTheCaller)` here rather than waiting
+/// for [`resolve_staging`]: the resolver chose it on the same whole-publish
+/// answer, and the write must never fall back to a staged landing, whose
+/// delete-then-rename would put the original at risk the in-place write exists
+/// to avoid.
+pub(super) fn staging_for(replaces: &Replaces, landing: LandingName) -> WriteStaging {
+    match (replaces, landing) {
+        (Replaces::ViaTemp(_), _) => WriteStaging::AlreadyStaged,
+        (Replaces::InPlace, _) => WriteStaging::SingleShot(LandingName::ClaimedByTheCaller),
+        (Replaces::Nothing, LandingName::ExpectedFree) => WriteStaging::Stage,
+        (Replaces::Nothing, LandingName::ClaimedByTheCaller) => WriteStaging::StageOntoClaimedName,
     }
 }
 
@@ -562,8 +627,11 @@ pub(super) fn staging_for(replace_after_write: &Option<PathBuf>, landing: Landin
 ///   landing refuses, `staged_write.rs::land`). Cleaning `dest_path` then
 ///   deleted their file. Pinned by `copy_landing_race_tests.rs` and, on live
 ///   servers, `a_name_taken_mid_upload_is_never_replaced`.
-/// - `SingleShot` is resolved inside `stream_pipe_file` and never reaches a
-///   driver; its failed attempt is the backend's to clean.
+/// - `SingleShot`: ❗ never ours either. A driver meets it for an in-place
+///   replace on a whole-publishing destination ([`Replaces::InPlace`]), where
+///   a failed write leaves the user's ORIGINAL at the name; an upgraded staged
+///   write is resolved inside `stream_pipe_file`. Either way its failed attempt
+///   is the backend's to clean.
 pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
     match staging {
         WriteStaging::AlreadyStaged | WriteStaging::StageOntoClaimedName => true,
@@ -602,12 +670,16 @@ pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
 /// free) becomes `SingleShot(ExpectedFree)`, which writes with
 /// [`WriteMode::CreateNew`]; a `StageOntoClaimedName` becomes
 /// `SingleShot(ClaimedByTheCaller)`, which may replace its own placeholder.
-pub(super) fn resolve_staging(requested: WriteStaging, write_is_single_shot: bool) -> WriteStaging {
+///
+/// `lands_whole` is `write_is_single_shot` OR `Volume::publishes_writes_whole`:
+/// an object store publishes every write whole by protocol, so it gets the same
+/// unstaged write at the final name (`volume/DETAILS.md` § "Whole-publish
+/// destinations"). Only the staging decision takes the OR; the yield floor and
+/// the stall watchdog read the single-shot answer alone.
+pub(super) fn resolve_staging(requested: WriteStaging, lands_whole: bool) -> WriteStaging {
     match requested {
-        WriteStaging::Stage if write_is_single_shot => WriteStaging::SingleShot(LandingName::ExpectedFree),
-        WriteStaging::StageOntoClaimedName if write_is_single_shot => {
-            WriteStaging::SingleShot(LandingName::ClaimedByTheCaller)
-        }
+        WriteStaging::Stage if lands_whole => WriteStaging::SingleShot(LandingName::ExpectedFree),
+        WriteStaging::StageOntoClaimedName if lands_whole => WriteStaging::SingleShot(LandingName::ClaimedByTheCaller),
         other => other,
     }
 }

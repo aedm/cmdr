@@ -1615,6 +1615,33 @@ pub trait Volume: Send + Sync {
         Box::pin(async { false })
     }
 
+    /// Whether EVERY [`write_from_stream`](Self::write_from_stream) here is
+    /// published whole by the protocol itself: the name shows nothing new until
+    /// the write completes, a write that never completes leaves nothing at the
+    /// name (not after a crash, a dropped connection, or a cancel), and a
+    /// replacing write keeps the old content readable until the new is complete.
+    /// An object store answers `true` (S3's PUT and multipart completion).
+    ///
+    /// The transfer layer then writes straight to the final name, a fresh file
+    /// and a file→file Overwrite alike: staging there would buy nothing the
+    /// protocol doesn't already give, and its landing rename can cost a full
+    /// server-side copy plus a delete (`write_operations/transfer/volume/DETAILS.md`
+    /// § "Whole-publish destinations").
+    ///
+    /// It promises less than [`write_is_single_shot`](Self::write_is_single_shot),
+    /// and that's why it's a separate answer: a request stays open on the server
+    /// while the source drains, and the [`WriteMode::CreateNew`] refusal may be
+    /// a check just before the write where the server has no atomic primitive.
+    /// So the destination-side foreground yield and the stall watchdog keep
+    /// reading `write_is_single_shot` alone.
+    ///
+    /// ❌ Answer `true` only when it holds for every size and both modes, by
+    /// protocol, ❌ never by a backend's own cleanup: a cleanup doesn't run on a
+    /// force-quit. Default `false`.
+    fn publishes_writes_whole(&self) -> bool {
+        false
+    }
+
     /// Writes data from a stream to the given path.
     ///
     /// `on_progress` receives structured byte progress after each chunk is

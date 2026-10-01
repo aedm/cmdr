@@ -528,7 +528,7 @@ impl Volume for InMemoryVolume {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
-        _mode: WriteMode,
+        mode: WriteMode,
         length: StreamLength,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(StreamWriteProgress) -> std::ops::ControlFlow<()> + Sync),
@@ -557,7 +557,11 @@ impl Volume for InMemoryVolume {
                 }
             }
 
-            self.create_file(dest, &data).await?;
+            if self.publishes_writes_whole && mode == WriteMode::CreateOrReplace {
+                self.replace_whole(dest, data)?;
+            } else {
+                self.create_file(dest, &data).await?;
+            }
             Ok(bytes_written)
         })
     }
@@ -616,6 +620,10 @@ impl Volume for InMemoryVolume {
 
     fn composes_new_names(&self) -> bool {
         self.composes_new_names
+    }
+
+    fn publishes_writes_whole(&self) -> bool {
+        self.publishes_writes_whole
     }
 
     fn space_poll_interval(&self) -> Option<std::time::Duration> {

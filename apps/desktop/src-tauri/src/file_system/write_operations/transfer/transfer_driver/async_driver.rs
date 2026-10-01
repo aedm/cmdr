@@ -2,6 +2,8 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use super::super::staged_write::Replaces;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -173,11 +175,11 @@ where
             }
         };
 
-        let (resolved_dest, replace_after_write, dest_name_claimed) = match name_at_dest {
+        let (resolved_dest, replaces, dest_name_claimed) = match name_at_dest {
             // Nothing sits at this name as far as the pre-check could tell, so
             // nothing resolved anything: the closure's write is landing on a
             // name it believes free.
-            NameAtDest::Free(free_path) => (free_path, None, false),
+            NameAtDest::Free(free_path) => (free_path, Replaces::Nothing, false),
             NameAtDest::Taken { path: taken_path, size } => {
                 log::debug!(
                     "drive_transfer_serial_async: conflict detected at {}",
@@ -219,10 +221,7 @@ where
                         }
                         continue;
                     }
-                    Ok(ConflictDecision::Proceed {
-                        dest_path,
-                        replace_after_write,
-                    }) => (dest_path, replace_after_write, true),
+                    Ok(ConflictDecision::Proceed { dest_path, replaces }) => (dest_path, replaces, true),
                     Err(e) => {
                         return TransferLoopOutcome {
                             files_done,
@@ -243,7 +242,7 @@ where
             operation_type: config.operation_type,
             source_path,
             dest_path: Some(&resolved_dest),
-            replace_after_write: replace_after_write.as_deref(),
+            replaces: &replaces,
             dest_name_claimed,
             files_done_so_far: files_done,
             bytes_done_so_far: bytes_done,

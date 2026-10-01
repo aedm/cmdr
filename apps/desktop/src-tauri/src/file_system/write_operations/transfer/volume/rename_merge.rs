@@ -67,6 +67,7 @@ use super::super::super::types::{RecoveredOriginal, VolumeCopyConfig, WriteOpera
 use super::super::dest_name_index::{DestLookup, DestNameIndex};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::displaced_destination::{DisplacedDestination, displace_destination};
+use super::strategy::Replaces;
 use super::transfer_error::{PathRole, map_volume_error};
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{EntryKind, Volume, VolumeError};
@@ -118,12 +119,10 @@ pub(super) fn merges_as_a_directory(entry: &FileEntry) -> bool {
 enum MergeChildResolution {
     /// The resolver said Skip — leave both sides untouched.
     Skip,
-    /// The resolver said Proceed. `replace` is `Some(orig)` for a file→file
-    /// safe-replace (delete the original, then rename onto it).
-    Proceed {
-        write_path: PathBuf,
-        replace: Option<PathBuf>,
-    },
+    /// The resolver said Proceed. `replace` names the file a file→file
+    /// Overwrite replaces (set it aside, then rename onto its name): a
+    /// safe-replace's `orig`, or `write_path` itself for an in-place one.
+    Proceed { write_path: PathBuf, replace: Replaces },
 }
 
 /// Recursively merges `source_dir` into the existing `dest_dir` on the same
@@ -352,7 +351,7 @@ async fn resolve_child(
         None => Ok((MergeChildResolution::Skip, None)),
         Some(ResolvedConflict {
             write_path,
-            replace_after_write,
+            replaces,
             // A same-volume move clears whatever sits at the resolved name below
             // (its rename can't replace), so the reservation needs no separate
             // answer here.
@@ -361,7 +360,7 @@ async fn resolve_child(
         }) => Ok((
             MergeChildResolution::Proceed {
                 write_path,
-                replace: replace_after_write,
+                replace: replaces,
             },
             displaced,
         )),
@@ -387,7 +386,10 @@ async fn apply_child_decision(
 ) -> Result<(), WriteOperationError> {
     let (write_path, replace) = match decision {
         MergeChildResolution::Skip => return Ok(()),
-        MergeChildResolution::Proceed { write_path, replace } => (write_path, replace),
+        MergeChildResolution::Proceed { write_path, replace } => {
+            let replace = replace.replaced_file(&write_path);
+            (write_path, replace)
+        }
     };
 
     if merges_as_a_directory(entry) {

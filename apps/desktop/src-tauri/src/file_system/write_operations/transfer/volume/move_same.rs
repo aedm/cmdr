@@ -32,6 +32,7 @@ use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::item_identity::is_the_same_volume_path;
 use super::preflight::{SourceHint, source_merges_as_a_directory, top_level_move_hints};
 use super::rename_merge::{RenameMergeCtx, rename_merge_directory};
+use super::strategy::Replaces;
 use super::transfer_error::{PathRole, map_volume_error};
 use crate::file_system::volume::{EntryKind, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
@@ -492,11 +493,11 @@ pub(crate) async fn move_within_same_volume_with_progress(
                             // `rename(force=false)` can't replace, and MTP's
                             // `force = true` doesn't delete an existing dest
                             // either. When the resolver hands back a
-                            // `replace_after_write` (file→file Overwrite) the
+                            // file→file Overwrite (`Replaces::replaced_file`) the
                             // original goes ASIDE here and the rename lands in the
-                            // closure. For dir-merge / Rename it is `None` and the
+                            // closure. For dir-merge / Rename there's none and the
                             // resolved path is used as-is.
-                            match rc.replace_after_write {
+                            match rc.replaces.clone().replaced_file(&rc.write_path) {
                                 Some(orig) => {
                                     // A file→file overwrite: record it so the journal
                                     // finalizes this move `not_rollbackable` (the
@@ -516,7 +517,7 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                     }
                                     ConflictDecision::Proceed {
                                         dest_path: orig,
-                                        replace_after_write: None,
+                                        replaces: Replaces::Nothing,
                                     }
                                 }
                                 None => {
@@ -551,7 +552,7 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                     }
                                     ConflictDecision::Proceed {
                                         dest_path: rc.write_path,
-                                        replace_after_write: None,
+                                        replaces: Replaces::Nothing,
                                     }
                                 }
                             }

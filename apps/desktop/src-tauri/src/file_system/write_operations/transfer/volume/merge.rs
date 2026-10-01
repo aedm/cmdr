@@ -43,6 +43,7 @@ use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::naming::take_back_reservation;
 use super::preflight::SourceFileFacts;
 use super::rename_merge::merges_as_a_directory;
+use super::strategy::Replaces;
 use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
@@ -228,7 +229,7 @@ async fn copy_leaf<'a>(
     source_facts: SourceFileFacts,
     dest_volume: &'a Arc<dyn Volume>,
     write_dest: PathBuf,
-    replace_after_write: Option<PathBuf>,
+    replaces: Replaces,
     reserved_placeholder: bool,
     staging: WriteStaging,
     state: &'a Arc<WriteOperationState>,
@@ -266,18 +267,18 @@ async fn copy_leaf<'a>(
     // Safe-replace finalize for a file→file Overwrite: the temp now holds the
     // complete new bytes; swap it over the original. On finalize error the temp
     // is preserved as committed data (see `finalize_safe_replace`).
-    let recorded = match replace_after_write {
-        Some(orig) => {
+    // An overwrite (safe-replace or in place) makes the op not rollbackable.
+    if replaces.overwrites() {
+        created.record_overwrite();
+    }
+    let recorded = match replaces {
+        Replaces::ViaTemp(orig) => {
             super::finalize::finalize_safe_replace(dest_volume, &write_dest, &orig)
                 .await
                 .map_err(|e| PathedVolumeError::at_destination(e, &orig))?;
-            // A deep-merge child that replaced an existing dest file: record the
-            // overwrite so the operation-log eligibility is honest (a copy / move
-            // that overwrote isn't rollbackable — the original is gone).
-            created.record_overwrite();
             orig
         }
-        None => write_dest,
+        Replaces::InPlace | Replaces::Nothing => write_dest,
     };
     created.record_file(recorded, bytes);
     leaf.complete(bytes);
@@ -564,7 +565,7 @@ async fn merge_level<'a>(
         // a dest hit and we have merge context, route it through the file-policy
         // resolver.
         let mut write_dest = child_dest.clone();
-        let mut replace_after_write: Option<PathBuf> = None;
+        let mut replaces = Replaces::Nothing;
         // Nothing has resolved a conflict for this child yet, so the name it is
         // about to take is one we believe FREE. A resolver decision below is
         // what turns that into a claim (`staged_write.rs::LandingName`).
@@ -596,7 +597,7 @@ async fn merge_level<'a>(
                     reserved_placeholder: reserved,
                 } => {
                     write_dest = write_path;
-                    replace_after_write = replace;
+                    replaces = replace;
                     reserved_placeholder = reserved;
                     // The resolver picked this name: a `Rename` reserved it with
                     // a placeholder, an Overwrite across types already cleared
@@ -647,7 +648,7 @@ async fn merge_level<'a>(
                 child_source,
                 super::sequential_extract::PlannedWrite {
                     dest_path: write_dest,
-                    replace_after_write,
+                    replaces,
                     landing,
                     // The plan pass is the only one that lists the source, so
                     // the mode has to be recorded here or the data pass has
@@ -661,7 +662,7 @@ async fn merge_level<'a>(
         // Conflict resolution for this child is DONE, on the walker, in listing
         // order — the same rule the top-level concurrent driver follows. Only the
         // bytes go wide.
-        let staging = staging_for(&replace_after_write, landing);
+        let staging = staging_for(&replaces, landing);
         let row = LeafRow {
             source: child_source.clone(),
             dest: write_dest.clone(),
@@ -677,7 +678,7 @@ async fn merge_level<'a>(
                 SourceFileFacts::from_entry(entry),
                 dest_volume,
                 write_dest,
-                replace_after_write,
+                replaces,
                 reserved_placeholder,
                 staging,
                 state,
@@ -707,14 +708,14 @@ fn backend_create_directory_detects_collisions(volume: &Arc<dyn Volume>) -> bool
 enum MergeChildDecision {
     /// Honor a Skip: do NOT touch the dest child at all.
     Skip,
-    /// Proceed writing to `write_path`; `replace` is `Some(orig)` for a
-    /// file→file safe-replace (write to a temp sibling, finalize after).
+    /// Proceed writing to `write_path`; `replace` says what that does to a file
+    /// at the name (`ViaTemp(orig)`: write to a temp sibling, finalize after).
     /// `reserved_placeholder` says the resolver put a zero-byte `O_EXCL` file at
     /// `write_path` to hold the name, which the leaf owes taking back if its
     /// write never happens (`naming.rs::ClaimedName`).
     Proceed {
         write_path: PathBuf,
-        replace: Option<PathBuf>,
+        replace: Replaces,
         reserved_placeholder: bool,
     },
 }
@@ -771,7 +772,7 @@ async fn resolve_merge_child(
         Ok(None) => Ok(MergeChildDecision::Skip),
         Ok(Some(ResolvedConflict {
             write_path,
-            replace_after_write,
+            replaces,
             reserved_placeholder,
             displaced,
         })) => {
@@ -782,7 +783,7 @@ async fn resolve_merge_child(
             }
             Ok(MergeChildDecision::Proceed {
                 write_path,
-                replace: replace_after_write,
+                replace: replaces,
                 reserved_placeholder,
             })
         }
