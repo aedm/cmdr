@@ -76,8 +76,8 @@ tempfile = { version = "3", optional = true }
 
 [dev-dependencies]
 # Depending on ourselves turns `testing` on for every DEV target and leaves it off
-# for the lib, so a shipped build carries no fixtures. Same shape as `cmdr-adb`'s
-# and the app's own self dev-dependency. `virtual-device` rides along because
+# for the lib, so a shipped build carries no fixtures. Same shape as `cmdr-adb`'s.
+# `virtual-device` rides along because
 # nearly every cell here needs a device to talk to.
 cmdr-mtp = { path = ".", features = ["testing", "virtual-device"] }
 # `wait_until_async` and the recording / scripted host-seam fakes this crate's

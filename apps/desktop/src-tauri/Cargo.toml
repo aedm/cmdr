@@ -35,32 +35,9 @@ virtual-mtp = ["cmdr-mtp/virtual-device"]
 # one `smb2` everything resolves to gets `testing` turned on and this crate's own
 # direct `smb2` calls (`network::virtual_smb_hosts`) see it too.
 smb-e2e = ["cmdr-smb/testing"]
-# "This is a test build.", forwarded to the two crates that act on it. They widen
-# their test-only scaffolding (`cmdr_index::testing`, `cmdr_fs::testing`) from
-# `#[cfg(test)]` to `pub`, which is the only way this crate's tests can reach it:
-# `cfg(test)` is set only while a crate compiles its OWN test target, never when a
-# consumer compiles it as a dependency.
-# Enabled automatically for every dev target and only for those; see the self
-# dev-dependency under `[dev-dependencies]`. Never enable in production builds.
-# `cmdr-smb/testing` is in the list for `cmdr_smb::volume::testing` (the shared
-# Docker fixtures the app's SMB suites connect through). It also turns
-# `smb2/testing` on for every dev target, which is harmless: `smb-e2e` already
-# does that, and nothing here reads `smb2::testing`.
-# `cmdr-sftp/testing` is in the list for `cmdr_sftp::volume::testing` (the shared
-# Docker fixtures the app's SFTP suites connect through), the same reason
-# `cmdr-smb/testing` is.
-testing = [
-  "dep:tempfile",
-  "cmdr-archive/testing",
-  "cmdr-fs/testing",
-  "cmdr-index/testing",
-  "cmdr-smb/testing",
-  "cmdr-sftp/testing",
-  "cmdr-webdav/testing",
-  "cmdr-adb/testing",
-  "cmdr-git/testing",
-  "cmdr-mtp/testing",
-]
+# No `testing` feature of our own: the app's test scaffolding is plain
+# `#[cfg(test)]`, and the workspace crates' `testing` features are turned on by
+# direct `[dev-dependencies]` entries (see there).
 
 [[bin]]
 name = "Cmdr"
@@ -273,13 +250,6 @@ specta = { version = "=2.0.0-rc.24", features = ["derive", "serde_json"] }
 # scoring. Pinned at 0.3.1 (published 2024-02-20, well over a month old). MPL-2.0;
 # already in the `deny.toml` allowlist. See `file_system/listing/fuzzy_jump.rs` for usage.
 nucleo-matcher = "0.3.1"
-# Scratch directories for tests and test fixtures. Optional and turned on only by
-# the `testing` feature (which the self dev-dependency below switches on for every
-# dev target), so the shipped binary never links it. It has to be a NORMAL
-# dependency rather than a dev one because the virtual-MTP fixture lives in the
-# LIB behind `any(test, feature = "testing")`, and a lib target can't see
-# dev-dependencies. Same shape as `blake3` in `cmdr-smb`.
-tempfile = { version = "3", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -468,17 +438,36 @@ bytes = "1"
 # platform-gated, so `tar` has to be reachable from tests on every target. The
 # production side is macOS-only (see the per-target section above).
 tar = "0.4"
-# Depending on ourselves turns the `testing` feature on for every DEV target
-# (tests, benches, examples) and leaves it off for the lib and the `Cmdr` bin, so
-# the shipped binary carries no test scaffolding. Verified both ways: `cargo check
-# --lib` builds with the feature off, `cargo check --all-targets` with it on.
-# The alternative, `required-features = ["testing"]` on the bench targets, would
-# make `cargo clippy --all-targets` silently SKIP them, and an unlinted,
-# never-compiled benchmark harness rots before the next person needs it.
-cmdr = { path = ".", features = ["testing"] }
-# Same crate as the normal dependency above, with the test-wait helpers
-# (`cmdr_fs::testing::wait_until`) switched on for dev targets only.
+# Scratch directories for the lib's unit tests.
+tempfile = "3"
+# The workspace crates below are the same crates as the normal dependencies above,
+# listed again to turn `testing` on for dev targets only. `testing` widens a
+# crate's test scaffolding from `#[cfg(test)]` to `pub`, the only way OUR tests
+# can reach it: `cfg(test)` is set only while a crate compiles its own test
+# target, never when a consumer compiles it as a dependency. Resolver 2 keeps
+# dev-dependency features out of the lib and the `Cmdr` bin, so the shipped
+# binary carries none of it.
+# ❗ Don't turn this back into a self dev-dependency (`cmdr = { path = ".",
+# features = [...] }`): that links a SECOND copy of the app into the test binary,
+# and Objective-C class names are global and unmangled, so the two copies'
+# classes (`CmdrPromiseDelegate`, `QuickLookDelegate`, `CmdrDragSource`, ...)
+# collide. The linker warns `duplicate symbol` and keeps one of each, which is
+# memory corruption the day a test-only field lands on one of them.
+# The test-wait helpers (`cmdr_fs::testing::wait_until`) and friends.
 cmdr-fs = { path = "../../../crates/cmdr-fs", features = ["testing"] }
+# `cmdr_index::testing` scaffolding.
+cmdr-index = { path = "../../../crates/cmdr-index", features = ["testing"] }
+# `cmdr_archive::test_fixtures`.
+cmdr-archive = { path = "../../../crates/cmdr-archive", features = ["testing"] }
+# `cmdr_smb::volume::testing`, the shared Docker fixtures the app's SMB suites
+# connect through. It also turns `smb2/testing` on for every dev target, which is
+# harmless: `smb-e2e` already does that, and nothing here reads `smb2::testing`.
+cmdr-smb = { path = "../../../crates/cmdr-smb", features = ["testing"] }
+# `cmdr_sftp::volume::testing`, the shared Docker fixtures the app's SFTP suites
+# connect through.
+cmdr-sftp = { path = "../../../crates/cmdr-sftp", features = ["testing"] }
+cmdr-webdav = { path = "../../../crates/cmdr-webdav", features = ["testing"] }
+cmdr-adb = { path = "../../../crates/cmdr-adb", features = ["testing"] }
 # Same crate as the per-target normal dependency above, with `testing` on for dev
 # targets only: that's what publishes the virtual-device fixture and the
 # `list_directory` counter the app's oracle cell asserts on. A plain

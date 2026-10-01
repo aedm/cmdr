@@ -96,9 +96,12 @@ A bench compiles against its crate as an EXTERNAL one, so it sees neither `#[cfg
 The `testing` Cargo feature widens the few scaffolding items a bench needs (today: the root-read-pool installers in
 `indexing/read/enrichment.rs`, and `FileEntry` at the crate root). ❌ Don't reach for `required-features` to enable it:
 `cargo clippy --all-targets` silently SKIPS targets whose required features are off, and an unlinted, never-compiled
-benchmark rots. Instead the package dev-depends on itself (`cmdr = { path = ".", features = ["testing"] }`), which turns
-the feature on for every dev target and leaves it off for the lib and the shipped `Cmdr` binary. That self-dependency is
-load-bearing, and it's why `crate_deps.rs` carries a `#[cfg(test)] use cmdr_lib as _;` marker.
+benchmark rots. Instead the package dev-depends on itself (`cmdr-index = { path = ".", features = ["testing", ...] }`),
+which turns the feature on for every dev target and leaves it off for the lib and every shipped consumer. The workspace
+crates all do this. ❌ The app doesn't: a self dev-dependency links a second copy of it into its test binary, where the
+two copies' Objective-C classes collide (global, unmangled names; `ld` warns `duplicate symbol` and keeps one). The app
+has no `testing` feature of its own and turns on each crate's `testing` through a direct dev-dependency instead
+(`apps/desktop/src-tauri/Cargo.toml`).
 
 ## Frontend + Svelte
 
