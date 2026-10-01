@@ -302,19 +302,7 @@ impl S3Volume {
         if check_first {
             self.refuse_if_taken(client, target).await?;
         }
-        let upload_id = self.create_upload(client, target).await?;
-        let upload = UnfinishedUpload {
-            account: self.inner.account(),
-            bucket: target.bucket.to_string(),
-            key: target.key.to_string(),
-            upload_id: upload_id.clone(),
-        };
-        self.inner.ledger.started(&upload);
-        let mut guard = UploadGuard {
-            ledger: self.inner.ledger.clone(),
-            upload,
-            settled: false,
-        };
+        let (upload_id, mut guard) = self.start_recorded_upload(client, target).await?;
         let gone = Arc::new(AtomicBool::new(false));
         let sent = self
             .send_parts(client, target, &upload_id, &sizes, &mut reader, first, progress, &gone)
@@ -428,6 +416,29 @@ impl S3Volume {
         let initiated = parse_initiate_multipart(&answer.text()).map_err(|e| body_error(&e, target.remote))?;
         debug!(target: "volume", "s3 multipart upload started for {}", target.remote);
         Ok(initiated.upload_id)
+    }
+
+    /// Starts a multipart upload and records it in the ledger before its first
+    /// part, answering its id and the guard that aborts it unless settled.
+    pub(super) async fn start_recorded_upload(
+        &self,
+        client: &S3Client,
+        target: &WriteTarget<'_>,
+    ) -> Result<(String, UploadGuard), VolumeError> {
+        let upload_id = self.create_upload(client, target).await?;
+        let upload = UnfinishedUpload {
+            account: self.inner.account(),
+            bucket: target.bucket.to_string(),
+            key: target.key.to_string(),
+            upload_id: upload_id.clone(),
+        };
+        self.inner.ledger.started(&upload);
+        let guard = UploadGuard {
+            ledger: self.inner.ledger.clone(),
+            upload,
+            settled: false,
+        };
+        Ok((upload_id, guard))
     }
 
     /// Reads parts from `reader` as slots free up and sends them, reporting

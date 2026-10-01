@@ -34,10 +34,9 @@ use log::{debug, warn};
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::multipart_upload::{UploadGuard, abort_upload, retry_after, upload_refusal};
+use super::multipart_upload::{abort_upload, retry_after, upload_refusal};
 use super::paths::{Target, target_of};
 use super::query::{body_error, stored_mtime};
-use super::upload_ledger::UnfinishedUpload;
 use super::writes::{WriteTarget, overwrite_for};
 use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
@@ -455,19 +454,7 @@ impl S3Volume {
         if progress.checkpoint().await.is_break() {
             return Err(VolumeError::Cancelled(self.volume_id().to_string()));
         }
-        let upload_id = self.create_upload(client, target).await?;
-        let upload = UnfinishedUpload {
-            account: self.inner.account(),
-            bucket: target.bucket.to_string(),
-            key: target.key.to_string(),
-            upload_id: upload_id.clone(),
-        };
-        self.inner.ledger.started(&upload);
-        let mut guard = UploadGuard {
-            ledger: self.inner.ledger.clone(),
-            upload,
-            settled: false,
-        };
+        let (upload_id, mut guard) = self.start_recorded_upload(client, target).await?;
         let gone = Arc::new(AtomicBool::new(false));
         let copied = self
             .copy_parts(client, from, target, &upload_id, plan, progress, &gone)
