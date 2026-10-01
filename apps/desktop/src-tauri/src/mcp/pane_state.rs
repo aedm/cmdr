@@ -19,7 +19,11 @@ pub struct TabInfo {
 }
 
 /// Represents a file entry in a pane (simplified subset of the main FileEntry).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
+///
+/// `Default` exists for tests only: its zero is a file nobody looked at, claiming
+/// `is_directory: false`. Production rows always arrive whole from the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[cfg_attr(test, derive(Default))]
 #[serde(rename_all = "camelCase")]
 pub struct PaneFileEntry {
     pub name: String,
@@ -67,6 +71,8 @@ pub struct PaneFileEntry {
 }
 
 /// State of a single pane.
+// DEFAULT-OK: zero is "the frontend hasn't pushed this pane yet": no path, no rows, and
+// no `PaneFileEntry` to fake, which is what `PaneStateStore` holds until the first push.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaneState {
