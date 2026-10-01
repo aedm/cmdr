@@ -304,11 +304,11 @@ clash. Description `在当前文件夹中为选中的文件创建副本`.
 - Sentences land after a colon in `fileExplorer.pane.ejectFailedToast` / `.disconnectFailedToast`, so they continue it.
   Don't echo the wrapper's verb: `没法断开它`, `没有连接需要断开`; `没法` is the spoken stand-in for a second `无法`.
 - Unplug `拔下线缆` (`设备` is the subject). A timeout isn't failure: `可能过一会儿它会自己推出`.
-- The named refusals end like `unmountRefused` (`…，然后再次推出。`). Singular and plural app differ only in `它` /
-  `它们`. `其他 App` takes no measure word (`几个` would invent a count); `Intl.ListFormat` supplies the joiner.
-- `请关闭它在上面打开的内容` (`内容`, since "anything" is wider than files; close, not quit). A disk image `还开着` (the
-  English says "open", unlike the "mounted" `挂载着` elsewhere). `macOS 还在处理这个驱动器`: `处理`, since the system's
-  background work isn't an app using it.
+- Either wrapper may concern a share or a phone, so the refusals share `X 还开着那里的文件。…，然后再试一次。`, never
+  `这个驱动器` or `再次推出`. `请把它们关掉` points at the files, so one tail serves one app or several. `其他 App`
+  takes no measure word (`几个` would invent a count); `Intl.ListFormat` supplies the joiner. The aside keeps Cmdr as
+  subject, never `我们`.
+- A disk image `还开着` (the English says "open", unlike the "mounted" `挂载着` elsewhere); stored there → `那里存放的`.
 - `请稍等一会儿` / `请稍等片刻` mirror the two lengths. Cmdr's own bug: `发送一份报告`, never `发送错误报告`.
 - Processes go last (`分别是 {processes}`): `名为…的` can't hold `其他`.
 

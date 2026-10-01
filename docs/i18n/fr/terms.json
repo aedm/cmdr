@@ -920,7 +920,7 @@
     "chosen": "Éjecter",
     "confidence": "high",
     "decision": "Éjection et déconnexion refusées : les neuf clés `errors.eject.*`",
-    "forms": "Eject all → Tout éjecter; eject it again → éjectez-le à nouveau",
+    "forms": "Eject all → Tout éjecter; Eject that image first → Éjectez d’abord cette image",
     "sources": "macOS AppKit (NSNavEjectButton), Finder (Éjecter, Tout éjecter)"
   },
   "email": {

@@ -564,9 +564,11 @@ In progress → `wordt losgekoppeld`; already gone → `werd losgekoppeld` (the 
 
 ## Wie de schijf vasthoudt: de zes geweigerde-uitwerpzinnen (`errors.eject.unmountRefusedBy*`, `.otherApps`, `.otherProcesses`)
 
-- One verb for the family: `{app} gebruikt deze schijf nog` / `{apps} gebruiken …`, the name first and without an
-  article (a process name is a proper noun).
-- ❌ No pronoun back to `{app}`: `Sluit alles wat daar openstaat`.
+- One skeleton for the family: `X heeft daar nog bestanden open.` + `… en probeer het daarna opnieuw.` Either wrapper
+  may concern a share or a phone, so `daar`, never `deze schijf` or `werp hem uit`. The name leads without an article (a
+  process name is a proper noun).
+- ❌ No pronoun back to `{app}`: `Sluit ze` points at `bestanden`. The aside keeps Cmdr as subject
+  (`Cmdr heeft geen appnaam`), never `We`.
 - `andere apps` (never `programma's`), `nog andere` (`andere processen` reads as a name); `Intl.ListFormat` joins.
 - Disk image → `schijfkopie`, repeated as a noun since `schijf` is also a de-word.
 - `staat nog open` (tentative) keeps EN's everyday "open" over the technical `gekoppeld`.

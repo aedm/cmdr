@@ -23,9 +23,9 @@
   "@goToPath.dialog.cancel": {
     "sourceHash": "19766ed"
   },
-  "goToPath.dialog.confirm": "Ir a la carpeta",
+  "goToPath.dialog.confirm": "Ir",
   "@goToPath.dialog.confirm": {
-    "sourceHash": "26fc1cf"
+    "sourceHash": "6cc8519"
   },
   "goToPath.dialog.ancestorHint": "Esta ruta no existe. El lugar más cercano al que ir es {dir}.",
   "@goToPath.dialog.ancestorHint": {

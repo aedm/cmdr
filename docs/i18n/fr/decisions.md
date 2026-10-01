@@ -355,12 +355,13 @@ values write the catalog's `’`.
 
 ## Le refus d'éjection nommé : qui tient le disque (`errors.eject.unmountRefusedBy*`, `.otherApps`)
 
-- `{app} utilise encore ce disque.`: active like the generic sibling; `{app}` is a bare subject (unknown gender).
-- Close what it has open → `Fermez ce que cette app y a ouvert`, never `ce qu’il y a ouvert` (binds to `ce disque`).
+- Either frame may concern a disk, a share, or a phone, so the place is `y`, never `ce disque`, and the advice ends
+  `puis réessayez`, never `éjectez-le à nouveau`. One skeleton: `X y garde encore des fichiers ouverts.` (`{app} y a…`
+  would read as `il y a`).
+- `{app}` is a bare subject (unknown gender); `Fermez-les` points at `fichiers`. The aside keeps Cmdr as subject
+  (`Cmdr n’a pas de nom d’app`), never `Nous`.
 - other apps → `d’autres apps`, lowercase, no period; `Intl.ListFormat` joins the list.
-- The disk-image key starts from the drive (`Ce disque contient une image disque encore ouverte.`) to avoid stacking
-  three `disque`. macOS still working → `travaille encore sur ce disque`, a different verb from `utiliser` on purpose
-  (nothing to close, only wait).
+- stored there → `qui s’y trouve` (`Une image disque qui s’y trouve est encore ouverte.`).
 - send a report → `envoyez un rapport` (plain: nothing crashed), never `un retour` (the feedback surface).
 
 ## La notification de corbeille : annuler et remettre en place (`fileOperations.trash.*`, `commands.fileGoToTrash.*`)
@@ -596,7 +597,7 @@ values write the catalog's `’`.
 
 - Open <App> → `Ouvrir Cmdr`, unquoted (Dock.app quotes file names only). Go to folder → `Aller au dossier` (Finder).
   Connect to Server… → `Se connecter au serveur…`. Search files… → `Rechercher des fichiers…`, as
-  `menu.edit.searchFiles`.
+  `menu.edit.searchFiles`. The dialog’s Go button → `Aller`, as Finder’s (`FR24`) and the Go menu.
 - `{name} ({parent})` is identical to English (Finder’s own `^0 (^1)` line) and justified.
 
 ## La proposition « Afficher dans le Finder » et l'avis de première fois (`main.revealNudge.*`, `main.revealActivation.*`, `settings.behavior.reveal*`)

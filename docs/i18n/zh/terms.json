@@ -1659,7 +1659,7 @@
     "confidence": "high",
     "decision": "Standalone conflict prompt",
     "exceptions": {
-      "errors.eject.busy": "\"still moving files on this drive\" is rendered 读写 (reading and writing), the busy-drive family's wording."
+      "errors.eject.busy": "\"still moving files there\" is rendered 读写 (reading and writing), the busy-drive family's wording."
     },
     "forms": "F6 移动; in a sentence with a destination 移动到“{destination}”; out of / into an archive 移出 / 移入",
     "note": "A progress line or conflict prompt naming the operation writes 移动到 so it matches the queue row's 正在移动; everyday prose may use Finder's contraction 移到 (移到废纸篓, 把 Cmdr 移到“应用程序”文件夹).",

@@ -796,7 +796,7 @@
   "eject": {
     "chosen": "Ejetar",
     "accept": ["ejet", "ejeç"],
-    "forms": "Ejete-o de novo; noun a ejeção",
+    "forms": "imperative Ejete (Ejete a imagem primeiro); noun a ejeção",
     "confidence": "confirmed",
     "sources": "macOS Finder pt-BR",
     "decision": "Eject and disconnect refusals"

@@ -705,10 +705,12 @@ The notice never suggests deleting: these may be the only copies. Its one action
 
 ## Az elutasított kiadás megnevezi, KI fogja a meghajtót (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`/`.otherProcesses`)
 
-- Every key keeps the family skeleton `X még használja ezt a meghajtót.` + a `te` imperative, active like English, over
-  Apple's passive `által használatban van`.
+- Every key keeps the family skeleton `X még nyitva tart ott fájlokat.` + `…, majd próbáld újra.`, active like English,
+  over Apple's passive `által használatban van`. Either wrapper may concern a share or a phone, so `ott`, never
+  `ezt a meghajtót` or `add ki újra`.
 - `{app}` leads bare, unquoted: its first sound is unknown, so no article. `{apps}` (a list) also takes none, plus a
-  plural verb (`még használják`).
+  plural verb (`még nyitva tartanak`); `Zárd be őket` points at `fájlokat`. The aside keeps Cmdr as subject
+  (`A Cmdr nem ismeri…`), never `nem ismerjük`.
 - other apps → `egyéb alkalmazások` (Thunar), over `más` (a different kind); others → `egyéb folyamatok`.
 - disk image → `lemezkép`; is still open → `még nyitva van`, over `csatolva van`.
 - Cmdr itself → `Maga a Cmdr`; send a report → `küldj jelentést`, never `hibajelentést`.

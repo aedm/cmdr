@@ -904,7 +904,7 @@
     "chosen": "auswerfen",
     "confidence": "high",
     "decision": "Auswerfen und Trennen: die neun Absagen",
-    "forms": "button Auswerfen; {name} auswerfen; Eject that image first → Wirf erst das Image aus, dann das Laufwerk.",
+    "forms": "button Auswerfen; {name} auswerfen; Eject that image first → Wirf erst das Image aus, dann versuche es erneut.",
     "sources": "macOS Finder (Auswerfen), AppKit (NSNavEjectButton)"
   },
   "email": {

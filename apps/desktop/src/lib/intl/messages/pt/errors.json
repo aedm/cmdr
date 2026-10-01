@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "O Cmdr ainda está movendo arquivos neste disco. Ejete-o assim que isso terminar.",
+  "errors.eject.busy": "O Cmdr ainda está movendo arquivos lá. Tente de novo assim que isso terminar.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Esse disco não está mais conectado, então não há nada para ejetar.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Algo ainda está usando este disco. Feche os arquivos e apps abertos, depois ejete-o de novo.",
+  "errors.eject.unmountRefused": "Algo ainda está com arquivos abertos lá. Feche os arquivos e apps abertos, depois tente de novo.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} ainda está usando este disco. Feche o que ele tiver aberto lá, depois ejete-o de novo.",
+  "errors.eject.unmountRefusedByApp": "{app} ainda está com arquivos abertos lá. Feche-os, depois tente de novo.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} ainda estão usando este disco. Feche o que eles tiverem aberto lá, depois ejete-o de novo.",
+  "errors.eject.unmountRefusedByApps": "{apps} ainda estão com arquivos abertos lá. Feche-os, depois tente de novo.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "outros apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Um processo chamado {process} ainda está usando este disco. (Não temos o nome do app, só o nome do processo.)",
+  "errors.eject.unmountRefusedByProcess": "Um processo chamado {process} ainda está com arquivos abertos lá. (O Cmdr não tem o nome do app, só o nome do processo.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} processos chamados {processes} ainda estão usando este disco. (Não temos os nomes dos apps, só os nomes dos processos.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} processos chamados {processes} ainda estão com arquivos abertos lá. (O Cmdr não tem os nomes dos apps, só os nomes dos processos.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "outros",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Uma imagem de disco armazenada neste disco ainda está montada. Ejete a imagem primeiro, depois ejete o disco.",
+  "errors.eject.unmountRefusedByDiskImage": "Uma imagem de disco armazenada lá ainda está montada. Ejete a imagem primeiro, depois tente de novo.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "O macOS ainda está trabalhando com este disco. Espere um minuto, depois ejete-o de novo.",
+  "errors.eject.unmountRefusedBySystem": "O macOS ainda está com arquivos abertos lá. Espere um minuto, depois tente de novo.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "O próprio Cmdr ainda está usando este disco. Espere um momento e ejete-o de novo, ou envie um relatório se isso continuar acontecendo.",
+  "errors.eject.unmountRefusedByCmdr": "O próprio Cmdr ainda está com arquivos abertos lá. Espere um momento e tente de novo, ou envie um relatório se isso continuar acontecendo.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "O disco ainda não respondeu, então a ejeção ainda pode ser concluída sozinha.",
   "@errors.eject.timedOut": {

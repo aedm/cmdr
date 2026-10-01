@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "A Cmdr még fájlokat mozgat ezen a meghajtón. Add ki, amint ez befejeződik.",
+  "errors.eject.busy": "A Cmdr még fájlokat mozgat ott. Próbáld újra, amint ez befejeződik.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Ez a meghajtó már nincs csatlakoztatva, így nincs mit kiadni.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Valami még használja ezt a meghajtót. Zárd be a nyitott fájlokat és alkalmazásokat, majd add ki újra.",
+  "errors.eject.unmountRefused": "Valami még nyitva tart ott fájlokat. Zárd be a nyitott fájlokat és alkalmazásokat, majd próbáld újra.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} még használja ezt a meghajtót. Zárd be, amit ott nyitva tart, majd add ki újra.",
+  "errors.eject.unmountRefusedByApp": "{app} még nyitva tart ott fájlokat. Zárd be őket, majd próbáld újra.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} még használják ezt a meghajtót. Zárd be, amit ott nyitva tartanak, majd add ki újra.",
+  "errors.eject.unmountRefusedByApps": "{apps} még nyitva tartanak ott fájlokat. Zárd be őket, majd próbáld újra.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "egyéb alkalmazások",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Egy {process} nevű folyamat még használja ezt a meghajtót. (Az app nevét nem ismerjük, csak a folyamatét.)",
+  "errors.eject.unmountRefusedByProcess": "Egy {process} nevű folyamat még nyitva tart ott fájlokat. (A Cmdr nem ismeri az app nevét, csak a folyamatét.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} folyamat még használja ezt a meghajtót: {processes}. (Az appok nevét nem ismerjük, csak a folyamatokét.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} folyamat még nyitva tart ott fájlokat: {processes}. (A Cmdr nem ismeri az appok nevét, csak a folyamatokét.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "egyéb folyamatok",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Ezen a meghajtón még nyitva van egy lemezkép. Előbb azt add ki, majd ezt a meghajtót.",
+  "errors.eject.unmountRefusedByDiskImage": "Ott még nyitva van egy lemezkép. Előbb azt add ki, majd próbáld újra.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "A macOS még dolgozik ezen a meghajtón. Várj egy percet, majd add ki újra.",
+  "errors.eject.unmountRefusedBySystem": "A macOS még nyitva tart ott fájlokat. Várj egy percet, majd próbáld újra.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Maga a Cmdr még használja ezt a meghajtót. Várj egy pillanatot, és add ki újra, vagy küldj jelentést, ha továbbra is előfordul.",
+  "errors.eject.unmountRefusedByCmdr": "Maga a Cmdr még nyitva tart ott fájlokat. Várj egy pillanatot, és próbáld újra, vagy küldj jelentést, ha továbbra is előfordul.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "A meghajtó még nem válaszolt, de a kiadás magától is befejeződhet.",
   "@errors.eject.timedOut": {

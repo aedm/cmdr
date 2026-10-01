@@ -1920,9 +1920,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr 还在读写这个驱动器上的文件。完成后再推出。",
+  "errors.eject.busy": "Cmdr 还在那里读写文件。完成后再试一次。",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "这个驱动器已经断开了，所以不用再推出。",
   "@errors.eject.volumeNotFound": {
@@ -1944,45 +1944,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "还有东西在使用这个驱动器。请关闭打开的文件和 App，然后再次推出。",
+  "errors.eject.unmountRefused": "还有东西开着那里的文件。请关闭打开的文件和 App，然后再试一次。",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} 还在使用这个驱动器。请关闭它在上面打开的内容，然后再次推出。",
+  "errors.eject.unmountRefusedByApp": "{app} 还开着那里的文件。请把它们关掉，然后再试一次。",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} 还在使用这个驱动器。请关闭它们在上面打开的内容，然后再次推出。",
+  "errors.eject.unmountRefusedByApps": "{apps} 还开着那里的文件。请把它们关掉，然后再试一次。",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "其他 App",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "有一个名为 {process} 的进程还在使用这个驱动器。（我们拿不到 App 名称，只有进程名。）",
+  "errors.eject.unmountRefusedByProcess": "有一个名为 {process} 的进程还开着那里的文件。（Cmdr 拿不到 App 名称，只有进程名。）",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "有 {countText} 个进程还在使用这个驱动器，分别是 {processes}。（我们拿不到 App 名称，只有进程名。）",
+  "errors.eject.unmountRefusedByProcesses": "有 {countText} 个进程还开着那里的文件，分别是 {processes}。（Cmdr 拿不到 App 名称，只有进程名。）",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "其他进程",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "这个驱动器上有一个磁盘映像还开着。请先推出那个映像，再推出这个驱动器。",
+  "errors.eject.unmountRefusedByDiskImage": "那里存放的一个磁盘映像还开着。请先推出那个映像，然后再试一次。",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS 还在处理这个驱动器。请稍等一会儿，然后再次推出。",
+  "errors.eject.unmountRefusedBySystem": "macOS 还开着那里的文件。请稍等一会儿，然后再试一次。",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己还在使用这个驱动器。请稍等片刻，然后再次推出；如果一直这样，请发送一份报告。",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己还开着那里的文件。请稍等片刻，然后再试一次；如果一直这样，请发送一份报告。",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "这个驱动器还没有响应，可能过一会儿它会自己推出。",
   "@errors.eject.timedOut": {

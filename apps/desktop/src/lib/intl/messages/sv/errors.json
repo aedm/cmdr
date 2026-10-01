@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr flyttar fortfarande filer på den här enheten. Mata ut den när det är klart.",
+  "errors.eject.busy": "Cmdr flyttar fortfarande filer där. Försök igen när det är klart.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Den enheten är inte längre ansluten, så det finns inget att mata ut.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Något använder fortfarande den här enheten. Stäng öppna filer och appar och mata sedan ut igen.",
+  "errors.eject.unmountRefused": "Något har fortfarande filer öppna där. Stäng öppna filer och appar och försök sedan igen.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} använder fortfarande den här enheten. Stäng allt den har öppet där och mata sedan ut igen.",
+  "errors.eject.unmountRefusedByApp": "{app} har fortfarande filer öppna där. Stäng dem och försök sedan igen.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} använder fortfarande den här enheten. Stäng allt de har öppet där och mata sedan ut igen.",
+  "errors.eject.unmountRefusedByApps": "{apps} har fortfarande filer öppna där. Stäng dem och försök sedan igen.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "andra appar",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "En process som heter {process} använder fortfarande den här enheten. (Vi har inget appnamn, bara processnamnet.)",
+  "errors.eject.unmountRefusedByProcess": "En process som heter {process} har fortfarande filer öppna där. (Cmdr har inget appnamn, bara processnamnet.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} processer som heter {processes} använder fortfarande den här enheten. (Vi har inga appnamn, bara processnamnen.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} processer som heter {processes} har fortfarande filer öppna där. (Cmdr har inga appnamn, bara processnamnen.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "andra",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "En skivavbild som ligger på den här enheten är fortfarande öppen. Mata ut avbilden först och sedan enheten.",
+  "errors.eject.unmountRefusedByDiskImage": "En skivavbild som ligger där är fortfarande öppen. Mata ut avbilden först och försök sedan igen.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS arbetar fortfarande med den här enheten. Vänta en minut och mata sedan ut igen.",
+  "errors.eject.unmountRefusedBySystem": "macOS har fortfarande filer öppna där. Vänta en minut och försök sedan igen.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr själv använder fortfarande den här enheten. Vänta en stund och mata ut igen, eller skicka en rapport om det fortsätter.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr själv har fortfarande filer öppna där. Vänta en stund och försök igen, eller skicka en rapport om det fortsätter.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Enheten har inte svarat än, så utmatningen kan fortfarande gå igenom.",
   "@errors.eject.timedOut": {

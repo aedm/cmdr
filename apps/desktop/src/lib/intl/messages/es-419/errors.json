@@ -655,9 +655,9 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "89559ef"
   },
-  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía está usando este disco. Espera un momento y vuelve a expulsarlo. Si sigue pasando, envía un reporte.",
+  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía tiene archivos abiertos ahí. Espera un momento y vuelve a intentarlo. Si sigue pasando, envía un reporte.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "b6c70d2"
+    "sourceHash": "ea88792"
   },
   "errors.eject.unexpected": "Algo salió mal y Cmdr no pudo saber qué.",
   "@errors.eject.unexpected": {

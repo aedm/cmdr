@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Auf diesem Laufwerk läuft noch ein Vorgang von Cmdr. Wirf es aus, sobald er fertig ist.",
+  "errors.eject.busy": "Dort läuft noch ein Vorgang von Cmdr. Versuche es erneut, sobald er fertig ist.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Dieses Laufwerk ist nicht mehr verbunden, es gibt also nichts auszuwerfen.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Dieses Laufwerk ist noch in Verwendung. Schließe offene Dateien und beende laufende Apps, dann wirf es erneut aus.",
+  "errors.eject.unmountRefused": "Dort sind noch Dateien geöffnet. Schließe offene Dateien und beende laufende Apps, dann versuche es erneut.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} verwendet dieses Laufwerk noch. Schließe alles, was dort geöffnet ist, dann wirf es erneut aus.",
+  "errors.eject.unmountRefusedByApp": "{app} hat dort noch Dateien geöffnet. Schließe sie, dann versuche es erneut.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} verwenden dieses Laufwerk noch. Schließe alles, was dort geöffnet ist, dann wirf es erneut aus.",
+  "errors.eject.unmountRefusedByApps": "{apps} haben dort noch Dateien geöffnet. Schließe sie, dann versuche es erneut.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "andere Apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Ein Prozess namens {process} verwendet dieses Laufwerk noch. (Wir kennen keinen App-Namen, nur den Prozessnamen.)",
+  "errors.eject.unmountRefusedByProcess": "Ein Prozess namens {process} hat dort noch Dateien geöffnet. (Cmdr kennt keinen App-Namen, nur den Prozessnamen.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} Prozesse namens {processes} verwenden dieses Laufwerk noch. (Wir kennen keine App-Namen, nur die Prozessnamen.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} Prozesse namens {processes} haben dort noch Dateien geöffnet. (Cmdr kennt keine App-Namen, nur die Prozessnamen.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "weitere",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Auf diesem Laufwerk liegt ein Image, das noch geöffnet ist. Wirf erst das Image aus, dann das Laufwerk.",
+  "errors.eject.unmountRefusedByDiskImage": "Dort liegt ein Image, das noch geöffnet ist. Wirf erst das Image aus, dann versuche es erneut.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS arbeitet noch mit diesem Laufwerk. Warte eine Minute, dann wirf es erneut aus.",
+  "errors.eject.unmountRefusedBySystem": "macOS hat dort noch Dateien geöffnet. Warte eine Minute, dann versuche es erneut.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr selbst verwendet dieses Laufwerk noch. Warte einen Moment und wirf es dann erneut aus, oder sende einen Fehlerbericht, wenn das immer wieder passiert.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr selbst hat dort noch Dateien geöffnet. Warte einen Moment und versuche es erneut, oder sende einen Fehlerbericht, wenn das immer wieder passiert.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Das Laufwerk hat noch nicht geantwortet, das Auswerfen klappt also womöglich trotzdem noch.",
   "@errors.eject.timedOut": {

@@ -23,9 +23,9 @@
   "@goToPath.dialog.cancel": {
     "sourceHash": "19766ed"
   },
-  "goToPath.dialog.confirm": "Ir para pasta",
+  "goToPath.dialog.confirm": "Ir",
   "@goToPath.dialog.confirm": {
-    "sourceHash": "26fc1cf"
+    "sourceHash": "6cc8519"
   },
   "goToPath.dialog.ancestorHint": "Este caminho não existe. O lugar mais próximo para ir é {dir}.",
   "@goToPath.dialog.ancestorHint": {

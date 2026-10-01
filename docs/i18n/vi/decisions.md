@@ -567,16 +567,17 @@ source is Apple's own Connect to Server dialog (`NetAuthAgent.app`).
 
 ## macOS từ chối tháo ổ đĩa, và Cmdr nói rõ ai đang giữ (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, `errors.eject.otherProcesses`)
 
-- The family shares `… vẫn đang dùng ổ đĩa này. Hãy …, rồi tháo lại.` in the ACTIVE voice (siblings already are), over
-  AppKit's passive `đang được “%@” sử dụng`, which needs a quoted name; `{app}` goes bare.
-- `…ByApp` and `…ByApps` differ only by `nó` / `chúng`: the list just before already says the number, so ❌ no invented
-  number marker. The list's last item `errors.eject.otherApps` MUST be `các ứng dụng khác`: without `các`,
-  `… và ứng dụng khác` reads "and one more app"; likewise `otherProcesses` → `các tiến trình khác`.
+- The family shares `… vẫn đang mở tệp ở đó. Hãy …, rồi thử lại.` in the ACTIVE voice, over AppKit's passive
+  `đang được “%@” sử dụng`, which needs a quoted name; `{app}` goes bare. Either wrapper may concern a share or a phone,
+  so `ở đó`, never `ổ đĩa này` or `tháo lại`.
+- `…ByApp` and `…ByApps` share `Hãy đóng các tệp đó`: no pronoun, and ❌ no invented number marker. The list's last item
+  `errors.eject.otherApps` MUST be `các ứng dụng khác`: without `các`, `… và ứng dụng khác` reads "and one more app";
+  likewise `otherProcesses` → `các tiến trình khác`.
 - called → `có tên` (Finder `có tên là`); the "(We don’t have …)" aside is identical in `…ByProcess(es)`.
-- disk image → `ảnh đĩa` (Disk Utility, `DiskImages.framework`, sweep 2026-09-16), ❌ never `ảnh` (a photo). "stored on
-  this drive" → `nằm trên`, over `lưu trữ` (reads as backup).
-- "still working with" → `vẫn đang làm việc với` (macOS `Đang làm việc với %@`), also in the busy tooltips. "Wait a
-  minute" vs "Wait a moment" keep `một phút` / `một chút`.
+- disk image → `ảnh đĩa` (Disk Utility, `DiskImages.framework`, sweep 2026-09-16), ❌ never `ảnh` (a photo). "stored
+  there" → `nằm ở đó`, over `lưu trữ` (reads as backup).
+- The busy tooltips keep `vẫn đang làm việc với` (macOS `Đang làm việc với %@`). "Wait a minute" vs "Wait a moment" keep
+  `một phút` / `một chút`.
 - "send a report" → a bare `gửi báo cáo`, the button's own label.
 
 ## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)

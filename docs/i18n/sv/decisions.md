@@ -307,10 +307,12 @@ catalog.
 - `koppla från` is programmatic, `koppla ur` the device out of the port, `dra ur` the cable.
 - The noun `utmatningen` in `timedOut` (tentative): ❌ not `så den kan fortfarande matas ut`, which reads as "you can
   still eject it".
-- Named-app refusals (`unmountRefusedBy*`) keep `unmountRefused`'s frame with `{app}` as a bare subject; active over
-  AppKit's passive `används av ”%@”`, and the key forbids quoting the name. `other apps` → `andra appar`; other
-  processes → bare `andra`. macOS `arbetar fortfarande med` (also the busy tooltips) keeps the English split from an
-  app's `använder`; `Vänta en minut` vs `Vänta en stund` too.
+- The refusals (`unmountRefused*`) share one skeleton, `X har fortfarande filer öppna där.` +
+  `… och försök sedan igen.`: either wrapper may concern a share or a phone, so never `den här enheten` or
+  `mata ut igen`. `{app}` is a bare subject; active over AppKit's passive `används av ”%@”`, and the key forbids quoting
+  the name. `Stäng dem` points at `filer`; the aside keeps Cmdr as subject, never `Vi`. `other apps` → `andra appar`;
+  other processes → bare `andra`. The busy tooltips keep `arbetar fortfarande med`; `Vänta en minut` vs `Vänta en stund`
+  follows English.
 - disk image → `skivavbild`, short `avbilden`; ❌ not MS's `avbildning` (Windows side).
 - Disabled buttons' tooltips skip the menus' `(upptagen)` marker.
 

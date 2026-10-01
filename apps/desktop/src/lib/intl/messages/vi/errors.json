@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr vẫn đang chuyển tệp trên ổ đĩa này. Hãy tháo khi việc đó hoàn tất.",
+  "errors.eject.busy": "Cmdr vẫn đang chuyển tệp ở đó. Hãy thử lại khi việc đó hoàn tất.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Ổ đĩa đó không còn kết nối nữa, nên không có gì để tháo.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Vẫn còn thứ gì đó đang dùng ổ đĩa này. Hãy đóng các tệp và ứng dụng đang mở, rồi tháo lại.",
+  "errors.eject.unmountRefused": "Vẫn còn thứ gì đó đang mở tệp ở đó. Hãy đóng các tệp và ứng dụng đang mở, rồi thử lại.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} vẫn đang dùng ổ đĩa này. Hãy đóng những gì nó đang mở ở đó, rồi tháo lại.",
+  "errors.eject.unmountRefusedByApp": "{app} vẫn đang mở tệp ở đó. Hãy đóng các tệp đó, rồi thử lại.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} vẫn đang dùng ổ đĩa này. Hãy đóng những gì chúng đang mở ở đó, rồi tháo lại.",
+  "errors.eject.unmountRefusedByApps": "{apps} vẫn đang mở tệp ở đó. Hãy đóng các tệp đó, rồi thử lại.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "các ứng dụng khác",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Một tiến trình có tên {process} vẫn đang dùng ổ đĩa này. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
+  "errors.eject.unmountRefusedByProcess": "Một tiến trình có tên {process} vẫn đang mở tệp ở đó. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} tiến trình có tên {processes} vẫn đang dùng ổ đĩa này. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} tiến trình có tên {processes} vẫn đang mở tệp ở đó. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "các tiến trình khác",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Một ảnh đĩa nằm trên ổ đĩa này vẫn đang mở. Hãy tháo ảnh đĩa đó trước, rồi tháo ổ đĩa này.",
+  "errors.eject.unmountRefusedByDiskImage": "Một ảnh đĩa nằm ở đó vẫn đang mở. Hãy tháo ảnh đĩa đó trước, rồi thử lại.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS vẫn đang làm việc với ổ đĩa này. Hãy đợi một phút rồi tháo lại.",
+  "errors.eject.unmountRefusedBySystem": "macOS vẫn đang mở tệp ở đó. Hãy đợi một phút rồi thử lại.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Chính Cmdr vẫn đang dùng ổ đĩa này. Hãy đợi một chút rồi tháo lại, hoặc gửi báo cáo nếu vẫn tiếp diễn.",
+  "errors.eject.unmountRefusedByCmdr": "Chính Cmdr vẫn đang mở tệp ở đó. Hãy đợi một chút rồi thử lại, hoặc gửi báo cáo nếu vẫn tiếp diễn.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Ổ đĩa vẫn chưa phản hồi, nên việc tháo vẫn có thể tự hoàn tất.",
   "@errors.eject.timedOut": {

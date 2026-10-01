@@ -23,9 +23,9 @@
   "@goToPath.dialog.cancel": {
     "sourceHash": "19766ed"
   },
-  "goToPath.dialog.confirm": "Gehe zu Ordner",
+  "goToPath.dialog.confirm": "Gehe zu",
   "@goToPath.dialog.confirm": {
-    "sourceHash": "26fc1cf"
+    "sourceHash": "6cc8519"
   },
   "goToPath.dialog.ancestorHint": "Dieser Pfad existiert nicht. Am nächsten liegt {dir}.",
   "@goToPath.dialog.ancestorHint": {

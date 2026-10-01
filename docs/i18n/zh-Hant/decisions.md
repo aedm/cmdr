@@ -266,7 +266,8 @@ The one case where waiting can't help, so no temporary tone (no `現在`, no `�
 ## Eject refused, and who holds the drive (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, `.otherProcesses`)
 
 - Inserted names stay bare, against AppKit's `「%@」`: a joined list can't be quoted per item.
-- `還在用` over Apple's written `正在使用中`; `macOS 還在處理…` because "working with" means only waiting helps.
+- Either wrapper may concern a share or a phone, so the refusals share `X 還開著那裡的檔案。…，然後再試一次。`, never
+  `這個磁碟機` or `再退出一次`. `請把它們關掉` points at the files; the aside keeps Cmdr as subject, never `我們`.
 - A disk image `磁碟映像檔` (AP-TW = AP-HK), then `那個映像檔`.
 - Processes: `…，分別是 {processes}。` over `名為 {processes} 的程序`: the list can end `其他程序`.
 

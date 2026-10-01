@@ -23,9 +23,9 @@
   "@goToPath.dialog.cancel": {
     "sourceHash": "19766ed"
   },
-  "goToPath.dialog.confirm": "Aller au dossier",
+  "goToPath.dialog.confirm": "Aller",
   "@goToPath.dialog.confirm": {
-    "sourceHash": "26fc1cf"
+    "sourceHash": "6cc8519"
   },
   "goToPath.dialog.ancestorHint": "Ce chemin n’existe pas. L’emplacement le plus proche où aller est {dir}.",
   "@goToPath.dialog.ancestorHint": {

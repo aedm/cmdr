@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr verplaatst nog bestanden op deze schijf. Werp hem uit zodra dat klaar is.",
+  "errors.eject.busy": "Cmdr verplaatst daar nog bestanden. Probeer het opnieuw zodra dat klaar is.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Die schijf is niet meer aangesloten, dus er valt niets uit te werpen.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Deze schijf is nog in gebruik. Sluit open bestanden, stop geopende apps en werp hem daarna opnieuw uit.",
+  "errors.eject.unmountRefused": "Iets heeft daar nog bestanden open. Sluit open bestanden, stop geopende apps en probeer het daarna opnieuw.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} gebruikt deze schijf nog. Sluit alles wat daar openstaat en werp hem daarna opnieuw uit.",
+  "errors.eject.unmountRefusedByApp": "{app} heeft daar nog bestanden open. Sluit ze en probeer het daarna opnieuw.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} gebruiken deze schijf nog. Sluit alles wat daar openstaat en werp hem daarna opnieuw uit.",
+  "errors.eject.unmountRefusedByApps": "{apps} hebben daar nog bestanden open. Sluit ze en probeer het daarna opnieuw.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "andere apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Een proces met de naam {process} gebruikt deze schijf nog. (We hebben geen appnaam, alleen de procesnaam.)",
+  "errors.eject.unmountRefusedByProcess": "Een proces met de naam {process} heeft daar nog bestanden open. (Cmdr heeft geen appnaam, alleen de procesnaam.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} processen met de namen {processes} gebruiken deze schijf nog. (We hebben geen appnamen, alleen de procesnamen.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} processen met de namen {processes} hebben daar nog bestanden open. (Cmdr heeft geen appnamen, alleen de procesnamen.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "nog andere",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Een schijfkopie op deze schijf staat nog open. Werp eerst die schijfkopie uit en daarna deze schijf.",
+  "errors.eject.unmountRefusedByDiskImage": "Een schijfkopie die daar is opgeslagen, staat nog open. Werp eerst die schijfkopie uit en probeer het daarna opnieuw.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS is nog met deze schijf bezig. Wacht een minuutje en werp hem daarna opnieuw uit.",
+  "errors.eject.unmountRefusedBySystem": "macOS heeft daar nog bestanden open. Wacht een minuutje en probeer het daarna opnieuw.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr zelf gebruikt deze schijf nog. Wacht even en werp hem opnieuw uit, of verstuur een rapport als het blijft gebeuren.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr zelf heeft daar nog bestanden open. Wacht even en probeer het opnieuw, of verstuur een rapport als het blijft gebeuren.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "De schijf heeft nog niet gereageerd, dus hij wordt misschien toch nog uitgeworpen.",
   "@errors.eject.timedOut": {

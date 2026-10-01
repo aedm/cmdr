@@ -32,8 +32,8 @@ the installed macOS `pt_BR.lproj` bundles.
 
 ## Go to folder (`menu.go.goToPath`, `commands.navGoToPath.label`, `goToPath.dialog.title`/`confirm`)
 
-- `Ir para pasta` (Finder N83, sentence-cased) for menu, title, and button alike: Finder's dialog says
-  `Ir Para a Pasta`, but one command keeps one name (`i18n-term-consistency`).
+- `Ir para pasta` (Finder N83, sentence-cased) for menu and title: Finder's dialog says `Ir Para a Pasta`, but one
+  command keeps one name (`i18n-term-consistency`). The button "Go" → `Ir`, Finder's own (`FR24`) and the Go menu's.
 
 ## Archives (`settings.archives.*`, `fileExplorer.archiveEnterMenu.*`, `fileExplorer.readOnly.archiveTitle`/`archiveMessage`, `fileOperations.archivePassword.*`, `queue.row.label`)
 
@@ -139,11 +139,12 @@ the installed macOS `pt_BR.lproj` bundles.
 
 - Each value follows a colon in `fileExplorer.pane.ejectFailedToast` / `disconnectFailedToast`, so it's a full sentence
   with a capital. `timedOut` says `ainda pode ser concluída sozinha`, never a failure.
-- The named refusals share `<sujeito> ainda está usando este disco. <ação>, depois ejete-o de novo.` `{app}` opens bare
-  (a name like `mds_stores` isn't an app, so no `O app`); `ele` / `eles` are safe because the referent is always an app,
-  masculine. `outros apps` is a list's last item: the `e` comes from `Intl.ListFormat`, never the string.
-- `BySystem` says `está trabalhando com` because nothing can be closed; a disk image is `ainda está montada`, which
-  points at ejecting.
+- Either wrapper may concern a share or a phone, so the refusals share
+  `<sujeito> ainda está com arquivos abertos lá. <ação>, depois tente de novo.`, never `este disco` or `ejete-o`.
+  `{app}` opens bare (a name like `mds_stores` isn't an app, so no `O app`); `Feche-os` points at `arquivos`. The aside
+  keeps `O Cmdr` as subject, never `Não temos`. `outros apps` is a list's last item: the `e` comes from
+  `Intl.ListFormat`, never the string.
+- A disk image is `ainda está montada`, which points at ejecting it.
 
 ## Trash buttons and refusals (`fileOperations.trash.*`, `commands.fileGoToTrash.*`, `errors.mutation.trash*`, `errors.write.trashRefused.title`)
 

@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr 還在這個磁碟機上移動檔案。等它做完再退出。",
+  "errors.eject.busy": "Cmdr 還在那裡移動檔案。等它做完再試一次。",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "那個磁碟機已經不在了，沒有東西需要退出。",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "還有東西在用這個磁碟機。請關掉開著的檔案和 App，然後再退出一次。",
+  "errors.eject.unmountRefused": "還有東西開著那裡的檔案。請關掉開著的檔案和 App，然後再試一次。",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} 還在用這個磁碟機。請關掉它在上面開著的東西，然後再退出一次。",
+  "errors.eject.unmountRefusedByApp": "{app} 還開著那裡的檔案。請把它們關掉，然後再試一次。",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} 還在用這個磁碟機。請關掉它們在上面開著的東西，然後再退出一次。",
+  "errors.eject.unmountRefusedByApps": "{apps} 還開著那裡的檔案。請把它們關掉，然後再試一次。",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "其他 App",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "有個名為 {process} 的程序還在用這個磁碟機。（我們不知道 App 名稱，只知道程序名稱。）",
+  "errors.eject.unmountRefusedByProcess": "有個名為 {process} 的程序還開著那裡的檔案。（Cmdr 不知道 App 名稱，只知道程序名稱。）",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "有 {countText} 個程序還在用這個磁碟機，分別是 {processes}。（我們不知道 App 名稱，只知道程序名稱。）",
+  "errors.eject.unmountRefusedByProcesses": "有 {countText} 個程序還開著那裡的檔案，分別是 {processes}。（Cmdr 不知道 App 名稱，只知道程序名稱。）",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "其他程序",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "這個磁碟機上有一個磁碟映像檔還開著。請先退出那個映像檔，然後再退出這個磁碟機。",
+  "errors.eject.unmountRefusedByDiskImage": "那裡存放的一個磁碟映像檔還開著。請先退出那個映像檔，然後再試一次。",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS 還在處理這個磁碟機。請稍等一下，然後再退出一次。",
+  "errors.eject.unmountRefusedBySystem": "macOS 還開著那裡的檔案。請稍等一下，然後再試一次。",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己還在用這個磁碟機。請等一下再退出一次，如果一直這樣，請傳送一份報告。",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己還開著那裡的檔案。請等一下再試一次，如果一直這樣，請傳送一份報告。",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "這個磁碟機還沒回應，過一會兒它可能會自己退出。",
   "@errors.eject.timedOut": {

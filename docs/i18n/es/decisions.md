@@ -568,10 +568,12 @@ agrees with `carpeta`.
 
 ## Quién retiene el disco cuando la expulsión se rechaza (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, `errors.eject.otherProcesses`)
 
-- `{app}` opens the sentence with no article (a process name is a proper name).
-- `Cierra lo que tenga abierto ahí`: `lo que` + subjunctive and `ahí` agree with nothing.
+- The refusals follow either `No se ha podido expulsar {volumeName}:` or `No se ha podido desconectar:` and may concern
+  a share or a phone: one skeleton, `X todavía tiene archivos abiertos ahí.` + `… y vuelve a intentarlo.`, never
+  `este disco` or `vuelve a expulsarlo`.
+- `{app}` opens the sentence with no article (a process name is a proper name); `Ciérralos` points at `archivos`.
 - `otras apps` / `otros` (processes) join through `Intl.ListFormat('es')` (`… y otras apps`).
-- macOS itself → `macOS sigue trabajando con este disco`, kept apart from the apps' `sigue usando`.
+- The aside keeps Cmdr as subject (`Cmdr no tiene el nombre de la app`), never `No tenemos`.
 
 ## Seleccionar todo lo de la misma clase (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
 

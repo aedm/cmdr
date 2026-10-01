@@ -1921,9 +1921,9 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr déplace encore des fichiers sur ce disque. Éjectez-le une fois l’opération terminée.",
+  "errors.eject.busy": "Cmdr y déplace encore des fichiers. Réessayez une fois l’opération terminée.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Ce disque n’est plus connecté, il n’y a donc rien à éjecter.",
   "@errors.eject.volumeNotFound": {
@@ -1945,45 +1945,45 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Quelque chose utilise encore ce disque. Fermez les fichiers et les apps ouverts, puis éjectez-le à nouveau.",
+  "errors.eject.unmountRefused": "Quelque chose y garde encore des fichiers ouverts. Fermez les fichiers et les apps ouverts, puis réessayez.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} utilise encore ce disque. Fermez ce que cette app y a ouvert, puis éjectez-le à nouveau.",
+  "errors.eject.unmountRefusedByApp": "{app} y garde encore des fichiers ouverts. Fermez-les, puis réessayez.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} utilisent encore ce disque. Fermez ce que ces apps y ont ouvert, puis éjectez-le à nouveau.",
+  "errors.eject.unmountRefusedByApps": "{apps} y gardent encore des fichiers ouverts. Fermez-les, puis réessayez.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "d’autres apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByProcess": "Un processus nommé {process} utilise encore ce disque. (Nous n’avons pas de nom d’app, seulement le nom du processus.)",
+  "errors.eject.unmountRefusedByProcess": "Un processus nommé {process} y garde encore des fichiers ouverts. (Cmdr n’a pas de nom d’app, seulement le nom du processus.)",
   "@errors.eject.unmountRefusedByProcess": {
-    "sourceHash": "2dc3fba"
+    "sourceHash": "ad7c1d5"
   },
-  "errors.eject.unmountRefusedByProcesses": "{countText} processus nommés {processes} utilisent encore ce disque. (Nous n’avons pas de noms d’app, seulement les noms des processus.)",
+  "errors.eject.unmountRefusedByProcesses": "{countText} processus nommés {processes} y gardent encore des fichiers ouverts. (Cmdr n’a pas de noms d’app, seulement les noms des processus.)",
   "@errors.eject.unmountRefusedByProcesses": {
-    "sourceHash": "4d6c1a5"
+    "sourceHash": "5e9dbac"
   },
   "errors.eject.otherProcesses": "d’autres",
   "@errors.eject.otherProcesses": {
     "sourceHash": "01db91d"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Ce disque contient une image disque encore ouverte. Éjectez d’abord l’image, puis le disque.",
+  "errors.eject.unmountRefusedByDiskImage": "Une image disque qui s’y trouve est encore ouverte. Éjectez d’abord cette image, puis réessayez.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS travaille encore sur ce disque. Patientez une minute, puis éjectez-le à nouveau.",
+  "errors.eject.unmountRefusedBySystem": "macOS y garde encore des fichiers ouverts. Patientez une minute, puis réessayez.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr lui-même utilise encore ce disque. Patientez un instant et éjectez-le à nouveau, ou envoyez un rapport si cela continue.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr lui-même y garde encore des fichiers ouverts. Patientez un instant et réessayez, ou envoyez un rapport si cela continue.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Le disque n’a pas encore répondu, donc l’éjection peut encore aboutir d’elle-même.",
   "@errors.eject.timedOut": {
