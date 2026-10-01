@@ -48,7 +48,7 @@
  * ## One classifier, not two
  *
  * `volume-tint.svelte.ts::volumeKindFor` classifies into
- * `'local' | 'smb' | 'sftp' | 'webdav' | 'mtp' | 'adb' | 'other'` for tinting, collapsing the two virtual
+ * `'local' | 'smb' | 'sftp' | 'webdav' | 's3' | 'mtp' | 'adb' | 'other'` for tinting, collapsing the two virtual
  * kinds + favorites into the untinted `'other'`. `volumeKindOf` here is the
  * SUPERSET: it adds the two virtual kinds as first-class, then DELEGATES to
  * `volumeKindFor` for the real kinds, overriding only its `'other'` fall-through
@@ -92,6 +92,7 @@ export type VolumeKind =
   | 'smb' // mounted SMB share (real backend listing, smb path scheme on the share)
   | 'sftp' // an SFTP server (real backend listing, sftp:// scheme, no system clipboard, no terminal)
   | 'webdav' // a WebDAV server (real backend listing, webdav:// scheme, no system clipboard, no terminal)
+  | 's3' // an S3 bucket or account root (real backend listing, s3:// scheme, no system clipboard, no terminal)
   | 'mtp' // connected MTP storage (real backend listing, mtp:// scheme, no system clipboard)
   | 'adb' // an Android device over ADB (real backend listing, adb:// scheme, no system clipboard)
   | 'network' // the synthetic SMB browser virtual volume (host/share list, smb:// namespace)
@@ -212,6 +213,20 @@ const CAPABILITY_TABLE: Readonly<Record<VolumeKind, VolumeCapabilities>> = Objec
     hasBackendListing: true,
     canWrite: true,
     canBeSource: true,
+    hasParentRow: true,
+    syncsToMcp: true,
+    canBeIndexed: false,
+    pollsForDeletedFolder: false,
+  }),
+  s3: Object.freeze({
+    // The `webdav` row's shape, with write and export OFF: this is what answers for a
+    // place nothing has registered yet, and S3 is read-only until the backend
+    // publishes otherwise (the published answer replaces these two whenever it exists).
+    // No drive index on purpose: every request costs the user money.
+    kind: 's3',
+    hasBackendListing: true,
+    canWrite: false,
+    canBeSource: false,
     hasParentRow: true,
     syncsToMcp: true,
     canBeIndexed: false,
@@ -342,8 +357,8 @@ export function volumeKindOf(
   if (volumeId === 'network') return 'network'
   if (volumeId === 'search-results') return 'search-results'
   const tintKind = volumeKindFor(volumeId, fsType, category)
-  // `volumeKindFor` returns 'local' | 'smb' | 'sftp' | 'webdav' | 'mtp' | 'adb' |
-  // 'other'. The first six are real kinds in our union; 'other' (favorites +
+  // `volumeKindFor` returns 'local' | 'smb' | 'sftp' | 'webdav' | 's3' | 'mtp' |
+  // 'adb' | 'other'. The first seven are real kinds in our union; 'other' (favorites +
   // real-but-unclassified) defaults to 'local' — the only sane capability set for
   // a listable volume.
   return tintKind === 'other' ? 'local' : tintKind
@@ -383,7 +398,7 @@ export function paneRowsAreOsVisible(kind: VolumeKind): boolean {
  * mounts, so `resolve_path_to_volume` answers from the mount table. Every other
  * kind fails one half:
  *
- * - `sftp` / `webdav` / `mtp` / `adb` carry a scheme path that resolves only
+ * - `sftp` / `webdav` / `s3` / `mtp` / `adb` carry a scheme path that resolves only
  *   while that server or device is live, and the volume list filters a favorite
  *   whose path doesn't exist on disk — so one of these stores fine and then
  *   never shows up again, with no row and no word about why.
@@ -409,6 +424,7 @@ export function kindCanBeFavorited(kind: VolumeKind): boolean {
       return true
     case 'sftp':
     case 'webdav':
+    case 's3':
     case 'mtp':
     case 'adb':
     case 'network':

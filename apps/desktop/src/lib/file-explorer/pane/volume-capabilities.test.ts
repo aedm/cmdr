@@ -102,6 +102,18 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
       canBeIndexed: false,
       pollsForDeletedFolder: false,
     },
+    s3: {
+      kind: 's3',
+      hasBackendListing: true,
+      // Read-only until the backend publishes otherwise: the row is what answers
+      // for a place nothing has registered yet.
+      canWrite: false,
+      canBeSource: false,
+      hasParentRow: true,
+      syncsToMcp: true,
+      canBeIndexed: false,
+      pollsForDeletedFolder: false,
+    },
     mtp: {
       kind: 'mtp',
       hasBackendListing: true,
@@ -232,6 +244,7 @@ describe('volumeKindOf — the unified superset classifier', () => {
     // with an `sftp://` path. `fsType` is what tells the three apart.
     expect(volumeKindOf('sftp-nas-22-ada', 'sftp', 'network')).toBe('sftp')
     expect(volumeKindOf('webdav-cloud-443-ada', 'webdav', 'network')).toBe('webdav')
+    expect(volumeKindOf('s3-127-0-0-1-14480-akia-photos-1a2b', 's3', 'network')).toBe('s3')
     expect(volumeKindOf('volumesnaspi', 'smbfs', 'network')).toBe('smb')
   })
 
@@ -261,6 +274,7 @@ describe('volumeKindOf — the unified superset classifier', () => {
       ['x', 'smbfs', undefined],
       ['sftp-nas-22-ada', 'sftp', 'network'],
       ['webdav-cloud-443-ada', 'webdav', 'network'],
+      ['s3-127-0-0-1-14480-akia-1a2b', 's3', 'network'],
       ['fav', undefined, 'favorite'],
       ['weird', undefined, undefined],
     ]
@@ -435,6 +449,22 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
     expect(caps.kind).toBe('local')
     expect(caps.canWrite).toBe(false)
     expect(caps.canBeSource).toBe(true)
+  })
+
+  it('an S3 place that publishes read-only offers no write and no copy out', () => {
+    // S3 is read-only this milestone; the pane reads the backend's answer, ❌ never a kind guess.
+    volumes.list = [
+      vol({
+        id: 's3-127-0-0-1-14480-akia-photos-1a2b',
+        fsType: 's3',
+        category: 'network',
+        capabilities: { backendCanWrite: false, canExport: false, canBeIndexed: false },
+      }),
+    ]
+    const caps = capabilitiesFor('s3-127-0-0-1-14480-akia-photos-1a2b')
+    expect(caps.kind).toBe('s3')
+    expect(caps.canWrite).toBe(false)
+    expect(caps.canBeSource).toBe(false)
   })
 
   it('❌ never lets the backend change the KIND', () => {
@@ -689,7 +719,7 @@ describe('kindCanBeFavorited — where a favorite may point', () => {
     // A scheme path resolves only while its server or device is live, and the
     // volume list drops a favorite whose path isn't on disk — so each of these
     // stores fine and then never shows up again.
-    for (const kind of ['sftp', 'webdav', 'mtp', 'adb'] as const) {
+    for (const kind of ['sftp', 'webdav', 's3', 'mtp', 'adb'] as const) {
       expect(kindCanBeFavorited(kind), kind).toBe(false)
     }
   })
@@ -706,6 +736,7 @@ describe('kindCanBeFavorited — where a favorite may point', () => {
       'smb',
       'sftp',
       'webdav',
+      's3',
       'mtp',
       'adb',
       'network',
