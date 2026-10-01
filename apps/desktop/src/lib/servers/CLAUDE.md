@@ -31,8 +31,8 @@ the words for a connect that stopped.
   (`/srv/data`) leave a pane: Rust's mount table answers the LOCAL root for any path it doesn't know.
 - **Every refusal kind carries its own sentence AND field** (two `Record`s in `connect-refusals.ts`, so a new kind can't
   compile wordless or homeless). ❌ `needs_credentials` is NOT `authentication_rejected`.
-- **❌ No inert affordance.** Every button does the thing it says, which is why a changed host key offers Disconnect
-  rather than "Trust it".
+- **❌ No inert affordance.** Every button does the thing it says, which is why a changed host key offers "Check the
+  key" (opens the sheet on the key) and Disconnect, ❌ never "Trust it".
 - **The pane shows the waiting, the sheet takes the typing.** In `../file-explorer/pane/`: `RemoteConnectView.svelte`
   renders the states, `place-connect.svelte.ts` owns the one-dial-per-landing `$effect`, and `device-connect.svelte.ts`
   dials a PHONE, ❌ never through `connect-flow.ts`: a phone has no credential, no backoff, and no sheet. DETAILS § The

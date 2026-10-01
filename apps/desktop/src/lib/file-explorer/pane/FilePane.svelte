@@ -624,6 +624,7 @@
         getCurrentVolumeInfo: () => currentVolumeInfo,
         loadDirectory: (path: string) => void loader.loadDirectory({ path }),
         navigateToFallback: loader.navigateToFallback,
+        enter: (change) => { breadcrumb.handleVolumeChange(change) },
     })
 
     // A pane standing on a SAVED place dials it, showing the connecting view with a

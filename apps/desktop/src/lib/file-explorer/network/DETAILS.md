@@ -537,8 +537,8 @@ describes THIS session. The stored value is what the pane's banner has to hand b
 and a password box in front of a possible man-in-the-middle is how a password gets typed into one. `handleNeedsHostKey`
 ends the backoff and flips; ❗ it asks no `getVolumeSignInState`, because nothing about this is a credential question
 and asking one would be the first step toward putting a password box in front of it. The pane renders
-`RemoteConnectView`'s `host_key_changed`, which offers Disconnect (`../pane/DETAILS.md` § the connect views says why
-that, and not "Trust it"). `crates/cmdr-sftp/DETAILS.md` § "Connecting from the frontend".
+`RemoteConnectView`'s `host_key_changed`, which offers "Check the key" and Disconnect (`../pane/DETAILS.md` § the
+connect views says why, and why never "Trust it"). `crates/cmdr-sftp/DETAILS.md` § "Connecting from the frontend".
 
 Lazy-nav path: opening a share that's already `Disconnected` (no fresh event in flight), the `smb-view-state.svelte.ts`
 subscription `$effect` notices `currentVolumeInfo?.connectionState === 'disconnected'` and calls

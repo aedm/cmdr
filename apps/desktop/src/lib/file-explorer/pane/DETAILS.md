@@ -1879,11 +1879,14 @@ refusals only Settings can clear and never appears beside `retry`.
 would ask for at the moment it flipped (`getSignInShape`), and a `nothing` shape means no secret a person could type
 would bring the session back. The banner then says so instead of offering a button that cannot work.
 
-❗ **A changed host key offers Disconnect, ❌ not "Trust it".** Nobody can answer for a fingerprint they haven't been
-shown, and nothing on this side holds one: the backend keeps no pending prompt for a REGISTERED volume. Disconnecting
-drops the dead session and leaves the place a `saved` row, so opening it dials afresh — and THAT dial's
-`needs_host_key_approval` outcome is what the sheet's key step renders. The path works today; a backend command handing
-back the pending prompt would make it one click instead of two.
+❗ **A changed host key offers "Check the key" and Disconnect, ❌ never "Trust it".** Nobody can answer for a
+fingerprint they haven't been shown, and nothing on this side holds one: the backend keeps no pending prompt for a
+REGISTERED volume. So "Check the key" (`smb-view-state.svelte.ts::handleCheckHostKey`) drops the dead session FIRST (a
+dial while it's registered answers `already_connected`), then dials the saved place through `connectPlace`'s arm 3,
+whose `needs_host_key_approval` outcome is what the sheet's key step renders, with the sheet's own choices. The dial
+stops at the host key, before any secret is offered. Dropping the session sends the pane home (`volume-unmounted`), so a
+sheet that connects puts the pane back on the place (`enter`); a cancelled one leaves it home, where Disconnect leaves
+it too. A backend command handing back the pending prompt would skip the redial.
 
 ❗ **A state lands only once something can act on it.** Adding one before its handler puts a button on screen that does
 nothing, which is the one thing this view refuses to do (`../../servers/DETAILS.md` § "The sheet contract").

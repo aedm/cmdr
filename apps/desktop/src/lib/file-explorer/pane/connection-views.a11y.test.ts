@@ -376,7 +376,7 @@ describe('RemoteConnectView a11y', () => {
     const target = container()
     mount(RemoteConnectView, {
       target,
-      props: { name: 'Naspolya', state: { kind: 'host_key_changed' as const, disconnect: vi.fn() } },
+      props: { name: 'Naspolya', state: { kind: 'host_key_changed' as const, checkKey: vi.fn(), disconnect: vi.fn() } },
     })
     await tick()
     await expectNoA11yViolations(target)

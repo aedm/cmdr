@@ -475,6 +475,10 @@
   "@servers.paneState.hostKeyChangedHint": {
     "sourceHash": "923de62"
   },
+  "servers.paneState.checkHostKey": "Check the key",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
+  },
   "servers.paneState.reconnecting": "正在重新连接到 {name}…",
   "@servers.paneState.reconnecting": {
     "sourceHash": "dce8cef"

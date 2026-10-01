@@ -250,9 +250,9 @@ and puts its trust button behind a disclosure. A `superseded` approval starts th
 presents rather than silently trusting the one on screen; an `unreachable` one records nothing, because approving is a
 live question and an unanswered one is not a yes.
 
-❗ **A changed host key on a REGISTERED volume shows no fingerprint.** No backend command hands the PENDING host-key
-prompt back for one, so the banner offers Disconnect and the fingerprint appears on the next open's dial
-(`../file-explorer/pane/DETAILS.md` § "The connect views").
+❗ **A changed host key on a REGISTERED volume has no fingerprint to show.** No backend command hands the PENDING
+host-key prompt back for one, so the banner's "Check the key" drops the session and redials, and the sheet shows that
+dial's prompt (`../file-explorer/pane/DETAILS.md` § "The connect views").
 
 ## The renderer table
 

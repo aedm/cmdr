@@ -2796,6 +2796,7 @@ export type MessageKey =
   | 'servers.hub.status.waitingForKey'
   | 'servers.paneState.cancel'
   | 'servers.paneState.cancelCycleTooltip'
+  | 'servers.paneState.checkHostKey'
   | 'servers.paneState.connecting'
   | 'servers.paneState.connectingHint'
   | 'servers.paneState.disconnect'
