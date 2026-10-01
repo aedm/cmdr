@@ -96,10 +96,18 @@ writer spawns, so it never meets the main thread or another writer. WAL readers 
 connection waits it out under `busy_timeout`. This is the one schema change that needs no bump: purely additive, and
 derivable from rows already there. A new column or a changed meaning still bumps.
 
-Guards: `tests/child_dirs_index.rs` pins each query's plan to the index and covers the open-time build;
-`../writer/repair.rs` pins the symlink query. Still O(children) and deliberately left: the direct-symlink test
-(`parent_id = ? AND is_symlink = 1`, ~60 ms on that folder, but it runs only when a symlink appears, goes, or changes)
-and the repair's children `SUM`, which must read every child.
+**Symlink children have a second one, `idx_child_symlinks`**: `ON entries (parent_id) WHERE is_symlink = 1`, added on
+open the same way. It serves the direct half of `recompute_recursive_has_symlinks` (`../writer/repair.rs`,
+`DIRECT_SYMLINK_CHILD_SQL`), which otherwise read every child of the folder: 150–300 ms on a 200,000-file folder, ~8 µs
+off the index. It holds only symlink rows (154,156 of 5.6 M, 1.9 MB), so ordinary file and directory writes don't
+maintain it; only writing a symlink row, or flipping `is_symlink`, does. The first open after an upgrade builds it once,
+~3 s cold (0.6 s of it CPU). Verified on a `.backup` clone of a real index, `sqlite3 .timer`, under heavy load,
+2026-10-01. The query runs only when a symlink appears, goes, or changes, so this is cheap insurance rather than a
+hot-path fix.
+
+Guards: `tests/child_dirs_index.rs` pins each child-dir query's plan to its index and covers the open-time build of
+both; `../writer/repair.rs` pins both symlink queries. Still O(children) and deliberately left: the repair's children
+`SUM`, which must read every child.
 
 ## What coverage needs
 
