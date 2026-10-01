@@ -93,6 +93,8 @@ either way.
 - **A saved SMB share** (a row right under its host, `docs/specs/saved-smb-shares.md`) takes the pane to its place when
   the volume list has one, exactly like a one-place server, so an unmounted one is mounted IN THE PANE. One no mount
   went through yet (Add named it) opens its host's places list and mounts that share for the visit (`onShareViaHost`).
+- **An S3 place** (a bucket, or the account root, right under its account) takes the pane to its place, exactly like a
+  one-place server. **The S3 account row** is no place, so Enter answers a toast pointing at the places under it.
 - **The add row** opens the one sign-in sheet in add mode (`../../servers/open-sign-in.ts`). An SMB address comes back
   as a hand-off, and `NetworkMountView` opens the injected host's places.
 
@@ -147,9 +149,19 @@ unit-tested:
   reachable or not. The Address column carries the port off 445 (`localhost:11482`), and `savedHostFor` reads it back
   when mDNS sees nothing.
 
-  ❗ **A saved SMB share is a row right under its host** (`kind: 'share'`, id `share:<volume id>`, the account it opens
-  as in `account`), placed AFTER the sort so it never drifts from its server. Its status comes off the volume list by
-  its id like every place's. The host row keeps `volumeId: null`: its places are the share rows.
+  ❗ **A many-place server's places are rows right under it** (`hasManyPlaces`: an SMB host's saved shares, an S3
+  account's saved buckets and root; `kind: 'place'`, id `share:<volume id>`), placed AFTER the sort so they never drift
+  from their server. Each place's status comes off the volume list by its id like every place's. The server row keeps
+  `volumeId: null` and `pinned: false`: its places are the place rows. A share row names the account it opens as; an S3
+  place names none, since the account row above it shows the key.
+
+  ❗ **An S3 account row is no place.** Its id is the account ROOT place's id whether or not the root is saved, so
+  acting through it would dial or pin the root behind the person's back. Each S3 place row connects, pins, edits, and
+  forgets through its own volume id with the regular server-place menu (`servers-hub-actions.ts`); the account row's
+  Enter and Edit answer a toast pointing at its places (`openMoveFor`'s `account` move), it has no right-click menu, and
+  F8 forgets every place plus, box checked, the secret they share (written FIRST, while a place still names the entry).
+  The account's status is its most urgent place's. Forgetting one place offers that shared secret UNCHECKED
+  (`server-row-actions.ts::forgetSavedServer`), since the account's other places sign in with it.
 
   ❗ **The merge also guarantees every row id is UNIQUE**, first writer wins. The hub keys its `{#each}` on `row.id`,
   and Svelte throws `each_key_duplicate` on a repeat, so a duplicate crashes the whole pane rather than showing a row
@@ -187,7 +199,9 @@ unit-tested:
   that name and `open_under_cursor` toggles. ❗ The status token is locale-independent even though the column beside it
   is translated: an agent parses these strings and a translation landing in the wire would break both silently. A
   one-place row's path is the place's `appRoot` (from `SavedPlace`, which Rust mints in one function); an SMB host keeps
-  the `smb://<address>` spelling the host list publishes; the add row is `+ Add server…` at `smb://add`.
+  the `smb://<address>` spelling the host list publishes; an S3 account row publishes the account's own prefix
+  (`s3://<key>@<host>:<port>`) and its place rows `kind=place` (a share row keeps `kind=share`); the add row is
+  `+ Add server…` at `smb://add`.
 - **`servers-hub-actions.ts`**: F8, the two row menus, and the SMB host menu's answers, behind live getters (❌ never
   snapshots: the rows change under a menu that is still open). ❗ A one-place row and an SMB host take different paths
   at every branch, which is why they live in one unit: a one-place row is a PLACE the servers family speaks for, an SMB
@@ -200,23 +214,23 @@ unit-tested:
 
 ### Discovery off
 
-`network.enabled` gates mDNS and SMB, which is what the macOS Local Network permission is about; SFTP and WebDAV need
-none of it. So the hub opens either way, keeps listing saved servers, and shows one line plus a link to the switch in
-place of the nearby hosts. ❗ No "(disabled)" label, and no redirect to Settings; `network-toggle.spec.ts` is the
+`network.enabled` gates mDNS and SMB, which is what the macOS Local Network permission is about; SFTP, WebDAV, and S3
+need none of it. So the hub opens either way, keeps listing saved servers, and shows one line plus a link to the switch
+in place of the nearby hosts. ❗ No "(disabled)" label, and no redirect to Settings; `network-toggle.spec.ts` is the
 regression guard.
 
 ### Context menu and F8
 
 F8 forgets the SAVED server under the cursor: a one-place row through `forgetSavedServer` (so the hub asks exactly what
 the switcher's menu asks), an SMB host through `forgetSavedSmbHost` (its manual entry, its sign-in history, and its
-saved shares; nothing unmounted), a saved share through `forgetServer` on its id (the row and its pin only), and a host
-only mDNS knows about gets the "Can't remove discovered hosts" toast. A share row's right-click is an in-app menu too:
-Open, the pin, and Forget share. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same
-list the switcher row's → submenu shows (`../navigation/row-menu.ts`; Open moves THIS pane, like Enter); an SMB host
-keeps its own native host menu (`show_network_host_context_menu`, one group, only what does something: Edit for a saved
-host, Disconnect while a share from it is mounted, Forget saved password when one is stored, Forget server for a
-typed-in one), whose actions arrive on the `network-host-context-action` event. Cursor auto-clamps when a row
-disappears.
+saved shares; nothing unmounted), a saved share through `forgetServer` on its id (the row and its pin only), an S3 place
+like a one-place row, an S3 account as every place under it (§ "The pure modules beside it"), and a host only mDNS knows
+about gets the "Can't remove discovered hosts" toast. A share row's right-click is an in-app menu too: Open, the pin,
+and Forget share. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same list the
+switcher row's → submenu shows (`../navigation/row-menu.ts`; Open moves THIS pane, like Enter); an SMB host keeps its
+own native host menu (`show_network_host_context_menu`, one group, only what does something: Edit for a saved host,
+Disconnect while a share from it is mounted, Forget saved password when one is stored, Forget server for a typed-in
+one), whose actions arrive on the `network-host-context-action` event. Cursor auto-clamps when a row disappears.
 
 `⌃⏎` (`file.contextMenu`) opens the cursor row's menu from the keyboard, the same menu a right-click opens, placed just
 under the row by `../pane/context-menu-anchor.ts` (the native host menu takes that point as its `anchor`; a right-click
