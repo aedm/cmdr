@@ -24,7 +24,9 @@ Evidence this plan stands on, read before touching the matching milestone:
 - **Folders are prefixes.** Creating an empty folder writes a zero-byte `name/` marker object (the AWS console's and
   rclone's convention). A folder with no marker vanishes when its last object goes; that's S3, and fine.
 - **Modified dates**: S3 only stores upload time. We write the source's mtime into `x-amz-meta-mtime` (rclone's key and
-  format, so the two tools agree) and show it when present, else `LastModified`.
+  format, so the two tools agree) and show it when present, else `LastModified`. ❗ A listing (`ListObjectsV2`) carries
+  no user metadata, so a folder's rows show `LastModified` and only a stat (one HEAD: Get info, a single entry) shows
+  the mtime; reading it per row would cost one billed request per file.
 - **No indexing and no thumbnails on S3 volumes** for now: every request costs money.
 - **Space**: `get_space_info` answers `VolumeError::NotSupported`.
 - **Delete is permanent** (S3 has no trash), and the delete dialog says so. When the bucket keeps versions (AWS/R2
