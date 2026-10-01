@@ -352,6 +352,20 @@ pub struct BatchScanResult {
     /// caller passed in. Paths that failed to scan won't appear. On a
     /// per-path failure the method returns `Err` without partial data.
     pub per_path: Vec<(PathBuf, CopyScanResult)>,
+    /// Every file's size and date, kept only by a backend whose operations are
+    /// billed per object (S3, through `ScanSource::keeps_files`), for a cost
+    /// estimate; `None` everywhere else, and wherever any part of the scan
+    /// answered without walking (a cached listing).
+    pub files: Option<Vec<ScannedFile>>,
+}
+
+/// One file a scan walked past, as a cost estimate needs it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScannedFile {
+    /// Logical size in bytes.
+    pub size: u64,
+    /// Last-modified time, Unix seconds; on an object store, the upload time.
+    pub modified_at: Option<u64>,
 }
 
 /// A conflict detected during pre-copy scanning: a source item that already exists at the

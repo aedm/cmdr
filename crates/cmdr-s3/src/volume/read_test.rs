@@ -309,3 +309,50 @@ async fn reads_that_cant_happen_say_why_on_versitygw() {
 async fn reads_that_cant_happen_say_why_on_garage() {
     reads_that_cant_happen_say_why(GARAGE).await;
 }
+
+// ── The scan a cost estimate prices from ─────────────────────────────
+
+async fn a_scan_keeps_every_objects_size_and_upload_date(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    let prefix = scratch_prefix("scan-files");
+    let (top, nested) = (format!("{prefix}a.bin"), format!("{prefix}sub/b.bin"));
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&top, &[1; 10]), object(&nested, &[2; 5])],
+    )
+    .await;
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after 1970")
+        .as_secs()
+        - 3_600;
+
+    let folder = at(&volume, prefix.trim_end_matches('/'));
+    let batch = volume
+        .scan_for_copy_batch(std::slice::from_ref(&folder))
+        .await
+        .unwrap_or_else(|e| panic!("{}: scanning: {e:?} ({FIXTURE})", service.key));
+
+    let mut files = batch.files.expect("an S3 scan keeps its files");
+    files.sort_by_key(|file| file.size);
+    let sizes: Vec<u64> = files.iter().map(|file| file.size).collect();
+    assert_eq!(sizes, vec![5, 10], "{}", service.key);
+    assert!(
+        files.iter().all(|file| file.modified_at.is_some_and(|at| at >= before)),
+        "{}: every object carries its upload time, got {files:?}",
+        service.key
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_scan_keeps_every_objects_size_and_upload_date_on_versitygw() {
+    a_scan_keeps_every_objects_size_and_upload_date(VERSITYGW).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
+async fn a_scan_keeps_every_objects_size_and_upload_date_on_garage() {
+    a_scan_keeps_every_objects_size_and_upload_date(GARAGE).await;
+}

@@ -16,6 +16,10 @@ use crate::network::keychain::{self, KeychainError};
 use crate::network::s3_known_places::{self, KnownS3Place, S3ProviderChoice};
 use crate::network::s3_volume_wiring;
 use cmdr_s3::UnattendedReconnect;
+use std::time::Duration;
+
+use crate::deadline::blocking_with_timeout;
+use crate::s3_costs::{CostEstimate, CostEstimateRequest};
 
 /// Whether an S3 volume can actually come back on its own as it stands. The
 /// WebDAV twin (`WebdavUnattendedReconnect`), for the same reasons: ❌ never
@@ -69,11 +73,9 @@ pub async fn save_s3_credentials(
     let Some(service) = s3_volume_wiring::credential_service(&provider, &access_key_id) else {
         return Err(not_an_account());
     };
-    crate::deadline::blocking_with_timeout(
-        std::time::Duration::from_secs(15),
-        Err(keychain_timed_out()),
-        move || keychain::save_credentials(&service, Some(&access_key_id), &access_key_id, &secret),
-    )
+    blocking_with_timeout(Duration::from_secs(15), Err(keychain_timed_out()), move || {
+        keychain::save_credentials(&service, Some(&access_key_id), &access_key_id, &secret)
+    })
     .await
 }
 
@@ -86,7 +88,7 @@ pub async fn has_s3_credentials(provider: S3ProviderChoice, access_key_id: Strin
     let Some(service) = s3_volume_wiring::credential_service(&provider, &access_key_id) else {
         return false;
     };
-    crate::deadline::blocking_with_timeout(std::time::Duration::from_secs(15), false, move || {
+    blocking_with_timeout(Duration::from_secs(15), false, move || {
         keychain::has_credentials(&service, Some(&access_key_id))
     })
     .await
@@ -100,11 +102,9 @@ pub async fn delete_s3_credentials(provider: S3ProviderChoice, access_key_id: St
     let Some(service) = s3_volume_wiring::credential_service(&provider, &access_key_id) else {
         return Err(not_an_account());
     };
-    crate::deadline::blocking_with_timeout(
-        std::time::Duration::from_secs(15),
-        Err(keychain_timed_out()),
-        move || keychain::delete_credentials(&service, Some(&access_key_id)),
-    )
+    blocking_with_timeout(Duration::from_secs(15), Err(keychain_timed_out()), move || {
+        keychain::delete_credentials(&service, Some(&access_key_id))
+    })
     .await
 }
 
@@ -147,6 +147,22 @@ impl SavedS3Place {
 /// Every S3 place the user has saved, with its provider, for an edit sheet
 /// that has to show (and resend) what identifies the place. A place whose
 /// provider no longer makes an endpoint has no id, so it's left out.
+/// What a copy, move, or delete about to start will cost at list prices, one
+/// entry per S3 provider it touches (`crate::s3_costs`). Reads the dialog's
+/// settled scan preview, never S3; the price table may come off disk, hence the
+/// blocking pool and the deadline, which answers "no estimate".
+#[tauri::command]
+#[specta::specta]
+pub async fn estimate_operation_cost(app: tauri::AppHandle, request: CostEstimateRequest) -> Vec<CostEstimate> {
+    let data_dir = crate::config::resolved_app_data_dir(&app).ok();
+    blocking_with_timeout(ESTIMATE_TIMEOUT, Vec::new(), move || {
+        crate::s3_costs::estimate(&request, data_dir.as_deref())
+    })
+    .await
+}
+
+const ESTIMATE_TIMEOUT: Duration = Duration::from_secs(2);
+
 #[tauri::command]
 #[specta::specta]
 pub fn get_known_s3_places() -> Vec<SavedS3Place> {

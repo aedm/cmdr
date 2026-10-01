@@ -481,7 +481,8 @@ one delete per object, which needs a scan, byte progress, pause, cancel, conflic
   The progress chip shows it. Before that, `check_rename_validity_impl` reports `by_move` (`RenameByMove`: files and
   bytes from a bounded count, at most `SMALL_RENAME_FILES` + 1, and `confirm_first`), and the frontend opens the Move
   dialog prefilled with the new name instead of renaming when `confirm_first` is set (past 100 files, or a count that
-  couldn't finish); it confirms through the `rename_by_move` command. M7's cost estimate joins these counts.
+  couldn't finish); it confirms through the `rename_by_move` command. That dialog's scan preview also feeds its cost estimate
+  (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`); a rename that starts without the dialog shows none.
 - **The MCP rename tool** (autoConfirm) calls `rename_file`, so it takes F2's route.
 - **Bulk rename and Ask Cmdr's proposals** go through `start_renames`: every row's `rename_work` is asked (eight at a
   time; free on a volume that renames in one call), and a batch with any copying row runs as ONE move with the new

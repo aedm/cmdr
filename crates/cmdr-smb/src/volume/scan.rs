@@ -139,6 +139,7 @@ impl SmbVolume {
                         top_level_is_directory: false,
                     },
                     per_path: Vec::new(),
+                    files: None,
                 });
             }
             if paths.len() == 1 {
@@ -147,6 +148,7 @@ impl SmbVolume {
                 return Ok(BatchScanResult {
                     aggregate: scan.clone(),
                     per_path: vec![(paths[0].clone(), scan)],
+                    files: None,
                 });
             }
 

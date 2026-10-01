@@ -1191,7 +1191,11 @@ pub trait Volume: Send + Sync {
                     .await?;
                 per_path.push((path.clone(), scan));
             }
-            Ok(BatchScanResult { aggregate, per_path })
+            Ok(BatchScanResult {
+                aggregate,
+                per_path,
+                files: None,
+            })
         })
     }
 

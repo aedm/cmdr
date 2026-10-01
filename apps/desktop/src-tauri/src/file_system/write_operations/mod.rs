@@ -116,6 +116,7 @@ pub use in_flight_temps::init_and_sweep as init_and_sweep_in_flight_temps;
 /// leaves on a returning drive is something the person hears about rather than
 /// a silent absence at the source. Startup only.
 pub use in_flight_temps::init_sweep_app_handle;
+pub(crate) use scan_cache::{ScanCostFacts, cached_cost_facts};
 pub use scan_preview::{cancel_scan_preview, get_scan_preview_totals, start_scan_preview};
 pub use state::{
     VolumesBusyChanged, busy_volume_ids, cancel_all_write_operations, cancel_write_operation, get_operation_status,

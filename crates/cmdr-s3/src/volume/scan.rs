@@ -21,4 +21,12 @@ impl ScanSource for S3Volume {
     fn scan_list<'a>(&'a self, path: &'a Path) -> Walking<'a, Vec<FileEntry>> {
         Box::pin(self.list_directory_impl(path, None, None))
     }
+
+    /// Every request is billed, so the dialog prices the operation from the
+    /// scan's own sizes and upload dates (`crate::cost`), never from new
+    /// requests. A listing's date is `LastModified`, the upload time, which is
+    /// what a minimum storage duration counts from.
+    fn keeps_files(&self) -> bool {
+        true
+    }
 }

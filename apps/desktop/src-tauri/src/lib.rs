@@ -126,6 +126,7 @@ mod restricted_paths;
 // has to resolve on every platform for `ipc.rs`'s `collect_events!`, which can't cfg-gate
 // inline. The three macOS-only submodules are gated inside (`reveal/mod.rs`).
 mod reveal;
+mod s3_costs;
 pub mod search;
 mod secrets;
 pub mod selection;

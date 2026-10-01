@@ -4502,12 +4502,18 @@ export const commands = {
       | 'no_stored_secret'
       | null
     >('get_s3_unattended_reconnect', { volumeId }),
+  getKnownS3Places: () => __TAURI_INVOKE<SavedS3Place[]>('get_known_s3_places'),
   /**
    *  Every S3 place the user has saved, with its provider, for an edit sheet
    *  that has to show (and resend) what identifies the place. A place whose
    *  provider no longer makes an endpoint has no id, so it's left out.
+   *  What a copy, move, or delete about to start will cost at list prices, one
+   *  entry per S3 provider it touches (`crate::s3_costs`). Reads the dialog's
+   *  settled scan preview, never S3; the price table may come off disk, hence the
+   *  blocking pool and the deadline, which answers "no estimate".
    */
-  getKnownS3Places: () => __TAURI_INVOKE<SavedS3Place[]>('get_known_s3_places'),
+  estimateOperationCost: (request: CostEstimateRequest) =>
+    __TAURI_INVOKE<CostEstimate[]>('estimate_operation_cost', { request }),
   /**
    *  Every server the user has saved, across all three stores.
    *
@@ -6622,10 +6628,33 @@ export type CostDay = {
   fullyPriced: boolean
 }
 
+// One provider's share of the cost.
+export type CostEstimate = {
+  // Unrounded; the dialog rounds it to the currency and hides a zero.
+  amount: number
+  // ISO 4217 (`USD`, `EUR`), for the formatter.
+  currency: string
+  // The provider as its prices page names it (`AWS`, `Cloudflare R2`).
+  providerLabel: string
+}
+
+// What a dialog asks about, once its scan preview has settled.
+export type CostEstimateRequest = {
+  operation: CostedOperation
+  // The settled preview whose files the operation will touch.
+  previewId: string
+  sourceVolumeId: string
+  // `None` for a delete.
+  destinationVolumeId: string | null
+}
+
 // The per-day cost rollup, newest day first. Wire type (the settings spend list).
 export type CostSummary = {
   days: CostDay[]
 }
+
+// The operation a dialog is about to start.
+export type CostedOperation = 'copy' | 'move' | 'delete'
 
 /**
  *  What ground a run's answer was drawn from: the index, a live walk, or both.

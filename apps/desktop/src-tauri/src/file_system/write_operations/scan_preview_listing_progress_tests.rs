@@ -142,7 +142,11 @@ impl Volume for ProgressEmittingVolume {
                     )
                 })
                 .collect();
-            Ok(BatchScanResult { aggregate, per_path })
+            Ok(BatchScanResult {
+                aggregate,
+                per_path,
+                files: None,
+            })
         })
     }
 }

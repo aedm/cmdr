@@ -35,7 +35,7 @@ use std::pin::Pin;
 
 use crate::entry::FileEntry;
 use crate::volume::VolumeError;
-use crate::volume::{BatchScanResult, CopyScanResult, ScanBoundary, ScanConflict, SourceItemInfo};
+use crate::volume::{BatchScanResult, CopyScanResult, ScanBoundary, ScanConflict, ScannedFile, SourceItemInfo};
 
 /// A future the walk can recurse through. `async fn` can't call itself, so every
 /// step of the walk hands back a boxed one, and so does every [`ScanSource`]
@@ -54,6 +54,14 @@ pub trait ScanSource: Sync {
 
     /// One directory's children, each carrying its own type and size.
     fn scan_list<'a>(&'a self, path: &'a Path) -> Walking<'a, Vec<FileEntry>>;
+
+    /// Whether [`scan_trees`] keeps every file's size and date in
+    /// `BatchScanResult::files`, for a backend whose operations are billed per
+    /// object. Off by default: a million-file walk would hold a million entries
+    /// nobody reads.
+    fn keeps_files(&self) -> bool {
+        false
+    }
 }
 
 /// One subtree's file count, directory count, and bytes.
@@ -67,9 +75,23 @@ pub fn scan_tree<'a>(
     boundary: &'a ScanBoundary<'a>,
 ) -> Walking<'a, CopyScanResult> {
     Box::pin(async move {
+        let mut files = None;
+        scan_tree_keeping(source, path, boundary, &mut files).await
+    })
+}
+
+/// [`scan_tree`], pushing every file onto `files` when it's `Some`.
+fn scan_tree_keeping<'a>(
+    source: &'a dyn ScanSource,
+    path: &'a Path,
+    boundary: &'a ScanBoundary<'a>,
+    files: &'a mut Option<Vec<ScannedFile>>,
+) -> Walking<'a, CopyScanResult> {
+    Box::pin(async move {
         let top = source.scan_stat(path).await?;
         if !top.is_directory {
             let size = top.size.unwrap_or(0);
+            keep(files, &top);
             boundary.file(size).await?;
             return Ok(CopyScanResult {
                 file_count: 1,
@@ -86,9 +108,19 @@ pub fn scan_tree<'a>(
             dedup_bytes: 0,
             top_level_is_directory: true,
         };
-        walk_directory(source, path, boundary, &mut result).await?;
+        walk_directory(source, path, boundary, &mut result, files).await?;
         Ok(result)
     })
+}
+
+/// Pushes `entry` onto `files` when the walk keeps them.
+fn keep(files: &mut Option<Vec<ScannedFile>>, entry: &FileEntry) {
+    if let Some(files) = files {
+        files.push(ScannedFile {
+            size: entry.size.unwrap_or(0),
+            modified_at: entry.modified_at,
+        });
+    }
 }
 
 /// One subtree, with nothing to report to and nobody to answer to.
@@ -117,10 +149,15 @@ pub fn scan_trees<'a>(
 ) -> Walking<'a, BatchScanResult> {
     Box::pin(async move {
         let mut per_path = Vec::with_capacity(paths.len());
+        let mut files = source.keeps_files().then(Vec::new);
         for path in paths {
-            per_path.push((path.clone(), scan_tree(source, path, boundary).await?));
+            let scan = scan_tree_keeping(source, path, boundary, &mut files).await?;
+            per_path.push((path.clone(), scan));
         }
-        Ok(fold_batch(per_path))
+        Ok(BatchScanResult {
+            files,
+            ..fold_batch(per_path)
+        })
     })
 }
 
@@ -147,7 +184,11 @@ pub fn fold_batch(per_path: Vec<(PathBuf, CopyScanResult)>) -> BatchScanResult {
     if let [(_, only)] = per_path.as_slice() {
         aggregate.top_level_is_directory = only.top_level_is_directory;
     }
-    BatchScanResult { aggregate, per_path }
+    BatchScanResult {
+        aggregate,
+        per_path,
+        files: None,
+    }
 }
 
 /// Which of `source_items` already have a name among `dest_entries`.
@@ -217,6 +258,7 @@ fn walk_directory<'a>(
     dir: &'a Path,
     boundary: &'a ScanBoundary<'a>,
     into: &'a mut CopyScanResult,
+    files: &'a mut Option<Vec<ScannedFile>>,
 ) -> Walking<'a, ()> {
     Box::pin(async move {
         into.dir_count += 1;
@@ -230,9 +272,10 @@ fn walk_directory<'a>(
             // the same promise app-side, so a copy estimate reads the same
             // whichever walker produced it.
             if entry.is_directory && !entry.is_symlink {
-                walk_directory(source, &child, boundary, into).await?;
+                walk_directory(source, &child, boundary, into, files).await?;
             } else {
                 let size = entry.size.unwrap_or(0);
+                keep(files, &entry);
                 into.file_count += 1;
                 into.total_bytes += size;
                 into.dedup_bytes += size;

@@ -399,9 +399,11 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
   (`Volume::rename_work`), which the app runs as a move
   (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). The app keeps
   the place list and the connect wiring (`apps/desktop/src-tauri/src/network/s3_*.rs`), the IPC surface
-  (`commands/s3.rs` plus the S3 arm of `commands/servers.rs`), and `s3://` redaction. The plan:
-  `docs/specs/s3-support-plan.md`. Decisions: `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`. Its
-  Docker servers: `apps/desktop/test/s3-servers/README.md`.
+  (`commands/s3.rs` plus the S3 arm of `commands/servers.rs`), and `s3://` redaction. Cost estimates: the price table
+  and estimator in `cost/` (its server copy at `apps/api-server/src/s3-prices/`), wired to the dialogs by
+  `apps/desktop/src-tauri/src/s3_costs/CLAUDE.md`. The plan: `docs/specs/s3-support-plan.md`. Decisions:
+  `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`. Its Docker servers:
+  `apps/desktop/test/s3-servers/README.md`.
 - `crates/cmdr-adb/`: everything Cmdr says to an Android device over ADB. `AdbVolume` per attached device, rooted at the
   device's real `/`, spoken to the ADB server on loopback (the sync service for stat, list, and transfers, `shell,v2`
   for the verbs it lacks, `host:track-devices` for hotplug), with a typed errno-based error policy and a fake ADB server

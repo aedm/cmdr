@@ -95,6 +95,7 @@ impl MtpVolume {
                         top_level_is_directory: false,
                     },
                     per_path: Vec::new(),
+                    files: None,
                 });
             }
 
@@ -237,7 +238,11 @@ impl MtpVolume {
                 .filter_map(|p| per_path_results.remove(p).map(|r| (p.clone(), r)))
                 .collect();
 
-            Ok(BatchScanResult { aggregate, per_path })
+            Ok(BatchScanResult {
+                aggregate,
+                per_path,
+                files: None,
+            })
         })
     }
 
