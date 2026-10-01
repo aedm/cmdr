@@ -347,10 +347,10 @@ impl FileViewerBackend for LineIndexBackend {
         }))
     }
 
-    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+    fn get_lines(&self, target: &SeekTarget, count: usize, cancel: &AtomicBool) -> Result<LineChunk, ViewerError> {
         let target_row = self.resolve_target(target)?;
         let (mut reader, row_offset, line) = self.reader_at_row(target_row)?;
-        let collected = collect_rows(&mut reader, Some(line), count)?;
+        let collected = collect_rows(&mut reader, Some(line), count, cancel)?;
 
         Ok(LineChunk {
             rows: collected.rows,

@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -154,7 +155,13 @@ fn get_lines_after_open() {
 
     let open_result = session::open_session(file.to_str().unwrap(), "root").unwrap();
 
-    let chunk = session::get_lines(&open_result.session_id, super::SeekTarget::Row(2), 3).unwrap();
+    let chunk = session::get_lines(
+        &open_result.session_id,
+        super::SeekTarget::Row(2),
+        3,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
     assert_eq!(chunk.first_row_number, 2);
     assert_eq!(chunk.texts(), vec!["c", "d", "e"]);
 
@@ -163,7 +170,12 @@ fn get_lines_after_open() {
 
 #[test]
 fn get_lines_invalid_session() {
-    let result = session::get_lines("nonexistent-session-id", super::SeekTarget::Row(0), 10);
+    let result = session::get_lines(
+        "nonexistent-session-id",
+        super::SeekTarget::Row(0),
+        10,
+        &AtomicBool::new(false),
+    );
     assert!(result.is_err());
 }
 
@@ -176,13 +188,13 @@ fn close_session_cleans_up() {
     let sid = open_result.session_id.clone();
 
     // Session should work
-    assert!(session::get_lines(&sid, super::SeekTarget::Row(0), 1).is_ok());
+    assert!(session::get_lines(&sid, super::SeekTarget::Row(0), 1, &AtomicBool::new(false)).is_ok());
 
     // Close it
     session::close_session(&sid).unwrap();
 
     // Now it should fail
-    assert!(session::get_lines(&sid, super::SeekTarget::Row(0), 1).is_err());
+    assert!(session::get_lines(&sid, super::SeekTarget::Row(0), 1, &AtomicBool::new(false)).is_err());
 }
 
 #[test]
@@ -328,7 +340,7 @@ fn large_file_upgrades_to_line_index() {
     );
 
     // On LineIndex a `Line` target lands on exactly that line, so the chunk reports it back.
-    let chunk = session::get_lines(sid, super::SeekTarget::Row(10), 3).unwrap();
+    let chunk = session::get_lines(sid, super::SeekTarget::Row(10), 3, &AtomicBool::new(false)).unwrap();
     assert_eq!(chunk.first_row_number, 10);
     assert_eq!(chunk.texts().len(), 3);
     assert!(chunk.texts()[0].starts_with("line 00000010 "));
@@ -350,8 +362,8 @@ fn multiple_sessions() {
     assert_eq!(res2.file_name, "b.txt");
 
     // Both should work independently
-    let chunk1 = session::get_lines(&res1.session_id, super::SeekTarget::Row(0), 1).unwrap();
-    let chunk2 = session::get_lines(&res2.session_id, super::SeekTarget::Row(0), 1).unwrap();
+    let chunk1 = session::get_lines(&res1.session_id, super::SeekTarget::Row(0), 1, &AtomicBool::new(false)).unwrap();
+    let chunk2 = session::get_lines(&res2.session_id, super::SeekTarget::Row(0), 1, &AtomicBool::new(false)).unwrap();
     assert_eq!(chunk1.texts()[0], "file a");
     assert_eq!(chunk2.texts()[0], "file b");
 
@@ -1222,12 +1234,24 @@ fn set_encoding_full_load_swaps_decoder() {
     assert!(matches!(result.backend_type, session::BackendType::FullLoad));
 
     // Currently Windows-1252 (detected): line should decode as "café".
-    let chunk = session::get_lines(&result.session_id, super::SeekTarget::Row(0), 1).unwrap();
+    let chunk = session::get_lines(
+        &result.session_id,
+        super::SeekTarget::Row(0),
+        1,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
     assert_eq!(chunk.texts()[0], "café");
 
     // Force UTF-8: the high byte becomes U+FFFD.
     session::set_encoding(&result.session_id, FileEncoding::Utf8).unwrap();
-    let chunk = session::get_lines(&result.session_id, super::SeekTarget::Row(0), 1).unwrap();
+    let chunk = session::get_lines(
+        &result.session_id,
+        super::SeekTarget::Row(0),
+        1,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
     assert_eq!(chunk.texts()[0], "caf\u{FFFD}");
 
     session::close_session(&result.session_id).unwrap();
@@ -1322,7 +1346,13 @@ fn test_append_during_encoding_rebuild_not_dropped() {
     // We can't read total_bytes directly from outside; use get_lines with a Fraction
     // target near 1.0 — the chunk's `total_bytes` field reflects the backend's
     // current total.
-    let chunk = session::get_lines(&result.session_id, super::SeekTarget::Fraction(0.0), 1).unwrap();
+    let chunk = session::get_lines(
+        &result.session_id,
+        super::SeekTarget::Fraction(0.0),
+        1,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
     assert_eq!(
         chunk.total_bytes, new_size,
         "rebuild must absorb the queued append (drain-and-swap protocol)"
@@ -1362,7 +1392,7 @@ fn reload_replaces_backend_against_current_disk_contents() {
     session::reload(&sid).unwrap();
     let status = session::get_session_status(&sid).unwrap();
     assert!(status.total_lines.is_some());
-    let chunk = session::get_lines(&sid, super::SeekTarget::Row(1), 2).unwrap();
+    let chunk = session::get_lines(&sid, super::SeekTarget::Row(1), 2, &AtomicBool::new(false)).unwrap();
     assert_eq!(chunk.texts(), vec!["second", "third"]);
 
     session::close_session(&sid).unwrap();
@@ -1397,7 +1427,7 @@ fn set_tail_mode_enabling_catches_up_existing_growth() {
     let backend_bytes = session::get_session_status(&sid).unwrap();
     let _ = backend_bytes; // we re-read via get_lines below
     // get_lines after the snap should not blow up; that's the smoke check.
-    let _chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.99), 2).unwrap();
+    let _chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.99), 2, &AtomicBool::new(false)).unwrap();
 
     session::close_session(&sid).unwrap();
 }
@@ -1457,7 +1487,7 @@ fn tail_mode_on_extends_backend_when_watcher_reports_grew() {
 
     let description = format!("the tail-mode handler to extend the backend to a total of {want_size}");
     wait_until(Duration::from_secs(3), &description, || {
-        session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1)
+        session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1, &AtomicBool::new(false))
             .expect("get lines")
             .total_bytes
             >= want_size
@@ -1560,7 +1590,7 @@ fn test_append_during_upgrade_not_dropped() {
         upgraded_to_line_index(&sid)
     });
 
-    let chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1).unwrap();
+    let chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1, &AtomicBool::new(false)).unwrap();
     assert_eq!(
         chunk.total_bytes, new_size,
         "upgrade drain must absorb the queued append"
@@ -1616,7 +1646,7 @@ fn test_append_between_drain_and_swap_not_dropped() {
         upgraded_to_line_index(&sid)
     });
 
-    let chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1).unwrap();
+    let chunk = session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1, &AtomicBool::new(false)).unwrap();
     assert_eq!(
         chunk.total_bytes, final_size,
         "coalesced queue must land on the final backend"
@@ -1653,7 +1683,7 @@ fn test_session_emits_file_changed_on_append() {
     assert!(sent > 0, "test_only_emit must reach the session's subscriber");
 
     let total_bytes = || {
-        session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1)
+        session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1, &AtomicBool::new(false))
             .expect("get lines")
             .total_bytes
     };
@@ -1740,7 +1770,7 @@ fn test_session_rotation_reopens_backend() {
         Duration::from_secs(3),
         "the rotation to reopen against the new bytes",
         || {
-            session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1)
+            session::get_lines(&sid, super::SeekTarget::Fraction(0.0), 1, &AtomicBool::new(false))
                 .expect("get lines")
                 .total_bytes
                 == new_size

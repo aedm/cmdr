@@ -289,7 +289,16 @@ impl From<std::io::Error> for ViewerError {
 /// The interface all viewer backends implement.
 pub trait FileViewerBackend: Send + Sync {
     /// Fetch a range of lines starting from the given target.
-    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError>;
+    ///
+    /// `cancel` is this fetch's own flag, checked once per row: flipped, the fetch
+    /// stops and returns `Cancelled`. The IPC command flips it when its deadline
+    /// fires, so a timed-out fetch stops reading instead of finishing for nobody.
+    fn get_lines(
+        &self,
+        target: &SeekTarget,
+        count: usize,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<LineChunk, ViewerError>;
 
     /// Returns a fresh boxed backend whose internal state covers bytes up to
     /// `new_size`. Cancellable. Default is `Err(ViewerError::Cancelled)` so

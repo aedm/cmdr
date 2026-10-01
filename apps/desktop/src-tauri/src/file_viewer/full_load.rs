@@ -160,7 +160,7 @@ impl FileViewerBackend for FullLoadBackend {
         })
     }
 
-    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+    fn get_lines(&self, target: &SeekTarget, count: usize, cancel: &AtomicBool) -> Result<LineChunk, ViewerError> {
         let start = self.resolve_target(target);
         let mut end = start;
         let mut taken = 0u64;
@@ -168,6 +168,11 @@ impl FileViewerBackend for FullLoadBackend {
         // wrap-on viewport would rather not receive in one go, and every caller reads
         // `ChunkEnd` the same way whichever backend served it.
         while end < self.rows.len() && end - start < count {
+            // In memory, so never slow; checked anyway, so the flag means the same on
+            // every backend.
+            if cancel.load(Ordering::Relaxed) {
+                return Err(ViewerError::Cancelled);
+            }
             taken += self.rows[end].text.len() as u64;
             end += 1;
             if taken >= super::CHUNK_BUDGET_BYTES {

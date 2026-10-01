@@ -403,7 +403,10 @@ that the scan opener finds a line exactly with no index).
 - `viewer_get_lines(session_id, target_type, target_value, count)` → `Result<LineChunk, ViewerError>`. `target_type` is
   the typed `SeekTargetKind` (`row` / `byte` / `fraction`), which pairs with the numeric `target_value`; a typed
   parameter is what keeps the backend from re-parsing a free-form string and needing an error arm for a case no caller
-  can reach
+  can reach. Runs under the 2 s `VIEWER_TIMEOUT` with a cancel flag of its own (`get_lines_within` in
+  `commands/file_viewer.rs`): the deadline flips it, and the backend's per-row check (`collect_rows`, and the
+  `FullLoad` loop) stops the orphaned read at its next row. A fetch is bounded (`CHUNK_BUDGET_BYTES`), so this only
+  matters on a slow or stuck network mount, where each orphan would otherwise hold a blocking thread to the end
 - `viewer_read_range(session_id, read_id, anchor, focus)` → `Result<String, ViewerError>`: reads a logical
   `(row, offset)` range as one UTF-8 string. Endpoints are `RangeEnd::Row { row, offset }` (UTF-16 code unit offset)
   or `RangeEnd::Eof`, which ⌘A emits in ByteSeek-no-index mode (`makeSelectToEof` / `toRangeEnds` in the frontend's
@@ -697,7 +700,11 @@ timeout shape. Why every family owns its error type: `docs/guides/error-handling
 - **`read_range` cancellation is per-read, not session-wide**: each `read_range` call inserts an `Arc<AtomicBool>` into
   `session.active_reads` keyed by the FE-allocated `read_id`. `cancel_read(session_id, read_id)` flips that one flag.
   Per-read (not session-wide) for the same reason as `search_cancel`: a session-wide flag would race against concurrent
-  reads and against reads that complete just as the user starts a new one.
+  reads and against reads that complete just as the user starts a new one. The same flag rides into each chunk's
+  `get_lines`, so Escape also stops a chunk mid-walk. Every `get_lines` takes a flag (`FileViewerBackend::get_lines`);
+  a caller with nothing to cancel passes a fresh `false` one: the open's initial rows, and `inspect_file`'s window and
+  per-hit line reads, whose own flag a deadline has often already set (it stopped the line index or the scan, and the
+  bounded read after it is the point).
 - **`read_range` advances by byte offset after the first chunk, not by row number**: ByteSeek's `SeekTarget::Row(N)`
   resolves through its bytes-per-row estimate (no line index), so a multi-chunk read keyed by row number would misalign
   as soon as row lengths drift from the estimate. `range_read.rs` keys the first chunk by row, then by `byte_offset = chunk

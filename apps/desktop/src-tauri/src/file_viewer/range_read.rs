@@ -228,7 +228,7 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
 
     if start_row == end_row && !end_is_eof {
         // Single-row read: fetch the one row, clamp both offsets, slice between them.
-        let chunk = backend.get_lines(&SeekTarget::Row(start_row), 1)?;
+        let chunk = backend.get_lines(&SeekTarget::Row(start_row), 1, cancel)?;
         let line = chunk.rows.first().map(|row| &row.text).ok_or(ViewerError::OutOfRange)?;
         let start_byte = clamp_utf16_offset_to_byte(line, start_offset_utf16);
         let end_byte = clamp_utf16_offset_to_byte(line, end_offset_utf16);
@@ -268,7 +268,7 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
             return Err(ViewerError::Cancelled);
         }
 
-        let chunk = backend.get_lines(&next_target, FETCH_CHUNK)?;
+        let chunk = backend.get_lines(&next_target, FETCH_CHUNK, cancel)?;
         if chunk.rows.is_empty() {
             break;
         }

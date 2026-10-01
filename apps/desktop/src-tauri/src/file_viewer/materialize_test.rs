@@ -649,8 +649,13 @@ fn switching_the_view_mode_reuses_the_windows_temp_and_reads_nothing_from_the_ph
 
     // The frontend closes the old session once it has swapped to the new one.
     session::close_session(&first.session_id).expect("close the first session");
-    let lines = session::get_lines(&second.session_id, super::SeekTarget::Row(0), 1)
-        .expect("the new session still reads its file");
+    let lines = session::get_lines(
+        &second.session_id,
+        super::SeekTarget::Row(0),
+        1,
+        &AtomicBool::new(false),
+    )
+    .expect("the new session still reads its file");
     assert!(lines.texts()[0].starts_with('x'));
     let temps = temps_in(&extract);
     assert_eq!(temps.len(), 1, "one temp, shared rather than copied, found {temps:?}");
@@ -696,7 +701,13 @@ fn another_window_on_the_same_file_pulls_its_own_copy() {
     );
 
     session::close_session(&first.session_id).expect("close the first window's session");
-    session::get_lines(&second.session_id, super::SeekTarget::Row(0), 1).expect("the second window still reads");
+    session::get_lines(
+        &second.session_id,
+        super::SeekTarget::Row(0),
+        1,
+        &AtomicBool::new(false),
+    )
+    .expect("the second window still reads");
     session::close_session(&second.session_id).expect("close the second window's session");
     let left = temps_in(&extract);
     assert!(left.is_empty(), "both temps go, found {left:?}");

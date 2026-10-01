@@ -156,7 +156,7 @@ impl ScriptedBackend {
 
 #[cfg(test)]
 impl FileViewerBackend for ScriptedBackend {
-    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+    fn get_lines(&self, target: &SeekTarget, count: usize, _cancel: &AtomicBool) -> Result<LineChunk, ViewerError> {
         let call = self.calls.fetch_add(1, Ordering::SeqCst);
         (self.on_get_lines)(call);
 

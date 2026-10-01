@@ -202,7 +202,7 @@ impl FileViewerBackend for ByteSeekBackend {
         }))
     }
 
-    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+    fn get_lines(&self, target: &SeekTarget, count: usize, cancel: &AtomicBool) -> Result<LineChunk, ViewerError> {
         let raw_offset = self.resolve_byte_offset(target);
         let (mut reader, row_start) = self.reader_at(raw_offset)?;
 
@@ -216,7 +216,7 @@ impl FileViewerBackend for ByteSeekBackend {
         // No index, so the line number under a row is the row number: on an ordinary
         // file rows and lines are one-to-one, and inside a long line every continuation
         // row prints nothing at all. An estimate, like every number this backend gives.
-        let collected = collect_rows(&mut reader, Some(first_row_number), count)?;
+        let collected = collect_rows(&mut reader, Some(first_row_number), count, cancel)?;
 
         debug!(
             "ByteSeekBackend::get_lines: target={:?} -> byte {}, row {} ({} rows, {:?})",

@@ -39,6 +39,31 @@ async fn a_phone_sending_slowly(id: &str, len: usize, delay: Duration) -> String
     path
 }
 
+/// A row fetch past its deadline answers `TimedOut`, and the fetch itself is told
+/// to stop: its cancel flag flips, so a read stuck on a slow mount quits at its next
+/// row instead of holding a blocking thread for nobody.
+#[tokio::test]
+async fn a_row_fetch_that_times_out_is_told_to_stop() {
+    use std::sync::atomic::Ordering;
+
+    let stopped = Arc::new(AtomicBool::new(false));
+    let fetch_stopped = Arc::clone(&stopped);
+    let outcome = get_lines_within(Duration::from_millis(20), move |cancel| {
+        crate::test_support::wait_until(Duration::from_secs(5), "the deadline to flip the fetch's flag", || {
+            cancel.load(Ordering::Relaxed)
+        });
+        fetch_stopped.store(true, Ordering::Relaxed);
+        Err(ViewerError::Cancelled)
+    })
+    .await;
+
+    assert!(matches!(outcome, Err(ViewerError::TimedOut)), "got {outcome:?}");
+    crate::test_support::wait_until_async(Duration::from_secs(5), "the orphaned fetch to stop", || {
+        stopped.load(Ordering::Relaxed)
+    })
+    .await;
+}
+
 /// A pull that gets no bytes for the stall limit answers the typed
 /// `StoppedResponding` without waiting for the source, and the pull, detached
 /// rather than dropped, still stops at its chunk boundary and removes its temp.
