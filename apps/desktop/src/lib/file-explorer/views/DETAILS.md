@@ -335,7 +335,11 @@ Buffer balances memory (small) vs. IPC latency (reduces fetches).
 **Decision**: Cache invalidation via `cacheGeneration` prop **Why**: Changing sort, toggling hidden files, or resizing
 window requires fresh data. Parent bumps `cacheGeneration`, triggering a forced re-fetch. Both views keep the current
 window until that fetch lands, then replace it atomically; clearing first creates an empty paint between directories.
-Uses `$effect()` to react.
+Uses `$effect()` to react. The retained rows are paint-only: each cache records the epoch its rows were fetched in, and
+`getEntryAt` / `indexOfEntry` see no rows while that lags the current epoch (the `..` row still resolves). **Why**: once
+the pane stops loading, keys and commands act again, but until the forced fetch lands, index N in the old rows is a
+different file than index N in the new listing, so a fast Backspace-then-Enter or a rename would hit the old folder.
+Pinned in `full-list-cache.test.ts` and `BriefList.retained-rows.svelte.test.ts`.
 
 **Decision**: Icon prefetching only for visible entries **Why**: With 50k files, prefetching all icons = 50k IPC calls.
 Virtual scrolling renders only ~50 items, so prefetch only visible. Re-fetch on scroll. The same visible-range pass in

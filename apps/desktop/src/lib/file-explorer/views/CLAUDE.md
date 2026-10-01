@@ -28,7 +28,8 @@ pixel-accurate width measurement via `@chenglou/pretext`, and the `*-utils.ts` t
   `is-under-cursor` on widths, fall back to `capPx`, infer readiness from `rawWidths.length`, or make `capPx` a fetch
   trigger.
 - **Cold-context refreshes replace the visible window atomically.** Navigation, sort, hidden-file changes, and explicit
-  refresh keep the old rows until the forced fetch lands; an epoch drops late rows from the previous listing. Brief's
+  refresh keep the old rows until the forced fetch lands; an epoch drops late rows from the previous listing, and
+  retained rows are paint-only (`getEntryAt` / `indexOfEntry` skip them, else Enter acts on the old folder). Brief's
   click identity includes `listingId`, so clicks on retained and replacement rows never form a false double-click.
 - **A row-asserting unit test mounts through `mountFullList()` / `mountBriefList()`** (`test-full-list.ts` /
   `test-brief-list.ts`): unmeasured, a view renders zero rows, so a negative assertion passes for free.

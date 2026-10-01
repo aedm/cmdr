@@ -122,7 +122,16 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
   let parentDirStats = $state<DirStats | null>(null)
   let isFetching = false
   let fetchEpoch = 0
+  // The epoch `entries` was fetched in. After a cold context change the old rows stay
+  // painted until the forced fetch lands, but they no longer match the indices, so
+  // lookups must not hand them out as the entry under the cursor.
+  let entriesEpoch = 0
   let queuedFetch: (VisibleWindowRange & { force?: boolean }) | null = null
+
+  /** The cached rows that are safe to act on: none while retained rows await replacement. */
+  function actionableEntries(): FileEntry[] {
+    return entriesEpoch === fetchEpoch ? entries : []
+  }
 
   function queueFetchIfBusy(args: VisibleWindowRange & { force?: boolean }): boolean {
     if (!isFetching) return false
@@ -181,6 +190,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       if (result && capturedEpoch === fetchEpoch && listingId === deps.listingId()) {
         entries = result.entries
         range = result.range
+        entriesEpoch = capturedEpoch
         noteRenderedFolderSizes(entries, deps.volumeId())
       }
     } catch {
@@ -188,6 +198,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       if (force && capturedEpoch === fetchEpoch && listingId === deps.listingId()) {
         entries = []
         range = { start: 0, end: 0 }
+        entriesEpoch = capturedEpoch
       }
     } finally {
       isFetching = false
@@ -219,9 +230,16 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     },
 
     getEntryAt: (globalIndex: number) =>
-      getEntryAtUtil(globalIndex, deps.hasParent(), deps.parentPath(), entries, range, parentDirStats ?? undefined),
+      getEntryAtUtil(
+        globalIndex,
+        deps.hasParent(),
+        deps.parentPath(),
+        actionableEntries(),
+        range,
+        parentDirStats ?? undefined,
+      ),
 
-    indexOfEntry: (path: string) => indexOfEntryUtil(path, deps.hasParent(), entries, range),
+    indexOfEntry: (path: string) => indexOfEntryUtil(path, deps.hasParent(), actionableEntries(), range),
 
     windowRows: ({ startIndex, endIndex }: VisibleWindowRange) => {
       const hasParent = deps.hasParent()
@@ -287,6 +305,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       if (src === undefined) return
       entries = src
       range = { start: 0, end: src.length }
+      entriesEpoch = fetchEpoch
     },
 
     refreshIndexSizes: refreshIndexSizesNow,

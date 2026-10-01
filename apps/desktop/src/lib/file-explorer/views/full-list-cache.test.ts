@@ -149,6 +149,30 @@ describe('syncToProps', () => {
   })
 
   it.each([
+    ['a navigation', () => (props.listingId = 'listing-2')],
+    ['an explicit refresh or sort', () => (props.cacheGeneration = 1)],
+  ])('never hands out a retained row as the entry under the cursor after %s', async (_label, change) => {
+    const cache = makeCache()
+    cache.syncToProps(true)
+    await cache.fetch({ startIndex: 0, endIndex: 10 })
+    expect(cache.getEntryAt(1)?.name).toBe('a.txt')
+
+    change()
+    cache.syncToProps(true)
+
+    // Still painted, but not actionable: index 1 means a different file now.
+    expect(cache.entries.map((e) => e.name)).toEqual(['a.txt', 'b.txt'])
+    expect(cache.getEntryAt(1)).toBeUndefined()
+    expect(cache.indexOfEntry('/dir/a.txt')).toBeUndefined()
+    expect(cache.getEntryAt(0)?.name).toBe('..')
+
+    utils.fetchVisibleRange.mockResolvedValueOnce({ entries: [entry('new.txt')], range: { start: 0, end: 1 } })
+    await cache.fetch({ startIndex: 0, endIndex: 10, force: true })
+
+    expect(cache.getEntryAt(1)?.name).toBe('new.txt')
+  })
+
+  it.each([
     ['a directory-diff burst', () => (props.softRefreshTick = 1)],
     ['an entry count change', () => (props.totalCount = 101)],
   ])('soft-refreshes on %s, keeping the rows on screen', async (_label, change) => {

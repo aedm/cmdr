@@ -172,7 +172,16 @@
     let cachedRange = $state({ start: 0, end: 0 })
     let isFetching = $state(false)
     let fetchEpoch = 0
+    // The epoch `cachedEntries` was fetched in. After a cold context change the old
+    // rows stay painted until the forced fetch lands, but they no longer match the
+    // indices, so lookups must not hand them out as the entry under the cursor.
+    let cachedEntriesEpoch = 0
     let forceFetchAfterCurrent = false
+
+    /** The cached rows that are safe to act on: none while retained rows await replacement. */
+    function actionableEntries(): FileEntry[] {
+        return cachedEntriesEpoch === fetchEpoch ? cachedEntries : []
+    }
     // Recursive stats for the CURRENT directory (shown on the ".." row so that space isn't wasted).
     let parentDirStats = $state<DirStats | null>(null)
 
@@ -307,7 +316,7 @@
             globalIndex,
             hasParent,
             parentPath,
-            cachedEntries,
+            actionableEntries(),
             cachedRange,
             parentDirStats ?? undefined,
         )
@@ -315,7 +324,7 @@
 
     /** The UI index of a loaded row, or `undefined` when it isn't in the window. */
     export function indexOfEntry(path: string): number | undefined {
-        return indexOfEntryUtil(path, hasParent, cachedEntries, cachedRange)
+        return indexOfEntryUtil(path, hasParent, actionableEntries(), cachedRange)
     }
 
     /** Updates index size fields on cached directory entries AND on the ".." row. */
@@ -382,6 +391,7 @@
             if (result && capturedEpoch === fetchEpoch && capturedListingId === listingId) {
                 cachedEntries = result.entries
                 cachedRange = result.range
+                cachedEntriesEpoch = capturedEpoch
                 noteRenderedFolderSizes(cachedEntries, volumeId)
             }
         } catch {
@@ -389,6 +399,7 @@
             if (force && capturedEpoch === fetchEpoch && capturedListingId === listingId) {
                 cachedEntries = []
                 cachedRange = { start: 0, end: 0 }
+                cachedEntriesEpoch = capturedEpoch
             }
         } finally {
             isFetching = false
