@@ -358,7 +358,7 @@ async fn a_rename_that_copies_starts_a_move_instead_of_calling_rename() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_validity_check_reports_the_move_a_copying_rename_runs_as() {
     let (small_id, _small) = copying_store("copy-validity-small", 3).await;
-    let small = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), small_id).await;
+    let small = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), small_id, None).await;
     assert_eq!(
         small.by_move,
         Some(RenameByMove {
@@ -370,7 +370,7 @@ async fn the_validity_check_reports_the_move_a_copying_rename_runs_as() {
     );
 
     let (big_id, _big) = copying_store("copy-validity-big", 101).await;
-    let big = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), big_id).await;
+    let big = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), big_id, None).await;
     let by_move = big.by_move.expect("a copying rename reports its move");
     assert!(by_move.confirm_first, "past 100 files it asks first: {by_move:?}");
     assert!(!by_move.counted_all, "and the count stopped at its cap: {by_move:?}");
@@ -379,8 +379,23 @@ async fn the_validity_check_reports_the_move_a_copying_rename_runs_as() {
     let plain = Arc::new(crate::file_system::volume::InMemoryVolume::new(&plain_id));
     plain.create_directory(Path::new("/a/foo")).await.unwrap();
     get_volume_manager().register(&plain_id, plain as Arc<dyn Volume>);
-    let one_call = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), plain_id).await;
+    let one_call = check_rename_validity_impl("/a".into(), "foo".into(), "bar".into(), plain_id, None).await;
     assert_eq!(one_call.by_move, None, "a one-call rename carries nothing");
+}
+
+/// A few files that cost something to move (young objects on Wasabi) ask
+/// first too: only a free, small, fully counted rename starts unasked.
+#[test]
+fn a_small_rename_that_costs_money_asks_first() {
+    let small = crate::file_system::volume::SubtreeTally {
+        files: 3,
+        bytes: 6,
+        folders: 1,
+        per_file: Vec::new(),
+        complete: true,
+    };
+    assert!(!RenameByMove::from_tally(Some(small.clone()), false).confirm_first);
+    assert!(RenameByMove::from_tally(Some(small), true).confirm_first);
 }
 
 /// A reviewed batch where a rename copies runs as ONE move with the new

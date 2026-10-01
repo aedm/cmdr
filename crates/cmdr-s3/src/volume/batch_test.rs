@@ -61,13 +61,22 @@ async fn a_tally_counts_objects_but_not_markers_and_stops_past_its_cap(service: 
 
     let all = volume.tally_subtree(&folder, 100).await.expect("a tally");
     assert_eq!((all.files, all.bytes, all.complete), (3, 7, true));
+    assert_eq!(all.folders, 4, "the folder itself, `sub`, `sub/deeper`, and `empty`");
+    let mut sizes: Vec<u64> = all.per_file.iter().map(|file| file.size).collect();
+    sizes.sort_unstable();
+    assert_eq!(sizes, [1, 2, 4]);
+    assert!(
+        all.per_file.iter().all(|file| file.modified_at.is_some()),
+        "each object's upload time, which early deletion bills by"
+    );
     let capped = volume.tally_subtree(&folder, 2).await.expect("a tally");
     assert_eq!((capped.files, capped.complete), (2, false));
     let one = volume
         .tally_subtree(&volume.root().join(&a), 100)
         .await
         .expect("a tally");
-    assert_eq!((one.files, one.bytes, one.complete), (1, 4, true));
+    assert_eq!((one.files, one.bytes, one.folders, one.complete), (1, 4, 0, true));
+    assert!(one.per_file[0].modified_at.is_some(), "an object's upload time");
     assert!(matches!(
         volume
             .tally_subtree(&volume.root().join(format!("{prefix}nope")), 10)

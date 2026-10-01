@@ -6,8 +6,10 @@
 
 use std::path::{Path, PathBuf};
 
+use super::super::ScanCostFacts;
 use super::super::look_alike::{NewEntry, place_new_entry};
-use crate::file_system::volume::RenameWork;
+use crate::file_system::volume::{RenameWork, SubtreeTally};
+use crate::s3_costs;
 
 /// Result of a rename validity check.
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
@@ -34,8 +36,7 @@ pub(crate) struct RenameValidityResult {
 pub(crate) const SMALL_RENAME_FILES: u64 = 100;
 
 /// What a rename that runs as a move would carry, counted with a bounded
-/// listing (`Volume::tally_subtree`). The plan's M7 adds its cost estimate
-/// beside these counts.
+/// listing (`Volume::tally_subtree`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RenameByMove {
@@ -45,21 +46,23 @@ pub(crate) struct RenameByMove {
     pub bytes: u64,
     /// `false` when the count stopped at its cap, so there are more.
     pub counted_all: bool,
-    /// Big enough (or uncounted) to confirm in the Move dialog first; else it
-    /// starts as a background move with the progress chip.
+    /// Big enough, uncounted, or costing money to confirm in the Move dialog
+    /// first (which shows the cost); else it starts as a background move with
+    /// the progress chip.
     pub confirm_first: bool,
 }
 
 impl RenameByMove {
     /// The verdict for what a bounded count found: anything past
-    /// [`SMALL_RENAME_FILES`], or a count that couldn't finish, asks first.
-    pub(crate) fn from_tally(tally: Option<crate::file_system::volume::SubtreeTally>) -> Self {
+    /// [`SMALL_RENAME_FILES`], a count that couldn't finish, or a cost that
+    /// doesn't round to zero (`costs_something`) asks first.
+    pub(crate) fn from_tally(tally: Option<SubtreeTally>, costs_something: bool) -> Self {
         match tally {
             Some(tally) => Self {
                 files: tally.files,
                 bytes: tally.bytes,
                 counted_all: tally.complete,
-                confirm_first: !tally.complete || tally.files > SMALL_RENAME_FILES,
+                confirm_first: !tally.complete || tally.files > SMALL_RENAME_FILES || costs_something,
             },
             None => Self {
                 files: 0,
@@ -86,12 +89,14 @@ pub(crate) struct ConflictFileInfo {
 /// Validates a new filename and checks for conflicts in the same directory.
 /// Uses inode comparison to detect case-only renames (valid on case-insensitive
 /// APFS). When `volume_id` is not `"root"`, uses the Volume trait for conflict
-/// detection (needed for MTP and other non-local volumes).
+/// detection (needed for MTP and other non-local volumes). `data_dir` is where
+/// the S3 price table is cached, for a rename that runs as a move.
 pub(crate) async fn check_rename_validity_impl(
     dir: String,
     old_name: String,
     new_name: String,
     volume_id: String,
+    data_dir: Option<PathBuf>,
 ) -> RenameValidityResult {
     use crate::file_system::validation::{validate_filename, validate_path_length};
 
@@ -135,7 +140,7 @@ pub(crate) async fn check_rename_validity_impl(
             // MTP is case-sensitive, no case-only rename ambiguity
             is_case_only_rename: false,
             conflict: conflict_info.1,
-            by_move: rename_by_move_cost(&volume_id, &old_path).await,
+            by_move: rename_by_move_cost(&volume_id, &old_path, data_dir.as_deref()).await,
         }
     } else {
         // Local filesystem: use symlink_metadata with inode comparison
@@ -155,8 +160,9 @@ pub(crate) async fn check_rename_validity_impl(
 /// What renaming `old_path` would carry when it runs as a move, `None` when
 /// it's one call (or the volume is gone, which the rename itself reports).
 /// The count is bounded ([`SMALL_RENAME_FILES`] plus one), so F2 on a huge
-/// folder answers without listing all of it.
-async fn rename_by_move_cost(volume_id: &str, old_path: &Path) -> Option<RenameByMove> {
+/// folder answers without listing all of it, and its files are what the cost
+/// estimate prices: no request is sent for the estimate itself.
+async fn rename_by_move_cost(volume_id: &str, old_path: &Path, data_dir: Option<&Path>) -> Option<RenameByMove> {
     let volume = crate::file_system::volume::manager::get_volume_manager().get(volume_id)?;
     match volume.rename_work(old_path).await {
         Ok(RenameWork::CopyThenDelete) => {}
@@ -169,7 +175,19 @@ async fn rename_by_move_cost(volume_id: &str, old_path: &Path) -> Option<RenameB
             None
         }
     };
-    Some(RenameByMove::from_tally(tally))
+    // An unfinished count asks first anyway, so only a complete one is priced.
+    let costs_something = tally.as_ref().is_some_and(|tally| {
+        tally.complete && {
+            let facts = ScanCostFacts {
+                files: usize::try_from(tally.files).unwrap_or(usize::MAX),
+                dirs: usize::try_from(tally.folders).unwrap_or(usize::MAX),
+                bytes: tally.bytes,
+                per_file: Some(tally.per_file.clone()),
+            };
+            !s3_costs::rounds_to_zero(&s3_costs::estimate_rename(volume_id, &facts, data_dir))
+        }
+    });
+    Some(RenameByMove::from_tally(tally, costs_something))
 }
 
 /// Checks if a file with `new_path` exists and whether it's the same inode as `old_path`

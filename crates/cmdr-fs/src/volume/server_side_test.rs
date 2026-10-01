@@ -22,26 +22,24 @@ async fn a_file_tallies_as_one_file_of_its_size() {
     let volume = volume_with_tree().await;
     let tally = volume.tally_subtree(Path::new("/tree/a.txt"), 100).await.unwrap();
     assert_eq!(
-        tally,
-        SubtreeTally {
-            files: 1,
-            bytes: 4,
-            complete: true
-        }
+        (tally.files, tally.bytes, tally.folders, tally.complete),
+        (1, 4, 0, true)
     );
+    assert_eq!(tally.per_file.iter().map(|file| file.size).collect::<Vec<_>>(), [4]);
 }
 
 #[tokio::test]
 async fn a_folder_tallies_every_file_at_any_depth() {
     let volume = volume_with_tree().await;
     let tally = volume.tally_subtree(Path::new("/tree"), 100).await.unwrap();
+    assert_eq!((tally.files, tally.bytes, tally.complete), (3, 7, true));
+    assert_eq!(tally.folders, 2, "the folder itself and `sub`");
+    let mut sizes: Vec<u64> = tally.per_file.iter().map(|file| file.size).collect();
+    sizes.sort_unstable();
     assert_eq!(
-        tally,
-        SubtreeTally {
-            files: 3,
-            bytes: 7,
-            complete: true
-        }
+        sizes,
+        [1, 2, 4],
+        "each counted file's size, for the rename's cost estimate"
     );
 }
 

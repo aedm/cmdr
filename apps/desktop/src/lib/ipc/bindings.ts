@@ -12368,8 +12368,7 @@ export type RejectResultView =
 
 /**
  *  What a rename that runs as a move would carry, counted with a bounded
- *  listing (`Volume::tally_subtree`). The plan's M7 adds its cost estimate
- *  beside these counts.
+ *  listing (`Volume::tally_subtree`).
  */
 export type RenameByMove = {
   // Files the move copies, counted up to one past [`SMALL_RENAME_FILES`].
@@ -12379,8 +12378,9 @@ export type RenameByMove = {
   // `false` when the count stopped at its cap, so there are more.
   countedAll: boolean
   /**
-   *  Big enough (or uncounted) to confirm in the Move dialog first; else it
-   *  starts as a background move with the progress chip.
+   *  Big enough, uncounted, or costing money to confirm in the Move dialog
+   *  first (which shows the cost); else it starts as a background move with
+   *  the progress chip.
    */
   confirmFirst: boolean
 }

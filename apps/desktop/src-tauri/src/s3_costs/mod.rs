@@ -12,13 +12,14 @@ mod price_source;
 use std::path::Path;
 
 use cmdr_s3::S3Volume;
+use cmdr_s3::cost::PriceTable;
 use serde::{Deserialize, Serialize};
 
 pub use plan::CostedOperation;
 use plan::{Sides, plan};
 
 use crate::file_system::volume::manager::get_volume_manager;
-use crate::file_system::write_operations::cached_cost_facts;
+use crate::file_system::write_operations::{ScanCostFacts, cached_cost_facts};
 
 /// What a dialog asks about, once its scan preview has settled.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -65,12 +66,38 @@ pub fn estimate(request: &CostEstimateRequest, data_dir: Option<&Path>) -> Vec<C
         destination: destination_s3.map(S3Volume::cost_workload),
         server_copy: matches!((source_s3, destination_s3), (Some(from), Some(to)) if to.copies_on_server_from(from)),
     };
-    let table = price_source::current(data_dir);
-    plan(request.operation, sides, &facts)
+    priced(request.operation, sides, &facts, &price_source::current(data_dir))
+}
+
+/// What renaming an entry on `volume_id` costs when the rename runs as a move
+/// (`RenameWork::CopyThenDelete`), from the files the rename editor's bounded
+/// tally already listed. Empty off S3.
+pub fn estimate_rename(volume_id: &str, facts: &ScanCostFacts, data_dir: Option<&Path>) -> Vec<CostEstimate> {
+    let Some(volume) = get_volume_manager().get(volume_id) else {
+        return Vec::new();
+    };
+    let Some(s3) = volume.as_any().downcast_ref::<S3Volume>() else {
+        return Vec::new();
+    };
+    priced_rename(s3.cost_workload(), facts, &price_source::current(data_dir))
+}
+
+/// A rename within one place: a move whose copies run on the server.
+fn priced_rename(workload: cmdr_s3::cost::Workload, facts: &ScanCostFacts, table: &PriceTable) -> Vec<CostEstimate> {
+    let sides = Sides {
+        source: Some(workload.clone()),
+        destination: Some(workload),
+        server_copy: true,
+    };
+    priced(CostedOperation::Move, sides, facts, table)
+}
+
+fn priced(operation: CostedOperation, sides: Sides, facts: &ScanCostFacts, table: &PriceTable) -> Vec<CostEstimate> {
+    plan(operation, sides, facts)
         .iter()
         .filter_map(|work| table.estimate(work))
         .map(|estimate| {
-            log::debug!(target: "s3_costs", "{:?} at {}: {:?}", request.operation, estimate.provider_label, estimate.line_items);
+            log::debug!(target: "s3_costs", "{operation:?} at {}: {:?}", estimate.provider_label, estimate.line_items);
             CostEstimate {
                 amount: estimate.total,
                 currency: estimate.currency,
@@ -80,6 +107,17 @@ pub fn estimate(request: &CostEstimateRequest, data_dir: Option<&Path>) -> Vec<C
         .collect()
 }
 
+/// Whether every share shows as zero once rounded to its currency's cents, the
+/// rule the dialogs' cost line hides by (`s3-cost-line.ts::roundsToZero`). The
+/// table's currencies (USD, EUR) all have two decimals.
+pub fn rounds_to_zero(estimates: &[CostEstimate]) -> bool {
+    estimates.iter().all(|estimate| estimate.amount.abs() < 0.005)
+}
+
 #[cfg(test)]
 #[path = "plan_tests.rs"]
 mod plan_tests;
+
+#[cfg(test)]
+#[path = "rename_tests.rs"]
+mod rename_tests;

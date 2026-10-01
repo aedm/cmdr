@@ -10,11 +10,12 @@
 //!   its own path. ❗ By key, with no folder check: the trait's contract is
 //!   files the caller just listed (a move's source sweep).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmdr_fs::volume::patching::patch_deleted;
-use cmdr_fs::volume::{SubtreeTally, VolumeError};
+use cmdr_fs::volume::{ScannedFile, SubtreeTally, VolumeError};
 
 use super::S3Volume;
 use super::errors::map_s3_error;
@@ -23,6 +24,21 @@ use super::query::body_error;
 use crate::error::S3Error;
 use crate::ops::{self, ListObjectsParams, MAX_DELETE_KEYS};
 use crate::xml::{parse_delete_result, parse_list_objects};
+
+/// Adds every folder `relative` (a key under the tallied folder) sits in, or
+/// names as a marker: `sub/deeper/c.txt` adds `sub` and `sub/deeper`.
+fn note_folders(folders: &mut HashSet<String>, relative: &str) {
+    let mut end = 0;
+    while let Some(slash) = relative[end..].find('/') {
+        end += slash;
+        folders.insert(relative[..end].to_string());
+        end += 1;
+    }
+}
+
+fn unix_seconds(time: SystemTime) -> Option<u64> {
+    time.duration_since(UNIX_EPOCH).ok().map(|since| since.as_secs())
+}
 
 /// One path of a batch delete: where its result goes, its key, and the
 /// server-side path its error names.
@@ -46,8 +62,13 @@ impl S3Volume {
         let mut tally = SubtreeTally {
             files: 0,
             bytes: 0,
+            folders: 0,
+            per_file: Vec::new(),
             complete: true,
         };
+        // Every folder the keys name, relative to `prefix` ("" is the folder
+        // itself): S3 has no folders, only the slashes in keys and markers.
+        let mut folders: HashSet<String> = HashSet::from([String::new()]);
         let mut found = false;
         let mut token: Option<String> = None;
         loop {
@@ -65,15 +86,22 @@ impl S3Volume {
             let page = parse_list_objects(&answer.text()).map_err(|e| body_error(&e, &remote))?;
             for object in &page.objects {
                 found = true;
+                let relative = object.key.strip_prefix(&prefix).unwrap_or(&object.key);
+                note_folders(&mut folders, relative);
                 if object.key.ends_with('/') {
                     continue;
                 }
                 if tally.files >= cap {
                     tally.complete = false;
+                    tally.folders = folders.len() as u64;
                     return Ok(tally);
                 }
                 tally.files += 1;
                 tally.bytes += object.size;
+                tally.per_file.push(ScannedFile {
+                    size: object.size,
+                    modified_at: object.last_modified.and_then(unix_seconds),
+                });
             }
             token = page.next_continuation_token.filter(|_| page.is_truncated);
             if token.is_none() {
@@ -81,18 +109,32 @@ impl S3Volume {
             }
         }
         if found {
+            tally.folders = folders.len() as u64;
             return Ok(tally);
         }
         // Nothing under it: an object, or nothing at all.
         match self.head_object(&client, bucket, key, &remote).await? {
-            Some(head) => Ok(SubtreeTally {
-                files: 1,
-                bytes: head
-                    .header("content-length")
-                    .and_then(|length| length.parse().ok())
-                    .unwrap_or(0),
-                complete: true,
-            }),
+            Some(head) => {
+                let file = ScannedFile {
+                    size: head
+                        .header("content-length")
+                        .and_then(|length| length.parse().ok())
+                        .unwrap_or(0),
+                    // The upload time, ❌ never `x-amz-meta-mtime`: early
+                    // deletion bills from when the object landed.
+                    modified_at: head
+                        .header("last-modified")
+                        .and_then(|text| httpdate::parse_http_date(text).ok())
+                        .and_then(unix_seconds),
+                };
+                Ok(SubtreeTally {
+                    files: 1,
+                    bytes: file.size,
+                    folders: 0,
+                    per_file: vec![file],
+                    complete: true,
+                })
+            }
             None => Err(VolumeError::NotFound(remote)),
         }
     }

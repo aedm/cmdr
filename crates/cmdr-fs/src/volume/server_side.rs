@@ -14,7 +14,7 @@ use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
-use super::{Volume, VolumeError};
+use super::{FileEntry, ScannedFile, Volume, VolumeError};
 
 /// How renaming one entry runs on its volume
 /// ([`Volume::rename_work`]).
@@ -32,12 +32,17 @@ pub enum RenameWork {
 
 /// What [`Volume::tally_subtree`] counted under
 /// one path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubtreeTally {
     /// Files counted, a folder's at any depth. A file is one.
     pub files: u64,
     /// Their bytes.
     pub bytes: u64,
+    /// Folders seen, the tallied folder itself included; `0` for a file.
+    pub folders: u64,
+    /// Each counted file's size and date (on an object store, its upload
+    /// time), so the rename's cost can be estimated without asking again.
+    pub per_file: Vec<ScannedFile>,
     /// `false` when the count stopped at its cap, so there are more files
     /// than `files` (and more bytes than `bytes`).
     pub complete: bool,
@@ -70,19 +75,25 @@ pub async fn tally_by_listing<V: Volume + ?Sized>(
 ) -> Result<SubtreeTally, VolumeError> {
     let entry = volume.get_metadata(path).await?;
     if !entry.is_directory {
+        let file = scanned(&entry);
         return Ok(SubtreeTally {
             files: 1,
-            bytes: entry.size.unwrap_or(0),
+            bytes: file.size,
+            folders: 0,
+            per_file: vec![file],
             complete: true,
         });
     }
     let mut tally = SubtreeTally {
         files: 0,
         bytes: 0,
+        folders: 0,
+        per_file: Vec::new(),
         complete: true,
     };
     let mut pending: Vec<PathBuf> = vec![path.to_path_buf()];
     while let Some(dir) = pending.pop() {
+        tally.folders += 1;
         for child in volume.list_directory(&dir, None).await? {
             // A link is counted as the one entry it is, ❌ never walked: a
             // rename moves it as itself.
@@ -94,11 +105,20 @@ pub async fn tally_by_listing<V: Volume + ?Sized>(
                 tally.complete = false;
                 return Ok(tally);
             }
+            let file = scanned(&child);
             tally.files += 1;
-            tally.bytes += child.size.unwrap_or(0);
+            tally.bytes += file.size;
+            tally.per_file.push(file);
         }
     }
     Ok(tally)
+}
+
+fn scanned(entry: &FileEntry) -> ScannedFile {
+    ScannedFile {
+        size: entry.size.unwrap_or(0),
+        modified_at: entry.modified_at,
+    }
 }
 
 #[cfg(test)]

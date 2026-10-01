@@ -384,7 +384,9 @@ folder wins over an object of the same name (`NameHolds`), the listing's rule.
   floor, so every caller sends those through the app's engine; `rename` itself still answers them `NotSupported`, so
   nothing copies a folder by accident. One capped listing, plus a HEAD for an object.
 - **`tally_subtree`** (`batch.rs`) counts objects under a prefix with a recursive listing, a thousand keys a request,
-  stopping one past the cap; folder markers aren't files. F2 asks it how big a rename would be.
+  stopping one past the cap; folder markers aren't files. F2 asks it how big a rename would be, and prices the rename
+  from what it kept: each object's size and `LastModified` (the upload time early deletion bills from, ❌ never
+  `x-amz-meta-mtime`), and the folders the keys name.
 
 ## Server-side copy
 

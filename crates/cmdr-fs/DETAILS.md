@@ -419,9 +419,10 @@ default `copy_on_server` calls it, so they need nothing more.
 **`Volume::rename_work(path)`** answers whether renaming one ENTRY is one call (`RenameWork::OneCall`, the default, with
 no I/O) or a copy plus a delete (`CopyThenDelete`: an object store's folder or big file). Every `rename` caller asks it
 first and sends a copying entry through the transfer engine; ❌ never inferred from a backend kind, because the answer
-is per entry. Its two helpers: `tally_subtree(path, cap)`, a bounded count of what such a rename carries (default
-`server_side::tally_by_listing`, one listing per folder), and `delete_files(paths)`, the batch delete a move's source
-sweep calls per folder level (default: `delete` per path, a gone path answering `Ok`).
+is per entry. Its two helpers: `tally_subtree(path, cap)`, a bounded count of what such a rename carries, keeping each
+file's size and date for the rename's cost estimate (default `server_side::tally_by_listing`, one listing per folder),
+and `delete_files(paths)`, the batch delete a move's source sweep calls per folder level (default: `delete` per path, a
+gone path answering `Ok`).
 
 ## `root_anchored`: the one rule for turning a caller's path into a backend's
 

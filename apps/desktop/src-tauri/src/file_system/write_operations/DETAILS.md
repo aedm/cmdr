@@ -480,9 +480,12 @@ one delete per object, which needs a scan, byte progress, pause, cancel, conflic
   the way an in-zip rename answers once its edit driver is running; the sink is the global one the archive route uses.
   The progress chip shows it. Before that, `check_rename_validity_impl` reports `by_move` (`RenameByMove`: files and
   bytes from a bounded count, at most `SMALL_RENAME_FILES` + 1, and `confirm_first`), and the frontend opens the Move
-  dialog prefilled with the new name instead of renaming when `confirm_first` is set (past 100 files, or a count that
-  couldn't finish); it confirms through the `rename_by_move` command. That dialog's scan preview also feeds its cost estimate
-  (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`); a rename that starts without the dialog shows none.
+  dialog prefilled with the new name instead of renaming when `confirm_first` is set (past 100 files, a count that
+  couldn't finish, or an estimate that doesn't round to zero); it confirms through the `rename_by_move` command. The
+  estimate prices the count's own files (`s3_costs::estimate_rename`, no extra request), which is what catches Wasabi
+  billing a young object's remaining days on even a one-file rename. The dialog's scan preview then feeds the cost line
+  it shows (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`); a rename that starts without the dialog costs nothing
+  worth a line.
 - **The MCP rename tool** (autoConfirm) calls `rename_file`, so it takes F2's route.
 - **Bulk rename and Ask Cmdr's proposals** go through `start_renames`: every row's `rename_work` is asked (eight at a
   time; free on a volume that renames in one call), and a batch with any copying row runs as ONE move with the new

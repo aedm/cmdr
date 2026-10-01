@@ -19,7 +19,9 @@ estimates". The product decision: `docs/specs/s3-support-plan.md` § "Product de
   Otherwise a `download` per file on an S3 source and an `upload` per file on an S3 destination. Each copied folder
   writes a marker at an S3 destination (`upload(0)`).
 - **Move**: the copy, then at the source a `delete_object` per file (with its date) and a `delete_folder` per folder.
-  This is also F2's rename by move: the prefilled Move dialog runs the same scan.
+  This is also F2's rename by move: the prefilled Move dialog runs the same scan. Before that, `estimate_rename` prices
+  the rename editor's own tally (`Volume::tally_subtree`, at most 101 files) as a same-account move, and any amount that
+  doesn't round to zero (`rounds_to_zero`, the cost line's half-a-cent rule) sends the rename to the Move dialog.
 - **Delete**: a `delete_object` per file, a `delete_folder` and a `list_folder` per folder (a volume delete lists each
   folder again as it recurses).
 - **No per-file list** (a scan answered from a cached listing): the bytes spread evenly over the file count, undated.
@@ -43,8 +45,6 @@ There's no "stay offline" setting in the app today; if one lands, `fetching_allo
 - **A plain same-volume move on S3 (F6 within one place) shows no estimate**: the Move dialog skips its scan for a
   same-volume move (`TransferDialog.svelte`'s `isSameVolumeMove`, built for servers that rename in place), so there are
   no files to price. Rename mode scans, so F2's big renames do show one.
-- **F2's small renames by move** (up to `SMALL_RENAME_FILES`) start without a dialog, so they show none. On Wasabi a
-  rename of young objects bills their remaining days.
 - **Overwrites** aren't priced: the conflicts are known only once the operation runs. On Wasabi, overwriting a young
   object bills its remaining days.
 - AWS prices are US East's for every region.

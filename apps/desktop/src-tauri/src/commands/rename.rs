@@ -112,10 +112,24 @@ pub async fn check_rename_permission(path: String, volume_id: Option<String>) ->
 #[tauri::command]
 #[specta::specta]
 pub async fn check_rename_validity(
+    app: tauri::AppHandle,
     dir: String,
     old_name: String,
     new_name: String,
     volume_id: Option<String>,
+) -> Result<RenameValidityResult, MutationError> {
+    // Where the S3 price table is cached: a rename that copies is priced.
+    let data_dir = crate::config::resolved_app_data_dir(&app).ok();
+    check_rename_validity_with(dir, old_name, new_name, volume_id, data_dir).await
+}
+
+/// [`check_rename_validity`] with the app data dir already resolved.
+async fn check_rename_validity_with(
+    dir: String,
+    old_name: String,
+    new_name: String,
+    volume_id: Option<String>,
+    data_dir: Option<PathBuf>,
 ) -> Result<RenameValidityResult, MutationError> {
     let expanded_dir = expand_tilde(&dir);
     let volume_id_str = volume_id.unwrap_or_else(|| "root".to_string());
@@ -128,7 +142,7 @@ pub async fn check_rename_validity(
         io_budget_for_volume(&volume_id_str, Duration::from_secs(2)),
         || MutationError::TimedOut,
         |detail| MutationError::Unexpected { detail },
-        async move { Ok(check_rename_validity_impl(expanded_dir, old_name, new_name, volume_id_str).await) },
+        async move { Ok(check_rename_validity_impl(expanded_dir, old_name, new_name, volume_id_str, data_dir).await) },
     )
     .await
 }
@@ -278,7 +292,7 @@ mod tests {
         let tmp = create_test_dir("rename_valid_ok");
         let dir = tmp.to_string_lossy().to_string();
         fs::write(tmp.join("old.txt"), "content").unwrap();
-        let result = check_rename_validity(dir, "old.txt".to_string(), "new.txt".to_string(), None).await;
+        let result = check_rename_validity_with(dir, "old.txt".to_string(), "new.txt".to_string(), None, None).await;
         assert!(result.is_ok());
         let check = result.unwrap();
         assert!(check.valid);
@@ -291,7 +305,7 @@ mod tests {
     async fn test_check_rename_validity_empty_name() {
         let tmp = create_test_dir("rename_valid_empty");
         let dir = tmp.to_string_lossy().to_string();
-        let result = check_rename_validity(dir, "old.txt".to_string(), "   ".to_string(), None).await;
+        let result = check_rename_validity_with(dir, "old.txt".to_string(), "   ".to_string(), None, None).await;
         assert!(result.is_ok());
         let check = result.unwrap();
         assert!(!check.valid);
@@ -302,7 +316,7 @@ mod tests {
     async fn test_check_rename_validity_slash_in_name() {
         let tmp = create_test_dir("rename_valid_slash");
         let dir = tmp.to_string_lossy().to_string();
-        let result = check_rename_validity(dir, "old.txt".to_string(), "foo/bar".to_string(), None).await;
+        let result = check_rename_validity_with(dir, "old.txt".to_string(), "foo/bar".to_string(), None, None).await;
         assert!(result.is_ok());
         let check = result.unwrap();
         assert!(!check.valid);
@@ -314,7 +328,8 @@ mod tests {
         let dir = tmp.to_string_lossy().to_string();
         fs::write(tmp.join("old.txt"), "old content").unwrap();
         fs::write(tmp.join("existing.txt"), "existing content").unwrap();
-        let result = check_rename_validity(dir, "old.txt".to_string(), "existing.txt".to_string(), None).await;
+        let result =
+            check_rename_validity_with(dir, "old.txt".to_string(), "existing.txt".to_string(), None, None).await;
         assert!(result.is_ok());
         let check = result.unwrap();
         assert!(check.valid);
@@ -358,11 +373,12 @@ mod tests {
         let volume_id = "smb-slow-validity-live-test";
         register_slow_volume(volume_id, Some(ConnectionState::Direct), Duration::from_secs(3)).await;
 
-        let result = check_rename_validity(
+        let result = check_rename_validity_with(
             "/docs".to_string(),
             "old.txt".to_string(),
             "taken.txt".to_string(),
             Some(volume_id.to_string()),
+            None,
         )
         .await;
 
@@ -409,11 +425,12 @@ mod tests {
         let volume_id = "mtp-slow-validity-test";
         register_slow_volume(volume_id, None, Duration::from_secs(3)).await;
 
-        let result = check_rename_validity(
+        let result = check_rename_validity_with(
             "/docs".to_string(),
             "old.txt".to_string(),
             "taken.txt".to_string(),
             Some(volume_id.to_string()),
+            None,
         )
         .await;
 
@@ -427,7 +444,8 @@ mod tests {
         let dir = tmp.to_string_lossy().to_string();
         fs::write(tmp.join("MyFile.txt"), "content").unwrap();
         // On case-insensitive APFS, "myfile.txt" resolves to the same inode as "MyFile.txt"
-        let result = check_rename_validity(dir, "MyFile.txt".to_string(), "myfile.txt".to_string(), None).await;
+        let result =
+            check_rename_validity_with(dir, "MyFile.txt".to_string(), "myfile.txt".to_string(), None, None).await;
         assert!(result.is_ok());
         let check = result.unwrap();
         assert!(check.valid);
