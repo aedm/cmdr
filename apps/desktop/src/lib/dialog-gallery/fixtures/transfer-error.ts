@@ -65,6 +65,11 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
     // A saved server nobody has connected this session.
     error: { type: 'destination_not_connected', path: 'sftp://david@naspolya.local:22/share/photos/2026' },
   },
+  source_no_longer_connected: {
+    operationType: 'copy',
+    // A phone unplugged while its search results were still on screen.
+    error: { type: 'source_no_longer_connected', path: '/sdcard/DCIM/Camera/PXL_20260714_052311.jpg' },
+  },
   destination_exists: {
     operationType: 'move',
     error: { type: 'destination_exists', path: '/Users/david/Documents/invoices/2026-Q2-summary.numbers' },

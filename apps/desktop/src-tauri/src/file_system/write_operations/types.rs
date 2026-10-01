@@ -432,6 +432,18 @@ pub struct ScanPreviewStartResult {
     pub preview_id: String,
 }
 
+/// Why a scan preview wouldn't start. Nothing is walked and no preview exists.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum ScanPreviewRefusal {
+    /// No volume answers for the source's (non-local) volume id: a phone that was
+    /// unplugged, or one listed but not connected, typically under a
+    /// search-results pane still showing its files. Walking the path on the Mac
+    /// instead is what this exists to stop: it can only fail, and the dialog
+    /// would then offer a Retry that never works.
+    SourceNotConnected { volume_id: String },
+}
+
 /// Cached scan-preview totals, returned by `check_scan_preview_status` when the
 /// scan has already completed. Lets the FE recover from a race where events
 /// fired between IPC dispatch and listener registration (M2a's watcher-backed

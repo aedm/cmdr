@@ -742,14 +742,16 @@ export const commands = {
     progressIntervalMs: number | null,
     sampleForEstimate: boolean | null,
   ) =>
-    __TAURI_INVOKE<ScanPreviewStartResult>('start_scan_preview', {
-      sources,
-      sourceVolumeId,
-      sortColumn,
-      sortOrder,
-      progressIntervalMs,
-      sampleForEstimate,
-    }),
+    typedError<ScanPreviewStartResult, ScanPreviewRefusal>(
+      __TAURI_INVOKE('start_scan_preview', {
+        sources,
+        sourceVolumeId,
+        sortColumn,
+        sortOrder,
+        progressIntervalMs,
+        sampleForEstimate,
+      }),
+    ),
   cancelScanPreview: (previewId: string) => __TAURI_INVOKE<void>('cancel_scan_preview', { previewId }),
   /**
    *  Returns the cached totals from a completed scan preview, or `null` while the
@@ -12714,6 +12716,17 @@ export type ScanPreviewProgressEvent = {
   onlineOnlyFound?: boolean
 }
 
+// Why a scan preview wouldn't start. Nothing is walked and no preview exists.
+export type ScanPreviewRefusal =
+  /**
+   *  No volume answers for the source's (non-local) volume id: a phone that was
+   *  unplugged, or one listed but not connected, typically under a
+   *  search-results pane still showing its files. Walking the path on the Mac
+   *  instead is what this exists to stop: it can only fail, and the dialog
+   *  would then offer a Retry that never works.
+   */
+  { type: 'source_not_connected'; volumeId: string }
+
 // Result of starting a scan preview.
 export type ScanPreviewStartResult = {
   previewId: string
@@ -16286,6 +16299,18 @@ export type WriteOperationError =
    *  reason `SourceNotFound` and `DestinationNotFound` do.
    */
   | { type: 'destination_not_connected'; path: string }
+  /**
+   *  The volume holding the sources left the registry, and nothing lists or
+   *  saves it any more: a phone that was unplugged, or a server that went
+   *  away, typically under a search-results pane still showing its files.
+   *  Refused before anything is read. `path` is the first source as the
+   *  caller sent it.
+   *
+   *  ❌ Never `SourceNotConnected`: there's no row to open, so "open it from
+   *  the volume switcher" would send the user looking for one. ❌ Never a bare
+   *  "volume not found" either, which names an internal id.
+   */
+  | { type: 'source_no_longer_connected'; path: string }
   // Overwrite not enabled.
   | { type: 'destination_exists'; path: string }
   /**

@@ -305,6 +305,10 @@
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
   },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "The phone or server holding these files isn’t connected any more, so Cmdr can’t copy from it.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "433502e"
+  },
   "fileOperations.transferDialog.conflictsUnknown": "Vi kunde inte kolla vad som redan finns på målplatsen. Du får en fråga om allt som krockar.",
   "@fileOperations.transferDialog.conflictsUnknown": {
     "sourceHash": "d42db28"

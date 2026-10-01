@@ -181,6 +181,18 @@ pub enum WriteOperationError {
     DestinationNotConnected {
         path: String,
     },
+    /// The volume holding the sources left the registry, and nothing lists or
+    /// saves it any more: a phone that was unplugged, or a server that went
+    /// away, typically under a search-results pane still showing its files.
+    /// Refused before anything is read. `path` is the first source as the
+    /// caller sent it.
+    ///
+    /// ❌ Never `SourceNotConnected`: there's no row to open, so "open it from
+    /// the volume switcher" would send the user looking for one. ❌ Never a bare
+    /// "volume not found" either, which names an internal id.
+    SourceNoLongerConnected {
+        path: String,
+    },
     /// Overwrite not enabled.
     DestinationExists {
         path: String,

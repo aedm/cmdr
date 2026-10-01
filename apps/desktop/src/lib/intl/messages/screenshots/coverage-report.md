@@ -16,7 +16,7 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2598 / 3770 keys have a screenshot (69%):** 1402 direct (37%) and 1196 representative (32%). 1008 remain
+**Total: 2601 / 3779 keys have a screenshot (69%):** 1402 direct (37%) and 1199 representative (32%). 1014 remain
 uncoupled, and 164 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
@@ -30,10 +30,10 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | crashReporter  |     12 |             11 |         0 |      0 |    23 |  100% |
 | downloads      |     10 |              5 |        21 |      0 |    36 |   42% |
 | errorReporter  |     17 |              0 |        29 |      0 |    46 |   37% |
-| errors         |     98 |            416 |         0 |      0 |   514 |  100% |
+| errors         |     98 |            419 |         0 |      0 |   517 |  100% |
 | feedback       |      7 |              5 |         1 |      0 |    13 |   92% |
-| fileExplorer   |    111 |             74 |       228 |      0 |   413 |   45% |
-| fileOperations |    107 |             66 |        69 |      0 |   242 |   71% |
+| fileExplorer   |    111 |             74 |       230 |      0 |   415 |   45% |
+| fileOperations |    107 |             66 |        70 |      0 |   243 |   71% |
 | goToPath       |      5 |              6 |         2 |      0 |    13 |   85% |
 | indexing       |     33 |             16 |        18 |      0 |    67 |   73% |
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
@@ -48,8 +48,8 @@ uncoupled, and 164 are native surfaces a webview capture cannot reach.
 | queue          |     25 |             11 |         1 |      0 |    37 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
-| servers        |     55 |             21 |        50 |      0 |   126 |   60% |
-| settings       |    343 |             37 |       249 |      0 |   629 |   60% |
+| servers        |     55 |             21 |        52 |      0 |   128 |   59% |
+| settings       |    343 |             37 |       250 |      0 |   630 |   60% |
 | shortcuts      |     32 |             28 |         0 |      0 |    60 |  100% |
 | suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
 | transfer       |      2 |             12 |         0 |      0 |    14 |  100% |

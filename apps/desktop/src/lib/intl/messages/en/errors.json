@@ -1664,6 +1664,24 @@
     "description": "Recovery suggestion when a phone or server isn't connected yet, shown in the copy, move, or delete error dialog. Plain text. \"It\" is the phone or server the message above names. \"Volume switcher\" is the dropdown at the top of each pane where a person picks a drive, phone, or server; use the same term as the commands.paneLeftVolumeChooser.label key. Choosing the phone or server there is what connects it.",
     "screenshot": "transfer-error-source_not_connected.png"
   },
+  "errors.write.noLongerConnected.title": "Not connected anymore",
+  "errors.write.noLongerConnected.message": "The phone or server holding these files isn’t connected anymore, so nothing has changed.",
+  "errors.write.noLongerConnected.suggestion": "Plug the phone back in, or open the server from the volume switcher, then try again.",
+  "@errors.write.noLongerConnected.title": {
+    "description": "Title of the copy, move, or delete error dialog when the phone or server holding the selected files was connected earlier but isn't any more (a phone unplugged while its search results were still on screen), so the operation didn't start. Distinct from errors.write.notConnected.title (\"Not connected yet\", for one Cmdr never connected) and from \"Device disconnected\" (a connection that dropped mid-operation). Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.noLongerConnected.message": {
+    "description": "Body of the copy, move, or delete error dialog when the phone or server that holds the selected files is no longer connected. Cmdr refused before reading or changing anything, and the end of the sentence promises that. Plain text, a raw errors.* string (no ICU). It has to read right for copy, move, and delete alike, so don't name one action.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.noLongerConnected.suggestion": {
+    "description": "Recovery suggestion in the same dialog. A phone comes back by plugging its cable in again; a server by choosing it in the \"volume switcher\", the dropdown at the top of each pane where a person picks a drive, phone, or server (use the same term as the commands.paneLeftVolumeChooser.label key). Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.destinationExists.title": "File already exists",
   "errors.write.destinationExists.message": "There’s already a file with this name at the destination.",
   "errors.write.destinationExists.suggestion": "Choose a different name or location, or delete the existing file first.",

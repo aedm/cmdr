@@ -97,6 +97,14 @@ const simpleMessageFactories: Partial<
     message: w('notConnected.message.destination'),
     suggestion: w('notConnected.suggestion'),
   }),
+  // A source whose volume left and that nothing lists any more: a phone unplugged
+  // under a search-results pane. ❌ Never the "not connected yet" sentence, whose
+  // advice points at a volume-switcher row that isn't there.
+  source_no_longer_connected: () => ({
+    title: w('noLongerConnected.title'),
+    message: w('noLongerConnected.message'),
+    suggestion: w('noLongerConnected.suggestion'),
+  }),
   // destinationInsideSource can only happen on copy/move (delete/trash have no
   // destination), so `${op}` only ever resolves to `.copy` or `.move` here.
   destination_inside_source: (op) => ({
@@ -210,6 +218,8 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // opened in a pane, which is what the suggestion asks for.
   source_not_connected: { category: 'needs_action', retryHint: false },
   destination_not_connected: { category: 'needs_action', retryHint: false },
+  // No Retry: the same request refuses again until the phone or server is back.
+  source_no_longer_connected: { category: 'needs_action', retryHint: false },
   destination_exists: { category: 'needs_action', retryHint: false },
   permission_denied: { category: 'needs_action', retryHint: false },
   insufficient_space: { category: 'needs_action', retryHint: false },

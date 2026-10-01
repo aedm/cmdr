@@ -147,6 +147,33 @@ describe('a size scan that gives up', () => {
   })
 })
 
+// A phone unplugged under a search-results pane: the preview refuses before
+// walking anything, because no volume answers for it. Retrying can't bring it
+// back, and neither can confirming, so the dialog offers neither.
+describe('a source no volume answers for', () => {
+  it('says the source is not connected, with no Retry and no way to confirm', async () => {
+    startScanPreviewMock.mockResolvedValue({ refusal: { type: 'source_not_connected', volumeId: 'nas' } })
+    const confirmed = vi.fn<(payload: TransferConfirmPayload) => void>()
+    const target = mountDialog(confirmed)
+    await flushMicrotasks()
+
+    const stats = target.querySelector('.scan-stats')
+    expect(stats?.getAttribute('data-scan-state')).toBe('unavailable')
+    expect(stats?.querySelector('.scan-status'), 'no spinner: nothing is counting').toBeNull()
+
+    const notice = target.querySelector('.scan-unavailable')
+    expect(notice?.textContent).toContain('isn’t connected any more')
+    expect(notice?.textContent).not.toContain('couldn’t finish measuring')
+    expect(notice?.querySelector('button'), 'no Retry: it can never work').toBeNull()
+
+    const confirm = target.querySelector<HTMLButtonElement>('.btn-primary')
+    expect(confirm?.disabled).toBe(true)
+    confirm?.click()
+    await flushMicrotasks()
+    expect(confirmed).not.toHaveBeenCalled()
+  })
+})
+
 describe('a conflict check that gives up', () => {
   it('says it could not check, rather than showing the no-conflicts UI', async () => {
     scanVolumeForConflictsMock.mockRejectedValue(new Error('Operation timed out'))

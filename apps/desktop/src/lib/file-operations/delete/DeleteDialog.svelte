@@ -285,6 +285,14 @@
             progressIntervalMs,
             request.sourceVolumeId,
         )
+        if ('refusal' in result) {
+            // No volume answers for the source (an unplugged phone): nothing was
+            // walked and no preview exists. Same as a walk that stopped; the
+            // delete itself is refused typed if it's confirmed.
+            isScanning = false
+            settleOnlineOnlyAnswer()
+            return
+        }
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- may have changed during await
         if (destroyed) {
             void cancelScanPreview(result.previewId)

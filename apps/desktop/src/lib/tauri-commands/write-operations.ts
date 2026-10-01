@@ -30,6 +30,7 @@ import type {
   ScanPreviewCompleteEvent,
   ScanPreviewErrorEvent,
   ScanPreviewProgressEvent,
+  ScanPreviewRefusal,
   ScanProgressEvent,
   TrashRoutingAnswer,
   TransferActivity,
@@ -72,6 +73,7 @@ export type {
   ProgressAtStop,
   ScanProgressEvent,
   ScanPreviewStartResult,
+  ScanPreviewRefusal,
   ScanPreviewProgressEvent,
   ScanPreviewCompleteEvent,
   ScanPreviewErrorEvent,
@@ -86,7 +88,9 @@ export type {
 
 /** Starts scanning source files immediately, emitting progress events for the Copy dialog.
  * When sourceVolumeId is provided and is not "root", the backend uses the Volume trait
- * (enabling MTP and other non-local volumes). */
+ * (enabling MTP and other non-local volumes).
+ * A non-local id no volume answers for (an unplugged phone) comes back as a typed `refusal`
+ * instead: nothing was walked and no preview exists. */
 export async function startScanPreview(
   sources: string[],
   sortColumn: SortColumn,
@@ -96,8 +100,8 @@ export async function startScanPreview(
   // Compress-mode scans pass `true` so the local walk samples a compressed-size
   // estimate. Ignored for remote sources (never sampled).
   sampleForEstimate?: boolean,
-): Promise<ScanPreviewStartResult> {
-  return commands.startScanPreview(
+): Promise<ScanPreviewStart> {
+  const res = await commands.startScanPreview(
     sources,
     sourceVolumeId ?? null,
     sortColumn,
@@ -105,7 +109,11 @@ export async function startScanPreview(
     progressIntervalMs ?? null,
     sampleForEstimate ?? null,
   )
+  return res.status === 'ok' ? res.data : { refusal: res.error }
 }
+
+/** A scan preview that started, or the backend's typed reason it wouldn't. */
+export type ScanPreviewStart = ScanPreviewStartResult | { refusal: ScanPreviewRefusal }
 
 export async function cancelScanPreview(previewId: string): Promise<void> {
   await commands.cancelScanPreview(previewId)

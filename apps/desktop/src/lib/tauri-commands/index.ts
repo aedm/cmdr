@@ -364,6 +364,8 @@ export type {
   OperationSummary,
   ScanProgressEvent,
   ScanPreviewStartResult,
+  ScanPreviewStart,
+  ScanPreviewRefusal,
   ScanPreviewProgressEvent,
   ScanPreviewCompleteEvent,
   ScanPreviewErrorEvent,

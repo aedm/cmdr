@@ -2,11 +2,11 @@
 
 use crate::file_system::write_operations::TrashRoutingAnswer;
 use crate::file_system::write_operations::{
-    ConflictId, ConflictResolution, ConflictResolutionOutcome, MutationError, ScanPreviewStartResult,
-    cancel_scan_preview as ops_cancel_scan_preview, create_directory_managed as ops_create_directory_managed,
-    create_file_managed as ops_create_file_managed, get_scan_preview_totals as ops_get_scan_preview_totals,
-    resolve_write_conflict as ops_resolve_write_conflict, start_scan_preview as ops_start_scan_preview,
-    trash_routing_for_selection as ops_trash_routing_for_selection,
+    ConflictId, ConflictResolution, ConflictResolutionOutcome, MutationError, ScanPreviewRefusal,
+    ScanPreviewStartResult, cancel_scan_preview as ops_cancel_scan_preview,
+    create_directory_managed as ops_create_directory_managed, create_file_managed as ops_create_file_managed,
+    get_scan_preview_totals as ops_get_scan_preview_totals, resolve_write_conflict as ops_resolve_write_conflict,
+    start_scan_preview as ops_start_scan_preview, trash_routing_for_selection as ops_trash_routing_for_selection,
 };
 use crate::file_system::{
     OperationEventSink, OperationSnapshot, OperationStatus, OperationSummary, PauseAllOutcome, PauseOutcome,
@@ -45,8 +45,13 @@ use crate::file_system::volume::manager::path_routes_over_its_parent;
 /// scans pay nothing.
 ///
 /// `None` means "scan the local filesystem directly" (the `std::fs` fast path);
-/// `Some` means scan through the `Volume` trait.
-async fn scan_preview_source_volume(volume_id: &str, first_source: Option<&PathBuf>) -> Option<Arc<dyn Volume>> {
+/// `Some` means scan through the `Volume` trait. A non-local id no volume answers
+/// for is refused: ❌ never fall back to `std::fs` for it, which walks an
+/// `adb://…` path on the Mac and fails behind a Retry that can't help.
+async fn scan_preview_source_volume(
+    volume_id: &str,
+    first_source: Option<&PathBuf>,
+) -> Result<Option<Arc<dyn Volume>>, ScanPreviewRefusal> {
     // The `.zip` file itself is scanned as a plain file (one entry), never its
     // contents, which is why the gate asks about a path INSIDE a route rather
     // than about a `.zip` component.
@@ -75,11 +80,16 @@ async fn scan_preview_source_volume(volume_id: &str, first_source: Option<&PathB
         None
     };
     if routed_source.is_some() {
-        routed_source
+        Ok(routed_source)
     } else if volume_id == "root" {
-        None
+        Ok(None)
     } else {
-        get_volume_manager().get(volume_id)
+        get_volume_manager()
+            .get(volume_id)
+            .map(Some)
+            .ok_or_else(|| ScanPreviewRefusal::SourceNotConnected {
+                volume_id: volume_id.to_string(),
+            })
     }
 }
 
@@ -383,7 +393,7 @@ pub async fn start_scan_preview(
     // Compress-mode scans set this so the local walk samples a compressed-size
     // estimate. Ignored for remote sources (never sampled). `None` == false.
     sample_for_estimate: Option<bool>,
-) -> ScanPreviewStartResult {
+) -> Result<ScanPreviewStartResult, ScanPreviewRefusal> {
     let volume_id = source_volume_id.unwrap_or_else(|| "root".to_string());
     let is_local = volume_id == "root";
 
@@ -394,10 +404,10 @@ pub async fn start_scan_preview(
         sources.iter().map(PathBuf::from).collect()
     };
 
-    let source_volume = scan_preview_source_volume(&volume_id, sources.first()).await;
+    let source_volume = scan_preview_source_volume(&volume_id, sources.first()).await?;
 
     let progress_interval = progress_interval_ms.unwrap_or(500);
-    ops_start_scan_preview(
+    Ok(ops_start_scan_preview(
         app,
         sources,
         source_volume,
@@ -406,7 +416,7 @@ pub async fn start_scan_preview(
         sort_order,
         progress_interval,
         sample_for_estimate.unwrap_or(false),
-    )
+    ))
 }
 
 #[tauri::command]
@@ -639,11 +649,30 @@ mod tests {
         let inner = zip.join("inner.txt");
         let source = scan_preview_source_volume("root", Some(&inner))
             .await
+            .expect("an archive source is never refused")
             .expect("archive source volume");
         assert_eq!(source.root(), zip);
 
         // A plain local source stays `None` — the `std::fs` fast path.
         let plain = dir.path().join("plain.txt");
-        assert!(scan_preview_source_volume("root", Some(&plain)).await.is_none());
+        assert!(matches!(
+            scan_preview_source_volume("root", Some(&plain)).await,
+            Ok(None)
+        ));
+    }
+
+    /// A phone unplugged under a search-results pane leaves an id no volume
+    /// answers for. The preview refuses it with a typed reason, ❌ never falls
+    /// back to walking `adb://…` on the Mac: that walk can only fail, and the
+    /// dialog would offer a Retry that never works.
+    #[tokio::test]
+    async fn scan_preview_refuses_a_source_volume_nothing_answers_for() {
+        let source = PathBuf::from("/sdcard/DCIM/Camera/a.jpg");
+        let refused = scan_preview_source_volume("an-unplugged-phone", Some(&source)).await;
+        assert!(
+            matches!(&refused, Err(ScanPreviewRefusal::SourceNotConnected { volume_id }) if volume_id == "an-unplugged-phone"),
+            "an unknown source volume is refused, not walked locally; got {:?}",
+            refused.as_ref().map(Option::is_some)
+        );
     }
 }

@@ -270,10 +270,11 @@
      *                  nothing to count.
      *   - `counting` → a scan is in flight (or about to start on mount).
      *   - `unavailable` → the scan stopped without an answer; the tallies are a
-     *                  floor, and the notice under them says so.
+     *                  floor, and the notice under them says so. Also a preview
+     *                  that refused to start (the source isn't connected).
      *  `done` wins over `skipped`: a same-volume COPY still scans and completes. */
     const scanState = $derived<'counting' | 'done' | 'skipped' | 'unavailable'>(
-        scanComplete ? 'done' : scan.scanFailure ? 'unavailable' : isSameVolumeMove ? 'skipped' : 'counting',
+        scanComplete ? 'done' : scan.scanFailure || scan.sourceRefusal ? 'unavailable' : isSameVolumeMove ? 'skipped' : 'counting',
     )
 
     /** Settle state of the top-level conflict check, exposed as `data-conflict-state`
@@ -483,7 +484,9 @@
     }
 
     async function handleConfirm(isAuto = false) {
-        if (pathError || confirmed) return
+        // A refused source can't be read, so there's nothing to confirm. A confirm that
+        // beats the refusal (MCP auto-confirm) reaches the backend, which refuses it typed.
+        if (pathError || scan.sourceRefusal || confirmed) return
         confirmed = true
         confirmPending = true
         // Compress auto-confirm must not silently overwrite an existing archive:
@@ -694,7 +697,17 @@
              quiet here is one the user reads as "nothing to copy". The transfer
              can still start: the operation counts as it goes, and the scan
              preview only feeds this Size line and a cache it can rebuild. -->
-        {#if scan.scanFailure}
+        {#if scan.sourceRefusal}
+            <!-- The preview refused before walking anything: no volume answers
+                 for the source (a phone unplugged under a search-results pane).
+                 No Retry and no Confirm, since neither can work until it's back. -->
+            <p class="scan-unavailable" role="status">
+                <span class="scan-unavailable-icon" aria-hidden="true">
+                    <Icon name="triangle-alert" size={16} />
+                </span>
+                <span>{tString('fileOperations.transferDialog.sourceNoLongerConnected')}</span>
+            </p>
+        {:else if scan.scanFailure}
             <p class="scan-unavailable" role="status">
                 <span class="scan-unavailable-icon" aria-hidden="true">
                     <Icon name="triangle-alert" size={16} />
@@ -813,7 +826,7 @@
              button has to look busy rather than inviting a second click. The spinner
              is decorative (no `label`, so `aria-hidden`), which keeps the button's
              accessible name exactly `confirmLabel` and needs no new catalog string. -->
-        <Button variant="primary" onclick={() => handleConfirm()} disabled={!!pathError || confirmPending}>
+        <Button variant="primary" onclick={() => handleConfirm()} disabled={!!pathError || !!scan.sourceRefusal || confirmPending}>
             <span class="confirm-content">
                 {#if confirmPending}
                     <Spinner size="sm" />

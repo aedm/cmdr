@@ -505,6 +505,11 @@
     "description": "Button beside the message about a size scan that couldn't finish. Starts the scan over. Short control label."
   },
 
+  "fileOperations.transferDialog.sourceNoLongerConnected": "The phone or server holding these files isn’t connected any more, so Cmdr can’t copy from it.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "description": "Shown in the copy or move dialog, in place of the file and size counts' usual notice, when the phone or server the selected files live on is no longer connected (typically a phone unplugged while its search results were still on screen). There's no 'Try again' button and the confirm button is disabled, because neither can help until the device or server is back. Says 'copy' even in the move dialog, since reading the files is the part that can't happen."
+  },
+
   "fileOperations.transferDialog.conflictsUnknown": "We couldn’t check what’s already at the destination. You’ll be asked about anything that clashes.",
   "@fileOperations.transferDialog.conflictsUnknown": {
     "description": "Shown in the transfer dialog when the check for existing files at the destination couldn't run (an unresponsive volume, say). Two parts: it doesn't know what's there, and the transfer will still ask about each clash it meets. It must never read as 'nothing is there'."

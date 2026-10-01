@@ -193,6 +193,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       { id: 'destination_not_a_folder', label: 'A file is in the way of the destination' },
       { id: 'source_not_connected', label: 'Source not connected yet' },
       { id: 'destination_not_connected', label: 'Destination not connected yet' },
+      { id: 'source_no_longer_connected', label: 'Source not connected anymore' },
       { id: 'destination_exists', label: 'Destination exists' },
       { id: 'permission_denied', label: 'Permission denied' },
       { id: 'insufficient_space', label: 'Not enough space' },

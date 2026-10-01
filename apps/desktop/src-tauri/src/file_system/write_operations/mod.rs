@@ -174,11 +174,11 @@ pub(crate) use state::{register_external_volume_op, release_external_volume_op};
 pub use types::{
     ConflictId, ConflictInfo, ConflictResolution, ConflictResolutionOutcome, DryRunResult, LifecycleStatus,
     MoveLeftoversKeptEvent, OperationStatus, OperationSummary, ReadOnlySide, ScanPreviewCancelledEvent,
-    ScanPreviewCompleteEvent, ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewStartResult,
-    ScanPreviewTotals, ScanProgressEvent, SortColumn, SortOrder, SourceItemOutcome, TransferActivity,
-    TransferWaitReason, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent, WriteConflictResolvedEvent,
-    WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationStartResult,
-    WriteOperationType, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
+    ScanPreviewCompleteEvent, ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewRefusal,
+    ScanPreviewStartResult, ScanPreviewTotals, ScanProgressEvent, SortColumn, SortOrder, SourceItemOutcome,
+    TransferActivity, TransferWaitReason, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
+    WriteConflictResolvedEvent, WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase,
+    WriteOperationStartResult, WriteOperationType, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
 };
 
 // Re-export for tests (these are pub(crate) in validation.rs and state.rs)
