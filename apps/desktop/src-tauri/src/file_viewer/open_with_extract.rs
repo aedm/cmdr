@@ -37,10 +37,10 @@ use serde::{Deserialize, Serialize};
 
 use super::materialize::reap_temps_with_prefix;
 #[cfg(any(target_os = "macos", test))]
-use super::materialize::{TempSpot, extract_routed_into};
+use super::materialize::{RoutedPullFailure, TempSpot, extract_routed_into};
 use super::{ArchiveFailureKind, ViewerError};
 #[cfg(any(target_os = "macos", test))]
-use crate::file_system::volume::manager::{get_volume_manager, path_routes_over_its_parent};
+use crate::file_system::volume::manager::{RoutedKind, get_volume_manager, path_routes_over_its_parent};
 use crate::ignore_poison::RwLockIgnorePoison;
 
 /// Prefix on each launch's subdir, and on the stand-in dir: what the startup reaper
@@ -115,6 +115,8 @@ pub struct OpenWithCopyRefused {
     /// The chosen app's display name (its bundle name without `.app`).
     pub app_name: String,
     pub reason: OpenWithCopyRefusal,
+    /// Where the file sits, which the too-big toast names.
+    pub source: OpenWithCopySource,
 }
 
 #[cfg(any(target_os = "macos", test))]
@@ -128,6 +130,28 @@ impl OpenWithCopyRefused {
             file_name: lossy(refused.path.file_name(), &refused.path),
             app_name: lossy(app_path.file_stem(), app_path),
             reason: refused.reason,
+            source: refused.source,
+        }
+    }
+}
+
+/// What served the file the copy was pulled from. The archive refusals only ever come
+/// from an archive; a repo snapshot's reads that break off are plain `Unreadable`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum OpenWithCopySource {
+    /// An entry inside a zip, tar, or 7z Cmdr browses like a folder.
+    Archive,
+    /// A blob in one of a repo's virtual `.git` history trees.
+    RepoHistory,
+}
+
+#[cfg(any(target_os = "macos", test))]
+impl From<RoutedKind> for OpenWithCopySource {
+    fn from(routed: RoutedKind) -> Self {
+        match routed {
+            RoutedKind::Archive => Self::Archive,
+            RoutedKind::GitPortal => Self::RepoHistory,
         }
     }
 }
@@ -174,6 +198,7 @@ impl From<&ViewerError> for OpenWithCopyRefusal {
 pub(crate) struct RefusedCopy {
     pub(crate) path: PathBuf,
     pub(crate) reason: OpenWithCopyRefusal,
+    pub(crate) source: OpenWithCopySource,
     /// The pull's own failure, for the log.
     pub(crate) error: ViewerError,
 }
@@ -200,11 +225,14 @@ pub(super) fn launch_paths_in(paths: &[PathBuf], dir: &Path, cap: u64) -> Result
             }
             // `None`: the route didn't confirm (a real folder named `foo.zip`), so the
             // path is a real file and opens as it is.
-            let copy = extract_routed_into(path, &parent_volume_id(path), spot, cap).map_err(|error| RefusedCopy {
-                path: path.clone(),
-                reason: OpenWithCopyRefusal::from(&error),
-                error,
-            })?;
+            let copy = extract_routed_into(path, &parent_volume_id(path), spot, cap).map_err(
+                |RoutedPullFailure { routed, error }| RefusedCopy {
+                    path: path.clone(),
+                    reason: OpenWithCopyRefusal::from(&error),
+                    source: OpenWithCopySource::from(routed),
+                    error,
+                },
+            )?;
             let Some(copy) = copy else {
                 return Ok(path.clone());
             };

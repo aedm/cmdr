@@ -11075,7 +11075,7 @@ export type OpenTerminalOutcome =
 
 // Why the copy couldn't be made, in the terms the toast words differently.
 export type OpenWithCopyRefusal =
-  // Over [`OPEN_WITH_CAP_BYTES`] (`cap`), refused before a byte was written.
+  // Over `OPEN_WITH_CAP_BYTES` (`cap`), refused before a byte was written.
   | { kind: 'tooLarge'; cap: number }
   /**
    *  The archive needs a password it hasn't been given. Copying the file out asks
@@ -11098,7 +11098,19 @@ export type OpenWithCopyRefused = {
   // The chosen app's display name (its bundle name without `.app`).
   appName: string
   reason: OpenWithCopyRefusal
+  // Where the file sits, which the too-big toast names.
+  source: OpenWithCopySource
 }
+
+/**
+ *  What served the file the copy was pulled from. The archive refusals only ever come
+ *  from an archive; a repo snapshot's reads that break off are plain `Unreadable`.
+ */
+export type OpenWithCopySource =
+  // An entry inside a zip, tar, or 7z Cmdr browses like a folder.
+  | 'archive'
+  // A blob in one of a repo's virtual `.git` history trees.
+  | 'repoHistory'
 
 /**
  *  An operation's header plus a page of its items, with dir prefixes resolved to

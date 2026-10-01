@@ -390,12 +390,8 @@
         "reason": "The canonical split. `檢視` is the verb: open the file viewer (F3), which is `commands.fileView` and `menu.file.view`. `menu.bar.view` is the View MENU, which macOS Traditional calls `顯示方式` (display mode) because it holds the view-mode choices. Merging them would rename either the F3 command or the menu."
       },
       {
-        "source": "{count, plural, one {dir} other {dirs}}",
-        "reason": "The status-bar selection summary drops the measure word (`{目錄}`) because it composes as `3 / 10 目錄` with a `/` connector already separating the numbers; the scan stats render a bare tally (`4 個目錄`) and need it. Same word, two grammatical frames."
-      },
-      {
         "source": "{count, plural, one {file} other {files}}",
-        "reason": "Same frame split as the `dirs` noun above: `{檔案}` in the `/`-connected status-bar summary, `{個檔案}` after a bare tally in the delete and transfer scan stats."
+        "reason": "The status-bar selection summary drops the measure word (`{檔案}`) because it composes as `3 / 10 檔案` with a `/` connector already separating the numbers; the delete and transfer scan stats render a bare tally and need it (`{個檔案}`). Same word, two grammatical frames."
       }
     ]
   },

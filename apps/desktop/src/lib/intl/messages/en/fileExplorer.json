@@ -1177,7 +1177,16 @@
   },
   "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is bigger than {limit}, so Cmdr can’t open it in {appName} from inside the archive.",
   "@fileExplorer.openWith.copyRefused.tooLarge": {
-    "description": "Toast shown after the user right-clicked a file inside an archive (a zip Cmdr browses like a folder) or inside a repository’s virtual `.git` snapshot, picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. \"The archive\" is the place the file sits in, so keep it generic.",
+    "description": "Toast shown after the user right-clicked a file inside an archive (a zip Cmdr browses like a folder), picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. \"The archive\" is the place the file sits in, so keep it generic.",
+    "placeholders": {
+      "fileName": "the file’s name, e.g. holiday.mov. Never translate it",
+      "limit": "the size limit, already formatted with its unit, e.g. 2 GB",
+      "appName": "the app the user picked, e.g. Preview or QuickTime Player. Never translate it"
+    }
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "{fileName} is bigger than {limit}, so Cmdr can’t open it in {appName} from the repo’s history.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "description": "Toast shown after the user right-clicked a file inside a Git repository’s history (Cmdr shows a repo’s branches, tags, and commits as read-only folders inside its `.git` folder, each holding the files as they were at that point), picked an app under \"Open with\", and nothing opened. To open such a file, Cmdr first copies it into a temporary file on this Mac, and that copy has a size limit, which this file is over. The sibling of fileExplorer.openWith.copyRefused.tooLarge, which says \"from inside the archive\" instead; keep the two parallel. \"Repo\" is short for a Git repository; use the word developers in your language use for one.",
     "placeholders": {
       "fileName": "the file’s name, e.g. holiday.mov. Never translate it",
       "limit": "the size limit, already formatted with its unit, e.g. 2 GB",

@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use super::materialize::reap_orphan_temps;
 use super::open_with_extract::{
-    OpenWithCopyRefusal, OpenWithCopyRefused, RefusedCopy, is_open_with_temp_name, launch_paths_in, listing_path_in,
-    reap_open_with_temps,
+    OpenWithCopyRefusal, OpenWithCopyRefused, OpenWithCopySource, RefusedCopy, is_open_with_temp_name, launch_paths_in,
+    listing_path_in, reap_open_with_temps,
 };
 use super::{ArchiveFailureKind, ViewerError};
 
@@ -107,6 +107,7 @@ fn an_oversize_file_is_refused_before_anything_is_written() {
 
     assert_eq!(refused.path, zip.join("big.bin"), "names the file it couldn't copy");
     assert_eq!(refused.reason, OpenWithCopyRefusal::TooLarge { cap: 100 });
+    assert_eq!(refused.source, OpenWithCopySource::Archive);
     assert!(
         matches!(refused.error, ViewerError::TooLargeToPreview { cap: 100, .. }),
         "keeps the pull's own failure for the log, got {:?}",
@@ -117,6 +118,28 @@ fn an_oversize_file_is_refused_before_anything_is_written() {
         0,
         "nothing left behind"
     );
+}
+
+/// A file in a repo's `.git` history snapshot goes through the same pull, but the toast
+/// can't say "from inside the archive" there, so the refusal says where the file came from.
+#[test]
+fn an_oversize_file_in_a_repo_snapshot_is_refused_as_coming_from_the_repo_history() {
+    use cmdr_git::test_fixtures::{Fixture, cleanup, temp_dir};
+
+    ensure_root_volume();
+    crate::file_system::git::wiring::set_virtual_portal_enabled(true);
+    let repo = temp_dir("open_with_extract", "oversize_snapshot");
+    let mut fixture = Fixture::init(repo.clone());
+    fixture.commit_files(&[("big.bin", &[7u8; 4096])], "initial", 1_700_000_000);
+    let dir = tempfile::tempdir().expect("open-with dir");
+    let inner = repo.join(".git/branches/main/big.bin");
+
+    let refused = launch_paths_in(std::slice::from_ref(&inner), dir.path(), 100).expect_err("over the cap");
+
+    assert_eq!(refused.path, inner);
+    assert_eq!(refused.reason, OpenWithCopyRefusal::TooLarge { cap: 100 });
+    assert_eq!(refused.source, OpenWithCopySource::RepoHistory);
+    cleanup(&repo);
 }
 
 /// A password the archive hasn't been given yet is its own refusal: the person can do
@@ -191,6 +214,7 @@ fn the_notice_names_the_file_and_the_app_as_the_person_sees_them() {
     let refused = RefusedCopy {
         path: PathBuf::from("/Users/me/bundle.zip/docs/report.pdf"),
         reason: OpenWithCopyRefusal::NeedsPassword,
+        source: OpenWithCopySource::Archive,
         error: ViewerError::IsDirectory,
     };
 
@@ -199,6 +223,7 @@ fn the_notice_names_the_file_and_the_app_as_the_person_sees_them() {
     assert_eq!(notice.file_name, "report.pdf");
     assert_eq!(notice.app_name, "Preview");
     assert_eq!(notice.reason, OpenWithCopyRefusal::NeedsPassword);
+    assert_eq!(notice.source, OpenWithCopySource::Archive);
 }
 
 #[test]

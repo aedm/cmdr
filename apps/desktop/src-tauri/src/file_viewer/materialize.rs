@@ -200,6 +200,15 @@ impl<'a> TempSpot<'a> {
     }
 }
 
+/// A routed pull that couldn't be made, and which route served the path, so open-with's
+/// toast can say where the file came from.
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug)]
+pub(super) struct RoutedPullFailure {
+    pub(super) routed: RoutedKind,
+    pub(super) error: ViewerError,
+}
+
 /// [`extract_routed`] into another temp family's spot, unwatched: open-with's pull
 /// (`open_with_extract.rs`), which has no window to close and no deadline to honor.
 #[cfg(any(target_os = "macos", test))]
@@ -208,8 +217,22 @@ pub(super) fn extract_routed_into(
     volume_id: &str,
     spot: TempSpot<'_>,
     cap: u64,
-) -> Result<Option<MaterializedFile>, ViewerError> {
-    extract_routed(requested, volume_id, spot, cap, &PendingOpen::new(), None)
+) -> Result<Option<MaterializedFile>, RoutedPullFailure> {
+    let Some(route) = resolve_route(requested, volume_id) else {
+        return Ok(None);
+    };
+    let routed = route.kind;
+    tauri::async_runtime::block_on(pull_to_temp(
+        route.volume,
+        route.entry_path,
+        spot,
+        cap,
+        Some(routed),
+        &PendingOpen::new(),
+        None,
+    ))
+    .map(Some)
+    .map_err(|error| RoutedPullFailure { routed, error })
 }
 
 /// What the viewer opens for `requested`: a bounded temp copy when the OS can't open
@@ -349,6 +372,31 @@ fn extract_routed(
     open: &PendingOpen,
     cancel: Option<&AtomicBool>,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
+    let Some(route) = resolve_route(requested, volume_id) else {
+        return Ok(None);
+    };
+    tauri::async_runtime::block_on(pull_to_temp(
+        route.volume,
+        route.entry_path,
+        spot,
+        cap,
+        Some(route.kind),
+        open,
+        cancel,
+    ))
+    .map(Some)
+}
+
+/// A path a route serves: the volume the route minted, the path to read on it, and
+/// which route it was.
+struct Route {
+    volume: std::sync::Arc<dyn Volume>,
+    entry_path: PathBuf,
+    kind: RoutedKind,
+}
+
+/// The route serving `requested`, or `None` when it has a file of its own.
+fn resolve_route(requested: &Path, volume_id: &str) -> Option<Route> {
     // Only a path with no file of its own is materialized. The `.zip` file ITSELF
     // is a regular file: viewing it shows its raw bytes like any binary file
     // (extracting inner "" would address the archive ROOT — a directory — and
@@ -356,19 +404,18 @@ fn extract_routed(
     // parent-aware confirm, so a mislabeled `.zip`, a remote-only archive, and a
     // `.git` that isn't a repository are all handled there.
     if !path_routes_over_its_parent(requested) {
-        return Ok(None);
+        return None;
     }
     let resolved = tauri::async_runtime::block_on(get_volume_manager().resolve(volume_id, requested));
-    let Some(routed) = resolved.routed else {
-        return Ok(None);
-    };
-    let Some(volume) = resolved.volume else {
-        // The route confirmed but the volume vanished (unmount / evict race). Treat
-        // as unrouted; the caller's existence check surfaces NotFound.
-        return Ok(None);
-    };
-    let entry_path = resolved.path;
-    tauri::async_runtime::block_on(pull_to_temp(volume, entry_path, spot, cap, Some(routed), open, cancel)).map(Some)
+    let kind = resolved.routed?;
+    // `None`: the route confirmed but the volume vanished (unmount / evict race). Treat
+    // as unrouted; the caller's existence check surfaces NotFound.
+    let volume = resolved.volume?;
+    Some(Route {
+        volume,
+        entry_path: resolved.path,
+        kind,
+    })
 }
 
 /// Streams one file to a fresh temp subdir in `spot`, refusing an oversize file

@@ -244,7 +244,10 @@ the reasons; the shape:
   on its parent drive's volume.
 - **A pull that can't finish launches nothing and says why.** `launch_paths` answers a `RefusedCopy` (the row, plus a
   typed `OpenWithCopyRefusal`: `tooLarge { cap }`, `needsPassword`, `archiveUnreadable`, `unreadable`, mapped from the
-  `ViewerError` variant, ❌ never its message). `launch_with` logs it and emits `OpenWithCopyRefused`, which the main
+  `ViewerError` variant, ❌ never its message), and an `OpenWithCopySource` (`archive` / `repoHistory`) taken from the
+  resolved `RoutedKind`, which `extract_routed_into` hands back with its failure (`RoutedPullFailure`) so the too-big
+  toast can name where the file sits. The archive reasons only ever come from an archive: a portal read that breaks
+  off maps to `Io` (`map_volume_error`), so a snapshot lands on `unreadable`. `launch_with` logs it and emits `OpenWithCopyRefused`, which the main
   window's `../../../src/lib/file-explorer/open-with-refused-bridge.ts` shows as a warning toast: the click lands on the native
   menu, so the frontend hears of it no other way. A locked archive is `ArchiveFailureKind::NeedsPassword`
   (`map_volume_error`), because copying the file out (F5) asks for the password and fixes it. There's no "preparing"

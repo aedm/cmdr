@@ -47,14 +47,17 @@ function raiseNotice(payload: OpenWithCopyRefused): void {
   })
 }
 
-function noticeText({ fileName, appName, reason }: OpenWithCopyRefused): string {
+function noticeText({ fileName, appName, reason, source }: OpenWithCopyRefused): string {
   switch (reason.kind) {
     case 'tooLarge':
-      return tString('fileExplorer.openWith.copyRefused.tooLarge', {
-        fileName,
-        appName,
-        limit: formatByteSize(reason.cap),
-      })
+      // The archive reasons below only ever come from an archive; this one can come
+      // from a repo's history snapshot too, which isn't "inside the archive".
+      return tString(
+        source === 'repoHistory'
+          ? 'fileExplorer.openWith.copyRefused.tooLargeInRepoHistory'
+          : 'fileExplorer.openWith.copyRefused.tooLarge',
+        { fileName, appName, limit: formatByteSize(reason.cap) },
+      )
     case 'needsPassword':
       return tString('fileExplorer.openWith.copyRefused.needsPassword', { fileName, appName })
     case 'archiveUnreadable':

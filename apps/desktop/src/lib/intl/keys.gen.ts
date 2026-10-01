@@ -1519,6 +1519,7 @@ export type MessageKey =
   | 'fileExplorer.openWith.copyRefused.archiveUnreadable'
   | 'fileExplorer.openWith.copyRefused.needsPassword'
   | 'fileExplorer.openWith.copyRefused.tooLarge'
+  | 'fileExplorer.openWith.copyRefused.tooLargeInRepoHistory'
   | 'fileExplorer.openWith.copyRefused.unreadable'
   | 'fileExplorer.pane.connectedDirectlyToast'
   | 'fileExplorer.pane.dialogRenderFailedToast'

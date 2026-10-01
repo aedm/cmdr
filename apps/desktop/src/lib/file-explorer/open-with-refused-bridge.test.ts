@@ -3,7 +3,7 @@
  * app for a file inside an archive and nothing opened.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { OpenWithCopyRefusal, OpenWithCopyRefused } from '$lib/ipc/bindings'
+import type { OpenWithCopyRefusal, OpenWithCopyRefused, OpenWithCopySource } from '$lib/ipc/bindings'
 
 /** Only the fields these cells assert on; the real options type is wider. */
 type ToastOptions = { level: string; timeoutMs: number; id: string }
@@ -25,8 +25,8 @@ import { startOpenWithRefusedBridge } from './open-with-refused-bridge'
 
 const TWO_GIB = 2 * 1024 * 1024 * 1024
 
-function refused(reason: OpenWithCopyRefusal): OpenWithCopyRefused {
-  return { fileName: 'holiday.mov', appName: 'QuickTime Player', reason }
+function refused(reason: OpenWithCopyRefusal, source: OpenWithCopySource = 'archive'): OpenWithCopyRefused {
+  return { fileName: 'holiday.mov', appName: 'QuickTime Player', reason, source }
 }
 
 beforeEach(async () => {
@@ -55,6 +55,18 @@ describe('the open-with refusal notice', () => {
 
     const [message] = addToast.mock.calls[0]
     expect(message).toContain(formatByteSize(TWO_GIB))
+  })
+
+  it('says where a too-big file sits: an archive, or a repo’s history', () => {
+    emitRefused(refused({ kind: 'tooLarge', cap: TWO_GIB }, 'archive'))
+    emitRefused(refused({ kind: 'tooLarge', cap: TWO_GIB }, 'repoHistory'))
+
+    const [[fromArchive], [fromRepo]] = addToast.mock.calls
+    expect(fromArchive).toContain('archive')
+    expect(fromRepo).toContain('repo’s history')
+    expect(fromRepo).not.toContain('archive')
+    expect(fromRepo).toContain('holiday.mov')
+    expect(fromRepo).toContain(formatByteSize(TWO_GIB))
   })
 
   it('tells a locked archive apart from a damaged one', () => {

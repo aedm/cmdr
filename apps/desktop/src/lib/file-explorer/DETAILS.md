@@ -320,8 +320,9 @@ For the dialog-side wiring see `../search/CLAUDE.md`.
 to copy the file out before an app can open it. When that copy can't be made, Rust emits `open-with-copy-refused` with a
 typed reason, and this bridge (mounted in `routes/(main)/window-services.ts`) words it as a warning toast, keyed per
 file name. One message per reason (`fileExplorer.openWith.copyRefused.*`), chosen by an exhaustive switch on
-`reason.kind`, ❌ never by the backend's message. Backend side: `src-tauri/src/file_viewer/DETAILS.md` § "Open with on a
-routed file".
+`reason.kind`, ❌ never by the backend's message. `tooLarge` alone also reads the typed `source`: a file in a repo's
+history gets `tooLargeInRepoHistory`, since "from inside the archive" would be wrong there. Backend side:
+`src-tauri/src/file_viewer/DETAILS.md` § "Open with on a routed file".
 
 ## TCC-restricted treatment
 
