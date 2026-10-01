@@ -2418,7 +2418,7 @@
   },
   "settings.summary.listing": "Document icons, folder sorting, and Brief mode column width.",
   "@settings.summary.listing": {
-    "description": "One-line summary shown under the \"Listing\" subsection heading. \"directory\" = folder; \"Brief\" is a Cmdr view-mode name (translate consistently)."
+    "description": "One-line summary shown under the \"Listing\" subsection heading. \"Brief\" is a Cmdr view-mode name (translate consistently)."
   },
   "settings.summary.navigationAndFileOps": "Double-click-to-parent navigation, and behavior when renaming files.",
   "@settings.summary.navigationAndFileOps": {

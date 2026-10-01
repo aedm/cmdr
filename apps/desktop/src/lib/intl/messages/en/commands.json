@@ -585,7 +585,7 @@
   },
   "commands.fileCopyCurrentDirectoryPath.label": "Copy current folder path",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "description": "Command name that copies the current folder's full path to the clipboard. \"Directory\" and \"path\" are filesystem terms. Appears in the command palette.",
+    "description": "Command name that copies the current folder's full path to the clipboard. \"Folder\" and \"path\" are filesystem terms. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.fileCopyFilename.label": "Copy filename",
