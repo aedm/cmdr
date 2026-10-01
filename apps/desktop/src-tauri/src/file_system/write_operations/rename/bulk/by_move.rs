@@ -9,7 +9,8 @@
 //!   owner, the executor's answer too.
 //! - ❗ **A cycle stays where it is**: `a ↔ b` would need a temporary name, and
 //!   a move onto a FOLDER that's still there merges into it. Its rows are left
-//!   out and logged, ❌ never moved onto each other.
+//!   out, ❌ never moved onto each other, and counted in
+//!   [`RenamesStarted::swaps_left_out`] so the batch's result line says so.
 //! - **The sources are bound** to the fingerprints preflight captured, the way
 //!   every other approved operation is (`source_binding.rs`).
 
@@ -28,6 +29,16 @@ use crate::operation_log::types::Initiator;
 /// How many entries a batch asks `Volume::rename_work` about at once.
 const RENAME_WORK_CONCURRENCY: usize = 8;
 
+/// A started batch, and what it left out.
+#[derive(Debug, Clone)]
+pub(crate) struct RenamesStarted {
+    pub operation: WriteOperationStartResult,
+    /// Renames that swap names with each other (`a ↔ b`, or a longer cycle),
+    /// kept out of a batch that runs as a move. Always `0` from the batch
+    /// executor, which swaps through a temporary name.
+    pub swaps_left_out: usize,
+}
+
 /// Starts a reviewed batch of renames on one volume, routed by what a rename
 /// costs there. Where every row renames in one call, the batch executor
 /// ([`start_bulk_rename`]) runs it; where any row's rename copies (an object
@@ -39,14 +50,17 @@ pub(crate) async fn start_renames(
     volume_id: String,
     rows: Vec<BulkRenameRow>,
     initiator: Initiator,
-) -> Result<WriteOperationStartResult, String> {
+) -> Result<RenamesStarted, String> {
     if volume_id != "root"
         && let Some(volume) = crate::file_system::volume::manager::get_volume_manager().get(&volume_id)
         && any_rename_copies(volume.as_ref(), &rows).await
     {
         return start_batch_as_move(events, volume_id, volume.as_ref(), rows, initiator).await;
     }
-    start_bulk_rename(events, volume_id, rows, initiator)
+    start_bulk_rename(events, volume_id, rows, initiator).map(|operation| RenamesStarted {
+        operation,
+        swaps_left_out: 0,
+    })
 }
 
 /// Whether any row's rename copies on `volume`. A volume that renames
@@ -73,7 +87,7 @@ async fn start_batch_as_move(
     volume: &dyn Volume,
     rows: Vec<BulkRenameRow>,
     initiator: Initiator,
-) -> Result<WriteOperationStartResult, String> {
+) -> Result<RenamesStarted, String> {
     if rows.iter().any(|row| row.source.parent() != row.destination.parent()) {
         return Err("A rename plan can only change names in the same folder.".to_string());
     }
@@ -82,6 +96,7 @@ async fn start_batch_as_move(
         return Err("Choose at least one rename to apply.".to_string());
     };
     let (renames, left_out) = move_order(&rows);
+    let swaps_left_out = left_out.len();
     for index in left_out {
         log::warn!(
             target: "volume",
@@ -108,6 +123,10 @@ async fn start_batch_as_move(
         Some(expected),
     )
     .await
+    .map(|operation| RenamesStarted {
+        operation,
+        swaps_left_out,
+    })
     .map_err(|e| format!("The renames couldn't start as a move: {e:?}"))
 }
 

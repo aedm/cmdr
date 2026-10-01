@@ -179,7 +179,16 @@
         {:else if message.undo.status === 'unavailable'}
             <span class="rename-note">{tString('askCmdr.renameUndo.unavailable')}</span>
         {:else}
-            <span>{tString('askCmdr.renameUndo.applied', undoCounts(message.fileCount))}</span>
+            {#if message.swapsSkipped > 0}
+                <div class="rename-lines">
+                    <span>{tString('askCmdr.renameUndo.applied', undoCounts(message.fileCount))}</span>
+                    <span class="rename-note">
+                        {tString('askCmdr.renameUndo.swapsSkipped', undoCounts(message.swapsSkipped))}
+                    </span>
+                </div>
+            {:else}
+                <span>{tString('askCmdr.renameUndo.applied', undoCounts(message.fileCount))}</span>
+            {/if}
             <button type="button" class="undo" aria-label={undoLabel} onclick={() => void undoRename(message)}>
                 {tString('askCmdr.renameUndo.undo')}
             </button>

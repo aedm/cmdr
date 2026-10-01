@@ -94,6 +94,9 @@ export type RailMessage =
       jobOperationIds: string[]
       /** Files across every batch in `jobOperationIds`. */
       jobFileCount: number
+      /** Renames the batch left out because they swap names with each other: a
+       * batch that runs as a move (a rename that copies on S3) can't swap. */
+      swapsSkipped: number
       undo: RenameUndoState
     }
 

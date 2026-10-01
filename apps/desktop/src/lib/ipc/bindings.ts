@@ -3153,9 +3153,7 @@ export const commands = {
    *  names never cross this IPC boundary: the frontend submits only opaque ids.
    */
   applyBulkRename: (proposalId: string, allowedRowIds: string[]) =>
-    typedError<WriteOperationStartResult, BulkRenameError>(
-      __TAURI_INVOKE('apply_bulk_rename', { proposalId, allowedRowIds }),
-    ),
+    typedError<BulkRenameStarted, BulkRenameError>(__TAURI_INVOKE('apply_bulk_rename', { proposalId, allowedRowIds })),
   /**
    *  Replaces one row's proposed name with the one the user typed in the review, and answers the
    *  row as the dialog should now show it. The name is validated server-side; the row keeps no
@@ -6076,6 +6074,20 @@ export type BulkRenamePreflightRow = {
 export type BulkRenamePreflightStatus = 'ready' | 'blocked' | 'expired'
 
 export type BulkRenameRowStatus = 'ready' | 'blocked'
+
+/**
+ *  An applied rename plan: the operation it started, and the renames it left
+ *  out for the thread's result line to mention.
+ */
+export type BulkRenameStarted = {
+  operationId: string
+  /**
+   *  Renames that swap names with each other, left out of a plan that runs
+   *  as a move (a rename that copies on S3): a move onto a folder still there
+   *  would merge the two.
+   */
+  swapsLeftOut: number
+}
 
 export type BulkRenameWarning = 'extensionChanged' | 'cycle'
 

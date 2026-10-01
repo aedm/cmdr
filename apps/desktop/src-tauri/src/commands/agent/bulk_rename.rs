@@ -66,6 +66,18 @@ impl std::fmt::Display for BulkRenameError {
 }
 
 impl std::error::Error for BulkRenameError {}
+
+/// An applied rename plan: the operation it started, and the renames it left
+/// out for the thread's result line to mention.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkRenameStarted {
+    pub operation_id: String,
+    /// Renames that swap names with each other, left out of a plan that runs
+    /// as a move (a rename that copies on S3): a move onto a folder still there
+    /// would merge the two.
+    pub swaps_left_out: u32,
+}
 use crate::file_system::write_operations::{LocalContent, RemoteContent, SourceFingerprint};
 
 const BULK_RENAME_PREFLIGHT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -96,7 +108,7 @@ pub async fn apply_bulk_rename(
     app: AppHandle,
     proposal_id: String,
     allowed_row_ids: Vec<String>,
-) -> Result<crate::file_system::write_operations::WriteOperationStartResult, BulkRenameError> {
+) -> Result<BulkRenameStarted, BulkRenameError> {
     let (Some(db), Some(accepted_preflights)) =
         (app.try_state::<AgentDb>(), app.try_state::<AcceptedRenamePreflights>())
     else {
@@ -180,6 +192,10 @@ pub async fn apply_bulk_rename(
         initiator,
     )
     .await
+    .map(|started| BulkRenameStarted {
+        operation_id: started.operation.operation_id,
+        swaps_left_out: u32::try_from(started.swaps_left_out).unwrap_or(u32::MAX),
+    })
     .map_err(|detail| BulkRenameError::CouldntStart { detail })
 }
 

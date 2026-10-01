@@ -671,6 +671,14 @@
       "count": "The same number of files (decides whether the noun is singular or plural)."
     }
   },
+  "askCmdr.renameUndo.swapsSkipped": "Skipped {countText} {count, plural, one {rename} other {renames}} that swap names. Rename them one at a time.",
+  "@askCmdr.renameUndo.swapsSkipped": {
+    "description": "A second line under askCmdr.renameUndo.applied in the Ask Cmdr chat thread, shown when a batch of renames on cloud storage (S3) left some renames out. Those renames swap names with each other (for example a → b and b → a). On S3, renaming a folder copies everything inside it on the server, and copying one folder onto another that is still there would mix their contents, so the batch skipped them and the files kept their names. Tells the user to rename those files one by one instead. Sentence case.",
+    "placeholders": {
+      "countText": "How many renames were skipped, ready to drop into the sentence (always 2 or more).",
+      "count": "The same number of renames (decides whether the noun is singular or plural)."
+    }
+  },
   "askCmdr.renameUndo.undo": "Undo",
   "@askCmdr.renameUndo.undo": {
     "description": "Button beside the 'Renamed N files.' line in the Ask Cmdr chat thread. Puts the files' previous names back. Keep it short: it sits inline in a narrow side panel."

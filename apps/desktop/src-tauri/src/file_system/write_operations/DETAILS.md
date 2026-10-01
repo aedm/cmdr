@@ -491,8 +491,10 @@ one delete per object, which needs a scan, byte progress, pause, cancel, conflic
   time; free on a volume that renames in one call), and a batch with any copying row runs as ONE move with the new
   names (`rename/bulk/by_move.rs`): the executor's dependency order (a chain moves its last link first), conflicts
   skipped (a name something outside the batch holds keeps its owner, the executor's answer too), the sources bound to
-  their preflight fingerprints. ❗ A swap (`a ↔ b`) is left out and logged: it would need a temporary name, and a move
-  onto a FOLDER that's still there merges into it. An all-one-call batch keeps the executor.
+  their preflight fingerprints. ❗ A swap (`a ↔ b`) is left out: it would need a temporary name, and a move onto a
+  FOLDER that's still there merges into it. `RenamesStarted::swaps_left_out` counts its rows; the review's apply
+  (`apply_bulk_rename`) hands the count to the thread's result line ("Skipped 2 renames that swap names…"), while an
+  approval through the suggested-ops bridge only logs it. An all-one-call batch keeps the executor.
 - **A same-volume move** routes itself (`move_same.rs`), and so does the **operation log's undo**: a same-volume
   restore whose rename copies goes back through the staged per-file move (`rollback.rs`).
 

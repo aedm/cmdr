@@ -247,7 +247,7 @@ async fn a_batch_with_a_folder_renames_as_one_move(service: FixtureService) {
         .await
         .expect("the batch starts");
     assert_eq!(
-        started.operation_type,
+        started.operation.operation_type,
         WriteOperationType::Move,
         "one move, not a rename batch"
     );

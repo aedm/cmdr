@@ -245,6 +245,7 @@ export type MessageKey =
   | 'askCmdr.renameUndo.skipReason.unverifiable.counted'
   | 'askCmdr.renameUndo.skipReason.unverifiable.named'
   | 'askCmdr.renameUndo.skipped'
+  | 'askCmdr.renameUndo.swapsSkipped'
   | 'askCmdr.renameUndo.unavailable'
   | 'askCmdr.renameUndo.undo'
   | 'askCmdr.renameUndo.undoJob'

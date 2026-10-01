@@ -262,6 +262,7 @@ async fn start_for(
             // Routed: where a rename copies (an S3 folder), the batch runs as one move.
             start_renames(events, group.source_volume_id.clone(), rows, Initiator::Agent)
                 .await
+                .map(|started| started.operation)
                 .map_err(|detail| ApprovalRefusal::EngineRefused { detail })
         }
     }

@@ -428,10 +428,11 @@ async fn a_batch_where_a_rename_copies_runs_as_one_move() {
         .expect("the batch starts");
 
     assert_eq!(
-        started.operation_type,
+        started.operation.operation_type,
         WriteOperationType::Move,
         "one move, not a rename batch"
     );
+    assert_eq!(started.swaps_left_out, 0);
     crate::test_support::wait_until_async(std::time::Duration::from_secs(10), "the move to settle", || {
         !events.settled.lock_ignore_poison().is_empty()
     })
@@ -445,4 +446,70 @@ async fn a_batch_where_a_rename_copies_runs_as_one_move() {
     assert!(volume.exists(Path::new("/a/memo.txt")).await);
     assert!(!volume.exists(Path::new("/a/foo")).await);
     assert!(!volume.exists(Path::new("/a/note.txt")).await);
+}
+
+/// A swap in a batch that runs as a move stays where it is, and the start
+/// result says how many renames that left out, for the batch's result line.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_batch_as_a_move_reports_the_swaps_it_left_out() {
+    use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+
+    let (volume_id, volume) = copying_store("copy-batch-swap", 1).await;
+    volume.create_directory(Path::new("/a/bar")).await.unwrap();
+    volume.create_file(Path::new("/a/note.txt"), b"n").await.unwrap();
+    let mut rows = Vec::new();
+    for (id, from, to) in [
+        ("1", "/a/foo", "/a/bar"),
+        ("2", "/a/bar", "/a/foo"),
+        ("3", "/a/note.txt", "/a/memo.txt"),
+    ] {
+        rows.push(BulkRenameRow {
+            row_id: id.to_string(),
+            source: PathBuf::from(from),
+            destination: PathBuf::from(to),
+            expected_fingerprint: crate::file_system::write_operations::SourceFingerprint::capture_remote(
+                volume.as_ref(),
+                Path::new(from),
+            )
+            .await
+            .expect("a fingerprint"),
+        });
+    }
+
+    let started = start_renames(Arc::new(CollectorEventSink::new()), volume_id, rows, Initiator::Agent)
+        .await
+        .expect("the batch starts");
+
+    assert_eq!(started.swaps_left_out, 2, "both renames of the swap");
+}
+
+#[tokio::test]
+async fn a_batch_the_executor_runs_leaves_no_swap_out() {
+    use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+
+    let tmp = TestDir::new("bulk-swap-local");
+    fs::write(tmp.join("x.txt"), "x").unwrap();
+    fs::write(tmp.join("y.txt"), "y").unwrap();
+    let mut rows = Vec::new();
+    for (id, from, to) in [("1", "x.txt", "y.txt"), ("2", "y.txt", "x.txt")] {
+        let source = tmp.join(from);
+        rows.push(BulkRenameRow {
+            row_id: id.to_string(),
+            expected_fingerprint: crate::file_system::write_operations::SourceFingerprint::capture_local(&source)
+                .expect("a fingerprint"),
+            source,
+            destination: tmp.join(to),
+        });
+    }
+
+    let started = start_renames(
+        Arc::new(CollectorEventSink::new()),
+        "root".to_string(),
+        rows,
+        Initiator::Agent,
+    )
+    .await
+    .expect("the batch starts");
+
+    assert_eq!(started.swaps_left_out, 0, "the executor swaps through a temporary name");
 }

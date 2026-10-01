@@ -400,8 +400,9 @@ engine's exclusive final rename remains the data-safety boundary.
 ## Undo after a batch lands
 
 Apply hands back a queued operation id, and `noteRenameApplied` turns it into a `renameApplied` rail line: "Renamed 23
-files." plus an Undo. This is the only safety net that fires after the names are real, which is the only moment the user
-can tell a name is wrong.
+files." plus an Undo. A batch that ran as a move (a rename that copies on S3) can't swap names, so Apply also hands back
+`swapsLeftOut`: those rows come off the count and get their own line (`askCmdr.renameUndo.swapsSkipped`). This is the
+only safety net that fires after the names are real, which is the only moment the user can tell a name is wrong.
 
 A line per batch, so a run of several reads as a run. One Apply over a multi-batch review produces that run in one go,
 which is the same shape as a run built one turn at a time. Only the newest still-undoable line carries the job-wide
