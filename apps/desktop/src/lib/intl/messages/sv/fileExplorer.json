@@ -793,6 +793,10 @@
   "@fileExplorer.openWith.copyRefused.tooLarge": {
     "sourceHash": "43399e6"
   },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "{fileName} är större än {limit}, så Cmdr kan inte öppna filen i {appName} från repots historik.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
   "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} ligger i ett lösenordsskyddat arkiv. Kopiera filen till en mapp först (Cmdr kommer att fråga efter lösenordet) och öppna den sedan i {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "sourceHash": "882a23f"

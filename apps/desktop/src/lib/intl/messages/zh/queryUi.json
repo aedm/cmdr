@@ -389,9 +389,9 @@
   "@queryUi.recent.caseSensitive": {
     "sourceHash": "3934758"
   },
-  "queryUi.recent.systemDirsIncluded": "包含系统目录",
+  "queryUi.recent.systemDirsIncluded": "包含系统文件夹",
   "@queryUi.recent.systemDirsIncluded": {
-    "sourceHash": "b7996cc"
+    "sourceHash": "c928638"
   },
   "queryUi.recent.resultCount": "上次有 {countText} {count, plural, other {个结果}}",
   "@queryUi.recent.resultCount": {

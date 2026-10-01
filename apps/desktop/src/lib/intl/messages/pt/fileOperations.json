@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {pasta} many {pastas} other {pastas}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Apagar",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {pasta} many {pastas} other {pastas}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> serão gravados. A origem ocupa <ondisk></ondisk> no disco – o extra são arquivos com hardlink, que não podem continuar vinculados entre discos.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -403,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {pasta} many {pastas} other {pastas}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Verificando antes de copiar…",
   "@fileOperations.transferProgress.scanTitleCopy": {

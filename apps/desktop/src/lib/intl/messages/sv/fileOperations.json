@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Radera",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> kommer att skrivas. Källan är <ondisk></ondisk> på disken – det extra är hårdlänkade filer, som inte kan förbli länkade mellan enheter.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -403,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Verifierar före kopiering…",
   "@fileOperations.transferProgress.scanTitleCopy": {

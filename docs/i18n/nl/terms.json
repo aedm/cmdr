@@ -1237,6 +1237,12 @@
     "forms": "internal seen-flags: Hint voor … getoond / … gesloten",
     "sources": "MS terminology (hint → hint)"
   },
+  "history": {
+    "chosen": "geschiedenis",
+    "confidence": "high",
+    "forms": "git history → git-geschiedenis; file history → bestandsgeschiedenis; operation history → bewerkingsgeschiedenis; the repo’s history → de geschiedenis van de repo",
+    "sources": "macOS AppKit (NSToolbarHistoryTemplate geschiedenis; versiegeschiedenis); catalog (errors.git.blobTooLarge.title, operationLog.rollback.refusalUnknown)"
+  },
   "host": {
     "accept": ["hosts"],
     "chosen": "host",
@@ -2206,6 +2212,19 @@
     "confidence": "high",
     "forms": "Send report → Verstuur rapport (button), Rapport versturen (title)",
     "sources": "MS (report → rapport)"
+  },
+  "repository": {
+    "accept": ["repository", "repo's"],
+    "avoid": [
+      {
+        "form": "opslagplaats",
+        "why": "MS terminology's coinage; KDE Dolphin and Dutch developers keep repository, and the catalog says repo"
+      }
+    ],
+    "chosen": "repo",
+    "confidence": "high",
+    "forms": "de-woord (de repo, deze repo); compounds hoofdrepo, repo-chip; the branch and tag tooltips spell out repository",
+    "sources": "catalog (errors.git.*); KDE Dolphin (SVN-repository); MS terminology NLD has only opslagplaats"
   },
   "reserved": {
     "accept": ["gereserveerde"],

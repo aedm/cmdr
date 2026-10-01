@@ -1083,6 +1083,12 @@
     "forms": "status noun Récupération…; title follows Finder’s progress moule (Préparation de la copie de « ^1 »), with the file name in « »",
     "sources": "macOS Réglages Système Localizable.json (Fetching… → Récupération…)"
   },
+  "history": {
+    "chosen": "historique",
+    "confidence": "high",
+    "forms": "masculine (l’historique); git history → historique git; the repo’s history → l’historique du dépôt; file history → historique de fichiers",
+    "sources": "macOS AppKit (NSToolbarHistoryTemplate historique; historique des versions); catalog (operationLog.dialog.loadError, errors.git.blobTooLarge.title)"
+  },
   "placeholder": {
     "chosen": "espace réservé",
     "confidence": "high",
@@ -1138,7 +1144,7 @@
     "accept": ["répertoire", "rép."],
     "chosen": "dossier",
     "confidence": "high",
-    "forms": "empty folder → dossier vide; the dir/dirs abbreviation in scan stats and the status bar → rép. (RÉP. for the all-caps marker); directory in a technical sense → répertoire",
+    "forms": "empty folder → dossier vide; scan tallies say dossiers; the dir abbreviation in the status bar → rép. (RÉP. for the all-caps marker); directory in a technical sense → répertoire",
     "sources": "macOS Finder (Nouveau dossier); MS terminology FRA"
   },
   "force-quit": {
@@ -2277,6 +2283,19 @@
     "confidence": "high",
     "forms": "a report with no crash → rapport plain; send a report → envoyez un rapport (never envoyez un retour, the feedback surface)",
     "sources": "MS terminology FRA (report → rapport)"
+  },
+  "repository": {
+    "accept": ["dépôts"],
+    "avoid": [
+      {
+        "form": "référentiel",
+        "why": "MS terminology’s general data-store sense; git’s own French documentation and the catalog say dépôt"
+      }
+    ],
+    "chosen": "dépôt",
+    "confidence": "high",
+    "forms": "masculine (le dépôt, du dépôt); a bare repo → dépôt nu; the repo chip → la pastille du dépôt",
+    "sources": "catalog (errors.git.*, fileExplorer.git.tooltip.*); Pro Git French (dépôt); MS terminology FRA has only référentiel"
   },
   "request": {
     "accept": ["demande"],

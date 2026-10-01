@@ -793,6 +793,10 @@
   "@fileExplorer.openWith.copyRefused.tooLarge": {
     "sourceHash": "43399e6"
   },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "„{fileName}” nagyobb {limit} méretnél, ezért a Cmdr nem tudja megnyitni a repó előzményeiből ezzel: {appName}.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
   "fileExplorer.openWith.copyRefused.needsPassword": "„{fileName}” egy jelszóval védett archívumban van. Előbb másold egy mappába (a Cmdr majd elkéri a jelszót), aztán nyisd meg ezzel: {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "sourceHash": "882a23f"

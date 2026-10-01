@@ -12,9 +12,9 @@
   "@indexing.scan.label": {
     "sourceHash": "5b0433c"
   },
-  "indexing.scan.counters": "{entriesText} {entries, plural, other {个条目}}，{dirsText} {dirs, plural, other {个目录}}",
+  "indexing.scan.counters": "{entriesText} {entries, plural, other {个条目}}，{dirsText} {dirs, plural, other {个文件夹}}",
   "@indexing.scan.counters": {
-    "sourceHash": "f635790"
+    "sourceHash": "ecf47f2"
   },
   "indexing.scan.countersElapsed": "{counters} · {elapsed}",
   "@indexing.scan.countersElapsed": {

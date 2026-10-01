@@ -1183,6 +1183,12 @@
     "confidence": "high",
     "sources": "macOS (Cửa sổ gợi ý, Gợi ý mật khẩu); MS terminology"
   },
+  "history": {
+    "chosen": "lịch sử",
+    "confidence": "high",
+    "forms": "file history (Ask Cmdr) → lịch sử thao tác; the repo’s history → lịch sử của repo",
+    "sources": "macOS AppKit (NSToolbarHistoryTemplate lịch sử; lịch sử phiên bản); catalog (errors.git.blobTooLarge.title, operationLog.dialog.loadError)"
+  },
   "host": {
     "chosen": "máy chủ",
     "confidence": "high",

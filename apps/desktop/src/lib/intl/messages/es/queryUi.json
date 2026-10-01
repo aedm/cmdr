@@ -393,7 +393,7 @@
   },
   "queryUi.recent.systemDirsIncluded": "carpetas del sistema incluidas",
   "@queryUi.recent.systemDirsIncluded": {
-    "sourceHash": "b7996cc"
+    "sourceHash": "c928638"
   },
   "queryUi.recent.resultCount": "{countText} {count, plural, one {resultado} many {resultados} other {resultados}} la última vez",
   "@queryUi.recent.resultCount": {

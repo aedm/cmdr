@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Löschen",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> werden geschrieben. Die Quelle ist <ondisk></ondisk> auf dem Datenträger – die Differenz sind Hardlink-Dateien, die über Laufwerke hinweg nicht verknüpft bleiben können.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -403,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Prüfung vor dem Kopieren …",
   "@fileOperations.transferProgress.scanTitleCopy": {

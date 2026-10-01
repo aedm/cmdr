@@ -1168,6 +1168,12 @@
     "confidence": "high",
     "sources": "Total Commander pt-BR (DICA:)"
   },
+  "history": {
+    "chosen": "histórico",
+    "confidence": "high",
+    "forms": "masculine (o histórico, do histórico); git history → histórico do git; the repo’s history → histórico do repo",
+    "sources": "MS terminology pt-BR (histórico); catalog (operationLog.dialog.loadError, errors.git.blobTooLarge.title)"
+  },
   "home-folder": {
     "chosen": "pasta pessoal",
     "avoid": [
@@ -2044,6 +2050,13 @@
     "chosen": "relatório",
     "confidence": "confirmed",
     "sources": "shipped pt catalog"
+  },
+  "repository": {
+    "accept": ["repositório", "repos"],
+    "chosen": "repo",
+    "confidence": "high",
+    "forms": "masculine (o repo, do repo); English repo → repo (errors.git.*); the branch and tag tooltips spell out repositório",
+    "sources": "MS terminology pt-BR (repositório); catalog (errors.git.*)"
   },
   "request": {
     "chosen": "solicitação",

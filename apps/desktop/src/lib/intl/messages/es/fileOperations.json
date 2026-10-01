@@ -81,7 +81,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Eliminar",
   "@fileOperations.delete.confirmDelete": {
@@ -274,7 +274,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "Se escribirán <written></written>. El origen ocupa <ondisk></ondisk> en disco; lo extra son archivos con enlace físico, que no pueden seguir enlazados entre unidades.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -402,7 +402,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Verificando antes de copiar…",
   "@fileOperations.transferProgress.scanTitleCopy": {

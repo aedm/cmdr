@@ -394,7 +394,7 @@
   },
   "queryUi.recent.systemDirsIncluded": "rendszermappákkal együtt",
   "@queryUi.recent.systemDirsIncluded": {
-    "sourceHash": "b7996cc"
+    "sourceHash": "c928638"
   },
   "queryUi.recent.resultCount": "{countText} {count, plural, one {találat} other {találat}} legutóbb",
   "@queryUi.recent.resultCount": {

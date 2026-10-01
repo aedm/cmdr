@@ -79,9 +79,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.delete.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "刪除",
   "@fileOperations.delete.confirmDelete": {
@@ -271,9 +271,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "將會寫入 <written></written>。來源在磁碟上佔用 <ondisk></ondisk>，多出來的是硬式連結檔案，跨磁碟機時無法保持連結。",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -399,9 +399,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "複製前正在核對⋯",
   "@fileOperations.transferProgress.scanTitleCopy": {

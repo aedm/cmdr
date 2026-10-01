@@ -793,6 +793,10 @@
   "@fileExplorer.openWith.copyRefused.tooLarge": {
     "sourceHash": "43399e6"
   },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "“{fileName}” lớn hơn {limit}, nên Cmdr không thể mở tệp này bằng {appName} từ lịch sử của repo.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
   "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}” nằm trong một tệp nén được bảo vệ bằng mật khẩu. Hãy sao chép tệp vào một thư mục trước (Cmdr sẽ hỏi mật khẩu), rồi mở bằng {appName}.",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "sourceHash": "882a23f"

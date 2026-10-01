@@ -79,9 +79,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.delete.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "删除",
   "@fileOperations.delete.confirmDelete": {
@@ -271,9 +271,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "这次要写入 <written></written> 的数据，而源文件在磁盘上只占 <ondisk></ondisk> 的空间。多出的部分是硬链接文件，跨驱动器后没法保持链接。",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -399,9 +399,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "拷贝前正在核对…",
   "@fileOperations.transferProgress.scanTitleCopy": {

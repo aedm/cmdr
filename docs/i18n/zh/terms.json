@@ -1110,7 +1110,7 @@
     "avoid": [
       {
         "form": "目录大小",
-        "why": "user-facing help text says 文件夹大小; 目录 stays only for the dir abbreviation and counted 个目录"
+        "why": "user-facing help text says 文件夹大小; 目录 stays only for the status-bar dir abbreviation"
       }
     ],
     "chosen": "文件夹",
@@ -1119,7 +1119,7 @@
       "settings.mediaIndex.progress.coveredDone": "\"your covered folders\" collapses to 覆盖范围内 (within the covered scope).",
       "settings.mediaIndex.progress.coveredOfTotal": "\"your covered folders\" collapses to 覆盖范围内 (within the covered scope)."
     },
-    "forms": "user-facing 文件夹; the status-bar dir abbreviation and technical aggregation 目录 (counted 个目录)",
+    "forms": "user-facing 文件夹, scan tallies included (counted 个文件夹); the status-bar dir abbreviation and the selection line's dir count → 目录 (counted 个目录)",
     "note": "User-facing help text says 文件夹, so folder size is always 文件夹大小.",
     "sources": "macOS"
   },
@@ -1306,6 +1306,13 @@
     "confidence": "high",
     "forms": "one-time hint 一次性…提示; internal flags 已显示…提示",
     "sources": "descriptive"
+  },
+  "history": {
+    "accept": ["历史"],
+    "chosen": "历史记录",
+    "confidence": "high",
+    "forms": "operation history and the generic noun → 历史记录; git and repo history → git 历史 / 仓库历史; file history (Ask Cmdr) → 文件历史",
+    "sources": "macOS AppKit (NSToolbarHistoryTemplate 历史记录; 版本历史记录); MS terminology zh-Hans (历史记录); catalog (errors.git.blobTooLarge.title, fileExplorer.readOnly.gitPortalMessage)"
   },
   "host": {
     "chosen": "主机",

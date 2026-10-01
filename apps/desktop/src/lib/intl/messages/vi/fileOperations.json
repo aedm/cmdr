@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Xóa",
   "@fileOperations.delete.confirmDelete": {
@@ -274,7 +274,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "Sẽ ghi <written></written>. Nguồn là <ondisk></ondisk> trên đĩa – phần dôi ra là các tệp liên kết cứng, vốn không thể giữ liên kết khi qua ổ đĩa khác.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -402,7 +402,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Đang xác minh trước khi sao chép…",
   "@fileOperations.transferProgress.scanTitleCopy": {

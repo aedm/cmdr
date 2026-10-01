@@ -791,6 +791,10 @@
   "@fileExplorer.openWith.copyRefused.tooLarge": {
     "sourceHash": "43399e6"
   },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "“{fileName}”超过 {limit}，所以 Cmdr 无法从仓库历史里用 {appName} 打开它。",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
   "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}”在一个受密码保护的压缩文件里。请先把它拷贝到一个文件夹（Cmdr 会问你要密码），再用 {appName} 打开。",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "sourceHash": "882a23f"

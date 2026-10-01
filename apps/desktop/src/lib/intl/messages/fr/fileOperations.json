@@ -80,9 +80,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.delete.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Supprimer",
   "@fileOperations.delete.confirmDelete": {
@@ -274,9 +274,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> seront écrits. La source occupe <ondisk></ondisk> sur le disque – le surplus correspond aux fichiers à liens physiques, qui ne peuvent pas rester liés d’un disque à l’autre.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -402,9 +402,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Vérification avant la copie…",
   "@fileOperations.transferProgress.scanTitleCopy": {

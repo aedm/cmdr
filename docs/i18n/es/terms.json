@@ -2087,6 +2087,13 @@
     "confidence": "high",
     "sources": "MS terminology (report → informe)"
   },
+  "repository": {
+    "accept": ["repositorio", "repos"],
+    "chosen": "repo",
+    "confidence": "high",
+    "forms": "masculine (el repo, del repo); English repo → repo (errors.git.*, the history toast); the branch and tag tooltips spell out repositorio",
+    "sources": "MS terminology es (repositorio, with repo as a listed variant); catalog (errors.git.*)"
+  },
   "reserved": {
     "chosen": "reservado",
     "accept": ["reserv"],

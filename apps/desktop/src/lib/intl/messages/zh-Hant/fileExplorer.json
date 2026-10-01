@@ -791,6 +791,10 @@
   "@fileExplorer.openWith.copyRefused.tooLarge": {
     "sourceHash": "43399e6"
   },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "「{fileName}」超過 {limit}，所以 Cmdr 無法從存放庫的歷史記錄裡用 {appName} 開啟它。",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
   "fileExplorer.openWith.copyRefused.needsPassword": "「{fileName}」在一個有密碼保護的封存檔裡。請先把它複製到一個資料夾（Cmdr 會問你密碼），再用 {appName} 開啟。",
   "@fileExplorer.openWith.copyRefused.needsPassword": {
     "sourceHash": "882a23f"

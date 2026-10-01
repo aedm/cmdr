@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Verwijder",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> wordt geschreven. De bron is <ondisk></ondisk> op schijf – het verschil zijn hardlink-bestanden, die niet gekoppeld kunnen blijven tussen schijven.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -403,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Controleren voor het kopiëren…",
   "@fileOperations.transferProgress.scanTitleCopy": {

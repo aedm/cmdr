@@ -12,9 +12,9 @@
   "@indexing.scan.label": {
     "sourceHash": "5b0433c"
   },
-  "indexing.scan.counters": "{entriesText} {entries, plural, one {entrée} many {entrées} other {entrées}}, {dirsText} {dirs, plural, one {rép.} many {rép.} other {rép.}}",
+  "indexing.scan.counters": "{entriesText} {entries, plural, one {entrée} many {entrées} other {entrées}}, {dirsText} {dirs, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@indexing.scan.counters": {
-    "sourceHash": "f635790"
+    "sourceHash": "ecf47f2"
   },
   "indexing.scan.countersElapsed": "{counters} · {elapsed}",
   "@indexing.scan.countersElapsed": {

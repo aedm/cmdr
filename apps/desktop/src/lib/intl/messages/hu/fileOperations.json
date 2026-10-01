@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {mappa} other {mappa}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Törlés",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {mappa} other {mappa}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "A Cmdr <written></written> adatot ír ki. A forrás <ondisk></ondisk> a lemezen – a többlet hardlinkelt fájlokból adódik, amelyek nem maradhatnak összelinkelve a meghajtók között.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -403,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {mappa} other {mappa}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Ellenőrzés a másolás előtt…",
   "@fileOperations.transferProgress.scanTitleCopy": {
