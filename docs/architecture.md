@@ -393,11 +393,13 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
 - `crates/cmdr-s3/`: everything Cmdr says to an S3-compatible object store (AWS, Cloudflare R2, Backblaze B2, Wasabi,
   Hetzner, any other). Our own SigV4 signer, one request builder per S3 call, `quick-xml` parsers and typed `S3Error`s,
   the provider profiles, a `reqwest` transport, and an `S3Volume` per place (a bucket, or the account root that lists
-  them): connect, list, stat, ranged reads (so S3 → anywhere copies), share links, reconnect. Writes are a later
-  milestone. The app keeps the place list and the connect wiring (`apps/desktop/src-tauri/src/network/s3_*.rs`), the IPC
-  surface (`commands/s3.rs` plus the S3 arm of `commands/servers.rs`), and `s3://` redaction. The plan:
-  `docs/specs/s3-support-plan.md`. Decisions: `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`. Its
-  Docker servers: `apps/desktop/test/s3-servers/README.md`.
+  them): connect, list, stat, ranged reads, writes to the final key (one PUT or a multipart upload, with the
+  unfinished-upload record under the host's state directory), folders, delete, share links, reconnect. Server-side copy
+  and the rename capability are later milestones. The app keeps the place list and the connect wiring
+  (`apps/desktop/src-tauri/src/network/s3_*.rs`), the IPC surface (`commands/s3.rs` plus the S3 arm of
+  `commands/servers.rs`), and `s3://` redaction. The plan: `docs/specs/s3-support-plan.md`. Decisions:
+  `crates/cmdr-s3/DETAILS.md`; guardrails: `crates/cmdr-s3/CLAUDE.md`. Its Docker servers:
+  `apps/desktop/test/s3-servers/README.md`.
 - `crates/cmdr-adb/`: everything Cmdr says to an Android device over ADB. `AdbVolume` per attached device, rooted at the
   device's real `/`, spoken to the ADB server on loopback (the sync service for stat, list, and transfers, `shell,v2`
   for the verbs it lacks, `host:track-devices` for hotplug), with a typed errno-based error policy and a fake ADB server

@@ -110,9 +110,7 @@ describe('capabilitiesForKind — the frozen per-kind defaults', () => {
     s3: {
       kind: 's3',
       hasBackendListing: true,
-      // Reads but doesn't write until the backend publishes otherwise: the row is
-      // what answers for a place nothing has registered yet.
-      canWrite: false,
+      canWrite: true,
       canBeSource: true,
       hasParentRow: true,
       syncsToMcp: true,
@@ -481,7 +479,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
   })
 
   it('an S3 place that publishes read-only offers copy out but no write', () => {
-    // S3 reads but doesn't write yet; the pane reads the backend's answer, ❌ never a kind guess.
+    // The pane reads the backend's answer, ❌ never a kind guess.
     volumes.list = [
       vol({
         id: 's3-127-0-0-1-14480-akia-photos-1a2b',

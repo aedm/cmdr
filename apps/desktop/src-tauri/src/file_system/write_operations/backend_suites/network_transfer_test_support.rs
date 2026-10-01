@@ -444,8 +444,9 @@ pub(super) async fn a_directory_tree_lands_intact_off_the_server(remote: Arc<dyn
     clean_deep(remote.as_ref(), &dir).await;
 }
 
-/// Every file of the fixture tree as a relative path and its bytes, for a
-/// backend that can't seed through its own volume (S3 has no writes yet).
+/// Every file of the fixture tree as a relative path and its bytes, for a cell
+/// that seeds through the protocol rather than the volume under test (S3's
+/// `testing::seed`).
 pub(super) fn tree_files() -> impl Iterator<Item = (&'static str, Vec<u8>)> {
     TREE.into_iter()
         .map(|(relative, len)| (relative, self_describing_bytes(len, relative)))

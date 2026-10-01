@@ -6,10 +6,11 @@ Must-knows and the module map: `CLAUDE.md`. This file carries the decisions. Pro
 
 ## Where the crate stands
 
-Connect, browse, and read work: the transport, the connect probe, and a `Volume` that lists, stats, streams, and scans
-for a copy, so S3 → anywhere copies run through the app's transfer engine. Writes and copies within an account are later
-milestones of the plan, and their builders already sit in `ops.rs`, which is why `lib.rs` still carries a crate-wide
-`allow(dead_code)`; it goes once writes call them.
+Connect, browse, read, and write work: the transport, the connect probe, and a `Volume` that lists, stats, streams,
+scans for a copy, uploads (one PUT or in parts), makes folders, deletes one node, and renames one small file, so copies
+onto, off, and between buckets run through the app's transfer engine. Server-side copy within an account and the "can't
+rename in one call" capability are the plan's M6; their builders (`UploadPartCopy`, `DeleteObjects`) already sit in
+`ops.rs`, which is why `lib.rs` still carries a crate-wide `allow(dead_code)`.
 
 ## The model: one volume per place
 
@@ -124,16 +125,19 @@ the endpoint through the pool-free client.
 
 Unit cells: the refusal table, the listing rules, path splitting, the error map, the state machine, the switch, and how
 a GET's answer is read (`streams_test.rs`), all without a server. Docker cells (`#[ignore]`d, run by the shared fixture
-lane through `package(cmdr-s3)`): every `integration_test.rs` and `read_test.rs` cell runs against BOTH fixtures,
-because they disagree on a wrong secret; `conformance_test.rs` holds the promises a place that reads but doesn't write
-can keep (`is_writable` and `supports_export` match what the methods do, `NotFound` names the path, the copy scan stops
-when told and asks inside the walk); the app's
-`file_system/write_operations/backend_suites/s3_transfer_integration_test.rs` copies off a bucket through the transfer
-engine, byte for byte; `connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container.
-Seeding goes through `volume::testing::seed`, this crate's own builders, because the volume doesn't write yet. The
-1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`)
-are seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's
-objects persist across runs.
+lane through `package(cmdr-s3)`): every `integration_test.rs`, `read_test.rs`, and `write_test.rs` cell runs against
+BOTH fixtures, because they disagree on a wrong secret and on preconditions; `conformance_test.rs` runs every shared
+`cmdr_fs::volume::conformance` assertion that applies (all but the unknown-length refusal, which is for backends that
+can't take one, and the link one: S3 has no links), on the check-then-write path on both servers; `write_test.rs` also
+proves the header path against VersityGW (`S3Volume::trust_conditional_writes`, testing only); the app's
+`file_system/write_operations/backend_suites/s3_transfer_integration_test.rs` copies onto, off, and between buckets
+through the transfer engine, byte for byte, plus the shared network scenarios (cancel, an answered Overwrite in place,
+awkward names); `connection_drop_test.rs` cuts a `TcpProxy` in front of VersityGW, ❌ never the container. Seeding goes
+through `volume::testing::seed`, this crate's own builders, so a cell about the write path never seeds through the code
+it tests. Multipart cells cut 5 MiB parts (`S3Volume::set_part_floor`, testing only) except one per fixture at the
+production 64 MiB. The 1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object
+(`cmdr-test-large-65mib/blob.bin`, `seed_once`) are seeded once per fixture and kept; every other cell works under a
+`scratch_prefix` of its own, since the stack's objects persist across runs.
 
 ## The public surface is capped
 
@@ -201,12 +205,101 @@ until M8 verifies each entry on a real account. A `501 NotImplemented` (`S3Error
 operation means the caller should call `ProviderProfile::downgrade(op)`: that one operation becomes check-then-write for
 the session, and the first call logs. The cells are atomics because one profile serves every concurrent operation.
 
+## Writing
+
+**Every write goes to its final key, and the transfer engine stages nothing here.** S3 publishes an object only when its
+PUT or `CompleteMultipartUpload` finishes, and a replaced object stays readable until then, so the volume answers
+`publishes_writes_whole` and the engine writes final keys and takes a file→file Overwrite in place
+(`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Whole-publish destinations").
+Decision/Why: a `.cmdr-tmp-*` temp would cost a landing rename, which on S3 is a server-side copy plus a delete (twice
+the requests, a single copy fails past 5 GB), and buys nothing the protocol doesn't already give. `write_is_single_shot`
+stays `false`: a request is open while the source drains.
+
+- **Shape** (`writes.rs::shape_for`): one streamed PUT when `plan_parts` gives a single part (so up to 69 MiB, a 64 MiB
+  part plus a folded tail), a multipart upload otherwise. A stream of unknown length goes in parts of the floor size (64
+  MiB, so at most 625 GiB), and one that ends inside its first part goes out as one PUT from the buffer.
+- **The streamed PUT** sends `Content-Length` and reads one piece ahead (`upload_body.rs`), the WebDAV body's design
+  with one more guard: a source that proves longer than promised fails the body BEFORE its last promised byte goes out,
+  so S3 never stores a truncated prefix (WebDAV removes its truncated file afterwards; on S3 that file would already be
+  the user's). ❗ The last piece also waits for a go-ahead from the upload, which asks the progress callback, where a
+  Cancel arrives: with only the 200 ms tick, a cancel landing between ticks lost to a fast finish and published the
+  object (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). A cancel after the last piece went
+  out is too late to stop the publish, and the write reports the file it finished.
+- **Multipart** (`multipart_upload.rs`): up to `UPLOAD_CONCURRENCY` (4) parts in flight, and a part is read from the
+  source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are buffered at all
+  because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server fault, or a
+  transport failure. The source is read between pieces with progress and cancel still answered, and ❌ a `next_chunk` is
+  never dropped half-read. A known length is a promise: a part that comes up short, or bytes left after the last part,
+  fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what publishes.
+- **Verification**: a HEAD after every write (`verify_landing`, `judge_landing`) compares the size and the ETag with
+  what the write answered. It costs one cheap request per file and feeds the pane patch that follows (`take_written`),
+  so `notify_mutation` doesn't pay a second one. ETags aren't compared with an MD5 of the bytes: under SSE-KMS and for
+  multipart they aren't one.
+- **Throttling on a single PUT isn't retried here**: its body is the source stream, which can't be read twice, and the
+  engine's per-file retry runs only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a
+  candidate for M8's friendly errors.
+
 ## No-overwrite writes
 
 `ops::put_object`, `complete_multipart_upload`, and `copy_object` take `Overwrite::{Replace, Refuse}` and return
 `Built { request, check_first }`. `check_first` is `true` exactly when `Refuse` was asked and the profile has no header
-for that operation right now; the caller HEADs the destination, then writes, and tells the user plainly if a clash shows
-up afterwards. Making the flag part of the return type is what keeps the check from being forgotten.
+for that operation right now. Making the flag part of the return type is what keeps the check from being forgotten.
+
+- **The header path** (AWS's Put and Complete, R2's Put): the server refuses atomically, 412 → `AlreadyExists`
+  (`map_s3_error`, since the only precondition Cmdr sends is a no-overwrite one). A 501 downgrades that operation for
+  the session; a refused Complete is sent again the other way (the parts are still there), a refused PUT fails that
+  file.
+- **Check-then-write** (everything else, both fixtures included): a HEAD before the write, again right before
+  `CompleteMultipartUpload` (catching a writer that took the name during a long upload), and the HEAD after the write:
+  another writer's ETag there under `CreateNew` is `AlreadyExists`, their object kept, ours gone. ❗ One window stays
+  blind: a writer whose object lands between our last check and our own write's completion is overwritten by ours, and
+  nothing short of bucket versioning can see it. That's the residual risk the product decision accepts ("tell the user
+  plainly when we notice").
+- **Garage ends an upload when another write replaces its object** (`NoSuchUpload` on the next part or the completion;
+  `apps/desktop/test/s3-servers/README.md`). Under `CreateNew` that's read as the name being taken, after a HEAD
+  confirms it, ❌ never as the destination "not found".
+- **`create_file`** (New File) also refuses a name a FOLDER holds: an object beside a same-named prefix would hide under
+  the folder in every listing. `write_from_stream` leaves that check to the engine's destination pre-check, which reads
+  the listing anyway, to save a request per file.
+
+## Unfinished uploads
+
+S3 keeps an unfinished multipart upload's parts forever, invisible in every listing and billed. Cancel and every failure
+abort it on the spot; what an abort can't reach (a crash, a dropped future, a server gone mid-abort) is swept later.
+
+- **The record** (`upload_ledger.rs`): `<state dir>/unfinished-uploads` under `VolumeHost::state_dir("s3")`, one line
+  per event (`+` when `CreateMultipartUpload` answers, `-` once completed or aborted), every field percent-encoded,
+  rewritten to the open records whenever a sweep reads it. A process-wide registry marks uploads running in THIS
+  process, and a guard marks a dropped upload abandoned. Without a state directory (a test host) the record lives for
+  the session.
+- **Decision/Why not the operation log**: the operation log is the durable journal of what happened to the USER's files,
+  for undo and search, and its rows are paths a rollback can act on. An unfinished upload is protocol state that only
+  this crate can act on (`AbortMultipartUpload`), keyed by an account and an upload ID; putting it there would mean a
+  schema migration, a new row kind no rollback understands, and the app reaching into S3 vocabulary. A file this crate
+  owns, in a directory the host hands every backend, keeps it where the knowledge is.
+- **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
+  reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
+  gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an
+  upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live.
+
+## Folders, delete, and rename
+
+`mutation.rs`. A folder is a prefix: it exists when it has a zero-byte `name/` marker OR any key under it, and ❗ a
+folder wins over an object of the same name (`NameHolds`), the listing's rule.
+
+- **`create_directory`** writes the marker, refusing a taken name (`AlreadyExists`), a missing parent (`NotFound`), and
+  a FILE holding the parent's name (`NotADirectory`: a marker under it would turn that file into a folder in every
+  listing). That's `mkdir`'s contract, so the shared `cmdr_fs::volume::mkdir_all` walk runs unchanged and refuses a file
+  in the way at any depth; every level it creates gets a marker, so a `mkdir -p` folder survives emptying.
+- **`delete`** reads one listing of `name/` capped at two keys (`listing::folder_contents`): anything but the marker is
+  `ENOTEMPTY`, the marker alone deletes the marker, nothing at all falls back to a HEAD and deletes the object (or
+  answers `NotFound`). A LIST per delete is a class-A request; the batch path (`DeleteObjects`, 1,000 keys) has no trait
+  hook yet and arrives with M6's move engine.
+- **`rename`** moves one file of up to 64 MiB (`RENAME_BY_COPY_LIMIT`): `CopyObject` keeping the metadata (so the mtime
+  survives), a HEAD proving the copy is ours, then the source's delete, so the worst a failure leaves is two copies.
+  `force: false` refuses a taken name first. A folder, a bigger file, or a cross-bucket copy on Hetzner answers
+  `NotSupported`, so nothing triggers a copy per object by accident. ❗ M6 replaces this with the typed "can't rename in
+  one call" capability and routing through the transfer engine.
 
 ## Responses
 
@@ -263,8 +356,8 @@ ranged read, the last one running to the end of the object.
 **Spec correction: no marker can find our own unfinished uploads.** The plan says the startup sweep matches unfinished
 uploads "by a Cmdr marker in the initiation metadata". `ListMultipartUploads` returns only key, upload ID, initiator,
 storage class, and initiation time, and no API reads an in-progress upload's metadata. The sweep has to work from upload
-IDs Cmdr recorded locally when it started each upload (the operation log is the natural home), or abort every upload
-older than some age, which would also abort other tools' uploads.
+IDs Cmdr recorded locally when it started each upload, or abort every upload older than some age, which would also abort
+other tools' uploads. The first is what ships: § "Unfinished uploads".
 
 ## Metadata
 
@@ -273,3 +366,7 @@ nine fractional digits and trailing zeros dropped (`1354040105.123456789`), nega
 `swift.TimeToFloatString` from `ncw/swift`'s `meta.go`, which rclone's S3 backend uses for its `mtime` key (read on
 2026-10-01). `parse_mtime` reads it back the way rclone does, cutting a fraction past nine digits and padding a shorter
 one, and refuses anything that isn't digits, one optional `-`, and one optional `.`.
+
+A write takes the date from the source stream (`VolumeReadStream::modified_at`: a local file's `stat`, another S3
+object's own `x-amz-meta-mtime` or `Last-Modified`) and sets it on the PUT or on `CreateMultipartUpload`, never on the
+parts. A source with no date writes none. A rename copies the metadata with the object.

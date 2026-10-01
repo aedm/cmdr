@@ -27,8 +27,8 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 
 ## Staging and cleanup
 
-- **A cross-volume file write stages on `.cmdr-tmp-<uuid>`**, taking its final name after its last byte. Ask
-  `../staged_write.rs::resolve_staging`; ❌ single-shot-ness earns an exemption, NEVER smallness.
+- **A cross-volume file write stages on `.cmdr-tmp-<uuid>`**, renamed in after its last byte. Ask
+  `../staged_write.rs::resolve_staging`; ❌ only single-shot or whole-publish earns an exemption, NEVER smallness.
 - **The SOURCE's mode goes on the temp BEFORE that rename** (`landed_mode.rs`), local destinations only, never wider
   than what the destination created. `0` means no mode: ❌ never guess or fail over one. A new write path owes the call.
 - **A same-`Arc` copy tries `strategy.rs::try_server_side_copy` (`Volume::copy_within`) first**, staged, ❌ never

@@ -511,6 +511,16 @@ whether its protocol can frame the body. `supports_unknown_length_writes()` defa
 that answer until its writer can consume to EOF without a declared total. An unsupported `Unknown` is refused before
 opening or truncating the destination and before polling the source. Unknown writes are never single-shot.
 
+`VolumeReadStream::modified_at` carries the source file's own date beside its bytes, from whatever the opening already
+read (a local `stat`, an S3 GET's headers), so a destination that stores dates as data (S3's `x-amz-meta-mtime`) keeps
+it without a second request. Default `None`, which means "store no date", ❌ never a made-up one; a wrapper stream
+(`CheckpointStream`) forwards its inner stream's answer.
+
+`Volume::publishes_writes_whole` is the third write promise beside single-shot and atomic replacement: the protocol
+publishes every write whole (an object store's PUT). Only the transfer engine's staging decision reads it; the contract
+and what it does NOT promise are on the trait method, the engine side in
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Whole-publish destinations".
+
 Write callbacks receive one `StreamWriteProgress { bytes_written, expected_length }` value. The structured payload keeps
 cumulative progress and its denominator named rather than relying on two confusable positional `u64`s. For a known
 write, every update carries the original `Known` length and existing mismatch and cancellation behavior remains

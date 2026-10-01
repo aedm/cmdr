@@ -95,6 +95,10 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
   (minimum part size is 5Mb)"); VersityGW accepts it, as AWS does for a last part. A multipart copy has to upload a
   short tail rather than copy it, at least on Garage.
 - `CopyObject` across buckets (`cmdr-test` to `cmdr-test-2`): 200 on both.
+- A `PutObject` to a key while a multipart upload of that key is in flight: ❗ **Garage ends the upload** (the next
+  `UploadPart` or `CompleteMultipartUpload` answers 404 `NoSuchUpload`); VersityGW keeps it, and completing it replaces
+  the object just put. Observed through `cmdr-s3`'s `write_test.rs` (`…catches_a_writer_mid_upload`, both servers) on
+  2026-10-01; `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes" has what Cmdr does with it.
 - `DeleteObjects` with `Content-MD5`: 200 on both, and a key that never existed comes back under `<Deleted>`, as on AWS.
   Garage also adds a `<VersionId>` and `<DeleteMarkerVersionId>` to each entry on an unversioned bucket.
 - A presigned `GET` (query auth, `X-Amz-Expires=300`, `UNSIGNED-PAYLOAD`): 200 on both.
