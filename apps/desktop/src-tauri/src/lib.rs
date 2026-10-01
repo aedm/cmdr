@@ -314,6 +314,9 @@ pub fn run() {
             // other's live temps), and reap any `.cmdr-viewer-*` orphan left by a crash.
             if let Ok(data_dir) = config::resolved_app_data_dir(app.handle()) {
                 file_viewer::init_materialize_dir(data_dir.join("viewer-extract"));
+                // "Open with" on a file inside an archive gets its own dir and prefix
+                // for the same reason, and its own startup-only reaper.
+                file_viewer::init_open_with_extract_dir(data_dir.join("open-with-extract"));
 
                 // Point the leftover ledger at the data dir and settle what an
                 // earlier run left (a quit or a crash mid-copy), each under the rules

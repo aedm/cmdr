@@ -178,6 +178,44 @@ fn other_item<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<MenuItem<R>> {
     )
 }
 
+/// Launches `app_path` on the rows an "Open with" click acts on, for both the listed apps
+/// and "Other…".
+///
+/// A row only a route serves (a file inside an archive) has no file an app can open, so
+/// it's pulled into a fresh read-only copy first (`file_viewer/open_with_extract.rs`). That
+/// pull streams the file, so it runs off the main thread, and the launch hops back on.
+/// Every other launch stays on the main thread, synchronous, as it always was.
+#[cfg(target_os = "macos")]
+pub(super) fn launch_with<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>, app_path: PathBuf) {
+    use crate::file_system::open_with::open_paths_with;
+    use crate::file_viewer::open_with_extract;
+
+    if !open_with_extract::any_needs_extraction(&paths) {
+        if let Err(e) = open_paths_with(&paths, &app_path) {
+            log::warn!("Open with failed for {}: {e}", app_path.display());
+        }
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let copies = match open_with_extract::launch_paths(&paths) {
+            Ok(copies) => copies,
+            Err(e) => {
+                log::warn!("Open with: couldn't copy a file out of its archive: {e}");
+                return;
+            }
+        };
+        let hopped = app.run_on_main_thread(move || {
+            if let Err(e) = open_paths_with(&copies, &app_path) {
+                log::warn!("Open with failed for {}: {e}", app_path.display());
+            }
+        });
+        if let Err(e) = hopped {
+            log::warn!("Open with: couldn't reach the main thread to launch: {e}");
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

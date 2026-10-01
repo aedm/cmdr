@@ -17,6 +17,7 @@ pub mod media;
 mod media_backend;
 pub mod media_protocol;
 mod media_session;
+pub(crate) mod open_with_extract;
 pub mod pending_open;
 pub(crate) mod range_read;
 mod row_walk;
@@ -46,6 +47,8 @@ mod media_protocol_test;
 #[cfg(test)]
 mod media_session_test;
 #[cfg(test)]
+mod open_with_extract_test;
+#[cfg(test)]
 mod row_characterization_test;
 #[cfg(test)]
 mod rows_test;
@@ -62,6 +65,7 @@ pub use content_kind::{ViewerContentKind, classify_viewer_content};
 pub use encoding::FileEncoding;
 pub use materialize::init_materialize_dir;
 pub use media_session::MediaDimensions;
+pub use open_with_extract::init_open_with_extract_dir;
 pub use pending_open::{AbandonReason, PendingOpen, ViewerPullProgress, begin_pending_open, end_pending_open};
 pub use range_read::RangeEnd;
 pub use row_walk::{CHUNK_BUDGET_BYTES, ChunkEnd, TotalRows, ViewerRow};

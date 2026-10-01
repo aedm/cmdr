@@ -565,7 +565,6 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     // `MenuState.context.open_with_apps` and call the launch helper directly.
     #[cfg(target_os = "macos")]
     if let Some(bundle_id) = id.strip_prefix(super::open_with::OPEN_WITH_ID_PREFIX) {
-        use crate::file_system::open_with::open_paths_with;
         use std::path::PathBuf;
 
         let menu_state = app.state::<MenuState<tauri::Wry>>();
@@ -577,9 +576,7 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         if let Some(app_path) = app_path
             && !paths.is_empty()
         {
-            if let Err(e) = open_paths_with(&paths, &app_path) {
-                log::warn!("Open with failed for {bundle_id}: {e}");
-            }
+            super::open_with::launch_with(app, paths, app_path);
         } else {
             log::warn!("Open with: missing app or paths for {bundle_id}");
         }
@@ -589,7 +586,7 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     // === Open with → Other… : show NSOpenPanel, then launch ===
     #[cfg(target_os = "macos")]
     if id == super::open_with::OPEN_WITH_OTHER_ID {
-        use crate::file_system::open_with::{open_paths_with, pick_app_via_open_panel};
+        use crate::file_system::open_with::pick_app_via_open_panel;
         use std::path::PathBuf;
 
         let menu_state = app.state::<MenuState<tauri::Wry>>();
@@ -605,9 +602,8 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         // the main thread by Tauri/muda, so this is safe.
         if let Some(app_path) = pick_app_via_open_panel()
             && !paths.is_empty()
-            && let Err(e) = open_paths_with(&paths, &app_path)
         {
-            log::warn!("Open with (Other…) failed: {e}");
+            super::open_with::launch_with(app, paths, app_path);
         }
         return;
     }

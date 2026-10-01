@@ -337,17 +337,13 @@ double-extension split. The reading-core, mutation, and watch tests live with th
 
 `ArchiveVolume` (browse + extract + `scan_for_copy`) and backend routing (§ "Routing and lifecycle") are landed:
 `VolumeManager::resolve`, the shared `src/boundary.rs` detector, the archive LRU, the read-only write guards, the live
-content watch, and zip mutation (browse + extract + edit, local and remote-hosted). What's still ahead (each gap is its
-own GitHub issue: [#258](https://github.com/vdavid/cmdr/issues/258), [#259](https://github.com/vdavid/cmdr/issues/259),
-and [#260](https://github.com/vdavid/cmdr/issues/260); the settled design for the fast zip tail-add in #258 is
-`docs/notes/m-append-spike.md`):
+content watch, and zip mutation (browse + extract + edit, local and remote-hosted). What's still ahead is tracked in
+GitHub issues [#258](https://github.com/vdavid/cmdr/issues/258) and [#260](https://github.com/vdavid/cmdr/issues/260);
+the settled design for the fast zip tail-add in #258 is `docs/notes/m-append-spike.md`.
 
-- **Open-with-external-app for a file INSIDE an archive (deferred).** Enter on a file inside a `.zip` still opens the
-  VIEWER (bounded temp-extract), not the OS default app. Extract-then-launch isn't a clean reuse of
-  `apps/desktop/src-tauri/src/file_viewer/materialize.rs`: that extractor is viewer-`pub(super)`-scoped and its temp is
-  reaped on VIEWER SESSION close, whereas a detached launched app holds the file for an unknown lifetime and has no
-  close event to hook — it needs its own extract-and-persist-until-startup-reaper lifecycle. Deferred deliberately; the
-  viewer interim stands.
+"Open with" on a file inside an archive launches the app on a fresh read-only copy, with its own
+persist-until-next-launch lifecycle: `apps/desktop/src-tauri/src/file_viewer/DETAILS.md` § "Open with on a routed file".
+Enter still opens the viewer.
 
 A REMOTE source copied INTO a zip (an MTP/SMB file dropped onto an archive) now works: the source subtree is pulled to a
 local scratch dir first, then the ordinary local ingest runs against the pulled bytes (source-side pull in

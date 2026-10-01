@@ -334,9 +334,15 @@ fn jobs_for(request: FactsRequest) -> Vec<(FactKind, FactJob)> {
                     FILE_PROVIDER_ACTIONS_BUDGET,
                 ))
             }),
-            FactKind::OpenWith => {
-                Box::new(move || Fact::OpenWith(crate::file_system::open_with::compute_open_with_choices(paths)))
-            }
+            FactKind::OpenWith => Box::new(move || {
+                // A file inside an archive has nothing at its path for LaunchServices to
+                // type, so it's asked about a stand-in with the same extension.
+                let listing_paths = paths
+                    .iter()
+                    .map(|path| crate::file_viewer::open_with_extract::listing_path(path))
+                    .collect();
+                Fact::OpenWith(crate::file_system::open_with::compute_open_with_choices(listing_paths))
+            }),
             FactKind::Share => Box::new(move || Fact::Share(crate::file_system::share::enumerate_offer(&paths))),
             FactKind::Tags => Box::new(move || {
                 // Which colors the WHOLE selection carries: each path's tags read once, and a

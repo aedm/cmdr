@@ -223,6 +223,37 @@ did. A local disk and an OS-mounted share are unchanged.
 `viewer_reload` re-reads the temp, not the phone. The toolbar's tail toggle stays available and does nothing visible,
 exactly as for a file inside a `.zip`. To see a newer copy, close and reopen the viewer.
 
+### Open with on a routed file
+
+`open_with_extract.rs` serves the file context menu's "Open with" (a listed app or "Other…") for a row only a route
+serves: a file inside an archive, or a blob in a `.git` snapshot. It reuses this pull (`extract_routed_into`, the same
+`pull_to_temp` behind a `TempSpot` naming its own dir and prefix) and owns everything after it. The module doc carries
+the reasons; the shape:
+
+- **A fresh copy per launch, `0o444`, under `<app_data_dir>/open-with-extract/.cmdr-open-with-<uuid>/`**, reaped by
+  `init_open_with_extract_dir` at startup and never earlier: a launched app has no close event, so the process boundary
+  is the only signal a copy is done with. ❌ No refcount, dedup cache, TTL reaper, shared dir with the viewer, or
+  write-back (edits an app saves stay in the copy).
+- **Each family's reaper sees only its own prefix in its own dir** (`reap_temps_with_prefix`), so the viewer's reaper
+  can never take a copy an app has open, and the reverse.
+- **The cap is `OPEN_WITH_CAP_BYTES` (2 GiB)**, refused from the declared size before a byte is written, like the
+  viewer's 256 MiB preview cap: what people open in a real app (a video, a big PDF) runs bigger than what they preview.
+- **The launch path.** `../menu/open_with.rs::launch_with` keeps an ordinary launch synchronous on the main thread. When
+  any row routes, it pulls on the blocking pool and hops back to the main thread for `open_paths_with`. The volume
+  under the path is `mount_id_for_path` (else the default volume), since the menu carries paths only and a route rides
+  on its parent drive's volume. A failed pull is logged, the same as a failed launch.
+- **The app list asks about a stand-in.** `URLsForApplicationsToOpenURL:` answers no apps for a path with nothing at it
+  (verified on macOS 27.0 via `osascript`, 2026-10-01), and the menu is built before anything is pulled. So
+  `../menu/context_menu_facts.rs` asks about `listing_path`: for a routed row, an empty `stand-in.<ext>` in
+  `.cmdr-open-with-types/`, which LaunchServices types by extension exactly as it would the real entry, with the same
+  ranking and the same per-extension cache. ❌ Not `URLsForApplicationsToOpenContentType:`: it needs
+  `UniformTypeIdentifiers.framework`, which dyld refuses on the 10.15 floor (the reasoning F4's editor list follows,
+  `../file_system/DETAILS.md` § "Text editor").
+- Out of scope: a file on a volume the OS can't open (a phone, SFTP). The menu context carries no volume id to pull
+  through, so those still launch on the raw path and fail as before.
+
+Covered by `open_with_extract_test.rs`.
+
 ### Watching a pull
 
 The viewer window exists before `viewer_open` runs (the FE opens the window, and its page opens the session), so a

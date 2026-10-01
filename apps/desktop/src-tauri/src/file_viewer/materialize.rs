@@ -152,17 +152,24 @@ fn materialize_dir() -> PathBuf {
 /// Best-effort: an unreadable dir or a failed remove is logged-then-ignored, never
 /// fatal. The prefix guard means it can only ever touch our own extraction subdirs.
 pub(super) fn reap_orphan_temps(dir: &Path) {
+    reap_temps_with_prefix(dir, TEMP_SUBDIR_PREFIX);
+}
+
+/// Removes every subdir of `dir` whose name starts with `prefix`. The one reaper body,
+/// shared with the open-with temps (`open_with_extract.rs`), which keep their own dir
+/// and prefix.
+pub(super) fn reap_temps_with_prefix(dir: &Path, prefix: &str) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return; // dir doesn't exist yet (first run) — nothing to reap.
     };
     for entry in entries.flatten() {
         let name = entry.file_name();
-        if is_orphan_temp_name(&name.to_string_lossy())
+        if name.to_string_lossy().starts_with(prefix)
             && let Err(e) = std::fs::remove_dir_all(entry.path())
         {
             log::debug!(
                 target: "cmdr_lib::file_viewer",
-                "reap_orphan_temps: could not remove {}: {e}",
+                "reap_temps_with_prefix: could not remove {}: {e}",
                 entry.path().display()
             );
         }
@@ -170,8 +177,38 @@ pub(super) fn reap_orphan_temps(dir: &Path) {
 }
 
 /// Whether `name` is one of our extraction subdirs (the reaper's match predicate).
+#[cfg(test)]
 pub(super) fn is_orphan_temp_name(name: &str) -> bool {
     name.starts_with(TEMP_SUBDIR_PREFIX)
+}
+
+/// Where a pull writes its temp: the dir, and the prefix its per-pull subdir takes,
+/// which is what that family's reaper matches on.
+#[derive(Clone, Copy)]
+pub(super) struct TempSpot<'a> {
+    pub(super) dir: &'a Path,
+    pub(super) prefix: &'a str,
+}
+
+impl<'a> TempSpot<'a> {
+    /// The viewer's own family in `dir`.
+    fn viewer(dir: &'a Path) -> Self {
+        Self {
+            dir,
+            prefix: TEMP_SUBDIR_PREFIX,
+        }
+    }
+}
+
+/// [`extract_routed`] into another temp family's spot, unwatched: open-with's pull
+/// (`open_with_extract.rs`), which has no window to close and no deadline to honor.
+pub(super) fn extract_routed_into(
+    requested: &Path,
+    volume_id: &str,
+    spot: TempSpot<'_>,
+    cap: u64,
+) -> Result<Option<MaterializedFile>, ViewerError> {
+    extract_routed(requested, volume_id, spot, cap, &PendingOpen::new(), None)
 }
 
 /// What the viewer opens for `requested`: a bounded temp copy when the OS can't open
@@ -241,7 +278,7 @@ fn materialize_with(
     open: &PendingOpen,
     cancel: Option<&AtomicBool>,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
-    if let Some(entry) = extract_routed(requested, volume_id, dir, cap, open, cancel)? {
+    if let Some(entry) = extract_routed(requested, volume_id, TempSpot::viewer(dir), cap, open, cancel)? {
         return Ok(Some(entry));
     }
     // Locality is `paths_are_os_visible`, ❌ never `supports_local_fs_access`: a
@@ -255,7 +292,16 @@ fn materialize_with(
     if resolved.routed.is_some() || volume.paths_are_os_visible() {
         return Ok(None);
     }
-    tauri::async_runtime::block_on(pull_to_temp(volume, resolved.path, dir, cap, None, open, cancel)).map(Some)
+    tauri::async_runtime::block_on(pull_to_temp(
+        volume,
+        resolved.path,
+        TempSpot::viewer(dir),
+        cap,
+        None,
+        open,
+        cancel,
+    ))
+    .map(Some)
 }
 
 /// The route-only materializer for `inspect_file`, with its per-path cancellation.
@@ -268,7 +314,7 @@ pub(crate) fn extract_if_routed_for_inspect(
     extract_routed(
         requested,
         volume_id,
-        &materialize_dir(),
+        TempSpot::viewer(&materialize_dir()),
         PREVIEW_CAP_BYTES,
         &PendingOpen::new(),
         Some(cancel),
@@ -283,14 +329,21 @@ pub(crate) fn extract_if_routed_with(
     dir: &Path,
     cap: u64,
 ) -> Result<Option<MaterializedFile>, ViewerError> {
-    extract_routed(requested, volume_id, dir, cap, &PendingOpen::new(), None)
+    extract_routed(
+        requested,
+        volume_id,
+        TempSpot::viewer(dir),
+        cap,
+        &PendingOpen::new(),
+        None,
+    )
 }
 
 /// The route half of [`materialize_for_viewer_with`], watched by `open`.
 fn extract_routed(
     requested: &Path,
     volume_id: &str,
-    dir: &Path,
+    spot: TempSpot<'_>,
     cap: u64,
     open: &PendingOpen,
     cancel: Option<&AtomicBool>,
@@ -314,16 +367,16 @@ fn extract_routed(
         return Ok(None);
     };
     let entry_path = resolved.path;
-    tauri::async_runtime::block_on(pull_to_temp(volume, entry_path, dir, cap, Some(routed), open, cancel)).map(Some)
+    tauri::async_runtime::block_on(pull_to_temp(volume, entry_path, spot, cap, Some(routed), open, cancel)).map(Some)
 }
 
-/// Streams one file to a fresh temp subdir under `dir`, refusing an oversize file
+/// Streams one file to a fresh temp subdir in `spot`, refusing an oversize file
 /// before writing anything. `routed` is the route that minted `volume`, or `None`
 /// for a volume the OS can't open.
 async fn pull_to_temp(
     volume: std::sync::Arc<dyn Volume>,
     entry_path: PathBuf,
-    dir: &Path,
+    spot: TempSpot<'_>,
     cap: u64,
     routed: Option<RoutedKind>,
     open: &PendingOpen,
@@ -350,7 +403,7 @@ async fn pull_to_temp(
         return Err(ViewerError::TooLargeToPreview { size: declared, cap });
     }
 
-    let cleanup_dir = dir.join(format!("{TEMP_SUBDIR_PREFIX}{}", uuid::Uuid::new_v4()));
+    let cleanup_dir = spot.dir.join(format!("{}{}", spot.prefix, uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&cleanup_dir)?;
     let temp_file = cleanup_dir.join(temp_basename(&meta.name));
 

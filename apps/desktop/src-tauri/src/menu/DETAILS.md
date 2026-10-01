@@ -71,7 +71,8 @@ window focus context.
 - `open_with.rs` (macOS): `build_open_with_submenu` for the file context menu's "Open with"
   submenu (`OPEN_WITH_SUBMENU_ID`). Returns the submenu plus a `bundle_id → app_path` map that callers stash in
   `MenuState.context.open_with_apps` so `on_menu_event` can resolve dynamic `open-with:<bundle-id>`
-  click targets. `build_pending_open_with_submenu` / `fill_open_with_submenu` are the late pair.
+  click targets. `build_pending_open_with_submenu` / `fill_open_with_submenu` are the late pair, and `launch_with` runs
+  a click.
 - `share_submenu.rs` (macOS): `build_share_submenu` for the file context menu's `Share` (`SHARE_SUBMENU_ID`), one
   plain item per service in `FileContextInfo::share_services`, plus the `share-service:<index>` id
   pair (`share_service_id` / `share_service_index`). `build_pending_share_submenu` / `fill_share_submenu` are the late
@@ -192,10 +193,11 @@ Exceptions that do NOT use `"execute-command"`:
   (`src/routes/viewer/DETAILS.md` § Gotchas)
 - **Open with** (macOS): items have dynamic IDs like `open-with:com.apple.Xcode` that can't be
   enumerated in `menu_id_to_command`. `on_menu_event` prefix-matches `open-with:` and calls
-  `file_system::open_with::open_paths_with` directly, looking up the app URL via
+  `open_with::launch_with`, looking up the app URL via
   `MenuState.context.open_with_apps[bundle_id]` and the launch paths via
   `MenuState.context.paths`. The "Other…" entry shows an `NSOpenPanel` filtered to `.app`
-  bundles and launches the chosen app the same way.
+  bundles and launches the chosen app the same way. `launch_with` swaps a file inside an archive for a fresh read-only
+  copy first, off the main thread (`../file_viewer/DETAILS.md` § "Open with on a routed file").
 - **Finder tag colors** (macOS): the file context menu carries seven circle items
   (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders wherever `can_tag` says the rows are
   real OS paths: hidden on a phone, ADB, SFTP, WebDAV, an archive's insides, and a `.git`-portal row, where the write
