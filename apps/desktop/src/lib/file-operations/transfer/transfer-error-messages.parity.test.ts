@@ -90,7 +90,7 @@ const cases: Case[] = [
     expected: {
       title: 'Couldn’t find the destination folder',
       message:
-        'The folder you’re copying into isn’t there any more, so there was nowhere to put your files. The originals are untouched.',
+        'The folder you’re copying into isn’t there anymore, so there was nowhere to put your files. The originals are untouched.',
       suggestion:
         'It may have been renamed or removed, or the drive may have disconnected. Pick another destination, or open the folder again and retry.',
     },
@@ -102,7 +102,7 @@ const cases: Case[] = [
     expected: {
       title: 'Couldn’t find the destination folder',
       message:
-        'The folder you’re moving into isn’t there any more, so there was nowhere to put your files. The originals are untouched.',
+        'The folder you’re moving into isn’t there anymore, so there was nowhere to put your files. The originals are untouched.',
       suggestion:
         'It may have been renamed or removed, or the drive may have disconnected. Pick another destination, or open the folder again and retry.',
     },

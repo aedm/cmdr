@@ -348,7 +348,7 @@ describe('RemoteConnectView a11y', () => {
       target,
       props: {
         name: 'Pixel 7',
-        state: { kind: 'refused' as const, refusal: "Your phone isn't connected any more." },
+        state: { kind: 'refused' as const, refusal: "Your phone isn't connected anymore." },
       },
     })
     await tick()

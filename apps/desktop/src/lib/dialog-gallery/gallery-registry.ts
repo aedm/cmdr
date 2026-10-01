@@ -610,7 +610,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       {
         id: 'amend',
         label: 'Adding a note to an auto-sent report',
-        note: 'What the “Error report sent” toast opens: the report Flow B already shipped, with a note box that adds to THAT report instead of sending a second one. It reads the real backend stash, which only exists once this run has actually auto-sent something, so on a machine that hasn’t, this row honestly shows the “can’t take a note any more” dead end. To see the full shape, turn on Settings > Updates > “Send error reports automatically” and trigger a real error first.',
+        note: 'What the “Error report sent” toast opens: the report Flow B already shipped, with a note box that adds to THAT report instead of sending a second one. It reads the real backend stash, which only exists once this run has actually auto-sent something, so on a machine that hasn’t, this row honestly shows the “can’t take a note anymore” dead end. To see the full shape, turn on Settings > Updates > “Send error reports automatically” and trigger a real error first.',
       },
     ],
   },

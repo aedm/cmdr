@@ -11,7 +11,7 @@
   "@adb.connect.serverUnreachable": {
     "description": "Shown in the pane when the Android tools are installed but the background program they run isn't answering, so Cmdr can't reach any phone. About this Mac, never about the phone. ❌ Never name the background program or the protocol."
   },
-  "adb.connect.deviceGone": "Your phone isn’t connected any more.",
+  "adb.connect.deviceGone": "Your phone isn’t connected anymore.",
   "@adb.connect.deviceGone": {
     "description": "Shown in the pane when the phone was unplugged, switched off, or otherwise vanished while Cmdr was opening it. Address the user directly (\"your phone\"). Terminal: there is no button, because plugging the phone back in is what fixes it."
   },
