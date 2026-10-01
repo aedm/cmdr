@@ -15,7 +15,8 @@ the `Volume` trait, capability flags, and any write path.
 - `format.rs`: `open_tar_decoder` (the codecs), plus a re-export of the naming vocabulary — `ArchiveFormat`,
   `format_for_name` (detection SoT), `is_sequential` — which lives in `crates/cmdr-fs/src/archive_format.rs` because
   `FileEntry.is_archive` reads it.
-- `zip.rs` / `tar.rs` / `sevenz.rs`: per-format parse + producer + `EntryStore` arm.
+- `zip.rs` / `tar.rs` / `sevenz.rs`: per-format parse + producer + `EntryStore` arm. `zip_times.rs`: which zip entries
+  record only a DOS time, read as the writer's wall clock (DETAILS § Entry times).
 - `source.rs`: the `ArchiveByteSource` seam + `LocalFileSource` / `BytesSource` / `TailCachedSource`.
 - `reader.rs`: `ArchiveEntryReader` — chunked, off-executor decompression. `extract.rs`: `SubtreeExtractReader` — the
   one-pass subtree extractor for sequential formats (compressed tar, 7z), decode-once bulk extract.

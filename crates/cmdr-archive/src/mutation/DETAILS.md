@@ -34,9 +34,9 @@ sink, pause gate, cancel intent via the `MutationHooks` seam, and the remote pul
   - ❗ `SimpleFileOptions::default()` dates an entry 1980-01-01: `zip`'s "now" default needs its `time` feature, which
     this workspace doesn't enable (verified on `zip` 8.6.0, `DateTime::default_for_write`, 2026-09-30). ❌ Never hand
     `start_file` / `add_directory` bare default options.
-  - `rc-zip` reads an entry with NO extended timestamp as if its DOS field were UTC (`Entry::modified`, verified on
-    `rc-zip` 5.4.1, 2026-09-30). That's every entry a DOS-only tool wrote, and the entries Cmdr wrote before this
-    convention (UTC DOS, no `UT`), which therefore still read correctly.
+  - The read side takes a DOS-only entry as the writer's wall clock in the reader's zone (`../read/DETAILS.md` § "Entry
+    times"). Entries an older Cmdr wrote (UTC DOS, no `UT`) therefore list off by the reader's offset, an accepted
+    shift.
 - **Compression level applies to ADDED entries only.** `add_entry_options` sets the deflate level from
   `Changeset::compression_level` on each newly added entry; retained entries are raw-copied and keep their original
   compression untouched. `None` (the default) means the `zip` crate default, level 6 — so an unset level is byte-stable
