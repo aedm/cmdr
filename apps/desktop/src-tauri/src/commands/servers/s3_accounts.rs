@@ -36,6 +36,7 @@ pub(super) fn s3_accounts(
             pinned: entry.pinned,
             app_root,
             username: Some(entry.access_key_id.clone()),
+            auto_reconnect: Some(entry.auto_reconnect),
         };
         let is_root = entry.bucket.is_none();
         match accounts.iter_mut().find(|account| account.id == account_id) {

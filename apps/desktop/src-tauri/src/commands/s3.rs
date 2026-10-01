@@ -13,7 +13,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::network::keychain::{self, KeychainError};
-use crate::network::s3_known_places::S3ProviderChoice;
+use crate::network::s3_known_places::{self, KnownS3Place, S3ProviderChoice};
 use crate::network::s3_volume_wiring;
 use cmdr_s3::UnattendedReconnect;
 
@@ -106,6 +106,14 @@ pub async fn delete_s3_credentials(provider: S3ProviderChoice, access_key_id: St
         move || keychain::delete_credentials(&service, Some(&access_key_id)),
     )
     .await
+}
+
+/// Every S3 place the user has saved, with its provider, for an edit sheet
+/// that has to show (and resend) what identifies the place.
+#[tauri::command]
+#[specta::specta]
+pub fn get_known_s3_places() -> Vec<KnownS3Place> {
+    s3_known_places::all()
 }
 
 /// Whether an S3 volume can come back on its own as it stands. `null` when

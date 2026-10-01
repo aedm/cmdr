@@ -692,6 +692,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::s3::has_s3_credentials,
                     crate::commands::s3::delete_s3_credentials,
                     crate::commands::s3::get_s3_unattended_reconnect,
+                    crate::commands::s3::get_known_s3_places,
                 ]
                 dispatch_only: []
             }

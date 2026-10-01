@@ -85,9 +85,14 @@ pub struct SavedPlace {
     /// `smb://<host>/<share>` for one no mount went through yet, which has no
     /// place in the volume list to land on.
     pub app_root: String,
-    /// The account this place is opened as: the SFTP or WebDAV account, or the one
-    /// an SMB share was last mounted with (`None` for guest).
+    /// The account this place is opened as: the SFTP or WebDAV account, the S3
+    /// access key id, or the account an SMB share was last mounted with (`None`
+    /// for guest).
     pub username: Option<String>,
+    /// This place's own "Reconnect automatically" switch. `None` for an SMB
+    /// share, which has none. ❗ Per PLACE: an S3 account's buckets each carry
+    /// their own, so a row menu reads it here rather than off the account.
+    pub auto_reconnect: Option<bool>,
 }
 
 /// An endpoint plus an identity, as the hub lists it.

@@ -4430,6 +4430,11 @@ export const commands = {
       | null
     >('get_s3_unattended_reconnect', { volumeId }),
   /**
+   *  Every S3 place the user has saved, with its provider, for an edit sheet
+   *  that has to show (and resend) what identifies the place.
+   */
+  getKnownS3Places: () => __TAURI_INVOKE<KnownS3Place[]>('get_known_s3_places'),
+  /**
    *  Every server the user has saved, across all three stores.
    *
    *  ❗ Cached state only, ❌ never the wire: the hub re-reads this on every
@@ -8944,6 +8949,33 @@ export type KnownNetworkShare = {
   pinned?: boolean
 }
 
+// One S3 place the user has connected to, and how to reach it again.
+export type KnownS3Place = {
+  // The provider, and with it the endpoint.
+  provider: S3ProviderChoice
+  // The account's key. ❗ Part of the identity.
+  accessKeyId: string
+  /**
+   *  The bucket this place is, or `None` for the account root that lists the
+   *  buckets. ❗ Part of the identity.
+   */
+  bucket: string | null
+  // The name a person gave this place, or empty when nobody did.
+  displayName: string
+  /**
+   *  Whether Cmdr may redial unattended when the session drops. ❗ Defaults to
+   *  on, the same as SFTP's and WebDAV's.
+   */
+  autoReconnect?: boolean
+  /**
+   *  Whether this place shows in the volume switcher. ❗ A `remember` never
+   *  changes it on a replace (the WebDAV store's rule and reason).
+   */
+  pinned?: boolean
+  // When this place was last connected to, ISO 8601.
+  lastConnectedAt: string
+}
+
 // One SFTP server the user has connected to, and how to reach it again.
 export type KnownSftpServer = {
   // The server, as the user typed it.
@@ -12759,10 +12791,17 @@ export type SavedPlace = {
    */
   appRoot: string
   /**
-   *  The account this place is opened as: the SFTP or WebDAV account, or the one
-   *  an SMB share was last mounted with (`None` for guest).
+   *  The account this place is opened as: the SFTP or WebDAV account, the S3
+   *  access key id, or the account an SMB share was last mounted with (`None`
+   *  for guest).
    */
   username: string | null
+  /**
+   *  This place's own "Reconnect automatically" switch. `None` for an SMB
+   *  share, which has none. ❗ Per PLACE: an S3 account's buckets each carry
+   *  their own, so a row menu reads it here rather than off the account.
+   */
+  autoReconnect: boolean | null
 }
 
 /**
