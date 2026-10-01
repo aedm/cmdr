@@ -26,10 +26,6 @@ use tauri::AppHandle;
 /// instance ever spools or beats, so a test run can't pollute production analytics.
 const FORCE_ENV: &str = "CMDR_ANALYTICS_FORCE";
 
-/// Bundle id from `tauri.conf.json`, mirrored so the raw-settings read works without an
-/// `AppHandle`. Matches `settings/loader.rs`'s early-load helpers. Keep in sync if it changes.
-const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
-
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 /// The event spool, opened at [`init`]. `None` before then, or when the data dir can't be resolved.
@@ -160,13 +156,8 @@ fn suppression_reason() -> Option<SuppressionReason> {
 /// without an `AppHandle` (mirroring the install-id and early-load helpers). A missing or corrupt
 /// file yields `Value::Null`, which the builder treats as "no settings."
 fn read_raw_settings() -> serde_json::Value {
-    let data_dir: PathBuf = if let Ok(custom) = std::env::var("CMDR_DATA_DIR") {
-        PathBuf::from(custom)
-    } else {
-        match dirs::data_dir() {
-            Some(base) => base.join(BUNDLE_ID),
-            None => return serde_json::Value::Null,
-        }
+    let Some(data_dir) = crate::config::standalone_app_data_dir() else {
+        return serde_json::Value::Null;
     };
     let settings_path = data_dir.join("settings.json");
     std::fs::read_to_string(&settings_path)

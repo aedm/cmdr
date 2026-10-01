@@ -130,6 +130,15 @@ few seconds one directory buys. Measure the directory in isolation and read the 
 - **A network volume's server going away (refused, or silent)**: a `cmdr_fs::testing::tcp_proxy::TcpProxy` the test
   owns, between the client and the fixture. ❌ Never pause or stop a shared fixture container
 
+## The app data dir under test (Rust)
+
+Every store that resolves its data dir without an `AppHandle` (favorites, the icon disk cache, install ids, settings
+early-loads, the pane-state read) goes through `config::standalone_app_data_dir()`. Under `cfg(test)`, with
+`CMDR_DATA_DIR` unset, that's a per-process scratch dir under `$TMPDIR/cmdr-unit-test-data/`, so no test can read or
+write the developer's real one. ❌ Never resolve `dirs::data_dir()` plus the bundle id at a call site: `volumes::tests`
+once seeded the real `favorites.json` through `list_locations()` that way. A test that asserts on a store's contents
+still isolates it with its own `TestDir`; the scratch dir is a floor, not a fixture.
+
 ## Secret-store isolation (Rust)
 
 Any test that reaches `crate::secrets::store()` opens with `crate::test_support::isolate_secrets()` and keeps the

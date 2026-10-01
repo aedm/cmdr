@@ -509,16 +509,7 @@ fn parse_restricted_window_settings(contents: &str) -> RestrictedWindowSettings 
 /// Returns `None` when the file is missing or the key is unset; the caller substitutes the
 /// 200 MB default. Returns `Some(0)` for explicit "log storage disabled".
 pub fn early_load_max_log_storage_mb() -> Option<u64> {
-    /// Bundle id from `tauri.conf.json`. Mirrored here so this function works without the
-    /// app handle. Keep in sync if the bundle id ever changes.
-    const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
-
-    let data_dir: PathBuf = if let Ok(custom) = std::env::var("CMDR_DATA_DIR") {
-        PathBuf::from(custom)
-    } else {
-        let base = dirs::data_dir()?;
-        base.join(BUNDLE_ID)
-    };
+    let data_dir = crate::config::standalone_app_data_dir()?;
 
     let settings_path = data_dir.join("settings.json");
     let contents = fs::read_to_string(&settings_path).ok()?;
@@ -616,16 +607,7 @@ fn parse_ask_cmdr_wake_delay_secs(contents: &str) -> Option<u64> {
 /// the stdout threshold can start at Debug if the user persisted the verbose toggle.
 /// Returns `None` when the file or key is missing.
 pub fn early_load_verbose_logging() -> Option<bool> {
-    /// Bundle id from `tauri.conf.json`. Mirrored here so this function works without
-    /// the app handle. Keep in sync if the bundle id ever changes.
-    const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
-
-    let data_dir: PathBuf = if let Ok(custom) = std::env::var("CMDR_DATA_DIR") {
-        PathBuf::from(custom)
-    } else {
-        let base = dirs::data_dir()?;
-        base.join(BUNDLE_ID)
-    };
+    let data_dir = crate::config::standalone_app_data_dir()?;
 
     let settings_path = data_dir.join("settings.json");
     let contents = fs::read_to_string(&settings_path).ok()?;
@@ -640,15 +622,7 @@ pub fn early_load_verbose_logging() -> Option<bool> {
 /// which case the registry defaults apply — `enabled = true`,
 /// `binding = "⌃⌥⌘J"`).
 pub fn early_load_global_go_to_latest_shortcut() -> Option<(bool, String)> {
-    /// Bundle id from `tauri.conf.json`. Keep in sync if it ever changes.
-    const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
-
-    let data_dir: PathBuf = if let Ok(custom) = std::env::var("CMDR_DATA_DIR") {
-        PathBuf::from(custom)
-    } else {
-        let base = dirs::data_dir()?;
-        base.join(BUNDLE_ID)
-    };
+    let data_dir = crate::config::standalone_app_data_dir()?;
     let settings_path = data_dir.join("settings.json");
     let contents = fs::read_to_string(&settings_path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
