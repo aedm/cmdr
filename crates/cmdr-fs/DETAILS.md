@@ -563,6 +563,12 @@ settle (382 MiB, mostly swapped malloc-zone memory). Idle footprint drops ~95 Mi
 differently from macOS malloc under thread churn, so the macOS numbers say nothing about it. Measure it before flipping
 Linux; a feature to force the system allocator there is a one-line addition to `build.rs`.
 
+**Why mimalloc's VM tag stays at its default (100, `IOAccelerator`)**: `os_tag` is a Mach tag, so it does nothing on
+Linux, where mimalloc already names its mappings `mimalloc` through `PR_SET_VMA_ANON_NAME`. On macOS it only reaches a
+`--features mimalloc` build, which doesn't ship, and `process_memory/vm_regions.rs` reads that build's heap off tag 100
+(`MIMALLOC_ARENA_TAG`), so a new tag means moving that reader with it. How each build's heap reads from outside:
+`../../docs/tooling/memory-debugging.md` § "First: which allocator holds the Rust heap".
+
 **Why the choice lives here and not in the app**: every memory reader has to know which heap it's reading, and the
 readers live here. With the choice beside them, the app's `main.rs` needs no cfg at all, and a reading can't disagree
 with the allocator that's installed. The one exception: only a binary that installs `GLOBAL_ALLOC` runs on it, and test

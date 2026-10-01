@@ -80,9 +80,10 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
   "A better CPU instrument").
 - **`top`'s `IDLEW` column is unreliable on macOS 27**: it read static across intervals. Don't use it for wakeups.
 - **Know the build's allocator before reading `vmmap`.** On the system allocator (macOS by default) the Rust heap is in
-  the `Malloc *` rows, shared with Objective-C and C. On mimalloc (Linux, a `--features mimalloc` build, and every build
-  up to 0.48.0) `IOAccelerator` is the Rust heap (tag 100) and `Malloc *` is NOT (`docs/tooling/memory-debugging.md` §
-  "First: which allocator holds the Rust heap"). `memory_diagnostics` names it in `rustHeap.allocator`.
+  the `Malloc *` rows, shared with Objective-C and C. On a macOS mimalloc build (`--features mimalloc`, and every build
+  up to 0.48.0) `IOAccelerator` is the Rust heap (tag 100) and `Malloc *` is NOT. On Linux, which always runs mimalloc,
+  the heap is `[anon:mimalloc]` in `/proc/<pid>/maps` (`docs/tooling/memory-debugging.md` § "First: which allocator
+  holds the Rust heap"). `memory_diagnostics` names it in `rustHeap.allocator`; say which build a reading came from.
 - **`IOSurface` (tag 88) in the main process isn't its cost**: it's WebKit's layer backing, owned and paid for by
   WebContent, and outside the main footprint (`docs/tooling/memory-debugging.md` § "The second trap").
 - **The same tag is spelled three ways**: `vmmap` says `Malloc Small`, older notes say `MALLOC_SMALL`, and
@@ -214,7 +215,6 @@ Items that don't move the targets, each tracked in its own issue:
 - #323: a stuck-loop watchdog at the log sink, and third-party `log::error!` reaching Flow B.
 - #324: share lists prefetched for every discovered SMB host at launch.
 - #325: a sync-status pool thread wedged in a File Provider call.
-- #328: mimalloc's `os_tag` colliding with `VM_MEMORY_IOACCELERATOR`.
 - #308: refresh the Finder-style free space when purgeable space changes.
 - #134: load only the active language's messages.
 - #231: a fresh idle baseline on a quiet machine (largely answered by `idle-census-2026-09-27.md`).

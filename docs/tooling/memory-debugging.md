@@ -11,17 +11,23 @@ Where the Rust heap shows up depends on the build's global allocator, and the tw
 - **macOS release and dev builds run on the system allocator.** The Rust heap is the default malloc zone
   (`DefaultMallocZone`), shared with Objective-C and C code, and `vmmap` shows it in the `Malloc *` rows. There is no
   Rust-only number: nothing in the zone tells a Rust block from an Objective-C one.
-- **Linux builds, and macOS built with `--features mimalloc`, run on mimalloc.** Then the trap below applies.
+- **macOS built with `--features mimalloc`, and every macOS build up to 0.48.0, run on mimalloc.** Then the trap below
+  applies.
+- **Linux builds run on mimalloc**, with no trap: mimalloc names every mapping it makes `mimalloc`
+  (`prctl(PR_SET_VMA_ANON_NAME)`), so the heap is the `[anon:mimalloc]` lines of `/proc/<pid>/maps` and `smaps`. That
+  needs a kernel with `CONFIG_ANON_VMA_NAME` (5.17+); on an older one the arenas are plain anonymous mappings. (Read
+  from mimalloc's `src/prim/unix/prim.c` in `libmimalloc-sys` 0.1.49, v2 and v3 alike, 2026-10-01; not yet observed on a
+  running Linux build.)
 
 `memory_diagnostics` says which one it read (`rustHeap.allocator`), and so does the watchdog's memory warning
-(`globalAllocator`). Why the split: `crates/cmdr-fs/DETAILS.md` § "Which global allocator". A reading from a build
-before the split (0.48.0 and earlier) is always mimalloc.
+(`globalAllocator`). Why the split: `crates/cmdr-fs/DETAILS.md` § "Which global allocator". A macOS reading from 0.48.0
+or earlier is always mimalloc, so say which build a reading came from.
 
-## The trap, mimalloc builds: `vmmap` reports the Rust heap as `IOAccelerator`
+## The trap, macOS mimalloc builds: `vmmap` reports the Rust heap as `IOAccelerator`
 
 `vmmap` names VM regions by their VM tag. macOS defines `VM_MEMORY_IOACCELERATOR = 100`
 (`$(xcrun --show-sdk-path)/usr/include/mach/vm_statistics.h`), and **mimalloc tags every arena it `mmap`s with `os_tag`
-= 100 by default**. So in a mimalloc build:
+= 100 by default**. The tag is a Mach concept, so `os_tag` does nothing on Linux. In a macOS mimalloc build:
 
 > **The `IOAccelerator` rows in Cmdr's `vmmap` / `footprint` output ARE the Rust heap** — not GPU memory, not WebKit,
 > not the compositor. Arenas are reserved in 128 MB chunks, so the region COUNT grows in 128 MB steps.
@@ -30,8 +36,8 @@ The mirror-image trap: **`MALLOC_*` / `DefaultMallocZone` rows are NOT the Rust 
 and `malloc_get_all_zones` only see registered system zones, and mimalloc isn't one. A snapshot reading "malloc heap 1.6
 GB" while `phys_footprint` is 16.5 GB is not a contradiction — it means ~15 GB of Rust heap is invisible to that API.
 
-Consequences worth internalising, because each one burned a day (in mimalloc builds, which every build was until
-0.48.0):
+Consequences worth internalising, because each one burned a day (in macOS mimalloc builds, which every macOS build was
+until 0.48.0):
 
 - A backend heap runaway **looks like a GPU/compositor leak**. If you find yourself bisecting CSS, layer promotion, DOM
   churn, or event volume because "the compositor is leaking", stop and re-read this section.
