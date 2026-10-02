@@ -54,6 +54,12 @@
     "forms": "button Voeg … toe with the particle LAST (Voeg aan rapport toe, Voeg server toe…, Voeg huidige map aan favorieten toe); window title Toevoegen aan je foutrapport; participle toegevoegd",
     "sources": "macOS Finder (Add Password → Voeg wachtwoord toe, Add Tags → Voeg tags toe), AppKit (Voeg aan begin van knoppenbalk toe)"
   },
+  "advanced": {
+    "chosen": "Geavanceerd",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Geavanceerd; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "accept": ["de AI", "AI-"],
     "chosen": "AI-functies",
@@ -667,6 +673,13 @@
     "chosen": "dashboard",
     "confidence": "high",
     "sources": "MS terminology"
+  },
+  "debugging": {
+    "chosen": "foutopsporing",
+    "accept": ["foutopspor", "debug"],
+    "confidence": "high",
+    "forms": "debug log → foutopsporingslogbestand; the technical level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "default": {
     "accept": ["standaard"],
@@ -2662,7 +2675,7 @@
     "accept": ["opslag", "opslagaanbieder", "koude opslag", "S3-opslag"],
     "chosen": "opslag",
     "confidence": "high",
-    "forms": "storage provider → opslagaanbieder (aanbieder per ai-provider); cold storage → koude opslag; S3 storage → S3-opslag",
+    "forms": "storage provider → opslagaanbieder (aanbieder per ai-provider); cold storage → koude opslag; S3 storage → S3-opslag; storing logs → logopslag",
     "sources": "Microsoft Terminology (storage → opslag; cold storage → koude opslag); macOS (Cloudopslag, Beheer opslag…)"
   },
   "store": {

@@ -359,6 +359,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::settings::set_show_virtual_git_portal,
                     crate::commands::logging::batch_fe_logs,
                     crate::commands::logging::set_log_level,
+                    crate::commands::logging::get_debug_log_path,
                     crate::downloads::commands::go_to_latest_download,
                     crate::downloads::commands::downloads_watcher_status,
                     crate::downloads::commands::recheck_downloads_watcher_gate,

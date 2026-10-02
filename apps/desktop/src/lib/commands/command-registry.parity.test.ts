@@ -33,6 +33,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'app.checkForUpdates': 'Check for updates…',
   'cmdr.openOnboarding': 'Onboarding…',
   'help.openShortcuts': 'Keyboard shortcuts',
+  'help.viewDebugLog': 'View debug log',
   'queue.show': 'Operation queue',
   'help.sendErrorReport': 'Send error report…',
   'help.whatsNew': 'What’s new',
@@ -181,6 +182,7 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
   'help.openShortcuts': 'Open a read-only window listing every keyboard shortcut, live-synced with your customizations',
   'queue.show':
     'Open a window listing every running and waiting operation, where you can pause, resume, or cancel them',
+  'help.viewDebugLog': 'Open Cmdr’s current debug log with the internal file viewer',
   'help.sendErrorReport': 'Send Cmdr logs to the team to help fix something that went wrong',
   'help.whatsNew': 'See what changed in the latest releases of Cmdr',
   'feedback.send': 'Tell the maker of Cmdr what you think: ideas, wishes, anything',

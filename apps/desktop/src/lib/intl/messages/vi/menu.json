@@ -681,5 +681,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Apple ships this exact disambiguation frame unchanged in Vietnamese: AppKit vi renders the \"%@ (%@)\" pattern as \"%1$@ (%2$@)\" (Common.json, InfoPanel.json), same order, same parentheses, same spacing. Vietnamese is head-initial, so the qualifier follows the name just as in English, and no vi source in the pile adds a preposition inside the parentheses. Only the two folder names, taken from disk, ever differ."
+  },
+  "menu.help.viewDebugLog": "Xem nhật ký gỡ lỗi",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

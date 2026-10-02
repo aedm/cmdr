@@ -910,5 +910,21 @@
   "commands.suggestedOpsShow.description": "Beoordeel de bestandsbewerkingen die de AI heeft voorgesteld en bepaal wat er gebeurt",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Bekijk foutopsporingslogbestand",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Open het huidige foutopsporingslogbestand van Cmdr met het interne weergavevenster",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "Logopslag staat uit. Zet het aan in Instellingen > Geavanceerd en herstart Cmdr om het foutopsporingslogbestand te bekijken.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Kon het foutopsporingslogbestand niet openen. Probeer het opnieuw.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

@@ -1095,5 +1095,21 @@
   "commands.suggestedOpsShow.description": "Review the file operations the AI suggested, and decide what runs",
   "@commands.suggestedOpsShow.description": {
     "description": "Longer help text for the Suggested ops command, shown as a secondary line in the command palette."
+  },
+  "commands.helpViewDebugLog.label": "View debug log",
+  "@commands.helpViewDebugLog.label": {
+    "description": "Verb phrase (imperative). Command palette action that opens the running app’s own current debug log file in the internal read-only file viewer. Use the same wording as menu.help.viewDebugLog. No ellipsis; there is no input to collect."
+  },
+  "commands.helpViewDebugLog.description": "Open Cmdr’s current debug log with the internal file viewer",
+  "@commands.helpViewDebugLog.description": {
+    "description": "Secondary help line beneath View debug log in the command palette. The log contains diagnostic records from the running application, not the user’s file-operation history. Cmdr is the brand name; keep it recognizable."
+  },
+  "commands.handler.viewDebugLog.disabled": "Log storage is disabled. Enable it in Settings > Advanced, then restart Cmdr to view the debug log.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "description": "Informational toast after selecting View debug log when log storage is disabled. Direct the user to the Advanced settings section to give log storage a nonzero limit, then restart the app. Cmdr is the brand name."
+  },
+  "commands.handler.viewDebugLog.unavailable": "Couldn’t open the debug log. Try again.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "description": "Toast after the View debug log action cannot get the log path or open the internal viewer window. No diagnostic details or placeholders. Suggest retrying."
   }
 }

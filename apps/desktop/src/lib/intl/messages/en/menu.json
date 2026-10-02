@@ -865,5 +865,9 @@
         "description": "The name of the folder that holds it, for example Documents."
       }
     }
+  },
+  "menu.help.viewDebugLog": "View debug log",
+  "@menu.help.viewDebugLog": {
+    "description": "VERB phrase (imperative). Help-menu action that opens the application’s current diagnostic log file in its own read-only viewer. Use the same wording as commands.helpViewDebugLog.label. This is different from the operation log, which lists file operations. No ellipsis; it collects no input."
   }
 }

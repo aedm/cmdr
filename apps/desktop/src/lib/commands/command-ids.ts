@@ -42,6 +42,7 @@ export const COMMAND_IDS = [
   'app.checkForUpdates',
   'cmdr.openOnboarding',
   'help.openShortcuts',
+  'help.viewDebugLog',
   'help.sendErrorReport',
   'help.whatsNew',
   'feedback.send',

@@ -2335,6 +2335,7 @@ export const commands = {
    *  stays at Debug regardless, so error report bundles always carry useful context.
    */
   setLogLevel: (level: string) => __TAURI_INVOKE<void>('set_log_level', { level }),
+  getDebugLogPath: () => __TAURI_INVOKE<string | null>('get_debug_log_path'),
   /**
    *  Go to the most recently observed eligible download.
    *

@@ -907,5 +907,21 @@
   "commands.suggestedOpsShow.description": "Revisa las operaciones de archivos que ha sugerido la IA y decide qué se ejecuta",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Ver registro de depuración",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Abre el registro de depuración actual de Cmdr con el visor de archivos interno",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "El almacenamiento de registros está desactivado. Actívalo en Ajustes > Avanzado y reinicia Cmdr para ver el registro de depuración.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "No se ha podido abrir el registro de depuración. Inténtalo de nuevo.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

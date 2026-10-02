@@ -680,5 +680,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Two bare folder names with the qualifier in parentheses; Hungarian keeps the same order and punctuation as English, and macOS Hungarian ships exactly this shape (Finder LocalizableMerged SB_iCloudDetail = „^0 (^1)”, IN_G6_V1 = „^2 (^3)”). Neither token may take a case suffix (unknown final sound), so there is nothing else to change."
+  },
+  "menu.help.viewDebugLog": "Hibakeresési napló megtekintése",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

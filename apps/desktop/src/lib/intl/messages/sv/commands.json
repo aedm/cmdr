@@ -907,5 +907,21 @@
   "commands.suggestedOpsShow.description": "Granska filåtgärderna som AI:n föreslog och bestäm vad som körs",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Visa felsökningslogg",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Öppna Cmdrs aktuella felsökningslogg med den interna filförhandsvisningen",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "Logglagringen är avstängd. Slå på den i Inställningar > Avancerat och starta om Cmdr efteråt för att visa felsökningsloggen.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Det gick inte att öppna felsökningsloggen. Försök igen.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

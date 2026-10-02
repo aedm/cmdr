@@ -54,6 +54,13 @@
     "forms": "button Lägg till i … (Lägg till i favoriter, Lägg till i rapporten); progress Lägger till…; past Lade till",
     "sources": "macOS AppKit/Finder (Lägg till i Dock, Lägg till i sidofältet)"
   },
+  "advanced": {
+    "accept": ["avancerad"],
+    "chosen": "Avancerat",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Avancerat; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "accept": ["AI:n", "AI-"],
     "chosen": "AI-funktioner",
@@ -2579,7 +2586,7 @@
     "accept": ["lagringsutrymme", "lagringsleverantör"],
     "chosen": "lagring",
     "confidence": "high",
-    "forms": "cloud storage → molnlagring; cold storage → kall lagring; S3 storage → S3-lagring; storage provider → lagringsleverantör; free space keeps lagringsutrymme",
+    "forms": "cloud storage → molnlagring; cold storage → kall lagring; S3 storage → S3-lagring; storage provider → lagringsleverantör; free space keeps lagringsutrymme; storing logs → logglagring",
     "sources": "MS terminology (storage → lagring; cold storage → kall lagring; cloud storage → molnlagring); catalog (iCloud-lagring, telefonlagring)"
   },
   "store": {

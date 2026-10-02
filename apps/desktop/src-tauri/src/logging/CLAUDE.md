@@ -5,7 +5,7 @@ filtering**: the file is locked at Debug, the terminal defaults to Info.
 
 ## Module map
 
-- **`mod.rs`**: log-dir and keep-count state, log-file listing and pruning (DETAILS § "What lives in `mod.rs`")
+- **`mod.rs`**: log-dir and keep-count state, debug-log path, log-file listing and pruning (DETAILS § "What lives in `mod.rs`")
 - **`startup.rs`**: `init`, the one call `lib.rs` makes at startup (DETAILS § "Startup sequence")
 - **`dispatch.rs`**: `init` (builds + installs the fern tree), `set_stdout_threshold` / `stdout_threshold`, and
   `write_terminal_line` (the terminal line format)

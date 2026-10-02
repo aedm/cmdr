@@ -688,5 +688,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Two folder names and a parenthesis, no translatable word. Dutch puts the qualifier after the head in exactly this shape, and Apple's own Dutch keeps the pattern byte-for-byte (Finder LocalizableMerged SB_iCloudDetail = \"^0 (^1)\", AppKit Common/InfoPanel \"%@ (%@)\" = \"%1$@ (%2$@)\"), matching this catalog's own parenthetical labels (menu.volume.eject, menu.context.openWithDefault)."
+  },
+  "menu.help.viewDebugLog": "Bekijk foutopsporingslogbestand",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

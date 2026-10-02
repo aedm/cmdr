@@ -44,9 +44,18 @@ pub fn set_log_dir(path: PathBuf) {
 
 /// Returns the resolved log directory if it was recorded.
 ///
-/// Returns `None` when log storage is disabled (cap = 0) or before the plugin builder ran.
+/// Returns `None` before logger startup. The directory is cached even when storage is disabled.
 pub fn log_dir() -> Option<&'static Path> {
     LOG_DIR.get().map(PathBuf::as_path)
+}
+
+/// The current debug log in the directory resolved at startup, unless storage is disabled.
+/// No filesystem probe: the viewer owns file opening and any missing-file refusal.
+pub fn debug_log_path() -> Option<PathBuf> {
+    if keep_count() == 0 {
+        return None;
+    }
+    log_dir().map(|dir| dir.join("cmdr.log"))
 }
 
 /// Records the keep-count the plugin was built with (`ceil(cap_mb / 50)`).

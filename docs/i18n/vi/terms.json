@@ -42,6 +42,12 @@
     "forms": "button Thêm; Thêm vào X (Thêm vào báo cáo, Thêm vào Dock, Thêm vào mục ưa thích); progress Đang thêm…; toast Đã thêm …",
     "sources": "macOS (Thêm, Thêm vào Dock, Thêm vào Mục ưa thích), Xfce Thunar, MS (add → thêm)"
   },
+  "advanced": {
+    "chosen": "Nâng cao",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Nâng cao; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "accept": ["tính năng AI"],
     "chosen": "AI",
@@ -618,6 +624,13 @@
     "chosen": "bảng thông tin",
     "confidence": "high",
     "sources": "MS terminology (dashboard → bảng thông tin)"
+  },
+  "debugging": {
+    "chosen": "gỡ lỗi",
+    "accept": ["debug"],
+    "confidence": "high",
+    "forms": "debug log → nhật ký gỡ lỗi; the technical level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "default": {
     "chosen": "mặc định",
@@ -1479,6 +1492,13 @@
     "confidence": "high",
     "forms": "Step 1 of 2: X → Bước 1/2: X (the AI install steps); the onboarding counter reads Bước 1 trên 2",
     "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
+  "storage": {
+    "chosen": "dung lượng",
+    "confidence": "high",
+    "forms": "storage capacity → dung lượng; storing logs → lưu trữ nhật ký; phone/device storage → bộ nhớ (the accessible data store, not RAM)",
+    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02); AOSP Settings values-vi storage_settings and storage_usb_settings (https://android.googlesource.com/platform/packages/apps/Settings/+/10d0cd52d6/res/values-vi/strings.xml, source-key search 2026-10-02)",
+    "accept": ["lưu trữ", "lưu nhật ký", "bộ nhớ"]
   },
   "this-mac": {
     "chosen": "máy Mac",

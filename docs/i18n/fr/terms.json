@@ -45,6 +45,12 @@
     "forms": "bare `Ajouter à X` with no explicit object, like Apple (Ajouter au Dock, Ajouter aux favoris, Ajouter à votre rapport d’incident); progress `Ajout…`; participle agrees with its noun (Note ajoutée)",
     "sources": "macOS Finder/AppKit (\"Ajouter à la barre latérale\", \"Ajouter au Dock\", \"Ajouter aux favoris\")"
   },
+  "advanced": {
+    "chosen": "Avancé",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Avancé; quote settings.section.advanced exactly in navigation paths; the shipped section name stays distinct from Apple’s generic Advanced label",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "accept": ["l’IA", "d’IA", "une IA"],
     "chosen": "fonctionnalités d’IA",
@@ -2770,7 +2776,7 @@
   "storage": {
     "chosen": "stockage",
     "confidence": "high",
-    "forms": "cloud storage → stockage cloud; cold storage → stockage froid; storage provider → fournisseur de stockage; S3 storage → un stockage S3",
+    "forms": "cloud storage → stockage cloud; cold storage → stockage froid; storage provider → fournisseur de stockage; S3 storage → un stockage S3; storing logs → stockage des journaux",
     "sources": "macOS AppKit (Stockage dans le cloud, Gérer le stockage…); MS terminology FRA (cold storage → stockage froid, storage provider → fournisseur de stockage)"
   },
   "store": {

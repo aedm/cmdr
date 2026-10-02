@@ -679,5 +679,9 @@
   "menu.dock.locationInParent": "{name}（{parent}）",
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2"
+  },
+  "menu.help.viewDebugLog": "檢視除錯記錄檔",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

@@ -51,6 +51,12 @@
     "sources": "macOS Finder (Añadir, Añadir a favoritos, Añadir al Dock, Añadir etiquetas…)",
     "decision": "Añadir a un informe ya enviado: el diálogo de la nota tardía"
   },
+  "advanced": {
+    "chosen": "Avanzado",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Avanzado; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "chosen": "funciones de IA",
     "accept": ["la IA", "de IA", "a IA", "IA,", "IA.", "con IA"],
@@ -2499,7 +2505,7 @@
   },
   "storage": {
     "chosen": "almacenamiento",
-    "forms": "cloud storage → almacenamiento en la nube; S3 storage → almacenamiento S3; storage provider → proveedor de almacenamiento; cold storage → almacenamiento en frío",
+    "forms": "cloud storage → almacenamiento en la nube; S3 storage → almacenamiento S3; storage provider → proveedor de almacenamiento; cold storage → almacenamiento en frío; storing logs → almacenamiento de registros",
     "confidence": "high",
     "sources": "macOS (Almacenamiento); MS terminology (storage → almacenamiento)"
   },

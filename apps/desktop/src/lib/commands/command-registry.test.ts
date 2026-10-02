@@ -29,6 +29,7 @@ const EXPECTED_PALETTE_IDS: readonly CommandId[] = [
   'cmdr.openOnboarding',
   'help.openShortcuts',
   'queue.show',
+  'help.viewDebugLog',
   'help.sendErrorReport',
   'help.whatsNew',
   'feedback.send',
@@ -211,6 +212,7 @@ const RUNS_OVER_DIALOGS: readonly CommandId[] = [
   // Their own windows: the dialog in the main window stays up and untouched.
   'app.settings',
   'help.openShortcuts',
+  'help.viewDebugLog',
   'queue.show',
   // App-wide text size: it scales the dialog too, and touches no pane.
   'view.zoom.set75',

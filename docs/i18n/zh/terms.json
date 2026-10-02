@@ -54,6 +54,12 @@
     "forms": "button 添加到… (添加到报告, 添加到程序坞); favorites and the queue take 加入 (加入个人收藏, 加入队列); \"we've added\" → 新增",
     "sources": "macOS Finder (Add to Dock → 添加到程序坞)"
   },
+  "advanced": {
+    "chosen": "高级",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → 高级; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-agent": {
     "avoid": [
       {
@@ -713,6 +719,13 @@
     "chosen": "仪表板",
     "confidence": "high",
     "sources": "MS terminology"
+  },
+  "debugging": {
+    "chosen": "调试",
+    "accept": ["debug"],
+    "confidence": "high",
+    "forms": "debug log → 调试日志; the technical level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "default": {
     "accept": ["跟随系统"],
@@ -2768,7 +2781,7 @@
     "accept": ["储存空间"],
     "chosen": "存储",
     "confidence": "high",
-    "forms": "cloud / object / cold storage → 云存储 / 对象存储 / 冷存储; S3 storage → S3 存储; Apple's Storage pane and iCloud storage → 储存空间 (Apple's spelling)",
+    "forms": "cloud / object / cold storage → 云存储 / 对象存储 / 冷存储; S3 storage → S3 存储; Apple's Storage pane and iCloud storage → 储存空间 (Apple's spelling); storing logs → 日志存储",
     "sources": "catalog (存储 in 12 values, fileExplorer.mtp.noStorage); macOS zh-CN 储存空间"
   },
   "store": {
