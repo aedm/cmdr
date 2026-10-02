@@ -228,6 +228,12 @@ pub(crate) struct ProviderProfile {
     put: ConditionalCell,
     complete: ConditionalCell,
     copy: ConditionalCell,
+    /// How one region's endpoint is spelled, for a provider whose account
+    /// root routes each bucket to its own region. An allowlist like the
+    /// others: only a provider seen answering a wrong-region request with the
+    /// bucket's region (AWS, Wasabi; `DETAILS.md` § "Providers") gets one, and
+    /// without one nothing is ever re-routed.
+    regional_host: Option<RegionalHost>,
 }
 
 impl ProviderProfile {
@@ -238,11 +244,12 @@ impl ProviderProfile {
             Preset::Aws { region } => {
                 let mut aws = Self::https(
                     ProviderKind::Aws,
-                    aws_endpoint(host_part(region)?),
+                    AWS_HOSTS.host(host_part(region)?),
                     region,
                     Addressing::VirtualHosted,
                     [IfNoneMatch; 3],
                 );
+                aws.regional_host = Some(AWS_HOSTS);
                 aws.refuses_short_body = true;
                 // Documented and seen live: a part copy whose source fails
                 // the pin is 412.
@@ -277,11 +284,14 @@ impl ProviderProfile {
             Preset::Wasabi { region } => {
                 let mut wasabi = Self::https(
                     ProviderKind::Wasabi,
-                    format!("s3.{}.wasabisys.com", host_part(region)?),
+                    WASABI_HOSTS.host(host_part(region)?),
                     region,
                     Addressing::Path,
                     [CheckThenWrite; 3],
                 );
+                // Answers a wrong-region request as AWS does and names the
+                // bucket's region on every answer (live, 2026-10-02).
+                wasabi.regional_host = Some(WASABI_HOSTS);
                 wasabi.refuses_short_body = true;
                 wasabi
             }
@@ -376,6 +386,7 @@ impl ProviderProfile {
             put: ConditionalCell::new(put),
             complete: ConditionalCell::new(complete),
             copy: ConditionalCell::new(copy),
+            regional_host: None,
         }
     }
 
@@ -471,16 +482,19 @@ impl ProviderProfile {
         })
     }
 
-    /// `request` sent to `region`'s endpoint instead of this profile's, for an
-    /// AWS bucket that lives elsewhere: only the host changes (the bucket stays
-    /// in the host or the path, wherever `locate` put it), and the caller signs
-    /// for `region`. `None` off AWS, for a region a hostname can't carry, or
-    /// for a request that isn't on this profile's endpoint.
+    /// Whether an account root on this provider routes each bucket to its own
+    /// region (`routing.rs`): on the allowlist, AWS and Wasabi.
+    pub(crate) fn routes_by_region(&self) -> bool {
+        self.regional_host.is_some()
+    }
+
+    /// `request` sent to `region`'s endpoint instead of this profile's, for a
+    /// bucket that lives elsewhere: only the host changes (the bucket stays in
+    /// the host or the path, wherever `locate` put it), and the caller signs
+    /// for `region`. `None` off the routing allowlist, for a region a hostname
+    /// can't carry, or for a request that isn't on this profile's endpoint.
     pub(crate) fn reroute(&self, mut request: S3Request, region: &str) -> Option<S3Request> {
-        if self.kind != ProviderKind::Aws {
-            return None;
-        }
-        let regional = aws_endpoint(host_part(region).ok()?);
+        let regional = self.regional_host?.host(host_part(region).ok()?);
         let bucket_part = request.host.strip_suffix(&self.endpoint_host)?;
         request.host = format!("{bucket_part}{regional}");
         Some(request)
@@ -522,10 +536,28 @@ const DEFAULT_COPY_CONCURRENCY: usize = 16;
 /// of buffers (`live_throughput_by_part_width`, 2026-10-02).
 const DEFAULT_UPLOAD_CONCURRENCY: usize = 4;
 
-/// AWS's endpoint for `region`, which must already be a valid host part.
-fn aws_endpoint(region: &str) -> String {
-    format!("s3.{region}.amazonaws.com")
+/// How a provider whose endpoint is per region spells one region's host:
+/// `s3.<region><suffix>`. The preset's own endpoint and every reroute are
+/// built from the same one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RegionalHost {
+    suffix: &'static str,
 }
+
+impl RegionalHost {
+    /// The host for `region`, which must already be a valid host part.
+    fn host(self, region: &str) -> String {
+        format!("s3.{region}{}", self.suffix)
+    }
+}
+
+const AWS_HOSTS: RegionalHost = RegionalHost {
+    suffix: ".amazonaws.com",
+};
+
+const WASABI_HOSTS: RegionalHost = RegionalHost {
+    suffix: ".wasabisys.com",
+};
 
 /// A region, location, or account ID that goes into a hostname: lowercase
 /// letters, digits, and `-` only, so it can't smuggle in a dot or a path.

@@ -1,7 +1,8 @@
-//! Which region each AWS bucket lives in, so an account root reaches every
-//! bucket, not only the ones in the region its connection names.
+//! Which region each bucket lives in, so an account root on a provider that
+//! routes by region (AWS, Wasabi: `ProviderProfile::routes_by_region`)
+//! reaches every bucket, not only the ones in the region its connection names.
 //!
-//! An AWS request signed for, and sent to, the wrong region comes back as a
+//! A request signed for, and sent to, the wrong region comes back as a
 //! `301 PermanentRedirect` (a `307` while a new bucket's DNS settles, a `400
 //! AuthorizationHeaderMalformed` when only the signature's region is off).
 //! The bucket's real region rides on `x-amz-bucket-region`, which `HeadBucket`

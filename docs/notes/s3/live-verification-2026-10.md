@@ -163,3 +163,26 @@ No user-visible error anywhere.
 - **A B2 key with `listAllBucketNames` lists buckets outside its scope**, so an account root shows a bucket it can't
   open. Unverified what opening it says (likely `AccessDenied`).
 - **Still unverified**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
+
+## Outcome: Wasabi routes per bucket
+
+The first open question above is resolved: a Wasabi account root now routes each bucket to its own region.
+
+- **The region signal** (curl and `live.sh`, 2026-10-02): Wasabi gives all of them. `x-amz-bucket-region` rides on every
+  answer, 200s included, and on every 301; `ListBuckets` carries `<BucketRegion>`; a request signed for the wrong region
+  is `400 AuthorizationHeaderMalformed` with `<Region>`; `GetBucketLocation` answers from any regional endpoint.
+  `routing.rs` already learns from the first three, so it needed no change.
+- **The change**: routing is a profile capability, an allowlist like the others. A preset whose endpoint is per region
+  and whose answers name the region carries a `RegionalHost` template (`s3.<region>.amazonaws.com`,
+  `s3.<region>.wasabisys.com`); its own endpoint and every reroute are built from it, and `route_each_bucket` asks
+  `ProviderProfile::routes_by_region`. Every other preset has none, so nothing there is ever re-routed (asserted for R2,
+  B2, Hetzner, GCS, Spaces, and "Other"). TDD red first on the Wasabi assertions.
+- **New bucket**: Wasabi `cmdr-s3-test-58fb74-euw1` in `eu-west-1` (`CMDR_S3_LIVE_WASABI_FAR_BUCKET` / `_FAR_REGION` in
+  `live-env.sh`), kept.
+- **Live** (`live_connect_routes_each_bucket_to_its_region`, now run for every provider with a `_FAR_BUCKET`): from an
+  `eu-central-1` root, the `eu-west-1` bucket is listed, written, read back, stat'd cold from a redirect, written cold
+  after a `HeadBucket`, and share-linked (200). As a place it's `WrongRegion { eu-west-1 }`. A root through `us-east-1`
+  now opens the `eu-central-1` buckets too. AWS's run is unchanged and green.
+- ❗ **A server-side copy across Wasabi regions is refused**: `400 NotImplemented`, "Operation not supported across
+  regions". Cmdr reads it as `NotSupported`, so the engine streams the bytes instead; nothing reports a copy that didn't
+  land. The live cell now fails if a copy answers `Ok` with nothing at the destination.

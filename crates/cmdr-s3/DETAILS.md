@@ -233,30 +233,34 @@ certificate. On AWS (where path style is deprecated, no date set) a bucket that 
 **Host parts are validated.** A region, location, or account ID must be `a–z 0–9 -`, so a typed `x.evil.com/` can't
 redirect requests (and the signature) to another host.
 
-**An AWS account root routes each bucket to its own region (`routing.rs`).** One account holds buckets in many regions,
-and a request sent to (and signed for) the wrong one answers `301 PermanentRedirect` (`307` while a new bucket's DNS
-settles; `400 AuthorizationHeaderMalformed` when only the signature's region is off). The client keeps a per-bucket
-region map (`BucketRegions`, dies with the client) and sends a known bucket's requests to `s3.<region>.amazonaws.com`
-signed for that region (`ProviderProfile::reroute`: only the host changes). It learns from `ListBuckets`'
-`BucketRegion`, from `x-amz-bucket-region` on any answer, and from a 400's `<Region>`; a misrouted answer goes once
-more, to the named region. One that names none (a bodyless redirect) asks `HeadBucket`, which carries the header on
-every status. An upload's body can't be sent twice, so `upload` asks `HeadBucket` first when nothing has named the
-bucket yet; a share link does the same so it isn't signed for the wrong region. So the cost is at most one redirect or
-one `HeadBucket` per bucket per session, which the cost estimate ignores.
+**An AWS or Wasabi account root routes each bucket to its own region (`routing.rs`).** One account holds buckets in many
+regions, and a request sent to (and signed for) the wrong one answers `301 PermanentRedirect` (`307` while a new
+bucket's DNS settles; `400 AuthorizationHeaderMalformed` when only the signature's region is off). The client keeps a
+per-bucket region map (`BucketRegions`, dies with the client) and sends a known bucket's requests to that region's
+endpoint, signed for it (`ProviderProfile::reroute`: only the host changes, built from the preset's own `RegionalHost`
+template, `s3.<region>.amazonaws.com` or `s3.<region>.wasabisys.com`). It learns from `ListBuckets`' `BucketRegion`,
+from `x-amz-bucket-region` on any answer, and from a 400's `<Region>`; a misrouted answer goes once more, to the named
+region. One that names none (a bodyless redirect) asks `HeadBucket`, which carries the header on every status. An
+upload's body can't be sent twice, so `upload` asks `HeadBucket` first when nothing has named the bucket yet; a share
+link does the same so it isn't signed for the wrong region. So the cost is at most one redirect or one `HeadBucket` per
+bucket per session, which the cost estimate ignores.
 
 - ❗ **A bucket place doesn't route**: its connect probe's `WrongRegion` refusal names the region to use instead
   (`route_each_bucket` is called for the account root only).
-- **AWS only.** ❗ Wasabi answers a wrong-region request exactly as AWS does (`301 PermanentRedirect` with
-  `x-amz-bucket-region` and a `Location`; `400 AuthorizationHeaderMalformed` with `<Region>` when only the signature is
-  off), but isn't routed: its account root lists buckets of every region and every request to one elsewhere fails as an
-  `IoError` "PermanentRedirect (HTTP 301)" (verified on Wasabi `us-east-1` → `eu-central-1`, live.sh and curl,
-  2026-10-02). A bucket place there is `WrongRegion { region }`, as on AWS. Hetzner and Spaces keep each location's
-  buckets apart (another location's root lists none, its bucket place is `NoSuchBucket`); B2's keys live in one region
-  (another region answers `KeysRejected`).
-- **Verified live** (`live_connect_test.rs::live_connect_aws_routes_each_bucket_to_its_region`, an `eu-north-1` root
-  reaching a `us-west-2` bucket: listed upfront, learned from a redirect, asked before an upload, a share link, and a
-  server-side copy across regions, 2026-10-02), and against a fake AWS (`transport_routing_test.rs`: one local server
-  behind every `*.amazonaws.com` host) for the paths a live account can't force.
+- ❗ **An allowlist** (`ProviderProfile::routes_by_region`, set by a preset's `regional_host`): only a provider whose
+  endpoint is per region AND whose answers name the bucket's region gets one, and without one nothing is ever re-routed
+  (`only_the_routing_allowlist_reroutes…`, `routing_is_for_the_routing_allowlist_only`). Wasabi qualifies:
+  `x-amz-bucket-region` on every answer (200s included), `<BucketRegion>` in `ListBuckets`, `<Region>` on a 400, and
+  `GetBucketLocation` from any regional endpoint (verified on Wasabi `eu-central-1` / `eu-west-1` / `us-east-1`, live.sh
+  and curl, 2026-10-02). Hetzner and Spaces don't: they keep each location's buckets apart (another location's root
+  lists none, its bucket place is `NoSuchBucket`); B2's keys live in one region (another answers `KeysRejected`).
+- **A server-side copy across Wasabi regions is refused** (`400 NotImplemented`, "Operation not supported across
+  regions"), which `map_s3_error` reads as `NotSupported`, so the engine streams it. AWS copies across regions.
+- **Verified live** (`live_connect_test.rs::live_connect_routes_each_bucket_to_its_region`: an AWS `eu-north-1` root
+  reaching a `us-west-2` bucket and a Wasabi `eu-central-1` root reaching an `eu-west-1` one, listed upfront, learned
+  from a redirect, asked before an upload, and a share link, 2026-10-02), and against a fake AWS
+  (`transport_routing_test.rs`: one local server behind every `*.amazonaws.com` host) for the paths a live account can't
+  force.
 
 **A short body is refused only where we have evidence (`refuses_short_body`, an allowlist).** S3's contract is that a
 PUT whose body ends before its `Content-Length` publishes nothing and keeps the old object; VersityGW breaks it and
@@ -335,7 +339,9 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
   land; copies work across buckets; NFD and NFC are two objects; a second abort is `NoSuchUpload`. The master key
   doesn't work on the S3 API: an application key does.
 - **Wasabi**: `If-None-Match` ignored on all three writes (200 and overwritten); `x-amz-copy-source-if-match` ignored;
-  parts of any sizes land; copies work across buckets; `DeleteObjects` takes 1,001 keys; NFD and NFC are two objects.
+  parts of any sizes land; copies work across buckets of one region and are refused across regions; `DeleteObjects`
+  takes 1,001 keys; NFD and NFC are two objects. `ListBuckets` names each bucket's region, and an account root routes
+  each bucket to it (§ "Providers").
 - **Throughput** (`live_throughput_by_part_width`, a ~250 Mbit/s uplink from Stockholm): a 140 MiB server-side copy in 8
   MiB parts at 4 / 8 / 16 in flight took R2 3.3 / 2.6 / 1.5 s, Hetzner 1.2 / 1.0 / 0.6 s, Spaces 0.7 / 0.5 / 0.4 s, with
   no throttle surfacing as an error (AIMD halvings aren't counted), so 16 stays everyone's copy width. A 64 MiB upload

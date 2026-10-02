@@ -137,7 +137,7 @@ pub(crate) struct S3Client {
     /// What the server has said lately (`cmdr_fs::volume::liveness`). Dies
     /// with this client: a reconnect builds a new one.
     liveness: Arc<Liveness>,
-    /// Each bucket's region, on an AWS account root only
+    /// Each bucket's region, on a routed account root only
     /// ([`Self::route_each_bucket`]); `None` sends everything to the profile's.
     regions: Option<BucketRegions>,
     /// Every request signed so far, by S3 operation, for a cell comparing
@@ -201,11 +201,12 @@ impl S3Client {
     }
 
     /// Sends each bucket's requests to that bucket's own region, learned as
-    /// answers name it (`routing.rs`). For an AWS account root only: a bucket
-    /// place keeps the connect probe's wrong-region refusal, and no other
-    /// provider redirects by region. A no-op off AWS.
+    /// answers name it (`routing.rs`). For an account root on the profile's
+    /// routing allowlist only (`ProviderProfile::routes_by_region`: AWS and
+    /// Wasabi): a bucket place keeps the connect probe's wrong-region refusal.
+    /// A no-op everywhere else.
     pub(crate) fn route_each_bucket(&mut self) {
-        if self.profile.kind == crate::profile::ProviderKind::Aws {
+        if self.profile.routes_by_region() {
             self.regions = Some(BucketRegions::default());
         }
     }
@@ -339,7 +340,7 @@ impl S3Client {
     /// `Content-Length` with 411); the streaming write path brings its own
     /// sender.
     ///
-    /// On an AWS account root, a request that went to the wrong region goes
+    /// On a routed account root (AWS, Wasabi), a request that went to the wrong region goes
     /// once more, to the region the answer named ([`Self::route_each_bucket`]).
     pub(crate) async fn exchange(&self, request: S3Request, budget: Duration) -> Result<Answer, reqwest::Error> {
         let Some(bucket) = self.routed_bucket(&request) else {
@@ -412,7 +413,7 @@ impl S3Client {
     /// total budget, and silence is the watch's to judge (the body source
     /// counts every piece it hands over as heard).
     ///
-    /// ❗ The body goes once, so on an AWS account root a bucket's region is
+    /// ❗ The body goes once, so on a routed account root a bucket's region is
     /// asked for first when nothing has named it yet.
     pub(crate) async fn upload(&self, request: S3Request, body: UploadBody) -> Result<Answer, reqwest::Error> {
         let length = match request.body {
@@ -462,7 +463,7 @@ impl S3Client {
     /// headers is bounded (`QUERY_BUDGET`); the body's budget is per chunk, in
     /// the caller ([`Opened::chunk`] counts each one as heard).
     ///
-    /// On an AWS account root, a redirect to another region is followed once,
+    /// On a routed account root, a redirect to another region is followed once,
     /// like [`Self::exchange`]'s.
     pub(crate) async fn open(&self, request: S3Request, volume_id: &str, path: &str) -> Result<Opened, VolumeError> {
         let Some(bucket) = self.routed_bucket(&request) else {
@@ -524,7 +525,7 @@ impl S3Client {
 
     /// A presigned GET for `key`, valid for `expires` from now (`ops::share_link`).
     /// Here because the credentials are: computed offline, nothing is sent,
-    /// except one `HeadBucket` on an AWS account root that doesn't know the
+    /// except one `HeadBucket` on a routed account root that doesn't know the
     /// bucket's region yet (a link to the wrong region only redirects).
     /// ❗ The URL carries a signature that reads the object; ❌ never log it.
     pub(crate) async fn share_link(

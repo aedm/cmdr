@@ -230,25 +230,24 @@ async fn put(volume: &S3Volume, path: &Path, bytes: &[u8]) -> Result<u64, Volume
         .await
 }
 
-/// ❗ An AWS account root reaches a bucket in another region than its
-/// endpoint's with no error: listed upfront, learned from a redirect, and
-/// asked before an upload. A bucket place there is refused with the region
-/// to use instead.
+/// ❗ An account root on the routing allowlist (AWS, Wasabi) reaches a bucket
+/// in another region than its endpoint's with no error: listed upfront,
+/// learned from a redirect, and asked before an upload. A bucket place there
+/// is refused with the region to use instead. Runs for each provider whose
+/// `CMDR_S3_LIVE_<NAME>_FAR_BUCKET` (and `_FAR_REGION`) is set.
 #[tokio::test(flavor = "multi_thread")]
-async fn live_connect_aws_routes_each_bucket_to_its_region() {
-    let Some(far) = env("CMDR_S3_LIVE_AWS_FAR_BUCKET") else {
-        return;
-    };
-    let far_region = env("CMDR_S3_LIVE_AWS_FAR_REGION").expect("the far bucket's region");
-    for live in live_targets()
-        .into_iter()
-        .filter(|live| matches!(live.provider, S3Provider::Aws { .. }))
-    {
+async fn live_connect_routes_each_bucket_to_its_region() {
+    for live in live_targets() {
+        let upper = live.name.to_uppercase();
+        let Some(far) = env(&format!("CMDR_S3_LIVE_{upper}_FAR_BUCKET")) else {
+            continue;
+        };
+        let far_region = env(&format!("CMDR_S3_LIVE_{upper}_FAR_REGION")).expect("the far bucket's region");
         let secret = secret_of(&live);
         let mut misses = Vec::new();
         let root = dial(&live.provider, &live.key_id, &secret, None)
             .await
-            .unwrap_or_else(|e| panic!("[aws] the account root didn't connect: {e:?}"));
+            .unwrap_or_else(|e| panic!("[{}] the account root didn't connect: {e:?}", live.name));
         let in_far = |volume: &S3Volume, key: &str| -> PathBuf { volume.root().join(&far).join(key) };
         let key = format!("{}hello.txt", live_prefix("routing"));
 
@@ -345,7 +344,15 @@ async fn live_connect_aws_routes_each_bucket_to_its_region() {
         let copied = root
             .copy_on_server(&root, &source, &copied_to, WriteMode::CreateNew, &Silent)
             .await;
-        let back = read_back(&root, &copied_to).await;
+        // ❗ A copy that says it landed must have: an `Ok` with nothing there
+        // would let a move delete its source.
+        let back = match &copied {
+            Ok(_) => read_back(&root, &copied_to).await,
+            Err(_) => Vec::new(),
+        };
+        if copied.is_ok() && back != b"crossing regions" {
+            misses.push(format!("the cross-region copy said {copied:?} but didn't land"));
+        }
         report(
             &live,
             &format!("server-side copy {} to {far_region}", live.bucket),
@@ -369,6 +376,6 @@ async fn live_connect_aws_routes_each_bucket_to_its_region() {
         for path in [in_far(&root, &key), in_far(&root, &cold_key), copied_to, source] {
             let _ = root.delete(&path).await;
         }
-        assert!(misses.is_empty(), "[aws] {misses:#?}");
+        assert!(misses.is_empty(), "[{}] {misses:#?}", live.name);
     }
 }

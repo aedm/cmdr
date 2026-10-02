@@ -365,16 +365,37 @@ async fn a_share_link_is_signed_for_the_buckets_own_region_and_host() {
     assert!(credential.contains(&format!("/{FAR}/s3/")), "{credential}");
 }
 
+/// ❗ Only a provider on the profile's routing allowlist routes per bucket;
+/// everyone else sends every request to the endpoint the user named.
 #[test]
-fn routing_is_for_aws_only() {
-    let mut minio = S3Client::new(
-        ProviderProfile::from_preset(&Preset::Wasabi {
-            region: "eu-central-1".into(),
-        })
-        .unwrap(),
-        Credentials::new("AKIDEXAMPLE", "secret"),
-    )
-    .unwrap();
-    minio.route_each_bucket();
-    assert!(!minio.routes_each_bucket());
+fn routing_is_for_the_routing_allowlist_only() {
+    let client = |preset: Preset| {
+        let mut client = S3Client::new(
+            ProviderProfile::from_preset(&preset).unwrap(),
+            Credentials::new("AKIDEXAMPLE", "secret"),
+        )
+        .unwrap();
+        client.route_each_bucket();
+        client
+    };
+    let wasabi = client(Preset::Wasabi {
+        region: "eu-central-1".into(),
+    });
+    assert!(wasabi.routes_each_bucket());
+    for preset in [
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::B2 {
+            region: "eu-central-003".into(),
+        },
+        Preset::DigitalOcean { region: "fra1".into() },
+        Preset::Other {
+            endpoint: url::Url::parse("http://127.0.0.1:9000").unwrap(),
+            region: None,
+            path_style: true,
+        },
+    ] {
+        assert!(!client(preset.clone()).routes_each_bucket(), "{preset:?}");
+    }
 }

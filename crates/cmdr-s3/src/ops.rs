@@ -349,7 +349,7 @@ pub(crate) fn share_link(
 pub(crate) struct LinkTarget<'a> {
     pub bucket: &'a str,
     pub key: &'a str,
-    /// The bucket's own region when it isn't the profile's (an AWS account
+    /// The bucket's own region when it isn't the profile's (a routed account
     /// root, `routing.rs`); `None` signs for the profile's.
     pub region: Option<&'a str>,
 }

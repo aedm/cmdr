@@ -76,3 +76,6 @@ export CMDR_S3_LIVE_WASABI_KEY_ID="${CMDR_S3_LIVE_WASABI_KEY_ID:-$(secret WASABI
 export CMDR_S3_LIVE_WASABI_SECRET="${CMDR_S3_LIVE_WASABI_SECRET:-$(secret WASABI_SECRET_KEY)}"
 export CMDR_S3_LIVE_WASABI_BUCKET="${CMDR_S3_LIVE_WASABI_BUCKET:-cmdr-s3-test-58fb74}"
 export CMDR_S3_LIVE_WASABI_BUCKET_2="${CMDR_S3_LIVE_WASABI_BUCKET_2:-cmdr-s3-test-58fb74-2}"
+# A third bucket in another region, for the account root's per-bucket routing.
+export CMDR_S3_LIVE_WASABI_FAR_BUCKET="${CMDR_S3_LIVE_WASABI_FAR_BUCKET:-cmdr-s3-test-58fb74-euw1}"
+export CMDR_S3_LIVE_WASABI_FAR_REGION="${CMDR_S3_LIVE_WASABI_FAR_REGION:-eu-west-1}"

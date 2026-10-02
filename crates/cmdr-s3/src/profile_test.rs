@@ -457,25 +457,68 @@ fn aws_reroutes_a_bucket_to_its_own_region_keeping_the_bucket_where_it_was() {
     assert_eq!(by_path.path, "/my.photos/k");
 }
 
+/// Wasabi answers a wrong-region request the way AWS does and names the
+/// bucket's region on every answer (live, 2026-10-02), so it routes too: by
+/// path, to its own `s3.<region>.wasabisys.com`.
 #[test]
-fn only_aws_reroutes_and_only_to_a_region_a_hostname_can_carry() {
-    let aws = profile(Preset::Aws {
-        region: "eu-north-1".into(),
-    });
-    for junk in ["", "x.evil.com", "evil.com/", "EU-WEST-1"] {
-        assert!(aws.reroute(request_to(&aws, "photos", "k"), junk).is_none(), "{junk:?}");
-    }
-
+fn wasabi_reroutes_a_bucket_to_its_own_regional_endpoint_by_path() {
     let wasabi = profile(Preset::Wasabi {
         region: "eu-central-1".into(),
     });
-    assert!(
-        wasabi
-            .reroute(request_to(&wasabi, "photos", "k"), "us-east-1")
-            .is_none()
-    );
-    let minio = profile(other("http://127.0.0.1:9000", true));
-    assert!(minio.reroute(request_to(&minio, "photos", "k"), "us-east-1").is_none());
+    let rerouted = wasabi
+        .reroute(request_to(&wasabi, "photos", "a b.jpg"), "eu-west-1")
+        .unwrap();
+    assert_eq!(rerouted.host, "s3.eu-west-1.wasabisys.com");
+    assert_eq!(rerouted.path, "/photos/a%20b.jpg");
+}
+
+/// ❗ An allowlist: a provider whose endpoint isn't per region, or whose
+/// answers don't name the region, is never re-routed, whatever region an
+/// answer claims.
+#[test]
+fn only_the_routing_allowlist_reroutes_and_only_to_a_region_a_hostname_can_carry() {
+    for preset in [
+        Preset::Aws {
+            region: "eu-north-1".into(),
+        },
+        Preset::Wasabi {
+            region: "eu-central-1".into(),
+        },
+    ] {
+        let routed = profile(preset);
+        assert!(routed.routes_by_region(), "{:?}", routed.kind);
+        for junk in ["", "x.evil.com", "evil.com/", "EU-WEST-1"] {
+            assert!(
+                routed.reroute(request_to(&routed, "photos", "k"), junk).is_none(),
+                "{:?} {junk:?}",
+                routed.kind
+            );
+        }
+    }
+    for preset in [
+        Preset::R2 {
+            account_id: "abc123".into(),
+        },
+        Preset::B2 {
+            region: "eu-central-003".into(),
+        },
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::Gcs,
+        Preset::DigitalOcean { region: "fra1".into() },
+        other("http://127.0.0.1:9000", true),
+    ] {
+        let unrouted = profile(preset);
+        assert!(!unrouted.routes_by_region(), "{:?}", unrouted.kind);
+        assert!(
+            unrouted
+                .reroute(request_to(&unrouted, "photos", "k"), "us-east-1")
+                .is_none(),
+            "{:?}",
+            unrouted.kind
+        );
+    }
 }
 
 #[test]
