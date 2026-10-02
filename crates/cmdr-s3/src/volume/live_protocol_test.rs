@@ -137,6 +137,70 @@ async fn try_over(
     enforced
 }
 
+/// One no-overwrite Put or Copy built the way the volume builds it
+/// (`Overwrite::Refuse`, whatever the profile lists), over the occupied
+/// `taken` and onto a free key: did it refuse the first and write the second?
+async fn try_built(live: &Live, client: &S3Client, prefix: &str, op: ConditionalOp, len: usize) -> bool {
+    let taken = format!("{prefix}taken.txt");
+    let free = format!("{prefix}free-built-{len}.txt");
+    breathe().await;
+    let before = live.length(client, &taken).await.expect("the occupied key is there");
+    let source = format!("{prefix}source-built-{len}.txt");
+    if op == ConditionalOp::Copy {
+        assert!(
+            live.put(client, &source, &pattern(len, 3), &[])
+                .await
+                .status
+                .is_success()
+        );
+    }
+    let send = |key: String| {
+        let source = source.clone();
+        async move {
+            let built = match op {
+                ConditionalOp::Copy => ops::copy_object(
+                    client.profile(),
+                    ops::CopySource {
+                        bucket: &live.bucket,
+                        key: &source,
+                    },
+                    &live.bucket,
+                    &key,
+                    ops::Overwrite::Refuse,
+                    &ops::MetadataDirective::Copy,
+                ),
+                _ => ops::put_object(
+                    client.profile(),
+                    &live.bucket,
+                    &key,
+                    len as u64,
+                    ops::Overwrite::Refuse,
+                    &ops::ObjectMetadata::default(),
+                ),
+            }
+            .expect("a live key builds");
+            let mut request = built.request;
+            if op != ConditionalOp::Copy {
+                request.body = Body::Bytes(pattern(len, 1));
+            }
+            live.send(client, request).await
+        }
+    };
+    let over = send(taken.clone()).await;
+    let (enforced, finding) = outcome(&over, before, live.length(client, &taken).await);
+    let onto_free = send(free.clone()).await;
+    let wrote = onto_free.status.is_success() && live.length(client, &free).await == Some(len as u64);
+    report(
+        live,
+        &format!("{op:?} built with Overwrite::Refuse"),
+        format!(
+            "over an object: {finding}; on a free key: {} (landed: {wrote})",
+            verdict(&onto_free)
+        ),
+    );
+    enforced && wrote
+}
+
 /// ❗ The allowlist's ground truth: does each write refuse to overwrite on
 /// `If-None-Match: *`, R2's copy header, or GCS's generation precondition? A
 /// positive control on a free key proves the header itself isn't refused.
@@ -175,17 +239,17 @@ async fn live_conditional_writes_per_operation() {
             (Copy, cf.0),
             try_over(&live, &client, &prefix, Copy, cf, next_len()).await,
         );
+        let generation = ("x-goog-if-generation-match", "0");
         if live.provider == crate::S3Provider::Gcs {
-            // GCS's own precondition. It can't ride a request signed with
-            // `x-amz-*` headers (400 `ExcessHeaderValues`), so it's no way out.
-            let generation = ("x-goog-if-generation-match", "0");
-            for op in [Put, CompleteMultipart, Copy] {
-                try_over(&live, &client, &prefix, op, generation, next_len()).await;
+            // GCS's own precondition, refused beside any `x-amz-*` header (400
+            // `ExcessHeaderValues`): asked through the builders, which sign it
+            // in GCS's dialect, over the occupied key and on a free one.
+            for op in [Put, Copy] {
+                enforced.insert(
+                    (op, generation.0),
+                    try_built(&live, &client, &prefix, op, next_len()).await,
+                );
             }
-            let free = live
-                .put(&client, &format!("{prefix}free-2.txt"), b"x", &[generation])
-                .await;
-            report(&live, "x-goog-if-generation-match on Put, free key", verdict(&free));
         }
 
         let profile = client.profile();
@@ -194,6 +258,7 @@ async fn live_conditional_writes_per_operation() {
             let header = match listed {
                 NoOverwrite::IfNoneMatch => Some(none_match.0),
                 NoOverwrite::CloudflareCopyHeader => Some(cf.0),
+                NoOverwrite::GoogGenerationMatch => Some(generation.0),
                 NoOverwrite::CheckThenWrite => None,
             };
             if let Some(header) = header {

@@ -403,12 +403,12 @@ fn gcs_copies_a_big_object_in_one_request() {
     let mut work = workload(&S3Provider::Gcs);
     work.copy_on_server(GIB);
     let estimate = estimate(&work);
-    // One `CopyObject` (no parts there): 1 Class A. HEAD source, the HEAD
-    // before (GCS ignores `If-None-Match` on a copy), and the verifying HEAD:
-    // 3 Class B. 1 × $5/M + 3 × $0.40/M.
+    // One `CopyObject` (no parts there): 1 Class A. HEAD source and the
+    // verifying HEAD; no HEAD before, since the copy carries GCS's create-only
+    // precondition: 2 Class B. 1 × $5/M + 2 × $0.40/M.
     assert_eq!(requests_in(&estimate, "Class A"), 1);
-    assert_eq!(requests_in(&estimate, "Class B"), 3);
-    close(estimate.total, 0.0000062);
+    assert_eq!(requests_in(&estimate, "Class B"), 2);
+    close(estimate.total, 0.0000058);
 }
 
 #[test]

@@ -44,6 +44,20 @@ pub(crate) struct S3Request {
     /// the transport routes an AWS account root's requests by
     /// (`routing.rs`).
     pub bucket: Option<String>,
+    /// How the request is signed and spelled.
+    pub dialect: Dialect,
+}
+
+/// The signing dialect a request goes out in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Dialect {
+    /// AWS SigV4: `AWS4-HMAC-SHA256`, `x-amz-*` headers. Every provider.
+    Amz,
+    /// GCS's own V4: `GOOG4-HMAC-SHA256`, every `x-amz-*` header spelled
+    /// `x-goog-*`. Only for a request carrying a GCS-only header (its
+    /// create-only `x-goog-if-generation-match`), which GCS refuses beside any
+    /// `x-amz-*` one (`400 ExcessHeaderValues`, live, 2026-10-02).
+    Goog,
 }
 
 impl S3Request {
@@ -58,6 +72,7 @@ impl S3Request {
             headers: HeaderMap::new(),
             body: Body::Empty,
             bucket: None,
+            dialect: Dialect::Amz,
         }
     }
 

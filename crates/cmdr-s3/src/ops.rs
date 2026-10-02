@@ -18,7 +18,7 @@ use url::Url;
 use crate::encoding::{encode_component, encode_key};
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER, format_mtime};
 use crate::profile::{ConditionalOp, LocateError, NoOverwrite, ProviderProfile};
-use crate::request::{Body, S3Request};
+use crate::request::{Body, Dialect, S3Request};
 use crate::sigv4::{AmzTime, Credentials, Scope, presign};
 use crate::xml::build::{CompletedPart, complete_multipart_upload_body, delete_objects_body};
 
@@ -401,6 +401,14 @@ fn guarded(profile: &ProviderProfile, op: ConditionalOp, request: S3Request, ove
             request: request.header(name("cf-copy-destination-if-none-match"), star),
             check_first: false,
         },
+        NoOverwrite::GoogGenerationMatch => {
+            let mut request = request.header(name("x-goog-if-generation-match"), HeaderValue::from_static("0"));
+            request.dialect = Dialect::Goog;
+            Built {
+                request,
+                check_first: false,
+            }
+        }
         NoOverwrite::CheckThenWrite => Built {
             request,
             check_first: true,

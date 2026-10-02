@@ -233,7 +233,7 @@ impl Checks {
         };
         let heads = |op, count| match profile.no_overwrite(op) {
             NoOverwrite::CheckThenWrite => count,
-            NoOverwrite::IfNoneMatch | NoOverwrite::CloudflareCopyHeader => 0,
+            NoOverwrite::IfNoneMatch | NoOverwrite::CloudflareCopyHeader | NoOverwrite::GoogGenerationMatch => 0,
         };
         Self {
             put: heads(ConditionalOp::Put, 1),

@@ -215,3 +215,27 @@ The "HTTP/1.1 only" caveat in § Setup no longer holds.
   tests. `cmdr-webdav` has the same HTTP/2 gap as `cmdr-s3` had.
 - **Also fixed on the way, f1a9969ed**: 865680063 left `batch.rs` tripping clippy's `while_immutable_condition`, which
   failed every session's clippy lane.
+
+## Outcome: GCS refuses an occupied key atomically
+
+`live-hostile` saw two simultaneous `CreateNew` writes to one key both succeed on GCS, B2, and Wasabi (about one round
+in three), losing one writer's bytes: check-then-write's blind window. GCS closes it now for one-request writes.
+
+- **The precondition** (curl, two separate runs, 2026-10-02): `x-goog-if-generation-match: 0` is
+  `412 PreconditionFailed` with the old bytes kept over an occupied key, and 200 on a free key, on PUT and `CopyObject`.
+  On `CompleteMultipartUpload` it's ignored (200, object replaced); on the multipart initiate it's refused
+  (`400 NotImplemented`). So Put and Copy are enforceable, Complete isn't.
+- **The catch**: GCS refuses its own headers beside any `x-amz-*` one (`400 ExcessHeaderValues`, on a free key too), so
+  the precondition can't ride an AWS-signed request. Signed GCS's way (`GOOG4-HMAC-SHA256`, `x-goog-date`,
+  `x-goog-content-sha256`, `x-goog-meta-*`, `x-goog-copy-source`) it works, and `x-goog-meta-mtime` reads back as
+  `x-amz-meta-mtime`.
+- **The change**: a typed mode, `NoOverwrite::GoogGenerationMatch`, listed for GCS's Put and Copy (Complete stays
+  check-then-write). `ops::guarded` adds the header and marks the request `Dialect::Goog`; `sigv4::sign` then signs it
+  as GOOG4 and spells every `x-amz-*` header `x-goog-*`. Everything else stays SigV4. TDD red first in
+  `profile_test.rs`, `ops_test.rs`, and `sigv4_test.rs` (the GOOG4 signature pinned against one computed independently
+  with `openssl`). A GCS server-side copy now skips its no-overwrite HEAD (`cost_test.rs` updated).
+- **Live**: `live_conditional_writes_per_operation` now asks through the builders and asserts the mode both ways (412
+  kept, 200 landed, Put and Copy). `live_hostile_races` on GCS, run twice: two racing one-PUT `CreateNew`s left one
+  `AlreadyExists` and the winner's bytes in six of six rounds. The flow cell is green, and the date is kept.
+- **Accepted risk, documented in `DETAILS.md`**: B2 and Wasabi have no enforced precondition (B2 answers 501, Wasabi
+  ignores `If-None-Match`), so they stay check-then-write, and so does every multipart completion except AWS's and R2's.

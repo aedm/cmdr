@@ -266,6 +266,53 @@ fn a_presigned_url_lives_at_most_seven_days() {
     );
 }
 
+/// ❗ GCS's own dialect, for a request carrying `x-goog-if-generation-match`
+/// (which GCS refuses beside any `x-amz-*` header): `GOOG4-HMAC-SHA256`, a
+/// `storage/goog4_request` scope keyed from `GOOG4<secret>`, `x-goog-date` and
+/// `x-goog-content-sha256`, and every `x-amz-*` header spelled `x-goog-*`. The
+/// signature was computed independently with `openssl dgst -mac HMAC` from
+/// the canonical request GCS's V4 spec gives (AWS's example key pair and
+/// time, region `auto`).
+#[test]
+fn a_gcs_dialect_request_signs_as_goog4_with_its_headers_spelled_x_goog() {
+    let mut request = S3Request::new(Method::PUT, "https", "storage.googleapis.com", "/b/k".to_string());
+    request.dialect = crate::request::Dialect::Goog;
+    let request = request
+        .header(
+            HeaderName::from_static("x-amz-meta-mtime"),
+            HeaderValue::from_static("1"),
+        )
+        .header(
+            HeaderName::from_static("x-goog-if-generation-match"),
+            HeaderValue::from_static("0"),
+        );
+    let credentials = credentials();
+    let time = example_time();
+    let signed = sign(
+        request,
+        &Scope {
+            credentials: &credentials,
+            region: "auto",
+            time: &time,
+        },
+    );
+
+    assert!(
+        signed.headers.keys().all(|name| !name.as_str().starts_with("x-amz-")),
+        "{:?}",
+        signed.headers.keys().collect::<Vec<_>>()
+    );
+    assert_eq!(header(&signed, "x-goog-meta-mtime"), "1");
+    assert_eq!(header(&signed, "x-goog-date"), "20130524T000000Z");
+    assert_eq!(header(&signed, "x-goog-content-sha256"), EMPTY_SHA256);
+    assert_eq!(
+        header(&signed, "authorization"),
+        "GOOG4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20130524/auto/storage/goog4_request,\
+         SignedHeaders=host;x-goog-content-sha256;x-goog-date;x-goog-if-generation-match;x-goog-meta-mtime,\
+         Signature=6b48bb01aa54e0137ebe804932fa44fd35ea159c8ba2f2bc07ea7382551bdd9e"
+    );
+}
+
 #[test]
 fn debug_never_prints_the_secret() {
     let printed = format!("{:?}", credentials());

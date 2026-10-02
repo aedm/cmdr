@@ -15,11 +15,45 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use crate::encoding::{canonical_query, encode_component};
-use crate::request::{Body, S3Request, SignedRequest};
+use crate::request::{Body, Dialect, S3Request, SignedRequest};
 
-const ALGORITHM: &str = "AWS4-HMAC-SHA256";
-const SERVICE: &str = "s3";
-const TERMINATOR: &str = "aws4_request";
+/// What one signing dialect names things. GCS's V4 is SigV4 under Google's
+/// names: the same canonical request and HMAC chain.
+struct Flavor {
+    algorithm: &'static str,
+    /// Prepended to the secret for the first HMAC.
+    key_prefix: &'static str,
+    service: &'static str,
+    terminator: &'static str,
+    date_header: &'static str,
+    hash_header: &'static str,
+}
+
+const AMZ: Flavor = Flavor {
+    algorithm: "AWS4-HMAC-SHA256",
+    key_prefix: "AWS4",
+    service: "s3",
+    terminator: "aws4_request",
+    date_header: "x-amz-date",
+    hash_header: "x-amz-content-sha256",
+};
+
+/// GCS's own V4 (verified live against `storage.googleapis.com`, 2026-10-02).
+const GOOG: Flavor = Flavor {
+    algorithm: "GOOG4-HMAC-SHA256",
+    key_prefix: "GOOG4",
+    service: "storage",
+    terminator: "goog4_request",
+    date_header: "x-goog-date",
+    hash_header: "x-goog-content-sha256",
+};
+
+fn flavor_of(dialect: Dialect) -> &'static Flavor {
+    match dialect {
+        Dialect::Amz => &AMZ,
+        Dialect::Goog => &GOOG,
+    }
+}
 
 /// The longest a presigned URL may live: seven days, S3's SigV4 ceiling.
 pub(crate) const MAX_PRESIGN_EXPIRY: Duration = Duration::from_secs(604_800);
@@ -124,9 +158,15 @@ pub(crate) struct Scope<'a> {
 }
 
 impl Scope<'_> {
-    /// `<date>/<region>/s3/aws4_request`.
-    fn credential_scope(&self) -> String {
-        format!("{}/{}/{SERVICE}/{TERMINATOR}", self.time.date(), self.region)
+    /// `<date>/<region>/s3/aws4_request` (or GCS's `storage/goog4_request`).
+    fn credential_scope(&self, flavor: &Flavor) -> String {
+        format!(
+            "{}/{}/{}/{}",
+            self.time.date(),
+            self.region,
+            flavor.service,
+            flavor.terminator
+        )
     }
 }
 
@@ -140,23 +180,34 @@ impl Scope<'_> {
 /// also carries a `host` header (`PROTOCOL_ERROR` on every GCS request, live,
 /// 2026-10-02). Signing the URL's spelling keeps an IPv6 literal or a dropped
 /// default port from signing one host and sending another.
+///
+/// A request in GCS's dialect (`Dialect::Goog`) signs as `GOOG4-HMAC-SHA256`
+/// with every `x-amz-*` header spelled `x-goog-*`, because GCS refuses its own
+/// headers beside any `x-amz-*` one.
 pub(crate) fn sign(mut request: S3Request, scope: &Scope<'_>) -> SignedRequest {
     let url = request.url();
     request.host = authority_of(&url);
+    let flavor = flavor_of(request.dialect);
+    if request.dialect == Dialect::Goog {
+        spell_for_gcs(&mut request.headers);
+    }
     let payload = PayloadHash::for_body(&request.body);
-    request.headers.insert(name("x-amz-date"), value(scope.time.stamp()));
     request
         .headers
-        .insert(name("x-amz-content-sha256"), value(payload.as_str()));
+        .insert(name(flavor.date_header), value(scope.time.stamp()));
+    request
+        .headers
+        .insert(name(flavor.hash_header), value(payload.as_str()));
 
     let headers = headers_to_sign(&request);
     let query = canonical_query(&request.query);
     let (canonical, signed_headers) = canonical_request(&request, &query, &headers, payload.as_str());
-    let signature = signature(&string_to_sign(&canonical, scope), scope);
+    let signature = signature(&string_to_sign(&canonical, scope, flavor), scope, flavor);
     let authorization = format!(
-        "{ALGORITHM} Credential={}/{},SignedHeaders={signed_headers},Signature={signature}",
+        "{} Credential={}/{},SignedHeaders={signed_headers},Signature={signature}",
+        flavor.algorithm,
         scope.credentials.access_key_id,
-        scope.credential_scope()
+        scope.credential_scope(flavor)
     );
     request.headers.insert(name("authorization"), value(&authorization));
 
@@ -183,10 +234,10 @@ pub(crate) fn presign(request: &S3Request, scope: &Scope<'_>, expires: Duration)
     }
     let mut query = request.query.clone();
     query.extend([
-        ("X-Amz-Algorithm".to_string(), ALGORITHM.to_string()),
+        ("X-Amz-Algorithm".to_string(), AMZ.algorithm.to_string()),
         (
             "X-Amz-Credential".to_string(),
-            format!("{}/{}", scope.credentials.access_key_id, scope.credential_scope()),
+            format!("{}/{}", scope.credentials.access_key_id, scope.credential_scope(&AMZ)),
         ),
         ("X-Amz-Date".to_string(), scope.time.stamp().to_string()),
         ("X-Amz-Expires".to_string(), expires.as_secs().to_string()),
@@ -195,7 +246,7 @@ pub(crate) fn presign(request: &S3Request, scope: &Scope<'_>, expires: Duration)
     let canonical_query = canonical_query(&query);
     let host = [("host".to_string(), request.host.clone())];
     let (canonical, _) = canonical_request(request, &canonical_query, &host, PayloadHash::Unsigned.as_str());
-    let signature = signature(&string_to_sign(&canonical, scope), scope);
+    let signature = signature(&string_to_sign(&canonical, scope, &AMZ), scope, &AMZ);
 
     // The canonical query is already sorted and fully encoded, so it goes on
     // the wire as-is with the signature last, the order AWS's examples use.
@@ -234,22 +285,39 @@ fn canonical_request(
     (text, signed_headers)
 }
 
-fn string_to_sign(canonical_request: &str, scope: &Scope<'_>) -> String {
+fn string_to_sign(canonical_request: &str, scope: &Scope<'_>, flavor: &Flavor) -> String {
     format!(
-        "{ALGORITHM}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}",
+        flavor.algorithm,
         scope.time.stamp(),
-        scope.credential_scope(),
+        scope.credential_scope(flavor),
         hex(&Sha256::digest(canonical_request.as_bytes()))
     )
 }
 
-fn signature(string_to_sign: &str, scope: &Scope<'_>) -> String {
-    let secret = format!("AWS4{}", scope.credentials.secret_access_key);
+fn signature(string_to_sign: &str, scope: &Scope<'_>, flavor: &Flavor) -> String {
+    let secret = format!("{}{}", flavor.key_prefix, scope.credentials.secret_access_key);
     let date_key = hmac(secret.as_bytes(), scope.time.date().as_bytes());
     let region_key = hmac(&date_key, scope.region.as_bytes());
-    let service_key = hmac(&region_key, SERVICE.as_bytes());
-    let signing_key = hmac(&service_key, TERMINATOR.as_bytes());
+    let service_key = hmac(&region_key, flavor.service.as_bytes());
+    let signing_key = hmac(&service_key, flavor.terminator.as_bytes());
     hex(&hmac(&signing_key, string_to_sign.as_bytes()))
+}
+
+/// Every `x-amz-*` header spelled `x-goog-*` (`x-amz-meta-mtime` becomes
+/// `x-goog-meta-mtime`, which GCS reads back as the same metadata).
+fn spell_for_gcs(headers: &mut http::HeaderMap) {
+    let amz: Vec<HeaderName> = headers
+        .keys()
+        .filter(|name| name.as_str().starts_with("x-amz-"))
+        .cloned()
+        .collect();
+    for old in amz {
+        let renamed = format!("x-goog-{}", &old.as_str()["x-amz-".len()..]);
+        if let (Some(value), Ok(renamed)) = (headers.remove(&old), HeaderName::from_bytes(renamed.as_bytes())) {
+            headers.insert(renamed, value);
+        }
+    }
 }
 
 /// The headers to sign: every one present plus `host`, lowercased, values

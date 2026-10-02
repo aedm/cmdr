@@ -7,7 +7,7 @@ use url::Url;
 
 use super::*;
 use crate::profile::{Preset, ProviderProfile};
-use crate::request::{Body, S3Request};
+use crate::request::{Body, Dialect, S3Request};
 use crate::xml::build::CompletedPart;
 
 const MTIME: u64 = 1_354_040_105;
@@ -141,6 +141,32 @@ fn a_refused_overwrite_uses_the_header_where_the_provider_has_one_and_checks_fir
     );
     let complete_on_spaces = complete_multipart_upload(&spaces(), "b", "k", "up", &parts, Overwrite::Refuse).unwrap();
     assert!(complete_on_spaces.check_first, "Spaces ignores a conditional complete");
+}
+
+/// GCS's create-only precondition rides only on a request signed in GCS's own
+/// dialect: beside `x-amz-*` headers it's `400 ExcessHeaderValues`.
+#[test]
+fn a_refused_overwrite_on_gcs_sends_the_generation_precondition_in_its_own_dialect() {
+    let gcs = ProviderProfile::from_preset(&Preset::Gcs).unwrap();
+    let put = put_object(&gcs, "b", "k", 1, Overwrite::Refuse, &with_mtime()).unwrap();
+    assert_eq!(header(&put.request, "x-goog-if-generation-match"), Some("0"));
+    assert_eq!(header(&put.request, "if-none-match"), None);
+    assert_eq!(put.request.dialect, Dialect::Goog);
+    assert!(!put.check_first);
+
+    let source = CopySource {
+        bucket: "b",
+        key: "src",
+    };
+    let copy = copy_object(&gcs, source, "b", "k", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
+    assert_eq!(header(&copy.request, "x-goog-if-generation-match"), Some("0"));
+    assert_eq!(copy.request.dialect, Dialect::Goog);
+    assert!(!copy.check_first);
+
+    // An overwrite carries no precondition, so it stays in the S3 dialect.
+    let replace = put_object(&gcs, "b", "k", 1, Overwrite::Replace, &with_mtime()).unwrap();
+    assert_eq!(header(&replace.request, "x-goog-if-generation-match"), None);
+    assert_eq!(replace.request.dialect, Dialect::Amz);
 }
 
 #[test]

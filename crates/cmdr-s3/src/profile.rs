@@ -113,6 +113,10 @@ pub(crate) enum NoOverwrite {
     IfNoneMatch,
     /// R2's `cf-copy-destination-if-none-match: *` on `CopyObject`.
     CloudflareCopyHeader,
+    /// GCS's `x-goog-if-generation-match: 0` ("only if no live object"), on a
+    /// request signed in GCS's own dialect (`request::Dialect::Goog`); a clash
+    /// answers 412.
+    GoogGenerationMatch,
     /// HEAD the destination first, then write. Racy by nature: a clash noticed
     /// afterwards is reported to the user, never hidden.
     CheckThenWrite,
@@ -124,6 +128,7 @@ impl NoOverwrite {
             Self::IfNoneMatch => 0,
             Self::CloudflareCopyHeader => 1,
             Self::CheckThenWrite => 2,
+            Self::GoogGenerationMatch => 3,
         }
     }
 
@@ -131,6 +136,7 @@ impl NoOverwrite {
         match value {
             0 => Self::IfNoneMatch,
             1 => Self::CloudflareCopyHeader,
+            3 => Self::GoogGenerationMatch,
             _ => Self::CheckThenWrite,
         }
     }
@@ -254,7 +260,7 @@ pub(crate) struct ProviderProfile {
 
 impl ProviderProfile {
     pub(crate) fn from_preset(preset: &Preset) -> Result<Self, ProfileError> {
-        use NoOverwrite::{CheckThenWrite, CloudflareCopyHeader, IfNoneMatch};
+        use NoOverwrite::{CheckThenWrite, CloudflareCopyHeader, GoogGenerationMatch, IfNoneMatch};
 
         let profile = match preset {
             Preset::Aws { region } => {
@@ -326,12 +332,15 @@ impl ProviderProfile {
             // Path style: a GCS bucket name may hold dots (and underscores),
             // which a virtual host's TLS wildcard can't carry.
             Preset::Gcs => {
+                // GCS ignores `If-None-Match` but enforces its own create-only
+                // precondition on a PUT and a `CopyObject` (live, two runs,
+                // 2026-10-02); its multipart completion ignores it.
                 let mut gcs = Self::https(
                     ProviderKind::Gcs,
                     "storage.googleapis.com".to_string(),
                     "auto",
                     Addressing::Path,
-                    [CheckThenWrite; 3],
+                    [GoogGenerationMatch, CheckThenWrite, GoogGenerationMatch],
                 );
                 gcs.refuses_short_body = true;
                 gcs.copies_in_parts = false;

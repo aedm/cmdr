@@ -139,6 +139,21 @@ fn b2_has_no_conditional_writes() {
     }
 }
 
+/// GCS ignores `If-None-Match` but refuses an occupied key on its own
+/// `x-goog-if-generation-match: 0` for a PUT and a `CopyObject` (412, old
+/// bytes kept; 200 on a free key; live in two runs, 2026-10-02). Its multipart
+/// completion ignores it and its initiate refuses it, so Complete checks first.
+#[test]
+fn gcs_refuses_by_generation_precondition_on_put_and_copy_and_checks_first_on_complete() {
+    let gcs = profile(Preset::Gcs);
+    assert_eq!(gcs.no_overwrite(ConditionalOp::Put), NoOverwrite::GoogGenerationMatch);
+    assert_eq!(gcs.no_overwrite(ConditionalOp::Copy), NoOverwrite::GoogGenerationMatch);
+    assert_eq!(
+        gcs.no_overwrite(ConditionalOp::CompleteMultipart),
+        NoOverwrite::CheckThenWrite
+    );
+}
+
 #[test]
 fn every_provider_off_the_allowlist_checks_then_writes() {
     // A server can ignore `If-None-Match` and answer 200 while overwriting
@@ -147,7 +162,6 @@ fn every_provider_off_the_allowlist_checks_then_writes() {
         Preset::Wasabi {
             region: "eu-central-2".into(),
         },
-        Preset::Gcs,
         Preset::Other {
             endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
             region: None,

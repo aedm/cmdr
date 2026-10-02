@@ -190,6 +190,12 @@ table was refused: the app keeps the copy it has.
   bytes are read once; `Body::Bytes` (the XML bodies) and `Body::Empty` sign their real SHA-256. The spec said
   `UNSIGNED-PAYLOAD` everywhere. Hashing what's already in memory costs nothing, and it's what a strict server (or one
   on plain `http://`) expects.
+- **GCS's own dialect, for one header** (`request::Dialect::Goog`, set by `ops::guarded` for
+  `NoOverwrite::GoogGenerationMatch`): `GOOG4-HMAC-SHA256`, a `<date>/auto/storage/goog4_request` scope keyed from
+  `GOOG4<secret>`, `x-goog-date` / `x-goog-content-sha256`, and every `x-amz-*` header spelled `x-goog-*` (GCS reads
+  `x-goog-meta-mtime` back as `x-amz-meta-mtime`). The same canonical request and HMAC chain as SigV4. Only a
+  create-only GCS Put or Copy goes out this way; everything else stays SigV4 (verified on GCS, `sigv4_test.rs` against
+  an independently computed signature and live.sh, 2026-10-02).
 - **Query auth only for share links** (`sigv4::presign`, `ops::share_link`): signs `host` alone, expiry 1 s to 604,800 s
   (seven days, S3's SigV4 ceiling). A signature in a URL ends up in every log that prints the URL, `reqwest::Error`'s
   `Display` included, so API calls never use it.
@@ -341,9 +347,12 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
 - **Hetzner**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
   `x-amz-copy-source-if-match`; ❗ `CopyObject` and `UploadPartCopy` work between two buckets of one location (the
   research note's "within one bucket only" didn't hold); the key may `ListBuckets`; NFD and NFC are two objects.
-- **GCS**: `If-None-Match` ignored on all three writes; ❗ no `UploadPartCopy` (400 `NotImplemented`), so copies go
-  whole (a 140 MiB `CopyObject` took about 1.5 s); multipart uploads of any part sizes land; `DeleteObjects` works; NFD
-  and NFC are two objects; `ListBuckets` refused for a bucket-scoped service account.
+- **GCS**: `If-None-Match` ignored on all three writes; ❗ `x-goog-if-generation-match: 0` signed in GCS's dialect is
+  412 over an occupied key (old bytes kept) and 200 on a free one, on Put and Copy, in two runs, ignored on Complete and
+  refused on the multipart initiate; with it, two racing one-PUT `CreateNew`s leave one `AlreadyExists` every round (six
+  of six); ❗ no `UploadPartCopy` (400 `NotImplemented`), so copies go whole (a 140 MiB `CopyObject` took about 1.5 s);
+  multipart uploads of any part sizes land; `DeleteObjects` works; NFD and NFC are two objects; `ListBuckets` refused
+  for a bucket-scoped service account.
 - **Spaces**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
   `x-amz-copy-source-if-match`; NFD and NFC are two objects; the key is bucket-scoped (`ListBuckets` and `CreateBucket`
   refused), so a cross-bucket copy is unverified and stays off (§ "Providers").
