@@ -187,7 +187,9 @@ impl From<&ViewerError> for OpenWithCopyRefusal {
             | ViewerError::OutOfRange
             | ViewerError::TimedOut
             | ViewerError::StoppedResponding
-            | ViewerError::DestinationIsReadOnly => Self::Unreadable,
+            | ViewerError::DestinationIsReadOnly
+            // An archive in S3 cold storage can't be opened to copy a row out of it.
+            | ViewerError::ColdStorage => Self::Unreadable,
         }
     }
 }
