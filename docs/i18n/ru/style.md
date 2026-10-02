@@ -5,6 +5,26 @@ Working notes for translating Cmdr into Russian. Read `../README.md` for how thi
 Russian is fully resourced in the pile: macOS Finder/AppKit, Microsoft terminology + full style guide, GNOME Nautilus +
 Xfce Thunar. Lean on macOS Finder first.
 
+## Digest
+
+- Use concise, neutral Russian. Actions use infinitives; running text addresses users with lowercase «вы» or avoids
+  direct address. Never infer the user's gender.
+- Prefer Finder labels: «Скопировать», «Переименовать», «Отменить», «Свойства», «Быстрый просмотр», «Системные
+  настройки». Names of controls are quoted exactly as displayed.
+- Keep Cmdr, macOS, Finder, GitHub, protocol names and model identifiers recognizable. Ask Cmdr is «Спросить Cmdr»; AI
+  is «ИИ»; API key is «API-ключ».
+- Use Cyrillic for Russian words, mostly «е» rather than «ё», and sentence case. Primary quotes are «…», nested quotes
+  „…“, ellipsis is …, apostrophe is ’ when needed. Never use ASCII quotes in UI prose.
+- Every ICU count requires one/few/many/other. The one category includes 21, 31 and 101, not just 1; retain the numeric
+  placeholder. Use =1 only when exactly one needs distinct wording.
+- Keep raw paths and names in neutral slots. Never attach an unknown grammatical ending or refer back with a pronoun. No
+  bracketed or slashed number/gender endings.
+- Accessible names contain the visible label verbatim and in order, allowing only case differences.
+- Full view is «подробный режим», brief view «краткий режим», pane «панель». Finder lacks two-pane vocabulary, so those
+  rulings remain tentative until checked against orthodox file managers.
+- See the [termbase](terms.json), [typography rules](mechanics.json), [translation decisions](decisions.md) and
+  [review queue](review-queue.md) for current evidence and open questions.
+
 ## Voice and tone
 
 Friendly, concise, active, never alarmist. Russian tech UI is somewhat more formal and impersonal than English by
@@ -13,12 +33,12 @@ respectful register. Error messages stay calm and actionable; avoid alarmist wor
 
 ## Formality
 
-Russian UI overwhelmingly **avoids addressing the user with a verb form at all**, using verbal nouns for actions
-instead. This is the dominant macOS + Microsoft convention and the single most important register rule:
+Russian UI generally **avoids a personal form of address in action labels**, using infinitives for commands and nouns
+for categories. This is the dominant macOS + Microsoft convention:
 
-- Use the **verbal noun (nominalization)** for menu/button actions: "Копировать" (copy), "Переместить" (move),
-  "Переименовать" (rename), "Удалить" (delete) are infinitives used as commands, this is the standard, NOT the
-  imperative "Скопируй". Apple and Microsoft both use the infinitive-as-command throughout.
+- Use the **infinitive** for menu/button actions: "Скопировать" (copy), "Переместить" (move), "Переименовать" (rename),
+  "Удалить" (delete) are infinitives used as commands, this is the standard, NOT the imperative "Скопируй". Apple and
+  Microsoft both use the infinitive-as-command throughout.
 - When running text must address the user, use the polite **вы** (lowercase in modern tech UI; uppercase "Вы" is older
   correspondence style). Microsoft's style guide prescribes lowercase "вы". Never the familiar **ты** in product UI.
 - Prefer impersonal/passive constructions for system messages ("Файл удалён", "the file was deleted") where English uses
@@ -62,19 +82,19 @@ never invent neutral endings. Confidence: high.
 
 Defer the full glossary; triangulate macOS Finder (highest) + Microsoft terminology + Nautilus/Thunar.
 
-| English term | Russian    | Notes                 |
-| ------------ | ---------- | --------------------- |
-| file         | файл       |                       |
-| folder       | папка      |                       |
-| trash        | Корзина    | Finder term           |
-| copy         | Копировать | infinitive-as-command |
-| pane         | панель     | confirm vs Finder     |
-| tab          | вкладка    |                       |
+| English term | Russian     | Notes                 |
+| ------------ | ----------- | --------------------- |
+| file         | файл        |                       |
+| folder       | папка       |                       |
+| trash        | Корзина     | Finder term           |
+| copy         | Скопировать | infinitive-as-command |
+| pane         | панель      | confirm vs Finder     |
+| tab          | вкладка     |                       |
 
 ## Brand and do-not-translate
 
-Keep verbatim: Cmdr, macOS, GitHub, SMB, MTP, Tauri, Rust, Svelte, Quick Look. Enforced by
-`desktop-i18n-dont-translate`.
+Keep verbatim: Cmdr, macOS, GitHub, SMB, MTP, Tauri, Rust, Svelte. Apple localizes Quick Look as **Быстрый просмотр**,
+verified in live Finder's LocalizableMerged.json (N169.17). Enforced by `desktop-i18n-dont-translate`.
 
 ## Plurals
 
@@ -101,8 +121,16 @@ CLDR categories for `ru`: `one`, `few`, `many`, `other`. All four are required a
 
 ## Termbase
 
-This language has no termbase yet. On its first translation pass, copy `terms.json`, `decisions.md`, and
-`review-queue.md` from `docs/i18n/_template/` into this folder, and add a `## Digest` to this guide (the template
-`style.md` shows it). Each term ruling goes in `terms.json`, keyed by a concept from `docs/i18n/concepts.json` and
-sourced from the reference pile (`_ignored/i18n/ru/`; recipes in `docs/i18n/reference-pile/how-to-mine.md`); never guess
-a term. Any terminology notes above are seeds to verify and move there. Schema: `docs/i18n/termbase.md`.
+The [Russian termbase](terms.json) records current term choices and evidence. General file-manager labels are sourced
+from the live Russian Finder resources extracted into the reference pile. Technical and two-pane concepts absent from
+that extraction are marked tentative rather than presented as externally verified.
+
+See the [distilled decisions](decisions.md), [typography rules](mechanics.json) and
+[native review queue](review-queue.md). Native review improves quality opportunistically and does not block shipping
+under the project translation guide.
+
+&nbsp;
+
+---
+
+_02.10.2026_

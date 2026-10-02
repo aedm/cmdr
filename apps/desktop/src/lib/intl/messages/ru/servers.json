@@ -1,0 +1,526 @@
+{
+  "servers.sheet.usernamePlaceholder": "Например: boris",
+  "@servers.sheet.usernamePlaceholder": {
+    "sourceHash": "1b5b09c"
+  },
+  "servers.pinHint.title": "В группе «Сеть» уже много серверов",
+  "@servers.pinHint.title": {
+    "sourceHash": "0cf001a"
+  },
+  "servers.pinHint.body": "Нажмите на сервер правой кнопкой и выберите «Открепить от переключателя» или выполните «{command}» в палитре команд. Сервер останется в списке «Серверы».",
+  "@servers.pinHint.body": {
+    "sourceHash": "c2545d0"
+  },
+  "servers.pinHint.gotIt": "Понятно",
+  "@servers.pinHint.gotIt": {
+    "sourceHash": "5ad3dbd"
+  },
+  "servers.hub.colName": "Имя",
+  "@servers.hub.colName": {
+    "sourceHash": "dcd1d52"
+  },
+  "servers.hub.colType": "Тип",
+  "@servers.hub.colType": {
+    "sourceHash": "baaddf7"
+  },
+  "servers.hub.colAddress": "Адрес",
+  "@servers.hub.colAddress": {
+    "sourceHash": "56ef8f2"
+  },
+  "servers.hub.colStatus": "Состояние",
+  "@servers.hub.colStatus": {
+    "sourceHash": "920e413"
+  },
+  "servers.hub.colLastUsed": "Последнее использование",
+  "@servers.hub.colLastUsed": {
+    "sourceHash": "830ec7f"
+  },
+  "servers.hub.addServer": "Добавить сервер…",
+  "@servers.hub.addServer": {
+    "sourceHash": "9574f8e"
+  },
+  "servers.hub.status.connected": "Подключено",
+  "@servers.hub.status.connected": {
+    "sourceHash": "2296556"
+  },
+  "servers.hub.status.saved": "Сохранен",
+  "@servers.hub.status.saved": {
+    "sourceHash": "b5c120b"
+  },
+  "servers.hub.status.foundNearby": "Найден поблизости",
+  "@servers.hub.status.foundNearby": {
+    "sourceHash": "a7fdf7d"
+  },
+  "servers.hub.status.signedOut": "Вход не выполнен",
+  "@servers.hub.status.signedOut": {
+    "sourceHash": "80c6e7c"
+  },
+  "servers.hub.status.waitingForKey": "Ожидает проверки ключа",
+  "@servers.hub.status.waitingForKey": {
+    "sourceHash": "f0a43e8"
+  },
+  "servers.hub.neverUsed": "Никогда",
+  "@servers.hub.neverUsed": {
+    "sourceHash": "6300ef8"
+  },
+  "servers.hub.shareAccount": "как {username}",
+  "@servers.hub.shareAccount": {
+    "sourceHash": "56f57a1"
+  },
+  "servers.hub.guestAccount": "как гость",
+  "@servers.hub.guestAccount": {
+    "sourceHash": "74d19ba"
+  },
+  "servers.hub.editPickHint": "Выберите сервер для изменения.",
+  "@servers.hub.editPickHint": {
+    "sourceHash": "08e6752"
+  },
+  "servers.hub.editShareHint": "У общего ресурса нет изменяемых параметров. Чтобы изменить сервер, выберите строку сервера.",
+  "@servers.hub.editShareHint": {
+    "sourceHash": "8cc5e87"
+  },
+  "servers.hub.editNearbyHint": "Объект {name} найден поблизости и не сохранен, поэтому изменять нечего.",
+  "@servers.hub.editNearbyHint": {
+    "sourceHash": "64653de"
+  },
+  "servers.hub.forgetShare": "Забыть общий ресурс",
+  "@servers.hub.forgetShare": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirmTitle": "Забыть общий ресурс",
+  "@servers.hub.forgetShareConfirmTitle": {
+    "sourceHash": "8888a9d"
+  },
+  "servers.hub.forgetShareConfirm": "Забыть {name}? Cmdr перестанет показывать этот ресурс. Если ресурс подключен, он останется подключенным, а файлы останутся на сервере.",
+  "@servers.hub.forgetShareConfirm": {
+    "sourceHash": "8c14aaa"
+  },
+  "servers.hub.nearbyGroup": "{count, plural, one {Поблизости найден {countText} сервер} few {Поблизости найдены {countText} сервера} many {Поблизости найдено {countText} серверов} other {Поблизости найдено {countText} сервера}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
+  "servers.hub.discoveryOff": "Поиск устройств в локальной сети выключен.",
+  "@servers.hub.discoveryOff": {
+    "sourceHash": "cadcceb"
+  },
+  "servers.hub.discoveryOffLink": "Включить в настройках",
+  "@servers.hub.discoveryOffLink": {
+    "sourceHash": "818571b"
+  },
+  "servers.hub.emptyTitle": "Серверов пока нет",
+  "@servers.hub.emptyTitle": {
+    "sourceHash": "7846930"
+  },
+  "servers.hub.emptyMessage": "Добавьте сервер ниже или включите Mac либо NAS в вашей сети — Cmdr найдет устройство.",
+  "@servers.hub.emptyMessage": {
+    "sourceHash": "04bdc26"
+  },
+  "servers.hub.rowCount": "{count, plural, one {{countText} сервер} few {{countText} сервера} many {{countText} серверов} other {{countText} сервера}}",
+  "@servers.hub.rowCount": {
+    "sourceHash": "7ef87d1"
+  },
+  "servers.paneState.connecting": "Подключение: {name}…",
+  "@servers.paneState.connecting": {
+    "sourceHash": "7fb114e"
+  },
+  "servers.paneState.connectingHint": "Это может занять несколько секунд.",
+  "@servers.paneState.connectingHint": {
+    "sourceHash": "c830378"
+  },
+  "servers.paneState.cancel": "Отменить",
+  "@servers.paneState.cancel": {
+    "sourceHash": "19766ed"
+  },
+  "servers.paneState.tryAgain": "Повторить попытку",
+  "@servers.paneState.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "servers.paneState.disconnect": "Отключиться",
+  "@servers.paneState.disconnect": {
+    "sourceHash": "acfc5be"
+  },
+  "servers.refusal.authenticationRejected": "Пароль не подошел для учетной записи {username}.",
+  "@servers.refusal.authenticationRejected": {
+    "sourceHash": "ac235d2"
+  },
+  "servers.refusal.needsCredentials": "Этот сервер требует пароль.",
+  "@servers.refusal.needsCredentials": {
+    "sourceHash": "f5f689b"
+  },
+  "servers.refusal.accountNotPermitted": "Учетная запись {username} не имеет доступа. Попробуйте другую учетную запись.",
+  "@servers.refusal.accountNotPermitted": {
+    "sourceHash": "baa82ef"
+  },
+  "servers.refusal.authMethodUnsupported": "Сервер использует способ входа, который Cmdr пока не поддерживает.",
+  "@servers.refusal.authMethodUnsupported": {
+    "sourceHash": "48b9b15"
+  },
+  "servers.refusal.certificateUntrusted": "macOS не доверяет сертификату сервера. Добавьте сертификат в приложение «Связка ключей» и повторите попытку.",
+  "@servers.refusal.certificateUntrusted": {
+    "sourceHash": "b8f3b4a"
+  },
+  "servers.refusal.notAWebdavServer": "По этому адресу нет ответа WebDAV.",
+  "@servers.refusal.notAWebdavServer": {
+    "sourceHash": "4c702d4"
+  },
+  "servers.refusal.invalidUrl": "Это не похоже на адрес сервера.",
+  "@servers.refusal.invalidUrl": {
+    "sourceHash": "d3f5f7d"
+  },
+  "servers.refusal.timedOut": "Хост {host} не ответил вовремя.",
+  "@servers.refusal.timedOut": {
+    "sourceHash": "b2f0e52"
+  },
+  "servers.refusal.unreachable": "Cmdr не удалось подключиться к хосту {host}.",
+  "@servers.refusal.unreachable": {
+    "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "Если сервер включен, проверьте разрешение для Cmdr в разделе {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
+  },
+  "servers.refusal.hostKeyUntrusted": "Cmdr пока не доверяет ключу хоста {host}.",
+  "@servers.refusal.hostKeyUntrusted": {
+    "sourceHash": "83dc719"
+  },
+  "servers.refusal.hostKeyRevoked": "Ключ хоста {host} помечен как скомпрометированный в настройках SSH этого Mac. Cmdr не будет подключаться к этому хосту.",
+  "@servers.refusal.hostKeyRevoked": {
+    "sourceHash": "7a25d93"
+  },
+  "servers.refusal.startFolderOutsideRoot": "Начальная папка должна быть корневой папкой или находиться внутри нее.",
+  "@servers.refusal.startFolderOutsideRoot": {
+    "sourceHash": "a1d1efb"
+  },
+  "servers.refusal.rootNotFound": "Cmdr не может открыть эту папку на хосте {host}. Проверьте наличие папки и права вашей учетной записи на чтение.",
+  "@servers.refusal.rootNotFound": {
+    "sourceHash": "aa029f8"
+  },
+  "servers.refusal.startFolderNotFound": "Cmdr не может открыть начальную папку на хосте {host}. Проверьте наличие папки и права вашей учетной записи на чтение.",
+  "@servers.refusal.startFolderNotFound": {
+    "sourceHash": "0997a8d"
+  },
+  "servers.refusal.passwordMissing": "Введите пароль для учетной записи {username}.",
+  "@servers.refusal.passwordMissing": {
+    "sourceHash": "521941e"
+  },
+  "servers.refusal.saveUnconfirmed": "Хост {host} не ответил вовремя, поэтому ничего не сохранено. Повторите попытку через некоторое время.",
+  "@servers.refusal.saveUnconfirmed": {
+    "sourceHash": "3fb55a6"
+  },
+  "servers.refusal.secretNotStored": "Cmdr не удалось сохранить пароль в Связке ключей. Повторите попытку или выключите «Запомнить в Связке ключей», чтобы войти без сохранения пароля.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "20957fe"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr сохранил изменения, но не смог обновить пароль в Связке ключей. Сохраните еще раз, чтобы повторить попытку.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "2ae1e2b"
+  },
+  "servers.sheet.addTitle": "Добавить сервер",
+  "@servers.sheet.addTitle": {
+    "sourceHash": "1099b2a"
+  },
+  "servers.sheet.signInTitle": "Вход: {name}",
+  "@servers.sheet.signInTitle": {
+    "sourceHash": "47e7f20"
+  },
+  "servers.sheet.editTitle": "Изменить: {name}",
+  "@servers.sheet.editTitle": {
+    "sourceHash": "2313fe2"
+  },
+  "servers.sheet.addAndOpen": "Добавить и открыть",
+  "@servers.sheet.addAndOpen": {
+    "sourceHash": "b37158e"
+  },
+  "servers.sheet.add": "Добавить",
+  "@servers.sheet.add": {
+    "sourceHash": "9fd728c"
+  },
+  "servers.sheet.addAnyway": "Все равно добавить",
+  "@servers.sheet.addAnyway": {
+    "sourceHash": "d0652ad"
+  },
+  "servers.sheet.addAnywayHelp": "Cmdr не удалось проверить сервер. Кнопка «Все равно добавить» сохранит введенные данные без проверки.",
+  "@servers.sheet.addAnywayHelp": {
+    "sourceHash": "3704aa5"
+  },
+  "servers.sheet.addedToast": "Объект {name} сохранен в списке «Серверы».",
+  "@servers.sheet.addedToast": {
+    "sourceHash": "f6ef7bb"
+  },
+  "servers.sheet.signIn": "Войти",
+  "@servers.sheet.signIn": {
+    "sourceHash": "bfd402b"
+  },
+  "servers.sheet.save": "Сохранить",
+  "@servers.sheet.save": {
+    "sourceHash": "1509f56"
+  },
+  "servers.sheet.cancel": "Отменить",
+  "@servers.sheet.cancel": {
+    "sourceHash": "19766ed"
+  },
+  "servers.sheet.connecting": "Подключение…",
+  "@servers.sheet.connecting": {
+    "sourceHash": "72021eb"
+  },
+  "servers.sheet.protocolLegend": "Протокол",
+  "@servers.sheet.protocolLegend": {
+    "sourceHash": "cf08833"
+  },
+  "servers.sheet.protocolSmb": "SMB",
+  "@servers.sheet.protocolSmb": {
+    "sourceHash": "f54ab2d",
+    "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
+  },
+  "servers.sheet.protocolSftp": "SFTP",
+  "@servers.sheet.protocolSftp": {
+    "sourceHash": "b07c0f4",
+    "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
+  },
+  "servers.sheet.protocolWebdav": "WebDAV",
+  "@servers.sheet.protocolWebdav": {
+    "sourceHash": "d92634e",
+    "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
+  },
+  "servers.sheet.address": "Адрес",
+  "@servers.sheet.address": {
+    "sourceHash": "56ef8f2"
+  },
+  "servers.sheet.addressPlaceholder": "nas.local",
+  "@servers.sheet.addressPlaceholder": {
+    "sourceHash": "5e0ec1d",
+    "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
+  },
+  "servers.sheet.addressHelpSftp": "Имя хоста, скопированный адрес или полная команда ssh.",
+  "@servers.sheet.addressHelpSftp": {
+    "sourceHash": "1e21d29"
+  },
+  "servers.sheet.addressHelpSmb": "Имя хоста, IP-адрес или скопированный адрес smb://.",
+  "@servers.sheet.addressHelpSmb": {
+    "sourceHash": "4ab75e8"
+  },
+  "servers.sheet.addressHelpWebdav": "Скопированный веб-адрес, например https://nas.local/dav, или имя хоста.",
+  "@servers.sheet.addressHelpWebdav": {
+    "sourceHash": "a8349b3"
+  },
+  "servers.sheet.addressLooksLikeSmb": "Это похоже на адрес SMB. Если это верно, выберите SMB выше.",
+  "@servers.sheet.addressLooksLikeSmb": {
+    "sourceHash": "86fc72a"
+  },
+  "servers.sheet.addressLooksLikeSftp": "Это похоже на адрес SFTP. Если это верно, выберите SFTP выше.",
+  "@servers.sheet.addressLooksLikeSftp": {
+    "sourceHash": "81f95e3"
+  },
+  "servers.sheet.addressLooksLikeWebdav": "Это похоже на адрес WebDAV. Если это верно, выберите WebDAV выше.",
+  "@servers.sheet.addressLooksLikeWebdav": {
+    "sourceHash": "a1185f1"
+  },
+  "servers.sheet.addressLocked": "Адрес определяет этот сервер. Чтобы использовать другой адрес, забудьте сервер и добавьте заново.",
+  "@servers.sheet.addressLocked": {
+    "sourceHash": "b476060"
+  },
+  "servers.sheet.identityLocked": "Адрес и учетная запись определяют этот сервер. Чтобы изменить их, забудьте сервер и добавьте заново.",
+  "@servers.sheet.identityLocked": {
+    "sourceHash": "c16657d"
+  },
+  "servers.sheet.username": "Имя пользователя",
+  "@servers.sheet.username": {
+    "sourceHash": "e3b89e9"
+  },
+  "servers.sheet.password": "Пароль",
+  "@servers.sheet.password": {
+    "sourceHash": "e7cf3ef"
+  },
+  "servers.sheet.smbUsernamePlaceholder": "Необязательно",
+  "@servers.sheet.smbUsernamePlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.smbUsernameHelp": "Заполните, если NAS требует учетную запись. Cmdr запросит пароль при открытии общего ресурса.",
+  "@servers.sheet.smbUsernameHelp": {
+    "sourceHash": "68ea372"
+  },
+  "servers.sheet.passphrase": "Парольная фраза ключа",
+  "@servers.sheet.passphrase": {
+    "sourceHash": "2510031"
+  },
+  "servers.sheet.remember": "Запомнить в Связке ключей",
+  "@servers.sheet.remember": {
+    "sourceHash": "3fd7384"
+  },
+  "servers.sheet.connectionModeLegend": "Способ подключения",
+  "@servers.sheet.connectionModeLegend": {
+    "sourceHash": "2198ec8"
+  },
+  "servers.sheet.connectAsGuest": "Подключиться как гость",
+  "@servers.sheet.connectAsGuest": {
+    "sourceHash": "d3cee9e"
+  },
+  "servers.sheet.signInWithCredentials": "Войти с именем пользователя и паролем",
+  "@servers.sheet.signInWithCredentials": {
+    "sourceHash": "d71eef0"
+  },
+  "servers.sheet.advanced": "Дополнительно",
+  "@servers.sheet.advanced": {
+    "sourceHash": "9f088db"
+  },
+  "servers.sheet.name": "Имя",
+  "@servers.sheet.name": {
+    "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.namePlaceholder": "Оставьте пустым, чтобы использовать {label}",
+  "@servers.sheet.namePlaceholder": {
+    "sourceHash": "fc88cb0"
+  },
+  "servers.sheet.rootFolder": "Корневая папка",
+  "@servers.sheet.rootFolder": {
+    "sourceHash": "6d92528"
+  },
+  "servers.sheet.rootFolderHelp": "Cmdr не поднимается выше этой папки на сервере.",
+  "@servers.sheet.rootFolderHelp": {
+    "sourceHash": "688d735"
+  },
+  "servers.sheet.startFolder": "Начальная папка",
+  "@servers.sheet.startFolder": {
+    "sourceHash": "ef05c31"
+  },
+  "servers.sheet.startFolderHelp": "Папка, открываемая на сервере. Оставьте пустым, чтобы открывать корневую папку.",
+  "@servers.sheet.startFolderHelp": {
+    "sourceHash": "514018e"
+  },
+  "servers.sheet.keyFile": "Файл ключа",
+  "@servers.sheet.keyFile": {
+    "sourceHash": "33c7999"
+  },
+  "servers.sheet.browse": "Обзор…",
+  "@servers.sheet.browse": {
+    "sourceHash": "93c6b66"
+  },
+  "servers.sheet.useAgent": "Использовать ssh-agent",
+  "@servers.sheet.useAgent": {
+    "sourceHash": "21f2e2c"
+  },
+  "servers.sheet.autoReconnect": "Подключаться автоматически",
+  "@servers.sheet.autoReconnect": {
+    "sourceHash": "a56b579"
+  },
+  "servers.sheet.autoReconnectHelp": "Если соединение прервется, Cmdr подключится к серверу снова. Это не включает подключение при запуске: Cmdr подключается, когда вы открываете сервер в панели.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "559525d"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Подробнее о параметре «Подключаться автоматически»",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
+  "servers.sheet.needsStoredSecret": "Для автоматического подключения нужен сохраненный пароль. Включите «Запомнить в Связке ключей» и войдите один раз.",
+  "@servers.sheet.needsStoredSecret": {
+    "sourceHash": "32336f3"
+  },
+  "servers.sheet.tryNextcloudAddress": "Попробовать адрес Nextcloud",
+  "@servers.sheet.tryNextcloudAddress": {
+    "sourceHash": "1afdfc7"
+  },
+  "servers.hostKey.firstContactTitle": "Первое подключение к хосту {host}",
+  "@servers.hostKey.firstContactTitle": {
+    "sourceHash": "6282d68"
+  },
+  "servers.hostKey.firstContactBody": "Сверьте отпечаток ниже с полученным от владельца сервера, затем подтвердите доверие.",
+  "@servers.hostKey.firstContactBody": {
+    "sourceHash": "f207466"
+  },
+  "servers.hostKey.changedTitle": "Ключ хоста {host} изменился",
+  "@servers.hostKey.changedTitle": {
+    "sourceHash": "2613248"
+  },
+  "servers.hostKey.changedBody": "Это может означать переустановку сервера или перехват соединения. Проверьте отпечаток у владельца сервера, прежде чем доверять ключу.",
+  "@servers.hostKey.changedBody": {
+    "sourceHash": "42491c4"
+  },
+  "servers.hostKey.changedDisclosure": "Проверка выполнена",
+  "@servers.hostKey.changedDisclosure": {
+    "sourceHash": "4051d39"
+  },
+  "servers.hostKey.fingerprintLabel": "Отпечаток ключа",
+  "@servers.hostKey.fingerprintLabel": {
+    "sourceHash": "26f8639"
+  },
+  "servers.hostKey.trustAndConnect": "Доверять и подключиться",
+  "@servers.hostKey.trustAndConnect": {
+    "sourceHash": "0cce535"
+  },
+  "servers.hostKey.trustNewKey": "Доверять новому ключу",
+  "@servers.hostKey.trustNewKey": {
+    "sourceHash": "772baac"
+  },
+  "servers.paneState.signedOut": "Вход не выполнен: {name}",
+  "@servers.paneState.signedOut": {
+    "sourceHash": "b1d908f"
+  },
+  "servers.paneState.notConnected": "Нет подключения: {name}",
+  "@servers.paneState.notConnected": {
+    "sourceHash": "5020fac"
+  },
+  "servers.paneState.unreachable": "Cmdr не удалось подключиться: {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
+  "servers.paneState.goBack": "Вернуться назад",
+  "@servers.paneState.goBack": {
+    "sourceHash": "6aadac2"
+  },
+  "servers.paneState.signIn": "Войти…",
+  "@servers.paneState.signIn": {
+    "sourceHash": "a6a5723"
+  },
+  "servers.paneState.hostKeyChanged": "Cmdr не будет подключаться: {name}",
+  "@servers.paneState.hostKeyChanged": {
+    "sourceHash": "c73ddf3"
+  },
+  "servers.paneState.hostKeyChangedHint": "Ключ сервера изменился. Это может означать переустановку сервера или перехват соединения. Проверьте новый ключ перед повторным подключением.",
+  "@servers.paneState.hostKeyChangedHint": {
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "Проверить ключ",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
+  },
+  "servers.paneState.reconnecting": "Повторное подключение: {name}…",
+  "@servers.paneState.reconnecting": {
+    "sourceHash": "dce8cef"
+  },
+  "servers.paneState.signedOutNothingToAsk": "Этот сервер использует ключ вместо пароля, поэтому вводить ничего не нужно. Откройте сервер снова, чтобы повторить попытку.",
+  "@servers.paneState.signedOutNothingToAsk": {
+    "sourceHash": "95e6bd0"
+  },
+  "servers.paneState.retryProgressAriaLabel": "Время до следующей попытки подключения",
+  "@servers.paneState.retryProgressAriaLabel": {
+    "sourceHash": "d4341c3"
+  },
+  "servers.paneState.retryNow": "Повторить сейчас",
+  "@servers.paneState.retryNow": {
+    "sourceHash": "5148c3e"
+  },
+  "servers.paneState.retryNowTooltip": "Повторить подключение немедленно.",
+  "@servers.paneState.retryNowTooltip": {
+    "sourceHash": "11525f0"
+  },
+  "servers.paneState.cancelCycleTooltip": "Остановить попытки пока. Соединение остается доступным. Вернитесь, чтобы повторить попытку.",
+  "@servers.paneState.cancelCycleTooltip": {
+    "sourceHash": "377638b"
+  },
+  "servers.paneState.disconnectCycleTooltip": "Остановить попытки и отключиться от сервера.",
+  "@servers.paneState.disconnectCycleTooltip": {
+    "sourceHash": "8fba8b0"
+  },
+  "servers.paneState.retryKeepsTrying": "Попытки будут продолжаться в течение {duration}.",
+  "@servers.paneState.retryKeepsTrying": {
+    "sourceHash": "e4d25b7"
+  },
+  "servers.paneState.retryTotalSeconds": "{seconds, plural, one {{secondsText} секунда} few {{secondsText} секунды} many {{secondsText} секунд} other {{secondsText} секунды}}",
+  "@servers.paneState.retryTotalSeconds": {
+    "sourceHash": "9e6c4f8"
+  },
+  "servers.paneState.retryTotalMinutes": "{minutes, plural, one {{minutesText} минута} few {{minutesText} минуты} many {{minutesText} минут} other {{minutesText} минуты}}",
+  "@servers.paneState.retryTotalMinutes": {
+    "sourceHash": "fc262c3"
+  }
+}

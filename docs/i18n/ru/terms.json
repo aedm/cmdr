@@ -1,0 +1,247 @@
+{
+  "file": {
+    "chosen": "файл",
+    "confidence": "high",
+    "sources": "Folder/file terminology in Finder LocalizableMerged.json",
+    "accept": ["файл"],
+    "exceptions": {
+      "errors.git.blobTooLarge.message": "Git blob is named «объект git», the actual object type; it is not an ordinary file operation.",
+      "errors.write.readOnlyDevice.source.suggestion": "The original files are expressed as «Оригиналы» after the copy instruction.",
+      "fileOperations.transferDialog.hardlinkNote": "The file group is expressed by «Источник»; this note describes aggregate bytes and hardlinks.",
+      "settings.advanced.maxLogStorageMb.description": "Logs are named directly; their file representation is implicit.",
+      "settings.advanced.maxLogStorageMb.label": "The setting names logs directly, rather than generic files.",
+      "settings.developer.verboseLogging.description": "The saved log is named «Журнал на диске»; the file representation is implicit.",
+      "settings.mediaIndex.showFileStatusIcons.label": "The setting targets images specifically, so the image type replaces generic file.",
+      "onboarding.stepAi.table.selectWith": "The selection example names the image type directly.",
+      "settings.network.permissionIntroPrefix": "The type of transferred objects is implicit in the direct-transfer explanation."
+    }
+  },
+  "folder": {
+    "chosen": "папка",
+    "confidence": "high",
+    "sources": "Finder Localizable.json: Folder → Папка",
+    "accept": ["папк", "папок"],
+    "exceptions": {
+      "commands.navParent.label": "Navigation uses the conventional spatial label «на уровень выше»; folder is implicit, not renamed.",
+      "menu.go.parentFolder": "Native navigation label expresses parent relation as «на уровень выше».",
+      "settings.behavior.doubleClickPaneNavigatesToParent.label": "The parent folder is expressed by the spatial navigation phrase «на уровень выше».",
+      "errors.write.archiveEntryNameRefused.message.tooDeep": "Depth is expressed directly; the hierarchy is implicit in an archive entry."
+    }
+  },
+  "trash": {
+    "chosen": "Корзина",
+    "confidence": "high",
+    "sources": "Finder Localizable.json: Trash → Корзина",
+    "accept": ["Корзин"]
+  },
+  "copy": {
+    "chosen": "Скопировать",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json ME2: Copy → Скопировать",
+    "accept": ["копир", "копи"]
+  },
+  "rename": {
+    "chosen": "Переименовать",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json N169.7: Rename → Переименовать",
+    "accept": ["переимен", "имя", "имен"]
+  },
+  "cancel": {
+    "chosen": "Отменить",
+    "confidence": "high",
+    "sources": "Finder Localizable.json Cancel → Отменить",
+    "accept": ["отмен"]
+  },
+  "close": {
+    "chosen": "Закрыть",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json FR26: Close → Закрыть",
+    "accept": ["закр"]
+  },
+  "search": {
+    "chosen": "Поиск",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json TL23: Search → Поиск",
+    "accept": ["поиск", "искать", "ищ", "наход", "поисков", "найт", "найд", "запрос"]
+  },
+  "size": {
+    "chosen": "Размер",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json N169.33: Size → Размер",
+    "accept": ["размер"],
+    "exceptions": {
+      "settings.ai.tooltipLocal": "Context size is expressed by «контекст»; the surrounding memory quantities supply the size meaning."
+    }
+  },
+  "tag": {
+    "chosen": "Тег",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json GT10: Tags → Теги",
+    "accept": ["тег"]
+  },
+  "network": {
+    "chosen": "Сеть",
+    "confidence": "high",
+    "sources": "Finder Localizable.json Network → Сеть",
+    "accept": ["сет", "SMB"]
+  },
+  "name": {
+    "chosen": "Имя",
+    "confidence": "high",
+    "sources": "Finder SlicesAttributeNameOverrides.json kMDItemDisplayName: Name → Имя",
+    "accept": ["имен", "имя", "назван"]
+  },
+  "preview": {
+    "chosen": "Просмотр",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json TL45: Preview → Просмотр",
+    "accept": ["просмотр", "Предпросмотр"]
+  },
+  "quick-look": {
+    "chosen": "Быстрый просмотр",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json N169.17: Quick Look → Быстрый просмотр",
+    "accept": ["быстрого просмотра", "быстром просмотр", "быстрому просмотр"]
+  },
+  "get-info": {
+    "chosen": "Свойства",
+    "confidence": "high",
+    "sources": "Finder Localizable.json Get Info → Свойства",
+    "accept": ["свойств"]
+  },
+  "system-settings": {
+    "chosen": "Системные настройки",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json GROUP_SYSTEM_PREFS: System Settings → Системные настройки",
+    "accept": ["системных настроек", "системные настройки", "{systemSettings}", "{system_settings}"]
+  },
+  "index": {
+    "chosen": "Индекс",
+    "confidence": "high",
+    "sources": "Finder LocalizableMerged.json PW39: Updating tag index → Обновление индекса тегов",
+    "accept": ["индекс"]
+  },
+  "finder": {
+    "chosen": "Finder",
+    "confidence": "high",
+    "sources": "Finder MenuBar.json: Finder retained in app name"
+  },
+  "git-branch": {
+    "chosen": "Ветка",
+    "confidence": "tentative",
+    "sources": "Repository terminology not present in extracted macOS reference pile; Russian catalog usage pending native review",
+    "accept": ["ветк", "веток"]
+  },
+  "api-key": {
+    "chosen": "API-ключ",
+    "confidence": "tentative",
+    "sources": "Technical concept absent from extracted Finder pile; pending native review",
+    "accept": ["API-ключ", "ключ"]
+  },
+  "ai-feature": {
+    "chosen": "Возможности ИИ",
+    "confidence": "tentative",
+    "sources": "Technical concept absent from extracted Finder pile; pending native review",
+    "accept": ["ИИ"]
+  },
+  "ai-provider": {
+    "chosen": "Провайдер ИИ",
+    "confidence": "tentative",
+    "sources": "Technical concept absent from extracted Finder pile; pending native review",
+    "accept": ["провайдер", "сервис"]
+  },
+  "context-window": {
+    "chosen": "Контекстное окно",
+    "confidence": "tentative",
+    "sources": "Technical concept absent from extracted Finder pile; pending native review",
+    "accept": ["контекст"]
+  },
+  "license": {
+    "chosen": "Лицензия",
+    "confidence": "tentative",
+    "sources": "Legal concept absent from extracted Finder pile; pending native review",
+    "accept": ["лиценз", "бессрочн", "подписк", "ключ"]
+  },
+  "license-key": {
+    "chosen": "Лицензионный ключ",
+    "confidence": "tentative",
+    "sources": "Legal concept absent from extracted Finder pile; pending native review",
+    "accept": ["лицензионн", "ключ"]
+  },
+  "settings": {
+    "chosen": "Настройки",
+    "confidence": "high",
+    "sources": "Finder PreferencesWindow.json 1.title: Настройки Finder",
+    "accept": ["настрой", "настро"],
+    "exceptions": {
+      "settings.ai.cloudProviderConfigs.description": "Provider settings are expressed as «параметры моделей»; no distinct settings screen is named.",
+      "settings.listing.directorySortMode.disabledReason": "The single boolean setting is expressed as «параметр», not the Settings window.",
+      "settings.mediaIndex.progress.kept": "Broader settings mean indexing coverage, explicitly named «охват».",
+      "settings.mediaIndex.reclaim.line": "The indexing setting is described by its resulting coverage, «охват».",
+      "settings.sidebar.searchPlaceholder": "The Settings sidebar supplies the context; «Поиск…» fits the actual input at 125% text size, while «Поиск настроек…» exceeds its available width."
+    }
+  },
+  "path": {
+    "chosen": "Путь",
+    "confidence": "high",
+    "sources": "Finder MenuBar.json TCC-xb-ldB.title: Скопировать путь",
+    "accept": ["пут"]
+  },
+  "drive": {
+    "chosen": "Диск",
+    "confidence": "high",
+    "sources": "Finder Localizable.json Hard disks → Жесткие диски; MenuBar identifies volumes as тома",
+    "accept": ["диск", "том"],
+    "exceptions": {
+      "settings.summary.notifications": "Low drive space is expressed concisely as «нехватка места»; the drive is implicit in this section summary."
+    }
+  },
+  "archive": {
+    "chosen": "Архив",
+    "confidence": "high",
+    "sources": "Finder Localizable.json Zip archive → Zip-архив",
+    "accept": ["архив", "zip"]
+  },
+  "applications-folder": {
+    "chosen": "Программы",
+    "confidence": "high",
+    "sources": "Finder MenuBar.json 258.title: Программы",
+    "accept": ["Программ"]
+  },
+  "desktop": {
+    "chosen": "Рабочий стол",
+    "confidence": "high",
+    "sources": "Finder MenuBar.json 254.title: Рабочий стол",
+    "accept": ["Рабочего стола", "Рабочем столе", "Рабочий стол"]
+  },
+  "column": {
+    "chosen": "Колонка",
+    "confidence": "high",
+    "sources": "Finder MenuBar.json 231.title: Колонки",
+    "accept": ["колон", "столб"]
+  },
+  "tab": {
+    "chosen": "Вкладка",
+    "confidence": "high",
+    "sources": "Finder Localizable.json: Open folders in tabs instead of new windows → Открывать папки во вкладках, а не в новых окнах",
+    "accept": ["вклад"]
+  },
+  "pane": {
+    "chosen": "Панель",
+    "confidence": "tentative",
+    "sources": "Two-pane concept absent from extracted Finder pile; existing Russian catalog usage, pending orthodox file-manager reference",
+    "accept": ["панел"]
+  },
+  "ask-cmdr": {
+    "chosen": "Спросить Cmdr",
+    "confidence": "tentative",
+    "sources": "Product feature name translated descriptively; absent from external reference pile",
+    "accept": ["Спросить Cmdr"]
+  },
+  "cloud-ai": {
+    "chosen": "Облачный ИИ",
+    "confidence": "tentative",
+    "sources": "Technical concept absent from extracted Finder pile; pending native review",
+    "accept": ["облачн"]
+  }
+}

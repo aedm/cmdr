@@ -73,3 +73,14 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   checklist with the whole-run line, so locales can judge length and the spinner context. (all)
 - `indexing.overall.eta`: `{eta}` can be "Almost done", which arrives capitalized after the colon; several locales then
   read "Total: Almost done". Say in the description whether the inserted phrase is sentence-initial or not. (de, hu, vi)
+
+- `downloads.fda.message`: the description requires keeping Full Disk Access in English. Instead require the localized
+  macOS permission label, as other FDA keys do.
+- Plural instruction proposal: CLDR `one` does not mean exactly one. Audit counts such as 21/101; use `=1` for one-only
+  wording and keep the displayed count in the ordinary `one` branch.
+
+&nbsp;
+
+---
+
+_02.10.2026_

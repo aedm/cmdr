@@ -1,0 +1,26 @@
+{
+  "common.attachEmail": "Приложить мой адрес электронной почты ({emailAddress} – <change>изменить</change>), чтобы со мной можно было связаться",
+  "@common.attachEmail": {
+    "sourceHash": "6ce573e"
+  },
+  "common.attachEmailInputLabel": "Ваш адрес электронной почты",
+  "@common.attachEmailInputLabel": {
+    "sourceHash": "3fa7c5e"
+  },
+  "common.attachEmailInvalid": "Это не похоже на адрес электронной почты",
+  "@common.attachEmailInvalid": {
+    "sourceHash": "0e55e59"
+  },
+  "common.attachEmailPlaceholder": "вы@example.com",
+  "@common.attachEmailPlaceholder": {
+    "sourceHash": "53e6cdc"
+  },
+  "common.attachEmailPrompt": "Приложить мой адрес электронной почты, чтобы со мной можно было связаться",
+  "@common.attachEmailPrompt": {
+    "sourceHash": "703760b"
+  },
+  "common.downloadsFdaHint": "Cmdr нужен полный доступ к диску для наблюдения за папкой «Загрузки». <settingsLink>Открыть Системные настройки</settingsLink>",
+  "@common.downloadsFdaHint": {
+    "sourceHash": "315e1d8"
+  }
+}
