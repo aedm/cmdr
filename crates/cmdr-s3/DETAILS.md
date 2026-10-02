@@ -36,6 +36,13 @@ switcher row each key on a place.
 silence probe), and probes. On success it records the PII-free `s3_connected` with one property, `provider`
 (`S3Provider::kind_name`).
 
+**Decision: the crate declares reqwest's `http2` itself** (`Cargo.toml`), though the app gets it anyway through `genai`.
+**Why**: features unify only across what's built together, so `cmdr-s3` alone (its tests, the live suite) spoke HTTP/1.1
+while the app negotiated HTTP/2, and GCS reset every app request over a header only HTTP/2 refuses, invisible to the
+live suite. `transport_test.rs::the_client_is_built_with_http2` fails to compile without the feature;
+`live_connect_test.rs::live_connect_speaks_http2_where_offered` pins each provider's negotiated version. The app's other
+unified reqwest features (`gzip`, `charset`, `system-proxy`, from `genai`) still reach only the app build.
+
 **The probe is `ListBuckets` first, then `HeadBucket` for a bucket place.** `ListBuckets` goes first even for a bucket
 because its error BODY is the only thing that can tell a wrong secret from a key without rights; a HEAD has no body. The
 table (`refusal.rs`, one cell per row in `refusal_test.rs`):
@@ -313,15 +320,18 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
 - **Two gotchas the fixtures hid**: GCS answers `411` to a bodyless POST (`CreateMultipartUpload`), and R2, Hetzner, and
   GCS to a zero-byte PUT (a folder marker), when it carries no `Content-Length`; hyper sends none for an empty body, so
   `S3Client::send` adds `content-length: 0` (`transport_test.rs`).
+- **HTTP versions**: Hetzner, GCS, and Spaces negotiate HTTP/2; R2, AWS, B2, and Wasabi offer HTTP/1.1 only (verified
+  with `live_connect_speaks_http2_where_offered` and `curl --http2`, 2026-10-02). Every cell passes over HTTP/2 on the
+  three that offer it.
 - **R2**: `If-None-Match` enforced on Put and Complete, ignored on Copy, `cf-copy-destination-if-none-match` enforced;
   ❗ a last part LARGER than the rest is `InvalidPart` (equal parts and a smaller last part land), hence
   `ShortTail::Keep`; `UploadPartCopy` takes a 1 MiB source as the last part and enforces `x-amz-copy-source-if-match`;
   an NFD key reads back through its NFC twin and one PUT replaces the other. With a bucket-scoped key: `ListBuckets` is
   `AccessDenied` (so the account root is `BucketListRefused`, wrong secret or not), a missing bucket is a 403 (connect
-  says `AccessDenied`, never `NoSuchBucket`). `ListMultipartUploads` under a prefix lists an unfinished upload there
-  (a SIGKILLed child's, in every `live_hostile_crash_recovery` run, 2026-10-02), so an abort's confirming listing is a
-  real confirmation on R2 too; a second abort of an aborted upload answers a success, so only a listing or a refused
-  part proves it gone. R2's default lifecycle rule aborts unfinished uploads after seven days.
+  says `AccessDenied`, never `NoSuchBucket`). `ListMultipartUploads` under a prefix lists an unfinished upload there (a
+  SIGKILLed child's, in every `live_hostile_crash_recovery` run, 2026-10-02), so an abort's confirming listing is a real
+  confirmation on R2 too; a second abort of an aborted upload answers a success, so only a listing or a refused part
+  proves it gone. R2's default lifecycle rule aborts unfinished uploads after seven days.
 - **Hetzner**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
   `x-amz-copy-source-if-match`; ❗ `CopyObject` and `UploadPartCopy` work between two buckets of one location (the
   research note's "within one bucket only" didn't hold); the key may `ListBuckets`; NFD and NFC are two objects.
@@ -359,8 +369,8 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
   (`400 InvalidRequest`, B2's catch-all, so the code can't say why). So the profile carries them
   (`ProviderProfile::refused_key_chars`) and every write path (upload, New File, New Folder, a rename's or a server
   copy's destination) answers `VolumeError::InvalidName` before a request goes out (`writes.rs::refuse_unstorable`,
-  `refused_name_test.rs`); GCS's `InvalidObjectName` maps to it too, as a backstop. Every hostile cell's findings (names, sizes, cancels, crashes, races, scale):
-  `docs/notes/s3/live-hostile-2026-10.md`.
+  `refused_name_test.rs`); GCS's `InvalidObjectName` maps to it too, as a backstop. Every hostile cell's findings
+  (names, sizes, cancels, crashes, races, scale): `docs/notes/s3/live-hostile-2026-10.md`.
 - **Unverified, and why**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
 - ❗ **A copy's ETag pin is ignored on Hetzner, Spaces, and Wasabi**, so a source replaced mid-copy could be stitched
   from two versions there; AWS, R2, and B2 refuse the part. Hence `enforces_copy_source_pin` (AWS, R2, B2) and the HEAD
@@ -397,11 +407,11 @@ stays `false`: a request is open while the source drains.
   object ONLY when it carries that token AND is short (`writes.rs::settle_cut_off_put`): anything else there is the
   original or another writer's. ❗ Ours at the full size is the write having LANDED (the server published, then the link
   died before the answer), so the write reports it as written; deleting it there lost the original and the new bytes
-  alike on an overwrite. The same holds for the buffered PUT, and a failed `CompleteMultipartUpload` asks
-  `landed_whole` (one HEAD, never a delete) before calling the write failed (`late_cancel_test.rs`, a fake that commits
-  and then hangs up). That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted
-  to refuse a short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata
-  and harmless to other tools.
+  alike on an overwrite. The same holds for the buffered PUT, and a failed `CompleteMultipartUpload` asks `landed_whole`
+  (one HEAD, never a delete) before calling the write failed (`late_cancel_test.rs`, a fake that commits and then hangs
+  up). That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to refuse a
+  short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata and harmless to
+  other tools.
 - **Multipart** (`multipart_upload.rs`): up to the profile's `upload_concurrency()` (4) parts in flight, and a part is
   read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
   buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server

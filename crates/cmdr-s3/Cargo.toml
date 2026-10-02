@@ -47,10 +47,13 @@ log = "0.4"
 # The `Volume` trait, every type it exchanges, the host seams this backend asks
 # the app through, and the HTTP silence watch it shares with `cmdr-webdav`.
 cmdr-fs = { path = "../cmdr-fs" }
-# The HTTP transport, confined to `transport.rs`. ❗ EXACTLY `cmdr-webdav`'s
-# feature set, itself a subset of the app's, so no second reqwest
-# configuration enters the graph.
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream"] }
+# The HTTP transport, confined to `transport.rs`. A subset of the app's
+# features, so no second reqwest configuration enters the graph. ❗ `http2` is
+# declared here although the app gets it anyway (through `genai`): without it
+# this crate's own tests, the live suite included, speak HTTP/1.1 while the app
+# negotiates HTTP/2, and GCS once reset every app request over a header only
+# HTTP/2 refuses. `transport_test.rs` pins it.
+reqwest = { version = "0.13", default-features = false, features = ["http2", "rustls", "stream"] }
 # A HEAD's `Last-Modified` (RFC 1123), the version `cmdr-webdav` resolves.
 httpdate = "1"
 # The price table (`cost/prices.rs`): the JSON `apps/api-server` serves and the

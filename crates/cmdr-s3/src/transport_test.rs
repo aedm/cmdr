@@ -75,3 +75,12 @@ async fn an_empty_put_body_says_its_length_is_zero() {
     .await;
     assert!(head.contains("\r\ncontent-length: 0\r\n"), "{head}");
 }
+
+/// ❗ This crate builds reqwest with `http2` itself, so its own tests and the
+/// live suite negotiate HTTP/2 the way the app does (the app gets the feature
+/// through `genai` anyway). `http2_prior_knowledge` exists only with the
+/// feature, so dropping it from `Cargo.toml` fails this file to compile.
+#[test]
+fn the_client_is_built_with_http2() {
+    assert!(reqwest::Client::builder().http2_prior_knowledge().build().is_ok());
+}

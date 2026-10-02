@@ -144,6 +144,10 @@ pub(crate) struct S3Client {
     /// what a write path sent with its `cost::Workload`.
     #[cfg(any(test, feature = "testing"))]
     sent: std::sync::Mutex<std::collections::BTreeMap<&'static str, u64>>,
+    /// The HTTP version the last answer came back over, for a live cell
+    /// proving the crate negotiates what the app does (HTTP/2 where offered).
+    #[cfg(test)]
+    negotiated: std::sync::Mutex<Option<http::Version>>,
 }
 
 impl S3Client {
@@ -197,6 +201,8 @@ impl S3Client {
             regions: None,
             #[cfg(any(test, feature = "testing"))]
             sent: std::sync::Mutex::default(),
+            #[cfg(test)]
+            negotiated: std::sync::Mutex::default(),
         })
     }
 
@@ -313,6 +319,29 @@ impl S3Client {
         let _ = request;
     }
 
+    /// Records the HTTP version an answer came over. A no-op outside tests.
+    #[cfg_attr(not(test), allow(clippy::unused_self, reason = "only tests read what's recorded"))]
+    fn note_version(&self, version: http::Version) {
+        #[cfg(test)]
+        {
+            *self
+                .negotiated
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(version);
+        }
+        #[cfg(not(test))]
+        let _ = version;
+    }
+
+    /// The HTTP version the last answer came back over.
+    #[cfg(test)]
+    pub(crate) fn negotiated(&self) -> Option<http::Version> {
+        *self
+            .negotiated
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     /// Every request signed so far, by S3 operation (`ListObjectsV2`,
     /// `PutObject`, ...), and starts counting again from zero.
     #[cfg(any(test, feature = "testing"))]
@@ -393,6 +422,7 @@ impl S3Client {
         }
         let mut response = builder.send().await?;
         self.liveness.heard();
+        self.note_version(response.version());
         let status = response.status();
         let headers = response.headers().clone();
         let mut body = Vec::new();
@@ -441,6 +471,7 @@ impl S3Client {
             .send()
             .await?;
         self.liveness.heard();
+        self.note_version(response.version());
         let status = response.status();
         let headers = response.headers().clone();
         let mut answer = Vec::new();
@@ -513,6 +544,7 @@ impl S3Client {
             Err(_elapsed) => return Err(VolumeError::ConnectionTimeout(path.to_string())),
         };
         self.liveness.heard();
+        self.note_version(response.version());
         Ok(Opened {
             status: response.status(),
             headers: response.headers().clone(),

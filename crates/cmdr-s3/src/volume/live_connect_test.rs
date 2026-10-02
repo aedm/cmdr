@@ -207,6 +207,36 @@ async fn live_connect_account_root_through_another_region() {
     }
 }
 
+/// ❗ The crate negotiates what the app ships (`Cargo.toml` declares reqwest's
+/// `http2`): HTTP/2 wherever a provider offers it, so this suite meets what
+/// the app's requests meet. Hetzner, GCS, and Spaces offer it; R2, AWS, B2,
+/// and Wasabi answer over HTTP/1.1 only (verified with this cell and
+/// `curl --http2`, 2026-10-02). A change either way fails here, on purpose.
+#[tokio::test(flavor = "multi_thread")]
+async fn live_connect_speaks_http2_where_offered() {
+    for live in live_targets() {
+        let client = live.client();
+        let request = crate::ops::head_bucket(client.profile(), &live.bucket).expect("builds");
+        let answer = live.send(&client, request).await;
+        let version = client.negotiated();
+        report(
+            &live,
+            "HTTP version negotiated",
+            format!("{version:?} (HeadBucket {})", answer.status.as_u16()),
+        );
+        let offers_http2 = matches!(
+            live.provider,
+            S3Provider::Hetzner { .. } | S3Provider::Gcs | S3Provider::DigitalOcean { .. }
+        );
+        let expected = if offers_http2 {
+            http::Version::HTTP_2
+        } else {
+            http::Version::HTTP_11
+        };
+        assert_eq!(version, Some(expected), "[{}]", live.name);
+    }
+}
+
 /// A copy's progress hook that never pauses or cancels.
 struct Silent;
 
