@@ -11,8 +11,8 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 - `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport.rs` (`S3Client`, the only `reqwest`
   user), `routing.rs` (an AWS account root's per-bucket regions).
 - `volume/`: a file per job: `mod.rs` (connect), `query.rs` + `listing.rs`, `streams.rs` (GET), `writes.rs` (PUT),
-  `temp_overwrite.rs`, `multipart_upload.rs` (+ the sweep), `server_copy.rs`, `batch.rs`, `mutation.rs`, `paths.rs`,
-  `state.rs` + `reconnect.rs`; `testing.rs` (fixtures) and `live_*` (real accounts).
+  `multipart_upload.rs` (+ the sweep), `server_copy.rs`, `batch.rs`, `mutation.rs`, `paths.rs`, `state.rs` +
+  `reconnect.rs`; `testing.rs` (fixtures) and `live_*` (real accounts).
 - `cost/`: the price table (`s3-prices.json`, byte-identical to `apps/api-server`'s), `Workload` (requests counted the
   way the write paths send them), `Estimate`. ❗ A write path that sends a request more or less updates its `Workload`
   method too.
@@ -40,8 +40,8 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   never `RemoteRoot` directly, or the folder row reaches the file.
 - ❗ **`delete` is one node** (`ENOTEMPTY` while keys sit under a folder). **`rename` moves one small file**; a folder
   or an object past the part floor is `RenameWork::CopyThenDelete`, which callers send through the engine.
-- ❗ **An overwrite of an existing object off the `refuses_short_body` allowlist goes through a temp key**: VersityGW
-  publishes a cut-off PUT, which would lose the original.
+- ❗ **An overwrite of an existing object off the `refuses_short_body` allowlist goes as a multipart upload**, even one
+  part: VersityGW publishes a cut-off PUT, which would lose the original.
 - ❗ **Server-side copy stays within one account**, matched on the concrete `S3Volume`, ❌ never a path. GCS has no
   `UploadPartCopy`: one `CopyObject` there.
 - ❗ **No checksum headers; equal-size parts** (R2); a short tail follows the provider's `ShortTail`. Streamed bodies

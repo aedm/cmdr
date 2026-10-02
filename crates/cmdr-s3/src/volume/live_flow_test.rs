@@ -256,6 +256,93 @@ async fn live_volume_flows_end_to_end() {
 
 /// Uploads at two, four, and eight parts in flight, and server-side copies at
 /// four, eight, and 16, timed, each deleted right after.
+/// ❗ Off the short-body allowlist ("Other"), an overwrite goes as a one-part
+/// multipart upload: a Cancel at its last moment (right before the
+/// completion) keeps the original byte for byte and leaves no upload, and a
+/// finished one lands whole.
+#[tokio::test(flavor = "multi_thread")]
+async fn live_an_overwrite_off_the_allowlist_goes_in_one_part() {
+    for live in live_targets().iter().filter_map(Live::as_other) {
+        let client = live.client();
+        let prefix = live_prefix("overwrite-in-parts");
+        let volume = live
+            .connect(Some(&live.bucket))
+            .await
+            .unwrap_or_else(|e| panic!("[{}] the bucket didn't connect: {e:?}", live.name));
+        let key = format!("{prefix}kept.txt");
+        let path = at(&volume, &key);
+        let original = b"the original, which must survive".to_vec();
+        write(&volume, &path, WriteMode::CreateNew, original.clone())
+            .await
+            .unwrap_or_else(|e| panic!("[{}] seeding the original: {e:?}", live.name));
+
+        let fresh = pattern(3 * 1024 * 1024 + 7, b'o');
+        let total = fresh.len() as u64;
+        let source = BytesSource::new(fresh.clone());
+        let length = cmdr_fs::volume::VolumeReadStream::total_size(&source);
+        let cancelled = volume
+            .write_from_stream(
+                &path,
+                WriteMode::CreateOrReplace,
+                length,
+                Box::new(source),
+                &|progress| {
+                    if progress.bytes_written >= total {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                },
+            )
+            .await;
+        let back = read_back(&volume, &path).await;
+        let uploads = live.uploads_under(&client, &prefix).await;
+        report(
+            &live,
+            "an overwrite cancelled right before its completion",
+            format!(
+                "{cancelled:?}, original intact: {}, uploads left: {uploads:?}",
+                back == original
+            ),
+        );
+        assert!(
+            matches!(cancelled, Err(VolumeError::Cancelled(_))),
+            "[{}] {cancelled:?}",
+            live.name
+        );
+        assert_eq!(back, original, "[{}] the original must survive", live.name);
+        assert_eq!(uploads, Ok(Vec::new()), "[{}]", live.name);
+
+        breathe().await;
+        let replaced = write(&volume, &path, WriteMode::CreateOrReplace, fresh.clone()).await;
+        let etag = live
+            .head(&client, &key)
+            .await
+            .header("etag")
+            .unwrap_or_default()
+            .to_string();
+        let back = read_back(&volume, &path).await;
+        report(
+            &live,
+            "a finished overwrite",
+            format!("{replaced:?}, ETag {etag}, reads back intact: {}", back == fresh),
+        );
+        assert!(back == fresh, "[{}] the overwrite must land whole", live.name);
+        assert!(
+            etag.trim_matches('"').ends_with("-1"),
+            "[{}] one part: {etag}",
+            live.name
+        );
+        assert_eq!(
+            live.uploads_under(&client, &prefix).await,
+            Ok(Vec::new()),
+            "[{}]",
+            live.name
+        );
+        live.clean(&client, &prefix).await;
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn live_throughput_by_part_width() {
     for live in live_targets() {

@@ -137,6 +137,28 @@ pub(super) fn verdict(answer: &Answer) -> String {
 }
 
 impl Live {
+    /// The same account reached through the "Other" preset, which is off
+    /// every allowlist: what a user who picks "Other" for a known provider
+    /// gets. Hetzner only, whose endpoint is a plain host.
+    pub(super) fn as_other(&self) -> Option<Self> {
+        let S3Provider::Hetzner { location } = &self.provider else {
+            return None;
+        };
+        let endpoint = url::Url::parse(&format!("https://{location}.your-objectstorage.com")).ok()?;
+        Some(Self {
+            name: "hetzner-as-other",
+            provider: S3Provider::Other {
+                endpoint,
+                region: Some(location.clone()),
+                path_style: true,
+            },
+            key_id: self.key_id.clone(),
+            secret: self.secret.clone(),
+            bucket: self.bucket.clone(),
+            bucket_2: None,
+        })
+    }
+
     pub(super) fn params(&self, bucket: Option<&str>) -> S3ConnectionParams {
         S3ConnectionParams::new(self.provider.clone(), &self.key_id, bucket).expect("a live provider is valid")
     }

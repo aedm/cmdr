@@ -240,33 +240,6 @@ pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
     }
 }
 
-/// Puts `bytes` at `key` carrying `token` as its `x-amz-meta-cmdr-write`, the
-/// way an overwrite's temp a crash left behind looks.
-pub async fn seed_with_token(service: FixtureService, bucket: &str, key: &str, bytes: &[u8], token: &str) {
-    let client = seeding_client(service);
-    let metadata = ObjectMetadata {
-        mtime: None,
-        write_token: Some(token.to_string()),
-        carried: Vec::new(),
-    };
-    let built = ops::put_object(
-        client.profile(),
-        bucket,
-        key,
-        bytes.len() as u64,
-        Overwrite::Replace,
-        &metadata,
-    )
-    .unwrap_or_else(|e| panic!("building a PUT for {key:?}: {e:?}"));
-    let mut request = built.request;
-    request.body = Body::Bytes(bytes.to_vec());
-    let answer = client
-        .exchange(request, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("seeding {key:?}: {e}"));
-    assert!(answer.status.is_success(), "seeding {key:?} answered {}", answer.status);
-}
-
 /// Puts `bytes()` at `key` unless an object of that exact length is already
 /// there, for a big object that would otherwise pile up on the fixture's disk
 /// once per run. ❗ The key is fixed and shared across runs, so treat it as

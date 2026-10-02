@@ -28,10 +28,10 @@ pub struct Workload {
     /// Whether a big server-side copy goes in `UploadPartCopy` parts; GCS
     /// has none, so it's one `CopyObject` there.
     pub(crate) copies_in_parts: bool,
-    /// Whether a one-PUT overwrite of an existing object lands through a temp
-    /// key, because the provider is off the `refuses_short_body` allowlist
-    /// (`volume/temp_overwrite.rs`).
-    pub(crate) overwrites_through_temp: bool,
+    /// Whether a one-PUT overwrite of an existing object goes as a multipart
+    /// upload, because the provider is off the `refuses_short_body` allowlist
+    /// (`volume/writes.rs`).
+    pub(crate) overwrites_in_parts: bool,
     pub(crate) requests: HashMap<RequestKind, u64>,
     /// Objects deleted, batched into `DeleteObjects` at estimate time.
     pub(crate) deleted_objects: u64,
@@ -63,8 +63,8 @@ impl Workload {
             checks: Checks::of(provider),
             short_tail: profile.as_ref().map_or(ShortTail::Fold, |profile| profile.short_tail),
             copies_in_parts: profile.as_ref().is_ok_and(|profile| profile.copies_in_parts),
-            // A profile that won't build is the temp-key side, the safe one.
-            overwrites_through_temp: !profile.as_ref().is_ok_and(|profile| profile.refuses_short_body),
+            // A profile that won't build is the multipart side, the safe one.
+            overwrites_in_parts: !profile.as_ref().is_ok_and(|profile| profile.refuses_short_body),
             requests: HashMap::new(),
             deleted_objects: 0,
             egress_bytes: 0,
@@ -147,22 +147,26 @@ impl Workload {
         }
     }
 
-    /// What an [`upload`](Self::upload) of `size` adds when it lands on an
+    /// What an [`upload`](Self::upload) of `size` changes when it lands on an
     /// EXISTING key. Off the `refuses_short_body` allowlist a one-PUT
-    /// overwrite goes through a temp key (`volume/temp_overwrite.rs`): a HEAD
-    /// finding the original, the temp's HEAD, a `CopyObject` onto the final key
-    /// and its verifying HEAD, then a HEAD of the temp's token and its delete.
-    /// The temp goes brand new, so a minimum storage duration bills its whole
-    /// term. A multipart upload goes straight to the key (only its completion
-    /// publishes), and adds nothing.
+    /// overwrite goes as a one-part multipart upload (`volume/writes.rs`'s
+    /// `overwrites_in_parts`): a HEAD finding the original, then Create, one
+    /// part, and Complete in place of the PUT. An empty file stays one PUT, and
+    /// an upload already in parts changes nothing.
     pub fn upload_over(&mut self, size: u64) {
-        if !self.overwrites_through_temp || !fits_one_put(size) {
+        if !self.overwrites_in_parts || size == 0 || !fits_one_put(size) {
             return;
         }
-        self.add(RequestKind::HeadObject, 4);
-        self.add(RequestKind::CopyObject, 1);
-        self.add(RequestKind::DeleteObject, 1);
-        self.dated_deletions.push((size, 0));
+        if let Some(puts) = self.requests.get_mut(&RequestKind::PutObject) {
+            *puts = puts.saturating_sub(1);
+            if *puts == 0 {
+                self.requests.remove(&RequestKind::PutObject);
+            }
+        }
+        self.add(RequestKind::HeadObject, 1);
+        self.add(RequestKind::CreateMultipartUpload, 1);
+        self.add(RequestKind::UploadPart, 1);
+        self.add(RequestKind::CompleteMultipartUpload, 1);
     }
 
     /// One folder removed once it's empty (`volume/mutation.rs`): a listing

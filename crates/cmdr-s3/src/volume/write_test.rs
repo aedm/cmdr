@@ -18,7 +18,7 @@ use cmdr_fs::volume::{DirectoryCreation, StreamLength, Volume, VolumeError, Volu
 
 use super::S3Volume;
 use super::testing::*;
-use super::upload_ledger::{TempObject, UnfinishedUpload, UploadLedger};
+use super::upload_ledger::{UnfinishedUpload, UploadLedger};
 use crate::metadata::format_mtime;
 
 const MIB: usize = 1024 * 1024;
@@ -201,9 +201,9 @@ async fn a_cancelled_single_put_publishes_nothing(service: FixtureService) {
 
 /// ❗ An overwrite of an existing object that's cancelled mid-body keeps the
 /// ORIGINAL. VersityGW publishes a PUT cut off mid-body (fixture README), so
-/// on a provider not trusted to refuse a short body the write goes to a temp
-/// key first and only a verified copy replaces the original. Nothing of the
-/// temp stays behind, and no record of it stays in the ledger.
+/// on a provider not trusted to refuse a short body the write goes as a
+/// multipart upload, which publishes nothing until its completion. Nothing of
+/// it stays behind: no upload on the server, no record in the ledger.
 async fn a_cancelled_overwrite_keeps_the_original(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
     let prefix = scratch_prefix("write-cancel-overwrite");
@@ -211,6 +211,8 @@ async fn a_cancelled_overwrite_keeps_the_original(service: FixtureService) {
     let original = b"the original, which must survive".to_vec();
     seed(service, FIXTURE_BUCKET, &[object(&key, &original)]).await;
     let path = volume.root().join(&key);
+    // Two MiB of three, then the source stalls: the cancel lands while the
+    // one part is still filling, and must not wait for the source.
     let source = StallingSource {
         pieces: vec![
             self_describing_bytes(MIB, "first"),
@@ -226,8 +228,8 @@ async fn a_cancelled_overwrite_keeps_the_original(service: FixtureService) {
             WriteMode::CreateOrReplace,
             source.total_size(),
             Box::new(source),
-            &|progress| {
-                if progress.bytes_written >= MIB as u64 && asked.fetch_add(1, Ordering::Relaxed) >= 2 {
+            &|_| {
+                if asked.fetch_add(1, Ordering::Relaxed) >= 4 {
                     ControlFlow::Break(())
                 } else {
                     ControlFlow::Continue(())
@@ -249,18 +251,37 @@ async fn a_cancelled_overwrite_keeps_the_original(service: FixtureService) {
         .into_iter()
         .map(|entry| entry.name)
         .collect();
-    assert_eq!(names, vec!["kept.txt".to_string()], "no temp stays beside it");
-    assert!(volume.inner.ledger.temp_leftovers(&volume.inner.account()).is_empty());
+    assert_eq!(names, vec!["kept.txt".to_string()], "nothing stays beside it");
+    assert!(
+        unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty(),
+        "the cancelled upload must be aborted on the server"
+    );
+    assert!(
+        volume
+            .inner
+            .ledger
+            .open_under(&volume.inner.account(), &prefix)
+            .is_empty()
+    );
 }
 
 /// An overwrite that finishes lands the new bytes and the source's date at
-/// the name, with no temp left beside it, on both fixtures.
-async fn a_finished_overwrite_through_a_temp_lands_whole(service: FixtureService) {
+/// the name as ONE multipart upload, even for a small file, with nothing left
+/// beside it or unfinished, on both fixtures. A stream of unknown length that
+/// ends inside its first part goes the same way.
+async fn a_finished_overwrite_lands_whole_as_one_upload(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
-    let prefix = scratch_prefix("write-overwrite-temp");
+    let prefix = scratch_prefix("write-overwrite-upload");
     let key = key_of(&prefix, "replaced.bin");
-    seed(service, FIXTURE_BUCKET, &[object(&key, b"old bytes")]).await;
+    let open_key = key_of(&prefix, "open.bin");
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&key, b"old bytes"), object(&open_key, b"old, too")],
+    )
+    .await;
     let path = volume.root().join(&key);
+    let open_path = volume.root().join(&open_key);
     let fresh = self_describing_bytes(2 * MIB + 9, "fresh");
     let mtime = SystemTime::UNIX_EPOCH + Duration::new(1_354_040_105, 5);
 
@@ -272,15 +293,39 @@ async fn a_finished_overwrite_through_a_temp_lands_whole(service: FixtureService
     )
     .await
     .expect("an overwrite lands");
+    write(
+        &volume,
+        &open_path,
+        WriteMode::CreateOrReplace,
+        BytesSource::new(b"short, of unknown length".to_vec()).of_unknown_length(),
+    )
+    .await
+    .expect("an overwrite of unknown length lands");
+
     assert!(read_back(&volume, &path).await == fresh);
+    assert_eq!(read_back(&volume, &open_path).await, b"short, of unknown length");
     assert_eq!(
         stored_mtime_header(service, FIXTURE_BUCKET, &key).await,
         Some(format_mtime(mtime))
     );
+    for key in [&key, &open_key] {
+        let etag = stored_etag(service, FIXTURE_BUCKET, key).await.unwrap_or_default();
+        assert!(
+            etag.trim_matches('"').ends_with("-1"),
+            "{key} must land as a one-part multipart upload, got the ETag {etag}"
+        );
+    }
     let folder = volume.root().join(prefix.trim_end_matches('/'));
     let listed = volume.list_directory(&folder, None).await.expect("the folder lists");
-    assert_eq!(listed.len(), 1, "no temp stays beside it: {listed:?}");
-    assert!(volume.inner.ledger.temp_leftovers(&volume.inner.account()).is_empty());
+    assert_eq!(listed.len(), 2, "nothing stays beside them: {listed:?}");
+    assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
+    assert!(
+        volume
+            .inner
+            .ledger
+            .open_under(&volume.inner.account(), &prefix)
+            .is_empty()
+    );
 }
 
 /// ❗ A cancel aborts the multipart upload: no parts stay behind on the server
@@ -507,42 +552,6 @@ async fn the_sweep_aborts_only_recorded_uploads(service: FixtureService) {
     abort_foreign_upload(service, FIXTURE_BUCKET, &theirs_key, &theirs_id).await;
 }
 
-/// ❗ An overwrite's temp a crash left behind goes at the next sweep, by its
-/// token only: an object at a recorded key that carries another token (or
-/// none) is somebody's file, and stays.
-async fn the_sweep_removes_a_crashed_overwrites_temp_by_its_token(service: FixtureService) {
-    let state = TestDir::new("s3_ledger_temp_sweep");
-    let volume = connect_fixture_with_host(service, Some(FIXTURE_BUCKET), fixture_host_with_state(&state)).await;
-    let prefix = scratch_prefix("write-temp-sweep");
-    let ours_key = key_of(&prefix, "a.txt.cmdr-tmp-1");
-    let theirs_key = key_of(&prefix, "b.txt.cmdr-tmp-2");
-    seed_with_token(service, FIXTURE_BUCKET, &ours_key, b"truncated", "tok-ours").await;
-    seed_with_token(service, FIXTURE_BUCKET, &theirs_key, b"someone's", "tok-theirs").await;
-    let ledger = UploadLedger::at(Some(state.join("s3")));
-    for (key, token) in [(&ours_key, "tok-ours"), (&theirs_key, "tok-recorded")] {
-        let record = TempObject {
-            account: volume.inner.account(),
-            bucket: FIXTURE_BUCKET.to_string(),
-            key: key.clone(),
-            token: token.to_string(),
-        };
-        ledger.temp_started(&record);
-        ledger.temp_abandoned(&record);
-    }
-
-    volume.sweep_unfinished_uploads().await;
-
-    assert!(
-        !volume.exists(&volume.root().join(&ours_key)).await,
-        "our temp is removed"
-    );
-    assert!(
-        read_back(&volume, &volume.root().join(&theirs_key)).await == b"someone's",
-        "an object carrying another token stays"
-    );
-    assert!(ledger.temp_leftovers(&volume.inner.account()).is_empty());
-}
-
 async fn folders_are_markers_and_prefixes(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
     let prefix = scratch_prefix("write-folders");
@@ -693,17 +702,14 @@ on_both_fixtures! {
            a_cancelled_single_put_publishes_nothing_on_garage;
     a_cancelled_overwrite_keeps_the_original
         => a_cancelled_overwrite_keeps_the_original_on_versitygw, a_cancelled_overwrite_keeps_the_original_on_garage;
-    a_finished_overwrite_through_a_temp_lands_whole
-        => a_finished_overwrite_through_a_temp_lands_whole_on_versitygw,
-           a_finished_overwrite_through_a_temp_lands_whole_on_garage;
+    a_finished_overwrite_lands_whole_as_one_upload
+        => a_finished_overwrite_lands_whole_as_one_upload_on_versitygw,
+           a_finished_overwrite_lands_whole_as_one_upload_on_garage;
     create_new_checks_then_writes_and_catches_a_writer_mid_upload
         => create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_versitygw,
            create_new_checks_then_writes_and_catches_a_writer_mid_upload_on_garage;
     a_replace_writes_over_the_object_in_place
         => a_replace_writes_over_the_object_in_place_on_versitygw, a_replace_writes_over_the_object_in_place_on_garage;
-    the_sweep_removes_a_crashed_overwrites_temp_by_its_token
-        => the_sweep_removes_a_crashed_overwrites_temp_by_its_token_on_versitygw,
-           the_sweep_removes_a_crashed_overwrites_temp_by_its_token_on_garage;
     the_sweep_aborts_only_recorded_uploads
         => the_sweep_aborts_only_recorded_uploads_on_versitygw, the_sweep_aborts_only_recorded_uploads_on_garage;
     folders_are_markers_and_prefixes

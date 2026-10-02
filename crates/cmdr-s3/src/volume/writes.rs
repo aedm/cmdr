@@ -24,7 +24,9 @@
 //! (`apps/desktop/test/s3-servers/README.md`). So every PUT carries a token of
 //! its own (`x-amz-meta-cmdr-write`), and a PUT that was cancelled or cut off
 //! removes the object at its key ONLY when that object carries its token
-//! ([`S3Volume::remove_cut_off_put`]).
+//! ([`S3Volume::remove_cut_off_put`]). That covers a write to a free name; an
+//! overwrite of an existing object there never goes as a PUT at all
+//! ([`ShortStream::OnePart`]).
 
 use std::ops::ControlFlow;
 use std::path::Path;
@@ -62,6 +64,17 @@ pub(super) enum UploadShape {
     /// A multipart upload of a stream whose length shows only at its end; a
     /// stream that ends inside the first part goes out as one PUT after all.
     Open,
+}
+
+/// What a write that fits one part does with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ShortStream {
+    /// One PUT: three requests for a small file is waste.
+    OnePut,
+    /// A one-part multipart upload, which publishes nothing until its
+    /// completion: an overwrite on a server that may publish a cut-off PUT.
+    /// An empty stream still goes as one PUT, having nothing to cut short.
+    OnePart,
 }
 
 /// The shape for `length`: one PUT when it fits one part with a short tail
@@ -220,24 +233,55 @@ impl S3Volume {
         };
         debug!(target: "volume", "s3 write {remote} ({shape:?}, {mode:?})");
         // ❗ A PUT this server might publish short must not land on the
-        // original: it goes to a temp key, and a verified copy replaces it.
-        if mode == WriteMode::CreateOrReplace
-            && !matches!(shape, UploadShape::Parts(_))
-            && !client.profile().refuses_short_body
-            && self.head_object(&client, bucket, key, &remote).await?.is_some()
-        {
-            return self
-                .overwrite_through_temp(&client, dest, &target, shape, stream, &progress)
-                .await;
-        }
-        match shape {
-            UploadShape::Single(size) => self.put_streamed(&client, &target, size, stream, &progress).await,
-            UploadShape::Parts(plan) => {
-                self.upload_in_parts(&client, &target, Some(plan), stream, &progress)
+        // original: an overwrite goes as a multipart upload, which publishes
+        // nothing until its completion (`DETAILS.md` § "Overwrites in parts").
+        let short = if self.overwrites_in_parts(&client, &target, shape).await? {
+            ShortStream::OnePart
+        } else {
+            ShortStream::OnePut
+        };
+        match (shape, short) {
+            (UploadShape::Single(size), ShortStream::OnePut) => {
+                self.put_streamed(&client, &target, size, stream, &progress).await
+            }
+            (UploadShape::Single(size), ShortStream::OnePart) => {
+                self.upload_in_parts(&client, &target, Some(PartPlan::whole(size)), short, stream, &progress)
                     .await
             }
-            UploadShape::Open => self.upload_in_parts(&client, &target, None, stream, &progress).await,
+            (UploadShape::Parts(plan), _) => {
+                self.upload_in_parts(&client, &target, Some(plan), short, stream, &progress)
+                    .await
+            }
+            (UploadShape::Open, _) => {
+                self.upload_in_parts(&client, &target, None, short, stream, &progress)
+                    .await
+            }
         }
+    }
+
+    /// Whether a write that would go as one PUT has to go as a multipart
+    /// upload instead: a `CreateOrReplace` over an existing object (one HEAD to
+    /// find out) on a provider not trusted to refuse a short body. VersityGW
+    /// publishes a PUT cut off mid-body, which would replace the original with
+    /// a truncated object. An empty body has nothing to cut short.
+    async fn overwrites_in_parts(
+        &self,
+        client: &S3Client,
+        target: &WriteTarget<'_>,
+        shape: UploadShape,
+    ) -> Result<bool, VolumeError> {
+        let may_go_as_one_put = match shape {
+            UploadShape::Single(size) => size > 0,
+            UploadShape::Open => true,
+            UploadShape::Parts(_) => false,
+        };
+        if target.mode != WriteMode::CreateOrReplace || !may_go_as_one_put || client.profile().refuses_short_body {
+            return Ok(false);
+        }
+        Ok(self
+            .head_object(client, target.bucket, target.key, target.remote)
+            .await?
+            .is_some())
     }
 
     /// One streamed PUT of exactly `size` bytes, with progress and cancel.

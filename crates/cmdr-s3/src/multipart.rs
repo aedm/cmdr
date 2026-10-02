@@ -94,6 +94,17 @@ pub(crate) fn plan_parts_with_floor(total: u64, floor: u64, tail_rule: ShortTail
 }
 
 impl PartPlan {
+    /// `total` bytes as one part, which S3 takes at any size as an upload's
+    /// only part: an overwrite that must not go as a PUT (`volume/writes.rs`).
+    /// `total` stays within a one-PUT shape, far under the 5 GiB part ceiling.
+    pub(crate) fn whole(total: u64) -> Self {
+        Self {
+            part_size: total,
+            part_count: 1,
+            total,
+        }
+    }
+
     /// The inclusive byte range of 1-based `part_number`, the shape
     /// `x-amz-copy-source-range` and a ranged read both take. The last part
     /// runs to the end of the object. Meaningless for an empty upload, which

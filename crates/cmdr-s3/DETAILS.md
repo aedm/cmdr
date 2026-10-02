@@ -265,8 +265,8 @@ stores what arrived (fixture README). Trusted, each on evidence:
   later.
 
 Wasabi and "Other" (VersityGW, MinIO, Garage, anything) are off it, Garage included though it refuses too (fixture
-README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object goes
-through a temp key (§ "Overwrites through a temp key").
+README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object goes as a
+multipart upload (§ "Overwrites in parts").
 
 **Conditional writes are an allowlist, ❌ never a probe.** A server can ignore `If-None-Match: *` and answer 200 while
 overwriting: Garage does on Put, Complete, and Copy, VersityGW on Copy (`apps/desktop/test/s3-servers/README.md`,
@@ -316,6 +316,9 @@ have no account: their entries rest on docs.
   no throttle surfacing as an error (AIMD halvings aren't counted), so 16 stays everyone's copy width. A 64 MiB upload
   at 2 / 4 / 8 parts ran 24 / 26 / 23 MiB/s on R2, 30 / 31 / 31 on Hetzner, 27 / 27 / 21 on Spaces, and 7 / 13 / 18 on
   GCS (far away, so latency-bound); four stays the upload width, since eight 64 MiB buffers is 512 MiB.
+- **Hetzner reached as "Other"** (`live_an_overwrite_off_the_allowlist_goes_in_one_part`, 2026-10-02): an overwrite goes
+  as a one-part multipart upload (ETag `…-1`); one cancelled right before its completion kept the original byte for byte
+  and left no upload.
 - **Unverified, and why**: AWS, B2, and Wasabi (no account), so AWS's region routing still rests on the fake AWS; a
   cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket); B2's short-body entry.
 - ❗ **A copy's ETag pin is ignored on Hetzner and Spaces**, so a source replaced mid-copy could be stitched from two
@@ -348,15 +351,15 @@ stays `false`: a request is open while the source drains.
   its key (again after 150 and 300 ms, since the server stores the body only once it notices the drop) and deletes the
   object ONLY when it carries that token (`writes.rs::remove_cut_off_put`): anything else there is the original or
   another writer's. That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to
-  refuse a short body never writes in place at all (§ "Overwrites through a temp key"). The token is visible as user
-  metadata and harmless to other tools.
+  refuse a short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata and
+  harmless to other tools.
 - **Multipart** (`multipart_upload.rs`): up to the profile's `upload_concurrency()` (4) parts in flight, and a part is
   read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
   buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server
-  fault, or a transport failure. The source is read between pieces with progress and cancel still answered, and ❌ a
-  `next_chunk` is never dropped half-read. A known length is a promise: a part that comes up short, or bytes left after
-  the last part, fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what
-  publishes.
+  fault, or a transport failure. The source is read with progress and cancel still answered after every piece and every
+  200 ms tick while one is pending, so a stalled source can't hold a Cancel; ❌ a `next_chunk` is dropped half-read only
+  when that ends the upload. A known length is a promise: a part that comes up short, or bytes left after the last part,
+  fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what publishes.
 - **Verification**: a HEAD after every write (`verify_landing`, `judge_landing`) compares the size and the ETag with
   what the write answered. It costs one cheap request per file and feeds the pane patch that follows (`take_written`),
   so `notify_mutation` doesn't pay a second one. ETags aren't compared with an MD5 of the bytes: under SSE-KMS and for
@@ -365,26 +368,28 @@ stays `false`: a request is open while the source drains.
   engine's per-file retry runs only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a
   candidate for M8's friendly errors.
 
-## Overwrites through a temp key
+## Overwrites in parts
 
-`temp_overwrite.rs`. Decision (the safer option, David's): on a provider off the `refuses_short_body` allowlist, a
-`CreateOrReplace` write whose key holds an object (one HEAD to find out) never writes in place, because a PUT there
-that's cancelled or cut off publishes the truncated bytes over the original (VersityGW does: the fixture cell
-`write_test.rs::a_cancelled_overwrite_keeps_the_original` failed that way before this path existed).
+`writes.rs::overwrites_in_parts`. Decision (the safer option, David's): on a provider off the `refuses_short_body`
+allowlist, a `CreateOrReplace` write whose key holds an object (one HEAD to find out) never goes as a PUT, because a PUT
+there that's cancelled or cut off publishes the truncated bytes over the original (VersityGW does: the fixture cell
+`write_test.rs::a_cancelled_overwrite_keeps_the_original` failed that way before this path existed). It goes as a
+multipart upload instead, a one-part one for a file that would have been one PUT (`PartPlan::whole`; S3 takes an only
+part of any size), and a stream of unknown length that ends inside its first part does the same
+(`ShortStream::OnePart`).
 
-1. The temp is `<name>.cmdr-tmp-<uuid>` beside the final key (`cmdr_fs::staging::StagingTemp`, hidden from the pane
-   while this write owns it), recorded in the ledger BEFORE its first byte (§ "Unfinished uploads"), and written under
-   `CreateNew` carrying the write's token.
-2. The temp is verified like every write, and a Cancel is honoured right before the next step, which is what publishes.
-3. `copy_key` copies the temp onto the final key on the server (`CopyObject`, or parts past the part floor): a request
-   with no body to cut short, and one that replaces the original in one go. It keeps the temp's metadata, so the
-   source's mtime survives.
-4. The temp is deleted while it carries the token, and its record forgotten once the server confirms it gone.
-
-A crash at any step leaves the original whole and, at worst, the temp, which the next connect's sweep removes by its
-token. Cost: a HEAD, a copy, and a delete per overwrite, only off the allowlist. A write to a FREE name keeps writing
-straight to the key (there's no original to lose; a cut-off one is removed by its token), and so does a multipart upload
-(only its completion publishes). A stream of unknown length takes the temp path too, since it may end up a single PUT.
+- **Why it's safe**: S3 publishes a multipart object only at `CompleteMultipartUpload`, a request with no body to cut
+  short. A cancel or a failure before it aborts the upload (the ledger and the sweep cover a crash, § "Unfinished
+  uploads"), and the original stays whole. The cancel check right before the completion is the last moment a Cancel
+  lands.
+- **An empty file stays one PUT**: it has no body to cut short.
+- **Cost**: the HEAD, plus Create and Complete beside the one part (`Workload::upload_over`). Nothing is written beside
+  the key, so a minimum storage duration bills nothing extra. Decision/Why not a temp key copied over the original: it
+  costs a copy and a delete on every overwrite, and on Wasabi 90 days of the temp's bytes (its minimum storage
+  duration). A write to a FREE name keeps going as one PUT (there's no original to lose; a cut-off one is removed by its
+  token).
+- **Progress** stays at zero while the one part fills from the source, then moves as it goes out. A source that stalls
+  mid-part still answers Cancel every progress tick (`PartReader::fill_with`).
 
 ## No-overwrite writes
 
@@ -415,10 +420,11 @@ S3 keeps an unfinished multipart upload's parts forever, invisible in every list
 abort it on the spot; what an abort can't reach (a crash, a dropped future, a server gone mid-abort) is swept later.
 
 - **The record** (`upload_ledger.rs`): `<state dir>/unfinished-uploads` under `VolumeHost::state_dir("s3")`, one line
-  per event (`+` when `CreateMultipartUpload` answers, `-` once completed or aborted; `T` / `t` for an overwrite's temp
-  object, carrying its write token in place of an upload id), every field percent-encoded, rewritten to the open records
-  whenever a sweep reads it. A process-wide registry marks uploads running in THIS process, and a guard marks a dropped
-  upload abandoned. Without a state directory (a test host) the record lives for the session.
+  per event (`+` when `CreateMultipartUpload` answers, `-` once completed or aborted), every field percent-encoded,
+  rewritten to the open records whenever a sweep reads it. A process-wide registry marks uploads running in THIS
+  process, and a guard marks a dropped upload abandoned. Without a state directory (a test host) the record lives for
+  the session. ❗ Being process-wide, a fixture cell asks it only about its own scratch prefix (`open_under`), or
+  another cell's open record of the same account fails it.
 - **Decision/Why not the operation log**: the operation log is the durable journal of what happened to the USER's files,
   for undo and search, and its rows are paths a rollback can act on. An unfinished upload is protocol state that only
   this crate can act on (`AbortMultipartUpload`), keyed by an account and an upload ID; putting it there would mean a
@@ -431,9 +437,7 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
 - **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an
-  upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live. The
-  same sweep removes a temp object a crash left (`remove_temp`): only while the object at its key carries the recorded
-  token, ❌ never anything else there.
+  upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live.
 
 ## Folders, delete, and rename
 
@@ -489,8 +493,6 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 - **The date survives**: a source with its own `x-amz-meta-mtime` is copied with `COPY` (every header kept); one without
   is restated (`REPLACE`) with its `Last-Modified` as the mtime, its content headers, and its other user metadata (both
   fixtures honour `REPLACE`, `copy_test.rs`). A multipart copy names the same metadata at its creation.
-
-## No-overwrite writes
 
 ## Responses
 
@@ -593,8 +595,8 @@ request: the inputs are the scan the dialog already ran.
   provider off the conditional-write list (everyone but AWS and R2) adds a no-overwrite HEAD (two for parts). Deletes
   batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. An overwrite is
   `replace_object` (the replaced object's remaining days, with no request of its own) plus, for an upload,
-  `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite lands through a temp key (four HEADs, a
-  `CopyObject`, a delete), and the temp goes brand new, so Wasabi bills its full 90 days. The counts are close, not
-  exact: a retried part or a page past 1,000 keys add a few.
+  `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite goes as a one-part multipart upload (a HEAD
+  finding the original, then Create, a part, and Complete in place of the PUT; § "Overwrites in parts"). The counts are
+  close, not exact: a retried part or a page past 1,000 keys add a few.
 - **Gigabytes are binary** (AWS's GB is 2^30; Wasabi's FAQ divides a TB by 1,024).
 - **"Other" has no prices**, so no estimate. AWS prices are US East's; other regions differ by a little.

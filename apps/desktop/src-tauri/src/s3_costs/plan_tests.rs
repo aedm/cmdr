@@ -206,10 +206,11 @@ fn clash(source_size: u64, dest_size: u64, source_modified: Option<u64>, dest_mo
 }
 
 /// An upload onto Wasabi that overwrites a young object: the replaced object's
-/// remaining days, plus the temp key's whole 90 days (Wasabi is off the
-/// short-body allowlist, so a one-PUT overwrite lands through a temp key).
+/// remaining days, and nothing more (Wasabi is off the short-body allowlist,
+/// so a one-PUT overwrite goes as a one-part multipart upload, which writes
+/// nothing beside it to bill).
 #[test]
-fn an_upload_overwriting_on_wasabi_bills_the_replaced_object_and_the_temp_key() {
+fn an_upload_overwriting_on_wasabi_bills_only_the_replaced_object() {
     let sides = Sides {
         source: None,
         destination: Some(wasabi()),
@@ -228,9 +229,7 @@ fn an_upload_overwriting_on_wasabi_bills_the_replaced_object_and_the_temp_key() 
         &facts(&[(GIB / 32, None)], 0),
         &overwrites,
     );
-    let replaced = 80.0 * 0.00780273 / 30.0;
-    let temp = (1.0 / 32.0) * 90.0 * 0.00780273 / 30.0;
-    close(totals(&planned)[0], replaced + temp);
+    close(totals(&planned)[0], 80.0 * 0.00780273 / 30.0);
 }
 
 /// A server-side copy onto an existing key replaces it in one request: only

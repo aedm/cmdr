@@ -5,7 +5,7 @@
 
 use cmdr_fs::testing::TestDir;
 
-use super::{TempObject, UnfinishedUpload, UploadLedger};
+use super::{UnfinishedUpload, UploadLedger};
 
 fn upload(account: &str, key: &str, id: &str) -> UnfinishedUpload {
     UnfinishedUpload {
@@ -171,51 +171,4 @@ fn a_cells_question_sees_only_the_records_under_its_own_prefix() {
     assert_eq!(ledger.open_under("acct-shared", "cell-a/"), vec![neighbours.clone()]);
     ledger.finished(&neighbours);
     assert!(ledger.open_under("acct-shared", "cell-a/").is_empty());
-}
-
-fn temp(account: &str, key: &str, token: &str) -> TempObject {
-    TempObject {
-        account: account.to_string(),
-        bucket: "cmdr-test".to_string(),
-        key: key.to_string(),
-        token: token.to_string(),
-    }
-}
-
-/// An overwrite's temp a crash left behind is a temp leftover, ❌ never an
-/// upload to abort, and the log keeps both kinds through a compaction.
-#[test]
-fn a_crashed_overwrites_temp_is_a_temp_leftover_beside_the_uploads() {
-    let dir = TestDir::new("ledger_temp_crash");
-    let ledger = UploadLedger::at(Some(dir.to_path_buf()));
-    let crashed_temp = temp("acct-temp", "a.txt.cmdr-tmp-1", "tok-1");
-    let crashed_upload = upload("acct-temp", "big.mov", "id-1");
-    ledger.temp_started(&crashed_temp);
-    ledger.started(&crashed_upload);
-    UploadLedger::forget_temp_in_flight(&crashed_temp);
-    UploadLedger::forget_in_flight(&crashed_upload);
-
-    let later = UploadLedger::at(Some(dir.to_path_buf()));
-    assert_eq!(later.leftovers("acct-temp"), vec![crashed_upload.clone()]);
-    // Read twice: the first read compacted the log, which must keep the temp.
-    assert_eq!(later.temp_leftovers("acct-temp"), vec![crashed_temp.clone()]);
-    assert_eq!(later.temp_leftovers("acct-temp"), vec![crashed_temp.clone()]);
-
-    later.temp_finished(&crashed_temp);
-    assert!(later.temp_leftovers("acct-temp").is_empty());
-    assert_eq!(later.leftovers("acct-temp"), vec![crashed_upload]);
-}
-
-/// ❗ A temp a write in this process still owns is never a leftover: the sweep
-/// would delete it under the write.
-#[test]
-fn a_temp_in_flight_is_never_a_leftover() {
-    let dir = TestDir::new("ledger_temp_live");
-    let ledger = UploadLedger::at(Some(dir.to_path_buf()));
-    let live = temp("acct-temp-live", "b.txt.cmdr-tmp-2", "tok-2");
-    ledger.temp_started(&live);
-    assert!(ledger.temp_leftovers("acct-temp-live").is_empty());
-    ledger.temp_abandoned(&live);
-    assert_eq!(ledger.temp_leftovers("acct-temp-live"), vec![live.clone()]);
-    ledger.temp_finished(&live);
 }

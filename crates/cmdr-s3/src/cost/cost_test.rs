@@ -305,18 +305,24 @@ fn aws_overwriting_an_object_costs_nothing_extra() {
     );
 }
 
-/// Off the `refuses_short_body` allowlist a one-PUT overwrite lands through a
-/// temp key, and the temp is deleted brand new: Wasabi bills its whole 90 days.
+/// Off the `refuses_short_body` allowlist a one-PUT overwrite goes as a
+/// one-part multipart upload: a HEAD finding the original, and Create, one
+/// part, and Complete in place of the PUT. Nothing is written beside it, so
+/// Wasabi bills no early deletion for it.
 #[test]
-fn wasabi_upload_over_an_object_goes_through_a_temp_key_billed_for_90_days() {
+fn wasabi_upload_over_an_object_goes_as_one_part_with_nothing_billed_beside_it() {
     let mut work = workload(&wasabi());
+    work.upload(GIB / 32);
     work.upload_over(GIB / 32);
-    close(estimate(&work).total, (1.0 / 32.0) * 90.0 * 0.00780273 / 30.0);
-    // HEAD finding the original, HEAD of the temp, the copy, its verifying
-    // HEAD, the HEAD of the temp's token, and the temp's delete.
-    assert_eq!(work.requests.get(&RequestKind::HeadObject), Some(&4));
-    assert_eq!(work.requests.get(&RequestKind::CopyObject), Some(&1));
-    assert_eq!(work.requests.get(&RequestKind::DeleteObject), Some(&1));
+    close(estimate(&work).total, 0.0);
+    assert_eq!(work.requests.get(&RequestKind::PutObject), None);
+    assert_eq!(work.requests.get(&RequestKind::CreateMultipartUpload), Some(&1));
+    assert_eq!(work.requests.get(&RequestKind::UploadPart), Some(&1));
+    assert_eq!(work.requests.get(&RequestKind::CompleteMultipartUpload), Some(&1));
+    // The upload's verifying HEAD and its no-overwrite check, plus the one
+    // finding the original.
+    assert_eq!(work.requests.get(&RequestKind::HeadObject), Some(&3));
+    assert!(work.dated_deletions.is_empty());
 }
 
 #[test]

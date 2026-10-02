@@ -41,8 +41,8 @@ Evidence this plan stands on, read before touching the matching milestone:
 - **Overwrites never risk the original (decided 2026-10-01, the safer option)**: a server that publishes a PUT cut off
   mid-body (VersityGW does) would lose the original to a cancelled in-place overwrite. So "refuses a short body" is a
   provider allowlist (AWS, R2, B2, on evidence; `crates/cmdr-s3/DETAILS.md` § "Providers"), and off it, an overwrite of
-  an existing object writes a token-tagged temp key, verifies it, copies it onto the final key server-side, and deletes
-  the temp. A write to a free name still goes straight to its key.
+  an existing object goes as a multipart upload, one part for a small file, which publishes nothing until its completion
+  (a temp key would bill Wasabi 90 days per overwrite). A write to a free name still goes as one PUT.
 - **Share link**: "Copy share link" mints a presigned GET URL, seven days by default (the SigV4 maximum), with one hour
   and one day as the other choices. Free and offline: it's a signature, not a request.
 - **Archived objects** (AWS Glacier Flexible Retrieval / Deep Archive): an "archived" badge in the listing and a typed

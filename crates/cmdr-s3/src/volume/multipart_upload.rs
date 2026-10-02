@@ -29,7 +29,7 @@ use super::errors::map_s3_error;
 use super::query::body_error;
 use super::upload_body::buffered_body;
 use super::upload_ledger::{UnfinishedUpload, UploadLedger};
-use super::writes::{PROGRESS_TICK, Progress, WriteTarget, overwrite_for, size_mismatch};
+use super::writes::{PROGRESS_TICK, Progress, ShortStream, WriteTarget, overwrite_for, size_mismatch};
 use super::{S3Volume, S3VolumeInner};
 use crate::error::{S3Error, S3ErrorCode};
 use crate::multipart::{MAX_PARTS, PartPlan};
@@ -77,16 +77,31 @@ impl PartReader {
         self.fill_with(want, &mut || Ok(())).await
     }
 
-    /// The next `want` bytes, as `fill` reads them, calling `between` after every piece it pulls, so a
-    /// slow source still reports progress and can be cancelled. ❗ Between
-    /// pieces only: a `next_chunk` is never dropped half-read.
+    /// The next `want` bytes, as `fill` reads them, calling `between` after
+    /// every piece it pulls and every [`PROGRESS_TICK`] while one is pending,
+    /// so a slow or stalled source still reports progress and can be
+    /// cancelled. ❗ A `next_chunk` is dropped half-read only when `between`
+    /// fails, which ends the upload: no later part reads past the lost bytes.
     pub(super) async fn fill_with(
         &mut self,
         want: usize,
         between: &mut (dyn FnMut() -> Result<(), VolumeError> + Send),
     ) -> Result<Vec<u8>, VolumeError> {
         while self.carry.len() < want && !self.ended {
-            self.pull().await?;
+            let start = tokio::time::Instant::now() + PROGRESS_TICK;
+            let mut tick = tokio::time::interval_at(start, PROGRESS_TICK);
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            let pull = self.pull();
+            tokio::pin!(pull);
+            loop {
+                tokio::select! {
+                    pulled = &mut pull => {
+                        pulled?;
+                        break;
+                    }
+                    _ = tick.tick() => between()?,
+                }
+            }
             between()?;
         }
         let rest = self.carry.split_off(want.min(self.carry.len()));
@@ -259,13 +274,15 @@ impl PartSizes {
 
 impl S3Volume {
     /// A multipart upload of `stream` to `target`: `plan` for a known length,
-    /// `None` for a stream whose length shows only at its end. Returns the
-    /// bytes written.
+    /// `None` for a stream whose length shows only at its end, and `short`
+    /// for what such a stream does when it ends inside its first part.
+    /// Returns the bytes written.
     pub(super) async fn upload_in_parts(
         &self,
         client: &Arc<S3Client>,
         target: &WriteTarget<'_>,
         plan: Option<PartPlan>,
+        short: ShortStream,
         stream: Box<dyn VolumeReadStream>,
         progress: &Progress<'_>,
     ) -> Result<u64, VolumeError> {
@@ -277,7 +294,7 @@ impl S3Volume {
         };
         let mut reader = PartReader::new(stream);
         // A stream of unknown length that ends inside its first part is one
-        // PUT after all: three requests for a small file is waste.
+        // PUT after all, unless it's an overwrite that must not be one.
         let mut first = None;
         if let PartSizes::Open { part_size } = sizes {
             let volume_id = self.volume_id().to_string();
@@ -288,7 +305,7 @@ impl S3Volume {
             let head = reader
                 .fill_with(usize::try_from(part_size).unwrap_or(usize::MAX), &mut between)
                 .await?;
-            if reader.at_end().await? {
+            if reader.at_end().await? && (short == ShortStream::OnePut || head.is_empty()) {
                 return self.put_buffered(client, target, head, progress).await;
             }
             first = Some(head);
@@ -701,26 +718,15 @@ impl S3VolumeInner {
     pub(super) async fn sweep_unfinished_uploads(&self) -> usize {
         let ledger = self.ledger.clone();
         let account = self.account();
-        let (leftovers, temps) = tokio::task::spawn_blocking(move || {
-            let leftovers = ledger.leftovers(&account);
-            (leftovers, ledger.temp_leftovers(&account))
-        })
-        .await
-        .unwrap_or_default();
-        if leftovers.is_empty() && temps.is_empty() {
+        let leftovers = tokio::task::spawn_blocking(move || ledger.leftovers(&account))
+            .await
+            .unwrap_or_default();
+        if leftovers.is_empty() {
             return 0;
         }
         let Some(client) = self.client.read().await.clone() else {
             return 0;
         };
-        // An overwrite's temp a crash left behind: removed while it carries
-        // its write's token (`temp_overwrite.rs`).
-        for temp in &temps {
-            self.remove_temp(&client, temp).await;
-        }
-        if leftovers.is_empty() {
-            return 0;
-        }
         let mut aborted = 0;
         for upload in &leftovers {
             if abort_upload(&client, &self.ledger, upload).await {
