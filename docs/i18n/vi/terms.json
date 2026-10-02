@@ -417,10 +417,6 @@
   "cloud-provider": {
     "chosen": "đám mây",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3GcsKeyHelp": "English-sense: `Cloud Storage` is Google's product name, kept verbatim.",
-      "servers.sheet.s3ProviderGcs": "English-sense: `Google Cloud Storage` is a product name, kept verbatim."
-    },
     "forms": "cloud folders → thư mục đám mây; cloud service → dịch vụ đám mây; sync app → ứng dụng đồng bộ; cloud mount → mục gắn kết đám mây",
     "sources": "MS terminology, catalog (Đám mây group)"
   },
@@ -1396,10 +1392,6 @@
     "accept": ["liệt kê"],
     "chosen": "danh sách",
     "confidence": "high",
-    "exceptions": {
-      "fileOperations.s3Cost.infoText": "English-sense: \"list prices\" is a provider's published price list, `giá niêm yết`, not a UI list.",
-      "fileOperations.s3Cost.line": "English-sense: \"list prices\" is a provider's published price list, `giá niêm yết`, not a UI list."
-    },
     "forms": "the noun → danh sách (the Servers list → danh sách Máy chủ); the verb (Cmdr lists X) → liệt kê",
     "sources": "macOS Finder and AppKit (List → Danh sách, 29 hits); MS terminology (list → danh sách)"
   },
@@ -1540,9 +1532,6 @@
     "accept": ["chuyển"],
     "chosen": "di chuyển",
     "confidence": "high",
-    "exceptions": {
-      "commands.handler.shareLinkUnavailable": "English-sense: \"Move the cursor\" is cursor movement (`đưa con trỏ tới`), not the Move operation."
-    },
     "forms": "di chuyển is the Move operation only; a loose \"moving files\" covering copy/move/delete → chuyển tệp",
     "sources": "macOS AppKit (Di chuyển)"
   },
@@ -1555,9 +1544,6 @@
   "name": {
     "chosen": "tên",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "English-sense: \"what name this place\" is the verb (identify), `xác định`, exactly like its twin `servers.sheet.identityLocked`."
-    },
     "sources": "macOS Finder N220 (Name → Tên)"
   },
   "nas": {
@@ -2442,11 +2428,6 @@
     "accept": ["dung lượng", "bộ nhớ"],
     "chosen": "lưu trữ",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3GcsKeyHelp": "English-sense: `Cloud Storage` is Google's product name, kept verbatim.",
-      "servers.sheet.s3ProviderGcs": "English-sense: `Google Cloud Storage` is a product name, kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "English-sense: `Hetzner Object Storage` is a product name, kept verbatim."
-    },
     "forms": "S3 storage → kho lưu trữ S3; cold storage → kho lưu trữ lạnh; storage provider → nhà cung cấp dịch vụ lưu trữ; free space on a drive or iCloud → dung lượng; a phone's storage → bộ nhớ",
     "note": "The cold-storage \"Archived\" (S3 Glacier, `*coldStorage*`, `fileExplorer.archivedFile.*`) is `kho lưu trữ lạnh`, label `Lưu trữ lạnh`, over the chat's `Đã lưu trữ` (`archive-chat`): every file is stored, so the bare word says nothing.",
     "sources": "MS terminology (Storage → Lưu trữ, cloud storage → kho lưu trữ đám mây); catalog (dung lượng, bộ nhớ)"

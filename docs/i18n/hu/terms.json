@@ -436,10 +436,7 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS (Kis- és nagybetűérzékeny; AppKit A kis- és nagybetűk azonosak)",
-    "exceptions": {
-      "servers.refusal.s3FieldMalformed": "lowercase letters is a character class (kisbetűk), not case sensitivity."
-    }
+    "sources": "macOS (Kis- és nagybetűérzékeny; AppKit A kis- és nagybetűk azonosak)"
   },
   "certificate": {
     "chosen": "tanúsítvány",
@@ -576,11 +573,7 @@
     "accept": ["felhő"],
     "forms": "your cloud provider → a felhőszolgáltatód; cloud service → felhőszolgáltatás; cloud folders → felhős mappák; cloud mount → Felhőcsatolás (tentative)",
     "confidence": "high",
-    "sources": "descriptive; catalog",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim."
-    }
+    "sources": "descriptive; catalog"
   },
   "column": {
     "chosen": "oszlop",
@@ -1393,12 +1386,7 @@
     "accept": ["tárhely", "tárolás"],
     "forms": "S3 storage → S3-tárhely; storage provider → tárhelyszolgáltató; cold storage → offline tárolás (ms)",
     "confidence": "high",
-    "sources": "catalog (fileExplorer.mtp.noStorage, fileExplorer.diskSpace.noLimitNote, telefontárhely); ms (storage → tár / tárterület; cold storage → offline tárolás)",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage is a product name, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim."
-    }
+    "sources": "catalog (fileExplorer.mtp.noStorage, fileExplorer.diskSpace.noLimitNote, telefontárhely); ms (storage → tár / tárterület; cold storage → offline tárolás)"
   },
   "tint": {
     "chosen": "színezés",
@@ -1991,10 +1979,7 @@
     "accept": ["áthelyez", "helyezd át", "mozgat", "helyez", "mozg"],
     "forms": "label Áthelyezés; result áthelyezve; Move it instead → Helyezd át inkább; files being moved in prose → mozgat",
     "confidence": "high",
-    "sources": "macOS; ms",
-    "exceptions": {
-      "commands.handler.shareLinkUnavailable": "Move the cursor is cursor movement, not a file move: vidd a kurzort."
-    }
+    "sources": "macOS; ms"
   },
   "move-to-trash": {
     "chosen": "Áthelyezés a Kukába",
@@ -2008,10 +1993,7 @@
     "accept": ["nev", "fájlnév"],
     "forms": "the Name column → Név; filename → fájlnév; that name can't be used → A fájlnév nem használható / A mappa neve nem használható",
     "confidence": "high",
-    "sources": "macOS; catalog",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "name (a verb, what identifies the place) → azonosítja, like servers.sheet.identityLocked."
-    }
+    "sources": "macOS; catalog"
   },
   "nas": {
     "chosen": "NAS",

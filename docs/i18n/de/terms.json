@@ -540,11 +540,7 @@
     "chosen": "Cloud-Dienst",
     "confidence": "high",
     "forms": "cloud provider → Cloud-Anbieter; cloud mount → Cloud-Mount; cloud folder → Cloud-Ordner; a second mention shortens to der Dienst",
-    "sources": "macOS Finder Localizable (Choose a cloud service → Cloud-Dienst wählen), live pile 2026-09-17",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim (an S3 provider, not a sync service)",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name for the console section, kept verbatim (Cloud-Storage-Einstellungen)"
-    }
+    "sources": "macOS Finder Localizable (Choose a cloud service → Cloud-Dienst wählen), live pile 2026-09-17"
   },
   "coming-soon": {
     "avoid": [
@@ -1746,8 +1742,7 @@
     "chosen": "Name",
     "confidence": "high",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "have the same name → heißen gleich",
-      "servers.sheet.identityLockedS3": "are what name this place → machen diesen Ort aus, the verb sense of name, like servers.sheet.identityLocked"
+      "errors.write.duplicateSourceNames.title": "have the same name → heißen gleich"
     },
     "sources": "macOS Finder (N220 Name); NetAuthAgent (Name:)"
   },

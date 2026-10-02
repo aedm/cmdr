@@ -22,6 +22,12 @@
     "notMatch": ["keychain access"],
     "sense": "Being able to reach or open something (macOS privacy access, a server granting access, a device held with exclusive access)."
   },
+  "access-key-id": {
+    "distinct": ["secret-access-key"],
+    "en": "access key ID",
+    "match": ["access key id", "access key ids"],
+    "sense": "The public half of an S3 key pair, typed in the S3 form (like AKIAIOSFODNN7EXAMPLE)."
+  },
   "accessibility": {
     "distinct": ["system-settings-pane"],
     "en": "Accessibility",
@@ -91,7 +97,7 @@
     "distinct": ["cloud-provider", "service"],
     "en": "provider",
     "match": ["provider", "providers", "ai provider"],
-    "notMatch": ["=your cloud provider", "managed by a cloud provider", "payment provider"],
+    "notMatch": ["=your cloud provider", "managed by a cloud provider", "payment provider", "storage provider"],
     "sense": "The company or service that runs the AI model Cmdr talks to (OpenAI, Anthropic, a local server)."
   },
   "ai-reply": {
@@ -230,7 +236,8 @@
     "distinct": ["archive"],
     "en": "archive (a chat)",
     "match": ["=archive", "archive chat", "archived", "unarchive"],
-    "sense": "Hiding an Ask Cmdr chat from the active list, or restoring it (Gmail-style), with no compression involved."
+    "sense": "Hiding an Ask Cmdr chat from the active list, or restoring it (Gmail-style), with no compression involved.",
+    "notMatch": ["is archived", "archived in cold storage"]
   },
   "ask": {
     "en": "Ask",
@@ -357,6 +364,11 @@
     "match": ["browse…", "browse..."],
     "sense": "The button that opens the system file picker to choose a file or folder."
   },
+  "bucket": {
+    "en": "bucket",
+    "match": ["bucket", "buckets"],
+    "sense": "An S3 top-level storage container that a saved S3 place opens."
+  },
   "buffer": {
     "distinct": ["watcher"],
     "en": "buffer",
@@ -434,7 +446,8 @@
       "uppercase",
       "lowercase"
     ],
-    "sense": "Whether upper- and lowercase letters count as different."
+    "sense": "Whether upper- and lowercase letters count as different.",
+    "notMatch": ["only lowercase letters"]
   },
   "certificate": {
     "distinct": ["trust"],
@@ -570,7 +583,15 @@
       "managed by a cloud provider",
       "sync app"
     ],
-    "sense": "A file-sync service (iCloud Drive, Dropbox, Google Drive) whose folders Cmdr shows."
+    "sense": "A file-sync service (iCloud Drive, Dropbox, Google Drive) whose folders Cmdr shows.",
+    "notMatch": ["google cloud storage", "cloud storage settings"]
+  },
+  "cold-storage": {
+    "distinct": ["archive", "archive-chat", "restore"],
+    "en": "cold storage",
+    "match": ["cold storage"],
+    "note": "A file in cold storage reads as \"archived\" in the copy (\"This file is archived\"), and getting it back is a restore; neither is the Ask Cmdr chat archive (archive-chat) nor a zip.",
+    "sense": "A cloud provider's archive tier (for example S3 Glacier) whose files must be restored before they can be read. Not a zip or other archive file."
   },
   "column": {
     "distinct": ["row", "brief-view"],
@@ -1047,7 +1068,7 @@
   "endpoint": {
     "en": "endpoint",
     "match": ["endpoint", "endpoints"],
-    "sense": "The URL of an AI provider's API."
+    "sense": "The URL of an AI provider's API, or the address of an S3-compatible storage server."
   },
   "enter-key": {
     "en": "Enter",
@@ -1093,7 +1114,7 @@
   "expired": {
     "en": "expired",
     "match": ["expired", "expires", "expiry"],
-    "sense": "A license that is no longer valid."
+    "sense": "A license that is no longer valid, or a share link past the time it works for."
   },
   "exposure": {
     "distinct": ["camera-details"],
@@ -1729,7 +1750,16 @@
     "distinct": ["file-list"],
     "en": "list",
     "match": ["list", "lists"],
-    "notMatch": ["mailing list", "mailing lists", "on the list", "checklist", "file list", "remove from list"],
+    "notMatch": [
+      "mailing list",
+      "mailing lists",
+      "on the list",
+      "checklist",
+      "file list",
+      "remove from list",
+      "list price",
+      "list prices"
+    ],
     "sense": "A generic UI list (a server list, the list of apps, a list of results)."
   },
   "load": {
@@ -1899,7 +1929,8 @@
       "out of the way",
       "stopped moving",
       "moving it to the trash",
-      "moving those to the trash"
+      "moving those to the trash",
+      "move the cursor"
     ],
     "sense": "Relocating files to another folder (F6)."
   },
@@ -1920,7 +1951,7 @@
     "distinct": ["rename"],
     "en": "Name",
     "match": ["name", "names", "filename", "filenames"],
-    "notMatch": ["what name this server", "your name or email"],
+    "notMatch": ["your name or email", "what name this", "host name"],
     "sense": "A file's name; also the Name column header and a saved server's name field."
   },
   "nas": {
@@ -1965,7 +1996,7 @@
     "distinct": ["share-menu", "network-drive", "server"],
     "en": "share",
     "match": ["share", "shares", "network share", "network shares", "smb share", "shared folder"],
-    "notMatch": ["=share", "share options", "share one name"],
+    "notMatch": ["=share", "share options", "share one name", "share link", "share links"],
     "sense": "An SMB shared folder offered by a server or NAS."
   },
   "new-file": {
@@ -2317,6 +2348,12 @@
     "notMatch": ["model context protocol"],
     "sense": "A network protocol (SMB, SFTP, WebDAV, MTP)."
   },
+  "provider-console": {
+    "distinct": ["cold-storage"],
+    "en": "console",
+    "match": ["provider's console"],
+    "sense": "A storage provider's website or admin tool (the AWS console), where a user restores an archived file. Not a developer log console."
+  },
   "put-back": {
     "distinct": ["undo", "rollback"],
     "en": "Put back",
@@ -2430,6 +2467,12 @@
     "en": "regex",
     "match": ["regex", "regexes", "regular expression", "regular expressions"],
     "sense": "A regular expression: the Regex mode of the search and selection bars, and a pattern written in it."
+  },
+  "region": {
+    "distinct": ["endpoint"],
+    "en": "region",
+    "match": ["region", "regions"],
+    "sense": "The S3 storage region a bucket lives in, a code like eu-west-1."
   },
   "register-shortcut": {
     "distinct": ["shortcut", "global"],
@@ -2745,6 +2788,12 @@
     "note": "Several languages name it apart from the drive index's scan (a walk or pass vs an analysis).",
     "sense": "A search reading folders live, one by one, where the drive index can't answer (folders scanned so far, another scan of these folders), and the viewer's text search running through a file."
   },
+  "secret-access-key": {
+    "distinct": ["access-key-id"],
+    "en": "secret access key",
+    "match": ["secret access key", "secret access keys"],
+    "sense": "The private half of an S3 key pair; it works like a password."
+  },
   "see": {
     "distinct": ["show", "review", "viewer", "preview"],
     "en": "See",
@@ -2791,6 +2840,12 @@
     "match": ["settings", "setting"],
     "notMatch": ["higher settings", "setting up", "setting it up"],
     "sense": "Cmdr's Settings window and its sections."
+  },
+  "share-link": {
+    "distinct": ["network-share", "share-menu"],
+    "en": "share link",
+    "match": ["share link", "share links"],
+    "sense": "A web address anyone can open to download one file from an S3 bucket until it expires. Hands a file to others, unlike an SMB network share."
   },
   "share-menu": {
     "distinct": ["network-share"],
@@ -3006,7 +3061,8 @@
     "distinct": ["free-space"],
     "en": "storage",
     "match": ["storage"],
-    "sense": "Space to store data (a phone's storage, cloud storage, the Storage pane)."
+    "sense": "Space to store data (a phone's storage, cloud storage, the Storage pane).",
+    "notMatch": ["google cloud storage", "cloud storage settings", "hetzner object storage"]
   },
   "store": {
     "distinct": ["save", "write"],
@@ -3296,7 +3352,7 @@
   "unreachable": {
     "en": "unreachable",
     "match": ["unreachable", "can't reach", "couldn't reach"],
-    "notMatch": ["reach the actual"],
+    "notMatch": ["reach the actual", "can't reach this bucket"],
     "sense": "A host or share Cmdr can't get to over the network."
   },
   "untouched": {

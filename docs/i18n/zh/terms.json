@@ -493,10 +493,6 @@
     "accept": ["云挂载", "云端", "云服务"],
     "chosen": "云服务商",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-CN console does."
-    },
     "forms": "云服务商; a cloud mount 云挂载; cloud folders 云端文件夹; cloud services 云服务",
     "sources": "catalog"
   },
@@ -594,7 +590,7 @@
     "forms": "Connecting to X… → 正在连接到 {name}…; Connect to server… → 连接服务器…; Connect as guest → 以来宾身份连接; internet connection → 联网 / 互联网连接",
     "sources": "macOS Finder, NetAuthAgent"
   },
-  "console": {
+  "provider-console": {
     "chosen": "控制台",
     "confidence": "high",
     "forms": "a storage provider's console → 存储提供方的控制台",
@@ -1586,10 +1582,6 @@
     "accept": ["列出"],
     "chosen": "列表",
     "confidence": "high",
-    "exceptions": {
-      "fileOperations.s3Cost.line": "list prices = a provider's published prices → 标价, not a UI list.",
-      "fileOperations.s3Cost.infoText": "Same as fileOperations.s3Cost.line: list prices → 公开的标价."
-    },
     "forms": "the Servers list “服务器”列表 (quoted, 列表 outside the quotes); the verb (Cmdr lists X) 列出",
     "sources": "macOS zh-CN Finder (最近使用的服务器的列表); catalog (43 uses)"
   },
@@ -1743,10 +1735,6 @@
     "accept": ["文件名", "名字", "同名", "重名", "文件夹名"],
     "chosen": "名称",
     "confidence": "confirmed",
-    "exceptions": {
-      "servers.refusal.endpointMalformed": "host name is the hostname concept, 主机名.",
-      "servers.sheet.identityLockedS3": "name is a verb here (what identifies this place) → 决定了这是哪个位置, like servers.sheet.identityLocked."
-    },
     "forms": "labels and the column 名称; spoken prose 名字 (换个名字, 同名, 重名); validation 文件名 / 文件夹名",
     "note": "A person's name is 姓名; \"the name was taken\" 已被占用.",
     "sources": "macOS Finder"
@@ -2780,11 +2768,6 @@
     "accept": ["储存空间"],
     "chosen": "存储",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-CN console does.",
-      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim."
-    },
     "forms": "cloud / object / cold storage → 云存储 / 对象存储 / 冷存储; S3 storage → S3 存储; Apple's Storage pane and iCloud storage → 储存空间 (Apple's spelling)",
     "sources": "catalog (存储 in 12 values, fileExplorer.mtp.noStorage); macOS zh-CN 储存空间"
   },

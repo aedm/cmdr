@@ -1566,10 +1566,6 @@
   "list": {
     "chosen": "liste",
     "confidence": "high",
-    "exceptions": {
-      "fileOperations.s3Cost.infoText": "English-sense: list prices are a provider’s published tariff, prix catalogue (MS terminology FRA: list price → prix catalogue).",
-      "fileOperations.s3Cost.line": "English-sense: list prices are a provider’s published tariff, prix catalogue (MS terminology FRA: list price → prix catalogue)."
-    },
     "forms": "the Servers list → la liste Serveurs (row name unquoted, as shipped); stops listing it → n’affiche plus",
     "sources": "MS terminology FRA (list → liste); catalog (la liste, 33 uses)"
   },
@@ -1688,7 +1684,6 @@
       "errors.write.trashRefused.message.other": "English-sense: moving to the trash is placer dans la corbeille.",
       "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "French names what the button no longer does (le retour en arrière n'est plus possible) instead of undoing the move.",
       "operationLog.summary.trash": "English-sense: moving to the trash is placer dans la corbeille.",
-      "commands.handler.shareLinkUnavailable": "English-sense: moving the cursor onto a file is placer le curseur, not the F6 move.",
       "queryUi.recent.popoverHint": "English-sense: the arrow keys move the highlight, so naviguer.",
       "transfer.trash": "English-sense: moving to the trash is placer dans la corbeille."
     },
@@ -1713,9 +1708,6 @@
     "chosen": "nom",
     "confidence": "high",
     "decision": "Refus de renommage et de création",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "English-sense: “what name this place” is the verb (identify), rendered identifient like the shipped sibling servers.sheet.identityLocked."
-    },
     "forms": "Name column → Nom; Ext → Ext",
     "sources": "macOS; catalog"
   },
@@ -2761,11 +2753,6 @@
   "storage": {
     "chosen": "stockage",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim.",
-      "servers.sheet.s3ProviderGcs": "Product name (Google Cloud Storage), kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Product name (Hetzner Object Storage), kept verbatim."
-    },
     "forms": "cloud storage → stockage cloud; cold storage → stockage froid; storage provider → fournisseur de stockage; S3 storage → un stockage S3",
     "sources": "macOS AppKit (Stockage dans le cloud, Gérer le stockage…); MS terminology FRA (cold storage → stockage froid, storage provider → fournisseur de stockage)"
   },

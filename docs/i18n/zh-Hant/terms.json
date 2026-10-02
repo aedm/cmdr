@@ -573,10 +573,6 @@
   "cloud-provider": {
     "chosen": "雲端",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-TW console does."
-    },
     "forms": "cloud service → 雲端服務; the company behind it → 雲端服務供應商; cloud folder → 雲端資料夾; online-only → 僅存在雲端",
     "sources": "AP-TW Finder (Choose a cloud service → 選擇雲端服務), MS (HKG, TWN)"
   },
@@ -708,7 +704,7 @@
     "forms": "a button or status → 連線 (已連線, 正在連線⋯); the verb in a sentence or command name → 連接 (連接伺服器⋯); casual → 連上 / 連著 / 連不上; a network connection → 網路連線",
     "sources": "AP-TW = AP-HK (Connect → 連線; Connect to Server… → 連接伺服器⋯), MS"
   },
-  "console": {
+  "provider-console": {
     "chosen": "主控台",
     "confidence": "high",
     "forms": "a storage provider's console → 儲存服務提供者的主控台",
@@ -1855,10 +1851,6 @@
     "chosen": "列表",
     "confidence": "high",
     "decision": "Classifiers and list compounds",
-    "exceptions": {
-      "fileOperations.s3Cost.line": "list prices = a provider's published prices → 公開定價 (MS list price → 定價), not a UI list.",
-      "fileOperations.s3Cost.infoText": "Same as fileOperations.s3Cost.line: list prices → 公開的定價."
-    },
     "sources": "AP-TW (53), AP-HK (58), live TW (75), live HK (71)"
   },
   "load": {
@@ -2095,9 +2087,6 @@
     "accept": ["檔名", "名字", "同名", "原名", "重名"],
     "chosen": "名稱",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "name is a verb here (what identifies this place) → 決定了這是哪個位置, like servers.sheet.identityLocked."
-    },
     "forms": "filename → 檔名 (41/41) or 檔案名稱",
     "sources": "AP-TW = AP-HK Finder N220"
   },
@@ -2155,17 +2144,6 @@
     "chosen": "共享資料夾",
     "confidence": "tentative",
     "decision": "Mount and share-list sentences",
-    "exceptions": {
-      "commands.fileCopyShareLink.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.fileCopyShareLinkOneDay.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.fileCopyShareLinkOneHour.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.handler.shareLinkCopied.sevenDays": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.handler.shareLinkCopied.oneDay": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.handler.shareLinkCopied.oneHour": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.handler.shareLinkFailed": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "commands.handler.shareLinkUnavailable": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
-      "menu.context.copyShareLink": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾."
-    },
     "forms": "mounted share → 已裝載的共享資料夾; a share named X → 名為「X」的共享資料夾",
     "sources": "derived from Apple Shared → 已共享 + folder; NetAuthAgent EINFO_NO_SHARE says bare 共享"
   },
@@ -3175,11 +3153,6 @@
     "accept": ["儲存"],
     "chosen": "儲存空間",
     "confidence": "confirmed",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-TW console does."
-    },
     "forms": "Manage Storage… → 管理儲存空間⋯; cloud storage → 雲端儲存空間; storing logs (log storage) → 記錄檔儲存",
     "sources": "AP-TW = AP-HK, MS"
   },
@@ -3469,8 +3442,7 @@
     "chosen": "連不上",
     "confidence": "high",
     "exceptions": {
-      "viewer.copy.clipboardUnreachable": "a clipboard isn't a network target; Cmdr can't access it (無法存取)",
-      "servers.refusal.accessDenied": "The bucket refused the key (a permission answer, not a network one) → 無法存取."
+      "viewer.copy.clipboardUnreachable": "a clipboard isn't a network target; Cmdr can't access it (無法存取)"
     },
     "forms": "Cmdr couldn't reach X → Cmdr 連不上 X。; a path title → 無法連到 {path}",
     "sources": "catalog 連不上 (12, servers.refusal.unreachable, servers.paneState.unreachable), 無法連到 (2), 無法連線到 (2)"

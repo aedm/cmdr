@@ -428,11 +428,7 @@
     "accept": ["nube"],
     "forms": "cloud service → servicio en la nube; cloud folders → carpetas en la nube",
     "confidence": "high",
-    "sources": "catalog",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is the Google product name, kept verbatim."
-    }
+    "sources": "catalog"
   },
   "column": {
     "accept": ["columnas"],
@@ -1564,8 +1560,7 @@
     "confidence": "high",
     "sources": "macOS Finder (N220 Nombre)",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "The idiom se llaman igual carries the name.",
-      "servers.sheet.identityLockedS3": "English \"what name this place\" is the verb: son los que identifican, matching its twin servers.sheet.identityLocked."
+      "errors.write.duplicateSourceNames.title": "The idiom se llaman igual carries the name."
     }
   },
   "nas": {
@@ -1603,16 +1598,7 @@
     "confidence": "high",
     "sources": "macOS (recurso compartido), NetAuthAgent (EINFO_NO_SHARES), MS",
     "exceptions": {
-      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red.",
-      "commands.fileCopyShareLink.label": "A share link (an S3 download URL), not an SMB share: enlace para compartir.",
-      "commands.fileCopyShareLinkOneDay.label": "A share link, not an SMB share: enlace para compartir.",
-      "commands.fileCopyShareLinkOneHour.label": "A share link, not an SMB share: enlace para compartir.",
-      "commands.handler.shareLinkCopied.sevenDays": "A share link, not an SMB share: enlace para compartir.",
-      "commands.handler.shareLinkCopied.oneDay": "A share link, not an SMB share: enlace para compartir.",
-      "commands.handler.shareLinkCopied.oneHour": "A share link, not an SMB share: enlace para compartir.",
-      "commands.handler.shareLinkUnavailable": "A share link, not an SMB share: enlace para compartir.",
-      "commands.handler.shareLinkFailed": "A share link, not an SMB share: enlace para compartir.",
-      "menu.context.copyShareLink": "A share link, not an SMB share: enlace para compartir."
+      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red."
     },
     "decision": "Por qué no se monta un recurso compartido o no carga su lista"
   },
@@ -2492,12 +2478,7 @@
     "chosen": "almacenamiento",
     "forms": "cloud storage → almacenamiento en la nube; S3 storage → almacenamiento S3; storage provider → proveedor de almacenamiento; cold storage → almacenamiento en frío",
     "confidence": "high",
-    "sources": "macOS (Almacenamiento); MS terminology (storage → almacenamiento)",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is the Google product name, kept verbatim."
-    }
+    "sources": "macOS (Almacenamiento); MS terminology (storage → almacenamiento)"
   },
   "store": {
     "chosen": "guardar",

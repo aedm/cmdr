@@ -491,10 +491,6 @@
     "accept": ["moln", "synkapp"],
     "chosen": "molnleverantör",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim; not a sync-app provider.",
-      "servers.sheet.s3GcsKeyHelp": "Product name Cloud Storage (Google’s), kept verbatim; not a sync-app provider."
-    },
     "forms": "molnmappar, molnmontering, molntjänst",
     "sources": "MS terminology (provider → leverantör)"
   },
@@ -1662,8 +1658,7 @@
     "chosen": "namn",
     "confidence": "high",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "Have the same name is the idiom heter likadant.",
-      "servers.sheet.identityLockedS3": "English-sense: \"what name this place\" is the verb, rendered identifierar like the shipped sibling servers.sheet.identityLocked (decision \"Server hub: connect sheet\")."
+      "errors.write.duplicateSourceNames.title": "Have the same name is the idiom heter likadant."
     },
     "forms": "column Namn; Det här filnamnet kan inte användas",
     "sources": "macOS"
@@ -2564,11 +2559,6 @@
     "accept": ["lagringsutrymme", "lagringsleverantör"],
     "chosen": "lagring",
     "confidence": "high",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Product name Cloud Storage (Google’s), kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim."
-    },
     "forms": "cloud storage → molnlagring; cold storage → kall lagring; S3 storage → S3-lagring; storage provider → lagringsleverantör; free space keeps lagringsutrymme",
     "sources": "MS terminology (storage → lagring; cold storage → kall lagring; cloud storage → molnlagring); catalog (iCloud-lagring, telefonlagring)"
   },
@@ -2837,9 +2827,6 @@
     "accept": ["nå"],
     "chosen": "går inte att nå",
     "confidence": "tentative",
-    "exceptions": {
-      "servers.refusal.accessDenied": "English-sense: a key that \"can’t reach\" a bucket lacks access, so kommer inte åt (the access concept); nothing is unreachable on the network."
-    },
     "forms": "Det går inte att nå {path}; Kan fortfarande inte nås",
     "sources": "composed"
   },

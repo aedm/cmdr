@@ -310,10 +310,7 @@
     "confidence": "high",
     "sources": "MS terminology pt-BR (id 28521 → 28529, BRA)",
     "note": "The accessible name must contain the visible label (WCAG 2.5.3): move queryUi.scope.toggle.caseSensitive and its Aria together.",
-    "decision": "One thing, one name",
-    "exceptions": {
-      "servers.refusal.s3FieldMalformed": "“lowercase letters” names a character class (letras minúsculas), not case sensitivity."
-    }
+    "decision": "One thing, one name"
   },
   "certificate": {
     "chosen": "certificado",
@@ -423,11 +420,7 @@
     "accept": ["nuvem"],
     "forms": "cloud folders → pastas na nuvem",
     "confidence": "high",
-    "sources": "shipped pt catalog",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name kept verbatim, not a sync service.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name kept verbatim, not a sync service."
-    }
+    "sources": "shipped pt catalog"
   },
   "column": {
     "chosen": "coluna",
@@ -1366,11 +1359,7 @@
     "chosen": "lista",
     "forms": "the Servers list → a lista Servidores (the row name after the noun, like grupo Rede)",
     "confidence": "high",
-    "sources": "macOS pt-BR Finder “Lista” (view as List); Microsoft pt-BR terminology list → lista; Nautilus pt_BR “Visão em lista”",
-    "exceptions": {
-      "fileOperations.s3Cost.line": "“list prices” is a price list, not a UI list: pt-BR says preços de tabela.",
-      "fileOperations.s3Cost.infoText": "“list prices” is a price list, not a UI list: pt-BR says preços de tabela."
-    }
+    "sources": "macOS pt-BR Finder “Lista” (view as List); Microsoft pt-BR terminology list → lista; Nautilus pt_BR “Visão em lista”"
   },
   "local": {
     "chosen": "local",
@@ -1502,10 +1491,7 @@
     "chosen": "Nome",
     "forms": "New name / Current name → Novo nome / Nome atual",
     "confidence": "confirmed",
-    "sources": "macOS Finder pt-BR",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "English “name” is a verb here (“are what name this place”); identificam, like the sibling servers.sheet.identityLocked."
-    }
+    "sources": "macOS Finder pt-BR"
   },
   "nas": {
     "chosen": "NAS",
@@ -2905,10 +2891,7 @@
     "confidence": "high",
     "sources": "MS terminology pt-BR (cold storage → armazenamento frio, id 2266289); shipped pt catalog (armazenamento do iCloud, armazenamento de celulares)",
     "exceptions": {
-      "servers.refusal.notAnS3Endpoint": "Follows the sibling servers.refusal.notAWebdavServer frame (Nenhum serviço … responde neste endereço).",
-      "servers.sheet.s3ProviderGcs": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage).",
-      "servers.sheet.s3ProviderHetzner": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage).",
-      "servers.sheet.s3GcsKeyHelp": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage)."
+      "servers.refusal.notAnS3Endpoint": "Follows the sibling servers.refusal.notAWebdavServer frame (Nenhum serviço … responde neste endereço)."
     }
   },
   "cursor": {

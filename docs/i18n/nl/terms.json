@@ -460,11 +460,7 @@
     "chosen": "cloudprovider",
     "confidence": "high",
     "forms": "your cloud provider → je cloudprovider; cloud folders → cloudmappen; cloud mount → Cloudkoppeling; provider app names (Dropbox, Google Drive, OneDrive, iCloud Drive, macFUSE) stay verbatim",
-    "sources": "compositional; brands do-not-translate",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage here is Google's product name (Cloud Storage-instellingen), not the generic cloud-storage sense."
-    }
+    "sources": "compositional; brands do-not-translate"
   },
   "column": {
     "accept": ["kolommen"],
@@ -1533,11 +1529,7 @@
     "chosen": "lijst",
     "confidence": "high",
     "forms": "the Servers list → de lijst Servers (the hub's name after the noun); server list → serverlijst; stops listing it → haalt … uit de lijst; the verb list (apps, shares, names) → tonen, opsommen, noemen in prose",
-    "sources": "catalog (servers.pinHint.body, settings.servers intro: in de lijst Servers), Microsoft Terminology (list → lijst)",
-    "exceptions": {
-      "fileOperations.s3Cost.line": "List prices are a price list (MS list price → catalogusprijs), not a UI list.",
-      "fileOperations.s3Cost.infoText": "List prices are a price list (MS list price → catalogusprijs), not a UI list."
-    }
+    "sources": "catalog (servers.pinHint.body, settings.servers intro: in de lijst Servers), Microsoft Terminology (list → lijst)"
   },
   "local": {
     "accept": ["lokale"],
@@ -1687,8 +1679,7 @@
     "decision": "Files a drive brings back from a move that never finished",
     "exceptions": {
       "fileOperations.cancelRollback.stoppedMovingBack": "Moving back is the put-back concept: terugzetten.",
-      "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Undoing the move is the rollback concept: terugdraaien.",
-      "commands.handler.shareLinkUnavailable": "Moving the cursor is cursor placement, not a file move: Zet de cursor op …."
+      "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Undoing the move is the rollback concept: terugdraaien."
     },
     "forms": "button Verplaats; the move as a noun → het verplaatsen (voordat Cmdr het verplaatsen kon voltooien)",
     "sources": "macOS Finder (move → verplaatsen; NE111 het kopiëren)"
@@ -1705,10 +1696,7 @@
     "chosen": "naam",
     "confidence": "high",
     "forms": "column Naam; a pronoun never refers back to an uncontrolled {name}",
-    "sources": "macOS Finder (Name → Naam)",
-    "exceptions": {
-      "servers.sheet.identityLockedS3": "The verb \"name\" (what identifies this place), the S3 twin of servers.sheet.identityLocked: bepalen welke plek dit is."
-    }
+    "sources": "macOS Finder (Name → Naam)"
   },
   "nas": {
     "chosen": "NAS",
@@ -1751,18 +1739,7 @@
     "confidence": "high",
     "decision": "Waarom een gedeelde map niet aankoppelt of de lijst niet laadt",
     "forms": "in the pane, share lists, and mount messages → gedeelde map; \"not a network share\" and the error family → netwerkshare; compounds keep share (SMB-share, SMB-/netwerkshares)",
-    "sources": "macOS Finder (Shared folder → Gedeelde map), MS (network share → netwerkshare)",
-    "exceptions": {
-      "commands.fileCopyShareLink.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.fileCopyShareLinkOneDay.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.fileCopyShareLinkOneHour.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.handler.shareLinkCopied.sevenDays": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.handler.shareLinkCopied.oneDay": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.handler.shareLinkCopied.oneHour": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.handler.shareLinkUnavailable": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "commands.handler.shareLinkFailed": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
-      "menu.context.copyShareLink": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link."
-    }
+    "sources": "macOS Finder (Shared folder → Gedeelde map), MS (network share → netwerkshare)"
   },
   "new-file": {
     "accept": ["Bestand aanmaken", "Maak nieuw bestand", "Maak bestand"],
@@ -2668,12 +2645,7 @@
     "chosen": "opslag",
     "confidence": "high",
     "forms": "storage provider → opslagaanbieder (aanbieder per ai-provider); cold storage → koude opslag; S3 storage → S3-opslag",
-    "sources": "Microsoft Terminology (storage → opslag; cold storage → koude opslag); macOS (Cloudopslag, Beheer opslag…)",
-    "exceptions": {
-      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
-      "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage is a product name, kept verbatim.",
-      "servers.sheet.s3GcsKeyHelp": "Cloud Storage here is Google's product name (Cloud Storage-instellingen)."
-    }
+    "sources": "Microsoft Terminology (storage → opslag; cold storage → koude opslag); macOS (Cloudopslag, Beheer opslag…)"
   },
   "streaming": {
     "accept": ["streammodus", "stream"],
