@@ -262,4 +262,24 @@ The `gzip` open question above, reproduced and fixed (`508c777a7` for S3, `68cac
   - After: 24 of 24 objects verbatim with the right stat size on six providers; GCS's flow and sizes cells (ranged reads
     included) green.
 - **WebDAV** had the same decoder gap and the same missing `http2`; both fixed with a fake-server test, red first. Its
-  Docker fixture suites weren't rerun (the change only removes decoding, which the crate-alone build never had).
+  suites after the change, all green:
+  - `cmdr-webdav`'s Docker cells on the `core` stack (`cargo test -p cmdr-webdav -- --ignored`): 40 of 40.
+  - `pnpm check desktop-rust-webdav-nextcloud` (the sabre/dav cells): OK.
+  - The app crate's `webdav_integration_*` cells, which run through the client as the app builds it: 65 of 65. Under
+    `cargo nextest` every one first hit the 8 s cap at load average 12 (one passes alone in 0.89 s, so it was
+    starvation); in one `cargo test` process 63 passed and two wiring cells failed on shared process state, and both
+    passed alone. The full `desktop-rust-integration-tests` lane wasn't run: it brings up every fixture stack.
+
+## Outcome: GCS-written metadata reads back under Cmdr's names
+
+The question behind trusting `GoogGenerationMatch`: an object written GOOG4-signed carries `x-goog-meta-mtime` and
+`x-goog-meta-cmdr-write`. If an S3-signed HEAD answered under those names, the stat would lose the date, the landing
+check would misjudge Cmdr's own write as another writer's, and the cut-off cleanup would never see its token.
+
+- **Live** (`live_flow_test.rs::live_create_new_metadata_reads_back_under_the_names_cmdr_reads`, R2, GCS, Spaces, AWS,
+  Wasabi, and Hetzner, 2026-10-02): after a `CreateNew` through the volume (GOOG4-signed on GCS), the HEAD's metadata
+  headers were `x-amz-meta-mtime` and `x-amz-meta-cmdr-write` on every provider, GCS included, and the stat kept the
+  date. The curl probes earlier showed the same for a GOOG4 copy with `REPLACE`.
+- **Pinned**: `sigv4_test.rs::metadata_written_gcs_s_way_is_spelled_x_goog_and_read_back_as_x_amz` pins both spellings
+  (out as `x-goog-meta-*`, read as `MTIME_HEADER` / `WRITE_TOKEN_HEADER`). No reader change was needed. A listing
+  carries no user metadata on any provider, so it isn't involved.
