@@ -43,11 +43,14 @@ exists, so they call `config::standalone_app_data_dir()` (the OS data dir plus `
 
 - **`set_log_dir(path)` / `log_dir()`**: cache the resolved dir at logger-init; the error-report bundle builder reads it
   back.
-- **`debug_log_path()`**: the resolved directory’s `cmdr.log`, or `None` when the live keep-count is zero or
-  startup has not resolved a directory. This is an in-memory query; the viewer owns file opening and missing-file
-  handling. `commands/logging.rs::get_debug_log_path` exposes it over typed IPC, so Help and the palette honor the
-  same `CMDR_LOG_DIR` / `CMDR_DATA_DIR` overrides as the writer.
-- **`set_keep_count(n)` / `keep_count()`**: live view of the keep-N the file chain was built with.
+- **`set_file_logging_active(bool)` / `debug_log_path()`**: `init` records whether it installed the file chain, and
+  `debug_log_path()` answers the directory's `cmdr.log` only then, else `None`. It reads that startup flag, not the
+  live keep-count: storage turned on at runtime raises the keep-count but installs no chain until a restart, so the
+  `cmdr.log` on disk is an older session's. No filesystem probe; the viewer owns opening the file.
+  `commands/logging.rs::get_debug_log_path` exposes it over typed IPC, and because it reuses `log_dir()`, Help > View
+  debug log opens whatever file the writer writes in every mode (prod, plain dev, a worktree slug, E2E).
+- **`set_keep_count(n)` / `keep_count()`**: the live keep-N, set at startup and again on every cap change. It doesn't
+  say whether a file chain exists; `debug_log_path()` above has that.
 - **`list_recent_log_files(dir)`**: active log files newest-first by mtime. The active-file pattern is
   `^cmdr\.log(\.\d+)?$` (case-insensitive); anything else, legacy `Cmdr_<timestamp>.log` included, is rejected.
 - **`eager_prune(dir, keep_n)`**: one-shot delete of everything beyond `keep_n` newest. Used after the user lowers the

@@ -27,13 +27,14 @@ mod target_style;
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 #[cfg(test)]
 mod tests;
 
 static LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
 static KEEP_COUNT: AtomicUsize = AtomicUsize::new(0);
+static FILE_LOGGING_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Records the resolved log directory once, at plugin-build time.
 ///
@@ -49,16 +50,29 @@ pub fn log_dir() -> Option<&'static Path> {
     LOG_DIR.get().map(PathBuf::as_path)
 }
 
-/// The current debug log in the directory resolved at startup, unless storage is disabled.
-/// No filesystem probe: the viewer owns file opening and any missing-file refusal.
-pub fn debug_log_path() -> Option<PathBuf> {
-    if keep_count() == 0 {
-        return None;
-    }
-    log_dir().map(|dir| dir.join("cmdr.log"))
+/// Records whether startup installed the file chain, so this session writes `cmdr.log`.
+pub fn set_file_logging_active(active: bool) {
+    FILE_LOGGING_ACTIVE.store(active, Ordering::Relaxed);
 }
 
-/// Records the keep-count the plugin was built with (`ceil(cap_mb / 50)`).
+/// The debug log this session writes, or `None` when it writes none.
+///
+/// Reads the startup flag, not the live [`keep_count`]: turning storage on at runtime raises the
+/// keep-count but installs no file chain until a restart, so the `cmdr.log` on disk would be an
+/// older session's, and the viewer would show it as if it were current.
+/// No filesystem probe: the viewer owns file opening and any missing-file refusal.
+pub fn debug_log_path() -> Option<PathBuf> {
+    debug_log_path_for(log_dir(), FILE_LOGGING_ACTIVE.load(Ordering::Relaxed))
+}
+
+fn debug_log_path_for(log_dir: Option<&Path>, file_logging_active: bool) -> Option<PathBuf> {
+    if !file_logging_active {
+        return None;
+    }
+    log_dir.map(|dir| dir.join("cmdr.log"))
+}
+
+/// Records the live keep-count (`ceil(cap_mb / 50)`): at startup, and again on every cap change.
 pub fn set_keep_count(n: usize) {
     KEEP_COUNT.store(n, Ordering::Relaxed);
 }
