@@ -2092,11 +2092,13 @@
     "confidence": "high",
     "decision": "Rà soát trôi thuật ngữ toàn catalog",
     "exceptions": {
+      "ai.secretError.removeTitle": "The saved API key is deleted from the credential store, so `xóa` (like `fileExplorer.network.share.forgetPasswordTooltip`).",
       "commands.cloudRemoveDownload.description": "The local copy really is deleted, so `xóa` (Finder: Remove Download → Xóa bản tải về).",
       "commands.cloudRemoveDownload.label": "Finder's own item: Remove Download → `Xóa bản tải về` (N153.4_V1); the local bytes really go.",
       "commands.handler.cloudRemoveDownloadFailed": "Same deletion as `commands.cloudRemoveDownload.label`, so `xóa`.",
       "fileExplorer.network.share.forgetPasswordTooltip": "The saved password is deleted from the keychain, so `xóa` (like `fileExplorer.network.deletePasswordFailed`).",
-      "menu.context.removeDownload": "Finder's own item: Remove Download → `Xóa bản tải về`; identical to `commands.cloudRemoveDownload.label`."
+      "menu.context.removeDownload": "Finder's own item: Remove Download → `Xóa bản tải về`; identical to `commands.cloudRemoveDownload.label`.",
+      "onboarding.cloudSetup.removeKey": "Same deletion as `ai.secretError.removeTitle`, so `xóa`."
     },
     "forms": "taking an item off a list while it lives on → gỡ bỏ (one form, even with an object); the tag row → Gỡ bỏ “{color}”; forget a saved item → Quên",
     "sources": "Xfce Thunar (_Remove → Gỡ bỏ), GNOME Nautilus (Gỡ bỏ ổ đĩa một cách an toàn)"

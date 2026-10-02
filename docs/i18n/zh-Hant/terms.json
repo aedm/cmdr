@@ -2261,6 +2261,13 @@
     "forms": "the originals → 原本的檔案; Finder’s own item wording → 原項目",
     "sources": "macOS Finder PE117 (…the original could not be deleted): 原項目; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
   },
+  "outdated": {
+    "accept": ["過期"],
+    "chosen": "過時",
+    "confidence": "tentative",
+    "forms": "may be out of date → 可能過時了 / 可能已經過時",
+    "sources": "catalog (the stale-index title 這個磁碟機的索引可能過時了, the size note 可能已經過時; the stale-drive setting says 過期); the pile (AP-TW, AP-HK, MS TBX, Thunar, TC) has no hit for the sense"
+  },
   "overall": {
     "chosen": "整體",
     "confidence": "tentative",

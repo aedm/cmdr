@@ -202,6 +202,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Индексация дисков приостановлена: Cmdr использовал слишком много памяти. Размеры папок могут быть неактуальны до перезапуска Cmdr.",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "Индексировать {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

@@ -201,6 +201,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr 使用的記憶體太多，已暫停磁碟機索引。在你重新啟動 Cmdr 之前，資料夾大小可能過時。",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "要為 {name} 建立索引嗎？",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

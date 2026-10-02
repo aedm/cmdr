@@ -201,6 +201,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr 占用的内存过多，已暂停驱动器索引。在你重新启动 Cmdr 之前，文件夹大小可能已过期。",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "为 {name} 建立索引？",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

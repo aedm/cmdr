@@ -201,6 +201,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr hat die Laufwerksindizierung angehalten, weil zu viel Speicher belegt war. Bis du Cmdr neu startest, sind die Ordnergrößen womöglich nicht mehr aktuell.",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "{name} indizieren?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

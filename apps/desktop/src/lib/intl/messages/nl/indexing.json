@@ -202,6 +202,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr heeft het indexeren van schijven gepauzeerd, omdat er te veel geheugen werd gebruikt. Mapgroottes kunnen verouderd zijn tot je Cmdr herstart.",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "{name} indexeren?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

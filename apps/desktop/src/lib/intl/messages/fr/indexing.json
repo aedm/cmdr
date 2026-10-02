@@ -201,6 +201,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr a mis en pause l’indexation des disques, car il utilisait trop de mémoire. Les tailles des dossiers peuvent être obsolètes jusqu’au redémarrage de Cmdr.",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "Indexer {name} ?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

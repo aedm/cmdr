@@ -201,6 +201,10 @@
   "@indexing.needsFreshScan.afterDisconnect": {
     "sourceHash": "a90dbdf"
   },
+  "indexing.memoryStop.paused": "Cmdr pausade enhetsindexeringen eftersom Cmdr använde för mycket minne. Mappstorlekarna kan vara inaktuella tills du startar om Cmdr.",
+  "@indexing.memoryStop.paused": {
+    "sourceHash": "32d225a"
+  },
   "indexing.firstConnect.title": "Indexera {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

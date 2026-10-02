@@ -455,5 +455,13 @@
   "ai.secretError.genericBody": "Verifique se o chaveiro do sistema está disponível e tente novamente. Se continuar, reinicie o app.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "Não foi possível remover sua chave de API salva.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Abra o Acesso às Chaves, encontre o item “Cmdr” e apague-o lá.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

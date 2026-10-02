@@ -456,5 +456,13 @@
   "ai.secretError.genericBody": "Comprueba que el llavero del sistema esté disponible y vuelve a intentarlo. Si continúa, reinicia la app.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "No se ha podido quitar tu clave de API guardada.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Abre Acceso a Llaveros, busca la entrada “Cmdr” y elimínala ahí.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

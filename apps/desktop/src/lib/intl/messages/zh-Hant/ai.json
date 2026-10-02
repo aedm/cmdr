@@ -456,5 +456,13 @@
   "ai.secretError.genericBody": "請確認你的系統鑰匙圈可以使用，然後再試一次。如果還是這樣，請重新啟動 App。",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "無法移除你已儲存的 API 金鑰。",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "請開啟「鑰匙圈存取」，找到「Cmdr」項目，然後在那裡把它刪掉。",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

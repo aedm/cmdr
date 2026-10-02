@@ -458,5 +458,13 @@
   "ai.secretError.genericBody": "Kontrollera att systemets nyckelring är tillgänglig och försök igen. Om det kvarstår, starta om appen.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "Det gick inte att ta bort din sparade API-nyckel.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Öppna Nyckelhanterare, leta upp posten ”Cmdr” och radera den där.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

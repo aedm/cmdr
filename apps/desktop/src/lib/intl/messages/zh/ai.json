@@ -456,5 +456,13 @@
   "ai.secretError.genericBody": "确认你的系统密钥环可用，然后重试。如果问题仍然存在，请重新启动应用。",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "无法移除你保存的 API 密钥。",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "打开“钥匙串访问”，找到“Cmdr”这一项，然后在那里将它删除。",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

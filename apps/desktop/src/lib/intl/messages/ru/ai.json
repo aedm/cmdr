@@ -455,5 +455,13 @@
   "ai.secretError.genericBody": "Убедитесь, что системное хранилище ключей доступно, и повторите попытку. Если проблема останется, перезапустите приложение.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "Не удалось удалить сохраненный API-ключ.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Откройте приложение «Связка ключей», найдите запись «Cmdr» и удалите ее там.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

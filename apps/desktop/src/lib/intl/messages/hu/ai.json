@@ -456,5 +456,13 @@
   "ai.secretError.genericBody": "Ellenőrizd, hogy a rendszer kulcstartója elérhető-e, majd próbáld újra. Ha továbbra is fennáll, indítsd újra az appot.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "Nem sikerült eltávolítani a mentett API-kulcsodat.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Nyisd meg a Kulcskarika-elérés appot, keresd meg a „Cmdr” bejegyzést, és ott töröld.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

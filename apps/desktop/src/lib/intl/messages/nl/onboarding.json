@@ -565,6 +565,10 @@
   "@onboarding.cloudSetup.apiKeyAria": {
     "sourceHash": "16f0ee4"
   },
+  "onboarding.cloudSetup.removeKey": "Verwijder sleutel",
+  "@onboarding.cloudSetup.removeKey": {
+    "sourceHash": "81c45fd"
+  },
   "onboarding.cloudSetup.apiKeyPlaceholder.openai": "Voorbeeld: sk-abc123…",
   "@onboarding.cloudSetup.apiKeyPlaceholder.openai": {
     "sourceHash": "9352883"

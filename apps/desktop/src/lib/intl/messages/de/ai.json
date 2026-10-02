@@ -458,5 +458,13 @@
   "ai.secretError.genericBody": "Prüfe, ob dein System-Schlüsselbund verfügbar ist, und versuche es erneut. Wenn es weiterhin auftritt, starte die App neu.",
   "@ai.secretError.genericBody": {
     "sourceHash": "2ee417d"
+  },
+  "ai.secretError.removeTitle": "Dein gespeicherter API-Schlüssel ließ sich nicht entfernen.",
+  "@ai.secretError.removeTitle": {
+    "sourceHash": "5986628"
+  },
+  "ai.secretError.removeKeychainBody": "Öffne die Schlüsselbundverwaltung, suche den Eintrag „Cmdr“ und lösche ihn dort.",
+  "@ai.secretError.removeKeychainBody": {
+    "sourceHash": "4e3abe7"
   }
 }

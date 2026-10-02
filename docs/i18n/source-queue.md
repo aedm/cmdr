@@ -129,3 +129,6 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   wasn't in its `--keys` brief; the stale check caught it. Brief stale keys alongside new ones. (all)
 - `i18n-termbase` misses a duplicate top-level key in `terms.json`: a hand-added `storage` entry shadowed (or was
   shadowed by) the real one in de, pt, and vi with no finding. Fail on duplicate keys. (all)
+- `remove` concept: deleting a saved credential (`ai.secretError.removeTitle`, `onboarding.cloudSetup.removeKey`,
+  `fileExplorer.network.share.forgetPasswordTooltip`) is a real deletion; consider a `notMatch` so vi stops needing
+  exceptions. (vi)

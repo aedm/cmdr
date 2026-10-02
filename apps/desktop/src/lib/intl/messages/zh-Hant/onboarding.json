@@ -564,6 +564,10 @@
   "@onboarding.cloudSetup.apiKeyAria": {
     "sourceHash": "16f0ee4"
   },
+  "onboarding.cloudSetup.removeKey": "移除金鑰",
+  "@onboarding.cloudSetup.removeKey": {
+    "sourceHash": "81c45fd"
+  },
   "onboarding.cloudSetup.apiKeyPlaceholder.openai": "例如：sk-abc123⋯",
   "@onboarding.cloudSetup.apiKeyPlaceholder.openai": {
     "sourceHash": "9352883"

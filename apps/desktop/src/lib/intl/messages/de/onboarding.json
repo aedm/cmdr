@@ -563,6 +563,10 @@
   "@onboarding.cloudSetup.apiKeyAria": {
     "sourceHash": "16f0ee4"
   },
+  "onboarding.cloudSetup.removeKey": "Schlüssel entfernen",
+  "@onboarding.cloudSetup.removeKey": {
+    "sourceHash": "81c45fd"
+  },
   "onboarding.cloudSetup.apiKeyPlaceholder.openai": "Beispiel: sk-abc123…",
   "@onboarding.cloudSetup.apiKeyPlaceholder.openai": {
     "sourceHash": "9352883"
