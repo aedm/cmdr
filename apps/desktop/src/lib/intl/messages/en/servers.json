@@ -666,7 +666,7 @@
   },
   "servers.sheet.examplePlaceholder": "Example: {example}",
   "@servers.sheet.examplePlaceholder": {
-    "description": "Placeholder inside an S3 form field, showing a sample value. The word before it is the ordinary label your language puts in front of an example; match servers.sheet.usernamePlaceholder (“Example: barry”).",
+    "description": "Placeholder inside an S3 form field, showing a sample value. The word before it is the ordinary label your language puts in front of an example: match the catalog’s usual “Example:” prefix, the one most other placeholders use.",
     "placeholders": {
       "example": "a sample value kept as-is, like a region code \"eu-west-1\", an access key ID, or a web address"
     }

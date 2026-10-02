@@ -118,3 +118,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `common.attachEmailPlaceholder`, `settings.updates.emailPlaceholder`, `onboarding.stepBeta.emailPlaceholder`:
   "localize the local part to your word for you" fails in Cyrillic scripts (`вы@example.com` isn't typeable). Allow a
   generic Latin `name@`. (ru)
+- `pnpm i18n:brief --changed-since <ref>` diffs against the ref's tip, so a branch's brief also carries every key `main`
+  changed after the split (about 11 per S3 brief). Compare against `git merge-base <ref> HEAD` instead. (all)
+- S3 keys (`servers.sheet.s3*`, `servers.refusal.*` S3 arms, `*shareLink*`, `*coldStorage*`, `fileOperations.s3Cost.*`):
+  none has a `screenshot`. Capture the S3 form, a refusal, the share-link submenu, and the cost line. (all)
