@@ -183,6 +183,14 @@ async fn rename_by_move_cost(volume_id: &str, old_path: &Path, data_dir: Option<
                 dirs: usize::try_from(tally.folders).unwrap_or(usize::MAX),
                 bytes: tally.bytes,
                 per_file: Some(tally.per_file.clone()),
+                // The renamed entry is the one selected item: a folder, or a
+                // file past the part floor.
+                selected_folders: usize::from(tally.folders > 0),
+                selected_file_sizes: if tally.folders > 0 {
+                    Vec::new()
+                } else {
+                    vec![tally.bytes]
+                },
             };
             !s3_costs::rounds_to_zero(&s3_costs::estimate_rename(volume_id, &facts, data_dir))
         }

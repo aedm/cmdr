@@ -469,6 +469,13 @@ pub(crate) struct ScanCostFacts {
     /// sizes (undated: a local file's date bills nothing), or an S3 scan's
     /// sizes and upload dates. `None` when the scan kept no per-file list.
     pub per_file: Option<Vec<ScannedFile>>,
+    /// How many of the selected items are folders. The estimate needs the
+    /// shape of the selection, not only its totals: each selected item is
+    /// stat'd and its name probed at the destination, and only what lands
+    /// inside a folder the operation makes skips the no-overwrite check.
+    pub selected_folders: usize,
+    /// The size of each selected item that's a file, in selection order.
+    pub selected_file_sizes: Vec<u64>,
 }
 
 /// The cost facts of a settled preview, without consuming the entry, or `None`
@@ -500,6 +507,17 @@ pub(crate) fn cached_cost_facts(preview_id: &str) -> Option<ScanCostFacts> {
         dirs: cached.per_path.iter().map(|(_, scan)| scan.dir_count).sum(),
         bytes: cached.total_bytes,
         per_file,
+        selected_folders: cached
+            .per_path
+            .iter()
+            .filter(|(_, scan)| scan.top_level_is_directory)
+            .count(),
+        selected_file_sizes: cached
+            .per_path
+            .iter()
+            .filter(|(_, scan)| !scan.top_level_is_directory)
+            .map(|(_, scan)| scan.total_bytes)
+            .collect(),
     })
 }
 

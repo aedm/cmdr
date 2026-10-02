@@ -27,6 +27,14 @@ fn facts(files: &[(u64, Option<u64>)], dirs: usize) -> ScanCostFacts {
                 .map(|&(size, modified_at)| ScannedFile { size, modified_at })
                 .collect(),
         ),
+        // A selection of one folder holding the files, or of the files
+        // themselves when there's no folder.
+        selected_folders: usize::from(dirs > 0),
+        selected_file_sizes: if dirs > 0 {
+            Vec::new()
+        } else {
+            files.iter().map(|(size, _)| *size).collect()
+        },
     }
 }
 

@@ -51,6 +51,14 @@ fn facts(files: &[(u64, Option<u64>)], dirs: usize) -> ScanCostFacts {
                 .map(|&(size, modified_at)| ScannedFile { size, modified_at })
                 .collect(),
         ),
+        // A selection of one folder holding the files, or of the files
+        // themselves when there's no folder.
+        selected_folders: usize::from(dirs > 0),
+        selected_file_sizes: if dirs > 0 {
+            Vec::new()
+        } else {
+            files.iter().map(|(size, _)| *size).collect()
+        },
     }
 }
 
@@ -85,9 +93,12 @@ fn an_upload_to_aws_is_a_put_and_a_head_per_file_and_folder() {
     };
     let files: Vec<_> = (0..1_000).map(|_| (MIB, None)).collect();
     let planned = plan(CostedOperation::Copy, sides, &facts(&files, 2), &[]);
-    // 1,000 files and two folder markers: 1,002 PUTs ($0.00501) and 1,002
-    // verifying HEADs ($0.0004008).
-    close(totals(&planned)[0], 0.0054108);
+    // 1,000 files into two folders this upload makes: 1,000 PUTs and their
+    // verifying HEADs (no no-overwrite HEAD: the folders are fresh). The
+    // folders: two marker PUTs, four HEADs, six LISTs. Readying the
+    // destination: three LISTs; probing the selected folder's name: a HEAD and
+    // a LIST. PUT-class: 1,002 PUTs + 10 LISTs; HEADs: 1,005.
+    close(totals(&planned)[0], 1_012.0 * 5e-6 + 1_005.0 * 4e-7);
 }
 
 #[test]
@@ -98,8 +109,8 @@ fn a_download_from_aws_bills_its_bytes() {
         server_copy: false,
     };
     let planned = plan(CostedOperation::Copy, sides, &facts(&[(10 * GIB, None)], 0), &[]);
-    // One GET and 10 GB × $0.09.
-    close(totals(&planned)[0], 0.9000004);
+    // The selected file's stat (a HEAD), one GET, and 10 GB × $0.09.
+    close(totals(&planned)[0], 0.9 + 2.0 * 4e-7);
 }
 
 #[test]
@@ -110,13 +121,15 @@ fn a_move_within_one_aws_account_copies_on_the_server_and_deletes_the_source() {
         server_copy: true,
     };
     let planned = plan(CostedOperation::Move, sides, &facts(&[(MIB, None)], 1), &[]);
-    // One workload: the account is billed once. The file: `CopyObject` and two
-    // HEADs; the folder: its marker written at the destination (PUT + HEAD), and
-    // at the source a capped listing plus the marker's free delete. The file's
-    // delete is one free `DeleteObjects`.
-    // PUT-class: COPY + marker PUT + LIST = 3 × $5/M; HEADs: 3 × $0.40/M.
+    // One workload: the account is billed once. LISTs: the scan's stat (1)
+    // and its listing plus the walk's (2), readying the destination (3) and
+    // checking the move (3), the name probe (1), making the folder (3), the
+    // sweep's two and the emptied folder's capped one (3): 16. HEADs: the
+    // stat, the probe, two making the folder, the copy's source and verify
+    // (no no-overwrite HEAD in a fresh folder), the sweep's: 7. Plus one
+    // `CopyObject` and the marker's PUT; the deletes are free.
     assert_eq!(planned.len(), 1);
-    close(totals(&planned)[0], 3.0 * 5e-6 + 3.0 * 4e-7);
+    close(totals(&planned)[0], 18.0 * 5e-6 + 7.0 * 4e-7);
 }
 
 #[test]
@@ -133,9 +146,11 @@ fn a_copy_between_two_accounts_downloads_from_one_and_uploads_to_the_other() {
         &[],
     );
     let amounts = totals(&planned);
-    // R2: two GETs at $0.36/M, egress free. AWS: two PUTs and two HEADs.
-    close(amounts[0], 2.0 * 0.36e-6);
-    close(amounts[1], 2.0 * 5e-6 + 2.0 * 4e-7);
+    // R2: the two selected files' stats and their GETs at $0.36/M, egress
+    // free. AWS: readying the destination (3 LISTs), a name probe per file (a
+    // HEAD and a LIST), two PUTs and their verifying HEADs.
+    close(amounts[0], 4.0 * 0.36e-6);
+    close(amounts[1], 7.0 * 5e-6 + 4.0 * 4e-7);
 }
 
 #[test]
@@ -189,11 +204,14 @@ fn without_a_per_file_list_the_bytes_spread_evenly_over_the_files() {
         dirs: 0,
         bytes: 400 * MIB,
         per_file: None,
+        selected_folders: 0,
+        selected_file_sizes: vec![100 * MIB; 4],
     };
     let planned = plan(CostedOperation::Copy, sides, &bare, &[]);
-    // Four 100 MiB files, each two 64 MiB-floor parts plus Create and Complete:
-    // 16 PUT-class requests, and four HEADs.
-    close(totals(&planned)[0], 16.0 * 5e-6 + 4.0 * 4e-7);
+    // Four 100 MiB files, each two 64 MiB-floor parts plus Create and Complete
+    // (16), readying the destination and probing each name (7 LISTs): 23
+    // PUT-class requests; four name probes and four verifying HEADs.
+    close(totals(&planned)[0], 23.0 * 5e-6 + 8.0 * 4e-7);
 }
 
 fn clash(source_size: u64, dest_size: u64, source_modified: Option<u64>, dest_modified: Option<u64>) -> KnownClash {

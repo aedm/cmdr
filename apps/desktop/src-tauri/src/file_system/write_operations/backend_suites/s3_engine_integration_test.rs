@@ -448,9 +448,6 @@ pub(super) async fn a_folder_of_1005_objects_deletes(target: &S3Target) {
 
 // ── What the engine sends against what the dialog estimates ──────────
 
-/// The label of the comparison's delete, which the fixture cell leaves out.
-pub(super) const DELETE_OPERATION: &str = "delete the uploaded folder";
-
 /// One operation's requests: what the engine sent, what the estimate counts.
 pub(super) struct RequestComparison {
     pub(super) operation: &'static str,
@@ -458,35 +455,15 @@ pub(super) struct RequestComparison {
     pub(super) estimated: BTreeMap<&'static str, u64>,
 }
 
-/// The requests that move or publish bytes, which a write path sends and its
-/// `Workload` method counts one for one. The HEADs and LISTs around them are
-/// the engine's (scan, destination pre-check, verify) and the estimate counts
-/// them "close, not exact" (`crates/cmdr-s3/DETAILS.md` § "Cost estimates").
-const WRITE_PATH_KINDS: [&str; 8] = [
-    "PutObject",
-    "CopyObject",
-    "CreateMultipartUpload",
-    "UploadPart",
-    "UploadPartCopy",
-    "CompleteMultipartUpload",
-    "GetObject",
-    "AbortMultipartUpload",
-];
-
 impl RequestComparison {
-    /// Every kind among [`WRITE_PATH_KINDS`] where the two disagree, as
-    /// `kind: sent N, estimated M`.
-    pub(super) fn write_path_mismatches(&self) -> Vec<String> {
-        self.mismatches_where(|kind| WRITE_PATH_KINDS.contains(&kind))
-    }
-
-    fn mismatches_where(&self, wanted: impl Fn(&str) -> bool) -> Vec<String> {
+    /// Every request kind where the two disagree, as `kind: sent N,
+    /// estimated M`.
+    pub(super) fn mismatches(&self) -> Vec<String> {
         let mut kinds: Vec<&&str> = self.sent.keys().chain(self.estimated.keys()).collect();
         kinds.sort();
         kinds.dedup();
         kinds
             .into_iter()
-            .filter(|kind| wanted(kind))
             .filter_map(|kind| {
                 let (sent, estimated) = (
                     self.sent.get(*kind).copied().unwrap_or(0),
@@ -498,8 +475,10 @@ impl RequestComparison {
     }
 }
 
-/// The facts a settled scan preview of `files` would hand the estimate.
-fn facts(files: &[usize], dirs: usize) -> ScanCostFacts {
+/// The facts a settled scan preview hands the estimate: `files` sizes,
+/// `dirs` folders in all, `selected_folders` of them selected, and the
+/// selected files' sizes.
+fn facts(files: &[usize], dirs: usize, selected_folders: usize, selected_files: &[usize]) -> ScanCostFacts {
     ScanCostFacts {
         files: files.len(),
         dirs,
@@ -513,6 +492,8 @@ fn facts(files: &[usize], dirs: usize) -> ScanCostFacts {
                 })
                 .collect(),
         ),
+        selected_folders,
+        selected_file_sizes: selected_files.iter().map(|len| *len as u64).collect(),
     }
 }
 
@@ -521,35 +502,73 @@ fn one_workload(mut workloads: Vec<cmdr_s3::cost::Workload>) -> BTreeMap<&'stati
     workloads.remove(0).counted_requests()
 }
 
-/// Runs four operations through the engine on `target` (an upload of two
-/// files, one of them multipart at the production floor, a download, a copy
-/// within the bucket, and a delete of the folder) and answers, for each, the
-/// requests the bucket volume sent beside what `s3_costs` estimates for it.
-/// The caller decides what to assert: the fixture cells pin the exact counts,
-/// the live run reports every mismatch.
+/// Waits out an operation started with `events`, insisting it reported
+/// nothing.
+async fn settled(events: &CollectorEventSink, what: &str) {
+    crate::test_support::wait_until_async(budget(Duration::from_secs(6)), what, || {
+        !events.settled.lock_ignore_poison().is_empty()
+    })
+    .await;
+    let errors: Vec<String> = events
+        .errors
+        .lock_ignore_poison()
+        .iter()
+        .map(|e| format!("{:?}", e.error))
+        .collect();
+    assert!(errors.is_empty(), "{what}: {errors:?}");
+}
+
+/// Runs every operation the dialogs price through the engine on `target`, one
+/// after another on one folder tree (`batch/` holding a 200 KB file, a 70 MiB
+/// one past the part floor, and `sub/` with a third), and answers, for each,
+/// the requests the bucket volume sent beside what `s3_costs` estimates:
+/// upload, download, a same-bucket copy, a move within the bucket, a rename,
+/// a move off the bucket, a delete, and the same for two selected files.
+/// The caller decides what to assert: the fixture cells pin every count, the
+/// live run reports them.
 pub(super) async fn requests_sent_against_the_estimate(target: &S3Target) -> Vec<RequestComparison> {
+    use crate::file_system::write_operations::{start_rename_by_move, start_volume_move};
+
     let volume = Arc::new(target.connect(Some(target.bucket())).await);
     let prefix = target.prefix("cost");
     let dir = volume.root().join(prefix.trim_end_matches('/'));
     let remote = Arc::clone(&volume) as Arc<dyn Volume>;
+    let volume_id = register(&volume, &format!("cost-{}-{}", target.name(), std::process::id()));
     let local_dir = TestDir::new("s3_cost_compare");
-    let sizes = [200_000_usize, 70 * MIB];
-    std::fs::create_dir_all(local_dir.join("batch")).expect("making the local folder");
-    for (index, len) in sizes.iter().enumerate() {
-        std::fs::write(
-            local_dir.join("batch").join(format!("f{index}.bin")),
-            self_describing_bytes(*len, "cost"),
-        )
-        .expect("seeding a local file");
+    let sizes = [200_000_usize, 70 * MIB, 1_000];
+    std::fs::create_dir_all(local_dir.join("batch/sub")).expect("making the local folder");
+    for (relative, len) in [
+        ("batch/f0.bin", sizes[0]),
+        ("batch/f1.bin", sizes[1]),
+        ("batch/sub/f2.bin", sizes[2]),
+    ] {
+        std::fs::write(local_dir.join(relative), self_describing_bytes(len, relative)).expect("seeding a local file");
+    }
+    let top_files = [3_000_usize, 4_000];
+    for (name, len) in [("t0.bin", top_files[0]), ("t1.bin", top_files[1])] {
+        std::fs::write(local_dir.join(name), self_describing_bytes(len, name)).expect("seeding a local file");
     }
     let local: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*local_dir));
+    let local_id = format!("cost-local-{}-{}", target.name(), std::process::id());
+    get_volume_manager().register(&local_id, Arc::clone(&local));
+    // Destinations the person already has, as the dialogs' are.
+    for folder in ["", "copied", "moved", "files"] {
+        volume
+            .create_directory_all(&dir.join(folder))
+            .await
+            .expect("making a destination folder");
+    }
+    let tree = facts(&sizes, 2, 1, &[]);
+    let plan = |operation, source: bool, destination: bool, facts: &ScanCostFacts| {
+        one_workload(planned_workloads(
+            operation,
+            source.then_some(volume.as_ref()),
+            destination.then_some(volume.as_ref()),
+            facts,
+            None,
+        ))
+    };
     let mut out = Vec::new();
-
-    // The folder for the run, made the way a person would before copying in.
-    volume
-        .create_directory_all(&dir)
-        .await
-        .expect("making the prefix folder");
     take_sent_requests(&volume).await;
 
     run_copy(
@@ -561,15 +580,9 @@ pub(super) async fn requests_sent_against_the_estimate(target: &S3Target) -> Vec
     )
     .await;
     out.push(RequestComparison {
-        operation: "upload a folder of two files",
+        operation: "upload a folder",
         sent: take_sent_requests(&volume).await,
-        estimated: one_workload(planned_workloads(
-            CostedOperation::Copy,
-            None,
-            Some(volume.as_ref()),
-            &facts(&sizes, 1),
-            None,
-        )),
+        estimated: plan(CostedOperation::Copy, false, true, &tree),
     });
 
     let back_dir = TestDir::new("s3_cost_download");
@@ -583,24 +596,11 @@ pub(super) async fn requests_sent_against_the_estimate(target: &S3Target) -> Vec
     )
     .await;
     out.push(RequestComparison {
-        operation: "download that folder",
+        operation: "download a folder",
         sent: take_sent_requests(&volume).await,
-        estimated: one_workload(planned_workloads(
-            CostedOperation::Copy,
-            Some(volume.as_ref()),
-            None,
-            &facts(&sizes, 1),
-            None,
-        )),
+        estimated: plan(CostedOperation::Copy, true, false, &tree),
     });
 
-    // A destination the person already has: making a missing one would add a
-    // marker the estimate rightly doesn't count.
-    volume
-        .create_directory_all(&dir.join("copied"))
-        .await
-        .expect("making the copy's destination");
-    take_sent_requests(&volume).await;
     run_copy(
         "cost-server-copy",
         Arc::clone(&remote),
@@ -610,22 +610,125 @@ pub(super) async fn requests_sent_against_the_estimate(target: &S3Target) -> Vec
     )
     .await;
     out.push(RequestComparison {
-        operation: "copy that folder within the bucket",
+        operation: "copy a folder within the bucket",
         sent: take_sent_requests(&volume).await,
-        estimated: one_workload(planned_workloads(
-            CostedOperation::Copy,
-            Some(volume.as_ref()),
-            Some(volume.as_ref()),
-            &facts(&sizes, 1),
-            None,
-        )),
+        estimated: plan(CostedOperation::Copy, true, true, &tree),
     });
 
-    let volume_id = register(&volume, &format!("cost-{}", target.name()));
+    let events = Arc::new(CollectorEventSink::new());
+    start_volume_move(
+        events.clone() as Arc<dyn OperationEventSink>,
+        volume_id.clone(),
+        vec![dir.join("copied/batch")],
+        volume_id.clone(),
+        dir.join("moved").display().to_string(),
+        VolumeCopyConfig::default(),
+        Initiator::User,
+        None,
+    )
+    .await
+    .expect("the move starts");
+    settled(&events, "the move within the bucket").await;
+    out.push(RequestComparison {
+        operation: "move a folder within the bucket",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Move, true, true, &tree),
+    });
+
+    let events = Arc::new(CollectorEventSink::new());
+    start_rename_by_move(
+        events.clone() as Arc<dyn OperationEventSink>,
+        volume_id.clone(),
+        vec![(dir.join("moved/batch"), "renamed".to_string())],
+        dir.join("moved").display().to_string(),
+        VolumeCopyConfig::default(),
+        Initiator::User,
+        None,
+    )
+    .await
+    .expect("the rename starts");
+    settled(&events, "the rename").await;
+    out.push(RequestComparison {
+        operation: "rename a folder",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Move, true, true, &tree),
+    });
+
+    let off_dir = TestDir::new("s3_cost_move_off");
+    let off: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*off_dir));
+    let off_id = format!("cost-off-{}-{}", target.name(), std::process::id());
+    get_volume_manager().register(&off_id, Arc::clone(&off));
+    let events = Arc::new(CollectorEventSink::new());
+    start_volume_move(
+        events.clone() as Arc<dyn OperationEventSink>,
+        volume_id.clone(),
+        vec![dir.join("moved/renamed")],
+        off_id,
+        off_dir.display().to_string(),
+        VolumeCopyConfig::default(),
+        Initiator::User,
+        None,
+    )
+    .await
+    .expect("the move off starts");
+    settled(&events, "the move off the bucket").await;
+    out.push(RequestComparison {
+        operation: "move a folder off the bucket",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Move, true, false, &tree),
+    });
+
     let events = Arc::new(CollectorEventSink::new());
     delete_files_start(
         events.clone() as Arc<dyn OperationEventSink>,
         vec![dir.join("batch")],
+        WriteOperationConfig::default(),
+        Some(volume_id.clone()),
+        Initiator::User,
+        None,
+    )
+    .await
+    .expect("the delete starts");
+    settled(&events, "the delete").await;
+    out.push(RequestComparison {
+        operation: "delete a folder",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Delete, true, false, &tree),
+    });
+
+    let selected = facts(&top_files, 0, 0, &top_files);
+    run_copy(
+        "cost-upload-files",
+        Arc::clone(&local),
+        vec![PathBuf::from("t0.bin"), PathBuf::from("t1.bin")],
+        Arc::clone(&remote),
+        dir.join("files"),
+    )
+    .await;
+    out.push(RequestComparison {
+        operation: "upload two files",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Copy, false, true, &selected),
+    });
+
+    run_copy(
+        "cost-copy-files",
+        Arc::clone(&remote),
+        vec![dir.join("files/t0.bin"), dir.join("files/t1.bin")],
+        Arc::clone(&remote),
+        dir.join("copied"),
+    )
+    .await;
+    out.push(RequestComparison {
+        operation: "copy two files within the bucket",
+        sent: take_sent_requests(&volume).await,
+        estimated: plan(CostedOperation::Copy, true, true, &selected),
+    });
+
+    let events = Arc::new(CollectorEventSink::new());
+    delete_files_start(
+        events.clone() as Arc<dyn OperationEventSink>,
+        vec![dir.join("files/t0.bin"), dir.join("files/t1.bin")],
         WriteOperationConfig::default(),
         Some(volume_id),
         Initiator::User,
@@ -633,42 +736,23 @@ pub(super) async fn requests_sent_against_the_estimate(target: &S3Target) -> Vec
     )
     .await
     .expect("the delete starts");
-    crate::test_support::wait_until_async(budget(Duration::from_secs(6)), "the delete to settle", || {
-        !events.settled.lock_ignore_poison().is_empty()
-    })
-    .await;
-    assert!(events.errors.lock_ignore_poison().is_empty());
+    settled(&events, "the delete of two files").await;
     out.push(RequestComparison {
-        operation: DELETE_OPERATION,
+        operation: "delete two files",
         sent: take_sent_requests(&volume).await,
-        estimated: one_workload(planned_workloads(
-            CostedOperation::Delete,
-            Some(volume.as_ref()),
-            None,
-            &facts(&sizes, 1),
-            None,
-        )),
+        estimated: plan(CostedOperation::Delete, true, false, &selected),
     });
     out
 }
 
-/// The fixture form: the requests that move bytes match the estimate exactly
-/// for the upload, the download, and the copy.
-///
-/// ❗ The delete isn't asserted: the volume delete walker sends a `delete` per
-/// object (a capped LIST, a HEAD, a DELETE each), while the estimate bills
-/// `DeleteObjects` batches. Which side moves is open
-/// (`docs/notes/s3/live-engine-2026-10.md` § "Cost estimates").
+/// The fixture form: for every operation, the estimate counts exactly the
+/// requests the engine sent, LISTs and HEADs included
+/// (`crates/cmdr-s3/CLAUDE.md`: a request more or less updates `Workload`).
 async fn the_engine_sends_what_the_estimate_counts(target: &S3Target) {
     let comparisons = requests_sent_against_the_estimate(target).await;
     let mismatches: Vec<String> = comparisons
         .iter()
-        .filter(|c| c.operation != DELETE_OPERATION)
-        .flat_map(|c| {
-            c.write_path_mismatches()
-                .into_iter()
-                .map(move |m| format!("{}: {m}", c.operation))
-        })
+        .flat_map(|c| c.mismatches().into_iter().map(move |m| format!("{}: {m}", c.operation)))
         .collect();
     assert!(
         mismatches.is_empty(),

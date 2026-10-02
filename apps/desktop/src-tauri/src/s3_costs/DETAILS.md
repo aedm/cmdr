@@ -15,19 +15,33 @@ estimates". The product decision: `docs/specs/s3-support-plan.md` § "Product de
 
 ## What each operation plans
 
-- **Copy**: same account and buckets the provider copies between → `copy_on_server` per file on the one account.
-  Otherwise a `download` per file on an S3 source and an `upload` per file on an S3 destination. Each copied folder
-  writes a marker at an S3 destination (`upload(0)`).
+The planner counts every request the engine sends, LISTs and HEADs included, one `Workload` method per engine step
+(`crates/cmdr-s3/DETAILS.md` § "Cost estimates"). It needs the shape of the selection, not only its totals, so
+`ScanCostFacts` carries `selected_folders` and `selected_file_sizes` beside the files: each selected item is stat'd
+and its name probed at the destination, and only what lands inside a folder the operation makes skips the
+no-overwrite check. Pinned request for request by `backend_suites/s3_engine_integration_test.rs::
+the_engine_sends_what_the_estimate_counts` on both fixtures.
+
+- **The source side** (copy or move off S3): `stat_selection` per selected item, and `list_folder` twice per listing
+  page (the scan reads each folder, the walk reads it again).
+- **Copy**: same account and buckets the provider copies between → on the one account, `copy_on_server_fresh` per file
+  inside a selected folder and `copy_on_server` per selected file. Otherwise a `download` per file on an S3 source,
+  and `upload_fresh` / `upload` the same way on an S3 destination. Either way the destination side is
+  `open_destination`, a `probe_name` per selected item, and a `make_folder` per folder.
 - **Overwrites** (a copy's or a move's, `CostEstimateRequest.clashes`): the dialog sends the conflict check's file
   clashes and its policy; `plan::overwritten` decides which the policy overwrites the way the transfer does (strictly
   smaller, strictly older), and each one is `replace_object` at the destination plus, for an upload, `upload_over`. A
   server-side copy replaces in one request, so only `replace_object`.
-- **Move**: the copy, then at the source a `delete_object` per file (with its date) and a `delete_folder` per folder.
-  This is also F2's rename by move: the prefilled Move dialog runs the same scan. Before that, `estimate_rename` prices
-  the rename editor's own tally (`Volume::tally_subtree`, at most 101 files) as a same-account move, and any amount that
-  doesn't round to zero (`rounds_to_zero`, the cost line's half-a-cent rule) sends the rename to the Move dialog.
-- **Delete**: a `delete_object` per file, a `delete_folder` and a `list_folder` per folder (a volume delete lists each
-  folder again as it recurses).
+- **Move**: the copy, plus `check_move_within` for a move within one account, then the source sweep: `sweep_folder`
+  per folder (one `DeleteObjects` per level) with a `swept_object` per file inside, and a `delete_object` per selected
+  file. This is also F2's rename by move: the prefilled Move dialog runs the same scan. Before that, `estimate_rename`
+  prices the rename editor's own tally (`Volume::tally_subtree`, at most 101 files, the renamed entry as the one
+  selected item) as a same-account move, and any amount that doesn't round to zero (`rounds_to_zero`, the cost line's
+  half-a-cent rule) sends the rename to the Move dialog.
+- **Delete**: `stat_selection` per selected item, a `list_folder` per listing page, a `delete_object` per file
+  (batched a thousand to a `DeleteObjects`, the way the volume delete sends them), and a `delete_folder` per folder.
+- **Approximate, on purpose**: listing pages are one per folder plus one per thousand files; the destination exists
+  and no selected folder clashes with one there; source folders carry markers.
 - **No per-file list** (a scan answered from a cached listing): the bytes spread evenly over the file count, undated.
   Part counts drift a little; early deletion can't be priced, so it isn't.
 

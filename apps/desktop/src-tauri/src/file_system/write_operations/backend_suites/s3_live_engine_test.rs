@@ -53,10 +53,9 @@ use super::network_transfer_test_support::{
     tree_fingerprint,
 };
 use super::s3_engine_integration_test::{
-    DELETE_OPERATION, a_cancel_mid_multipart_leaves_no_object_and_no_upload,
-    a_cancel_with_rollback_takes_back_what_landed, a_cancelled_overwrite_keeps_the_original,
-    a_finished_copy_onto_a_bucket_rolls_back, a_folder_of_1005_objects_deletes, a_paused_upload_resumes_and_lands,
-    requests_sent_against_the_estimate,
+    a_cancel_mid_multipart_leaves_no_object_and_no_upload, a_cancel_with_rollback_takes_back_what_landed,
+    a_cancelled_overwrite_keeps_the_original, a_finished_copy_onto_a_bucket_rolls_back,
+    a_folder_of_1005_objects_deletes, a_paused_upload_resumes_and_lands, requests_sent_against_the_estimate,
 };
 use super::s3_rename_integration_test::{
     a_batch_with_a_folder_renames_as_one_move, a_big_file_renames_by_multipart_copy_keeping_its_date,
@@ -421,10 +420,9 @@ async fn s3_live_engine_refuses_archived_objects_by_name() {
 // ── Requests against the estimate ────────────────────────────────────
 
 /// Reports, per provider and operation, every request kind the engine sent
-/// beside what the dialog estimates, and fails where the requests that move
-/// bytes disagree: the same bar as the fixture cell
-/// (`the_engine_sends_what_the_estimate_counts`), so the delete and the
-/// HEAD/LIST counts are reported, not asserted.
+/// beside what the dialog estimates, and fails where any disagrees: the same
+/// bar as the fixture cell (`the_engine_sends_what_the_estimate_counts`), on
+/// each provider's own no-overwrite and pin rules.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn s3_live_engine_sends_what_the_estimate_counts() {
     live_flows! {
@@ -433,9 +431,7 @@ async fn s3_live_engine_sends_what_the_estimate_counts() {
             let mut mismatches = Vec::new();
             for comparison in &comparisons {
                 report(t.name(), comparison.operation, format!("sent {:?}, estimated {:?}", comparison.sent, comparison.estimated));
-                if comparison.operation != DELETE_OPERATION {
-                    mismatches.extend(comparison.write_path_mismatches().into_iter().map(|m| format!("{}: {m}", comparison.operation)));
-                }
+                mismatches.extend(comparison.mismatches().into_iter().map(|m| format!("{}: {m}", comparison.operation)));
             }
             assert!(mismatches.is_empty(), "{}", mismatches.join("; "));
         };

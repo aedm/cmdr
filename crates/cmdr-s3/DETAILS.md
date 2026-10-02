@@ -747,7 +747,20 @@ request: the inputs are the scan the dialog already ran.
   batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. An overwrite is
   `replace_object` (the replaced object's remaining days, with no request of its own) plus, for an upload,
   `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite goes as a one-part multipart upload (a HEAD
-  finding the original, then Create, a part, and Complete in place of the PUT; § "Overwrites in parts"). The counts are
-  close, not exact: a retried part or a page past 1,000 keys add a few.
+  finding the original, then Create, a part, and Complete in place of the PUT; § "Overwrites in parts"). A write into a
+  folder the operation made (`upload_fresh`, `copy_on_server_fresh`) has no no-overwrite HEAD; a multipart copy off the
+  pin allowlist has one more source HEAD.
+- **The engine's own requests are counted too**, one method per engine step, so the estimate is exact for the shapes the
+  dialogs price: `stat_selection` (the scan's top-level stat), `list_folder` (each listing page, read once by the scan
+  and once by the walk), `open_destination` and `check_move_within`, `probe_name` (each selected name at the
+  destination), `make_folder` (a folder's `create_directory`), `sweep_folder` + `swept_object` (a move's source sweep,
+  one `DeleteObjects` per level), and `delete_folder`. The app's `s3_costs/plan.rs` composes them; the app's
+  `the_engine_sends_what_the_estimate_counts` runs ten operations through the engine on both fixtures (upload, download,
+  same-bucket copy, move within, rename, move off, delete, and the same for two selected files) and asserts every
+  request kind equal, and the live cell does the same on each provider's own rules. What stays approximate, each stated
+  in `plan.rs`: listing pages are one per folder plus one per thousand files, a move's sweep sends one batch per folder
+  level (an empty folder sends none), the destination exists and no selected folder clashes with one there, and source
+  folders carry markers (Cmdr's do; a folder without one costs a HEAD where the marker's delete would be). A retried
+  request adds one.
 - **Gigabytes are binary** (AWS's GB is 2^30; Wasabi's FAQ divides a TB by 1,024).
 - **"Other" has no prices**, so no estimate. AWS prices are US East's; other regions differ by a little.

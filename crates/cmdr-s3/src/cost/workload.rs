@@ -189,6 +189,92 @@ impl Workload {
         self.add(RequestKind::ListObjectsV2, 1);
     }
 
+    /// One selected item stat'd before the walk (the scan's top-level
+    /// `get_metadata`): a HEAD, and for a folder the capped listing that finds
+    /// it once the HEAD answers nothing.
+    pub fn stat_selection(&mut self, is_folder: bool) {
+        self.add(RequestKind::HeadObject, 1);
+        if is_folder {
+            self.add(RequestKind::ListObjectsV2, 1);
+        }
+    }
+
+    /// The destination folder of a copy or move readied: two capped listings
+    /// proving it's a folder (`create_directory_all` finding it), and the one
+    /// full listing the stale-temp reap takes of it.
+    pub fn open_destination(&mut self) {
+        self.add(RequestKind::ListObjectsV2, 3);
+    }
+
+    /// What a move or a rename within one place checks first beyond
+    /// [`open_destination`](Self::open_destination): three capped listings of
+    /// the source and the destination folder.
+    pub fn check_move_within(&mut self) {
+        self.add(RequestKind::ListObjectsV2, 3);
+    }
+
+    /// A selected item's name asked of the destination before it lands: a
+    /// HEAD, then a capped listing once it answers nothing (a free name).
+    pub fn probe_name(&mut self) {
+        self.add(RequestKind::HeadObject, 1);
+        self.add(RequestKind::ListObjectsV2, 1);
+    }
+
+    /// One folder created at the destination (`volume/mutation.rs`
+    /// `create_directory`): a capped listing and a HEAD proving the name free,
+    /// a capped listing proving the parent, the marker's PUT, then a HEAD and a
+    /// capped listing after it.
+    pub fn make_folder(&mut self) {
+        self.add(RequestKind::ListObjectsV2, 3);
+        self.add(RequestKind::HeadObject, 2);
+        self.add(RequestKind::PutObject, 1);
+    }
+
+    /// [`upload`](Self::upload) into a folder this operation made
+    /// (`WriteMode::CreateNewInFreshFolder`): no no-overwrite HEAD.
+    pub fn upload_fresh(&mut self, size: u64) {
+        let saved = self.checks;
+        self.checks = Checks {
+            put: 0,
+            copy: 0,
+            complete: 0,
+        };
+        self.upload(size);
+        self.checks = saved;
+    }
+
+    /// [`copy_on_server`](Self::copy_on_server) into a folder this operation
+    /// made: no no-overwrite HEAD.
+    pub fn copy_on_server_fresh(&mut self, size: u64) {
+        let saved = self.checks;
+        self.checks = Checks {
+            put: 0,
+            copy: 0,
+            complete: 0,
+        };
+        self.copy_on_server(size);
+        self.checks = saved;
+    }
+
+    /// One folder level a move's source sweep clears
+    /// (`source_sweep.rs::sweep_level`): a HEAD and a capped listing for its
+    /// kind, the full listing it reads, a `DeleteObjects` for its files, and
+    /// then the folder's own removal (a capped listing and the marker's
+    /// delete). Each swept file is [`swept_object`](Self::swept_object).
+    pub fn sweep_folder(&mut self) {
+        self.add(RequestKind::HeadObject, 1);
+        self.add(RequestKind::ListObjectsV2, 2);
+        self.add(RequestKind::DeleteObjects, 1);
+        self.delete_folder();
+    }
+
+    /// One object a move's source sweep removes, in its level's batch
+    /// ([`sweep_folder`](Self::sweep_folder) counts the request): billed only
+    /// for a minimum storage duration.
+    pub fn swept_object(&mut self, size: u64, modified_at: Option<u64>) {
+        self.replace_object(size, modified_at);
+    }
+
     /// The requests this workload counts, by S3 operation, with the deletes
     /// batched the way the estimate bills them: what a live cell compares with
     /// the requests a write path actually sent (`testing::take_sent_requests`).
