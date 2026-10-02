@@ -1630,7 +1630,7 @@
     "accept": ["journalisation", "journaux"],
     "chosen": "journal",
     "confidence": "high",
-    "forms": "logging → journalisation; log file → fichier journal (Cmdr’s log FILE, never bare journal when it points at the file)",
+    "forms": "logging → journalisation; log file → fichier journal (Cmdr’s log FILE, never bare journal when it points at the file); debug log → journal de débogage (the qualifier already names the file, so no fichier: Visualiser le journal de débogage, `menu.help.viewDebugLog`)",
     "sources": "MS terminology FRA"
   },
   "look-inside": {

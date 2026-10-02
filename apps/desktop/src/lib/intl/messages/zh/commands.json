@@ -912,9 +912,9 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "用内置文件查看器打开 Cmdr 当前的调试日志",
+  "commands.helpViewDebugLog.description": "在文件查看器中实时查看 Cmdr 的调试日志",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
   "commands.handler.viewDebugLog.disabled": "日志存储已关闭。在“设置 > 高级”中开启，然后重启 Cmdr 来查看调试日志。",
   "@commands.handler.viewDebugLog.disabled": {

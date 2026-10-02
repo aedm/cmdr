@@ -2454,12 +2454,6 @@
     "confidence": "high",
     "sources": "shipped pt catalog (queryUi Parar a busca)"
   },
-  "storage": {
-    "chosen": "armazenamento",
-    "confidence": "high",
-    "forms": "storing logs → armazenamento de registros",
-    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
-  },
   "store": {
     "chosen": "armazenar",
     "accept": ["armazen", "salv"],
@@ -2924,7 +2918,7 @@
   "storage": {
     "chosen": "armazenamento",
     "accept": ["armazen"],
-    "forms": "cold storage → armazenamento frio; storage provider → provedor de armazenamento",
+    "forms": "cold storage → armazenamento frio; storage provider → provedor de armazenamento; storing logs → armazenamento de registros (catalog settings.applier.logStorageRestart)",
     "confidence": "high",
     "sources": "MS terminology pt-BR (cold storage → armazenamento frio, id 2266289); shipped pt catalog (armazenamento do iCloud, armazenamento de celulares)",
     "exceptions": {

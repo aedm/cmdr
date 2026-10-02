@@ -680,5 +680,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Строка содержит только подстановки и знаки; пользовательский текст переводится в подставляемых фрагментах."
+  },
+  "menu.help.viewDebugLog": "Просмотреть журнал отладки",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

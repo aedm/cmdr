@@ -912,11 +912,11 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Öppna Cmdrs aktuella felsökningslogg med den interna filförhandsvisningen",
+  "commands.helpViewDebugLog.description": "Följ Cmdrs felsökningslogg i realtid i filförhandsvisningen",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Logglagringen är avstängd. Slå på den i Inställningar > Avancerat och starta om Cmdr efteråt för att visa felsökningsloggen.",
+  "commands.handler.viewDebugLog.disabled": "Logglagringen är avstängd. Slå på den i Inställningar > Avancerat och starta sedan om Cmdr för att visa felsökningsloggen.",
   "@commands.handler.viewDebugLog.disabled": {
     "sourceHash": "a781813"
   },

@@ -912,15 +912,15 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Mở nhật ký gỡ lỗi hiện tại của Cmdr bằng trình xem tệp nội bộ",
+  "commands.helpViewDebugLog.description": "Theo dõi trực tiếp nhật ký gỡ lỗi của Cmdr trong trình xem tệp",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
   "commands.handler.viewDebugLog.disabled": "Việc lưu trữ nhật ký đang tắt. Bật trong Cài đặt > Nâng cao, rồi khởi động lại Cmdr để xem nhật ký gỡ lỗi.",
   "@commands.handler.viewDebugLog.disabled": {
     "sourceHash": "a781813"
   },
-  "commands.handler.viewDebugLog.unavailable": "Không mở được nhật ký gỡ lỗi. Thử lại.",
+  "commands.handler.viewDebugLog.unavailable": "Không mở được nhật ký gỡ lỗi. Hãy thử lại.",
   "@commands.handler.viewDebugLog.unavailable": {
     "sourceHash": "794a5b3"
   }

@@ -915,11 +915,11 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Open het huidige foutopsporingslogbestand van Cmdr met het interne weergavevenster",
+  "commands.helpViewDebugLog.description": "Volg het foutopsporingslogbestand van Cmdr live in het weergavevenster",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Logopslag staat uit. Zet het aan in Instellingen > Geavanceerd en herstart Cmdr om het foutopsporingslogbestand te bekijken.",
+  "commands.handler.viewDebugLog.disabled": "Logopslag staat uit. Zet logopslag aan in Instellingen > Geavanceerd en herstart daarna Cmdr om het foutopsporingslogbestand te bekijken.",
   "@commands.handler.viewDebugLog.disabled": {
     "sourceHash": "a781813"
   },

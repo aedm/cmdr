@@ -1493,13 +1493,6 @@
     "forms": "Step 1 of 2: X → Bước 1/2: X (the AI install steps); the onboarding counter reads Bước 1 trên 2",
     "sources": "shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
   },
-  "storage": {
-    "chosen": "dung lượng",
-    "confidence": "high",
-    "forms": "storage capacity → dung lượng; storing logs → lưu trữ nhật ký; phone/device storage → bộ nhớ (the accessible data store, not RAM)",
-    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02); AOSP Settings values-vi storage_settings and storage_usb_settings (https://android.googlesource.com/platform/packages/apps/Settings/+/10d0cd52d6/res/values-vi/strings.xml, source-key search 2026-10-02)",
-    "accept": ["lưu trữ", "lưu nhật ký", "bộ nhớ"]
-  },
   "this-mac": {
     "chosen": "máy Mac",
     "confidence": "high",
@@ -2465,7 +2458,7 @@
     "accept": ["dung lượng", "bộ nhớ"],
     "chosen": "lưu trữ",
     "confidence": "high",
-    "forms": "S3 storage → kho lưu trữ S3; cold storage → kho lưu trữ lạnh; storage provider → nhà cung cấp dịch vụ lưu trữ; free space on a drive or iCloud → dung lượng; a phone's storage → bộ nhớ",
+    "forms": "S3 storage → kho lưu trữ S3; cold storage → kho lưu trữ lạnh; storage provider → nhà cung cấp dịch vụ lưu trữ; free space on a drive or iCloud → dung lượng; a phone's storage → bộ nhớ; storing logs → lưu trữ nhật ký (catalog settings.applier.logStorageRestart)",
     "note": "The cold-storage \"Archived\" (S3 Glacier, `*coldStorage*`, `fileExplorer.archivedFile.*`) is `kho lưu trữ lạnh`, label `Lưu trữ lạnh`, over the chat's `Đã lưu trữ` (`archive-chat`): every file is stored, so the bare word says nothing.",
     "sources": "MS terminology (Storage → Lưu trữ, cloud storage → kho lưu trữ đám mây); catalog (dung lượng, bộ nhớ)"
   },

@@ -908,19 +908,19 @@
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
   },
-  "commands.helpViewDebugLog.label": "Visualiser le fichier journal de débogage",
+  "commands.helpViewDebugLog.label": "Visualiser le journal de débogage",
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Ouvrez le fichier journal de débogage actuel de Cmdr avec la visionneuse de fichiers interne",
+  "commands.helpViewDebugLog.description": "Suivre en direct le journal de débogage de Cmdr dans la visionneuse de fichiers",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Le stockage des journaux est désactivé. Activez-le dans Réglages > Avancé, puis redémarrez Cmdr pour visualiser le fichier journal de débogage.",
+  "commands.handler.viewDebugLog.disabled": "Le stockage des journaux est désactivé. Activez-le dans Réglages > Avancé, puis redémarrez Cmdr pour visualiser le journal de débogage.",
   "@commands.handler.viewDebugLog.disabled": {
     "sourceHash": "a781813"
   },
-  "commands.handler.viewDebugLog.unavailable": "Ouverture du fichier journal de débogage impossible. Réessayez.",
+  "commands.handler.viewDebugLog.unavailable": "Ouverture du journal de débogage impossible. Réessayez.",
   "@commands.handler.viewDebugLog.unavailable": {
     "sourceHash": "794a5b3"
   }

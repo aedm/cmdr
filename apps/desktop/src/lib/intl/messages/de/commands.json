@@ -912,9 +912,9 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Das aktuelle Debug-Protokoll von Cmdr mit der internen Dateivorschau öffnen",
+  "commands.helpViewDebugLog.description": "Das Debug-Protokoll von Cmdr live in der Dateivorschau verfolgen",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
   "commands.handler.viewDebugLog.disabled": "Die Protokollspeicherung ist deaktiviert. Aktiviere sie unter Einstellungen > Erweitert und starte Cmdr neu, um das Debug-Protokoll anzusehen.",
   "@commands.handler.viewDebugLog.disabled": {

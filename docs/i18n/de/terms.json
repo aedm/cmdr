@@ -1256,13 +1256,6 @@
     "forms": "Step 1 of 2: X → Schritt 1 von 2: X (the X keeps its standalone form)",
     "sources": "MS terminology (step → Schritt); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
   },
-  "storage": {
-    "chosen": "Speicher",
-    "confidence": "high",
-    "forms": "storing logs → Protokollspeicherung; capacity → Speicherplatz",
-    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)",
-    "accept": ["Speicherung"]
-  },
   "working-tree": {
     "chosen": "Arbeitsbaum",
     "confidence": "high",
@@ -3392,11 +3385,12 @@
       "Cold Storage",
       "Object Storage",
       "Cloud Storage",
-      "Cloud-Storage"
+      "Cloud-Storage",
+      "Speicherung"
     ],
     "chosen": "Speicher",
     "confidence": "high",
-    "forms": "cloud storage → Cloud-Speicher; S3 storage → S3-Speicher; storage provider → Speicheranbieter; cold storage → Cold Storage (MS terminology); product names (Hetzner Object Storage, Google Cloud Storage) verbatim",
+    "forms": "cloud storage → Cloud-Speicher; S3 storage → S3-Speicher; storage provider → Speicheranbieter; cold storage → Cold Storage (MS terminology); product names (Hetzner Object Storage, Google Cloud Storage) verbatim; storing logs → Protokollspeicherung (catalog settings.applier.logStorageRestart)",
     "sources": "MS terminology (storage provider → Speicheranbieter, cold storage → Cold Storage); catalog (iCloud-Speicher, freier Speicher)"
   },
   "store": {

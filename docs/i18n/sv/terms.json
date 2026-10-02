@@ -2277,7 +2277,7 @@
     "sources": "macOS Finder (Väntar på att ”^0” ska svara…)"
   },
   "restart": {
-    "accept": ["startar om", "startade om", "startas om", "omstart", "startat om", "startades om"],
+    "accept": ["startar om", "startade om", "startas om", "omstart", "startat om", "startades om", "starta sedan om"],
     "chosen": "starta om",
     "confidence": "high",
     "forms": "noun omstart",

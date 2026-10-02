@@ -912,9 +912,9 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Abre el registro de depuración actual de Cmdr con el visor de archivos interno",
+  "commands.helpViewDebugLog.description": "Sigue en vivo el registro de depuración de Cmdr en el visor de archivos",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
   "commands.handler.viewDebugLog.disabled": "El almacenamiento de registros está desactivado. Actívalo en Ajustes > Avanzado y reinicia Cmdr para ver el registro de depuración.",
   "@commands.handler.viewDebugLog.disabled": {

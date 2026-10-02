@@ -912,9 +912,9 @@
   "@commands.helpViewDebugLog.label": {
     "sourceHash": "007c98d"
   },
-  "commands.helpViewDebugLog.description": "Megnyitja a Cmdr aktuális hibakeresési naplóját a belső fájlmegjelenítővel",
+  "commands.helpViewDebugLog.description": "Élőben követi a Cmdr hibakeresési naplóját a fájlmegjelenítőben",
   "@commands.helpViewDebugLog.description": {
-    "sourceHash": "6d97731"
+    "sourceHash": "a937e6e"
   },
   "commands.handler.viewDebugLog.disabled": "A naplótárolás ki van kapcsolva. Kapcsold be itt: Beállítások > Speciális, majd indítsd újra a Cmdrt a hibakeresési napló megtekintéséhez.",
   "@commands.handler.viewDebugLog.disabled": {

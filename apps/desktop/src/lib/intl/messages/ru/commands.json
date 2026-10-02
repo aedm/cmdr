@@ -907,5 +907,21 @@
   "commands.suggestedOpsShow.description": "Просмотреть предложенные ИИ файловые операции и решить, какие выполнить",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Просмотреть журнал отладки",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Следить в реальном времени за журналом отладки Cmdr в окне просмотра",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "a937e6e"
+  },
+  "commands.handler.viewDebugLog.disabled": "Хранение журналов выключено. Включите его в разделе «Настройки > Дополнения» и перезапустите Cmdr, чтобы просмотреть журнал отладки.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Не удалось открыть журнал отладки. Попробуйте еще раз.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }
