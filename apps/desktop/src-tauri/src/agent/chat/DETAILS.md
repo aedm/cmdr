@@ -620,6 +620,14 @@ Two variants map from no runtime event, because the runtime neither creates nor 
 `Discarded` (a quiet wake deleted its thread; the one thing a subscriber can't recover from by
 re-reading, since there is nothing to read).
 
+A third, `ProposalDecided`, is not part of a turn at all. `agent/outcomes.rs` emits it as it writes
+a decision's timeline row, usually with no turn running, and it rides here because this is the
+transport keyed by conversation (`../suggested_ops/DETAILS.md` § What the user's answer teaches the
+agent). ⚠️ A subscriber must not read it as proof a turn is live.
+
+Unit tests have no app to emit into, so `emit_turn_event` also records each event in a test-only
+thread-local, and `take_emitted_turns` is how a test asks what would have reached the windows.
+
 A refusal decided BEFORE the turn exists is the command's `Err` (`AskCmdrSendRefusal`), not an
 event: half of them happen before there is a conversation to key one on.
 

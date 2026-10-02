@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Bạn có thể thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Nếu đây là thư mục được hệ thống bảo vệ (như thư mục hệ thống), bạn có thể cần cấp cho Cmdr **{full_disk_access}** trong {privacy_and_security}\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để kiểm tra quyền sở hữu và quyền truy cập",
+  "errors.listing.notPermitted.suggestion": "Bạn có thể thử:\n- Mở **{system_settings} > {privacy_and_security} > {files_and_folders}** và cấp quyền truy cập cho Cmdr\n- Nếu đây là thư mục được hệ thống bảo vệ, bạn có thể cần cấp cho Cmdr **{full_disk_access}** trong {privacy_and_security}\n- Trong Terminal, chạy `ls -la` trên đường dẫn này để kiểm tra quyền sở hữu và quyền truy cập",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Không tìm thấy đường dẫn",
   "@errors.listing.pathNotFoundErrno.title": {
@@ -1103,15 +1103,27 @@
   },
   "errors.write.destinationNotFound.message.copy": "Thư mục bạn đang sao chép tới không còn tồn tại, nên không có chỗ để đặt tệp của bạn. Các bản gốc vẫn nguyên vẹn.",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "Thư mục bạn đang di chuyển tới không còn tồn tại, nên không có chỗ để đặt tệp của bạn. Các bản gốc vẫn nguyên vẹn.",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "Có thể nó đã được đổi tên hoặc xóa, hoặc ổ đĩa đã ngắt kết nối. Hãy chọn đích khác, hoặc mở lại thư mục rồi thử lại.",
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
+  },
+  "errors.write.destinationNotAFolder.title": "Có một tệp đang chắn chỗ",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr không thể tạo thư mục đích, vì có một tệp ở {path}, nơi cần có một thư mục. Không có gì được ghi và các bản gốc vẫn nguyên vẹn.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Hãy chọn đích khác, hoặc đổi tên hay di chuyển tệp đó rồi thử lại.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
   },
   "errors.write.notConnected.title": "Chưa kết nối",
   "@errors.write.notConnected.title": {
@@ -1128,6 +1140,18 @@
   "errors.write.notConnected.suggestion": "Mở nó từ bộ chọn ổ đĩa để kết nối, rồi thử lại. Nếu là điện thoại, hãy mở khóa và chấp nhận mọi lời nhắc hiện ra.",
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
+  },
+  "errors.write.noLongerConnected.title": "Không còn kết nối",
+  "@errors.write.noLongerConnected.title": {
+    "sourceHash": "3974fa0"
+  },
+  "errors.write.noLongerConnected.message": "Điện thoại hoặc máy chủ chứa các tệp này không còn kết nối nữa, nên chưa có gì thay đổi.",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "d0827c4"
+  },
+  "errors.write.noLongerConnected.suggestion": "Hãy cắm lại điện thoại hoặc mở máy chủ từ bộ chọn ổ đĩa, rồi thử lại.",
+  "@errors.write.noLongerConnected.suggestion": {
+    "sourceHash": "850ecdb"
   },
   "errors.write.destinationExists.title": "Tệp đã tồn tại",
   "@errors.write.destinationExists.title": {
@@ -1735,7 +1759,7 @@
   },
   "errors.mutation.notFound": "Không còn gì ở “{path}” nữa.",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "Không thể đổi tên thư mục gốc của ổ đĩa từ đây.",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1755,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "Ổ đĩa đó không còn khả dụng nữa, nên không có gì thay đổi.",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Lúc này Cmdr chưa mở được tệp nén này để chỉnh sửa.",
   "@errors.mutation.archiveNotEditable": {
@@ -1791,7 +1815,7 @@
   },
   "errors.volume.notFound": "Không còn gì ở “{path}” nữa.",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr không có quyền truy cập “{path}”.",
   "@errors.volume.permissionDenied": {
@@ -1836,6 +1860,10 @@
   "errors.volume.isADirectory": "“{path}” là thư mục, không phải tệp.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Có một tệp ở “{path}”, nơi cần có một thư mục.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Đích không dùng được tên đó. Hãy chọn một tên khác.",
   "@errors.volume.invalidName": {
@@ -1893,13 +1921,13 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr vẫn đang chuyển tệp trên ổ đĩa này. Hãy tháo khi việc đó hoàn tất.",
+  "errors.eject.busy": "Cmdr vẫn đang chuyển tệp ở đó. Hãy thử lại khi việc đó hoàn tất.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Ổ đĩa đó không còn kết nối nữa, nên không có gì để tháo.",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "Ổ đĩa này không phải loại có thể tháo, nên nó luôn kết nối.",
   "@errors.eject.notEjectable": {
@@ -1911,39 +1939,51 @@
   },
   "errors.eject.remoteNotConnected": "Máy chủ này không còn kết nối nữa, nên không còn gì để đóng.",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "Thiết bị đã từ chối đóng kết nối. Hãy rút nó ra khi không còn bận.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Vẫn còn thứ gì đó đang dùng ổ đĩa này. Hãy đóng các tệp và ứng dụng đang mở, rồi tháo lại.",
+  "errors.eject.unmountRefused": "Vẫn còn thứ gì đó đang mở tệp ở đó. Hãy đóng các tệp và ứng dụng đang mở, rồi thử lại.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} vẫn đang dùng ổ đĩa này. Hãy đóng những gì nó đang mở ở đó, rồi tháo lại.",
+  "errors.eject.unmountRefusedByApp": "{app} vẫn đang mở tệp ở đó. Hãy đóng các tệp đó, rồi thử lại.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} vẫn đang dùng ổ đĩa này. Hãy đóng những gì chúng đang mở ở đó, rồi tháo lại.",
+  "errors.eject.unmountRefusedByApps": "{apps} vẫn đang mở tệp ở đó. Hãy đóng các tệp đó, rồi thử lại.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "các ứng dụng khác",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Một ảnh đĩa nằm trên ổ đĩa này vẫn đang mở. Hãy tháo ảnh đĩa đó trước, rồi tháo ổ đĩa này.",
+  "errors.eject.unmountRefusedByProcess": "Một tiến trình có tên {process} vẫn đang mở tệp ở đó. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "ad7c1d5"
+  },
+  "errors.eject.unmountRefusedByProcesses": "{countText} tiến trình có tên {processes} vẫn đang mở tệp ở đó. (Cmdr không có tên ứng dụng, chỉ có tên tiến trình.)",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "5e9dbac"
+  },
+  "errors.eject.otherProcesses": "các tiến trình khác",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "Một ảnh đĩa nằm ở đó vẫn đang mở. Hãy tháo ảnh đĩa đó trước, rồi thử lại.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS vẫn đang làm việc với ổ đĩa này. Hãy đợi một phút rồi tháo lại.",
+  "errors.eject.unmountRefusedBySystem": "macOS vẫn đang mở tệp ở đó. Hãy đợi một phút rồi thử lại.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Chính Cmdr vẫn đang dùng ổ đĩa này. Hãy đợi một chút rồi tháo lại, hoặc gửi báo cáo nếu vẫn tiếp diễn.",
+  "errors.eject.unmountRefusedByCmdr": "Chính Cmdr vẫn đang mở tệp ở đó. Hãy đợi một chút rồi thử lại, hoặc gửi báo cáo nếu vẫn tiếp diễn.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Ổ đĩa vẫn chưa phản hồi, nên việc tháo vẫn có thể tự hoàn tất.",
   "@errors.eject.timedOut": {

@@ -233,10 +233,6 @@ export function selectionBytesFromFileSize(sel: Selection | null, file: FileExte
  * and `viewer_write_range_to_file` accept. Endpoints come out in document order, so a
  * reversed drag reads the same range. Returns `null` for no selection.
  *
- * ❗ `RangeEnd`'s `line` field is the wire's spelling of the same ROW coordinate this
- * module counts in; the backend resolves it through `file_viewer::rows`. `RangeEnd::Eof`
- * is untouched.
- *
  * An end at `EOF_ROW` becomes `RangeEnd::Eof`, so the backend resolves the end of the
  * file itself instead of receiving a row index no file has. That holds whether or not a
  * row count has arrived since the selection was made: `EOF_ROW` means end-of-file either
@@ -246,8 +242,8 @@ export function toRangeEnds(sel: Selection | null): { anchor: RangeEnd; focus: R
   if (sel === null) return null
   const { start, end } = normaliseSelection(sel)
   return {
-    anchor: { kind: 'line', line: start.row, offset: start.offset },
-    focus: end.row === EOF_ROW ? { kind: 'eof' } : { kind: 'line', line: end.row, offset: end.offset },
+    anchor: { kind: 'row', row: start.row, offset: start.offset },
+    focus: end.row === EOF_ROW ? { kind: 'eof' } : { kind: 'row', row: end.row, offset: end.offset },
   }
 }
 

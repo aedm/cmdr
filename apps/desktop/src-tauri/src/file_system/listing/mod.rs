@@ -15,6 +15,8 @@ pub(crate) mod orphan_reaper;
 pub(crate) mod path_index;
 pub(crate) mod reading;
 pub(crate) mod sorting;
+pub(crate) mod stall;
+pub(crate) mod stalled_on;
 pub(crate) mod streaming;
 pub(crate) mod visible_rows;
 
@@ -106,6 +108,8 @@ mod sorting_test;
 mod sorting_test_support;
 #[cfg(test)]
 mod staging_temps_test;
+#[cfg(test)]
+mod stall_test;
 #[cfg(test)]
 mod stats_test;
 #[cfg(test)]

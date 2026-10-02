@@ -224,6 +224,11 @@ jobs:
       - name: Check index-crate isolation
         run: ./scripts/check/check --check index-crate-isolation --ci
 
+      # A dependency bump past a vendored fork's version makes cargo quietly resolve
+      # crates.io again, so the fix stops shipping with nothing but a build warning.
+      - name: Check vendored patches still apply
+        run: ./scripts/check/check --check desktop-rust-vendor-patch-applied --ci
+
       - name: Check cfg-gate
         run: ./scripts/check/check --check desktop-rust-cfg-gate --ci
 
@@ -654,6 +659,9 @@ jobs:
 
       - name: Run ESLint
         run: ./scripts/check/check --check website-eslint --ci
+
+      - name: Check CSP connect-src covers every fetch
+        run: ./scripts/check/check --check website-csp-connect-src --ci
 
       - name: Run typecheck
         run: ./scripts/check/check --check website-typecheck --ci

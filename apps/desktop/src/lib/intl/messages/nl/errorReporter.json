@@ -127,7 +127,7 @@
   },
   "errorReporter.amend.unavailable": "Aan dat rapport kun je niets meer toevoegen. Om je notities alsnog bij het team te krijgen, verstuur je een nieuw rapport via het Help-menu.",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "Sluit",
   "@errorReporter.amend.close": {

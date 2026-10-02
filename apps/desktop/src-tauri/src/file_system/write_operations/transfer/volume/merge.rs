@@ -42,6 +42,7 @@ use super::landing::{DestFolder, NewName, where_it_lands};
 use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::naming::take_back_reservation;
 use super::preflight::SourceFileFacts;
+use super::rename_merge::merges_as_a_directory;
 use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
@@ -532,9 +533,15 @@ async fn merge_level<'a>(
         if entry.is_directory {
             // Dir-vs-dir (and dir-into-nothing) always recurses to merge — no
             // resolver call for the folder itself. A dir landing on a same-named
-            // FILE is a type mismatch, which the resolver (below) handles.
-            let dir_clashes_with_file = dest_hit.is_some_and(|d| !d.is_directory);
-            if !dir_clashes_with_file {
+            // LEAF is a type mismatch, which the resolver (below) handles.
+            //
+            // ❗ A LINK is a leaf, whatever it points at. The listing reports a
+            // link to a folder as `is_directory`, and recursing on that alone
+            // walks THROUGH it: the incoming files land in its target, a folder
+            // the user never picked, and an Overwrite replaces files there. The
+            // entry in hand answers it, so a real folder costs no probe.
+            let dir_clashes_with_leaf = dest_hit.is_some_and(|d| !merges_as_a_directory(d));
+            if !dir_clashes_with_leaf {
                 Box::pin(merge_level(
                     source_volume,
                     &child_source,
@@ -553,8 +560,9 @@ async fn merge_level<'a>(
         }
 
         // At this point the child is either a FILE, or a directory clashing with
-        // a same-named dest FILE (type mismatch). If there's a dest hit and we
-        // have merge context, route it through the file-policy resolver.
+        // a same-named dest LEAF (a file or a link: a type mismatch). If there's
+        // a dest hit and we have merge context, route it through the file-policy
+        // resolver.
         let mut write_dest = child_dest.clone();
         let mut replace_after_write: Option<PathBuf> = None;
         // Nothing has resolved a conflict for this child yet, so the name it is
@@ -599,9 +607,15 @@ async fn merge_level<'a>(
         }
 
         if entry.is_directory {
+            // Only a resolver decision sends a folder on from here. With no
+            // merge context nobody freed the name, and recursing would merge
+            // into the leaf that holds it (THROUGH it, for a link): refuse.
+            if dest_hit.is_some() && merge.is_none() {
+                return Err(VolumeError::AlreadyExists(child_dest.display().to_string())).at(&child_source);
+            }
             // Type-mismatch Overwrite/Rename that resolved to Proceed: the
-            // resolver already cleared/relocated the dest file, so recurse into
-            // `write_dest` as a fresh (or renamed) directory root.
+            // resolver already set aside/relocated the dest leaf, so recurse
+            // into `write_dest` as a fresh (or renamed) directory root.
             Box::pin(merge_level(
                 source_volume,
                 &child_source,

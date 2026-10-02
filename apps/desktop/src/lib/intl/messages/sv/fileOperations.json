@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Radera",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> kommer att skrivas. Källan är <ondisk></ondisk> på disken – det extra är hårdlänkade filer, som inte kan förbli länkade mellan enheter.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -304,6 +304,10 @@
   "fileOperations.transferDialog.scanRetry": "Försök igen",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Telefonen eller servern som innehåller de här filerna är inte ansluten längre, så Cmdr kan inte kopiera därifrån.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "Vi kunde inte kolla vad som redan finns på målplatsen. Du får en fråga om allt som krockar.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -399,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {mapp} other {mappar}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Verifierar före kopiering…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -537,9 +541,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Målet finns och är en <strong>mapp</strong>. Du är på väg att skriva över det med en <strong>fil</strong> med samma namn. Allt innehåll i målmappen skulle raderas och ersättas av filen. Vad vill du göra?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Målet finns och är en <strong>mapp</strong>. Du är på väg att ersätta det med en <strong>fil</strong> med samma namn. Allt i mappen skulle försvinna. Vad vill du göra?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "Målet finns och är en <strong>fil</strong>. Du är på väg att ersätta det med en <strong>mapp</strong> med samma namn. Filen skulle försvinna när mappen tar dess plats. Vad vill du göra?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Namnen ser likadana ut, men servern stavar dem olika. Skriv över ersätter det som redan finns där.",
   "@fileOperations.transferProgress.lookAlikeHint": {

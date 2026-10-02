@@ -23,6 +23,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
   ) =>
     typedError<ListingStartResult, ListingStartError>(
@@ -43,6 +48,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
     listingId: string,
   ) =>
@@ -460,6 +470,11 @@ export const commands = {
       | 'likeFiles'
       // Directories always sort by name, regardless of the active sort column.
       | 'alwaysByName'
+      /**
+       *  Directories don't lead: they sort among the files by the same column ("Show
+       *  folders first" off). Size ranks a directory by its `recursive_size`.
+       */
+      | 'mixedWithFiles'
       | null,
     cursorFilename: string | null,
     includeHidden: boolean,
@@ -742,14 +757,16 @@ export const commands = {
     progressIntervalMs: number | null,
     sampleForEstimate: boolean | null,
   ) =>
-    __TAURI_INVOKE<ScanPreviewStartResult>('start_scan_preview', {
-      sources,
-      sourceVolumeId,
-      sortColumn,
-      sortOrder,
-      progressIntervalMs,
-      sampleForEstimate,
-    }),
+    typedError<ScanPreviewStartResult, ScanPreviewRefusal>(
+      __TAURI_INVOKE('start_scan_preview', {
+        sources,
+        sourceVolumeId,
+        sortColumn,
+        sortOrder,
+        progressIntervalMs,
+        sampleForEstimate,
+      }),
+    ),
   cancelScanPreview: (previewId: string) => __TAURI_INVOKE<void>('cancel_scan_preview', { previewId }),
   /**
    *  Returns the cached totals from a completed scan preview, or `null` while the
@@ -1511,6 +1528,14 @@ export const commands = {
    *  [`show_tab_context_menu`].
    */
   showFunctionKeyBarContextMenu: () => typedError<null, string>(__TAURI_INVOKE('show_function_key_bar_context_menu')),
+  /**
+   *  Shows the viewer's right-click menu over the file text (fire-and-forget), at the pointer.
+   *  The pick comes back as `ViewerContextMenuAction` to this viewer, same shape as
+   *  [`show_tab_context_menu`]. `has_selection` greys Copy: the selection model lives in the
+   *  viewer's frontend, which reads it at open time.
+   */
+  showViewerContextMenu: (hasSelection: boolean) =>
+    typedError<null, string>(__TAURI_INVOKE('show_viewer_context_menu', { hasSelection })),
   // Show a file in Finder (reveal in parent folder)
   showInFinder: (path: string) => typedError<null, string>(__TAURI_INVOKE('show_in_finder', { path })),
   // Open (or re-open) Quick Look on the given path.
@@ -2420,9 +2445,10 @@ export const commands = {
   disableDriveIndex: (volumeId: string) =>
     typedError<null, string>(__TAURI_INVOKE('disable_drive_index', { volumeId })),
   /**
-   *  Forget a drive's index entirely: stop it, DELETE its index DB (plus WAL/SHM
-   *  sidecars), and drop its registry instance, so its badge goes gray and a
-   *  future enable does a clean fresh scan rather than resuming a stale DB.
+   *  Forget a drive's index entirely: stop it, DELETE its index DB and the
+   *  folder-importance DB that scores it (each with its WAL/SHM sidecars), and
+   *  drop its registry instance, so its badge goes gray and a future enable does a
+   *  clean fresh scan rather than resuming a stale DB. The media index stays.
    *
    *  This is the per-volume sibling of `clear_drive_index` (which clears every volume):
    *  the user-facing "forget this drive" action for an external (SMB/MTP) index
@@ -3714,9 +3740,13 @@ export const commands = {
       __TAURI_INVOKE('list_shares_on_host', { hostId, hostname, ipAddress, port, timeoutMs, cacheTtlMs }),
     ),
   /**
-   *  Prefetches shares for a host (for example, on hover).
+   *  Prefetches shares for a host, so its share list is cached by the time someone opens it.
    *  Same as list_shares_on_host but designed for prefetching - errors are silently ignored.
    *  Returns immediately if shares are already cached.
+   *
+   *  Listing signs in to the host (as a guest, where it lets one in), so the frontend calls
+   *  this for servers the user saved, only while a Servers view is on screen, and never for
+   *  one that was only discovered.
    */
   prefetchShares: (
     hostId: string,
@@ -4670,6 +4700,11 @@ export const commands = {
    *  channel fails.
    */
   getShouldReduceTransparency: () => __TAURI_INVOKE<boolean>('get_should_reduce_transparency'),
+  /**
+   *  Tauri command: the Liquid Glass slider value in `0.0..=1.0`, or `None` when macOS doesn't
+   *  report one.
+   */
+  getGlassTintAmount: () => __TAURI_INVOKE<number | null>('get_glass_tint_amount'),
   // Tauri command: returns the current system text-size multiplier.
   getSystemTextSizeMultiplier: () => __TAURI_INVOKE<number>('get_system_text_size_multiplier'),
   /**
@@ -4724,7 +4759,7 @@ export const commands = {
    */
   openSystemSettingsUrl: (url: string) => typedError<null, string>(__TAURI_INVOKE('open_system_settings_url', { url })),
   /**
-   *  Snapshot this process's memory: the footprint, both allocators' own accounting,
+   *  Snapshot this process's memory: the footprint, the allocators' own accounting,
    *  SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag
    *  region-size histogram.
    *
@@ -4890,6 +4925,7 @@ export const events = {
   foregroundOperation: makeEvent<ForegroundOperation>('foreground-operation'),
   functionKeyBarHideRequested: makeEvent<FunctionKeyBarHideRequested>('function-key-bar-hide-requested'),
   gitStateChanged: makeEvent<GitStateChangedPayload>('git-state-changed'),
+  glassTintChanged: makeEvent<GlassTintChanged>('glass-tint-changed'),
   globalShortcutFired: makeEvent<GlobalShortcutFired>('global-shortcut-fired'),
   indexAggregationComplete: makeEvent<IndexAggregationCompleteEvent>('index-aggregation-complete'),
   indexAggregationProgress: makeEvent<AggregationProgressEvent>('index-aggregation-progress'),
@@ -4915,6 +4951,7 @@ export const events = {
   listingProgress: makeEvent<ListingProgressEvent>('listing-progress'),
   listingReadComplete: makeEvent<ListingReadCompleteEvent>('listing-read-complete'),
   listingRespelled: makeEvent<ListingRespelledEvent>('listing-respelled'),
+  listingStalled: makeEvent<ListingStalledEvent>('listing-stalled'),
   lowDiskSpace: makeEvent<LowDiskSpacePayload>('low-disk-space'),
   mcpSettingsClose: makeEvent<McpSettingsClose>('mcp-settings-close'),
   mediaEnrichProgress: makeEvent<MediaEnrichProgressEvent>('media-enrich-progress'),
@@ -4939,6 +4976,7 @@ export const events = {
   networkHostResolved: makeEvent<NetworkHostResolved>('network-host-resolved'),
   openFileViewer: makeEvent<OpenFileViewer>('open-file-viewer'),
   openSettings: makeEvent<OpenSettings>('open-settings'),
+  openWithCopyRefused: makeEvent<OpenWithCopyRefused>('open-with-copy-refused'),
   operationsChanged: makeEvent<OperationsChanged>('operations-changed'),
   osLocalesChanged: makeEvent<OsLocalesChanged>('os-locales-changed'),
   persistRestrictedSetting: makeEvent<PersistRestrictedSetting>('persist-restricted-setting'),
@@ -4969,6 +5007,7 @@ export const events = {
   systemTextSizeChanged: makeEvent<SystemTextSizeChanged>('system-text-size-changed'),
   tabContextAction: makeEvent<TabContextAction>('tab-context-action'),
   viewModeChanged: makeEvent<ViewModeChanged>('view-mode-changed'),
+  viewerContextMenuAction: makeEvent<ViewerContextMenuAction>('viewer-context-menu-action'),
   viewerEditAction: makeEvent<ViewerEditAction>('viewer-edit-action'),
   viewerPullProgress: makeEvent<ViewerPullProgress>('viewer-pull-progress'),
   viewerWordWrapToggled: makeEvent<ViewerWordWrapToggled>('viewer-word-wrap-toggled'),
@@ -5155,7 +5194,15 @@ export type AddServerError =
   // The address isn't one this reads (`ParseError`), with why, for the log.
   | { type: 'invalid_address'; message: string }
   // Nothing answered on the address's SMB port within the probe's budget.
-  | { type: 'unreachable'; message: string }
+  | {
+      type: 'unreachable'
+      message: string
+      /**
+       *  Something besides the server worth checking, when the way the probe
+       *  failed points at one.
+       */
+      hint: UnreachableHint | null
+    }
 
 // The wire form of [`AgentErrorKind`] — the frontend renders each honestly.
 export type AgentErrorKindView =
@@ -5479,6 +5526,11 @@ export type ArchiveFailureKind =
   | 'unsupported'
   // The archive entry could not be read for another archive-specific reason.
   | 'unreadable'
+  /**
+   *  The entry is encrypted and the archive hasn't been given its password yet (or
+   *  was given a wrong one).
+   */
+  | 'needsPassword'
 
 /**
  *  Why a name can't be a fresh-ZIP entry, for
@@ -5632,6 +5684,19 @@ export type AskCmdrStreamEvent =
    *  usage gauge. Both figures are `chars/4` estimates and the UI labels them so.
    */
   | { type: 'contextUsage'; estimatedTokens: number; budgetTokens: number; elidedResults: number }
+  /**
+   *  The user answered a suggestion this thread made, and the line saying so just landed in
+   *  its timeline. The persisted event row's identity rides along, so a subscriber that also
+   *  loaded the row shows it once.
+   *
+   *  ⚠️ **The one event here that is not part of a turn.** A decision lands when the user
+   *  says no, or when an approved operation settles, which is usually with no turn running
+   *  at all, so a subscriber must NOT read it as proof one is. It rides this transport
+   *  anyway because this is the one keyed by conversation: emitted from the single place
+   *  that writes the row (`agent/outcomes.rs`), it reaches exactly the thread the row went
+   *  into, and a decision with no thread to land in emits nothing.
+   */
+  | { type: 'proposalDecided'; messageId: number; seq: number; decision: ProposalDecision }
   /**
    *  The thread this turn ran in is GONE: a wake looked, found nothing worth raising, and
    *  took its thread with it (`agent/wake/quiet.rs`).
@@ -6875,6 +6940,11 @@ export type DirectorySortMode =
   | 'likeFiles'
   // Directories always sort by name, regardless of the active sort column.
   | 'alwaysByName'
+  /**
+   *  Directories don't lead: they sort among the files by the same column ("Show
+   *  folders first" off). Size ranks a directory by its `recursive_size`.
+   */
+  | 'mixedWithFiles'
 
 /**
  *  The volume that left the mount table while a transfer was running.
@@ -8018,6 +8088,28 @@ export type GitSubscribeError =
     }
 
 /**
+ *  `glass-tint-changed`: the macOS 27 Appearance > Liquid Glass slider moved. `amount` is
+ *  the new value in `0.0..=1.0` (clearest to most tinted), or `None` when macOS no longer
+ *  reports one.
+ */
+export type GlassTintChanged = {
+  amount: number | null
+}
+
+// The allocator behind every Rust allocation in the shipped app.
+export type GlobalAllocator =
+  /**
+   *  mimalloc. Its arenas sit under VM tag 100 (`IOAccelerator`), outside every malloc
+   *  zone, so the zone APIs can't see the Rust heap.
+   */
+  | 'mimalloc'
+  /**
+   *  The platform's `malloc`. On macOS the Rust heap shares the default malloc zone with
+   *  Objective-C and C code, and shows as the `MALLOC_*` VM tags.
+   */
+  | 'system'
+
+/**
  *  Result of [`set_global_go_to_latest_shortcut`]: the new status the Settings row
  *  should display. The FE caches this until the next register/unregister, so
  *  the row's "Registered" / "Couldn't register" indicator stays in sync
@@ -8365,12 +8457,18 @@ export type IndexMemoryWarningEvent = {
    */
   residentBytes: number
   /**
-   *  Bytes mimalloc (our global allocator, so all Rust allocation including
-   *  indexing) has committed.
+   *  The global allocator the two figures below come from. Their meaning
+   *  depends on it, so a report carries it rather than leaving a reader to guess.
+   */
+  globalAllocator: GlobalAllocator
+  /**
+   *  Bytes the global allocator holds for the Rust heap (all Rust allocation,
+   *  indexing included): mimalloc's committed bytes, or the default malloc
+   *  zone's reserved bytes, which it shares with Objective-C and C code.
    */
   rustHeapBytes: number
   /**
-   *  Bytes the system malloc zones hold: WebKit, Objective-C, and C libraries.
+   *  Bytes the other malloc zones hold: WebKit, Objective-C, and C libraries.
    *  Does NOT include the Rust heap above.
    */
   systemMallocBytes: number
@@ -8536,6 +8634,11 @@ export type IndexScanStartedEvent = {
    *  while a phased run puts only the ground the branch events name in flux.
    */
   coveredInPhases: boolean
+  /**
+   *  What the steps after each one took on the last completed run of this kind:
+   *  the remembered half of the overall "~X left".
+   */
+  stepsAheadMs: StepsAheadMs
 }
 
 /**
@@ -8656,6 +8759,27 @@ export type IndexStatusResponse = {
   priorTotalEntries: number | null
   // How long that previous walk took, the tier-1 ETA's rate.
   priorScanDurationMs: number | null
+  /**
+   *  The remembered time left once the find-files step (the walk) is done: what
+   *  every later step took on the last completed run of this kind. `None` when
+   *  any of them has no such history, so no overall figure shows. Same
+   *  read-only-while-`scanning` rule as the calibration above. A host adds its
+   *  live estimate for the active step to the matching `left_after_*` field to
+   *  get the overall "~X left".
+   */
+  leftAfterFindFilesMs: number | null
+  /**
+   *  The remembered time left once the save-the-file-list step is done. `None`
+   *  on a run with no such step (a network walk) or no history for what follows.
+   */
+  leftAfterSaveMs: number | null
+  // The remembered time left once the compute-folder-sizes step is done.
+  leftAfterComputeMs: number | null
+  /**
+   *  The remembered time left once the catch-up step is done: `Some(0)` on a run
+   *  that has one (it's the last step), `None` on a run that doesn't.
+   */
+  leftAfterCatchUpMs: number | null
 }
 
 /**
@@ -9410,6 +9534,17 @@ export type ListingRespelledEvent = {
 }
 
 /**
+ *  Stalled event payload: the read has gone `StallPolicy::stall_after` without
+ *  a new entry. The listing keeps waiting and retrying (`stall.rs`); a later
+ *  progress, complete, error, or cancelled event for the same id supersedes it.
+ */
+export type ListingStalledEvent = {
+  listingId: string
+  // What the folder lives on, which picks the screen's wording (`stalled_on.rs`).
+  stalledOn: StalledOn
+}
+
+/**
  *  Why a synchronous listing start didn't produce a listing.
  *
  *  ❌ Not prose: `VolumeError` is the wire type the frontend's listing-error
@@ -9891,35 +10026,28 @@ export type MemoryDiagnostics = {
    */
   residentBytes: number
   /**
-   *  What mimalloc — our global allocator, so essentially every Rust allocation — has
-   *  committed from the OS.
+   *  The Rust heap, tagged by the global allocator that holds it (`allocator`). Read its
+   *  numbers only in that allocator's terms.
    */
-  rustHeapCommittedBytes: number
-  // The high-water mark of `rustHeapCommittedBytes`.
-  rustHeapPeakCommittedBytes: number
+  rustHeap: RustHeapDiagnostics
   /**
-   *  What the registered macOS malloc zones report as handed out: WebKit,
-   *  Objective-C, and C-library allocations. ❌ Never the Rust heap.
+   *  What the malloc zones BEYOND the Rust heap report as handed out: WebKit,
+   *  Objective-C, and C-library allocations. Under mimalloc that's every registered
+   *  zone; under the system allocator every zone but the default one, which is
+   *  `rustHeap`'s. ❌ Never overlaps `rustHeap`.
    */
   systemZonesInUseBytes: number
   // What those zones hold from the OS, in use or not.
   systemZonesReservedBytes: number
-  // How many zones were registered at snapshot time.
+  // How many zones those two fields count.
   systemZoneCount: number
-  // The biggest registered zone by in-use bytes, as `[name, bytes]`.
+  // The biggest of those zones by in-use bytes.
   largestSystemZone: SystemZone | null
   /**
-   *  SQLite's process-wide page memory, which belongs to no allocator above:
-   *  the slab is a leaked Rust allocation, so it's a fixed 64 MiB sitting
-   *  INSIDE `rustHeapCommittedBytes` that nothing else here names.
+   *  SQLite's process-wide page memory, which no allocator reading names: the slab
+   *  is a leaked Rust allocation, so it's a fixed 64 MiB sitting INSIDE `rustHeap`.
    */
   sqlitePageCache: SqlitePageCache
-  /**
-   *  How much of the Rust heap is live data, and how much is allocator slack: a census of
-   *  every mimalloc page, read against the heap's resident size. The one field that can
-   *  tell "the program holds this" from "mimalloc holds this".
-   */
-  rustHeapCensus: RustHeapCensus
   /**
    *  The kernel's VM map folded by tag, biggest dirty total first. Empty if the walk
    *  failed or timed out.
@@ -10984,6 +11112,45 @@ export type OpenTerminalOutcome =
    */
   | 'not_a_local_path'
 
+// Why the copy couldn't be made, in the terms the toast words differently.
+export type OpenWithCopyRefusal =
+  // Over `OPEN_WITH_CAP_BYTES` (`cap`), refused before a byte was written.
+  | { kind: 'tooLarge'; cap: number }
+  /**
+   *  The archive needs a password it hasn't been given. Copying the file out asks
+   *  for it, after which "Open with" works too.
+   */
+  | { kind: 'needsPassword' }
+  // The archive is damaged or uses something this build can't decode.
+  | { kind: 'archiveUnreadable' }
+  // Anything else: the source went away or couldn't be read.
+  | { kind: 'unreadable' }
+
+/**
+ *  `open-with-copy-refused`: an "Open with" click on a file only a route serves
+ *  couldn't copy it out, so no app was launched. The main window says why in a toast;
+ *  without it, the click would do nothing at all.
+ */
+export type OpenWithCopyRefused = {
+  // The file's own name, as the person sees it in the pane.
+  fileName: string
+  // The chosen app's display name (its bundle name without `.app`).
+  appName: string
+  reason: OpenWithCopyRefusal
+  // Where the file sits, which the too-big toast names.
+  source: OpenWithCopySource
+}
+
+/**
+ *  What served the file the copy was pulled from. The archive refusals only ever come
+ *  from an archive; a repo snapshot's reads that break off are plain `Unreadable`.
+ */
+export type OpenWithCopySource =
+  // An entry inside a zip, tar, or 7z Cmdr browses like a folder.
+  | 'archive'
+  // A blob in one of a repo's virtual `.git` history trees.
+  | 'repoHistory'
+
 /**
  *  An operation's header plus a page of its items, with dir prefixes resolved to
  *  full paths. Returned by [`get_operation`].
@@ -11258,7 +11425,12 @@ export type OversizedFile = {
   size: number
 }
 
-// Represents a file entry in a pane (simplified subset of the main FileEntry).
+/**
+ *  Represents a file entry in a pane (simplified subset of the main FileEntry).
+ *
+ *  `Default` exists for tests only: its zero is a file nobody looked at, claiming
+ *  `is_directory: false`. Production rows always arrive whole from the frontend.
+ */
 export type PaneFileEntry = {
   name: string
   path: string
@@ -11310,6 +11482,20 @@ export type PaneFileEntry = {
   tags?: TagRef[]
 }
 
+// Where a pane's listing stands, as the pane shows it.
+export type PaneListing =
+  // The rows (or the pane's own view) are what's on screen.
+  | 'settled'
+  // A listing is on its way and hasn't gone quiet.
+  | 'loading'
+  /**
+   *  The listing's volume stopped answering mid-read. The pane says so and keeps
+   *  retrying in the background; it lands on its own when the volume answers.
+   */
+  | 'stalled'
+  // The pane shows an error screen for this folder (`recentErrors` says why).
+  | 'error'
+
 // State of a single pane.
 export type PaneState = {
   path: string
@@ -11356,6 +11542,12 @@ export type PaneState = {
    *  in the resource. Cleared by the next push from any other view.
    */
   mountError?: MountErrorInfo | null
+  /**
+   *  Where the pane's listing stands. Without it, an empty folder, one still
+   *  loading, one whose server stopped answering, and an error screen all read
+   *  as `totalFiles: 0` with no rows.
+   */
+  listing?: PaneListing
 }
 
 // Parsed search scope: which subtrees to include and which directory names/paths to exclude.
@@ -11776,11 +11968,11 @@ export type QuitRequested = {
 }
 
 /**
- *  One endpoint of a selection. Frontend uses `Line { line, offset }`; for the
- *  "select all" path in ByteSeek-no-index mode (where `totalLines` is unknown),
- *  it uses `Eof` so the backend can resolve the end without a fake line number.
+ *  One endpoint of a selection: a ROW index plus a UTF-16 offset into that row. For the
+ *  "select all" path in ByteSeek-no-index mode (where the row count is unknown), the
+ *  frontend sends `Eof` so the backend can resolve the end without a fake row number.
  */
-export type RangeEnd = { kind: 'line'; line: number; offset: number } | { kind: 'eof' }
+export type RangeEnd = { kind: 'row'; row: number; offset: number } | { kind: 'eof' }
 
 /**
  *  Which half of a transfer refused the write, for [`WriteOperationError::ReadOnlyDevice`].
@@ -12318,7 +12510,7 @@ export type RowBeside = 'previous' | 'next'
 export type RowRole = 'rollbackUnit' | 'searchOnly'
 
 /**
- *  The Rust heap split into live data and allocator slack.
+ *  The mimalloc heap split into live data and allocator slack.
  *
  *  `liveBytes` is what the program holds; `residentBytes` is what the heap costs (its VM
  *  tag's dirty plus swapped bytes). The gap, `slackBytes`, is memory mimalloc keeps that
@@ -12352,6 +12544,47 @@ export type RustHeapCensus = {
   // False when the census stopped at its page ceiling, so the totals are a floor.
   complete: boolean
 }
+
+// The Rust heap, as its global allocator accounts for it. `allocator` says which one.
+export type RustHeapDiagnostics =
+  // mimalloc: its own committed total, plus a census of its pages.
+  | {
+      allocator: 'mimalloc'
+      // What mimalloc has committed from the OS: live data plus its slack.
+      committedBytes: number
+      // The high-water mark of `committedBytes`.
+      peakCommittedBytes: number
+      /**
+       *  How much of the heap is live data, and how much is allocator slack. The one
+       *  field that can tell "the program holds this" from "mimalloc holds this".
+       */
+      census: RustHeapCensus
+    }
+  /**
+   *  The system allocator: the default malloc zone, which the Rust heap shares with
+   *  Objective-C and C code. No page census exists for it: nothing in the zone tells a
+   *  Rust block from theirs, so the live/slack split below spans every zone.
+   */
+  | {
+      allocator: 'system'
+      // Bytes in live blocks in the default zone: the Rust heap plus Objective-C and C.
+      inUseBytes: number
+      /**
+       *  What the default zone holds from the OS, in use or free. The zone keeps no
+       *  high-water mark.
+       */
+      reservedBytes: number
+      /**
+       *  Dirty plus swapped bytes under every `MALLOC_*` VM tag, across every zone: what
+       *  malloc costs resident. `0` when the VM walk failed.
+       */
+      mallocResidentBytes: number
+      /**
+       *  `mallocResidentBytes` minus every zone's live bytes, floored at zero: what malloc
+       *  holds beyond live data, in every zone together.
+       */
+      mallocSlackBytes: number
+    }
 
 /**
  *  One mountable thing under an account: an SFTP or WebDAV root, later an S3
@@ -12622,6 +12855,17 @@ export type ScanPreviewProgressEvent = {
   onlineOnlyFound?: boolean
 }
 
+// Why a scan preview wouldn't start. Nothing is walked and no preview exists.
+export type ScanPreviewRefusal =
+  /**
+   *  No volume answers for the source's (non-local) volume id: a phone that was
+   *  unplugged, or one listed but not connected, typically under a
+   *  search-results pane still showing its files. Walking the path on the Mac
+   *  instead is what this exists to stop: it can only fail, and the dialog
+   *  would then offer a Retry that never works.
+   */
+  { type: 'source_not_connected'; volumeId: string }
+
 // Result of starting a scan preview.
 export type ScanPreviewStartResult = {
   previewId: string
@@ -12769,11 +13013,10 @@ export type SearchIndexReadyEvent = {
 // A search match found by a backend.
 export type SearchMatch = {
   /**
-   *  0-based ROW index (the coordinate is already a row; the field rename is open,
-   *  GitHub #263). Search scans rows, so a match inside a 300 MB line comes back with a
-   *  column that fits on screen instead of one 2.5 million units wide.
+   *  0-based ROW index. Search scans rows, so a match inside a 300 MB line comes back
+   *  with a column that fits on screen instead of one 2.5 million units wide.
    */
-  line: number
+  row: number
   /**
    *  UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by
    *  the row's length, which is bounded by two segments.
@@ -13184,8 +13427,8 @@ export type SecretOffer = {
  *  error arm for a case typed callers can't reach.
  */
 export type SeekTargetKind =
-  // `target_value` is a 0-based line number.
-  | 'line'
+  // `target_value` is a 0-based row index.
+  | 'row'
   // `target_value` is a byte offset.
   | 'byte'
   // `target_value` is a fraction of the file (0.0 = start, 1.0 = end).
@@ -13392,7 +13635,7 @@ export type ServerNameSource =
 
 // Which protocol an account speaks.
 export type ServerProtocol =
-  // An SMB host. ❗ Listed, never pinned in this effort; see [`SavedServer`].
+  // An SMB host. ❗ The host row is never pinned; its saved shares are, see [`SavedServer`].
   | 'smb'
   // An SFTP server, one account per entry.
   | 'sftp'
@@ -13899,6 +14142,12 @@ export type SmbFellBackToOsMount = {
    *  certain to land on the same answer.
    */
   reason: UpgradeFailure
+  /**
+   *  The server's friendly name (mDNS hostname, else the address), for the
+   *  sentence that names the server: `BlockedByThisMac` says what Cmdr couldn't
+   *  connect to.
+   */
+  displayName: string
 }
 
 /**
@@ -14092,6 +14341,34 @@ export type StagedLeftovers = {
    *  which is what the user would be looking for at the destination.
    */
   exampleName: string
+}
+
+// What a stalled listing's folder lives on, as far as the mount proves it.
+export type StalledOn =
+  // A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, ...).
+  | 'server'
+  // A known local disk: a block device, or a local filesystem type.
+  | 'drive'
+  // Anything else: a phone, a FUSE or cloud mount, or a mount we couldn't read.
+  | 'unknown'
+
+/**
+ *  The remembered time left after each checklist step finishes, keyed by the
+ *  frontend's step kinds. The frontend adds its live estimate for the active
+ *  step to the entry for that step, and shows no overall figure where the entry
+ *  is `None` (no history for a step still ahead, or a step this run doesn't
+ *  have). The sum and its honesty gate are the index crate's
+ *  (`lifecycle/steps_ahead.rs`); this only renames the keys for the wire.
+ */
+export type StepsAheadMs = {
+  // Left once the walk (find files) is done.
+  findFiles: number | null
+  // Left once the file list is saved (or updated, on a change check).
+  saveFileList: number | null
+  // Left once folder sizes are computed.
+  computeFolderSizes: number | null
+  // Left once the catch-up step is done.
+  catchUp: number | null
 }
 
 /**
@@ -14308,7 +14585,7 @@ export type SystemSnapshot = {
 }
 
 /**
- *  `system-text-size-changed`: the macOS Accessibility > Display > Text Size
+ *  `system-text-size-changed`:the macOS Accessibility > Display > Text Size
  *  value changed. `multiplier` is the new system text-size multiplier (1.0 =
  *  default).
  */
@@ -14791,6 +15068,19 @@ export type UndoReport = {
 }
 
 /**
+ *  What else to check when the reachability probe didn't get through. Word-free:
+ *  the Add sheet words it under the "couldn't reach" sentence.
+ */
+export type UnreachableHint =
+  /**
+   *  This Mac refused the route to a LAN address (`EHOSTUNREACH` /
+   *  `ENETUNREACH`), which is also how a stuck macOS Local Network permission
+   *  shows (ERR-XGS9X). Only a hint: with no mount to compare against, a server
+   *  that's off can answer the same.
+   */
+  'local_network_permission'
+
+/**
  *  Why a folder takes no writes ([`WriteAccess::Unwritable`]).
  *
  *  Read-only and no-permission are different truths with different fixes, so a
@@ -14845,6 +15135,13 @@ export type UpgradeFailure =
   | 'shareNotOnServer'
   // It answered and then something we can't act on went wrong.
   | 'unexpected'
+  /**
+   *  Something on this Mac refused Cmdr's own route to a server the Mac itself
+   *  can reach: the macOS Local Network permission (stuck on in ERR-XGS9X, fixed
+   *  by switching it off and on), or a firewall app. Read by [`Self::of_dial`],
+   *  ❌ never from the errno alone.
+   */
+  | 'blockedByThisMac'
 
 /**
  *  Where a "Connect directly" left the volume.
@@ -14966,6 +15263,18 @@ export type ViewModeChanged = {
 export type ViewerContentKind = 'text' | 'image' | 'pdf'
 
 /**
+ *  `viewer-context-menu-action`: Copy or Select all was picked from the viewer's right-click menu
+ *  over the file text. Emitted to that viewer's label.
+ *
+ *  Its own event rather than a `ViewerEditAction`: the bar's pair hands both actions to the
+ *  search box while it has focus, and a right-click on the text leaves focus where it was, so
+ *  this pair always acts on the file.
+ */
+export type ViewerContextMenuAction = {
+  action: ViewerEditActionKind
+}
+
+/**
  *  `viewer-edit-action`: Edit > Copy or Edit > Select all was picked while a viewer window
  *  had focus. Emitted to that viewer's label.
  *
@@ -15046,8 +15355,11 @@ export type ViewerOpenResult = {
   fileName: string
   totalBytes: number
   totalLines: number | null
-  // For ByteSeek where `total_lines` is unknown. Based on `total_bytes / avg_bytes_per_line`.
-  estimatedTotalLines: number
+  /**
+   *  The file's ROW count, exact or (on ByteSeek) from its bytes-per-row sample. The
+   *  first chunk's `total_rows` carries the same number plus which of the two it is.
+   */
+  estimatedTotalRows: number
   backendType: BackendType
   capabilities: BackendCapabilities
   initialLines: LineChunk
@@ -15309,7 +15621,7 @@ export type VolumeCopyScanResult = {
   totalBytes: number
   /**
    *  What the destination reports it has room for, or `None` when the backend
-   *  genuinely can't answer (SFTP: `statvfs@openssh.com` is out of reach). ❗
+   *  genuinely can't answer (an SFTP server without `statvfs@openssh.com`). ❗
    *  `None` is "can't tell", ❌ never "no room" — a preview must still open.
    */
   destSpace: SpaceInfo | null
@@ -15403,6 +15715,20 @@ export type VolumeError =
   | { type: 'cancelled'; data: string }
   // The path is a directory, not a file (for example, SMB STATUS_FILE_IS_A_DIRECTORY).
   | { type: 'isADirectory'; data: string }
+  /**
+   *  Something that isn't a directory sits where a directory has to be: a file,
+   *  or a link that leads to anything but a folder. Carries the path of the
+   *  thing IN THE WAY, which for a `mkdir -p` is often an ancestor of the path
+   *  that was asked for.
+   *
+   *  [`Volume::create_directory_all`](super::Volume::create_directory_all)
+   *  raises it, on every backend. ❌ Never [`AlreadyExists`](Self::AlreadyExists),
+   *  which callers of a `mkdir -p` read as "the folder is there, carry on", and
+   *  ❌ never [`NotFound`](Self::NotFound), which names a folder the user asked
+   *  Cmdr to CREATE as the thing that's missing. A link that leads to a folder
+   *  is a folder here: see `mkdir_all` § "A link to a folder is a folder".
+   */
+  | { type: 'notADirectory'; data: string }
   /**
    *  The destination can't hold this name, whatever it's asked to do with it.
    *
@@ -16121,6 +16447,20 @@ export type WriteOperationError =
    */
   | { type: 'destination_not_found'; path: string }
   /**
+   *  The destination folder couldn't be created because something that isn't
+   *  a folder sits where it, or one of the folders above it, has to be.
+   *  Refused before anything is written, by the volume engines
+   *  (`VolumeError::NotADirectory` out of `create_directory_all`) and the
+   *  local one (`ensure_destination_dir`) alike.
+   *
+   *  ❗ `path` is the thing IN THE WAY, which is often an ancestor of the
+   *  folder the user typed. It is the whole point of the variant: as a
+   *  `DestinationNotFound` or a generic `IoError` the dialog named the folder
+   *  Cmdr was asked to create, or nothing, and the file to move aside was
+   *  never mentioned.
+   */
+  | { type: 'destination_not_a_folder'; path: string }
+  /**
    *  The volume holding the sources is a phone its provider lists, or a saved
    *  server, that nothing has connected yet, so no volume answers for it.
    *  Refused before anything is read. `path` is the first source as the
@@ -16138,6 +16478,18 @@ export type WriteOperationError =
    *  reason `SourceNotFound` and `DestinationNotFound` do.
    */
   | { type: 'destination_not_connected'; path: string }
+  /**
+   *  The volume holding the sources left the registry, and nothing lists or
+   *  saves it any more: a phone that was unplugged, or a server that went
+   *  away, typically under a search-results pane still showing its files.
+   *  Refused before anything is read. `path` is the first source as the
+   *  caller sent it.
+   *
+   *  ❌ Never `SourceNotConnected`: there's no row to open, so "open it from
+   *  the volume switcher" would send the user looking for one. ❌ Never a bare
+   *  "volume not found" either, which names an internal id.
+   */
+  | { type: 'source_no_longer_connected'; path: string }
   // Overwrite not enabled.
   | { type: 'destination_exists'; path: string }
   /**

@@ -388,10 +388,10 @@ pub async fn copy_between_volumes(
 /// `copy_space_tests.rs::a_copy_is_judged_by_the_filesystem_its_destination_folder_is_on`.
 ///
 /// ❗ **`NotSupported` means "can't tell", ❌ never "no room".** `get_space_info`
-/// is explicitly allowed to refuse: SFTP is the live case, because
-/// `statvfs@openssh.com` isn't reachable from its crate stack, so the honest
-/// answer is no answer. Reading that refusal as a failure made every copy INTO an
-/// SFTP server die in pre-flight, with a message that named neither the check nor
+/// is explicitly allowed to refuse: an SFTP server without
+/// `statvfs@openssh.com` is the live case, so the honest answer is no answer.
+/// Reading that refusal as a failure made every copy INTO an SFTP server die in
+/// pre-flight, with a message that named neither the check nor
 /// the reason — two correct decisions (an honest backend, a real check) colliding.
 ///
 /// Any OTHER error still propagates: a destination that answered with a dead

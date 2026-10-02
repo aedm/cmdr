@@ -307,13 +307,14 @@ catalog.
 - `koppla från` is programmatic, `koppla ur` the device out of the port, `dra ur` the cable.
 - The noun `utmatningen` in `timedOut` (tentative): ❌ not `så den kan fortfarande matas ut`, which reads as "you can
   still eject it".
-- Named-app refusals (`unmountRefusedBy*`) keep `unmountRefused`'s frame with `{app}` as a bare subject; active over
-  AppKit's passive `används av ”%@”`, and the key forbids quoting the name. `other apps` → indefinite `andra appar`.
-  macOS `arbetar fortfarande med` keeps the English split from an app's `använder`; `Vänta en minut` vs `Vänta en stund`
-  keeps the English split too.
+- The refusals (`unmountRefused*`) share one skeleton, `X har fortfarande filer öppna där.` +
+  `… och försök sedan igen.`: either wrapper may concern a share or a phone, so never `den här enheten` or
+  `mata ut igen`. `{app}` is a bare subject; active over AppKit's passive `används av ”%@”`, and the key forbids quoting
+  the name. `Stäng dem` points at `filer`; the aside keeps Cmdr as subject, never `Vi`. `other apps` → `andra appar`;
+  other processes → bare `andra`. The busy tooltips keep `arbetar fortfarande med`; `Vänta en minut` vs `Vänta en stund`
+  follows English.
 - disk image → `skivavbild`, short `avbilden`; ❌ not MS's `avbildning` (Windows side).
-- A disabled button's tooltip says `Det går inte att koppla från medan åtgärder pågår på den här servern`, without the
-  menus' `(upptagen)` marker.
+- Disabled buttons' tooltips skip the menus' `(upptagen)` marker.
 
 ## Trash toast (`fileOperations.trash.*`, `commands.fileGoToTrash.*`)
 
@@ -431,7 +432,7 @@ catalog.
 - Got it → `Uppfattat` over macOS's `OK`, which the catalog keeps for a dialog's default button.
 - `värdnyckel` only where the English writes "host key".
 - Found at {path} → `Hittades: {path}`, ❌ not `i {path}`: the path is the binary itself, not its folder.
-- Re-check → `Leta igen`, tying the button to the placeholder `Leta efter adb på vanligt sätt`.
+- Re-check → `Leta igen`, tying the button to the placeholder `Cmdr letar efter adb på vanligt sätt`.
 - The picker's title is `Välj kommandot adb` (Apple's picker button `Välj`); the button opening it is `Bläddra…`.
 - Location of adb → `Sökväg till adb`, ❌ not Finder's `Plats` (the enclosing folder).
 - `platform tools` stays English (the SDK Manager shows `Platform-Tools` in every locale; tentative).

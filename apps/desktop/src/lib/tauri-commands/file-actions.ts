@@ -88,6 +88,12 @@ export interface PaneContextMenuFacts {
    */
   canShare?: boolean
   /**
+   * Whether the seven Finder tag colors appear (macOS). A tag is an xattr written through
+   * the row's path, so only rows that are real OS paths can hold one; on a phone, an SFTP or
+   * WebDAV server, or inside an archive the click would store nothing. Omitting it hides them.
+   */
+  canTag?: boolean
+  /**
    * Whether "Add to favorites" appears on a folder row. A favorite has to point somewhere
    * that's still there next launch and openable from a cold start, so an archive's insides,
    * a `.git`-portal folder, a phone, and a protocol-only server all say no. Omitting it
@@ -182,6 +188,7 @@ export async function showFileContextMenu(
       listingId: pane.listingId ?? '',
       canOpenTerminalHere: pane.canOpenTerminalHere ?? false,
       canShare: pane.canShare ?? false,
+      canTag: pane.canTag ?? false,
       canFavorite: pane.canFavorite ?? false,
     },
     target: {

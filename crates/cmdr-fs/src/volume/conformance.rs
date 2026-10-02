@@ -19,8 +19,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::scan_stop::TestScanStop;
 use super::{
-    DirectoryCreation, InMemoryVolume, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, StreamLength, Volume,
-    VolumeError, WriteMode,
+    InMemoryVolume, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, StreamLength, Volume, VolumeError,
+    WriteMode,
+};
+
+mod directory_creation;
+
+pub use directory_creation::{
+    assert_create_directory_all_goes_through_a_link_to_a_folder, assert_create_directory_all_refuses_a_file_in_the_way,
+    assert_create_directory_all_reports_an_existing_dir_honestly,
 };
 
 /// The size `path` reports right now, for a fixture precondition or an
@@ -335,36 +342,6 @@ pub async fn assert_unknown_write_is_refused_before_io(volume: &dyn Volume, path
         expected,
         "the refused write changed {}",
         path.display()
-    );
-}
-
-/// [`Volume::create_directory_all`]
-/// reports a directory that was ALREADY there as
-/// [`DirectoryCreation::AlreadyExisted`], never as `Created`.
-///
-/// `dir` must already exist on `volume`; the assertion checks that first.
-///
-/// **Why this one is worth a shared assertion.** `Created` is a promise that the
-/// directory was empty at that instant, and the transfer driver spends it: on a
-/// `Created` answer it skips the per-file destination conflict probe for
-/// everything it then writes inside. So a backend that answered `Created` for a
-/// directory it merely found turns "would have prompted" into "overwrote", for
-/// every file in the copy. Only the dangerous direction is pinned here — a
-/// backend that answers `AlreadyExisted` when it did create the leaf is merely
-/// slower, which is why the trait says "when in doubt, answer `AlreadyExisted`".
-pub async fn assert_create_directory_all_reports_an_existing_dir_honestly(volume: &dyn Volume, dir: &Path) {
-    assert!(
-        volume.exists(dir).await,
-        "fixture precondition: {} must already exist",
-        dir.display()
-    );
-
-    let outcome = volume.create_directory_all(dir).await;
-    assert!(
-        matches!(outcome, Ok(DirectoryCreation::AlreadyExisted)),
-        "create_directory_all over the existing {} must answer AlreadyExisted; \
-         a Created answer tells the transfer driver it may skip every destination conflict probe inside. Got {outcome:?}",
-        dir.display(),
     );
 }
 

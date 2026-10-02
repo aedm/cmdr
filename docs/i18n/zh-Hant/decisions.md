@@ -46,7 +46,7 @@ evidence of that weight.
 - `無法`+verb+object`。`; `無法…，因為…。` (default); `因為…，無法…。` when the reason is the user's to fix;
   `…，因此無法…。` when a named actor blocks (`磁碟正由「%@」使用中，因此無法退出。`). Recovery lines end
   `然後再試一次。` (AP-TW).
-- "Can't X while operations are in progress on this Y" → `這個 Y 上有操作正在進行，無法X`: the reason leads.
+- Busy tooltips share `Cmdr 還在處理這個 Y 上的檔案。完成後再X。` (`處理` as in `macOS 還在處理…`).
 
 ## metadata: `中繼資料` (`errors.listing.attributeNotFound.explanation`/`.suggestion`)
 
@@ -263,13 +263,13 @@ The one case where waiting can't help, so no temporary tone (no `現在`, no `�
 - Can't add here: `…只能用在磁碟和已裝載的共享資料夾上`, with no protocol names (English avoids them too).
 - `.seeFavorites`'s `=0` branch holds no digit (`查看喜好項目`).
 
-## Eject refused, and who holds the drive (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+## Eject refused, and who holds the drive (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, `.otherProcesses`)
 
-- `{app}` / `{apps}` bare, against AppKit's quoted `「%@」`: `{apps}` arrives as one joined list that can't be quoted
-  per item, and the singular must match the plural.
-- `還在用` over Apple's written `正在使用中`; `macOS 還在處理這個磁碟機` over `還在使用`: English switched to "working
-  with" to say nothing can be closed, only waited for. Other apps `其他 App`.
+- Inserted names stay bare, against AppKit's `「%@」`: a joined list can't be quoted per item.
+- Either wrapper may concern a share or a phone, so the refusals share `X 還開著那裡的檔案。…，然後再試一次。`, never
+  `這個磁碟機` or `再退出一次`. `請把它們關掉` points at the files; the aside keeps Cmdr as subject, never `我們`.
 - A disk image `磁碟映像檔` (AP-TW = AP-HK), then `那個映像檔`.
+- Processes: `…，分別是 {processes}。` over `名為 {processes} 的程序`: the list can end `其他程序`.
 
 ## The title-bar full-disk-access badge (`onboarding.fdaBadge.*`, `onboarding.stepAi.bannerTitle.denied`)
 

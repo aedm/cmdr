@@ -309,13 +309,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
-  "settings.listing.directorySortMode.label": "目录排序",
-  "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+  "settings.listing.foldersFirst.label": "优先显示文件夹",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
   },
-  "settings.listing.directorySortMode.description": "更改排序列时，目录的排序方式。",
+  "settings.listing.foldersFirst.description": "在文件上方列出文件夹。关闭后，文件夹和文件会混在一起。",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
+  "settings.listing.directorySortMode.label": "文件夹排序",
+  "@settings.listing.directorySortMode.label": {
+    "sourceHash": "7d0b088"
+  },
+  "settings.listing.directorySortMode.description": "更改排序列时，文件夹的排序方式。",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "当前已停用，因为文件夹和文件混在一起。开启“优先显示文件夹”即可使用这项设置。",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "与文件一致",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -963,6 +975,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "附近服务器分组",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "直接连接到 SMB 共享",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1057,7 +1073,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "只要 Android 手机开启了 USB 调试，就能访问它的整个文件系统，包括 MTP 显示不了的部分。需要在这台 Mac 上安装 Android 平台工具（也就是 adb 命令）。如果你没装任何 Android 工具，开着这一项也不会有任何开销。",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "adb 的位置",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1635,9 +1651,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "已显示“网络”分组过长提示",
+  "settings.behavior.serversPinHintSeen.label": "已显示“从宗卷选择器中取消固定”提示",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "是否已显示过关于取消固定服务器的一次性提示。",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1965,9 +1981,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "文稿图标、目录排序，以及简洁模式的列宽。",
+  "settings.summary.listing": "文稿图标、文件夹排序，以及简洁模式的列宽。",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "双击前往上层文件夹，以及重命名文件时的行为。",
   "@settings.summary.navigationAndFileOps": {
@@ -1991,7 +2007,7 @@
   },
   "settings.summary.servers": "你信任过的 SSH 主机密钥。",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "浏览已开启 USB 调试的 Android 手机。",
   "@settings.summary.adb": {
@@ -2520,13 +2536,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "安装 Android 平台工具，然后点按“再次检查”：",
+  "settings.adb.install.intro": "安装 Android 平台工具，然后选择“再次检查”：",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "按常规方式查找 adb",
+  "settings.adb.pathPlaceholder": "Cmdr 会按常规方式查找 adb",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "浏览…",
   "@settings.adb.browse": {

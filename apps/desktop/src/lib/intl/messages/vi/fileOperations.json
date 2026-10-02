@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Xóa",
   "@fileOperations.delete.confirmDelete": {
@@ -274,7 +274,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "Sẽ ghi <written></written>. Nguồn là <ondisk></ondisk> trên đĩa – phần dôi ra là các tệp liên kết cứng, vốn không thể giữ liên kết khi qua ổ đĩa khác.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -303,6 +303,10 @@
   "fileOperations.transferDialog.scanRetry": "Thử lại",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Điện thoại hoặc máy chủ chứa các tệp này không còn kết nối nữa, nên Cmdr không thể sao chép từ đó.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "Chúng tôi không kiểm tra được những gì đã có ở đích. Bạn sẽ được hỏi về mọi mục trùng tên.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -398,7 +402,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, other {thư mục}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Đang xác minh trước khi sao chép…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -536,9 +540,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Đích đã tồn tại và là một <strong>thư mục</strong>. Bạn sắp ghi đè nó bằng một <strong>tệp</strong> trùng tên. Toàn bộ nội dung của thư mục đích sẽ bị xóa và thay bằng tệp đó. Làm gì đây?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Đích đã tồn tại và là một <strong>thư mục</strong>. Bạn sắp thay thế nó bằng một <strong>tệp</strong> trùng tên. Mọi thứ bên trong thư mục đó sẽ mất. Làm gì đây?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "Đích đã tồn tại và là một <strong>tệp</strong>. Bạn sắp thay thế nó bằng một <strong>thư mục</strong> trùng tên. Tệp đó sẽ mất ngay khi thư mục thế vào chỗ của nó. Làm gì đây?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Hai tên này trông giống hệt nhau, nhưng máy chủ lưu chúng theo cách viết khác nhau. Nút Ghi đè sẽ thay thế mục hiện có.",
   "@fileOperations.transferProgress.lookAlikeHint": {

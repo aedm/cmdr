@@ -165,13 +165,7 @@ describe('viewer media labels (en)', () => {
   })
 })
 
-describe('viewer context menu + copy dialogs (en)', () => {
-  it('matches the context-menu strings', () => {
-    expect(tString('viewer.contextMenu.ariaLabel')).toBe('Viewer actions')
-    expect(tString('viewer.contextMenu.copy')).toBe('Copy')
-    expect(tString('viewer.contextMenu.selectAll')).toBe('Select all')
-  })
-
+describe('viewer copy dialogs (en)', () => {
   it('matches the copy-dialog strings', () => {
     expect(tString('viewer.copyDialog.confirmTitleUnknown')).toBe('Copy this selection to the clipboard?')
     expect(tString('viewer.copyDialog.confirmTitleKnown', { size: '24 MB' })).toBe('Copy 24 MB to the clipboard?')

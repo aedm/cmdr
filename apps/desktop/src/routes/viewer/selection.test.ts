@@ -260,22 +260,22 @@ describe('toRangeEnds', () => {
   it('emits both ends as concrete lines for an ordinary selection', () => {
     const sel: Selection = { anchor: { row: 2, offset: 3 }, focus: { row: 7, offset: 1 } }
     expect(toRangeEnds(sel)).toEqual({
-      anchor: { kind: 'line', line: 2, offset: 3 },
-      focus: { kind: 'line', line: 7, offset: 1 },
+      anchor: { kind: 'row', row: 2, offset: 3 },
+      focus: { kind: 'row', row: 7, offset: 1 },
     })
   })
 
   it('puts a reversed drag back in document order', () => {
     const sel: Selection = { anchor: { row: 7, offset: 1 }, focus: { row: 2, offset: 3 } }
     expect(toRangeEnds(sel)).toEqual({
-      anchor: { kind: 'line', line: 2, offset: 3 },
-      focus: { kind: 'line', line: 7, offset: 1 },
+      anchor: { kind: 'row', row: 2, offset: 3 },
+      focus: { kind: 'row', row: 7, offset: 1 },
     })
   })
 
   it('maps the end-of-file selection to RangeEnd::Eof', () => {
     expect(toRangeEnds(makeSelectToEof())).toEqual({
-      anchor: { kind: 'line', line: 0, offset: 0 },
+      anchor: { kind: 'row', row: 0, offset: 0 },
       focus: { kind: 'eof' },
     })
   })

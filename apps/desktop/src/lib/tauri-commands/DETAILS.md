@@ -14,7 +14,8 @@ commands, and notable non-obvious placements.
   measurement), `setListingIncludeHidden` (the pane's hidden-files setting, which picks its `directory-diff` rows).
 - **`file-viewer.ts`**: viewer session only: open, seek, search (with `useRegex` / `caseSensitive` modes), close, word
   wrap menu, `viewerSetSearchInputFocused` (the search box's claim on the viewer bar's Edit > Cut / Paste), encoding
-  pickers (`viewerSetEncoding` / `viewerGetEncodingOptions`), tail mode (`viewerSetTailMode`), `viewerReload`.
+  pickers (`viewerSetEncoding` / `viewerGetEncodingOptions`), tail mode (`viewerSetTailMode`), `viewerReload`, and
+  `showViewerContextMenu` (the native right-click menu).
 - **`file-actions.ts`**: open file/URL, Finder reveal, Quick Look, Get Info, context menu (file / breadcrumb /
   volume-selector-row / parent-row), clipboard, the text editor pair, cloud actions (`cloudMakeAvailableOffline` /
   `cloudRemoveDownload`, iCloud Drive only), `googleDriveLinks` (a Drive item's `viewUrl` plus its `geminiUrl`, or
@@ -108,6 +109,8 @@ commands, and notable non-obvious placements.
 - **`menu-events.ts`**: `onViewModeChanged` / `onMenuSort` / `onMediaIndexFolderExclusion` / `onMediaIndexFolderChoice`
   over the direct (non-`execute-command`) native-menu events. The two media-index ones carry the right-clicked folder
   plus its target state; `listener-setup.ts` routes each into the ONE FE helper that also backs the Settings list.
+  `onOpenWithCopyRefused` carries an "Open with" launch that couldn’t copy its file out of an archive or a repo’s
+  history, for `../file-explorer/open-with-refused-bridge.ts`.
 - **`directory-watcher.ts`**: `onDirectoryDiff` / `onDirectoryDeleted` over the file-watcher events (`onDirectoryDiff`
   casts the generated payload to the FE `DirectoryDiff` whose `entry` is the FE `FileEntry`).
 - **`native-drag.ts`**: `onDragImageSize` / `onDragModifiers` (macOS drag overlay) + `onDragOutSessionStarted` /
@@ -127,6 +130,7 @@ commands, and notable non-obvious placements.
   `…Confirmation`, `onCloseAllFileViewers`, `onMcpSettingsClose`), `requestOpenSettings` (emit `open-settings` so the
   main window opens Settings on behalf of a window without window-creation perms), `onViewerWordWrapToggled`,
   `onViewerEditAction` (the viewer bar's Edit > Copy / Select all, which the viewer runs itself),
+  `onViewerContextMenuAction` (the same pair from its right-click menu, always over the file),
   `onPersistRestrictedSetting`, and `requestForegroundOperation` / `onForegroundOperationRequested` (the queue window
   asking the main window to show one operation in its progress dialog; the payload is the id alone, because the registry
   snapshot both windows receive is the truth about everything else), and `onMouseNav` (macOS reads the mouse's back /

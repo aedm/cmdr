@@ -35,6 +35,10 @@
   "@settings.appearance.useAppIconsForDocuments.description": {
     "sourceHash": "9353728"
   },
+  "settings.listing.directorySortMode.disabledReason": "Desactivada por ahora, porque las carpetas se mezclan con los archivos. Activa “Mostrar carpetas primero” para usar esta opción.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "2d38158"
+  },
   "settings.archives.zip.description": "Qué hace presionar Intro en un archivo zip.",
   "@settings.archives.zip.description": {
     "sourceHash": "e33a325"
@@ -359,12 +363,8 @@
   "@settings.window.loading": {
     "sourceHash": "229d202"
   },
-  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después presiona Comprobar de nuevo:",
-  "@settings.adb.install.intro": {
-    "sourceHash": "add9e91"
-  },
-  "settings.adb.pathPlaceholder": "Buscar adb en los lugares habituales",
+  "settings.adb.pathPlaceholder": "Cmdr busca adb en los lugares habituales",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "ba15cb8"
+    "sourceHash": "68669b9"
   }
 }

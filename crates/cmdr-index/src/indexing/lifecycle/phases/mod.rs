@@ -685,9 +685,15 @@ impl Machine {
         let Ok(conn) = IndexStore::open_read_connection(&self.writer.db_path()) else {
             return Vec::new();
         };
-        coverage_for_scope(&conn, &index_path, &absolute, CoverageDimension::Listing)
-            .map(|map| map.frontier)
-            .unwrap_or_default()
+        coverage_for_scope(
+            &conn,
+            &index_path,
+            &absolute,
+            self.space.exclusion_scope().tier(),
+            CoverageDimension::Listing,
+        )
+        .map(|map| map.frontier)
+        .unwrap_or_default()
     }
 
     /// Split a phase's frontier into what runs now and what runs after it.
@@ -789,6 +795,12 @@ impl Machine {
             // under the walker, rather than reading the whole volume as in flux
             // for the run's whole length.
             covered_in_phases: true,
+            // A first index has no history to add up, and its checklist is one
+            // step, so it carries no overall figure.
+            left_after_find_files_ms: None,
+            left_after_save_ms: None,
+            left_after_compute_ms: None,
+            left_after_catch_up_ms: None,
         });
         crate::indexing::lifecycle::state::apply_freshness_event_on(
             &self.freshness,

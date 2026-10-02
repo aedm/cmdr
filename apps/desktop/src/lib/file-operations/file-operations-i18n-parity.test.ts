@@ -98,8 +98,10 @@ describe('delete dialog chrome (en)', () => {
   it('resolves the scan-stat nouns and throughput', () => {
     expect(t('fileOperations.delete.scanFile', { count: 1 })).toBe('file')
     expect(t('fileOperations.delete.scanFile', { count: 2 })).toBe('files')
-    expect(t('fileOperations.delete.scanDir', { count: 1 })).toBe('dir')
-    expect(t('fileOperations.delete.scanDir', { count: 2 })).toBe('dirs')
+    expect(t('fileOperations.delete.scanDir', { count: 1 })).toBe('folder')
+    expect(t('fileOperations.delete.scanDir', { count: 2 })).toBe('folders')
+    expect(t('fileOperations.transferDialog.scanDir', { count: 1 })).toBe('folder')
+    expect(t('fileOperations.transferDialog.scanDir', { count: 2 })).toBe('folders')
     // The rate itself is the ONE shared key both scan lines and the transfer
     // bars read; see the "shared" block below.
   })
@@ -168,7 +170,7 @@ describe('scan-phase body (en)', () => {
   it('resolves the from-label, scan nouns, and throughput', () => {
     expect(tString('fileOperations.scanPhase.fromLabel')).toBe('From:')
     expect(t('fileOperations.scanPhase.scanFile', { count: 1 })).toBe('file')
-    expect(t('fileOperations.scanPhase.scanDir', { count: 2 })).toBe('dirs')
+    expect(t('fileOperations.scanPhase.scanDir', { count: 2 })).toBe('folders')
     expect(t('fileOperations.shared.fileRate', { count: 900, rateText: '900' })).toBe('900 files/s')
     expect(t('fileOperations.shared.fileRate', { count: 1, rateText: '1.0' })).toBe('1.0 file/s')
   })
@@ -262,7 +264,7 @@ describe('transfer progress dialog chrome (en)', () => {
     const strong = (c: unknown[]) => c.join('')
     const result = t('fileOperations.transferProgress.warningFileOverFolder', { strong })
     expect(Array.isArray(result) ? result.join('') : result).toBe(
-      'The target exists and is a folder. You’re about to overwrite it with a file by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?',
+      'The target exists and is a folder. You’re about to replace it with a file by the same name. Everything inside the folder would be gone. What to do?',
     )
   })
 })

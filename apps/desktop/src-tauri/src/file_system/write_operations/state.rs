@@ -186,6 +186,13 @@ pub struct WriteOperationState {
     /// [`super::in_flight_temps`], which also keeps the persisted half that
     /// outlives the process.
     pub in_flight_temps: std::sync::Mutex<Vec<PathBuf>>,
+    /// A test's own persisted ledger, which the in-flight temps above are also
+    /// recorded in (`with_in_flight_ledger`, test builds only). `None`, always so
+    /// in the app, means the process's one; `in_flight_temps` resolves it.
+    /// ❌ Don't default it to `Ledger::process()` here: a call from this module
+    /// into `in_flight_temps` welds the two and `transfer_sides` into one module
+    /// cycle.
+    pub(super) in_flight_ledger: Option<super::in_flight_temps::Ledger>,
     /// The newest `write-progress` this operation emitted, kept so whoever has
     /// to speak for it while it stands still can re-send it
     /// ([`announce_human_wait`](Self::announce_human_wait), and the transfer
@@ -232,6 +239,7 @@ impl WriteOperationState {
             journal_volumes: None,
             sides: None,
             in_flight_temps: std::sync::Mutex::new(Vec::new()),
+            in_flight_ledger: None,
             last_progress: std::sync::Mutex::new(None),
             liveness: std::sync::Mutex::new(Some(Arc::new(()))),
             claimed_names: super::unique_name::ClaimedNames::default(),
@@ -326,6 +334,14 @@ impl WriteOperationState {
     /// both of them.
     pub(crate) fn with_sides(mut self, sides: Option<super::transfer_sides::TransferSides>) -> Self {
         self.sides = sides;
+        self
+    }
+
+    /// Records this operation's leftovers into a test's own ledger rather than
+    /// the process's, so a test that sweeps its log meets only its own records.
+    #[cfg(test)]
+    pub(super) fn with_in_flight_ledger(mut self, ledger: super::in_flight_temps::Ledger) -> Self {
+        self.in_flight_ledger = Some(ledger);
         self
     }
 

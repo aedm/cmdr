@@ -59,7 +59,7 @@ use crate::events::index_mapping::{
 use crate::file_system::git::wiring::GitStateChangedPayload;
 use crate::file_system::listing::streaming::{
     ListingCancelledEvent, ListingCompleteEvent, ListingErrorEvent, ListingOpeningEvent, ListingProgressEvent,
-    ListingReadCompleteEvent,
+    ListingReadCompleteEvent, ListingStalledEvent,
 };
 use crate::file_system::volume::eject::VolumesEjectingChanged;
 use crate::file_system::write_operations::{
@@ -70,6 +70,7 @@ use crate::file_system::write_operations::{
 };
 use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged};
 use crate::file_viewer::ViewerPullProgress;
+use crate::file_viewer::open_with_extract::OpenWithCopyRefused;
 use crate::listing_index_sizes::ListingIndexSizesChanged;
 use crate::mtp::{
     MtpDeviceConnected, MtpDeviceDisconnected, MtpExclusiveAccessError, MtpPermissionError, MtpPtpcameradRestored,
@@ -88,7 +89,7 @@ use crate::window_events::{
     CloseAbout, CloseAllFileViewers, CloseConfirmation, CloseFileViewer, ExecuteCommand, FocusAbout, FocusConfirmation,
     FocusFileViewer, FocusSettings, ForegroundOperation, FunctionKeyBarHideRequested, McpSettingsClose, MouseNav,
     OpenFileViewer, OpenSettings, PersistRestrictedSetting, RevealPath, ShowSearchResultInFolder, TabContextAction,
-    ViewerEditAction, ViewerWordWrapToggled,
+    ViewerContextMenuAction, ViewerEditAction, ViewerWordWrapToggled,
 };
 // AI + system/misc events.
 use crate::ai::{
@@ -105,8 +106,8 @@ use crate::quick_look::{QuickLookClosed, QuickLookKeyEvent};
 use crate::quit::{QuitCalledOff, QuitRequested};
 use crate::restricted_paths::RestrictedPathsChangedPayload;
 use crate::system_events::{
-    AccentColorChanged, DragImageSize, DragModifiers, MenuBarRebuilt, OsLocalesChanged, ReduceTransparencyChanged,
-    SessionCompleteEvent, SessionStartedEvent, SystemTextSizeChanged,
+    AccentColorChanged, DragImageSize, DragModifiers, GlassTintChanged, MenuBarRebuilt, OsLocalesChanged,
+    ReduceTransparencyChanged, SessionCompleteEvent, SessionStartedEvent, SystemTextSizeChanged,
 };
 
 /// Public greeting used by the example webview surface; kept here as the
@@ -255,6 +256,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::menu::show_tab_context_menu,
                     crate::commands::menu::show_network_host_context_menu,
                     crate::commands::menu::show_function_key_bar_context_menu,
+                    crate::commands::menu::show_viewer_context_menu,
                     crate::commands::file_actions::show_in_finder,
                     crate::commands::quick_look::quick_look_open,
                     crate::commands::quick_look::quick_look_set_path,
@@ -813,6 +815,19 @@ macro_rules! ipc_command_manifest {
                 ]
                 dispatch_only: []
             }
+            // Liquid Glass slider.
+            cfg(target_os = "macos") {
+                typed: [
+                    crate::glass_tint::get_glass_tint_amount,
+                ]
+                dispatch_only: []
+            }
+            cfg(not(target_os = "macos")) {
+                typed: [
+                    crate::stubs::glass_tint::get_glass_tint_amount,
+                ]
+                dispatch_only: []
+            }
             // System text size.
             cfg(target_os = "macos") {
                 typed: [
@@ -1015,6 +1030,9 @@ pub fn builder() -> Builder<tauri::Wry> {
             // The leftover sweep, which belongs to no operation
             // (write_operations/in_flight_sweep.rs).
             MoveLeftoversKeptEvent, // event_name = "move-leftovers-kept"
+            // An "Open with" click on a file inside an archive that couldn't be copied
+            // out, so no app launched (file_viewer/open_with_extract.rs).
+            OpenWithCopyRefused,
             // Operation manager registry snapshot (write_operations/manager.rs).
             OperationsChanged,
             SuggestionsChanged,
@@ -1033,6 +1051,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             QuitCalledOff,
             // Listing sink (file_system/listing/streaming.rs `TauriListingEventSink`).
             ListingOpeningEvent,
+            ListingStalledEvent,
             ListingProgressEvent,
             ListingReadCompleteEvent,
             ListingCompleteEvent,
@@ -1143,6 +1162,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // `system_events` because their emit sites are macOS-gated.
             AccentColorChanged,
             ReduceTransparencyChanged,
+            GlassTintChanged,
             SystemTextSizeChanged,
             MenuBarRebuilt,
             OsLocalesChanged,
@@ -1188,6 +1208,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // emit_to(viewer label): the viewer bar's Edit > Copy / Select all, which the viewer
             // has to run itself (its selection model isn't in the DOM the responder chain sees).
             ViewerEditAction,
+            ViewerContextMenuAction,
             // emit_to(viewer label): how far a viewer's pull into its preview temp got.
             ViewerPullProgress,
             TabContextAction,

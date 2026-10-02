@@ -315,13 +315,13 @@ inside `media_index` because the writer thread mutates it directly.
 
 ### The importance score cache
 
-`ImportanceIndex::above_threshold(0.0)` is an ordered read of EVERY scored folder, which SQLite runs as an external
-merge sort (a measured 368,043 scored folders on one root), and it then rebuilds a map that size. Ruinous per UI query:
-the per-file badge asks per visible range, per pane, on every listing swap and enrichment tick, and uncached those
-queries piled up on the tokio blocking pool until it hit its 512-thread cap, at which point every other `spawn_blocking`
-in the app starved — directory listings never completed and the volume list timed out into an empty picker. Ruinous on a
-timer too: it was 45.8 ms of every 60-second media live tick at 90,308 folders (release build, M1 Max,
-`scheduler/live_bench.rs`, 2026-08-21 — `docs/notes/performance/live-tick-cost-2026-08-21.md`).
+`ImportanceIndex::above_threshold(0.0)` reads EVERY scored folder (a measured 368,043 on one root), and it then builds a
+map that size. Ruinous per UI query: the per-file badge asks per visible range, per pane, on every listing swap and
+enrichment tick, and uncached those queries piled up on the tokio blocking pool until it hit its 512-thread cap, at
+which point every other `spawn_blocking` in the app starved — directory listings never completed and the volume list
+timed out into an empty picker. Ruinous on a timer too: it was 45.8 ms of every 60-second media live tick at 90,308
+folders (release build, M1 Max, `scheduler/live_bench.rs`, 2026-08-21 —
+`docs/notes/performance/live-tick-cost-2026-08-21.md`).
 
 `coverage::importance_scores(data_dir, volume_id, at_least)` therefore serves a `FolderScores`: a cheap handle onto a
 per-volume cached table. `at_least: None` is every scored folder, so a slider drag gets one read serving every position;

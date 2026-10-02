@@ -3,8 +3,8 @@
  *
  * Owns the stateful side of text selection by pointer: the active drag's
  * `pointerId` + last pointer position, the click cycle behind word / line selection, the
- * gesture's selection granularity, the in-app context-menu position, and the
- * drag-autoscroll RAF loop. Point → caret resolution lives in `viewer-pointer.ts` (over
+ * gesture's selection granularity, and the drag-autoscroll RAF loop. A right-click hands off
+ * to the native context menu the page pops. Point → caret resolution lives in `viewer-pointer.ts` (over
  * `viewer-caret-geometry.ts`), the click cycle in `viewer-multi-click.ts`, the
  * granularity arithmetic in `viewer-selection-granularity.ts`, and the autoscroll speed
  * curve and RAF driver in `viewer-autoscroll.ts` / `viewer-autoscroll.svelte.ts`. This
@@ -51,6 +51,8 @@ interface PointerDragDeps {
    * starts, because the handler's `preventDefault()` blocks the native focus move.
    */
   takeFocus: () => void
+  /** Pops the native right-click menu (Copy, Select all) at the pointer. */
+  showContextMenu: () => void
 }
 
 export function createViewerPointerDrag(deps: PointerDragDeps) {
@@ -65,9 +67,6 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
   /** The pointer's most-recent position, used by the autoscroll RAF loop. */
   let dragPointerX = 0
   let dragPointerY = 0
-
-  /** Position of the in-app context menu while it's open, or `null`. */
-  let contextMenuPos = $state<{ x: number; y: number } | null>(null)
 
   /** The last press and where it sat in the click cycle, or `null` before the first one. */
   let lastPress: MultiClickState | null = null
@@ -234,13 +233,9 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
   }
 
   function handleContextMenu(e: MouseEvent): void {
-    // Suppress the native OS context menu so our in-app one wins.
+    // Suppress the webview's own menu (Reload, Inspect element) so ours wins.
     e.preventDefault()
-    contextMenuPos = { x: e.clientX, y: e.clientY }
-  }
-
-  function closeContextMenu(): void {
-    contextMenuPos = null
+    deps.showContextMenu()
   }
 
   /**
@@ -257,15 +252,11 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
   }
 
   return {
-    get contextMenuPos() {
-      return contextMenuPos
-    },
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
     handleContextMenu,
-    closeContextMenu,
     handleWindowBlur,
   }
 }

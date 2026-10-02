@@ -310,13 +310,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Mostrar pastas primeiro",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Mostra as pastas acima dos arquivos na lista. Desative para misturar pastas e arquivos.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
   "settings.listing.directorySortMode.label": "Ordenar pastas",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Como as pastas são ordenadas ao trocar a coluna de ordenação.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Desativado no momento porque as pastas estão misturadas com os arquivos. Ative “Mostrar pastas primeiro” para usar este ajuste.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Como arquivos",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -682,7 +694,7 @@
   "@settings.mediaIndex.importanceThreshold.waitingForDriveIndex": {
     "sourceHash": "1d50f92"
   },
-  "settings.mediaIndex.importanceThreshold.pending": "Alguns discos ainda estão sendo analisados, então esses números vão crescer.",
+  "settings.mediaIndex.importanceThreshold.pending": "Alguns discos ainda estão em varredura, então esses números vão crescer.",
   "@settings.mediaIndex.importanceThreshold.pending": {
     "sourceHash": "c144f80"
   },
@@ -964,6 +976,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "Grupo de servidores por perto",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Conectar diretamente a compartilhamentos SMB",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1057,9 +1073,9 @@
   "@settings.fileOperations.adbEnabled.label": {
     "sourceHash": "3651356"
   },
-  "settings.fileOperations.adbEnabled.description": "Acessa o sistema de arquivos inteiro de um celular Android com a depuração USB ativada, algo que o MTP não consegue mostrar. Precisa das ferramentas de plataforma do Android (o comando “adb”) neste Mac. Deixar isto ativado não custa nada quando você não tem nenhuma ferramenta do Android instalada.",
+  "settings.fileOperations.adbEnabled.description": "Acessa o sistema de arquivos inteiro de um celular Android com a depuração USB ativada, algo que o MTP não consegue mostrar. Precisa das ferramentas de plataforma do Android (o comando “adb”) neste Mac. Deixar isto ativado não custa nada se você não tiver nenhuma ferramenta do Android instalada.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Localização do adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1638,9 +1654,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Dica de grupo Rede grande exibida",
+  "settings.behavior.serversPinHintSeen.label": "Dica de “Desafixar do seletor” exibida",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Se a dica única sobre desafixar servidores já foi exibida.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1970,7 +1986,7 @@
   },
   "settings.summary.listing": "Ícones de documento, ordenação de pastas e largura de coluna no modo Resumido.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navegação com clique duplo para a pasta superior e comportamento ao renomear arquivos.",
   "@settings.summary.navigationAndFileOps": {
@@ -1994,7 +2010,7 @@
   },
   "settings.summary.servers": "As chaves de host SSH em que você confiou.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Navegue por um celular Android com a depuração USB ativada.",
   "@settings.summary.adb": {
@@ -2524,13 +2540,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Instale as ferramentas de plataforma do Android e depois pressione Verificar novamente:",
+  "settings.adb.install.intro": "Instale as ferramentas de plataforma do Android e depois escolha “Verificar novamente”:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Procurar o adb nos lugares de sempre",
+  "settings.adb.pathPlaceholder": "O Cmdr procura o adb nos lugares de sempre",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Escolher…",
   "@settings.adb.browse": {

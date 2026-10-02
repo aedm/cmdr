@@ -116,6 +116,14 @@
       "name": "the share name, like Container"
     }
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} server found nearby} other {{countText} servers found nearby}}",
+  "@servers.hub.nearbyGroup": {
+    "description": "Header row in the servers hub, below the servers the user saved. It groups the servers Cmdr found on the local network that the user never saved, and it opens and collapses that group; collapsed, this line is all that shows of them. The rows under it carry the status \"Found nearby\", so use the same wording for \"found nearby\" here.",
+    "placeholders": {
+      "count": "the number of servers in the group, for choosing the plural form",
+      "countText": "the number as the user’s locale writes it, like \"12\""
+    }
+  },
   "servers.hub.discoveryOff": "Local network discovery is off.",
   "@servers.hub.discoveryOff": {
     "description": "One line in the servers hub, in place of the list of servers found nearby, when the user has turned local network discovery off in Settings. Saved servers still work and are still listed; this line is only about the nearby ones."
@@ -216,9 +224,16 @@
   },
   "servers.refusal.unreachable": "Cmdr couldn’t reach {host}.",
   "@servers.refusal.unreachable": {
-    "description": "Shown in the pane when there was no route to the server at all: it’s off, the name doesn’t resolve, or the network is down. \"Cmdr\" is the product name.",
+    "description": "Shown in the Add server form and the sign-in form when there was no route to the server at all: it’s off, the name doesn’t resolve, or the network is down. Names the address the person typed (a pane standing on a saved server says servers.paneState.unreachable instead). \"Cmdr\" is the product name.",
     "placeholders": {
       "host": "the server’s hostname or address, like \"nas.local\""
+    }
+  },
+  "servers.refusal.localNetworkHint": "If the server is on, check that Cmdr is allowed under {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "description": "A softer second line under \"Cmdr couldn’t reach {host}.\" (\"servers.refusal.unreachable\") in the Add server form, shown only when this Mac itself refused the route to a local-network address. That is also how a stuck macOS Local Network privacy permission shows, but a server that’s switched off can look the same, so this only suggests checking. \"Cmdr\" is the product name.",
+    "placeholders": {
+      "localNetwork": "the OS-localized macOS \"Local Network\" permission name, as System Settings shows it under Privacy & Security, injected at runtime (it follows the Mac’s system language, which can differ from Cmdr’s, so it may arrive in English)"
     }
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr hasn’t trusted the key for {host} yet.",
@@ -586,6 +601,15 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
   },
+  "servers.paneState.unreachable": "Cmdr couldn’t reach {name}.",
+  "@servers.paneState.unreachable": {
+    "description": "Heading of the pane view shown when the user opened a saved server and there was no route to it at all: it’s off, its address doesn’t resolve, or the network is down. Names the server by the name the user gave it. A Try again button sits below. \"Cmdr\" is the product name.",
+    "placeholders": {
+      "name": "the name the user gave the saved server, like “Naspolya”, or its hostname, like “nas.local”, when it has no name"
+    },
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
+  },
   "servers.paneState.goBack": "Go back",
   "@servers.paneState.goBack": {
     "description": "Button that takes the pane back to where it was before it opened this server or share. VERB phrase, imperative.",
@@ -607,9 +631,15 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
   },
-  "servers.paneState.hostKeyChangedHint": "Its key changed. That can mean the server was reinstalled, or that something is sitting between you and it. Disconnect, then open it again to check the fingerprint.",
+  "servers.paneState.hostKeyChangedHint": "Its key changed. That can mean the server was reinstalled, or that something is sitting between you and it. Check the new key before you connect again.",
   "@servers.paneState.hostKeyChangedHint": {
-    "description": "One line under that heading, saying both innocent and serious causes and what to do. “Key” is the server’s SSH host key; “fingerprint” is the short string a person compares before trusting it.",
+    "description": "One line under that heading, saying both innocent and serious causes and what to do. “Key” is the server’s SSH host key, the identity it proves itself with. A “Check the key” button (servers.paneState.checkHostKey) sits right below it and opens the screen that shows the new key; use the same word for “key” in both.",
+    "screenshot": "servers-hub.png",
+    "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
+  },
+  "servers.paneState.checkHostKey": "Check the key",
+  "@servers.paneState.checkHostKey": {
+    "description": "Button under the changed-key message in a file pane. It opens the sign-in sheet on its host-key step, which shows the server’s new SSH host key and its fingerprint, with that screen’s own choices to trust it or not. The button itself trusts nothing. VERB, imperative, short control label. “Key” is the same SSH host key as in servers.paneState.hostKeyChangedHint.",
     "screenshot": "servers-hub.png",
     "screenshotNote": "Shown inside a file pane while it connects to a server: \"Connecting…\", \"Signed out\", a changed host key, or a \"Reconnecting…\" state with a countdown and Retry/Cancel controls. This shows the servers list those connections start from; your string appears in the pane, in the same network context."
   },

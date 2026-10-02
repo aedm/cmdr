@@ -71,7 +71,7 @@ blake3 = { version = "1.8.3", optional = true }
 [dev-dependencies]
 # Depending on ourselves turns the `testing` feature on for every DEV target and
 # leaves it off for the lib, so a shipped build carries no fixtures and no
-# `blake3`. Same shape as the app's own self dev-dependency.
+# `blake3`.
 cmdr-smb = { path = ".", features = ["testing"] }
 # `InMemoryVolume` and the recording / scripted host-seam fakes this crate's
 # tests assert against.
@@ -81,3 +81,9 @@ cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
 # `io-util` are the credit-cap proxy's (`volume/credit_cap_proxy.rs`). `test-util`
 # pauses the clock for the watcher's slow-server tests.
 tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "test-util"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+# `getpeername` over the process's fds, for the mount/unmount socket-lifetime cell
+# (`volume/session_integration_test.rs`). No new package: the graph already
+# carries `libc`.
+libc = "0.2"

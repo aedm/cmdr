@@ -87,6 +87,14 @@ export function isSmbVolumeId(volumeId: string): boolean {
 }
 
 /**
+ * Whether `path` is `root` or a folder inside it, by whole components: a share's
+ * mount at `/Volumes/naspi` doesn't hold `/Volumes/naspi-1`.
+ */
+export function isAtOrUnder(path: string, root: string): boolean {
+  return path === root || path.startsWith(root.endsWith('/') ? root : `${root}/`)
+}
+
+/**
  * Which protocol a server volume id names, or `null` when it names no server.
  *
  * ❗ The id's own prefix is the ONLY thing a caller with nothing but an id can

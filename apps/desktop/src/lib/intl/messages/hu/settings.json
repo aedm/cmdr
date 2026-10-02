@@ -309,13 +309,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
-  "settings.listing.directorySortMode.label": "Könyvtárak rendezése",
-  "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+  "settings.listing.foldersFirst.label": "Mappák megjelenítése felül",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
   },
-  "settings.listing.directorySortMode.description": "Hogyan rendeződjenek a könyvtárak a rendezőoszlop váltásakor.",
+  "settings.listing.foldersFirst.description": "A listában a mappák a fájlok fölé kerülnek. Kapcsold ki, ha vegyesen szeretnéd látni a mappákat és a fájlokat.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
+  "settings.listing.directorySortMode.label": "Mappák rendezése",
+  "@settings.listing.directorySortMode.label": {
+    "sourceHash": "7d0b088"
+  },
+  "settings.listing.directorySortMode.description": "Hogyan rendeződjenek a mappák a rendezőoszlop váltásakor.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Most ki van kapcsolva, mert a mappák és a fájlok vegyesen jelennek meg. Kapcsold be a „Mappák megjelenítése felül” beállítást, hogy ezt is beállíthasd.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Mint a fájlok",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -963,6 +975,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "A közelben felfedezett szerverek csoportja",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Közvetlen kapcsolódás SMB-megosztásokhoz",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1057,7 +1073,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Eléred egy olyan Android-telefon teljes fájlrendszerét, amelyen be van kapcsolva az USB-hibakeresés; az MTP ezt nem mutatja meg. Ehhez kell az Android platform tools csomag (az „adb” parancs) ezen a Macen. Ha nincs telepítve Android-fejlesztőeszköz, nem kerül semmibe, ha bekapcsolva hagyod.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Az adb helye",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1636,9 +1652,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "A hosszú Hálózat csoport tippje megjelent",
+  "settings.behavior.serversPinHintSeen.label": "A „Rögzítés feloldása a kötetválasztóban” tippje megjelent",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Megjelent-e már az egyszeri tipp a szerverek rögzítésének feloldásáról.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1967,9 +1983,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "Dokumentumikonok, könyvtárrendezés és Rövid mód oszlopszélessége.",
+  "settings.summary.listing": "Dokumentumikonok, mapparendezés és Rövid mód oszlopszélessége.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigáció a szülőmappába dupla kattintással, és viselkedés fájlok átnevezésekor.",
   "@settings.summary.navigationAndFileOps": {
@@ -1993,7 +2009,7 @@
   },
   "settings.summary.servers": "A megbízhatónak tekintett SSH-szerverkulcsok.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Böngéssz egy olyan Android-telefont, amelyen be van kapcsolva az USB-hibakeresés.",
   "@settings.summary.adb": {
@@ -2521,13 +2537,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Telepítsd az Android platform tools csomagot, majd nyomd meg az Újraellenőrzés gombot:",
+  "settings.adb.install.intro": "Telepítsd az Android platform tools csomagot, majd válaszd az „Újraellenőrzés” lehetőséget:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Az adb keresése a szokásos módon",
+  "settings.adb.pathPlaceholder": "A Cmdr a szokásos módon keresi az adb-t",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Böngészés…",
   "@settings.adb.browse": {

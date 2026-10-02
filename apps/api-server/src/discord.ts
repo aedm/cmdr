@@ -272,6 +272,33 @@ export function buildCronFailurePayload(info: CronFailureInfo): unknown {
   }
 }
 
+export interface CspViolationInfo {
+  /** The CSP directive that blocked it, for example `connect-src`. */
+  directive: string
+  /** What the browser refused to load, query string stripped. */
+  blockedUrl: string
+  /** The page it happened on, query string stripped. */
+  documentUrl: string
+  /** The script that made the request, when the browser says. */
+  sourceFile?: string
+}
+
+/**
+ * Build the Discord webhook JSON body for a CSP violation on getcmdr.com. Plain `content`, like the
+ * cron alert: it's short, and it must not have a failure mode of its own.
+ */
+export function buildCspViolationPayload(info: CspViolationInfo): unknown {
+  const source = info.sourceFile ? `\nScript: ${info.sourceFile}` : ''
+  return {
+    content:
+      `getcmdr.com's CSP (\`${info.directive}\`) blocked ${info.blockedUrl}\n` +
+      `Page: ${info.documentUrl}${source}\n` +
+      `Visitors' browsers are refusing this request, so whatever feature makes it is broken for them. ` +
+      `Allow the origin in \`apps/website/nginx-security-headers.conf\` if it's ours. ` +
+      `This pair stays quiet for 24 hours.`,
+  }
+}
+
 async function postOnce(url: string, body: unknown): Promise<Response> {
   return fetch(url, {
     method: 'POST',
@@ -329,6 +356,10 @@ export async function postNotificationsSuppressedNotification(
 
 export async function postCronFailureNotification(webhookUrl: string, info: CronFailureInfo): Promise<void> {
   await postWithRetry(webhookUrl, buildCronFailurePayload(info), 'cron-failure')
+}
+
+export async function postCspViolationNotification(webhookUrl: string, info: CspViolationInfo): Promise<void> {
+  await postWithRetry(webhookUrl, buildCspViolationPayload(info), 'csp-violation')
 }
 
 export async function postFeedbackNotification(webhookUrl: string, notification: FeedbackNotification): Promise<void> {

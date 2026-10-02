@@ -387,11 +387,11 @@
            (`portal-target.ts`): body level, or a hosting dialog's overlay, under `--z-modal`. */
         z-index: var(--z-dropdown);
         background: var(--color-bg-glass);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: var(--glass-backdrop);
+        backdrop-filter: var(--glass-backdrop);
         border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
+        border-radius: var(--radius-menu);
+        box-shadow: var(--shadow-glass), var(--shadow-glass-rim);
         padding: var(--spacing-xs);
         max-height: 300px;
         overflow-y: auto;
@@ -401,11 +401,6 @@
         outline: none;
         /* The macOS overlap shift (transform) and the until-measured hide (opacity) are applied
            inline per instance; see `contentStyle`. */
-    }
-
-    :global(html.reduce-transparency .select-content) {
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
     }
 
     :global(.select-content:focus),

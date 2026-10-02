@@ -126,7 +126,7 @@
   },
   "errorReporter.amend.unavailable": "那份報告已經沒辦法再加東西了。想把你的備註送到團隊那裡，請從「輔助說明」選單傳送一份新的報告。",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "關閉",
   "@errorReporter.amend.close": {

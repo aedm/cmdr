@@ -105,11 +105,11 @@ describe('select-all, as it behaves today', () => {
 
   it('reaches the backend as two line endpoints, or as `eof` when the count is unknown', () => {
     expect(toRangeEnds(makeSelectAll(3, 5))).toEqual({
-      anchor: { kind: 'line', line: 0, offset: 0 },
-      focus: { kind: 'line', line: 2, offset: 5 },
+      anchor: { kind: 'row', row: 0, offset: 0 },
+      focus: { kind: 'row', row: 2, offset: 5 },
     })
     expect(toRangeEnds(makeSelectToEof())).toEqual({
-      anchor: { kind: 'line', line: 0, offset: 0 },
+      anchor: { kind: 'row', row: 0, offset: 0 },
       focus: { kind: 'eof' },
     })
   })

@@ -190,8 +190,10 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
     states: [
       { id: 'source_not_found', label: 'Source not found' },
       { id: 'destination_not_found', label: 'Destination not found' },
+      { id: 'destination_not_a_folder', label: 'A file is in the way of the destination' },
       { id: 'source_not_connected', label: 'Source not connected yet' },
       { id: 'destination_not_connected', label: 'Destination not connected yet' },
+      { id: 'source_no_longer_connected', label: 'Source not connected anymore' },
       { id: 'destination_exists', label: 'Destination exists' },
       { id: 'permission_denied', label: 'Permission denied' },
       { id: 'insufficient_space', label: 'Not enough space' },
@@ -608,7 +610,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       {
         id: 'amend',
         label: 'Adding a note to an auto-sent report',
-        note: 'What the “Error report sent” toast opens: the report Flow B already shipped, with a note box that adds to THAT report instead of sending a second one. It reads the real backend stash, which only exists once this run has actually auto-sent something, so on a machine that hasn’t, this row honestly shows the “can’t take a note any more” dead end. To see the full shape, turn on Settings > Updates > “Send error reports automatically” and trigger a real error first.',
+        note: 'What the “Error report sent” toast opens: the report Flow B already shipped, with a note box that adds to THAT report instead of sending a second one. It reads the real backend stash, which only exists once this run has actually auto-sent something, so on a machine that hasn’t, this row honestly shows the “can’t take a note anymore” dead end. To see the full shape, turn on Settings > Updates > “Send error reports automatically” and trigger a real error first.',
       },
     ],
   },

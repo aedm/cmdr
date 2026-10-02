@@ -18,7 +18,7 @@ of the app build.
 
 - **Discovery**: `mdns_discovery.rs`: Pure Rust mDNS using `mdns-sd` crate. Cross-platform. `discovery_gate.rs` decides
   when it browses and `discovery_cache.rs` holds what it found (§ "Discovery runs only while something needs it").
-- **Manual servers**: `manual_servers.rs`: User-added servers via the "Add server" sheet. Parses addresses, checks TCP reachability, persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into the discovery cache as pinned hosts. Loaded at startup. An entry's `displayName` is a name a person typed, read through `label()` / `is_named()` (§ "A manual server's name").
+- **Manual servers**: `manual_servers.rs`: User-added servers via the "Add server" sheet. Parses addresses, checks TCP reachability (`manual_servers_reachability.rs`), persists to `manual-servers.json`, and injects synthetic `NetworkHost` entries with `source: Manual` into the discovery cache as pinned hosts. Loaded at startup. An entry's `displayName` is a name a person typed, read through `label()` / `is_named()` (§ "A manual server's name").
 - **E2E testing**: `virtual_smb_hosts.rs`: Injects 14 synthetic `NetworkHost` entries for smb2's consumer Docker containers. Hosts come from `SMB_E2E_{SVC}_HOST` (default `localhost`). Ports come from `SMB_E2E_{SVC}_PORT` when set, else `smb2::testing::*_port()` (which reads `SMB_CONSUMER_*_PORT`, default 10480+). `SMB_E2E_*_PORT` is the test-suite contract (same var the frontend fixture reads), so backend and fixture agree on which port to connect to. This matters inside Docker where containers listen on `:445` internally but `SMB_CONSUMER_*_PORT` would point at the host-side mapping. Gated behind `smb-e2e` Cargo feature. Never enabled in production.
 - **Share listing**: Split across multiple files:
   - `smb_client.rs`: Top-level share-listing entry point; orchestrates guest -> keychain -> prompt auth flow; tries smb2 first, falls back to smbutil (macOS only)
@@ -30,7 +30,7 @@ of the app build.
   - `smb_upgrade.rs`: Upgrade OS-mounted SMB volumes to direct smb2 connections. Shared by four upgrade paths (startup, mount-time watcher, pane-open, manual "Connect directly"). Contains `shares_to_adopt` (the adopter pass's pick from the kernel mount table), `register_smb_volume`, `resolve_and_register_smb_volume` (the shared resolve+creds+register used by all three fire-and-forget auto-upgrade paths), `try_smb_upgrade`, the per-volume upgrade lock, and the bounded mount-identity read.
   - `smb_pane_upgrade.rs`: the pane-open upgrade. A pane landing on an OS-mounted share Cmdr hasn't upgraded tries the direct connection for that one share, behind a per-share cooldown (§ "A pane on an OS-mounted share tries the direct connection").
   - `smb_server_address.rs`: who a `statfs` server string is: what to dial (`resolve_server_address`, § "A server nothing has discovered is not dialed"), what to call it (`friendly_server_name`, `resolve_ip_to_hostname*`), and which saved credentials go with it (`get_keychain_password`, `system_keychain_aliases`). Shared by `smb_upgrade.rs` and `smb_connect_directly.rs`, so the auto and manual upgrade paths can't disagree about which server a mount is.
-  - `smb_connect_failure.rs`: why an smb2 connect didn't get in, read by type. A `Refusal` (who the attempt went out as, and whether sign-in or the share said no, with the log advice for each) or an `UpgradeFailure`; plus `UpgradeError` and `log_direct_connect_failure`. Shared by `share_access.rs` and both upgrade paths (§ "An auth rejection says what was actually rejected").
+  - `smb_connect_failure.rs`: why an smb2 connect didn't get in, read by type. A `Refusal` (who the attempt went out as, and whether sign-in or the share said no, with the log advice for each) or an `UpgradeFailure` (read off a `FailedDial` plus `MountEvidence` by `of_dial`, § "This Mac refusing the route"); plus `UpgradeError` and `log_direct_connect_failure`. Shared by `share_access.rs` and both upgrade paths (§ "An auth rejection says what was actually rejected").
   - `smb_connect_directly.rs`: the manual "Connect directly" upgrade, with Cmdr's stored credentials, the sign-in sheet's, or Finder's saved password. Behind the three `upgrade_to_smb_volume*` commands, the MCP `upgrade_smb_to_direct` tool, and the indexer's `ensure_direct_smb`. Owns `UpgradeResult` (§ "Connect directly answers a gone volume").
   - `smb_direct_switch.rs`: the per-share "Use Cmdr's fast direct connection" switch, read and set by volume id for the volume switcher. Behind `get_smb_direct_connection_enabled` / `set_smb_direct_connection_enabled`. Owns `DirectConnectionSwitch` (§ "The per-share direct-connection switch").
 - **Mounting** (platform-specific via `#[path]` in `mod.rs`):
@@ -288,7 +288,7 @@ only for a named entry, so a Bonjour name still outranks an address nobody chose
 
 ### TCP reachability check runs in the dialog, before the host is added
 
-`add_manual_server` does a TCP connect to `host:port` and fails up front if the port is closed, so the dialog shows the error inline and the host is never added on an unreachable address. Discovered hosts can sit in a "Resolving…" state because mDNS guarantees they exist; a typed address has no such guarantee, so without the up-front check a typo or dead host would clutter the list with an entry that never works. The check proves only that the port is open, not that SMB is healthy: protocol/auth failures still surface later through the normal share-listing pipeline once the host is in the list.
+`add_manual_server` does a TCP connect to `host:port` and fails up front if the port is closed, so the dialog shows the error inline and the host is never added on an unreachable address (with a Local Network hint when the kernel refused the route to a LAN address: § "This Mac refusing the route"). Discovered hosts can sit in a "Resolving…" state because mDNS guarantees they exist; a typed address has no such guarantee, so without the up-front check a typo or dead host would clutter the list with an entry that never works. The check proves only that the port is open, not that SMB is healthy: protocol/auth failures still surface later through the normal share-listing pipeline once the host is in the list.
 
 ### Mount path disambiguation for same-name shares
 
@@ -590,6 +590,48 @@ Level follows what happens to the user, since that decides whether anything else
 silently stays on the kernel mount is a WARN even for a refusal (nobody will be asked anything), while the manual
 "Connect directly" path's refusal is an INFO (the sign-in sheet follows immediately).
 
+The non-refusal line carries the classification by name, the io side (`dial_detail`: the io kind per address, and the
+raw errno when the error still carries one), and `slowest_attempt`, so a report shows `EHOSTUNREACH` at a glance.
+smb2's per-address `ConnectAttempt` keeps the io kind but not the errno (smb2 0.27.0), so a `ConnectFailed` line names
+kinds only; `HostUnreachable` is `EHOSTUNREACH`.
+
+## This Mac refusing the route: `BlockedByThisMac`
+
+**Incident** (ERR-XGS9X, macOS 27.0, user-confirmed 2026-09-30): the kernel SMB mount of a LAN server listed fine, while
+every one of Cmdr's own smb2 dials to the same `IP:445` failed in 1–3 ms for minutes, across two launches; the Add
+server probe to it logged `No route to host (os error 65)`. Another server on the same subnet connected directly
+between those failures. The cause was the macOS Local Network permission for Cmdr: shown as on, and switching it off
+and on fixed it at once. There's no API to ask whether an app has that permission (and here it read as on anyway), so
+detection is behavioral.
+
+**The rule** (`UpgradeFailure::of_dial`, fed by `connect_with_retry`'s `FailedDial` once its retries are spent): all
+three of
+
+- every address failed with io kind `HostUnreachable` or `NetworkUnreachable` (read by kind, ❌ never the message);
+- every attempt failed within `BLOCKED_DIAL_CEILING` (250 ms), measured per attempt without the backoff sleeps;
+- the share's kernel mount answered (`MountEvidence::Answered`): `register_smb_volume`'s bounded `statfs` identity read
+  came back as an SMB mount, or, for "Connect directly", the `SmbMountInfo` `find_mounted_share_within` read under
+  `MOUNT_READ_LIMIT`. That answer is the evidence the server is reachable from this Mac.
+
+Anything short of all three keeps `Unreachable`. Why each half: a server that's off, or a router giving up on one,
+answers `EHOSTUNREACH` too, so the errno alone proves nothing and the mount answering is what vouches for the server.
+The speed says the refusal never left this Mac: an absent LAN host's first dial waited out the whole connect timeout,
+and only its repeats failed fast, with `EHOSTDOWN` (`Uncategorized`, not `HostUnreachable`) (verified on macOS 27.0, `nc
+-z` to an unused address on this LAN, 2026-09-30). The retries stay: the first dial after launch can get a transient
+`EHOSTUNREACH` while the route and the permission settle (`CONNECT_RETRY_BACKOFF`'s doc), so classifying before the
+retries are spent would call a blip a block.
+
+**Every dial path reaches it**: the auto upgrades and Cmdr's own mount (`mount_network_share` → `register_smb_volume`,
+announced through `SmbFellBackToOsMount`, which carries `display_name` for this sentence) and "Connect directly"
+(`try_smb_upgrade` → `UpgradeResult::NetworkError`). The frontend's words and button: `src/lib/file-explorer/network/DETAILS.md`
+§ "This Mac blocked the connection".
+
+**The Add server probe only hints.** `check_reachability` has no mount to compare against, so a server that's off looks
+the same: it answers `AddServerError::Unreachable` as always, with `hint: LocalNetworkPermission` when the kernel refused
+the route (`EHOSTUNREACH` / `ENETUNREACH`) and every resolved address is on the LAN (RFC 1918, link-local, IPv6
+unique-local), which is all that permission gates (`unreachable_hint`). It resolves first (`lookup_host`) so it knows
+which addresses it dialed.
+
 ## Saved SMB shares
 
 `known-shares.json` rows with a share name are saved share PLACES (`docs/specs/saved-smb-shares.md` holds the model,
@@ -622,11 +664,18 @@ the migration, and what Forget does). What the code has to defend:
   password for the host, and answers `NeedsCredentials` rather than trying guest when there is none. Cancel stops the
   wait; a kernel mount under way may still finish. A password the sheet offered is stored only after the mount went
   through.
+- **Known gap (#348): a Linux GVFS mount saves no place.** `smb_upgrade::mounted_volume_id` reads only `/proc/mounts` CIFS rows
+  (`volumes_linux::get_smb_mount_info`), so a `gio mount` share is recorded with no volume id: listed in the hub, never
+  pinned, no `saved` row. The mount row's own id comes off the GVFS dirname (`volumes_linux/ids.rs`), which carries no
+  port. The SMB E2E specs run on Linux only, so they can't cover pins until this closes.
+- **A restored tab on an unmounted saved share keeps its folder**: launch leaves the path unprobed and keeps the
+  share's id (`pane/initialization.ts::restoreShareTab`), the `saved` row dials, and the pane enters that folder or the
+  nearest one still there (`pane/DETAILS.md` § "A pane on a saved place").
 
 ## Telling the user about a kernel-mount fallback
 
 The log above answers "why is this share slow" for whoever reads logs. `os_mount_notice.rs` answers it for the person
-using the app: `announce_os_mount_fallback` emits `SmbFellBackToOsMount { volume_id, share, reason }`, and the frontend
+using the app: `announce_os_mount_fallback` emits `SmbFellBackToOsMount { volume_id, share, reason, display_name }`, and the frontend
 raises a notice with a "Try connecting directly" button (`src/lib/file-explorer/network/DETAILS.md` § "The OS-mount
 fallback notice").
 
@@ -1013,12 +1062,14 @@ what a sign-in sheet just collected) and hand it to `host_for_dial`, which answe
 against:
 
 - **No offer**: the app's ordinary host. Every connect that isn't answering a sign-in.
-- **`remember: true`**: `keychain::save_credentials` first, on a blocking task with the same 15 s deadline the secret
-  commands use, then the ordinary host. The dial reads it back the way it reads every stored secret, so a
-  save-then-connect round-trip from the frontend is one round-trip shorter and means exactly the same thing.
-- **`remember: false`**: `VolumeHost::with_credentials(OneShotCredentials)`, which answers this one `(service, scope)`
-  from memory, forwards every other key to the real store, and ❗ never writes (`save_credentials` answers
-  `CredentialsNotStored`, the documented "the store said no" every backend already logs and carries on from).
+- **An offer**: `VolumeHost::with_credentials(OneShotCredentials)`, which answers this one `(service, scope)` from
+  memory, forwards every other key to the real store, and ❗ never writes while the offer is live (`save_credentials`
+  answers `CredentialsNotStored`, the documented "the store said no" every backend already logs and carries on from).
+  Once the offer is forgotten it forwards writes too, so a volume opened without remembering can still save later.
+- **`remember: true`** additionally files the secret with `keychain::save_credentials`, on a blocking task with the same
+  15 s deadline the secret commands use, ❗ only once the dial WENT THROUGH (`DialOffer::went_through`). Writing it
+  before the dial left a password in the store for an Add the person cancelled at the host-key step, or one the server
+  refused.
 
 ❗ **The wrapper wins over a stored entry for the same key.** A person typing a password is correcting the one that is
 saved, and letting the stale one answer first is how a dial gets refused with the password the user just replaced.
@@ -1029,9 +1080,8 @@ comes later reads the real (empty) store and asks a person. That IS what the swi
 (`crates/cmdr-sftp/DETAILS.md` § "The two switches"). The wiring holds it as `let (host, _offer) = …`, so it goes when
 the connect function returns, however it returns.
 
-❗ **A store that declines the write falls back to the wrapper.** The user typed a secret and this dial has to use it;
-all that's lost is "silent next time". Dialing without it would answer `needs_credentials` to someone who just entered
-their password.
+❗ **A store that declines the `remember: true` write is logged and carried on from.** The place is connected; all
+that's lost is "silent next time".
 
 ## The one edge that must not come back
 

@@ -101,6 +101,19 @@
     "forms": "title Finns redan; Det finns redan en fil eller mapp på …",
     "sources": "macOS Finder"
   },
+  "android-platform-tools": {
+    "chosen": "platform tools",
+    "confidence": "tentative",
+    "decision": "Pinned servers, trusted host keys, Android settings rows",
+    "forms": "Android platform tools, kept English and uninflected (Installera Android platform tools)",
+    "sources": "Android SDK Manager shows Platform-Tools in every locale; no AOSP or Google Swedish string; catalog adb.connect.adbNotInstalled"
+  },
+  "android-tools": {
+    "chosen": "Android-verktyg",
+    "confidence": "high",
+    "forms": "definite Android-verktygen",
+    "sources": "MS terminology (tool → verktyg); catalog adb.connect.serverUnreachable"
+  },
   "answer": {
     "avoid": [
       {
@@ -587,6 +600,13 @@
     "forms": "button Kopiera; progress Kopierar; past Kopierade; the noun copy → kopia; copy-in-progress noun → kopieringen; a bare Copied button → Kopierat",
     "sources": "macOS Finder"
   },
+  "cost": {
+    "accept": ["kostar", "kostnad"],
+    "chosen": "kosta",
+    "confidence": "high",
+    "forms": "verb kostar (kostar ingenting, kostar pengar); noun kostnad (uppskattade kostnad)",
+    "sources": "standard Swedish; catalog settings.search.autoApply.description, settings.askCmdr.spend.empty"
+  },
   "crash-report": {
     "accept": ["krasch", "avslutades oväntat"],
     "chosen": "kraschrapport",
@@ -1037,7 +1057,7 @@
     "accept": ["katalog"],
     "chosen": "mapp",
     "confidence": "high",
-    "forms": "mappen, mappar; katalog only where technical directory matters (directorySortMode, git); folder sizes → mappstorlekar",
+    "forms": "mappen, mappar; katalog only where technical directory matters (git); the Sort folders setting says mappar like Visa mappar först; folder sizes → mappstorlekar",
     "sources": "macOS Finder, MS, GNOME"
   },
   "force-quit": {
@@ -1118,6 +1138,12 @@
     "confidence": "tentative",
     "sources": "standard Swedish git usage; MS förgrena is the verb sense"
   },
+  "overall": {
+    "chosen": "Totalt",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Totalt: {eta}",
+    "sources": "GN totalt; catalog Totalt (errorReporter.dialog.totalLines)"
+  },
   "repository": {
     "accept": ["repository"],
     "chosen": "repo",
@@ -1155,11 +1181,16 @@
     "sources": "macOS"
   },
   "go-to-path": {
-    "accept": ["gå till mapp"],
-    "chosen": "Gå till sökväg",
+    "avoid": [
+      {
+        "form": "Gå till sökväg",
+        "why": "English renamed the command Go to folder to match Finder; Finder says Gå till mapp"
+      }
+    ],
+    "chosen": "Gå till mapp",
     "confidence": "high",
-    "forms": "the Dock menu's Go to Folder… → Gå till mapp… (Finder)",
-    "sources": "catalog commands.nav* family; macOS Finder (Gå till mapp)"
+    "forms": "menu and command Gå till mapp…; dialog title and button Gå till mapp",
+    "sources": "macOS Finder MenuBar 261 (Gå till mapp…) and GotoWindow 1 (Gå till mapp), Swedish reference pile"
   },
   "go-to-trash": {
     "chosen": "Gå till papperskorgen",
@@ -1185,6 +1216,12 @@
     "confidence": "high",
     "forms": "the user's action → ge (ge Cmdr åtkomst); a status → beviljad",
     "sources": "macOS (bevilja); ge reads warmer in body copy"
+  },
+  "group": {
+    "chosen": "grupp",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after the definite form (gruppen Nätverk) or compounds with a hyphen (Nätverk-grupp); the servers found nearby → Grupp med servrar i närheten",
+    "sources": "macOS Finder MenuBar (Use Groups → Använd grupper), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
   },
   "guest": {
     "chosen": "gäst",

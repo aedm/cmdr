@@ -3,7 +3,7 @@
 //! `resource_tests.rs`.
 
 use crate::mcp::listing_errors::RecentListingError;
-use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo};
+use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneListing, PaneState, TabInfo};
 use crate::mcp::resources::panes::{
     build_pane_yaml_with_options, format_file_compact, format_tab_compact, tags_marker,
 };
@@ -53,7 +53,7 @@ fn split_uri_with_query() {
 }
 
 #[test]
-fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
+fn recent_listing_errors_redact_remote_references_and_identities_with_bare_tokens() {
     let errors = [
         RecentListingError {
             at_unix_ms: 1_789_000_000_001,
@@ -82,13 +82,13 @@ fn recent_listing_errors_keep_pre_report_remote_identity_and_id_policy() {
             "  - atUnixMs: 1789000000001\n",
             "    listingId: listing-private-server\n",
             "    volumeId: smb-nas-private-445-client-0123456789abcdef\n",
-            "    path: \"sftp://<userinfo>@files.example.test:2222/home/ada/report.pdf?token=secret#customer\"\n",
-            "    message: \"host=\\\"Client Nimbus\\\" share=\\\"Private Vault\\\" source=https://<ipv4>/acme?owner=<email>#customer\"\n",
+            "    path: \"sftp://<user>:<credential>@<host>:2222/<dir>/<dir>/<file>.pdf?<query>=<query>#<fragment>\"\n",
+            "    message: \"host=\\\"<host>\\\" share=\\\"<share>\\\" source=https://<ipv4-private>/<dir>?<query>=<query>#<fragment>\"\n",
             "  - atUnixMs: 1789000000002\n",
             "    listingId: listing-webdav\n",
             "    volumeId: manual-192-168-40-9-1445\n",
-            "    path: \"webdav://<host>.local/dav/ada/report.json?owner=<email>#customer\"\n",
-            "    message: \"Could not list \\\\\\\\<host>\\\\<share>\\\\Downloads\\\\<file>.pdf\"\n",
+            "    path: \"webdav://<host>.local/<dir>/<dir>/<file>.json?<query>=<query>#<fragment>\"\n",
+            "    message: \"Could not list \\\\\\\\<host>.local\\\\<share>\\\\<dir>\\\\<file>.pdf\"\n",
         )
     );
 }
@@ -288,6 +288,7 @@ fn test_build_pane_yaml() {
         ],
         type_to_jump: None,
         mount_error: None,
+        listing: Default::default(),
     };
 
     let yaml = build_pane_yaml_with_options(&state, "  ", &StateOptions::default());
@@ -353,6 +354,7 @@ fn test_brief_cursor_detail_respects_loaded_window() {
         tabs: vec![],
         type_to_jump: None,
         mount_error: None,
+        listing: Default::default(),
     };
 
     let yaml = build_pane_yaml_with_options(&state, "  ", &StateOptions::default());
@@ -664,6 +666,45 @@ fn a_pane_showing_a_mount_failure_reports_it() {
         ..Default::default()
     };
     assert!(!build_pane_yaml_with_options(&ok, "  ", &StateOptions::default()).contains("mountError"));
+}
+
+/// A pane whose folder's server stopped answering used to read as an empty
+/// folder: `totalFiles: 0`, no rows, no error. The `listing:` line tells an
+/// agent "stuck" (and "loading", and "error screen") from "empty", and stays out
+/// of the YAML when the listing is settled.
+#[test]
+fn a_pane_reports_a_stalled_listing_and_stays_quiet_when_settled() {
+    let stalled = PaneState {
+        path: "/Volumes/nas".to_string(),
+        view_mode: "brief".to_string(),
+        listing: PaneListing::Stalled,
+        ..Default::default()
+    };
+    let yaml = build_pane_yaml_with_options(&stalled, "  ", &StateOptions::default());
+    assert!(
+        yaml.contains("  listing: stalled"),
+        "expected a stalled listing line:\n{yaml}"
+    );
+
+    let error = PaneState {
+        listing: PaneListing::Error,
+        ..stalled.clone()
+    };
+    let yaml = build_pane_yaml_with_options(&error, "  ", &StateOptions::default());
+    assert!(
+        yaml.contains("  listing: error"),
+        "expected an error listing line:\n{yaml}"
+    );
+
+    let settled = PaneState {
+        listing: PaneListing::Settled,
+        ..stalled
+    };
+    let yaml = build_pane_yaml_with_options(&settled, "  ", &StateOptions::default());
+    assert!(
+        !yaml.contains("listing:"),
+        "a settled pane carries no listing line:\n{yaml}"
+    );
 }
 
 /// A search-results pane in the engine's ranked order reports `relevance:desc`,

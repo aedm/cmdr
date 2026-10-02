@@ -6,9 +6,9 @@
  * what this owns is a WINDOW into it (the visible range plus a prefetch margin) and
  * the decision of when that window is stale. Three refresh flavours share it:
  *
- * - **Hard reset** on a cold context change (nav, sort, hidden-files toggle): wipe the
- *   entries and refetch from scratch. The caller gets `'reset'` back so it can suppress
- *   the column-width transition for one paint.
+ * - **Hard refresh** on a cold context change (nav, sort, hidden-files toggle): refetch
+ *   from scratch, then atomically replace the old window. The caller gets `'reset'`
+ *   back so it can force that fetch and suppress the width transition for one paint.
  * - **Soft refresh** when `totalCount` or `softRefreshTick` moves (`directory-diff`
  *   bursts, in-place renames): refetch in the background and swap atomically, so rows
  *   stay on screen and the pane never flickers empty mid-bulk-operation.
@@ -121,6 +121,23 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
   let range = $state({ start: 0, end: 0 })
   let parentDirStats = $state<DirStats | null>(null)
   let isFetching = false
+  let fetchEpoch = 0
+  // The epoch `entries` was fetched in. After a cold context change the old rows stay
+  // painted until the forced fetch lands, but they no longer match the indices, so
+  // lookups must not hand them out as the entry under the cursor.
+  let entriesEpoch = 0
+  let queuedFetch: (VisibleWindowRange & { force?: boolean }) | null = null
+
+  /** The cached rows that are safe to act on: none while retained rows await replacement. */
+  function actionableEntries(): FileEntry[] {
+    return entriesEpoch === fetchEpoch ? entries : []
+  }
+
+  function queueFetchIfBusy(args: VisibleWindowRange & { force?: boolean }): boolean {
+    if (!isFetching) return false
+    if (args.force) queuedFetch = args
+    return true
+  }
 
   // Previous prop values, so `syncToProps` can tell a cold context change from a
   // diff-driven one. Plain locals: they're bookkeeping, nothing renders them.
@@ -137,7 +154,8 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     // memory, no IPC needed. `syncStaticEntries` mirrors it into `entries`.
     if (deps.staticEntries() !== undefined) return
     const listingId = deps.listingId()
-    if (!listingId || isFetching) return
+    if (!listingId || queueFetchIfBusy({ startIndex, endIndex, force })) return
+    const capturedEpoch = fetchEpoch
 
     const hasParent = deps.hasParent()
     const totalCount = deps.totalCount()
@@ -169,15 +187,24 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
         onFolderCoverageRequest: deps.onFolderCoverageRequest(),
         force,
       })
-      if (result) {
+      if (result && capturedEpoch === fetchEpoch && listingId === deps.listingId()) {
         entries = result.entries
         range = result.range
+        entriesEpoch = capturedEpoch
         noteRenderedFolderSizes(entries, deps.volumeId())
       }
     } catch {
-      // Silently ignore fetch errors
+      // Never leave rows from another listing under the current breadcrumb.
+      if (force && capturedEpoch === fetchEpoch && listingId === deps.listingId()) {
+        entries = []
+        range = { start: 0, end: 0 }
+        entriesEpoch = capturedEpoch
+      }
     } finally {
       isFetching = false
+      const next = queuedFetch
+      queuedFetch = null
+      if (next) void fetch(next)
     }
   }
 
@@ -203,9 +230,16 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     },
 
     getEntryAt: (globalIndex: number) =>
-      getEntryAtUtil(globalIndex, deps.hasParent(), deps.parentPath(), entries, range, parentDirStats ?? undefined),
+      getEntryAtUtil(
+        globalIndex,
+        deps.hasParent(),
+        deps.parentPath(),
+        actionableEntries(),
+        range,
+        parentDirStats ?? undefined,
+      ),
 
-    indexOfEntry: (path: string) => indexOfEntryUtil(path, deps.hasParent(), entries, range),
+    indexOfEntry: (path: string) => indexOfEntryUtil(path, deps.hasParent(), actionableEntries(), range),
 
     windowRows: ({ startIndex, endIndex }: VisibleWindowRange) => {
       const hasParent = deps.hasParent()
@@ -250,8 +284,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       if (!currentProps.listingId || !ready) return 'idle'
 
       if (shouldResetCache(currentProps, prevCacheProps)) {
-        entries = []
-        range = { start: 0, end: 0 }
+        fetchEpoch++
         prevCacheProps = currentProps
         prevTotalCount = currentTotal
         prevSoftTick = currentTick
@@ -272,6 +305,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       if (src === undefined) return
       entries = src
       range = { start: 0, end: src.length }
+      entriesEpoch = fetchEpoch
     },
 
     refreshIndexSizes: refreshIndexSizesNow,

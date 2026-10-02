@@ -7,6 +7,10 @@
   "@fileExplorer.pane.disconnectFailedToast": {
     "sourceHash": "dedbdef"
   },
+  "fileExplorer.pane.openLocalNetworkSettings": "Abrir la configuración de {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "6d40280"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} tardó demasiado en responder, así que este recurso compartido sigue usando la conexión del sistema.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "2794ba6"
@@ -166,6 +170,14 @@
   "fileExplorer.clipboard.pastedAsFileSettings": "Configuración",
   "@fileExplorer.clipboard.pastedAsFileSettings": {
     "sourceHash": "4f2debb"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "No se pudo sacar {fileName} de su archivo comprimido para abrirlo en {appName}. Puede que el archivo comprimido esté dañado o use un formato que Cmdr no puede leer.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "ab5a658"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "No se pudo leer {fileName} para abrirlo en {appName}. Comprueba que la unidad donde está siga conectada y vuelve a intentarlo.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "c59cae3"
   },
   "fileExplorer.rename.hiddenAfterRename": "Tu archivo desapareció de la vista porque no se muestran los archivos ocultos.",
   "@fileExplorer.rename.hiddenAfterRename": {

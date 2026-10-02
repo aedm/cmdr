@@ -223,7 +223,8 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
 - **The backend**: `file_viewer::headless::open_text_backend(path, encoding, cancel)`: FullLoad up to 1 MB, else a
   LineIndex built under the cancel flag, falling back to ByteSeek with `line_numbers_exact = false` when the deadline
   flips the flag (`file_viewer/DETAILS.md` § Headless reads). No session, no watcher, nothing to tear down.
-- **The window**: `backend.get_lines(Line(startLine - 1), maxLines + 1)`. The extra line says exactly whether more
+- **The window**: `backend.get_lines(Line(startLine - 1), maxLines + 1)`, under a fresh cancel flag (the path's own
+  is often already set by the deadline that stopped the line index; `find`'s per-hit line reads do the same). The extra line says exactly whether more
   exist, on every backend, without leaning on `total_lines`. `window_from_chunk` (pure) joins with `\n`, strips one
   trailing `\r` per line (the backends keep it on CRLF files), cuts a line at `MAX_LINE_CHARS` (`linesCut`), stops at
   `MAX_WINDOW_CHARS` (`truncated`), and answers a past-the-end `startLine` with an empty, un-truncated window (the
@@ -236,7 +237,7 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   (FullLoad, or ByteSeek with no index: a scan streams from byte 0 and numbers lines exactly, so an index would only
   read the file twice), then `backend.search(matcher, cancel, matches, progress)`, the viewer's own loop, capped at
   `MAX_SEARCH_MATCHES`. Matches are grouped by line in arrival order, the first `MAX_FIND_LINES` (50) lines are fetched
-  by `SeekTarget::ByteOffset(match.byte_offset)` (exact on every backend; `Line(n)` is a guess on ByteSeek), `\r`
+  by `SeekTarget::ByteOffset(match.byte_offset)` (exact on every backend; `Row(n)` is a guess on ByteSeek), `\r`
   stripped, and cut by `snippet_around` to `FIND_SNIPPET_CHARS` (300) around the first match, a third before it, with
   `…` at each cut end. The match column is UTF-16 (the viewer's JS-facing unit) and goes through
   `range_read::clamp_utf16_offset_to_byte`, the one UTF-16→byte conversion in the tree; read as a char index it lands

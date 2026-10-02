@@ -307,13 +307,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Hiển thị thư mục lên đầu",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Liệt kê thư mục phía trên tệp. Tắt tùy chọn này để xếp lẫn thư mục và tệp với nhau.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
   "settings.listing.directorySortMode.label": "Sắp xếp thư mục",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Cách sắp xếp thư mục khi đổi cột sắp xếp.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Hiện đang tắt vì thư mục và tệp đang xếp lẫn với nhau. Hãy bật “Hiển thị thư mục lên đầu” để dùng cài đặt này.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Như tệp",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -961,6 +973,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "Nhóm máy chủ ở gần",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Kết nối trực tiếp tới mục chia sẻ SMB",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1053,9 +1069,9 @@
   "@settings.fileOperations.adbEnabled.label": {
     "sourceHash": "3651356"
   },
-  "settings.fileOperations.adbEnabled.description": "Truy cập toàn bộ hệ thống tệp của một điện thoại Android đang bật gỡ lỗi qua USB, phần mà MTP không cho bạn thấy. Cần có bộ công cụ nền tảng Android (lệnh “adb”) trên máy Mac này. Cứ để bật cũng không tốn gì khi bạn chưa cài công cụ Android nào.",
+  "settings.fileOperations.adbEnabled.description": "Truy cập toàn bộ hệ thống tệp của một điện thoại Android đang bật gỡ lỗi qua USB, phần mà MTP không cho bạn thấy. Cần có bộ công cụ nền tảng Android (lệnh “adb”) trên máy Mac này. Cứ để bật cũng không tốn gì nếu bạn chưa cài công cụ Android nào.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Vị trí của adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1634,9 +1650,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Đã hiển thị gợi ý về nhóm Mạng dài",
+  "settings.behavior.serversPinHintSeen.label": "Đã hiển thị gợi ý về “Bỏ ghim khỏi bộ chọn ổ đĩa”",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Gợi ý một lần về việc bỏ ghim máy chủ đã hiển thị hay chưa.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1967,7 +1983,7 @@
   },
   "settings.summary.listing": "Biểu tượng tài liệu, sắp xếp thư mục, và độ rộng cột chế độ Rút gọn.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Điều hướng bằng bấm đúp tới thư mục cha, và hành vi khi đổi tên tệp.",
   "@settings.summary.navigationAndFileOps": {
@@ -1991,7 +2007,7 @@
   },
   "settings.summary.servers": "Các khóa máy chủ SSH mà bạn đã tin cậy.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Duyệt điện thoại Android đang bật gỡ lỗi qua USB.",
   "@settings.summary.adb": {
@@ -2519,13 +2535,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Hãy cài bộ công cụ nền tảng Android, rồi nhấn Kiểm tra lại:",
+  "settings.adb.install.intro": "Hãy cài bộ công cụ nền tảng Android, rồi chọn Kiểm tra lại:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Tìm adb theo cách thông thường",
+  "settings.adb.pathPlaceholder": "Cmdr tìm adb theo cách thông thường",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Duyệt…",
   "@settings.adb.browse": {

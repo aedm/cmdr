@@ -4,7 +4,7 @@
     import { homeDir } from '@tauri-apps/api/path'
     import { getVolumeSpace, DEFAULT_VOLUME_ID, type SpaceInfo } from '$lib/tauri-commands'
     import type { SortColumn, SortOrder, ConflictResolution, TransferOperationType } from '$lib/file-explorer/types'
-    import type { TransferConfirmPayload } from '$lib/file-explorer/pane/dialog-props'
+    import type { TransferConfirmPayload, TransferConfirmer } from '$lib/file-explorer/pane/dialog-props'
     import { validateDirectoryPath } from '$lib/utils/filename-validation'
     import { createTransferDestExistsCheck } from './transfer-dest-exists.svelte'
     import { conflictPolicyFromMcpName } from './conflict-policy'
@@ -67,6 +67,10 @@
          *  op spawned. The normal spawn reply happens in the progress state. */
         mcpRequestId?: string
         onConfirm: (payload: TransferConfirmPayload) => void
+        /** Takes this dialog's own confirm for as long as it's mounted, so an MCP
+         *  `dialog confirm` presses the same button a person does. Returns the
+         *  unregister. */
+        registerConfirmer?: (confirm: TransferConfirmer) => () => void
         onCancel: () => void
     }
 
@@ -89,6 +93,7 @@
         autoConfirmOnConflict,
         mcpRequestId,
         onConfirm,
+        registerConfirmer,
         onCancel,
     }: Props = $props()
 
@@ -265,10 +270,11 @@
      *                  nothing to count.
      *   - `counting` → a scan is in flight (or about to start on mount).
      *   - `unavailable` → the scan stopped without an answer; the tallies are a
-     *                  floor, and the notice under them says so.
+     *                  floor, and the notice under them says so. Also a preview
+     *                  that refused to start (the source isn't connected).
      *  `done` wins over `skipped`: a same-volume COPY still scans and completes. */
     const scanState = $derived<'counting' | 'done' | 'skipped' | 'unavailable'>(
-        scanComplete ? 'done' : scan.scanFailure ? 'unavailable' : isSameVolumeMove ? 'skipped' : 'counting',
+        scanComplete ? 'done' : scan.scanFailure || scan.sourceRefusal ? 'unavailable' : isSameVolumeMove ? 'skipped' : 'counting',
     )
 
     /** Settle state of the top-level conflict check, exposed as `data-conflict-state`
@@ -312,9 +318,12 @@
     })
 
     // The destination folder takes no writes, said before confirm (red, beneath the
-    // path box, after a structural error). Confirm stays enabled: the transfer asks
-    // again before it writes and refuses with its own typed error, which is also
-    // what an MCP auto-confirm meets.
+    // path box, after a structural error). Confirm is disabled while it shows, the
+    // same way a path error disables it, with the notice as the reason: the transfer
+    // asks the same question before it writes and refuses anyway, so an enabled button
+    // only led to that refusal in an extra dialog. A notice gone stale (the folder
+    // became writable while the dialog was open) clears on the next edit of the path.
+    // MCP auto-confirm skips the button and meets the backend's typed refusal instead.
     const REFUSAL_KEY = {
         readOnlyFilesystem: 'fileOperations.transferDialog.destinationReadOnly',
         noPermission: 'fileOperations.transferDialog.destinationNoPermission',
@@ -440,6 +449,7 @@
 
     onDestroy(() => {
         destroyed = true
+        unregisterConfirmer?.()
         destExists.cancel()
         // Free the scan preview unless the user confirmed (then the
         // TransferProgressDialog / the started op takes over the same scan and
@@ -465,16 +475,21 @@
      * `config_resolution == Skip`). Under `stop` the backend prompts per clash at
      * runtime, so dispatching with `conflicts: []` costs information, never safety.
      *
-     * A human can't reach `skip` while the check is running — the policy radios only
-     * render once it's done — so this await belongs to the MCP auto-confirm path,
-     * where the names are a real win and nobody is watching the button.
+     * Only the auto-confirm waits for them: it fires on mount, before the check
+     * can have answered, and nobody is watching the button. A person can't reach
+     * `skip` while the check is running (the policy radios only render once it's
+     * done), and an MCP `dialog confirm` answers within its ack budget, so both
+     * dispatch with whatever names the check has by then. A dest listing can take
+     * minutes on a big remote folder.
      */
-    function needsConflictNames(): boolean {
-        return conflictPolicy === 'skip'
+    function needsConflictNames(isAuto: boolean): boolean {
+        return isAuto && conflictPolicy === 'skip'
     }
 
     async function handleConfirm(isAuto = false) {
-        if (pathError || confirmed) return
+        // A refused source can't be read, so there's nothing to confirm. A confirm that
+        // beats the refusal (MCP auto-confirm) reaches the backend, which refuses it typed.
+        if (pathError || scan.sourceRefusal || confirmed) return
         confirmed = true
         confirmPending = true
         // Compress auto-confirm must not silently overwrite an existing archive:
@@ -497,7 +512,7 @@
         // check only gates `skip`.
         if (isSameVolumeMove) {
             scan.cancelPreview()
-            if (needsConflictNames()) await conflictCheckPromise
+            if (needsConflictNames(isAuto)) await conflictCheckPromise
             onConfirm({
                 destination: editedPath,
                 volumeId: selectedVolumeId,
@@ -522,7 +537,7 @@
         // can take minutes on a big remote dir, and only `skip` consumes its
         // names.
         await scan.scanStarted
-        if (needsConflictNames()) await conflictCheckPromise
+        if (needsConflictNames(isAuto)) await conflictCheckPromise
         onConfirm({
             destination: editedPath,
             volumeId: selectedVolumeId,
@@ -532,6 +547,14 @@
             preKnownConflicts: conflicts.conflictNames,
         })
     }
+
+    // An MCP `dialog confirm` is the Confirm button under a policy the agent named:
+    // same path, same box contents, same preview. Registered during init, so a
+    // confirm that lands while the mount is still resolving the home dir finds it.
+    const unregisterConfirmer = registerConfirmer?.((policy) => {
+        conflictPolicy = policy
+        void handleConfirm()
+    })
 
     function handleCancel() {
         // A confirm already committed and is only waiting to dispatch: the pending
@@ -546,9 +569,19 @@
         onCancel()
     }
 
+    /**
+     * A person's confirm: the button or Enter. Refused while the destination
+     * refuses writes, where the button reads disabled. ❌ Not in `handleConfirm`:
+     * an MCP confirm goes through that, and it meets the backend's typed refusal.
+     */
+    function confirmFromUser() {
+        if (targetRefusal) return
+        void handleConfirm()
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter') {
-            void handleConfirm()
+            confirmFromUser()
         }
     }
 
@@ -556,7 +589,7 @@
         if (event.key === 'Enter') {
             event.preventDefault()
             event.stopPropagation()
-            void handleConfirm()
+            confirmFromUser()
         }
     }
 </script>
@@ -677,7 +710,17 @@
              quiet here is one the user reads as "nothing to copy". The transfer
              can still start: the operation counts as it goes, and the scan
              preview only feeds this Size line and a cache it can rebuild. -->
-        {#if scan.scanFailure}
+        {#if scan.sourceRefusal}
+            <!-- The preview refused before walking anything: no volume answers
+                 for the source (a phone unplugged under a search-results pane).
+                 No Retry and no Confirm, since neither can work until it's back. -->
+            <p class="scan-unavailable" role="status">
+                <span class="scan-unavailable-icon" aria-hidden="true">
+                    <Icon name="triangle-alert" size={16} />
+                </span>
+                <span>{tString('fileOperations.transferDialog.sourceNoLongerConnected')}</span>
+            </p>
+        {:else if scan.scanFailure}
             <p class="scan-unavailable" role="status">
                 <span class="scan-unavailable-icon" aria-hidden="true">
                     <Icon name="triangle-alert" size={16} />
@@ -796,7 +839,7 @@
              button has to look busy rather than inviting a second click. The spinner
              is decorative (no `label`, so `aria-hidden`), which keeps the button's
              accessible name exactly `confirmLabel` and needs no new catalog string. -->
-        <Button variant="primary" onclick={() => handleConfirm()} disabled={!!pathError || confirmPending}>
+        <Button variant="primary" onclick={confirmFromUser} disabled={!!pathError || !!targetRefusal || !!scan.sourceRefusal || confirmPending}>
             <span class="confirm-content">
                 {#if confirmPending}
                     <Spinner size="sm" />

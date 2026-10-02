@@ -126,7 +126,7 @@
   },
   "errorReporter.amend.unavailable": "Không thể thêm ghi chú vào báo cáo đó nữa. Để nhóm nhận được ghi chú của bạn, hãy gửi một báo cáo mới từ menu Trợ giúp.",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "Đóng",
   "@errorReporter.amend.close": {

@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Iets op deze Mac verhindert dat Cmdr direct verbinding maakt met {server}, dus deze gedeelde map blijft op de systeemverbinding. Probeer Cmdr onder {localNetwork} uit en weer aan te zetten, of controleer je firewallapp.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Open instellingen voor {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} deed er te lang over om te antwoorden, dus deze gedeelde map blijft op de systeemverbinding.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -626,6 +634,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Nog steeds wachten op deze map",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "De server of schijf waarop deze map staat reageert niet. Cmdr blijft het op de achtergrond proberen en opent de map zodra er antwoord komt.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "De server waarop deze map staat reageert niet. Cmdr blijft het op de achtergrond proberen en opent de map zodra er antwoord komt.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "De schijf waarop deze map staat reageert niet. Cmdr blijft het op de achtergrond proberen en opent de map zodra er antwoord komt.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Probeer opnieuw",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Ga terug",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{countText} {count, plural, one {onderdeel} other {onderdelen}} gekopieerd",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -781,6 +813,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Om bestanden uit een git-momentopname te halen, gebruik je F5 om te kopiëren of F6 om te verplaatsen.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} is groter dan {limit}, dus Cmdr kan het bestand niet vanuit het archief in {appName} openen.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "{fileName} is groter dan {limit}, dus Cmdr kan het bestand niet vanuit de geschiedenis van de repo in {appName} openen.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} staat in een met een wachtwoord beveiligd archief. Kopieer het bestand eerst naar een map (Cmdr zal dan om het wachtwoord vragen) en open het daarna in {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Kon {fileName} niet uit het archief halen om in {appName} te openen. Het archief is mogelijk beschadigd, of het gebruikt een structuur die Cmdr niet kan lezen.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Kon {fileName} niet lezen om in {appName} te openen. Controleer of de schijf nog is aangesloten en probeer het dan opnieuw.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "Je bestand is uit beeld verdwenen omdat verborgen bestanden niet worden getoond.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1417,9 +1469,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Verbinding verbreken kan niet terwijl er bewerkingen op deze server bezig zijn",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr is nog bezig met bestanden op deze server. Verbreek de verbinding zodra dat klaar is.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} staat nu in je volumekiezer.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1431,7 +1483,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr kon niet wijzigen waar {name} te zien is.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr kon de verbinding met {name} niet verbreken.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1477,9 +1529,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Uitwerpen kan niet terwijl er bewerkingen op dit apparaat bezig zijn",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr is nog bezig met bestanden op dit apparaat. Werp het uit zodra dat klaar is.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "{name} wordt uitgeworpen…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

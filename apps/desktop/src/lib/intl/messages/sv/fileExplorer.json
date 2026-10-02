@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Något på den här Macen hindrar Cmdr från att ansluta direkt till {server}, så den här delade mappen ligger kvar på systemanslutningen. Prova att stänga av och slå på Cmdr igen under {localNetwork} eller kolla din brandväggsapp.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Öppna inställningar för {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} tog för lång tid på sig att svara, så den här delade mappen ligger kvar på systemanslutningen.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -625,6 +633,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Väntar fortfarande på den här mappen",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Servern eller enheten som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "Servern som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Enheten som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Försök igen",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Gå bakåt",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "Kopierade {countText} {count, plural, one {objekt} other {objekt}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -780,6 +812,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Om du vill kopiera ut filer ur en git-ögonblicksbild använder du F5 för att kopiera eller F6 för att flytta.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} är större än {limit}, så Cmdr kan inte öppna filen i {appName} inifrån arkivet.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "{fileName} är större än {limit}, så Cmdr kan inte öppna filen i {appName} från repots historik.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} ligger i ett lösenordsskyddat arkiv. Kopiera filen till en mapp först (Cmdr kommer att fråga efter lösenordet) och öppna den sedan i {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Det gick inte att få ut {fileName} ur arkivet för att öppna filen i {appName}. Arkivet kan vara skadat eller använda ett format som Cmdr inte kan läsa.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Det gick inte att läsa {fileName} för att öppna filen i {appName}. Kontrollera att enheten fortfarande är ansluten och försök igen.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "Din fil försvann från vyn eftersom dolda filer inte visas.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1407,9 +1459,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Det går inte att koppla från medan åtgärder pågår på den här servern",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr arbetar fortfarande med filer på den här servern. Koppla från när det är klart.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} finns nu i din volymväljare.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1421,7 +1473,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr kunde inte ändra var {name} visas.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr kunde inte koppla från {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1467,9 +1519,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Det går inte att mata ut medan åtgärder pågår på den här enheten",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr arbetar fortfarande med filer på den här enheten. Mata ut när det är klart.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Matar ut {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

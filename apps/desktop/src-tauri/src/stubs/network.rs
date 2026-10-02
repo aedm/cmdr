@@ -105,6 +105,14 @@ pub enum ShareListError {
     },
 }
 
+/// Where the credentials a listing signs in with came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum CredentialSource {
+    Typed,
+    Saved,
+}
+
 /// Connection mode used for the last successful connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -250,6 +258,8 @@ pub async fn list_shares_on_host(
     hostname: String,
     _ip_address: Option<String>,
     _port: u16,
+    _timeout_ms: Option<u64>,
+    _cache_ttl_ms: Option<u64>,
 ) -> Result<ShareListResult, ShareListError> {
     Err(ShareListError::ProtocolError {
         message: format!("Network browsing not supported on Linux (host: {})", hostname),
@@ -259,7 +269,14 @@ pub async fn list_shares_on_host(
 /// Prefetches shares for a host (stub: no-op).
 #[tauri::command]
 #[specta::specta]
-pub async fn prefetch_shares(_host_id: String, _hostname: String, _ip_address: Option<String>, _port: u16) {
+pub async fn prefetch_shares(
+    _host_id: String,
+    _hostname: String,
+    _ip_address: Option<String>,
+    _port: u16,
+    _timeout_ms: Option<u64>,
+    _cache_ttl_ms: Option<u64>,
+) {
     // No-op
 }
 
@@ -356,6 +373,10 @@ pub fn is_using_credential_file_fallback() -> bool {
 /// Lists shares with credentials (stub: returns error).
 #[tauri::command]
 #[specta::specta]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Tauri command requires all parameters to be top-level"
+)]
 pub async fn list_shares_with_credentials(
     _host_id: String,
     hostname: String,
@@ -363,6 +384,9 @@ pub async fn list_shares_with_credentials(
     _port: u16,
     _username: Option<String>,
     _password: Option<String>,
+    _credential_source: CredentialSource,
+    _timeout_ms: Option<u64>,
+    _cache_ttl_ms: Option<u64>,
 ) -> Result<ShareListResult, ShareListError> {
     Err(ShareListError::ProtocolError {
         message: format!("Network browsing not supported on Linux (host: {})", hostname),
@@ -377,6 +401,9 @@ pub async fn mount_network_share(
     share: String,
     _username: Option<String>,
     _password: Option<String>,
+    _port: Option<u16>,
+    _timeout_ms: Option<u64>,
+    _host_name: Option<String>,
 ) -> Result<MountResult, MountError> {
     Err(MountError::Unexpected {
         server,
@@ -397,7 +424,7 @@ pub enum UpgradeResult {
 /// Upgrades an SMB volume to use direct smb2 (stub: nothing here is an SMB mount).
 #[tauri::command]
 #[specta::specta]
-pub async fn upgrade_to_smb_volume(_volume_id: String, _app_handle: tauri::AppHandle) -> UpgradeResult {
+pub async fn upgrade_to_smb_volume(_volume_id: String) -> UpgradeResult {
     UpgradeResult::NotSmbMount
 }
 
@@ -409,7 +436,6 @@ pub async fn upgrade_to_smb_volume_with_credentials(
     _username: Option<String>,
     _password: Option<String>,
     _remember_in_keychain: bool,
-    _app_handle: tauri::AppHandle,
 ) -> UpgradeResult {
     UpgradeResult::NotSmbMount
 }
@@ -452,10 +478,7 @@ pub async fn system_has_saved_smb_password(_volume_id: String) -> Result<bool, S
 /// Upgrades an SMB volume using a saved system password (stub: nothing here is an SMB mount).
 #[tauri::command]
 #[specta::specta]
-pub async fn upgrade_to_smb_volume_using_saved_password(
-    _volume_id: String,
-    _app_handle: tauri::AppHandle,
-) -> UpgradeResult {
+pub async fn upgrade_to_smb_volume_using_saved_password(_volume_id: String) -> UpgradeResult {
     UpgradeResult::NotSmbMount
 }
 

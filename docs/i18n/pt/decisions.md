@@ -30,6 +30,11 @@ the installed macOS `pt_BR.lproj` bundles.
   whole-catalog migration or nothing (review queue). `pasta principal` is the wrong meaning.
 - The top of a volume is `a pasta raiz de um volume`, never `pasta superior` (that's one level up).
 
+## Go to folder (`menu.go.goToPath`, `commands.navGoToPath.label`, `goToPath.dialog.title`/`confirm`)
+
+- `Ir para pasta` (Finder N83, sentence-cased) for menu and title: Finder's dialog says `Ir Para a Pasta`, but one
+  command keeps one name (`i18n-term-consistency`). The button "Go" → `Ir`, Finder's own (`FR24`) and the Go menu's.
+
 ## Archives (`settings.archives.*`, `fileExplorer.archiveEnterMenu.*`, `fileExplorer.readOnly.archiveTitle`/`archiveMessage`, `fileOperations.archivePassword.*`, `queue.row.label`)
 
 - `arquivo compactado` because bare `arquivo` means file; the double `arquivo` when both co-occur reads fine, keep it.
@@ -134,11 +139,12 @@ the installed macOS `pt_BR.lproj` bundles.
 
 - Each value follows a colon in `fileExplorer.pane.ejectFailedToast` / `disconnectFailedToast`, so it's a full sentence
   with a capital. `timedOut` says `ainda pode ser concluída sozinha`, never a failure.
-- The named refusals share `<sujeito> ainda está usando este disco. <ação>, depois ejete-o de novo.` `{app}` opens bare
-  (a name like `mds_stores` isn't an app, so no `O app`); `ele` / `eles` are safe because the referent is always an app,
-  masculine. `outros apps` is a list's last item: the `e` comes from `Intl.ListFormat`, never the string.
-- `BySystem` says `está trabalhando com` because nothing can be closed; a disk image is `ainda está montada`, which
-  points at ejecting.
+- Either wrapper may concern a share or a phone, so the refusals share
+  `<sujeito> ainda está com arquivos abertos lá. <ação>, depois tente de novo.`, never `este disco` or `ejete-o`.
+  `{app}` opens bare (a name like `mds_stores` isn't an app, so no `O app`); `Feche-os` points at `arquivos`. The aside
+  keeps `O Cmdr` as subject, never `Não temos`. `outros apps` is a list's last item: the `e` comes from
+  `Intl.ListFormat`, never the string.
+- A disk image is `ainda está montada`, which points at ejecting it.
 
 ## Trash buttons and refusals (`fileOperations.trash.*`, `commands.fileGoToTrash.*`, `errors.mutation.trash*`, `errors.write.trashRefused.title`)
 
@@ -200,8 +206,8 @@ the installed macOS `pt_BR.lproj` bundles.
 
 - Dock.app's `pt_BR.lproj/DockMenus.strings` is the Tier 1 source and isn't in the pile: `Abrir Cmdr`, no article or
   quotes, like `Ocultar %@`; the quoted form `Abrir “%@”` is for FILES.
-- `menu.dock.locationInParent` stays `{name} ({parent})`: AppKit's `%@ (%@)` is unchanged in Apple's `pt` while `ja`,
-  `zh_CN`, `ar`, and `he` adapt it, so it's sourced. `menu.dock.searchFiles` equals `menu.edit.searchFiles`.
+- `menu.dock.locationInParent` stays `{name} ({parent})`: AppKit's `%@ (%@)` is unchanged in Apple's `pt` (`ja` and `ar`
+  adapt it). `menu.dock.searchFiles` equals `menu.edit.searchFiles`.
 
 ## Dock pin nudge (`main.dockPinNudge.*`, `settings.behavior.dockPinNudgeOfferedAt.*`)
 
@@ -308,13 +314,12 @@ the installed macOS `pt_BR.lproj` bundles.
 - `Status` over Apple's `Estado`, to match `licensing.section.labelStatus` (review queue). Last used → `Último uso`:
   Apple's `Última Usada` locks the feminine, Mail's `Usado pela última vez` doesn't fit a column.
 - `Salvo` for an idle saved server: nothing went wrong. nearby → `por perto`, not `Próximo` (means "next" here).
-- `conferir` when the PERSON checks (`Aguardando você conferir a chave`), `verificar` when Cmdr does.
 - `local network` lowercase is the concept; `Rede Local` capitalized is the macOS permission's name.
 
 ## Server sheet and host keys (`servers.sheet.*`, `servers.hostKey.*`, `servers.paneState.signedOut`/`signIn`/`hostKeyChanged*`, `goToPath.dialog.opensServer`/`addsServer`, `commands.serversConnect.label`)
 
 - Browse (file picker) → `Escolher…` (Apple's `Choose…`), not `Navegar` (archives), `Explorar` (network), or MS
-  `Procurar…`; the split is allowlisted in `apps/desktop/scripts/i18n-term-consistency-allowlist.json`.
+  `Procurar…`; the split is allowlisted in `i18n-term-consistency`.
 - passphrase → `frase-senha` (Apple), which separates the key file's phrase from the account `senha`.
 - `quem cuida do servidor` for the owner avoids a masculine `o dono`. `A chave do servidor mudou` writes the noun
   because `dele` would lean on the title's `{name}`.
@@ -322,13 +327,11 @@ the installed macOS `pt_BR.lproj` bundles.
 ## Reconnect and key-only sign-in (`servers.paneState.reconnecting`, `.signedOutNothingToAsk`)
 
 - `Reconectando a {name}…`: `a` from the sibling `servers.paneState.connecting`, which alternates in the same spot.
-- `então não há nada para …` is the fixed mold (eject, disconnect, type); a fourth key copies it.
 - `Abra-o de novo`: safe because `servidor` is the only masculine candidate.
 
 ## Pin, unpin, and trusted host keys (`menu.network.pinToSwitcher`/`unpin`, `servers.pinHint.*`, `settings.servers.*`, `settings.adb.*`, `settings.section.servers`/`adb`, `settings.summary.servers`/`adb`, `settings.appearance.tintSmb.*`)
 
-- `Fixar` / `Desafixar` (Safari, Notes). `Fixar no seletor` shortens like the English; the menu opens inside the
-  switcher.
+- `Fixar` / `Desafixar` (Safari, Notes). `Fixar no seletor` shortens like the English.
 - `Confiável desde` because `confiar em` doesn't passivize (`Confiada em…` is ungrammatical).
 - `Seu grupo Rede está ficando grande`: `grupo longo` isn't Portuguese. The ADB status lines write `O Cmdr`, since a
   subjectless negative reads as `você não está`.

@@ -102,6 +102,7 @@ pub(super) fn is_retryable(err: &VolumeError) -> bool {
         | VolumeError::ReadOnly(_)
         | VolumeError::StorageFull { .. }
         | VolumeError::IsADirectory(_)
+        | VolumeError::NotADirectory(_) // a file is in the way; it stays there until someone moves it
         | VolumeError::InvalidName(_) // the destination can't hold this name; a rename is the only fix
         | VolumeError::DeletePending(_)
         | VolumeError::AmbiguousName(_) // two stored names fit; asking again asks the same question
@@ -200,6 +201,7 @@ mod tests {
         }));
         assert!(!is_retryable(&VolumeError::NotSupported));
         assert!(!is_retryable(&VolumeError::IsADirectory("/x".into())));
+        assert!(!is_retryable(&VolumeError::NotADirectory("/x".into())));
         assert!(!is_retryable(&VolumeError::DeletePending("/x".into())));
         assert!(!is_retryable(&VolumeError::NeedsPassword { wrong_attempt: true }));
         // An IoError with no errno carries nothing to classify on, so it is a

@@ -1,8 +1,9 @@
-# Upstream PR draft (unsent)
+# Upstream PR text
 
-For <https://github.com/keepsimple1/mdns-sd>, against `v0.21.4`. The patch beside this file is
-`0001-fix-record-an-interface-whose-multicast-join-failed.patch`. Nothing has been pushed, forked, or opened; this waits
-for David's go-ahead. Background and the local fork: `docs/notes/mdns-sd-multicast-join-retry-loop.md`.
+For <https://github.com/keepsimple1/mdns-sd>, against `v0.21.4`, opened as
+[keepsimple1/mdns-sd#513](https://github.com/keepsimple1/mdns-sd/pull/513) (open as of 2026-10-01). The patch beside
+this file is `0001-fix-record-an-interface-whose-multicast-join-failed.patch`. Background and the local fork:
+`docs/notes/mdns-sd-multicast-join-retry-loop.md`.
 
 **Existing issues and PRs**: searched issues (open and closed) and the last 30 PRs on 2026-09-22. Nothing covers this.
 The closest matches are old Windows join failures (#47, #78, #52), which are about a join failing at startup rather than

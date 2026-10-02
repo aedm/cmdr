@@ -210,9 +210,10 @@ pub(super) fn write_error_event_from(
 ///
 /// A listed phone or a saved server nothing has connected is
 /// `SourceNotConnected` / `DestinationNotConnected`, so the user hears that opening
-/// it is the way through. Any other id is a volume that left the registry (an
-/// unmount race), an `IoError` naming the id. The classification itself:
-/// `crate::unregistered_volumes`.
+/// it is the way through. Any other id is a volume that left the registry: as a
+/// source, `SourceNoLongerConnected` (a phone unplugged under a search-results
+/// pane is how a person gets here); as a destination, an unmount race, an
+/// `IoError` naming the id. The classification itself: `crate::unregistered_volumes`.
 pub(in crate::file_system::write_operations) async fn unregistered_volume_error(
     volume_id: &str,
     path: &str,
@@ -220,19 +221,15 @@ pub(in crate::file_system::write_operations) async fn unregistered_volume_error(
 ) -> WriteOperationError {
     use crate::unregistered_volumes::{Unregistered, why_unregistered};
 
-    match why_unregistered(volume_id).await {
-        Unregistered::NotConnected => not_connected(path, role),
+    match (why_unregistered(volume_id).await, role) {
+        (Unregistered::NotConnected, role) => not_connected(path, role),
+        (Unregistered::Gone, PathRole::Source) => {
+            WriteOperationError::SourceNoLongerConnected { path: path.to_string() }
+        }
         // (Log and technical-details text, not rendered prose.)
-        Unregistered::Gone => WriteOperationError::IoError {
+        (Unregistered::Gone, PathRole::Destination) => WriteOperationError::IoError {
             path: volume_id.to_string(),
-            message: format!(
-                "{} volume '{}' not found",
-                match role {
-                    PathRole::Source => "Source",
-                    PathRole::Destination => "Destination",
-                },
-                volume_id
-            ),
+            message: format!("Destination volume '{volume_id}' not found"),
         },
     }
 }
@@ -376,6 +373,11 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
             path,
             message: "Is a directory".to_string(),
         },
+        // A file where the destination folder, or one above it, should be. The
+        // volume names the thing in the way, and that path is the one fact the
+        // user can act on, so it rides through typed: as an `IoError` the dialog
+        // offered a Retry that could only meet the same file again.
+        VolumeError::NotADirectory(path) => WriteOperationError::DestinationNotAFolder { path },
         // The destination refused the name itself, so the transfer can only
         // succeed under a different one. It must stay typed all the way to the
         // dialog: as an `IoError` the user gets "couldn't copy the file" plus a

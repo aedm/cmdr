@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, other {在附近找到 {countText} 部伺服器}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "區域網路探索已關閉。",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -170,6 +174,10 @@
   "servers.refusal.unreachable": "Cmdr 連不上 {host}。",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "如果伺服器開著，請確認已在「{localNetwork}」裡允許 Cmdr。",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr 還沒有信任 {host} 的主機金鑰。",
   "@servers.refusal.hostKeyUntrusted": {
@@ -451,6 +459,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr 連不上 {name}。",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "返回",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -463,9 +475,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "它的主機金鑰變了。這可能表示伺服器重新安裝過，也可能有東西夾在你和它中間。請先中斷連線，再重新開啟它來核對指紋。",
+  "servers.paneState.hostKeyChangedHint": "它的主機金鑰變了。這可能表示伺服器重新安裝過，也可能有東西夾在你和它中間。重新連線之前，請先核對新的主機金鑰。",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "核對主機金鑰",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "正在重新連線到 {name}⋯",
   "@servers.paneState.reconnecting": {

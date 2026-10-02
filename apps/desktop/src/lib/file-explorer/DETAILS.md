@@ -134,14 +134,20 @@ Full history-stack contract and the volume-breadcrumb detail live in `navigation
 
 ### Behavior
 
-- **Directories first**: always
+- **Directories first**: by default. The `listing.foldersFirst` setting ("Show folders first", on by default) turns it
+  off, and dirs then sort among the files by the active column (#291).
 - **Natural sorting**: `file10.txt` after `file2.txt`
 - **Extension grouping**: dotfiles → no-extension → by extension alphabetically
 - **Per-tab sort**: each tab owns its `sortBy` + `sortOrder` (no global per-column memory)
-- **Directory sort mode**: setting `listing.directorySortMode` controls how dirs sort among themselves:
+- **Directory sort mode**: setting `listing.directorySortMode` controls how dirs sort among themselves while they lead:
   - `likeFiles` (default): dirs sort by the active column (uses `recursive_size` for Size). Dirs with unknown size sort
     last.
   - `alwaysByName`: dirs always sort by name, ignoring the active sort column.
+- **The wire mode folds both settings**: `reactive-settings.svelte.ts::getDirectorySortMode()` answers the Rust
+  `DirectorySortMode` (`ListingDirectorySortMode` here): the "Sort directories" choice, or `mixedWithFiles` while "Show
+  folders first" is off. The settings page greys "Sort directories" out then. Every listing, re-sort, and search-results
+  sort reads that one getter, and the explorer's sort-mode `$effect` re-sorts both panes when either setting flips. The
+  mixed comparison (Size included): `src-tauri/src/file_system/listing/sorting.rs::compare_mixed`.
 - **Name ASC tiebreaker**: when primary sort values are equal, entries fall back to name ascending
 
 ### Implementation
@@ -308,6 +314,16 @@ For the dialog-side wiring see `../search/CLAUDE.md`.
   the cursor, feeding each `move` in as a removal from where the row left plus an insertion where it arrived, and
   landing the row's own tracker on the new position by identity.
 
+## "Open with" refusal notice (`open-with-refused-bridge.ts`)
+
+"Open with" on a file inside an archive or a `.git` snapshot runs entirely in Rust (the native context menu), and it has
+to copy the file out before an app can open it. When that copy can't be made, Rust emits `open-with-copy-refused` with a
+typed reason, and this bridge (mounted in `routes/(main)/window-services.ts`) words it as a warning toast, keyed per
+file name. One message per reason (`fileExplorer.openWith.copyRefused.*`), chosen by an exhaustive switch on
+`reason.kind`, ❌ never by the backend's message. `tooLarge` alone also reads the typed `source`: a file in a repo's
+history gets `tooLargeInRepoHistory`, since "from inside the archive" would be wrong there. Backend side:
+`src-tauri/src/file_viewer/DETAILS.md` § "Open with on a routed file".
+
 ## TCC-restricted treatment
 
 Sidebar entries (`VolumeBreadcrumb.svelte`) AND file-list rows (`views/FullList.svelte`, `views/BriefList.svelte`) flag
@@ -389,9 +405,14 @@ share's figure on every folder after. It listens for `volume-space-changed` even
 is the pane ID, so two panes on the same volume have independent registrations (one pane navigating away doesn't affect
 the other). The backend deduplicates by volume_id, polls each volume at its own cadence
 (`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the readout would draw a different
-figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). While the main window is
-hidden it polls only the boot volume's low-space check, then catches up the moment the window shows. The volume dropdown
-(`volume-space-manager.svelte.ts`) uses a separate on-demand fetch and is unaffected.
+figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). ❗ A new watch counts as a
+reader that has seen nothing: the poller polls that volume on the next one-second tick and sends the reading even if it
+hasn't moved (`space_poller::watch`). A remote volume (`sftp://`, `webdav://`) has no other route to the pane, because
+the on-demand `getVolumeSpace` reads the mount table and answers `null`, so a second pane on a volume the first one
+already showed stayed blank until the free space moved. For the same reason a `null` fetch never overwrites a figure: it
+means "this route can't tell". While the main window is hidden it polls only the boot volume's low-space check, then
+catches up the moment the window shows. The volume dropdown (`volume-space-manager.svelte.ts`) uses a separate on-demand
+fetch and is unaffected.
 
 The wording lives in `disk-space-utils.ts`, catalog-backed functions over one `SpaceInfo` plus the user's binary/SI
 format.

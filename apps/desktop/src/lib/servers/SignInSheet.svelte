@@ -32,8 +32,10 @@
         refusalField,
         refusalShownOnOpen,
         wordConnectRefusal,
+        wordRefusalHint,
         type ConnectRefusalKind,
         type RefusalField,
+        type RefusalHint,
     } from './connect-refusals'
     import {
         applyParsedAddress,
@@ -95,6 +97,8 @@
     let refusal = $state<ConnectRefusalKind | null>(
         request.mode === 'sign-in' ? refusalShownOnOpen(request.refusal) : null,
     )
+    /** The hint the last refused round came with, and the refusal it belongs under. */
+    let hinted = $state<{ refusal: ConnectRefusalKind; hint: RefusalHint } | null>(null)
     let form = $state<ServerForm>(emptyServerForm())
     /**
      * Sign-in mode's own fields; the add form holds its own.
@@ -211,6 +215,10 @@
 
     const refusalText = $derived(refusal ? wordConnectRefusal(refusal, refusalSubject) : undefined)
     const refusalWhere = $derived(refusal ? refusalField(refusal) : null)
+    /** The softer line under the refusal, only while the refusal it came with is still on screen. */
+    const refusalHintText = $derived(
+        hinted && refusal === hinted.refusal ? wordRefusalHint(hinted.hint) : undefined,
+    )
 
     /**
      * Whether the form's start folder sits outside its root: the backend's rule
@@ -425,6 +433,7 @@
         roundUsername = submission.mode === 'sign-in' ? submission.username : null
         busy = true
         refusal = null
+        hinted = null
         let outcome: SignInAttemptOutcome = { kind: 'refused', refusal: 'unreachable' }
         try {
             outcome = await attempt(submission)
@@ -463,6 +472,7 @@
                 step = 'revoked'
                 return
             case 'refused':
+                hinted = outcome.hint ? { refusal: outcome.refusal, hint: outcome.hint } : null
                 await refuse(outcome.refusal)
                 return
         }
@@ -694,6 +704,7 @@
                 identityEditable={!isEdit}
                 identityHint={isEdit ? tString('servers.sheet.identityLocked') : undefined}
                 addressRefusal={refusalWhere === 'address' ? refusalText : undefined}
+                addressRefusalHint={refusalWhere === 'address' ? refusalHintText : undefined}
                 {addressWarning}
                 onAddAnyway={offersAddAnyway ? () => void submit('save_unchecked') : undefined}
                 onTryNextcloudAddress={offersNextcloudRemedy

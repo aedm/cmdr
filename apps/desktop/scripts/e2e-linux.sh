@@ -89,6 +89,11 @@ sha256_stdin() {
 # from-scratch workspace), and each checkout holds its own ~4.6 GB target
 # volume. `reap_stale_cache_volumes` below drops the volumes of checkouts that
 # no longer exist. Numbers and method: test/e2e-linux/DETAILS.md § Volumes.
+#
+# The Rust Linux check lanes reuse this key and both labels for their own target
+# volume (`checkoutCacheKey` in scripts/check/checks/desktop-rust-linux-container.go),
+# so the reaper collects theirs too. A Go test runs the three CHECKOUT_ lines below
+# against that copy; keep them one assignment per line.
 CHECKOUT_SLUG="${REPO_ROOT##*/}"                          # the checkout's dir name
 CHECKOUT_SLUG="${CHECKOUT_SLUG//[^a-zA-Z0-9_.-]/-}"       # Docker volume-name charset
 CHECKOUT_KEY="${CHECKOUT_SLUG:0:24}-$(printf '%s' "$REPO_ROOT" | sha256_stdin | cut -c1-8)"

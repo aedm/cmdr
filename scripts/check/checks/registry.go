@@ -42,6 +42,21 @@ var AllChecks = []CheckDefinition{
 		Run:         RunClippy,
 	},
 	{
+		ID:          "desktop-rust-clippy-mimalloc",
+		CpuWeight:   8,
+		Nickname:    "clippy-mimalloc",
+		DisplayName: "clippy with mimalloc on macOS",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		// A periodic gate: it guards a build nobody ships today, in a build
+		// directory of its own, so a plain `pnpm check` shouldn't pay for it.
+		IsSlow:    true,
+		NotInCI:   "every CI runner is ubuntu, where mimalloc is the default and the plain clippy step covers it; the macOS-only mimalloc readers need a Mac",
+		DependsOn: []string{"desktop-rust-clippy"},
+		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),
+		Run:       RunClippyMimalloc,
+	},
+	{
 		ID:          "desktop-rust-rustdoc",
 		CpuWeight:   4,
 		Nickname:    "rustdoc",
@@ -288,6 +303,19 @@ var AllChecks = []CheckDefinition{
 		IsFast:      true,
 		Inputs:      rustScanInputs(KindApp),
 		Run:         RunDeriveDefaultJustified,
+	},
+	{
+		ID:          "desktop-rust-vendor-patch-applied",
+		Nickname:    "vendor-patch-applied",
+		DisplayName: "vendored patches still apply",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		DependsOn:   nil,
+		IsFast:      true,
+		// The root manifest's `[patch.crates-io]` and the lockfile decide the whole
+		// answer; no cargo call, no compile.
+		Inputs: inputs([]string{"Cargo.toml", "Cargo.lock"}),
+		Run:    RunVendorPatchApplied,
 	},
 	{
 		ID:          "desktop-rust-probe-unwrap-justified",
@@ -766,6 +794,20 @@ var AllChecks = []CheckDefinition{
 		Run: RunFixtureLaneCoverage,
 	},
 	{
+		ID:          "desktop-rust-clippy-linux",
+		CpuWeight:   8,
+		Nickname:    "clippy-linux",
+		DisplayName: "clippy (Linux)",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		IsSlow:      true,
+		NotInCI:     "CI's desktop-rust job already runs the same clippy natively on a Linux runner; this check exists to lint the Linux target from a Mac",
+		// After the host clippy, whose `--fix` may still be rewriting shared sources.
+		DependsOn: []string{"desktop-rust-clippy"},
+		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),
+		Run:       RunClippyLinux,
+	},
+	{
 		ID:          "desktop-rust-tests-linux",
 		CpuWeight:   6,
 		Nickname:    "rust-tests-linux",
@@ -774,9 +816,11 @@ var AllChecks = []CheckDefinition{
 		Tech:        "🦀 Rust",
 		IsSlow:      true,
 		NotInCI:     "CI's desktop-rust job already runs the same tests natively on a Linux runner; this check exists to run them from a Mac",
-		DependsOn:   []string{"desktop-rust-clippy"},
-		Inputs:      rustCompileInputs,
-		Run:         RunRustTestsLinux,
+		// Linters before tests, and the two share one target volume: the dependency is
+		// also what keeps their containers from contending for its build-directory lock.
+		DependsOn: []string{"desktop-rust-clippy-linux"},
+		Inputs:    rustCompileInputs,
+		Run:       RunRustTestsLinux,
 	},
 	// The real-API provider smokes. One lane per provider whose key we hold, because a
 	// decommission or a contract break at ANY of them should surface here rather than in a
@@ -1252,6 +1296,16 @@ var AllChecks = []CheckDefinition{
 		DependsOn: nil,
 		Inputs:    websiteInputs,
 		Run:       RunWebsiteAnalyticsInjection,
+	},
+	{
+		ID:          "website-csp-connect-src",
+		Nickname:    "csp-connect-src",
+		DisplayName: "CSP connect-src",
+		App:         AppWebsite,
+		Tech:        "🚀 Astro",
+		IsFast:      true, // a source-tree walk and a few regexes
+		Inputs:      websiteInputs,
+		Run:         RunWebsiteCSPConnectSrc,
 	},
 
 	// API server checks

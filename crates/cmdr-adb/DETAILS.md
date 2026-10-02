@@ -222,6 +222,14 @@ may be localized. So a non-zero exit is read through what the sync service says 
 panel. The probe classifies, ❌ never guards: asked before, it is a TOCTOU window (the two the backend accepts on
 purpose are listed under the `Volume` answers).
 
+**`create_directory_all` names a file in the way** as `NotADirectory(device_path)`, the contract every backend keeps
+(`conformance::assert_create_directory_all_refuses_a_file_in_the_way`). `mkdir -p` says "File exists" or "Not a
+directory" only on stderr, so both halves are the probe's: the leaf stat that already decides `AlreadyExisted` refuses a
+leaf that isn't a folder, and an ancestor is looked for only after the verb has refused, walking up to the nearest thing
+that exists (`file_above`). The probe follows links, so a path through a link to a folder is created into, which on a
+phone is most paths: `/sdcard` is one. The fake's `mkdir -p` resolves links and refuses a file the way a kernel does
+(`testing/tree.rs`), or neither cell would mean anything.
+
 **What a variant carries.** `VolumeError::NotFound` and `PermissionDenied` are defined to carry the PATH
 (`crates/cmdr-fs/src/volume/types.rs`), and the transfer layer forwards it straight into what the frontend renders as
 the missing file's name. The mapper takes the path it is mapping a failure for, so a pathless `NotFound` is not
@@ -265,6 +273,18 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
   matters, route resumable streams through the bounded `read_range` primitive instead.
 - **`sendrecv_v2` compression flags** (brotli, lz4, zstd) are off on purpose; measure before enabling, since the device
   does the compressing.
+- **Bulk writes run at `adb push` speed; small files pay about 260 ms EACH.** `SEND` frames at the protocol's 64 KiB
+  maximum with no per-chunk round trip, so one large file lands as fast as the CLI does (about 28 MB/s through Cmdr
+  against 31 to 35 MB/s for `adb push`, same cable, same minute). A copy of many small files is another story: 200 files
+  of 20 KB took 52 s where `adb push` of the folder took under 10 s for those plus 300 MB. The cost is round trips, not
+  bytes: each file is staged TWICE and moved twice. The transfer engine streams into its own `<name>.cmdr-tmp-<uuid>`;
+  `write_from_stream` stages that AGAIN as `<name>.cmdr-tmp-<uuid>.cmdr-tmp-<pid>-<n>`, stats the target, and `mv -f`s
+  it onto the engine's temp (about 135 ms); then the engine's landing rename stats and `mv`s once more (about 125 ms). A
+  device shell round trip is about 60 ms, and every stat opens its own sync socket. (Measured on a Pixel 9 Pro XL over
+  USB, dev build, 2026-09-30.) The inner stage is redundant when the caller is already writing to a staging name, which
+  would save one `mv` and one stat per file. It stays for now because telling "the caller staged this" from the NAME is
+  the inference `cmdr_fs::staging` warns against; the clean fix is for the caller to say so (a write mode, or a
+  capability the engine reads), which touches the `Volume` trait.
 - **Wireless debugging** (`adb pair`) is out of scope: the server owns pairing, and a paired device appears in
   `track-devices` like any other.
 - **Real-device pass pending**: the authorize prompt, an `unauthorized` → `device` transition mid-session, a 2 GB `RECV`

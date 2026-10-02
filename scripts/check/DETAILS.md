@@ -230,6 +230,9 @@ pnpm check [flags]
   heal/wait pair; `lock.go` the flock, `compose.go` the real `Composer`
 - **`stack-lease/`**: Thin `package main` CLI onto `stacklease` (`acquire`/`release`/`reconcile`/`status`, each taking
   the stack name first) that the bash scripts shell out to
+- **`linux-cache/`**: `package main` CLI (`seed` / `promote`) that `scripts/worktree-hooks/` shells out to, handing the
+  Linux lanes' target volume between the main clone and a worktree with the lanes' own names and labels from `checks`.
+  Outside `checks/` because no check reaches it, so the cache has nothing to fingerprint it for
 - **`checks/`**: One file per check, plus `common.go` (shared utils) and `registry.go` (the `AllChecks` ordered list)
 
 ## Runner-level patterns
@@ -309,12 +312,14 @@ takes an exclusive lock on its build directory for a whole command, so those lan
 loser sat on `Blocking waiting for file lock on build directory` while still holding 6-8 weight, so a quiet run looked
 hung and the reserved cores went unused. Declaring it costs no wall clock and hands that weight back. Metadata-only
 commands (`cargo metadata`, `about`, `deny`, `machete`) take the package-cache lock instead and stay undeclared;
-`rust-tests-linux` builds in its container's own `CARGO_TARGET_DIR`, and `rustdoc` owns a private one. Measurements:
-`docs/notes/check-cpu-contention.md` § "Cargo's build-directory lock".
+`clippy-linux` and `rust-tests-linux` build on their per-worktree Docker volume (one `DependsOn` the other, so they
+never overlap), and `rustdoc` owns a private target dir. Measurements: `docs/notes/check-cpu-contention.md` § "Cargo's
+build-directory lock".
 
-**Slow checks:** `IsSlow: true` marks checks excluded by default (currently: `rust-tests-linux`, `desktop-e2e-linux`,
-`desktop-e2e-playwright`, `desktop-rust-webdav-nextcloud`, `desktop-rust-disk-images`). Naming a check (positionally or
-via `--check`) implicitly includes slow checks (`includeSlow = len(checkNames) > 0`); group/app selectors don't.
+**Slow checks:** `IsSlow: true` marks checks excluded by default (currently: `clippy-linux`, `rust-tests-linux`,
+`desktop-e2e-linux`, `desktop-e2e-playwright`, `desktop-rust-webdav-nextcloud`, `desktop-rust-disk-images`). Naming a
+check (positionally or via `--check`) implicitly includes slow checks (`includeSlow = len(checkNames) > 0`); group/app
+selectors don't.
 
 **Fast lane (`--fast`):** `IsFast: true` marks the curated pre-commit check set: ~28 checks that finish in roughly 10s
 on a warm cache, intended to run before every commit. It's an editorial pick, not a timing-derived list (see Key

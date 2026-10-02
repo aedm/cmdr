@@ -472,8 +472,8 @@ Function key bar → `functietoetsbalk`, one name for the setting, the menu item
 
 ## Het Dock-menu van Cmdr zelf (`menu.dock.*`)
 
-`Dock.app` `DockMenus.strings` is the Tier 1 source: `Open Cmdr` (Dock's `Open`), Finder's `Ga naar map…` (distinct from
-`menu.go.goToPath` `Ga naar pad…`), `Verbind met server…`, and `Zoek bestanden…` equal to `menu.edit.searchFiles`.
+`Dock.app` `DockMenus.strings` is the Tier 1 source: `Open Cmdr` (Dock's `Open`), Finder's `Ga naar map…`,
+`Verbind met server…`, and `Zoek bestanden…` equal to `menu.edit.searchFiles`.
 
 ## Het ‘Toon in Finder’-aanbod en de melding bij de eerste keer (`main.revealNudge.*`, `main.revealActivation.*`, `settings.behavior.reveal*`)
 
@@ -562,12 +562,14 @@ In progress → `wordt losgekoppeld`; already gone → `werd losgekoppeld` (the 
 - `Deze map staat al in je favorieten`; `favoritesCantAddHere` gives the reason after a colon with `werken op`, and
   "mounted share" → `gekoppelde netwerkshare` over macOS's `activeren`, which the catalog never uses.
 
-## Wie de schijf vasthoudt: de zes geweigerde-uitwerpzinnen (`errors.eject.unmountRefusedBy*`, `.otherApps`)
+## Wie de schijf vasthoudt: de zes geweigerde-uitwerpzinnen (`errors.eject.unmountRefusedBy*`, `.otherApps`, `.otherProcesses`)
 
-- One verb for the family: `{app} gebruikt deze schijf nog` / `{apps} gebruiken …`, the name first and without an
-  article (a process name is a proper noun).
-- ❌ No pronoun back to `{app}`: `Sluit alles wat daar openstaat`.
-- `andere apps`, never `programma's`; `Intl.ListFormat('nl')` supplies the list conjunctions.
+- One skeleton for the family: `X heeft daar nog bestanden open.` + `… en probeer het daarna opnieuw.` Either wrapper
+  may concern a share or a phone, so `daar`, never `deze schijf` or `werp hem uit`. The name leads without an article (a
+  process name is a proper noun).
+- ❌ No pronoun back to `{app}`: `Sluit ze` points at `bestanden`. The aside keeps Cmdr as subject
+  (`Cmdr heeft geen appnaam`), never `We`.
+- `andere apps` (never `programma's`), `nog andere` (`andere processen` reads as a name); `Intl.ListFormat` joins.
 - Disk image → `schijfkopie`, repeated as a noun since `schijf` is also a de-word.
 - `staat nog open` (tentative) keeps EN's everyday "open" over the technical `gekoppeld`.
 - `Wacht een minuutje` (macOS) vs `Wacht even` (Cmdr), as EN distinguishes.

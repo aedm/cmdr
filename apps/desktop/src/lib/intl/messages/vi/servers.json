@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, other {{countText} máy chủ tìm thấy ở gần}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "Việc tìm máy chủ trên mạng cục bộ đang tắt.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -170,6 +174,10 @@
   "servers.refusal.unreachable": "Cmdr không kết nối được tới {host}.",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "Nếu máy chủ đang bật, hãy kiểm tra xem Cmdr có được phép trong {localNetwork} không.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr chưa tin cậy khóa của {host}.",
   "@servers.refusal.hostKeyUntrusted": {
@@ -451,6 +459,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr không kết nối được tới {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "Trở lại",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -463,9 +475,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Khóa của máy chủ đã thay đổi. Có thể máy chủ đã được cài đặt lại, hoặc có gì đó đang nằm giữa bạn và máy chủ. Hãy ngắt kết nối, rồi mở lại để kiểm tra dấu vân tay.",
+  "servers.paneState.hostKeyChangedHint": "Khóa của máy chủ đã thay đổi. Có thể máy chủ đã được cài đặt lại, hoặc có gì đó đang nằm giữa bạn và máy chủ. Hãy kiểm tra khóa mới trước khi kết nối lại.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "Kiểm tra khóa",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "Đang kết nối lại tới {name}…",
   "@servers.paneState.reconnecting": {

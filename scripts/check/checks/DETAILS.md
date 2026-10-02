@@ -874,6 +874,18 @@ run `pnpm check bundle-size` against a fresh build. A missing baseline is create
 warning in CI. The same exemption covers `desktop-bundle-size`; the reasoning is in
 `.claude/rules/file-length-allowlist.md`.
 
+## Website CSP connect-src
+
+`website-csp-connect-src` (`IsFast`, no build) reads the one `Content-Security-Policy` in
+`apps/website/nginx-security-headers.conf` and walks `apps/website/src` and `public` (minus the dev-only `src/dev/` and
+the build-time-only `src/build/`) for `fetch`, `sendBeacon`, `EventSource`, and `WebSocket` calls. Each target resolves
+to an origin from a literal URL, or from a template or identifier naming a same-file `const X = 'https://…'`; a target
+it can't resolve fails the check, so every call site stays readable to it. Every origin must pass `connect-src`
+(`'self'`, exact origins, and `https://*.host` wildcards). **Why**: the browser blocks a disallowed request before it
+leaves the page, the caller sees a generic network failure, and dev serves no CSP, so the blog's like button and the
+`?r=` lookup were both dead in production for months with nothing failing anywhere. Violations it can't see (third-party
+scripts) reach Discord through `/csp-report` (`apps/api-server/src/website/DETAILS.md` § CSP reports).
+
 ## Allowlist shrink-wrap
 
 Checks that own an allowlist verify their own entries are still needed; the helpers live in `allowlist.go` and
@@ -1032,11 +1044,12 @@ Who stays out, and why it's not an oversight:
   is compiled by the test lane and linted by nothing.
   `cargo clippy --workspace --all-targets --features cmdr/virtual-mtp` passes clean today, so closing that is available
   whenever someone wants it.)
-- **`desktop-rust-tests-linux`** builds in its container's own `CARGO_TARGET_DIR`, and deliberately omits the feature:
-  that lane is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't
-  differ by platform.
-- **`desktop-rust-rustdoc`** owns a private target dir. **`desktop-rust-cargo-udeps`** runs on the pinned nightly, whose
-  artifacts can't be shared with stable anyway.
+- **`desktop-rust-tests-linux`** builds on its per-worktree Docker volume, and deliberately omits the feature: that lane
+  is already tight against the 8 s per-test cap on a slower VM, and MTP's virtual-device coverage doesn't differ by
+  platform.
+- **`desktop-rust-rustdoc`** and **`desktop-rust-clippy-mimalloc`** own private target dirs (the latter because its
+  `cmdr-fs` feature flip would rebuild every workspace crate above it twice per run). **`desktop-rust-cargo-udeps`**
+  runs on the pinned nightly, whose artifacts can't be shared with stable anyway.
 
 ### Why the feature set is `virtual-mtp`
 
@@ -1229,9 +1242,9 @@ belongs to nobody's branch either.)
 ### The Docker lane re-runs inside its own container
 
 `desktop-rust-tests-linux` starts its container **detached** (PID 1 is a bounded `sleep`) and execs each phase into it:
-provision, test run, then any contention re-run. That's the whole reason for the detached shape. A re-run in a fresh
-`docker run` would re-provision and recompile the workspace from a cold `CARGO_TARGET_DIR`, costing tens of minutes and
-making the mechanism unaffordable; execing back into the live container costs seconds.
+the test run, then any contention re-run. That's the whole reason for the detached shape: the re-run lands in the same
+container, with the same toolchain and the same build state, so it costs seconds. The image and the build cache are
+shared with `clippy-linux` (§ "The Linux Docker lanes share an image and a build cache").
 
 - **The container is removed on every exit path** (deferred `docker rm -f`, bounded by `dockerControlTimeout`). The
   `sleep` cap (`containerKeepAlive`, 4 h) exists only for the case where the check runner is hard-killed and never runs
@@ -1350,7 +1363,8 @@ That's every compiling lane, including the ones named for macOS: CI's "Desktop (
 
 **Gotcha: the Docker lane computes its selection for `linux`, not for the host.** `desktop-rust-tests-linux` runs cargo
 inside a container from a Mac, so `HostCargoSelectionArgs` would answer for the wrong OS.
-`TestProvisionScriptSelectsForTheContainerNotTheHost` pins it.
+`TestTheContainerRunSelectsForTheContainerNotTheHost` pins it for the tests lane, `TestLinuxClippyAsksCIsQuestion` for
+`desktop-rust-clippy-linux`.
 
 Feature specs are package-qualified (`cmdr/virtual-mtp`). A bare `--features virtual-mtp` changes meaning once more than
 one package is selected.
@@ -1376,6 +1390,74 @@ for reading its output:
   `go run .`, and killing the wrapper orphans the whole tree of Playwright, Docker, and cargo children, which then keep
   competing with whatever you start next. Kill `go-build.*/check` and `go run \. --include-slow`, then confirm with `ps`
   before drawing conclusions from the next run.
+
+## The Linux Docker lanes share an image and a build cache
+
+`desktop-rust-clippy-linux` and `desktop-rust-tests-linux` answer CI's two Linux questions (clippy, then the suite) from
+a Mac. Both run from one image and build into one per-worktree volume (`desktop-rust-linux-container.go`), so a warm run
+compiles only what changed. Order: `clippy` → `clippy-linux` → `rust-tests-linux`.
+
+- **The image is the provisioning**: `cmdr-rust-linux:<sha256[0..12]>` of the rendered Dockerfile plus
+  `rust-toolchain.toml`, built on a miss and the older tags pruned (the E2E lane's `cmdr-e2e-base:<hash>` pattern). It
+  carries the GTK/WebKit dev libraries, the `.mise.toml` Go, the pinned nextest, and the pinned toolchain's components
+  and targets. The base is `rust:<channel>` from `rust-toolchain.toml`, so the container compiles with exactly the
+  repo's toolchain; over `rust:latest`, rustup re-synced it on every cold container. Cold build: 38 s (2026-09-30).
+- **The target volume is per checkout**: `cmdr-rust-linux-target-<checkout key>-<channel>`, the key being the E2E
+  script's `CHECKOUT_KEY` (`TestCheckoutCacheKeyMatchesTheE2ELinuxScript` runs the script's own lines against the Go
+  copy). Per checkout because the repo bind mount is what the artifacts belong to: two checkouts sharing one would have
+  cargo compare this tree's mtimes against another tree's rlibs (`apps/desktop/test/e2e-linux/DETAILS.md` has the
+  failure). The channel is in the name because cargo keys artifacts by rustc: a toolchain bump starts a fresh volume and
+  drops this checkout's old one.
+- **Cleanup rides the E2E lane's labels** (`com.cmdr.e2e-linux-cache=1`, `com.cmdr.e2e-linux-checkout=<abs path>`,
+  applied at `docker volume create`, which must precede any `docker run -v`). `remove-worktree.sh` removes every volume
+  labelled with the worktree's path, and `e2e-linux.sh`'s reaper removes any whose checkout is gone. Nothing prunes a
+  LIVE checkout's volume, which is what keeps the main clone's safe: it carries the same two labels, valued with the
+  main clone's path.
+- **The main clone owns one volume, and worktrees hand it on** (`scripts/check/linux-cache/handoff.go`, run by the hooks
+  in `scripts/worktree-hooks/CLAUDE.md`, with the names, labels, and stale sweep exported from
+  `desktop-rust-linux-container.go`). A new worktree is SEEDED with a copy of the main clone's volume for its channel
+  (none there: it builds cold). A seed makes every third-party crate fresh, but the workspace crates still recheck:
+  cargo judges a path crate by source mtime, and a new checkout's files are all newer than the seeded fingerprints
+  (numbers: `scripts/worktree-hooks/DETAILS.md` § "What seeding buys, measured"). So a seeded first run is roughly half
+  a cold one, not the ~1 s of a warm no-change run. A worktree torn down after merging PROMOTES its volume into the main
+  clone's, since after the fast-forward its tree is the main clone's tree; "merged" is its HEAD being an ancestor of the
+  main clone's, with no uncommitted tracked changes. A promotion also drops the main clone's volumes of other channels.
+  Both directions copy, so the source keeps its volume until its own reaper takes it.
+- **A handoff is a btrfs reflink, swapped in whole**: one container mounts both volumes, takes every cargo lock on both
+  sides with `flock -n` (busy means a build is running: skip, keep the old cache), clones into `/to/.incoming` with
+  `cp --reflink=always`, then swaps each top-level entry in with `mv --exchange` (`renameat2`), so no path ever holds a
+  half-copied tree. 15 GB and 24,500 files clone in 0.4 s and cost 12 MB of new disk (OrbStack's `/dev/vdb1` is btrfs
+  with `nodatacow`, and reflinks still work; verified 2026-09-30); a whole seed or promotion is ~1 s. `docker system df`
+  counts each volume's apparent size, so it double-counts shared extents: `df` inside a container is the honest number.
+- **The accepted race**: a cargo that starts during the sub-second swap waits on the OLD lock file, then builds into the
+  new tree alongside any cargo that took the new one. Two worktrees promoting back to back are fine: the later one wins,
+  which is the fresher cache.
+- **`CARGO_HOME` is one machine-wide volume** (`cmdr-rust-linux-cargo-home`, unlabelled, ~0.65 GB), mounted WHOLE:
+  cargo's package-cache lock lives in `CARGO_HOME` itself, so a shared `registry/` alone would let two containers unpack
+  one crate at once.
+- **Concurrency is cargo's**: the volume sits in one VM kernel, so `flock` holds across containers. Verified 2026-09-30
+  with two concurrent `cargo clippy` containers on one volume: the second printed
+  `Blocking waiting for file lock on package cache`, then `… on build directory`, then found everything fresh. Within a
+  run, `DependsOn` keeps the two lanes apart, which is why neither declares an `Exclusive` resource.
+- **Size**: ~18.6 GB after one clippy plus one test build (about 8 GB `incremental/`, 8 GB `deps/`; the workspace dev
+  profile is already `line-tables-only`). Per worktree, reaped at teardown. `CARGO_INCREMENTAL=0` would roughly halve it
+  at the cost of slower one-file rebuilds; unmeasured.
+- **A lint failure reads as clippy's**: its own check, message `clippy found issues on Linux`, with cargo's progress
+  lines stripped (`trimCargoProgress`) so the `--> file:line:col` diagnostic is what shows. It never runs `--fix`: host
+  `clippy` already fixed what the two targets share.
+
+**Gotcha: a worktree whose `resources/ai/` only the container ever prepared rebuilds `cmdr` on every run.** `build.rs`
+watches `resources/ai/.version`, and `download-llama-server.go` on Linux writes only a 0-byte `llama-server`
+placeholder, no marker, so cargo sees a missing watched file and reruns the build script (~30 s of clippy per run). A
+normal run never hits it, because host `clippy` runs the script on the Mac first and populates the real files. Running
+the Linux lanes by name in a fresh worktree does; `cd apps/desktop && go run scripts/download-llama-server.go` fixes it.
+
+Timings, 2026-09-30, OrbStack on 16 cores, host load 5–13 (shared machine):
+
+- **Cold** (fresh volumes): clippy 2m7s including the image build, tests 3m28s. The lane's September median before the
+  cache was 335 s per run, p90 650 s.
+- **Warm, no change**: clippy ~1 s, tests ~40 s (the suite itself).
+- **Warm, one `cmdr-fs` file touched**: clippy 32 s (12 crates), tests 1m50s.
 
 ## Rust module cycles
 
@@ -1796,51 +1878,57 @@ notices file.
 
 Checks by app and tech:
 
-- **Desktop / Rust**: rustfmt, clippy, rustdoc (`cargo doc --all-features --document-private-items` over every
-  first-party member, with every doc lint in `rustdocDeniedLints` denied and any leftover warning failing the check too;
-  the vendored fork is skipped because `--all-features` turns on two mutually exclusive arms there), cargo-audit,
-  cargo-deny, cargo-machete, cargo-udeps (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro,
-  macos-availability (no call to a selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"),
-  macos-framework-floor (no framework in the BUILT binary's load commands newer than that same floor, which is the half
-  no runtime gate can save; § "macOS framework floor"), sqlite-open-direct (every SQLite connection opens through
-  `crate::sqlite_util`, so the process-wide shared page cache is always installed before SQLite initializes),
-  error-string-match, write-ops-isolation (the write engine may not name the `agent` module: an approved operation is an
-  ordinary operation, and an engine that can see the agent grows a second execution path; per-source outcomes reach a
-  caller through the injected `OperationEventSink` instead), lock-poison (two lanes: an error-level one for an
-  acquisition that records no poison-handling choice, and a warn-only one for a failure that's silently discarded, on a
-  per-file ratchet), test-sleep (flags a fixed `thread::sleep` / `tokio::time::sleep` in test code, where a
-  condition-based `wait_until` belongs; opt out a genuine sleep-is-the-subject site with
-  `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on `std::env::temp_dir()`, where every
-  process on the machine shares the path and two suite runs delete each other's live fixtures; the sanctioned fixture is
-  `crate::test_support::TestDir`, and a site where the temp root is load bearing opts out with
-  `// allowed-fixed-temp-dir: <reason>`), no-hand-rolled-fixture (bans a struct literal of `CachedScanResult` /
-  `SourceHint` / `VolumePreflight` / `WrittenFile` in test code, so a fixture can only be one of the shapes a named
-  constructor actually builds; it ships with ZERO findings on purpose and is a regression fence rather than a finder —
-  the shapes are already clean, and the point is that the next test author can't undo that by copy-pasting an old
-  literal), derive-default-justified (every `#[derive(..., Default, ...)]` under `file_system/` and `cmdr-fs` carries a
-  `// DEFAULT-OK: <why>` line, because a zero value on a fact-carrying type isn't "no information", it's a claim about
-  the disk that nobody made), probe-unwrap-justified (flags `\.is_directory(…).await.unwrap_or(…)` in production
-  `file_system/` code, where a probe that COULDN'T answer gets collapsed into a confident "no" and picks the branch that
-  deletes; opt out with `// allowed-probe-unwrap: <why the guess is truthful>`), discarded-outcome (a function that
-  returns NOTHING while dropping a typed answer from the free function it delegates to; three of these shipped before it
-  existed, and each ended as an IPC command or MCP tool inventing a success. `Result` and `Option` returns are
-  deliberately out of scope: `Result` is `#[must_use]`, so the compiler already warns, and an `Option` discard is the
-  map/set idiom. That leaves exactly the gap the compiler can't see, a bare `bool` or a named outcome type. Every
-  ambiguity resolves to "don't flag" — an unresolvable name, two definitions disagreeing on their return type, a method
-  call — because a check people learn to ignore is worse than none. Opt out with
-  `// allowed-discarded-outcome: <why nobody above needs the answer>`), mtp-dropping-timeout, mtp-no-transport-reset,
-  bindings-fresh, ipc-enum-camelcase, the five `<provider>-smoke` lanes (CI-only: one `--lib` module each against a live
-  provider, self-skipping without its key; `gemini-smoke` additionally has a warn-level "inconclusive" outcome — see §
-  "Decision: a smoke lane has a THIRD outcome"), shipped-locales-fresh (regenerate-and-diff
-  `intl/shipped_locales.gen.rs` from the message-catalog dirs, so the locale resolver's CLDR script table can't go stale
-  and leave a new locale both unreachable and unguarded), module-cycles (slow, warn-only; strongly-connected module
-  components per crate with parent-child hubs collapsed, on a per-home ratchet, behind a pinned `cargo-modules` that a
-  mismatched box skips rather than mis-measures — see § "Rust module cycles"), fixture-lane-coverage (a Docker-gated
-  cell in the app crate whose name the integration lane's filter won't select never runs anywhere, so it's a finding;
-  one cell lived its whole life that way, and it was the sole caller of the crate extraction's one sanctioned
-  public-surface widening — see § "Fixture lane coverage"), tests, integration-tests (Docker network fixtures),
-  disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+ disk images, see § "The
-  disk-image lane"), tests-linux (slow)
+- **Desktop / Rust**: rustfmt, clippy, clippy-mimalloc (slow, macOS only, not in CI; clippy with `cmdr/mimalloc` in a
+  private target dir, so the global-allocator path macOS doesn't ship can't rot), rustdoc
+  (`cargo doc --all-features --document-private-items` over every first-party member, with every doc lint in
+  `rustdocDeniedLints` denied and any leftover warning failing the check too; the vendored fork is skipped because
+  `--all-features` turns on two mutually exclusive arms there), cargo-audit, cargo-deny, cargo-machete, cargo-udeps
+  (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a
+  selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework
+  in the BUILT binary's load commands newer than that same floor, which is the half no runtime gate can save; § "macOS
+  framework floor"), sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide
+  shared page cache is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write
+  engine may not name the `agent` module: an approved operation is an ordinary operation, and an engine that can see the
+  agent grows a second execution path; per-source outcomes reach a caller through the injected `OperationEventSink`
+  instead), lock-poison (two lanes: an error-level one for an acquisition that records no poison-handling choice, and a
+  warn-only one for a failure that's silently discarded, on a per-file ratchet), test-sleep (flags a fixed
+  `thread::sleep` / `tokio::time::sleep` in test code, where a condition-based `wait_until` belongs; opt out a genuine
+  sleep-is-the-subject site with `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on
+  `std::env::temp_dir()`, where every process on the machine shares the path and two suite runs delete each other's live
+  fixtures; the sanctioned fixture is `crate::test_support::TestDir`, and a site where the temp root is load bearing
+  opts out with `// allowed-fixed-temp-dir: <reason>`), no-hand-rolled-fixture (bans a struct literal of
+  `CachedScanResult` / `SourceHint` / `VolumePreflight` / `WrittenFile` in test code, so a fixture can only be one of
+  the shapes a named constructor actually builds; it ships with ZERO findings on purpose and is a regression fence
+  rather than a finder — the shapes are already clean, and the point is that the next test author can't undo that by
+  copy-pasting an old literal), derive-default-justified (every `#[derive(..., Default, ...)]` under `file_system/`,
+  `cmdr-fs`, and the IPC twins of `cmdr-fs` file types listed in `deriveDefaultTrees` carries a `// DEFAULT-OK: <why>`
+  line, because a zero value on a fact-carrying type isn't "no information", it's a claim about the disk that nobody
+  made), probe-unwrap-justified (flags `\.is_directory(…).await.unwrap_or(…)` in production `file_system/` code, where a
+  probe that COULDN'T answer gets collapsed into a confident "no" and picks the branch that deletes; opt out with
+  `// allowed-probe-unwrap: <why the guess is truthful>`), discarded-outcome (a function that returns NOTHING while
+  dropping a typed answer from the free function it delegates to; three of these shipped before it existed, and each
+  ended as an IPC command or MCP tool inventing a success. `Result` and `Option` returns are deliberately out of scope:
+  `Result` is `#[must_use]`, so the compiler already warns, and an `Option` discard is the map/set idiom. That leaves
+  exactly the gap the compiler can't see, a bare `bool` or a named outcome type. Every ambiguity resolves to "don't
+  flag" — an unresolvable name, two definitions disagreeing on their return type, a method call — because a check people
+  learn to ignore is worse than none. Opt out with `// allowed-discarded-outcome: <why nobody above needs the answer>`),
+  mtp-dropping-timeout, mtp-no-transport-reset, bindings-fresh, ipc-enum-camelcase, vendor-patch-applied (every
+  `[patch.crates-io]` path entry in the root `Cargo.toml` still resolves to that path in `Cargo.lock`: a bump past the
+  vendored version makes cargo resolve crates.io again and park the patch under `[[patch.unused]]` with one warning;
+  `docs/notes/mdns-sd-multicast-join-retry-loop.md`), the five `<provider>-smoke` lanes (CI-only: one `--lib` module
+  each against a live provider, self-skipping without its key; `gemini-smoke` additionally has a warn-level
+  "inconclusive" outcome — see § "Decision: a smoke lane has a THIRD outcome"), shipped-locales-fresh
+  (regenerate-and-diff `intl/shipped_locales.gen.rs` from the message-catalog dirs, so the locale resolver's CLDR script
+  table can't go stale and leave a new locale both unreachable and unguarded), module-cycles (slow, warn-only;
+  strongly-connected module components per crate with parent-child hubs collapsed, on a per-home ratchet, behind a
+  pinned `cargo-modules` that a mismatched box skips rather than mis-measures — see § "Rust module cycles"),
+  fixture-lane-coverage (a Docker-gated cell in the app crate whose name the integration lane's filter won't select
+  never runs anywhere, so it's a finding; one cell lived its whole life that way, and it was the sole caller of the
+  crate extraction's one sanctioned public-surface widening — see § "Fixture lane coverage"), tests, integration-tests
+  (Docker network fixtures), disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+
+  disk images, see § "The disk-image lane"), clippy-linux (slow, not in CI; CI's clippy command against the Linux
+  target, run from a Mac in Docker), tests-linux (slow; both in § "The Linux Docker lanes share an image and a build
+  cache")
 
 Four of those scanners share one region tracker, `rustTestModState` / `advanceTestModRegion`
 (`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test
@@ -1971,8 +2059,8 @@ doubles as production code.
 ## The single source for the Go version
 
 `.mise.toml`'s `go` entry is the only place the repo names a Go toolchain. Renovate bumps it weekly, every CI job runs
-`mise install`, and `MiseGoVersion(rootDir)` (in `go-version-single-source.go`) is how code reads it. The Linux Rust
-test container provisions from that call, so its Go can't drift from the host's.
+`mise install`, and `MiseGoVersion(rootDir)` (in `go-version-single-source.go`) is how code reads it. The Linux Docker
+lanes' image provisions from that call, so its Go can't drift from the host's.
 
 It used to drift. `desktop-rust-tests-linux.go` carried `const goVersion = "1.25.7"` under a comment saying it must
 match `.mise.toml`, nothing enforced that, and a Renovate bump to 1.27 left the container two minors behind, testing
@@ -2027,9 +2115,10 @@ the check could not be green in both places at once, and wasn't from the day it 
 the file instead of leaving the choice to the host. The checksums cargo-about wants alongside a pin don't guard
 themselves: a stale one yields a warning, exit code 0, and a silent fall back to scanning, which is the exact behavior
 being removed. So `verifyClarifications` compares each pinned crate's resolved `source_path` against the pin and fails
-when they differ, naming the `shasum` command that fixes it. Every text also carries its `Text from:` file into the
-generated notices, so the next crate to develop this ambiguity surfaces as a diff line naming a file rather than as a
-license count that moved for no visible reason.
+when they differ, naming the `shasum` command that fixes it. A pinned crate absent from the shipped graph is skipped,
+not failed: the default macOS build runs on the system allocator and ships no `libmimalloc-sys`, and its pin stays for a
+build that does. Every text also carries its `Text from:` file into the generated notices, so the next crate to develop
+this ambiguity surfaces as a diff line naming a file rather than as a license count that moved for no visible reason.
 
 **Gotcha**: a clarification REPLACES the crate's declared license expression, so `crateClarification.license` repeats
 that expression verbatim (`miniz_oxide` is `MIT OR Zlib OR Apache-2.0`, not the single `MIT` whose text is pinned).
@@ -2368,13 +2457,7 @@ toolchain, then execs the x86 nextest binary and OrbStack crashes with
 `Dynamic loader not found: /lib64/ld-linux-x86-64.so.2`. The fix is `dpkg --print-architecture` → `linux` for amd64 and
 `linux-arm` for arm64, matching the Go tarball selection.
 
-**Decision**: silence apt/dpkg at the source, not via a post-hoc denylist. **Why**: `provisionScript` redirects both apt
-commands to a log file under `DEBIAN_FRONTEND=noninteractive` + `-qq`, so on a successful provision the check's stdout
-gets zero apt lines. The log lives on a per-run host directory (`/tmp/cmdr-rust-tests-linux-<unix-ts>/provision.log`)
-bind-mounted into the container at `/cmdr-logs`, so it survives the container's `--rm` and is discoverable from the
-check's Success/failure message. On apt failure, the script dumps the full log to stderr (captured by Go) so the user
-sees what went wrong without having to fish for the file. Redirection at source is bulletproof and zero-maint vs a
-denylist treadmill: every Debian version adds new dpkg verbs (`Setting up`, `Unpacking`, `Processing triggers`, …),
-continuation lines from multi-line apt prompts have no stable shape, and `apt-get -qq` alone doesn't propagate to dpkg's
-per-package chatter. `trimBuildNoise` now only cuts everything before the last `Compiling …` line; when no such line
-exists (provisioning died before cargo ran), the output is returned verbatim.
+**Decision**: apt/dpkg output never reaches a Linux lane's result. **Why**: provisioning happens in `docker build`,
+whose output is captured whole and shown only when the build fails, so there's no denylist treadmill (every Debian
+version adds new dpkg verbs, and multi-line apt prompts have no stable shape). `trimBuildNoise` only cuts everything
+before the last `Compiling …` line; when no such line exists, the output is returned verbatim.

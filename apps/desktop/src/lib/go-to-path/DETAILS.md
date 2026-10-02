@@ -28,7 +28,8 @@ focused pane):
 - `directory` → `navigateToDirInPane`. Cursor lands on row 0 (`..`) via normal navigation.
 - `file` → `navigateToFileInPane`: navigate to the parent, select the file. We do NOT open it.
 - `nearestAncestor` → `navigateToDirInPane(ancestorDir)` + an INFO toast.
-- `invalid` → no-op (empty/unresolvable input; the dialog gates this anyway by disabling "Go to path" on an empty box).
+- `invalid` → no-op (empty/unresolvable input; the dialog gates this anyway by disabling its "Go" button on an empty
+  box).
 
 On any successful jump (directory/file/ancestor) the RESOLVED target is recorded into recents, never the raw input.
 
@@ -74,7 +75,7 @@ actual jump (one source of truth, no drift).
 
 A command with a native menu accelerator AND a `command-registry` shortcut fires both paths on macOS. The
 `showGoToPathDialog` callback in `+page.svelte` guards with `if (show && showGoToPathDialog) return`, so a double-fire
-opens the dialog exactly once. The native `Go to path…` menu item carries ⌘G as an accelerator, so this guard is what
+opens the dialog exactly once. The native `Go to folder…` menu item carries ⌘G as an accelerator, so this guard is what
 keeps a single ⌘G press from opening the dialog twice.
 
 ## Manual smoke checklist

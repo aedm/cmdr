@@ -116,9 +116,9 @@
   "@commands.searchOpen.label": {
     "sourceHash": "179fed8"
   },
-  "commands.navGoToPath.label": "Đi tới đường dẫn…",
+  "commands.navGoToPath.label": "Đi tới thư mục…",
   "@commands.navGoToPath.label": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "commands.navGoToPath.description": "Đưa khung đang chọn đến một đường dẫn được gõ, dán, hoặc gần đây.",
   "@commands.navGoToPath.description": {
@@ -486,7 +486,7 @@
   },
   "commands.fileCopyCurrentDirectoryPath.label": "Sao chép đường dẫn thư mục hiện tại",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Sao chép tên tệp",
   "@commands.fileCopyFilename.label": {

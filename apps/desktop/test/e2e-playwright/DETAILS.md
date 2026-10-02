@@ -117,14 +117,14 @@ pnpm test:e2e:playwright:build
 # this app and nothing else. `wait` keeps the terminal attached to the app's
 # output exactly as a foreground launch would.
 CMDR_E2E_MODE=1 CMDR_DATA_DIR=/tmp/cmdr-e2e-data CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures \
-    CMDR_MCP_ENABLED=true CMDR_MCP_PORT=18473 /path/to/target/.../release/Cmdr &
+    CMDR_MCP_ENABLED=true CMDR_MCP_PORT=27614 /path/to/target/.../release/Cmdr &
 echo $! > /tmp/cmdr-e2e-app.pid && wait
 
 # Run the tests (app must be running with socket at /tmp/tauri-playwright.sock).
 # Chain the `kill` so the manually-launched app is torn down when the run
 # finishes — tauri-playwright doesn't manage app lifecycle (it just talks to the
 # socket), so without this you leak a Cmdr process every run.
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 ```
 
@@ -157,11 +157,11 @@ form swallows the following positional and the run dies with `Project(s) "<spec-
 cd apps/desktop
 
 # By file path
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     test/e2e-playwright/brief-cursor-visibility.spec.ts ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 
 # By test-name substring (matches `test('...')` and `describe('...')` titles)
-CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=18473 pnpm test:e2e:playwright \
+CMDR_E2E_START_PATH=/tmp/cmdr-e2e-fixtures CMDR_MCP_PORT=27614 pnpm test:e2e:playwright \
     --grep "cursor stays in view" ; kill "$(cat /tmp/cmdr-e2e-app.pid)"
 ```
 
@@ -505,7 +505,7 @@ the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnec
 ## Transfer-dialog counters + programmatic drop entry
 
 **`expectDialogCounters(tauriPage, { bytes?, files, dirs, allowSkipped? })`** (helpers.ts) asserts the transfer dialog's
-counter line ("3.19 KB / 1 file / 0 dirs") race-free. It polls the `data-scan-state` attribute on the dialog's
+counter line ("3.19 KB / 1 file / 0 folders") race-free. It polls the `data-scan-state` attribute on the dialog's
 `.scan-stats` element to a terminal state (`done`, or `done`/`skipped` when `allowSkipped` is set) BEFORE reading, so an
 assertion never fires mid-scan. Call it right after `waitForSelector(TRANSFER_DIALOG, …)` and after any Copy/Move toggle
 (the toggle restarts the scan; the poll re-synchronises). `files` / `dirs` are exact RECURSIVE totals; `bytes` is the
@@ -1003,7 +1003,8 @@ onboarding dialog is open") and the panes never see a keystroke. A stale selecto
 standing once and cost 84 of 348 tests on three consecutive CI runs, the failures spread across 20 unrelated specs and
 reading as keyboard and MTP regressions. So `breakTheCascade` walks the wizard out first: tick the terms gate, press the
 footer's forward button, repeat until it unmounts. The spec that opened it still owes a `closeOnboardingWizardIfOpen` in
-a `finally`; this is the backstop.
+a `finally`; this is the backstop. A spec that inspects the wizard's checklist matches rows by `data-checklist-item`
+(`accessibility.spec.ts`), never by label: the labels are translated copy and move with every wording edit.
 
 So when the Escape rounds leave an overlay standing, `breakTheCascade` in `fixtures.ts` cancels every operation the
 dialog could be waiting on (the same drain `operation-queue.spec.ts` documents: cancel, then poll `list_operations`
@@ -1153,6 +1154,13 @@ Toasts auto-dismiss after 4 seconds if `dismissal: 'transient'` (the default), o
   enough for a background event to fire needs the same end-of-test sweep.
 
 ## Gotchas
+
+**Gotcha**: a raw `window.__TAURI_INTERNALS__.invoke('<command>', {...})` inside an `evaluate()` string is invisible to
+tsc, so a parameter the Rust command gains or renames reaches the suite only as a red run (`missing required key …`),
+and only on the platform that runs the spec. **Why**: the typed `commands.*` wrappers in `src/lib/ipc/bindings.ts` live
+in the webview bundle, out of a spec's reach, and nothing compares a spec's argument keys against them. When a command
+changes, grep the suite for its snake_case name. Keep one command's raw calls behind one spec-local function and type
+the VALUES from the generated bindings (`import type`), as `listSharesOverIpc` in `smb.spec.ts` does.
 
 **Gotcha**: selecting a volume reopens the folder last used on it, so a bare `mcpSelectVolume` lands wherever an EARLIER
 test left that volume. **Why**: `determineNavigationPath` restores the remembered path when the volume says it still

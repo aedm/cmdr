@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Valami ezen a Macen megakadályozza, hogy a Cmdr közvetlenül kapcsolódjon ehhez: {server}, ezért ez a megosztás a rendszerkapcsolaton marad. Próbáld ki- és bekapcsolni a Cmdrt itt: {localNetwork}, vagy nézd meg a tűzfal-alkalmazásodat.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Beállítások megnyitása: {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} túl sokáig nem válaszolt, ezért ez a megosztás a rendszerkapcsolaton marad.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -625,6 +633,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "A Cmdr még mindig vár erre a mappára",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Nem válaszol a szerver vagy a meghajtó, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "Nem válaszol a szerver, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Nem válaszol a meghajtó, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Próbáld újra",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Vissza",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{countText} {count, plural, one {elem} other {elem}} másolva",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -780,6 +812,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Ha fájlokat szeretnél kimásolni egy git-pillanatképből, használd az F5-öt másoláshoz vagy az F6-ot áthelyezéshez.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "„{fileName}” nagyobb {limit} méretnél, ezért a Cmdr nem tudja megnyitni az archívumból ezzel: {appName}.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "„{fileName}” nagyobb {limit} méretnél, ezért a Cmdr nem tudja megnyitni a repó előzményeiből ezzel: {appName}.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "„{fileName}” egy jelszóval védett archívumban van. Előbb másold egy mappába (a Cmdr majd elkéri a jelszót), aztán nyisd meg ezzel: {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "„{fileName}” kicsomagolása az archívumból nem sikerült, így nem nyitható meg ezzel: {appName}. Lehet, hogy az archívum sérült, vagy olyan formátumú, amelyet a Cmdr nem tud elolvasni.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "„{fileName}” beolvasása nem sikerült, így nem nyitható meg ezzel: {appName}. Ellenőrizd, hogy a fájlt tároló meghajtó még csatlakozik, aztán próbáld újra.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "A fájl eltűnt a nézetből, mert a rejtett fájlok nem jelennek meg.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1408,9 +1460,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Nem választható le, amíg ezen a szerveren műveletek vannak folyamatban",
+  "fileExplorer.navigation.disconnectBusyTooltip": "A Cmdr még fájlokkal dolgozik ezen a szerveren. Válaszd le, amint ez befejeződik.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} mostantól ott van a kötetválasztódban.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1422,7 +1474,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "A Cmdr nem tudta megváltoztatni, hogy {name} hol jelenjen meg.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "A Cmdr nem tudta leválasztani ezt: {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1468,9 +1520,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Nem adható ki, amíg ezen az eszközön műveletek vannak folyamatban",
+  "fileExplorer.navigation.ejectBusyTooltip": "A Cmdr még fájlokkal dolgozik ezen az eszközön. Add ki, amint ez befejeződik.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "{name} kiadása folyamatban…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

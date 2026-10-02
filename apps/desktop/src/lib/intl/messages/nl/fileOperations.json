@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Verwijder",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> wordt geschreven. De bron is <ondisk></ondisk> op schijf – het verschil zijn hardlink-bestanden, die niet gekoppeld kunnen blijven tussen schijven.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -304,6 +304,10 @@
   "fileOperations.transferDialog.scanRetry": "Probeer opnieuw",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "De telefoon of server met deze bestanden is niet meer verbonden, dus Cmdr kan daar niets van kopiëren.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "We konden niet controleren wat er al op de bestemming staat. We vragen het je bij elke botsing.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -399,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {map} other {mappen}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Controleren voor het kopiëren…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -537,9 +541,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Het doel bestaat en is een <strong>map</strong>. Je staat op het punt het te overschrijven met een <strong>bestand</strong> met dezelfde naam. De volledige inhoud van de doelmap zou worden verwijderd en vervangen door het bestand. Wat wil je doen?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Het doel bestaat en is een <strong>map</strong>. Je staat op het punt het te vervangen door een <strong>bestand</strong> met dezelfde naam. Alles in de map zou weg zijn. Wat wil je doen?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "Het doel bestaat en is een <strong>bestand</strong>. Je staat op het punt het te vervangen door een <strong>map</strong> met dezelfde naam. Het bestand zou weg zijn zodra de map zijn plaats inneemt. Wat wil je doen?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Deze namen zien er hetzelfde uit, maar de server slaat ze anders op. Met ‘Overschrijf’ vervang je het onderdeel dat er al staat.",
   "@fileOperations.transferProgress.lookAlikeHint": {

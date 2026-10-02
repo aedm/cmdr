@@ -38,6 +38,7 @@ export {
   extendFontMetrics,
   hasFontMetrics,
   onListingOpening,
+  onListingStalled,
   onListingProgress,
   onListingReadComplete,
   onListingComplete,
@@ -49,6 +50,7 @@ export {
 // Streaming-listing event payload types, from the typed-events bindings via `file-listing.ts`.
 export type {
   ListingOpeningEvent,
+  ListingStalledEvent,
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingCompleteEvent,
@@ -74,6 +76,7 @@ export {
   viewerSetupMenu,
   viewerSetWordWrap,
   viewerSetSearchInputFocused,
+  showViewerContextMenu,
   viewerReadRange,
   viewerCancelRead,
   viewerWriteRangeToFile,
@@ -136,6 +139,7 @@ export type {
   OpenInEditorError,
   OpenTerminalError,
   OpenTerminalOutcome,
+  PaneContextMenuFacts,
   TerminalApp,
   TerminalAppList,
   TextEditorApp,
@@ -228,6 +232,7 @@ export {
   getMacosMajorVersion,
   openPrivacySettings,
   openSystemSettingsUrl,
+  openLocalNetworkSettings,
   openAppearanceSettings,
 } from './storage'
 export type { Location, PathVolumeResolution, ResolveLocationResult, SpaceInfo, VolumeContextAction } from './storage'
@@ -365,6 +370,8 @@ export type {
   OperationSummary,
   ScanProgressEvent,
   ScanPreviewStartResult,
+  ScanPreviewStart,
+  ScanPreviewRefusal,
   ScanPreviewProgressEvent,
   ScanPreviewCompleteEvent,
   ScanPreviewErrorEvent,
@@ -508,10 +515,12 @@ export {
 } from './ai'
 export type { CloudAiConsentStatus } from './ai'
 
-// Appearance / system-environment (accent color, reduce-transparency, text-size, localized strings)
+// Appearance / system-environment (accent color, reduce-transparency, Liquid Glass tint, text-size, localized strings)
 export {
   getAccentColor,
   getShouldReduceTransparency,
+  getGlassTintAmount,
+  onGlassTintChanged,
   getSystemTextSizeMultiplier,
   getLocalizedSystemStrings,
   getOsLocales,
@@ -529,6 +538,7 @@ export {
   onMediaIndexFolderExclusion,
   onMediaIndexFolderChoice,
   onMenuBarRebuilt,
+  onOpenWithCopyRefused,
 } from './menu-events'
 
 // Directory-watcher events
@@ -575,6 +585,7 @@ export {
   onMcpSettingsClose,
   onViewerWordWrapToggled,
   onViewerEditAction,
+  onViewerContextMenuAction,
   onPersistRestrictedSetting,
   requestRevealPath,
   onRevealPath,

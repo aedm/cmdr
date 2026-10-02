@@ -134,6 +134,13 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   missing destination (and its ancestors) can never materialize a folder inside a source. The volume-aware pipelines
   mirror both the behavior and the order with `Volume::create_directory_all(dest)`; see `../volume/DETAILS.md`
   § "Recursive destination create".
+- **A file in the way of the destination folder is `WriteOperationError::DestinationNotAFolder { path }`**, from both
+  engines, refused before anything is written. `path` is the FILE, which is often a level or more above the folder the
+  user typed, and naming it is the variant's whole job: as `DestinationNotFound` the dialog blamed a folder Cmdr was
+  asked to create, and as an `IoError` it offered a Retry that could only meet the same file again. The volume engines
+  get it from `VolumeError::NotADirectory` (`create_directory_all`, every backend); the local one looks upward for the
+  file only after the OS refused (`validation.rs::file_in_the_way`), since `ENOTDIR` and `EEXIST` name only the path
+  that was asked about. A destination reached through a link to a folder is a folder to both.
 - **`validation.rs::validate_source_names_are_distinct` refuses a copy or move whose top-level items share a name**,
   with the typed `WriteOperationError::DuplicateSourceNames` (carrying the name plus both paths, so the dialog can show
   which two clashed). Two same-named sources both want `<destination>/<name>` and neither engine has an answer: the
@@ -1439,21 +1446,21 @@ the copy names a drive, and the boot disk never goes away, so it meets the rule 
 
 ## Testing the in-flight temp ledger
 
-`in_flight_temps.rs` keeps ONE process-wide `STORE` for the whole test binary, and three rules follow from that. Ignore
-either and the tests fail on load rather than on a break, which is worse than not having them.
+**Every test that records or sweeps owns its ledger.** `in_flight_temps::Ledger` is a handle; the app has one
+(`Ledger::process()`, which a `WriteOperationState` records into unless it carries another), and a test builds its own
+and hands it to the states it drives with `WriteOperationState::with_in_flight_ledger`. The state holds only that
+`Option<Ledger>` and `Ledger::of` resolves it, so `state` never calls into `in_flight_temps`: that call closed a
+`state` → `in_flight_temps` → `sweep` → `transfer_sides` → `state` module cycle. `Ledger::recording_in(data_dir)` records into a
+fresh log there; dropping it is the crash; `Ledger::for_test().launch_in(data_dir)` is the next launch, replaying that
+log; `live_paths()` is what that ledger alone believes is on disk. So a cell's log, tally, and live set hold its own
+records and nothing else, and it can assert on all of them whole.
 
-- **Take `test_support::take_store()` (or `use_store_in`) for the WHOLE test body**, ❌ never for just the part that
-  writes. Installing a log into the singleton redirects every `register` in the process into that file, from any
-  thread, so two tests doing it at once put one test's records in the other's log — and leave a startup-sweep fixture
-  replaying an empty log, sweeping nothing. The guard holds a `SINGLE_FILE` mutex that serializes them; releasing it
-  early hands the singleton to the next test while this one is still recording. `simulate_process_exit()` is how a test
-  detaches the process's handle (the crash it's reproducing) without giving the singleton back.
-- **Assert about the path under test, ❌ never about the whole ledger.** `live_paths()` and the log file are shared with
-  every transfer test that stages a write without holding the guard, so `live_paths().is_empty()` and
-  `read_recorded(..).is_empty()` are assertions about the rest of the suite. Ask `contains(&subject)` instead; it pins
-  the same regression.
-- **A volume-borne cell picks a volume ID nothing else uses.** The ledger's arrival listener is installed once per
-  process and stays for the rest of the test binary, so a shared ID lets one cell's registration claim another's
+- ❌ **Don't reintroduce a singleton that tests install a log into.** That's how a sweep cell replayed the records of
+  every transfer test running beside it and deleted their live temps mid-copy under plain `cargo test` (#162; the
+  check runner's one-process-per-test runner hid it). A test whose states use the default process ledger records
+  only in memory, since nothing opens that ledger's log under test.
+- **A volume-borne cell picks a volume ID nothing else uses.** The volume registry is still one per process, and each
+  ledger's arrival listener hears every registration, so a shared ID lets one cell's registration claim another's
   pending records.
 
 **The sweep signals completion, so no test needs a deadline.** `init_and_sweep` returns a `SweepHandle`; the launch path

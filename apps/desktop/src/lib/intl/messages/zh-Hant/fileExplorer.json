@@ -103,6 +103,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "這部 Mac 上有東西讓 Cmdr 無法直接連上 {server}，所以這個共享資料夾會繼續使用系統連線。試試在「{localNetwork}」裡把 Cmdr 關掉再開啟，或檢查一下你的防火牆 App。",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "開啟「{localNetwork}」設定",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} 回應太慢，所以這個共享資料夾會繼續使用系統連線。",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -623,6 +631,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "還在等待這個資料夾",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "這個資料夾所在的伺服器或磁碟機沒有回應。Cmdr 會在背景繼續嘗試，一有回應就開啟這個資料夾。",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "這個資料夾所在的伺服器沒有回應。Cmdr 會在背景繼續嘗試，一有回應就開啟這個資料夾。",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "這個資料夾所在的磁碟機沒有回應。Cmdr 會在背景繼續嘗試，一有回應就開啟這個資料夾。",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "再試一次",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "返回",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "已複製 {countText} {count, plural, other {個項目}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -778,6 +810,26 @@
   "fileExplorer.git.useTransferToCopyOut": "要把檔案從 git 快照裡複製出來，請用 F5 複製或 F6 移動。",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "「{fileName}」超過 {limit}，所以 Cmdr 無法從封存檔裡用 {appName} 開啟它。",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "「{fileName}」超過 {limit}，所以 Cmdr 無法從存放庫的歷史記錄裡用 {appName} 開啟它。",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "「{fileName}」在一個有密碼保護的封存檔裡。請先把它複製到一個資料夾（Cmdr 會問你密碼），再用 {appName} 開啟。",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "無法把「{fileName}」從封存檔裡取出來，所以沒辦法用 {appName} 開啟。這個封存檔可能已損壞，或用了 Cmdr 讀不了的格式。",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "無法讀取「{fileName}」，所以沒辦法用 {appName} 開啟。請確認它所在的磁碟機仍然連接著，然後再試一次。",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "你的檔案從畫面上消失了，因為現在沒有顯示隱藏檔案。",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1405,9 +1457,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "這個伺服器上有操作正在進行，無法中斷連線",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr 還在處理這個伺服器上的檔案。完成後再中斷連線。",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} 已經在你的卷宗切換器裡了。",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1419,7 +1471,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr 無法更改 {name} 的顯示位置。",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr 無法中斷與 {name} 的連線。",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1465,9 +1517,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "這個裝置上有操作正在進行，無法退出",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr 還在處理這個裝置上的檔案。完成後再退出。",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "正在退出 {name}⋯",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

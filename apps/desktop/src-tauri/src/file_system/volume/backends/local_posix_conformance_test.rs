@@ -148,6 +148,42 @@ async fn create_directory_all_honors_the_shared_honesty_contract() {
     .await;
 }
 
+/// The shared file-in-the-way assertion, over the trait's default walk. The OS
+/// answers a create under a file with `ENOTDIR`, which reaches the user as a
+/// generic refusal unless the walk names the file.
+#[tokio::test]
+async fn create_directory_all_honors_the_shared_file_in_the_way_contract() {
+    let test_dir = TestDir::new("create_directory_all_file_in_the_way_conformance_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+
+    volume
+        .create_file(Path::new("notes"), b"the user's notes")
+        .await
+        .unwrap();
+
+    cmdr_fs::volume::conformance::assert_create_directory_all_refuses_a_file_in_the_way(&volume, Path::new("notes"))
+        .await;
+}
+
+/// The shared through-a-link assertion. ❗ The cell that keeps the refusal above
+/// from overreaching: `/tmp` and `/var` are links on macOS, so a walk that
+/// judged an occupied name by `lstat` would refuse most of the disk.
+#[tokio::test]
+async fn create_directory_all_honors_the_shared_through_a_link_contract() {
+    let test_dir = TestDir::new("create_directory_all_through_a_link_conformance_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+
+    volume.create_directory(Path::new("real")).await.unwrap();
+    std::os::unix::fs::symlink(test_dir.join("real"), test_dir.join("link")).unwrap();
+
+    cmdr_fs::volume::conformance::assert_create_directory_all_goes_through_a_link_to_a_folder(
+        &volume,
+        Path::new("link"),
+        Path::new("real"),
+    )
+    .await;
+}
+
 /// The shared writability-declaration assertion: `is_writable()` and the
 /// mutations LocalPosix offers say the same thing.
 #[tokio::test]

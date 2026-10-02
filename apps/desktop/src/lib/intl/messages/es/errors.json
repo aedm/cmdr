@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Esto es lo que puedes probar:\n- Abre **{system_settings} > {privacy_and_security} > {files_and_folders}** y concede acceso a Cmdr\n- Si es una carpeta protegida por el sistema (como los directorios del sistema), puede que necesites conceder a Cmdr **{full_disk_access}** en {privacy_and_security}\n- En la Terminal, ejecuta `ls -la` en esta ruta para revisar la propiedad y los permisos",
+  "errors.listing.notPermitted.suggestion": "Esto es lo que puedes probar:\n- Abre **{system_settings} > {privacy_and_security} > {files_and_folders}** y concede acceso a Cmdr\n- Si es una carpeta protegida por el sistema, puede que necesites conceder a Cmdr **{full_disk_access}** en {privacy_and_security}\n- En la Terminal, ejecuta `ls -la` en esta ruta para revisar la propiedad y los permisos",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Ruta no encontrada",
   "@errors.listing.pathNotFoundErrno.title": {
@@ -1103,15 +1103,27 @@
   },
   "errors.write.destinationNotFound.message.copy": "La carpeta a la que estás copiando ya no existe, así que no había dónde poner tus archivos. Los originales están intactos.",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "La carpeta a la que estás moviendo ya no existe, así que no había dónde poner tus archivos. Los originales están intactos.",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "Puede que se haya renombrado o eliminado, o que la unidad se haya desconectado. Elige otro destino, o vuelve a abrir la carpeta e inténtalo de nuevo.",
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
+  },
+  "errors.write.destinationNotAFolder.title": "Hay un archivo en medio",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr no ha podido crear la carpeta de destino porque hay un archivo en {path}, donde tiene que haber una carpeta. No se ha escrito nada y los originales están intactos.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Elige otro destino, o renombra o mueve ese archivo e inténtalo de nuevo.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
   },
   "errors.write.notConnected.title": "Aún no conectado",
   "@errors.write.notConnected.title": {
@@ -1128,6 +1140,18 @@
   "errors.write.notConnected.suggestion": "Ábrelo desde el selector de volúmenes para conectarte y vuelve a intentarlo. Si es un teléfono, desbloquéalo y acepta cualquier aviso que muestre.",
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
+  },
+  "errors.write.noLongerConnected.title": "Ya no está conectado",
+  "@errors.write.noLongerConnected.title": {
+    "sourceHash": "3974fa0"
+  },
+  "errors.write.noLongerConnected.message": "El teléfono o servidor que contiene estos archivos ya no está conectado, así que no ha cambiado nada.",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "d0827c4"
+  },
+  "errors.write.noLongerConnected.suggestion": "Conecta de nuevo el teléfono o abre el servidor desde el selector de volúmenes, y luego vuelve a intentarlo.",
+  "@errors.write.noLongerConnected.suggestion": {
+    "sourceHash": "850ecdb"
   },
   "errors.write.destinationExists.title": "El archivo ya existe",
   "@errors.write.destinationExists.title": {
@@ -1735,7 +1759,7 @@
   },
   "errors.mutation.notFound": "Ya no hay nada en “{path}”.",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "No se puede renombrar la carpeta raíz de un volumen desde aquí.",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1755,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "Ese volumen ya no está disponible, así que no ha cambiado nada.",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr no puede abrir este archivo comprimido para editarlo ahora mismo.",
   "@errors.mutation.archiveNotEditable": {
@@ -1791,7 +1815,7 @@
   },
   "errors.volume.notFound": "Ya no hay nada en “{path}”.",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr no tiene acceso a “{path}”.",
   "@errors.volume.permissionDenied": {
@@ -1836,6 +1860,10 @@
   "errors.volume.isADirectory": "“{path}” es una carpeta, no un archivo.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Hay un archivo en “{path}”, donde tiene que haber una carpeta.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "El destino no puede guardar ese nombre. Elige otro.",
   "@errors.volume.invalidName": {
@@ -1893,13 +1921,13 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr todavía está moviendo archivos en este disco. Expúlsalo cuando termine.",
+  "errors.eject.busy": "Cmdr todavía está moviendo archivos ahí. Vuelve a intentarlo cuando termine.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Ese disco ya no está conectado, así que no hay nada que expulsar.",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "Este disco no es extraíble, así que se queda conectado.",
   "@errors.eject.notEjectable": {
@@ -1911,39 +1939,51 @@
   },
   "errors.eject.remoteNotConnected": "Este servidor ya no está conectado, así que no hay nada que cerrar.",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "El dispositivo no ha cerrado su conexión. Desconecta el cable cuando esté inactivo.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Algo sigue usando este disco. Cierra los archivos y las apps que tengas abiertos y vuelve a expulsarlo.",
+  "errors.eject.unmountRefused": "Algo todavía tiene archivos abiertos ahí. Cierra los archivos y las apps que tengas abiertos y vuelve a intentarlo.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} sigue usando este disco. Cierra lo que tenga abierto ahí y vuelve a expulsarlo.",
+  "errors.eject.unmountRefusedByApp": "{app} todavía tiene archivos abiertos ahí. Ciérralos y vuelve a intentarlo.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} siguen usando este disco. Cierra lo que tengan abierto ahí y vuelve a expulsarlo.",
+  "errors.eject.unmountRefusedByApps": "{apps} todavía tienen archivos abiertos ahí. Ciérralos y vuelve a intentarlo.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "otras apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "Una imagen de disco guardada en este disco sigue abierta. Expulsa primero esa imagen y luego este disco.",
+  "errors.eject.unmountRefusedByProcess": "Un proceso llamado {process} todavía tiene archivos abiertos ahí. (Cmdr no tiene el nombre de la app, solo el del proceso.)",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "ad7c1d5"
+  },
+  "errors.eject.unmountRefusedByProcesses": "{countText} procesos llamados {processes} todavía tienen archivos abiertos ahí. (Cmdr no tiene los nombres de las apps, solo los de los procesos.)",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "5e9dbac"
+  },
+  "errors.eject.otherProcesses": "otros",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "Una imagen de disco guardada ahí sigue abierta. Expulsa primero esa imagen y vuelve a intentarlo.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS sigue trabajando con este disco. Espera un minuto y vuelve a expulsarlo.",
+  "errors.eject.unmountRefusedBySystem": "macOS todavía tiene archivos abiertos ahí. Espera un minuto y vuelve a intentarlo.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía está usando este disco. Espera un momento y vuelve a expulsarlo. Si sigue pasando, envía un informe.",
+  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía tiene archivos abiertos ahí. Espera un momento y vuelve a intentarlo. Si sigue pasando, envía un informe.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "El disco aún no ha respondido, así que es posible que sí se expulse por su cuenta.",
   "@errors.eject.timedOut": {

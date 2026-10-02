@@ -310,13 +310,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Afficher les dossiers d’abord",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Affiche les dossiers au-dessus des fichiers dans la liste. Désactivez cette option pour mélanger dossiers et fichiers.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
   "settings.listing.directorySortMode.label": "Trier les dossiers",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Comment les dossiers sont triés lors du changement de colonne de tri.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Ce réglage est désactivé pour le moment, car les dossiers sont mélangés aux fichiers. Activez « Afficher les dossiers d’abord » pour le réactiver.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Comme les fichiers",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -966,6 +978,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "Groupe des serveurs à proximité",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Se connecter directement aux partages SMB",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1062,7 +1078,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Donne accès à l’ensemble du système de fichiers d’un téléphone Android dont le débogage USB est activé, ce que MTP ne peut pas afficher. Nécessite les Android Platform Tools (la commande « adb ») sur ce Mac. Laisser cette option activée ne coûte rien si vous n’avez aucun outil Android installé.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Emplacement d’adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1647,9 +1663,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Astuce sur la longueur du groupe Réseau affichée",
+  "settings.behavior.serversPinHintSeen.label": "Astuce « Désépingler du sélecteur » affichée",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Indique si l’astuce unique sur la façon de désépingler un serveur a été affichée.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1980,7 +1996,7 @@
   },
   "settings.summary.listing": "Icônes de documents, tri des dossiers et largeur de colonne en mode Bref.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigation par double-clic vers le dossier parent et comportement lors du renommage des fichiers.",
   "@settings.summary.navigationAndFileOps": {
@@ -2004,7 +2020,7 @@
   },
   "settings.summary.servers": "Les clés d’hôte SSH que vous avez approuvées.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Parcourir un téléphone Android dont le débogage USB est activé.",
   "@settings.summary.adb": {
@@ -2533,13 +2549,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Installez les Android Platform Tools, puis cliquez sur Rechercher à nouveau :",
+  "settings.adb.install.intro": "Installez les Android Platform Tools, puis choisissez Rechercher à nouveau :",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Chercher adb de la manière habituelle",
+  "settings.adb.pathPlaceholder": "Cmdr cherche adb de la manière habituelle",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Parcourir…",
   "@settings.adb.browse": {

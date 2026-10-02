@@ -11,9 +11,13 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`likes.ts`**: `/likes/:slug` (GET, POST, DELETE, OPTIONS) — blog-post hearts keyed by a per-post IP pseudonym.
 - **`link-codes.ts`**: `GET /r-codes.json` (public, edge-cached) plus `/admin/r-codes` CRUD. The pure `sanitizeUtmValue`
   and `isValidCode` are unit-tested.
-- Tests: `beta-signup.test.ts` (the Listmonk call, the no-install-id invariant, soft failure, rate limit),
-  `likes.test.ts` (the slug gate, the rate limit, the salt requirement, and the pseudonym's per-salt/per-slug/per-IP
-  separation), `link-codes.test.ts` (the public map, CORS, cache, admin CRUD auth, and the validators).
+- **`csp-report.ts`**: `POST /csp-report` (plus its `OPTIONS` preflight) — getcmdr.com's CSP violation reports, our own
+  breakage alerted to Discord.
+- Tests: `csp-report.test.ts` (both report formats, the noise filter, the daily dedupe, query stripping, the size cap,
+  the rate limit, CORS), `beta-signup.test.ts` (the Listmonk call, the no-install-id invariant, soft failure, rate
+  limit), `likes.test.ts` (the slug gate, the rate limit, the salt requirement, and the pseudonym's
+  per-salt/per-slug/per-IP separation), `link-codes.test.ts` (the public map, CORS, cache, admin CRUD auth, and the
+  validators).
 
 ## Beta signup (decoupled, contact-only)
 
@@ -71,6 +75,26 @@ the rate limiter is the bound.
 **Pepper caveat:** KV has no retention sweep, so `likes:<slug>` values written while `IP_HASH_PEPPER` was missing stay
 weakly hashed until the keys are deleted. Recovery: `wrangler kv key list --binding BLOG_LIKES`, delete, let the counts
 rebuild. (Telemetry rows self-heal through the retention sweep instead; `../../DETAILS.md` § Deployment.)
+
+## CSP reports
+
+getcmdr.com's CSP (`apps/website/nginx-security-headers.conf`) names `/csp-report` as both its `report-uri` (Firefox,
+Safari: one `{"csp-report": {…}}` per violation) and its `report-to` endpoint (Chromium: a Reporting API batch,
+`[{type: "csp-violation", body: {…}}]`). `parseCspReports` normalizes both and drops anything else.
+
+**Decision: alert only on violations that look like our own breakage.** Every visitor's browser reports, and most raw
+volume is extensions injecting scripts and styles. `isActionableViolation` keeps a report only when the page is
+getcmdr.com (`https`), the blocked value is an `http(s)` URL (not `inline`, `eval`, `data`, `blob`, or an extension
+resource), and the source file, when given, is an `http(s)` URL (not extension code). The Discord alert then fires once
+per `(directive, blocked origin)` a day, deduped in `CSP_ALERTS`. Every actionable report also goes to the Workers log
+(`console.warn`), so the count is there even when Discord stays quiet.
+
+**Privacy:** nothing about the visitor is stored. The KV key holds a directive and an origin, the IP only feeds the rate
+limiter, and page and blocked URLs lose their query strings before they reach the log or Discord.
+
+The route always answers 204 (a malformed body too: a browser never sends one and there's nothing to tell the sender),
+except 413 over the 32 KB cap and 429 from `CSP_REPORT_LIMITER`. `OPTIONS` answers the Reporting API's CORS preflight
+for getcmdr.com origins only; the legacy `report-uri` POST needs none.
 
 ## Link codes (`?r=` tracking links)
 

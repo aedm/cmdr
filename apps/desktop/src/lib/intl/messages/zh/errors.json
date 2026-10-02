@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "可以这样试试：\n- 打开 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 访问权限\n- 如果这是受系统保护的文件夹（比如系统目录），你可能需要在 {privacy_and_security} 里授予 Cmdr **{full_disk_access}**\n- 在终端里对这个路径运行 `ls -la`，查看所有者和权限",
+  "errors.listing.notPermitted.suggestion": "可以这样试试：\n- 打开 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 访问权限\n- 如果这是受系统保护的文件夹，你可能需要在 {privacy_and_security} 里授予 Cmdr **{full_disk_access}**\n- 在终端里对这个路径运行 `ls -la`，查看所有者和权限",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "找不到路径",
   "@errors.listing.pathNotFoundErrno.title": {
@@ -1102,15 +1102,27 @@
   },
   "errors.write.destinationNotFound.message.copy": "你要拷贝到的文件夹已经不存在了，所以没有地方放你的文件。原文件没有被动过。",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "你要移动到的文件夹已经不存在了，所以没有地方放你的文件。原文件没有被动过。",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "它可能被重命名或删除了，也可能是驱动器断开了。换一个目标位置，或者重新打开这个文件夹再试一次。",
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
+  },
+  "errors.write.destinationNotAFolder.title": "有个文件占了位置",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr 无法创建目标文件夹，因为 {path} 是个文件，但那里需要一个文件夹。什么都没有写入，原文件没有被动过。",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "换一个目标位置，或者把那个文件改名或移到别处，然后再试一次。",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
   },
   "errors.write.notConnected.title": "尚未连接",
   "@errors.write.notConnected.title": {
@@ -1127,6 +1139,18 @@
   "errors.write.notConnected.suggestion": "从宗卷选择器中打开它来连接，然后再试一次。如果是手机，解锁它并接受它弹出的任何提示。",
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
+  },
+  "errors.write.noLongerConnected.title": "已经断开连接",
+  "@errors.write.noLongerConnected.title": {
+    "sourceHash": "3974fa0"
+  },
+  "errors.write.noLongerConnected.message": "存放这些文件的手机或服务器已经断开连接了，所以什么都没有改变。",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "d0827c4"
+  },
+  "errors.write.noLongerConnected.suggestion": "把手机重新插上，或者从宗卷选择器中打开服务器，然后再试一次。",
+  "@errors.write.noLongerConnected.suggestion": {
+    "sourceHash": "850ecdb"
   },
   "errors.write.destinationExists.title": "文件已存在",
   "@errors.write.destinationExists.title": {
@@ -1734,7 +1758,7 @@
   },
   "errors.mutation.notFound": "“{path}”已经不存在了。",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "宗卷的顶层文件夹无法在这里重命名。",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1754,7 +1778,7 @@
   },
   "errors.mutation.volumeGone": "这个宗卷已经不可用了，所以什么都没有改动。",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr 现在无法打开这个压缩文件来编辑。",
   "@errors.mutation.archiveNotEditable": {
@@ -1790,7 +1814,7 @@
   },
   "errors.volume.notFound": "“{path}”已经不存在了。",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr 没有权限访问“{path}”。",
   "@errors.volume.permissionDenied": {
@@ -1835,6 +1859,10 @@
   "errors.volume.isADirectory": "“{path}”是文件夹，不是文件。",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "“{path}”是个文件，但那里需要一个文件夹。",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "目标位置存不下这个名称。请换一个名称。",
   "@errors.volume.invalidName": {
@@ -1892,13 +1920,13 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr 还在读写这个驱动器上的文件。完成后再推出。",
+  "errors.eject.busy": "Cmdr 还在那里读写文件。完成后再试一次。",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "这个驱动器已经断开了，所以不用再推出。",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "这个驱动器不可移除，所以会一直保持连接。",
   "@errors.eject.notEjectable": {
@@ -1910,39 +1938,51 @@
   },
   "errors.eject.remoteNotConnected": "这台服务器已经断开了，所以没有连接需要关闭。",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "设备没有关闭连接。等它空闲下来再拔下线缆。",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "还有东西在使用这个驱动器。请关闭打开的文件和 App，然后再次推出。",
+  "errors.eject.unmountRefused": "还有东西开着那里的文件。请关闭打开的文件和 App，然后再试一次。",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} 还在使用这个驱动器。请关闭它在上面打开的内容，然后再次推出。",
+  "errors.eject.unmountRefusedByApp": "{app} 还开着那里的文件。请把它们关掉，然后再试一次。",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} 还在使用这个驱动器。请关闭它们在上面打开的内容，然后再次推出。",
+  "errors.eject.unmountRefusedByApps": "{apps} 还开着那里的文件。请把它们关掉，然后再试一次。",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "其他 App",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "这个驱动器上有一个磁盘映像还开着。请先推出那个映像，再推出这个驱动器。",
+  "errors.eject.unmountRefusedByProcess": "有一个名为 {process} 的进程还开着那里的文件。（Cmdr 拿不到 App 名称，只有进程名。）",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "ad7c1d5"
+  },
+  "errors.eject.unmountRefusedByProcesses": "有 {countText} 个进程还开着那里的文件，分别是 {processes}。（Cmdr 拿不到 App 名称，只有进程名。）",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "5e9dbac"
+  },
+  "errors.eject.otherProcesses": "其他进程",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "那里存放的一个磁盘映像还开着。请先推出那个映像，然后再试一次。",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS 还在处理这个驱动器。请稍等一会儿，然后再次推出。",
+  "errors.eject.unmountRefusedBySystem": "macOS 还开着那里的文件。请稍等一会儿，然后再试一次。",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己还在使用这个驱动器。请稍等片刻，然后再次推出；如果一直这样，请发送一份报告。",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己还开着那里的文件。请稍等片刻，然后再试一次；如果一直这样，请发送一份报告。",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "这个驱动器还没有响应，可能过一会儿它会自己推出。",
   "@errors.eject.timedOut": {

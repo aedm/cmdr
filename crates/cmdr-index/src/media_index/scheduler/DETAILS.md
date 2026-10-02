@@ -22,11 +22,22 @@ than passing it back into a module.
 ## The lifecycle bus
 
 `media_index`'s scheduler subscribes to `indexing/lifecycle/lifecycle_bus.rs` exactly as `importance`'s does — its OWN
-`start()` mirrors the ordering (subscribe to registrations → sweep `ready_volumes_with_kind()` → wire per-volume
+`start()` mirrors the ordering (subscribe to registrations → sweep `ready_volumes_to_wire()` → wire per-volume
 subscriptions). It can't piggyback `importance`'s subscription; because `app.manage` is keyed by type, an
 `Arc<MediaScheduler>` coexists fine alongside `importance`'s scheduler. The bus mechanism (watch vs broadcast,
 late-subscriber replay, the registration bus, why the sender outlives the registry) is documented once in
 `../../indexing/DETAILS.md` — not re-documented here (single-source).
+
+**A wiring lasts one life of its volume.** `wire_volume` spawns three listeners (scan completion plus home coverage, the
+live follow on dir-changed, and the importance bridge), all waiting on process-global channels that never close. Every
+start of a volume publishes a registration, so every start wires it again: a share reconnecting, a drive turned off and
+on, a search walking a cold drive. Each listener is therefore spawned through `host::runtime::spawn_until_stopped` under
+the child of the volume's root token that arrives with the registration, and ends when the volume stops. Without that
+they piled up one set per start. The passes coalesce, so the cost was tasks and wake-ups (each dir-changed batch cloned
+and re-requested once per set) and not repeated enrichment, but it grew for as long as the app ran.
+`a_volumes_listeners_end_when_the_volume_stops` pins it through the channels' receiver counts. ⚠️ The token scopes the
+LISTENERS only: a pass still stops on the process-wide `gate::should_stop` (`../../indexing/host/DETAILS.md` §
+Cancellation).
 
 `wire_volume` routes by typed kind: LOCAL enriches by default (when the master toggle is on); an opted-in SMB volume
 runs the conservative network pass (`../network/DETAILS.md`); MTP is NEVER background-swept. Both local and SMB
@@ -114,7 +125,7 @@ full-row shape.
 ## Importance-prioritized scheduling
 
 The local `run_pass_blocking` and the network `should_enrich` read `importance/`'s `ImportanceIndex`
-(`MediaScheduler::folder_scores` → `above_threshold(threshold)`), the SAME signal the importance slider sets. The
+(`MediaScheduler::folder_scores` → `coverage::importance_scores`), the SAME signal the importance slider sets. The
 scheduler:
 
 - **orders** the walk by folder importance descending (`enrich::prioritized`), so high-importance folders enrich first;
@@ -301,6 +312,6 @@ defer, exclusion veto, index-confirmed GC, the two coverage-filter data-safety a
 folder into the volume's index space). `reclaim_tests.rs` covers the partition + prune arithmetic; `pool/tests.rs` the
 live width changes; `enrich_memory_tests.rs` the walk's allocation guards.
 
-The async wire-up (`ready_volumes_with_kind` sweep → `wire_volume` → `run_pass_blocking`) is covered indirectly by the
+The async wire-up (`ready_volumes_to_wire` sweep → `wire_volume` → `run_pass_blocking`) is covered indirectly by the
 reactive pieces (bus-edge consumption + coalescer + the enrich core); a full end-to-end async test needs the
 process-global index registry and is deferred to the E2E slice.

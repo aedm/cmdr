@@ -159,7 +159,7 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
        window's prompt (`../DETAILS.md` § "Conflict prompts for operations with no dialog"). So a deep clash that nobody
        answers is a missing listener, never a reason to widen this check.
      - **Cross-type guardrail.** When a real conflict is a type mismatch AND the user selects "Overwrite all", a red
-       warning appears (mirrors the per-file dialog's file→folder warning): overwriting replaces items of a different
+       warning appears (mirrors the per-file dialog's file↔folder warning): overwriting replaces items of a different
        type, including folder contents.
 
 2. **TransferProgressDialog** (operation execution)
@@ -625,10 +625,13 @@ Two niceties on top:
   unregistered volume). A definite `unwritable` shows a red line under the box (`#transfer-path-refusal`, keys
   `destinationReadOnly` / `destinationNoPermission` / `destinationNotWritable`, one per reason the backend could tell
   apart) and suppresses the yellow "will be created" warning, which would be a promise the transfer can't keep. The
-  structural red error still wins. ❗ `unknown` shows nothing, and confirm stays enabled: the transfer asks again before
-  it writes and refuses with the typed `destination_not_writable` error, which is also what an MCP auto-confirm meets (a
-  disabled confirm would leave its round trip waiting). The phone case this exists for: copying onto a Pixel's `/`
-  surfaced only after confirm, as "Not enough space".
+  structural red error still wins. While it shows, Confirm is disabled and Enter does nothing (`confirmFromUser`), the
+  way a path error disables them, with the notice as the reason. Decision/Why: the transfer asks the same question
+  before it writes and refuses with the typed `destination_not_writable` error anyway, so an enabled button led only to
+  that refusal in an extra dialog. ❗ The gate sits in `confirmFromUser`, ❌ never `handleConfirm`: an MCP confirm and
+  the auto-confirm go through `handleConfirm` and meet the backend's typed refusal, where a refused confirm would leave
+  their round trip waiting. `unknown` shows nothing and blocks nothing. The phone case this exists for: copying onto a
+  Pixel's `/` surfaced only after confirm, as "Not enough space".
 
 Backend counterpart: every transfer path creates a missing destination (and ancestors) before transferring — the local
 copy/move paths via `ensure_destination_dir` (`write_operations/validation.rs`), and the cross-volume +
@@ -684,6 +687,15 @@ and walks again (`scan.retry()` = `cancelPreview()` + `startScan()`, so the retr
 button stays live throughout, because the preview only feeds this Size line and a cache the operation can rebuild
 itself. A second button for something the primary button already does would be noise. What the user can't do without
 help is ask again after plugging the network back in.
+
+**A source no volume answers for is refused, with neither Retry nor Confirm.** A phone unplugged under a search-results
+pane leaves a non-local volume id nothing registers. `start_scan_preview` refuses it with a typed `ScanPreviewRefusal`
+(`SourceNotConnected`) instead of walking `adb://…` on the Mac, and the wrapper hands it back as `{ refusal }`, which
+the scan state keeps as `sourceRefusal`. The dialog reads `unavailable`, says the phone or server isn't connected any
+more, and disables Confirm (Enter too): retrying or proceeding can only fail until it's back. A confirm that beats the
+refusal (MCP auto-confirm) reaches the backend, which answers `source_no_longer_connected` and its own error dialog. The
+delete dialog treats the refusal like a walk that stopped. Pinned by `TransferDialog.unavailable.test.ts` § "a source no
+volume answers for".
 
 **The conflict check.** `transfer-conflict-check.svelte.ts` carries a `status` of `idle` / `checking` / `answered` /
 `unknown` (a bounded `withTimeout` at 35 s over the IPC, just above the backend's own 30 s budget, catches a call that

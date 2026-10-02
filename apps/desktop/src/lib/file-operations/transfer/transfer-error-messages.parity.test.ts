@@ -90,7 +90,7 @@ const cases: Case[] = [
     expected: {
       title: 'Couldn’t find the destination folder',
       message:
-        'The folder you’re copying into isn’t there any more, so there was nowhere to put your files. The originals are untouched.',
+        'The folder you’re copying into isn’t there anymore, so there was nowhere to put your files. The originals are untouched.',
       suggestion:
         'It may have been renamed or removed, or the drive may have disconnected. Pick another destination, or open the folder again and retry.',
     },
@@ -102,9 +102,22 @@ const cases: Case[] = [
     expected: {
       title: 'Couldn’t find the destination folder',
       message:
-        'The folder you’re moving into isn’t there any more, so there was nowhere to put your files. The originals are untouched.',
+        'The folder you’re moving into isn’t there anymore, so there was nowhere to put your files. The originals are untouched.',
       suggestion:
         'It may have been renamed or removed, or the drive may have disconnected. Pick another destination, or open the folder again and retry.',
+    },
+  },
+  {
+    // One sentence for copy and move: the refusal comes before either writes.
+    // It has to name the FILE, which is often not the folder the user typed.
+    name: 'destination_not_a_folder',
+    error: { type: 'destination_not_a_folder', path: '/photos/2026' },
+    op: 'move',
+    expected: {
+      title: 'A file is in the way',
+      message:
+        'Cmdr couldn’t create the destination folder, because there’s a file at /photos/2026, where a folder needs to be. Nothing was written, and the originals are untouched.',
+      suggestion: 'Pick another destination, or rename or move that file and try again.',
     },
   },
   {

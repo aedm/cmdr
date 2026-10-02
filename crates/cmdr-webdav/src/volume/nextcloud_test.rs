@@ -170,6 +170,24 @@ async fn the_write_path_lands_a_file_byte_exact_on_sabre_dav() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the Nextcloud WebDAV fixture: apps/desktop/test/webdav-servers/start.sh nextcloud (webdav-fixture-nextcloud)"]
+async fn a_file_in_the_way_of_a_new_folder_is_named_on_sabre_dav() {
+    // sabre/dav answers a MKCOL the way RFC 4918 says to: 405 on a name a FILE
+    // holds, 409 under one. Apache answers 400 to both, so the same promise is
+    // kept by a different branch of the walk there
+    // (`conformance_test.rs`), and this cell is the only one that holds the
+    // by-the-book branch up: read as "already there" and "parent missing", those
+    // two answers report the folder the user asked Cmdr to create as not found.
+    let (volume, dir) = nextcloud_with_scratch().await;
+    let notes = dir.join("notes");
+    volume.create_file(&notes, b"the user's notes").await.expect(FIXTURE);
+
+    cmdr_fs::volume::conformance::assert_create_directory_all_refuses_a_file_in_the_way(&volume, &notes).await;
+
+    clean(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the Nextcloud WebDAV fixture: apps/desktop/test/webdav-servers/start.sh nextcloud (webdav-fixture-nextcloud)"]
 async fn a_put_with_no_content_length_is_accepted_rather_than_refused() {
     // ❗ THE reason `writes.rs` sends `Content-Length` from `size`: sabre/dav
     // (Nextcloud, ownCloud) was believed to answer 411 to a body of unknown

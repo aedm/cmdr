@@ -13,6 +13,8 @@
 
 import { tString } from '$lib/intl/messages.svelte'
 import type { MessageKey } from '$lib/intl/keys.gen'
+import type { UnreachableHint } from '$lib/ipc/bindings'
+import { systemStrings } from '$lib/system-strings.svelte'
 
 /**
  * Why a connect stopped, in the vocabulary the app words.
@@ -100,6 +102,41 @@ export interface RefusalSubject {
 /** The one sentence a refusal says. */
 export function wordConnectRefusal(kind: ConnectRefusalKind, subject: RefusalSubject): string {
   return tString(REFUSAL_KEYS[kind], { host: subject.host, username: subject.username })
+}
+
+/** A saved place in a pane, which also has the name the user gave it. */
+export interface PaneRefusalSubject extends RefusalSubject {
+  /** The place's display name. Empty falls back to the host. */
+  name: string
+}
+
+/**
+ * The sentence a pane standing on a saved place says. ❗ `unreachable` names the
+ * place by the name the user gave it ("Naspolya", not "nas.local"); the sheet and
+ * the Add form keep the host, since there it's the address the person typed.
+ */
+export function wordPaneRefusal(kind: ConnectRefusalKind, subject: PaneRefusalSubject): string {
+  if (kind === 'unreachable') {
+    return tString('servers.paneState.unreachable', { name: subject.name.trim() || subject.host })
+  }
+  return wordConnectRefusal(kind, subject)
+}
+
+/**
+ * Something besides the server worth checking, which the backend reads off how a
+ * probe failed. Rendered as a softer line under the refusal, ❌ never instead of
+ * it: a hint only suggests (a stuck Local Network permission and a server that's
+ * off look the same to the Add probe).
+ */
+export type RefusalHint = UnreachableHint
+
+const HINT_KEYS: Record<RefusalHint, MessageKey> = {
+  local_network_permission: 'servers.refusal.localNetworkHint',
+}
+
+/** The softer line under a refusal. The permission's name is the one System Settings shows. */
+export function wordRefusalHint(hint: RefusalHint): string {
+  return tString(HINT_KEYS[hint], { localNetwork: systemStrings.localNetwork })
 }
 
 /**

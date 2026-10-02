@@ -177,10 +177,11 @@ Prepare a release based on docs/guides/releasing.md.
    nothing useful. Only the runner's own launchd session (`SessionCreate=true`) makes node the responsible process.
 
 5. Apply the roadmap and feature-status updates (edit the files, don't just advise; the user reviews before committing).
-   - **Roadmap** (@apps/website/src/pages/roadmap.astro): add a dated milestone (with a date!) for each major
-     development this release, and tick off / remove any "coming soon" item that just shipped. Match the existing
-     curation: milestones only, not every release. Group under the right month heading (add a new `<h3>` when the month
-     rolls over) and not the release date but the actual main development date based on the commits.
+   - **Roadmap** (@apps/website/src/lib/roadmap.ts, the milestones; `roadmap.astro` is only the layout): add a dated
+     milestone (with a date!) for each major development this release, and tick off / remove any "coming soon" item that
+     just shipped. Match the existing curation: milestones only, not every release. Group under the right month heading
+     (add a new `<h3>` when the month rolls over) and not the release date but the actual main development date based on
+     the commits.
    - **Feature status** (`feature-status.json` at the repo root, the single source of truth behind the `/features` page
      and the in-app badges): review every feature against what shipped. Flip `planned` → `alpha` for a feature that just
      launched, graduate `alpha` → `beta` → `stable` as one matures, and refresh any note the release made stale. Keep

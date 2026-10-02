@@ -138,11 +138,11 @@
     "screenshot": "delete-confirm.png"
   },
 
-  "fileOperations.delete.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.delete.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.delete.scanDir": {
-    "description": "Unit noun shown after the live directory tally in the delete dialog's scan stats (e.g. '4 dirs'). 'dir' is the abbreviation of directory/folder. The number is rendered separately.",
+    "description": "Unit noun shown after the live folder tally in the delete dialog's scan stats (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "delete-confirm.png"
   },
@@ -461,11 +461,11 @@
     "screenshot": "conflict-dialog.png"
   },
 
-  "fileOperations.transferDialog.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.transferDialog.scanDir": {
-    "description": "Unit noun after the live directory tally in the transfer dialog's scan stats (e.g. '4 dirs'). 'dir' abbreviates directory/folder. The number is rendered separately.",
+    "description": "Unit noun after the live folder tally in the transfer dialog's scan stats (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "conflict-dialog.png"
   },
@@ -503,6 +503,11 @@
   "fileOperations.transferDialog.scanRetry": "Try again",
   "@fileOperations.transferDialog.scanRetry": {
     "description": "Button beside the message about a size scan that couldn't finish. Starts the scan over. Short control label."
+  },
+
+  "fileOperations.transferDialog.sourceNoLongerConnected": "The phone or server holding these files isn’t connected anymore, so Cmdr can’t copy from it.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "description": "Shown in the copy or move dialog, in place of the file and size counts' usual notice, when the phone or server the selected files live on is no longer connected (typically a phone unplugged while its search results were still on screen). There's no 'Try again' button and the confirm button is disabled, because neither can help until the device or server is back. Says 'copy' even in the move dialog, since reading the files is the part that can't happen."
   },
 
   "fileOperations.transferDialog.conflictsUnknown": "We couldn’t check what’s already at the destination. You’ll be asked about anything that clashes.",
@@ -684,11 +689,11 @@
     "screenshot": "conflict-dialog.png"
   },
 
-  "fileOperations.scanPhase.scanDir": "{count, plural, one {dir} other {dirs}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, one {folder} other {folders}}",
   "@fileOperations.scanPhase.scanDir": {
-    "description": "Unit noun after the live directory tally during a transfer's scan phase (e.g. '4 dirs'). 'dir' abbreviates directory/folder. The number is rendered separately.",
+    "description": "Unit noun after the live folder tally during a transfer's scan phase (e.g. '4 folders'). The number is rendered separately.",
     "placeholders": {
-      "count": "the directory count (drives the singular/plural noun)"
+      "count": "the folder count (drives the singular/plural noun)"
     },
     "screenshot": "conflict-dialog.png"
   },
@@ -966,9 +971,16 @@
     "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
   },
 
-  "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to overwrite it with a <strong>file</strong> by the same name. All contents of the target folder would be deleted and replaced by the file. What to do?",
+  "fileOperations.transferProgress.warningFileOverFolder": "The target exists and is a <strong>folder</strong>. You’re about to replace it with a <strong>file</strong> by the same name. Everything inside the folder would be gone. What to do?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
     "description": "Red warning shown in the conflict step when a file would replace a same-named folder, deleting the folder's contents. <strong> wraps the emphasized words 'folder' and 'file'. Keep it stark; this is a destructive action.",
+    "screenshot": "transfer-dialog.png",
+    "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
+  },
+
+  "fileOperations.transferProgress.warningFolderOverFile": "The target exists and is a <strong>file</strong>. You’re about to replace it with a <strong>folder</strong> by the same name. The file would be gone once the folder takes its place. What to do?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "description": "Red warning shown in the copy/move conflict prompt when a folder would replace a same-named file: the mirror of warningFileOverFolder. <strong> wraps the emphasized words 'file' and 'folder'. Shown above the filename, before the user picks Overwrite, Skip, and so on. Keep it stark, so nobody overwrites on muscle memory.",
     "screenshot": "transfer-dialog.png",
     "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
   },

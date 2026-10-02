@@ -81,7 +81,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Eliminar",
   "@fileOperations.delete.confirmDelete": {
@@ -274,7 +274,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "Se escribirán <written></written>. El origen ocupa <ondisk></ondisk> en disco; lo extra son archivos con enlace físico, que no pueden seguir enlazados entre unidades.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -303,6 +303,10 @@
   "fileOperations.transferDialog.scanRetry": "Reintentar",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "El teléfono o servidor que contiene estos archivos ya no está conectado, así que Cmdr no puede copiar nada de ahí.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "No hemos podido comprobar qué hay ya en el destino. Te preguntaremos por cada coincidencia.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -398,7 +402,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {carpeta} many {carpetas} other {carpetas}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Verificando antes de copiar…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -536,9 +540,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "El destino existe y es una <strong>carpeta</strong>. Estás a punto de sobrescribirla con un <strong>archivo</strong> del mismo nombre. Todo el contenido de la carpeta de destino se eliminaría y se sustituiría por el archivo. ¿Qué quieres hacer?",
+  "fileOperations.transferProgress.warningFileOverFolder": "El destino existe y es una <strong>carpeta</strong>. Estás a punto de reemplazarla por un <strong>archivo</strong> del mismo nombre. Todo lo que hay dentro de la carpeta desaparecería. ¿Qué quieres hacer?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "El destino existe y es un <strong>archivo</strong>. Estás a punto de reemplazarlo por una <strong>carpeta</strong> del mismo nombre. El archivo desaparecería en cuanto la carpeta ocupara su lugar. ¿Qué quieres hacer?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Estos nombres se ven iguales, pero el servidor los escribe de forma distinta. “Sobrescribir” reemplaza el elemento que ya está ahí.",
   "@fileOperations.transferProgress.lookAlikeHint": {

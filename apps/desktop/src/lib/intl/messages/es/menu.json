@@ -357,9 +357,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Ir a la ruta…",
+  "menu.go.goToPath": "Ir a la carpeta…",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Ir a la última descarga",
   "@menu.go.goToLatestDownload": {
@@ -657,10 +657,6 @@
   "menu.dock.searchFiles": "Buscar archivos…",
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
-  },
-  "menu.dock.goToFolder": "Ir a la carpeta…",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
   },
   "menu.dock.connectToServer": "Conectarse a un servidor…",
   "@menu.dock.connectToServer": {

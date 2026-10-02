@@ -85,7 +85,7 @@ xattr = "1"
 [dev-dependencies]
 # Depending on ourselves turns the `testing` feature on for every DEV target and
 # leaves it off for the lib, so a shipped build carries no fixture builders and no
-# 7z encoder. Same shape as the app's own self dev-dependency.
+# 7z encoder.
 cmdr-archive = { path = ".", features = ["testing"] }
 # `wait_until_async`, for the FSEvents-driven watch tests.
 cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }

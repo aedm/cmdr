@@ -62,6 +62,8 @@ function baseProps(onDialogRenderError: (error: unknown) => void): DialogManager
     showDeleteDialog: false,
     deleteDialogProps: null,
     onTransferConfirm: noop,
+    registerTransferConfirmer: () => noop,
+    registerDeleteConfirmer: () => noop,
     onTransferCancel: noop,
     onTransferComplete: noop,
     onTransferCancelled: noop,

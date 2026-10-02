@@ -41,7 +41,7 @@
       "id": "ask-cmdr",
       "name": "Ask Cmdr",
       "status": "alpha",
-      "note": "Chat with an AI agent about your files. It can find them, look inside them (text, PDFs, photos, archives, etc.), sees your past operations, knows your important folders, and can proactively suggest move/rename/delete/unzip actions, which you can review and approve/reject. Fully optional (you can use Cmdr as just a regular file manager!). Early stage with rough edges, but safe because all actions need approval from you. The agent can do nothing on its own. Can use an on-device model for complete privacy, and nothing reaches a cloud AI until you allow it."
+      "note": "Chat with an AI agent about your files. It can find them, look inside them (text, PDFs, photos, archives, etc., even on phones and servers), sees your past operations, knows your important folders, and can proactively suggest move/rename/delete/unzip actions, which you can review and approve/reject. Fully optional (you can use Cmdr as just a regular file manager!). Early stage with rough edges, but safe because all actions need approval from you. The agent can do nothing on its own. Can use an on-device model for complete privacy, and nothing reaches a cloud AI until you allow it."
     },
     {
       "id": "network-drives",
@@ -65,7 +65,7 @@
       "id": "sftp",
       "name": "SFTP servers",
       "status": "alpha",
-      "note": "Save an SFTP server once and open it from the volume switcher, with a root and start folder, SSH host-key checks, key files, and passwords in your Keychain. Not yet tested against many real-world servers."
+      "note": "Save an SFTP server once and open it from the volume switcher, with a root and start folder, free space, SSH host-key checks, key files, and passwords in your Keychain. Not yet tested against many real-world servers."
     },
     {
       "id": "webdav",
@@ -93,7 +93,7 @@
     },
     {
       "id": "go-to-path",
-      "name": "Go to path",
+      "name": "Go to folder",
       "status": "beta",
       "note": "Paste or type any path and jump there; it's new, so recents and edge-case path handling are still settling."
     },
@@ -119,7 +119,7 @@
       "id": "tabs",
       "name": "Tabs",
       "status": "stable",
-      "note": "Per-pane tabs with pinning, history, and reopen closed tab."
+      "note": "Per-pane tabs with pinning, history, reopen closed tab, and dragging to reorder or move a tab to the other pane."
     },
     {
       "id": "command-palette",

@@ -21,14 +21,16 @@ import type {
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingRespelledEvent,
+  ListingStalledEvent,
 } from '$lib/ipc/bindings'
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
 import { throwMutationError } from '$lib/file-operations/mutation-error'
-import type { DirectorySortMode } from '$lib/settings'
+import type { ListingDirectorySortMode } from '$lib/settings'
 
 export type {
   ListingOpeningEvent,
+  ListingStalledEvent,
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingCompleteEvent,
@@ -47,7 +49,7 @@ export type {
  * @param sortBy - Column to sort by.
  * @param sortOrder - Ascending or descending.
  * @param listingId - Unique identifier for the listing (used for cancellation)
- * @param directorySortMode - How to sort directories: like files or always by name.
+ * @param directorySortMode - Where directories go: first (like files, or always by name), or mixed with files.
  */
 export async function listDirectoryStart(
   volumeId: string,
@@ -56,7 +58,7 @@ export async function listDirectoryStart(
   sortBy: SortColumn,
   sortOrder: SortOrder,
   listingId: string,
-  directorySortMode?: DirectorySortMode,
+  directorySortMode?: ListingDirectorySortMode,
 ): Promise<StreamingListingStartResult> {
   const res = await commands.listDirectoryStartStreaming(
     volumeId,
@@ -90,7 +92,7 @@ export async function cancelListing(listingId: string): Promise<void> {
  * @param includeHidden - Whether to include hidden files when calculating cursor index.
  * @param selectedIndices - Optional indices of selected files to track through re-sort.
  * @param allSelected - If true, all files are selected (optimization).
- * @param directorySortMode - How to sort directories: like files or always by name.
+ * @param directorySortMode - Where directories go: first (like files, or always by name), or mixed with files.
  * @public
  */
 export async function resortListing(
@@ -101,7 +103,7 @@ export async function resortListing(
   includeHidden: boolean,
   selectedIndices?: number[],
   allSelected?: boolean,
-  directorySortMode?: DirectorySortMode,
+  directorySortMode?: ListingDirectorySortMode,
 ): Promise<ResortResult> {
   const res = await commands.resortListing(
     listingId,
@@ -562,6 +564,17 @@ export async function hasFontMetrics(fontId: string): Promise<boolean> {
 /** Emitted just before `read_dir` starts (the slow part for network folders). */
 export async function onListingOpening(callback: (event: ListingOpeningEvent) => void): Promise<UnlistenFn> {
   return events.listingOpening.listen((event) => {
+    callback(event.payload)
+  })
+}
+
+/**
+ * Emitted when a read goes several seconds without a new entry: the folder's volume
+ * stopped answering. The listing keeps waiting and retrying; any later event for the
+ * same id supersedes it.
+ */
+export async function onListingStalled(callback: (event: ListingStalledEvent) => void): Promise<UnlistenFn> {
+  return events.listingStalled.listen((event) => {
     callback(event.payload)
   })
 }

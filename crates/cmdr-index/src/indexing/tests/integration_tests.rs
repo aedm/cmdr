@@ -1214,7 +1214,8 @@ fn clear_index_from_initializing_removes_instance_and_deletes_db() {
     let db_path = tmp.path().join("init-phase-test.db");
     assert!(db_path.exists(), "init store DB exists before clear");
 
-    clear_index(ROOT_VOLUME_ID).expect("clear_index from Initializing must succeed");
+    clear_index(ROOT_VOLUME_ID, crate::volume_files::Removal::Forgotten)
+        .expect("clear_index from Initializing must succeed");
     assert!(
         !root_is_registered(),
         "clear_index must remove the Initializing instance (gray, not dangling)"

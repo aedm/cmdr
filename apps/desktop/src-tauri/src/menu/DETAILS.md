@@ -36,7 +36,7 @@ window focus context.
   and the OS at once. ❗ `context_menu_icons_test.rs`'s guard test `include_str!`s THIS file to check every icon names an
   item the menu actually builds; a builder moving out of it has to take that `include_str!` along.
 - `menu_structure.rs`: the smaller context menus — breadcrumb (with the `detach_label` item) / parent-row / tab /
-  network-host / function-key-bar — the viewer-window menu (`build_viewer_menu`), and the `ContextMenuShortcuts` /
+  network-host / function-key-bar / the viewer's text (`build_viewer_context_menu`) — the viewer-window menu (`build_viewer_menu`), and the `ContextMenuShortcuts` /
   `context_item` vocabulary every popup here shares. A volume switcher row's, a favorite's, and a servers-hub place's
   actions are NOT here: they're the in-app `Menu`'s, one list in
   `apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`.
@@ -71,7 +71,8 @@ window focus context.
 - `open_with.rs` (macOS): `build_open_with_submenu` for the file context menu's "Open with"
   submenu (`OPEN_WITH_SUBMENU_ID`). Returns the submenu plus a `bundle_id → app_path` map that callers stash in
   `MenuState.context.open_with_apps` so `on_menu_event` can resolve dynamic `open-with:<bundle-id>`
-  click targets. `build_pending_open_with_submenu` / `fill_open_with_submenu` are the late pair.
+  click targets. `build_pending_open_with_submenu` / `fill_open_with_submenu` are the late pair, and `launch_with` runs
+  a click.
 - `share_submenu.rs` (macOS): `build_share_submenu` for the file context menu's `Share` (`SHARE_SUBMENU_ID`), one
   plain item per service in `FileContextInfo::share_services`, plus the `share-service:<index>` id
   pair (`share_service_id` / `share_service_index`). `build_pending_share_submenu` / `fill_share_submenu` are the late
@@ -82,7 +83,8 @@ window focus context.
   click side live in `file_system/file_provider_actions/`.
 - `context_menu_icons.rs` (macOS): every image the file context menu carries, through `lend_context_menu_icons` and the
   pure `image_runs`: the `FILE_CONTEXT_ICONS` SF Symbols, the provider logo on each provider action, the app icons in
-  "Open with", each service's icon in `Share`, and the tag circles. See "Images on a CONTEXT menu".
+  "Open with", each service's icon in `Share`, and the tag circles, plus the dimmed " (default)" in "Open with". See
+  "Images on a CONTEXT menu".
 - `provider_logos.rs` (macOS): `PROVIDER_LOGOS`, which provider's logo is which, matched by app bundle ID, embedding the
   SVGs in `provider_logos/`. See "Provider logos on a CONTEXT menu".
 - `context_menu_header.rs`: the file context menu's first line, naming what the menu will act on.
@@ -109,7 +111,8 @@ active UI locale. Why the lookup lives in Rust rather than being handed over IPC
 Three shapes are worth knowing here:
 
 - **`menu_t_with` for the three labels that name what they act on** (`Copy "photo.jpg"`, `Eject (Backup)`, and the
-  `(busy)` variant, plus `Open with`'s `{app} (default)`). It's a literal `{token}` replacement, the same raw pipeline
+  `(busy)` variant, plus `Open with`'s `{app} (default)`, which `open_with::default_label` splits the same way so it
+  can dim the words). It's a literal `{token}` replacement, the same raw pipeline
   the `errors.*` family uses on the frontend, NOT ICU: there is no ICU engine in the app process and importing one for
   four labels would be a bad trade. ❌ Don't add a fifth without asking whether the label can be reshaped instead.
 - **`APP_MENU_TITLE` stays the literal `cmdr`.** macOS names the app menu after the application, so translating it would
@@ -184,14 +187,21 @@ Exceptions that do NOT use `"execute-command"`:
   `FunctionKeyBarHideRequested` to the main window. Nothing is stashed in `MenuState.context`, because there's no
   right-clicked target to remember: the frontend owns both the setting write and the toast that offers the way back
   (`src/lib/file-explorer/pane/function-key-bar-hide.ts`)
+- **Viewer right-click menu**: Copy (enabled from the frontend's `has_selection`) and Select all, on their own
+  `VIEWER_CONTEXT_*` ids, emitting `ViewerContextMenuAction` to the focused viewer (the popup focused it). ❗ Not the
+  bar's `VIEWER_EDIT_COPY_ID` / `VIEWER_SELECT_ALL_ID`: those defer to the search box, this pair always acts on the file
+  (`src/routes/viewer/DETAILS.md` § Gotchas)
 - **Open with** (macOS): items have dynamic IDs like `open-with:com.apple.Xcode` that can't be
   enumerated in `menu_id_to_command`. `on_menu_event` prefix-matches `open-with:` and calls
-  `file_system::open_with::open_paths_with` directly, looking up the app URL via
+  `open_with::launch_with`, looking up the app URL via
   `MenuState.context.open_with_apps[bundle_id]` and the launch paths via
   `MenuState.context.paths`. The "Other…" entry shows an `NSOpenPanel` filtered to `.app`
-  bundles and launches the chosen app the same way.
+  bundles and launches the chosen app the same way. `launch_with` swaps a file inside an archive for a fresh read-only
+  copy first, off the main thread (`../file_viewer/DETAILS.md` § "Open with on a routed file").
 - **Finder tag colors** (macOS): the file context menu carries seven circle items
-  (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
+  (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders wherever `can_tag` says the rows are
+  real OS paths: hidden on a phone, ADB, SFTP, WebDAV, an archive's insides, and a `.git`-portal row, where the write
+  would store nothing and say nothing), IDs `tag-color:<1..=7>`,
   which `tag_row/` draws as Finder's one row of circles once the menu tracks ("The tag row"). Like "Open with", they're
   prefix-routed
   (`on_menu_event` matches `tag-color:`) — NOT in `menu_id_to_command` — and call
@@ -836,6 +846,13 @@ highlighted row.
 - **Sizes**: 16 × 16 pt for logos, app icons (32 px, so 2× on Retina), and share icons, the box the
   neighbouring symbols take; 18 pt for the tag circles (36 px). A share icon is macOS's own `NSImage`,
   copied before sizing because the system shares it.
+- **The OS default's " (default)" draws dimmed**, like Finder's. The "Open with" run carries the first
+  item's label as `LabelPart`s (`open_with::default_label` splits the translated `{app} (default)` at
+  `{app}`: the name plain, the words around it dim), and `apply` sets it as an attributed title in the
+  menu font with `secondaryLabelColor` on the dim parts. It rides this pass because it needs the same
+  live `NSMenuItem`; neither muda nor Tauri can style a title (muda 0.21 swapped its `set_styled_text`
+  for a raw `NSAttributedString` setter, `tauri-apps/muda#422`, which Tauri doesn't wrap). The parts
+  join into the plain label the Tauri item carries, so the rewritten `title` still matches the run.
 
 `macos_appkit.rs` owns `observe_menu_tracking`, `tracking_menu`, `find_ns_item`, `find_ns_submenu`, and
 the door (`set_menu_item_image`, `sf_symbol_image`, `set_sf_symbol`), shared with the other consumers.

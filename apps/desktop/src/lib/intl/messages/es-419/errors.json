@@ -295,9 +295,17 @@
   "@errors.write.sourceNotFound.message.trash": {
     "sourceHash": "e52396a"
   },
+  "errors.write.noLongerConnected.message": "El teléfono o servidor que contiene estos archivos ya no está conectado, así que no cambió nada.",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "61e1555"
+  },
   "errors.write.destinationNotFound.title": "No se pudo encontrar la carpeta de destino",
   "@errors.write.destinationNotFound.title": {
     "sourceHash": "e7b89c1"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr no pudo crear la carpeta de destino porque hay un archivo en {path}, donde tiene que haber una carpeta. No se escribió nada y los originales están intactos.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "cf862c6"
   },
   "errors.write.symlinkLoop.title": "Se detectó un bucle de enlaces",
   "@errors.write.symlinkLoop.title": {
@@ -647,9 +655,9 @@
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "89559ef"
   },
-  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía está usando este disco. Espera un momento y vuelve a expulsarlo. Si sigue pasando, envía un reporte.",
+  "errors.eject.unmountRefusedByCmdr": "El propio Cmdr todavía tiene archivos abiertos ahí. Espera un momento y vuelve a intentarlo. Si sigue pasando, envía un reporte.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "b6c70d2"
+    "sourceHash": "ea88792"
   },
   "errors.eject.unexpected": "Algo salió mal y Cmdr no pudo saber qué.",
   "@errors.eject.unexpected": {

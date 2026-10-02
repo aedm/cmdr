@@ -66,7 +66,7 @@ pub(crate) use queries::is_watching_for_test;
 pub(crate) use queries::registered_mtp_volume_ids_for_device;
 pub(crate) use queries::{
     all_registered_volume_ids, awaits_its_first_scan, index_failure, is_active_and_staying, is_being_torn_down,
-    ready_volumes_with_kind, volume_kind,
+    ready_volumes_to_wire, ready_volumes_with_kind, volume_kind,
 };
 pub use queries::{is_active, is_failed};
 #[cfg(any(test, feature = "testing"))]
@@ -89,8 +89,8 @@ pub(crate) use startup::{
 pub(crate) use supervisor::fail_index_for_test;
 pub(crate) use supervisor::spawn_failure_supervisor;
 pub(crate) use teardown::reset_to_not_indexed;
-pub use teardown::{RemovableStop, clear_every_index, clear_index, disable_drive_index_persist_intent};
-pub(crate) use teardown::{stop_all_indexing, stop_removable_volume};
+pub use teardown::{RemovableStop, clear_every_index, disable_drive_index_persist_intent};
+pub(crate) use teardown::{clear_index, stop_all_indexing, stop_removable_volume};
 #[cfg(test)]
 pub(crate) use teardown::{stop_indexing, while_stopping_for_test};
 
@@ -182,8 +182,10 @@ pub(crate) enum TeardownClaim {
     /// the user asked for the sticky "keep this drive off" veto, so the veto is
     /// written on the far side of the drain like it is on every other path.
     Stopped(PersistDisable),
-    /// Stop indexing it and delete its database.
-    Cleared,
+    /// Stop indexing it and delete its files: which ones is the removal's reason
+    /// to say, carried here so a clear that lands at the handback takes exactly
+    /// what an immediate one would have.
+    Cleared(crate::volume_files::Removal),
 }
 
 impl TeardownClaim {
@@ -194,12 +196,16 @@ impl TeardownClaim {
     /// A user asking to stop or clear outranks a storage failure: they asked for
     /// the drive to go quiet, and a red "indexing stopped" badge on a drive
     /// somebody just turned off is a worse answer than a gray one. Clearing
-    /// outranks stopping because it IS stopping, plus the database.
+    /// outranks stopping because it IS stopping, plus the database, and a clear
+    /// that forgets the volume outranks one that only rebuilds its index, because
+    /// it takes that database and more.
     fn reach(self) -> u8 {
+        use crate::volume_files::Removal;
         match self {
             TeardownClaim::Failed(_) => 0,
             TeardownClaim::Stopped(_) => 1,
-            TeardownClaim::Cleared => 2,
+            TeardownClaim::Cleared(Removal::IndexRebuild) => 2,
+            TeardownClaim::Cleared(Removal::Forgotten | Removal::Unreachable) => 3,
         }
     }
 }
@@ -395,7 +401,7 @@ pub fn init() {
 /// indexer's open path and the on-connect resume probe.
 pub(crate) fn resolved_index_db_path(volume_id: &str) -> Result<PathBuf, String> {
     let data_dir = crate::indexing::host::config::data_dir().map_err(|e| e.to_string())?;
-    Ok(data_dir.join(format!("index-{volume_id}.db")))
+    Ok(crate::volume_files::VolumeStore::Index.db_path(&data_dir, volume_id))
 }
 
 // ── Registry helpers ─────────────────────────────────────────────────

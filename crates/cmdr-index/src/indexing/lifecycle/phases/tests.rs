@@ -44,7 +44,11 @@ impl Tree {
         IndexStore::open(&db_path).expect("open store");
         let writer = IndexWriter::spawn(&db_path, crate::NoopEventSink::shared()).expect("spawn writer");
         writer.send(WriteMessage::BumpCurrentEpoch).expect("seed the epoch");
-        writer.send(exclusion_policy_stamp_message()).expect("stamp the policy");
+        writer
+            .send(exclusion_policy_stamp_message(
+                crate::indexing::scanner::ExclusionTier::BootDisk,
+            ))
+            .expect("stamp the policy");
         writer.flush_blocking().expect("flush the preparation");
 
         let fixture = Self {
@@ -156,7 +160,14 @@ impl Tree {
 
     fn coverage(&self, scope: &str) -> CoverageMap {
         let conn = IndexStore::open_read_connection(&self.db_path).expect("read connection");
-        coverage_for_scope(&conn, scope, scope, CoverageDimension::Listing).expect("coverage")
+        coverage_for_scope(
+            &conn,
+            scope,
+            scope,
+            crate::indexing::scanner::ExclusionTier::BootDisk,
+            CoverageDimension::Listing,
+        )
+        .expect("coverage")
     }
 
     fn frontier(&self, scope: &str) -> Vec<String> {

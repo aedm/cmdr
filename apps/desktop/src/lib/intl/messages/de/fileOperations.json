@@ -82,7 +82,7 @@
   },
   "fileOperations.delete.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Löschen",
   "@fileOperations.delete.confirmDelete": {
@@ -275,7 +275,7 @@
   },
   "fileOperations.transferDialog.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> werden geschrieben. Die Quelle ist <ondisk></ondisk> auf dem Datenträger – die Differenz sind Hardlink-Dateien, die über Laufwerke hinweg nicht verknüpft bleiben können.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -304,6 +304,10 @@
   "fileOperations.transferDialog.scanRetry": "Erneut versuchen",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Das Telefon oder der Server, auf dem diese Dateien liegen, ist nicht mehr verbunden, daher kann Cmdr nichts davon kopieren.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "Wir konnten nicht prüfen, was am Ziel schon liegt. Bei jeder Überschneidung fragen wir nach.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -399,7 +403,7 @@
   },
   "fileOperations.scanPhase.scanDir": "{count, plural, one {Ordner} other {Ordner}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Prüfung vor dem Kopieren …",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -537,9 +541,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "Das Ziel existiert und ist ein <strong>Ordner</strong>. Du bist dabei, es mit einer <strong>Datei</strong> desselben Namens zu überschreiben. Der gesamte Inhalt des Zielordners würde gelöscht und durch die Datei ersetzt. Was möchtest du tun?",
+  "fileOperations.transferProgress.warningFileOverFolder": "Das Ziel existiert und ist ein <strong>Ordner</strong>. Du bist dabei, es durch eine <strong>Datei</strong> desselben Namens zu ersetzen. Alles, was im Ordner liegt, wäre weg. Was möchtest du tun?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "Das Ziel existiert und ist eine <strong>Datei</strong>. Du bist dabei, es durch einen <strong>Ordner</strong> desselben Namens zu ersetzen. Die Datei wäre weg, sobald der Ordner ihren Platz einnimmt. Was möchtest du tun?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Diese Namen sehen gleich aus, aber der Server schreibt sie unterschiedlich. „Überschreiben“ ersetzt das Objekt, das schon da ist.",
   "@fileOperations.transferProgress.lookAlikeHint": {

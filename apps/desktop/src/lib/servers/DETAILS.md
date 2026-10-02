@@ -250,9 +250,9 @@ and puts its trust button behind a disclosure. A `superseded` approval starts th
 presents rather than silently trusting the one on screen; an `unreachable` one records nothing, because approving is a
 live question and an unanswered one is not a yes.
 
-❗ **A changed host key on a REGISTERED volume shows no fingerprint.** No backend command hands the PENDING host-key
-prompt back for one, so the banner offers Disconnect and the fingerprint appears on the next open's dial
-(`../file-explorer/pane/DETAILS.md` § "The connect views").
+❗ **A changed host key on a REGISTERED volume has no fingerprint to show.** No backend command hands the PENDING
+host-key prompt back for one, so the banner's "Check the key" drops the session and redials, and the sheet shows that
+dial's prompt (`../file-explorer/pane/DETAILS.md` § "The connect views").
 
 ## The renderer table
 
@@ -295,7 +295,12 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
   backend work (GitHub [#173](https://github.com/vdavid/cmdr/issues/173)).
 - `not_a_webdav_server`: the address answers HTTP but not WebDAV. The one refusal with a remedy button.
 - `invalid_url`: the saved address isn't a usable web address.
-- `timed_out` and `unreachable`: about the SERVER, so they name the host rather than the account.
+- `timed_out` and `unreachable`: about the SERVER, so they name the host rather than the account. An `unreachable` from
+  the Add probe may carry a `RefusalHint` (`local_network_permission`: this Mac refused the route to a LAN address,
+  which is also how a stuck Local Network permission shows, ERR-XGS9X). The sheet renders it as a softer second line
+  (`#server-address-hint`, `wordRefusalHint`) under the same sentence, only while the refusal it came with is on screen,
+  and Add anyway stays: a server that's off looks the same to the probe. Backend rule:
+  `src-tauri/src/network/DETAILS.md` § "This Mac refusing the route".
 - `host_key_untrusted` (from `needs_host_key_approval`): the sheet's key step is where the fingerprint is shown and
   approved.
 - `host_key_revoked`: deliberately final. No button can safely undo a revocation the user's own `known_hosts` records.
@@ -315,6 +320,11 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
 the shape lets the username be edited, the account the sheet opened with may not be the one that was turned away, and
 "ada doesn't have access here" after `bob` was refused blames an account nobody tried. Add mode has the same rule for
 the host: an edit retires the refusal, since its sentence reads the live form.
+
+**A pane names a saved place by the name the user gave it.** `place-connect.svelte.ts` words its refusal through
+`wordPaneRefusal`, which says `unreachable` as `servers.paneState.unreachable` ("Cmdr couldn't reach Naspolya."),
+falling back to the host when the name is empty. Every other kind reads as in the sheet. The sheet and the Add form keep
+`servers.refusal.unreachable` with the host, since there the address is what the person typed and can fix.
 
 Keys live in `$lib/intl/messages/en/servers.json` under `servers.refusal.*`, reached through a `Record` in
 `connect-refusals.ts` rather than a built string, which is what keeps `desktop-message-keys-unused` honest without a

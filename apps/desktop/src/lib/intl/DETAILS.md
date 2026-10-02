@@ -42,7 +42,9 @@ At module load, `import.meta.glob(['./messages/*/*.json', '!./messages/screensho
 dir's catalog files, not just `en`. The dir segment of each glob path is the locale tag (`messages/pt-BR/foo.json` →
 `pt-BR`), and a `BCP47_DIR` regex gate keeps only directories that look like a BCP-47 tag. The dev-only `en-XA/`
 pseudolocale is globbed when present and simply absent in prod (gitignored). The result is `catalogs`: a
-`localeTag → merged metadata-stripped Catalog` map.
+`localeTag → merged metadata-stripped Catalog` map. In every Vite build (dev included) the `@key` metadata is already
+gone before bundling, so it never ships or reaches the heap; the runtime `stripMetadata()` covers Vitest, which skips
+the plugin, and narrows the JSON's types. Canonical: `messages/DETAILS.md` § `@key` metadata schema.
 
 **`screenshots/` is excluded by the glob PATTERN, and the pattern is the load-bearing half.** That dir is a sibling of
 the locale dirs holding translator tooling, and `capture-report.json` alone is ~280 kB. `BCP47_DIR` would reject it

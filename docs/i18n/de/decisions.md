@@ -311,15 +311,14 @@ backticks. Term rulings live in `terms.json`, open questions in `review-queue.md
 
 - Each value lands after a colon in `fileExplorer.pane.ejectFailedToast` or `.disconnectFailedToast`, so it's a whole
   sentence that stands alone; the repeated `trennen` in the disconnect frame is deliberate.
-- `drive` is `Laufwerk` here: the thing the user plugged in.
 - `notEjectable` states the build (`Dieses Laufwerk ist kein Wechselmedium, …`), not a failure.
-- `in Verwendung` (Finder `NE66`), never `gesperrt` / `belegt` (`gesperrt` belongs to locked).
 - Files are closed, apps quit: `Schließe offene Dateien und beende laufende Apps` (German has no shared verb); Cmdr's
   noun is `App`, not Apple's `Programm`.
 - `idle` → `nicht mehr beschäftigt`, the same word field as `fileExplorer.mtp.deviceBusy`.
-- A disconnect is `trennen`, never Nautilus' Linux `aushängen`.
 - „wouldn't“ (the other side refusing) → `wollte nicht`, as in `errors.mutation.trashRefused`.
-- `busy` says `ein Vorgang von Cmdr`, never `Cmdr bewegt noch Dateien` (it also covers copy and delete).
+- The refusals can follow either frame and concern a drive, share, phone, or server: they say `dort`, never
+  `dieses Laufwerk`, and end `dann versuche es erneut`, never `wirf es … aus`.
+- `busy` says `Dort läuft noch ein Vorgang von Cmdr`, never `Cmdr bewegt noch Dateien` (it also covers copy and delete).
 - `timedOut` mirrors `errors.mutation.timedOut`; `unexpected` equals `errors.mutation.unexpected`.
 
 ## Papierkorb-Toast: Widerrufen und Zurücklegen (`fileOperations.trash.*`, `commands.fileGoToTrash.*`)
@@ -484,7 +483,8 @@ Deliberate splits (don't unify):
 
 - Disconnecting separates the connection, not the server: `Cmdr konnte die Verbindung zu {name} nicht trennen.`, aria
   `Verbindung zu {name} trennen` (Apple's FileProvider frame), never `{name} trennen`.
-- `disconnectBusyTooltip` mirrors `ejectBusyTooltip` (`… nicht möglich, während auf diesem Server Vorgänge laufen`).
+- The `*BusyTooltip` trio shares `Cmdr arbeitet noch mit Dateien auf diesem … . …, sobald das erledigt ist.`; eject says
+  `Wirf das Gerät aus`, never `es` (could be Cmdr).
 - `Die Verbindung wurde unterbrochen.`, never `abgebrochen` (the user-cancelled status).
 - A certificate or key takes the dative: `macOS vertraut dem Zertifikat … nicht` (Apple's Trust strings, kept active).
 - The host key in prose is plain `der Schlüssel` with `von {host}`: never `Hostschlüssel` (jargon the English avoids)
@@ -645,11 +645,16 @@ Apple's Dock menu (`Dock.app/Contents/Resources/de.lproj/DockMenus.strings`) sup
 
 ## Das Dock-Menü von Cmdr (`menu.dock.*`)
 
-- The Dock menu takes Apple's wording (`DockMenus.strings`, Finder's Go menu): `Cmdr öffnen` (name first, no quotes on a
-  product name), `Gehe zu Ordner …` even though Cmdr's menu bar calls the same dialog `Zu Pfad gehen …` (the English
-  splits the two surfaces too).
+- Apple's wording (`DockMenus.strings`): `Cmdr öffnen`, name first, unquoted.
 - `Dateien suchen …` equals `menu.edit.searchFiles`; `Mit Server verbinden …` equals the palette entry.
 - `{name} ({parent})` stays identical (Finder `IN_G6_V1`), with a `sameAsSourceJustification`.
+
+## Gehe zu Ordner: Finders Wortlaut auf jeder Fläche (`menu.go.goToPath`, `commands.navGoToPath.label`, `goToPath.dialog.*`)
+
+- Finder's `Gehe zu Ordner …` (MenuBar `261.title`) and `Gehe zu Ordner` (GotoWindow `1.title`) for menu, command, and
+  title, Finder's name over the infinitive register.
+- The button „Go“ is `Gehe zu`, the Go menu's title (`menu.bar.go`, same English). Finder's own Go button (`FR24`) says
+  `Öffnen`, but that splits the term in `i18n-term-consistency`; switching needs an allowlist entry David approves.
 
 ## Das „Im Finder anzeigen“-Angebot und der Ersttreffer-Hinweis (`main.revealNudge.*`, `main.revealActivation.*`, `settings.behavior.reveal*`)
 
@@ -765,18 +770,18 @@ Apple's Dock menu (`Dock.app/Contents/Resources/de.lproj/DockMenus.strings`) sup
 
 ## Wer das Laufwerk festhält: die sechs benannten Absagen (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
 
-- Same frame and rules as `errors.eject.*`; `unmountRefused` / `…ByApp` / `…ByApps` read as one family.
-- `{app} verwendet dieses Laufwerk noch`: the name leads as nominative subject, right after the frame's colon (a
-  lowercase tool name like `mds_stores` at the start is fine). Never `belegt`, `blockiert`, `greift zu`.
-- No pronoun back to the holder in either line (`Schließe alles, was dort geöffnet ist, …`): a pronoun on `{app}` is
-  barred, and one tail keeps the family uniform.
-- `{apps}` stays the subject: `Intl.ListFormat('de')` ends on nominative `andere Apps`, which a dative slot would break.
-- `Image`, never `Disk-Image` (drifts from two shipped keys) nor `Datenträgerabbild` (not macOS).
-- `Auf diesem Laufwerk liegt ein Image, …` mirrors `errors.eject.busy`; `Wirf erst das Image aus, dann das Laufwerk.`
-  gaps the second verb.
-- „working with“ → `arbeitet noch mit`, not `verwenden`: the English itself distinguishes it (Spotlight, Time Machine).
-- `Cmdr selbst verwendet …` is a handle Cmdr failed to release; `busy` is a running operation. Keep them apart.
-- `sende einen Fehlerbericht`: the full name, since it's the only mention.
+- Same frame and rules as `errors.eject.*`; one skeleton for the family: `X hat dort noch Dateien geöffnet.` +
+  `…, dann versuche es erneut.` The generic `unmountRefused` drops the subject: `Dort sind noch Dateien geöffnet.`
+- `{app}` / `{apps}` lead as nominative subject right after the frame's colon (a lowercase `mds_stores` is fine);
+  `Intl.ListFormat('de')` ends on nominative `andere Apps`, which a dative slot would break. Never `belegt`,
+  `blockiert`, `greift zu`.
+- `Schließe sie` points at `Dateien`, never back at the holder.
+- `Dort liegt ein Image, das noch geöffnet ist.` (Finder `PE24` puts stored items with `ablegen`, so `liegt`, not
+  `gespeichert`); `Wirf erst das Image aus, dann versuche es erneut.`
+- `Warte eine Minute` (macOS) vs `Warte einen Moment` (Cmdr) follows English. `sende einen Fehlerbericht`: the full
+  name, since it's the only mention.
+- `Ein Prozess namens {process} …`; the aside keeps Cmdr as subject (`Cmdr kennt keinen App-Namen`), never `Wir`.
+  `otherProcesses` is `weitere`: `Prozesse` already leads.
 
 ## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
 

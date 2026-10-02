@@ -55,7 +55,7 @@ windows, silently — which is how the queue rendered binary sizes while the cop
 Two helpers in `loader.rs` read `settings.json` before the Tauri `AppHandle` is fully wired into `setup()`, used by the
 `logging::dispatch` initializer: `early_load_max_log_storage_mb()` (`Option<u64>`, cap in MB, 0 = disabled) and
 `early_load_verbose_logging()` (`Option<bool>`, sets the initial stdout threshold to Debug if true and `RUST_LOG` is
-unset). Both resolve the production default via `dirs::data_dir()` + a hard-coded bundle-id constant kept in sync with
-`tauri.conf.json` → `identifier`.
+unset). Both resolve the data dir via `config::standalone_app_data_dir()` (`CMDR_DATA_DIR`, else the OS default for
+`config::BUNDLE_ID`, kept in sync with `tauri.conf.json` → `identifier`).
 
 The full `Settings` struct field list (every key, its source dot-path, and per-field notes) is in `DETAILS.md`.

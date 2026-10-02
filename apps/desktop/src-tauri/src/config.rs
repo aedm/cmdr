@@ -48,6 +48,49 @@ fn data_dir_from_env(env_value: Option<&str>) -> Option<PathBuf> {
     }
 }
 
+/// Bundle id from `tauri.conf.json`, which names the OS-default data dir. Keep in sync.
+pub const BUNDLE_ID: &str = "com.veszelovszki.cmdr";
+
+/// The app data dir for code that runs without an `AppHandle` (stores read before setup, or
+/// behind a plain function signature): `CMDR_DATA_DIR` when set, else the OS default for
+/// [`BUNDLE_ID`]. `None` only when the OS has no data dir. Doesn't create it.
+///
+/// ❌ Never re-derive this at a call site: one copy that misses the test branch below is a
+/// unit test writing into the developer's real data dir (`volumes::tests` once seeded the real
+/// `favorites.json` that way).
+pub fn standalone_app_data_dir() -> Option<PathBuf> {
+    standalone_dir_from(std::env::var("CMDR_DATA_DIR").ok().as_deref())
+}
+
+fn standalone_dir_from(env_value: Option<&str>) -> Option<PathBuf> {
+    if let Some(dir) = data_dir_from_env(env_value) {
+        return Some(dir);
+    }
+    os_default_data_dir()
+}
+
+#[cfg(not(test))]
+fn os_default_data_dir() -> Option<PathBuf> {
+    Some(dirs::data_dir()?.join(BUNDLE_ID))
+}
+
+/// Under test, the OS default is a scratch dir of this process's own: a test that didn't
+/// isolate a store must never read or write the developer's real one. Process-unique because
+/// nextest runs tests in parallel processes; left behind on exit (a static never drops), and
+/// only created by a store that writes.
+#[cfg(test)]
+fn os_default_data_dir() -> Option<PathBuf> {
+    use std::sync::LazyLock;
+    static DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+        std::env::temp_dir().join("cmdr-unit-test-data").join(format!(
+            "{}-{:016x}",
+            std::process::id(),
+            rand::random::<u64>()
+        ))
+    });
+    Some(DIR.clone())
+}
+
 /// Logs the resolved data directory once at startup.
 pub fn log_app_data_dir<R: Runtime>(app: &AppHandle<R>) {
     if let Ok(dir) = resolved_app_data_dir(app) {
@@ -134,6 +177,26 @@ mod tests {
         // An empty CMDR_DATA_DIR should not silently land us in cwd-equivalent paths.
         // Falling through to the Tauri default is the documented behavior.
         assert_eq!(data_dir_from_env(Some("")), None);
+    }
+
+    /// `volumes::tests` once seeded the developer's real `favorites.json` through
+    /// `list_locations()`. With `CMDR_DATA_DIR` unset, a test must land in scratch space.
+    #[test]
+    fn an_unset_data_dir_under_test_is_never_the_real_one() {
+        let resolved = standalone_dir_from(None).expect("a test always gets a data dir");
+        let real = dirs::data_dir().map(|base| base.join(BUNDLE_ID));
+        assert_ne!(Some(resolved.clone()), real, "a test resolved the real app data dir");
+        // allowed-fixed-temp-dir: asserts the scratch dir sits under the temp root, writes nothing
+        assert!(resolved.starts_with(std::env::temp_dir()), "{}", resolved.display());
+        assert_eq!(standalone_dir_from(None), Some(resolved), "stable within one process");
+    }
+
+    #[test]
+    fn a_set_data_dir_wins_under_test_too() {
+        assert_eq!(
+            standalone_dir_from(Some("/tmp/cmdr-p1-test")),
+            Some(PathBuf::from("/tmp/cmdr-p1-test"))
+        );
     }
 
     #[test]

@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} servidor encontrado cerca} many {{countText} servidores encontrados cerca} other {{countText} servidores encontrados cerca}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "La detección de servidores en la red local está desactivada.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -170,6 +174,10 @@
   "servers.refusal.unreachable": "Cmdr no ha podido acceder a {host}.",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "Si el servidor está encendido, comprueba que Cmdr tenga permiso en {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr todavía no confía en la clave de {host}.",
   "@servers.refusal.hostKeyUntrusted": {
@@ -451,6 +459,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr no ha podido acceder a {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "Atrás",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -463,9 +475,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Su clave ha cambiado. Esto puede significar que el servidor se ha reinstalado, o que hay algo entre tú y él. Desconecta y vuelve a abrirlo para comprobar la huella digital.",
+  "servers.paneState.hostKeyChangedHint": "Su clave ha cambiado. Esto puede significar que el servidor se ha reinstalado, o que hay algo entre tú y él. Comprueba la nueva clave antes de volver a conectarte.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "Comprobar la clave",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "Reconectándose a {name}…",
   "@servers.paneState.reconnecting": {

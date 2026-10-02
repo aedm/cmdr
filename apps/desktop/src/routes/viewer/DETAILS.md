@@ -28,7 +28,8 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
   bare-key dispatch, and the twelve selection-extension chords).
 - **`viewer-menu-actions.ts`**: `runViewerEditAction`, the dispatcher behind the viewer menu bar's Edit > Copy and
   Edit > Select all. Branches on search-input focus through the same `isSearchInputFocused` / `inputHasSelection` the
-  keydown router uses, so the menu path and the ⌘-chord path end in the same two functions. See § Gotchas.
+  keydown router uses, so the menu path and the ⌘-chord path end in the same two functions. Beside it,
+  `runViewerContextMenuAction` for the native right-click menu, which never branches. See § Gotchas.
 - Selection: **`selection.svelte.ts`** (model), **`line-segments.ts`** (pure segmenter), **`viewer-caret-geometry.ts`**
   (pure point → offset search, surrogate-safe), **`viewer-pointer.ts`** (its DOM adapter and the ONE place line text is
   measured: row hit-test, character rects, `caretRectFor`, `measureColumnWidth`), **`viewer-pointer-drag.svelte.ts`**
@@ -46,10 +47,10 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
 - Media: **`media-view.ts`** (pure helpers incl. `mediaUrl(token)`, the ONE `cmdr-media://localhost/` origin, + zoom
   math), **`viewer-media.svelte.ts`** (`createViewerMedia`: state, `isMedia`/`mediaSrc`, `lastMediaKind`, switch
   triggers), **`MediaImageView` / `MediaPdfView`** (inline `<img>` / `<embed>`).
-- Presentational: **`ViewerContextMenu`**, **`ViewerToolbar`** (title-bar overlay, owns `data-tauri-drag-region`,
-  disabled-not-hidden in media), **`ViewerStatusBar`** (keeps `user-select: text`), **`ViewerCopyDialogs`**,
-  **`EncodingPicker`**, **`ViewModePicker`** (text / binary / hex / optional rendered media),
-  **`ViewerReloadToastContent`** (session id and change kind as toast props).
+- Presentational: **`ViewerToolbar`** (title-bar overlay, owns `data-tauri-drag-region`, disabled-not-hidden in media),
+  **`ViewerStatusBar`** (keeps `user-select: text`), **`ViewerCopyDialogs`**, **`EncodingPicker`**, **`ViewModePicker`**
+  (text / binary / hex / optional rendered media), **`ViewerReloadToastContent`** (session id and change kind as toast
+  props).
 
 ## Rows, not lines
 
@@ -60,9 +61,8 @@ fetch costs more than a bounded read however long a line is. The rule, the wire 
 **The text coordinate is a row, everywhere.** `rowCache`, `visibleFrom` / `visibleTo`, `estimatedTotalRows()`, the
 selection's `(row, offset)` endpoints, `EOF_ROW`, the caret motions, and the search jump all count rows. A file whose
 every line is shorter than a segment has rows and lines one-to-one, so nothing about it changed; a minified bundle is
-where the two part company. ❗ `RangeEnd`'s `line` field and `SearchMatch.line` are the WIRE's spelling of that same row
-index (the IPC rename is its own milestone); `toRangeEnds` and `viewerSearchPoll` are the only two places that crossing
-happens, and both convert at the boundary rather than letting a field called `line` travel inward.
+where the two part company. The wire speaks rows too (`RangeEnd`'s `{ kind: 'row', row, offset }`, `SearchMatch.row`,
+the `'row'` seek kind), so the row travels straight through with no conversion at the IPC boundary.
 
 **`totalLines` still exists, and it is not a coordinate.** The status bar's "N lines" is a physical line count, `null`
 on `byteSeek`. The row total comes from `TotalRows` (`exact` or `estimated`) on the open result's first chunk, on every
@@ -788,12 +788,19 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   uses a monotonic per-session counter. This avoids an extra round-trip (call to "start read", await `read_id`, then
   another call to "wait for read"); the FE just sends the id with the read request, and the backend keys the cancel flag
   off that id. Uniqueness within the session is the only invariant.
-- **`ViewerContextMenu` Escape stops propagation AND the page checks `contextMenuPos`.** The page's
-  `<svelte:window on:keydown>` listener is registered first (the menu mounts later), so the page's handler runs before
-  the menu's. If the page didn't gate on `contextMenuPos !== null` first, Escape would fall through to `closeWindow()`
-  and shut the whole viewer window. The menu's `stopImmediatePropagation()` is defense-in-depth for any future
-  listener-order change. See `tryConsumeEscapeForCopy` in `viewer-keyboard.ts` (`createViewerKeyboard`) and `handleKey`
-  in `ViewerContextMenu.svelte`.
+- **The right-click menu over the text is a native OS menu**, same as every other right-click in the app
+  (`build_viewer_context_menu` in `src-tauri/src/menu/menu_structure.rs`). `handleContextMenu` cancels the webview's own
+  menu and calls the `showContextMenu` dep, which the page wires to `showViewerContextMenu(hasSelection)`: the native
+  menu can't see the viewer's selection model, so the frontend reads it at open time and Rust greys Copy from that. The
+  pick comes back as `ViewerContextMenuAction` to this viewer, and `runViewerContextMenuAction` runs the same
+  `handleCopy` / `handleSelectAllShortcut` the ⌘-chords end in.
+  - ❗ It's its own event, ❌ never a `ViewerEditAction`: the bar's pair hands Copy and Select all to the search box
+    while it has focus, and a right-click on the text doesn't move focus (`handlePointerDown` ignores button 2), so the
+    bar's dispatcher would copy the query from a menu opened over the file.
+  - Escape on the open menu never reaches the webview: the OS menu's tracking loop takes it (GTK's popup grabs the
+    keyboard the same way), so the page's Escape ladder needs no menu gate.
+  - The E2E suite can't drive a native menu, so the dispatch is pinned in `viewer-menu-actions.test.ts` and the id
+    routing in `menu_handlers.rs`'s `viewer_edit_action_tests`.
 - **The AT announcement speaks PHYSICAL LINES, and caps its row iteration.** `describeSelectionForAt` in
   `selection.svelte.ts` builds the screen-reader announcement from a per-row lookup of `(utf16Length, lineNumber)`. It
   names the line numbers the gutter draws, never row indexes: a selection sitting inside one wrapped line is one line

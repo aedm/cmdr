@@ -264,6 +264,21 @@ async fn create_directory_all_honors_the_shared_honesty_contract() {
     conformance::assert_create_directory_all_reports_an_existing_dir_honestly(&volume, Path::new("/album")).await;
 }
 
+/// The shared file-in-the-way assertion. The double runs the trait's default
+/// walk, which every backend without a walk of its own inherits, so this is the
+/// cell that pins the default for all of them.
+#[tokio::test]
+async fn create_directory_all_honors_the_shared_file_in_the_way_contract() {
+    let volume = InMemoryVolume::new("Test");
+    volume.create_directory(Path::new("/album")).await.unwrap();
+    volume
+        .create_file(Path::new("/album/notes"), b"the user's notes")
+        .await
+        .unwrap();
+
+    conformance::assert_create_directory_all_refuses_a_file_in_the_way(&volume, Path::new("/album/notes")).await;
+}
+
 /// The shared export-handshake assertion, over the double every other suite's
 /// fixtures stand on: it streams bytes, so it must claim export.
 #[tokio::test]

@@ -76,6 +76,8 @@ mod install_id;
 // which must not disagree about it. macOS-only, like both of them and the `running_bundle()` it
 // asks.
 #[cfg(target_os = "macos")]
+mod glass_tint;
+#[cfg(target_os = "macos")]
 mod install_location;
 mod instance_lock;
 mod intl;
@@ -312,6 +314,9 @@ pub fn run() {
             // other's live temps), and reap any `.cmdr-viewer-*` orphan left by a crash.
             if let Ok(data_dir) = config::resolved_app_data_dir(app.handle()) {
                 file_viewer::init_materialize_dir(data_dir.join("viewer-extract"));
+                // "Open with" on a file inside an archive gets its own dir and prefix
+                // for the same reason, and its own startup-only reaper.
+                file_viewer::init_open_with_extract_dir(data_dir.join("open-with-extract"));
 
                 // Point the leftover ledger at the data dir and settle what an
                 // earlier run left (a quit or a crash mid-copy), each under the rules
@@ -535,6 +540,12 @@ pub fn run() {
             reduce_transparency::observe_reduce_transparency_changes(app.handle().clone());
             #[cfg(not(target_os = "macos"))]
             stubs::reduce_transparency::observe_reduce_transparency_changes(app.handle().clone());
+
+            // Follow the macOS 27 Appearance > Liquid Glass slider
+            #[cfg(target_os = "macos")]
+            glass_tint::observe_glass_tint_changes(app.handle().clone());
+            #[cfg(not(target_os = "macos"))]
+            stubs::glass_tint::observe_glass_tint_changes(app.handle().clone());
 
             // Watch the mouse's back / forward navigation. macOS only: the mouse's own
             // driver decides what the press becomes, and a Logi Options+ mouse posts a

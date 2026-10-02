@@ -79,9 +79,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.delete.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "删除",
   "@fileOperations.delete.confirmDelete": {
@@ -271,9 +271,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "这次要写入 <written></written> 的数据，而源文件在磁盘上只占 <ondisk></ondisk> 的空间。多出的部分是硬链接文件，跨驱动器后没法保持链接。",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -302,6 +302,10 @@
   "fileOperations.transferDialog.scanRetry": "重试",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "存放这些文件的手机或服务器已经断开连接了，所以 Cmdr 无法从那里拷贝。",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "我们无法检查目标位置已有的内容。遇到重名时会逐个询问你。",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -395,9 +399,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, other {个目录}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, other {个文件夹}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "拷贝前正在核对…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -535,9 +539,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "目标已存在，是一个<strong>文件夹</strong>。你即将用同名的<strong>文件</strong>覆盖它。目标文件夹的全部内容会被删除，并由该文件取代。要怎么做？",
+  "fileOperations.transferProgress.warningFileOverFolder": "目标已存在，是一个<strong>文件夹</strong>。你即将用同名的<strong>文件</strong>替换它。这个文件夹里的所有东西都会没了。要怎么做？",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "目标已存在，是一个<strong>文件</strong>。你即将用同名的<strong>文件夹</strong>替换它。文件夹一旦取而代之，这个文件就没了。要怎么做？",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "这两个名称看起来一样，但服务器存储的写法不同。“覆盖”会替换现有的那一项。",
   "@fileOperations.transferProgress.lookAlikeHint": {

@@ -257,10 +257,18 @@ export type ThemeMode = 'light' | 'dark' | 'system'
  * disk; the Rust side keeps a serde alias for it, since it reads the file first.
  */
 export type FullDiskAccessChoice = 'allow' | 'deny' | 'unanswered'
+/** Whether the servers hub's "found nearby" group is open: the person's last toggle, or `auto` before any. */
+export type NearbyServersGroupChoice = 'auto' | 'expanded' | 'collapsed'
 export type ExtensionChangePolicy = 'yes' | 'no' | 'ask'
 /** What ⌘V does in a pane when the clipboard holds no file URLs but has pasteable content (text, image, PDF). */
 export type PasteClipboardAsFileMode = 'doNothing' | 'createFile' | 'createFileAndRename'
 export type DirectorySortMode = 'likeFiles' | 'alwaysByName'
+/**
+ * What a listing's comparator is told (the Rust `DirectorySortMode`): the "Sort folders"
+ * choice while "Show folders first" is on, else `mixedWithFiles`. `getDirectorySortMode()` folds
+ * the two settings into it; it's never stored.
+ */
+export type ListingDirectorySortMode = DirectorySortMode | 'mixedWithFiles'
 export type SizeDisplayMode = 'smart' | 'logical' | 'physical'
 export type BriefColumnWidthMode = 'paneWidth' | 'limited'
 export type AppColor = 'system' | 'cmdr-gold'
@@ -350,6 +358,7 @@ export interface SettingsValues {
 
   // Listing
   'listing.showHiddenFiles': boolean
+  'listing.foldersFirst': boolean
   'listing.directorySortMode': DirectorySortMode
   'listing.sizeDisplay': SizeDisplayMode
   'listing.sizeUnit': FileSizeUnit
@@ -458,6 +467,8 @@ export interface SettingsValues {
   // Network
   'network.enabled': boolean
   'network.firstTriggerDone': boolean
+  /** Internal: the servers hub's "found nearby" group, as the person last left it. */
+  'network.nearbyServersGroup': NearbyServersGroupChoice
   'network.directSmbConnection': boolean
   'network.shareCacheDuration': number
   'network.timeoutMode': NetworkTimeoutMode

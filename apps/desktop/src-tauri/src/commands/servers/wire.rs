@@ -13,7 +13,7 @@ use cmdr_sftp::transport::HostKeyPrompt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerProtocol {
-    /// An SMB host. ❗ Listed, never pinned in this effort; see [`SavedServer`].
+    /// An SMB host. ❗ The host row is never pinned; its saved shares are, see [`SavedServer`].
     Smb,
     /// An SFTP server, one account per entry.
     Sftp,

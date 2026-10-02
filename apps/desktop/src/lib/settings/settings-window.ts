@@ -181,7 +181,7 @@ export async function openSettingsWindow(surface: SettingsSurface, section?: str
   // (`NSWorkspace`), NOT a media query: WKWebView doesn't reflect
   // `prefers-reduced-transparency`. The window's opacity is fixed at creation
   // for the current setting; the page content still re-themes live via the
-  // `reduce-transparency` class (see `$lib/reduce-transparency`).
+  // `reduce-transparency` class (see `$lib/glass-material`).
   // `prefers-color-scheme` IS reflected, so dark detection stays a media query.
   const reduceTransparency = await getShouldReduceTransparency()
   const darkAppearance = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -257,6 +257,14 @@ export async function openSettingsWindow(surface: SettingsSurface, section?: str
  */
 export function settingAnchorId(settingId: SettingId): string {
   return `setting-${settingId}`
+}
+
+/**
+ * The DOM id of a row's `disabledNote` line: `SettingRow` stamps it, and the section points
+ * the control's `aria-describedby` at it while the row is disabled.
+ */
+export function disabledNoteId(settingId: SettingId): string {
+  return `${settingAnchorId(settingId)}-disabled-note`
 }
 
 /**

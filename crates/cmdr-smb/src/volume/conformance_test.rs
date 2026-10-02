@@ -158,6 +158,31 @@ async fn smb_integration_create_directory_all_honors_the_shared_honesty_contract
     ensure_clean(&smb_vol, &base).await;
 }
 
+/// The shared file-in-the-way assertion, against a real SMB server: the
+/// trait's default walk, with the server's own answer for a create under a file.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_create_directory_all_honors_the_shared_file_in_the_way_contract() {
+    let smb_vol = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb_vol, &base).await;
+
+    let notes = format!("{base}/notes");
+    smb_vol.create_directory(Path::new(&base)).await.unwrap();
+    smb_vol
+        .create_file(Path::new(&notes), b"the user's notes")
+        .await
+        .unwrap();
+
+    cmdr_fs::volume::conformance::assert_create_directory_all_refuses_a_file_in_the_way(
+        smb_vol.as_ref(),
+        Path::new(&notes),
+    )
+    .await;
+
+    ensure_clean(&smb_vol, &base).await;
+}
+
 /// The shared writability-declaration assertion, against a real SMB server:
 /// `is_writable()` and what the share actually accepts say the same thing.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

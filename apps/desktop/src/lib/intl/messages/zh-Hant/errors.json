@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "可以這樣試試：\n- 開啟 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 存取權\n- 如果這是受系統保護的資料夾（例如系統目錄），你可能得在 {privacy_and_security} 裡授予 Cmdr **{full_disk_access}**\n- 在終端機裡對這個路徑執行 `ls -la`，查看擁有者和權限",
+  "errors.listing.notPermitted.suggestion": "可以這樣試試：\n- 開啟 **{system_settings} > {privacy_and_security} > {files_and_folders}**，授予 Cmdr 存取權\n- 如果這是受系統保護的資料夾，你可能得在 {privacy_and_security} 裡授予 Cmdr **{full_disk_access}**\n- 在終端機裡對這個路徑執行 `ls -la`，查看擁有者和權限",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "找不到路徑",
   "@errors.listing.pathNotFoundErrno.title": {
@@ -1103,15 +1103,27 @@
   },
   "errors.write.destinationNotFound.message.copy": "你要複製過去的資料夾已經不在了，所以沒有地方放你的檔案。原本的檔案完全沒有被動過。",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "你要移動過去的資料夾已經不在了，所以沒有地方放你的檔案。原本的檔案完全沒有被動過。",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "它可能被重新命名或移除了，也可能是磁碟機斷線了。換一個目標位置，或者重新開啟那個資料夾再試一次。",
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
+  },
+  "errors.write.destinationNotAFolder.title": "有個檔案占了位置",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr 無法建立目標資料夾，因為 {path} 是個檔案，但那裡需要一個資料夾。什麼都沒有寫入，原本的檔案完全沒有被動過。",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "換一個目標位置，或者把那個檔案改名或移走，然後再試一次。",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
   },
   "errors.write.notConnected.title": "尚未連線",
   "@errors.write.notConnected.title": {
@@ -1128,6 +1140,18 @@
   "errors.write.notConnected.suggestion": "從卷宗切換器開啟它來連線，然後再試一次。如果是手機，把它解鎖並接受它跳出的任何提示。",
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
+  },
+  "errors.write.noLongerConnected.title": "已經中斷連線",
+  "@errors.write.noLongerConnected.title": {
+    "sourceHash": "3974fa0"
+  },
+  "errors.write.noLongerConnected.message": "存放這些檔案的手機或伺服器已經中斷連線了，所以什麼都沒有改變。",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "d0827c4"
+  },
+  "errors.write.noLongerConnected.suggestion": "把手機重新插上，或從卷宗切換器開啟伺服器，然後再試一次。",
+  "@errors.write.noLongerConnected.suggestion": {
+    "sourceHash": "850ecdb"
   },
   "errors.write.destinationExists.title": "檔案已經存在",
   "@errors.write.destinationExists.title": {
@@ -1735,7 +1759,7 @@
   },
   "errors.mutation.notFound": "「{path}」已經不在了。",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "卷宗的最上層資料夾沒辦法在這裡重新命名。",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1755,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "那個卷宗已經不能用了，所以什麼都沒有更動。",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr 現在無法開啟這個壓縮檔來編輯。",
   "@errors.mutation.archiveNotEditable": {
@@ -1791,7 +1815,7 @@
   },
   "errors.volume.notFound": "「{path}」已經不在了。",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr 沒有「{path}」的存取權。",
   "@errors.volume.permissionDenied": {
@@ -1836,6 +1860,10 @@
   "errors.volume.isADirectory": "「{path}」是資料夾，不是檔案。",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "「{path}」是個檔案，但那裡需要一個資料夾。",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "目標位置存不下這個名稱。請換一個。",
   "@errors.volume.invalidName": {
@@ -1893,13 +1921,13 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr 還在這個磁碟機上移動檔案。等它做完再退出。",
+  "errors.eject.busy": "Cmdr 還在那裡移動檔案。等它做完再試一次。",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "那個磁碟機已經不在了，沒有東西需要退出。",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "這個磁碟機不可移除，所以會一直連著。",
   "@errors.eject.notEjectable": {
@@ -1911,39 +1939,51 @@
   },
   "errors.eject.remoteNotConnected": "這個伺服器已經不再連線，沒有東西需要關閉。",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "裝置沒有把連線關掉。等它閒下來再拔線。",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "還有東西在用這個磁碟機。請關掉開著的檔案和 App，然後再退出一次。",
+  "errors.eject.unmountRefused": "還有東西開著那裡的檔案。請關掉開著的檔案和 App，然後再試一次。",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} 還在用這個磁碟機。請關掉它在上面開著的東西，然後再退出一次。",
+  "errors.eject.unmountRefusedByApp": "{app} 還開著那裡的檔案。請把它們關掉，然後再試一次。",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} 還在用這個磁碟機。請關掉它們在上面開著的東西，然後再退出一次。",
+  "errors.eject.unmountRefusedByApps": "{apps} 還開著那裡的檔案。請把它們關掉，然後再試一次。",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "其他 App",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "這個磁碟機上有一個磁碟映像檔還開著。請先退出那個映像檔，然後再退出這個磁碟機。",
+  "errors.eject.unmountRefusedByProcess": "有個名為 {process} 的程序還開著那裡的檔案。（Cmdr 不知道 App 名稱，只知道程序名稱。）",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "ad7c1d5"
+  },
+  "errors.eject.unmountRefusedByProcesses": "有 {countText} 個程序還開著那裡的檔案，分別是 {processes}。（Cmdr 不知道 App 名稱，只知道程序名稱。）",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "5e9dbac"
+  },
+  "errors.eject.otherProcesses": "其他程序",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "那裡存放的一個磁碟映像檔還開著。請先退出那個映像檔，然後再試一次。",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS 還在處理這個磁碟機。請稍等一下，然後再退出一次。",
+  "errors.eject.unmountRefusedBySystem": "macOS 還開著那裡的檔案。請稍等一下，然後再試一次。",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己還在用這個磁碟機。請等一下再退出一次，如果一直這樣，請傳送一份報告。",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己還開著那裡的檔案。請等一下再試一次，如果一直這樣，請傳送一份報告。",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "這個磁碟機還沒回應，過一會兒它可能會自己退出。",
   "@errors.eject.timedOut": {

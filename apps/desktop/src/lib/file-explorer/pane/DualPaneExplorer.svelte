@@ -30,9 +30,19 @@
     import { determineNavigationPath } from '../navigation/path-navigation'
     import { createVolumeRootFollow } from './volume-root-follow'
 
-    import { canGoBack } from '../navigation/navigation-history'
+    import { canGoBack, getCurrentEntry } from '../navigation/navigation-history'
+    import { recordCursor, type CursorReading } from '../navigation/history-cursor'
     import TabBar from '../tabs/TabBar.svelte'
-    import { getActiveTab, getAllTabs, pushHistoryEntry, trimClosedStack, MAX_TABS_PER_PANE } from '../tabs/tab-state-manager.svelte'
+    import TabDragOverlay from '../tabs/TabDragOverlay.svelte'
+    import { createTabDragController } from '../tabs/tab-drag-controller.svelte'
+    import {
+        getActiveTab,
+        getAllTabs,
+        pushHistoryEntry,
+        trimClosedStack,
+        MAX_TABS_PER_PANE,
+        type MoveTabResult,
+    } from '../tabs/tab-state-manager.svelte'
     import type { TabId } from '../tabs/tab-types'
     import {
         saveTabsForPane,
@@ -48,6 +58,10 @@
         syncPinTabMenuForPane,
         cycleTab as tabOpsCycleTab,
         switchToTab as tabOpsSwitchToTab,
+        handleTabDrop as tabOpsHandleTabDrop,
+        moveTabToPane as tabOpsMoveTabToPane,
+        type TabMoveDeps,
+        type TabMoveRequest,
     } from './tab-operations'
     import { initNetworkDiscovery, cleanupNetworkDiscovery } from '../network/network-store.svelte'
     import type { HubRow } from '../network/servers-hub-rows'
@@ -64,6 +78,8 @@
         AdoptedOperationData,
         ForegroundOperationVerdict,
         TransferConfirmPayload,
+        TransferConfirmer,
+        DeleteConfirmer,
         TransferCompletePayload,
     } from './dialog-props'
     import { explorerState } from './explorer-state.svelte'
@@ -375,6 +391,18 @@
     // Panes and tabs on a connected place follow an edit that moved its root or start folder.
     const volumeRootFollow = createVolumeRootFollow({ getTabMgr, navigate: navigateIntent, saveTabs: saveTabsForPaneSide })
 
+    // Dragging a TAB to reorder it or move it to the other pane's bar. One controller
+    // above both bars, since each `TabBar` sees only its own pane; pointer events, so
+    // it never meets the native file-drop band below.
+    const tabMoveDeps: TabMoveDeps = { getTabMgr, getPaneRef, getFocusedPane: () => focusedPane }
+    const tabDrag = createTabDragController({
+        getTabs: (pane) => getAllTabs(getTabMgr(pane)),
+        maxTabs: MAX_TABS_PER_PANE,
+        onDrop: (drop) => {
+            tabOpsHandleTabDrop(drop, tabMoveDeps)
+        },
+    })
+
     // Native drag-and-drop band: drop-target highlight state, the drag handlers,
     // the three Tauri drag listeners, and the folder-highlight effect. The effect
     // is created synchronously inside the factory (L3); `init()`/`cleanup()` run
@@ -636,6 +664,7 @@
         cleanupVolumeBusyStore()
         cleanupNetworkDiscovery()
         dragDrop.cleanup()
+        tabDrag.destroy()
         window.removeEventListener('resize', handleResizeForDevTools) // No-op in non-dev, safe to always call
     })
 
@@ -964,6 +993,11 @@
         return getPaneRef(pane)?.isLoading() ?? false
     }
 
+    /** Whether the pane's folder stopped answering mid-read. `false` for a pane that isn't mounted. */
+    export function isPaneStalled(pane: 'left' | 'right'): boolean {
+        return getPaneRef(pane)?.isStalled() ?? false
+    }
+
     // noinspection JSUnusedGlobalSymbols -- consumed by quick-look-state
     export function routePanelKey(payload: {
         key: string
@@ -1234,6 +1268,16 @@
         mcpTab.handleMcpTabAction(pane, action, tabId, pinned)
     }
 
+    /** A tab move from the MCP `tab` tool: the same operation a tab drag ends in, minus the toast. */
+    export function moveTab(request: TabMoveRequest): MoveTabResult {
+        return tabOpsMoveTabToPane(request, tabMoveDeps)
+    }
+
+    /** Pushes both panes' tab lists to the MCP backend now, so a reply that follows reads fresh. */
+    export async function syncTabsToMcp(): Promise<void> {
+        await tabMcpSync.syncTabsNow()
+    }
+
     function syncPinTabMenu() {
         syncPinTabMenuForPane(focusedPane, getTabMgr)
     }
@@ -1260,6 +1304,7 @@
             activeTabId={tabMgr.activeTabId}
             {paneId}
             maxTabs={MAX_TABS_PER_PANE}
+            drag={tabDrag.forPane(paneId)}
             onTabSwitch={(tabId: TabId) => {
                 switchToTab(paneId, tabId)
             }}
@@ -1299,6 +1344,9 @@
                 }}
                 onStoredSpelling={(spelling: { from: string; to: string }) => {
                     adoptStoredSpelling(navigateDeps, paneId, spelling)
+                }}
+                onCursorReading={(reading: CursorReading) => {
+                    recordCursor(getCurrentEntry(getPaneHistory(paneId)), reading)
                 }}
                 onVolumeChange={({ volumeId, targetPath }: VolumeChangePayload) => {
                     navigateIntent({
@@ -1378,6 +1426,7 @@
 </div>
 
 <DragOverlay />
+<TabDragOverlay view={tabDrag.view} />
 
 <DialogManager
     onDialogRenderError={(error: unknown) => {
@@ -1401,6 +1450,8 @@
     onTransferConfirm={(payload: TransferConfirmPayload) => {
         dialogs.handleTransferConfirm(payload)
     }}
+    registerTransferConfirmer={(confirm: TransferConfirmer) => dialogs.registerTransferConfirmer(confirm)}
+    registerDeleteConfirmer={(confirm: DeleteConfirmer) => dialogs.registerDeleteConfirmer(confirm)}
     onTransferCancel={() => {
         dialogs.handleTransferCancel()
     }}

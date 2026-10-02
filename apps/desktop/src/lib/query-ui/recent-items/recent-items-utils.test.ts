@@ -88,7 +88,7 @@ describe('filterSummary', () => {
     const out = filterSummary(entry)
     expect(out).toContain('scope: /Users/test')
     expect(out).toContain('case-sensitive')
-    expect(out).toContain('system dirs included')
+    expect(out).toContain('system folders included')
   })
 })
 

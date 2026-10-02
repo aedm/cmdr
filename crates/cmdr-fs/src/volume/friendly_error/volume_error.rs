@@ -123,6 +123,15 @@ pub fn listing_error_from_volume_error(err: &VolumeError, path: &Path) -> Listin
             retry_hint: false,
             raw_detail: raw,
         },
+        // The same fact `ENOTDIR` states, already typed: no second reason needed.
+        VolumeError::NotADirectory(_) => ListingError {
+            category: ErrorCategory::NeedsAction,
+            reason: ListingErrorReason::NotAFolder { path: path_display },
+            provider: None,
+            action_kind: None,
+            retry_hint: false,
+            raw_detail: raw,
+        },
         VolumeError::IoError {
             raw_os_error: Some(errno),
             ..

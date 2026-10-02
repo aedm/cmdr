@@ -21,7 +21,7 @@
 
   "menu.bar.go": "Go",
   "@menu.bar.go": {
-    "description": "VERB (imperative), title of the menu-bar menu holding the navigation commands (Back, Forward, Parent folder, Home, Go to path…). Use the exact word Finder uses for its own \"Go\" menu in this language. One short word; a menu-bar title has almost no room."
+    "description": "VERB (imperative), title of the menu-bar menu holding the navigation commands (Back, Forward, Parent folder, Home, Go to folder…). Use the exact word Finder uses for its own \"Go\" menu in this language. One short word; a menu-bar title has almost no room."
   },
 
   "menu.bar.tab": "Tab",
@@ -438,9 +438,9 @@
     "description": "NOUN naming a destination: the user's own home folder, the one holding Documents and Downloads (⇧⌘H). Use the exact word your macOS Finder uses for Go > Home. Very short label."
   },
 
-  "menu.go.goToPath": "Go to path…",
+  "menu.go.goToPath": "Go to folder…",
   "@menu.go.goToPath": {
-    "description": "VERB phrase (imperative). Opens a dialog where the user types or pastes a folder path to jump straight to it (⌘G). \"path\" is the location string like /Users/me/Documents. The trailing … is U+2026 and must stay: the typed path decides where it goes. Closest counterpart is Finder's Go > Go to Folder."
+    "description": "VERB phrase (imperative). Opens a dialog where the user types or pastes a folder path to jump straight to it (⌘G). The same item appears in the menu that opens when someone right-clicks Cmdr's icon in the Dock. It matches Finder's Go > Go to Folder… (⇧⌘G) on purpose, so use the exact wording macOS Finder uses for that item in this language. The trailing … is U+2026 and must stay: a dialog opens first."
   },
 
   "menu.go.goToLatestDownload": "Go to latest download",
@@ -626,7 +626,7 @@
 
   "menu.context.openWithDefault": "{app} (default)",
   "@menu.context.openWithDefault": {
-    "description": "First entry of the \"Open with\" submenu, marking the app the system would use for this kind of file. Only the \"(default)\" part is translated; keep the {app} token exactly as written, braces included, since the app's own name goes there untouched. Use the wording your macOS Finder puts in the same position, parentheses included.",
+    "description": "First entry of the \"Open with\" submenu, marking the app the system would use for this kind of file. Only the \"(default)\" part is translated; keep the {app} token exactly as written, braces included, since the app's own name goes there untouched. Use the wording your macOS Finder puts in the same position, parentheses included. Everything outside {app} draws in a dimmed gray, like Finder's, so keep only the marker words there.",
     "placeholders": {
       "app": "the application's own display name, supplied by the system and never translated (e.g. \"Preview\", \"Xcode\")"
     }
@@ -827,11 +827,6 @@
   "menu.dock.searchFiles": "Search files\u2026",
   "@menu.dock.searchFiles": {
     "description": "VERB phrase (imperative). Item in the menu that appears when someone right-clicks Cmdr's icon in the macOS Dock: opens the dialog for searching files. The trailing \u2026 means a dialog opens first; keep it. Word it the same way as menu.edit.searchFiles, which is the same command in the menu bar. This is a native menu, so no screenshot can show it."
-  },
-
-  "menu.dock.goToFolder": "Go to folder\u2026",
-  "@menu.dock.goToFolder": {
-    "description": "VERB phrase (imperative). Item in the menu that appears when someone right-clicks Cmdr's icon in the macOS Dock: opens a dialog where a folder path can be typed, then shows that folder. The trailing \u2026 means a dialog opens first; keep it. Use the wording macOS Finder uses for its \"Go to Folder\u2026\" item in this language. This is a native menu, so no screenshot can show it."
   },
 
   "menu.dock.connectToServer": "Connect to server\u2026",

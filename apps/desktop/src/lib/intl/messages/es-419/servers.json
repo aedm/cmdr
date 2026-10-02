@@ -27,6 +27,10 @@
   "@servers.refusal.unreachable": {
     "sourceHash": "50b8e0a"
   },
+  "servers.paneState.unreachable": "Cmdr no pudo acceder a {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "58c13ab"
+  },
   "servers.refusal.hostKeyRevoked": "Tu configuración de SSH en este Mac marca la clave de {host} como comprometida. Cmdr no se conectará a ese servidor.",
   "@servers.refusal.hostKeyRevoked": {
     "sourceHash": "ac070e7"
@@ -63,9 +67,9 @@
   "@servers.hostKey.changedDisclosure": {
     "sourceHash": "14de108"
   },
-  "servers.paneState.hostKeyChangedHint": "Su clave cambió. Esto puede significar que el servidor se reinstaló, o que hay algo entre tú y él. Desconecta y vuelve a abrirlo para comprobar la huella digital.",
+  "servers.paneState.hostKeyChangedHint": "Su clave cambió. Esto puede significar que el servidor se reinstaló, o que hay algo entre tú y él. Comprueba la nueva clave antes de volver a conectarte.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "5b20396"
+    "sourceHash": "b750bb6"
   },
   "servers.hub.editNearbyHint": "{name} se detectó cerca y sigue sin guardar, así que no hay nada que editar.",
   "@servers.hub.editNearbyHint": {

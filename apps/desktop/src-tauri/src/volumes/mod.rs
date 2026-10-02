@@ -32,15 +32,18 @@ pub use crate::file_system::volume::ConnectionState;
 
 pub use cloud::get_cloud_drives;
 pub(crate) use cloud::resolve_cloud_drive_for_path;
-pub(crate) use fs_type::{get_fs_type, get_mount_point, read_only_from_statfs};
+pub(crate) use fs_type::{get_fs_type, get_mount_info, get_mount_point, read_only_from_statfs};
 pub use fs_type::{is_network_fs_type, is_smb_fs_type, supports_trash_for_fs_type};
 pub(crate) use ids::{volume_id_for, volume_id_for_mount};
 pub use live_space::{expect_space_change, live_volume_space};
 pub use mounts::get_attached_volumes;
-pub(crate) use mounts::{has_mount_identity, is_mount_point, mount_identity_at, mount_roots, smb_mounts};
+pub(crate) use mounts::{
+    has_mount_identity, is_mount_point, is_private_to_another_user, mount_identity_at, mount_roots,
+    mount_type_and_source_for, registrable_mount_roots, smb_mounts,
+};
 pub use nsurl::get_volume_space;
 pub(crate) use nsurl::{
-    get_bool_resource, get_icon_for_path, get_volume_name, get_volume_uuid, get_volume_uuid_for_path,
+    get_icon_for_path, get_volume_name, get_volume_uuid, get_volume_uuid_for_path, is_volume_ejectable,
     volume_name_from_path,
 };
 pub(crate) use smb::parse_smb_mount_source;
@@ -234,7 +237,9 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         let url = NSURL::fileURLWithPath(&NSString::from_str(&mount_point));
 
         let name = get_volume_name(&url, &mount_point);
-        let is_ejectable = get_bool_resource(&url, "NSURLVolumeIsEjectableKey").unwrap_or(false);
+        // Local mounts only, as `get_attached_volumes` answers it: a network mount ends through
+        // its session, and the lookup can hang on a dead one.
+        let is_ejectable = !is_network_fs_type(Some(&fs_type)) && is_volume_ejectable(&url, &mount_point);
         let supports_trash = supports_trash_for_fs_type(Some(&fs_type));
         // Same two answers `get_attached_volumes` gives this mount, from the same
         // predicate: a switcher whose checkmark lands on a CLOUD row while the pane

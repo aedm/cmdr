@@ -363,7 +363,7 @@ export const roadmapSections: RoadmapSection[] = [
         milestones: [
           {
             date: '(Jun 3)',
-            title: 'Go to path',
+            title: 'Go to folder',
             description: '⌘G to jump anywhere: paste a path, ~ expansion, recent paths.',
             done: true,
           },
@@ -644,6 +644,18 @@ export const roadmapSections: RoadmapSection[] = [
             date: '(Sep 25)',
             title: 'Binary and hex modes in viewer',
             description: 'Now a good variety of rich and raw modes.',
+            done: true,
+          },
+          {
+            date: '(Sep 29)',
+            title: 'Streamed compression',
+            description: 'Zips stream straight to servers and local devices.',
+            done: true,
+          },
+          {
+            date: '(Sep 30)',
+            title: 'Reorder tabs',
+            description: 'Drag&drop tabs, in-pane and cross-pane.',
             done: true,
           },
         ],

@@ -581,6 +581,12 @@
     "confidence": "high",
     "sources": "descriptive; catalog"
   },
+  "column": {
+    "chosen": "oszlop",
+    "confidence": "high",
+    "forms": "the Name column → a Név oszlop; sort column → rendezőoszlop; column width → oszlopszélesség; by the chosen column → a választott oszlop szerint",
+    "sources": "macOS Finder (SV2 Valamely oszlop szerinti rendezéshez); catalog"
+  },
   "coming-soon": {
     "chosen": "Hamarosan",
     "confidence": "high",
@@ -728,6 +734,13 @@
     "forms": "label Másolás; result másolva ({countText} elem másolva, Útvonal másolva); possessive … másolása; a copy (noun) → másolat",
     "confidence": "high",
     "sources": "macOS (Másolás); ms; GNOME; Xfce"
+  },
+  "cost": {
+    "chosen": "költség",
+    "accept": ["kerül", "ára", "olcsó"],
+    "forms": "the noun → költség (becsült költség); costs nothing (a verb) → nem kerül semmibe; the price of a feature in prose → az ára",
+    "confidence": "high",
+    "sources": "ms (cost → költség); catalog (askCmdr.cost.unknown, settings.askCmdr.spend.empty, settings.fileOperations.adbEnabled.description)"
   },
   "crash-report": {
     "chosen": "összeomlási jelentés",
@@ -950,8 +963,8 @@
   },
   "done": {
     "chosen": "Kész",
-    "accept": ["végez"],
-    "forms": "status Kész; Almost done → Mindjárt kész; Whatever's finished stays done → Ami elkészült, az kész marad",
+    "accept": ["végez", "befejeződ"],
+    "forms": "status Kész; Almost done → Mindjárt kész; Whatever's finished stays done → Ami elkészült, az kész marad; once that's done (a busy tooltip) → amint ez befejeződik (errors.eject.busy)",
     "confidence": "high",
     "sources": "macOS (PW23 Kész)"
   },
@@ -1348,6 +1361,12 @@
     "confidence": "tentative",
     "sources": "literal"
   },
+  "overall": {
+    "chosen": "Összesen",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Összesen: {eta}",
+    "sources": "GN összesen, DC Összesen:; catalog servers.paneState.retryKeepsTrying"
+  },
   "step": {
     "chosen": "lépés",
     "confidence": "high",
@@ -1396,11 +1415,17 @@
     "sources": "macOS (Vissza, Előre)"
   },
   "go-to-path": {
-    "chosen": "Ugrás útvonalra",
-    "accept": ["ugrás mappához", "útvonal"],
-    "forms": "Go to path… → Ugrás útvonalra…; Go to folder… (the Dock menu, Finder's own) → Ugrás mappához…",
+    "chosen": "Ugrás mappához",
+    "accept": ["útvonal"],
+    "forms": "menu item and command Go to folder… → Ugrás mappához…; dialog title and its button → Ugrás mappához",
+    "avoid": [
+      {
+        "form": "Ugrás útvonalra",
+        "why": "the old Go to path wording; English now matches Finder's Go to Folder"
+      }
+    ],
     "confidence": "high",
-    "sources": "catalog; macOS Finder (MenuBar 261.title Ugrás mappához…)"
+    "sources": "macOS Finder (MenuBar 261.title and LocalizableMerged N83 Ugrás mappához…, GT8 dialog title Ugrás mappához)"
   },
   "go-to-trash": {
     "chosen": "Ugrás a Kukába",
@@ -1413,6 +1438,12 @@
     "accept": ["rendben"],
     "confidence": "high",
     "sources": "catalog (ai.toast.gotIt, updates.moveToApplicationsDialog.gotIt, main.oldMacos.gotIt)"
+  },
+  "group": {
+    "chosen": "csoport",
+    "confidence": "high",
+    "forms": "a named group takes the name bare before it (a Hálózat csoport); the servers found nearby → A közelben felfedezett szerverek csoportja",
+    "sources": "macOS Finder MenuBar (Use Groups → Csoportok használata), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
   },
   "guest": {
     "chosen": "vendég",
@@ -3310,6 +3341,13 @@
     "forms": "Can’t reach a fixed noun → Nem érhető el a szerver; Cmdr couldn’t reach → A Cmdr nem tudta elérni; isn’t available any more → már nem érhető el",
     "confidence": "high",
     "sources": "macOS Finder (NE7 nem érhető el többé)"
+  },
+  "untouched": {
+    "accept": ["érintetlenek", "érintetlenül"],
+    "chosen": "érintetlen",
+    "confidence": "high",
+    "forms": "the originals are untouched → az eredetiek érintetlenek",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): nem szeretné módosítani, the verb-side form"
   },
   "update": {
     "chosen": "frissítés",

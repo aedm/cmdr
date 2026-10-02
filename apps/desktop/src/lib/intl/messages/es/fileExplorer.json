@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Algo en este Mac impide que Cmdr se conecte directamente a {server}, así que este recurso compartido sigue usando la conexión del sistema. Prueba a desactivar y volver a activar Cmdr en {localNetwork}, o revisa tu app de cortafuegos.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Abrir los ajustes de {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} ha tardado demasiado en responder, así que este recurso compartido sigue usando la conexión del sistema.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -625,6 +633,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Todavía esperando esta carpeta",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "El servidor o la unidad de esta carpeta no responde. Cmdr sigue intentándolo en segundo plano y abrirá la carpeta en cuanto responda.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "El servidor de esta carpeta no responde. Cmdr sigue intentándolo en segundo plano y abrirá la carpeta en cuanto responda.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "La unidad de esta carpeta no responde. Cmdr sigue intentándolo en segundo plano y abrirá la carpeta en cuanto responda.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Reintentar",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Atrás",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{count, plural, one {{countText} elemento copiado} many {{countText} elementos copiados} other {{countText} elementos copiados}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -780,6 +812,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Para copiar archivos fuera de una instantánea de git, usa F5 para copiar o F6 para mover.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "{fileName} ocupa más de {limit}, así que Cmdr no puede abrirlo en {appName} desde dentro del archivo comprimido.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "{fileName} ocupa más de {limit}, así que Cmdr no puede abrirlo en {appName} desde el historial del repo.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "{fileName} está en un archivo comprimido protegido con contraseña. Primero copia el archivo a una carpeta (Cmdr te pedirá la contraseña) y luego ábrelo en {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "No se ha podido sacar {fileName} de su archivo comprimido para abrirlo en {appName}. Puede que el archivo comprimido esté dañado o use un formato que Cmdr no puede leer.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "No se ha podido leer {fileName} para abrirlo en {appName}. Comprueba que la unidad donde está siga conectada y vuelve a intentarlo.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "Tu archivo ha desaparecido de la vista porque no se muestran los archivos ocultos.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1410,9 +1462,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "No se puede desconectar mientras hay operaciones en curso en este servidor",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr sigue trabajando con archivos en este servidor. Desconéctalo cuando termine.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} ya está en tu selector de volúmenes.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1424,7 +1476,7 @@
   },
   "fileExplorer.navigation.pinRefusedToast": "Cmdr no ha podido cambiar dónde aparece {name}.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr no ha podido desconectarse de {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1470,9 +1522,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "No se puede expulsar mientras hay operaciones en curso en este dispositivo",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr sigue trabajando con archivos en este dispositivo. Expúlsalo cuando termine.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Expulsando {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

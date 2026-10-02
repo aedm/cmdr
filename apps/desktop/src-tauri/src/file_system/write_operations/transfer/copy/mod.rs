@@ -31,6 +31,7 @@ use super::super::unique_name::{create_unique_dir, next_available_name};
 use super::super::validation::{is_same_file, validate_disk_space, validate_file_sizes_for_filesystem};
 use super::transfer_driver::{DriverConfig, PostLoopIntent, TransferOutcome, drive_transfer_serial_sync};
 
+mod dest_chain;
 mod rollback;
 mod scanned_dirs;
 mod single_item;
@@ -506,6 +507,7 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
             let landed = copy_single_item(
                 &file_info.path,
                 file_info.dest_path(destination),
+                destination,
                 // A plain copy writes where it records.
                 None,
                 file_info.is_symlink,
@@ -782,3 +784,7 @@ mod tests;
 #[cfg(test)]
 #[path = "copy_failure_tests.rs"]
 mod copy_failure_tests;
+
+#[cfg(test)]
+#[path = "copy_dest_link_tests.rs"]
+mod copy_dest_link_tests;

@@ -398,6 +398,22 @@ describe('getUserFriendlyMessage', () => {
       expect(source.suggestion).toContain('volume switcher')
     })
 
+    // A source that left the registry and nothing lists any more (a phone
+    // unplugged under a search-results pane). ❌ Never "not connected yet": there's
+    // no row in the volume switcher to open.
+    it('words a source that is gone as no longer connected, with no Retry', () => {
+      const error: WriteOperationError = { type: 'source_no_longer_connected', path: '/sdcard/DCIM/a.jpg' }
+      const message = getUserFriendlyMessage(error, 'copy')
+      expect(message.title).toBe('Not connected anymore')
+      expect(message.message).toBe(
+        'The phone or server holding these files isn’t connected anymore, so nothing has changed.',
+      )
+      expect(message.suggestion).toBe(
+        'Plug the phone back in, or open the server from the volume switcher, then try again.',
+      )
+      expect(getErrorDisplayMeta(error)).toEqual({ category: 'needs_action', retryHint: false })
+    })
+
     it('offers no Retry for a place nobody connected, since the same request refuses again until it is opened', () => {
       for (const type of ['source_not_connected', 'destination_not_connected'] as const) {
         expect(getErrorDisplayMeta({ type, path: '/p' }), type).toEqual({ category: 'needs_action', retryHint: false })
@@ -825,6 +841,7 @@ describe('getErrorDisplayMeta', () => {
   const cases: Array<{ error: WriteOperationError; category: string; retryHint: boolean }> = [
     { error: { type: 'source_not_found', path: '/p' }, category: 'needs_action', retryHint: false },
     { error: { type: 'destination_exists', path: '/p' }, category: 'needs_action', retryHint: false },
+    { error: { type: 'destination_not_a_folder', path: '/p' }, category: 'needs_action', retryHint: false },
     {
       error: {
         type: 'permission_denied',

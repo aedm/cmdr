@@ -39,11 +39,13 @@ badges). `resolve-location.ts` and `breadcrumb-navigation.ts` are documented whe
 
 ## `navigation-history.ts`
 
-Purely functional: all operations return new objects, never mutate.
+Purely functional: all operations return new objects, never mutate. The one in-place write is an entry's `cursor`
+(`history-cursor.ts`, below), which isn't navigation state.
 
 ```
 NavigationHistory = { stack: HistoryEntry[], currentIndex: number }
-HistoryEntry = { volumeId: string, path: string, networkHost?: NetworkHost }
+HistoryEntry = { volumeId: string, path: string, networkHost?: NetworkHost, cursor?: HistoryCursor }
+HistoryCursor = { index: number, rowPath?: string }
 PushResult = { history: NavigationHistory, droppedEntries: HistoryEntry[] }
 ```
 
@@ -81,6 +83,28 @@ fires from two branches: `handleListingComplete` (success) AND the `listing-erro
 two steps because the current pane state isn't in the stack. The `listing-error` handler with the auto-fallback (path
 deleted → navigate to parent) doesn't push via this callback; it relies on the fallback navigation's own
 `commitPathFromListing` push (the in-place `history: 'push-path'` commit in `pane/navigate.ts`).
+
+### Cursor memory per entry (`history-cursor.ts`)
+
+Back and Forward put the cursor where it last sat in the destination ENTRY, ❌ never a per-path map: two visits to one
+folder are two history positions, each with its own cursor. Session-only, like the history itself. Cursor only:
+selection and pixel scroll stay out.
+
+- **Recording.** The pane reports every cursor move synchronously as a `CursorReading` tagged with the listing on screen
+  (`../pane/history-cursor-sync.svelte.ts`), and `DualPaneExplorer`'s `onCursorReading` writes it into the active tab's
+  current entry through `recordCursor`, which drops a reading from any other listing. That gate is what stops the leak:
+  a history walk moves `currentIndex` at once while the old rows stay up until the new listing lands, and an unguarded
+  write in between would stamp the old listing's index on the destination. The row's path arrives later from the
+  selection-info feed's read, and `recordCursor` takes it only for the index it was read at.
+- **In place, on purpose.** A reading fires per keystroke; a new history object each time would re-run every reader of
+  the tab's history. The cursor isn't part of an entry's identity (`entriesEqual` skips it), and a cloned tab's history
+  is a `$state.snapshot` copy, so tabs never share one.
+- **Restoring.** `navigate.ts::commitHistoryWalk` hands the pane a COPY of the destination entry's cursor
+  (`FilePaneAPI.restoreHistoryCursor`; none for the servers hub). A listing takes it when its load starts and lands on
+  it before the rows paint (`listing-loader.ts`, `takeHistoryCursor`); a snapshot has no load, so the sync factory
+  applies it once the snapshot's rows are mounted at that path. `restoredCursorIndex` picks the row where it is now,
+  else the saved index clamped into the rows, else 0. Any load takes and clears the parked cursor, so it can't land on a
+  later, unrelated visit.
 
 ## `path-navigation.ts`
 
@@ -186,8 +210,11 @@ The restore path has a second rule, PATH-shaped rather than state-shaped, in
 `app-status-store.ts::resolvePersistedPath`: a `<scheme>://` path is returned UNPROBED. Launch must not dial a server to
 find out whether it is reachable: four saved servers waking a Mac would be four Keychain reads and four network waits
 nobody asked for. The tab comes back on its subpath, greyed as `saved`, and dials when the user activates it, which is
-what `../pane/place-connect.svelte.ts` watches for. The four `volumeId === 'network'` exemptions at that function's call
-sites are the same idea, one fixed volume id at a time.
+what `../pane/place-connect.svelte.ts` watches for. The `volumeId === 'network'` exemptions at that function's call
+sites are the same idea, one fixed volume id at a time. A TAB on an SMB share is also handed back unprobed
+(`resolveTabPath`): its path is a plain `/Volumes/…` one that an unmounted share leaves missing, so
+`../pane/initialization.ts::restoreShareTab` decides with the saved list in hand, keeping it on an unmounted saved share
+and walking it like a plain folder otherwise.
 
 ### Non-blocking navigation pattern
 
@@ -499,17 +526,26 @@ runs most-actionable first over `holders.named`:
    name) is deliberately unused: the approved copy names no image.
 3. **`Cmdr`** → we own it and invite a report.
 4. **`System`** → nothing to close, so the advice is to wait.
-5. Otherwise the unnamed `errors.eject.unmountRefused` line.
+5. **`Unclassified` holders** → their bare process names, deduped and capped like the apps (three, then
+   `errors.eject.otherProcesses`): `errors.eject.unmountRefusedByProcess` (`{process}`) for one,
+   `errors.eject.unmountRefusedByProcesses` (`{countText}`, `{processes}`) for more, where the count is distinct names.
+6. Otherwise the unnamed `errors.eject.unmountRefused` line.
 
-❗ **`Unclassified` has no sentence of its own** and falls through to that last fallback, exactly like an empty list. It
-means "named, but nothing said what kind" (the budget ran out, or a signature wouldn't read), so wording it as an app or
-a tool would be a guess about what a person should go and close.
+❗ **`Unclassified` is worded as a PROCESS, ❌ never an app or a tool.** It means "named, but nothing said what kind"
+(the budget ran out, or a signature wouldn't read), so the name is an executable's; calling it an app would be a guess
+about what a person should go and close. The sentence says outright that it's only the process name. It ranks below
+`System`, `Cmdr`, and `DiskImage` because each of those carries more advice than a cryptic name does. These are RAW
+`errors.*` values (no ICU), so singular and plural are two keys, like the app pair.
+
+❗ **Every refusal sentence names neither the volume kind nor the verb** ("…still has files open there. Close them, then
+try again."). The same sentence follows both `fileExplorer.pane.ejectFailedToast` ("Couldn't eject {volumeName}: …", any
+detachable kind, shares and phones included) and `disconnectFailedToast` ("Couldn't disconnect: …", the SMB reconnect
+view, whose holder scan runs on the share's mount path), and the prefix already says both. "This drive" or "eject again"
+would read wrong after a share's disconnect.
 
 ❗ **The two `HolderScan` arms word the SAME**, and neither ever says the drive is free. `Incomplete` means the scan
 couldn't cover every mount, so its names are worth saying while its emptiness says nothing; only `complete` with an
-empty `named` would license "nothing is using this drive", and no copy says that today. A refusal whose holders are all
-`Unclassified` therefore reads identically to one that named nobody, which is a known copy-quality gap awaiting a
-product decision (GitHub [#247](https://github.com/vdavid/cmdr/issues/247)).
+empty `named` would license "nothing is using this drive", and no copy says that today.
 
 `wordEjectRefusal` adds one `warn` line whenever a `Cmdr` holder is in `named` AT ALL, ❌ not only when it wins the
 precedence: an app beside it rightly gets the sentence, but Cmdr holding a drive it's trying to let go of is a bug worth

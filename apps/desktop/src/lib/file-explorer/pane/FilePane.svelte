@@ -42,13 +42,22 @@
     import RepoChip from '../git/RepoChip.svelte'
     import { createGitBrowserSync } from './git-browser-sync.svelte'
     import { createListingLoader } from './listing-loader'
+    import { createListingPresentation } from './listing-presentation.svelte'
     import { createSmbViewState } from './smb-view-state.svelte'
     import { createVolumeSpace } from './volume-space.svelte'
     import ErrorPane from './ErrorPane.svelte'
+    import ListingStalledView from './ListingStalledView.svelte'
+    import type { StalledOn } from '$lib/ipc/bindings'
     import VolumeUnreachableBanner from './VolumeUnreachableBanner.svelte'
     import NetworkMountView from './NetworkMountView.svelte'
     import SearchResultsView from './SearchResultsView.svelte'
-    import type { CancelLoadingPayload, PaneViewKind, SearchResultsViewAPI, VolumeChangePayload } from './types'
+    import type {
+        CancelLoadingPayload,
+        HistoryCursorTarget,
+        PaneViewKind,
+        SearchResultsViewAPI,
+        VolumeChangePayload,
+    } from './types'
     import { paneFooterVisibility } from './pane-footer'
     import { getMutationTick, getSnapshot, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
     import MtpConnectionView from './MtpConnectionView.svelte'
@@ -61,10 +70,10 @@
     import { createDeviceConnect } from './device-connect.svelte'
     import AdbHint from '$lib/adb/AdbHint.svelte'
     import { createSelectionState } from './selection-state.svelte'
-    import { createPaneMcpSync } from './pane-mcp-sync.svelte'
+    import { createPaneMcpSync, paneListingOf } from './pane-mcp-sync.svelte'
     import { initListingDiffSync } from './listing-diff-sync.svelte'
     import { createRenameState } from '../rename/rename-state.svelte'
-    import { type DirectorySortMode } from '$lib/settings'
+    import { type ListingDirectorySortMode } from '$lib/settings'
     import { tString } from '$lib/intl/messages.svelte'
     import { createRenameFlow } from './rename-flow.svelte'
     import ExtensionChangeDialog from '../rename/ExtensionChangeDialog.svelte'
@@ -102,10 +111,12 @@
     import { createDeletedDirPoll } from './deleted-dir-poll'
     import { fetchEntriesSnapshot, fetchSelectedNames } from './entries-snapshot'
     import { resolveInitialPathAction, shouldReloadAfterReachable } from './path-sync'
-    import { resyncAfterHiddenFilesToggle } from './hidden-files-resync'
+    import { createHiddenFilesResync } from './hidden-files-resync'
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
+    import { createHistoryCursorSync } from './history-cursor-sync.svelte'
+    import type { CursorReading } from '../navigation/history-cursor'
     import { getFirstShortcutReactive } from '$lib/shortcuts/reactive-shortcuts.svelte'
 
     interface Props {
@@ -119,7 +130,7 @@
         viewMode?: ViewMode
         sortBy?: SortColumn
         sortOrder?: SortOrder
-        directorySortMode?: DirectorySortMode
+        directorySortMode?: ListingDirectorySortMode
         onPathChange?: (path: string) => void
         /**
          * The listing landed on the volume's own spelling of the pane's path (a
@@ -127,6 +138,8 @@
          * another way). The parent re-spells the tab and its history in place.
          */
         onStoredSpelling?: (spelling: { from: string; to: string }) => void
+        /** Where the cursor sits, for the current history entry to remember (`history-cursor-sync.svelte.ts`). */
+        onCursorReading?: (reading: CursorReading) => void
         onVolumeChange?: (change: VolumeChangePayload) => void
         /**
          * Go to an already-resolved `Location` (volume id + path). Used when a row
@@ -197,6 +210,7 @@
         directorySortMode = 'likeFiles',
         onPathChange,
         onStoredSpelling,
+        onCursorReading,
         onVolumeChange,
         onGoToLocation,
         onSortChange,
@@ -331,6 +345,9 @@
         setOpeningFolder: (value) => {
             openingFolder = value
         },
+        setStalled: (value) => {
+            stalled = value
+        },
         setLoadingCount: (count) => {
             loadingCount = count
         },
@@ -344,6 +361,7 @@
         setCursorIndexRaw: (index) => {
             cursorIndex = index
         },
+        takeHistoryCursor: (path) => historyCursor.takeForLoad(path),
         clearEntryUnderCursor: () => {
             selectionInfo.clearEntry()
         },
@@ -377,6 +395,15 @@
         onMtpFatalError: (message) => onMtpFatalError?.(message),
         onCancelLoading: (cancelled) => onCancelLoading?.(cancelled),
         onArchiveNeedsPassword: (info) => onArchiveNeedsPassword?.(info),
+    })
+
+    // Keep the last settled rows through a sub-100 ms navigation. The list
+    // props switch to the new listing only once it lands, and both list caches
+    // replace their visible window atomically at that point.
+    const listingPresentation = createListingPresentation({
+        getListingId: () => listingId,
+        getTotalCount: () => effectiveTotalCount,
+        getLoading: () => loading,
     })
 
     // Volume root path from listing-complete event (accurate for MTP and all volume types)
@@ -614,6 +641,7 @@
         getCurrentVolumeInfo: () => currentVolumeInfo,
         loadDirectory: (path: string) => void loader.loadDirectory({ path }),
         navigateToFallback: loader.navigateToFallback,
+        enter: (change) => { breadcrumb.handleVolumeChange(change) },
     })
 
     // A pane standing on a SAVED place dials it, showing the connecting view with a
@@ -710,6 +738,10 @@
 
     export function isLoading(): boolean {
         return loading
+    }
+
+    export function isStalled(): boolean {
+        return stalled !== null
     }
 
     /**
@@ -844,6 +876,10 @@
      */
     export function setPendingCursorName(name: string | null): void {
         renameFlow.pendingCursorName = name
+    }
+
+    export function restoreHistoryCursor(target: HistoryCursorTarget): void {
+        historyCursor.restore(target)
     }
 
     /**
@@ -1115,15 +1151,14 @@
 
     // Cache generation counter — bumped on **cold context changes** (sort,
     // hidden-files toggle, explicit refresh, listing swap). The List components
-    // treat this as a hard reset: wipe rendered entries and column widths,
-    // refetch from scratch.
+    // treat this as a hard refresh: invalidate cold-context metadata, force a
+    // refetch, and atomically replace the rendered window when it lands.
     let cacheGeneration = $state(0)
 
     // Soft-refresh tick — bumped on every `directory-diff` event (bulk delete,
     // copy, rename). The List components refetch the visible range in the
     // background and atomically replace, keeping existing entries on screen
-    // until the new ones land. This is what prevents the empty-pane flicker
-    // that destructive `cacheGeneration` bumps caused mid-bulk-op.
+    // until the new ones land without invalidating cold-context metadata.
     let softRefreshTick = $state(0)
 
     // Throttle the brief-mode column-width refetch during diff bursts. Without
@@ -1253,6 +1288,9 @@
     let lastSequence = 0
     // Opening folder state (before read_dir starts - slow for network folders)
     let openingFolder = $state(false)
+    // What the folder waits on once its volume stopped answering mid-read, else `null`;
+    // the load stays in flight (`listing-loader.ts`)
+    let stalled = $state<StalledOn | null>(null)
     // Loading progress state for streaming
     let loadingCount = $state<number | undefined>(undefined)
     // Finalizing state (read_dir done, now sorting/caching)
@@ -1299,6 +1337,7 @@
             indicatorStale: jump.indicatorStale,
         }),
         getLastJumpMatchedName: () => jump.lastMatchedName,
+        getListing: () => paneListingOf({ hasError: Boolean(friendlyError || error), loading, stalled: stalled !== null }),
     })
     const syncPaneStateToMcp = mcpSync.syncPaneStateToMcp
 
@@ -1604,15 +1643,15 @@
         return friendlyError !== null || unreachable !== null
     }
 
-    // When includeHidden changes, cancel rename and re-sync the count + cursor
-    // (`hidden-files-resync.ts`).
+    // A listing landed or includeHidden changed: cancel rename, re-sync count + cursor (`hidden-files-resync.ts`).
+    const hiddenFilesResync = createHiddenFilesResync(() => listingId)
     $effect(() => {
         if (listingId && !loading) {
             // Cancel rename on hidden files toggle (spec: sort change / toggle hidden = cancel)
             untrack(() => {
                 rename.cancel()
             })
-            void resyncAfterHiddenFilesToggle({
+            void hiddenFilesResync.resync({
                 listingId,
                 includeHidden,
                 // Read cursor state without tracking to avoid infinite re-triggers
@@ -1735,6 +1774,9 @@
         syncMcp: () => {
             debouncedSyncMcp.call()
         },
+        onCursorRow: (index: number, rowPath: string) => {
+            historyCursor.reportRow(index, rowPath)
+        },
     })
 
     // Scroll the entry under the cursor into view when view mode changes
@@ -1801,6 +1843,19 @@
         applyCursorIndex: (index: number) => {
             cursorIndex = index
         },
+    })
+
+    // After the snapshot remap above, so a Back onto a snapshot lands its restore last.
+    const historyCursor = createHistoryCursorSync({
+        getCursorIndex: () => cursorIndex,
+        getShownLocation: () => {
+            const settled = isSearchResultsView ? searchSnapshot !== undefined : listingId !== '' && !loading
+            return settled && !isNetworkView ? { volumeId, path: currentPath } : null
+        },
+        getSnapshotRows: () => searchSnapshot?.entries,
+        getCurrentPath: () => currentPath,
+        setCursorIndex: (index: number) => void setCursorIndex(index),
+        onReading: onCursorReading,
     })
 
     // The pane's MTP device being unplugged: the listener re-registers itself on
@@ -1878,6 +1933,8 @@
         diskSpace.cleanup()
         // Drop the git subscriptions (setting listeners + repo watcher) on unmount.
         gitBrowser.cleanup()
+        // The teardown above ended this pane's listing; a resync mid-flight must stop quietly.
+        hiddenFilesResync.dispose()
     })
 </script>
 
@@ -1981,7 +2038,14 @@
             />
         {:else if paneViewKind === 'mtp-connect'}
             <MtpConnectionView {volumeId} {onVolumeChange} />
-        {:else if loading}
+        {:else if loading && stalled !== null}
+            <ListingStalledView
+                folderPath={currentPath}
+                stalledOn={stalled}
+                onRetry={() => navigateToPath(currentPath)}
+                onGoBack={() => { loader.handleCancelLoading() }}
+            />
+        {:else if loading && listingPresentation.showLoading}
             <LoadingIcon {openingFolder} loadedCount={loadingCount} {finalizingCount} showCancelHint={true} />
         {:else if friendlyError}
             <ErrorPane
@@ -1998,9 +2062,9 @@
         {:else if viewMode === 'brief'}
             <BriefList
                 bind:this={briefListRef}
-                {listingId}
+                listingId={listingPresentation.listingId}
                 {volumeId}
-                totalCount={effectiveTotalCount}
+                totalCount={listingPresentation.totalCount}
                 {includeHidden}
                 {cacheGeneration}
                 {softRefreshTick}
@@ -2040,9 +2104,9 @@
         {:else}
             <FullList
                 bind:this={fullListRef}
-                {listingId}
+                listingId={listingPresentation.listingId}
                 {volumeId}
-                totalCount={effectiveTotalCount}
+                totalCount={listingPresentation.totalCount}
                 {includeHidden}
                 {cacheGeneration}
                 {softRefreshTick}
@@ -2081,6 +2145,10 @@
                 onVisibleRangeChange={handleVisibleRangeChange}
                 onDragInitiate={clearJumpState}
             />
+        {/if}
+        {#if loading && !listingPresentation.showLoading && listingPresentation.listingId}
+            <!-- Old rows are visual continuity only; loading still blocks every action. -->
+            <div class="loading-shield" aria-hidden="true"></div>
         {/if}
     </div>
     <!-- The status footer: which panes get it, and which of those talk about disk
@@ -2281,5 +2349,10 @@
         color: var(--color-error);
         text-align: center;
         padding: var(--spacing-lg);
+    }
+
+    .loading-shield {
+        position: absolute;
+        inset: 0;
     }
 </style>

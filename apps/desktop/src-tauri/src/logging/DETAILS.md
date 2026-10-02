@@ -36,8 +36,8 @@ Directory priority: `CMDR_LOG_DIR`, then `<CMDR_DATA_DIR>/logs`, then the per-OS
 (`~/Library/Logs/com.veszelovszki.cmdr` on macOS, `dirs::data_local_dir()/com.veszelovszki.cmdr/logs` elsewhere).
 
 **Gotcha**: the early-load helpers MIRROR that resolution rather than calling into it. They run before an `AppHandle`
-exists, so they reach for `dirs::data_dir` plus the bundle id where `startup::init` can use Tauri's `app_data_dir`. The
-two agree today; a bundle-id change has to touch both.
+exists, so they call `config::standalone_app_data_dir()` (the OS data dir plus `config::BUNDLE_ID`) where
+`startup::init` can use Tauri's `app_data_dir`. The two agree today; a bundle-id change has to touch both.
 
 ## What lives in `mod.rs`
 

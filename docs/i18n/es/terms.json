@@ -86,6 +86,18 @@
     "confidence": "high",
     "sources": "macOS Finder (ya existe un ítem con el nombre…)"
   },
+  "android-platform-tools": {
+    "chosen": "herramientas de plataforma",
+    "accept": ["herramientas de la plataforma"],
+    "forms": "the download → las herramientas de plataforma de Android; Google's docs title → Herramientas de la plataforma del SDK de Android",
+    "confidence": "tentative",
+    "sources": "Android Developers es-419 (machine-translated: Herramientas de la plataforma del SDK); catalog (four keys say herramientas de plataforma de Android); no Tier 1 or Tier 3 hit in the pile"
+  },
+  "android-tools": {
+    "chosen": "herramientas de Android",
+    "confidence": "high",
+    "sources": "catalog (adb.connect.serverUnreachable, settings.fileOperations.adbEnabled.description); plain descriptive phrase, no vendor label to quote"
+  },
   "answer": {
     "chosen": "responder",
     "accept": ["respond", "respuesta"],
@@ -179,11 +191,10 @@
   "ask": {
     "chosen": "Preguntar",
     "accept": ["pregunt"],
+    "proseAccept": ["pedi", "pide"],
     "confidence": "high",
     "sources": "standard option label",
-    "exceptions": {
-      "settings.network.permissionIntroSuffix": "Asking a person or the AI for something (pedir), not the ask-each-time option (proposed: tighten the concept's match)."
-    }
+    "note": "Asking someone FOR something (a password, a yes) is pedir in prose (te pedirá la contraseña); the option label stays Preguntar."
   },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",
@@ -424,6 +435,13 @@
     "forms": "cloud service → servicio en la nube; cloud folders → carpetas en la nube",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "column": {
+    "accept": ["columnas"],
+    "chosen": "columna",
+    "confidence": "high",
+    "forms": "the Name column → la columna Nombre; sort column → columna de ordenación; column width → ancho de columna",
+    "sources": "macOS Finder (SV2 columna de ordenación); catalog"
   },
   "coming-soon": {
     "chosen": "próximamente",
@@ -696,8 +714,8 @@
   },
   "disconnect": {
     "chosen": "Desconectar",
-    "accept": ["desconect"],
-    "forms": "menu item Desconectar (ocupado) when busy; aria Desconectar {name}",
+    "accept": ["desconect", "desconéct"],
+    "forms": "menu item Desconectar (ocupado) when busy; aria Desconectar {name}; imperative with a clitic Desconéctalo",
     "confidence": "high",
     "sources": "macOS Finder (MR10.1, N200 Desconectar)",
     "decision": "El hub de servidores: conectar, desconectar y olvidar"
@@ -1140,11 +1158,11 @@
     "sources": "macOS Finder (Atrás, Adelante)"
   },
   "go-to-path": {
-    "chosen": "Ir a la ruta",
-    "accept": ["Ir a la carpeta"],
-    "forms": "Cmdr's own dialog and command say Ir a la ruta (English says path); the Dock item that says folder follows Finder: Ir a la carpeta…",
-    "confidence": "high",
-    "sources": "macOS Finder (Ir a la carpeta Documentos pattern; MenuBar 261.title Ir a la carpeta…)"
+    "chosen": "Ir a la carpeta",
+    "forms": "menu item and palette command Ir a la carpeta…; dialog title and its confirm button Ir a la carpeta, as Finder's Go to Folder dialog",
+    "avoid": [{ "form": "Ir a la ruta", "why": "English moved from path to folder to match Finder" }],
+    "confidence": "confirmed",
+    "sources": "macOS Finder es and es_419 (MenuBar 261.title / N83 Ir a la carpeta…; GT8 and Go To Folder Ir a la carpeta)"
   },
   "go-to-trash": {
     "chosen": "Ir a la papelera",
@@ -1155,6 +1173,12 @@
     "chosen": "Entendido",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "group": {
+    "chosen": "grupo",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (tu grupo Red); the servers found nearby → Grupo de servidores encontrados cerca",
+    "sources": "macOS Finder MenuBar (Use Groups → Usar grupos), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
   },
   "guest": {
     "chosen": "invitado",
@@ -1692,6 +1716,12 @@
     "sources": "macOS Finder (NE103/NE105 no estén actualizados)",
     "decision": "El índice desactualizado de un teléfono por ADB"
   },
+  "overall": {
+    "chosen": "En total",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → En total: {eta}",
+    "sources": "GN total, DC Total:; En total is the adverbial form that reads before a time phrase"
+  },
   "overwrite": {
     "chosen": "Sobrescribir",
     "accept": ["sobrescrib", "sobrescrit"],
@@ -2068,6 +2098,13 @@
     "accept": ["informes"],
     "confidence": "high",
     "sources": "MS terminology (report → informe)"
+  },
+  "repository": {
+    "accept": ["repositorio", "repos"],
+    "chosen": "repo",
+    "confidence": "high",
+    "forms": "masculine (el repo, del repo); English repo → repo (errors.git.*, the history toast); the branch and tag tooltips spell out repositorio",
+    "sources": "MS terminology es (repositorio, with repo as a listed variant); catalog (errors.git.*)"
   },
   "reserved": {
     "chosen": "reservado",
@@ -2682,6 +2719,13 @@
     "accept": ["acced", "accesible", "sin acceso", "conectar con"],
     "confidence": "high",
     "sources": "catalog (reach → acceder a)"
+  },
+  "untouched": {
+    "accept": ["intactos", "intacta", "intactas"],
+    "chosen": "intacto",
+    "confidence": "high",
+    "forms": "the originals are untouched → los originales están intactos",
+    "sources": "macOS AppKit Document (To keep the file unchanged…): dejar el archivo intacto; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
   },
   "update": {
     "chosen": "actualización",

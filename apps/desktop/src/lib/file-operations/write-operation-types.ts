@@ -172,8 +172,12 @@ export type PermissionRefusal = 'folderPermissions' | 'systemProtected' | 'uncla
 export type WriteOperationError =
   | { type: 'source_not_found'; path: string }
   | { type: 'destination_not_found'; path: string }
+  // `path` is the FILE in the way, often a level above the folder the user picked.
+  | { type: 'destination_not_a_folder'; path: string }
   | { type: 'source_not_connected'; path: string }
   | { type: 'destination_not_connected'; path: string }
+  // The source's volume left the registry and nothing lists it any more (an unplugged phone).
+  | { type: 'source_no_longer_connected'; path: string }
   | { type: 'destination_exists'; path: string }
   // `refusedFolder` is the folder the BACKEND proved refuses writes (it asked the
   // OS with `access(W_OK)` at the refusal); `null` means nothing could be proved,

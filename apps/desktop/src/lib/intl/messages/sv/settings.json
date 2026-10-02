@@ -311,13 +311,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
-  "settings.listing.directorySortMode.label": "Sortera kataloger",
-  "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+  "settings.listing.foldersFirst.label": "Visa mappar först",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
   },
-  "settings.listing.directorySortMode.description": "Hur kataloger sorteras när du byter sorteringskolumn.",
+  "settings.listing.foldersFirst.description": "Listar mappar ovanför filer. Stäng av det för att blanda mappar och filer.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
+  "settings.listing.directorySortMode.label": "Sortera mappar",
+  "@settings.listing.directorySortMode.label": {
+    "sourceHash": "7d0b088"
+  },
+  "settings.listing.directorySortMode.description": "Hur mappar sorteras när du byter sorteringskolumn.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Avstängd just nu eftersom mappar och filer blandas. Slå på ”Visa mappar först” för att aktivera den här inställningen.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Som filer",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -965,6 +977,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "Grupp med servrar i närheten",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Anslut direkt till SMB-resurser",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1059,7 +1075,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Nå hela filsystemet på en Android-telefon som har USB-felsökning aktiverad, något som MTP inte kan visa dig. Kräver Android platform tools (kommandot ”adb”) på den här Macen. Att låta det vara påslaget kostar ingenting om du inte har några Android-verktyg installerade.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Sökväg till adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1643,9 +1659,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Tips om lång Nätverk-grupp visat",
+  "settings.behavior.serversPinHintSeen.label": "Tips om ”Lossa från volymväljaren” visat",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Om engångstipset om att lossa servrar har visats.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1974,9 +1990,9 @@
   "@settings.summary.fileAndFolderSizes": {
     "sourceHash": "cdd8214"
   },
-  "settings.summary.listing": "Dokumentsymboler, katalogsortering och kolumnbredd i Kortfattat läge.",
+  "settings.summary.listing": "Dokumentsymboler, mappsortering och kolumnbredd i Kortfattat läge.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navigering till överordnad mapp med dubbelklick och beteende när du byter namn på filer.",
   "@settings.summary.navigationAndFileOps": {
@@ -2000,7 +2016,7 @@
   },
   "settings.summary.servers": "SSH-värdnycklarna du har litat på.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Bläddra i en Android-telefon som har USB-felsökning aktiverad.",
   "@settings.summary.adb": {
@@ -2529,13 +2545,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Installera Android platform tools och tryck sedan på Leta igen:",
+  "settings.adb.install.intro": "Installera Android platform tools och välj sedan Leta igen:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Leta efter adb på vanligt sätt",
+  "settings.adb.pathPlaceholder": "Cmdr letar efter adb på vanligt sätt",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Bläddra…",
   "@settings.adb.browse": {

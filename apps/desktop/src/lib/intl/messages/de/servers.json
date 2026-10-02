@@ -97,6 +97,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} Server in der Nähe gefunden} other {{countText} Server in der Nähe gefunden}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "Die Suche im lokalen Netzwerk ist ausgeschaltet.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -172,6 +176,10 @@
   "servers.refusal.unreachable": "Cmdr konnte {host} nicht erreichen.",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "Wenn der Server eingeschaltet ist, prüfe, ob Cmdr unter {localNetwork} erlaubt ist.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr vertraut dem Schlüssel von {host} noch nicht.",
   "@servers.refusal.hostKeyUntrusted": {
@@ -455,6 +463,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr konnte {name} nicht erreichen.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "Zurück",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -467,9 +479,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Der Schlüssel des Servers hat sich geändert. Das kann bedeuten, dass der Server neu aufgesetzt wurde, oder dass sich etwas zwischen dich und den Server geschaltet hat. Trenne die Verbindung und öffne den Server dann erneut, um den Fingerabdruck zu prüfen.",
+  "servers.paneState.hostKeyChangedHint": "Der Schlüssel des Servers hat sich geändert. Das kann bedeuten, dass der Server neu aufgesetzt wurde, oder dass sich etwas zwischen dich und den Server geschaltet hat. Prüfe den neuen Schlüssel, bevor du dich wieder verbindest.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "Schlüssel prüfen",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "Verbindung zu {name} wird wiederhergestellt …",
   "@servers.paneState.reconnecting": {

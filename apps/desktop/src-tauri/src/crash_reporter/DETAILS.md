@@ -214,8 +214,8 @@ all three; nextest never sees the race, so a test green only under nextest is th
 4. Otherwise: show a dialog letting the user inspect and choose to send or dismiss. Radical transparency: the dialog
    shows the exact JSON payload before sending.
 5. Send returns only that preview's `shortId` and optional explicitly attached email. `pending_delivery.rs` reloads the
-   pending file, rejects an id mismatch, transforms the backend-owned report, uploads it, and deletes the file only if
-   it still carries the same id. The same module owns dismissal, which deletes without sending.
+   pending file, rejects an id mismatch, claims the file, transforms the backend-owned report, uploads it, and deletes
+   the claim. The same module owns dismissal, which deletes without sending.
 
 ### Released-build gates
 
@@ -280,10 +280,23 @@ send re-applies it safely.
 Preview is not an authority handoff. `pending_delivery.rs` accepts only the preview's id and optional email, then
 reloads the pending artifact and reapplies the transform before adding the separately supplied `AttachedEmail`. It
 rejects a stale id before upload, so a frontend mutation cannot alter any payload field or send the replacement under
-consent for its predecessor. After upload it rechecks the current file's id before deletion, which preserves a
-replacement already present at that check. The read-ID/remove pair is not atomic: a replacement written between those
-operations can still be removed. That pre-existing TOCTOU does not weaken upload authority, but this lifecycle must not
-be described as guaranteeing every in-flight replacement survives. A field that cannot be transformed or proven to be
+consent for its predecessor.
+
+**The send claims the file before uploading.** After the id check it renames `crash-report.json` to
+`crash-report.sending.<short id>.json`, uploads from the claim, and deletes only the claim. The pending slot is free for
+the whole upload, so a panic in this session writes a fresh `crash-report.json` that nothing in the send can reach. A
+crash landing between the id check and the rename puts someone else's report under the claim; the send notices the id
+mismatch after claiming and puts it back. The claim's name carries the id so the claiming rename never clobbers an older
+claim still waiting.
+
+**Putting a claim back never replaces anything** (`release_claim`): it hard-links the claim to `crash-report.json`,
+which fails on an existing name where a rename would overwrite a crash written while the claim was out, then removes the
+claim. A failed upload goes back this way, so the dialog's Send retries it. A claim that can't go back (a newer crash
+holds the slot) waits, and so does one left by a crash or quit mid-upload. At the next launch `restore_unfinished_sends`
+runs first in `process_pending_crash`: a claim moves back into a free slot, keeps waiting while another report holds it,
+and is dropped when it duplicates the pending report's id. A crash after the server accepted the upload but before the delete means the
+report goes out twice; the server doesn't dedupe by `shortId`, and that rare duplicate is the price of never losing
+one. A field that cannot be transformed or proven to be
 closed typed metadata stays out.
 
 ## Where a field is filled in

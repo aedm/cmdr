@@ -27,7 +27,7 @@ import type {
   SftpHostKeyIdentity,
   SignInShape,
 } from '$lib/ipc/bindings'
-import type { ConnectRefusalKind } from './connect-refusals'
+import type { ConnectRefusalKind, RefusalHint } from './connect-refusals'
 
 /** The server a sign-in is FOR, as its read-only header spells it. */
 export interface SignInEndpoint {
@@ -118,7 +118,8 @@ export type SignInAttemptOutcome =
   | { kind: 'added'; serverId: string }
   | { kind: 'needs_host_key'; prompt: HostKeyPrompt }
   | { kind: 'host_key_revoked'; key: SftpHostKeyIdentity }
-  | { kind: 'refused'; refusal: ConnectRefusalKind }
+  /** `hint`: a softer line under the refusal, for something besides the server worth checking. */
+  | { kind: 'refused'; refusal: ConnectRefusalKind; hint?: RefusalHint }
   /** The user pressed Cancel. ❗ Says nothing: they know. */
   | { kind: 'cancelled' }
 

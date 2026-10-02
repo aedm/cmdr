@@ -443,15 +443,14 @@
         margin-top: var(--spacing-xs);
         min-width: 220px;
         /* Frosted-glass material: shared tokens with the tooltip / menu surface so the whole
-           app reads as one glass. See `app.css` § Frosted-glass material. The translucent
-           fill flips to opaque when reduce-transparency is active via the `--color-bg-glass`
-           token; the blur is dropped at the rule site below. */
+           app reads as one glass. See `app.css` § Frosted-glass material. The fill and
+           blur tokens flip to opaque / none when reduce-transparency is active. */
         background: var(--color-bg-glass);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: var(--glass-backdrop);
+        backdrop-filter: var(--glass-backdrop);
         border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
+        border-radius: var(--radius-menu);
+        box-shadow: var(--shadow-glass), var(--shadow-glass-rim);
         z-index: var(--z-dropdown);
         padding: var(--spacing-xs) 0;
     }
@@ -466,10 +465,4 @@
         background-color: var(--color-accent-subtle);
     }
 
-    /* Reduced transparency: the `--color-bg-glass` token already flips to opaque
-       (in `app.css`), so here we only drop the blur. */
-    :global(html.reduce-transparency) .breadcrumb-popup {
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
-    }
 </style>

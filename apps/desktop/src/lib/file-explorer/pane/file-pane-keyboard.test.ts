@@ -14,7 +14,8 @@ import { waitForUpdates, useMountTarget } from './integration-test-utils'
 
 let mockEntry: unknown = null
 
-vi.mock('$lib/tauri-commands', () => ({
+vi.mock('$lib/tauri-commands', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/tauri-commands')>()),
   listDirectoryStart: vi.fn().mockResolvedValue({ listingId: 'mock-listing', status: { status: 'ready' } }),
   cancelListing: vi.fn().mockResolvedValue(undefined),
   listDirectoryEnd: vi.fn().mockResolvedValue(undefined),
@@ -108,9 +109,10 @@ vi.mock('$lib/tauri-commands', () => ({
   unwatchVolumeSpace: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('$lib/icon-cache', async () => {
+vi.mock('$lib/icon-cache', async (importOriginal) => {
   const { writable } = await import('svelte/store')
   return {
+    ...(await importOriginal<typeof import('$lib/icon-cache')>()),
     getCachedIcon: vi.fn().mockReturnValue('/icons/file.png'),
     getCachedCustomFolderIcon: () => undefined,
     iconCacheVersion: writable(0),
@@ -120,7 +122,8 @@ vi.mock('$lib/icon-cache', async () => {
   }
 })
 
-vi.mock('$lib/settings/reactive-settings.svelte', () => ({
+vi.mock('$lib/settings/reactive-settings.svelte', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/settings/reactive-settings.svelte')>()),
   getRowHeight: vi.fn().mockReturnValue(24),
   formatDateTime: vi.fn().mockReturnValue('2025-01-01 00:00'),
   formattedDate: vi.fn().mockReturnValue({

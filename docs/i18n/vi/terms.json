@@ -76,6 +76,19 @@
     "forms": "conflict title Tệp đã tồn tại; There's already something at X → Đã có thứ gì đó ở \"{path}\"; doesn't exist yet → chưa tồn tại",
     "sources": "macOS AppKit SavePanel (already exists → đã tồn tại), Finder NE21"
   },
+  "android-platform-tools": {
+    "accept": ["bộ công cụ nền tảng"],
+    "chosen": "bộ công cụ nền tảng Android",
+    "confidence": "high",
+    "forms": "the full name with Android when naming the download; bare bộ công cụ nền tảng once Android SDK is already in the sentence; Android SDK stays verbatim",
+    "sources": "Google's vi Android developer docs; catalog (adb.connect.adbNotInstalled, settings.adb.install.intro, adbEnabled.description); decisions.md § Điện thoại Android qua ADB"
+  },
+  "android-tools": {
+    "chosen": "công cụ Android",
+    "confidence": "high",
+    "forms": "no Android tooling installed → chưa cài công cụ Android nào; The Android tools on this Mac → Công cụ Android trên máy Mac này",
+    "sources": "catalog (adb.connect.serverUnreachable, adbEnabled.description); the pile has no vi string for it"
+  },
   "answer": {
     "avoid": [
       {
@@ -413,6 +426,12 @@
     "forms": "cloud folders → thư mục đám mây; cloud service → dịch vụ đám mây; sync app → ứng dụng đồng bộ; cloud mount → mục gắn kết đám mây",
     "sources": "MS terminology, catalog (Đám mây group)"
   },
+  "column": {
+    "chosen": "cột",
+    "confidence": "high",
+    "forms": "the Name column → cột Tên; sort column → cột sắp xếp; column width → độ rộng cột; by the chosen column → theo cột đã chọn",
+    "sources": "macOS Finder (SV2 cột sắp xếp); catalog"
+  },
   "command": {
     "chosen": "lệnh",
     "confidence": "high",
@@ -524,6 +543,13 @@
     "confidence": "high",
     "forms": "the noun (a copy) → bản sao; a fresh copy of a file → một bản mới; Duplicate → Nhân bản (separate command)",
     "sources": "macOS AppKit (Sao chép)"
+  },
+  "cost": {
+    "accept": ["tốn", "cái giá"],
+    "chosen": "chi phí",
+    "confidence": "high",
+    "forms": "the noun (money spent) → chi phí; the verb (it costs, costs nothing) → tốn: không tốn gì, tốn tiền, không tốn thêm CPU; the trade-off (The cost is …) → Cái giá là …",
+    "sources": "MS terminology (cost → chi phí); catalog (tốn ×3 in settings.json and onboarding.json)"
   },
   "crash-report": {
     "accept": ["sự cố", "sập"],
@@ -1102,12 +1128,16 @@
       {
         "form": "Đến đường dẫn",
         "why": "a stray variant; the go family is Đi tới"
+      },
+      {
+        "form": "Đi tới đường dẫn",
+        "why": "the command's old English name; EN now says Go to folder after Finder"
       }
     ],
     "chosen": "đi tới",
     "confidence": "high",
-    "forms": "Go to path → Đi tới đường dẫn…; Go to Folder… → Đi tới thư mục…; input label Đường dẫn cần đi tới",
-    "sources": "macOS Finder GotoWindow (Go to Folder → Đi tới thư mục)"
+    "forms": "the command, menu item, dialog title, and its button all read Đi tới thư mục (… on the command and menu item); input label Đường dẫn cần đi tới",
+    "sources": "macOS Finder MenuBar 261.title (Go to Folder… → Đi tới thư mục…), GotoWindow 1.title (Đi tới thư mục)"
   },
   "go-to-trash": {
     "chosen": "đi tới thùng rác",
@@ -1125,6 +1155,12 @@
     "chosen": "Đã hiểu",
     "confidence": "high",
     "sources": "catalog (ai.toast.gotIt, main.oldMacos.gotIt, updates.moveToApplicationsDialog.gotIt)"
+  },
+  "group": {
+    "chosen": "nhóm",
+    "confidence": "high",
+    "forms": "a named group takes the name bare after it (nhóm Mạng); the servers found nearby → Nhóm máy chủ ở gần",
+    "sources": "macOS Finder MenuBar (Use Groups → Sử dụng Nhóm), verified on macOS 27.0 (26A428), live bundle, 2026-09-30; catalog (servers.pinHint.title)"
   },
   "guest": {
     "chosen": "khách",
@@ -1159,6 +1195,12 @@
     "chosen": "gợi ý",
     "confidence": "high",
     "sources": "macOS (Cửa sổ gợi ý, Gợi ý mật khẩu); MS terminology"
+  },
+  "history": {
+    "chosen": "lịch sử",
+    "confidence": "high",
+    "forms": "file history (Ask Cmdr) → lịch sử thao tác; the repo’s history → lịch sử của repo",
+    "sources": "macOS AppKit (NSToolbarHistoryTemplate lịch sử; lịch sử phiên bản); catalog (errors.git.blobTooLarge.title, operationLog.dialog.loadError)"
   },
   "host": {
     "chosen": "máy chủ",
@@ -1407,6 +1449,12 @@
     "decision": "Ask Cmdr xem bên trong tệp: hai nhãn công cụ + hai khóa đồng ý",
     "forms": "tool labels Đang xem bên trong tệp / Đã xem bên trong tệp",
     "sources": "catalog (bên trong), sibling tool labels"
+  },
+  "overall": {
+    "chosen": "Tổng thể",
+    "confidence": "tentative",
+    "forms": "the whole-run time-left label → Tổng thể: {eta}",
+    "sources": "GN tổng (a summed quantity); no source names a whole-run time; tổng thể is the standard gloss for overall"
   },
   "step": {
     "chosen": "bước",
@@ -1696,6 +1744,13 @@
     "chosen": "tùy chọn",
     "confidence": "high",
     "sources": "MS terminology"
+  },
+  "original": {
+    "accept": ["gốc"],
+    "chosen": "bản gốc",
+    "confidence": "high",
+    "forms": "the originals → các bản gốc; the original file → tệp gốc (Finder)",
+    "sources": "macOS Finder PE117 (…the original could not be deleted): tệp gốc; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
   },
   "outdated": {
     "chosen": "lỗi thời",
@@ -2628,6 +2683,12 @@
     "confidence": "tentative",
     "forms": "a bare status → Không tới được; reaching a SERVER → không kết nối được tới; reaching a PATH or drive → không thể truy cập; a USB device → truy cập",
     "sources": "catalog (errors.listing.networkUnreachable.title); no pile string"
+  },
+  "untouched": {
+    "chosen": "nguyên vẹn",
+    "confidence": "high",
+    "forms": "the originals are untouched → các bản gốc vẫn nguyên vẹn",
+    "sources": "catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy); macOS AppKit Document (To keep the file unchanged…): không bị thay đổi, the verb-side form"
   },
   "update": {
     "chosen": "cập nhật",

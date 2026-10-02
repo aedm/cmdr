@@ -5,6 +5,8 @@ export type Bindings = {
   BLOG_LIKES: KVNamespace
   // KV namespace for tracking-link short codes (the `?r=<code>` -> UTM map served at /r-codes.json)
   LINK_CODES: KVNamespace
+  // KV namespace for CSP-violation alert dedupe (`csp:<directive>:<blocked origin>`, 24 h TTL)
+  CSP_ALERTS: KVNamespace
   // Analytics Engine for device count tracking (fair use monitoring)
   DEVICE_COUNTS: AnalyticsEngineDataset
   // D1 database for telemetry persistence (crash reports, downloads, update checks, heartbeats)
@@ -34,6 +36,9 @@ export type Bindings = {
   // Workers rate-limit binding gating POST and DELETE /likes/:slug, keyed by the caller IP (never
   // stored). Optional; the route skips the gate when absent.
   LIKES_LIMITER?: RateLimit
+  // Workers rate-limit binding gating POST /csp-report, keyed by the caller IP (never stored).
+  // Optional; the route skips the gate when absent.
+  CSP_REPORT_LIMITER?: RateLimit
   // Paddle webhook secrets (both optional to support gradual rollout)
   PADDLE_WEBHOOK_SECRET_LIVE?: string
   PADDLE_WEBHOOK_SECRET_SANDBOX?: string

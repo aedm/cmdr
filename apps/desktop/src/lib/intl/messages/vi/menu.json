@@ -357,9 +357,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "Đi tới đường dẫn…",
+  "menu.go.goToPath": "Đi tới thư mục…",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "Đi tới bản tải về mới nhất",
   "@menu.go.goToLatestDownload": {
@@ -656,10 +656,6 @@
   "menu.dock.searchFiles": "Tìm kiếm tệp…",
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
-  },
-  "menu.dock.goToFolder": "Đi tới thư mục…",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
   },
   "menu.dock.connectToServer": "Kết nối với máy chủ…",
   "@menu.dock.connectToServer": {

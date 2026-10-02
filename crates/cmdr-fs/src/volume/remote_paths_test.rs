@@ -62,9 +62,34 @@ fn a_prefixed_and_a_relative_path_land_on_the_same_server_path() {
     assert_eq!(from_prefix, "/srv/data/photos");
     assert_eq!(from_relative, from_prefix);
     assert_eq!(
-        root.to_app_path(&from_prefix),
-        Path::new("sftp://ada@nas.local:22/srv/data/photos"),
+        root.to_app_path(&from_prefix).as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/srv/data/photos")),
         "`to_app_path` is the exact inverse, so a round trip is the identity"
+    );
+}
+
+/// ❗ **A server answer outside the root has no app path.** A misbehaving server
+/// (a WebDAV `href` above the collection, a `..` for a name) would otherwise
+/// mint a path off this volume, which the way back then refuses. Containment is
+/// checked both ways, the same way: by whole components, after `..`.
+#[test]
+fn a_server_path_outside_the_root_has_no_app_path() {
+    let root = rooted_at("/srv/data");
+    assert_eq!(
+        root.to_app_path("/srv/data/photos/trip.jpg").as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/srv/data/photos/trip.jpg"))
+    );
+    assert_eq!(root.to_app_path("/srv"), None, "an href above the collection");
+    assert_eq!(root.to_app_path("/etc/passwd"), None, "somewhere else entirely");
+    assert_eq!(
+        root.to_app_path("/srv/data/.."),
+        None,
+        "`..` is resolved before the check"
+    );
+    assert_eq!(
+        root.to_app_path("/srv/data-1/photos"),
+        None,
+        "a sibling sharing the root's string prefix"
     );
 }
 
@@ -168,8 +193,8 @@ fn a_volume_at_the_server_root_reaches_everything_through_the_prefix() {
     );
     assert_eq!(root.to_remote_path(Path::new("/")).as_deref(), Some("/"));
     assert_eq!(
-        root.to_app_path("/"),
-        Path::new("sftp://ada@nas.local:22/"),
+        root.to_app_path("/").as_deref(),
+        Some(Path::new("sftp://ada@nas.local:22/")),
         "the root round-trips to the app root"
     );
 }
@@ -194,4 +219,32 @@ fn a_path_anchored_by_the_app_still_lands_where_the_pane_says() {
         already_full,
         "a path the pane already holds is anchored to itself, never doubled"
     );
+}
+
+// ── The app-path schemes ─────────────────────────────────────────────
+
+#[test]
+fn an_adb_prefix_keeps_the_serial_exactly_as_the_server_names_it() {
+    // The ADB server keys on the exact serial, so a folded prefix would dial a
+    // device nobody listed. The id folds its slug; the prefix never does.
+    assert_eq!(adb_app_root("46061FDAS000A4"), "adb://46061FDAS000A4");
+    assert_eq!(adb_app_root("192.168.1.5:5555"), "adb://192.168.1.5:5555");
+    assert_ne!(adb_app_root("R58M1"), adb_app_root("r58m1"));
+}
+
+#[test]
+fn a_phone_path_names_its_serial_exactly_as_the_prefix_spelled_it() {
+    // The index routes a pane's `adb://…` path to its phone by this serial, so
+    // it must read back exactly what `adb_app_root` wrote, port and case included.
+    assert_eq!(adb_serial_of_path(&adb_app_root("ZY22ABC")), Some("ZY22ABC"));
+    assert_eq!(adb_serial_of_path("adb://ZY22ABC/sdcard/DCIM"), Some("ZY22ABC"));
+    assert_eq!(
+        adb_serial_of_path("adb://192.168.1.5:5555/sdcard"),
+        Some("192.168.1.5:5555")
+    );
+    assert_eq!(adb_serial_of_path("adb://"), None);
+    assert_eq!(adb_serial_of_path("adb:///sdcard"), None);
+    assert_eq!(adb_serial_of_path("mtp://dev/1"), None);
+    // A bare device path is the Mac's boot disk in the app's vocabulary.
+    assert_eq!(adb_serial_of_path("/sdcard/DCIM"), None);
 }

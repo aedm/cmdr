@@ -39,10 +39,10 @@ import { transferOpLabel } from './transfer-op-label'
 import { createTransferPaneEffects } from './transfer-pane-effects'
 import { createAdoptedOperation } from './adopted-operation.svelte'
 import { createArchivePasswordFlow } from './archive-password-flow.svelte'
+import { createProgrammaticConfirm } from './programmatic-confirm'
 import { openRenameOnDuplicate } from './duplicate-rename'
-import { conflictPolicyFromMcpName } from '$lib/file-operations/transfer/conflict-policy'
 import type { TransferDialogPropsData } from './transfer-operations'
-import type { TransferOperationType, ConflictResolution, WriteOperationError } from '../types'
+import type { TransferOperationType, WriteOperationError } from '../types'
 import type {
   AdoptedOperationData,
   AlertDialogPropsData,
@@ -311,7 +311,16 @@ export function createDialogState(deps: DialogStateDeps) {
     return 'started'
   }
 
-  return {
+  const programmaticConfirm = createProgrammaticConfirm({
+    isTransferDialogOpen: () => showTransferDialog && transferDialogProps !== null,
+    isDeleteDialogOpen: () => showDeleteDialog && deleteDialogProps !== null,
+    isArchivePasswordOpen: () => archivePassword.showDialog,
+    supplyStoredPassword: () => {
+      archivePassword.supplyStoredPassword()
+    },
+  })
+
+  const state = {
     // --- Reactive getters for template binding ---
     get showTransferDialog() {
       return showTransferDialog
@@ -834,39 +843,8 @@ export function createDialogState(deps: DialogStateDeps) {
       return showTransferDialog || showTransferProgressDialog || showDeleteDialog
     },
 
-    /** Programmatically confirm an open dialog (for MCP confirm action). */
-    confirmOpenDialog(dialogType: string, onConflict?: string) {
-      if (dialogType === 'transfer-confirmation' && showTransferDialog && transferDialogProps) {
-        // A policy the backend accepted but the map doesn't know would quietly
-        // become `skip`, so an agent that asked to be asked per file would
-        // instead watch every clash get skipped. Say so; the backend validates
-        // the name, so this can only fire when the two lists have drifted.
-        const mapped = conflictPolicyFromMcpName(onConflict)
-        if (onConflict !== undefined && mapped === undefined) {
-          log.warn('Unknown conflict policy {onConflict} on a programmatic confirm; falling back to skip', {
-            onConflict,
-          })
-        }
-        const resolution: ConflictResolution = mapped ?? 'skip'
-        this.handleTransferConfirm({
-          destination: transferDialogProps.destinationPath,
-          volumeId: transferDialogProps.destVolumeId,
-          previewId: null, // not available when confirming programmatically
-          conflictResolution: resolution,
-          operationType: transferDialogProps.operationType,
-          preKnownConflicts: [], // not available when confirming programmatically
-        })
-      } else if (dialogType === 'delete-confirmation' && showDeleteDialog && deleteDialogProps) {
-        // previewId not available when confirming programmatically.
-        // For MCP auto-confirm, honor whatever the props initialized with.
-        const isPermanent = deleteDialogProps.isPermanent || !deleteDialogProps.supportsTrash
-        this.handleDeleteConfirm(null, isPermanent)
-      } else if (dialogType === 'archive-password' && archivePassword.showDialog) {
-        // The `unlock_archive` tool already stored the password on the backend;
-        // this is the follow-up. ⚠️ It settles a transfer rather than
-        // re-dispatching it — see `supplyStoredPassword`.
-        archivePassword.supplyStoredPassword()
-      }
-    },
+    // The MCP `dialog confirm` (`programmatic-confirm.ts`).
+    ...programmaticConfirm,
   }
+  return state
 }

@@ -69,6 +69,7 @@
     import type { RenameState, RenameSessionId } from '../rename/rename-state.svelte'
     import type { RenameStepDirection } from '../rename/rename-step'
     import { formatByteSize } from '$lib/units'
+    import { isDoubleClick, type BriefListClick } from './brief-list-utils'
 
     interface Props {
         listingId: string
@@ -84,8 +85,8 @@
          * Bumped on every `directory-diff` event. Triggers a soft refresh
          * (refetch visible range in the background, keep existing entries
          * visible until new ones land). Use this instead of `cacheGeneration`
-         * for diff-driven refreshes — `cacheGeneration` does a destructive
-         * wipe that causes empty-pane flicker mid-bulk-operation.
+         * for diff-driven refreshes: a diff doesn't invalidate cold-context
+         * metadata such as Brief column widths.
          */
         softRefreshTick?: number
         cursorIndex: number
@@ -170,6 +171,17 @@
     let cachedEntries = $state<FileEntry[]>([])
     let cachedRange = $state({ start: 0, end: 0 })
     let isFetching = $state(false)
+    let fetchEpoch = 0
+    // The epoch `cachedEntries` was fetched in. After a cold context change the old
+    // rows stay painted until the forced fetch lands, but they no longer match the
+    // indices, so lookups must not hand them out as the entry under the cursor.
+    let cachedEntriesEpoch = 0
+    let forceFetchAfterCurrent = false
+
+    /** The cached rows that are safe to act on: none while retained rows await replacement. */
+    function actionableEntries(): FileEntry[] {
+        return cachedEntriesEpoch === fetchEpoch ? cachedEntries : []
+    }
     // Recursive stats for the CURRENT directory (shown on the ".." row so that space isn't wasted).
     let parentDirStats = $state<DirStats | null>(null)
 
@@ -304,7 +316,7 @@
             globalIndex,
             hasParent,
             parentPath,
-            cachedEntries,
+            actionableEntries(),
             cachedRange,
             parentDirStats ?? undefined,
         )
@@ -312,7 +324,7 @@
 
     /** The UI index of a loaded row, or `undefined` when it isn't in the window. */
     export function indexOfEntry(path: string): number | undefined {
-        return indexOfEntryUtil(path, hasParent, cachedEntries, cachedRange)
+        return indexOfEntryUtil(path, hasParent, actionableEntries(), cachedRange)
     }
 
     /** Updates index size fields on cached directory entries AND on the ".." row. */
@@ -340,7 +352,13 @@
     // backing listing changed (file watcher diff) and the cached entries are
     // stale even though the range indices may still match.
     async function fetchVisibleRange(force = false) {
-        if (!listingId || isFetching) return
+        if (!listingId) return
+        if (isFetching) {
+            if (force) forceFetchAfterCurrent = true
+            return
+        }
+        const capturedEpoch = fetchEpoch
+        const capturedListingId = listingId
 
         // Calculate which backend indices we need (convert column range to item range)
         const startCol = virtualWindow.startIndex
@@ -370,15 +388,25 @@
                 onFolderCoverageRequest,
                 force,
             })
-            if (result) {
+            if (result && capturedEpoch === fetchEpoch && capturedListingId === listingId) {
                 cachedEntries = result.entries
                 cachedRange = result.range
+                cachedEntriesEpoch = capturedEpoch
                 noteRenderedFolderSizes(cachedEntries, volumeId)
             }
         } catch {
-            // Silently ignore fetch errors
+            // Never leave rows from another listing under the current breadcrumb.
+            if (force && capturedEpoch === fetchEpoch && capturedListingId === listingId) {
+                cachedEntries = []
+                cachedRange = { start: 0, end: 0 }
+                cachedEntriesEpoch = capturedEpoch
+            }
         } finally {
             isFetching = false
+            if (forceFetchAfterCurrent) {
+                forceFetchAfterCurrent = false
+                void fetchVisibleRange(true)
+            }
         }
     }
 
@@ -568,20 +596,18 @@
     }
 
     // Handle file click - for double-click detection
-    let lastClickTime = 0
-    let lastClickIndex = -1
+    let lastClick: BriefListClick | undefined
     const DOUBLE_CLICK_MS = 300
 
     function handleClick(index: number) {
-        const now = Date.now()
-        if (lastClickIndex === index && now - lastClickTime < DOUBLE_CLICK_MS) {
+        const current = { listingId, index, time: Date.now() }
+        if (isDoubleClick({ previous: lastClick, current, doubleClickMs: DOUBLE_CLICK_MS })) {
             // Double click: cancel any pending click-to-rename
             cancelClickToRename()
             const entry = getEntryAt(index)
             if (entry) onNavigate(entry)
         }
-        lastClickTime = now
-        lastClickIndex = index
+        lastClick = current
     }
 
     function handleDoubleClick(index: number) {
@@ -691,8 +717,8 @@
     let prevSoftTick = 0
     let prevTotalCount = 0
 
-    // Hard reset on cold context changes (nav, sort, hidden toggle, explicit
-    // refresh): wipe entries and widths, refetch from scratch.
+    // Hard refresh on cold context changes (nav, sort, hidden toggle, explicit
+    // refresh): invalidate widths, refetch, then atomically replace the old rows.
     // Soft refresh on totalCount or softRefreshTick changes (caused by
     // `directory-diff` events during bulk ops, or renames that don't change
     // count): refetch in the background and atomically replace, keeping
@@ -705,8 +731,7 @@
         if (!listingId || containerHeight <= 0) return
 
         if (shouldResetCache(currentProps, prevCacheProps)) {
-            cachedEntries = []
-            cachedRange = { start: 0, end: 0 }
+            fetchEpoch++
             prevCacheProps = currentProps
             prevTotalCount = currentTotal
             prevSoftTick = currentTick
@@ -715,7 +740,7 @@
             widthsStore.reset()
             snapWidthTransition()
             widthsStore.request()
-            void fetchVisibleRange()
+            void fetchVisibleRange(true)
             return
         }
 

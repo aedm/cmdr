@@ -5,6 +5,104 @@ This file holds all notable changes to Cmdr over time.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.0] - 2026-10-01
+
+The highlights:
+
+1. Drag&drop tabs to reorder them in-pane, or move them cross-pane.
+2. Faster, safer compression: zips stream straight to servers and phones. (Until now, it was two steps: 1. compress, 2.
+   move, with broken progress reporting.)
+3. See free space on SFTP servers
+
+Also 20+ bug fixes and lower memory use.
+
+### Added
+
+- Drag a tab to reorder it, or drop it on the other pane's tab bar to move it there, also over MCP (4dc27d6ef,
+  a924d5692, 6745ff7d1, a06897174, efe33831c, f12c2992e)
+- Show free space on SFTP servers, and check a copy onto one against it (f7447a666)
+- Add a "Check the key" button to an SFTP pane whose host key changed (cd0b35381, 7839a4c8f)
+- Point at the Local Network permission when macOS blocks Cmdr from reaching a server, with a button to open it
+  (1fb15cea5, c3022741e, 0d25cd232)
+- Let Ask Cmdr look inside files on connected phones, servers, and direct shares (de4b038fa)
+
+### Changed
+
+- Rebuild compress to stream zips straight to local disks, SMB, SFTP, and phones, with step-by-step progress, a prompt
+  Cancel, and up-front refusals for names a zip can't hold (76042fbe3, 0edc90136, 309dd3e13, 635f6853c, 7f6fb5c40,
+  c2341f750, f9fda27ec, 9759ff5fd, 2b7e08be2, 53f2a9014, 87392916d, 097514c22, bbc6b7dcc, 1d43e6933, 7aa334618,
+  e38ec597e, 08c591135, 32ce7db94, f1c0cbb39)
+- Stop signing in to every SMB machine on the network at launch: Cmdr lists a found server's shares when you open it
+  (6b9d4b21f)
+- Group servers Cmdr only found nearby under the saved ones, collapsed once you've saved a server (58e3ad0b5, 65eac02c6)
+- Ask calmly for an account when a server wants one, with no red error before you've typed anything (2a646916d,
+  83d9973c3)
+- Cut memory use after heavy searches and listings, settling around 240 MB instead of 400 MB (d36376a15, 4765bda31)
+- Make menus, toasts, and tooltips look closer to native and follow the macOS 27 Liquid Glass slider (070501ccc,
+  b239690fe)
+- Give long file names more room in search results, and widen whichever column is cut off as the dialog grows
+  (73d7cde45)
+- Dim "(default)" after the default app in the Open with menu, like Finder (31a88b045)
+- Make Portuguese and Chinese use one consistent word for drive scans and folders (7b44c1a5d)
+
+### Fixed
+
+- Fix copying or moving a folder onto a folder link writing into the link's target, which could replace files outside
+  the destination (7de7ca4df, ebaf869e6, 816708e9c, 3904907cc)
+- Fix copies, moves, and new folders blocked by a same-named file: Cmdr now names the file in the way (a5dcefc62,
+  320afb35a, 826644b7e)
+- Fix rollback on phones and servers skipping every item, and wrong counts and sources in operation log rows (596fe94e6,
+  646454c48)
+- Fix a stopped replacing copy or move not saying where Cmdr kept your originals (bed9221db)
+- Fix zips Cmdr writes showing times off by your time zone in other apps (4069ae3fc)
+- Fix editing a zip on a server sitting silently at 100% while it uploads (1ca41b48f)
+- Fix picking a slow cloud drive like pCloud dropping you in your home folder: Cmdr stays and says it isn't answering
+  (c7b4750cb, ca16af0d3)
+- Fix indexing and search crawling pCloud, rclone, sshfs, and NFS mounts over the network as if they were local disks
+  (6164d23f7, fbd6b3f61, 9a760e88b, 3ac849925)
+- Fix another account's cloud or FUSE drive showing up as a dead drive in the volume switcher (9d37072bb)
+- Fix Thunderbolt SSDs and other fixed-media external disks missing their eject button (0d170223e)
+- Fix Cmdr sometimes blocking an eject when it couldn't read a drive's mount details (0d2e1dca6)
+- Fix reconnecting shares piling up background indexing work, and let the emergency memory stop halt it (56746e990,
+  97e3b621d, 6a98ce54c)
+- Fix forgotten drives leaving tens of MB of index data behind (7d67442f4, ef064d1f4)
+- Fix copying from an unplugged phone's search results offering a Retry that can never work (24ac2dd04, 33b58b975)
+- Fix SMB shares on DFS namespaces sending some calls over the wrong connection (2de7ec7a7)
+- Fix a second pane on the same server showing no free space until it changed (792f17a58)
+- Fix folders you grant access to in System Settings staying greyed out until a restart (7a8ac8fe6)
+- Fix a flicker when entering a folder, contributed by Gábor Gyebnár (852d8bc97, ff0f9748d)
+- Fix navigating right after a drive switch showing the old folder's item count (744dc72ed)
+- Fix Settings text fields losing your edits when you close the window (c9d6f0d22, e3f74641e, b09027ad4, 3fd28ab67)
+- Fix Ask Cmdr showing the wrong thread after quick switching, and approvals not showing until a reload (f69ad7cad,
+  f790d9e49)
+- Fix Ask Cmdr calling an archive with an unsupported compression method corrupt (8a1759b3c)
+- Fix a crash during a crash-report upload getting deleted unsent (ccb91dd55)
+- Make an agent's dialog confirm do what the dialog's own button does, fixing failed compresses and an ignored trash
+  switch (bd37859b5, 522b9d4b6, a9362c21d)
+- Fix agents seeing a compress stuck on "scanning", and picking the wrong one of two same-named volumes (776816458,
+  139fdedd2)
+
+### Security
+
+- Keep file names, paths, server, share, and account names, and search words out of error and crash reports, with tokens
+  unique to each report (8c22be531, 8b8f733fd, 84662fd46, 8e2d85c6f, d5b6a9881, f79afa1c9, 24e807682, 297de67b1,
+  b33c3c07a, 8fc0d493c, fa546bfa5, 2e0fc5b28, 0f38a16a9, 70f8ec09c, 49e323657, 0a80dfd4e, afe0662be, 4b12bc7dc,
+  8a168d33a, 59453c70d, e1da12d05, fb2342318, 0c3bb898f, e3407e998, 06b6f8ead, fa1ccea39, 97dd6ddf0)
+- Require Cmdr's MCP token for every request to its MCP server, not only tool calls (80719ce04)
+- Ignore files a server or phone lists outside the folder you connected to (0e6844288)
+
+### Non-app
+
+- Give error reports what triage needs (volumes, recent listing failures, errnos, a redacted excerpt of what a server
+  answered) without the private parts (ce6c6ffb8, 33cab187b, 4fddcddb9, 27ded9993, e37036e89, 62593c233, 53d92bab7,
+  81ec3ac32, 80094c3e5)
+- Lint the Linux build from a Mac, and keep the Linux test lane's build warm: a no-change run takes ~40 s instead of
+  ~5.5 min (533713810, b399588ec, 80b27b4f9)
+- Fix blog likes and `?r=` tracking links on getcmdr.com, and alert on any request the site's CSP blocks (71d4308f4,
+  6c4323e06)
+- Ask for a GitHub star and a release email after a download, in place of the Discord invite (f1e0c9936)
+- Keep 30 days of IP-free access logs for getcmdr.com (f69d388c1)
+
 ## [0.48.0] - 2026-09-28
 
 The highlights:

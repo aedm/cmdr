@@ -116,9 +116,9 @@
   "@commands.searchOpen.label": {
     "sourceHash": "179fed8"
   },
-  "commands.navGoToPath.label": "Ugrás útvonalra…",
+  "commands.navGoToPath.label": "Ugrás mappához…",
   "@commands.navGoToPath.label": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "commands.navGoToPath.description": "A fókuszált panelt egy beírt, beillesztett vagy korábbi útvonalra ugratja.",
   "@commands.navGoToPath.description": {
@@ -484,9 +484,9 @@
   "@commands.fileCopyPath.label": {
     "sourceHash": "333608a"
   },
-  "commands.fileCopyCurrentDirectoryPath.label": "Aktuális könyvtár útvonalának másolása",
+  "commands.fileCopyCurrentDirectoryPath.label": "Aktuális mappa útvonalának másolása",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "sourceHash": "ae360d1"
+    "sourceHash": "5ec6586"
   },
   "commands.fileCopyFilename.label": "Fájlnév másolása",
   "@commands.fileCopyFilename.label": {

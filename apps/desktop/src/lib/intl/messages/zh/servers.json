@@ -95,6 +95,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, other {在附近发现 {countText} 台服务器}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "本地网络发现已关闭。",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -170,6 +174,10 @@
   "servers.refusal.unreachable": "Cmdr 连不上 {host}。",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "如果服务器开着，请确认已在“{localNetwork}”里允许 Cmdr。",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr 还没有信任 {host} 的主机密钥。",
   "@servers.refusal.hostKeyUntrusted": {
@@ -451,6 +459,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr 连不上 {name}。",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "返回",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -463,9 +475,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "它的主机密钥变了。可能是服务器重装过，也可能是有东西夹在你和它之间。请先断开连接，然后再打开它来核对指纹。",
+  "servers.paneState.hostKeyChangedHint": "它的主机密钥变了。可能是服务器重装过，也可能是有东西夹在你和它之间。重新连接之前，请先核对新的密钥。",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "核对主机密钥",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "正在重新连接到 {name}…",
   "@servers.paneState.reconnecting": {

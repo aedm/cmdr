@@ -96,6 +96,10 @@
   "@servers.hub.forgetShareConfirm": {
     "sourceHash": "8c14aaa"
   },
+  "servers.hub.nearbyGroup": "{count, plural, one {{countText} server hittad i närheten} other {{countText} servrar hittade i närheten}}",
+  "@servers.hub.nearbyGroup": {
+    "sourceHash": "cd7a44d"
+  },
   "servers.hub.discoveryOff": "Sökning i det lokala nätverket är avstängd.",
   "@servers.hub.discoveryOff": {
     "sourceHash": "cadcceb"
@@ -171,6 +175,10 @@
   "servers.refusal.unreachable": "Cmdr kunde inte nå {host}.",
   "@servers.refusal.unreachable": {
     "sourceHash": "6fcba90"
+  },
+  "servers.refusal.localNetworkHint": "Om servern är påslagen, kontrollera att Cmdr tillåts under {localNetwork}.",
+  "@servers.refusal.localNetworkHint": {
+    "sourceHash": "baa1753"
   },
   "servers.refusal.hostKeyUntrusted": "Cmdr litar inte på nyckeln från {host} än.",
   "@servers.refusal.hostKeyUntrusted": {
@@ -452,6 +460,10 @@
   "@servers.paneState.notConnected": {
     "sourceHash": "5020fac"
   },
+  "servers.paneState.unreachable": "Cmdr kunde inte nå {name}.",
+  "@servers.paneState.unreachable": {
+    "sourceHash": "a7bc9bc"
+  },
   "servers.paneState.goBack": "Gå bakåt",
   "@servers.paneState.goBack": {
     "sourceHash": "6aadac2"
@@ -464,9 +476,13 @@
   "@servers.paneState.hostKeyChanged": {
     "sourceHash": "c73ddf3"
   },
-  "servers.paneState.hostKeyChangedHint": "Serverns nyckel har ändrats. Det kan betyda att servern har installerats om, eller att något sitter mellan dig och den. Koppla från och öppna servern igen för att kontrollera fingeravtrycket.",
+  "servers.paneState.hostKeyChangedHint": "Serverns nyckel har ändrats. Det kan betyda att servern har installerats om, eller att något sitter mellan dig och den. Kontrollera den nya nyckeln innan du ansluter igen.",
   "@servers.paneState.hostKeyChangedHint": {
-    "sourceHash": "923de62"
+    "sourceHash": "866b619"
+  },
+  "servers.paneState.checkHostKey": "Kontrollera nyckeln",
+  "@servers.paneState.checkHostKey": {
+    "sourceHash": "fefa256"
   },
   "servers.paneState.reconnecting": "Återansluter till {name}…",
   "@servers.paneState.reconnecting": {

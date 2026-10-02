@@ -21,3 +21,6 @@ planning, reorganizing, or advising.
   crate HARD-ERRORS on an out-of-range Deflated level (it doesn't clamp), failing the whole edit at the first entry — so
   keep the clamp; don't set a raw level on `FileOptions` elsewhere. `None` = crate default (level 6). See `DETAILS.md` §
   "Compression level applies to ADDED entries only".
+- **A new entry's options go through `with_entry_mtime`** (local DOS time + the exact UTC second in the `UT` extra
+  field), the host's fresh-ZIP producer included. ❌ Never bare `SimpleFileOptions::default()`: it dates the entry
+  1980-01-01.

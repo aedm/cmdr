@@ -26,10 +26,12 @@ the next section.
   stat-and-listing backend gets for free); `remote_paths.rs` (a server tree's `<scheme>://user@host:port` app spelling,
   and the ONE translation); `friendly_error/` (typed, word-free classification); `usb_speed.rs` (❗ its doc comment
   reaches `bindings.ts`); `in_memory.rs` (the store and its knobs; `in_memory/volume_impl.rs` is its `impl Volume`);
-  `conformance.rs`; and `host/` (what a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md`
-  before writing a backend).
+  `conformance.rs` (+ `conformance/directory_creation.rs`, the three `create_directory_all` promises); and `host/` (what
+  a backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md` before writing a backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
-- `sqlite_util.rs`: the ONE process-wide page-cache slab, and the connection factories every store opens through.
+- `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, and the
+  one way a database file is deleted. `src/sqlite_util/thread_conn_cache.rs` is the per-thread read-connection cache and
+  its retirement, re-exported from it.
 - `staging.rs`: `StagingTemp`, the ONLY way to name a scratch file.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
@@ -137,12 +139,13 @@ The 64-bit digest also bounds the length, which is load-bearing: an ID is a file
 stop at 255 bytes. It's the reason a fully-injective escaping scheme (percent-encode the path) was rejected: reversible
 and elegant, but unbounded, and it renders a mount path with spaces unreadable anyway.
 
-The funnel also mints the APP-ROOT PREFIX of every remote volume (`sftp_app_root`, `webdav_app_root`), beside the id and
-from the same tuple. That is what makes a path and an id agree by construction: a `sftp://ada@nas:22/...` path resolves
-to exactly the id `sftp_volume_id` mints for that account, so a saved row and the volume it becomes share one identity
-across a dial and a restored tab finds its way home. The prefix, the translation between an app path and a server path,
-and why a bare server-absolute path is REFUSED rather than anchored: `src/volume/remote_paths.rs`'s module doc, which is
-canonical for all of it.
+Every remote volume's APP-ROOT PREFIX (`sftp_app_root`, `webdav_app_root`, `adb_app_root`, and the splits back,
+`server_of_path` and `adb_serial_of_path`) is minted from the same tuple as its id, in `remote_paths.rs` beside the
+translation it feeds, and re-exported from `volume` like the ids. That is what makes a path and an id agree by
+construction: a `sftp://ada@nas:22/...` path resolves to exactly the id `sftp_volume_id` mints for that account, so a
+saved row and the volume it becomes share one identity across a dial and a restored tab finds its way home. The prefix,
+the translation between an app path and a server path, and why a bare server-absolute path is REFUSED rather than
+anchored: `src/volume/remote_paths.rs`'s module doc, which is canonical for all of it.
 
 Nothing enforces the funnel in the type system. An ID crosses IPC as a `String` in ~3,600 Rust and ~1,600 TypeScript
 sites, so a `VolumeId` newtype would be a very large refactor for a property one module already guarantees; the
@@ -263,6 +266,38 @@ The same shape bit once more, harmlessly: the `Volume::inject_error` E2E hook is
 feature that lived only on the app. This crate now declares its own, and the app's enables it via
 `cmdr-fs/playwright-e2e`. A feature name that isn't declared in the crate you move code into doesn't error — it warns
 about an "unexpected `cfg` condition value" and takes the false branch forever.
+
+## Retiring cached read connections, and deleting a database (`sqlite_util`)
+
+Both read paths keep their connections in a thread-local `ThreadConnCache` so enrichment never takes a lock. The price
+is that nobody can close another thread's connection, and that mattered twice once databases could go away:
+
+- **An unlinked file keeps its blocks until the last handle closes.** A forgotten share's database was deleted while
+  blocking threads still cached connections to it, so the disk didn't come back until those threads died.
+- **A stale connection still answers.** It reads the unlinked file, so a database recreated under the same path reads as
+  the old one for as long as the slot survives. The index's `ReadPool` defends with a fresh generation per pool;
+  importance reads carry no generation at all.
+
+`retire_read_connections(db_path)` is the mechanism for both. It bumps a process-wide epoch and records the epoch the
+path was retired at; every `ThreadConnCache::with` call compares the epoch to the one it last swept at (one atomic load
+when nothing changed) and closes each entry opened before its path's retirement. So the owning thread closes its own
+connections, on its next use of that cache for ANY database.
+
+⚠️ **It is a request, not a close.** A thread that never reads again keeps its connections until it exits, which tokio
+does to an idle blocking thread after ten seconds. The honest bound is "the owning thread's next read, or its death",
+and there is one cache per read path (`THREAD_CONNS`, `READ_CONNS`), each swept on its own next use. ❌ Don't document
+or rely on "closed when this returns". Closing sooner would need a lock on the hot read path, which is what the
+thread-local exists to avoid.
+
+A connection opened AFTER the retirement is kept, which is what lets a recreated database be cached normally. The
+comparison is per entry (`opened_at` against the path's retirement epoch), not a path denylist.
+
+`delete_database(db_path)` is the one way a database file is removed: retire, unlink the main file and its `-wal` and
+`-shm`, retire again. The second retirement covers a reader that opened between the first one and the unlink, which
+would otherwise be left holding the unlinked file. A missing file is fine, every file is attempted, and the first
+refusal is returned. ⚠️ It only reaches cached READ connections: the caller stops whatever writes the database first.
+`cmdr-index` builds its per-volume removal on it (`crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door
+they leave by"), and the three stores' schema-mismatch wipes call it too.
 
 ## What the app kept, and why
 
@@ -422,8 +457,18 @@ everywhere, which is the point.
   transfer driver spends it by skipping the per-file destination conflict probe inside. Only the dangerous direction is
   pinned; answering `AlreadyExisted` for a leaf you did create is merely slower, which is what the trait means by "when
   in doubt, answer `AlreadyExisted`". MTP is the backend this matters most for: it answers
-  `create_directory_errors_on_existing_dir() == false`, so the default walk learns "already there" from its `exists`
-  probe rather than from a collision error.
+  `create_directory_errors_on_existing_dir() == false`, so the default walk learns "already there" from its probe rather
+  than from a collision error.
+- `assert_create_directory_all_refuses_a_file_in_the_way` — a FILE at the path, or at an ancestor of it, is refused with
+  `VolumeError::NotADirectory` carrying the file's path, and stays untouched. A taken name reads the same whatever holds
+  it on most protocols, so a walk that never asks answers `AlreadyExisted` for the file itself (and the transfer goes on
+  to write into it) and the `NotFound` of the level below it for anything deeper, naming a folder the user asked Cmdr to
+  create as the thing that's missing. Before this cell, every mutable backend did one or both. Run by local, SMB, MTP,
+  SFTP, WebDAV (Apache and Nextcloud), ADB, and the in-memory double.
+- `assert_create_directory_all_goes_through_a_link_to_a_folder` — the other side of that refusal: a link that LEADS to a
+  folder is a folder to a `mkdir -p`, so the link's own path answers `AlreadyExisted` and a path below it is created
+  inside the target. Run by the backends that have links (local, SFTP, ADB). Why this differs from the merge engines'
+  "not a directory in its own right": `src/volume/mkdir_all.rs` § "A link to a folder is a folder".
 - `assert_conflict_scan_reads_a_missing_destination_as_empty` — a destination that isn't there yet holds nothing, so
   `scan_for_conflicts` answers an empty list rather than the `NotFound` its listing hit. `scan_volume_copy` propagates
   what comes back, so the wrong answer isn't an odd conflict entry: it's the whole copy preview refusing to open, on the
@@ -494,23 +539,71 @@ A fault the caller wants to arm on a call COUNT rather than on a path belongs on
 wrapper (`file_system/write_operations/transfer/volume/faulty_volume_test_support.rs`): it wraps any volume and fails
 the Nth call to a named operation. ❌ Don't grow this list with fault shapes that aren't about what a real backend does.
 
-## `process_memory`: three accountants, and the one reader that spans them
+## `process_memory`: the allocators, their accountants, and the one reader that spans them
 
-`query_mimalloc_heap` sees only our Rust heap. `query_system_malloc_zones` sees only the registered macOS zones, which
-mimalloc never joins. Neither can say what SHAPE the bytes are in, and that gap is what left a 643 MB block unnamed
-across three memory investigations (`../../docs/notes/performance/idle-memory-profile-2026-07-28.md`).
+### Which global allocator
+
+**Decision**: macOS runs on the system allocator, Linux on mimalloc, and the `mimalloc` feature (the app's forwards to
+this crate's) puts macOS on mimalloc too. `build.rs` folds that rule into one cfg, `cmdr_mimalloc`, and
+`process_memory/allocator.rs` turns it into the `GLOBAL_ALLOCATOR` constant plus the `GlobalAlloc` type and
+`GLOBAL_ALLOC` value the app's `main.rs` installs. Every allocator-specific line asks `cmdr_mimalloc` (or, outside this
+crate, the constant); ❌ never `feature = "mimalloc"`, which is false on Linux where mimalloc is the default.
+
+**Why macOS left mimalloc**: on David's dev Mac, 15 min after a search-and-listing burst, the system allocator settles
+at a median 241 MiB against mimalloc's 403, and under the 300 MiB target in five of seven runs against two of eight
+(`../../docs/notes/performance/allocator-slack-release-2026-09-27.md`). mimalloc's post-burst slack is fragmentation,
+not retention: sparse pages pinned by a few long-lived blocks, which no allocator call returns. It used to cost search
+speed to leave it, but the search loop no longer allocates per row, so that penalty is gone
+(`../../docs/notes/performance/search-loop-allocations-2026-09-27.md`). What macOS pays: burst peaks ~500 MiB higher
+(median 1,976 against 1,458 MiB), a transient that sometimes lasts past a minute after a burst, and an occasional bad
+settle (382 MiB, mostly swapped malloc-zone memory). Idle footprint drops ~95 MiB
+(`../../docs/notes/performance/allocator-comparison-2026-09-23.md`).
+
+**Why Linux keeps mimalloc**: glibc malloc is unmeasured under Cmdr's load, and its per-thread arenas behave very
+differently from macOS malloc under thread churn, so the macOS numbers say nothing about it. Measure it before flipping
+Linux; a feature to force the system allocator there is a one-line addition to `build.rs`.
+
+**Why mimalloc's VM tag stays at its default (100, `IOAccelerator`)**: `os_tag` is a Mach tag, so it does nothing on
+Linux, where mimalloc already names its mappings `mimalloc` through `PR_SET_VMA_ANON_NAME`. On macOS it only reaches a
+`--features mimalloc` build, which doesn't ship, and `process_memory/vm_regions.rs` reads that build's heap off tag 100
+(`MIMALLOC_ARENA_TAG`), so a new tag means moving that reader with it. How each build's heap reads from outside:
+`../../docs/tooling/memory-debugging.md` § "First: which allocator holds the Rust heap".
+
+**Why the choice lives here and not in the app**: every memory reader has to know which heap it's reading, and the
+readers live here. With the choice beside them, the app's `main.rs` needs no cfg at all, and a reading can't disagree
+with the allocator that's installed. The one exception: only a binary that installs `GLOBAL_ALLOC` runs on it, and test
+binaries install their own counting allocator over `System`, so the mimalloc readers' tests allocate through `mi_malloc`
+directly and run only in a `--features mimalloc` test build.
+
+**What keeps the unused path alive**: the `clippy-mimalloc` check lane (slow, macOS) clippies the workspace with
+`cmdr/mimalloc` in its own target dir, and `rustdoc`'s `--all-features` documents it. `THIRD-PARTY-NOTICES.md` covers
+the default macOS build, so it doesn't credit mimalloc: shipping macOS on mimalloc again means making it that build's
+default (the rule in `build.rs`), which brings the credit back with it.
+
+### The readers
+
+Under **mimalloc**, `query_rust_heap` reads `mi_process_info` (committed bytes), and mimalloc is not a registered malloc
+zone, so `query_system_malloc_zones` sees every zone and none of the Rust heap. Under the **system allocator**, the Rust
+heap IS the default malloc zone, shared with Objective-C and C code, so `query_rust_heap` reads that zone's statistics
+(in use and reserved; macOS keeps no high-water mark) and `query_system_malloc_zones` skips it. Either way the two never
+overlap, which the watchdog's `untracked` remainder relies on. The skip leans on libmalloc keeping the default zone
+first in its registry; `a_malloc_block_lands_in_the_rust_heap_and_not_in_the_other_zones` pins it.
+
+Neither can say what SHAPE the bytes are in, and that gap is what left a 643 MB block unnamed across three memory
+investigations (`../../docs/notes/performance/idle-memory-profile-2026-07-28.md`).
 
 `query_vm_regions` closes it. It walks the task's own VM map with `mach_vm_region_recurse` and folds the entries by
 `user_tag`, so it produces the same rows `vmmap -summary` prints — in-process, with no `vmmap` to spawn and no
-`MallocStackLogging` relaunch, and covering BOTH allocators because every allocator ultimately takes its pages from the
-kernel.
+`MallocStackLogging` relaunch, and covering every allocator because every allocator ultimately takes its pages from the
+kernel. mimalloc's arenas sit under tag 100 (`MIMALLOC_ARENA_TAG`, which macOS names `IOAccelerator`); the zones' pages
+sit under `MALLOC_TAGS`.
 
 The per-tag histogram of distinct region sizes is the part that names things. macOS routes any allocation past its 127
 KB large-zone threshold to a VM region of exactly the requested size, so a repeated exact size under `MALLOC_LARGE` is a
 fingerprint of whatever asked for that many bytes. That is how the CLIP Core ML towers were identified from a region
 table alone: 101,187,584 bytes is the text tower's `49,408 × 512` fp32 token embedding and nothing else in the process
 (`../cmdr-index/src/media_index/clip/DETAILS.md` § "What holding the towers costs"). The mechanism is asserted, not
-assumed: `a_big_system_zone_block_becomes_a_malloc_large_region_of_exactly_its_size`.
+assumed: `a_big_system_zone_block_becomes_a_malloc_large_region_sized_to_its_request`.
 
 ⚠️ **`<mach/vm_region.h>` lives inside `#pragma pack(push, 4)`, so `VmRegionSubmapInfo64` must be
 `#[repr(C, packed(4))]`.** With plain `#[repr(C)]` the `u64` `offset` field gets 4 bytes of padding the kernel didn't
@@ -521,10 +614,13 @@ MiB block absent from the map entirely (verified on macOS 26.5, 2026-08-21).
 Cost is one syscall per map entry, so it is snapshot-only — never per watchdog tick or per log line, unlike the
 `task_info` readers beside it.
 
-`query_heap_census` answers the question the other three can't: of what mimalloc holds, how much is live data. It walks
-every page of the main heap (in mimalloc v3 one heap spans every thread's pages) and sums blocks in use against block
-space, with an allocation-free visitor and a page ceiling. Read against the VM map's tag-100 bytes it gives the heap's
-slack. Its blind spots and why it's safe to run in a live app: the module header.
+`query_rust_heap_snapshot` answers the question the others can't: of what the heap holds, how much is live data. Under
+mimalloc it runs `heap_census.rs`, which walks every page of the main heap (in mimalloc v3 one heap spans every thread's
+pages) and sums blocks in use against block space, with an allocation-free visitor and a page ceiling, and reads that
+against tag 100's resident bytes. Its blind spots and why it's safe to run in a live app: the module header. Under the
+system allocator there's no census to take (nothing in the zone tells a Rust block from an Objective-C one), and none is
+needed for live bytes: the zones count them exactly. The snapshot weighs every zone's live bytes against every malloc
+tag's resident bytes, because the VM tags can't say which zone a page belongs to.
 
 ## Bodies a backend gets for free
 
@@ -541,7 +637,12 @@ modules under `volume/` carry the arithmetic, each behind a trait the backend im
 - **`mkdir_all.rs`** (`MakesDirectories`) answers `create_directory_all`, leaf first so the common case costs one
   request. ❗ Its `DirectoryCreation` answer is the load-bearing part: the transfer driver spends a `Created` by
   skipping its per-file destination conflict probe, so anything short of certainty (a lost race included) answers
-  `AlreadyExisted`. It also reports the SHALLOWEST directory it created, which is the one listing worth patching.
+  `AlreadyExisted`. It also reports the SHALLOWEST directory it created, which is the one listing worth patching. A
+  taken name isn't a folder until somebody looks, so the trait's third method (`leads_to`, one stat that follows links)
+  is what turns a file in the way into `NotADirectory`. ❗ It is asked only after a create was refused, so a walk that
+  works pays nothing for it; when each look happens, and why an unclassified answer means "look further up", is in the
+  module docs. The trait's DEFAULT `create_directory_all` (local, SMB, MTP, the double) keeps the same promise through
+  `volume_path_leads_to`, which replaces its per-ancestor `exists()` at the same cost.
 - **`patching.rs`** (`PatchSource`) answers `notify_mutation` and the created / deleted / renamed patches around it. A
   patch is a courtesy and ❌ never fails the mutation that earned it, so every function returns `()`. A rename across
   directories is two changes, ❗ never one `Renamed`.

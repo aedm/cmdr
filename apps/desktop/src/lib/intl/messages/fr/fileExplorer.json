@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Quelque chose sur ce Mac empêche Cmdr de se connecter directement à {server}, ce partage reste donc sur la connexion système. Essayez de désactiver puis de réactiver Cmdr dans {localNetwork}, ou vérifiez votre app de pare-feu.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Ouvrir les réglages {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} a mis trop de temps à répondre, ce partage reste donc sur la connexion système.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -625,6 +633,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Toujours en attente de ce dossier",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Le serveur ou le disque qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "Le serveur qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Le disque qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Réessayer",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Revenir",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{countText} {count, plural, one {élément copié} many {éléments copiés} other {éléments copiés}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -780,6 +812,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Pour copier des fichiers hors d’un instantané git, utilisez F5 pour copier ou F6 pour déplacer.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "« {fileName} » dépasse {limit}, donc Cmdr ne peut pas ouvrir le fichier dans {appName} depuis l’archive.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "« {fileName} » dépasse {limit}, donc Cmdr ne peut pas ouvrir le fichier dans {appName} depuis l’historique du dépôt.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "« {fileName} » se trouve dans une archive protégée par un mot de passe. Copiez d’abord le fichier dans un dossier (Cmdr vous demandera le mot de passe), puis ouvrez-le dans {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Impossible d’extraire « {fileName} » de son archive pour l’ouvrir dans {appName}. L’archive est peut-être endommagée ou utilise un format que Cmdr ne sait pas lire.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Impossible de lire « {fileName} » pour l’ouvrir dans {appName}. Vérifiez que le disque est toujours connecté, puis réessayez.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "Votre fichier a disparu de la vue, car les fichiers cachés ne sont pas affichés.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1414,9 +1466,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Impossible de se déconnecter tant que des opérations sont en cours sur ce serveur",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr travaille encore sur des fichiers de ce serveur. Déconnectez-vous une fois l’opération terminée.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} est maintenant dans votre sélecteur de volume.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1426,9 +1478,9 @@
   "@fileExplorer.navigation.serverUnpinnedToast": {
     "sourceHash": "7fa97b2"
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr n’a pas pu changer l’endroit où {name} s’affiche.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr n’a pas pu changer l’endroit où {name} apparaît.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr n’a pas pu se déconnecter de {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1474,9 +1526,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Impossible d’éjecter tant que des opérations sont en cours sur cet appareil",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr travaille encore sur des fichiers de cet appareil. Éjectez-le une fois l’opération terminée.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Éjection de {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

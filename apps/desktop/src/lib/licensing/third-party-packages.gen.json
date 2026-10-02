@@ -712,12 +712,6 @@
       "url": "https://github.com/RustCrypto/utils"
     },
     {
-      "name": "cty",
-      "version": "0.2.2",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/japaric/cty"
-    },
-    {
       "name": "curve25519-dalek",
       "version": "5.0.0",
       "license": "BSD-3-Clause",
@@ -1960,12 +1954,6 @@
       "url": "https://github.com/instant-labs/instant-clip-tokenizer"
     },
     {
-      "name": "internal-russh-num-bigint",
-      "version": "0.5.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/rust-num/num-bigint"
-    },
-    {
       "name": "io-close",
       "version": "0.3.7",
       "license": "MIT OR Apache-2.0",
@@ -2054,12 +2042,6 @@
       "version": "0.2.189",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/rust-lang/libc"
-    },
-    {
-      "name": "libmimalloc-sys",
-      "version": "0.1.49",
-      "license": "MIT",
-      "url": "https://github.com/purpleprotocol/mimalloc_rust/tree/master/libmimalloc-sys"
     },
     {
       "name": "libsqlite3-sys",
@@ -2180,12 +2162,6 @@
       "version": "0.9.11",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/RazrFalcon/memmap2-rs"
-    },
-    {
-      "name": "mimalloc",
-      "version": "0.1.52",
-      "license": "MIT",
-      "url": "https://github.com/purpleprotocol/mimalloc_rust"
     },
     {
       "name": "mime",
@@ -2321,7 +2297,7 @@
     },
     {
       "name": "num-bigint",
-      "version": "0.4.8",
+      "version": "0.5.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/rust-num/num-bigint"
     },
@@ -2567,13 +2543,13 @@
     },
     {
       "name": "openssh-sftp-client",
-      "version": "0.15.8",
+      "version": "0.15.10",
       "license": "MIT",
       "url": "https://github.com/openssh-rust/openssh-sftp-client"
     },
     {
       "name": "openssh-sftp-client-lowlevel",
-      "version": "0.7.2",
+      "version": "0.7.3",
       "license": "MIT",
       "url": "https://github.com/openssh-rust/openssh-sftp-client"
     },
@@ -2585,7 +2561,7 @@
     },
     {
       "name": "openssh-sftp-protocol",
-      "version": "0.24.2",
+      "version": "0.25.0",
       "license": "MIT",
       "url": "https://github.com/openssh-rust/openssh-sftp-client"
     },
@@ -3035,7 +3011,7 @@
     },
     {
       "name": "russh",
-      "version": "0.62.7",
+      "version": "0.63.3",
       "license": "Apache-2.0",
       "url": "https://github.com/warp-tech/russh"
     },
@@ -4447,7 +4423,7 @@
     },
     {
       "name": "@jridgewell/sourcemap-codec",
-      "version": "1.5.5",
+      "version": "1.6.0",
       "license": "MIT",
       "url": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec"
     },
@@ -4471,7 +4447,7 @@
     },
     {
       "name": "@sveltejs/acorn-typescript",
-      "version": "1.0.11",
+      "version": "1.0.13",
       "license": "MIT",
       "url": "https://github.com/sveltejs/acorn-typescript#readme"
     },
@@ -4537,7 +4513,7 @@
     },
     {
       "name": "@typescript-eslint/types",
-      "version": "8.70.1",
+      "version": "8.71.0",
       "license": "MIT",
       "url": "https://typescript-eslint.io"
     },
@@ -5023,7 +4999,7 @@
     },
     {
       "name": "devalue",
-      "version": "5.9.0",
+      "version": "5.9.4",
       "license": "MIT",
       "url": "https://github.com/sveltejs/devalue#readme"
     },
@@ -5035,7 +5011,7 @@
     },
     {
       "name": "esrap",
-      "version": "2.2.13",
+      "version": "2.4.0",
       "license": "MIT",
       "url": "https://github.com/sveltejs/esrap#readme"
     },
@@ -5089,7 +5065,7 @@
     },
     {
       "name": "svelte",
-      "version": "5.57.0",
+      "version": "5.57.1",
       "license": "MIT",
       "url": "https://svelte.dev"
     },

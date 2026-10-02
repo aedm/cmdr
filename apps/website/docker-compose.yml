@@ -12,6 +12,11 @@ services:
       dockerfile: apps/website/Dockerfile
     container_name: getcmdr-static
     restart: unless-stopped
+    # Daily access logs (no client IPs) outlive the container this way. The host dir is created,
+    # owned by nginx's uid 101, and pruned after 30 days by the infra repo's Hetzner Ansible
+    # (`docker` role). See `nginx.conf` for what the log holds and why.
+    volumes:
+      - /var/log/cmdr/website:/var/log/nginx/site
     networks:
       - proxy-net
 

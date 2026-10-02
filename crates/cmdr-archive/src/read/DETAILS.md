@@ -193,6 +193,28 @@ heuristic + a CP437 suspicious-byte check) and decodes names into UTF-8 `String`
 directly. `non_utf8_name_is_decoded_best_effort` pins that a high-byte, non-UTF-8-flagged name decodes without erroring
 and preserves its ASCII parts.
 
+## Entry times (zip): a DOS-only time is the writer's wall clock (`zip_times.rs`)
+
+A zip entry's MS-DOS date-and-time field has no zone, and every tool that writes one alone (Windows Explorer, macOS
+Archive Utility, most DOS-era zippers) writes the local wall clock; `unzip -l` and Finder show it that way. So a
+DOS-only entry lists as that wall clock in the READER's local zone. An entry with a timestamp extra field (Info-ZIP `UT`
+`0x5455`, NTFS `0x000a`, PKWARE Unix `0x000d`) records the exact UTC second, and we take rc-zip's reading of it
+unchanged. Cmdr's own writer writes both (`../mutation/DETAILS.md`), so its archives list the same in any zone.
+
+- **Why a second walk**: rc-zip reads a DOS-only entry as UTC and its `Entry` doesn't say which source a time came from
+  (verified on `rc-zip` 5.4.1, `Entry::set_extra_field`, 2026-10-01). `zip_times::dos_only_wall_clocks` re-reads the
+  central directory by hand for each record's DOS field and extra-field tags. The `zip` crate can't stand in: its
+  per-entry accessors seek each local header. rc-zip's own parsers would need `winnow` 0.5 as a direct dependency.
+- **It's a cross-check, never a second authority**: it finds the directory the way rc-zip does (EOCD, then the zip64
+  record its locator points at), and it must agree with rc-zip's parse record for record (signature and CRC-32 in
+  order). Any surprise answers `None` and every entry keeps rc-zip's time, logged at debug.
+- **Cost**: one more pass over the directory bytes. On a remote source the `TailCachedSource` window usually holds the
+  whole directory, so it's no extra round trip; a directory bigger than the window is read twice.
+- **Accepted shift**: an archive an older Cmdr wrote (UTC DOS field, no `UT`) now lists hours off by the reader's
+  offset. David's call (#340): correct for every other tool's archives beats compatible with a short-lived writer bug.
+- **DST edges**: an ambiguous wall clock takes the earlier instant; a skipped one takes the offset just before the jump.
+- Tests: `zip_times_test.rs` reads with a fixed UTC+2 zone (`zip::parse_in`), so they don't depend on the machine's.
+
 ## Index cache (`ArchiveIndexCache`)
 
 A plain content cache keyed by `(path, size, mtime)`; hits are a cheap `Arc` clone. Any external edit changes size or

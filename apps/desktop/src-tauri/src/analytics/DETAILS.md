@@ -272,11 +272,19 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   `agent/suggested_ops/analytics.rs`): `verb` (the `ProposalVerb` token) + `op_count` bucket. Acceptance rate is the
   agent's north-star metric, which is why the proposal and both outcomes are all counted; never a path, file name,
   rationale, or selector pattern.
-- `tab_opened` / `tab_closed` / `tab_switched` / `tab_pin_toggled` (frontend, `file-explorer/tabs/tab-analytics.ts`,
-  called from `file-explorer/pane/tab-operations.ts`): `source` (`new` / `reopened`, or `single` / `others` on a
-  close), `outcome` (`opened` / `atCap` / `nothingToReopen`; `closed` / `cancelled` / `lastTab`), `open_tabs`, a
-  `pinned` bool on the close and the pin toggle, and `method` (`cycle` / `pick`) on the switch. Never a path, which is
-  a tab's whole identity.
+- `rename_plan_from_cut_listing` (backend, `../agent/tools/propose/rename/cut_listing.rs`, when a rename plan stages):
+  fires only when the thread's latest `list_pane_files` result was cut (`returned < total`) and the plan renames files
+  in that folder. `rows` (the plan's rows in that folder), `listing_returned`, and `listing_total` buckets, plus
+  `coverage` (`within_returned` / `beyond_returned` / `matches_total` / `beyond_total`). It exists to decide #214's
+  step 2: a non-trivial share of `matches_total` means models claim the whole folder from one page, and that plan
+  shape should be refused. Never the folder or a name.
+- `tab_opened` / `tab_closed` / `tab_switched` / `tab_pin_toggled` / `tab_moved` (frontend,
+  `file-explorer/tabs/tab-analytics.ts`, called from `file-explorer/pane/tab-operations.ts`): `source` (`new` /
+  `reopened`, or `single` / `others` on a close), `outcome` (`opened` / `atCap` / `nothingToReopen`; `closed` /
+  `cancelled` / `lastTab`), `open_tabs`, a `pinned` bool on the close and the pin toggle, and `method` (`cycle` /
+  `pick`) on the switch. A move (a tab drag, or the MCP `tab` tool) carries `scope` (`samePane` / `otherPane`),
+  `outcome` (`moved`, or the refusal: `pinned` / `onlyTab` / `atCap`), and the `open_tabs` of the pane the tab was
+  headed for; a drop back on the tab's own slot reports nothing. Never a path, which is a tab's whole identity.
   **`open_tabs` is a RAW count, the one documented exception to `item_count_bucket`**: a pane caps at ten tabs, and
   that ladder has two values (`1`, `2-10`) across the entire range, so bucketing would throw the answer away for no
   privacy gain. Ten possible integers identifies nobody.

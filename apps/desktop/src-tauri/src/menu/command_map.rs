@@ -227,6 +227,15 @@ pub const VIEWER_SELECT_ALL_ID: &str = "viewer_select_all";
 pub const VIEWER_EDIT_CUT_ID: &str = "viewer_edit_cut";
 pub const VIEWER_EDIT_PASTE_ID: &str = "viewer_edit_paste";
 
+/// Menu item IDs for the viewer's right-click menu over the file text (Copy, Select all).
+///
+/// ❗ Distinct from the bar's `VIEWER_EDIT_COPY_ID` / `VIEWER_SELECT_ALL_ID`: those go through
+/// `runViewerEditAction`, which hands Copy and Select all to the search box when it has focus.
+/// A right-click on the text doesn't move focus, so this menu's pair travels as
+/// `ViewerContextMenuAction` and always acts on the file. Unmapped in `menu_id_to_command`.
+pub const VIEWER_CONTEXT_COPY_ID: &str = "viewer_context_copy";
+pub const VIEWER_CONTEXT_SELECT_ALL_ID: &str = "viewer_context_select_all";
+
 /// Menu item IDs for tab actions (app menu).
 pub const NEW_TAB_ID: &str = "new_tab";
 pub const PIN_TAB_MENU_ID: &str = "pin_tab_menu";

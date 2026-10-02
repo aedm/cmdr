@@ -5,6 +5,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::{PaneStateStore, ToolError, ToolResult, mcp_round_trip};
 use crate::file_system::write_operations::{LifecycleStatus, WriteOperationType};
+use crate::mcp::pane_state::{PaneListing, PaneState};
 use crate::mcp::resources::indexing::freshness_token;
 use crate::mcp::terminal_ops::{self, TerminalStatus};
 use cmdr_index::Freshness;
@@ -100,23 +101,16 @@ pub async fn execute_await<R: Runtime>(app: &AppHandle<R>, params: &Value) -> To
             _ => unreachable!(),
         };
 
-        let matched = match condition {
-            "has_item" => state.files.iter().any(|f| f.name == value),
-            "not_has_item" => !state.files.iter().any(|f| f.name == value),
-            "item_count_gte" => {
-                let min_count: usize = value.parse().unwrap_or(1);
-                state.files.len() >= min_count
-            }
-            "item_count_lte" => {
-                let max_count: usize = value.parse().unwrap_or(0);
-                state.files.len() <= max_count
-            }
-            "path" => state.path == value,
-            "path_contains" => state.path.contains(value.as_str()),
-            _ => unreachable!(),
-        };
+        let check = check_pane_condition(condition, &value, &state);
+        if check == PaneCheck::Stalled {
+            return Err(ToolError::internal(format!(
+                "The {pane} pane's folder {} isn't answering: its server or drive stopped responding mid-read, so it has no rows to check '{condition}' against. Cmdr keeps retrying in the background and opens it once it answers. Navigate elsewhere, or retry later.",
+                state.path
+            ))
+            .with_data(json!({ "reason": "folderStalled", "path": state.path })));
+        }
 
-        if matched {
+        if check == PaneCheck::Met {
             // Build a compact state summary to return
             let file_count = state.files.len();
             let first_items: Vec<String> = state
@@ -152,6 +146,47 @@ pub async fn execute_await<R: Runtime>(app: &AppHandle<R>, params: &Value) -> To
 
         tokio::time::sleep(poll_interval).await;
     }
+}
+
+/// What one look at a pane says about an `await` condition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PaneCheck {
+    Met,
+    /// Not met yet; look again.
+    Pending,
+    /// The pane's folder stopped answering, so its rows can't answer the condition.
+    Stalled,
+}
+
+/// Checks a pane condition against one pushed state.
+///
+/// A condition on the ROWS answers [`PaneCheck::Stalled`] while the pane's listing is
+/// stalled: the pane holds no rows then, which isn't the folder being empty, and the
+/// listing may not land for minutes. A path condition reads the path, which stays true.
+fn check_pane_condition(condition: &str, value: &str, state: &PaneState) -> PaneCheck {
+    let on_rows = matches!(
+        condition,
+        "has_item" | "not_has_item" | "item_count_gte" | "item_count_lte"
+    );
+    if on_rows && state.listing == PaneListing::Stalled {
+        return PaneCheck::Stalled;
+    }
+    let met = match condition {
+        "has_item" => state.files.iter().any(|f| f.name == value),
+        "not_has_item" => !state.files.iter().any(|f| f.name == value),
+        "item_count_gte" => {
+            let min_count: usize = value.parse().unwrap_or(1);
+            state.files.len() >= min_count
+        }
+        "item_count_lte" => {
+            let max_count: usize = value.parse().unwrap_or(0);
+            state.files.len() <= max_count
+        }
+        "path" => state.path == value,
+        "path_contains" => state.path.contains(value),
+        _ => false,
+    };
+    if met { PaneCheck::Met } else { PaneCheck::Pending }
 }
 
 /// Whether a volume's current freshness satisfies an `index_status` await
@@ -515,6 +550,66 @@ pub async fn execute_set_setting<R: Runtime>(app: &AppHandle<R>, params: &Value)
         format!("OK: Set '{id}' to {value}"),
     )
     .await
+}
+
+#[cfg(test)]
+mod pane_condition_tests {
+    use super::*;
+    use crate::mcp::pane_state::{PaneFileEntry, PaneListing, PaneState};
+
+    fn pane(listing: PaneListing, files: &[&str]) -> PaneState {
+        PaneState {
+            path: "/Volumes/nas/photos".to_string(),
+            files: files
+                .iter()
+                .map(|name| PaneFileEntry {
+                    name: (*name).to_string(),
+                    ..Default::default()
+                })
+                .collect(),
+            listing,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_settled_pane_matches_as_before() {
+        let settled = pane(PaneListing::Settled, &["a.jpg"]);
+        assert_eq!(check_pane_condition("has_item", "a.jpg", &settled), PaneCheck::Met);
+        assert_eq!(check_pane_condition("has_item", "b.jpg", &settled), PaneCheck::Pending);
+        assert_eq!(check_pane_condition("not_has_item", "b.jpg", &settled), PaneCheck::Met);
+    }
+
+    #[test]
+    fn a_stalled_pane_answers_stalled_for_every_condition_on_its_rows() {
+        // A stalled pane holds no rows, which isn't the folder being empty: "not
+        // there" and "at most N" would be lies, and "there" would wait out the timeout.
+        let stalled = pane(PaneListing::Stalled, &[]);
+        for (condition, value) in [
+            ("has_item", "a.jpg"),
+            ("not_has_item", "a.jpg"),
+            ("item_count_gte", "1"),
+            ("item_count_lte", "0"),
+        ] {
+            assert_eq!(
+                check_pane_condition(condition, value, &stalled),
+                PaneCheck::Stalled,
+                "{condition}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stalled_pane_still_answers_path_conditions_from_its_path() {
+        // The path is true while the folder stalls; only the rows are missing.
+        let stalled = pane(PaneListing::Stalled, &[]);
+        assert_eq!(
+            check_pane_condition("path", "/Volumes/nas/photos", &stalled),
+            PaneCheck::Met
+        );
+        assert_eq!(check_pane_condition("path_contains", "nas", &stalled), PaneCheck::Met);
+        assert_eq!(check_pane_condition("path", "/Users/me", &stalled), PaneCheck::Pending);
+    }
 }
 
 #[cfg(test)]

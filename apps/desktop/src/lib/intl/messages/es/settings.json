@@ -310,13 +310,25 @@
   "@settings.listing.showTags.description": {
     "sourceHash": "005f3b0"
   },
+  "settings.listing.foldersFirst.label": "Mostrar carpetas primero",
+  "@settings.listing.foldersFirst.label": {
+    "sourceHash": "a61d73e"
+  },
+  "settings.listing.foldersFirst.description": "Muestra las carpetas encima de los archivos en la lista. Si lo desactivas, carpetas y archivos se mezclan.",
+  "@settings.listing.foldersFirst.description": {
+    "sourceHash": "8505ff3"
+  },
   "settings.listing.directorySortMode.label": "Ordenar carpetas",
   "@settings.listing.directorySortMode.label": {
-    "sourceHash": "7f0a1e4"
+    "sourceHash": "7d0b088"
   },
   "settings.listing.directorySortMode.description": "Cómo se ordenan las carpetas al cambiar la columna de ordenación.",
   "@settings.listing.directorySortMode.description": {
-    "sourceHash": "fe5f12a"
+    "sourceHash": "797d93b"
+  },
+  "settings.listing.directorySortMode.disabledReason": "Desactivado por ahora, porque las carpetas se mezclan con los archivos. Activa “Mostrar carpetas primero” para usar este ajuste.",
+  "@settings.listing.directorySortMode.disabledReason": {
+    "sourceHash": "f17416c"
   },
   "settings.listing.directorySortMode.opt.likeFiles": "Como los archivos",
   "@settings.listing.directorySortMode.opt.likeFiles": {
@@ -964,6 +976,10 @@
   "@settings.network.firstTriggerDone.description": {
     "sourceHash": "7982e11"
   },
+  "settings.network.nearbyServersGroup.label": "Grupo de servidores encontrados cerca",
+  "@settings.network.nearbyServersGroup.label": {
+    "sourceHash": "cfa28b1"
+  },
   "settings.network.directSmbConnection.label": "Conectar directamente a recursos compartidos SMB",
   "@settings.network.directSmbConnection.label": {
     "sourceHash": "407c4f1"
@@ -1059,7 +1075,7 @@
   },
   "settings.fileOperations.adbEnabled.description": "Accede a todo el sistema de archivos de un teléfono Android que tenga activada la depuración por USB, algo que MTP no puede mostrarte. Necesita las herramientas de plataforma de Android (el comando “adb”) en este Mac. Dejar esto activado no cuesta nada si no tienes herramientas de Android instaladas.",
   "@settings.fileOperations.adbEnabled.description": {
-    "sourceHash": "9a22518"
+    "sourceHash": "a89c957"
   },
   "settings.fileOperations.adbBinaryPath.label": "Ubicación de adb",
   "@settings.fileOperations.adbBinaryPath.label": {
@@ -1638,9 +1654,9 @@
   "@settings.behavior.doubleClickOnPaneNotificationSeen.description": {
     "sourceHash": "56238d4"
   },
-  "settings.behavior.serversPinHintSeen.label": "Aviso de grupo Red largo mostrado",
+  "settings.behavior.serversPinHintSeen.label": "Aviso de “Desfijar del selector” mostrado",
   "@settings.behavior.serversPinHintSeen.label": {
-    "sourceHash": "8d632ca"
+    "sourceHash": "8513a3c"
   },
   "settings.behavior.serversPinHintSeen.description": "Si ya se ha mostrado el aviso único sobre desfijar servidores.",
   "@settings.behavior.serversPinHintSeen.description": {
@@ -1970,7 +1986,7 @@
   },
   "settings.summary.listing": "Iconos de documentos, ordenación de carpetas y ancho de columna en la vista breve.",
   "@settings.summary.listing": {
-    "sourceHash": "7756e95"
+    "sourceHash": "ebed448"
   },
   "settings.summary.navigationAndFileOps": "Navegación con doble clic a la carpeta superior y comportamiento al renombrar archivos.",
   "@settings.summary.navigationAndFileOps": {
@@ -1994,7 +2010,7 @@
   },
   "settings.summary.servers": "Las claves de host SSH en las que has confiado.",
   "@settings.summary.servers": {
-    "sourceHash": "40940fa"
+    "sourceHash": "3335380"
   },
   "settings.summary.adb": "Explora un teléfono Android que tenga activada la depuración por USB.",
   "@settings.summary.adb": {
@@ -2522,13 +2538,13 @@
   "@settings.adb.recheck": {
     "sourceHash": "24fcca0"
   },
-  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después pulsa Comprobar de nuevo:",
+  "settings.adb.install.intro": "Instala las herramientas de plataforma de Android y después selecciona Comprobar de nuevo:",
   "@settings.adb.install.intro": {
-    "sourceHash": "5a82ea4"
+    "sourceHash": "9f7a0f4"
   },
-  "settings.adb.pathPlaceholder": "Buscar adb en los sitios habituales",
+  "settings.adb.pathPlaceholder": "Cmdr busca adb en los sitios habituales",
   "@settings.adb.pathPlaceholder": {
-    "sourceHash": "e236ef2"
+    "sourceHash": "538b307"
   },
   "settings.adb.browse": "Explorar…",
   "@settings.adb.browse": {

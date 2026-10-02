@@ -36,6 +36,19 @@ export interface TransferConfirmPayload {
 }
 
 /**
+ * The transfer dialog's own confirm, as something a caller outside it can press
+ * (the MCP `dialog confirm`): the same function its button runs, under the
+ * conflict policy the caller names.
+ */
+export type TransferConfirmer = (conflictResolution: ConflictResolution) => void
+
+/**
+ * The delete dialog's own confirm, as something a caller outside it can press
+ * (the MCP `dialog confirm`): the same function its button runs.
+ */
+export type DeleteConfirmer = () => void
+
+/**
  * What a transfer operation reports when it finishes: `TransferProgressDialog`'s
  * `onComplete`, shared by both the started and adopted arms
  * (`onTransferComplete` / `onAdoptedComplete`).

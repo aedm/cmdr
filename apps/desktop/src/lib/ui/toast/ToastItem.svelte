@@ -256,30 +256,40 @@
         gap: var(--spacing-md);
         max-width: 360px;
         padding: var(--spacing-toast);
-        background: var(--color-toast-default-bg);
+        /* Glass: the level's tint, partly see-through and blurred (`app.css` § Toasts). Each
+           level only swaps `--color-toast-bg`. */
+        --color-toast-bg: var(--color-toast-default-bg);
+
+        background: color-mix(in srgb, var(--color-toast-bg) var(--glass-toast-opacity), transparent);
+        -webkit-backdrop-filter: var(--glass-backdrop);
+        backdrop-filter: var(--glass-backdrop);
         border: 1px solid var(--color-toast-default-border);
         border-radius: var(--radius-toast);
-        box-shadow: var(--shadow-toast);
+        box-shadow: var(--shadow-toast), var(--shadow-glass-rim);
         font-size: var(--font-size-sm);
     }
 
     .toast.info {
-        background: var(--color-toast-info-bg);
+        --color-toast-bg: var(--color-toast-info-bg);
+
         border-color: var(--color-toast-info-border);
     }
 
     .toast.success {
-        background: var(--color-toast-success-bg);
+        --color-toast-bg: var(--color-toast-success-bg);
+
         border-color: var(--color-toast-success-border);
     }
 
     .toast.warn {
-        background: var(--color-toast-warn-bg);
+        --color-toast-bg: var(--color-toast-warn-bg);
+
         border-color: var(--color-toast-warn-border);
     }
 
     .toast.error {
-        background: var(--color-toast-error-bg);
+        --color-toast-bg: var(--color-toast-error-bg);
+
         border-color: var(--color-toast-error-border);
     }
 

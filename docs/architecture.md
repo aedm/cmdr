@@ -93,7 +93,7 @@ All under `apps/desktop/src/lib/`.
 - `text-editor/`: which app F4 opens files in: reads the stored choice, launches through `openInEditor`, falls back to
   the system default with a toast when that app is gone, and points at the setting once with a hint. The Settings row is
   `apps/desktop/src/lib/settings/sections/TextEditorSelect.svelte`. See `apps/desktop/src/lib/text-editor/CLAUDE.md`
-- `go-to-path/`: "Go to path" (⌘G) dialog + handler: thin presenter over backend `resolve_go_to_path`, recents mirror
+- `go-to-path/`: "Go to folder" (⌘G) dialog + handler: thin presenter over backend `resolve_go_to_path`, recents mirror
 - `query-ui/`: Shared filter-and-act-on primitives for Search and Selection: `QueryBar`, `ModeChips`, `QueryResults`,
   recent-items, `createQueryFilterState()`
 - `query-ui/filter-chips/`: Filter chip popover subsystem (size/modified/scope/pattern)
@@ -261,7 +261,7 @@ All under `apps/desktop/src-tauri/src/`.
 - `search/`: In-memory search index (lazy load, rayon parallel scan, glob/regex) + AI query translation (`search/ai/`)
 - `selection/`: Selection dialog backend: recent-selections store + cloud AI translation (`selection/ai/`); the matcher
   itself runs in JS
-- `go_to_path/`: "Go to path" backend: pure path resolution + fixed-cap recent-paths store. IPC in
+- `go_to_path/`: "Go to folder" backend: pure path resolution + fixed-cap recent-paths store. IPC in
   `commands/go_to_path.rs`
 - `recents/`: The persisted recents list all three of those keep (dedupe, cap, durable JSON file, quarantine). A
   consumer supplies the entry type and its dedupe key. See `apps/desktop/src-tauri/src/recents/CLAUDE.md`
@@ -272,6 +272,8 @@ All under `apps/desktop/src-tauri/src/`.
   WebKit that can't run the bundle, a startup that never finishes). Off in E2E
 - `text_size.rs`: macOS Accessibility text-size watcher (undocumented Apple APIs, risk notes in source). Emits
   `system-text-size-changed`
+- `glass_tint.rs`: macOS 27 Liquid Glass slider reader (undocumented `NSGlassTintAmount`, re-read on app activation;
+  risk notes in source). Emits `glass-tint-changed`; the frontend side is `$lib/glass-material`
 - `system_strings.rs`: Localized macOS pane labels from `.loctable` system bundles (loctable catalog + risks in source).
   Also the ordered `AppleLanguages` read that `intl/` walks
 - `intl/`: What the OS says about language and region. Walks the user's ordered macOS language preferences against the
@@ -568,6 +570,7 @@ Dev workflow docs and external service references. All in `docs/tooling/`.
 - `tooling/mcp.md`: MCP servers (`cmdr`, `tauri`) for agent-driven app testing
 - `tooling/instance-isolation.md`: `CMDR_INSTANCE_ID` primer: per-resource isolation for parallel dev / E2E
 - `tooling/css-health-checks.md`: Stylelint + Go-based unused CSS checker
+- `tooling/git-hooks.md`: the `pre-commit` and `pre-push` hooks that apply `oxfmt`, `rustfmt`, and `gofmt` automatically
 - `tooling/index-query.md`: `index_query`: query index DB with `platform_case` collation (`sqlite3` can't)
 
 The check runner and E2E testing docs live colocated with their code:

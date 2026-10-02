@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use super::phases;
 use super::state::{self, Handover};
+use super::steps_ahead::StepsAhead;
 use crate::indexing::IndexPathSpace;
 use crate::indexing::deletes;
 use crate::indexing::events::{
@@ -126,6 +127,10 @@ pub(super) struct ScanCalibration {
     /// What kind of run this is. Rides the started event so the frontend states
     /// it, and picks the calibration bucket the completion handler writes into.
     pub(super) run_kind: ScanRunKind,
+    /// What the steps after each one took last time on this kind of run, the
+    /// remembered half of the overall "~X left". All `None` for a run with no
+    /// plan to remember (a phased first index).
+    pub(super) steps_ahead: StepsAhead,
 }
 
 /// The live scan-progress fields `get_status` surfaces on `IndexStatusResponse`.
@@ -138,6 +143,7 @@ struct LiveScanCounters {
     scan_run_kind: Option<ScanRunKind>,
     prior_total_entries: Option<u64>,
     prior_scan_duration_ms: Option<u64>,
+    steps_ahead: StepsAhead,
 }
 
 /// Derive the live scan counters for `get_status` from the active scan's progress
@@ -159,6 +165,7 @@ fn live_scan_counters(
         scan_run_kind: calibration.map(|c| c.run_kind),
         prior_total_entries: calibration.and_then(|c| c.prior.total_entries),
         prior_scan_duration_ms: calibration.and_then(|c| c.prior.scan_duration_ms),
+        steps_ahead: calibration.map(|c| c.steps_ahead).unwrap_or_default(),
     }
 }
 
@@ -211,9 +218,15 @@ fn rescan_scanner_for_kind(kind: IndexVolumeKind) -> RescanScanner {
 /// predicate stays unchanged — a NAS rescan is slow, so keeping the partial visible
 /// is worth more there, and network partials are small.)
 ///
+/// `predates_policy`: rows written under an older exclusion policy
+/// (`scanner::index_predates_exclusion_policy`) are never reconciled over. A
+/// reconcile doesn't re-stamp the policy (it can't clear what an older one let
+/// in), so the index would stay distrusted, and every launch would route it back
+/// here. Only the truncating rebuild re-stamps it.
+///
 /// Pure so the boundary is unit-testable without an `AppHandle`.
-fn local_rescan_reconciles(entry_count: u64, prior_scan_completed: bool) -> bool {
-    entry_count > 1 && prior_scan_completed
+fn local_rescan_reconciles(entry_count: u64, prior_scan_completed: bool, predates_policy: bool) -> bool {
+    entry_count > 1 && prior_scan_completed && !predates_policy
 }
 
 /// Whether `resume_or_scan`'s local branch should replay the FSEvents journal on
@@ -453,9 +466,10 @@ impl IndexManager {
         };
         let journal_gap_too_wide = current_id > 0 && current_id > last_event_id + JOURNAL_GAP_THRESHOLD;
 
+        let has_rows = IndexStore::get_entry_count(read_conn).is_ok_and(|count| count > 1);
         let route = launch_route::launch_route(&launch_route::IndexOnDisk {
             scan_completed: status.scan_completed_at.is_some(),
-            has_rows: IndexStore::get_entry_count(read_conn).is_ok_and(|count| count > 1),
+            has_rows,
             has_covered_branches: branches::any_persisted(read_conn),
             journal_replayable,
             journal_gap_too_wide,
@@ -464,6 +478,8 @@ impl IndexManager {
             // deleted from can look perfectly finished. ❗ A read that FAILED counts as
             // set: `deletes::marker_reads_as_set` owns that call and says why.
             needs_rebuild: deletes::marker_reads_as_set(IndexStore::index_needs_rebuild(read_conn), &self.volume_id),
+            predates_exclusion_policy: has_rows
+                && scanner::index_predates_exclusion_policy(read_conn, self.path_space().exclusion_scope().tier()),
         });
 
         match route {
@@ -641,6 +657,10 @@ impl IndexManager {
             scan_run_kind: counters.scan_run_kind,
             prior_total_entries: counters.prior_total_entries,
             prior_scan_duration_ms: counters.prior_scan_duration_ms,
+            left_after_find_files_ms: counters.steps_ahead.after_find_files_ms,
+            left_after_save_ms: counters.steps_ahead.after_save_ms,
+            left_after_compute_ms: counters.steps_ahead.after_compute_ms,
+            left_after_catch_up_ms: counters.steps_ahead.after_catch_up_ms,
         })
     }
 

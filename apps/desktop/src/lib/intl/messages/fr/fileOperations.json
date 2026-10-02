@@ -80,9 +80,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.delete.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "Supprimer",
   "@fileOperations.delete.confirmDelete": {
@@ -274,9 +274,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "<written></written> seront écrits. La source occupe <ondisk></ondisk> sur le disque – le surplus correspond aux fichiers à liens physiques, qui ne peuvent pas rester liés d’un disque à l’autre.",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -305,6 +305,10 @@
   "fileOperations.transferDialog.scanRetry": "Réessayer",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Le téléphone ou le serveur qui contient ces fichiers n’est plus connecté, Cmdr ne peut donc rien en copier.",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "Nous n’avons pas pu vérifier ce qui se trouve déjà à destination. Nous vous demanderons quoi faire à chaque conflit.",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -398,9 +402,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, one {rép.} many {rép.} other {rép.}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, one {dossier} many {dossiers} other {dossiers}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "Vérification avant la copie…",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -538,9 +542,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "La cible existe et c’est un <strong>dossier</strong>. Vous êtes sur le point de l’écraser avec un <strong>fichier</strong> portant le même nom. Tout le contenu du dossier cible serait supprimé et remplacé par le fichier. Que faire ?",
+  "fileOperations.transferProgress.warningFileOverFolder": "La cible existe et c’est un <strong>dossier</strong>. Vous êtes sur le point de le remplacer par un <strong>fichier</strong> portant le même nom. Tout ce que contient le dossier disparaîtrait. Que faire ?",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "La cible existe et c’est un <strong>fichier</strong>. Vous êtes sur le point de le remplacer par un <strong>dossier</strong> portant le même nom. Le fichier disparaîtrait dès que le dossier prendrait sa place. Que faire ?",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "Ces noms semblent identiques, mais le serveur les écrit différemment. « Écraser » remplace l’élément déjà présent.",
   "@fileOperations.transferProgress.lookAlikeHint": {

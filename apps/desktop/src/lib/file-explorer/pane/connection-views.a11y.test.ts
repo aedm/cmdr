@@ -348,7 +348,7 @@ describe('RemoteConnectView a11y', () => {
       target,
       props: {
         name: 'Pixel 7',
-        state: { kind: 'refused' as const, refusal: "Your phone isn't connected any more." },
+        state: { kind: 'refused' as const, refusal: "Your phone isn't connected anymore." },
       },
     })
     await tick()
@@ -376,7 +376,7 @@ describe('RemoteConnectView a11y', () => {
     const target = container()
     mount(RemoteConnectView, {
       target,
-      props: { name: 'Naspolya', state: { kind: 'host_key_changed' as const, disconnect: vi.fn() } },
+      props: { name: 'Naspolya', state: { kind: 'host_key_changed' as const, checkKey: vi.fn(), disconnect: vi.fn() } },
     })
     await tick()
     await expectNoA11yViolations(target)

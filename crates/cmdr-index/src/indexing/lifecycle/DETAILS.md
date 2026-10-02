@@ -27,7 +27,8 @@ concurrently without corrupting each other. Every invariant below holds independ
   - `scan_control.rs` — `force_scan`, `stop_scan`, `trigger_verification`, plus `off_the_registry` and the
     `DetachedManager` guard behind it: the ONE place a live volume's manager comes out for blocking work.
   - `queries.rs` — the read-only surface: `is_active`, `is_failed`, `index_failure`, `awaits_its_first_scan`,
-    `ready_volumes_with_kind`, `all_registered_volume_ids`, `volume_kind`, `registered_mtp_volume_ids_for_device`.
+    `ready_volumes_with_kind`, `ready_volumes_to_wire`, `all_registered_volume_ids`, `volume_kind`,
+    `registered_mtp_volume_ids_for_device`.
   - `freshness_bridge.rs` — the registry ↔ `freshness.rs` wiring (`apply_freshness_event` vs `..._on`, which is LOCK
     DISCIPLINE, not style) plus `bump_current_epoch_for` / `get_freshness`.
   - `supervisor.rs` — `spawn_failure_supervisor` + `fail_index`, the `Failed`-phase transition (the signal itself is
@@ -83,6 +84,16 @@ concurrently without corrupting each other. Every invariant below holds independ
   is the ONE place the `scan_completed_at` marker, the two-bucket calibration keys, and `volume_path` are written:
   `network_scan.rs` calls it too, so a trait-scanned volume's completion can't drift from a local one's. Only the
   shallow-sweep-window reset stays local-walk-only, since a trait-scanned volume has no FSEvents stream.
+  `stamp_step_durations` beside it records how long the save, compute, and catch-up steps took, per walk kind
+  (`../store/DETAILS.md` § "The steps after the walk").
+- **steps_ahead.rs** — the remembered half of a host's overall "~X left": `StepsAhead::remembered(shape, durations)`
+  sums, for each step, what every step AFTER it took on the last completed run of this kind. `RunShape::Local` is find
+  files → save → compute → catch up; `RunShape::Network` is find files → compute (entries land inline, and no catch-up
+  pass follows). The honesty gate is here: one step ahead without history makes that remainder `None`, and the host
+  shows no overall figure. Computed at both whole-volume scan-start funnels, stashed on `ScanCalibration`, and carried
+  as the flat `left_after_*_ms` fields of `IndexEvent::ScanStarted` and `IndexStatusResponse` (flat because the root
+  surface is capped, and a new root type would be a new promise; `crates/cmdr-index/CLAUDE.md`). A phased first index
+  and a roll-on carry no plan.
 - **freshness.rs** — the `Fresh`/`Stale`/`Scanning`/`Failed` transition table (`Freshness::on`) +
   `initial_freshness_on_launch`.
 - **failure.rs** — `IndexFailureSignal`, the one-shot per-volume fatal-storage-error signal.
@@ -271,6 +282,13 @@ pool BEFORE the drain and before any DB file is deleted. Withdrawal is what make
 volume routes `None`, so no reader can still be holding — or can still open — a connection to a file that's about to go.
 This is also why the `Failed` phase needs no read-path special case: a `Failed` instance stays registered for the badge,
 but `fail_index` withdrew its handles before flipping the phase, so reads already skip.
+
+The withdrawal also retires the connections threads have already cached to the volume's databases
+(`volume_files::retire_read_connections`), so a stopped share stops being held open by every blocking thread that read
+it. And `clear_index(vid, why)` deletes nothing itself: the files go through `volume_files::remove`, where `why` (a
+forget or an index rebuild) decides which stores go with the index. A clear that lands on a `Detached` volume carries
+its reason in `TeardownClaim::Cleared`, so the handback takes exactly what an immediate clear would have. Both
+mechanisms: `crates/cmdr-index/DETAILS.md` § "A volume's files, and the one door they leave by".
 
 **Freeing a slot and withdrawing its handles is ONE critical section** (`remove_instance_and_handles`, the start-up
 failure path). The two orders are not equivalent: withdraw-then-free is safe because the key still exists while the
@@ -978,6 +996,10 @@ from files the user really removed — so the index records that it may be short
   SET** (`deletes::marker_reads_as_set`): a marker nobody could read is ❌ never "no marker", because this one row
   outranks every other cell and no other cell can see the holes. A spurious rebuild costs one rescan; a skipped one
   carries the holes for the life of the index.
+- **A stale exclusion-policy stamp takes the same row** (`IndexOnDisk::predates_exclusion_policy`, populated indexes
+  only). An index built under an older policy looks finished while holding rows today's policy cuts, and only a
+  truncating walk re-stamps the policy: a journal replay or an in-place reconcile would keep the rows and leave coverage
+  distrusted for good. With the phases off, `start_scan` truncates it (`local_rescan_reconciles`' `predates_policy`).
 - **Cleared where the index it condemns is replaced**: the phased `RebuildFirst` truncate (in the same writer batch, so
   a death in between leaves the marker standing) and `start_scan`, beside `scan_completed_at`. ❌ Never `clear_index`,
   which deletes the database and the per-drive intent markers in it.
@@ -1001,11 +1023,14 @@ direction). This is the single canonical home for the mechanism; consumer docs p
   `generation` so a consumer can coalesce a repeat.
 - **The startup sweep is the bus's companion, not part of it.** A volume already Fresh at launch never re-fires
   `ScanCompleted`, so `state::ready_volumes_with_kind()` snapshots the volumes that are `Fresh` right now (with each
-  volume's typed `IndexVolumeKind`) for the scheduler to enqueue once at startup.
+  volume's typed `IndexVolumeKind`) for the scheduler to enqueue once at startup. `ready_volumes_to_wire()` is the same
+  snapshot in the registration bus's shape, stop signal included.
 - **A registration `broadcast`** (`publish_volume_registered` / `subscribe_registrations`) carries late-registering
   volumes (a share mounted AFTER startup), published from `start_indexing_for` right after a volume wins its
-  `Initializing` reservation, carrying the id AND its typed kind. A lagged receiver only misses a registration the next
-  `ScanCompleted` still covers, so a miss self-heals.
+  `Initializing` reservation, carrying the id, its typed kind, AND a child of the volume's root stop signal
+  (`RegisteredVolume`), so per-volume work a subscriber starts ends with that life of the volume (`../host/DETAILS.md` §
+  Cancellation). A lagged receiver only misses a registration the next `ScanCompleted` still covers, so a miss
+  self-heals.
 - **A `dir-changed` channel** (`publish_dirs_changed` / `subscribe_dirs_changed`, a per-volume `watch<DirsChanged>` in a
   separate `DIR_BUS` map) carries live listing changes from the live event loop and the per-navigation verifier — the
   importance scheduler's incremental-recompute trigger and the media index's live-tick trigger. Being a `watch`, a burst

@@ -489,7 +489,7 @@ export async function readDialogCounters(
 }
 
 /**
- * Asserts the transfer dialog's counter line ("3.19 KB / 1 file / 0 dirs"),
+ * Asserts the transfer dialog's counter line ("3.19 KB / 1 file / 0 folders"),
  * race-free.
  *
  * First polls `data-scan-state` on the tallies element until it reads `done`

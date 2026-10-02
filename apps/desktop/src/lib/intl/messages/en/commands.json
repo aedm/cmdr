@@ -135,14 +135,14 @@
     "description": "Command name that opens the file search. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
-  "commands.navGoToPath.label": "Go to path…",
+  "commands.navGoToPath.label": "Go to folder…",
   "@commands.navGoToPath.label": {
-    "description": "Command name that opens a dialog to jump to a typed path. The trailing ellipsis (…) signals it opens a dialog; keep it. \"Path\" means a filesystem location like ~/Documents.",
+    "description": "Command name that opens a dialog to jump to a typed path. Matches Finder's Go > Go to Folder… on purpose; use the wording macOS Finder uses in this language. The trailing ellipsis (…) signals it opens a dialog; keep it.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.navGoToPath.description": "Jump the focused pane to a typed, pasted, or recent path.",
   "@commands.navGoToPath.description": {
-    "description": "Longer help text for the \"Go to path…\" command, shown as a secondary line in the command palette. \"Pane\" is one of the app's two side-by-side file lists."
+    "description": "Longer help text for the \"Go to folder…\" command, shown as a secondary line in the command palette. \"Pane\" is one of the app's two side-by-side file lists."
   },
   "commands.favoritesAdd.label": "Add to favorites",
   "@commands.favoritesAdd.label": {
@@ -583,9 +583,9 @@
     "description": "Command name that copies the selected file's full path to the clipboard. \"Path\" is the file's filesystem location. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
-  "commands.fileCopyCurrentDirectoryPath.label": "Copy current directory path",
+  "commands.fileCopyCurrentDirectoryPath.label": "Copy current folder path",
   "@commands.fileCopyCurrentDirectoryPath.label": {
-    "description": "Command name that copies the current folder's full path to the clipboard. \"Directory\" and \"path\" are filesystem terms. Appears in the command palette.",
+    "description": "Command name that copies the current folder's full path to the clipboard. \"Folder\" and \"path\" are filesystem terms. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.fileCopyFilename.label": "Copy filename",

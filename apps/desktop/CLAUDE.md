@@ -31,11 +31,12 @@ in `DETAILS.md`. Feature must-knows in the colocated `CLAUDE.md`s.
   silently switches your gate off in a capture run, which is how you'd break the screenshot run without touching it.
   `getAppMode()` is for the VISUAL marker only. Modes and the capture run's rules: `test/e2e-playwright/DETAILS.md` §
   App modes.
-- **Investigating high memory? `vmmap`'s `IOAccelerator` rows are the RUST HEAP, not GPU memory.** mimalloc tags its
-  arenas with VM tag 100, which macOS names `VM_MEMORY_IOACCELERATOR`; conversely the `MALLOC_*` zones are NOT Cmdr's
-  heap (mimalloc isn't a registered zone, so `malloc_zone_statistics` is blind to it). Mistaking this sends you
-  bisecting the frontend for a backend leak — it has, twice. Start any CPU or RAM investigation at
-  `docs/notes/performance/README.md` (baseline, method rules, open follow-ups).
+- **Investigating high memory? Know which allocator holds the Rust heap first.** macOS builds run on the system
+  allocator: the heap is in `vmmap`'s `Malloc *` rows, shared with Objective-C and C. On a macOS mimalloc build (the
+  `mimalloc` feature, or 0.48.0 and earlier) the heap shows as `IOAccelerator` (tag 100), NOT GPU memory, and `Malloc *`
+  is NOT the heap. Linux: mimalloc, `[anon:mimalloc]` in its maps. Misreading this sent two investigations bisecting the
+  frontend for a backend leak. `memory_diagnostics` names it (`rustHeap.allocator`). Start any CPU or RAM investigation
+  at `docs/notes/performance/README.md`.
 - **The frontend is i18n-ized: user-facing strings live in the message catalog, not in components.** Resolve copy via
   `t()` / `getMessage()` / `<Trans>` from `$lib/intl`, with keys in `src/lib/intl/messages/en/<area>.json` carrying a
   translator `@key` description. Hardcoding a string in a known sink fails `cmdr/no-raw-user-facing-string`. 14 catalogs

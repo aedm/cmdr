@@ -79,9 +79,9 @@
   "@fileOperations.delete.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.delete.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.delete.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.delete.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.delete.confirmDelete": "刪除",
   "@fileOperations.delete.confirmDelete": {
@@ -271,9 +271,9 @@
   "@fileOperations.transferDialog.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.transferDialog.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.transferDialog.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.transferDialog.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferDialog.hardlinkNote": "將會寫入 <written></written>。來源在磁碟上佔用 <ondisk></ondisk>，多出來的是硬式連結檔案，跨磁碟機時無法保持連結。",
   "@fileOperations.transferDialog.hardlinkNote": {
@@ -302,6 +302,10 @@
   "fileOperations.transferDialog.scanRetry": "再試一次",
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
+  },
+  "fileOperations.transferDialog.sourceNoLongerConnected": "存放這些檔案的手機或伺服器已經中斷連線了，所以 Cmdr 無法從那裡複製。",
+  "@fileOperations.transferDialog.sourceNoLongerConnected": {
+    "sourceHash": "4741405"
   },
   "fileOperations.transferDialog.conflictsUnknown": "我們無法檢查目標位置已經有什麼。遇到同名的項目時會再問你。",
   "@fileOperations.transferDialog.conflictsUnknown": {
@@ -395,9 +399,9 @@
   "@fileOperations.scanPhase.scanFile": {
     "sourceHash": "46012b1"
   },
-  "fileOperations.scanPhase.scanDir": "{count, plural, other {個目錄}}",
+  "fileOperations.scanPhase.scanDir": "{count, plural, other {個資料夾}}",
   "@fileOperations.scanPhase.scanDir": {
-    "sourceHash": "1c5273d"
+    "sourceHash": "46b23b5"
   },
   "fileOperations.transferProgress.scanTitleCopy": "複製前正在核對⋯",
   "@fileOperations.transferProgress.scanTitleCopy": {
@@ -535,9 +539,13 @@
   "@fileOperations.transferProgress.stageFinishingTransferStep": {
     "sourceHash": "1f28724"
   },
-  "fileOperations.transferProgress.warningFileOverFolder": "目標已經存在，而且是一個<strong>資料夾</strong>。你正要用同名的<strong>檔案</strong>覆寫它。目標資料夾的全部內容會被刪除，由這個檔案取代。要怎麼做？",
+  "fileOperations.transferProgress.warningFileOverFolder": "目標已經存在，而且是一個<strong>資料夾</strong>。你正要用同名的<strong>檔案</strong>取代它。資料夾裡的所有東西都會沒了。要怎麼做？",
   "@fileOperations.transferProgress.warningFileOverFolder": {
-    "sourceHash": "6dce75c"
+    "sourceHash": "bacab9d"
+  },
+  "fileOperations.transferProgress.warningFolderOverFile": "目標已經存在，而且是一個<strong>檔案</strong>。你正要用同名的<strong>資料夾</strong>取代它。資料夾一換上去，原本的檔案就沒了。要怎麼做？",
+  "@fileOperations.transferProgress.warningFolderOverFile": {
+    "sourceHash": "b681083"
   },
   "fileOperations.transferProgress.lookAlikeHint": "這兩個名稱看起來一樣，但伺服器儲存的寫法不同。按一下「覆寫」會取代現有的那一個。",
   "@fileOperations.transferProgress.lookAlikeHint": {

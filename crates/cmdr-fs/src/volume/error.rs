@@ -80,6 +80,18 @@ pub enum VolumeError {
     Cancelled(String),
     /// The path is a directory, not a file (for example, SMB STATUS_FILE_IS_A_DIRECTORY).
     IsADirectory(String),
+    /// Something that isn't a directory sits where a directory has to be: a file,
+    /// or a link that leads to anything but a folder. Carries the path of the
+    /// thing IN THE WAY, which for a `mkdir -p` is often an ancestor of the path
+    /// that was asked for.
+    ///
+    /// [`Volume::create_directory_all`](super::Volume::create_directory_all)
+    /// raises it, on every backend. ❌ Never [`AlreadyExists`](Self::AlreadyExists),
+    /// which callers of a `mkdir -p` read as "the folder is there, carry on", and
+    /// ❌ never [`NotFound`](Self::NotFound), which names a folder the user asked
+    /// Cmdr to CREATE as the thing that's missing. A link that leads to a folder
+    /// is a folder here: see `mkdir_all` § "A link to a folder is a folder".
+    NotADirectory(String),
     /// The destination can't hold this name, whatever it's asked to do with it.
     ///
     /// Distinct from [`NotFound`](Self::NotFound): the backend never got as far as
@@ -166,6 +178,7 @@ impl std::fmt::Display for VolumeError {
             Self::ConnectionTimeout(msg) => write!(f, "Connection timed out: {}", msg),
             Self::Cancelled(msg) => write!(f, "Cancelled: {}", msg),
             Self::IsADirectory(path) => write!(f, "Is a directory: {}", path),
+            Self::NotADirectory(path) => write!(f, "Not a directory: {}", path),
             Self::InvalidName(msg) => write!(f, "Name not usable at the destination: {}", msg),
             Self::DeletePending(path) => write!(f, "Delete pending: {}", path),
             Self::AmbiguousName(path) => write!(f, "More than one stored name matches: {}", path),

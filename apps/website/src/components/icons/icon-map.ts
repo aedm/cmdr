@@ -39,6 +39,7 @@ import Smartphone from '~icons/lucide/smartphone'
 import Sparkles from '~icons/lucide/sparkles'
 import SquareChevronRight from '~icons/lucide/square-chevron-right'
 import SquareTerminal from '~icons/lucide/square-terminal'
+import Star from '~icons/lucide/star'
 import Usb from '~icons/lucide/usb'
 import Zap from '~icons/lucide/zap'
 
@@ -75,6 +76,7 @@ export const ICONS = {
   sparkles: Sparkles,
   'square-chevron-right': SquareChevronRight,
   'square-terminal': SquareTerminal,
+  star: Star,
   usb: Usb,
   zap: Zap,
 } as const

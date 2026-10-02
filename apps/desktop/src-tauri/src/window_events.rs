@@ -139,6 +139,18 @@ pub struct ViewerEditAction {
     pub action: ViewerEditActionKind,
 }
 
+/// `viewer-context-menu-action`: Copy or Select all was picked from the viewer's right-click menu
+/// over the file text. Emitted to that viewer's label.
+///
+/// Its own event rather than a `ViewerEditAction`: the bar's pair hands both actions to the
+/// search box while it has focus, and a right-click on the text leaves focus where it was, so
+/// this pair always acts on the file.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewerContextMenuAction {
+    pub action: ViewerEditActionKind,
+}
+
 /// `function-key-bar-hide-requested`: the function key bar's right-click context
 /// menu's "Hide function key bar" item was clicked. No payload: the frontend
 /// owns both the setting write and the confirmation toast. Emitted to the main

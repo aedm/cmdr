@@ -16,6 +16,8 @@
         onViewerPullProgress,
         onViewerWordWrapToggled,
         onViewerEditAction,
+        onViewerContextMenuAction,
+        showViewerContextMenu,
         activateWindowMenu,
     } from '$lib/tauri-commands'
     import { createViewerPull } from './viewer-pull.svelte'
@@ -25,7 +27,7 @@
     import { getSetting, setSetting } from '$lib/settings'
     import { initWindowSettings, initWindowLanguageSync } from '$lib/settings/window-settings'
     import { initAccentColor, cleanupAccentColor } from '$lib/accent-color'
-    import { initReduceTransparency, cleanupReduceTransparency } from '$lib/reduce-transparency'
+    import { initGlassMaterial, cleanupGlassMaterial } from '$lib/glass-material'
     import { initTextSize, cleanupTextSize } from '$lib/text-size.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { getAppLogger } from '$lib/logging/logger'
@@ -37,7 +39,7 @@
     import { createIndexingPoll } from './viewer-indexing-poll'
     import { handleOpenFailure } from './viewer-open-failure'
     import { createViewerKeyboard, isSearchInputFocused } from './viewer-keyboard'
-    import { runViewerEditAction } from './viewer-menu-actions'
+    import { runViewerContextMenuAction, runViewerEditAction } from './viewer-menu-actions'
     import { createViewerTail } from './viewer-tail.svelte'
     import {
         createViewerSelection,
@@ -54,7 +56,6 @@
     import ViewerTextCursor from './ViewerTextCursor.svelte'
     import { getViewerShowTextCursor } from '$lib/settings/reactive-settings.svelte'
     import TextInput from '$lib/ui/TextInput.svelte'
-    import ViewerContextMenu from './ViewerContextMenu.svelte'
     import ViewerToolbar from './ViewerToolbar.svelte'
     import ViewerStatusBar from './ViewerStatusBar.svelte'
     import ViewerRow from './ViewerRow.svelte'
@@ -278,6 +279,7 @@
     let unlistenMcpFocus: UnlistenFn | undefined
     let unlistenWordWrap: UnlistenFn | undefined
     let unlistenEditAction: UnlistenFn | undefined
+    let unlistenContextMenuAction: UnlistenFn | undefined
     let unlistenWindowFocus: UnlistenFn | undefined
 
     const textWidthTracker = createTextWidthTracker({
@@ -409,6 +411,11 @@
             selection.setRange(range)
         },
         takeFocus: () => scroll.containerRef?.focus({ preventScroll: true }),
+        showContextMenu: () => {
+            showViewerContextMenu(selection.selection !== null).catch((e: unknown) => {
+                log.warn("Couldn't open the viewer's context menu: {error}", { error: String(e) })
+            })
+        },
     })
 
     // Every effect below drives the text / virtual-scroll pipeline. In media mode the
@@ -547,10 +554,8 @@
         },
         isCopyConfirmOpen: () => copyFlow.isConfirmOpen,
         isCopyRefuseOpen: () => copyFlow.isRefuseOpen,
-        isContextMenuOpen: () => pointerDrag.contextMenuPos !== null,
         cancelCopyConfirm: copyFlow.cancelConfirm,
         dismissCopyRefuse: copyFlow.dismissRefuse,
-        closeContextMenu: pointerDrag.closeContextMenu,
         logEscape: () => {
             log.debug('ESC pressed, searchVisible={searchVisible}, windowReady={windowReady}', {
                 searchVisible: search.searchVisible,
@@ -613,7 +618,6 @@
         if (loading || !sessionId || next === viewMode) return
         if (next === 'media' && availableMediaKind(media.kind, media.lastMediaKind) === null) return
         if (next !== 'text') search.closeSearch()
-        pointerDrag.closeContextMenu()
         if (next === 'text' && media.kind !== 'text') {
             await media.viewAsText()
         } else if (next === 'media' && media.kind === 'text') {
@@ -695,8 +699,6 @@
         totalBytes = result.totalBytes
         // `initialLines.totalRows` is the row total and says whether it's counted or
         // sampled; `result.totalLines` is the PHYSICAL line count, for the status bar.
-        // (`result.estimatedTotalLines` carries the same row number as `totalRows.rows`;
-        // the wire keeps its old spelling until the IPC rename lands.)
         totalRows = result.initialLines.totalRows.kind === 'exact' ? result.initialLines.totalRows.rows : null
         estimatedRows = result.initialLines.totalRows.rows
         totalLines = result.totalLines
@@ -768,7 +770,7 @@
                 const remaining = fullLoadRows.rows - result.initialLines.rows.length
                 const startRow = result.initialLines.firstRowNumber + result.initialLines.rows.length
                 const tFetch = performance.now()
-                viewerGetLines(result.sessionId, 'line', startRow, remaining)
+                viewerGetLines(result.sessionId, 'row', startRow, remaining)
                     .then((chunk) => {
                         log.debug('FullLoad fetch remaining {count} {rowsNoun} took {ms}ms', {
                             count: chunk.rows.length,
@@ -810,6 +812,12 @@
             }
             if (!isTextView) return
             runViewerEditAction(action, viewerEditActionDeps)
+        })
+
+        // Copy / Select all from the native right-click menu over the text, always the file's.
+        unlistenContextMenuAction = await onViewerContextMenuAction(({ action }) => {
+            if (!isTextView) return
+            runViewerContextMenuAction(action, viewerEditActionDeps)
         })
 
         // On macOS the app-level menu bar is shared across windows, so each window swaps in its
@@ -859,6 +867,7 @@
         unlistenMcpFocus?.()
         unlistenWordWrap?.()
         unlistenEditAction?.()
+        unlistenContextMenuAction?.()
         unlistenWindowFocus?.()
     }
 
@@ -923,7 +932,7 @@
 
         await initAccentColor()
 
-        await initReduceTransparency()
+        await initGlassMaterial()
 
         // Seeds the store AND the reactive layer that `<Size>` and friends read.
         // `window-settings.ts` knows the viewer has no store capability (see
@@ -988,7 +997,7 @@
     onDestroy(() => {
         unsubscribeLanguage?.()
         cleanupAccentColor()
-        cleanupReduceTransparency()
+        cleanupGlassMaterial()
         cleanupTextSize()
         cleanupListeners()
         search.destroy()
@@ -1297,18 +1306,6 @@
     />
 </main>
 
-{#if pointerDrag.contextMenuPos !== null}
-    <ViewerContextMenu
-        x={pointerDrag.contextMenuPos.x}
-        y={pointerDrag.contextMenuPos.y}
-        hasSelection={selection.selection !== null}
-        onCopy={() => {
-            void copyFlow.handleCopy()
-        }}
-        onSelectAll={keyboard.handleSelectAllShortcut}
-        onClose={pointerDrag.closeContextMenu}
-    />
-{/if}
 
 <ViewerCopyDialogs
     confirmBytes={copyFlow.confirmBytes}

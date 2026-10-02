@@ -74,6 +74,23 @@ fn a_not_found_from_the_destination_is_not_a_missing_source() {
     );
 }
 
+#[test]
+fn a_file_in_the_way_of_the_destination_folder_keeps_its_own_path() {
+    // The volume names the thing in the way, which is often an ancestor of the
+    // folder the copy was told to land in (`/ctx`). That path is the only fact
+    // that tells the user what to move aside, so it must not be swapped for the
+    // context path or flattened into a generic I/O refusal with a Retry.
+    let err = map_volume_error(
+        "/photos/2026/trip",
+        PathRole::Destination,
+        VolumeError::NotADirectory("/photos/2026".to_string()),
+    );
+    assert!(
+        matches!(&err, WriteOperationError::DestinationNotAFolder { path } if path == "/photos/2026"),
+        "got {err:?}"
+    );
+}
+
 /// cmdr-reports#17: a move whose source delete hit `EPERM` (a Finder-locked
 /// file) told the user "you don't have permission to move files here". The
 /// errno died inside `VolumeError::PermissionDenied`, so the refusal read as

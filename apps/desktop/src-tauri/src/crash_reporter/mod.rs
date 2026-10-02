@@ -38,7 +38,7 @@ use std::time::Instant;
 #[cfg(test)]
 use crate::server_request::ServerRequestError;
 #[cfg(test)]
-use pending_delivery::{pending_report_id, post_crash_report, send_pending_crash_report_from_path};
+use pending_delivery::{claimed_crash_path, pending_report_id, post_crash_report, send_pending_crash_report_from_path};
 
 const CRASH_FILE_NAME: &str = "crash-report.json";
 const RAW_CRASH_FILE_NAME: &str = "crash-report.raw";

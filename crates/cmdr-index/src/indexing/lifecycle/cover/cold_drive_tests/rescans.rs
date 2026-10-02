@@ -354,7 +354,10 @@ fn a_clear_during_the_extraction_window_really_clears() {
 
     let mut clear_result = None;
     crate::indexing::lifecycle::state::while_detached_for_test(drive.volume_id, || {
-        clear_result = Some(crate::indexing::lifecycle::state::clear_index(drive.volume_id));
+        clear_result = Some(crate::indexing::lifecycle::state::clear_index(
+            drive.volume_id,
+            crate::volume_files::Removal::Forgotten,
+        ));
     });
 
     assert_eq!(clear_result, Some(Ok(())), "the caller is told the clear worked");

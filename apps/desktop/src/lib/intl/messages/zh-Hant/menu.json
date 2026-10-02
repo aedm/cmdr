@@ -356,9 +356,9 @@
   "@menu.go.home": {
     "sourceHash": "3a78695"
   },
-  "menu.go.goToPath": "前往路徑⋯",
+  "menu.go.goToPath": "前往資料夾⋯",
   "@menu.go.goToPath": {
-    "sourceHash": "936edc5"
+    "sourceHash": "33de610"
   },
   "menu.go.goToLatestDownload": "前往最新下載項目",
   "@menu.go.goToLatestDownload": {
@@ -655,10 +655,6 @@
   "menu.dock.searchFiles": "搜尋檔案⋯",
   "@menu.dock.searchFiles": {
     "sourceHash": "149a9d1"
-  },
-  "menu.dock.goToFolder": "前往資料夾⋯",
-  "@menu.dock.goToFolder": {
-    "sourceHash": "33de610"
   },
   "menu.dock.connectToServer": "連接伺服器⋯",
   "@menu.dock.connectToServer": {

@@ -112,8 +112,9 @@ pub struct ViewerOpenResult {
     pub file_name: String,
     pub total_bytes: u64,
     pub total_lines: Option<usize>,
-    /// For ByteSeek where `total_lines` is unknown. Based on `total_bytes / avg_bytes_per_line`.
-    pub estimated_total_lines: usize,
+    /// The file's ROW count, exact or (on ByteSeek) from its bytes-per-row sample. The
+    /// first chunk's `total_rows` carries the same number plus which of the two it is.
+    pub estimated_total_rows: usize,
     pub backend_type: BackendType,
     pub capabilities: BackendCapabilities,
     pub initial_lines: LineChunk,
@@ -498,13 +499,14 @@ fn open_session_core(
         };
 
     // Get initial lines
-    let initial_lines = backend_box.get_lines(&SeekTarget::Line(0), INITIAL_LINE_COUNT)?;
+    // Never cancelled: the open's own deadline handling closes a late session whole.
+    let initial_lines = backend_box.get_lines(&SeekTarget::Row(0), INITIAL_LINE_COUNT, &AtomicBool::new(false))?;
     let capabilities = backend_box.capabilities();
     let total_bytes = backend_box.total_bytes();
     let total_lines = backend_box.total_lines();
     // The backend counts rows itself now, exactly or by its own bytes-per-row sample,
     // so there is nothing left to estimate here from the first chunk's string lengths.
-    let estimated_total_lines = backend_box.total_rows().rows();
+    let estimated_total_rows = backend_box.total_rows().rows();
     let file_name = backend_box.file_name().to_string();
 
     let session_id = generate_session_id();
@@ -531,7 +533,7 @@ fn open_session_core(
         file_name,
         total_bytes,
         total_lines,
-        estimated_total_lines,
+        estimated_total_rows,
         backend_type,
         capabilities,
         initial_lines,
@@ -665,8 +667,14 @@ pub fn get_session_status(session_id: &str) -> Result<ViewerSessionStatus, Viewe
     })
 }
 
-/// Gets a range of lines from a session.
-pub fn get_lines(session_id: &str, target: SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+/// Gets a range of lines from a session. `cancel` is the fetch's own flag (see
+/// [`FileViewerBackend::get_lines`]).
+pub fn get_lines(
+    session_id: &str,
+    target: SeekTarget,
+    count: usize,
+    cancel: &AtomicBool,
+) -> Result<LineChunk, ViewerError> {
     let (backend, backend_type) = {
         let sessions = SESSIONS.lock_ignore_poison();
         let session = sessions.get(session_id).ok_or_else(|| ViewerError::SessionNotFound {
@@ -683,7 +691,7 @@ pub fn get_lines(session_id: &str, target: SeekTarget, count: usize) -> Result<L
         session_id, backend_type, target, count
     );
 
-    backend.get_lines(&target, count)
+    backend.get_lines(&target, count, cancel)
 }
 
 /// Reads a bounded slice of the session's original bytes, without text decoding.

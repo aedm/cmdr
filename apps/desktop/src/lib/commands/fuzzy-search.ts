@@ -6,12 +6,13 @@
  */
 
 import uFuzzy from '@leeoniya/ufuzzy'
+import { INTRA_MODE_SINGLE_ERROR } from '$lib/utils/ufuzzy-modes'
 import type { Command, CommandMatch } from './types'
 import { commands, getPaletteCommands } from './command-registry'
 
 // Configure uFuzzy for command palette behavior
 const fuzzy = new uFuzzy({
-  intraMode: 1, // Allow fuzzy matching within words (handles typos like "tyoe" → "type")
+  intraMode: INTRA_MODE_SINGLE_ERROR, // Allow fuzzy matching within words (handles typos like "tyoe" → "type")
   interIns: 3, // Max 3 insertions between matched characters
 })
 

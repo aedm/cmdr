@@ -126,7 +126,7 @@
   },
   "errorReporter.amend.unavailable": "这份报告已经无法再添加备注。要把你的备注交给团队，请从“帮助”菜单发送一份新报告。",
   "@errorReporter.amend.unavailable": {
-    "sourceHash": "b96b48a"
+    "sourceHash": "08ab034"
   },
   "errorReporter.amend.close": "关闭",
   "@errorReporter.amend.close": {

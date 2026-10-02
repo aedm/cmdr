@@ -6,6 +6,9 @@
 //! index fills in and which carries its own honest-size coverage flags, so
 //! "unknown" has to stay distinct from "empty" and from a lower bound.
 //!
+//! `MixedWithFiles` drops the folders-first rule ("Show folders first" off), so
+//! a folder ranks among the files by the same key.
+//!
 //! The column-ordering suite is `sorting_test`; name order itself is
 //! `collation_test`.
 
@@ -239,4 +242,102 @@ fn test_dir_sort_like_files_equal_size_secondary_name() {
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
     // Equal size → secondary sort by name ascending
     assert_eq!(names, vec!["alpha_dir", "zebra_dir"]);
+}
+
+// ============================================================================
+// Folders mixed with files ("Show folders first" off)
+// ============================================================================
+
+fn names(entries: &[FileEntry]) -> Vec<&str> {
+    entries.iter().map(|e| e.name.as_str()).collect()
+}
+
+#[test]
+fn mixed_newest_first_puts_the_latest_entry_on_top_whether_file_or_folder() {
+    // The #291 ask: sort by date and see the latest thing at the top, folder or not.
+    let mut entries = vec![
+        make_entry("old_dir", true, None, Some(100)),
+        make_entry("new_file.txt", false, Some(10), Some(400)),
+        make_entry("newest_dir", true, None, Some(500)),
+        make_entry("old_file.txt", false, Some(10), Some(200)),
+    ];
+
+    sort_entries(
+        &mut entries,
+        SortColumn::Modified,
+        SortOrder::Descending,
+        DirectorySortMode::MixedWithFiles,
+    );
+
+    assert_eq!(
+        names(&entries),
+        vec!["newest_dir", "new_file.txt", "old_file.txt", "old_dir"]
+    );
+}
+
+#[test]
+fn mixed_by_name_interleaves_folders_and_files() {
+    let mut entries = vec![
+        make_entry("beta.txt", false, Some(1), None),
+        make_entry("Gamma", true, None, None),
+        make_entry("alpha", true, None, None),
+        make_entry("delta.txt", false, Some(1), None),
+    ];
+
+    sort_entries(
+        &mut entries,
+        SortColumn::Name,
+        SortOrder::Ascending,
+        DirectorySortMode::MixedWithFiles,
+    );
+
+    assert_eq!(names(&entries), vec!["alpha", "beta.txt", "delta.txt", "Gamma"]);
+}
+
+#[test]
+fn mixed_by_size_ranks_a_folder_by_its_recursive_size_and_keeps_unknowns_last_both_ways() {
+    let entries = vec![
+        make_dir_with_recursive_size("big_dir", Some(10_000), None),
+        make_entry("mid_file.txt", false, Some(5_000), None),
+        make_dir_with_recursive_size("unknown_dir", None, None),
+        make_entry("small_file.txt", false, Some(100), None),
+        make_entry("unknown_file", false, None, None),
+    ];
+
+    let mut ascending = entries.clone();
+    sort_entries(
+        &mut ascending,
+        SortColumn::Size,
+        SortOrder::Ascending,
+        DirectorySortMode::MixedWithFiles,
+    );
+    assert_eq!(
+        names(&ascending),
+        vec![
+            "small_file.txt",
+            "mid_file.txt",
+            "big_dir",
+            "unknown_dir",
+            "unknown_file"
+        ]
+    );
+
+    // An unknown size never masquerades as the biggest or the smallest: it stays last.
+    let mut descending = entries;
+    sort_entries(
+        &mut descending,
+        SortColumn::Size,
+        SortOrder::Descending,
+        DirectorySortMode::MixedWithFiles,
+    );
+    assert_eq!(
+        names(&descending),
+        vec![
+            "big_dir",
+            "mid_file.txt",
+            "small_file.txt",
+            "unknown_file",
+            "unknown_dir"
+        ]
+    );
 }

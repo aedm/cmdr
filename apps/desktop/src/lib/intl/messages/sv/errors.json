@@ -163,9 +163,9 @@
   "@errors.listing.notPermitted.explanation": {
     "sourceHash": "e28dd0e"
   },
-  "errors.listing.notPermitted.suggestion": "Så här kan du prova:\n- Öppna **{system_settings} > {privacy_and_security} > {files_and_folders}** och ge Cmdr åtkomst\n- Om det här är en systemskyddad mapp (som systemkataloger) kan du behöva ge Cmdr **{full_disk_access}** under {privacy_and_security}\n- Kör `ls -la` på den här sökvägen i Terminal för att kontrollera ägare och behörigheter",
+  "errors.listing.notPermitted.suggestion": "Så här kan du prova:\n- Öppna **{system_settings} > {privacy_and_security} > {files_and_folders}** och ge Cmdr åtkomst\n- Om det här är en systemskyddad mapp kan du behöva ge Cmdr **{full_disk_access}** under {privacy_and_security}\n- Kör `ls -la` på den här sökvägen i Terminal för att kontrollera ägare och behörigheter",
   "@errors.listing.notPermitted.suggestion": {
-    "sourceHash": "bbaa904"
+    "sourceHash": "2926956"
   },
   "errors.listing.pathNotFoundErrno.title": "Sökvägen hittades inte",
   "@errors.listing.pathNotFoundErrno.title": {
@@ -1103,15 +1103,27 @@
   },
   "errors.write.destinationNotFound.message.copy": "Mappen du kopierar till finns inte längre, så det fanns ingenstans att lägga filerna. Originalen är orörda.",
   "@errors.write.destinationNotFound.message.copy": {
-    "sourceHash": "80f4a4c"
+    "sourceHash": "b747547"
   },
   "errors.write.destinationNotFound.message.move": "Mappen du flyttar till finns inte längre, så det fanns ingenstans att lägga filerna. Originalen är orörda.",
   "@errors.write.destinationNotFound.message.move": {
-    "sourceHash": "b764d42"
+    "sourceHash": "20fb725"
   },
   "errors.write.destinationNotFound.suggestion": "Den kan ha döpts om eller tagits bort, eller så kopplades enheten från. Välj ett annat mål, eller öppna mappen igen och försök igen.",
   "@errors.write.destinationNotFound.suggestion": {
     "sourceHash": "2e99059"
+  },
+  "errors.write.destinationNotAFolder.title": "En fil står i vägen",
+  "@errors.write.destinationNotAFolder.title": {
+    "sourceHash": "d371870"
+  },
+  "errors.write.destinationNotAFolder.message": "Cmdr kunde inte skapa målmappen eftersom det ligger en fil på {path}, där det behöver finnas en mapp. Inget har skrivits och originalen är orörda.",
+  "@errors.write.destinationNotAFolder.message": {
+    "sourceHash": "dfebb59"
+  },
+  "errors.write.destinationNotAFolder.suggestion": "Välj ett annat mål, eller byt namn på filen eller flytta den och försök igen.",
+  "@errors.write.destinationNotAFolder.suggestion": {
+    "sourceHash": "c410ecf"
   },
   "errors.write.notConnected.title": "Inte ansluten än",
   "@errors.write.notConnected.title": {
@@ -1128,6 +1140,18 @@
   "errors.write.notConnected.suggestion": "Öppna den från volymväljaren för att ansluta till den och försök sedan igen. Om det är en telefon, lås upp den och godkänn eventuella frågor som den visar.",
   "@errors.write.notConnected.suggestion": {
     "sourceHash": "3fdc936"
+  },
+  "errors.write.noLongerConnected.title": "Inte ansluten längre",
+  "@errors.write.noLongerConnected.title": {
+    "sourceHash": "3974fa0"
+  },
+  "errors.write.noLongerConnected.message": "Telefonen eller servern som innehåller de här filerna är inte ansluten längre, så inget har ändrats.",
+  "@errors.write.noLongerConnected.message": {
+    "sourceHash": "d0827c4"
+  },
+  "errors.write.noLongerConnected.suggestion": "Koppla in telefonen igen eller öppna servern från volymväljaren och försök sedan på nytt.",
+  "@errors.write.noLongerConnected.suggestion": {
+    "sourceHash": "850ecdb"
   },
   "errors.write.destinationExists.title": "Filen finns redan",
   "@errors.write.destinationExists.title": {
@@ -1735,7 +1759,7 @@
   },
   "errors.mutation.notFound": "Det finns inte längre något på ”{path}”.",
   "@errors.mutation.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.mutation.cantRenameVolumeRoot": "Det går inte att byta namn på en volyms rotmapp härifrån.",
   "@errors.mutation.cantRenameVolumeRoot": {
@@ -1755,7 +1779,7 @@
   },
   "errors.mutation.volumeGone": "Volymen är inte längre tillgänglig, så inget ändrades.",
   "@errors.mutation.volumeGone": {
-    "sourceHash": "643398b"
+    "sourceHash": "2d24729"
   },
   "errors.mutation.archiveNotEditable": "Cmdr kan inte öppna det här arkivet för redigering just nu.",
   "@errors.mutation.archiveNotEditable": {
@@ -1791,7 +1815,7 @@
   },
   "errors.volume.notFound": "Det finns inte längre något på ”{path}”.",
   "@errors.volume.notFound": {
-    "sourceHash": "64611c8"
+    "sourceHash": "9c068a2"
   },
   "errors.volume.permissionDenied": "Cmdr har inte åtkomst till ”{path}”.",
   "@errors.volume.permissionDenied": {
@@ -1836,6 +1860,10 @@
   "errors.volume.isADirectory": "”{path}” är en mapp, inte en fil.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
+  },
+  "errors.volume.notADirectory": "Det ligger en fil på ”{path}”, där det behöver finnas en mapp.",
+  "@errors.volume.notADirectory": {
+    "sourceHash": "2f66bc8"
   },
   "errors.volume.invalidName": "Målet kan inte lagra det namnet. Välj ett annat.",
   "@errors.volume.invalidName": {
@@ -1893,13 +1921,13 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
-  "errors.eject.busy": "Cmdr flyttar fortfarande filer på den här enheten. Mata ut den när det är klart.",
+  "errors.eject.busy": "Cmdr flyttar fortfarande filer där. Försök igen när det är klart.",
   "@errors.eject.busy": {
-    "sourceHash": "0600dd5"
+    "sourceHash": "560c0db"
   },
   "errors.eject.volumeNotFound": "Den enheten är inte längre ansluten, så det finns inget att mata ut.",
   "@errors.eject.volumeNotFound": {
-    "sourceHash": "2c5112f"
+    "sourceHash": "75b7870"
   },
   "errors.eject.notEjectable": "Den här enheten är inte borttagbar, så den förblir ansluten.",
   "@errors.eject.notEjectable": {
@@ -1911,39 +1939,51 @@
   },
   "errors.eject.remoteNotConnected": "Den här servern är inte längre ansluten, så det finns inget kvar att stänga.",
   "@errors.eject.remoteNotConnected": {
-    "sourceHash": "3b531d1"
+    "sourceHash": "3f38dd0"
   },
   "errors.eject.deviceDisconnectRefused": "Enheten ville inte stänga sin anslutning. Koppla ur den när den inte används.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "5b99318"
   },
-  "errors.eject.unmountRefused": "Något använder fortfarande den här enheten. Stäng öppna filer och appar och mata sedan ut igen.",
+  "errors.eject.unmountRefused": "Något har fortfarande filer öppna där. Stäng öppna filer och appar och försök sedan igen.",
   "@errors.eject.unmountRefused": {
-    "sourceHash": "1ff7d31"
+    "sourceHash": "709ecc5"
   },
-  "errors.eject.unmountRefusedByApp": "{app} använder fortfarande den här enheten. Stäng allt den har öppet där och mata sedan ut igen.",
+  "errors.eject.unmountRefusedByApp": "{app} har fortfarande filer öppna där. Stäng dem och försök sedan igen.",
   "@errors.eject.unmountRefusedByApp": {
-    "sourceHash": "bee2660"
+    "sourceHash": "c6e596a"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} använder fortfarande den här enheten. Stäng allt de har öppet där och mata sedan ut igen.",
+  "errors.eject.unmountRefusedByApps": "{apps} har fortfarande filer öppna där. Stäng dem och försök sedan igen.",
   "@errors.eject.unmountRefusedByApps": {
-    "sourceHash": "0864134"
+    "sourceHash": "93120f1"
   },
   "errors.eject.otherApps": "andra appar",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "En skivavbild som ligger på den här enheten är fortfarande öppen. Mata ut avbilden först och sedan enheten.",
+  "errors.eject.unmountRefusedByProcess": "En process som heter {process} har fortfarande filer öppna där. (Cmdr har inget appnamn, bara processnamnet.)",
+  "@errors.eject.unmountRefusedByProcess": {
+    "sourceHash": "ad7c1d5"
+  },
+  "errors.eject.unmountRefusedByProcesses": "{countText} processer som heter {processes} har fortfarande filer öppna där. (Cmdr har inga appnamn, bara processnamnen.)",
+  "@errors.eject.unmountRefusedByProcesses": {
+    "sourceHash": "5e9dbac"
+  },
+  "errors.eject.otherProcesses": "andra",
+  "@errors.eject.otherProcesses": {
+    "sourceHash": "01db91d"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "En skivavbild som ligger där är fortfarande öppen. Mata ut avbilden först och försök sedan igen.",
   "@errors.eject.unmountRefusedByDiskImage": {
-    "sourceHash": "82fc540"
+    "sourceHash": "1fa3d53"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS arbetar fortfarande med den här enheten. Vänta en minut och mata sedan ut igen.",
+  "errors.eject.unmountRefusedBySystem": "macOS har fortfarande filer öppna där. Vänta en minut och försök sedan igen.",
   "@errors.eject.unmountRefusedBySystem": {
-    "sourceHash": "27636e6"
+    "sourceHash": "e778b5c"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr själv använder fortfarande den här enheten. Vänta en stund och mata ut igen, eller skicka en rapport om det fortsätter.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr själv har fortfarande filer öppna där. Vänta en stund och försök igen, eller skicka en rapport om det fortsätter.",
   "@errors.eject.unmountRefusedByCmdr": {
-    "sourceHash": "2f56d2c"
+    "sourceHash": "e79c1d8"
   },
   "errors.eject.timedOut": "Enheten har inte svarat än, så utmatningen kan fortfarande gå igenom.",
   "@errors.eject.timedOut": {

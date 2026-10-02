@@ -104,6 +104,14 @@
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Có thứ gì đó trên máy Mac này đang ngăn Cmdr kết nối trực tiếp tới {server}, nên mục chia sẻ này vẫn dùng kết nối hệ thống. Hãy thử tắt rồi bật lại Cmdr trong {localNetwork} hoặc kiểm tra ứng dụng tường lửa của bạn.",
+  "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
+    "sourceHash": "74f758e"
+  },
+  "fileExplorer.pane.openLocalNetworkSettings": "Mở cài đặt {localNetwork}",
+  "@fileExplorer.pane.openLocalNetworkSettings": {
+    "sourceHash": "c3931df"
+  },
   "fileExplorer.pane.directConnectionTooSlowToast": "{server} phản hồi quá chậm, nên mục chia sẻ này vẫn dùng kết nối hệ thống.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
@@ -625,6 +633,30 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Vẫn đang chờ thư mục này",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Máy chủ hoặc ổ đĩa chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.detailServer": "Máy chủ chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Ổ đĩa chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Thử lại",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Trở lại",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "Đã sao chép {countText} {count, plural, other {mục}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
@@ -780,6 +812,26 @@
   "fileExplorer.git.useTransferToCopyOut": "Để sao chép tệp ra khỏi một ảnh chụp git, hãy dùng F5 để sao chép hoặc F6 để di chuyển.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
+  },
+  "fileExplorer.openWith.copyRefused.tooLarge": "“{fileName}” lớn hơn {limit}, nên Cmdr không thể mở tệp này bằng {appName} từ bên trong tệp nén.",
+  "@fileExplorer.openWith.copyRefused.tooLarge": {
+    "sourceHash": "43399e6"
+  },
+  "fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": "“{fileName}” lớn hơn {limit}, nên Cmdr không thể mở tệp này bằng {appName} từ lịch sử của repo.",
+  "@fileExplorer.openWith.copyRefused.tooLargeInRepoHistory": {
+    "sourceHash": "aab64d0"
+  },
+  "fileExplorer.openWith.copyRefused.needsPassword": "“{fileName}” nằm trong một tệp nén được bảo vệ bằng mật khẩu. Hãy sao chép tệp vào một thư mục trước (Cmdr sẽ hỏi mật khẩu), rồi mở bằng {appName}.",
+  "@fileExplorer.openWith.copyRefused.needsPassword": {
+    "sourceHash": "882a23f"
+  },
+  "fileExplorer.openWith.copyRefused.archiveUnreadable": "Không thể lấy “{fileName}” ra khỏi tệp nén để mở bằng {appName}. Có thể tệp nén bị hỏng hoặc dùng định dạng mà Cmdr không đọc được.",
+  "@fileExplorer.openWith.copyRefused.archiveUnreadable": {
+    "sourceHash": "4ff2573"
+  },
+  "fileExplorer.openWith.copyRefused.unreadable": "Không thể đọc “{fileName}” để mở bằng {appName}. Hãy kiểm tra xem ổ đĩa chứa tệp có còn kết nối không, rồi thử lại.",
+  "@fileExplorer.openWith.copyRefused.unreadable": {
+    "sourceHash": "8af2399"
   },
   "fileExplorer.rename.hiddenAfterRename": "Tệp của bạn đã biến mất khỏi khung nhìn vì các tệp ẩn không được hiển thị.",
   "@fileExplorer.rename.hiddenAfterRename": {
@@ -1408,9 +1460,9 @@
   "@fileExplorer.navigation.disconnectPlaceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "fileExplorer.navigation.disconnectBusyTooltip": "Không thể ngắt kết nối khi còn thao tác đang chạy trên máy chủ này",
+  "fileExplorer.navigation.disconnectBusyTooltip": "Cmdr vẫn đang làm việc với tệp trên máy chủ này. Hãy ngắt kết nối khi việc đó xong.",
   "@fileExplorer.navigation.disconnectBusyTooltip": {
-    "sourceHash": "a659820"
+    "sourceHash": "bd52d60"
   },
   "fileExplorer.navigation.serverPinnedToast": "{name} giờ đã có trong bộ chọn ổ đĩa của bạn.",
   "@fileExplorer.navigation.serverPinnedToast": {
@@ -1420,9 +1472,9 @@
   "@fileExplorer.navigation.serverUnpinnedToast": {
     "sourceHash": "7fa97b2"
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr không thể thay đổi nơi {name} hiển thị.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr không thể thay đổi nơi {name} xuất hiện.",
   "@fileExplorer.navigation.pinRefusedToast": {
-    "sourceHash": "3ed5f60"
+    "sourceHash": "59f1f8b"
   },
   "fileExplorer.navigation.disconnectRefusedToast": "Cmdr không thể ngắt kết nối khỏi {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
@@ -1468,9 +1520,9 @@
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
-  "fileExplorer.navigation.ejectBusyTooltip": "Không thể tháo khi còn thao tác đang chạy trên thiết bị này",
+  "fileExplorer.navigation.ejectBusyTooltip": "Cmdr vẫn đang làm việc với tệp trên thiết bị này. Hãy tháo khi việc đó xong.",
   "@fileExplorer.navigation.ejectBusyTooltip": {
-    "sourceHash": "eafd9bd"
+    "sourceHash": "3da6312"
   },
   "fileExplorer.navigation.ejectingVolumeAriaLabel": "Đang tháo {name}…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {

@@ -1345,9 +1345,9 @@
   },
   "go-to-path": {
     "distinct": ["path", "navigate"],
-    "en": "Go to path",
+    "en": "Go to folder",
     "match": ["go to path", "go to folder"],
-    "sense": "The dialog and command for typing a path to navigate to."
+    "sense": "The dialog and command for typing a path to navigate to. Named after Finder's Go to Folder, so a locale uses Finder's wording."
   },
   "go-to-trash": {
     "distinct": ["move-to-trash"],
@@ -2114,6 +2114,12 @@
     "match": ["out of date", "outdated", "stale"],
     "notMatch": ["stale connection"],
     "sense": "An index that may no longer match what's on the drive."
+  },
+  "overall": {
+    "en": "Overall",
+    "match": ["overall"],
+    "notMatch": ["overall solid"],
+    "sense": "The label for the whole drive-indexing run's time left, across every step still to go (vs one step's own time left)."
   },
   "overwrite": {
     "distinct": ["replace", "skip", "merge"],
