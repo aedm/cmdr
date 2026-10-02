@@ -56,8 +56,15 @@ fn names() -> Vec<String> {
     .collect()
 }
 
-/// A name GCS refuses outright: its object names can't hold CR or LF.
-const LINE_BREAK: &str = "line\nbreak.txt";
+/// The names `live`'s provider refuses outright: GCS object names can't hold
+/// CR or LF, and B2's can't hold any control character.
+fn refused_names(live: &Live) -> &'static [&'static str] {
+    match live.name {
+        "gcs" => &["line\nbreak.txt"],
+        "b2" => &["tab\there.txt", "line\nbreak.txt"],
+        _ => &[],
+    }
+}
 
 /// ❗ Every awkward name round-trips through list → stat → read → rename →
 /// delete; a `..` segment resolves lexically and can't leave the bucket; a key
@@ -73,14 +80,14 @@ async fn live_hostile_names_round_trip() {
         let volume = live.connect(Some(&live.bucket)).await.expect("connects");
 
         let mut names = names();
-        if live.name == "gcs" {
-            names.retain(|name| name != LINE_BREAK);
-            let key = format!("{folder}/{LINE_BREAK}");
+        for refused_name in refused_names(&live) {
+            names.retain(|name| name != refused_name);
+            let key = format!("{folder}/{refused_name}");
             let refused = write(&volume, &at(&volume, &key), WriteMode::CreateNew, b"no".to_vec()).await;
             let raw = verdict(&live.put(&client, &key, b"no", &[]).await);
             m.check(
                 refused.is_err() && live.keys_under(&client, &prefix).await.is_empty(),
-                "GCS refuses a key holding a line break",
+                &format!("the provider refuses {refused_name:?}"),
                 format!("{refused:?}; a raw PUT answers {raw}"),
             );
         }

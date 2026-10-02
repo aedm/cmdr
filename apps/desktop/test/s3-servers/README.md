@@ -140,8 +140,14 @@ mismatch, while the same request signed by hand passes. It's a curl bug, not a s
 ./live.sh                      # every provider, every live cell, then the sweep
 ./live.sh aws,b2               # only these providers
 ./live.sh all live_batch       # every provider, only cells matching a filter
+./live.sh all live_hostile     # the hostile cells: names, sizes, cancels, crashes, races, scale
 source ./live-env.sh           # the variables alone, for another runner
 ```
+
+The hostile cells (`cmdr-s3`'s `live_hostile_test.rs` and `live_hostile_failure_test.rs`) take 2–5 minutes per provider
+(the ~1 GiB read-back dominates; 300 MiB on Wasabi), so run them a few providers at a time or one cell at a time
+(`live_hostile_sizes`, `live_hostile_cancel`, `live_hostile_crash`, `live_hostile_races`, …). Findings:
+`docs/notes/s3/live-hostile-2026-10.md`.
 
 `live-env.sh` is the single source of the variables (`CMDR_S3_LIVE_<NAME>_{REGION,KEY_ID,SECRET,BUCKET,BUCKET_2}` and a
 few extras): credentials from David's sops store through `secret`, bucket names as defaults. Any variable already set
