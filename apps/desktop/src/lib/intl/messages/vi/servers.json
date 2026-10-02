@@ -527,10 +527,6 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "Không bắt buộc",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Để trống để xem mọi bộ chứa mà khóa này có thể liệt kê.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

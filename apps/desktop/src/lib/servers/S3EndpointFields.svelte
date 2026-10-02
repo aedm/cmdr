@@ -93,6 +93,11 @@
     const identityDisabled = $derived(disabled || !identityEditable)
     /** A preset's one field carries both sentences; Other splits them. */
     const presetRefusal = $derived(addressRefusal ?? regionRefusal)
+    const bucketDescribedBy = $derived(
+        [identityEditable ? 'server-s3-bucket-help' : null, bucketRefusal ? 'server-s3-bucket-refusal' : null]
+            .filter((id) => id !== null)
+            .join(' ') || undefined,
+    )
     const takesRegion = $derived(fields.provider === 'aws' || fields.provider === 'b2' || fields.provider === 'wasabi')
     const regionPlaceholder = $derived.by(() => {
         const example = REGION_EXAMPLE[fields.provider]
@@ -277,16 +282,20 @@
         }}
         disabled={identityDisabled}
         invalid={bucketRefusal !== undefined}
-        aria-describedby={bucketRefusal ? 'server-s3-bucket-refusal' : 'server-s3-bucket-help'}
-        placeholder={tString('servers.sheet.s3BucketPlaceholder')}
+        aria-describedby={bucketDescribedBy}
         autocapitalize="off"
         autocomplete="off"
         spellcheck={false}
     />
+    <!-- ❗ No "Optional" placeholder: a key limited to one bucket can't open the account
+         root, so for that key the field is required, and the help line says when. It
+         stays on screen beside a refusal, which reads as the answer to it. Edit mode
+         locks the bucket, so a line about what to type there would be inert. -->
+    {#if identityEditable}
+        <p id="server-s3-bucket-help" class="field-help">{tString('servers.sheet.s3BucketHelp')}</p>
+    {/if}
     {#if bucketRefusal}
         <p id="server-s3-bucket-refusal" class="field-refusal" role="alert">{bucketRefusal}</p>
-    {:else}
-        <p id="server-s3-bucket-help" class="field-help">{tString('servers.sheet.s3BucketHelp')}</p>
     {/if}
 </div>
 <!-- eslint-enable @typescript-eslint/no-confusing-void-expression -->

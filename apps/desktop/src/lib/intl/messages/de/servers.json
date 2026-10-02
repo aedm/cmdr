@@ -533,11 +533,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "„Bucket“ bleibt im Deutschen englisch: die deutschen Konsolen von AWS, Google Cloud und Hetzner führen „Bucket“ (der Bucket), ebenso MS-Terminologie (bucket → Bucket)."
   },
-  "servers.sheet.s3BucketPlaceholder": "Optional",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713",
-    "sameAsSourceJustification": "„Optional“ ist im Deutschen dasselbe Wort; der Katalog nutzt es schon so (servers.sheet.smbUsernamePlaceholder)."
-  },
   "servers.sheet.s3BucketHelp": "Leer lassen, um alle Buckets zu sehen, die dieser Schlüssel auflisten darf.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

@@ -530,10 +530,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "MS terminology renders the storage container bucket → bucket in Swedish, and Swedish cloud consoles keep the word; sv/terms.json bucket ruling. Deliberately identical."
   },
-  "servers.sheet.s3BucketPlaceholder": "Valfritt",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Lämna fältet tomt för att se alla bucketar som den här nyckeln kan lista.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

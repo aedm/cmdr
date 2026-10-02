@@ -465,8 +465,11 @@ picked from fsn1 / nbg1 / hel1; Other an endpoint, an optional region, and "Use 
 then an optional Bucket. Its model is `s3-form.ts`, held under `ServerForm.s3`; `serverTargetFrom` builds the
 `S3ProviderChoice` from it, each preset carrying only its own field.
 
-- **Empty bucket = the account root**, which lists every bucket the key may see (the help line says so). A key that
-  can't list buckets answers `bucket_list_refused` under the Bucket field, and typing a bucket is the way in.
+- **Empty bucket = the account root**, which lists every bucket the key may see. A key that can't list buckets (one
+  scoped to a single bucket, common on R2) answers `bucket_list_refused` under the Bucket field, and typing a bucket is
+  the way in. ❗ So the field is optional only for an account-wide key, which is why it carries ❌ no "Optional"
+  placeholder: the help line says both cases, in every preset, and stays beside a refusal (hidden in edit mode, where
+  the bucket is locked).
 - **The access key ID is `username` and the secret access key is `secret`**, relabelled, both `autocomplete="off"`. So
   the identity lock, Remember, and the Keychain plumbing are the ones every account uses, and a username an address
   filled can't leak in: `applyParsedAddress` fills nothing while S3 is selected.

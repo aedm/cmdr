@@ -528,10 +528,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "A „bucket” az S3 szakszava, és a magyar szakmai szöveg is így használja, elöl képzett ragokkal (`S3 bucketbe`, `bucketben`, `bucketekkel`: cheppers.hu, aws.hu, cloudmentor.hu). A szolgáltatók konzoljai nem jelennek meg magyarul; a Microsoft `gyűjtő` szava más értelem, a Google gépi fordítású súgójának `csoport` szava ütközik a group szóval. Döntés: `docs/i18n/hu/decisions.md` § S3."
   },
-  "servers.sheet.s3BucketPlaceholder": "Nem kötelező",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Hagyd üresen, hogy lásd az összes bucketet, amelyet ez a kulcs felsorolhat.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

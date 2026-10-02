@@ -528,10 +528,6 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "Facultatif",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Laissez ce champ vide pour voir tous les compartiments que cette clé a le droit de lister.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

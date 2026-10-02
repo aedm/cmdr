@@ -641,13 +641,9 @@
   "@servers.sheet.s3Bucket": {
     "description": "Label of the field in the S3 form where the user may type a bucket name. “Bucket” is the S3 term for a top-level storage container; use the term the providers’ consoles use in your language. One word, NOUN."
   },
-  "servers.sheet.s3BucketPlaceholder": "Optional",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "description": "Placeholder inside the Bucket field of the S3 form. One word: the field may stay empty."
-  },
-  "servers.sheet.s3BucketHelp": "Leave it empty to see every bucket this key can list.",
+  "servers.sheet.s3BucketHelp": "Leave it empty to see every bucket. If your key is limited to one bucket, type its name.",
   "@servers.sheet.s3BucketHelp": {
-    "description": "One line under the Bucket field of the S3 form: an empty Bucket opens the whole account, listing its buckets, if the access key may list them. “Bucket” is the S3 term; keep the providers’ term."
+    "description": "One line under the Bucket field of the S3 form, the field has no placeholder. An empty Bucket opens the whole account and lists its buckets, which works only when the access key may list them; a key made for a single bucket (common with Cloudflare R2 and AWS) can’t, so for that key the field is needed. Shown in the add and edit forms, and stays visible beside a refusal under the field. “Bucket” is the S3 term; keep the providers’ term. “Key” is the access key."
   },
   "servers.sheet.s3UseRegion": "Use {region}",
   "@servers.sheet.s3UseRegion": {

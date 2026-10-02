@@ -527,10 +527,6 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "Необязательно",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Оставьте пустым, чтобы увидеть все бакеты, список которых доступен этому ключу.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

@@ -85,10 +85,21 @@ describe('S3EndpointFields', () => {
     expect(onUseRegion).toHaveBeenCalledOnce()
   })
 
-  it('puts a bucket refusal under the bucket, in place of its help line', async () => {
+  it('never calls the bucket optional, and says when it is needed', async () => {
+    // A key limited to one bucket can't open the account root, so for that key the
+    // field is required: an "Optional" placeholder contradicted the refusal under it.
+    await render({ provider: 'r2' })
+    expect(field('server-s3-bucket')?.placeholder ?? '').not.toContain('Optional')
+    expect(text('server-s3-bucket-help')).toContain('limited to one bucket')
+  })
+
+  it('keeps the help line beside a bucket refusal', async () => {
     await render({ provider: 'aws' }, { bucketRefusal: 'bucket words' })
     expect(text('server-s3-bucket-refusal')).toBe('bucket words')
-    expect(field('server-s3-bucket-help')).toBeNull()
+    expect(text('server-s3-bucket-help')).toContain('limited to one bucket')
+    expect(field('server-s3-bucket')?.getAttribute('aria-describedby')).toBe(
+      'server-s3-bucket-help server-s3-bucket-refusal',
+    )
   })
 
   it('locks every identity field in edit mode', async () => {
@@ -96,5 +107,7 @@ describe('S3EndpointFields', () => {
     expect(field('server-s3-endpoint')?.disabled).toBe(true)
     expect(field('server-s3-region')?.disabled).toBe(true)
     expect(field('server-s3-bucket')?.disabled).toBe(true)
+    // A line about what to type into a field nobody can type in would be inert.
+    expect(field('server-s3-bucket-help')).toBeNull()
   })
 })

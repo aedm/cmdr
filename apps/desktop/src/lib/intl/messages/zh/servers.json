@@ -527,10 +527,6 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "可选",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "留空则显示这个密钥能列出的所有存储桶。",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

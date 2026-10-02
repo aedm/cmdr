@@ -532,10 +532,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "Dutch for an S3 bucket is \"bucket\": Microsoft terminology renders \"bucket\" (a virtual container) as \"bucket\" (DUTCH.tbx in the reference pile, 2026-10-02)."
   },
-  "servers.sheet.s3BucketPlaceholder": "Optioneel",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Laat dit leeg om alle buckets te zien die deze sleutel mag opsommen.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

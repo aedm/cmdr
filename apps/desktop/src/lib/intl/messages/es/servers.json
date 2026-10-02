@@ -528,10 +528,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "Las consolas de AWS y Google Cloud en español dicen «bucket» («Crear bucket»); el «cubo» del TBX de Microsoft es otra acepción (estructura de datos). Regla en terms.json (bucket)."
   },
-  "servers.sheet.s3BucketPlaceholder": "Opcional",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Déjalo vacío y verás todos los buckets que esta clave pueda listar.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

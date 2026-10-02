@@ -529,10 +529,6 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "S3 term kept as the providers’ pt-BR consoles keep it: the AWS S3 console and docs in pt-BR say “bucket” (“Criar bucket”), as does Google Cloud Storage pt-BR; the pt catalog uses “bucket” in every S3 string (servers.refusal.*, servers.hub.*)."
   },
-  "servers.sheet.s3BucketPlaceholder": "Opcional",
-  "@servers.sheet.s3BucketPlaceholder": {
-    "sourceHash": "59be713"
-  },
   "servers.sheet.s3BucketHelp": "Deixe em branco para ver todos os buckets que esta chave pode listar.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"

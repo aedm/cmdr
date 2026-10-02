@@ -2953,7 +2953,6 @@ export type MessageKey =
   | 'servers.sheet.s3AccountIdHelp'
   | 'servers.sheet.s3Bucket'
   | 'servers.sheet.s3BucketHelp'
-  | 'servers.sheet.s3BucketPlaceholder'
   | 'servers.sheet.s3Endpoint'
   | 'servers.sheet.s3GcsKeyHelp'
   | 'servers.sheet.s3Location'
