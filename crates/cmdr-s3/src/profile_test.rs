@@ -400,6 +400,47 @@ fn every_preset_but_wasabi_is_trusted_to_refuse_a_short_body() {
     }
 }
 
+/// ❗ An allowlist too: Hetzner and Spaces ignore `x-amz-copy-source-if-match`
+/// on `UploadPartCopy` (live, 2026-10-02), so a copy there HEADs its source
+/// before completing. AWS documents the pin; R2 was seen enforcing it.
+#[test]
+fn only_aws_and_r2_are_trusted_to_enforce_the_copy_source_pin() {
+    let enforcing = [
+        Preset::Aws {
+            region: "us-east-1".into(),
+        },
+        Preset::R2 {
+            account_id: "abc123".into(),
+        },
+    ];
+    for preset in enforcing {
+        let listed = profile(preset);
+        assert!(listed.enforces_copy_source_pin, "{:?}", listed.kind);
+    }
+    let unverified = [
+        Preset::B2 {
+            region: "us-east-005".into(),
+        },
+        Preset::Wasabi {
+            region: "eu-central-2".into(),
+        },
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::Gcs,
+        Preset::DigitalOcean { region: "fra1".into() },
+        Preset::Other {
+            endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
+            region: None,
+            path_style: true,
+        },
+    ];
+    for preset in unverified {
+        let unlisted = profile(preset);
+        assert!(!unlisted.enforces_copy_source_pin, "{:?}", unlisted.kind);
+    }
+}
+
 fn request_to(profile: &ProviderProfile, bucket: &str, key: &str) -> crate::request::S3Request {
     crate::ops::head_object(profile, bucket, key).unwrap()
 }

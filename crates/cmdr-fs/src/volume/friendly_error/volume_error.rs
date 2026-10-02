@@ -116,6 +116,9 @@ pub fn listing_error_from_volume_error(err: &VolumeError, path: &Path) -> Listin
         // path actually being listed (never a source path), so the match stays
         // exhaustive without inventing a listing reason for a write condition.
         VolumeError::StaleDestinationHandle(_) => kinds::not_found(&path_display, raw),
+        // Copy-only too (a server-side copy's source changed under it); mapped
+        // defensively to the generic serious I/O reason.
+        VolumeError::SourceChanged(_) => kinds::io_serious(&path_display, &raw, raw.clone()),
         VolumeError::IsADirectory(_) => ListingError {
             category: ErrorCategory::NeedsAction,
             reason: ListingErrorReason::IsADirectory { path: path_display },

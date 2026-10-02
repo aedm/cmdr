@@ -136,7 +136,7 @@ pub(super) fn judge_landing(expected: u64, ours: Option<&str>, found: Option<&La
     }
 }
 
-fn normalize_etag(etag: &str) -> String {
+pub(super) fn normalize_etag(etag: &str) -> String {
     etag.trim().trim_matches('"').to_ascii_lowercase()
 }
 

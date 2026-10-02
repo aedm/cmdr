@@ -888,6 +888,7 @@ describe('getErrorDisplayMeta', () => {
     { error: { type: 'invalid_name', path: '/p', message: 'm' }, category: 'needs_action', retryHint: false },
     { error: { type: 'delete_pending', path: '/p' }, category: 'transient', retryHint: true },
     { error: { type: 'source_in_cold_storage', path: '/p' }, category: 'needs_action', retryHint: false },
+    { error: { type: 'source_changed', path: '/p' }, category: 'transient', retryHint: true },
     { error: { type: 'io_error', path: '/p', message: 'm' }, category: 'serious', retryHint: true },
   ]
 

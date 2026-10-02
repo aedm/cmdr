@@ -322,8 +322,8 @@ have no account: their entries rest on docs.
 - **Unverified, and why**: AWS, B2, and Wasabi (no account), so AWS's region routing still rests on the fake AWS; a
   cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket); B2's short-body entry.
 - ❗ **A copy's ETag pin is ignored on Hetzner and Spaces**, so a source replaced mid-copy could be stitched from two
-  versions there; only R2 (of the four) refuses the part. Undecided: re-HEADing the source before the delete would close
-  most of that window for one request per multipart copy.
+  versions there; only R2 (of the four) refuses the part. Hence `enforces_copy_source_pin` (AWS per its docs, R2) and
+  the HEAD before the completion everywhere else (§ "Server-side copy").
 
 ## Writing
 
@@ -475,6 +475,13 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 - **The source is HEADed once**: its size picks the shape, its ETag pins every part (`x-amz-copy-source-if-match`, so an
   object replaced mid-copy fails the part rather than stitching two versions; R2 enforces it, Hetzner and Spaces ignore
   it, § "Verified providers"), and its metadata travels.
+- ❗ **A source replaced mid-copy is `VolumeError::SourceChanged`**, and nothing is published: a part refused by the pin
+  (a 412, which on a part copy is the pin, ❌ never `AlreadyExists`), or, off the `enforces_copy_source_pin` allowlist,
+  a second HEAD right before the completion that finds another ETag (`source_unchanged`). The upload is aborted, and the
+  engine never deletes that source (a move's delete follows only a finished copy), so the new version survives. One HEAD
+  per multipart copy; a replacement between that HEAD and the completion stays blind. A single `CopyObject` is atomic
+  and needs none. Both fixtures enforce the pin, so `copy_test.rs` covers the 412 path between parts and the HEAD path
+  with a replacement after the last part.
 - **Up to the part floor, one `CopyObject`**; past it, a multipart upload of `UploadPartCopy` ranges with the upload
   plan's part size and the provider's tail rule (§ "Multipart"), even under 5 GB, so progress moves per part and a pause
   lands between parts. ❗ **GCS has no `UploadPartCopy`** (`copies_in_parts` is false): there a copy of any size is one

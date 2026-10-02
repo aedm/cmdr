@@ -2503,6 +2503,29 @@
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
+  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "@errors.write.sourceChanged.title": {
+    "description": "Title of the copy/move error dialog when another app or person replaced the source file in cloud storage while Cmdr was copying it there on the server. Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.sourceChanged.message": {
+    "description": "Body of the copy/move error dialog when the source file was replaced mid-copy. Cmdr stopped before saving a copy that could mix the old and the new version, so nothing appeared at the destination. \"The file stays where it was\" matters for a move: the source was NOT deleted. \"Cmdr\" is the product name. Plain text.",
+    "placeholders": {
+      "path": {
+        "description": "The full path of the source file, inserted verbatim. Do not translate or reformat it."
+      }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.sourceChanged.suggestion": {
+    "description": "Recovery suggestion when the source file was replaced mid-copy: running the copy again copies the new version that is there now. Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.newDataKeptAt.title": "Your new file is under a different name",
   "errors.write.newDataKeptAt.message": "The new {path} is written and complete, but the destination wouldn’t let it take that name, and the file it was replacing is already gone. The new one is at {keptAt}.",
   "errors.write.newDataKeptAt.suggestion": "Open {keptAt} to check it, then rename it. If the destination is a network share or a phone, reconnect it first and the rename will go through.",

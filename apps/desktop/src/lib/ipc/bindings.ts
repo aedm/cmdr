@@ -16288,6 +16288,16 @@ export type VolumeError =
    */
   | { type: 'coldStorage'; data: string }
   /**
+   *  The source changed while a copy read it, so the copy stopped before
+   *  publishing anything that might mix two versions. Carries the source's
+   *  path. ❗ The source is the NEW version now: a move must never delete it.
+   *
+   *  Typed rather than an [`IoError`](Self::IoError) so the user is told
+   *  what happened; a retry copies the new version. S3-only today (a
+   *  server-side copy in parts, `cmdr-s3` `server_copy.rs`).
+   */
+  | { type: 'sourceChanged'; data: string }
+  /**
    *  Anything the backend couldn't classify further. The classifier
    *  re-dispatches on `raw_os_error` when one is present.
    */
@@ -17160,6 +17170,13 @@ export type WriteOperationError =
    *  Not transient: a retry meets the same archived object.
    */
   | { type: 'source_in_cold_storage'; path: string }
+  /**
+   *  The source changed while a server-side copy read it, so the copy
+   *  published nothing (it could have mixed two versions). The source is the
+   *  new version now, and a move left it in place. A retry copies the new
+   *  version. S3-only today.
+   */
+  | { type: 'source_changed'; path: string }
   /**
    *  One or more files exceed the destination filesystem's per-file size
    *  limit (FAT32's 4 GiB cap). Detected during the pre-copy scan, before any

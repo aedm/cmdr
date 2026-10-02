@@ -111,7 +111,8 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
   keys, two requests clear 1,005 on both (`cmdr-s3`'s `batch_test.rs`, 2026-10-01).
 - `CopyObject` with `x-amz-metadata-directive: REPLACE` writes the metadata sent (an `x-amz-meta-mtime` included) on
   both, and `UploadPartCopy` with `x-amz-copy-source-if-match` carrying the source's current ETag succeeds on both
-  (`cmdr-s3`'s `copy_test.rs`, 2026-10-01). Whether either REFUSES a stale ETag there is unverified.
+  (`cmdr-s3`'s `copy_test.rs`, 2026-10-01). A stale one (the source replaced mid-copy) is refused with 412 on both
+  (`a_source_replaced_mid_copy_fails_as_changed_and_publishes_nothing`, 2026-10-02).
 - A presigned `GET` (query auth, `X-Amz-Expires=300`, `UNSIGNED-PAYLOAD`): 200 on both.
 - A wrong secret: VersityGW answers 403 `SignatureDoesNotMatch`, Garage 403 `AccessDenied`. A refusal classifier can't
   rely on the code alone to tell "wrong secret" from "no permission".

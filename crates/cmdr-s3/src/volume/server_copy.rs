@@ -37,7 +37,7 @@ use super::errors::map_s3_error;
 use super::multipart_upload::{abort_upload, retry_after, upload_refusal};
 use super::paths::{Target, target_of};
 use super::query::{body_error, stored_mtime};
-use super::writes::{WriteTarget, overwrite_for};
+use super::writes::{WriteTarget, normalize_etag, overwrite_for};
 use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
 use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
@@ -165,6 +165,8 @@ struct PartCopy {
     source_key: String,
     range: (u64, u64),
     source_etag: Option<String>,
+    /// The source's path, what a `SourceChanged` names.
+    source_remote: String,
     remote: String,
     volume_id: String,
     /// Set when the server says the upload is gone (`NoSuchUpload`).
@@ -213,11 +215,7 @@ impl PartCopy {
         };
         if !answer.status.is_success() {
             let error = S3Error::from_response(answer.status, &answer.text());
-            return Err(fail(
-                upload_refusal(&error, &self.remote, &self.gone),
-                error.is_throttle(),
-                error.is_retryable(),
-            ));
+            return Err(fail(self.refusal(&error), error.is_throttle(), error.is_retryable()));
         }
         // ❗ A part copy can fail inside a 200.
         match parse_copy_result(&answer.text()) {
@@ -240,13 +238,21 @@ impl PartCopy {
                     length,
                 ))
             }
-            Err(crate::xml::BodyError::Embedded(error)) => Err(fail(
-                upload_refusal(&error, &self.remote, &self.gone),
-                error.is_throttle(),
-                error.is_retryable(),
-            )),
+            Err(crate::xml::BodyError::Embedded(error)) => {
+                Err(fail(self.refusal(&error), error.is_throttle(), error.is_retryable()))
+            }
             Err(other) => Err(fail(body_error(&other, &self.remote), false, false)),
         }
+    }
+
+    /// A refused part in the `Volume` vocabulary. ❗ A failed precondition is
+    /// the source's ETag pin (the only precondition a part copy carries): the
+    /// source changed since its HEAD, ❌ never the destination being taken.
+    fn refusal(&self, error: &S3Error) -> VolumeError {
+        if self.source_etag.is_some() && error.is_precondition_failed() {
+            return VolumeError::SourceChanged(self.source_remote.clone());
+        }
+        upload_refusal(error, &self.remote, &self.gone)
     }
 }
 
@@ -254,6 +260,8 @@ impl PartCopy {
 pub(super) struct CopyFrom<'a> {
     pub bucket: &'a str,
     pub key: &'a str,
+    /// The source's server-side path, what an error about it names.
+    pub remote: &'a str,
     pub object: &'a SourceObject,
 }
 
@@ -305,6 +313,7 @@ impl S3Volume {
         let copy_from = CopyFrom {
             bucket: from_bucket,
             key: from_key,
+            remote: &from_remote,
             object: &object,
         };
         self.copy_key(&client, &copy_from, to_bucket, to_key, &to_remote, mode, progress)
@@ -468,6 +477,10 @@ impl S3Volume {
             ControlFlow::Break(()) => Err(VolumeError::Cancelled(self.volume_id().to_string())),
             ControlFlow::Continue(()) => Ok(parts),
         });
+        let copied = match copied {
+            Ok(parts) => self.source_unchanged(client, from).await.map(|()| parts),
+            Err(e) => Err(e),
+        };
         let outcome = match copied {
             Ok(parts) => self.complete(client, target, &upload_id, &parts, &gone).await,
             Err(e) => Err(e),
@@ -501,6 +514,31 @@ impl S3Volume {
         }
     }
 
+    /// ❗ Where the provider ignores the parts' ETag pin (Hetzner, Spaces), a
+    /// source replaced mid-copy would be stitched from two versions, and a
+    /// move would then delete the new source. So right before the completion
+    /// that publishes, one HEAD asks whether the source is still the version
+    /// the copy started from; anything else is `SourceChanged`, and the caller
+    /// aborts. One request per multipart copy, none where the pin holds. A
+    /// replacement after this HEAD and before the completion stays blind.
+    async fn source_unchanged(&self, client: &S3Client, from: &CopyFrom<'_>) -> Result<(), VolumeError> {
+        if client.profile().enforces_copy_source_pin {
+            return Ok(());
+        }
+        let now = self.head_object(client, from.bucket, from.key, from.remote).await?;
+        let unchanged = match (&now, from.object.etag.as_deref()) {
+            (None, _) => false,
+            // A source that answered no ETag at the start has nothing to compare.
+            (Some(_), None) => true,
+            (Some(head), Some(then)) => head.header("etag").map(normalize_etag) == Some(normalize_etag(then)),
+        };
+        if unchanged {
+            return Ok(());
+        }
+        warn!(target: "volume", "s3: {} changed during a copy; nothing was published", from.remote);
+        Err(VolumeError::SourceChanged(from.remote.to_string()))
+    }
+
     /// Copies every part, up to the window's width at once, asking the
     /// progress hook's checkpoint before starting each one. Answers the parts
     /// in order. ❗ Leaves the upload for the caller to complete or abort.
@@ -529,6 +567,7 @@ impl S3Volume {
             source_key: from.key.to_string(),
             range: plan.range(number),
             source_etag: from.object.etag.clone(),
+            source_remote: from.remote.to_string(),
             remote: target.remote.to_string(),
             volume_id: self.volume_id().to_string(),
             gone: Arc::clone(gone),

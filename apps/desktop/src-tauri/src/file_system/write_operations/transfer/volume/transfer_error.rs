@@ -396,6 +396,12 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
         VolumeError::ColdStorage(_) => WriteOperationError::SourceInColdStorage {
             path: context_path.to_string(),
         },
+        // A server-side copy saw its source replaced mid-copy and published
+        // nothing. Named plainly: the user decides whether the new version is
+        // the one to copy.
+        VolumeError::SourceChanged(_) => WriteOperationError::SourceChanged {
+            path: context_path.to_string(),
+        },
         // A transfer raises it for the DESTINATION only (`landing.rs`): the folder
         // holds two look-alikes of the name and neither spelled as asked, so it's
         // taken and no answer picks which. "Already exists" is the truth, and it

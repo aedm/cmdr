@@ -283,6 +283,159 @@ async fn a_cancel_mid_copy_leaves_no_upload_and_the_source_intact(service: Fixtu
     );
 }
 
+/// Replaces a copy's source with other bytes at one checkpoint (1-based; the
+/// first comes before the upload is created, then one before each part).
+struct ReplaceSourceAt {
+    service: FixtureService,
+    key: String,
+    bytes: Vec<u8>,
+    at: usize,
+    checkpoints: AtomicUsize,
+}
+
+impl ServerCopyProgress for ReplaceSourceAt {
+    fn advanced(&self, _done: u64, _total: u64) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+
+    fn checkpoint(&self) -> Pin<Box<dyn Future<Output = ControlFlow<()>> + Send + '_>> {
+        let number = self.checkpoints.fetch_add(1, Ordering::SeqCst) + 1;
+        Box::pin(async move {
+            if number == self.at {
+                seed(self.service, FIXTURE_BUCKET, &[object(&self.key, &self.bytes)]).await;
+            }
+            ControlFlow::Continue(())
+        })
+    }
+}
+
+/// ❗ A source replaced between parts fails the copy as `SourceChanged`:
+/// nothing is published (it could be stitched from two versions), no upload
+/// stays behind, and the new source is untouched, so a move never deletes it.
+/// Both fixtures are "Other", whose profile doesn't trust the copy-source ETag
+/// pin, so the copy HEADs the source before its completion.
+async fn a_source_replaced_mid_copy_fails_as_changed_and_publishes_nothing(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    volume.set_part_floor(5 * MIB as u64);
+    let prefix = scratch_prefix("copy-source-changed");
+    let from = format!("{prefix}from.bin");
+    let to = format!("{prefix}to.bin");
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&from, &self_describing_bytes(30 * MIB, "v1"))],
+    )
+    .await;
+    let replacement = self_describing_bytes(30 * MIB, "v2");
+    let progress = ReplaceSourceAt {
+        service,
+        key: from.clone(),
+        bytes: replacement.clone(),
+        at: 3,
+        checkpoints: AtomicUsize::new(0),
+    };
+
+    let outcome = volume
+        .copy_on_server(
+            &volume,
+            &at(&volume, &from),
+            &at(&volume, &to),
+            WriteMode::CreateNew,
+            &progress,
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::SourceChanged(_))), "got {outcome:?}");
+    assert!(!volume.exists(&at(&volume, &to)).await, "nothing was published");
+    assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
+    assert!(
+        volume
+            .inner
+            .ledger
+            .open_under(&volume.inner.account(), &prefix)
+            .is_empty()
+    );
+    assert!(
+        read_back(&volume, &at(&volume, &from)).await == replacement,
+        "the new source stays whole"
+    );
+}
+
+/// Replaces a copy's source once every part has landed, right before the
+/// completion: past every part's ETag pin, so only the HEAD before the
+/// completion can see it.
+struct ReplaceSourceAfterParts {
+    service: FixtureService,
+    key: String,
+    bytes: Vec<u8>,
+    done: AtomicBool,
+}
+
+impl ServerCopyProgress for ReplaceSourceAfterParts {
+    fn advanced(&self, done: u64, total: u64) -> ControlFlow<()> {
+        if done == total && !self.done.swap(true, Ordering::SeqCst) {
+            // `advanced` is synchronous, so the seed runs on a runtime of its
+            // own; the copy's runtime has other workers meanwhile.
+            std::thread::scope(|scope| {
+                scope.spawn(|| {
+                    tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("a seeding runtime")
+                        .block_on(seed(self.service, FIXTURE_BUCKET, &[object(&self.key, &self.bytes)]));
+                });
+            });
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn checkpoint(&self) -> Pin<Box<dyn Future<Output = ControlFlow<()>> + Send + '_>> {
+        Box::pin(async { ControlFlow::Continue(()) })
+    }
+}
+
+/// ❗ The same where the server would have taken every part: a source
+/// replaced after the last part copied is caught by the HEAD before the
+/// completion, on a profile that doesn't trust the pin.
+async fn a_source_replaced_after_its_last_part_fails_as_changed(service: FixtureService) {
+    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+    volume.set_part_floor(5 * MIB as u64);
+    let prefix = scratch_prefix("copy-source-changed-late");
+    let from = format!("{prefix}from.bin");
+    let to = format!("{prefix}to.bin");
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&from, &self_describing_bytes(12 * MIB, "v1"))],
+    )
+    .await;
+    let replacement = self_describing_bytes(12 * MIB, "v2");
+    let progress = ReplaceSourceAfterParts {
+        service,
+        key: from.clone(),
+        bytes: replacement.clone(),
+        done: AtomicBool::new(false),
+    };
+
+    let outcome = volume
+        .copy_on_server(
+            &volume,
+            &at(&volume, &from),
+            &at(&volume, &to),
+            WriteMode::CreateNew,
+            &progress,
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::SourceChanged(_))), "got {outcome:?}");
+    assert!(!volume.exists(&at(&volume, &to)).await, "nothing was published");
+    assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
+    assert!(
+        read_back(&volume, &at(&volume, &from)).await == replacement,
+        "the new source stays whole"
+    );
+}
+
 /// ❗ A pause lands between parts: once the checkpoint parks, the parts
 /// already in flight finish and no new one starts until it's resumed.
 async fn a_paused_copy_starts_no_part_until_resumed(service: FixtureService) {
@@ -441,6 +594,12 @@ on_both_fixtures! {
     a_cancel_mid_copy_leaves_no_upload_and_the_source_intact
         => a_cancel_mid_copy_leaves_no_upload_and_the_source_intact_on_versitygw,
            a_cancel_mid_copy_leaves_no_upload_and_the_source_intact_on_garage;
+    a_source_replaced_mid_copy_fails_as_changed_and_publishes_nothing
+        => a_source_replaced_mid_copy_fails_as_changed_and_publishes_nothing_on_versitygw,
+           a_source_replaced_mid_copy_fails_as_changed_and_publishes_nothing_on_garage;
+    a_source_replaced_after_its_last_part_fails_as_changed
+        => a_source_replaced_after_its_last_part_fails_as_changed_on_versitygw,
+           a_source_replaced_after_its_last_part_fails_as_changed_on_garage;
     a_paused_copy_starts_no_part_until_resumed
         => a_paused_copy_starts_no_part_until_resumed_on_versitygw, a_paused_copy_starts_no_part_until_resumed_on_garage;
     a_no_overwrite_copy_refuses_an_occupied_key_and_keeps_it

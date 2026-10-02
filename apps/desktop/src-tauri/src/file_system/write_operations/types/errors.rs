@@ -374,6 +374,13 @@ pub enum WriteOperationError {
     SourceInColdStorage {
         path: String,
     },
+    /// The source changed while a server-side copy read it, so the copy
+    /// published nothing (it could have mixed two versions). The source is the
+    /// new version now, and a move left it in place. A retry copies the new
+    /// version. S3-only today.
+    SourceChanged {
+        path: String,
+    },
     /// One or more files exceed the destination filesystem's per-file size
     /// limit (FAT32's 4 GiB cap). Detected during the pre-copy scan, before any
     /// bytes are written, so the whole operation is blocked all-or-nothing

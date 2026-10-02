@@ -204,6 +204,19 @@ fn test_map_volume_error_cold_storage() {
 }
 
 #[test]
+fn test_map_volume_error_source_changed() {
+    // A server-side copy whose source was replaced mid-copy published nothing.
+    // Typed to the dialog, so the user hears what happened rather than a
+    // generic I/O failure.
+    let err = map_volume_error(
+        "/ctx",
+        PathRole::Source,
+        VolumeError::SourceChanged("/bucket/report.pdf".to_string()),
+    );
+    assert!(matches!(err, WriteOperationError::SourceChanged { path } if path == "/ctx"));
+}
+
+#[test]
 fn test_map_volume_error_invalid_name() {
     // A name the destination can't store (an SMB server answering
     // STATUS_OBJECT_NAME_INVALID) MUST become the typed

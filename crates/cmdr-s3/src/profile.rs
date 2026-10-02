@@ -199,10 +199,16 @@ pub(crate) struct ProviderProfile {
     /// allowlist, like conditional writes: VersityGW publishes the bytes that
     /// arrived (`apps/desktop/test/s3-servers/README.md`), so an in-place
     /// overwrite cut off there loses the original. Elsewhere an overwrite of
-    /// an existing object goes through a temp key (`volume/writes.rs` §
-    /// "Overwrites through a temp key"). The evidence per provider:
-    /// `DETAILS.md` § "Providers".
+    /// an existing object goes as a multipart upload (`DETAILS.md` §
+    /// "Overwrites in parts"). The evidence per provider: `DETAILS.md` §
+    /// "Providers".
     pub refuses_short_body: bool,
+    /// Whether `UploadPartCopy` refuses a part whose source no longer matches
+    /// `x-amz-copy-source-if-match`, so a source replaced mid-copy can't be
+    /// stitched from two versions. An allowlist: Hetzner and Spaces ignore
+    /// the pin (live, `DETAILS.md` § "Verified providers"), so off it a copy in
+    /// parts HEADs its source before completing (`volume/server_copy.rs`).
+    pub enforces_copy_source_pin: bool,
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
     /// there. Composing before sending keeps our own comparisons honest.
     pub nfc_keys: bool,
@@ -238,6 +244,8 @@ impl ProviderProfile {
                     [IfNoneMatch; 3],
                 );
                 aws.refuses_short_body = true;
+                // Documented: a part copy whose source fails the pin is 412.
+                aws.enforces_copy_source_pin = true;
                 aws
             }
             Preset::R2 { account_id } => {
@@ -250,6 +258,7 @@ impl ProviderProfile {
                 );
                 r2.nfc_keys = true;
                 r2.refuses_short_body = true;
+                r2.enforces_copy_source_pin = true;
                 r2
             }
             Preset::B2 { region } => {
@@ -352,6 +361,7 @@ impl ProviderProfile {
             addressing,
             cross_bucket_copy: AtomicBool::new(true),
             refuses_short_body: false,
+            enforces_copy_source_pin: false,
             nfc_keys: false,
             short_tail: ShortTail::Keep,
             copies_in_parts: true,

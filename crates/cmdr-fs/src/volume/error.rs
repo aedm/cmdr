@@ -139,6 +139,14 @@ pub enum VolumeError {
     /// lands, so it's typed rather than an [`IoError`](Self::IoError), which
     /// offers a Retry. S3-only today.
     ColdStorage(String),
+    /// The source changed while a copy read it, so the copy stopped before
+    /// publishing anything that might mix two versions. Carries the source's
+    /// path. ❗ The source is the NEW version now: a move must never delete it.
+    ///
+    /// Typed rather than an [`IoError`](Self::IoError) so the user is told
+    /// what happened; a retry copies the new version. S3-only today (a
+    /// server-side copy in parts, `cmdr-s3` `server_copy.rs`).
+    SourceChanged(String),
     /// Anything the backend couldn't classify further. The classifier
     /// re-dispatches on `raw_os_error` when one is present.
     IoError {
@@ -195,6 +203,7 @@ impl std::fmt::Display for VolumeError {
             Self::AmbiguousName(path) => write!(f, "More than one stored name matches: {}", path),
             Self::StaleDestinationHandle(path) => write!(f, "Destination folder handle was stale: {}", path),
             Self::ColdStorage(path) => write!(f, "In cold storage, needs a restore before reading: {}", path),
+            Self::SourceChanged(path) => write!(f, "The source changed during the copy: {}", path),
             Self::IoError { message, .. } => write!(f, "I/O error: {}", message),
             Self::NeedsPassword { wrong_attempt } => {
                 if *wrong_attempt {

@@ -198,6 +198,9 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   // No Retry: the file stays archived until someone restores it, which Cmdr
   // can't do yet, so the identical request can only meet it again.
   source_in_cold_storage: { category: 'needs_action', retryHint: false },
+  // Retry: nothing was saved and the source is whole, so the same copy again
+  // takes the version that's there now.
+  source_changed: { category: 'transient', retryHint: true },
   device_disconnected: { category: 'needs_action', retryHint: true },
   // Retry: nothing is broken and nothing was lost. The originals are all where
   // they were, so running the same move again is exactly the way out.
@@ -593,6 +596,14 @@ function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | 
         title: w('sourceInColdStorage.title'),
         message: w('sourceInColdStorage.message', { path: escapeHtml(error.path) }),
         suggestion: w('sourceInColdStorage.suggestion'),
+      }
+    // A server-side copy whose source was replaced mid-copy: named, and it says
+    // the source stays, because a move would otherwise look like it lost it.
+    case 'source_changed':
+      return {
+        title: w('sourceChanged.title'),
+        message: w('sourceChanged.message', { path: escapeHtml(error.path) }),
+        suggestion: w('sourceChanged.suggestion'),
       }
     default:
       return null

@@ -242,6 +242,14 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       path: 's3://AKIAIOSFODNN7EXAMPLE@s3.eu-west-1.amazonaws.com:443/family-photos/2019/holiday-raw.tar',
     },
   },
+  // A move within an S3 account whose source another app replaced mid-copy.
+  source_changed: {
+    operationType: 'move',
+    error: {
+      type: 'source_changed',
+      path: 's3://AKIAIOSFODNN7EXAMPLE@nbg1.your-objectstorage.com:443/team-docs/2026/budget.xlsx',
+    },
+  },
   // The many-files branch: the body copy counts them and the details block lists
   // every one, so this is where the dialog gets tall.
   files_too_large_for_filesystem: {

@@ -612,6 +612,19 @@ const cases: Case[] = [
     },
   },
 
+  {
+    // A server-side copy saw its source replaced mid-copy and saved nothing:
+    // named, and the source is said to be where it was, since a move kept it.
+    name: 'source_changed',
+    error: { type: 'source_changed', path: 's3://AKIA@nbg1.your-objectstorage.com:443/docs/report.pdf' },
+    expected: {
+      title: 'This file changed during the copy',
+      message:
+        'The file at s3://AKIA@nbg1.your-objectstorage.com:443/docs/report.pdf changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.',
+      suggestion: 'Try again to copy the version that’s there now.',
+    },
+  },
+
   // Per-operation variant coverage: each verb-dependent field must render the
   // right copy for every operation it can occur under. The cases above already
   // pin one operation per field; these fill in the rest so all four
