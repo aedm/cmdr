@@ -545,38 +545,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "A kapcsolat időtúllépés miatt megszakadt. Lehet, hogy az eszköz lassú, vagy nem válaszol.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Egy másik app használja ezt az eszközt. Futtasd a ptpcamerad megoldást.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "Az eszköz nem található. Lehet, hogy kihúzták.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "Az eszköz leválasztódott.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "Az eszköz foglalt. Próbáld újra.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "Az eszközön nincs elérhető tárhely",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "Csatlakozás az eszközhöz…",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "Próbáld újra",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
   "fileExplorer.networkMount.mounting": "Csatolás: {target}…",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"

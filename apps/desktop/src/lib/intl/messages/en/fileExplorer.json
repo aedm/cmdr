@@ -844,54 +844,6 @@
     "screenshot": "servers-hub.png",
     "screenshotNote": "Network (SMB) browsing and connection flow. This shows the servers list it starts from; your string appears here or on the closely related browsing, sign-in, or reconnect states reached from it."
   },
-  "fileExplorer.mtp.connectTimedOut": "Connection timed out. The device may be slow or unresponsive.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "description": "Message shown when connecting to a phone or camera (an MTP device) timed out. MTP is the protocol used to browse phones/cameras over USB.",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Another app is using this device. Run the ptpcamerad workaround.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "description": "Message when another app holds the phone/camera so Cmdr can’t connect. \"ptpcamerad\" is a macOS process name; keep it as-is (it points to a known fix).",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.deviceNotFound": "Device not found. It may have been unplugged.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "description": "Message when the connected phone/camera can no longer be found (likely unplugged).",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.disconnected": "Device was disconnected.",
-  "@fileExplorer.mtp.disconnected": {
-    "description": "Message when the phone/camera was disconnected during use.",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.deviceBusy": "Device is busy. Please try again.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "description": "Message when the phone/camera is busy and the connection should be retried.",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.noStorage": "Device has no accessible storage",
-  "@fileExplorer.mtp.noStorage": {
-    "description": "Message when a phone/camera connected but exposes no storage Cmdr can browse.",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.connecting": "Connecting to device…",
-  "@fileExplorer.mtp.connecting": {
-    "description": "Loading text shown while Cmdr connects to a phone or camera (an MTP device).",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
-  "fileExplorer.mtp.tryAgain": "Try again",
-  "@fileExplorer.mtp.tryAgain": {
-    "description": "Button to retry connecting to the phone/camera after a connection problem.",
-    "screenshot": "mtp-browse.png",
-    "screenshotNote": "MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears as a status message in this same device context (connecting, busy, disconnected, etc.)."
-  },
   "fileExplorer.networkMount.mounting": "Mounting {target}…",
   "@fileExplorer.networkMount.mounting": {
     "description": "Loading text while a network share is being mounted. {target} is the host or share name, or the word \"share\" when the name is unknown.",

@@ -98,7 +98,7 @@
     },
     "apps/desktop/src/lib/file-explorer/pane/FilePane.svelte": {
       "lines": 2200,
-      "reason": "Its own `pane/CLAUDE.md` records the cap and rules out a child component here, and the file has already used both allowed hatches: about 20 `create*` factories (`createSelectionState`, `createListingLoader`, `createTypeToJumpController`, `createEnterMenu`, `createGitBrowserSync`, `createRenameFlow`, `createPaneMcpSync`, `createPaneKeyRouter`, and the rest) plus pure `.ts` helpers carry everything that can leave. What is left is 355 lines of imports, the 64 `export`s that make up `FilePaneAPI`, and the 279-line alt-view markup chain (`NetworkMountView`, `RemoteConnectView`, `MtpConnectionView`, `SearchResultsView`, `ErrorPane`, and the list views) with its 117-line `<style>`, none of which can move out of the component."
+      "reason": "Its own `pane/CLAUDE.md` records the cap and rules out a child component here, and the file has already used both allowed hatches: about 20 `create*` factories (`createSelectionState`, `createListingLoader`, `createTypeToJumpController`, `createEnterMenu`, `createGitBrowserSync`, `createRenameFlow`, `createPaneMcpSync`, `createPaneKeyRouter`, and the rest) plus pure `.ts` helpers carry everything that can leave. What is left is 355 lines of imports, the 64 `export`s that make up `FilePaneAPI`, and the 279-line alt-view markup chain (`NetworkMountView`, `RemoteConnectView`, `SearchResultsView`, `ErrorPane`, and the list views) with its 117-line `<style>`, none of which can move out of the component."
     },
     "apps/desktop/src/lib/file-explorer/pane/dialog-state.svelte.ts": {
       "lines": 800,

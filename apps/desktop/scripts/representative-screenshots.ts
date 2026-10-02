@@ -107,14 +107,6 @@ export const REPRESENTATIVE_SCREENSHOTS: RepresentativeMapping[] = [
     note: 'Shown while mounting a network share, in the network flow that starts at the servers list pictured here.',
   },
   {
-    // MTP device connection states + dialogs share the MTP browsing context.
-    prefix: 'fileExplorer.mtp.',
-    screenshot: 'mtp-browse.png',
-    note:
-      'MTP (phone/camera) connection status shown in the device pane. This shows the MTP browse surface; your string appears ' +
-      'as a status message in this same device context (connecting, busy, disconnected, etc.).',
-  },
-  {
     prefix: 'mtp.',
     screenshot: 'mtp-browse.png',
     note:

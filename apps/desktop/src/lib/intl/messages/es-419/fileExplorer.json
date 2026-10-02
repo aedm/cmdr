@@ -107,18 +107,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "afff898"
   },
-  "fileExplorer.mtp.connectTimedOut": "Se agotó el tiempo de conexión. El dispositivo puede ir lento o no responder.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "a0ff4e2"
-  },
-  "fileExplorer.mtp.deviceNotFound": "No se encontró el dispositivo. Puede que se haya desconectado.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "f89bc21"
-  },
-  "fileExplorer.mtp.disconnected": "El dispositivo se desconectó.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "6618af7"
-  },
   "fileExplorer.networkMount.mountFailedTitle": "No se pudo montar el recurso compartido",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "57250cc"

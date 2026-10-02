@@ -314,7 +314,7 @@ backticks. Term rulings live in `terms.json`, open questions in `review-queue.md
 - `notEjectable` states the build (`Dieses Laufwerk ist kein Wechselmedium, …`), not a failure.
 - Files are closed, apps quit: `Schließe offene Dateien und beende laufende Apps` (German has no shared verb); Cmdr's
   noun is `App`, not Apple's `Programm`.
-- `idle` → `nicht mehr beschäftigt`, the same word field as `fileExplorer.mtp.deviceBusy`.
+- `idle` → `nicht mehr beschäftigt`, the word field of `beschäftigt` (busy).
 - „wouldn't“ (the other side refusing) → `wollte nicht`, as in `errors.mutation.trashRefused`.
 - The refusals can follow either frame and concern a drive, share, phone, or server: they say `dort`, never
   `dieses Laufwerk`, and end `dann versuche es erneut`, never `wirf es … aus`.

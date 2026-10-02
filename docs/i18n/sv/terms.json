@@ -1903,9 +1903,6 @@
   "permission": {
     "chosen": "behörighet",
     "confidence": "high",
-    "exceptions": {
-      "mtp.error.permissionDenied": "USB permission denied is the idiom USB-åtkomst nekad."
-    },
     "sources": "macOS Finder (behörigheter), MS"
   },
   "phone": {
@@ -2775,7 +2772,7 @@
     "confidence": "high",
     "decision": "Eject and disconnect errors",
     "forms": "the device out of the port → koppla ur; the cable → dra ur; state → frånkopplad",
-    "sources": "catalog (errors.listing.deviceReconnecting.suggestion, fileExplorer.mtp.deviceNotFound)"
+    "sources": "catalog (errors.listing.deviceReconnecting.suggestion)"
   },
   "unreachable": {
     "accept": ["nå"],

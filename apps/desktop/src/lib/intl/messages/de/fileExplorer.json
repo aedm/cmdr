@@ -545,38 +545,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "Die Verbindung hat zu lange gedauert. Das Gerät ist vielleicht langsam oder reagiert nicht.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Eine andere App nutzt dieses Gerät. Führe die ptpcamerad-Lösung aus.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "Gerät nicht gefunden. Es wurde vielleicht abgezogen.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "Das Gerät wurde getrennt.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "Gerät ist beschäftigt. Versuche es erneut.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "Das Gerät hat keinen zugänglichen Speicher",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "Verbindung zum Gerät wird hergestellt …",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "Erneut versuchen",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
   "fileExplorer.networkMount.mounting": "{target} wird eingebunden …",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"

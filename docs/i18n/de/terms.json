@@ -1398,7 +1398,7 @@
   "idle": {
     "chosen": "nicht mehr beschäftigt",
     "confidence": "high",
-    "sources": "catalog (indexing.enrich.pausedIdle, fileExplorer.mtp.deviceBusy)"
+    "sources": "catalog (indexing.enrich.pausedIdle)"
   },
   "image": {
     "accept": ["Bilder"],

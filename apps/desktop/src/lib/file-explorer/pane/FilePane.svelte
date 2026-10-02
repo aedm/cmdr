@@ -60,7 +60,6 @@
     } from './types'
     import { paneFooterVisibility } from './pane-footer'
     import { getMutationTick, getSnapshot, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
-    import MtpConnectionView from './MtpConnectionView.svelte'
     import RemoteConnectView from './RemoteConnectView.svelte'
     import { createPlaceConnect } from './place-connect.svelte'
     import { createLiveRetry } from './live-retry.svelte'
@@ -282,7 +281,6 @@
         getListingId: () => listingId,
         getLoading: () => loading,
         getHasBackendListing: () => caps.hasBackendListing,
-        getIsMtpDeviceOnly: () => isMtpDeviceOnly,
         getIncludeHidden: () => includeHidden,
         getHasParent: () => hasParent,
         setCursorIndex: (index: number) => void setCursorIndex(index),
@@ -581,16 +579,11 @@
     // Check if we're viewing an MTP device
     const isMtpView = $derived(isMtpVolumeId(volumeId))
 
-    // Check if this is a device-only MTP ID (needs connection)
-    // Device-only IDs start with "mtp-" but don't contain ":" (no storage ID)
-    const isMtpDeviceOnly = $derived(isMtpView && volumeId.startsWith('mtp-') && !volumeId.includes(':'))
-
     /**
      * The KIND-structural alt-view selector for the `{#if}` chain below. It picks
-     * which non-list view a pane renders purely as a function of `caps.kind` (plus
-     * the MTP device-only connection sub-state, which the kind table doesn't carry
-     * — it's a runtime connection state, not a kind). This is NOT a new component:
-     * it's a derived discriminant the existing chain branches on.
+     * which non-list view a pane renders purely as a function of `caps.kind`. This
+     * is NOT a new component: it's a derived discriminant the existing chain
+     * branches on.
      *
      * Only the KIND-driven branches live here. The runtime-state branches
      * (`unreachable`, SMB reconnecting / gave-up, the inline SMB upgrade login,
@@ -599,7 +592,7 @@
      * state always wins over the kind view, exactly as the string-compare chain did.
      */
     const paneViewKind = $derived<PaneViewKind>(
-        isNetworkView ? 'network' : isSearchResultsView ? 'search-results' : isMtpDeviceOnly ? 'mtp-connect' : 'normal',
+        isNetworkView ? 'network' : isSearchResultsView ? 'search-results' : 'normal',
     )
 
     /** Which pieces of the status footer this pane renders (`pane-footer.ts`). */
@@ -1686,31 +1679,18 @@
         prevUnreachable = unreachable
     })
 
-    // Track the previous volumeId to detect MTP connection completion
-    let prevVolumeId = $state(volumeId)
-
-    // Reactive path loading: handles persistence restore AND MTP connection
-    // completion in one effect, so overlapping triggers can't both fire a
-    // `loadDirectory`. The truth table is pure, in `path-sync.ts`.
+    // Reactive path loading on persistence restore and prop changes. The truth
+    // table is pure, in `path-sync.ts`.
     $effect(() => {
         const action = resolveInitialPathAction({
             initialPath, // Track this
             currentPath: untrack(() => currentPath), // Don't track: user navigation changes this
-            prevVolumeId,
-            volumeId,
             isSearchResultsView,
             isNetworkView,
-            isMtpDeviceOnly,
             deviceIsConnecting: deviceConnect.holdsListing,
         })
-        prevVolumeId = volumeId
 
         switch (action.kind) {
-            case 'mtp-connected':
-                log.info('MTP volume connected, loading directory: {path}', { path: action.path })
-                currentPath = action.path
-                void loader.loadDirectory({ path: action.path })
-                break
             case 'load':
                 log.debug('[FilePane] initialPath effect: triggering loadDirectory, paneId={paneId}, newPath={newPath}', {
                     paneId,
@@ -1879,13 +1859,11 @@
         // Live disk-space updates from the backend poller (typed event).
         diskSpace.startListening()
 
-        // Skip directory loading for:
-        // - Network views (they handle their own data via ServersHub/PlacesBrowser)
-        // - Device-only MTP views (they need connection first, handled by auto-connect effect)
-        // But DO load for connected MTP views (storage-specific volume ID)
+        // Skip directory loading for network views (they handle their own data via
+        // ServersHub/PlacesBrowser) and the search-results snapshot.
         log.debug(
-            '[FilePane] onMount: paneId={paneId}, volumeId={volumeId}, currentPath={currentPath}, isNetworkView={isNetworkView}, isMtpDeviceOnly={isMtpDeviceOnly}',
-            { paneId, volumeId, currentPath, isNetworkView, isMtpDeviceOnly },
+            '[FilePane] onMount: paneId={paneId}, volumeId={volumeId}, currentPath={currentPath}, isNetworkView={isNetworkView}',
+            { paneId, volumeId, currentPath, isNetworkView },
         )
         if (unreachable) {
             log.debug('[FilePane] onMount: SKIPPING loadDirectory for unreachable tab, paneId={paneId}', { paneId })
@@ -1894,7 +1872,7 @@
             // A restored tab on a phone: the dial owns the pane until it answers.
             log.debug('[FilePane] onMount: SKIPPING loadDirectory while the phone opens, paneId={paneId}', { paneId })
             loading = false
-        } else if (!isNetworkView && !isMtpDeviceOnly && !isSearchResultsView) {
+        } else if (!isNetworkView && !isSearchResultsView) {
             log.debug('[FilePane] onMount: triggering loadDirectory for paneId={paneId}', { paneId })
             void loader.loadDirectory({ path: currentPath })
         } else {
@@ -2036,8 +2014,6 @@
                 }}
                 onVisibleRangeChange={handleVisibleRangeChange}
             />
-        {:else if paneViewKind === 'mtp-connect'}
-            <MtpConnectionView {volumeId} onVolumeChange={(change: VolumeChangePayload) => onVolumeChange?.(change)} />
         {:else if loading && stalled !== null}
             <ListingStalledView
                 folderPath={currentPath}

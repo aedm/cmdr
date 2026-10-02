@@ -70,7 +70,6 @@
     import { initVolumeBusyStore, cleanupVolumeBusyStore } from '$lib/stores/volume-busy-store.svelte'
     import { initRestrictedPathsStore } from '$lib/stores/restricted-paths-store.svelte'
     import { initSystemStrings } from '$lib/system-strings.svelte'
-    import { initialize as initMtpStore } from '$lib/mtp'
     import { smbReconnectManager } from '../network/smb-reconnect-manager.svelte'
     import type { TransferOperationType } from '../types'
     import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
@@ -559,14 +558,12 @@
         // Start network discovery in background (non-blocking)
         void initNetworkDiscovery()
 
-        // Initialize volume store (subscribes to backend-pushed volume list)
-        // and MTP store (subscribes to device connection events). Also wire up
-        // the SMB reconnect manager; it listens for `volume-connection-changed`
+        // Initialize volume store (subscribes to backend-pushed volume list). Also
+        // wire up the SMB reconnect manager; it listens for `volume-connection-changed`
         // and runs the per-volume backoff cycle the pane's `RemoteConnectView` renders.
         await Promise.all([
             initVolumeStore(),
             initVolumeBusyStore(),
-            initMtpStore(),
             smbReconnectManager.init(),
             initRestrictedPathsStore(),
             initSystemStrings(),

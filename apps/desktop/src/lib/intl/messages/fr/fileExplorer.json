@@ -545,38 +545,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "Délai de connexion dépassé. L’appareil est peut-être lent ou ne répond pas.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Une autre app utilise cet appareil. Lancez le contournement ptpcamerad.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "Appareil introuvable. Il a peut-être été débranché.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "L’appareil a été déconnecté.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "L’appareil est occupé. Réessayez.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "L’appareil n’a aucun stockage accessible",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "Connexion à l’appareil…",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "Réessayer",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
   "fileExplorer.networkMount.mounting": "Montage de {target}…",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"

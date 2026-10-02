@@ -546,38 +546,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "Verbinding maken duurde te lang. Het apparaat is mogelijk traag of reageert niet.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Een andere app gebruikt dit apparaat. Voer de ptpcamerad-tijdelijke oplossing uit.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "Apparaat niet gevonden. Het is misschien losgekoppeld.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "Het apparaat is losgekoppeld.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "Het apparaat is bezig. Probeer opnieuw.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "Het apparaat heeft geen toegankelijke opslag",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "Verbinden met apparaat…",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "Probeer opnieuw",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
   "fileExplorer.networkMount.mounting": "{target} aankoppelen…",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"

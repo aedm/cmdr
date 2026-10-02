@@ -543,38 +543,6 @@
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "连接超时。设备可能较慢或无响应。",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "另一个 App 正在使用这个设备。请运行 ptpcamerad 临时方案。",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "找不到设备。可能已被拔出。",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "设备已断开连接。",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "设备忙。请重试。",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "设备没有可访问的存储",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "正在连接到设备…",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "重试",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
   "fileExplorer.networkMount.mounting": "正在装载 {target}…",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"

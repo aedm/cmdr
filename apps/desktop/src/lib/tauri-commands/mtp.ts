@@ -45,20 +45,6 @@ export interface MtpDeviceInfo {
 }
 
 /**
- * Gets a display name for an MTP device.
- * Prefers product name, falls back to manufacturer, then vendor:product ID.
- */
-export function getMtpDeviceDisplayName(device: MtpDeviceInfo): string {
-  if (device.product) {
-    return device.product
-  }
-  if (device.manufacturer) {
-    return `${device.manufacturer} device`
-  }
-  return `MTP device (${device.vendorId.toString(16).padStart(4, '0')}:${device.productId.toString(16).padStart(4, '0')})`
-}
-
-/**
  * Lists all connected MTP devices.
  * Only available on macOS.
  * @returns Array of MtpDeviceInfo objects
@@ -122,16 +108,6 @@ export async function connectMtpDevice(deviceId: string): Promise<ConnectedMtpDe
     throw res.error
   }
   return res.data as ConnectedMtpDeviceInfo
-}
-
-/**
- * Disconnects from an MTP device.
- * Closes the MTP session gracefully.
- * @param deviceId - The device ID to disconnect from
- */
-export async function disconnectMtpDevice(deviceId: string): Promise<void> {
-  const res = await commands.disconnectMtpDevice(deviceId)
-  if (res.status === 'error') throwIpcError(res.error)
 }
 
 /**

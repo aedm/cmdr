@@ -8,9 +8,9 @@ lifecycle, drag handling, volume tinting, and navigation primitives.
 
 `DualPaneExplorer.svelte` is the root: it owns both panes, the unified key/command dispatch, the dialog manager, and the
 MCP-exposed surface. `FilePane.svelte` is one pane: it owns its listing, cursor, selection, view mode, type-to-jump
-buffer, rename flow, breadcrumb, and the alt-view rendering ({#if/elseif} between `MtpConnectionView`,
-`NetworkMountView`, `RemoteConnectView`, `SearchResultsView`, `ListingStalledView`, `ErrorPane`,
-`VolumeUnreachableBanner`, and the regular list).
+buffer, rename flow, breadcrumb, and the alt-view rendering ({#if/elseif} between `NetworkMountView`,
+`RemoteConnectView`, `SearchResultsView`, `ListingStalledView`, `ErrorPane`, `VolumeUnreachableBanner`, and the regular
+list).
 
 ## File map
 
@@ -99,7 +99,7 @@ suite:
   `snapshot-selection-sync`, so a snapshot restore runs after that remap in the same flush. The model and the leak it
   guards against: `../navigation/DETAILS.md` § "Cursor memory per entry".
 - `path-sync.ts` / `hidden-files-resync.ts`: the prop-driven reload truth table, and the cursor follow after the
-  hidden-files toggle. ❗ A pane view with no listing (search results, a device-only phone, the network view) still
+  hidden-files toggle. ❗ A pane view with no listing (search results, a phone being opened, the network view) still
   COMMITS the new path (`sync-path`): skipping it on the network view left a pane that came from a share on that share's
   path, and its header read "Servers ▸ /Volumes/public". The resync first tells the backend the setting
   (`setListingIncludeHidden`), which picks the row space of the pane's `directory-diff`s and which changes reach it at
@@ -467,17 +467,14 @@ There's no Search-specific capabilities shim — `lib/search/capabilities.ts` ke
 - **`has-parent.ts`**: `computeHasParent` folds ONLY the snapshot rule via `hasParentRow`; the two PATH comparisons
   (`=== '/'`, `=== root`) stay.
 - **FilePane alt-view chain** (`FilePane.svelte`): the kind-structural view selection resolves through a `paneViewKind`
-  derived discriminant (`'network' | 'search-results' | 'mtp-connect' | 'normal'`) off `caps.kind` (+ the MTP
-  device-only connection sub-state, which the table doesn't carry — it's a runtime connection state, not a kind). The
-  `{#if}` chain branches on `paneViewKind` for the three alt-views (NetworkMountView / SearchResultsView /
-  MtpConnectionView) and the SelectionInfo footer (`paneViewKind === 'normal'`). The RUNTIME-state branches
-  (`unreachable`, the SAVED-place dial, the reconnect cycle's `RemoteConnectState`, the gave-up banner, `loading` /
-  `friendlyError` / `error`) stay per-feature and gate IN FRONT of the descriptor, byte-identical precedence. This is a
-  derived discriminant, NOT a new component. The git lookup and the type-to-jump keystroke read
-  `!caps.hasBackendListing` for the "is there a real directory" half; their MTP-path-specific checks
-  (`isMtpVolumeId(volumeId)` for git-skip, `isMtpDeviceOnly` for the jump) STAY — MTP has a backend listing but git
-  can't run on it, and the not-yet-connected sub-state isn't a kind capability. The dir-exists poll reads its own
-  capability instead, `paneFolderIsPolledForDeletion` (§ "Volume capabilities"). `caps` is derived once per pane
+  derived discriminant (`'network' | 'search-results' | 'normal'`) off `caps.kind`. The `{#if}` chain branches on
+  `paneViewKind` for the two alt-views (NetworkMountView / SearchResultsView) and the SelectionInfo footer
+  (`paneViewKind === 'normal'`). The RUNTIME-state branches (`unreachable`, the SAVED-place dial, the reconnect cycle's
+  `RemoteConnectState`, the gave-up banner, `loading` / `friendlyError` / `error`) stay per-feature and gate IN FRONT of
+  the descriptor, byte-identical precedence. This is a derived discriminant, NOT a new component. The git lookup and the
+  type-to-jump keystroke read `!caps.hasBackendListing` for the "is there a real directory" half; the git lookup's
+  `isMtpVolumeId(volumeId)` skip STAYS — MTP has a backend listing but git can't run on it. The dir-exists poll reads
+  its own capability instead, `paneFolderIsPolledForDeletion` (§ "Volume capabilities"). `caps` is derived once per pane
   (`caps = $derived(capabilitiesForPane(volumeId, currentPath))`); the named `isNetworkView` / `isSearchResultsView`
   deriveds re-source off `caps.kind`.
 
@@ -560,8 +557,8 @@ questions").
 - **❗ It is the ONE dialer, and it HOLDS the pane's listing** (`holdsListing`). Path resolution never dials, and a
   phone nobody has dialed has no registered volume, so a listing there can only come back refused (`NotConnected`, never
   `NotFound`: `src-tauri/src/adb/DETAILS.md`) and would put an error over the connecting state. The reload on connect is
-  what lists the phone. The hold is threaded through `path-sync.ts`'s `deviceIsConnecting` input (a `sync-path` arm,
-  like device-only MTP's) and the mount-time load's own branch.
+  what lists the phone. The hold is threaded through `path-sync.ts`'s `deviceIsConnecting` input (a `sync-path` arm) and
+  the mount-time load's own branch.
 - **❗ While the hold is on, a `null` state renders NOTHING**, so every way a dial can end has to leave a non-`null`
   one: a `refused` with the reason and, where a second try could work, a Try again. That covers both cancels (the button
   on `connecting` and the one on `waiting_for_device`), the backend's own `cancelled` answer, a failure with no typed
@@ -578,8 +575,8 @@ questions").
   readiness). A row SEEN with `capabilities` since the dial that comes back without them resets the factory's record,
   which re-holds the listing and dials again. ❌ A missing `capabilities` right after a dial is NOT an eject: the dial's
   own broadcast can land after `connectAdbDevice` answers, so the baseline is what the row says when the dial lands.
-- **MTP is deliberately NOT folded in.** Its volume id CHANGES on connect (device-only → storage), which is a different
-  pane transition with its own `path-sync.ts` arm, and it keeps `MtpConnectionView.svelte`.
+- **MTP needs no dialer.** The backend auto-connects a phone on hotplug and lists only its storages, so a pane only ever
+  stands on a storage that's already open.
 
 **The volume-id string compares that REMAIN are not guards — don't "finish the sweep".** A grep for
 `=== 'search-results'` / `=== 'network'` / `startsWith('mtp-')` (and the `!==` forms) across `apps/desktop/src/` returns
@@ -597,8 +594,7 @@ capability record is the "differently complicated" failure mode to avoid:
   network-mirror / copy-path-between-panes identity branches).
 - **Display / view selection.** `VolumeBreadcrumb.svelte` (the "Network" / "Search results" labels + the
   network-disabled gate), `FilePane.svelte` (`paneViewKind` in the `{#if}` chain, sourced off `caps.kind`; the
-  `isNetworkView` / `isSearchResultsView` named deriveds; the MTP device-only sub-state + the `loadDirectory` skip for
-  network/device-only panes), `MtpConnectionView.svelte` (device-only sub-state).
+  `isNetworkView` / `isSearchResultsView` named deriveds; the `loadDirectory` skip for network / search-results panes).
 - **Persistence / init mechanics.** `app-status-store.ts` (skip filesystem path-resolution for the virtual `network`
   volume on persist, and swap a stored `search-results://` path for a real folder at load — § "A snapshot never comes
   back"), `initialization.ts` (trust the stored `network` id at startup, no `resolvePathVolume`).

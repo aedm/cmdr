@@ -452,9 +452,8 @@ and actionable error experience.
 ### How it works
 
 1. `listing-error` Tauri event arrives with `{ message, friendly?: ListingError }`
-2. `FilePane` checks: is this an MTP volume? → short-circuit to `MtpConnectionView` (MTP has its own UX)
-3. Does the path still exist? → if gone, auto-navigate to nearest valid parent (not an error state)
-4. Path exists but listing failed → render `ErrorPane` (if `friendly` is present) or raw error div (if not)
+2. Does the path still exist? → if gone, auto-navigate to nearest valid parent (not an error state)
+3. Path exists but listing failed → render `ErrorPane` (if `friendly` is present) or raw error div (if not)
 
 ### `ErrorPane.svelte`
 

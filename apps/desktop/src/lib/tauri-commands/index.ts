@@ -619,11 +619,9 @@ export type {
 // MTP (Android device support)
 export {
   setMtpEnabled,
-  getMtpDeviceDisplayName,
   listMtpDevices,
   isMtpConnectionError,
   connectMtpDevice,
-  disconnectMtpDevice,
   getMtpDeviceInfo,
   getPtpcameradWorkaroundCommand,
   getMtpStorages,
