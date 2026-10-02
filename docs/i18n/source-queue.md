@@ -76,3 +76,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `errors.write.insufficientSpace.suggestion`: "may mean it needs less" leaves "it" (the copy) implicit; locales named
   the copy or the space outright. Say "the copy may need less". No screenshot of the dialog with "Copy anyway" either.
   (all)
+- `downloads.fda.message`: the description requires keeping Full Disk Access in English. Instead require the localized
+  macOS permission label, as other FDA keys do.
+- Plural instruction proposal: CLDR `one` does not mean exactly one. Audit counts such as 21/101; use `=1` for one-only
+  wording and keep the displayed count in the ordinary `one` branch.

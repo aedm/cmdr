@@ -1,0 +1,58 @@
+{
+  "transfer.trash": "Перемещено в Корзину: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}",
+  "@transfer.trash": {
+    "sourceHash": "0be2310"
+  },
+  "transfer.delete": "Удаление завершено: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}",
+  "@transfer.delete": {
+    "sourceHash": "dc69b52"
+  },
+  "transfer.compress.split": "Сжато: {phrase}.",
+  "@transfer.compress.split": {
+    "sourceHash": "daf7381"
+  },
+  "transfer.compress.fileOnly": "Сжато: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}.",
+  "@transfer.compress.fileOnly": {
+    "sourceHash": "af9d928"
+  },
+  "transfer.movedPhrase": "{kind, select, both {{filesText} {files, plural, one {файл} few {файла} many {файлов} other {файла}} и {foldersText} {folders, plural, one {папка} few {папки} many {папок} other {папки}}} foldersOnly {{foldersText} {folders, plural, one {папка} few {папки} many {папок} other {папки}}} other {{filesText} {files, plural, one {файл} few {файла} many {файлов} other {файла}}}}",
+  "@transfer.movedPhrase": {
+    "sourceHash": "e43d866"
+  },
+  "transfer.split.clean": "{verb, select, copy {Скопировано} other {Перемещено}}: {phrase}.",
+  "@transfer.split.clean": {
+    "sourceHash": "5241e2a"
+  },
+  "transfer.split.skipped": "{verb, select, copy {Скопировано} other {Перемещено}}: {phrase}. Пропущено: {skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}} (уже в целевой папке).",
+  "@transfer.split.skipped": {
+    "sourceHash": "5fe3ee2"
+  },
+  "transfer.fileOnly.allDone": "{verb, select, copy {Копирование} other {Перемещение}} завершено: {verb, select, copy {скопировано} other {перемещено}} {transferredText} {transferred, plural, one {файл} few {файла} many {файлов} other {файла}}.",
+  "@transfer.fileOnly.allDone": {
+    "sourceHash": "19c9b7d"
+  },
+  "transfer.fileOnly.allSkippedSingle": "{verb, select, copy {Копирование} other {Перемещение}} завершено: файл уже в целевой папке и не {verb, select, copy {скопирован} other {перемещен}}.",
+  "@transfer.fileOnly.allSkippedSingle": {
+    "sourceHash": "9ed3c9a"
+  },
+  "transfer.fileOnly.allSkippedMany": "{verb, select, copy {Копирование} other {Перемещение}} завершено: пропущены все файлы ({skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}}), поскольку они уже в целевой папке. Ничего не {verb, select, copy {скопировано} other {перемещено}}.",
+  "@transfer.fileOnly.allSkippedMany": {
+    "sourceHash": "5b688cf"
+  },
+  "transfer.fileOnly.mixedCopy": "Копирование завершено: скопировано {transferredText}, пропущено {skippedText}. Все выбранные файлы ({processedText} {processed, plural, one {файл} few {файла} many {файлов} other {файла}}) теперь в целевой папке.",
+  "@transfer.fileOnly.mixedCopy": {
+    "sourceHash": "b00606b"
+  },
+  "transfer.fileOnly.mixedMove": "Перемещение завершено: перемещено {transferredText}, пропущено {skippedText}. {skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}} {skipped, plural, one {уже находился} few {уже находились} many {уже находились} other {уже находились}} в целевой папке.",
+  "@transfer.fileOnly.mixedMove": {
+    "sourceHash": "1457a4f"
+  },
+  "transfer.appearedDuringMove": "Во время перемещения {countText} {count, plural, one {объект появился} few {объекта появились} many {объектов появилось} other {объекта появилось}} и {count, plural, one {остается} few {остаются} many {осталось} other {осталось}} в исходном месте. Исходные папки: {scope, select, manyFolders {{folderName} и другие исходные папки} other {{folderName}}}.",
+  "@transfer.appearedDuringMove": {
+    "sourceHash": "b884882"
+  },
+  "transfer.changedDuringMove": "Во время перемещения {countText} {count, plural, one {объект изменился} few {объекта изменились} many {объектов изменилось} other {объекта изменилось}} и {count, plural, one {остается} few {остаются} many {осталось} other {осталось}} в исходном месте. Исходные папки: {scope, select, manyFolders {{folderName} и другие исходные папки} other {{folderName}}}.",
+  "@transfer.changedDuringMove": {
+    "sourceHash": "b446f54"
+  }
+}

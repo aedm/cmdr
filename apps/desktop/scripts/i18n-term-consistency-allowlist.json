@@ -393,6 +393,60 @@
         "source": "{count, plural, one {file} other {files}}",
         "reason": "The status-bar selection summary drops the measure word (`{檔案}`) because it composes as `3 / 10 檔案` with a `/` connector already separating the numbers; the delete and transfer scan stats render a bare tally and need it (`{個檔案}`). Same word, two grammatical frames."
       }
+    ],
+    "ru": [
+      {
+        "source": "Both",
+        "reason": "Оба типа covers files and folders in the type filter; Оба варианта covers notification choices."
+      },
+      {
+        "source": "Browse",
+        "reason": "Обзор opens a file picker; Просмотреть содержимое navigates inside an archive rather than choosing a file."
+      },
+      {
+        "source": "Dismiss",
+        "reason": "Скрыть removes a hint, toast, or queue row; Закрыть closes a dialog or editing surface."
+      },
+      {
+        "source": "Edit",
+        "reason": "Правка is the macOS Edit menu title; Редактировать is the file editing action."
+      },
+      {
+        "source": "Go",
+        "reason": "Переход is the macOS Go menu title; Перейти executes path navigation."
+      },
+      {
+        "source": "Modified",
+        "reason": "Дата изменения names file timestamps; Измененные filters customized keyboard shortcuts, not dates."
+      },
+      {
+        "source": "Rolling back",
+        "reason": "Откат is the operation-progress window title; Откат выполняется is a running status in the operation log."
+      },
+      {
+        "source": "Select",
+        "reason": "Выбор names a menu or AI capability; Выбрать is an action in a selection control."
+      },
+      {
+        "source": "Show hidden files",
+        "reason": "Показать скрытые файлы is the menu command; Показывать скрытые файлы names a persistent setting."
+      },
+      {
+        "source": "View",
+        "reason": "Вид is the native menu containing display options; Просмотр opens the file viewer."
+      },
+      {
+        "source": "Zoom",
+        "reason": "Масштаб names the text-size submenu; Изменить масштаб is the native macOS window resizing command."
+      },
+      {
+        "source": "any",
+        "reason": "Size agrees with masculine размер (любой); date agrees with feminine дата (любая)."
+      },
+      {
+        "source": "{count, plural, one {file} other {files}}",
+        "reason": "The selection summary follows «из» (3 из 21 файла), so fileExplorer.summary.fileNoun requires the genitive; scan counters stand alone and require nominative/number-governed forms (21 файл)."
+      }
     ]
   },
   "notYetReviewed": {

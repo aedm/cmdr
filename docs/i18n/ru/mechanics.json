@@ -1,0 +1,22 @@
+{
+  "$comment": "Russian typography follows live macOS Finder Russian LocalizableMerged.json (guillemet quotations and U+2026 ellipsis) and docs/i18n/ru/style.md. Russian grammatical uncertainty is resolved with ICU or restructuring, never bracketed endings.",
+  "quotes": {
+    "primary": ["«", "»"],
+    "nested": ["„", "“"]
+  },
+  "ellipsis": {
+    "glyph": "…"
+  },
+  "apostrophes": ["’"],
+  "spacing": [],
+  "hedges": [
+    {
+      "pattern": "\\p{L}\\((?:а|ы|и|ов|ев|ей|я|ь|а/ы|а/ов)\\)",
+      "why": "Bracketed Russian number or case ending; use ICU plural or restructure."
+    },
+    {
+      "pattern": "\\p{L}/(?:а|ы|и|ов|ев|ей|я)(?!\\p{L})",
+      "why": "Slashed Russian ending; use ICU plural or restructure."
+    }
+  ]
+}
