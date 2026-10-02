@@ -299,7 +299,7 @@ pub(super) async fn a_copy_between_two_buckets_runs_on_the_server(target: &S3Tar
     );
 }
 
-/// A provider that copies within one bucket only (Hetzner) streams a
+/// A provider that copies within one bucket only (Spaces) streams a
 /// cross-bucket copy through the Mac instead, with the same bytes landing.
 pub(super) async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(target: &S3Target) {
     let second = target.bucket_2().expect("a cross-bucket cell needs a second bucket");

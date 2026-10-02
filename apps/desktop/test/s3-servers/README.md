@@ -149,6 +149,15 @@ The hostile cells (`cmdr-s3`'s `live_hostile_test.rs` and `live_hostile_failure_
 (`live_hostile_sizes`, `live_hostile_cancel`, `live_hostile_crash`, `live_hostile_races`, …). Findings:
 `docs/notes/s3/live-hostile-2026-10.md`.
 
+`live-engine.sh` runs the app's transfer-engine flows against the same accounts: the scenarios the app crate's
+`s3_integration_` Docker cells run (copy, move, merge under every policy, rename, delete, cancel, pause, rollback), plus
+copies between two providers, archived objects on AWS, and the requests each operation sends against the cost estimate.
+Same arguments (`./live-engine.sh r2,gcs`, `./live-engine.sh all copies_between`), `cargo test` one cell at a time, one
+`LIVE [provider] flow: ok` line per pair; `RUST_LOG=copy=debug,volume=info` explains a failure. A full pass is roughly
+5–15 minutes per provider (GCS and R2 the slowest), so run a few providers at a time. ❗ The 1,005-object cells send
+thousands of HEADs: on a B2 account with a daily Class B cap they use it up, and every B2 read then answers 403 until
+midnight GMT. Findings: `docs/notes/s3/live-engine-2026-10.md`.
+
 `live-env.sh` is the single source of the variables (`CMDR_S3_LIVE_<NAME>_{REGION,KEY_ID,SECRET,BUCKET,BUCKET_2}` and a
 few extras): credentials from David's sops store through `secret`, bucket names as defaults. Any variable already set
 wins. ❗ It never echoes a value. The buckets stay between runs; each cell deletes what it wrote under

@@ -1320,6 +1320,10 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
     stays with its new bytes, the rest goes, and `AppearedDuringMove` counts it. The saved-over file changes SIZE,
     since a server's whole-second mtime can't tell a same-size save apart.
 - **Which backend drives what.** SFTP, SMB, and WebDAV drive all six; ADB drives `network_transfer_test_support.rs`.
+  S3 drives the transfer, semantics, safety, and move-drift scenarios (`s3_transfer_*`), minus the name-taken-mid-upload
+  cell, whose guard is a staged landing S3 never makes. Its scenarios take a `cmdr_s3::volume::testing::S3Target`, so
+  `s3_live_engine_test.rs` runs the same bodies against real accounts by hand (`live-engine.sh`; each scenario's waits
+  stretch to ten minutes under `CMDR_S3_LIVE=1`, `network_transfer_test_support::budget`).
   SFTP also points the same-server move and copy, the inline rename, and the remote zip edit at
   `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace. WebDAV points
   the zip browse at `webdav-fixture-norange`, whose whole-file answer to every ranged GET is what a zip reader's many

@@ -175,6 +175,20 @@ saw, so an allowlist trusting a header a provider ignores fails the run; § "Ver
 are seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's
 objects persist across runs.
 
+**One scenario, either server: `testing::S3Target`.** A fixture or a live account (`testing::live`, the one list of
+accounts both runners read), with the same seeding, probing, unfinished-upload listing, and prefix cleanup on both; the
+fixture free functions delegate to it. The app's S3 engine suites take an `S3Target`, so their Docker cells and
+`backend_suites/s3_live_engine_test.rs` (run by `apps/desktop/test/s3-servers/live-engine.sh`) share every body: the
+byte path, renames, the shared semantics and safety scenarios, a cancel between parts, a cut-off overwrite, rollback, a
+1,005-object delete, copies between providers, archived objects on AWS, and the request counts below. A live flow
+removes everything its run wrote (`S3Target::clean_run`). Findings: `docs/notes/s3/live-engine-2026-10.md`.
+
+**Counting requests.** Under the `testing` feature `S3Client` tallies every signed request by S3 operation
+(`testing::take_sent_requests`), and `Workload::counted_requests` gives the estimate's counts by the same names, so a
+cell compares what the engine sent with what `s3_costs` estimates (`s3_engine_integration_test.rs`). The requests that
+move bytes match on both fixtures and every live provider; the engine's HEADs and LISTs around them, and the volume
+delete's per-object requests, don't (the note has the numbers).
+
 ## The public surface is capped
 
 Root re-exports: 7 items (`S3ConnectionParams`, `S3Provider`, `InvalidProvider`, `S3ConnectError`, `S3Volume`,
