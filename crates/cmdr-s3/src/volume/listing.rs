@@ -177,6 +177,19 @@ pub(super) fn folder_contents(page: &ObjectPage, prefix: &str) -> FolderContents
     }
 }
 
+/// S3's key ceiling, in UTF-8 bytes.
+const MAX_KEY_BYTES: usize = 1024;
+
+/// Whether any key can start with `wire_prefix` (as it goes out, NFC on R2).
+/// ❗ Every "what's under this?" listing asks for `<key>/`, one byte past the
+/// ceiling for a key at it, and B2 refuses such a prefix with `400
+/// InvalidRequest` where others answer an empty page, which made a 1,024-byte
+/// object impossible to delete there. So a prefix past the ceiling is answered
+/// as empty without a request.
+pub(super) fn can_hold_keys(wire_prefix: &str) -> bool {
+    wire_prefix.len() <= MAX_KEY_BYTES
+}
+
 #[cfg(test)]
 #[path = "listing_test.rs"]
 mod listing_test;

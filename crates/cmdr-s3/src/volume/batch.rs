@@ -19,6 +19,7 @@ use cmdr_fs::volume::{ScannedFile, SubtreeTally, VolumeError};
 
 use super::S3Volume;
 use super::errors::map_s3_error;
+use super::listing::can_hold_keys;
 use super::paths::{Target, target_of};
 use super::query::body_error;
 use crate::error::S3Error;
@@ -69,9 +70,11 @@ impl S3Volume {
         // Every folder the keys name, relative to `prefix` ("" is the folder
         // itself): S3 has no folders, only the slashes in keys and markers.
         let mut folders: HashSet<String> = HashSet::from([String::new()]);
+        // A prefix past the key ceiling holds nothing (`listing::can_hold_keys`).
+        let listable = can_hold_keys(&client.profile().normalize_key(&prefix));
         let mut found = false;
         let mut token: Option<String> = None;
-        loop {
+        while listable {
             // One past the cap is all it takes to know there's more.
             let room = cap.saturating_sub(tally.files).saturating_add(1);
             let params = ListObjectsParams {

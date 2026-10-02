@@ -346,6 +346,10 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
 - **Hetzner reached as "Other"** (`live_an_overwrite_off_the_allowlist_goes_in_one_part`, 2026-10-02): an overwrite goes
   as a one-part multipart upload (ETag `…-1`); one cancelled right before its completion kept the original byte for byte
   and left no upload.
+- **Names** (`live_hostile_names_round_trip`, 2026-10-02): NFC and NFD, emoji, RTL, leading and trailing spaces, a
+  trailing dot, `...`, `%`, `+`, `#`, `?`, `&`, `\`, quotes, and a 1,024-byte key round-trip everywhere. ❗ GCS refuses
+  a key holding CR or LF (400), and B2 any control character, a tab included (`400 InvalidRequest`); both surface as an
+  `IoError`, nothing lands.
 - **Unverified, and why**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
 - ❗ **A copy's ETag pin is ignored on Hetzner, Spaces, and Wasabi**, so a source replaced mid-copy could be stitched
   from two versions there; AWS, R2, and B2 refuse the part. Hence `enforces_copy_source_pin` (AWS, R2, B2) and the HEAD
@@ -470,6 +474,10 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an
   upload ID it didn't record, and never lists the server's uploads to decide: another tool's upload may be live.
+- ❗ **"In flight" is per process, so the sweep relies on one Cmdr per data dir** (`instance_lock.rs` in the app). A
+  second LIVE process on the same record has its running upload aborted by the first one's sweep ("the server ended the
+  upload"), while an upload a SIGKILLed process left is swept as designed (verified on R2, GCS, and Spaces,
+  `live_hostile_crash_recovery`, 2026-10-02). Don't share a state dir between processes.
 
 ## Folders, delete, and rename
 
@@ -483,7 +491,11 @@ folder wins over an object of the same name (`NameHolds`), except where the list
   in the way at any depth; every level it creates gets a marker, so a `mkdir -p` folder survives emptying.
 - **`delete`** reads one listing of `name/` capped at two keys (`listing::folder_contents`): anything but the marker is
   `ENOTEMPTY`, the marker alone deletes the marker, nothing at all falls back to a HEAD and deletes the object (or
-  answers `NotFound`). A LIST per delete is a class-A request.
+  answers `NotFound`). A LIST per delete is a class-A request. ❗ Every such "what's under it?" listing (delete, stat's
+  fallback, `rename_work`, `tally_subtree`, a folder listing) is skipped for a prefix past the 1,024-byte key ceiling
+  (`listing::can_hold_keys`): `<key>/` for a key at the ceiling can't match anything, and B2 refuses it with
+  `400 InvalidRequest` rather than an empty page, which made such an object undeletable there (verified on B2,
+  `live_hostile_names_round_trip`, 2026-10-02; pinned by `long_key_test.rs` over `fake_s3.rs`).
 - **`delete_files`** (`batch.rs`) is the batch a move's source sweep sends per folder level: `DeleteObjects`, 1,000 keys
   a request with `Content-MD5`, quiet, its body parsed even on 200, each failed key reported against its own path
   (matched NFC on R2). ❗ By key, with no folder check: the trait's contract is files the caller just listed.

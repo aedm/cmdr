@@ -32,7 +32,7 @@ use log::{debug, warn};
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::listing::{FolderContents, folder_contents};
+use super::listing::{FolderContents, can_hold_keys, folder_contents};
 use super::paths::{Holder, Resolved, Target, target_of};
 use super::query::body_error;
 use super::writes::{Landed, Landing, judge_landing};
@@ -175,18 +175,23 @@ impl S3Volume {
             return Ok(());
         }
         let prefix = format!("{key}/");
-        let params = ListObjectsParams {
-            prefix: &prefix,
-            delimiter: Some("/"),
-            continuation_token: None,
-            max_keys: Some(2),
-        };
-        let request =
-            ops::list_objects(client.profile(), bucket, &params).map_err(|_| VolumeError::NotFound(remote.clone()))?;
-        let answer = self.ask(&client, request, &remote).await?;
-        let page = parse_list_objects(&answer.text()).map_err(|e| body_error(&e, &remote))?;
         let wire_prefix = client.profile().normalize_key(&prefix).into_owned();
-        let target_key = match folder_contents(&page, &wire_prefix) {
+        let contents = if can_hold_keys(&wire_prefix) {
+            let params = ListObjectsParams {
+                prefix: &prefix,
+                delimiter: Some("/"),
+                continuation_token: None,
+                max_keys: Some(2),
+            };
+            let request = ops::list_objects(client.profile(), bucket, &params)
+                .map_err(|_| VolumeError::NotFound(remote.clone()))?;
+            let answer = self.ask(&client, request, &remote).await?;
+            let page = parse_list_objects(&answer.text()).map_err(|e| body_error(&e, &remote))?;
+            folder_contents(&page, &wire_prefix)
+        } else {
+            FolderContents::Nothing
+        };
+        let target_key = match contents {
             FolderContents::Holds => {
                 return Err(VolumeError::IoError {
                     message: format!("{remote} still holds something"),

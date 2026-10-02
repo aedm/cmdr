@@ -377,6 +377,10 @@ mod live_hostile_support;
 #[cfg(test)]
 mod live_hostile_test;
 #[cfg(test)]
+mod fake_s3;
+#[cfg(test)]
+mod long_key_test;
+#[cfg(test)]
 mod live_protocol_test;
 #[cfg(test)]
 mod live_support;

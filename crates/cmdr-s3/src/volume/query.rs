@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::listing::{Child, FILE_SUFFIX, children_of, settle};
+use super::listing::{Child, FILE_SUFFIX, can_hold_keys, children_of, settle};
 use super::paths::{Holder, Resolved, Target, child_of, target_of};
 use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, parse_mtime};
@@ -83,6 +83,9 @@ impl S3Volume {
                 };
                 // R2 answers in NFC, so the prefix it echoes is the composed one.
                 let wire_prefix = client.profile().normalize_key(&prefix).into_owned();
+                if !can_hold_keys(&wire_prefix) {
+                    return Err(VolumeError::NotFound(remote));
+                }
                 let mut token: Option<String> = None;
                 // Whether the listing saw ANY key under the prefix, the folder's
                 // own marker included: an S3 "folder" with none doesn't exist.
@@ -180,6 +183,9 @@ impl S3Volume {
         remote: &str,
     ) -> Result<bool, VolumeError> {
         let prefix = format!("{key}/");
+        if !can_hold_keys(&client.profile().normalize_key(&prefix)) {
+            return Ok(false);
+        }
         let params = ListObjectsParams {
             prefix: &prefix,
             delimiter: Some("/"),
