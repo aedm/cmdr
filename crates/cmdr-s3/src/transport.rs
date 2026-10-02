@@ -335,6 +335,9 @@ impl S3Client {
         #[cfg(any(test, feature = "testing"))]
         {
             let operation = operation_of(request);
+            // Which request went where, in order, for a cell attributing its
+            // counts (`RUST_LOG=s3_sent=trace`).
+            log::trace!(target: "s3_sent", "{operation} {} {:?}", request.path, request.query);
             *self
                 .sent
                 .lock()

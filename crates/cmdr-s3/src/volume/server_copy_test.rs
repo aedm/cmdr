@@ -8,7 +8,6 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use cmdr_fs::volume::VolumeError;
 
 use super::{SourceObject, Window, part_refusal};
-use crate::ops::MetadataDirective;
 use crate::transport::Answer;
 
 fn head(pairs: &[(&str, &str)]) -> Answer {
@@ -27,7 +26,7 @@ fn head(pairs: &[(&str, &str)]) -> Answer {
 }
 
 #[test]
-fn a_source_with_its_own_mtime_is_copied_keeping_every_header() {
+fn a_source_with_its_own_mtime_keeps_it_through_a_restated_copy() {
     let object = SourceObject::from_head(&head(&[
         ("content-length", "42"),
         ("etag", "\"abc\""),
@@ -40,7 +39,7 @@ fn a_source_with_its_own_mtime_is_copied_keeping_every_header() {
         object.mtime,
         Some(UNIX_EPOCH + Duration::from_millis(1_354_040_105_500))
     );
-    assert_eq!(object.directive(), MetadataDirective::Copy);
+    assert_eq!(object.restated().mtime, object.mtime);
 }
 
 /// ❗ The date survives a copy even when the source never carried an mtime:
@@ -56,9 +55,7 @@ fn a_source_without_an_mtime_has_its_upload_time_written_as_one() {
         ("x-amz-meta-cmdr-write", "token-of-another-write"),
         ("x-amz-request-id", "not-metadata"),
     ]));
-    let MetadataDirective::Replace(metadata) = object.directive() else {
-        panic!("a source without an mtime is restated");
-    };
+    let metadata = object.restated();
     assert_eq!(
         metadata.mtime,
         httpdate::parse_http_date("Wed, 21 Oct 2015 07:28:00 GMT").ok()
@@ -80,7 +77,7 @@ fn a_source_without_an_mtime_has_its_upload_time_written_as_one() {
 fn a_source_with_no_date_at_all_is_copied_as_it_is() {
     let object = SourceObject::from_head(&head(&[("content-length", "1")]));
     assert_eq!(object.mtime, None);
-    assert_eq!(object.directive(), MetadataDirective::Copy);
+    assert_eq!(object.restated().mtime, object.mtime);
 }
 
 #[test]

@@ -90,18 +90,11 @@ impl SourceObject {
         }
     }
 
-    /// What a `CopyObject` does with the metadata: keep it all by `COPY` when
-    /// the source already carries its mtime (or there's no date to add), else
-    /// restate it with `Last-Modified` written as the mtime.
-    pub(super) fn directive(&self) -> MetadataDirective {
-        if self.has_mtime || self.mtime.is_none() {
-            return MetadataDirective::Copy;
-        }
-        MetadataDirective::Replace(self.restated())
-    }
-
-    /// The metadata a copy that can't use `COPY` writes (a multipart copy
-    /// names it at `CreateMultipartUpload`).
+    /// The metadata every server-side copy writes: the source's date (its
+    /// `x-amz-meta-mtime`, else its `Last-Modified`), its content headers, and
+    /// its other user metadata, never another write's token. A one-request
+    /// copy sends it as `REPLACE`, a multipart copy at `CreateMultipartUpload`,
+    /// each beside a token of its own.
     pub(super) fn restated(&self) -> ObjectMetadata {
         ObjectMetadata {
             mtime: self.mtime,
@@ -412,12 +405,20 @@ impl S3Volume {
         progress: &dyn ServerCopyProgress,
     ) -> Result<u64, VolumeError> {
         let size = from.object.size;
-        let directive = from.object.directive();
+        // ❗ Always `REPLACE`, restating the source's date and headers beside
+        // this copy's own token, so a copy whose answer is lost can prove the
+        // destination is ours and whole (`landed_whole`) instead of reporting a
+        // failure the engine would then stream over, and refuse, its own copy
+        // (live, Hetzner, 2026-10-02). Same one request as a `COPY`.
+        let metadata = ObjectMetadata {
+            write_token: Some(crate::metadata::write_token()),
+            ..from.object.restated()
+        };
+        let directive = MetadataDirective::Replace(metadata.clone());
         let source = CopySource {
             bucket: from.bucket,
             key: from.key,
         };
-        let metadata = ObjectMetadata::default();
         let target = WriteTarget {
             bucket: to_bucket,
             key: to_key,
@@ -447,10 +448,16 @@ impl S3Volume {
             if progress.checkpoint().await.is_break() || progress.advanced(0, size).is_break() {
                 return Err(VolumeError::Cancelled(self.volume_id().to_string()));
             }
-            let answer = client
-                .exchange(built.request, COMPLETE_BUDGET)
-                .await
-                .map_err(|e| map_transport_error(&e, self.volume_id(), to_remote))?;
+            let answer = match client.exchange(built.request, COMPLETE_BUDGET).await {
+                Ok(answer) => answer,
+                Err(e) => {
+                    let failure = map_transport_error(&e, self.volume_id(), to_remote);
+                    return self
+                        .landed_after_all(client, &target, size, progress)
+                        .await
+                        .ok_or(failure);
+                }
+            };
             if !answer.status.is_success() {
                 let error = S3Error::from_response(answer.status, &answer.text());
                 if conditional && error.is_not_implemented() && !retried_without_header {
@@ -458,7 +465,16 @@ impl S3Volume {
                     retried_without_header = true;
                     continue;
                 }
-                return Err(map_s3_error(&error, to_remote));
+                let failure = map_s3_error(&error, to_remote);
+                // A server fault may come after the copy applied (S3 says a
+                // 500 can mean either).
+                if error.is_retryable() {
+                    return self
+                        .landed_after_all(client, &target, size, progress)
+                        .await
+                        .ok_or(failure);
+                }
+                return Err(failure);
             }
             // ❗ A copy can fail inside a 200.
             let copied = parse_copy_result(&answer.text()).map_err(|e| body_error(&e, to_remote))?;
@@ -468,6 +484,27 @@ impl S3Volume {
             debug!(target: "volume", "s3 copied {} bytes to {to_remote} in one request", size);
             return Ok(size);
         }
+    }
+
+    /// After a `CopyObject` whose answer never came (or came as a fault): our
+    /// whole copy at the key, carrying this copy's token, means the server
+    /// applied it, so it's reported as copied. One HEAD, ❌ never a delete.
+    async fn landed_after_all(
+        &self,
+        client: &S3Client,
+        target: &WriteTarget<'_>,
+        size: u64,
+        progress: &dyn ServerCopyProgress,
+    ) -> Option<u64> {
+        let head = self.landed_whole(client, target, size).await?;
+        warn!(
+            target: "volume",
+            "s3: the answer to a copy into {} never came, but the server applied it",
+            target.remote
+        );
+        self.remember_written(target, &head);
+        let _ = progress.advanced(size, size);
+        Some(size)
     }
 
     /// A multipart upload of `UploadPartCopy` ranges, recorded in the ledger

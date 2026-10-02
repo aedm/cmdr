@@ -254,9 +254,8 @@ impl S3Target {
         self.stored_header(bucket, key, crate::metadata::MTIME_HEADER).await
     }
 
-    /// The `x-amz-meta-cmdr-write` token an object carries: every PUT Cmdr
-    /// streams writes a fresh one, and a server-side copy of an object that had
-    /// none writes none, so it tells a streamed copy from a server-side one.
+    /// The `x-amz-meta-cmdr-write` token an object carries: every write and
+    /// server-side copy Cmdr makes stamps a fresh one.
     pub async fn stored_write_token(&self, bucket: &str, key: &str) -> Option<String> {
         self.stored_header(bucket, key, crate::metadata::WRITE_TOKEN_HEADER)
             .await

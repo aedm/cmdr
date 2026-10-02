@@ -134,6 +134,18 @@ impl FakeS3 {
         self.world.lock_ignore_poison().objects.get(key).cloned()
     }
 
+    /// [`Self::seed`] with `x-amz-meta-*` header lines (`"x-amz-meta-mtime: 1"`).
+    pub(super) fn seed_with_meta(&self, key: &str, len: usize, meta: &[&str]) {
+        self.world.lock_ignore_poison().objects.insert(
+            key.to_string(),
+            Stored {
+                len,
+                etag: "\"original\"".into(),
+                meta: meta.iter().map(|line| (*line).to_string()).collect(),
+            },
+        );
+    }
+
     pub(super) fn seed(&self, key: &str, len: usize) {
         self.world.lock_ignore_poison().objects.insert(
             key.to_string(),
@@ -275,6 +287,39 @@ async fn answer(
             }
         }
         ("PUT", Some(_), Some(_)) => return None,
+        // `CopyObject`: the source's bytes at the key, with the request's
+        // metadata under `REPLACE` and the source's under `COPY`.
+        ("PUT", Some(key), None) if header(head, "x-amz-copy-source").is_some() => {
+            let source = header(head, "x-amz-copy-source")
+                .and_then(|source| source.strip_prefix(&format!("/{BUCKET}/")))
+                .map(|key| percent_decode_str(key).decode_utf8_lossy().into_owned())
+                .unwrap_or_default();
+            let replace = header(head, "x-amz-metadata-directive") == Some("REPLACE");
+            let (etag, hang) = {
+                let mut world = world.lock_ignore_poison();
+                let Some(from) = world.objects.get(&source).cloned() else {
+                    return Some(error("404 Not Found", "NoSuchKey"));
+                };
+                world.writes += 1;
+                let etag = format!("\"c{}\"", world.writes);
+                let meta = if replace { meta_lines(head) } else { from.meta };
+                world.objects.insert(
+                    key,
+                    Stored {
+                        len: from.len,
+                        etag: etag.clone(),
+                        meta,
+                    },
+                );
+                (etag, world.hang_up_after_commit)
+            };
+            if hang {
+                return None;
+            }
+            ok_xml(&format!(
+                "<CopyObjectResult><ETag>{etag}</ETag><LastModified>2026-10-02T10:00:00.000Z</LastModified></CopyObjectResult>"
+            ))
+        }
         ("PUT", Some(key), None) if body_len < length => {
             let mut world = world.lock_ignore_poison();
             if world.keep_cut_off_bodies {

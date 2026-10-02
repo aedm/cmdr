@@ -363,6 +363,8 @@ mod conformance_test;
 #[cfg(test)]
 mod connection_drop_test;
 #[cfg(test)]
+mod copy_landed_test;
+#[cfg(test)]
 mod copy_test;
 #[cfg(test)]
 mod fake_s3;

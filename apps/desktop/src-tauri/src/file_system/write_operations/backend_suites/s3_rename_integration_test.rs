@@ -20,7 +20,9 @@ use std::time::Duration;
 
 use cmdr_fs::volume::{Volume, VolumeError};
 use cmdr_s3::S3Volume;
-use cmdr_s3::volume::testing::{GARAGE, S3Target, Seed, VERSITYGW, distant_mtime, object, self_describing_bytes};
+use cmdr_s3::volume::testing::{
+    GARAGE, S3Target, Seed, VERSITYGW, distant_mtime, object, self_describing_bytes, take_sent_requests,
+};
 
 use super::network_transfer_test_support::{budget, read_all, run_copy, sha256};
 use crate::file_system::volume::manager::get_volume_manager;
@@ -257,8 +259,8 @@ pub(super) async fn a_batch_with_a_folder_renames_as_one_move(target: &S3Target)
     assert!(!volume.exists(&at(&volume, &note)).await);
 }
 
-/// A copy between two buckets of one account runs on the server: the object
-/// arrives without the token a streamed PUT writes.
+/// A copy between two buckets of one account runs on the server: the
+/// destination volume sends a `CopyObject` and no `PutObject`.
 pub(super) async fn a_copy_between_two_buckets_runs_on_the_server(target: &S3Target) {
     let second = target.bucket_2().expect("a cross-bucket cell needs a second bucket");
     let source = target.connect(Some(target.bucket())).await;
@@ -278,25 +280,28 @@ pub(super) async fn a_copy_between_two_buckets_runs_on_the_server(target: &S3Tar
         .await;
     let dest_dir = destination.root().join(prefix.trim_end_matches('/'));
     let source_path = source.root().join(&key);
-    let destination: Arc<dyn Volume> = Arc::new(destination);
+    let destination = Arc::new(destination);
+    destination
+        .create_directory_all(&dest_dir)
+        .await
+        .expect("making the destination folder");
+    take_sent_requests(&destination).await;
     run_copy(
         "s3_cross_bucket_server_side",
         Arc::new(source),
         vec![source_path],
-        Arc::clone(&destination),
+        Arc::clone(&destination) as Arc<dyn Volume>,
         dest_dir.clone(),
     )
     .await;
+    let sent = take_sent_requests(&destination).await;
 
     assert_eq!(
         sha256(&read_all(destination.as_ref(), &dest_dir.join("moved.bin")).await),
         sha256(&bytes)
     );
-    assert_eq!(
-        target.stored_write_token(second, &key).await,
-        None,
-        "copied on the server, so no streamed PUT wrote it"
-    );
+    assert_eq!(sent.get("CopyObject"), Some(&1), "copied on the server: {sent:?}");
+    assert_eq!(sent.get("PutObject"), None, "no byte went through the Mac: {sent:?}");
 }
 
 /// A provider that copies within one bucket only (Spaces) streams a
@@ -312,23 +317,31 @@ pub(super) async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(target: 
     target.seed(target.bucket(), &[object(&key, &bytes)]).await;
     let dest_dir = destination.root().join(prefix.trim_end_matches('/'));
     let source_path = source.root().join(&key);
-    let destination: Arc<dyn Volume> = Arc::new(destination);
+    let destination = Arc::new(destination);
+    destination
+        .create_directory_all(&dest_dir)
+        .await
+        .expect("making the destination folder");
+    take_sent_requests(&destination).await;
     run_copy(
         "s3_cross_bucket_streamed",
         Arc::new(source),
         vec![source_path],
-        Arc::clone(&destination),
+        Arc::clone(&destination) as Arc<dyn Volume>,
         dest_dir.clone(),
     )
     .await;
+    let sent = take_sent_requests(&destination).await;
 
     assert_eq!(
         sha256(&read_all(destination.as_ref(), &dest_dir.join("moved.bin")).await),
         sha256(&bytes)
     );
-    assert!(
-        target.stored_write_token(second, &key).await.is_some(),
-        "streamed through the Mac, so a PUT wrote it"
+    assert_eq!(sent.get("CopyObject"), None, "{sent:?}");
+    assert_eq!(
+        sent.get("PutObject"),
+        Some(&1),
+        "streamed through the Mac, so a PUT wrote it: {sent:?}"
     );
 }
 

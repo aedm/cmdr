@@ -617,14 +617,22 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 - **No-overwrite**: `CopyObject` takes R2's `cf-copy-destination-if-none-match`, else a HEAD first (VersityGW and Garage
   ignore `If-None-Match` on a copy, fixture README); a multipart copy refuses at its completion, as an upload does. A
   HEAD after every copy verifies it.
-- **The date survives**: a source with its own `x-amz-meta-mtime` is copied with `COPY` (every header kept); one without
-  is restated (`REPLACE`) with its `Last-Modified` as the mtime, its content headers, and its other user metadata (both
-  fixtures honour `REPLACE`, `copy_test.rs`). A multipart copy names the same metadata at its creation.
-- ❗ **A multipart copy carries its own write token** (`x-amz-meta-cmdr-write`, never the source's), so a
-  `CompleteMultipartUpload` whose answer is lost asks `landed_whole` (one HEAD, never a delete): our token at the
-  source's size means the server completed, and the copy reports it. Size and ETag shape alone can't prove that (an
-  earlier identical copy matches both). No token, any other size, or no object: the copy fails and aborts its upload,
-  which is safe because a move keeps its source (`late_cancel_test.rs`). A one-request `CopyObject` needs none of this.
+- **The date survives**: every server-side copy restates the source's metadata (`REPLACE`): its `x-amz-meta-mtime`, else
+  its `Last-Modified` as the mtime, its content headers (`Content-Type`, `Content-Encoding`, `Cache-Control`,
+  `Content-Disposition`, `Content-Language`), and its other user metadata (both fixtures honour `REPLACE`,
+  `copy_test.rs`). A multipart copy names the same metadata at its creation. Lost by restating: `Expires` and a website
+  redirect, which nothing Cmdr writes uses.
+- ❗ **Every server-side copy carries its own write token** (`x-amz-meta-cmdr-write`, never the source's), so a copy
+  whose answer is lost asks `landed_whole` (one HEAD, never a delete): our token at the source's size means the server
+  applied it, and the copy reports it. For a `CompleteMultipartUpload` that's any failed completion; for a one-request
+  `CopyObject`, a transport failure or a server fault. Size and ETag shape alone can't prove it (an earlier identical
+  copy matches both). No token, any other size, or no object: the copy fails (a multipart one aborts its upload), which
+  is safe because a move keeps its source. Decision/Why the one-request copy too: before it, a `CopyObject` whose answer
+  was lost failed, the engine fell back to streaming the file, and the streamed write's no-overwrite check refused the
+  name the copy itself had taken, so a rename stopped with `DestinationExists` on a fresh key (live, Hetzner, once in
+  six 1,005-object renames, 2026-10-02). Restating instead of `COPY` costs no request: the source HEAD it reads from is
+  sent either way. Pinned by `late_cancel_test.rs` (parts) and `copy_landed_test.rs` (one request), both over
+  `fake_s3.rs`.
 
 ## Responses
 
