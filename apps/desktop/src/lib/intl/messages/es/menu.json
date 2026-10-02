@@ -478,6 +478,22 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
+  "menu.context.copyShareLink": "Copy share link",
+  "@menu.context.copyShareLink": {
+    "sourceHash": "d31483e"
+  },
+  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "@menu.context.shareLinkSevenDays": {
+    "sourceHash": "06949d8"
+  },
+  "menu.context.shareLinkOneDay": "Expires in one day",
+  "@menu.context.shareLinkOneDay": {
+    "sourceHash": "5ff3dbc"
+  },
+  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "@menu.context.shareLinkOneHour": {
+    "sourceHash": "faf9c50"
+  },
   "menu.context.askGemini": "Preguntar a Gemini",
   "@menu.context.askGemini": {
     "sourceHash": "7eec77f"

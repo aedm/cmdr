@@ -55,6 +55,14 @@
   "@fileExplorer.restrictedFolder.label": {
     "sourceHash": "bbcf72f"
   },
+  "fileExplorer.archivedFile.label": "Archived",
+  "@fileExplorer.archivedFile.label": {
+    "sourceHash": "bdb8650"
+  },
+  "fileExplorer.archivedFile.tooltip": "Archived in cold storage. Restore it in your storage provider’s console before opening or copying it.",
+  "@fileExplorer.archivedFile.tooltip": {
+    "sourceHash": "8897d71"
+  },
   "fileExplorer.diskSpace.free": "Còn trống {freeText} trong {totalText} ({percentText}%)",
   "@fileExplorer.diskSpace.free": {
     "sourceHash": "97781f4"
@@ -816,6 +824,10 @@
   "fileExplorer.rename.chainKeptOriginalNameAndOthers": "{others, plural, other {{othersText} tệp khác vẫn giữ nguyên tên}}, “{name}” cũng vậy: {reason}",
   "@fileExplorer.rename.chainKeptOriginalNameAndOthers": {
     "sourceHash": "016797b"
+  },
+  "fileExplorer.rename.needsOwnMoveDialog": "Renaming it copies on the server, which needs its own Move dialog. Rename it again by itself.",
+  "@fileExplorer.rename.needsOwnMoveDialog": {
+    "sourceHash": "87110e0"
   },
   "fileExplorer.rename.unconfirmed": "Chưa xác nhận được việc đổi tên “{name}”. Ổ đĩa có thể chậm, nên việc đổi tên vẫn có thể đã hoàn tất.",
   "@fileExplorer.rename.unconfirmed": {

@@ -623,6 +623,18 @@
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
   },
+  "errors.listing.coldStorage.title": "This file is archived",
+  "@errors.listing.coldStorage.title": {
+    "sourceHash": "73da082"
+  },
+  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "@errors.listing.coldStorage.explanation": {
+    "sourceHash": "78f52d7"
+  },
+  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "@errors.listing.coldStorage.suggestion": {
+    "sourceHash": "0becf43"
+  },
   "errors.listing.invalidName.title": "Ez a név itt nem működik",
   "@errors.listing.invalidName.title": {
     "sourceHash": "7ced906"
@@ -1677,6 +1689,30 @@
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
   },
+  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "@errors.write.sourceInColdStorage.title": {
+    "sourceHash": "73da082"
+  },
+  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "@errors.write.sourceInColdStorage.message": {
+    "sourceHash": "1015fe5"
+  },
+  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "@errors.write.sourceInColdStorage.suggestion": {
+    "sourceHash": "f279603"
+  },
+  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "@errors.write.sourceChanged.title": {
+    "sourceHash": "1c63c8b"
+  },
+  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "@errors.write.sourceChanged.message": {
+    "sourceHash": "4c404e0"
+  },
+  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "@errors.write.sourceChanged.suggestion": {
+    "sourceHash": "97fc945"
+  },
   "errors.write.newDataKeptAt.title": "Az új fájlod más néven van meg",
   "@errors.write.newDataKeptAt.title": {
     "sourceHash": "06bc297"
@@ -1872,6 +1908,14 @@
   "errors.volume.deletePending": "A fájl törlése folyamatban van, de valami még nyitva tartja. Próbáld újra egy pillanat múlva.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "@errors.volume.coldStorage": {
+    "sourceHash": "c742f7c"
+  },
+  "errors.volume.sourceChanged": "“{path}” changed while Cmdr was copying it, so Cmdr saved nothing. Try again to copy the new version.",
+  "@errors.volume.sourceChanged": {
+    "sourceHash": "18062cb"
   },
   "errors.volume.ambiguousName": "Több elem is illik erre az útvonalra a szerveren: „{path}”, ezért a Cmdr nem választott. Válaszd ki inkább a mappájából.",
   "@errors.volume.ambiguousName": {

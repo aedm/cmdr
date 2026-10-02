@@ -248,6 +248,10 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
+  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "@fileOperations.transferDialog.renameByMoveHint": {
+    "sourceHash": "31987cc"
+  },
   "fileOperations.transferDialog.targetWillBeCreatedMove": "Thư mục này chưa tồn tại. Cmdr sẽ tạo nó khi di chuyển.",
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
@@ -299,6 +303,18 @@
   "fileOperations.transferDialog.estimatedSizeTooltip": "Ước tính sơ bộ kích cỡ tệp zip sau khi nén. Kích cỡ thực tế có thể khác.",
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
+  },
+  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "@fileOperations.s3Cost.line": {
+    "sourceHash": "e8db02b"
+  },
+  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "@fileOperations.s3Cost.infoLabel": {
+    "sourceHash": "19637c5"
+  },
+  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "@fileOperations.s3Cost.infoText": {
+    "sourceHash": "379665c"
   },
   "fileOperations.transferDialog.scanUnresponsive": "Nguồn không phản hồi, nên đây là tất cả những gì chúng tôi đếm được.",
   "@fileOperations.transferDialog.scanUnresponsive": {

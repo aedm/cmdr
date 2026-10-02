@@ -556,6 +556,30 @@
   "@commands.cloudAskGemini.description": {
     "sourceHash": "37d4e7c"
   },
+  "commands.fileCopyShareLink.label": "Copy share link (seven days)",
+  "@commands.fileCopyShareLink.label": {
+    "sourceHash": "314bee8"
+  },
+  "commands.fileCopyShareLink.description": "Copies a link anyone can open to download the file for the next seven days",
+  "@commands.fileCopyShareLink.description": {
+    "sourceHash": "eb35b64"
+  },
+  "commands.fileCopyShareLinkOneDay.label": "Copy share link (one day)",
+  "@commands.fileCopyShareLinkOneDay.label": {
+    "sourceHash": "468010c"
+  },
+  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "@commands.fileCopyShareLinkOneDay.description": {
+    "sourceHash": "70461ac"
+  },
+  "commands.fileCopyShareLinkOneHour.label": "Copy share link (one hour)",
+  "@commands.fileCopyShareLinkOneHour.label": {
+    "sourceHash": "ffea990"
+  },
+  "commands.fileCopyShareLinkOneHour.description": "Copies a link anyone can open to download the file for the next hour",
+  "@commands.fileCopyShareLinkOneHour.description": {
+    "sourceHash": "45091c5"
+  },
   "commands.tagsToggleGrey.label": "Bật/tắt thẻ Xám",
   "@commands.tagsToggleGrey.label": {
     "sourceHash": "1309c09"
@@ -803,6 +827,26 @@
   "commands.handler.googleDriveCopyFailed": "Chưa sao chép được liên kết Google Drive. {detail}",
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "0af1fd3"
+  },
+  "commands.handler.shareLinkCopied.sevenDays": "Copied a share link. It works for seven days.",
+  "@commands.handler.shareLinkCopied.sevenDays": {
+    "sourceHash": "6f4055b"
+  },
+  "commands.handler.shareLinkCopied.oneDay": "Copied a share link. It works for one day.",
+  "@commands.handler.shareLinkCopied.oneDay": {
+    "sourceHash": "ca08c52"
+  },
+  "commands.handler.shareLinkCopied.oneHour": "Copied a share link. It works for one hour.",
+  "@commands.handler.shareLinkCopied.oneHour": {
+    "sourceHash": "8b9f0cc"
+  },
+  "commands.handler.shareLinkUnavailable": "Move the cursor to a file in an S3 bucket to copy a share link.",
+  "@commands.handler.shareLinkUnavailable": {
+    "sourceHash": "c4ea112"
+  },
+  "commands.handler.shareLinkFailed": "Couldn’t make a share link. {detail}",
+  "@commands.handler.shareLinkFailed": {
+    "sourceHash": "5ff44b7"
   },
   "commands.handler.openTerminalHere.hint": "Đã mở thư mục này trong ứng dụng terminal của bạn. Bạn muốn Cmdr mở ứng dụng khác vào lần sau? Hãy chọn trong Cài đặt, mục “Điều hướng & thao tác tệp”.",
   "@commands.handler.openTerminalHere.hint": {

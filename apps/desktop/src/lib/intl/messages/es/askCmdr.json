@@ -579,6 +579,10 @@
   "@askCmdr.renameUndo.applied": {
     "sourceHash": "b06c599"
   },
+  "askCmdr.renameUndo.swapsSkipped": "Skipped {countText} {count, plural, one {rename} other {renames}} that swap names. Rename them one at a time.",
+  "@askCmdr.renameUndo.swapsSkipped": {
+    "sourceHash": "90e8dfc"
+  },
   "askCmdr.renameUndo.undo": "Deshacer",
   "@askCmdr.renameUndo.undo": {
     "sourceHash": "a8283ad"

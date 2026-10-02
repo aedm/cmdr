@@ -249,6 +249,10 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
+  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "@fileOperations.transferDialog.renameByMoveHint": {
+    "sourceHash": "31987cc"
+  },
   "fileOperations.transferDialog.targetWillBeCreatedMove": "Esta pasta ainda não existe. O Cmdr vai criá-la durante a movimentação.",
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
@@ -300,6 +304,18 @@
   "fileOperations.transferDialog.estimatedSizeTooltip": "Uma estimativa aproximada do zip compactado. O tamanho real pode variar.",
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
+  },
+  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "@fileOperations.s3Cost.line": {
+    "sourceHash": "e8db02b"
+  },
+  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "@fileOperations.s3Cost.infoLabel": {
+    "sourceHash": "19637c5"
+  },
+  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "@fileOperations.s3Cost.infoText": {
+    "sourceHash": "379665c"
   },
   "fileOperations.transferDialog.scanUnresponsive": "A origem não está respondendo, então este tamanho é tudo o que conseguimos contar.",
   "@fileOperations.transferDialog.scanUnresponsive": {
