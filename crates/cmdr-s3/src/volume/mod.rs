@@ -366,6 +366,12 @@ mod copy_test;
 #[cfg(test)]
 mod integration_test;
 #[cfg(test)]
+mod live_flow_test;
+#[cfg(test)]
+mod live_protocol_test;
+#[cfg(test)]
+mod live_support;
+#[cfg(test)]
 mod read_test;
 #[cfg(test)]
 mod reconnect_test;

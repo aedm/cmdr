@@ -490,12 +490,18 @@ impl ProviderProfile {
     }
 }
 
-/// Parts a server-side copy keeps in flight, unless a provider's measurements
-/// say otherwise.
+/// Parts a server-side copy keeps in flight on every provider. 16 was the
+/// fastest of 4, 8, and 16 on R2, Hetzner, and Spaces, with no throttle (a
+/// 140 MiB copy in 8 MiB parts: R2 3.3 → 1.5 s, Hetzner 1.2 → 0.6 s, Spaces
+/// 0.7 → 0.4 s; `live_throughput_by_part_width`, 2026-10-02). GCS copies
+/// whole, so it doesn't apply there.
 const DEFAULT_COPY_CONCURRENCY: usize = 16;
 
-/// Parts an upload keeps in flight, unless a provider's measurements say
-/// otherwise. Each is a whole part (64 MiB at the floor) in memory.
+/// Parts an upload keeps in flight on every provider, each a whole part
+/// (64 MiB at the floor) in memory. Four saturated a ~250 Mbit/s uplink on
+/// R2, Hetzner, and Spaces (eight was no faster); GCS in `us-central1`, a
+/// long way from Stockholm, still gained at eight, which isn't worth 512 MiB
+/// of buffers (`live_throughput_by_part_width`, 2026-10-02).
 const DEFAULT_UPLOAD_CONCURRENCY: usize = 4;
 
 /// AWS's endpoint for `region`, which must already be a valid host part.
