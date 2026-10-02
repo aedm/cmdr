@@ -155,14 +155,61 @@ fn a_streamed_body_is_signed_unsigned_payload() {
     assert_eq!(header(&signed, "x-amz-content-sha256"), "UNSIGNED-PAYLOAD");
 }
 
+/// ❗ The host travels in the URL alone: an explicit `host` header beside
+/// HTTP/2's `:authority` makes Google's front end reset the stream
+/// (`PROTOCOL_ERROR`), so every GCS request failed in the app, whose `reqwest`
+/// speaks HTTP/2 (live, GCS, 2026-10-02). The transport derives `Host` or
+/// `:authority` from the URL, so the URL's spelling is what gets signed.
 #[test]
-fn the_host_header_carries_a_non_default_port() {
-    let request = S3Request::new(Method::GET, "http", "127.0.0.1:17480", "/bucket/a".to_string());
+fn the_signed_request_carries_no_explicit_host_header() {
+    let signed = sign_example(S3Request::new(Method::GET, "https", HOST, "/a".to_string()));
 
-    let signed = sign_example(request);
+    assert!(
+        signed.headers.get("host").is_none(),
+        "the host must come from the URL, never a header of its own"
+    );
+}
 
-    assert_eq!(header(&signed, "host"), "127.0.0.1:17480");
-    assert_eq!(signed.url.as_str(), "http://127.0.0.1:17480/bucket/a");
+#[test]
+fn a_non_default_port_is_signed_and_kept_in_the_url() {
+    let with_port = sign_example(S3Request::new(
+        Method::GET,
+        "http",
+        "127.0.0.1:17480",
+        "/bucket/a".to_string(),
+    ));
+    let without = sign_example(S3Request::new(
+        Method::GET,
+        "http",
+        "127.0.0.1",
+        "/bucket/a".to_string(),
+    ));
+
+    assert_eq!(with_port.url.as_str(), "http://127.0.0.1:17480/bucket/a");
+    assert_ne!(
+        header(&with_port, "authorization"),
+        header(&without, "authorization"),
+        "the port is part of the signed host"
+    );
+}
+
+#[test]
+fn the_host_is_signed_as_the_url_spells_it() {
+    // The URL lowercases a host and drops a scheme's default port; the
+    // transport sends that spelling, so the signature must cover it too.
+    let respelled = sign_example(S3Request::new(
+        Method::GET,
+        "https",
+        "ExampleBucket.S3.amazonaws.com:443",
+        "/test.txt".to_string(),
+    ));
+    let canonical = sign_example(S3Request::new(Method::GET, "https", HOST, "/test.txt".to_string()));
+
+    assert_eq!(
+        respelled.url.as_str(),
+        "https://examplebucket.s3.amazonaws.com/test.txt"
+    );
+    assert_eq!(header(&respelled, "authorization"), header(&canonical, "authorization"));
 }
 
 #[test]

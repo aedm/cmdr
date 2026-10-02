@@ -130,9 +130,19 @@ impl Scope<'_> {
     }
 }
 
-/// Signs `request` with header auth: adds `host`, `x-amz-date`,
-/// `x-amz-content-sha256`, and `Authorization`, signing every header present.
+/// Signs `request` with header auth: adds `x-amz-date`,
+/// `x-amz-content-sha256`, and `Authorization`, signing every header present
+/// plus `host`.
+///
+/// ❗ The host is signed as the URL spells it and sent in the URL alone, ❌
+/// never as a header: the transport derives `Host` (HTTP/1.1) or `:authority`
+/// (HTTP/2) from the URL, and Google's front end resets an HTTP/2 stream that
+/// also carries a `host` header (`PROTOCOL_ERROR` on every GCS request, live,
+/// 2026-10-02). Signing the URL's spelling keeps an IPv6 literal or a dropped
+/// default port from signing one host and sending another.
 pub(crate) fn sign(mut request: S3Request, scope: &Scope<'_>) -> SignedRequest {
+    let url = request.url();
+    request.host = authority_of(&url);
     let payload = PayloadHash::for_body(&request.body);
     request.headers.insert(name("x-amz-date"), value(scope.time.stamp()));
     request
@@ -149,12 +159,7 @@ pub(crate) fn sign(mut request: S3Request, scope: &Scope<'_>) -> SignedRequest {
         scope.credential_scope()
     );
     request.headers.insert(name("authorization"), value(&authorization));
-    // Sent explicitly so the transport can't derive a different spelling
-    // (an IPv6 literal, an explicit default port) from the URL than the one
-    // signed above.
-    request.headers.insert(name("host"), value(&request.host));
 
-    let url = request.url();
     SignedRequest {
         method: request.method,
         url,
@@ -267,6 +272,17 @@ fn headers_to_sign(request: &S3Request) -> Vec<(String, String)> {
 }
 
 /// SigV4's `Trimall`: strip both ends and collapse each run of spaces to one.
+/// The host as `url` spells it, with the port only when it isn't the
+/// scheme's default: exactly what the transport sends as `Host` or
+/// `:authority`.
+fn authority_of(url: &Url) -> String {
+    let host = url.host_str().unwrap_or_default();
+    match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    }
+}
+
 fn trim_all(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
