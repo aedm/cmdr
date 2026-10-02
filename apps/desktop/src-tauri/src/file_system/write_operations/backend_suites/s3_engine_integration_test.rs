@@ -435,7 +435,7 @@ pub(super) async fn a_folder_of_1005_objects_deletes(target: &S3Target) {
 // ── What the engine sends against what the dialog estimates ──────────
 
 /// The label of the comparison's delete, which the fixture cell leaves out.
-const DELETE_OPERATION: &str = "delete the uploaded folder";
+pub(super) const DELETE_OPERATION: &str = "delete the uploaded folder";
 
 /// One operation's requests: what the engine sent, what the estimate counts.
 pub(super) struct RequestComparison {
@@ -460,12 +460,8 @@ const WRITE_PATH_KINDS: [&str; 8] = [
 ];
 
 impl RequestComparison {
-    /// Every kind where the two disagree, as `kind: sent N, estimated M`.
-    pub(super) fn mismatches(&self) -> Vec<String> {
-        self.mismatches_where(|_| true)
-    }
-
-    /// [`Self::mismatches`] among [`WRITE_PATH_KINDS`] only.
+    /// Every kind among [`WRITE_PATH_KINDS`] where the two disagree, as
+    /// `kind: sent N, estimated M`.
     pub(super) fn write_path_mismatches(&self) -> Vec<String> {
         self.mismatches_where(|kind| WRITE_PATH_KINDS.contains(&kind))
     }

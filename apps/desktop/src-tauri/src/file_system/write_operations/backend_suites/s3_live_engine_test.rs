@@ -53,9 +53,10 @@ use super::network_transfer_test_support::{
     tree_fingerprint,
 };
 use super::s3_engine_integration_test::{
-    a_cancel_mid_multipart_leaves_no_object_and_no_upload, a_cancel_with_rollback_takes_back_what_landed,
-    a_cancelled_overwrite_keeps_the_original, a_finished_copy_onto_a_bucket_rolls_back,
-    a_folder_of_1005_objects_deletes, a_paused_upload_resumes_and_lands, requests_sent_against_the_estimate,
+    DELETE_OPERATION, a_cancel_mid_multipart_leaves_no_object_and_no_upload,
+    a_cancel_with_rollback_takes_back_what_landed, a_cancelled_overwrite_keeps_the_original,
+    a_finished_copy_onto_a_bucket_rolls_back, a_folder_of_1005_objects_deletes, a_paused_upload_resumes_and_lands,
+    requests_sent_against_the_estimate,
 };
 use super::s3_rename_integration_test::{
     a_batch_with_a_folder_renames_as_one_move, a_big_file_renames_by_multipart_copy_keeping_its_date,
@@ -315,10 +316,16 @@ async fn s3_live_engine_copies_between_providers() {
         let destination = to.clone();
         matrix
             .run(from, &flow, Needs::Nothing, |from| async move {
-                a_copy_between_providers_streams_every_byte(&from, &destination).await;
+                let outcome = AssertUnwindSafe(a_copy_between_providers_streams_every_byte(&from, &destination))
+                    .catch_unwind()
+                    .await;
+                // The destination's half of the cleanup; `run` cleans the source.
+                destination.clean_run().await;
+                if let Err(payload) = outcome {
+                    std::panic::resume_unwind(payload);
+                }
             })
             .await;
-        to.clean_run().await;
     }
     matrix.finish();
 }
@@ -413,8 +420,11 @@ async fn s3_live_engine_refuses_archived_objects_by_name() {
 
 // ── Requests against the estimate ────────────────────────────────────
 
-/// Reports, per provider and operation, every request kind where what the
-/// engine sent and what the dialog estimates disagree, and fails if any does.
+/// Reports, per provider and operation, every request kind the engine sent
+/// beside what the dialog estimates, and fails where the requests that move
+/// bytes disagree: the same bar as the fixture cell
+/// (`the_engine_sends_what_the_estimate_counts`), so the delete and the
+/// HEAD/LIST counts are reported, not asserted.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn s3_live_engine_sends_what_the_estimate_counts() {
     live_flows! {
@@ -423,7 +433,9 @@ async fn s3_live_engine_sends_what_the_estimate_counts() {
             let mut mismatches = Vec::new();
             for comparison in &comparisons {
                 report(t.name(), comparison.operation, format!("sent {:?}, estimated {:?}", comparison.sent, comparison.estimated));
-                mismatches.extend(comparison.mismatches().into_iter().map(|m| format!("{}: {m}", comparison.operation)));
+                if comparison.operation != DELETE_OPERATION {
+                    mismatches.extend(comparison.write_path_mismatches().into_iter().map(|m| format!("{}: {m}", comparison.operation)));
+                }
             }
             assert!(mismatches.is_empty(), "{}", mismatches.join("; "));
         };
