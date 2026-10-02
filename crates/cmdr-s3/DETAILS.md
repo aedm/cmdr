@@ -201,10 +201,13 @@ table was refused: the app keeps the copy it has.
   on plain `http://`) expects.
 - **GCS's own dialect, for one header** (`request::Dialect::Goog`, set by `ops::guarded` for
   `NoOverwrite::GoogGenerationMatch`): `GOOG4-HMAC-SHA256`, a `<date>/auto/storage/goog4_request` scope keyed from
-  `GOOG4<secret>`, `x-goog-date` / `x-goog-content-sha256`, and every `x-amz-*` header spelled `x-goog-*` (GCS reads
-  `x-goog-meta-mtime` back as `x-amz-meta-mtime`). The same canonical request and HMAC chain as SigV4. Only a
-  create-only GCS Put or Copy goes out this way; everything else stays SigV4 (verified on GCS, `sigv4_test.rs` against
-  an independently computed signature and live.sh, 2026-10-02).
+  `GOOG4<secret>`, `x-goog-date` / `x-goog-content-sha256`, and every `x-amz-*` header spelled `x-goog-*`. The same
+  canonical request and HMAC chain as SigV4. Only a create-only GCS Put or Copy goes out this way; everything else stays
+  SigV4 (verified on GCS, `sigv4_test.rs` against an independently computed signature and live.sh, 2026-10-02). ❗ The
+  metadata written as `x-goog-meta-mtime` / `x-goog-meta-cmdr-write` comes back on an S3-signed HEAD as
+  `x-amz-meta-mtime` / `x-amz-meta-cmdr-write`, the names the stat, the landing check, and the cut-off cleanup read, so
+  readers need no per-provider spelling (`live_create_new_metadata_reads_back_under_the_names_cmdr_reads`, every
+  provider, 2026-10-02; pinned in `sigv4_test.rs`).
 - **Query auth only for share links** (`sigv4::presign`, `ops::share_link`): signs `host` alone, expiry 1 s to 604,800 s
   (seven days, S3's SigV4 ceiling). A signature in a URL ends up in every log that prints the URL, `reqwest::Error`'s
   `Display` included, so API calls never use it.

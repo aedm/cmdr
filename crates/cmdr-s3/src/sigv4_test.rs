@@ -313,6 +313,42 @@ fn a_gcs_dialect_request_signs_as_goog4_with_its_headers_spelled_x_goog() {
     );
 }
 
+/// ❗ Written GCS's way, Cmdr's metadata goes out as `x-goog-meta-mtime` and
+/// `x-goog-meta-cmdr-write`, and GCS answers an S3-signed HEAD of that object
+/// with `x-amz-meta-mtime` and `x-amz-meta-cmdr-write` (live,
+/// `live_create_new_metadata_reads_back_under_the_names_cmdr_reads`,
+/// 2026-10-02): the names every reader (the stat, the landing check, the
+/// cut-off cleanup) asks for on every provider.
+#[test]
+fn metadata_written_gcs_s_way_is_spelled_x_goog_and_read_back_as_x_amz() {
+    use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
+    assert_eq!(MTIME_HEADER, "x-amz-meta-mtime");
+    assert_eq!(WRITE_TOKEN_HEADER, "x-amz-meta-cmdr-write");
+
+    let mut request = S3Request::new(Method::PUT, "https", "storage.googleapis.com", "/b/k".to_string());
+    request.dialect = crate::request::Dialect::Goog;
+    let request = request
+        .header(HeaderName::from_static(MTIME_HEADER), HeaderValue::from_static("1"))
+        .header(
+            HeaderName::from_static(WRITE_TOKEN_HEADER),
+            HeaderValue::from_static("t"),
+        );
+    let credentials = credentials();
+    let time = example_time();
+    let signed = sign(
+        request,
+        &Scope {
+            credentials: &credentials,
+            region: "auto",
+            time: &time,
+        },
+    );
+    assert_eq!(header(&signed, "x-goog-meta-mtime"), "1");
+    assert_eq!(header(&signed, "x-goog-meta-cmdr-write"), "t");
+    assert!(signed.headers.get(MTIME_HEADER).is_none());
+    assert!(signed.headers.get(WRITE_TOKEN_HEADER).is_none());
+}
+
 #[test]
 fn debug_never_prints_the_secret() {
     let printed = format!("{:?}", credentials());

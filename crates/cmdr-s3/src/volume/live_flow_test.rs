@@ -254,6 +254,55 @@ async fn live_volume_flows_end_to_end() {
     }
 }
 
+/// ❗ A `CreateNew` write's metadata comes back under the names the readers
+/// use, `x-amz-meta-mtime` (the stat's date) and `x-amz-meta-cmdr-write` (the
+/// landing check and the cut-off cleanup), on every provider. On GCS the
+/// write goes out signed GCS's way with `x-goog-meta-*` headers
+/// (`NoOverwrite::GoogGenerationMatch`), and an S3-signed HEAD must still
+/// answer `x-amz-meta-*`, or Cmdr would misjudge its own write.
+#[tokio::test(flavor = "multi_thread")]
+async fn live_create_new_metadata_reads_back_under_the_names_cmdr_reads() {
+    let mut misses = Vec::new();
+    for live in live_targets() {
+        let client = live.client();
+        let prefix = live_prefix("metadata-names");
+        let volume = live
+            .connect(Some(&live.bucket))
+            .await
+            .unwrap_or_else(|e| panic!("[{}] the bucket didn't connect: {e:?}", live.name));
+        let key = format!("{prefix}dated.txt");
+        let written = write(&volume, &at(&volume, &key), WriteMode::CreateNew, b"dated".to_vec()).await;
+        let head = live.head(&client, &key).await;
+        let names: Vec<&str> = head
+            .headers
+            .keys()
+            .map(http::HeaderName::as_str)
+            .filter(|name| name.contains("-meta-"))
+            .collect();
+        let stat = volume.get_metadata(&at(&volume, &key)).await;
+        let distant = distant_mtime()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("after the epoch")
+            .as_secs();
+        let dated = stat.as_ref().is_ok_and(|s| s.modified_at == Some(distant));
+        report(
+            &live,
+            "CreateNew's metadata",
+            format!("{written:?}; HEAD meta headers {names:?}; stat keeps the date: {dated}"),
+        );
+        let token = head.header(crate::metadata::WRITE_TOKEN_HEADER);
+        if written.is_err()
+            || head.header(crate::metadata::MTIME_HEADER).is_none()
+            || token.is_none_or(str::is_empty)
+            || !dated
+        {
+            misses.push(format!("[{}] {written:?}, names {names:?}, dated {dated}", live.name));
+        }
+        live.clean(&client, &prefix).await;
+    }
+    assert!(misses.is_empty(), "{misses:#?}");
+}
+
 /// `cmdr stores these bytes verbatim\n`, compressed by the `gzip`, `brotli`,
 /// `zstd`, and Perl `Compress::Zlib` command-line tools.
 const GZIP: &[u8] = &[
