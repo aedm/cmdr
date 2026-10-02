@@ -22,6 +22,8 @@
  */
 
 import type { ServerProtocol } from '$lib/ipc/bindings'
+import { tString } from '$lib/intl/messages.svelte'
+import { parseServerPath } from '$lib/servers/server-path-utils'
 import type { SavedPlace, SavedServer } from '$lib/tauri-commands'
 import type { ConnectionState, NetworkHost, VolumeInfo } from '../types'
 import { signedInAsOfMount, signedInAsUser, type SignedInAs } from './signed-in-as'
@@ -161,8 +163,11 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
   for (const row of rows.sort(compareRows)) {
     ordered.push(row)
     if (!row.saved || !hasManyPlaces(row.protocol)) continue
-    const places = [...row.saved.places].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+    // An S3 account's root ("All buckets") leads, then the places by name.
+    const places = [...row.saved.places].sort(
+      (a, b) =>
+        Number(isS3AccountRoot(b, row.protocol)) - Number(isS3AccountRoot(a, row.protocol)) ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     )
     const placeRows = places.map((place) => placeRow(row, place, states, mountAccounts.get(place.volumeId) ?? null))
     // An SMB server: the account its listing signed in as, else its saved one. An S3 account: its key.
@@ -185,6 +190,14 @@ export function buildHubRows(sources: HubRowSources): HubRow[] {
  */
 export function hasManyPlaces(protocol: ServerProtocol): boolean {
   return protocol === 'smb' || protocol === 's3'
+}
+
+/**
+ * Whether `place` is an S3 account's ROOT (the place that lists every bucket), read
+ * off its app root through the path grammar: the root's server path is empty.
+ */
+function isS3AccountRoot(place: SavedPlace, protocol: ServerProtocol): boolean {
+  return protocol === 's3' && parseServerPath(place.appRoot)?.path === ''
 }
 
 /**
@@ -215,7 +228,9 @@ function placeRow(
     parentId: server.id,
     account: isSmb ? (liveAccount ?? signedInAsUser(place.username)) : null,
     place,
-    name: place.name,
+    // ❗ The backend labels an S3 root as its account (what the switcher and a pane
+    // show), which right under the account's own row would read as one name twice.
+    name: isS3AccountRoot(place, server.protocol) ? tString('servers.hub.s3AllBuckets') : place.name,
     protocol: server.protocol,
     address: server.address,
     status: isSmb ? (live ? 'connected' : 'saved') : placeStatus(state),

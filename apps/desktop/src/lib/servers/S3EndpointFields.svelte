@@ -50,6 +50,8 @@
         disabled: boolean
         /** ❗ Off in edit mode: the provider, its field, and the bucket name the place. */
         identityEditable: boolean
+        /** Off for an ACCOUNT's edit: the account is every bucket, so no one bucket is its. */
+        showBucket?: boolean
         /** The sentence under the field that makes the endpoint. */
         addressRefusal?: string
         /** The sentence under the region. */
@@ -73,6 +75,7 @@
         fields,
         disabled,
         identityEditable,
+        showBucket = true,
         addressRefusal,
         regionRefusal,
         bucketRefusal,
@@ -271,33 +274,35 @@
     </div>
 {/if}
 
-<div class="field">
-    <label for="server-s3-bucket" class="field-label">{tString('servers.sheet.s3Bucket')}</label>
-    <TextInput
-        id="server-s3-bucket"
-        bind:inputElement={bucketInput}
-        value={fields.bucket}
-        oninput={(e: Event) => {
-            onChange({ bucket: (e.currentTarget as HTMLInputElement).value })
-        }}
-        disabled={identityDisabled}
-        invalid={bucketRefusal !== undefined}
-        aria-describedby={bucketDescribedBy}
-        autocapitalize="off"
-        autocomplete="off"
-        spellcheck={false}
-    />
-    <!-- ❗ No "Optional" placeholder: a key limited to one bucket can't open the account
-         root, so for that key the field is required, and the help line says when. It
-         stays on screen beside a refusal, which reads as the answer to it. Edit mode
-         locks the bucket, so a line about what to type there would be inert. -->
-    {#if identityEditable}
-        <p id="server-s3-bucket-help" class="field-help">{tString('servers.sheet.s3BucketHelp')}</p>
-    {/if}
-    {#if bucketRefusal}
-        <p id="server-s3-bucket-refusal" class="field-refusal" role="alert">{bucketRefusal}</p>
-    {/if}
-</div>
+{#if showBucket}
+    <div class="field">
+        <label for="server-s3-bucket" class="field-label">{tString('servers.sheet.s3Bucket')}</label>
+        <TextInput
+            id="server-s3-bucket"
+            bind:inputElement={bucketInput}
+            value={fields.bucket}
+            oninput={(e: Event) => {
+                onChange({ bucket: (e.currentTarget as HTMLInputElement).value })
+            }}
+            disabled={identityDisabled}
+            invalid={bucketRefusal !== undefined}
+            aria-describedby={bucketDescribedBy}
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck={false}
+        />
+        <!-- ❗ No "Optional" placeholder: a key limited to one bucket can't open the account
+             root, so for that key the field is required, and the help line says when. It
+             stays on screen beside a refusal, which reads as the answer to it. Edit mode
+             locks the bucket, so a line about what to type there would be inert. -->
+        {#if identityEditable}
+            <p id="server-s3-bucket-help" class="field-help">{tString('servers.sheet.s3BucketHelp')}</p>
+        {/if}
+        {#if bucketRefusal}
+            <p id="server-s3-bucket-refusal" class="field-refusal" role="alert">{bucketRefusal}</p>
+        {/if}
+    </div>
+{/if}
 <!-- eslint-enable @typescript-eslint/no-confusing-void-expression -->
 
 <style>

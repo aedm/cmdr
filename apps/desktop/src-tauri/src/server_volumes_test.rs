@@ -600,7 +600,6 @@ fn an_s3_path_in_a_saved_bucket_names_the_bucket_place_over_the_account_root() {
         // A key no other cell uses: the store is process-global.
         access_key_id: "AKIASERVERVOLUMES".to_string(),
         bucket: bucket.map(str::to_string),
-        display_name: String::new(),
         auto_reconnect: true,
         pinned: false,
         last_connected_at: "2026-10-01T00:00:00Z".to_string(),

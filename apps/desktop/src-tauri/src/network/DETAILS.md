@@ -949,10 +949,26 @@ id, never by comparing fields. The provider preset rides as `S3ProviderChoice` (
 `cmdr_s3::S3Provider`), so the endpoint is never stored for a preset. The secret is the ACCOUNT's (service
 `s3+<scheme>://<host>:<port>`, scope the key id), so every bucket under one key reads one Keychain entry, and forgetting
 one place's secret forgets it for its siblings. `s3_volume_wiring.rs` is WebDAV's three steps (dial, register retiring the
-incumbent, remember). An edit changes only the name and the switch, since provider, key id, and bucket ARE the place; the
-switch reaches a live volume at once, the name the next connect. `commands/servers.rs` groups the places back under one
-hub row per account (`servers/s3_accounts.rs`), and `server_volumes::server_volume_for_path` picks the MOST specific
-saved root, because the account root and a bucket place spell one object the same way.
+incumbent, remember). A place's edit changes only its switch, since provider, key id, and bucket ARE the place; the
+switch reaches a live volume at once. `commands/servers.rs` groups the places back under one hub row per account
+(`servers/s3_accounts.rs`), and `server_volumes::server_volume_for_path` picks the MOST specific saved root, because the
+account root and a bucket place spell one object the same way.
+
+❗ **The name is the ACCOUNT's, ❌ never a place's**, the SMB host-and-shares shape: the account row shows the name a
+person typed (else `key id@host`), a bucket place reads as its bucket exactly as the provider spells it, and the account
+root reads as its account (`place_label`), which the hub words "All buckets" under the account's row. The store keeps one
+`KnownS3Account` record per NAMED account beside the places (an unnamed one has none), and it goes with the account's
+last place on Forget. Two writers, on purpose:
+
+- `adopt_typed_name`, from an add or a connect (`connect_and_register`, `save_without_connecting`): a typed name renames
+  the account (the newest typed wins, so two adds under one key with different names end on the second), and a blank
+  one leaves it alone, so a second bucket added without retyping the name doesn't unname the account, and a redial of
+  a saved place (which passes `""`) never touches it.
+- `rename_account`, behind `update_saved_s3_account` (Edit on the account row): a blank name UNNAMES it. ❌ Never through
+  `update_saved_server`: a target with no bucket would save the account ROOT as a new place.
+
+A store written before the name moved carries a `displayName` per place; `migrate` (run at load, written back once)
+gives each account the name of its most recently connected named place.
 
 ❗ **`cancel_connect` on an id nobody is running answers `false`** rather than raising: a click landing just after a
 connect finished is ordinary. And a `Cancelled` outcome never reaches `register` or `remember`, so a cancelled connect

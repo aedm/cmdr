@@ -7,6 +7,12 @@
 //! the servers listing groups them back under their account
 //! (`commands/servers.rs`).
 //!
+//! ❗ **The NAME is the account's, ❌ never a place's.** A person names the
+//! server (the account), and a bucket reads as its own name, the way an SMB
+//! host carries the name and its shares read as themselves. So the store keeps
+//! one [`KnownS3Account`] per NAMED account beside the places; an unnamed
+//! account has no record and reads as `key id@host`.
+//!
 //! ❌ **No secret lives here.** The secret access key goes to the
 //! `CredentialStore` seam, keyed `service = "s3+{scheme}://{host}:{port}"`
 //! (`S3ConnectionParams::credential_service`) and `scope = Some(access_key_id)`:
@@ -128,8 +134,6 @@ pub struct KnownS3Place {
     /// The bucket this place is, or `None` for the account root that lists the
     /// buckets. ❗ Part of the identity.
     pub bucket: Option<String>,
-    /// The name a person gave this place, or empty when nobody did.
-    pub display_name: String,
     /// Whether Cmdr may redial unattended when the session drops. ❗ Defaults to
     /// on, the same as SFTP's and WebDAV's.
     #[serde(default = "reconnects_automatically")]
@@ -162,14 +166,33 @@ impl KnownS3Place {
         Some(place_id(&params))
     }
 
-    /// What the UI calls this place: its name, else `bucket@host` for a bucket
-    /// and `key id@host` for the account root (`saved_server_fields::server_label`).
-    pub fn label(&self) -> String {
-        let host = self
-            .params()
-            .map_or_else(|_| String::new(), |params| params.host().to_string());
-        let who = self.bucket.as_deref().unwrap_or(&self.access_key_id);
-        saved_server_fields::server_label(&self.display_name, who, &host)
+    /// The id of the account this place belongs to, or `None` for a provider no
+    /// dial could reach.
+    fn account_id(&self) -> Option<String> {
+        let params = self.params().ok()?;
+        Some(account_id(&params))
+    }
+}
+
+/// A NAMED S3 account: the endpoint plus key the places under it share, and
+/// the name a person gave it. ❗ An unnamed account has no record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnownS3Account {
+    /// The provider, and with it the endpoint.
+    pub provider: S3ProviderChoice,
+    /// The account's key.
+    pub access_key_id: String,
+    /// The name a person gave the account, never blank.
+    pub display_name: String,
+}
+
+impl KnownS3Account {
+    /// The id the account is listed under ([`account_id`]), or `None` for a
+    /// provider no dial could reach.
+    fn id(&self) -> Option<String> {
+        let params = S3ConnectionParams::new(self.provider.to_provider().ok()?, &self.access_key_id, None).ok()?;
+        Some(account_id(&params))
     }
 }
 
@@ -195,6 +218,67 @@ pub struct KnownS3PlacesStore {
     /// Every place, in the order they were first added.
     #[serde(default)]
     pub known_s3_places: Vec<KnownS3Place>,
+    /// Every named account, one record each.
+    #[serde(default)]
+    pub known_s3_accounts: Vec<KnownS3Account>,
+}
+
+/// The store as a file may hold it: the current shape, or one whose places
+/// still carry a `displayName` of their own, from before the name moved to the
+/// account. [`migrate`] turns it into a [`KnownS3PlacesStore`].
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredS3PlacesFile {
+    #[serde(default)]
+    known_s3_places: Vec<StoredS3Place>,
+    #[serde(default)]
+    known_s3_accounts: Vec<KnownS3Account>,
+}
+
+/// A place as a file may hold it, with the per-place name an older store wrote.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredS3Place {
+    #[serde(flatten)]
+    place: KnownS3Place,
+    #[serde(default)]
+    display_name: String,
+}
+
+/// The current store, plus whether the file needs writing back because some
+/// place still carried its own name.
+///
+/// ❗ Each named account takes the name of its most recently connected named
+/// place, unless it already has a record: two places of one account could each
+/// carry a name, and the newest is what the person last typed.
+pub fn migrate(file: StoredS3PlacesFile) -> (KnownS3PlacesStore, bool) {
+    let mut accounts = file.known_s3_accounts;
+    let mut legacy: Vec<&StoredS3Place> = file
+        .known_s3_places
+        .iter()
+        .filter(|stored| saved_server_fields::is_named(&stored.display_name))
+        .collect();
+    let migrated = !legacy.is_empty();
+    legacy.sort_by(|a, b| b.place.last_connected_at.cmp(&a.place.last_connected_at));
+    for stored in legacy {
+        let Some(id) = stored.place.account_id() else { continue };
+        if accounts
+            .iter()
+            .any(|account| account.id().as_deref() == Some(id.as_str()))
+        {
+            continue;
+        }
+        accounts.push(KnownS3Account {
+            provider: stored.place.provider.clone(),
+            access_key_id: stored.place.access_key_id.clone(),
+            display_name: stored.display_name.trim().to_string(),
+        });
+    }
+    let store = KnownS3PlacesStore {
+        known_s3_places: file.known_s3_places.into_iter().map(|stored| stored.place).collect(),
+        known_s3_accounts: accounts,
+    };
+    (store, migrated)
 }
 
 static KNOWN: OnceLock<Mutex<KnownS3PlacesStore>> = OnceLock::new();
@@ -207,11 +291,15 @@ fn known() -> &'static Mutex<KnownS3PlacesStore> {
 /// Loads the store from the app's data dir. Call once at startup; a missing or
 /// unreadable file is an empty store.
 pub fn load_known_s3_places<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    let Some((store, path)) = server_list_file::load(app, "s3_known_places.json") else {
+    let Some((file, path)) = server_list_file::load::<_, StoredS3PlacesFile>(app, "s3_known_places.json") else {
         return;
     };
+    let (store, migrated) = migrate(file);
     *known().lock_ignore_poison() = store;
     let _ = STORE_PATH.set(path);
+    if migrated {
+        save();
+    }
 }
 
 fn save() {
@@ -233,6 +321,86 @@ pub fn find(volume_id: &str) -> Option<KnownS3Place> {
     all()
         .into_iter()
         .find(|entry| entry.volume_id().as_deref() == Some(volume_id))
+}
+
+/// The name a person gave the account `place` belongs to, or empty when
+/// nobody did.
+pub fn account_name(place: &KnownS3Place) -> String {
+    let Some(id) = place.account_id() else {
+        return String::new();
+    };
+    known()
+        .lock_ignore_poison()
+        .known_s3_accounts
+        .iter()
+        .find(|account| account.id().as_deref() == Some(id.as_str()))
+        .map(|account| account.display_name.clone())
+        .unwrap_or_default()
+}
+
+/// What the UI calls the account `place` belongs to: its name, else
+/// `key id@host` (`saved_server_fields::server_label`).
+pub fn account_label(place: &KnownS3Place) -> String {
+    let host = place
+        .params()
+        .map_or_else(|_| String::new(), |params| params.host().to_string());
+    saved_server_fields::server_label(&account_name(place), &place.access_key_id, &host)
+}
+
+/// What the UI calls a place: a bucket by its own name, exactly as the
+/// provider spells it, and the account root by its account's label, since
+/// opening the root IS opening the account.
+pub fn place_label(place: &KnownS3Place) -> String {
+    match place.bucket.as_deref() {
+        Some(bucket) => bucket.to_string(),
+        None => account_label(place),
+    }
+}
+
+/// Names `place`'s account with what an add or a connect TYPED, when it typed
+/// anything. ❗ A blank Name leaves the account's name alone: adding a second
+/// bucket under a named key without retyping its name must not unname it. The
+/// newest name typed wins.
+pub fn adopt_typed_name(place: &KnownS3Place, name: &str) {
+    if !saved_server_fields::is_named(name) {
+        return;
+    }
+    let Some(id) = place.account_id() else {
+        return;
+    };
+    set_account_name(&id, &place.provider, &place.access_key_id, name);
+}
+
+/// Renames the account listed as `account_id`, answering whether any saved
+/// place belongs to it. ❗ A blank name UNNAMES it (an edit's empty Name field),
+/// so it reads as `key id@host` again.
+pub fn rename_account(account_id: &str, name: &str) -> bool {
+    let Some(place) = all()
+        .into_iter()
+        .find(|entry| entry.account_id().as_deref() == Some(account_id))
+    else {
+        return false;
+    };
+    set_account_name(account_id, &place.provider, &place.access_key_id, name);
+    true
+}
+
+fn set_account_name(account_id: &str, provider: &S3ProviderChoice, access_key_id: &str, name: &str) {
+    let name = name.trim();
+    {
+        let mut store = known().lock_ignore_poison();
+        store
+            .known_s3_accounts
+            .retain(|account| account.id().as_deref() != Some(account_id));
+        if !name.is_empty() {
+            store.known_s3_accounts.push(KnownS3Account {
+                provider: provider.clone(),
+                access_key_id: access_key_id.to_string(),
+                display_name: name.to_string(),
+            });
+        }
+    }
+    save();
 }
 
 /// Whether `entry` is the place `volume_id` names. ❗ By the derived id, the
@@ -304,12 +472,21 @@ pub fn set_auto_reconnect(volume_id: &str, on: bool) -> bool {
 }
 
 /// Drops one place, answering whether it was there. ❌ Leaves the secret alone:
-/// other places of the account still sign in with it.
+/// other places of the account still sign in with it. The account's name goes
+/// with its LAST place, so adding the key again starts unnamed.
 pub fn forget(volume_id: &str) -> bool {
     let removed = {
         let mut store = known().lock_ignore_poison();
         let before = store.known_s3_places.len();
         store.known_s3_places.retain(|entry| !is_place(entry, volume_id));
+        let still_saved: std::collections::HashSet<String> = store
+            .known_s3_places
+            .iter()
+            .filter_map(KnownS3Place::account_id)
+            .collect();
+        store
+            .known_s3_accounts
+            .retain(|account| account.id().is_some_and(|id| still_saved.contains(&id)));
         store.known_s3_places.len() != before
     };
     if removed {

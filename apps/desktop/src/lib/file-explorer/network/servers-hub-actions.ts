@@ -134,11 +134,7 @@ export async function editHubRow(row: HubRow): Promise<void> {
     await runServerRowAction({ action: 'edit', volumeId: row.volumeId, volumeName: row.name })
     return
   }
-  // An S3 account's settings live on its places, each edited on its own.
-  if (row.protocol === 's3') {
-    addToast(tString('servers.hub.editAccountHint', { name: row.name }), EDIT_HINT)
-    return
-  }
+  // An SMB host, or an S3 account: no place, so the sheet edits the server itself (its name, for S3 its secret too).
   await openEditServerSheet(row.saved)
 }
 

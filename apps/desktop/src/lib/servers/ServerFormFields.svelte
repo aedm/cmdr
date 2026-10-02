@@ -68,6 +68,13 @@
         identityEditable: boolean
         /** The two lines under the locked identity fields, saying what to do instead. */
         identityHint?: string
+        /**
+         * An S3 edit's subject. ❗ The ACCOUNT carries the name, so `account` shows the
+         * name and hides the bucket and Advanced (its only setting is a per-place
+         * switch); `place` hides the name, since a bucket reads as itself. Unset in add
+         * mode and for every other protocol.
+         */
+        s3EditScope?: 'account' | 'place'
         /** The sentence under the address field, when the last attempt was refused. */
         addressRefusal?: string
         /** A softer line under that sentence: something besides the server worth checking. */
@@ -127,6 +134,7 @@
         protocolEditable,
         identityEditable,
         identityHint,
+        s3EditScope,
         addressRefusal,
         addressRefusalHint,
         addressWarning,
@@ -209,6 +217,7 @@
         fields={form.s3}
         {disabled}
         {identityEditable}
+        showBucket={s3EditScope !== 'account'}
         {addressRefusal}
         {regionRefusal}
         {bucketRefusal}
@@ -275,19 +284,22 @@
 </div>
 {/if}
 
-<!-- Every protocol has a name, SMB included: it's what the Servers list shows. -->
-<div class="field">
-    <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
-    <TextInput
-        id="server-name"
-        value={form.displayName}
-        oninput={(e: Event) => {
-            onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
-        }}
-        {disabled}
-        placeholder={namePlaceholder}
-    />
-</div>
+<!-- Every protocol has a name, SMB included: it's what the Servers list shows. An S3 place
+     has none of its own: the account carries it, and a bucket reads as itself. -->
+{#if s3EditScope !== 'place'}
+    <div class="field">
+        <label for="server-name" class="field-label">{tString('servers.sheet.name')}</label>
+        <TextInput
+            id="server-name"
+            value={form.displayName}
+            oninput={(e: Event) => {
+                onChange({ displayName: (e.currentTarget as HTMLInputElement).value })
+            }}
+            {disabled}
+            placeholder={namePlaceholder}
+        />
+    </div>
+{/if}
 
 {#if form.protocol === 'smb'}
     <!-- ❗ Optional, and editable in edit mode too: for SMB the account is a
@@ -380,8 +392,9 @@
     {/if}
 {/if}
 
-<!-- SMB keeps nothing Advanced would hold, so it gets no disclosure that opens onto nothing. -->
-{#if asksForCredentials}
+<!-- SMB keeps nothing Advanced would hold, so it gets no disclosure that opens onto nothing; nor
+     does an S3 account, whose one Advanced setting is each place's own switch. -->
+{#if asksForCredentials && s3EditScope !== 'account'}
     <details class="advanced" bind:open={advancedOpen}>
         <summary>{tString('servers.sheet.advanced')}</summary>
         <div class="advanced-body">

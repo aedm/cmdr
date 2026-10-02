@@ -218,7 +218,8 @@ pub async fn connect_saved_place(
         }
         SavedEntry::S3(entry) => outcome_from_s3(
             s3_volume_wiring::connect_and_register(
-                &entry.display_name,
+                // Nothing typed: the account keeps the name it has.
+                "",
                 entry.provider,
                 &entry.access_key_id,
                 entry.bucket.as_deref(),
@@ -602,7 +603,7 @@ pub fn saved_server_id(server: ServerTarget) -> Option<String> {
             access_key_id,
             bucket,
             ..
-        } => s3_place(provider, access_key_id, bucket, String::new(), true).volume_id(),
+        } => s3_place(provider, access_key_id, bucket, true).volume_id(),
     }
 }
 
@@ -671,16 +672,34 @@ async fn save_target(server: ServerTarget) -> SavedServerOutcome {
             bucket,
             auto_reconnect,
         } => {
-            s3_volume_wiring::save_without_connecting(s3_place(
-                provider,
-                access_key_id,
-                bucket,
-                display_name,
-                auto_reconnect,
-            ))
+            s3_volume_wiring::save_without_connecting(
+                s3_place(provider, access_key_id, bucket, auto_reconnect),
+                &display_name,
+            )
             .await
         }
     }
+}
+
+/// Names the saved S3 account the listing calls `id`, answering whether any
+/// saved place belongs to it. An empty name unnames it, so the UI calls it
+/// `key id@host` again.
+///
+/// ❗ Its own command rather than a [`ServerTarget`] arm, like
+/// [`update_saved_smb_host`]: the account is no place to save, and a target with
+/// no bucket would save the account ROOT as a new place. A bucket's name is the
+/// bucket's own, so an account is the only S3 thing a person names.
+///
+/// ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+/// the saved list and the switcher relabel the account root.
+#[tauri::command]
+#[specta::specta]
+pub fn update_saved_s3_account(id: String, name: String) -> bool {
+    let named = s3_known_places::rename_account(&id, &name);
+    if named {
+        crate::volume_broadcast::emit_volumes_changed();
+    }
+    named
 }
 
 /// Names the saved SMB host the listing calls `id` and sets the account it's used

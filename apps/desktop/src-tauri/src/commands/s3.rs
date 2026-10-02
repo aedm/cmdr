@@ -122,7 +122,8 @@ pub struct SavedS3Place {
     pub access_key_id: String,
     /// The bucket, or `null` for the account root.
     pub bucket: Option<String>,
-    /// The name a person gave it, empty when nobody did.
+    /// The name a person gave its ACCOUNT, empty when nobody did. ❗ The
+    /// account's, ❌ never the place's: a bucket reads as its own name.
     pub display_name: String,
     /// The place's "Reconnect automatically" switch.
     pub auto_reconnect: bool,
@@ -134,10 +135,10 @@ impl SavedS3Place {
     fn of(entry: KnownS3Place) -> Option<Self> {
         Some(Self {
             volume_id: entry.volume_id()?,
+            display_name: s3_known_places::account_name(&entry),
             provider: entry.provider,
             access_key_id: entry.access_key_id,
             bucket: entry.bucket,
-            display_name: entry.display_name,
             auto_reconnect: entry.auto_reconnect,
             pinned: entry.pinned,
         })

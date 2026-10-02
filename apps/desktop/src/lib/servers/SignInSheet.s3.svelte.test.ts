@@ -18,10 +18,11 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   hasServerSecret: vi.fn(() => Promise.resolve(true)),
   getS3UnattendedReconnect: vi.fn(() => Promise.resolve('possible')),
   updateSavedServer: (target: unknown) => updateSavedServer(target),
+  updateSavedS3Account: (id: string, name: string) => updateSavedS3Account(id, name),
   saveS3Credentials: (...args: unknown[]) => saveS3Credentials(...args),
 }))
 
-const { knownS3PlaceOf, updateSavedServer, saveS3Credentials } = vi.hoisted(() => ({
+const { knownS3PlaceOf, updateSavedServer, updateSavedS3Account, saveS3Credentials } = vi.hoisted(() => ({
   knownS3PlaceOf: vi.fn((_id: string) =>
     Promise.resolve({
       provider: { kind: 'wasabi', region: 'eu-central-1' },
@@ -34,6 +35,7 @@ const { knownS3PlaceOf, updateSavedServer, saveS3Credentials } = vi.hoisted(() =
     }),
   ),
   updateSavedServer: vi.fn((_target: unknown) => Promise.resolve({ outcome: 'saved' })),
+  updateSavedS3Account: vi.fn((_id: string, _name: string) => Promise.resolve(true)),
   saveS3Credentials: vi.fn((..._args: unknown[]) => Promise.resolve()),
 }))
 
@@ -170,57 +172,118 @@ describe('SignInSheet: the S3 form', () => {
   })
 })
 
-describe('SignInSheet: editing an S3 place', () => {
-  const account = {
-    id: 's3-account-root',
-    protocol: 's3' as const,
-    displayName: 'AKIAEXAMPLE@s3.eu-central-1.wasabisys.com',
-    nameSource: 'fallback' as const,
-    address: 's3.eu-central-1.wasabisys.com',
-    username: 'AKIAEXAMPLE',
-    pinned: false,
-    lastConnectedAt: null,
-    autoReconnect: true,
-    places: [
-      {
-        volumeId: 's3-photos',
-        name: 'photos@s3.eu-central-1.wasabisys.com',
-        pinned: true,
-        connected: false,
-        appRoot: 's3://AKIAEXAMPLE@s3.eu-central-1.wasabisys.com:443/photos',
-        username: 'AKIAEXAMPLE',
-        autoReconnect: false,
-      },
-    ],
-  }
+const account = {
+  id: 's3-account-root',
+  protocol: 's3' as const,
+  displayName: 'AKIAEXAMPLE@s3.eu-central-1.wasabisys.com',
+  nameSource: 'fallback' as const,
+  address: 's3.eu-central-1.wasabisys.com',
+  username: 'AKIAEXAMPLE',
+  pinned: false,
+  lastConnectedAt: null,
+  autoReconnect: true,
+  places: [
+    {
+      volumeId: 's3-photos',
+      name: 'photos',
+      pinned: true,
+      connected: false,
+      appRoot: 's3://AKIAEXAMPLE@s3.eu-central-1.wasabisys.com:443/photos',
+      username: 'AKIAEXAMPLE',
+      autoReconnect: false,
+    },
+  ],
+}
 
-  it('opens on the PLACE it was raised on, with its identity locked and its own switch', async () => {
+describe('SignInSheet: editing an S3 place', () => {
+  beforeEach(() => {
+    updateSavedServer.mockClear()
+    saveS3Credentials.mockClear()
+  })
+
+  it('opens on the PLACE it was raised on, with its identity locked, its own switch, and no name', async () => {
     await open({ mode: 'edit', server: account, placeVolumeId: 's3-photos' })
     expect(knownS3PlaceOf).toHaveBeenCalledWith('s3-photos')
-    expect(document.body.textContent).toContain('photos@s3.eu-central-1.wasabisys.com')
+    expect(document.body.textContent).toContain('Edit photos')
     expect(field('server-s3-region')?.value).toBe('eu-central-1')
     expect(field('server-s3-region')?.disabled).toBe(true)
     expect(field('server-s3-bucket')?.value).toBe('photos')
     expect(field('server-username')?.disabled).toBe(true)
-    expect(field('server-name')?.disabled).toBe(false)
+    // ❗ A bucket reads as its own name; the account carries the name, renamed on its own row.
+    expect(field('server-name')).toBeNull()
+    expect(document.body.textContent).toContain('Reconnect automatically')
   })
 
-  it('saves the same place back and writes a typed secret as the account’s', async () => {
+  it('saves the same place back, sending no name, and writes a typed secret as the account’s', async () => {
     await open({ mode: 'edit', server: account, placeVolumeId: 's3-photos' })
-    type('server-name', 'Photos')
     type('server-secret', 'n3w')
     await tick()
     press('Save')
     await flush()
+    // A blank name leaves the account's name alone (`s3_known_places::adopt_typed_name`).
     expect(updateSavedServer).toHaveBeenCalledWith({
       protocol: 's3',
-      displayName: 'Photos',
+      displayName: '',
       provider: { kind: 'wasabi', region: 'eu-central-1' },
       accessKeyId: 'AKIAEXAMPLE',
       bucket: 'photos',
       autoReconnect: false,
     })
     expect(saveS3Credentials).toHaveBeenCalledWith({ kind: 'wasabi', region: 'eu-central-1' }, 'AKIAEXAMPLE', 'n3w')
+  })
+})
+
+describe('SignInSheet: editing an S3 account', () => {
+  beforeEach(() => {
+    updateSavedServer.mockClear()
+    updateSavedS3Account.mockClear()
+    saveS3Credentials.mockClear()
+  })
+
+  it('opens on the account: its name, its key and provider locked, no bucket, no per-place switch', async () => {
+    knownS3PlaceOf.mockResolvedValueOnce({
+      provider: { kind: 'wasabi', region: 'eu-central-1' },
+      accessKeyId: 'AKIAEXAMPLE',
+      bucket: 'photos',
+      displayName: 'Cloudflare R2 test3',
+      autoReconnect: false,
+      pinned: true,
+      volumeId: 's3-photos',
+    })
+    await open({ mode: 'edit', server: { ...account, displayName: 'Cloudflare R2 test3', nameSource: 'user' } })
+
+    expect(document.body.textContent).toContain('Edit Cloudflare R2 test3')
+    expect(field('server-name')?.value).toBe('Cloudflare R2 test3')
+    expect(field('server-name')?.disabled).toBe(false)
+    expect(field('server-s3-region')?.disabled).toBe(true)
+    expect(field('server-username')?.disabled).toBe(true)
+    expect(field('server-s3-bucket')).toBeNull()
+    expect(document.body.textContent).not.toContain('Reconnect automatically')
+    expect(document.body.textContent).toContain('The provider and the access key ID')
+  })
+
+  it('renames the account, writes a typed secret as the account’s, and saves no place', async () => {
+    await open({ mode: 'edit', server: account })
+    expect(field('server-name')?.placeholder).toBe('Leave empty to use AKIAEXAMPLE@s3.eu-central-1.wasabisys.com')
+    type('server-name', 'Studio')
+    type('server-secret', 'n3w')
+    await tick()
+    press('Save')
+    await flush()
+
+    expect(updateSavedS3Account).toHaveBeenCalledExactlyOnceWith('s3-account-root', 'Studio')
+    expect(updateSavedServer).not.toHaveBeenCalled()
+    expect(saveS3Credentials).toHaveBeenCalledWith({ kind: 'wasabi', region: 'eu-central-1' }, 'AKIAEXAMPLE', 'n3w')
+  })
+
+  it('stays open and says nothing was saved when the account went away meanwhile', async () => {
+    updateSavedS3Account.mockResolvedValueOnce(false)
+    await open({ mode: 'edit', server: account })
+    press('Save')
+    await flush()
+
+    expect(document.body.querySelector('.form-refusal')?.textContent).toBeTruthy()
+    expect(saveS3Credentials).not.toHaveBeenCalled()
   })
 })
 

@@ -74,9 +74,10 @@ pub fn cancel_connect(attempt_id: &str) -> bool {
 ///
 /// `secret` is what a sign-in sheet just collected (`None` reads the store);
 /// `remember: false` keeps it out of the Keychain (`one_shot_credentials.rs`).
-/// `display_name` travels beside the params into the saved entry, so a caller
-/// that doesn't set it passes the SAVED name. ❗ A cancelled connect leaves
-/// nothing behind.
+/// `display_name` is the ACCOUNT's name as an add typed it, adopted once the
+/// dial lands; a blank one (every redial of a saved place) leaves the account's
+/// name alone (`s3_known_places::adopt_typed_name`). ❗ A cancelled connect
+/// leaves nothing behind.
 pub async fn connect_and_register(
     display_name: &str,
     provider: S3ProviderChoice,
@@ -90,7 +91,6 @@ pub async fn connect_and_register(
         provider,
         access_key_id: access_key_id.trim().to_string(),
         bucket: bucket.map(str::trim).filter(|b| !b.is_empty()).map(str::to_string),
-        display_name: display_name.to_string(),
         auto_reconnect,
         // A first connect pins the new place; `remember` keeps the stored pin
         // for a place already saved.
@@ -104,7 +104,11 @@ pub async fn connect_and_register(
     let (host, offer) =
         one_shot_credentials::host_for_dial(&params.credential_service(), params.access_key_id(), secret).await;
     let (cancel, _attempt) = ATTEMPTS.register(attempt_id);
-    let label = place.label();
+    // The root reads as its account, so a name typed in this very add is its label already.
+    let label = match place.bucket {
+        None if super::saved_server_fields::is_named(display_name) => display_name.trim().to_string(),
+        _ => s3_known_places::place_label(&place),
+    };
     let volume = match cmdr_s3::connect_s3_volume(&label, &volume_id, params, host, cancel).await {
         Ok(volume) => {
             // Only now: a secret filed before the dial outlived a refused one.
@@ -114,6 +118,7 @@ pub async fn connect_and_register(
         Err(e) => return failed(e),
     };
     connect_wiring::install_retiring_incumbent(&volume_id, Arc::new(volume)).await;
+    s3_known_places::adopt_typed_name(&place, display_name);
     s3_known_places::remember(place);
     log::info!(target: "volume", "registered S3 volume {volume_id}");
     S3Connection::Connected { volume_id }
@@ -145,10 +150,12 @@ fn failed(error: S3ConnectError) -> S3Connection {
 /// Saves a place without dialing it: an edit, or an add that doesn't connect.
 ///
 /// ❗ The identity (provider, key id, bucket) is the place itself, so an edit
-/// moves only the name and the "reconnect automatically" switch. The switch
-/// reaches a connected volume at once; the name reaches the switcher and the
-/// hub at once (both read the store) and the live volume on its next connect.
-pub async fn save_without_connecting(place: KnownS3Place) -> SavedServerOutcome {
+/// moves only the "reconnect automatically" switch, which reaches a connected
+/// volume at once. `display_name` is the ACCOUNT's name as an add typed it
+/// (blank leaves it alone: `s3_known_places::adopt_typed_name`); renaming an
+/// account is `s3_known_places::rename_account`. A name reaches the switcher and
+/// the hub at once (both read the store) and a live volume on its next connect.
+pub async fn save_without_connecting(place: KnownS3Place, display_name: &str) -> SavedServerOutcome {
     let Some(volume_id) = place.volume_id() else {
         // Nothing saved under an endpoint no dial could reach: there's no field
         // on the sheet this refusal could go under but the address, and it's
@@ -156,6 +163,7 @@ pub async fn save_without_connecting(place: KnownS3Place) -> SavedServerOutcome 
         return SavedServerOutcome::Unreachable;
     };
     on_live_volume(&volume_id, |live| live.set_auto_reconnect(place.auto_reconnect));
+    s3_known_places::adopt_typed_name(&place, display_name);
     s3_known_places::remember(place);
     SavedServerOutcome::Saved
 }

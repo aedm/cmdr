@@ -85,7 +85,11 @@ async fn s3_integration_connecting_registers_the_place_and_remembers_it() {
         "the registered volume is the live one"
     );
     let saved = s3_known_places::find(&volume_id).expect("a connect remembers the place");
-    assert_eq!(saved.display_name, "Fixture bucket");
+    assert_eq!(
+        s3_known_places::account_name(&saved),
+        "Fixture bucket",
+        "the name typed with the add names the ACCOUNT"
+    );
     assert_eq!(saved.bucket.as_deref(), Some(FIXTURE_BUCKET));
     let service = s3_volume_wiring::credential_service(&fixture_choice(), FIXTURE_ACCESS_KEY).expect("valid");
     assert!(
@@ -122,7 +126,6 @@ async fn s3_integration_a_refused_secret_registers_and_remembers_nothing() {
         provider: fixture_choice(),
         access_key_id: FIXTURE_ACCESS_KEY.to_string(),
         bucket: Some("cmdr-test-2".to_string()),
-        display_name: String::new(),
         auto_reconnect: true,
         pinned: false,
         last_connected_at: String::new(),

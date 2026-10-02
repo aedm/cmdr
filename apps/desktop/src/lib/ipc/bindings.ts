@@ -4725,6 +4725,20 @@ export const commands = {
   updateSavedSmbHost: (id: string, name: string, username: string | null) =>
     __TAURI_INVOKE<boolean>('update_saved_smb_host', { id, name, username }),
   /**
+   *  Names the saved S3 account the listing calls `id`, answering whether any
+   *  saved place belongs to it. An empty name unnames it, so the UI calls it
+   *  `key id@host` again.
+   *
+   *  ❗ Its own command rather than a [`ServerTarget`] arm, like
+   *  [`update_saved_smb_host`]: the account is no place to save, and a target with
+   *  no bucket would save the account ROOT as a new place. A bucket's name is the
+   *  bucket's own, so an account is the only S3 thing a person names.
+   *
+   *  ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+   *  the saved list and the switcher relabel the account root.
+   */
+  updateSavedS3Account: (id: string, name: string) => __TAURI_INVOKE<boolean>('update_saved_s3_account', { id, name }),
+  /**
    *  Forgets the saved SMB host the listing calls `id`: its manual entry, its
    *  sign-in history, and every share saved under it. Answers whether anything was
    *  there.
@@ -13035,7 +13049,10 @@ export type SavedS3Place = {
   accessKeyId: string
   // The bucket, or `null` for the account root.
   bucket: string | null
-  // The name a person gave it, empty when nobody did.
+  /**
+   *  The name a person gave its ACCOUNT, empty when nobody did. ❗ The
+   *  account's, ❌ never the place's: a bucket reads as its own name.
+   */
   displayName: string
   // The place's "Reconnect automatically" switch.
   autoReconnect: boolean

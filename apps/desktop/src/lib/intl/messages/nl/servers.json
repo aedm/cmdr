@@ -85,10 +85,6 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
-  "servers.hub.editAccountHint": "De instellingen van {name} staan bij de buckets. Selecteer een van de rijen eronder om die bucket te wijzigen.",
-  "@servers.hub.editAccountHint": {
-    "sourceHash": "29961f3"
-  },
   "servers.hub.openAccountHint": "{name} is geen plek om te openen. Open een van de buckets eronder.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"

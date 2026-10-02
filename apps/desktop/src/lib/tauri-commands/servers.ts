@@ -228,3 +228,12 @@ export async function forgetSavedSmbHostPassword(id: string): Promise<boolean> {
 export async function updateSavedSmbHost(id: string, name: string, username: string | null): Promise<boolean> {
   return await commands.updateSavedSmbHost(id, name, username)
 }
+
+/**
+ * Names the saved S3 account the listing calls `id` (its row's id); an empty name
+ * unnames it, so it reads as `key id@host` again. Answers whether any saved place
+ * belongs to it. The account carries the name: a bucket reads as its own.
+ */
+export async function updateSavedS3Account(id: string, name: string): Promise<boolean> {
+  return await commands.updateSavedS3Account(id, name)
+}

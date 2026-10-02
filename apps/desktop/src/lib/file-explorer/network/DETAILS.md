@@ -155,13 +155,21 @@ unit-tested:
   `volumeId: null` and `pinned: false`: its places are the place rows. A share row names the account it opens as; an S3
   place names none, since the account row above it shows the key.
 
+  ❗ **An S3 account row carries the NAME, its place rows their buckets**, as an SMB host carries its name over shares
+  that read as themselves: a bucket row reads as the bucket the provider spells, and the account ROOT's row reads
+  `servers.hub.s3AllBuckets` ("All buckets") and leads the places. The backend labels the root as its account (what the
+  switcher and a pane show), which under the account's own row would repeat the name; `isS3AccountRoot` reads the root
+  off its app root's empty server path. The model: `src-tauri/src/network/DETAILS.md` § "The S3 twin, a place per
+  entry".
+
   ❗ **An S3 account row is no place.** Its id is the account ROOT place's id whether or not the root is saved, so
   acting through it would dial or pin the root behind the person's back. Each S3 place row connects, pins, edits, and
   forgets through its own volume id with the regular server-place menu (`servers-hub-actions.ts`); the account row's
-  Enter and Edit answer a toast pointing at its places (`openMoveFor`'s `account` move), it has no right-click menu, and
-  F8 forgets every place plus, box checked, the secret they share (written FIRST, while a place still names the entry).
-  The account's status is its most urgent place's. Forgetting one place offers that shared secret UNCHECKED
-  (`server-row-actions.ts::forgetSavedServer`), since the account's other places sign in with it.
+  Enter answers a toast pointing at its places (`openMoveFor`'s `account` move), its Edit opens the account's editor
+  (rename it, change its secret: `$lib/servers/DETAILS.md` § "An S3 edit is the ACCOUNT's or a PLACE's"), it has no
+  right-click menu, and F8 forgets every place plus, box checked, the secret they share (written FIRST, while a place
+  still names the entry). The account's status is its most urgent place's. Forgetting one place offers that shared
+  secret UNCHECKED (`server-row-actions.ts::forgetSavedServer`), since the account's other places sign in with it.
 
   ❗ **The merge also guarantees every row id is UNIQUE**, first writer wins. The hub keys its `{#each}` on `row.id`,
   and Svelte throws `each_key_duplicate` on a repeat, so a duplicate crashes the whole pane rather than showing a row

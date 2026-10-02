@@ -83,10 +83,6 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
-  "servers.hub.editAccountHint": "Настройки учетной записи {name} хранятся в ее бакетах. Чтобы изменить бакет, выберите одну из строк под учетной записью.",
-  "@servers.hub.editAccountHint": {
-    "sourceHash": "29961f3"
-  },
   "servers.hub.openAccountHint": "Учетную запись {name} нельзя открыть. Откройте один из бакетов под ней.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"

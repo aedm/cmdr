@@ -4,7 +4,6 @@
 
 use super::wire::{SavedPlace, SavedServer, ServerNameSource, ServerProtocol};
 use crate::network::s3_known_places;
-use crate::network::saved_server_fields;
 
 /// Every saved S3 place, grouped under its ACCOUNT: one [`SavedServer`] per
 /// endpoint plus access key id, its places the saved buckets (and the root,
@@ -13,6 +12,11 @@ use crate::network::saved_server_fields;
 /// ❗ The account's id is its ROOT place's id (`s3_known_places::account_id`),
 /// which names the account whether or not the root is saved. The account row
 /// carries no pin of its own: its places do, the way an SMB host's shares do.
+///
+/// ❗ The account row carries the NAME (the one a person typed, else
+/// `key id@host`), and each bucket place reads as its bucket; the root place
+/// reads as the account (`s3_known_places::place_label`), which the hub words
+/// as its own row.
 pub(super) fn s3_accounts(
     manager: &crate::file_system::volume::manager::VolumeManager,
     app_roots: &std::collections::HashMap<String, String>,
@@ -32,7 +36,7 @@ pub(super) fn s3_accounts(
         let place = SavedPlace {
             connected: manager.get(&volume_id).is_some(),
             volume_id,
-            name: entry.label(),
+            name: s3_known_places::place_label(&entry),
             pinned: entry.pinned,
             app_root,
             username: Some(entry.access_key_id.clone()),
@@ -46,25 +50,14 @@ pub(super) fn s3_accounts(
                     account.last_connected_at = Some(entry.last_connected_at.clone());
                 }
                 if is_root {
-                    account.display_name = entry.label();
-                    account.name_source = ServerNameSource::of_account(&entry.display_name);
                     account.auto_reconnect = Some(entry.auto_reconnect);
                 }
             }
             None => accounts.push(SavedServer {
                 id: account_id,
                 protocol: ServerProtocol::S3,
-                // The root's label when it's saved; else the account's stand-in.
-                display_name: if is_root {
-                    entry.label()
-                } else {
-                    saved_server_fields::server_label("", &entry.access_key_id, params.host())
-                },
-                name_source: if is_root {
-                    ServerNameSource::of_account(&entry.display_name)
-                } else {
-                    ServerNameSource::Fallback
-                },
+                display_name: s3_known_places::account_label(&entry),
+                name_source: ServerNameSource::of_account(&s3_known_places::account_name(&entry)),
                 address: s3_address(&entry.provider, params.host()),
                 username: Some(entry.access_key_id.clone()),
                 pinned: false,
@@ -88,19 +81,18 @@ fn s3_address(provider: &s3_known_places::S3ProviderChoice, host: &str) -> Strin
 
 /// The saved entry an S3 target describes, trimmed the way a dial trims it so
 /// the two derive one id. ❗ `pinned: true` is only ever read for a NEW entry
-/// (`s3_known_places::remember` keeps a stored pin).
+/// (`s3_known_places::remember` keeps a stored pin). The target's name is the
+/// ACCOUNT's, so it travels beside this, ❌ never in it.
 pub(super) fn s3_place(
     provider: s3_known_places::S3ProviderChoice,
     access_key_id: String,
     bucket: Option<String>,
-    display_name: String,
     auto_reconnect: bool,
 ) -> s3_known_places::KnownS3Place {
     s3_known_places::KnownS3Place {
         provider,
         access_key_id: access_key_id.trim().to_string(),
         bucket: bucket.map(|b| b.trim().to_string()).filter(|b| !b.is_empty()),
-        display_name,
         auto_reconnect,
         pinned: true,
         last_connected_at: chrono::Utc::now().to_rfc3339(),

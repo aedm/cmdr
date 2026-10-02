@@ -83,10 +83,6 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
-  "servers.hub.editAccountHint": "{name} 的設定都放在底下各個儲存貯體上。選取下面其中一列就能編輯。",
-  "@servers.hub.editAccountHint": {
-    "sourceHash": "29961f3"
-  },
   "servers.hub.openAccountHint": "{name} 不是可以開啟的位置。請開啟底下的其中一個儲存貯體。",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"

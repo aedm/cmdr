@@ -716,6 +716,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::servers::update_saved_server,
                     crate::commands::servers::saved_server_id,
                     crate::commands::servers::update_saved_smb_host,
+                    crate::commands::servers::update_saved_s3_account,
                     crate::commands::servers::forget_saved_smb_host,
                     crate::commands::servers::forget_saved_smb_host_password,
                     crate::commands::confirm_dialog::confirm_with_checkbox,

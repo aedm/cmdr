@@ -64,6 +64,21 @@ describe('an S3 account in the hub', () => {
     expect(rows.every((row) => row.protocol === 's3')).toBe(true)
   })
 
+  it('calls the account-root place "All buckets", since the account row above it already carries the name', () => {
+    // The backend labels the root as its account (what the switcher and a pane show);
+    // under the account's own row, that would read as the same name twice.
+    const rows = buildHubRows({
+      saved: [s3Account([place('photos'), place(null)], { displayName: 'Work', nameSource: 'user' })],
+      hosts: [],
+      volumes: [],
+    })
+    expect(rows.map((row) => [row.kind, row.name])).toEqual([
+      ['server', 'Work'],
+      ['place', 'All buckets'],
+      ['place', 'photos'],
+    ])
+  })
+
   it('gives the account row no place of its own: no volume id and no pin', () => {
     // Its id is the ROOT place's id, saved or not, so a row that acted through it
     // would dial or pin the account root behind the person's back.

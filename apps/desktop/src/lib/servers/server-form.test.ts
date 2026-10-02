@@ -495,9 +495,10 @@ describe('the S3 form', () => {
     expect(form.s3).toMatchObject({ provider: 'aws', region: 'eu-west-1', bucket: 'photos' })
   })
 
-  it('promises the name the backend gives an unnamed place: the bucket, else the key, at the endpoint host', () => {
+  it('promises the name the backend gives an unnamed ACCOUNT: the key at the endpoint host, whatever the bucket', () => {
+    // The Name field names the account; a bucket reads as its own name under it.
     expect(nameFallbackOf(s3Form({ provider: 'aws', region: 'eu-west-1', bucket: 'photos' }))).toBe(
-      'photos@s3.eu-west-1.amazonaws.com',
+      'AKIAEXAMPLE@s3.eu-west-1.amazonaws.com',
     )
     expect(nameFallbackOf(s3Form({ provider: 'aws', region: 'eu-west-1' }))).toBe(
       'AKIAEXAMPLE@s3.eu-west-1.amazonaws.com',

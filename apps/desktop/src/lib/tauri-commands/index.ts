@@ -971,6 +971,7 @@ export {
   updateSavedServer,
   savedServerId,
   updateSavedSmbHost,
+  updateSavedS3Account,
   forgetSavedSmbHost,
   forgetSavedSmbHostPassword,
 } from './servers'

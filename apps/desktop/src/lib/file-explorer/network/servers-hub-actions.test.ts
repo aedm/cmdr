@@ -674,7 +674,7 @@ describe('an S3 account and its places', () => {
     expect(forgetServer).not.toHaveBeenCalled()
   })
 
-  it('edits a bucket through its own volume id, and says an account row has its settings on its places', async () => {
+  it('edits a bucket through its own volume id, and the account row as the account', async () => {
     await editHubRow(bucketRow)
     expect(runServerRowAction).toHaveBeenCalledExactlyOnceWith({
       action: 'edit',
@@ -682,11 +682,8 @@ describe('an S3 account and its places', () => {
       volumeName: 'photos',
     })
     await editHubRow(account)
-    expect(openEditServerSheet).not.toHaveBeenCalled()
-    expect(addToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('AKIA@host'), {
-      level: 'info',
-      id: 'servers-edit-hint',
-    })
+    expect(openEditServerSheet).toHaveBeenCalledExactlyOnceWith(account.saved)
+    expect(addToast).not.toHaveBeenCalled()
   })
 
   it('shows and flips the bucket’s OWN "Reconnect automatically", ❌ not the account’s', async () => {

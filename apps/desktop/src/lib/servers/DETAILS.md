@@ -195,11 +195,21 @@ the saved place (`knownS3PlaceOf`, matched by the `volumeId` the backend publish
 In EDIT mode there is nothing typed to save, so the box only ever forgets (`SignInSheet.svelte`'s `writeRememberFlip`);
 turning it on there rides the next successful sign-in's offer.
 
-**An S3 edit is per PLACE.** An account's buckets are each saved on their own, so Edit carries the place it was raised
-on (`openEditServerSheet(server, placeVolumeId)`, the request's `placeVolumeId`), and the sheet reads, flips Remember
-for, and titles that place: its entry comes from `knownS3PlaceOf`, its name from the place's listing row. Locked there:
-the provider and its field, the access key ID, and the bucket (`servers.sheet.identityLockedS3`). A typed secret is the
-account's (`saveS3Credentials`).
+**An S3 edit is the ACCOUNT's or a PLACE's** (`SignInSheet.svelte`'s `s3EditScope`). ❗ The account carries the name and
+the secret; a bucket reads as its own name and keeps only its "Reconnect automatically" switch
+(`src-tauri/src/network/DETAILS.md` § "The S3 twin, a place per entry").
+
+- **The account** (Edit on the account's hub row: `openEditServerSheet(server)`, no `placeVolumeId`): the Name field,
+  the provider and the key locked (`servers.sheet.identityLockedS3Account`), ❌ no Bucket field and ❌ no Advanced. It
+  reads the store and the Keychain through one of the account's places (`storeId`: they share the secret, and each
+  `SavedS3Place` carries the account's raw name), and Save renames through `updateSavedS3Account` (blank unnames it), ❌
+  never `updateSavedServer`, whose bucket-less target would save the account ROOT as a new place.
+- **A place** (Edit on a bucket or root row, the switcher's menu included:
+  `openEditServerSheet(server, placeVolumeId)`): the provider, the key, and the bucket locked
+  (`servers.sheet.identityLockedS3`), ❌ no Name field, Advanced with the place's own switch. Save sends the target with
+  a blank name, which leaves the account's name alone. The title is the place's listing name.
+
+A typed secret is the account's either way (`saveS3Credentials`).
 
 **Edit mode changes SETTINGS, ❌ never identity.** The address, the protocol toggle, and the username are locked, and
 `servers.sheet.identityLocked` sits under them saying to Forget and Add instead. Rust mints the volume id from
@@ -477,7 +487,8 @@ then an optional Bucket. Its model is `s3-form.ts`, held under `ServerForm.s3`; 
   the identity lock, Remember, and the Keychain plumbing are the ones every account uses, and a username an address
   filled can't leak in: `applyParsedAddress` fills nothing while S3 is selected.
 - **The order is endpoint, then name, then credentials**, like the other protocols: Provider, its field, Bucket, Name
-  (whose placeholder mirrors the backend's `<bucket or key>@<host>` label through `s3HostOf`), Access key ID, Secret
+  (the ACCOUNT's name, so its placeholder mirrors the backend's `<key>@<host>` stand-in through `s3HostOf`, whatever the
+  bucket; a typed name renames the account, a blank one leaves an already-named account alone), Access key ID, Secret
   access key, Remember, and Advanced holding only "Reconnect automatically" (no root or start folder: the bucket is the
   place).
 - **Checked before any round trip**: `s3FieldProblem` (§ "The refusal table"). Submit stays disabled until the key and

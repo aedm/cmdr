@@ -101,12 +101,9 @@
       "name": "the server name, like Naspolya"
     }
   },
-  "servers.hub.editAccountHint": "{name} keeps its settings on its buckets. Select one of the rows under it to edit it.",
-  "@servers.hub.editAccountHint": {
-    "description": "Toast when the user presses Edit or Rename (F4, F2) on an S3 account’s row in the Servers list. An S3 account (a storage service plus an access key) has no settings of its own; each saved bucket under it, listed as a row right below, is edited on its own. “Bucket” is the S3 term for a top-level storage container; keep the provider console’s term.",
-    "placeholders": {
-      "name": "the account’s name in the list, like \"Photos backup\" or \"AKIAEXAMPLE@s3.eu-west-1.amazonaws.com\""
-    }
+  "servers.hub.s3AllBuckets": "All buckets",
+  "@servers.hub.s3AllBuckets": {
+    "description": "Name of a row in the Servers list, indented right under an S3 storage account’s row (which shows the account’s name): opening it shows every bucket that account can see. The other rows under the account are single buckets, shown by their own names. “Bucket” is the S3 term for a top-level storage container; use the term the providers’ consoles use in your language. Short, NOUN phrase, sentence case."
   },
   "servers.hub.openAccountHint": "{name} isn’t a place to open. Open one of the buckets under it.",
   "@servers.hub.openAccountHint": {
@@ -674,6 +671,10 @@
   "servers.sheet.identityLockedS3": "The provider, the access key ID, and the bucket are what name this place. Forget it and add it again to change them.",
   "@servers.sheet.identityLockedS3": {
     "description": "Two lines under the greyed-out S3 fields when the user is EDITING a saved S3 place, explaining why those can’t be typed in and what to do instead. The S3 twin of servers.sheet.identityLocked; “Forget” is the same word as there. “Bucket” is the S3 term; keep the providers’ term."
+  },
+  "servers.sheet.identityLockedS3Account": "The provider and the access key ID are what name this account. Forget it and add it again to change them.",
+  "@servers.sheet.identityLockedS3Account": {
+    "description": "Two lines under the greyed-out provider and access key ID fields when the user is EDITING a saved S3 storage account (opened from the account’s row in the Servers list, so the Name field above is the account’s name and there’s no bucket field). Explains why those can’t be typed in and what to do instead. The account twin of servers.sheet.identityLockedS3; “Forget” is the same word as in servers.sheet.identityLocked. “Access key ID” matches servers.sheet.accessKeyId."
   },
   "servers.sheet.namePlaceholder": "Leave empty to use {label}",
   "@servers.sheet.namePlaceholder": {

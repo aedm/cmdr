@@ -66,10 +66,12 @@
         forgetServerSecret,
         hasServerSecret,
         listSavedServers,
+        updateSavedS3Account,
         updateSavedServer,
         updateSavedSmbHost,
     } from '$lib/tauri-commands'
     import { tString } from '$lib/intl/messages.svelte'
+    import type { MessageKey } from '$lib/intl/keys.gen'
     import { getAppLogger } from '$lib/logging/logger'
     import type { HostKeyPrompt, SavedServer, ServerTarget } from '$lib/ipc/bindings'
 
@@ -156,6 +158,33 @@
     const editedPlace = $derived(
         request.mode === 'edit' ? request.server.places.find((p) => p.volumeId === request.placeVolumeId) : undefined,
     )
+    /**
+     * What an S3 edit edits. ❗ The ACCOUNT carries the name and the secret, so Edit on
+     * its row (no `placeVolumeId`) renames it and hides the bucket and the per-place
+     * switch; a PLACE (a bucket, or the root) keeps its switch and has no name of its
+     * own, since a bucket reads as itself. `null` for every other protocol.
+     */
+    const s3EditScope = $derived.by((): 'account' | 'place' | null => {
+        if (request.mode !== 'edit' || request.server.protocol !== 's3') return null
+        return request.placeVolumeId === undefined ? 'account' : 'place'
+    })
+    /**
+     * The saved entry an edit reads the Keychain and the store row through. An S3
+     * account has no entry of its own (its id is its root's, saved or not), so it
+     * reads through one of its places: they share the account's secret, and each
+     * carries the account's provider, key, and name.
+     */
+    /** The two lines under an edit's locked identity fields: what names the thing, and how to change it. */
+    const identityHintKey = $derived.by((): MessageKey => {
+        if (s3EditScope === 'account') return 'servers.sheet.identityLockedS3Account'
+        if (s3EditScope === 'place') return 'servers.sheet.identityLockedS3'
+        return 'servers.sheet.identityLocked'
+    })
+    const storeId = $derived.by(() => {
+        if (request.mode !== 'edit') return null
+        if (s3EditScope === 'account') return request.server.places[0]?.volumeId ?? request.server.id
+        return editedId
+    })
 
     /**
      * ❗ The listing's `displayName` IS the label already: a name a person typed,
@@ -165,7 +194,7 @@
     const sheetTitle = $derived.by(() => {
         if (request.mode === 'add') return tString('servers.sheet.addTitle')
         if (request.mode === 'edit') {
-            const name = request.server.protocol === 's3' && editedPlace ? editedPlace.name : request.server.displayName
+            const name = s3EditScope === 'place' && editedPlace ? editedPlace.name : request.server.displayName
             return tString('servers.sheet.editTitle', { name })
         }
         return tString('servers.sheet.signInTitle', { name: request.endpoint.displayName })
@@ -362,13 +391,14 @@
             focusFirstEditableField()
             return
         }
-        // An S3 account's buckets are each saved on their own, so the PLACE is what's read.
-        const id = editedId ?? server.id
+        // An S3 account's buckets are each saved on their own, so a PLACE is what's read.
+        const id = storeId ?? server.id
         form = (await savedEditForm(server, id)) ?? form
         form.remember = await hasServerSecret(id)
         rememberWhenOpened = form.remember
         secretStoredWhenOpened = form.remember
-        storedSecretWarning = await unattendedReconnectWarning(id, server.protocol)
+        // The warning is about "Reconnect automatically", a per-place switch an account edit doesn't show.
+        storedSecretWarning = s3EditScope === 'account' ? null : await unattendedReconnectWarning(id, server.protocol)
         await tick()
         focusFirstEditableField()
     }
@@ -600,21 +630,14 @@
         }
         busy = true
         refusal = null
-        let answer: SaveOutcome
-        try {
-            answer = readSavedServerOutcome(await updateSavedServer(target))
-        } catch (e) {
-            // Nothing confirmed the edit, which is exactly what this refusal says.
-            log.warn('Saving the edited server broke down: {error}', { error: String(e) })
-            answer = { kind: 'refused', refusal: 'save_unconfirmed' }
-        }
+        const answer = s3EditScope === 'account' ? await saveS3Account(editedServer.id) : await saveTarget(target)
         if (answer.kind === 'refused') {
             busy = false
             await refuse(answer.refusal)
             return
         }
         try {
-            await writeRememberFlip(editedId ?? editedServer.id)
+            await writeRememberFlip(storeId ?? editedServer.id)
             await writeTypedSecret(target)
             close({ kind: 'saved' })
         } catch (e) {
@@ -628,6 +651,33 @@
         } finally {
             busy = false
         }
+    }
+
+    /** Edit mode's store write for a server with a place: the target, as the backend answered it. */
+    async function saveTarget(target: ServerTarget): Promise<SaveOutcome> {
+        try {
+            return readSavedServerOutcome(await updateSavedServer(target))
+        } catch (e) {
+            // Nothing confirmed the edit, which is exactly what this refusal says.
+            log.warn('Saving the edited server broke down: {error}', { error: String(e) })
+            return { kind: 'refused', refusal: 'save_unconfirmed' }
+        }
+    }
+
+    /**
+     * Edit mode on an S3 account: its name, by the row's id. ❗ Never through
+     * `updateSavedServer`: a target with no bucket would save the account ROOT as a
+     * new place. An account whose places all went away meanwhile (a Forget in
+     * another pane) reads as the save nobody could confirm. The secret is written
+     * after, like any edit's.
+     */
+    async function saveS3Account(id: string): Promise<SaveOutcome> {
+        try {
+            if (await updateSavedS3Account(id, form.displayName.trim())) return { kind: 'saved' }
+        } catch (e) {
+            log.warn('Saving the edited S3 account broke down: {error}', { error: String(e) })
+        }
+        return { kind: 'refused', refusal: 'save_unconfirmed' }
     }
 
     /**
@@ -734,9 +784,8 @@
                 disabled={busy}
                 protocolEditable={!isEdit}
                 identityEditable={!isEdit}
-                identityHint={isEdit
-                    ? tString(form.protocol === 's3' ? 'servers.sheet.identityLockedS3' : 'servers.sheet.identityLocked')
-                    : undefined}
+                identityHint={isEdit ? tString(identityHintKey) : undefined}
+                s3EditScope={s3EditScope ?? undefined}
                 addressRefusal={refusalWhere === 'address' ? refusalText : undefined}
                 regionRefusal={refusalWhere === 'region' ? refusalText : undefined}
                 bucketRefusal={refusalWhere === 'bucket' ? refusalText : undefined}

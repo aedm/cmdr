@@ -240,11 +240,12 @@ export function smbAddressFrom(address: string): string {
  */
 export function nameFallbackOf(form: ServerForm, saved: readonly SavedServer[] = []): string | null {
   if (form.protocol === 's3') {
-    // `s3_known_places::KnownS3Place::label`: the bucket, else the key, at the endpoint host.
+    // `s3_known_places::account_label`: the Name names the ACCOUNT, so the key at the
+    // endpoint host, whatever the bucket (a bucket reads as its own name under it).
     const host = s3HostOf(form.s3)
     if (host === null) return null
-    const who = form.s3.bucket.trim() || form.username.trim()
-    return who === '' ? host : `${who}@${host}`
+    const key = form.username.trim()
+    return key === '' ? host : `${key}@${host}`
   }
   const parsed = parseServerAddress(form.address)
   if (parsed.kind === 'unparsed') return null

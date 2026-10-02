@@ -133,7 +133,8 @@ pub(crate) fn server_places() -> Vec<ServerPlace> {
         places.push(ServerPlace {
             state: registered(&id, BackendKind::S3).unwrap_or(ConnectionState::Saved),
             id,
-            name: entry.label(),
+            // A bucket by its own name, the account root by its account's.
+            name: s3_known_places::place_label(&entry),
             app_root: root.app_root().to_string_lossy().into_owned(),
             // An S3 place has no start folder: a bucket place IS its landing.
             landing_path: None,

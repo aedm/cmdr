@@ -4247,7 +4247,6 @@
       "commands.networkSelectHost.label": "Opening a network host is choose: «Выбрать сетевой хост».",
       "servers.hub.editPickHint": "Picking one server in the list to edit is choose.",
       "servers.hub.editShareHint": "Picking the server's row to edit it is choose.",
-      "servers.hub.editAccountHint": "Picking a bucket's row in the Servers list to edit it is choose, like servers.hub.editShareHint.",
       "commands.navDown.label": "Moves the cursor, marks nothing; say «Следующий файл».",
       "commands.navUp.label": "Moves the cursor, marks nothing; say «Предыдущий файл».",
       "queue.row.selectAria": "Checkbox picking operation rows to cancel together: choosing items in a list, not marking files in a pane, so «выбрать» stays.",
