@@ -14,7 +14,7 @@ use cmdr_fs::volume::VolumeError;
 use cmdr_fs::volume::liveness::Liveness;
 use cmdr_fs::volume::tls::has_tls_refusal;
 use futures_util::Stream;
-use http::{HeaderMap, StatusCode};
+use http::{HeaderMap, Method, StatusCode};
 use log::debug;
 
 use crate::ops;
@@ -339,13 +339,20 @@ impl S3Client {
             time: &time,
         };
         let signed = sign(request, &scope);
+        let writes = signed.method == Method::POST || signed.method == Method::PUT;
         let mut builder = self
             .http
             .request(signed.method, signed.url)
             .headers(signed.headers)
             .timeout(budget);
-        if let Body::Bytes(bytes) = signed.body {
-            builder = builder.body(bytes);
+        match signed.body {
+            Body::Bytes(bytes) => builder = builder.body(bytes),
+            // ❗ GCS answers `411` to a bodyless POST (`CreateMultipartUpload`)
+            // that doesn't say its length (live, 2026-10-02).
+            Body::Empty if writes => {
+                builder = builder.header(reqwest::header::CONTENT_LENGTH, 0);
+            }
+            Body::Empty | Body::Streamed { .. } => {}
         }
         let mut response = builder.send().await?;
         self.liveness.heard();
@@ -586,3 +593,6 @@ pub(crate) fn classify_connect_error(err: &reqwest::Error) -> S3ConnectError {
 #[cfg(test)]
 #[path = "transport_routing_test.rs"]
 mod transport_routing_test;
+#[cfg(test)]
+#[path = "transport_test.rs"]
+mod transport_test;
