@@ -19,6 +19,10 @@ findings live in `crates/cmdr-s3/DETAILS.md` § "Verified providers"; this note 
   - Wasabi: `cmdr-s3-test-58fb74`, `cmdr-s3-test-58fb74-2` (`eu-central-1`, trial account, root key).
   - Hetzner: `cmdr-s3-test-58fb74`, `cmdr-s3-test-58fb74-2` (`nbg1`), replacing the deleted `cmdr-s3-test-d0e600`.
   - R2 `cmdr-s3-test`, GCS and Spaces from the secret store: one bucket each, unchanged.
+- ❗ **HTTP/1.1 only**: `cmdr-s3` built alone (as `live.sh` builds it) has no `reqwest` `http2` feature, so these cells
+  never see HTTP/2-only provider behavior. Inside the app build the feature is on (`genai` enables it) and the client
+  negotiates HTTP/2: GCS reset every app request with `PROTOCOL_ERROR` because of an explicit `host` header beside
+  `:authority`, which only the app-level live suite caught (fixed in 47a2bd97f).
 - **Throughput is skewed**: two other live runners shared the uplink. The numbers below are for orientation only.
 - **Cost**: well under the $0.50-per-provider budget. Each provider took roughly 1.3 GB of uploads plus server-side
   copies per full run; B2 and Wasabi ran a second time on three cells. Wasabi bills its ~1.5 GB for 90 days (trial).
