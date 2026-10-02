@@ -273,9 +273,7 @@ pub(crate) fn list_multipart_uploads(
 /// `upload_part_copy`), keeping the source's metadata (S3's default `COPY`
 /// directive: a rename keeps its mtime). `source_etag`, when known, pins the
 /// copy to that version of the source (`x-amz-copy-source-if-match`), as
-/// `upload_part_copy` does, except a multipart ETag on GCS
-/// (`ProviderProfile::refuses_multipart_copy_pin`). ❗ May fail inside a
-/// `200`: parse the body.
+/// `upload_part_copy` does. ❗ May fail inside a `200`: parse the body.
 pub(crate) fn copy_object(
     profile: &ProviderProfile,
     source: CopySource<'_>,
@@ -286,11 +284,7 @@ pub(crate) fn copy_object(
 ) -> Result<Built, BuildError> {
     let mut request = at(profile, Method::PUT, bucket, Some(key))?
         .header(name("x-amz-copy-source"), copy_source(profile, source, bucket)?);
-    let pinnable = |etag: &&str| !(profile.refuses_multipart_copy_pin && etag.contains('-'));
-    if let Some(etag) = source_etag
-        .filter(pinnable)
-        .and_then(|etag| HeaderValue::from_str(etag).ok())
-    {
+    if let Some(etag) = source_etag.and_then(|etag| HeaderValue::from_str(etag).ok()) {
         request = request.header(name("x-amz-copy-source-if-match"), etag);
     }
     Ok(guarded(profile, ConditionalOp::Copy, request, overwrite))

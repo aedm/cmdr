@@ -372,17 +372,3 @@ fn a_copy_object_with_a_known_source_etag_is_pinned_to_it() {
     let pinned = copy_object(&aws(), source, Some("\"abc\""), "b", "c", Overwrite::Replace).unwrap();
     assert_eq!(header(&pinned.request, "x-amz-copy-source-if-match"), Some("\"abc\""));
 }
-
-/// GCS answers `400 InvalidArgument` to a copy pinned to a multipart ETag
-/// (live, `live_copy_object_etags`, 2026-10-02), so it goes unpinned there.
-#[test]
-fn gcs_drops_a_multipart_etag_pin_and_keeps_a_single_part_one() {
-    let gcs = ProviderProfile::from_preset(&Preset::Gcs).unwrap();
-    let source = CopySource { bucket: "b", key: "a" };
-    let multipart = copy_object(&gcs, source, Some("\"abc-2\""), "b", "c", Overwrite::Replace).unwrap();
-    assert_eq!(header(&multipart.request, "x-amz-copy-source-if-match"), None);
-    let single = copy_object(&gcs, source, Some("\"abc\""), "b", "c", Overwrite::Replace).unwrap();
-    assert_eq!(header(&single.request, "x-amz-copy-source-if-match"), Some("\"abc\""));
-    let on_aws = copy_object(&aws(), source, Some("\"abc-2\""), "b", "c", Overwrite::Replace).unwrap();
-    assert_eq!(header(&on_aws.request, "x-amz-copy-source-if-match"), Some("\"abc-2\""));
-}
